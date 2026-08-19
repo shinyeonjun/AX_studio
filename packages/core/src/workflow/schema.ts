@@ -33,6 +33,11 @@ export const TriggerSchema = z.discriminatedUnion('type', [
     channel: z.string(),
   }),
   z.object({
+    type: z.literal('local_folder.new_file'),
+    folderId: z.string(),
+    extensions: z.array(z.string()).optional(),
+  }),
+  z.object({
     type: z.literal('once'),
     runAt: z.string(),
   }),

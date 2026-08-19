@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { buildManualRunInput, validateManualRunInput } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
@@ -12,7 +13,33 @@ export function registerRuntimeHandlers() {
     const core = getCore();
     const ir = core.store.getWorkflow(workflowId);
     if (!ir) throw new Error('Workflow not found');
-    return core.runtime.executeWorkflow(ir, { triggerType: 'manual' });
+    const input = buildManualRunInput(ir, core.store);
+    const validation = validateManualRunInput(ir, input);
+    if (!validation.ok) {
+      const executionId = core.store.createExecution({
+        workflowId,
+        workflowVersion: ir.version,
+        ephemeral: false,
+        triggerType: 'manual',
+        irJson: JSON.stringify(ir),
+      });
+      const log = [
+        {
+          at: new Date().toISOString(),
+          level: 'error' as const,
+          code: validation.errorCode,
+          message: validation.message,
+        },
+      ];
+      core.store.finishExecution(executionId, 'failed', validation.errorCode, log);
+      notifyStateChanged();
+      return { executionId, status: 'failed', errorCode: validation.errorCode, log };
+    }
+    return core.runtime.executeWorkflow(ir, {
+      triggerType: 'manual',
+      input,
+      forceManual: true,
+    });
   });
   ipcMain.handle('ax:runEphemeral', async (_e, ir) =>
     getCore().runtime.executeWorkflow(ir, { ephemeral: true, triggerType: 'manual' }),

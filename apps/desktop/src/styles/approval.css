@@ -1,0 +1,32 @@
+/* Approval */
+.approval-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.approval-card h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn-approve {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+
+.btn-reject {
+  background: var(--red-bg);
+  border-color: var(--red);
+  color: var(--red);
+}

@@ -3,94 +3,14 @@ import type { Node } from '@xyflow/react';
 import type { AppState, WorkSummary } from '../../types/app-state';
 import type { WorkFilter } from '../../types/navigation';
 import type { useInterview } from '../../hooks/useInterview';
-import { connectorEmoji, connectorLabel } from '../../constants/connectors';
-import { formatRelativeTime, triggerLabel } from '../../lib/work-display';
-import { IconPlay, IconPause } from '../icons';
 import { PageHeader } from '../layout/PageHeader';
 import { IconSearch } from '../icons';
 import { ChatPanel } from './ChatPanel';
+import { WorkList } from './WorkList';
 import { WorkflowPreviewPanel } from '../../workflow/WorkflowPreviewPanel';
 import type { WorkflowVisualNodeData } from '../../workflow/types';
 
 type InterviewApi = ReturnType<typeof useInterview>;
-
-interface TaskCardProps {
-  work: WorkSummary;
-  globalActive: boolean;
-  onOpen: () => void;
-  onRun: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}
-
-function TaskCard({ work, globalActive, onOpen, onRun, onToggle, onDelete }: TaskCardProps) {
-  const statusLabel = !globalActive ? '퇴근 중' : work.active ? '실행 중' : '중지됨';
-  const statusClass = !globalActive ? 'off-duty' : work.active ? 'running' : 'paused';
-
-  return (
-    <div className={`task-card ${!work.active ? 'paused' : ''}`}>
-      <button type="button" className="task-card-main" onClick={onOpen}>
-        <div className="task-icon-wrap">{connectorEmoji(work.connectors?.[0] ?? 'gmail')}</div>
-        <div className="task-body">
-          <h3 className="task-title">{work.name}</h3>
-          <p className="task-desc">{work.goal || '설명 없음'}</p>
-          <div className="task-meta">
-            <div className="connector-badges">
-              {(work.connectors ?? []).map((c) => (
-                <span key={c} className="connector-badge">
-                  {connectorEmoji(c)} {connectorLabel(c)}
-                </span>
-              ))}
-            </div>
-            <span className="status-pill">
-              <span className={`status-dot ${statusClass}`} />
-              {statusLabel}
-            </span>
-            <span className="meta-time">
-              {triggerLabel(work.trigger)} · 최근 {formatRelativeTime(work.lastRunAt)}
-            </span>
-          </div>
-        </div>
-      </button>
-      <div className="task-actions">
-        <button
-          type="button"
-          className="btn btn-sm btn-ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRun();
-          }}
-          title="지금 실행"
-        >
-          실행
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-ghost btn-danger-text"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          title="업무 삭제"
-        >
-          삭제
-        </button>
-        <button
-          type="button"
-          className={`play-toggle ${work.active ? 'active' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          title={work.active ? '업무 중지' : '업무 활성화'}
-          aria-label={work.active ? '중지' : '활성화'}
-        >
-          {work.active ? <IconPause /> : <IconPlay />}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 interface WorkPageProps {
   state: AppState | null;
@@ -135,17 +55,18 @@ export function WorkPage({
     const title = interview.interview?.title ?? (interview.interview?.workflowId ? '업무' : '새 업무');
     const isDraft = !interview.interview?.workflowId;
     const finished = Boolean(interview.interview?.done);
+    const readyToCommit = finished && Boolean(interview.completeness?.deployable);
 
     return (
-      <div className={`work-conversation-page ${finished ? 'work-conversation-page--review' : ''}`}>
+      <div className={`work-conversation-page ${readyToCommit ? 'work-conversation-page--review' : ''}`}>
         <header className="work-conversation-header">
           <button type="button" className="btn btn-ghost settings-back" onClick={onBackToList}>
             ← 업무 목록
           </button>
           <div className="work-conversation-title-wrap">
             <h1 className="work-conversation-title">{title}</h1>
-            {isDraft && !finished && <span className="draft-badge">설계 중</span>}
-            {finished && <span className="draft-badge draft-badge-done">검토</span>}
+            {isDraft && !readyToCommit && <span className="draft-badge">설계 중</span>}
+            {readyToCommit && <span className="draft-badge draft-badge-done">검토</span>}
           </div>
         </header>
 
@@ -175,7 +96,7 @@ export function WorkPage({
             draft={interview.workflow}
             baselineDraft={interview.workflowDiffBaseline}
             completeness={interview.completeness}
-            done={finished}
+            done={readyToCommit}
             title={title}
             selectedNode={selectedNode}
             onSelectNode={setSelectedNode}
@@ -184,7 +105,7 @@ export function WorkPage({
           />
         </div>
 
-        {finished && !interview.isLinkedWork && (
+        {readyToCommit && !interview.isLinkedWork && (
           <footer className="work-review-footer">
             <p className="work-review-footer-copy">이 구성으로 업무를 맡길까요?</p>
             <div className="work-review-footer-actions">
@@ -223,6 +144,8 @@ export function WorkPage({
     );
   }
 
+  const allWorks = state?.works ?? [];
+
   return (
     <>
       <PageHeader
@@ -235,27 +158,25 @@ export function WorkPage({
         }
       />
       <div className="page-content">
-        {works.length > 0 && (
-          <div className="toolbar">
-            <div className="search-box">
-              <IconSearch />
-              <input placeholder="업무 검색..." value={search} onChange={(e) => onSearchChange(e.target.value)} />
-            </div>
-            <select
-              className="filter-select"
-              value={workFilter}
-              onChange={(e) => onWorkFilterChange(e.target.value as WorkFilter)}
-            >
-              <option value="all">전체</option>
-              <option value="recurring">반복 업무</option>
-              <option value="once">1회성</option>
-              <option value="running">실행 중</option>
-              <option value="paused">중지됨</option>
-            </select>
+        <div className="toolbar">
+          <div className="search-box">
+            <IconSearch />
+            <input placeholder="업무 검색..." value={search} onChange={(e) => onSearchChange(e.target.value)} />
           </div>
-        )}
+          <select
+            className="filter-select"
+            value={workFilter}
+            onChange={(e) => onWorkFilterChange(e.target.value as WorkFilter)}
+          >
+            <option value="all">전체</option>
+            <option value="recurring">업무</option>
+            <option value="once">일회용</option>
+            <option value="running">실행 중</option>
+            <option value="paused">중지됨</option>
+          </select>
+        </div>
 
-        {works.length === 0 ? (
+        {allWorks.length === 0 ? (
           <div className="empty-state work-empty-state">
             <p>아직 맡긴 업무가 없습니다</p>
             <p className="muted">새 업무 대화를 시작해 AX에게 맡겨보세요.</p>
@@ -263,20 +184,21 @@ export function WorkPage({
               새 업무 대화 시작
             </button>
           </div>
-        ) : (
-          <div className="task-list">
-            {works.map((work) => (
-              <TaskCard
-                key={work.id}
-                work={work}
-                globalActive={state?.globalActive ?? true}
-                onOpen={() => onOpenWork(work.id)}
-                onRun={() => onRunWorkflow(work.id)}
-                onToggle={() => onToggleWork(work)}
-                onDelete={() => onDeleteWork(work.id)}
-              />
-            ))}
+        ) : works.length === 0 ? (
+          <div className="empty-state work-empty-state">
+            <p>조건에 맞는 업무가 없습니다</p>
+            <p className="muted">검색어나 필터를 바꿔 보세요.</p>
           </div>
+        ) : (
+          <WorkList
+            works={works}
+            workFilter={workFilter}
+            globalActive={state?.globalActive ?? true}
+            onOpenWork={onOpenWork}
+            onRunWorkflow={onRunWorkflow}
+            onToggleWork={onToggleWork}
+            onDeleteWork={onDeleteWork}
+          />
         )}
       </div>
     </>

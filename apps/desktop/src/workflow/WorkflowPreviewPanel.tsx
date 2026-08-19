@@ -86,8 +86,7 @@ export function WorkflowPreviewPanel({
           <div className="wf-detail-kicker">자동 워크플로우 노드</div>
           <h3 className="wf-detail-title">{selectedNode.data.label}</h3>
           <p className="wf-detail-subtitle">
-            Gmail 트리거는 snippet만 전달합니다. 이 노드는 실행 시 메일 본문을 읽어 이후 AI 판단에
-            사용합니다.
+            {selectedNode.data.subtitle ?? selectedNode.data.tooltip ?? selectedNode.data.card?.summary}
           </p>
           <button type="button" className="btn btn-sm btn-ghost" onClick={onCloseDetail}>
             닫기

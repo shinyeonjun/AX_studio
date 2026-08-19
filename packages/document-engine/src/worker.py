@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import json
+import sys
+import traceback
+from pathlib import Path
+from typing import Any
+
+from adapters import resolve_adapter
+from artifact_store import artifact_dir, load_manifest
+from protocol import EngineRequest, EngineResponse
+
+
+def _chunk_by_id(manifest: dict[str, Any], chunk_id: str) -> dict[str, Any] | None:
+    for chunk in manifest.get("chunks") or []:
+        if chunk.get("id") == chunk_id:
+            return chunk
+    return None
+
+
+def _page_by_index(manifest: dict[str, Any], page_index: int) -> dict[str, Any] | None:
+    for page in manifest.get("pages") or []:
+        if page.get("index") == page_index:
+            return page
+    return None
+
+
+def handle_request(request: EngineRequest) -> EngineResponse:
+    try:
+        if request.command == "ping":
+            return EngineResponse(id=request.id, ok=True, data={"engine": "document-engine", "version": 1})
+
+        if request.command == "ingest":
+            source = request.params.get("path")
+            if not source:
+                return EngineResponse(id=request.id, ok=False, error="path_required")
+            source_path = Path(str(source))
+            if not source_path.is_file():
+                return EngineResponse(id=request.id, ok=False, error="file_not_found")
+
+            artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
+            options = dict(request.params.get("options") or {})
+            engine = str(options.get("engine") or "auto")
+            adapter = resolve_adapter(engine)
+            result = adapter.ingest(source_path, artifact_root, options)
+            return EngineResponse(
+                id=request.id,
+                ok=True,
+                data={
+                    "documentId": result.document_id,
+                    "artifactPath": result.artifact_path,
+                    "engine": result.engine,
+                    "summary": result.summary,
+                },
+            )
+
+        artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
+        document_id = str(request.params.get("documentId") or "")
+        if not document_id:
+            return EngineResponse(id=request.id, ok=False, error="document_id_required")
+
+        if request.command == "get_chunk":
+            chunk_id = str(request.params.get("chunkId") or "")
+            if not chunk_id:
+                return EngineResponse(id=request.id, ok=False, error="chunk_id_required")
+            manifest = load_manifest(artifact_root, document_id)
+            chunk = _chunk_by_id(manifest, chunk_id)
+            if chunk is None:
+                return EngineResponse(id=request.id, ok=False, error="chunk_not_found")
+            return EngineResponse(id=request.id, ok=True, data={"chunk": chunk})
+
+        if request.command == "get_page":
+            page_index = request.params.get("pageIndex")
+            if page_index is None:
+                return EngineResponse(id=request.id, ok=False, error="page_index_required")
+            manifest = load_manifest(artifact_root, document_id)
+            page = _page_by_index(manifest, int(page_index))
+            if page is None:
+                return EngineResponse(id=request.id, ok=False, error="page_not_found")
+            page_dir = artifact_dir(artifact_root, document_id) / "pages"
+            text_path = page_dir / f"{int(page_index)}.txt"
+            text = text_path.read_text(encoding="utf-8") if text_path.is_file() else None
+            chunk_texts = [
+                chunk.get("text", "")
+                for chunk in manifest.get("chunks") or []
+                if chunk.get("pageIndex") == int(page_index)
+            ]
+            return EngineResponse(
+                id=request.id,
+                ok=True,
+                data={"page": page, "text": text or "\n".join(chunk_texts).strip() or None},
+            )
+
+        if request.command == "search":
+            query = str(request.params.get("query") or "").strip().lower()
+            manifest = load_manifest(artifact_root, document_id)
+            hits = []
+            for chunk in manifest.get("chunks") or []:
+                text = str(chunk.get("text") or "")
+                if query and query not in text.lower():
+                    continue
+                hits.append(
+                    {
+                        "chunkId": chunk.get("id"),
+                        "pageIndex": chunk.get("pageIndex"),
+                        "snippet": text[:240],
+                        "score": 1.0 if query else 0.0,
+                    }
+                )
+            return EngineResponse(id=request.id, ok=True, data={"hits": hits})
+
+        return EngineResponse(id=request.id, ok=False, error=f"unknown_command:{request.command}")
+    except FileNotFoundError as error:
+        return EngineResponse(id=request.id, ok=False, error=str(error))
+    except Exception as error:
+        traceback.print_exc(file=sys.stderr)
+        return EngineResponse(id=request.id, ok=False, error=str(error))
+
+
+def main() -> None:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        response = EngineResponse(id="", ok=False, error="empty_request")
+        sys.stdout.write(json.dumps(response.to_dict()))
+        sys.stdout.flush()
+        sys.exit(1)
+
+    payload = json.loads(raw)
+    request = EngineRequest.from_dict(payload)
+    response = handle_request(request)
+    sys.stdout.write(json.dumps(response.to_dict(), ensure_ascii=False))
+    sys.stdout.flush()
+    sys.exit(0 if response.ok else 1)
+
+
+if __name__ == "__main__":
+    main()

@@ -42,6 +42,20 @@ describe('cli json', () => {
     ).toEqual({ category: 'ok' });
   });
 
+  it('skips empty structured_output and reads result json', () => {
+    const schema = z.object({ name: z.string() });
+    expect(
+      parseStructuredOutput(
+        JSON.stringify({
+          type: 'result',
+          structured_output: {},
+          result: JSON.stringify({ name: 'PDF 요약' }),
+        }),
+        schema,
+      ),
+    ).toEqual({ name: 'PDF 요약' });
+  });
+
   it('converts object schema', () => {
     const schema = z.object({
       name: z.string(),
@@ -51,5 +65,15 @@ describe('cli json', () => {
     expect(json.type).toBe('object');
     expect((json.required as string[]).includes('name')).toBe(true);
     expect((json.required as string[]).includes('flag')).toBe(false);
+  });
+
+  it('converts discriminated union schema for CLI json-schema', () => {
+    const schema = z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('discover'), toolCalls: z.array(z.string()) }),
+      z.object({ kind: z.literal('design'), name: z.string(), nextQuestion: z.string() }),
+    ]);
+    const json = zodToJsonSchema(schema);
+    expect(Array.isArray(json.oneOf)).toBe(true);
+    expect((json.oneOf as unknown[]).length).toBe(2);
   });
 });

@@ -1,113 +1,114 @@
+import { useEffect } from 'react';
 import type { SettingsScreen } from '../../types/navigation';
-import { AI_PROVIDER_UI_CATALOG } from '../../constants/ai-providers';
-import type { AppState } from '../../types/app-state';
-import type { AiBrand } from '../../types/ai-provider';
-import type { AiSettingsController } from '../../hooks/useAiSettings';
 import { brandFromSettingsScreen, SETTINGS_TITLES } from '../../constants/settings';
+import type { AppState } from '../../types/app-state';
+import { useAiDetection } from '../../hooks/ai-settings/useAiDetection';
 import { PageHeader } from '../layout/PageHeader';
-import { ConnectorHub } from './connectors/ConnectorHub';
-import { AiHub } from './ai/AiHub';
-import { AiBrandForm } from './ai/AiBrandForm';
+import { SettingsHub } from './SettingsHub';
+import { AiBrandDetail } from './ai/AiBrandDetail';
 import { SlackConnectionForm } from './connectors/SlackConnectionForm';
 import { GmailConnectionForm } from './connectors/GmailConnectionForm';
+import { LocalFolderConnectionForm } from './connectors/LocalFolderConnectionForm';
 
 interface SettingsPageProps {
   screen: SettingsScreen;
   state: AppState | null;
-  aiSettings: AiSettingsController;
   onScreenChange: (screen: SettingsScreen) => void;
-  onOpenAi: () => void;
-  onOpenAiBrand: (brand: AiBrand) => void;
+  onRefresh: () => Promise<void>;
   onConnectSlack: (payload: { token: string; appToken?: string }) => Promise<void>;
   onConnectGmail: () => Promise<void>;
   onDisconnectGmail: () => Promise<void>;
+  onPickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  onAddLocalFolder: (payload: { path: string; label?: string }) => Promise<void>;
+  onRemoveLocalFolder: (folderId: string) => Promise<void>;
 }
 
 function settingsSubtitle(screen: SettingsScreen): string {
-  if (screen === 'hub') return 'AI와 외부 서비스를 연결하세요';
-  if (screen === 'ai') return 'Claude 또는 GPT 중 하나를 선택하세요';
+  if (screen === 'hub') return '카테고리별로 연결할 항목을 선택하세요';
   if (screen.startsWith('ai-')) return 'CLI 또는 API를 선택해 적용하세요';
   return '인증 정보를 입력하고 연결합니다';
 }
 
 function settingsBackTarget(screen: SettingsScreen): SettingsScreen | null {
-  if (screen === 'hub') return null;
-  if (screen.startsWith('ai-') && screen !== 'ai') return 'ai';
-  return 'hub';
+  return screen === 'hub' ? null : 'hub';
 }
 
 export function SettingsPage({
   screen,
   state,
-  aiSettings,
   onScreenChange,
-  onOpenAi,
-  onOpenAiBrand,
+  onRefresh,
   onConnectSlack,
   onConnectGmail,
   onDisconnectGmail,
+  onPickLocalFolder,
+  onAddLocalFolder,
+  onRemoveLocalFolder,
 }: SettingsPageProps) {
+  const detection = useAiDetection();
+  const { detecting, setDetecting, refreshDetection } = detection;
+  const detailBrand = brandFromSettingsScreen(screen);
   const backTarget = settingsBackTarget(screen);
-  const detailBrand = aiSettings.brand ?? brandFromSettingsScreen(screen);
+
+  useEffect(() => {
+    if (screen !== 'hub') return;
+    let cancelled = false;
+    (async () => {
+      setDetecting(true);
+      try {
+        await refreshDetection();
+      } finally {
+        if (!cancelled) setDetecting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hub mount only
+  }, [screen]);
+
+  useEffect(() => {
+    if (!detailBrand) return;
+    let cancelled = false;
+    (async () => {
+      setDetecting(true);
+      try {
+        await refreshDetection();
+      } finally {
+        if (!cancelled) setDetecting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- brand detail mount
+  }, [detailBrand]);
 
   return (
     <>
       <PageHeader
         title={SETTINGS_TITLES[screen]}
         subtitle={settingsSubtitle(screen)}
-        backLabel={backTarget ? (backTarget === 'ai' ? '← AI 목록' : '← 연결 목록') : undefined}
+        backLabel={backTarget ? '← 연결 목록' : undefined}
         onBack={backTarget ? () => onScreenChange(backTarget) : undefined}
       />
       <div className="page-content">
         {screen === 'hub' && (
-          <ConnectorHub
+          <SettingsHub
             state={state}
-            onOpenAi={onOpenAi}
-            onOpenConnector={(screen) => onScreenChange(screen)}
+            detecting={detecting}
+            detection={detection}
+            onRefresh={onRefresh}
+            onOpenScreen={onScreenChange}
           />
         )}
-        {screen === 'ai' && (
-          <AiHub
-            state={state}
-            detecting={aiSettings.detecting}
-            activeBrand={aiSettings.activeBrand}
-            brandStatus={aiSettings.brandStatus}
-            brandMode={aiSettings.brandMode}
-            modeSaving={aiSettings.saving}
-            hubMessage={aiSettings.hubMessage}
-            onSelectBrand={(brand) => void aiSettings.selectBrand(brand)}
-            onBrandModeChange={aiSettings.setBrandMode}
-            onOpenBrand={onOpenAiBrand}
-          />
-        )}
-        {detailBrand && screen.startsWith('ai-') && (
-          <AiBrandForm
+        {detailBrand && (
+          <AiBrandDetail
             brand={detailBrand}
-            mode={aiSettings.mode}
-            model={aiSettings.model}
-            models={aiSettings.models}
-            cliOption={aiSettings.cliProviders.find(
-              (item) => item.id === AI_PROVIDER_UI_CATALOG[detailBrand].cliProviderId,
-            )}
-            detecting={aiSettings.detecting}
-            apiKeyDraft={aiSettings.apiKeyDraft}
-            apiKeyConfigured={aiSettings.apiKeyConfigured}
-            apiKeyMasked={aiSettings.apiKeyMasked}
-            configFilePath={aiSettings.configFilePath}
-            cliVerified={aiSettings.cliVerified}
-            apiVerified={aiSettings.apiVerified}
-            saving={aiSettings.saving}
-            testing={aiSettings.testing}
-            testingCli={aiSettings.testingCli}
-            message={aiSettings.message}
-            canSave={aiSettings.canSave}
-            isActive={aiSettings.activeBrand === detailBrand}
-            onModeChange={aiSettings.selectMode}
-            onModelChange={aiSettings.setModel}
-            onApiKeyChange={aiSettings.setApiKeyDraft}
-            onTestCli={aiSettings.testCli}
-            onTestApiKey={aiSettings.testApiKey}
-            onSave={aiSettings.save}
+            state={state}
+            detecting={detecting}
+            onRefresh={onRefresh}
+            detection={detection}
           />
         )}
         {screen === 'slack' && <SlackConnectionForm state={state} onConnect={onConnectSlack} />}
@@ -116,6 +117,14 @@ export function SettingsPage({
             state={state}
             onConnect={onConnectGmail}
             onDisconnect={onDisconnectGmail}
+          />
+        )}
+        {screen === 'local-folder' && (
+          <LocalFolderConnectionForm
+            state={state}
+            onPickFolder={onPickLocalFolder}
+            onAddFolder={onAddLocalFolder}
+            onRemoveFolder={onRemoveLocalFolder}
           />
         )}
       </div>

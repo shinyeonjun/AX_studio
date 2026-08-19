@@ -15,21 +15,42 @@ export function parseJsonObject(raw: string): unknown {
   return JSON.parse(text);
 }
 
-export function parseStructuredOutput<T>(raw: string, schema: ZodType<T>): T {
-  const parsed = parseJsonObject(raw);
-  if (parsed && typeof parsed === 'object') {
+function structuredOutputCandidates(parsed: unknown): unknown[] {
+  const candidates: unknown[] = [];
+  const seen = new Set<unknown>();
+  const push = (value: unknown) => {
+    if (value == null || seen.has(value)) return;
+    seen.add(value);
+    candidates.push(value);
+  };
+
+  push(parsed);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const record = parsed as Record<string, unknown>;
-    if (record.structured_output) return schema.parse(record.structured_output);
-    if (typeof record.result === 'string') {
-      try {
-        return schema.parse(parseJsonObject(record.result));
-      } catch {
-        /* fall through */
+    for (const key of ['structured_output', 'result', 'data', 'output'] as const) {
+      const nested = record[key];
+      if (nested && typeof nested === 'object') push(nested);
+      if (typeof nested === 'string') {
+        try {
+          push(parseJsonObject(nested));
+        } catch {
+          /* ignore non-json */
+        }
       }
     }
-    const direct = schema.safeParse(parsed);
-    if (direct.success) return direct.data;
   }
+  return candidates;
+}
+
+export function parseStructuredOutput<T>(raw: string, schema: ZodType<T>): T {
+  const parsed = parseJsonObject(raw);
+  let lastError: unknown;
+  for (const candidate of structuredOutputCandidates(parsed)) {
+    const result = schema.safeParse(candidate);
+    if (result.success) return result.data;
+    lastError = result.error;
+  }
+  if (lastError instanceof Error) throw lastError;
   return schema.parse(parsed);
 }
 
@@ -38,11 +59,26 @@ export function zodToJsonSchema(schema: ZodType): Record<string, unknown> {
 }
 
 function convert(schema: ZodType): Record<string, unknown> {
-  const def = (schema as ZodType & { _def: { typeName: string; innerType?: ZodType; values?: string[]; type?: ZodType } })._def;
+  type ZodDef = {
+    typeName: string;
+    innerType?: ZodType;
+    schema?: ZodType;
+    values?: string[];
+    value?: unknown;
+    type?: ZodType;
+    valueType?: ZodType;
+    options?: ZodType[];
+  };
+  const def = (schema as ZodType & { _def: ZodDef })._def;
   switch (def.typeName) {
     case 'ZodOptional':
     case 'ZodDefault':
+    case 'ZodNullable':
       return convert(def.innerType as ZodType);
+    case 'ZodEffects':
+      return convert(def.schema as ZodType);
+    case 'ZodLiteral':
+      return { enum: [def.value] };
     case 'ZodString':
       return { type: 'string' };
     case 'ZodNumber':
@@ -53,6 +89,11 @@ function convert(schema: ZodType): Record<string, unknown> {
       return { type: 'string', enum: def.values };
     case 'ZodArray':
       return { type: 'array', items: convert(def.type as ZodType) };
+    case 'ZodRecord':
+      return { type: 'object', additionalProperties: convert(def.valueType as ZodType) };
+    case 'ZodUnion':
+    case 'ZodDiscriminatedUnion':
+      return { oneOf: (def.options ?? []).map((option) => convert(option)) };
     case 'ZodObject': {
       const shape = (schema as unknown as { shape: Record<string, ZodType> }).shape;
       const properties: Record<string, Record<string, unknown>> = {};

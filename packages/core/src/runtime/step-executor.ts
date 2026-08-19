@@ -1,15 +1,86 @@
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { requiresApproval } from '../workflow/approval.js';
+import type { Connector, ConnectorContext } from '../modules/types.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
+import type { AgentHarness } from '../agent/harness.js';
+import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
+import { resolveDocumentIngestParams } from '../contracts/mappers.js';
 
 function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
   return ir.steps.some(
     (step) => step.type === 'human_approval' && step.forActionIds.includes(actionId),
   );
 }
-import type { Connector, ConnectorContext } from '../connectors/types.js';
-import type { WorkflowStore } from '../store/workflow-store.js';
-import type { AgentHarness } from '../agent/harness.js';
-import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
+
+function latestTableFromResults(stepResults: Record<string, unknown>): unknown {
+  for (const value of Object.values(stepResults).reverse()) {
+    if (Array.isArray(value) && value.length > 0) return value;
+  }
+  return undefined;
+}
+
+function latestDocumentFromResults(stepResults: Record<string, unknown>): unknown {
+  for (const value of Object.values(stepResults).reverse()) {
+    if (value && typeof value === 'object' && ('pages' in value || 'text' in value || 'artifactPath' in value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function resolveTransformParams(
+  action: string,
+  params: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+  ctx: ConnectorContext,
+): Record<string, unknown> {
+  if (action === 'table_to_text') {
+    return {
+      ...params,
+      table: params.table ?? ctx.variables.sheetData ?? ctx.variables.queryResult ?? latestTableFromResults(stepResults),
+    };
+  }
+  if (action === 'document_to_text') {
+    return {
+      ...params,
+      document: params.document ?? latestDocumentFromResults(stepResults),
+    };
+  }
+  return params;
+}
+
+function latestTextFromResults(stepResults: Record<string, unknown>): string | undefined {
+  for (const value of Object.values(stepResults).reverse()) {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (!value || typeof value !== 'object') continue;
+    const record = value as Record<string, unknown>;
+    for (const key of ['text', 'body', 'conclusion']) {
+      const candidate = record[key];
+      if (typeof candidate === 'string' && candidate.trim()) return candidate;
+    }
+  }
+  return undefined;
+}
+
+function enrichMessagingParams(
+  step: Extract<Step, { type: 'action' }>,
+  params: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): Record<string, unknown> {
+  if (step.connector === 'slack' && step.action === 'message.send' && !params.text) {
+    const text = latestTextFromResults(stepResults);
+    return text ? { ...params, text } : params;
+  }
+  if (
+    step.connector === 'gmail' &&
+    (step.action === 'message.send' || step.action === 'draft.create') &&
+    !params.body
+  ) {
+    const body = latestTextFromResults(stepResults);
+    return body ? { ...params, body } : params;
+  }
+  return params;
+}
 
 export async function executeStep(
   step: Step,
@@ -41,9 +112,17 @@ export async function executeStep(
       }
       const connector = connectors[step.connector];
       if (!connector) throw Object.assign(new Error(`Connector not found: ${step.connector}`), { code: 'connector_missing' });
+      const resolvedParams = resolveStepParams(step.params, ctx, stepResults);
+      let params =
+        step.connector === 'document' && step.action === 'ingest'
+          ? resolveDocumentIngestParams(resolvedParams, ctx.variables)
+          : step.connector === 'transform'
+            ? resolveTransformParams(step.action, resolvedParams, stepResults, ctx)
+            : resolvedParams;
+      params = enrichMessagingParams(step, params, stepResults);
       const result = await connector.execute(
         step.action,
-        resolveStepParams(step.params, ctx, stepResults),
+        params,
         ctx,
       );
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });

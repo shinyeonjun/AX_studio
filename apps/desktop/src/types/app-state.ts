@@ -1,4 +1,5 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
+import type { LocalFolderEntry } from './local-folder';
 
 export interface AiProviderState {
   provider?: string;
@@ -37,6 +38,7 @@ export interface AppState {
   slackSocketModeActive?: boolean;
   slackConnectionMode?: 'disconnected' | 'poll' | 'socket';
   slackLastError?: string;
+  localFolders?: LocalFolderEntry[];
   works: WorkSummary[];
   connections: Array<{ connector: string; connected: boolean; account?: string; scopes?: string[] }>;
   pendingApprovals: number;
@@ -53,6 +55,7 @@ export interface AppState {
     status: string;
     startedAt: string;
     errorCode?: string | null;
+    errorMessage?: string;
     triggerType?: string | null;
   }>;
 }

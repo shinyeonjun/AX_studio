@@ -6,6 +6,7 @@ import { AiModeSwitch } from './AiModeSwitch';
 
 interface AiBrandFormProps {
   brand: AiBrand;
+  embedded?: boolean;
   mode: AiConnectionMode;
   model: string;
   models: CliModelOption[];
@@ -33,6 +34,7 @@ interface AiBrandFormProps {
 
 export function AiBrandForm({
   brand,
+  embedded = false,
   mode,
   model,
   models,
@@ -68,14 +70,14 @@ export function AiBrandForm({
     : '미설치';
 
   return (
-    <div className="connection-detail">
-      <div className="settings-section connection-form">
+    <div className={embedded ? 'connection-form-embedded' : 'connection-detail'}>
+      <div className={`settings-section connection-form ${embedded ? 'connection-form-compact' : ''}`}>
         <div className="connection-form-header">
           <img src={meta.icon} alt="" className="connection-form-icon" />
           <div>
             <h3>{meta.title}</h3>
             <p className="muted">{meta.description}</p>
-            {configFilePath && <p className="muted">설정 파일: {configFilePath}</p>}
+            {!embedded && configFilePath && <p className="muted">설정 파일: {configFilePath}</p>}
           </div>
         </div>
 
@@ -171,10 +173,12 @@ export function AiBrandForm({
         )}
       </div>
 
-      <div className="connection-guide">
-        <h4>연결 팁</h4>
-        <div className="guide-placeholder">{defaultSetupGuide()}</div>
-      </div>
+      {!embedded && (
+        <div className="connection-guide">
+          <h4>연결 팁</h4>
+          <div className="guide-placeholder">{defaultSetupGuide()}</div>
+        </div>
+      )}
     </div>
   );
 }

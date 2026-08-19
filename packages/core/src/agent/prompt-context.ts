@@ -23,6 +23,8 @@ function formatTrigger(workflow: InterviewDraft): string {
       return `gmail.new_message account=${workflow.gmailAccount ?? '?'}`;
     case 'slack.new_message':
       return `slack.new_message channel=${workflow.slackChannel ?? '?'}`;
+    case 'local_folder.new_file':
+      return `local_folder.new_file folderId=${workflow.localFolderId ?? '?'}${workflow.localFolderExtensions ? ` extensions=${workflow.localFolderExtensions}` : ''}`;
     default:
       return workflow.triggerType;
   }

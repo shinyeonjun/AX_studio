@@ -3,7 +3,7 @@ import { WorkflowStore } from './store/workflow-store.js';
 import { WorkflowRuntime } from './runtime/engine.js';
 import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
-import { buildConnectorsFromStore } from './connectors/registry.js';
+import { buildConnectorsFromStore } from './modules/registry.js';
 import { createAgentHarness, type AgentHarness } from './agent/harness.js';
 import {
   DEFAULT_AI_PROVIDER,

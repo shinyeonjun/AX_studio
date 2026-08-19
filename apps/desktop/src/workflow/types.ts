@@ -34,8 +34,10 @@ export interface WorkflowVisualNodeData {
   subtitle?: string;
   lines: WorkflowVisualLine[];
   incomplete: boolean;
-  /** Connector/trigger image when available (gmail, slack, …). */
+  /** Connector/trigger image when available (gmail, slack, folder, document, …). */
   iconSrc?: string;
+  /** Emoji fallback when no brand image exists. */
+  iconEmoji?: string;
   /** Tooltip for hover; full detail in NodeDetailPanel. */
   tooltip?: string;
   /** Card layout fields for graph preview. */

@@ -7,7 +7,7 @@
  *
  * Use cases: last processed order id, dedupe notified emails, week-over-week compare.
  *
- * Implementation candidate: connectors/storage/ (builtin, no OAuth).
+ * Implementation candidate: modules/stubs/storage/ (builtin, no OAuth).
  *
  * @see ../README.md
  */

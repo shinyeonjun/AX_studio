@@ -1,4 +1,4 @@
-import { resolveCapability } from '../connectors/capability-graph.js';
+import { resolveCapability } from '../catalog/capability-graph.js';
 import { KO } from '../i18n/ko.js';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 
@@ -13,6 +13,10 @@ function triggerSummary(trigger?: WorkflowIR['trigger']): string {
   }
   if (trigger.type === 'slack.new_message') {
     return KO.workflowDocument.triggerSlack(trigger.channel);
+  }
+  if (trigger.type === 'local_folder.new_file') {
+    const ext = trigger.extensions?.length ? ` · ${trigger.extensions.join(', ')}` : '';
+    return `로컬 폴더 새 파일 · ${trigger.folderId}${ext}`;
   }
   return KO.chatSummary.triggerManual;
 }

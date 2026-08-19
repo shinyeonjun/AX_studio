@@ -45,9 +45,11 @@ export default defineConfig({
         '@ax-studio/core/workflow-schema': resolve('../../packages/core/src/interview/workflow-schema.ts'),
         '@ax-studio/core/requiredness': resolve('../../packages/core/src/interview/requiredness.ts'),
         '@ax-studio/core/interview-state': resolve('../../packages/core/src/interview/interview-state.ts'),
-        '@ax-studio/core/capability-graph': resolve('../../packages/core/src/connectors/capability-graph.ts'),
+        '@ax-studio/core/capability-graph': resolve('../../packages/core/src/catalog/capability-graph.ts'),
         '@ax-studio/core/condition-expr': resolve('../../packages/core/src/runtime/condition-expr.ts'),
         '@ax-studio/core/workflow-constants': resolve('../../packages/core/src/interview/workflow-constants.ts'),
+        '@ax-studio/core/capabilities': resolve('../../packages/core/src/catalog/capabilities.ts'),
+        '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
       },
     },
     build: {

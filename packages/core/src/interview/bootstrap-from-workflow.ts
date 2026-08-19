@@ -45,7 +45,17 @@ function workflowNodeFromStep(step: Step): WorkflowNode | null {
 
 function triggerFields(
   ir: WorkflowIR,
-): Pick<InterviewDraft, 'triggerType' | 'schedule' | 'runAt' | 'gmailAccount' | 'slackChannel' | 'timezone'> {
+): Pick<
+  InterviewDraft,
+  | 'triggerType'
+  | 'schedule'
+  | 'runAt'
+  | 'gmailAccount'
+  | 'slackChannel'
+  | 'localFolderId'
+  | 'localFolderExtensions'
+  | 'timezone'
+> {
   const trigger = ir.trigger;
   if (trigger?.type === 'schedule') {
     return {
@@ -62,6 +72,13 @@ function triggerFields(
   }
   if (trigger?.type === 'slack.new_message') {
     return { triggerType: 'slack.new_message', slackChannel: trigger.channel };
+  }
+  if (trigger?.type === 'local_folder.new_file') {
+    return {
+      triggerType: 'local_folder.new_file',
+      localFolderId: trigger.folderId,
+      localFolderExtensions: trigger.extensions?.join(','),
+    };
   }
   return { triggerType: 'manual' };
 }

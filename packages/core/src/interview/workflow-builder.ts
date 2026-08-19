@@ -1,8 +1,10 @@
-import { capabilityActionName, resolveCapability } from '../connectors/capability-graph.js';
+import { capabilityActionName, resolveCapability } from '../catalog/capability-graph.js';
 import { approvalReasonForAction } from '../runtime/approval-display.js';
 import type { SideEffectLevel, WorkflowIR, Step } from '../workflow/schema.js';
 import { renderWorkflowDocument } from './workflow-document.js';
 import type { InterviewDraft, WorkflowNode } from './workflow-schema.js';
+import { applyContractCompilation } from '../workflow/contract-adapters.js';
+import { parseWorkflowIR } from '../workflow/schema.js';
 
 export class UnknownCapabilityError extends Error {
   readonly capability: string;
@@ -145,8 +147,30 @@ function buildTrigger(draft: InterviewDraft): WorkflowIR['trigger'] | undefined 
     if (!draft.slackChannel?.trim()) return undefined;
     return { type: 'slack.new_message', channel: draft.slackChannel.trim() };
   }
+  if (draft.triggerType === 'local_folder.new_file') {
+    if (!draft.localFolderId?.trim()) return undefined;
+    const extensions = draft.localFolderExtensions
+      ?.split(',')
+      .map((ext) => ext.trim())
+      .filter(Boolean);
+    return {
+      type: 'local_folder.new_file',
+      folderId: draft.localFolderId.trim(),
+      extensions: extensions?.length ? extensions : undefined,
+    };
+  }
   return { type: 'manual' };
 }
+
+const LOCAL_FOLDER_TRIGGER_INPUTS = [
+  'folderId',
+  'folderPath',
+  'filePath',
+  'fileName',
+  'extension',
+  'size',
+  'modifiedAt',
+] as const;
 
 const GMAIL_TRIGGER_INPUTS = ['messageId', 'from', 'subject', 'snippet', 'sender'] as const;
 const SLACK_TRIGGER_INPUTS = ['messageId', 'channel', 'text', 'user', 'sender', 'ts'] as const;
@@ -167,7 +191,9 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> 
         ? [...GMAIL_TRIGGER_INPUTS]
         : draft.triggerType === 'slack.new_message'
           ? [...SLACK_TRIGGER_INPUTS]
-          : [],
+          : draft.triggerType === 'local_folder.new_file'
+            ? [...LOCAL_FOLDER_TRIGGER_INPUTS]
+            : [],
     permissions: {},
     approval: steps
       .filter((step): step is Extract<Step, { type: 'action' }> =>
@@ -180,6 +206,7 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> 
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
     ),
   };
-  ir.document = renderWorkflowDocument(ir);
-  return ir;
+  const compiled = applyContractCompilation(parseWorkflowIR(ir));
+  compiled.document = renderWorkflowDocument(compiled);
+  return compiled;
 }

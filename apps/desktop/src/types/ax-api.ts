@@ -26,6 +26,9 @@ export interface AxApi {
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;
   connectGmailOAuth: () => Promise<{ ok: boolean; email?: string }>;
   disconnectGmailOAuth: () => Promise<{ ok: boolean }>;
+  pickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  addLocalFolder: (payload: { path: string; label?: string }) => Promise<unknown>;
+  removeLocalFolder: (folderId: string) => Promise<unknown>;
   setAiProvider: (config: AiProviderState) => Promise<unknown>;
   detectAiCli: () => Promise<DetectedAiCli[]>;
   getAiConfig: () => Promise<AiConfigSnapshot>;

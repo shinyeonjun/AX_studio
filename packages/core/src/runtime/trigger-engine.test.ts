@@ -140,4 +140,49 @@ describe('TriggerEngine', () => {
     await engine.tick();
     expect(runtime.mockSlack.messages).toHaveLength(1);
   });
+
+  it('baselines local folder trigger and fires once for each new file', async () => {
+    const folderWorkflow: WorkflowIR = {
+      name: '새 PDF 요약',
+      goal: '폴더에 PDF가 생기면 요약',
+      version: 1,
+      trigger: { type: 'local_folder.new_file', folderId: 'folder-inbox', extensions: ['.pdf'] },
+      inputs: ['filePath', 'fileName'],
+      steps: [
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#docs', text: 'new file' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+    runtime.mockLocalFolder.files['folder-inbox'] = ['/mock/inbox/existing.pdf'];
+
+    const { workflowId } = store.saveWorkflow(folderWorkflow);
+    store.setWorkflowActive(workflowId, true);
+    const engine = new TriggerEngine(store, runtime);
+
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(0);
+
+    runtime.mockLocalFolder.files['folder-inbox'].push('/mock/inbox/report.pdf');
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(1);
+
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(1);
+  });
 });

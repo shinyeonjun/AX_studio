@@ -1,4 +1,4 @@
-import { resolveCapability } from '../connectors/capability-graph.js';
+import { resolveCapability } from '../catalog/capability-graph.js';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 
 type ActionStep = Extract<Step, { type: 'action' }>;

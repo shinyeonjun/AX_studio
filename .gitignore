@@ -49,4 +49,11 @@ Desktop.ini
 .idea/
 .vscode/
 *.swp
- 
+
+# Local document artifacts (runtime)
+.ax-studio/
+
+# Python document-engine
+packages/document-engine/.venv/
+**/__pycache__/
+*.py[cod]

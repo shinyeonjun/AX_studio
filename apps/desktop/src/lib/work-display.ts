@@ -13,8 +13,28 @@ export function isOnceTrigger(trigger?: WorkSummary['trigger']): boolean {
   return trigger?.type === 'once';
 }
 
+/** 수동·1회 실행 — 일회용 목록 */
+export function isEphemeralWork(trigger?: WorkSummary['trigger']): boolean {
+  const type = trigger?.type;
+  return !type || type === 'manual' || type === 'once';
+}
+
+/** 반복·이벤트 트리거 — 업무 목록 */
+export function isPersistentWork(trigger?: WorkSummary['trigger']): boolean {
+  return !isEphemeralWork(trigger);
+}
+
 export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
-  return trigger?.type === 'schedule' || trigger?.type === 'gmail.new_message' || trigger?.type === 'slack.new_message';
+  return isRecurringTriggerType(trigger?.type);
+}
+
+export function isRecurringTriggerType(triggerType?: string | null): boolean {
+  return (
+    triggerType === 'schedule' ||
+    triggerType === 'gmail.new_message' ||
+    triggerType === 'slack.new_message' ||
+    triggerType === 'local_folder.new_file'
+  );
 }
 
 export function isEventTriggerType(triggerType?: string | null): boolean {
@@ -51,8 +71,12 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'pending_approval') return '승인을 기다리는 중입니다';
   if (errorCode === 'approval_rejected') return '승인이 거절되었습니다';
   if (errorCode === 'global_off_duty') return '전역 퇴근 상태입니다';
+  if (errorCode === 'action_failed') return '작업 실행에 실패했습니다';
+  if (errorCode === 'path_required') return '문서 경로가 비어 있습니다';
+  if (errorCode === 'manual_run_input_missing') return '실행할 파일을 찾지 못했습니다';
+  if (errorCode === 'document_ingest_failed') return '문서 읽기에 실패했습니다';
+  if (errorCode === 'slack_error') return 'Slack 전송에 실패했습니다';
   if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
-  if (errorCode === 'skill_paused') return '업무가 중지되어 있습니다';
   return errorCode;
 }
 

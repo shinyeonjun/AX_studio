@@ -1,3 +1,4 @@
+import { getCapability } from '@ax-studio/core/capabilities';
 import { GMAIL_READ_WORKFLOW_NODE_ID } from '@ax-studio/core/workflow-constants';
 import type { InterviewDraft, WorkflowNode } from '@ax-studio/core/workflow-schema';
 import type { CompletenessResult } from '@ax-studio/core/requiredness';
@@ -5,8 +6,9 @@ import type { Edge, Node } from '@xyflow/react';
 import {
   displayForTrigger,
   displayForWorkflowNode,
+  displayForCapability,
 } from './node-display.js';
-import { connectorIconSrc } from './node-icons.js';
+import { workflowNodeIcon } from './workflow-icons.js';
 import { layoutWithDagre } from './layout/dagre-layout.js';
 import type { WorkflowNodeChange, WorkflowVisualNodeData } from './types.js';
 import {
@@ -104,25 +106,27 @@ function addEdge(ctx: BuildContext, source: string, target: string, label?: stri
 function emitSystemGmailRead(ctx: BuildContext): string {
   const flowId = `step:${GMAIL_READ_WORKFLOW_NODE_ID}`;
   const collapsed = ctx.collapseSystemSteps ?? true;
+  const cap = getCapability('gmail.messages.read');
+  const card = displayForCapability('gmail.messages.read');
+  const icon = workflowNodeIcon('gmail');
   addNode(
     ctx,
     flowId,
     {
       kind: 'system',
-      label: '읽기',
-      subtitle: '트리거 메일의 전체 본문을 가져옵니다',
-      lines: [{ text: 'Gmail 트리거 후 자동 실행', complete: true }],
+      label: cap?.label ?? card.summary,
+      subtitle: cap?.description,
+      lines: [{ text: cap?.description ?? card.summary, complete: true }],
       incomplete: false,
       sourceId: GMAIL_READ_WORKFLOW_NODE_ID,
       systemInjected: true,
       collapsed,
-      iconSrc: connectorIconSrc('gmail'),
-      tooltip: '자동 · 메일 본문 읽기',
+      iconSrc: icon.src,
+      iconEmoji: icon.emoji,
+      tooltip: cap?.label ?? card.summary,
       card: {
+        ...card,
         header: '자동',
-        brand: 'Gmail',
-        brandStyle: 'bracket',
-        summary: '메일 읽기',
       },
       change: ctx.nodeChanges?.get(GMAIL_READ_WORKFLOW_NODE_ID) ?? 'unchanged',
     },
@@ -146,6 +150,7 @@ function emitWorkflowNode(ctx: BuildContext, node: WorkflowNode): string {
     sourceId: node.id,
     conditionLabel: display.conditionLabel,
     iconSrc: display.iconSrc,
+    iconEmoji: display.iconEmoji,
     tooltip: display.tooltip,
     card: display.card,
     change: changeFor(ctx, node.id),
@@ -245,6 +250,7 @@ export function draftToFlow(
     incomplete: trigger.incomplete,
     sourceId: '__trigger__',
     iconSrc: trigger.iconSrc,
+    iconEmoji: trigger.iconEmoji,
     tooltip: trigger.tooltip,
     card: trigger.card,
     change: changeFor(ctx, '__trigger__'),

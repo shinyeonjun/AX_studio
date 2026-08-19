@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { InterviewState } from '../../hooks/useInterview';
+import type { InterviewState } from '../../hooks/interview-helpers';
 
 interface ChatPanelProps {
   interview: InterviewState | null;

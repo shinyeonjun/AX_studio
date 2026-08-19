@@ -1,0 +1,5 @@
+# Minimal runtime for document-engine sidecar (dev + fallback parsing).
+pypdf>=4.0,<6
+
+# Full layout/OCR pipeline - install separately:
+#   pip install -r requirements-docling.txt

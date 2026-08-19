@@ -1,7 +1,18 @@
-import { ipcMain } from 'electron';
-import { SlackConnector, validateSlackBotToken } from '@ax-studio/core';
+import { ipcMain, dialog } from 'electron';
+import { existsSync } from 'node:fs';
+import { basename } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import {
+  SlackConnector,
+  validateSlackBotToken,
+  getLocalFolderConnectionStatus,
+  parseLocalFolderConnectionConfig,
+  removeLocalFolder,
+  upsertLocalFolder,
+} from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
+import { notifyStateChanged } from '../state-broadcast.js';
 
 function readSlackPayload(payload: string | { token: string; appToken?: string }) {
   const token = (typeof payload === 'string' ? payload : payload.token).trim();
@@ -86,5 +97,58 @@ export function registerConnectionHandlers() {
   ipcMain.handle('ax:disconnectGmailOAuth', async () => {
     const core = getCore();
     return disconnectGmailOAuth(core.store, core.runtime);
+  });
+
+  ipcMain.handle('ax:pickLocalFolder', async () => {
+    const result = await dialog.showOpenDialog({
+      title: '연결할 폴더 선택',
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { ok: false, canceled: true as const };
+    }
+    return { ok: true as const, path: result.filePaths[0] };
+  });
+
+  ipcMain.handle('ax:addLocalFolder', async (_event, payload: { path: string; label?: string }) => {
+    const core = getCore();
+    const folderPath = payload.path?.trim();
+    if (!folderPath) {
+      throw new Error('폴더 경로가 필요합니다.');
+    }
+    if (!existsSync(folderPath)) {
+      throw new Error('폴더를 찾을 수 없습니다.');
+    }
+
+    const existing = core.store.getConnections().find((entry) => entry.connector === 'local_folder');
+    const config = parseLocalFolderConnectionConfig(existing?.config) ?? { folders: [] };
+    if (config.folders.some((folder) => folder.path === folderPath)) {
+      throw new Error('이미 연결된 폴더입니다.');
+    }
+
+    const entry = {
+      id: randomUUID(),
+      label: payload.label?.trim() || basename(folderPath),
+      path: folderPath,
+      addedAt: new Date().toISOString(),
+    };
+    const nextConfig = upsertLocalFolder(config, entry);
+    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig);
+    notifyStateChanged();
+    return { ok: true, folder: entry, status: getLocalFolderConnectionStatus(nextConfig, true) };
+  });
+
+  ipcMain.handle('ax:removeLocalFolder', async (_event, folderId: string) => {
+    const core = getCore();
+    if (!folderId) {
+      throw new Error('folderId가 필요합니다.');
+    }
+
+    const existing = core.store.getConnections().find((entry) => entry.connector === 'local_folder');
+    const config = parseLocalFolderConnectionConfig(existing?.config) ?? { folders: [] };
+    const nextConfig = removeLocalFolder(config, folderId);
+    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig);
+    notifyStateChanged();
+    return { ok: true, status: getLocalFolderConnectionStatus(nextConfig, nextConfig.folders.length > 0) };
   });
 }

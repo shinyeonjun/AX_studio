@@ -1,6 +1,11 @@
 import type { WorkflowIR, Step } from '../workflow/schema.js';
-import { isConnectorAlwaysOn, paramSlotId, resolveCapability } from '../connectors/capability-graph.js';
+import { isConnectorAlwaysOn, paramSlotId, resolveCapability } from '../catalog/capability-graph.js';
 import { requirementCopy, type RequirementQuestionKey } from '../i18n/ko.js';
+import {
+  validateWorkflowContracts,
+  type ContractValidationIssue,
+} from '../workflow/contract-validator.js';
+import { parseWorkflowIR } from '../workflow/schema.js';
 
 export type RequirementSlot = string;
 
@@ -16,6 +21,7 @@ export interface CompletenessResult {
   missingRequired: RequirementSlot[];
   deployable: boolean;
   missingConnections: string[];
+  contractIssues?: ContractValidationIssue[];
 }
 
 const CORE_QUESTIONS: Record<RequirementQuestionKey, { label: string; question: string }> = {
@@ -118,6 +124,17 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
     });
   }
 
+  if (ir.trigger?.type === 'local_folder.new_file') {
+    const cap = resolveCapability('local_folder', 'new_file');
+    const folderParam = cap?.params.find((p) => p.name === 'folderId');
+    slots.push({
+      slot: cap && folderParam ? paramSlotId(cap, 'folderId') : 'local_folder.new_file.folderId',
+      filled: Boolean(ir.trigger.folderId),
+      label: folderParam?.label ?? '연결 폴더',
+      question: folderParam?.question ?? '어떤 폴더를 감시할까요?',
+    });
+  }
+
   if (hasExternalHigh(steps)) {
     slots.push({
       slot: 'approval',
@@ -150,18 +167,43 @@ export function assessCompleteness(
   }
   if (ir.trigger?.type === 'gmail.new_message') neededConnectors.add('gmail');
   if (ir.trigger?.type === 'slack.new_message') neededConnectors.add('slack');
+  if (ir.trigger?.type === 'local_folder.new_file') neededConnectors.add('local_folder');
 
   const missingConnections = [...neededConnectors].filter((c) => !connectedConnectors.includes(c));
 
-  const deployable =
-    missingRequired.length === 0 && missingConnections.length === 0 && (ir.steps?.length ?? 0) > 0;
+  let contractIssues: ContractValidationIssue[] = [];
+  if ((ir.steps?.length ?? 0) > 0 && ir.trigger && missingRequired.length === 0) {
+    try {
+      contractIssues = validateWorkflowContracts(parseWorkflowIR(ir));
+    } catch {
+      contractIssues = [];
+    }
+  }
 
-  return { slots, missingRequired, deployable, missingConnections };
+  for (const issue of contractIssues) {
+    slots.push({
+      slot: issue.stepId ? `contract.${issue.stepId}` : 'contract.workflow',
+      filled: false,
+      label: '데이터 연결',
+      question: issue.message,
+    });
+  }
+
+  const deployable =
+    missingRequired.length === 0 &&
+    missingConnections.length === 0 &&
+    contractIssues.length === 0 &&
+    (ir.steps?.length ?? 0) > 0;
+
+  return { slots, missingRequired, deployable, missingConnections, contractIssues };
 }
 
 export function getNextQuestion(result: CompletenessResult): string | null {
   if (result.missingConnections.length > 0) {
     return `${result.missingConnections.join(', ')} 연결이 필요합니다. 설정에서 연결해주세요.`;
+  }
+  if (result.contractIssues?.length) {
+    return result.contractIssues[0]?.message ?? null;
   }
   const next = result.slots.find((s) => !s.filled);
   return next?.question ?? null;

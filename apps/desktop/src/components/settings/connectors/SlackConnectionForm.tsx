@@ -5,6 +5,7 @@ import { ConnectionGuide } from '../ConnectionGuide';
 
 interface SlackConnectionFormProps {
   state: AppState | null;
+  embedded?: boolean;
   onConnect: (payload: { token: string; appToken?: string }) => Promise<void>;
 }
 
@@ -33,7 +34,7 @@ function slackStatusLabel(state: AppState | null): { badge: string; badgeClass: 
   };
 }
 
-export function SlackConnectionForm({ state, onConnect }: SlackConnectionFormProps) {
+export function SlackConnectionForm({ state, embedded = false, onConnect }: SlackConnectionFormProps) {
   const [slackToken, setSlackToken] = useState('');
   const [appToken, setAppToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -61,8 +62,8 @@ export function SlackConnectionForm({ state, onConnect }: SlackConnectionFormPro
   };
 
   return (
-    <div className="connection-detail">
-      <div className="settings-section connection-form">
+    <div className={embedded ? 'settings-panel' : 'connection-detail'}>
+      <div className={`settings-section connection-form ${embedded ? 'connection-form-compact' : ''}`}>
         <div className="connection-form-header">
           <img src={slackIcon} alt="" className="connection-form-icon" />
           <div>
@@ -118,11 +119,13 @@ export function SlackConnectionForm({ state, onConnect }: SlackConnectionFormPro
           )}
         </div>
       </div>
-      <ConnectionGuide
-        guideKey="slack"
-        placeholderName="slack-guide.png"
-        steps="Slack 앱 생성 → Socket Mode ON → Bot Token Scopes + App Token(connections:write) → Install → xoxb/xapp 토큰 입력 → Event Subscriptions에서 message 이벤트 구독"
-      />
+      {!embedded && (
+        <ConnectionGuide
+          guideKey="slack"
+          placeholderName="slack-guide.png"
+          steps="Slack 앱 생성 → Socket Mode ON → Bot Token Scopes + App Token(connections:write) → Install → xoxb/xapp 토큰 입력 → Event Subscriptions에서 message 이벤트 구독"
+        />
+      )}
     </div>
   );
 }

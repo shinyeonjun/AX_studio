@@ -1,6 +1,6 @@
-import type { Connector, ConnectorContext } from '../connectors/types.js';
+import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { AgentHarness } from '../agent/harness.js';
-import { extractGmailPlainBody } from '../connectors/gmail/body-extract.js';
+import { extractGmailPlainBody } from '../modules/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
 import { evaluateCondition } from './condition-expr.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';
@@ -60,6 +60,10 @@ function lookupTemplatePath(
 ): unknown {
   if (path.startsWith('trigger.')) {
     return ctx.variables[path.slice('trigger.'.length)];
+  }
+  if (!path.includes('.')) {
+    if (path in ctx.variables) return ctx.variables[path];
+    if (path in stepResults) return stepResults[path];
   }
   const [stepId, ...rest] = path.split('.');
   let current: unknown = stepResults[stepId];
@@ -156,7 +160,7 @@ export function resolveStepParams(
   if (!resolved.text && typeof resolved.message === 'string') {
     resolved.text = resolved.message;
   }
-  if (!resolved.text && ctx.variables.reportHtml) resolved.text = String(ctx.variables.reportHtml).slice(0, 500);
+  if (!resolved.text && ctx.variables.documentHtml) resolved.text = String(ctx.variables.documentHtml).slice(0, 500);
   if (!resolved.body && stepResults.classify) resolved.body = JSON.stringify(stepResults.classify);
   return resolved;
 }

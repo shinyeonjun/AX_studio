@@ -1,10 +1,10 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
 
-export type AgentRole = 'interview' | 'direct_compile' | 'investigate' | 'revise';
+export type AgentRole = 'interview' | 'investigate' | 'revise';
 
 export interface AgentExecutionPolicy {
-  maxTurns: 1;
+  maxTurns: number;
   timeoutMs: number;
   cloudAllowed?: boolean;
 }
@@ -25,11 +25,6 @@ export interface InterviewAgentContext {
   nowIso: string;
 }
 
-export interface DirectCompileAgentContext {
-  connectedConnectors?: string[];
-  nowIso: string;
-}
-
 export interface InvestigateAgentContext {
   skillGoal: string;
   taskGoal: string;
@@ -45,7 +40,6 @@ export interface ReviseAgentContext {
 
 export type AgentContext =
   | InterviewAgentContext
-  | DirectCompileAgentContext
   | InvestigateAgentContext
   | ReviseAgentContext;
 

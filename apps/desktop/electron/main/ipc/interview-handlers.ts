@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import {
   applyAnswer,
   bootstrapInterviewFromWorkflow,
+  buildDesignToolContext,
   explainExecution,
   proposeWorkflowRevision,
   startInterview,
@@ -15,14 +16,21 @@ async function persistSession(state: InterviewState, summary?: string) {
   getCore().store.saveChatSession({ state, summary, workflowId: state.workflowId });
 }
 
+function interviewRunOptions(core: ReturnType<typeof getCore>, sender: Electron.WebContents) {
+  const connections = core.store.getConnections();
+  const connected = connectedConnectorIds(core.store);
+  return {
+    harness: core.agentHarness,
+    connectedConnectors: connected,
+    designToolContext: buildDesignToolContext(connections, connected),
+    onProgress: (event: { message: string }) => sender.send('ax:agent-progress', event),
+  };
+}
+
 export function registerInterviewHandlers() {
   ipcMain.handle('ax:startInterview', async (_e, instruction: string) => {
     const core = getCore();
-    const state = await startInterview(instruction, {
-      harness: core.agentHarness,
-      connectedConnectors: connectedConnectorIds(core.store),
-      onProgress: (event) => _e.sender.send('ax:agent-progress', event),
-    });
+    const state = await startInterview(instruction, interviewRunOptions(core, _e.sender));
     await persistSession(state);
     return state;
   });
@@ -30,11 +38,7 @@ export function registerInterviewHandlers() {
   ipcMain.handle('ax:applyAnswer', async (_e, state, answer: string) => {
     const core = getCore();
     const interviewState = state as InterviewState;
-    const next = await applyAnswer(interviewState, answer, {
-      harness: core.agentHarness,
-      connectedConnectors: connectedConnectorIds(core.store),
-      onProgress: (event) => _e.sender.send('ax:agent-progress', event),
-    });
+    const next = await applyAnswer(interviewState, answer, interviewRunOptions(core, _e.sender));
     const summary = next.done && next.draft ? summarizeWorkflow(next.draft) : undefined;
     if (next.workflowId && next.draft && next.done) {
       const existing = core.store.getWorkflow(next.workflowId);

@@ -141,6 +141,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
                     <div className="muted">
                       {executionTriggerLabel(e.triggerType)}
                       {errorDetail ? ` · ${errorDetail}` : ''}
+                      {e.errorMessage && e.errorMessage !== errorDetail ? ` · ${e.errorMessage}` : ''}
                     </div>
                   </div>
                 </div>

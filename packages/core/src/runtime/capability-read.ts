@@ -1,6 +1,6 @@
-import { CAPABILITY_CATALOG } from '../connectors/capabilities.js';
-import { capabilityActionName } from '../connectors/capability-graph.js';
-import type { Connector, ConnectorContext } from '../connectors/types.js';
+import { CAPABILITY_CATALOG } from '../catalog/capabilities.js';
+import { capabilityActionName } from '../catalog/capability-graph.js';
+import type { Connector, ConnectorContext } from '../modules/types.js';
 
 export async function performCapabilityRead(
   capabilityId: string,

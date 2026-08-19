@@ -5,6 +5,7 @@ import { ConnectionGuide } from '../ConnectionGuide';
 
 interface GmailConnectionFormProps {
   state: AppState | null;
+  embedded?: boolean;
   onConnect: () => Promise<void>;
   onDisconnect: () => Promise<void>;
 }
@@ -19,7 +20,7 @@ function hasScope(scopes: string[] | undefined, token: string): boolean {
   return scopes?.some((scope) => scope.includes(token)) ?? false;
 }
 
-export function GmailConnectionForm({ state, onConnect, onDisconnect }: GmailConnectionFormProps) {
+export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
@@ -54,8 +55,8 @@ export function GmailConnectionForm({ state, onConnect, onDisconnect }: GmailCon
   };
 
   return (
-    <div className="connection-detail">
-      <div className="settings-section connection-form">
+    <div className={embedded ? 'settings-panel' : 'connection-detail'}>
+      <div className={`settings-section connection-form ${embedded ? 'connection-form-compact' : ''}`}>
         <div className="connection-form-header">
           <img src={gmailIcon} alt="" className="connection-form-icon" />
           <div>
@@ -136,11 +137,13 @@ export function GmailConnectionForm({ state, onConnect, onDisconnect }: GmailCon
         )}
       </div>
 
-      <ConnectionGuide
-        guideKey="gmail"
-        placeholderName="gmail-guide.png"
-        steps="Gmail 연결하기 → 브라우저에서 Google 로그인 → 권한 허용 → AX Studio로 돌아오기"
-      />
+      {!embedded && (
+        <ConnectionGuide
+          guideKey="gmail"
+          placeholderName="gmail-guide.png"
+          steps="Gmail 연결하기 → 브라우저에서 Google 로그인 → 권한 허용 → AX Studio로 돌아오기"
+        />
+      )}
     </div>
   );
 }

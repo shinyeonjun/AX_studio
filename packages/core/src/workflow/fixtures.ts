@@ -8,6 +8,14 @@ export const csMailWorkflowFixture: WorkflowIR = {
   inputs: ['sender', 'subject', 'body'],
   steps: [
     {
+      type: 'action',
+      id: 'read_mail',
+      connector: 'gmail',
+      action: 'messages.read',
+      params: { messageId: '{{messageId}}' },
+      sideEffect: 'NONE',
+    },
+    {
       type: 'ai_decision',
       id: 'classify',
       goal: '문의 중요도 분류',

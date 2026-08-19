@@ -1,6 +1,6 @@
 import { getCore } from '../core-instance.js';
 
-const BUILTIN_CONNECTORS = ['report', 'local_sheet'];
+const BUILTIN_CONNECTORS = ['document', 'local_sheet'];
 
 export function connectedConnectorIds(store: {
   getConnections: () => Array<{ connector: string; connected: boolean }>;

@@ -34,6 +34,13 @@ function NodeIcon({ visual }: { visual: WorkflowVisualNodeData }) {
   if (visual.iconSrc) {
     return <img src={visual.iconSrc} alt="" className="wf-node-img" draggable={false} />;
   }
+  if (visual.iconEmoji) {
+    return (
+      <span className="wf-node-emoji" aria-hidden="true">
+        {visual.iconEmoji}
+      </span>
+    );
+  }
   return (
     <span className="wf-node-symbol" aria-hidden="true">
       {KIND_SYMBOL[visual.kind] ?? '•'}

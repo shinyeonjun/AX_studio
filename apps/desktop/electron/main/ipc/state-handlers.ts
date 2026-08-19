@@ -4,7 +4,9 @@ import {
   getAiProviderDisplay,
   isAiProviderReady,
   getSlackConnectionStatus,
+  getLocalFolderConnectionStatus,
   parseGmailConnectionConfig,
+  parseLocalFolderConnectionConfig,
   parseWorkflowIR,
 } from '@ax-studio/core';
 import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
@@ -38,7 +40,26 @@ export function registerStateHandlers() {
         }),
       };
     });
-    const executions = core.store.listExecutions(50);
+    const executions = core.store.listExecutions(50).map((execution) => {
+      let errorMessage: string | undefined;
+      if (execution.status === 'failed' && execution.logJson) {
+        try {
+          const log = JSON.parse(execution.logJson) as Array<{ level?: string; message?: string }>;
+          errorMessage = log.filter((entry) => entry.level === 'error').at(-1)?.message;
+        } catch {
+          /* ignore malformed logs */
+        }
+      }
+      return {
+        id: execution.id,
+        workflowId: execution.workflowId,
+        status: execution.status,
+        startedAt: execution.startedAt,
+        errorCode: execution.errorCode,
+        errorMessage,
+        triggerType: execution.triggerType,
+      };
+    });
     const works = core.store.listWorkflows().map((s) => {
       const ir = core.store.getWorkflow(s.id);
       const connectors = ir?.steps
@@ -64,6 +85,11 @@ export function registerStateHandlers() {
       Boolean(slackConn?.connected),
       core.triggerEngine.slackSocketActive(),
     );
+    const localFolderConn = core.store.getConnections().find((c) => c.connector === 'local_folder');
+    const localFolderStatus = getLocalFolderConnectionStatus(
+      localFolderConn?.config,
+      Boolean(localFolderConn?.connected),
+    );
     return {
       globalActive: core.store.getSetting('globalActive', true),
       aiProvider,
@@ -82,6 +108,7 @@ export function registerStateHandlers() {
       slackSocketModeActive: slackStatus.socketModeActive,
       slackConnectionMode: slackStatus.mode,
       slackLastError: slackStatus.lastError,
+      localFolders: localFolderStatus.folders,
       works,
       connections: core.store.getConnections().map(({ connector, connected, config }) => ({
         connector,

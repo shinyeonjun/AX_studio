@@ -1,8 +1,9 @@
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { parseWorkflowIR } from '../workflow/schema.js';
-import type { Connector, ConnectorContext, ExecutionLogEntry } from '../connectors/types.js';
-import { MockGmailConnector, MockSlackConnector } from '../connectors/mocks/index.js';
-import { createDefaultConnectors } from '../connectors/registry.js';
+import { validateWorkflowContracts } from '../workflow/contract-validator.js';
+import type { Connector, ConnectorContext, ExecutionLogEntry } from '../modules/types.js';
+import { MockGmailConnector, MockLocalFolderConnector, MockSlackConnector } from '../modules/mocks/index.js';
+import { createDefaultConnectors } from '../modules/registry.js';
 import type { AgentHarness } from '../agent/harness.js';
 import type { RuntimeConfig, ExecutionResult } from './types.js';
 import { executeStep } from './step-executor.js';
@@ -25,6 +26,7 @@ export class WorkflowRuntime {
   connectors: Record<string, Connector>;
   private readonly fallbackMockGmail = new MockGmailConnector();
   private readonly fallbackMockSlack = new MockSlackConnector();
+  private readonly fallbackMockLocalFolder = new MockLocalFolderConnector();
 
   constructor(private config: RuntimeConfig) {
     this.connectors = { ...createDefaultConnectors(), ...config.connectors };
@@ -41,9 +43,20 @@ export class WorkflowRuntime {
     return slack instanceof MockSlackConnector ? slack : this.fallbackMockSlack;
   }
 
+  get mockLocalFolder(): MockLocalFolderConnector {
+    const localFolder = this.connectors.local_folder;
+    return localFolder instanceof MockLocalFolderConnector ? localFolder : this.fallbackMockLocalFolder;
+  }
+
   async executeWorkflow(
     ir: WorkflowIR,
-    options: { ephemeral?: boolean; triggerType?: string; input?: Record<string, unknown> } = {},
+    options: {
+      ephemeral?: boolean;
+      triggerType?: string;
+      input?: Record<string, unknown>;
+      /** Explicit manual run from UI — inactive ephemeral workflows may still run once. */
+      forceManual?: boolean;
+    } = {},
   ): Promise<ExecutionResult> {
     if (!this.config.globalActive) {
       return {
@@ -54,12 +67,31 @@ export class WorkflowRuntime {
       };
     }
 
-    if (ir.id && this.config.workflowActive[ir.id] === false) {
+    if (ir.id && this.config.workflowActive[ir.id] === false && !options.forceManual) {
       return {
         executionId: '',
         status: 'cancelled',
         errorCode: 'workflow_paused',
         log: [{ at: new Date().toISOString(), level: 'warn', code: 'workflow_paused', message: '워크플로우가 중지되어 있습니다.' }],
+      };
+    }
+
+    const contractIssues = validateWorkflowContracts(ir);
+    if (contractIssues.length > 0) {
+      const issue = contractIssues[0]!;
+      return {
+        executionId: '',
+        status: 'failed',
+        errorCode: 'contract_validation_failed',
+        log: [
+          {
+            at: new Date().toISOString(),
+            level: 'error',
+            code: 'contract_validation_failed',
+            message: issue.message,
+            data: { issues: contractIssues },
+          },
+        ],
       };
     }
 

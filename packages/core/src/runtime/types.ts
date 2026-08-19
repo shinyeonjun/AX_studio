@@ -1,7 +1,7 @@
 import type { AgentHarness } from '../agent/harness.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
-import type { Connector } from '../connectors/types.js';
-import type { ExecutionLogEntry } from '../connectors/types.js';
+import type { Connector } from '../modules/types.js';
+import type { ExecutionLogEntry } from '../modules/types.js';
 
 export interface RuntimeConfig {
   store: WorkflowStore;

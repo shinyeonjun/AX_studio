@@ -19,7 +19,6 @@ export type {
   AgentRun,
   AgentRunLog,
   AgentProgressEvent,
-  DirectCompileAgentContext,
   InterviewAgentContext,
   InvestigateAgentContext,
   ReviseAgentContext,

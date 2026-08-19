@@ -1,8 +1,8 @@
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { WorkflowRuntime } from './engine.js';
 import { getTriggerHandler } from '../triggers/registry.js';
-import { slackChannelMatches } from '../triggers/slack-new-message/channel-match.js';
-import { SlackSocketModeListener } from '../triggers/slack-new-message/socket-mode.js';
+import { slackChannelMatches } from '../triggers/slack/new-message/channel-match.js';
+import { SlackSocketModeListener } from '../triggers/slack/new-message/socket-mode.js';
 import {
   TRIGGER_CURSOR_SETTING_KEY,
   parseSlackConnectionConfig,

@@ -7,6 +7,7 @@ import { applyAnswer, startInterview } from './interview-flow.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
 import type { InterviewTurn } from './workflow-schema.js';
 import { loadAgentSkill } from '../agent/skill-load.js';
+import { buildDesignToolContext } from '../design-tools/context.js';
 
 class ScriptedModelProvider implements ModelProvider {
   readonly name = 'scripted';
@@ -19,7 +20,7 @@ class ScriptedModelProvider implements ModelProvider {
     this.calls.push(input as StructuredGenerateInput<unknown>);
     const turn = this.turns[Math.min(this.index, this.turns.length - 1)];
     this.index += 1;
-    return input.schema.parse(turn);
+    return input.schema.parse({ kind: 'design', ...turn });
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {
@@ -27,7 +28,14 @@ class ScriptedModelProvider implements ModelProvider {
   }
 }
 
-const CONNECTED = ['gmail', 'slack', 'local_sheet', 'rdb', 'report'];
+const CONNECTED = ['gmail', 'slack', 'local_sheet', 'rdb', 'document'];
+const DESIGN_CTX = buildDesignToolContext([], CONNECTED);
+
+const interviewOptions = (harness: ReturnType<typeof createAgentHarness>) => ({
+  harness,
+  connectedConnectors: CONNECTED,
+  designToolContext: DESIGN_CTX,
+});
 
 const incompleteSend: InterviewTurn = {
   name: '테스트 메일',
@@ -71,13 +79,14 @@ describe('agent interview skill', () => {
     const skill = loadAgentSkill('interview');
     expect(skill.name).toBe('interview');
     expect(skill.body).toContain('{{workflow_state}}');
+    expect(skill.body).toContain('{{design_tools}}');
     expect(skill.body).toContain('{{capability_catalog}}');
   });
 
   it('prepends AGENTS.md constitution via harness system prompt', async () => {
     const model = new ScriptedModelProvider([incompleteSend]);
     const harness = createAgentHarness(model);
-    const first = await startInterview('안녕', { harness, connectedConnectors: CONNECTED });
+    const first = await startInterview('안녕', interviewOptions(harness));
     expect(first.messages).toHaveLength(2);
     expect(model.calls[0]?.system).toContain('AX Studio Agent 헌법');
     expect(model.calls[0]?.system).toContain('현재 workflow');
@@ -164,16 +173,64 @@ describe('workflow builder', () => {
 });
 
 describe('AI interview session', () => {
+  it('keeps done false while agent nextQuestion still asks the user', async () => {
+    const awaitingChannel: InterviewTurn = {
+      name: 'PDF 요약',
+      goal: 'PDF 요약 후 Slack 전송',
+      triggerType: 'local_folder.new_file',
+      localFolderId: 'folder-1',
+      assumptions: [],
+      nodes: [
+        {
+          type: 'action',
+          id: 'ingest',
+          connector: 'document',
+          action: 'ingest',
+          params: { path: '{{filePath}}' },
+        },
+        { type: 'ai_decision', id: 'summarize', goal: '문서 요약' },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { text: '{{summarize.result}}' },
+        },
+      ],
+      nextQuestion: '요약 내용을 어느 Slack 채널에 보낼까요? (예: #general)',
+    };
+
+    const model = new ScriptedModelProvider([awaitingChannel]);
+    const harness = createAgentHarness(model);
+    const state = await startInterview('폴더 PDF 요약해서 Slack으로', interviewOptions(harness));
+
+    expect(state.completeness?.deployable).toBe(false);
+    expect(state.done).toBe(false);
+  });
+
+  it('keeps done false for deployable drafts with open confirmation questions', async () => {
+    const confirmTurn: InterviewTurn = {
+      ...completeSend,
+      nextQuestion: '이대로 진행할까요?',
+    };
+    const model = new ScriptedModelProvider([confirmTurn]);
+    const harness = createAgentHarness(model);
+    const state = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness));
+
+    expect(state.completeness?.deployable).toBe(true);
+    expect(state.done).toBe(false);
+  });
+
   it('keeps one session and sends full chat history on the next API turn', async () => {
     const model = new ScriptedModelProvider([incompleteSend, completeSend]);
     const harness = createAgentHarness(model);
-    const first = await startInterview('1분 뒤 테스트 메일 보내줘', { harness, connectedConnectors: CONNECTED });
+    const first = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness));
     expect(first.sessionId).toBeTruthy();
     expect(first.done).toBe(false);
     expect(first.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
     expect(model.calls[0]?.messages?.map((m) => m.role)).toEqual(['user']);
 
-    const second = await applyAnswer(first, 'test@example.com', { harness, connectedConnectors: CONNECTED });
+    const second = await applyAnswer(first, 'test@example.com', interviewOptions(harness));
     expect(second.sessionId).toBe(first.sessionId);
     expect(second.done).toBe(true);
     expect(model.calls[1]?.messages?.map((m) => m.content)).toEqual([
@@ -207,14 +264,11 @@ describe('AI interview session', () => {
     };
     const model = new ScriptedModelProvider([incompleteSend, completeSend, reviseSubject]);
     const harness = createAgentHarness(model);
-    const first = await startInterview('1분 뒤 테스트 메일 보내줘', { harness, connectedConnectors: CONNECTED });
-    const second = await applyAnswer(first, 'test@example.com', { harness, connectedConnectors: CONNECTED });
+    const first = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness));
+    const second = await applyAnswer(first, 'test@example.com', interviewOptions(harness));
     expect(second.done).toBe(true);
 
-    const third = await applyAnswer(second, '제목을 변경된 제목으로 바꿔줘', {
-      harness,
-      connectedConnectors: CONNECTED,
-    });
+    const third = await applyAnswer(second, '제목을 변경된 제목으로 바꿔줘', interviewOptions(harness));
     expect(third.sessionId).toBe(first.sessionId);
     expect(third.done).toBe(true);
     expect(third.messages.at(-1)?.content).toContain('변경된 제목');

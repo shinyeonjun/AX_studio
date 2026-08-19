@@ -19,7 +19,6 @@ AX Studio Harness는 Aside류 **실행 Agent**가 아니라 **워크플로우 �
 | Role | Purpose |
 |------|---------|
 | `interview` | 대화로 workflow draft → Workflow IR |
-| `direct_compile` | 한 번에 draft → Workflow IR |
 | `investigate` | runtime evidence 기반 read 제안 |
 | `revise` | 기존 워크플로우 수정 제안 |
 

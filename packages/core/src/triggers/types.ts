@@ -1,4 +1,4 @@
-import type { Connector } from '../connectors/types.js';
+import type { Connector } from '../modules/types.js';
 import type { Trigger } from '../workflow/schema.js';
 
 export interface TriggerEvent {
@@ -13,6 +13,8 @@ export interface TriggerCursor {
   historyId?: string;
   lastMessageTs?: string;
   channelId?: string;
+  folderId?: string;
+  seenFileKeys?: string[];
 }
 
 export type TriggerTransport = 'poll' | 'push';

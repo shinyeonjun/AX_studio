@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Tab, WorkFilter, WorkView, SettingsScreen } from './types/navigation';
 import type { WorkSummary } from './types/app-state';
-import { isOnceTrigger, isRecurringTrigger } from './lib/work-display';
-import type { AiBrand } from './types/ai-provider';
+import { isEphemeralWork, isRecurringTrigger } from './lib/work-display';
 import { useAppState } from './hooks/useAppState';
 import { useInterview } from './hooks/useInterview';
-import { useAiSettings } from './hooks/useAiSettings';
-import { settingsScreenForBrand } from './constants/settings';
 import { Sidebar } from './components/layout/Sidebar';
 import { WorkPage } from './components/work/WorkPage';
 import { ApprovalPage } from './components/approval/ApprovalPage';
@@ -21,23 +18,17 @@ export default function App() {
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>('hub');
 
   const { state, refresh } = useAppState();
-  const interview = useInterview({
-    refresh,
-    onWorkSaved: () => setWorkView('list'),
-  });
-  const aiSettings = useAiSettings(state, refresh, () => {
-    setSettingsScreen('ai');
-  });
-
-  useEffect(() => {
-    if (tab !== 'settings') setSettingsScreen('hub');
-  }, [tab]);
+  const interview = useInterview({ refresh });
 
   useEffect(() => {
     if (tab !== 'work' && workView === 'conversation') {
       setWorkView('list');
     }
   }, [tab, workView]);
+
+  useEffect(() => {
+    if (tab !== 'settings') setSettingsScreen('hub');
+  }, [tab]);
 
   const filteredWorks = useMemo(() => {
     if (!state?.works) return [];
@@ -51,7 +42,7 @@ export default function App() {
         workFilter === 'all' ||
         (workFilter === 'running' && s.active) ||
         (workFilter === 'paused' && !s.active) ||
-        (workFilter === 'once' && isOnceTrigger(s.trigger)) ||
+        (workFilter === 'once' && isEphemeralWork(s.trigger)) ||
         (workFilter === 'recurring' && isRecurringTrigger(s.trigger));
       return matchSearch && matchFilter;
     });
@@ -70,18 +61,7 @@ export default function App() {
   };
 
   const backToList = () => {
-    interview.reset();
     setWorkView('list');
-  };
-
-  const openAiSettings = () => {
-    setSettingsScreen('ai');
-    void aiSettings.openAiHub();
-  };
-
-  const openAiBrand = (brand: AiBrand) => {
-    setSettingsScreen(settingsScreenForBrand(brand));
-    void aiSettings.openBrand(brand);
   };
 
   const toggleWork = async (work: WorkSummary) => {
@@ -145,17 +125,24 @@ export default function App() {
         {tab === 'settings' && (
           <SettingsPage
             screen={settingsScreen}
-            state={state}
-            aiSettings={aiSettings}
             onScreenChange={setSettingsScreen}
-            onOpenAi={openAiSettings}
-            onOpenAiBrand={openAiBrand}
+            state={state}
+            onRefresh={refresh}
             onConnectSlack={async (payload) => {
               await window.ax.connectSlack(payload);
               await refresh();
             }}
             onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
             onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}
+            onPickLocalFolder={() => window.ax.pickLocalFolder()}
+            onAddLocalFolder={async (payload) => {
+              await window.ax.addLocalFolder(payload);
+              await refresh();
+            }}
+            onRemoveLocalFolder={async (folderId) => {
+              await window.ax.removeLocalFolder(folderId);
+              await refresh();
+            }}
           />
         )}
       </main>

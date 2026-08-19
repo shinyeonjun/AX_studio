@@ -20,6 +20,13 @@ function triggerLines(ir: Partial<WorkflowIR>): string[] {
   if (ir.trigger?.type === 'slack.new_message') {
     return ['trigger:', '  type: slack.new_message', `  channel: ${ir.trigger.channel}`];
   }
+  if (ir.trigger?.type === 'local_folder.new_file') {
+    const lines = ['trigger:', '  type: local_folder.new_file', `  folderId: ${ir.trigger.folderId}`];
+    if (ir.trigger.extensions?.length) {
+      lines.push(`  extensions: ${ir.trigger.extensions.join(', ')}`);
+    }
+    return lines;
+  }
   return ['trigger:', '  type: manual'];
 }
 

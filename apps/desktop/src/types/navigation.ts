@@ -6,9 +6,8 @@ export type WorkFilter = 'all' | 'running' | 'paused' | 'once' | 'recurring';
 
 export type SettingsScreen =
   | 'hub'
-  | 'ai'
   | 'ai-claude'
   | 'ai-gpt'
-  | 'ai-ollama'
   | 'slack'
-  | 'gmail';
+  | 'gmail'
+  | 'local-folder';
