@@ -4,7 +4,7 @@ import { validateApprovalPolicy, isDeployable } from '../skill/approval.js';
 import { csMailSkillFixture, weeklyReportSkillFixture, dataPolicyFixture } from '../skill/fixtures.js';
 import { createDatabase } from '../store/db.js';
 import { SkillStore } from '../store/skill-store.js';
-import { assessCompleteness, computeRequiredSlots } from '../interviewer/requiredness.js';
+import { assessCompleteness, computeRequiredSlots } from '../interview/requiredness.js';
 import { SkillRuntime } from '../runtime/engine.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

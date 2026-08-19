@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { SlackConnector } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
-import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail-connection.js';
+import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
 
 export function registerConnectionHandlers() {
   ipcMain.handle('ax:connectSlack', async (_e, token: string) => {

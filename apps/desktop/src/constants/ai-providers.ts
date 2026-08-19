@@ -10,7 +10,6 @@ import {
 
 import claudeIcon from '../images/ai/claude.png';
 import openaiIcon from '../images/ai/gpt.webp';
-import grokIcon from '../images/ai/grok.webp';
 
 export interface AiProviderUiMeta {
   id: AiBrand;
@@ -44,10 +43,9 @@ const UI_OVERLAY: Record<
     description: 'OpenAI GPT · Codex CLI 또는 API',
   },
   grok: {
-    icon: grokIcon,
+    icon: openaiIcon,
     cliModeLabel: 'CLI',
     cliLabel: 'agent CLI',
-    description: 'xAI Grok · Cursor agent CLI 또는 xAI API',
   },
   ollama: {
     icon: openaiIcon,

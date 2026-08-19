@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('ax', {
   runEphemeral: (ir: unknown) => ipcRenderer.invoke('ax:runEphemeral', ir),
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
+  deleteSkill: (skillId: string) => ipcRenderer.invoke('ax:deleteSkill', skillId),
   setGlobalActive: (active: boolean) => ipcRenderer.invoke('ax:setGlobalActive', active),
   setSkillActive: (skillId: string, active: boolean) => ipcRenderer.invoke('ax:setSkillActive', skillId, active),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
@@ -24,10 +25,11 @@ contextBridge.exposeInMainWorld('ax', {
   testAiApi: (brand: string, apiKey?: string, mode?: string) => ipcRenderer.invoke('ax:testAiApi', brand, apiKey, mode),
   setEnvSecret: (key: string, value: string) => ipcRenderer.invoke('ax:setEnvSecret', key, value),
   getEnvSecretStatus: (key: string) => ipcRenderer.invoke('ax:getEnvSecretStatus', key),
-  setCursorApiKey: (key: string) => ipcRenderer.invoke('ax:setCursorApiKey', key),
-  testCursorApiKey: (key?: string) => ipcRenderer.invoke('ax:testCursorApiKey', key),
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   summarize: (ir: unknown) => ipcRenderer.invoke('ax:summarize', ir),
+  loadSkillChat: (skillId: string) => ipcRenderer.invoke('ax:loadSkillChat', skillId),
+  saveChatSession: (state: unknown, summary?: string, skillId?: string) =>
+    ipcRenderer.invoke('ax:saveChatSession', state, summary, skillId),
   onAgentProgress: (listener: (event: { message: string }) => void) => {
     const wrapped = (_e: unknown, event: { message: string }) => listener(event);
     ipcRenderer.on('ax:agent-progress', wrapped);

@@ -67,6 +67,16 @@ const MIGRATION_SQL = `
     connected INTEGER NOT NULL DEFAULT 0,
     config_json TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS chat_sessions (
+    id TEXT PRIMARY KEY,
+    skill_id TEXT UNIQUE,
+    title TEXT NOT NULL,
+    summary TEXT,
+    state_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `;
 
 function columnNames(db: AppDatabase, table: string): string[] {

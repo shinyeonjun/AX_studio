@@ -36,13 +36,6 @@ export interface EnvSecretStatus {
   envFilePath?: string;
 }
 
-export interface CursorApiKeyTestResult {
-  ok: boolean;
-  email?: string;
-  apiKeyName?: string;
-  masked?: string;
-}
-
 export interface AiCliTestResult {
   ok: boolean;
   command: string;

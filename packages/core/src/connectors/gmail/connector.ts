@@ -1,5 +1,7 @@
 import { google } from 'googleapis';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { buildGmailRawMessage } from './mime.js';
+import { pollGmailNewMessages } from './new-message-poll.js';
 
 export interface GmailConnectorConfig {
   clientId: string;
@@ -46,18 +48,30 @@ export class GmailConnector implements Connector {
           return { ok: true, data: res.data.messages ?? [] };
         }
         case 'draft.create': {
-          const raw = Buffer.from(
-            `To: ${params.to}\r\nSubject: ${params.subject ?? 'Re'}\r\n\r\n${params.body ?? ''}`,
-          ).toString('base64url');
+          const raw = buildGmailRawMessage({
+            to: String(params.to ?? ''),
+            subject: String(params.subject ?? 'Re'),
+            body: String(params.body ?? ''),
+          });
           const res = await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
           return { ok: true, data: res.data };
         }
         case 'message.send': {
-          const raw = Buffer.from(
-            `To: ${params.to}\r\nSubject: ${params.subject ?? 'Re'}\r\n\r\n${params.body ?? ''}`,
-          ).toString('base64url');
+          const raw = buildGmailRawMessage({
+            to: String(params.to ?? ''),
+            subject: String(params.subject ?? 'Re'),
+            body: String(params.body ?? ''),
+          });
           const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
           return { ok: true, data: res.data };
+        }
+        case 'new_message.poll': {
+          const poll = await pollGmailNewMessages(gmail, {
+            initialized: Boolean(params.initialized),
+            seenMessageIds: (params.seenMessageIds as string[]) ?? [],
+            historyId: params.historyId as string | undefined,
+          });
+          return { ok: true, data: poll };
         }
         default:
           return { ok: false, error: `Unknown gmail action: ${action}` };

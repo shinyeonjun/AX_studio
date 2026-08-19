@@ -4,6 +4,7 @@ import * as skillRepo from './repositories/skill-repository.js';
 import * as executionRepo from './repositories/execution-repository.js';
 import * as approvalRepo from './repositories/approval-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
+import * as chatSessionRepo from './repositories/chat-session-repository.js';
 
 export class SkillStore {
   constructor(private db: AppDatabase) {}
@@ -22,6 +23,30 @@ export class SkillStore {
 
   setSkillActive(skillId: string, active: boolean) {
     skillRepo.setSkillActive(this.db, skillId, active);
+  }
+
+  deleteSkill(skillId: string) {
+    return skillRepo.deleteSkill(this.db, skillId);
+  }
+
+  saveChatSession(params: { state: import('../interview/interview-state.js').InterviewState; summary?: string; skillId?: string }) {
+    return chatSessionRepo.saveChatSession(this.db, params);
+  }
+
+  getChatSession(sessionId: string) {
+    return chatSessionRepo.getChatSession(this.db, sessionId);
+  }
+
+  getChatSessionBySkillId(skillId: string) {
+    return chatSessionRepo.getChatSessionBySkillId(this.db, skillId);
+  }
+
+  linkChatSessionToSkill(sessionId: string, skillId: string) {
+    chatSessionRepo.linkChatSessionToSkill(this.db, sessionId, skillId);
+  }
+
+  listChatSessions(limit = 20) {
+    return chatSessionRepo.listChatSessions(this.db, limit);
   }
 
   createExecution(params: {

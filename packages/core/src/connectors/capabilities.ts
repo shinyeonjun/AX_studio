@@ -68,7 +68,7 @@ export const CAPABILITY_CATALOG: ConnectorCapability[] = [
     id: 'gmail.new_message',
     connector: 'gmail',
     kind: 'trigger',
-    description: 'New email trigger',
+    description: 'Gmail 새 메일 도착 시 업무 시작',
     params: [{ name: 'accountId', label: 'Gmail 계정', question: '어떤 Gmail 계정을 사용할까요?', required: true }],
   },
   {

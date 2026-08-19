@@ -4,7 +4,6 @@ import type {
   AiCliTestResult,
   AiConfigSnapshot,
   AiSecretStatus,
-  CursorApiKeyTestResult,
   DetectedAiCli,
 } from './ai-provider';
 
@@ -17,6 +16,7 @@ export interface AxApi {
   runEphemeral: (ir: unknown) => Promise<unknown>;
   approve: (id: string) => Promise<unknown>;
   reject: (id: string) => Promise<unknown>;
+  deleteSkill: (skillId: string) => Promise<unknown>;
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setSkillActive: (skillId: string, active: boolean) => Promise<unknown>;
   explain: (q: string) => Promise<string>;
@@ -35,9 +35,9 @@ export interface AxApi {
   testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
   setEnvSecret: (key: string, value: string) => Promise<{ ok: boolean; masked?: string }>;
   getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string }>;
-  setCursorApiKey: (key: string) => Promise<{ ok: boolean; masked?: string }>;
-  testCursorApiKey: (key?: string) => Promise<CursorApiKeyTestResult>;
   summarize: (ir: unknown) => Promise<string>;
+  loadSkillChat: (skillId: string) => Promise<{ state: unknown; summary?: string; title?: string }>;
+  saveChatSession: (state: unknown, summary?: string, skillId?: string) => Promise<{ ok: boolean }>;
   printPdf: (html: string) => Promise<unknown>;
   onAgentProgress: (listener: (event: { message: string }) => void) => () => void;
 }

@@ -1,5 +1,5 @@
 import type { Connector, ConnectorContext } from '../connectors/types.js';
-import type { AgentHarness } from '../agents-harness/harness.js';
+import type { AgentHarness } from '../agent/harness.js';
 import { performCapabilityRead } from './capability-read.js';
 import { evaluateStepCondition } from './condition-eval.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';

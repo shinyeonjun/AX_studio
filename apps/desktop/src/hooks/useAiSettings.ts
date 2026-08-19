@@ -193,11 +193,6 @@ export function useAiSettings(
 
   const canSave = useMemo(() => {
     if (!brand || !model) return false;
-    if (brand === 'grok' && mode === 'cli') {
-      const hasCli = Boolean(selectedCli?.binaryFound ?? selectedCli?.command ?? cliVerified);
-      const hasApi = apiKeyConfigured || apiVerified || Boolean(apiKeyDraft.trim());
-      return hasCli && hasApi;
-    }
     if (mode === 'cli') {
       return Boolean(selectedCli?.installed || selectedCli?.command || cliVerified);
     }
@@ -232,9 +227,10 @@ export function useAiSettings(
     setMessage('');
     try {
       const result = await window.ax.testAiCli(brand);
+      const meta = AI_PROVIDER_UI_CATALOG[brand];
       setVerifiedCli((prev) => ({ ...prev, [brand]: true }));
       const version = result.version ? ` · ${result.version}` : '';
-      setMessage(`agent CLI 확인됨: ${result.command}${version}`);
+      setMessage(`${meta.cliLabel} 확인됨: ${result.command}${version}`);
       await refreshDetection();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'CLI 확인에 실패했습니다.');
@@ -287,8 +283,6 @@ export function useAiSettings(
         await window.ax.setAiProvider(config);
         setMessage('저장되었습니다. 이 AI가 사용 중입니다.');
         onAiSaved?.();
-      } else if (brand === 'grok' && mode === 'cli') {
-        setMessage('설정이 저장되었습니다. agent CLI와 Cursor API 키를 모두 확인하세요.');
       } else {
         setMessage('설정이 ai.toml에 저장되었습니다.');
       }

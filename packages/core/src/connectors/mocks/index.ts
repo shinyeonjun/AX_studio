@@ -47,6 +47,42 @@ export class MockGmailConnector implements Connector {
       }
       case 'label.apply':
         return { ok: true, data: { label: params.label } };
+      case 'new_message.poll': {
+        const initialized = Boolean(params.initialized);
+        const seenIds = new Set((params.seenMessageIds as string[]) ?? []);
+        if (!initialized) {
+          return {
+            ok: true,
+            data: {
+              events: [],
+              cursor: {
+                initialized: true,
+                seenMessageIds: this.messages.map((message) => message.id),
+              },
+            },
+          };
+        }
+        const newMessages = this.messages.filter((message) => !seenIds.has(message.id));
+        const events = newMessages.map((message) => ({
+          type: 'gmail.new_message' as const,
+          payload: {
+            messageId: message.id,
+            from: message.from,
+            subject: message.subject,
+            body: message.body,
+            snippet: message.body.slice(0, 200),
+            sender: message.from,
+          },
+        }));
+        const seenMessageIds = [...seenIds, ...newMessages.map((message) => message.id)];
+        return {
+          ok: true,
+          data: {
+            events,
+            cursor: { initialized: true, seenMessageIds },
+          },
+        };
+      }
       default:
         return { ok: false, error: `Unknown gmail action: ${action}` };
     }

@@ -30,7 +30,7 @@ export default defineConfig({
     root: 'src',
     resolve: {
       alias: {
-        '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agents-harness/settings/ai-catalog.ts'),
+        '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
       },
     },
     build: {

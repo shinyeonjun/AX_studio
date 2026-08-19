@@ -1,4 +1,4 @@
-import type { AgentHarness } from '../agents-harness/harness.js';
+import type { AgentHarness } from '../agent/harness.js';
 import type { SkillStore } from '../store/skill-store.js';
 import type { Connector } from '../connectors/types.js';
 import type { ExecutionLogEntry } from '../connectors/types.js';

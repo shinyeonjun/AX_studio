@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Tab, WorkFilter, SettingsScreen } from './types/navigation';
+import type { Tab, WorkFilter, WorkView, SettingsScreen } from './types/navigation';
 import type { SkillSummary } from './types/app-state';
+import { isOnceTrigger, isRecurringTrigger } from './lib/skill-display';
 import type { AiBrand } from './types/ai-provider';
 import { useAppState } from './hooks/useAppState';
 import { useInterview } from './hooks/useInterview';
@@ -8,19 +9,22 @@ import { useAiSettings } from './hooks/useAiSettings';
 import { settingsScreenForBrand } from './constants/settings';
 import { Sidebar } from './components/layout/Sidebar';
 import { WorkPage } from './components/work/WorkPage';
-import { ChatPage } from './components/chat/ChatPage';
 import { ApprovalPage } from './components/approval/ApprovalPage';
 import { ActivityPage } from './components/activity/ActivityPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('chat');
+  const [tab, setTab] = useState<Tab>('work');
+  const [workView, setWorkView] = useState<WorkView>('list');
   const [workFilter, setWorkFilter] = useState<WorkFilter>('all');
   const [search, setSearch] = useState('');
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>('hub');
 
   const { state, refresh } = useAppState();
-  const interview = useInterview(refresh, setTab);
+  const interview = useInterview({
+    refresh,
+    onWorkSaved: () => setWorkView('list'),
+  });
   const aiSettings = useAiSettings(state, refresh, () => {
     setSettingsScreen('ai');
   });
@@ -28,6 +32,12 @@ export default function App() {
   useEffect(() => {
     if (tab !== 'settings') setSettingsScreen('hub');
   }, [tab]);
+
+  useEffect(() => {
+    if (tab !== 'work' && workView === 'conversation') {
+      setWorkView('list');
+    }
+  }, [tab, workView]);
 
   const filteredSkills = useMemo(() => {
     if (!state?.skills) return [];
@@ -40,14 +50,28 @@ export default function App() {
       const matchFilter =
         workFilter === 'all' ||
         (workFilter === 'running' && s.active) ||
-        (workFilter === 'paused' && !s.active);
+        (workFilter === 'paused' && !s.active) ||
+        (workFilter === 'once' && isOnceTrigger(s.trigger)) ||
+        (workFilter === 'recurring' && isRecurringTrigger(s.trigger));
       return matchSearch && matchFilter;
     });
   }, [state?.skills, search, workFilter]);
 
   const startNewTask = () => {
-    setTab('chat');
     interview.reset();
+    setWorkView('conversation');
+    setTab('work');
+  };
+
+  const openTask = async (skillId: string) => {
+    await interview.openSkillChat(skillId);
+    setWorkView('conversation');
+    setTab('work');
+  };
+
+  const backToList = () => {
+    interview.reset();
+    setWorkView('list');
   };
 
   const openAiSettings = () => {
@@ -70,6 +94,16 @@ export default function App() {
     await refresh();
   };
 
+  const deleteSkill = async (skillId: string) => {
+    if (!window.confirm('이 업무를 삭제할까요?')) return;
+    if (interview.interview?.skillId === skillId) {
+      interview.reset();
+      setWorkView('list');
+    }
+    await window.ax.deleteSkill(skillId);
+    await refresh();
+  };
+
   return (
     <div className="app">
       <Sidebar
@@ -85,29 +119,16 @@ export default function App() {
             skills={filteredSkills}
             workFilter={workFilter}
             search={search}
+            view={workView}
+            interview={interview}
             onWorkFilterChange={setWorkFilter}
             onSearchChange={setSearch}
             onNewTask={startNewTask}
+            onOpenTask={openTask}
+            onBackToList={backToList}
             onRunSkill={runSkill}
             onToggleSkill={toggleSkill}
-          />
-        )}
-
-        {tab === 'chat' && (
-          <ChatPage
-            interview={interview.interview}
-            saved={interview.saved}
-            busy={interview.busy}
-            error={interview.error}
-            progress={interview.progress}
-            instruction={interview.instruction}
-            answer={interview.answer}
-            onInstructionChange={interview.setInstruction}
-            onAnswerChange={interview.setAnswer}
-            onStartInterview={interview.startInterview}
-            onSendAnswer={interview.sendAnswer}
-            onTestRun={interview.testRun}
-            onSaveAndRun={interview.saveAndRun}
+            onDeleteSkill={deleteSkill}
           />
         )}
 

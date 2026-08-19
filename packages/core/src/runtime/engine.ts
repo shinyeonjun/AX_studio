@@ -3,7 +3,7 @@ import { parseSkillIR } from '../skill/schema.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../connectors/types.js';
 import { MockGmailConnector, MockSlackConnector } from '../connectors/mocks/index.js';
 import { createDefaultConnectors } from '../connectors/registry.js';
-import type { AgentHarness } from '../agents-harness/harness.js';
+import type { AgentHarness } from '../agent/harness.js';
 import type { RuntimeConfig, ExecutionResult } from './types.js';
 import { executeStep } from './step-executor.js';
 import { resolveStepParams } from './ai-investigation.js';
@@ -147,6 +147,10 @@ export class SkillRuntime {
 
   setSkillActive(skillId: string, active: boolean) {
     this.config.skillActive[skillId] = active;
+  }
+
+  removeSkill(skillId: string) {
+    delete this.config.skillActive[skillId];
   }
 
   setAgentHarness(agentHarness: AgentHarness) {

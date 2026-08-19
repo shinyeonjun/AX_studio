@@ -35,6 +35,10 @@ export const KO = {
     completion: { label: '완료 조건', question: '업무가 완료되었다고 볼 조건은 무엇인가요?' },
     'ai_decision.schema': { label: 'AI 출력 스키마', question: 'AI가 어떤 형태로 결과를 내야 할까요?' },
   },
+  chatSummary: {
+    triggerManual: '지금 한 번 (저장하지 않음)',
+    triggerOnce: '예약 1회',
+  },
   workSkillDocument: {
     triggerManual: '수동 실행',
     triggerSchedule: (schedule: string, timezone: string) => `스케줄: ${schedule} (${timezone})`,

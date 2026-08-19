@@ -1,13 +1,14 @@
-export type Tab = 'work' | 'chat' | 'approval' | 'activity' | 'settings';
+export type Tab = 'work' | 'approval' | 'activity' | 'settings';
 
-export type WorkFilter = 'all' | 'running' | 'paused';
+export type WorkView = 'list' | 'conversation';
+
+export type WorkFilter = 'all' | 'running' | 'paused' | 'once' | 'recurring';
 
 export type SettingsScreen =
   | 'hub'
   | 'ai'
   | 'ai-claude'
   | 'ai-gpt'
-  | 'ai-grok'
   | 'ai-ollama'
   | 'slack'
   | 'gmail';

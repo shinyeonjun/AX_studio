@@ -81,6 +81,10 @@ export class Scheduler {
         this.markFired(s.id);
         this.store.setSkillActive(s.id, false);
         const result = await this.runtime.executeSkill(ir, { triggerType: 'once' });
+        if (result.status === 'success') {
+          this.store.deleteSkill(s.id);
+          this.runtime.removeSkill(s.id);
+        }
         this.onScheduledRun?.(s.id, result);
         continue;
       }

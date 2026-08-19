@@ -1,4 +1,5 @@
 import type { AppState } from '../../types/app-state';
+import { formatRelativeTime } from '../../lib/skill-display';
 import { PageHeader } from '../layout/PageHeader';
 
 interface ApprovalPageProps {
@@ -19,8 +20,8 @@ export function ApprovalPage({ approvals, onApprove, onReject }: ApprovalPagePro
         ) : (
           approvals.map((a) => (
             <div key={a.id} className="approval-card">
-              <h3>{a.reason}</h3>
-              <p className="muted">{a.createdAt} · {a.actionIds.join(', ')}</p>
+              <h3>{a.title ?? a.reason}</h3>
+              <p className="muted">{formatRelativeTime(a.createdAt)}</p>
               <div className="approval-actions">
                 <button type="button" className="btn btn-reject" onClick={() => onReject(a.id)}>
                   거절

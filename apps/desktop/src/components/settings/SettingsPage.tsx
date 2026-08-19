@@ -1,4 +1,5 @@
 import type { SettingsScreen } from '../../types/navigation';
+import { AI_PROVIDER_UI_CATALOG } from '../../constants/ai-providers';
 import type { AppState } from '../../types/app-state';
 import type { AiBrand } from '../../types/ai-provider';
 import type { AiSettingsController } from '../../hooks/useAiSettings';
@@ -24,7 +25,7 @@ interface SettingsPageProps {
 
 function settingsSubtitle(screen: SettingsScreen): string {
   if (screen === 'hub') return 'AI와 외부 서비스를 연결하세요';
-  if (screen === 'ai') return 'Claude, GPT, Grok 중 하나를 선택하세요';
+  if (screen === 'ai') return 'Claude 또는 GPT 중 하나를 선택하세요';
   if (screen.startsWith('ai-')) return 'CLI 또는 API를 선택해 적용하세요';
   return '인증 정보를 입력하고 연결합니다';
 }
@@ -86,7 +87,7 @@ export function SettingsPage({
             model={aiSettings.model}
             models={aiSettings.models}
             cliOption={aiSettings.cliProviders.find(
-              (item) => item.id === (detailBrand === 'claude' ? 'claude-cli' : detailBrand === 'gpt' ? 'codex-cli' : 'cursor-cli'),
+              (item) => item.id === AI_PROVIDER_UI_CATALOG[detailBrand].cliProviderId,
             )}
             detecting={aiSettings.detecting}
             apiKeyDraft={aiSettings.apiKeyDraft}

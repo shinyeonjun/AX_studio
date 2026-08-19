@@ -24,8 +24,6 @@ export interface AppState {
   aiProvider?: AiProviderState;
   aiProviderLabel?: string;
   aiProviderInstalled?: boolean;
-  cursorApiKeyConfigured?: boolean;
-  cursorApiKeyMasked?: string;
   envFilePath?: string;
   aiConfigPath?: string;
   aiBrandConfigs?: Partial<Record<AiBrand, { mode?: AiConnectionMode; model?: string }>>;
@@ -39,6 +37,7 @@ export interface AppState {
   approvals: Array<{
     id: string;
     reason: string;
+    title?: string;
     createdAt: string;
     actionIds: string[];
   }>;

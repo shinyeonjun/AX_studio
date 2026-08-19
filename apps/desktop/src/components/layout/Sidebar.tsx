@@ -1,7 +1,6 @@
 import type { Tab } from '../../types/navigation';
 import {
   IconBriefcase,
-  IconChat,
   IconCheck,
   IconActivity,
   IconSettings,
@@ -22,10 +21,6 @@ export function Sidebar({ tab, pendingApprovals, onTabChange }: SidebarProps) {
       </div>
 
       <nav className="nav">
-        <button className={`nav-item ${tab === 'chat' ? 'active' : ''}`} onClick={() => onTabChange('chat')}>
-          <IconChat />
-          대화
-        </button>
         <button className={`nav-item ${tab === 'work' ? 'active' : ''}`} onClick={() => onTabChange('work')}>
           <IconBriefcase />
           업무

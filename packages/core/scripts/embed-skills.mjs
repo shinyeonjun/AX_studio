@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const harnessDir = join(root, 'src/agents-harness');
+const harnessDir = join(root, 'src/agent');
 const skillsDir = join(harnessDir, 'skills');
 const agentsMdPath = join(harnessDir, 'AGENTS.md');
 

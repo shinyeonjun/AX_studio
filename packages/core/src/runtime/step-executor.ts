@@ -1,8 +1,14 @@
 import type { SkillIR, Step } from '../skill/schema.js';
 import { requiresApproval } from '../skill/approval.js';
+
+function hasHumanApprovalForAction(ir: SkillIR, actionId: string): boolean {
+  return ir.steps.some(
+    (step) => step.type === 'human_approval' && step.forActionIds.includes(actionId),
+  );
+}
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import type { SkillStore } from '../store/skill-store.js';
-import type { AgentHarness } from '../agents-harness/harness.js';
+import type { AgentHarness } from '../agent/harness.js';
 import { runAiDecision, resolveStepParams, evaluateStepCondition } from './ai-investigation.js';
 
 export async function executeStep(
@@ -17,7 +23,10 @@ export async function executeStep(
 ): Promise<void> {
   switch (step.type) {
     case 'action':
-      if (requiresApproval(step.sideEffect, ir.allowExternalAuto)) {
+      if (
+        requiresApproval(step.sideEffect, ir.allowExternalAuto) &&
+        !hasHumanApprovalForAction(ir, step.id)
+      ) {
         const approvalId = store.createApproval({
           executionId: ctx.executionId,
           actionIds: [step.id],

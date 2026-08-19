@@ -59,3 +59,14 @@ export function listSkills(db: AppDatabase): Array<{ id: string; name: string; a
 export function setSkillActive(db: AppDatabase, skillId: string, active: boolean) {
   db.prepare('UPDATE skills SET active = ?, updated_at = ? WHERE id = ?').run(active ? 1 : 0, new Date().toISOString(), skillId);
 }
+
+export function deleteSkill(db: AppDatabase, skillId: string): boolean {
+  const existing = db.prepare('SELECT id FROM skills WHERE id = ?').get(skillId) as { id: string } | undefined;
+  if (!existing) return false;
+  db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE skill_id = ?)').run(skillId);
+  db.prepare('DELETE FROM executions WHERE skill_id = ?').run(skillId);
+  db.prepare('DELETE FROM skill_versions WHERE skill_id = ?').run(skillId);
+  db.prepare('DELETE FROM chat_sessions WHERE skill_id = ?').run(skillId);
+  db.prepare('DELETE FROM skills WHERE id = ?').run(skillId);
+  return true;
+}

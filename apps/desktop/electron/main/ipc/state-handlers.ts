@@ -1,21 +1,42 @@
 import { ipcMain } from 'electron';
 import {
-  DEFAULT_AI_PROVIDER,
+  formatApprovalTitle,
   getAiProviderDisplay,
   isAiProviderReady,
-  normalizeAiProviderConfig,
   parseGmailConnectionConfig,
-  type AiProviderConfig,
+  parseSkillIR,
 } from '@ax-studio/core';
+import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
 import { getCore } from '../core-instance.js';
-import { getEnvFilePath, maskSecret } from '../env-file.js';
-import { getAiConfigPath, getSecretForBrand, readAiToml } from '../ai-config-file.js';
-import { isGoogleOAuthConfigured } from '../google-oauth.js';
+import { getEnvFilePath } from '../env-file.js';
+import { getAiConfigPath, readAiToml } from '../ai/config-file.js';
+import { isGoogleOAuthConfigured } from '../gmail/oauth.js';
 
 export function registerStateHandlers() {
   ipcMain.handle('ax:getState', async () => {
     const core = getCore();
-    const pendingApprovals = core.store.getPendingApprovals();
+    const pendingApprovals = core.store.getPendingApprovals().map((approval) => {
+      const execution = core.store.getExecution(approval.executionId);
+      let ir = execution?.skillId
+        ? core.store.getSkill(execution.skillId, execution.skillVersion ?? undefined)
+        : null;
+      if (execution?.irJson) {
+        try {
+          ir = parseSkillIR(JSON.parse(execution.irJson));
+        } catch {
+          /* keep skill store copy */
+        }
+      }
+      return {
+        ...approval,
+        title: formatApprovalTitle({
+          skillName: ir?.name,
+          reason: approval.reason,
+          actionIds: approval.actionIds,
+          ir,
+        }),
+      };
+    });
     const executions = core.store.listExecutions(50);
     const skills = core.store.listSkills().map((s) => {
       const ir = core.store.getSkill(s.id);
@@ -32,11 +53,8 @@ export function registerStateHandlers() {
         lastStatus: lastExecution?.status,
       };
     });
-    const aiProvider = normalizeAiProviderConfig(
-      core.store.getSetting<AiProviderConfig | unknown>('aiProvider', DEFAULT_AI_PROVIDER),
-    );
+    const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider'));
     const aiToml = await readAiToml();
-    const cursorKey = await getSecretForBrand('grok');
     const gmailConn = core.store.getConnections().find((c) => c.connector === 'gmail');
     const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
     return {
@@ -44,8 +62,6 @@ export function registerStateHandlers() {
       aiProvider,
       aiProviderLabel: getAiProviderDisplay(aiProvider),
       aiProviderInstalled: isAiProviderReady(aiProvider),
-      cursorApiKeyConfigured: Boolean(cursorKey),
-      cursorApiKeyMasked: cursorKey ? maskSecret(cursorKey) : undefined,
       envFilePath: getEnvFilePath(),
       aiConfigPath: getAiConfigPath(),
       aiBrandConfigs: aiToml.providers,
