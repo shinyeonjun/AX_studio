@@ -1,15 +1,20 @@
 import type { ZodType } from 'zod';
+import type { ChatMessage } from './chat.js';
 
 export interface StructuredGenerateInput<T> {
   schema: ZodType<T>;
   system: string;
-  user: string;
+  /** Single-turn prompt. Ignored when `messages` is set. */
+  user?: string;
+  /** Multi-turn session. API providers send this natively; CLI flattens it. */
+  messages?: ChatMessage[];
   temperature?: number;
 }
 
 export interface TextGenerateInput {
   system: string;
-  user: string;
+  user?: string;
+  messages?: ChatMessage[];
   temperature?: number;
 }
 

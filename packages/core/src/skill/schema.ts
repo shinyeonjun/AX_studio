@@ -27,6 +27,10 @@ export const TriggerSchema = z.discriminatedUnion('type', [
     type: z.literal('gmail.new_message'),
     accountId: z.string(),
   }),
+  z.object({
+    type: z.literal('once'),
+    runAt: z.string(),
+  }),
 ]);
 
 export const ActionStepSchema = z.object({
@@ -91,6 +95,8 @@ export const SkillIRSchema = z.object({
   assumptions: z.array(z.string()).default([]),
   sideEffects: z.record(SideEffectLevelSchema).default({}),
   dataPolicy: DataPolicySchema.default({}),
+  /** Human-readable work contract (SKILL.md). Runtime executes `steps`, not this text. */
+  document: z.string().optional(),
 });
 
 export type SideEffectLevel = z.infer<typeof SideEffectLevelSchema>;

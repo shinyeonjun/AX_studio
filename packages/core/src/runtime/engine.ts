@@ -1,4 +1,5 @@
 import type { SkillIR, Step } from '../skill/schema.js';
+import { parseSkillIR } from '../skill/schema.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../connectors/types.js';
 import { MockGmailConnector, MockSlackConnector } from '../connectors/mocks/index.js';
 import { createDefaultConnectors } from '../connectors/registry.js';
@@ -45,6 +46,7 @@ export class SkillRuntime {
       skillVersion: ir.version,
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
+      irJson: JSON.stringify(ir),
     });
 
     const log: ExecutionLogEntry[] = [];
@@ -124,9 +126,16 @@ export class SkillRuntime {
       return { executionId: '', status: 'failed', errorCode: 'execution_not_found', log: [] };
     }
 
-    const ir = execution.skillId
+    let ir = execution.skillId
       ? this.config.store.getSkill(execution.skillId, execution.skillVersion ?? undefined)
       : null;
+    if (execution.irJson) {
+      try {
+        ir = parseSkillIR(JSON.parse(execution.irJson));
+      } catch {
+        /* keep skill store copy */
+      }
+    }
 
     const log: ExecutionLogEntry[] = JSON.parse(execution.logJson ?? '[]') as ExecutionLogEntry[];
     const ctx: ConnectorContext = {

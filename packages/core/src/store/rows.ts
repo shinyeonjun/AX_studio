@@ -24,6 +24,7 @@ export interface ExecutionRow {
   finished_at: string | null;
   error_code: string | null;
   log_json: string;
+  ir_json: string | null;
   trigger_type: string | null;
 }
 

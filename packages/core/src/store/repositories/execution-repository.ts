@@ -4,12 +4,18 @@ import type { ExecutionRow } from '../rows.js';
 
 export function createExecution(
   db: AppDatabase,
-  params: { skillId?: string; skillVersion?: number; ephemeral: boolean; triggerType?: string },
+  params: {
+    skillId?: string;
+    skillVersion?: number;
+    ephemeral: boolean;
+    triggerType?: string;
+    irJson?: string;
+  },
 ): string {
   const id = randomUUID();
   db
     .prepare(
-      'INSERT INTO executions (id, skill_id, skill_version, ephemeral, status, started_at, log_json, trigger_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO executions (id, skill_id, skill_version, ephemeral, status, started_at, log_json, trigger_type, ir_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(
       id,
@@ -20,6 +26,7 @@ export function createExecution(
       new Date().toISOString(),
       '[]',
       params.triggerType ?? null,
+      params.irJson ?? null,
     );
   return id;
 }
@@ -36,9 +43,7 @@ export function finishExecution(
     .run(status, new Date().toISOString(), errorCode ?? null, JSON.stringify(log ?? []), id);
 }
 
-export function getExecution(db: AppDatabase, id: string) {
-  const row = db.prepare('SELECT * FROM executions WHERE id = ?').get(id) as ExecutionRow | undefined;
-  if (!row) return undefined;
+function mapExecution(row: ExecutionRow) {
   return {
     id: row.id,
     skillId: row.skill_id,
@@ -50,23 +55,19 @@ export function getExecution(db: AppDatabase, id: string) {
     errorCode: row.error_code,
     logJson: row.log_json,
     triggerType: row.trigger_type,
+    irJson: row.ir_json ?? undefined,
   };
+}
+
+export function getExecution(db: AppDatabase, id: string) {
+  const row = db.prepare('SELECT * FROM executions WHERE id = ?').get(id) as ExecutionRow | undefined;
+  if (!row) return undefined;
+  return mapExecution(row);
 }
 
 export function listExecutions(db: AppDatabase, limit = 50) {
   const rows = db
     .prepare('SELECT * FROM executions ORDER BY started_at DESC LIMIT ?')
     .all(limit) as unknown as ExecutionRow[];
-  return rows.map((row) => ({
-    id: row.id,
-    skillId: row.skill_id,
-    skillVersion: row.skill_version,
-    ephemeral: Boolean(row.ephemeral),
-    status: row.status,
-    startedAt: row.started_at,
-    finishedAt: row.finished_at,
-    errorCode: row.error_code,
-    logJson: row.log_json,
-    triggerType: row.trigger_type,
-  }));
+  return rows.map(mapExecution);
 }

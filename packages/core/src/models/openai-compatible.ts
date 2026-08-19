@@ -1,6 +1,14 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateObject, generateText } from 'ai';
+import { chatMessagesFromInput } from './chat.js';
 import type { ModelProvider, ModelProviderConfig, StructuredGenerateInput, TextGenerateInput } from './provider.js';
+
+function toSdkMessages(input: { system: string; user?: string; messages?: import('./chat.js').ChatMessage[] }) {
+  return chatMessagesFromInput(input).map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+}
 
 export class OpenAICompatibleProvider implements ModelProvider {
   readonly name = 'openai-compatible';
@@ -19,7 +27,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       model: this.client(this.config.model),
       schema: input.schema,
       system: input.system,
-      prompt: input.user,
+      messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.2,
     });
     return result.object as T;
@@ -29,7 +37,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
     const result = await generateText({
       model: this.client(this.config.model),
       system: input.system,
-      prompt: input.user,
+      messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.3,
     });
     return result.text;
@@ -47,6 +55,6 @@ export class MockModelProvider implements ModelProvider {
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    return `Mock response to: ${input.user.slice(0, 80)}`;
+    return `Mock response to: ${input.user?.slice(0, 80) ?? input.messages?.at(-1)?.content.slice(0, 80) ?? ''}`;
   }
 }

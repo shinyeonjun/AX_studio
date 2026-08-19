@@ -97,6 +97,8 @@ export default function App() {
           <ChatPage
             interview={interview.interview}
             saved={interview.saved}
+            busy={interview.busy}
+            error={interview.error}
             instruction={interview.instruction}
             answer={interview.answer}
             onInstructionChange={interview.setInstruction}

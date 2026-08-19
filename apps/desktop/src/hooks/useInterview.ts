@@ -7,11 +7,16 @@ interface InterviewMessage {
 }
 
 export interface InterviewState {
+  sessionId?: string;
   done?: boolean;
   draft?: unknown;
   summary?: string;
   messages?: InterviewMessage[];
-  completeness?: { slots?: Array<{ slot: string; filled: boolean }> };
+  completeness?: { slots?: Array<{ slot: string; filled: boolean; label?: string }> };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : '인터뷰 처리에 실패했습니다.';
 }
 
 export function useInterview(
@@ -22,38 +27,70 @@ export function useInterview(
   const [answer, setAnswer] = useState('');
   const [interview, setInterview] = useState<InterviewState | null>(null);
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const reset = () => {
     setInterview(null);
     setSaved(false);
     setInstruction('');
     setAnswer('');
+    setBusy(false);
+    setError('');
   };
 
   const startInterview = async () => {
-    if (!instruction.trim()) return;
-    const res = await window.ax.startInterview(instruction);
-    setInterview(res as InterviewState);
+    if (!instruction.trim() || busy) return;
+    setBusy(true);
+    setError('');
     setSaved(false);
+    setInterview({ messages: [{ role: 'user', content: instruction }] });
+    try {
+      const res = await window.ax.startInterview(instruction);
+      setInterview(res as InterviewState);
+    } catch (err) {
+      setInterview(null);
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const sendAnswer = async () => {
-    if (!interview || !answer.trim()) return;
-    const res = await window.ax.applyAnswer(interview, answer);
-    const next = res as InterviewState & { draft?: unknown };
-    if (next.done && next.draft) {
-      const summary = await window.ax.summarize(next.draft);
-      setInterview({ ...next, summary });
-    } else {
-      setInterview(next);
-    }
+    if (!interview || !answer.trim() || busy) return;
+    const content = answer.trim();
+    setBusy(true);
+    setError('');
     setAnswer('');
+    setInterview({
+      ...interview,
+      messages: [...(interview.messages ?? []), { role: 'user', content }],
+    });
+    try {
+      const res = await window.ax.applyAnswer(interview, content);
+      const next = res as InterviewState & { draft?: unknown };
+      if (next.done && next.draft) {
+        const summary = await window.ax.summarize(next.draft);
+        setInterview({ ...next, summary });
+      } else {
+        setInterview(next);
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const saveAndRun = async () => {
     if (!interview?.draft) return;
     const savedSkill = await window.ax.saveSkill(interview.draft) as { skillId: string };
-    await window.ax.runSkill(savedSkill.skillId);
+    const trigger = (interview.draft as { trigger?: { type?: string; runAt?: string } }).trigger;
+    const deferredOnce =
+      trigger?.type === 'once' && trigger.runAt && Date.parse(trigger.runAt) > Date.now() + 10_000;
+    if (!deferredOnce) {
+      await window.ax.runSkill(savedSkill.skillId);
+    }
     setSaved(true);
     await refresh();
     setTab('work');
@@ -71,6 +108,8 @@ export function useInterview(
     answer,
     interview,
     saved,
+    busy,
+    error,
     setInstruction,
     setAnswer,
     reset,

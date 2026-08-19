@@ -29,6 +29,7 @@ export class SkillStore {
     skillVersion?: number;
     ephemeral: boolean;
     triggerType?: string;
+    irJson?: string;
   }) {
     return executionRepo.createExecution(this.db, params);
   }

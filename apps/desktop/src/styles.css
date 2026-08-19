@@ -624,10 +624,27 @@ body {
   min-height: 0;
 }
 
-.progress-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 16px;
+.message.assistant.pending {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.message.assistant.error {
+  color: var(--red, #f87171);
+}
+
+.workflow-nodes {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.workflow-nodes li {
+  line-height: 1.4;
 }
 
 .checklist {

@@ -3,6 +3,7 @@ import type { SkillSummary } from '../types/app-state';
 export function triggerLabel(trigger?: SkillSummary['trigger']): string {
   if (!trigger) return '수동 실행';
   if (trigger.type === 'schedule') return `스케줄 · ${trigger.schedule ?? ''}`;
+  if (trigger.type === 'once') return `예약 · ${trigger.runAt ?? ''}`;
   if (trigger.type === 'gmail.new_message') return 'Gmail 새 메일';
   return '수동 실행';
 }

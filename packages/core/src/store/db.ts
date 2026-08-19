@@ -42,7 +42,8 @@ const MIGRATION_SQL = `
     finished_at TEXT,
     error_code TEXT,
     log_json TEXT NOT NULL DEFAULT '[]',
-    trigger_type TEXT
+    trigger_type TEXT,
+    ir_json TEXT
   );
 
   CREATE TABLE IF NOT EXISTS approvals (
@@ -68,6 +69,18 @@ const MIGRATION_SQL = `
   );
 `;
 
+function columnNames(db: AppDatabase, table: string): string[] {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name?: string }>;
+  return rows.map((row) => String(row.name ?? ''));
+}
+
+function applyMigrations(db: AppDatabase) {
+  db.exec(MIGRATION_SQL);
+  if (!columnNames(db, 'executions').includes('ir_json')) {
+    db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
+  }
+}
+
 function useSqlJsBackend(): boolean {
   return typeof process.versions.electron === 'string';
 }
@@ -77,7 +90,7 @@ function createNodeSqliteDatabase(path: string): AppDatabase {
   const { DatabaseSync } = nodeRequire('node:sqlite') as typeof import('node:sqlite');
   const db = new DatabaseSync(path);
   db.exec('PRAGMA journal_mode = WAL');
-  db.exec(MIGRATION_SQL);
+  applyMigrations(db as AppDatabase);
   return db as AppDatabase;
 }
 
@@ -154,7 +167,7 @@ async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
     db = new SQL.Database();
   }
   const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
-  adapter.exec(MIGRATION_SQL);
+  applyMigrations(adapter);
   return adapter;
 }
 

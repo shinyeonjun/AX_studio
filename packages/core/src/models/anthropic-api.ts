@@ -1,5 +1,5 @@
-import type { ZodType } from 'zod';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from './provider.js';
+import { chatMessagesFromInput } from './chat.js';
 import { parseStructuredOutput } from './cli-json.js';
 
 function requireAnthropicApiKey(): string {
@@ -10,7 +10,12 @@ function requireAnthropicApiKey(): string {
   return key;
 }
 
-async function callAnthropic(model: string, system: string, user: string, temperature: number): Promise<string> {
+async function callAnthropic(
+  model: string,
+  system: string,
+  input: { user?: string; messages?: import('./chat.js').ChatMessage[] },
+  temperature: number,
+): Promise<string> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -22,7 +27,10 @@ async function callAnthropic(model: string, system: string, user: string, temper
       model,
       max_tokens: 4096,
       system,
-      messages: [{ role: 'user', content: user }],
+      messages: chatMessagesFromInput({ system, ...input }).map((message) => ({
+        role: message.role,
+        content: message.content,
+      })),
       temperature,
     }),
   });
@@ -44,12 +52,12 @@ export class AnthropicApiProvider implements ModelProvider {
   constructor(private model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    return callAnthropic(this.model, input.system, input.user, input.temperature ?? 0.3);
+    return callAnthropic(this.model, input.system, input, input.temperature ?? 0.3);
   }
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    const prompt = `${input.user}\n\nReturn JSON only that matches the schema. No markdown.`;
-    const text = await callAnthropic(this.model, input.system, prompt, input.temperature ?? 0.2);
+    const system = `${input.system}\n\nReturn JSON only that matches the schema. No markdown.`;
+    const text = await callAnthropic(this.model, system, input, input.temperature ?? 0.2);
     return parseStructuredOutput(text, input.schema);
   }
 }

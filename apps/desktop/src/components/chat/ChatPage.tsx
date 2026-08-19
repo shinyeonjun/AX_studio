@@ -1,6 +1,5 @@
 import { Fragment } from 'react';
-import { SLOT_LABELS } from '../../constants/interview-slots';
-import { getInterviewStep } from '../../lib/interview';
+import { getInterviewStep, workflowNodeLabels } from '../../lib/interview';
 import type { InterviewState } from '../../hooks/useInterview';
 import { PageHeader } from '../layout/PageHeader';
 
@@ -14,6 +13,8 @@ const STEPS = [
 interface ChatPageProps {
   interview: InterviewState | null;
   saved: boolean;
+  busy: boolean;
+  error: string;
   instruction: string;
   answer: string;
   onInstructionChange: (value: string) => void;
@@ -27,6 +28,8 @@ interface ChatPageProps {
 export function ChatPage({
   interview,
   saved,
+  busy,
+  error,
   instruction,
   answer,
   onInstructionChange,
@@ -38,12 +41,13 @@ export function ChatPage({
 }: ChatPageProps) {
   const interviewStep = getInterviewStep(interview, saved);
   const checklistSlots = interview?.completeness?.slots ?? [];
+  const nodes = workflowNodeLabels(interview?.draft);
 
   return (
     <>
       <PageHeader
         title="새 업무 지시"
-        subtitle="직원에게 말하듯 지시하고, AI가 확인 질문을 합니다"
+        subtitle="직원에게 말하듯 지시하고, AI가 워크플로우를 설계합니다"
       />
       <div className="page-content page-content-fill">
         <div className="stepper">
@@ -65,12 +69,14 @@ export function ChatPage({
             <div className="chat-messages">
               {!interview && (
                 <div className="message assistant">
-                  오늘 무엇을 맡길까요? 예: &quot;고객 문의 메일을 분류하고 중요한 건 슬랙으로 알려줘&quot;
+                  오늘 무엇을 맡길까요? 예: &quot;1분 뒤 plosind@naver.com에 테스트 메일 보내줘&quot;
                 </div>
               )}
               {interview?.messages?.map((m, i) => (
                 <div key={i} className={`message ${m.role}`}>{m.content}</div>
               ))}
+              {busy && <div className="message assistant pending">워크플로우를 설계하는 중...</div>}
+              {error && <div className="message assistant error">{error}</div>}
               {interview?.done && interview.summary && (
                 <div className="message assistant">
                   <strong>업무 요약</strong>
@@ -86,9 +92,10 @@ export function ChatPage({
                     placeholder="업무를 자연어로 지시하세요..."
                     value={instruction}
                     onChange={(e) => onInstructionChange(e.target.value)}
+                    disabled={busy}
                   />
-                  <button type="button" className="btn btn-primary" onClick={onStartInterview}>
-                    업무 지시
+                  <button type="button" className="btn btn-primary" onClick={onStartInterview} disabled={busy}>
+                    {busy ? '설계 중...' : '업무 지시'}
                   </button>
                 </>
               ) : !interview.done ? (
@@ -99,9 +106,10 @@ export function ChatPage({
                     value={answer}
                     onChange={(e) => onAnswerChange(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSendAnswer())}
+                    disabled={busy}
                   />
-                  <button type="button" className="btn btn-primary" onClick={onSendAnswer}>
-                    답하기
+                  <button type="button" className="btn btn-primary" onClick={onSendAnswer} disabled={busy}>
+                    {busy ? '설계 중...' : '답하기'}
                   </button>
                 </>
               ) : (
@@ -116,18 +124,28 @@ export function ChatPage({
           </div>
 
           <div className="progress-panel">
-            <h3 className="progress-title">진행 상황</h3>
+            <h3 className="progress-title">워크플로우</h3>
+            {nodes.length > 0 ? (
+              <ol className="workflow-nodes">
+                {nodes.map((label, index) => (
+                  <li key={`${index}-${label}`}>{label}</li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">지시하면 AI가 노드를 설계합니다</p>
+            )}
+            <h3 className="progress-title" style={{ marginTop: 20 }}>진행 상황</h3>
             {checklistSlots.length > 0 ? (
               <ul className="checklist">
                 {checklistSlots.map((slot) => (
                   <li key={slot.slot} className={`check-item ${slot.filled ? 'done' : ''}`}>
                     <span className="check-icon">{slot.filled ? '✓' : ''}</span>
-                    {SLOT_LABELS[slot.slot] ?? slot.slot}
+                    {slot.label ?? slot.slot}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="muted">업무를 지시하면 필요한 항목이 여기 표시됩니다</p>
+              <p className="muted">필요한 항목이 여기 표시됩니다</p>
             )}
           </div>
         </div>

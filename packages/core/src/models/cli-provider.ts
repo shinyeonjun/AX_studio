@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ZodType } from 'zod';
+import { chatMessagesFromInput, flattenChatPrompt } from './chat.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from './provider.js';
 import { CLI_PROVIDER_META } from './catalog.js';
 import { parseStructuredOutput, zodToJsonSchema } from './cli-json.js';
@@ -25,8 +26,8 @@ async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   }
 }
 
-function composedPrompt(input: { system: string; user: string }): string {
-  return `${input.system}\n\n${input.user}`;
+function composedPrompt(input: { system: string; user?: string; messages?: import('./chat.js').ChatMessage[] }): string {
+  return flattenChatPrompt(input.system, chatMessagesFromInput(input));
 }
 
 export class CodexCliProvider implements ModelProvider {

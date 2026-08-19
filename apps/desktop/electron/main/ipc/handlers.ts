@@ -35,6 +35,13 @@ import { testAiCli } from '../ai-cli-test.js';
 import { isGoogleOAuthConfigured } from '../google-oauth.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail-connection.js';
 
+const BUILTIN_CONNECTORS = ['report', 'local_sheet'];
+
+function connectedConnectorIds(store: { getConnections: () => Array<{ connector: string; connected: boolean }> }): string[] {
+  const connected = store.getConnections().filter((c) => c.connected).map((c) => c.connector);
+  return [...new Set([...connected, ...BUILTIN_CONNECTORS])];
+}
+
 export function registerStateHandlers() {
   ipcMain.handle('ax:getState', async () => {
     const core = getCore();
@@ -91,8 +98,20 @@ export function registerStateHandlers() {
 }
 
 export function registerInterviewHandlers() {
-  ipcMain.handle('ax:startInterview', async (_e, instruction: string) => startInterview(instruction));
-  ipcMain.handle('ax:applyAnswer', async (_e, state, answer: string) => applyAnswer(state, answer));
+  ipcMain.handle('ax:startInterview', async (_e, instruction: string) => {
+    const core = getCore();
+    return startInterview(instruction, {
+      model: core.model,
+      connectedConnectors: connectedConnectorIds(core.store),
+    });
+  });
+  ipcMain.handle('ax:applyAnswer', async (_e, state, answer: string) => {
+    const core = getCore();
+    return applyAnswer(state, answer, {
+      model: core.model,
+      connectedConnectors: connectedConnectorIds(core.store),
+    });
+  });
   ipcMain.handle('ax:summarize', async (_e, ir) => summarizeSkill(ir));
   ipcMain.handle('ax:explain', async (_e, question: string) => explainExecution(getCore().store, question));
   ipcMain.handle('ax:proposeRevision', async (_e, skillId: string, instruction: string) => {

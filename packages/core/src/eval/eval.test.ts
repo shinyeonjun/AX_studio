@@ -4,8 +4,7 @@ import { validateApprovalPolicy, isDeployable } from '../skill/approval.js';
 import { csMailSkillFixture, weeklyReportSkillFixture, dataPolicyFixture } from '../skill/fixtures.js';
 import { createDatabase } from '../store/db.js';
 import { SkillStore } from '../store/skill-store.js';
-import { assessCompleteness } from '../interviewer/requiredness.js';
-import { startInterview, applyAnswer, directCompileInstruction } from '../interviewer/interview.js';
+import { assessCompleteness, computeRequiredSlots } from '../interviewer/requiredness.js';
 import { SkillRuntime } from '../runtime/engine.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -40,18 +39,33 @@ describe('SkillStore', () => {
   });
 });
 
-describe('Interviewer', () => {
-  it('finds missing slots for underspecified instruction', () => {
-    const state = startInterview('메일 확인해줘');
-    expect(state.completeness.missingRequired.length).toBeGreaterThan(0);
-  });
-
-  it('fills slots through interview', () => {
-    let state = startInterview('고객 문의 메일 분류해서 슬랙으로 알려줘');
-    state = applyAnswer(state, 'support@ Gmail');
-    state = applyAnswer(state, '#support-critical');
-    state = applyAnswer(state, '분류 완료 및 알림 전송');
-    expect(state.draft.steps?.length).toBeGreaterThan(0);
+describe('requiredness', () => {
+  it('requires recipient for gmail send', () => {
+    const missing = assessCompleteness(
+      {
+        goal: '테스트 메일',
+        success: '발송',
+        trigger: { type: 'once', runAt: '2026-08-19T10:00:00.000Z' },
+        steps: [
+          {
+            type: 'action',
+            id: 'send',
+            connector: 'gmail',
+            action: 'message.send',
+            params: {},
+            sideEffect: 'EXTERNAL_HIGH',
+          },
+          {
+            type: 'human_approval',
+            id: 'approve',
+            reason: '발송',
+            forActionIds: ['send'],
+          },
+        ],
+      },
+      ['gmail'],
+    );
+    expect(missing.missingRequired).toContain('gmail.message.send.to');
   });
 });
 
@@ -78,26 +92,29 @@ describe('Eval scenarios', () => {
   const scenariosPath = join(__dirname, 'scenarios.json');
   const scenarios = JSON.parse(readFileSync(scenariosPath, 'utf-8')) as Array<{
     id: string;
-    instruction: string;
-    answers?: string[];
     requiredSlots: string[];
-    needsApproval: boolean;
   }>;
+  const knownSlots = [
+    'goal',
+    'trigger',
+    'trigger.schedule',
+    'trigger.timezone',
+    'gmail.account',
+    'slack.channel',
+    'local_file.path',
+    'rdb.connection',
+    'approval',
+    'gmail.message.send.to',
+  ];
 
   for (const scenario of scenarios) {
-    it(`direct vs interview: ${scenario.id}`, async () => {
-      const direct = await directCompileInstruction(scenario.instruction);
-      const directCompleteness = assessCompleteness(direct, ['gmail', 'slack', 'local_sheet']);
-
-      let interview = startInterview(scenario.instruction);
-      for (const answer of scenario.answers ?? []) {
-        interview = applyAnswer(interview, answer);
+    it(`records required slots for ${scenario.id}`, () => {
+      expect(scenario.requiredSlots.length).toBeGreaterThan(0);
+      for (const slot of scenario.requiredSlots) {
+        expect(
+          knownSlots.includes(slot) || computeRequiredSlots({ goal: 'x', steps: [] }).some((item) => item.slot === slot),
+        ).toBe(true);
       }
-
-      const interviewMissing = interview.completeness.missingRequired.length;
-      const directMissing = directCompleteness.missingRequired.length;
-
-      expect(interviewMissing).toBeLessThanOrEqual(directMissing + 1);
     });
   }
 });

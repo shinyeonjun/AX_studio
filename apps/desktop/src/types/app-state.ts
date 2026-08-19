@@ -13,7 +13,7 @@ export interface SkillSummary {
   active: boolean;
   latestVersion: number;
   goal?: string;
-  trigger?: { type: string; schedule?: string };
+  trigger?: { type: string; schedule?: string; runAt?: string };
   connectors?: string[];
   lastRunAt?: string;
   lastStatus?: string;
