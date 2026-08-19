@@ -4,18 +4,18 @@ contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
   startInterview: (instruction: string) => ipcRenderer.invoke('ax:startInterview', instruction),
   applyAnswer: (state: unknown, answer: string) => ipcRenderer.invoke('ax:applyAnswer', state, answer),
-  saveSkill: (ir: unknown) => ipcRenderer.invoke('ax:saveSkill', ir),
-  runSkill: (skillId: string) => ipcRenderer.invoke('ax:runSkill', skillId),
+  saveWorkflow: (ir: unknown) => ipcRenderer.invoke('ax:saveWorkflow', ir),
+  runWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:runWorkflow', workflowId),
   runEphemeral: (ir: unknown) => ipcRenderer.invoke('ax:runEphemeral', ir),
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
-  deleteSkill: (skillId: string) => ipcRenderer.invoke('ax:deleteSkill', skillId),
+  deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
   deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),
   clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),
   setGlobalActive: (active: boolean) => ipcRenderer.invoke('ax:setGlobalActive', active),
-  setSkillActive: (skillId: string, active: boolean) => ipcRenderer.invoke('ax:setSkillActive', skillId, active),
+  setWorkflowActive: (workflowId: string, active: boolean) => ipcRenderer.invoke('ax:setWorkflowActive', workflowId, active),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
-  proposeRevision: (skillId: string, instruction: string) => ipcRenderer.invoke('ax:proposeRevision', skillId, instruction),
+  proposeRevision: (workflowId: string, instruction: string) => ipcRenderer.invoke('ax:proposeRevision', workflowId, instruction),
   connectSlack: (payload: string | { token: string; appToken?: string }) =>
     ipcRenderer.invoke('ax:connectSlack', payload),
   connectGmailOAuth: () => ipcRenderer.invoke('ax:connectGmailOAuth'),
@@ -30,9 +30,9 @@ contextBridge.exposeInMainWorld('ax', {
   getEnvSecretStatus: (key: string) => ipcRenderer.invoke('ax:getEnvSecretStatus', key),
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   summarize: (ir: unknown) => ipcRenderer.invoke('ax:summarize', ir),
-  loadSkillChat: (skillId: string) => ipcRenderer.invoke('ax:loadSkillChat', skillId),
-  saveChatSession: (state: unknown, summary?: string, skillId?: string) =>
-    ipcRenderer.invoke('ax:saveChatSession', state, summary, skillId),
+  loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
+  saveChatSession: (state: unknown, summary?: string, workflowId?: string) =>
+    ipcRenderer.invoke('ax:saveChatSession', state, summary, workflowId),
   onAgentProgress: (listener: (event: { message: string }) => void) => {
     const wrapped = (_e: unknown, event: { message: string }) => listener(event);
     ipcRenderer.on('ax:agent-progress', wrapped);

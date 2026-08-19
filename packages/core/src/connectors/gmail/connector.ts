@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
+import { extractGmailPlainBody } from './body-extract.js';
 import { pollGmailNewMessages } from './new-message-poll.js';
 
 export interface GmailConnectorConfig {
@@ -40,7 +41,8 @@ export class GmailConnector implements Connector {
         case 'message.read': {
           const id = params.messageId as string;
           const res = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
-          return { ok: true, data: res.data };
+          const body = extractGmailPlainBody(res.data);
+          return { ok: true, data: { ...res.data, body: body ?? res.data.snippet ?? '' } };
         }
         case 'messages.search':
         case 'message.search': {

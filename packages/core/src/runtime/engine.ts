@@ -1,5 +1,5 @@
-import type { SkillIR, Step } from '../skill/schema.js';
-import { parseSkillIR } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
+import { parseWorkflowIR } from '../workflow/schema.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../connectors/types.js';
 import { MockGmailConnector, MockSlackConnector } from '../connectors/mocks/index.js';
 import { createDefaultConnectors } from '../connectors/registry.js';
@@ -21,7 +21,7 @@ type PendingError = Error & {
   checkpoint?: ExecutionCheckpoint;
 };
 
-export class SkillRuntime {
+export class WorkflowRuntime {
   connectors: Record<string, Connector>;
   private readonly fallbackMockGmail = new MockGmailConnector();
   private readonly fallbackMockSlack = new MockSlackConnector();
@@ -41,8 +41,8 @@ export class SkillRuntime {
     return slack instanceof MockSlackConnector ? slack : this.fallbackMockSlack;
   }
 
-  async executeSkill(
-    ir: SkillIR,
+  async executeWorkflow(
+    ir: WorkflowIR,
     options: { ephemeral?: boolean; triggerType?: string; input?: Record<string, unknown> } = {},
   ): Promise<ExecutionResult> {
     if (!this.config.globalActive) {
@@ -54,18 +54,18 @@ export class SkillRuntime {
       };
     }
 
-    if (ir.id && this.config.skillActive[ir.id] === false) {
+    if (ir.id && this.config.workflowActive[ir.id] === false) {
       return {
         executionId: '',
         status: 'cancelled',
-        errorCode: 'skill_paused',
-        log: [{ at: new Date().toISOString(), level: 'warn', code: 'skill_paused', message: 'Skill이 비활성화되어 있습니다.' }],
+        errorCode: 'workflow_paused',
+        log: [{ at: new Date().toISOString(), level: 'warn', code: 'workflow_paused', message: '워크플로우가 중지되어 있습니다.' }],
       };
     }
 
     const executionId = this.config.store.createExecution({
-      skillId: ir.id,
-      skillVersion: ir.version,
+      workflowId: ir.id,
+      workflowVersion: ir.version,
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
       irJson: JSON.stringify(ir),
@@ -75,7 +75,7 @@ export class SkillRuntime {
     const log: ExecutionLogEntry[] = [];
     const ctx: ConnectorContext = {
       executionId,
-      skillId: ir.id,
+      workflowId: ir.id,
       variables: { ...options.input },
       log: (entry) => log.push(entry),
     };
@@ -83,7 +83,7 @@ export class SkillRuntime {
     const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
 
     try {
-      await this.runSequence(linearSteps(ir.steps), ir, ctx, stepResults);
+      await this.runSequence(linearSteps(ir.steps), ir, ctx, stepResults, []);
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       const result: ExecutionResult = { executionId, status: 'success', log };
       this.config.onExecutionFinished?.(result);
@@ -117,9 +117,10 @@ export class SkillRuntime {
 
   private async runSequence(
     sequence: Step[],
-    ir: SkillIR,
+    ir: WorkflowIR,
     ctx: ConnectorContext,
     stepResults: Record<string, unknown>,
+    afterSequenceStepIds: string[] = [],
   ): Promise<void> {
     for (let index = 0; index < sequence.length; index++) {
       const step = sequence[index];
@@ -132,7 +133,14 @@ export class SkillRuntime {
           this.config.store,
           this.connectors,
           this.config.agentHarness,
-          (ids) => this.runSequence(stepsById(ir.steps, ids), ir, ctx, stepResults),
+          (ids) =>
+            this.runSequence(
+              stepsById(ir.steps, ids),
+              ir,
+              ctx,
+              stepResults,
+              sequence.slice(index + 1).map((item) => item.id),
+            ),
         );
       } catch (err) {
         const error = err as PendingError;
@@ -141,10 +149,22 @@ export class SkillRuntime {
             variables: { ...ctx.variables },
             stepResults: { ...stepResults },
             remainingStepIds: sequence.slice(index + 1).map((item) => item.id),
+            pendingOuterStepIds: afterSequenceStepIds,
+          };
+        } else if (error.pending && error.checkpoint && afterSequenceStepIds.length > 0) {
+          error.checkpoint = {
+            ...error.checkpoint,
+            pendingOuterStepIds: [
+              ...(error.checkpoint.pendingOuterStepIds ?? []),
+              ...afterSequenceStepIds,
+            ],
           };
         }
         throw error;
       }
+    }
+    if (afterSequenceStepIds.length > 0) {
+      await this.runSequence(stepsById(ir.steps, afterSequenceStepIds), ir, ctx, stepResults);
     }
   }
 
@@ -152,12 +172,12 @@ export class SkillRuntime {
     this.config.globalActive = active;
   }
 
-  setSkillActive(skillId: string, active: boolean) {
-    this.config.skillActive[skillId] = active;
+  setWorkflowActive(workflowId: string, active: boolean) {
+    this.config.workflowActive[workflowId] = active;
   }
 
-  removeSkill(skillId: string) {
-    delete this.config.skillActive[skillId];
+  removeWorkflow(workflowId: string) {
+    delete this.config.workflowActive[workflowId];
   }
 
   setAgentHarness(agentHarness: AgentHarness) {
@@ -175,12 +195,12 @@ export class SkillRuntime {
       return { executionId: '', status: 'failed', errorCode: 'execution_not_found', log: [] };
     }
 
-    let ir = execution.skillId
-      ? this.config.store.getSkill(execution.skillId, execution.skillVersion ?? undefined)
+    let ir = execution.workflowId
+      ? this.config.store.getWorkflow(execution.workflowId, execution.workflowVersion ?? undefined)
       : null;
     if (execution.irJson) {
       try {
-        ir = parseSkillIR(JSON.parse(execution.irJson));
+        ir = parseWorkflowIR(JSON.parse(execution.irJson));
       } catch {
         /* keep skill store copy */
       }
@@ -191,7 +211,7 @@ export class SkillRuntime {
     const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
     const ctx: ConnectorContext = {
       executionId: execution.id,
-      skillId: execution.skillId ?? undefined,
+      workflowId: execution.workflowId ?? undefined,
       variables: { ...(checkpoint?.variables ?? {}) },
       log: (entry) => log.push(entry),
     };
@@ -219,7 +239,13 @@ export class SkillRuntime {
       }
 
       if (ir && checkpoint?.remainingStepIds.length) {
-        await this.runSequence(stepsById(ir.steps, checkpoint.remainingStepIds), ir, ctx, stepResults);
+        await this.runSequence(
+          stepsById(ir.steps, checkpoint.remainingStepIds),
+          ir,
+          ctx,
+          stepResults,
+          checkpoint.pendingOuterStepIds ?? [],
+        );
       }
 
       this.config.store.resolveApproval(approvalId, true);

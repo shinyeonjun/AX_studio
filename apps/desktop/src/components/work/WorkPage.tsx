@@ -1,17 +1,21 @@
-import type { AppState, SkillSummary } from '../../types/app-state';
+import { useEffect, useState } from 'react';
+import type { Node } from '@xyflow/react';
+import type { AppState, WorkSummary } from '../../types/app-state';
 import type { WorkFilter } from '../../types/navigation';
 import type { useInterview } from '../../hooks/useInterview';
 import { connectorEmoji, connectorLabel } from '../../constants/connectors';
-import { formatRelativeTime, triggerLabel } from '../../lib/skill-display';
+import { formatRelativeTime, triggerLabel } from '../../lib/work-display';
 import { IconPlay, IconPause } from '../icons';
 import { PageHeader } from '../layout/PageHeader';
 import { IconSearch } from '../icons';
 import { ChatPanel } from './ChatPanel';
+import { WorkflowPreviewPanel } from '../../workflow/WorkflowPreviewPanel';
+import type { WorkflowVisualNodeData } from '../../workflow/types';
 
 type InterviewApi = ReturnType<typeof useInterview>;
 
 interface TaskCardProps {
-  skill: SkillSummary;
+  work: WorkSummary;
   globalActive: boolean;
   onOpen: () => void;
   onRun: () => void;
@@ -19,20 +23,20 @@ interface TaskCardProps {
   onDelete: () => void;
 }
 
-function TaskCard({ skill, globalActive, onOpen, onRun, onToggle, onDelete }: TaskCardProps) {
-  const statusLabel = !globalActive ? '퇴근 중' : skill.active ? '실행 중' : '중지됨';
-  const statusClass = !globalActive ? 'off-duty' : skill.active ? 'running' : 'paused';
+function TaskCard({ work, globalActive, onOpen, onRun, onToggle, onDelete }: TaskCardProps) {
+  const statusLabel = !globalActive ? '퇴근 중' : work.active ? '실행 중' : '중지됨';
+  const statusClass = !globalActive ? 'off-duty' : work.active ? 'running' : 'paused';
 
   return (
-    <div className={`task-card ${!skill.active ? 'paused' : ''}`}>
+    <div className={`task-card ${!work.active ? 'paused' : ''}`}>
       <button type="button" className="task-card-main" onClick={onOpen}>
-        <div className="task-icon-wrap">{connectorEmoji(skill.connectors?.[0] ?? 'gmail')}</div>
+        <div className="task-icon-wrap">{connectorEmoji(work.connectors?.[0] ?? 'gmail')}</div>
         <div className="task-body">
-          <h3 className="task-title">{skill.name}</h3>
-          <p className="task-desc">{skill.goal || '설명 없음'}</p>
+          <h3 className="task-title">{work.name}</h3>
+          <p className="task-desc">{work.goal || '설명 없음'}</p>
           <div className="task-meta">
             <div className="connector-badges">
-              {(skill.connectors ?? []).map((c) => (
+              {(work.connectors ?? []).map((c) => (
                 <span key={c} className="connector-badge">
                   {connectorEmoji(c)} {connectorLabel(c)}
                 </span>
@@ -43,7 +47,7 @@ function TaskCard({ skill, globalActive, onOpen, onRun, onToggle, onDelete }: Ta
               {statusLabel}
             </span>
             <span className="meta-time">
-              {triggerLabel(skill.trigger)} · 최근 {formatRelativeTime(skill.lastRunAt)}
+              {triggerLabel(work.trigger)} · 최근 {formatRelativeTime(work.lastRunAt)}
             </span>
           </div>
         </div>
@@ -73,15 +77,15 @@ function TaskCard({ skill, globalActive, onOpen, onRun, onToggle, onDelete }: Ta
         </button>
         <button
           type="button"
-          className={`play-toggle ${skill.active ? 'active' : ''}`}
+          className={`play-toggle ${work.active ? 'active' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
           }}
-          title={skill.active ? '업무 중지' : '업무 활성화'}
-          aria-label={skill.active ? '중지' : '활성화'}
+          title={work.active ? '업무 중지' : '업무 활성화'}
+          aria-label={work.active ? '중지' : '활성화'}
         >
-          {skill.active ? <IconPause /> : <IconPlay />}
+          {work.active ? <IconPause /> : <IconPlay />}
         </button>
       </div>
     </div>
@@ -90,7 +94,7 @@ function TaskCard({ skill, globalActive, onOpen, onRun, onToggle, onDelete }: Ta
 
 interface WorkPageProps {
   state: AppState | null;
-  skills: SkillSummary[];
+  works: WorkSummary[];
   workFilter: WorkFilter;
   search: string;
   view: 'list' | 'conversation';
@@ -98,16 +102,16 @@ interface WorkPageProps {
   onWorkFilterChange: (filter: WorkFilter) => void;
   onSearchChange: (value: string) => void;
   onNewTask: () => void;
-  onOpenTask: (skillId: string) => void;
+  onOpenWork: (workflowId: string) => void;
   onBackToList: () => void;
-  onRunSkill: (skillId: string) => void;
-  onToggleSkill: (skill: SkillSummary) => void;
-  onDeleteSkill: (skillId: string) => void;
+  onRunWorkflow: (workflowId: string) => void;
+  onToggleWork: (work: WorkSummary) => void;
+  onDeleteWork: (workflowId: string) => void;
 }
 
 export function WorkPage({
   state,
-  skills,
+  works,
   workFilter,
   search,
   view,
@@ -115,43 +119,106 @@ export function WorkPage({
   onWorkFilterChange,
   onSearchChange,
   onNewTask,
-  onOpenTask,
+  onOpenWork,
   onBackToList,
-  onRunSkill,
-  onToggleSkill,
-  onDeleteSkill,
+  onRunWorkflow,
+  onToggleWork,
+  onDeleteWork,
 }: WorkPageProps) {
+  const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
+
+  useEffect(() => {
+    setSelectedNode(null);
+  }, [interview.workflow, interview.interview?.done]);
+
   if (view === 'conversation') {
-    const title = interview.interview?.title ?? (interview.interview?.skillId ? '업무' : '새 업무');
-    const isDraft = !interview.interview?.skillId;
+    const title = interview.interview?.title ?? (interview.interview?.workflowId ? '업무' : '새 업무');
+    const isDraft = !interview.interview?.workflowId;
+    const finished = Boolean(interview.interview?.done);
 
     return (
-      <div className="work-conversation-page">
+      <div className={`work-conversation-page ${finished ? 'work-conversation-page--review' : ''}`}>
         <header className="work-conversation-header">
           <button type="button" className="btn btn-ghost settings-back" onClick={onBackToList}>
             ← 업무 목록
           </button>
           <div className="work-conversation-title-wrap">
             <h1 className="work-conversation-title">{title}</h1>
-            {isDraft && <span className="draft-badge">임시</span>}
+            {isDraft && !finished && <span className="draft-badge">설계 중</span>}
+            {finished && <span className="draft-badge draft-badge-done">검토</span>}
           </div>
         </header>
-        <ChatPanel
-          interview={interview.interview}
-          busy={interview.busy}
-          error={interview.error}
-          progress={interview.progress}
-          composerText={interview.composerText}
-          isLinkedSkill={interview.isLinkedSkill}
-          isImmediateOnce={interview.isImmediateOnce}
-          isDeferredOnce={interview.isDeferredOnce}
-          isRecurringDraft={interview.isRecurringDraft}
-          onComposerChange={interview.setComposerText}
-          onStartInterview={interview.startInterview}
-          onSendAnswer={interview.sendAnswer}
-          onRunOnce={interview.runOnce}
-          onSaveAsWork={interview.saveAsWork}
-        />
+
+        <div className="work-conversation-body">
+          <div className="work-conversation-chat">
+            <ChatPanel
+              interview={interview.interview}
+              busy={interview.busy}
+              error={interview.error}
+              progress={interview.progress}
+              composerText={interview.composerText}
+              editHint={interview.editHint}
+              isLinkedWork={interview.isLinkedWork}
+              isImmediateOnce={interview.isImmediateOnce}
+              isDeferredOnce={interview.isDeferredOnce}
+              isRecurringDraft={interview.isRecurringDraft}
+              onComposerChange={interview.setComposerText}
+              onClearEditHint={() => interview.setEditHint(null)}
+              onStartInterview={interview.startInterview}
+              onSendAnswer={interview.sendAnswer}
+              onRunOnce={interview.runOnce}
+              onSaveAsWork={interview.saveAsWork}
+            />
+          </div>
+
+          <WorkflowPreviewPanel
+            draft={interview.workflow}
+            baselineDraft={interview.workflowDiffBaseline}
+            completeness={interview.completeness}
+            done={finished}
+            title={title}
+            selectedNode={selectedNode}
+            onSelectNode={setSelectedNode}
+            onRequestEdit={interview.beginEditStep}
+            onCloseDetail={() => setSelectedNode(null)}
+          />
+        </div>
+
+        {finished && !interview.isLinkedWork && (
+          <footer className="work-review-footer">
+            <p className="work-review-footer-copy">이 구성으로 업무를 맡길까요?</p>
+            <div className="work-review-footer-actions">
+              {interview.isDeferredOnce ? (
+                <>
+                  <button type="button" className="btn btn-primary" onClick={interview.saveAsWork} disabled={interview.busy}>
+                    예약 업무로 저장
+                  </button>
+                  <button type="button" className="btn" onClick={interview.runOnce} disabled={interview.busy}>
+                    지금 바로 실행
+                  </button>
+                </>
+              ) : interview.isImmediateOnce ? (
+                <>
+                  <button type="button" className="btn btn-primary" onClick={interview.runOnce} disabled={interview.busy}>
+                    한 번만 실행
+                  </button>
+                  <button type="button" className="btn" onClick={interview.saveAsWork} disabled={interview.busy}>
+                    업무로 저장
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn" onClick={interview.runOnce} disabled={interview.busy}>
+                    테스트 실행
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={interview.saveAsWork} disabled={interview.busy}>
+                    {interview.isRecurringDraft ? '이대로 맡기기' : '업무로 저장'}
+                  </button>
+                </>
+              )}
+            </div>
+          </footer>
+        )}
       </div>
     );
   }
@@ -168,7 +235,7 @@ export function WorkPage({
         }
       />
       <div className="page-content">
-        {skills.length > 0 && (
+        {works.length > 0 && (
           <div className="toolbar">
             <div className="search-box">
               <IconSearch />
@@ -188,7 +255,7 @@ export function WorkPage({
           </div>
         )}
 
-        {skills.length === 0 ? (
+        {works.length === 0 ? (
           <div className="empty-state work-empty-state">
             <p>아직 맡긴 업무가 없습니다</p>
             <p className="muted">새 업무 대화를 시작해 AX에게 맡겨보세요.</p>
@@ -198,15 +265,15 @@ export function WorkPage({
           </div>
         ) : (
           <div className="task-list">
-            {skills.map((skill) => (
+            {works.map((work) => (
               <TaskCard
-                key={skill.id}
-                skill={skill}
+                key={work.id}
+                work={work}
                 globalActive={state?.globalActive ?? true}
-                onOpen={() => onOpenTask(skill.id)}
-                onRun={() => onRunSkill(skill.id)}
-                onToggle={() => onToggleSkill(skill)}
-                onDelete={() => onDeleteSkill(skill.id)}
+                onOpen={() => onOpenWork(work.id)}
+                onRun={() => onRunWorkflow(work.id)}
+                onToggle={() => onToggleWork(work)}
+                onDelete={() => onDeleteWork(work.id)}
               />
             ))}
           </div>

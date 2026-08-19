@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../store/db.js';
-import { SkillStore } from '../store/skill-store.js';
-import { SkillRuntime } from './engine.js';
+import { WorkflowStore } from '../store/workflow-store.js';
+import { WorkflowRuntime } from './engine.js';
 import { TriggerEngine } from './trigger-engine.js';
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 
-const gmailNotifySkill: SkillIR = {
+const gmailNotifySkill: WorkflowIR = {
   name: '새 메일 알림',
   goal: '새 Gmail 도착 시 Slack 알림',
   version: 1,
@@ -32,8 +32,8 @@ const gmailNotifySkill: SkillIR = {
 describe('TriggerEngine', () => {
   it('baselines on first poll and fires once for each new gmail message', async () => {
     const db = await createDatabaseAsync(':memory:');
-    const store = new SkillStore(db);
-    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
     runtime.mockGmail.messages.push({
       id: 'msg-existing',
       from: 'old@example.com',
@@ -41,8 +41,8 @@ describe('TriggerEngine', () => {
       body: 'already here',
     });
 
-    const { skillId } = store.saveSkill(gmailNotifySkill);
-    store.setSkillActive(skillId, true);
+    const { workflowId } = store.saveWorkflow(gmailNotifySkill);
+    store.setWorkflowActive(workflowId, true);
 
     const engine = new TriggerEngine(store, runtime);
 
@@ -64,12 +64,12 @@ describe('TriggerEngine', () => {
     expect(runtime.mockSlack.messages).toHaveLength(1);
   });
 
-  it('does not poll inactive skills', async () => {
+  it('does not poll inactive works', async () => {
     const db = await createDatabaseAsync(':memory:');
-    const store = new SkillStore(db);
-    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
-    const { skillId } = store.saveSkill(gmailNotifySkill);
-    store.setSkillActive(skillId, false);
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+    const { workflowId } = store.saveWorkflow(gmailNotifySkill);
+    store.setWorkflowActive(workflowId, false);
 
     const engine = new TriggerEngine(store, runtime);
     await engine.tick();
@@ -85,7 +85,7 @@ describe('TriggerEngine', () => {
   });
 
   it('baselines slack trigger and fires once for each new channel message', async () => {
-    const slackNotifySkill: SkillIR = {
+    const slackNotifySkill: WorkflowIR = {
       name: 'Slack 알림',
       goal: 'Slack 새 메시지 시 알림 채널로 전달',
       version: 1,
@@ -110,8 +110,8 @@ describe('TriggerEngine', () => {
     };
 
     const db = await createDatabaseAsync(':memory:');
-    const store = new SkillStore(db);
-    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
     runtime.mockSlack.inbound.push({
       channel: '#general',
       text: '기존 메시지',
@@ -119,8 +119,8 @@ describe('TriggerEngine', () => {
       user: 'U_OLD',
     });
 
-    const { skillId } = store.saveSkill(slackNotifySkill);
-    store.setSkillActive(skillId, true);
+    const { workflowId } = store.saveWorkflow(slackNotifySkill);
+    store.setWorkflowActive(workflowId, true);
     const engine = new TriggerEngine(store, runtime);
 
     await engine.tick();

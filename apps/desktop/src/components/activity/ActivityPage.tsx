@@ -5,7 +5,7 @@ import {
   executionStatusLabel,
   executionTriggerLabel,
   formatRelativeTime,
-} from '../../lib/skill-display';
+} from '../../lib/work-display';
 import { PageHeader } from '../layout/PageHeader';
 
 interface ActivityPageProps {
@@ -106,7 +106,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
             </div>
           ) : (
             executions.map((e) => {
-              const skill = state?.skills.find((s) => s.id === e.skillId);
+              const skill = state?.works.find((s) => s.id === e.workflowId);
               const ok = e.status === 'success';
               const running = e.status === 'running';
               const failed = e.status === 'failed';

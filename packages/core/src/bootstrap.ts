@@ -1,6 +1,6 @@
 import { createDatabaseAsync } from './store/db.js';
-import { SkillStore } from './store/skill-store.js';
-import { SkillRuntime } from './runtime/engine.js';
+import { WorkflowStore } from './store/workflow-store.js';
+import { WorkflowRuntime } from './runtime/engine.js';
 import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
 import { buildConnectorsFromStore } from './connectors/registry.js';
@@ -23,8 +23,8 @@ export interface AxStudioCoreOptions {
 
 export interface AxStudioCore {
   db: Awaited<ReturnType<typeof createDatabaseAsync>>;
-  store: SkillStore;
-  runtime: SkillRuntime;
+  store: WorkflowStore;
+  runtime: WorkflowRuntime;
   scheduler: Scheduler;
   triggerEngine: TriggerEngine;
   /** In-app AI는 Harness를 통해서만 호출합니다. ModelProvider는 Harness 내부에만 있습니다. */
@@ -34,7 +34,7 @@ export interface AxStudioCore {
 
 export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<AxStudioCore> {
   const db = await createDatabaseAsync(options.dbPath);
-  const store = new SkillStore(db);
+  const store = new WorkflowStore(db);
 
   const aiConfig = normalizeAiProviderConfig(
     store.getSetting<AiProviderConfig | unknown>('aiProvider', DEFAULT_AI_PROVIDER),
@@ -42,17 +42,17 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const agentHarness = createAgentHarness(aiConfig);
 
   const globalActive = store.getSetting<boolean>('globalActive', true);
-  const skillActive: Record<string, boolean> = {};
-  for (const skill of store.listSkills()) {
-    skillActive[skill.id] = skill.active;
+  const workflowActive: Record<string, boolean> = {};
+  for (const workflow of store.listWorkflows()) {
+    workflowActive[workflow.id] = workflow.active;
   }
 
   const connectors = buildConnectorsFromStore(store);
-  const runtime = new SkillRuntime({
+  const runtime = new WorkflowRuntime({
     store,
     agentHarness,
     globalActive,
-    skillActive,
+    workflowActive,
     connectors,
     onExecutionStarted: options.onExecutionStarted,
     onExecutionFinished: options.onExecutionFinished,

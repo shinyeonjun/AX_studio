@@ -1,4 +1,4 @@
-import type { SkillIR, Step } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { isConnectorAlwaysOn, paramSlotId, resolveCapability } from '../connectors/capability-graph.js';
 import { requirementCopy, type RequirementQuestionKey } from '../i18n/ko.js';
 
@@ -39,7 +39,7 @@ function paramValue(step: Extract<Step, { type: 'action' }>, name: string): stri
   return typeof value === 'string' ? value.trim() : value != null ? String(value) : undefined;
 }
 
-export function computeRequiredSlots(ir: Partial<SkillIR>): SlotState[] {
+export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
   const slots: SlotState[] = [
     {
       slot: 'goal',
@@ -136,7 +136,7 @@ export function computeRequiredSlots(ir: Partial<SkillIR>): SlotState[] {
 }
 
 export function assessCompleteness(
-  ir: Partial<SkillIR>,
+  ir: Partial<WorkflowIR>,
   connectedConnectors: string[] = [],
 ): CompletenessResult {
   const slots = computeRequiredSlots(ir);

@@ -1,5 +1,5 @@
 export const KO = {
-  skill: {
+  work: {
     defaultName: '새 업무',
   },
   execution: {
@@ -7,7 +7,7 @@ export const KO = {
     failedAt: (startedAt: string) => `${startedAt}에 실행이 중단되었습니다.`,
     cause: (message: string) => `원인: ${message}`,
     detail: (detail: string) => `상세: ${detail}`,
-    recommendedAction: '권장 조치: 연결 상태와 Skill 활성화를 확인하세요.',
+    recommendedAction: '권장 조치: 연결 상태와 워크플로우 활성화를 확인하세요.',
     statusAt: (startedAt: string, status: string) => `${startedAt} 실행은 ${status} 상태입니다.`,
     recent: (startedAt: string, status: string, errorCode?: string | null) =>
       `최근 실행: ${startedAt}, 상태: ${status}${errorCode ? `, 코드: ${errorCode}` : ''}`,
@@ -16,7 +16,7 @@ export const KO = {
       file_not_found: '필요한 파일을 찾지 못했습니다. 경로를 확인하세요.',
       connector_missing: '필요한 연결이 없습니다. 설정에서 연결을 확인하세요.',
       global_off_duty: '전역 퇴근 상태여서 실행하지 않았습니다.',
-      skill_paused: '이 Skill이 비활성화되어 있습니다.',
+      workflow_paused: '이 워크플로우가 비활성화되어 있습니다.',
       pending_approval: '사람 승인 대기 중입니다.',
     } as Record<string, string>,
   },
@@ -39,7 +39,7 @@ export const KO = {
     triggerManual: '지금 한 번 (저장하지 않음)',
     triggerOnce: '예약 1회',
   },
-  workSkillDocument: {
+  workflowDocument: {
     triggerManual: '수동 실행',
     triggerSchedule: (schedule: string, timezone: string) => `스케줄: ${schedule} (${timezone})`,
     triggerGmail: (accountId: string) => `Gmail 새 메일: ${accountId}`,

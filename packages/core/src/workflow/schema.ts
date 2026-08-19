@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConditionExprSchema, normalizeCondition } from '../runtime/condition-expr.js';
 
 export const SideEffectLevelSchema = z.enum([
   'NONE',
@@ -58,7 +59,7 @@ export const AiDecisionStepSchema = z.object({
 export const IfStepSchema = z.object({
   type: z.literal('if'),
   id: z.string(),
-  condition: z.string(),
+  condition: z.union([ConditionExprSchema, z.string()]).transform(normalizeCondition),
   thenStepIds: z.array(z.string()),
   elseStepIds: z.array(z.string()).optional(),
 });
@@ -83,7 +84,7 @@ export const DataPolicySchema = z.record(
   }),
 );
 
-export const SkillIRSchema = z.object({
+export const WorkflowIRSchema = z.object({
   id: z.string().optional(),
   version: z.number().int().min(1).default(1),
   name: z.string(),
@@ -105,15 +106,15 @@ export const SkillIRSchema = z.object({
 
 export type SideEffectLevel = z.infer<typeof SideEffectLevelSchema>;
 export type Step = z.infer<typeof StepSchema>;
-export type SkillIR = z.infer<typeof SkillIRSchema>;
+export type WorkflowIR = z.infer<typeof WorkflowIRSchema>;
 export type Trigger = z.infer<typeof TriggerSchema>;
 
-export function parseSkillIR(data: unknown): SkillIR {
-  return SkillIRSchema.parse(data);
+export function parseWorkflowIR(data: unknown): WorkflowIR {
+  return WorkflowIRSchema.parse(data);
 }
 
-export function validateSkillIR(data: unknown): { ok: true; value: SkillIR } | { ok: false; error: string } {
-  const result = SkillIRSchema.safeParse(data);
+export function validateWorkflowIR(data: unknown): { ok: true; value: WorkflowIR } | { ok: false; error: string } {
+  const result = WorkflowIRSchema.safeParse(data);
   if (!result.success) {
     return { ok: false, error: result.error.message };
   }

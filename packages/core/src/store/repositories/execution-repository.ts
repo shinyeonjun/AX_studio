@@ -6,8 +6,8 @@ import { hasPendingApprovalForExecution } from './approval-repository.js';
 export function createExecution(
   db: AppDatabase,
   params: {
-    skillId?: string;
-    skillVersion?: number;
+    workflowId?: string;
+    workflowVersion?: number;
     ephemeral: boolean;
     triggerType?: string;
     irJson?: string;
@@ -16,12 +16,12 @@ export function createExecution(
   const id = randomUUID();
   db
     .prepare(
-      'INSERT INTO executions (id, skill_id, skill_version, ephemeral, status, started_at, log_json, trigger_type, ir_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO executions (id, workflow_id, workflow_version, ephemeral, status, started_at, log_json, trigger_type, ir_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(
       id,
-      params.skillId ?? null,
-      params.skillVersion ?? null,
+      params.workflowId ?? null,
+      params.workflowVersion ?? null,
       params.ephemeral ? 1 : 0,
       'running',
       new Date().toISOString(),
@@ -47,8 +47,8 @@ export function finishExecution(
 function mapExecution(row: ExecutionRow) {
   return {
     id: row.id,
-    skillId: row.skill_id,
-    skillVersion: row.skill_version,
+    workflowId: row.workflow_id,
+    workflowVersion: row.workflow_version,
     ephemeral: Boolean(row.ephemeral),
     status: row.status,
     startedAt: row.started_at,

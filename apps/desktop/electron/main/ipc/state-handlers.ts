@@ -5,7 +5,7 @@ import {
   isAiProviderReady,
   getSlackConnectionStatus,
   parseGmailConnectionConfig,
-  parseSkillIR,
+  parseWorkflowIR,
 } from '@ax-studio/core';
 import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
 import { getCore } from '../core-instance.js';
@@ -18,20 +18,20 @@ export function registerStateHandlers() {
     const core = getCore();
     const pendingApprovals = core.store.getPendingApprovals().map((approval) => {
       const execution = core.store.getExecution(approval.executionId);
-      let ir = execution?.skillId
-        ? core.store.getSkill(execution.skillId, execution.skillVersion ?? undefined)
+      let ir = execution?.workflowId
+        ? core.store.getWorkflow(execution.workflowId, execution.workflowVersion ?? undefined)
         : null;
       if (execution?.irJson) {
         try {
-          ir = parseSkillIR(JSON.parse(execution.irJson));
+          ir = parseWorkflowIR(JSON.parse(execution.irJson));
         } catch {
-          /* keep skill store copy */
+          /* keep stored workflow copy */
         }
       }
       return {
         ...approval,
         title: formatApprovalTitle({
-          skillName: ir?.name,
+          workName: ir?.name,
           reason: approval.reason,
           actionIds: approval.actionIds,
           ir,
@@ -39,12 +39,12 @@ export function registerStateHandlers() {
       };
     });
     const executions = core.store.listExecutions(50);
-    const skills = core.store.listSkills().map((s) => {
-      const ir = core.store.getSkill(s.id);
+    const works = core.store.listWorkflows().map((s) => {
+      const ir = core.store.getWorkflow(s.id);
       const connectors = ir?.steps
         ?.filter((step) => step.type === 'action')
         .map((step) => step.connector) ?? [];
-      const lastExecution = executions.find((e) => e.skillId === s.id);
+      const lastExecution = executions.find((e) => e.workflowId === s.id);
       return {
         ...s,
         goal: ir?.goal ?? '',
@@ -82,7 +82,7 @@ export function registerStateHandlers() {
       slackSocketModeActive: slackStatus.socketModeActive,
       slackConnectionMode: slackStatus.mode,
       slackLastError: slackStatus.lastError,
-      skills,
+      works,
       connections: core.store.getConnections().map(({ connector, connected, config }) => ({
         connector,
         connected,

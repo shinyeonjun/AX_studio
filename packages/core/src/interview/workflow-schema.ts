@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConditionExprSchema } from '../runtime/condition-expr.js';
 
 export const WorkflowNodeSchema = z.object({
   type: z.enum(['action', 'ai_decision', 'if', 'human_approval']),
@@ -17,7 +18,7 @@ export const WorkflowNodeSchema = z.object({
     )
     .optional(),
   investigation: z.boolean().optional(),
-  condition: z.string().optional(),
+  condition: ConditionExprSchema.optional(),
   thenStepIds: z.array(z.string()).optional(),
   elseStepIds: z.array(z.string()).optional(),
   reason: z.string().optional(),

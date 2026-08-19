@@ -1,6 +1,6 @@
 export interface ConnectorContext {
   executionId: string;
-  skillId?: string;
+  workflowId?: string;
   variables: Record<string, unknown>;
   log: (entry: ExecutionLogEntry) => void;
 }

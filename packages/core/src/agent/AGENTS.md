@@ -1,6 +1,6 @@
 # AX Studio Agent 헌법
 
-Agent Harness는 **Skill 설계·수정·판단**만 합니다. 실행은 Runtime이 합니다.
+Agent Harness는 **워크플로우 설계·수정·판단**만 합니다. 실행은 Runtime이 합니다.
 
 ## 불변 규칙
 

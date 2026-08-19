@@ -1,9 +1,11 @@
-import type { Step } from '../skill/schema.js';
+import type { Step } from '../workflow/schema.js';
 
 export interface ExecutionCheckpoint {
   variables: Record<string, unknown>;
   stepResults: Record<string, unknown>;
   remainingStepIds: string[];
+  /** Steps in outer sequences waiting after a nested branch completes. */
+  pendingOuterStepIds?: string[];
 }
 
 /** Steps that only run when an `if` jumps to them, or after approval. */

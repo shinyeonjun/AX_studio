@@ -1,9 +1,9 @@
-import type { SkillStore } from '../store/skill-store.js';
-import type { SkillIR } from '../skill/schema.js';
-import type { SkillRuntime } from '../runtime/engine.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowIR } from '../workflow/schema.js';
+import type { WorkflowRuntime } from '../runtime/engine.js';
 
 export interface ScheduledJob {
-  skillId: string;
+  workflowId: string;
   schedule: string;
   timezone: string;
   nextRunAt?: string;
@@ -36,9 +36,9 @@ export class Scheduler {
   private tickMs = 30_000;
 
   constructor(
-    private store: SkillStore,
-    private runtime: SkillRuntime,
-    private onScheduledRun?: (skillId: string, result: unknown) => void,
+    private store: WorkflowStore,
+    private runtime: WorkflowRuntime,
+    private onScheduledRun?: (workflowId: string, result: unknown) => void,
   ) {}
 
   start() {
@@ -55,35 +55,35 @@ export class Scheduler {
     return this.store.getSetting<Record<string, string>>('scheduler.lastFired', {});
   }
 
-  private markFired(skillId: string) {
+  private markFired(workflowId: string) {
     const fired = this.lastFired();
-    fired[skillId] = minuteKey();
+    fired[workflowId] = minuteKey();
     this.store.setSetting('scheduler.lastFired', fired);
   }
 
-  private alreadyFiredThisMinute(skillId: string): boolean {
-    return this.lastFired()[skillId] === minuteKey();
+  private alreadyFiredThisMinute(workflowId: string): boolean {
+    return this.lastFired()[workflowId] === minuteKey();
   }
 
   private async tick() {
     const globalActive = this.store.getSetting<boolean>('globalActive', true);
     if (!globalActive) return;
 
-    const skills = this.store.listSkills();
-    for (const s of skills) {
+    const works = this.store.listWorkflows();
+    for (const s of works) {
       if (!s.active) continue;
-      const ir = this.store.getSkill(s.id);
+      const ir = this.store.getWorkflow(s.id);
       if (!ir?.trigger) continue;
 
       if (ir.trigger.type === 'once') {
         if (Date.parse(ir.trigger.runAt) > Date.now()) continue;
         if (this.alreadyFiredThisMinute(s.id) || this.lastFired()[s.id]) continue;
         this.markFired(s.id);
-        this.store.setSkillActive(s.id, false);
-        const result = await this.runtime.executeSkill(ir, { triggerType: 'once' });
+        this.store.setWorkflowActive(s.id, false);
+        const result = await this.runtime.executeWorkflow(ir, { triggerType: 'once' });
         if (result.status === 'success') {
-          this.store.deleteSkill(s.id);
-          this.runtime.removeSkill(s.id);
+          this.store.deleteWorkflow(s.id);
+          this.runtime.removeWorkflow(s.id);
         }
         this.onScheduledRun?.(s.id, result);
         continue;
@@ -93,20 +93,20 @@ export class Scheduler {
       if (!cronMatches(ir.trigger.schedule, new Date())) continue;
       if (this.alreadyFiredThisMinute(s.id)) continue;
       this.markFired(s.id);
-      const result = await this.runtime.executeSkill(ir, { triggerType: 'schedule' });
+      const result = await this.runtime.executeWorkflow(ir, { triggerType: 'schedule' });
       this.onScheduledRun?.(s.id, result);
     }
   }
 
-  async runSkillNow(skillId: string): Promise<unknown> {
-    const ir = this.store.getSkill(skillId);
-    if (!ir) throw new Error('Skill not found');
-    return this.runtime.executeSkill(ir, { triggerType: 'manual' });
+  async runWorkflowNow(workflowId: string): Promise<unknown> {
+    const ir = this.store.getWorkflow(workflowId);
+    if (!ir) throw new Error('Workflow not found');
+    return this.runtime.executeWorkflow(ir, { triggerType: 'manual' });
   }
 
-  persistSkillFromEphemeral(ir: SkillIR, trigger?: SkillIR['trigger']): string {
+  persistWorkflowFromEphemeral(ir: WorkflowIR, trigger?: WorkflowIR['trigger']): string {
     const withTrigger = { ...ir, trigger: trigger ?? ir.trigger };
-    const { skillId } = this.store.saveSkill(withTrigger as SkillIR);
-    return skillId;
+    const { workflowId } = this.store.saveWorkflow(withTrigger as WorkflowIR);
+    return workflowId;
   }
 }

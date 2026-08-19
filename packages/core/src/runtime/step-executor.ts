@@ -1,22 +1,22 @@
-import type { SkillIR, Step } from '../skill/schema.js';
-import { requiresApproval } from '../skill/approval.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
+import { requiresApproval } from '../workflow/approval.js';
 
-function hasHumanApprovalForAction(ir: SkillIR, actionId: string): boolean {
+function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
   return ir.steps.some(
     (step) => step.type === 'human_approval' && step.forActionIds.includes(actionId),
   );
 }
 import type { Connector, ConnectorContext } from '../connectors/types.js';
-import type { SkillStore } from '../store/skill-store.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
 import type { AgentHarness } from '../agent/harness.js';
-import { runAiDecision, resolveStepParams, evaluateStepCondition } from './ai-investigation.js';
+import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
 
 export async function executeStep(
   step: Step,
-  ir: SkillIR,
+  ir: WorkflowIR,
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
-  store: SkillStore,
+  store: WorkflowStore,
   connectors: Record<string, Connector>,
   agentHarness: AgentHarness | undefined,
   runSteps: (stepIds: string[]) => Promise<void>,
@@ -54,11 +54,12 @@ export async function executeStep(
       await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors);
       break;
 
-    case 'if':
-      const cond = evaluateStepCondition(step.condition, stepResults);
+    case 'if': {
+      const cond = evaluateCondition(step.condition, ctx.variables, stepResults);
       const ids = cond ? step.thenStepIds : step.elseStepIds ?? [];
       if (ids.length > 0) await runSteps(ids);
       break;
+    }
 
     case 'human_approval':
       const humanApprovalId = store.createApproval({

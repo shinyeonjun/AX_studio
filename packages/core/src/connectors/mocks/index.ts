@@ -48,6 +48,10 @@ export class MockGmailConnector implements Connector {
       case 'label.apply':
         return { ok: true, data: { label: params.label } };
       case 'new_message.poll': {
+        const MAX_SEEN_MESSAGE_IDS = 500;
+        const trimSeenIds = (ids: string[]) =>
+          ids.length <= MAX_SEEN_MESSAGE_IDS ? ids : ids.slice(ids.length - MAX_SEEN_MESSAGE_IDS);
+
         const initialized = Boolean(params.initialized);
         const seenIds = new Set((params.seenMessageIds as string[]) ?? []);
         if (!initialized) {
@@ -57,7 +61,7 @@ export class MockGmailConnector implements Connector {
               events: [],
               cursor: {
                 initialized: true,
-                seenMessageIds: this.messages.map((message) => message.id),
+                seenMessageIds: trimSeenIds(this.messages.map((message) => message.id)),
               },
             },
           };
@@ -69,12 +73,11 @@ export class MockGmailConnector implements Connector {
             messageId: message.id,
             from: message.from,
             subject: message.subject,
-            body: message.body,
             snippet: message.body.slice(0, 200),
             sender: message.from,
           },
         }));
-        const seenMessageIds = [...seenIds, ...newMessages.map((message) => message.id)];
+        const seenMessageIds = trimSeenIds([...seenIds, ...newMessages.map((message) => message.id)]);
         return {
           ok: true,
           data: {

@@ -10,17 +10,17 @@ import {
   isLegacyGmailTokenConfig,
   parseGmailConnectionConfig,
   type GmailConnectionRecord,
-  type SkillStore,
-  type SkillRuntime,
+  type WorkflowStore,
+  type WorkflowRuntime,
 } from '@ax-studio/core';
 import { getCredentialStore } from '../credential-store.js';
 import { getGoogleOAuthCredentials } from './oauth.js';
 
-function gmailConnection(store: SkillStore) {
+function gmailConnection(store: WorkflowStore) {
   return store.getConnections().find((c) => c.connector === 'gmail');
 }
 
-export async function migrateLegacyGmailConnection(store: SkillStore): Promise<void> {
+export async function migrateLegacyGmailConnection(store: WorkflowStore): Promise<void> {
   const conn = gmailConnection(store);
   if (!conn?.connected || !conn.config) return;
   if (parseGmailConnectionConfig(conn.config)) return;
@@ -48,7 +48,7 @@ export async function migrateLegacyGmailConnection(store: SkillStore): Promise<v
   store.setConnection('gmail', true, record as unknown as Record<string, unknown>);
 }
 
-export async function hydrateGmailConnector(store: SkillStore, runtime: SkillRuntime): Promise<void> {
+export async function hydrateGmailConnector(store: WorkflowStore, runtime: WorkflowRuntime): Promise<void> {
   await migrateLegacyGmailConnection(store);
 
   const conn = gmailConnection(store);
@@ -74,7 +74,7 @@ export async function hydrateGmailConnector(store: SkillStore, runtime: SkillRun
   );
 }
 
-export async function connectGmailOAuth(store: SkillStore, runtime: SkillRuntime) {
+export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowRuntime) {
   const { clientId, clientSecret } = getGoogleOAuthCredentials();
   const tokens = await connectGmailViaLoopback({
     clientId,
@@ -118,7 +118,7 @@ export async function connectGmailOAuth(store: SkillStore, runtime: SkillRuntime
   return { ok: true as const, email: account || undefined };
 }
 
-export async function disconnectGmailOAuth(store: SkillStore, runtime: SkillRuntime) {
+export async function disconnectGmailOAuth(store: WorkflowStore, runtime: WorkflowRuntime) {
   const conn = gmailConnection(store);
   const record = parseGmailConnectionConfig(conn?.config);
   if (record) {

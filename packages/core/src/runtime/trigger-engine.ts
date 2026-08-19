@@ -1,5 +1,5 @@
-import type { SkillStore } from '../store/skill-store.js';
-import type { SkillRuntime } from './engine.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowRuntime } from './engine.js';
 import { getTriggerHandler } from '../triggers/registry.js';
 import { slackChannelMatches } from '../triggers/slack-new-message/channel-match.js';
 import { SlackSocketModeListener } from '../triggers/slack-new-message/socket-mode.js';
@@ -15,10 +15,10 @@ const PUSH_POLL_FALLBACK = new Set(['slack.new_message']);
 const MAX_RECENT_EVENTS = 2000;
 
 function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
+  const { body: _body, ...payload } = event.payload;
   return {
-    ...event.payload,
+    ...payload,
     sender: event.payload.sender ?? event.payload.from ?? event.payload.user,
-    emailBody: event.payload.body ?? event.payload.snippet ?? event.payload.text,
   };
 }
 
@@ -30,9 +30,9 @@ export class TriggerEngine {
   private recentEvents = new Set<string>();
 
   constructor(
-    private store: SkillStore,
-    private runtime: SkillRuntime,
-    private onTriggeredRun?: (skillId: string, result: unknown) => void,
+    private store: WorkflowStore,
+    private runtime: WorkflowRuntime,
+    private onTriggeredRun?: (workflowId: string, result: unknown) => void,
   ) {}
 
   start() {
@@ -95,10 +95,10 @@ export class TriggerEngine {
     const channel = String(event.payload.channel ?? '');
     const channelId = String(event.payload.channelId ?? '');
 
-    for (const skill of this.store.listSkills()) {
+    for (const skill of this.store.listWorkflows()) {
       if (!skill.active) continue;
 
-      const ir = this.store.getSkill(skill.id);
+      const ir = this.store.getWorkflow(skill.id);
       const trigger = ir?.trigger;
       if (!ir || trigger?.type !== 'slack.new_message') continue;
       if (!slackChannelMatches(trigger.channel, { channel, channelId })) continue;
@@ -107,7 +107,7 @@ export class TriggerEngine {
       if (!this.rememberEvent(dedupeKey)) continue;
 
       try {
-        const result = await this.runtime.executeSkill(ir, {
+        const result = await this.runtime.executeWorkflow(ir, {
           triggerType: trigger.type,
           input: triggerInputFromEvent(event),
         });
@@ -149,10 +149,10 @@ export class TriggerEngine {
       const cursors = this.loadCursors();
       let cursorsChanged = false;
 
-      for (const skill of this.store.listSkills()) {
+      for (const skill of this.store.listWorkflows()) {
         if (!skill.active) continue;
 
-        const ir = this.store.getSkill(skill.id);
+        const ir = this.store.getWorkflow(skill.id);
         const trigger = ir?.trigger;
         if (!ir || !trigger || TIME_TRIGGER_TYPES.has(trigger.type)) continue;
         if (!this.shouldPollTriggerType(trigger.type)) continue;
@@ -164,7 +164,7 @@ export class TriggerEngine {
 
         try {
           const pollResult = await handler.poll({
-            skillId: skill.id,
+            workflowId: skill.id,
             trigger,
             cursor,
             connectors: this.runtime.connectors,
@@ -176,7 +176,7 @@ export class TriggerEngine {
           }
 
           for (const event of pollResult.events) {
-            const result = await this.runtime.executeSkill(ir, {
+            const result = await this.runtime.executeWorkflow(ir, {
               triggerType: trigger.type,
               input: triggerInputFromEvent(event),
             });

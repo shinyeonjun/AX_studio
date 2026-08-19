@@ -1,18 +1,18 @@
 import { resolveCapability } from '../connectors/capability-graph.js';
 import { KO } from '../i18n/ko.js';
-import type { SkillIR, Step } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
 
-function triggerSummary(trigger?: SkillIR['trigger']): string {
+function triggerSummary(trigger?: WorkflowIR['trigger']): string {
   if (!trigger || trigger.type === 'manual') return KO.chatSummary.triggerManual;
   if (trigger.type === 'once') return KO.chatSummary.triggerOnce;
   if (trigger.type === 'schedule') {
-    return KO.workSkillDocument.triggerSchedule(trigger.schedule, trigger.timezone ?? 'Asia/Seoul');
+    return KO.workflowDocument.triggerSchedule(trigger.schedule, trigger.timezone ?? 'Asia/Seoul');
   }
   if (trigger.type === 'gmail.new_message') {
-    return KO.workSkillDocument.triggerGmail(trigger.accountId);
+    return KO.workflowDocument.triggerGmail(trigger.accountId);
   }
   if (trigger.type === 'slack.new_message') {
-    return KO.workSkillDocument.triggerSlack(trigger.channel);
+    return KO.workflowDocument.triggerSlack(trigger.channel);
   }
   return KO.chatSummary.triggerManual;
 }
@@ -37,8 +37,8 @@ function actionSummary(step: Extract<Step, { type: 'action' }>): string {
   return params ? `${step.connector}.${step.action} (${params})` : `${step.connector}.${step.action}`;
 }
 
-export function renderChatSummary(ir: Partial<SkillIR>): string {
-  const name = ir.name ?? KO.skill.defaultName;
+export function renderChatSummary(ir: Partial<WorkflowIR>): string {
+  const name = ir.name ?? KO.work.defaultName;
   const lines: string[] = [name];
   if (ir.goal?.trim()) lines.push(ir.goal.trim());
   lines.push('', `실행: ${triggerSummary(ir.trigger)}`);

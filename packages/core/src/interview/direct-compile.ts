@@ -1,5 +1,5 @@
 import type { AgentHarness } from '../agent/harness.js';
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
 import { InterviewDraftSchema } from './workflow-schema.js';
 
@@ -7,7 +7,7 @@ export async function directCompileInstruction(
   instruction: string,
   harness: AgentHarness,
   connectedConnectors: string[] = [],
-): Promise<Partial<SkillIR>> {
+): Promise<Partial<WorkflowIR>> {
   const { output } = await harness.run({
     role: 'direct_compile',
     outputSchema: InterviewDraftSchema,

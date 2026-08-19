@@ -1,6 +1,6 @@
-export * from './skill/schema.js';
-export * from './skill/approval.js';
-export * from './skill/fixtures.js';
+export * from './workflow/schema.js';
+export * from './workflow/approval.js';
+export * from './workflow/fixtures.js';
 export * from './connectors/capabilities.js';
 export * from './connectors/catalog.js';
 export * from './connectors/capability-graph.js';
@@ -14,7 +14,7 @@ export * from './connectors/rdb/index.js';
 export * from './connectors/report/index.js';
 export * from './agent/index.js';
 export * from './store/db.js';
-export * from './store/skill-store.js';
+export * from './store/workflow-store.js';
 export * from './interview/requiredness.js';
 export * from './interview/interview.js';
 export * from './interview/revision.js';
@@ -26,7 +26,8 @@ export * from './triggers/types.js';
 export * from './triggers/registry.js';
 export { SlackSocketModeListener } from './triggers/slack-new-message/socket-mode.js';
 export * from './runtime/approval-display.js';
-export * from './interview/bootstrap-from-skill.js';
+export { formatCondition, type ConditionExpr } from './runtime/condition-expr.js';
+export * from './interview/bootstrap-from-workflow.js';
 export * from './interview/chat-summary.js';
 export * from './store/repositories/chat-session-repository.js';
 

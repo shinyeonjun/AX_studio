@@ -1,6 +1,6 @@
 ---
 name: interview
-description: Designs an AX Studio work skill from a natural-language interview. Use when the user is giving a work instruction or answering interview questions.
+description: Designs an AX Studio workflow from a natural-language interview. Use when the user is giving a work instruction or answering interview questions.
 ---
 
 # Interview
@@ -17,6 +17,11 @@ description: Designs an AX Studio work skill from a natural-language interview. 
 - `nextQuestion`은 사용자에게 보일 한 문장입니다.
 - 사용자가 수정을 요청하면 workflow를 갱신하세요.
 - 상대/일정 표현: "N분 뒤" → `triggerType=once`, `runAt` ISO-8601. 지금: {{now_iso}}
+- `if` 노드의 `condition`은 **JSON 객체**로만 작성하세요. JavaScript 코드 문자열은 금지입니다.
+  - 예: `{ "op": "eq", "left": { "ref": "classify.category" }, "right": { "lit": "critical" } }`
+  - 예: `{ "op": "contains", "left": { "ref": "sender" }, "right": { "lit": "support@" } }`
+  - 허용 op: `eq`, `neq`, `contains`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`
+- Gmail 트리거 업무는 `gmail.messages.read`로 본문을 읽은 뒤 `ai_decision`을 두는 패턴을 따르세요. (시스템이 read step이 없으면 자동 삽입할 수 있습니다.)
 
 ## 사용 가능한 노드
 

@@ -11,7 +11,8 @@ export interface AgentExecutionPolicy {
 
 export interface AgentRoleDefinition {
   role: AgentRole;
-  skillId: string;
+  /** Agent harness SKILL.md id (interview, investigate, revise). Not a saved workflow. */
+  agentSkillId: string;
   temperature: number;
   policy: AgentExecutionPolicy;
   modeInstructions?: string;
@@ -38,7 +39,7 @@ export interface InvestigateAgentContext {
 }
 
 export interface ReviseAgentContext {
-  skillJson: string;
+  workflowJson: string;
   instruction: string;
 }
 

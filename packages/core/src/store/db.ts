@@ -16,7 +16,7 @@ export interface AppDatabase {
 }
 
 const MIGRATION_SQL = `
-  CREATE TABLE IF NOT EXISTS skills (
+  CREATE TABLE IF NOT EXISTS workflows (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     active INTEGER NOT NULL DEFAULT 1,
@@ -24,9 +24,9 @@ const MIGRATION_SQL = `
     updated_at TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS skill_versions (
+  CREATE TABLE IF NOT EXISTS workflow_versions (
     id TEXT PRIMARY KEY,
-    skill_id TEXT NOT NULL REFERENCES skills(id),
+    workflow_id TEXT NOT NULL REFERENCES workflows(id),
     version INTEGER NOT NULL,
     ir_json TEXT NOT NULL,
     created_at TEXT NOT NULL
@@ -34,8 +34,8 @@ const MIGRATION_SQL = `
 
   CREATE TABLE IF NOT EXISTS executions (
     id TEXT PRIMARY KEY,
-    skill_id TEXT,
-    skill_version INTEGER,
+    workflow_id TEXT,
+    workflow_version INTEGER,
     ephemeral INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL,
     started_at TEXT NOT NULL,
@@ -70,7 +70,7 @@ const MIGRATION_SQL = `
 
   CREATE TABLE IF NOT EXISTS chat_sessions (
     id TEXT PRIMARY KEY,
-    skill_id TEXT UNIQUE,
+    workflow_id TEXT UNIQUE,
     title TEXT NOT NULL,
     summary TEXT,
     state_json TEXT NOT NULL,
@@ -84,7 +84,38 @@ function columnNames(db: AppDatabase, table: string): string[] {
   return rows.map((row) => String(row.name ?? ''));
 }
 
+function tableExists(db: AppDatabase, name: string): boolean {
+  const row = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+    .get(name) as { name?: string } | undefined;
+  return Boolean(row?.name);
+}
+
+function migrateLegacySkillTables(db: AppDatabase) {
+  if (tableExists(db, 'skills') && !tableExists(db, 'workflows')) {
+    db.exec('ALTER TABLE skills RENAME TO workflows');
+  }
+  if (tableExists(db, 'skill_versions') && !tableExists(db, 'workflow_versions')) {
+    db.exec('ALTER TABLE skill_versions RENAME TO workflow_versions');
+  }
+  if (tableExists(db, 'workflow_versions') && columnNames(db, 'workflow_versions').includes('skill_id')) {
+    db.exec('ALTER TABLE workflow_versions RENAME COLUMN skill_id TO workflow_id');
+  }
+  if (tableExists(db, 'executions')) {
+    if (columnNames(db, 'executions').includes('skill_id')) {
+      db.exec('ALTER TABLE executions RENAME COLUMN skill_id TO workflow_id');
+    }
+    if (columnNames(db, 'executions').includes('skill_version')) {
+      db.exec('ALTER TABLE executions RENAME COLUMN skill_version TO workflow_version');
+    }
+  }
+  if (tableExists(db, 'chat_sessions') && columnNames(db, 'chat_sessions').includes('skill_id')) {
+    db.exec('ALTER TABLE chat_sessions RENAME COLUMN skill_id TO workflow_id');
+  }
+}
+
 function applyMigrations(db: AppDatabase) {
+  migrateLegacySkillTables(db);
   db.exec(MIGRATION_SQL);
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');

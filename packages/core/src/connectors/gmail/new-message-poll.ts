@@ -12,7 +12,6 @@ export interface GmailNewMessageEvent {
     messageId: string;
     from: string;
     subject: string;
-    body: string;
     snippet: string;
     sender: string;
   };
@@ -25,6 +24,13 @@ export interface GmailNewMessagePollResult {
     seenMessageIds: string[];
     historyId?: string;
   };
+}
+
+const MAX_SEEN_MESSAGE_IDS = 500;
+
+function trimSeenIds(ids: string[]): string[] {
+  if (ids.length <= MAX_SEEN_MESSAGE_IDS) return ids;
+  return ids.slice(ids.length - MAX_SEEN_MESSAGE_IDS);
 }
 
 function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, name: string): string {
@@ -50,7 +56,6 @@ async function messageEvent(
       messageId,
       from,
       subject,
-      body: snippet,
       snippet,
       sender: from,
     },
@@ -66,16 +71,16 @@ export async function pollGmailNewMessages(
   if (!params.initialized) {
     const profile = await gmail.users.getProfile({ userId: 'me' });
     const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
-    const seenMessageIds = (list.data.messages ?? [])
-      .map((message) => message.id)
-      .filter((id): id is string => Boolean(id));
+    const seenMessageIds = trimSeenIds(
+      [...new Set([...(list.data.messages ?? []).map((message) => message.id).filter(Boolean) as string[], ...params.seenMessageIds])],
+    );
 
     return {
       events: [],
       cursor: {
         initialized: true,
         historyId: profile.data.historyId ?? undefined,
-        seenMessageIds: [...new Set([...seenMessageIds, ...params.seenMessageIds])],
+        seenMessageIds,
       },
     };
   }
@@ -87,7 +92,7 @@ export async function pollGmailNewMessages(
       cursor: {
         initialized: true,
         historyId: profile.data.historyId ?? undefined,
-        seenMessageIds: [...seenIds],
+        seenMessageIds: trimSeenIds([...seenIds]),
       },
     };
   }
@@ -115,13 +120,12 @@ export async function pollGmailNewMessages(
       events.push(await messageEvent(gmail, messageId));
     }
 
-    const seenMessageIds = [...seenIds, ...messageIds];
     return {
       events,
       cursor: {
         initialized: true,
         historyId: nextHistoryId,
-        seenMessageIds,
+        seenMessageIds: trimSeenIds([...seenIds, ...messageIds]),
       },
     };
   } catch (err) {
@@ -129,15 +133,15 @@ export async function pollGmailNewMessages(
     if (message.includes('historyId') || message.includes('404')) {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
-      const seenMessageIds = (list.data.messages ?? [])
-        .map((message) => message.id)
-        .filter((id): id is string => Boolean(id));
+      const seenMessageIds = trimSeenIds(
+        (list.data.messages ?? []).map((message) => message.id).filter((id): id is string => Boolean(id)),
+      );
       return {
         events: [],
         cursor: {
           initialized: true,
           historyId: profile.data.historyId ?? undefined,
-          seenMessageIds: [...new Set(seenMessageIds)],
+          seenMessageIds,
         },
       };
     }

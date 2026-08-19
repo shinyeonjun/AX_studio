@@ -3,19 +3,19 @@ import { getCore } from '../core-instance.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
 export function registerRuntimeHandlers() {
-  ipcMain.handle('ax:saveSkill', async (_e, ir) => {
+  ipcMain.handle('ax:saveWorkflow', async (_e, ir) => {
     const core = getCore();
-    const result = core.store.saveSkill(ir);
+    const result = core.store.saveWorkflow(ir);
     return result;
   });
-  ipcMain.handle('ax:runSkill', async (_e, skillId: string) => {
+  ipcMain.handle('ax:runWorkflow', async (_e, workflowId: string) => {
     const core = getCore();
-    const ir = core.store.getSkill(skillId);
-    if (!ir) throw new Error('Skill not found');
-    return core.runtime.executeSkill(ir, { triggerType: 'manual' });
+    const ir = core.store.getWorkflow(workflowId);
+    if (!ir) throw new Error('Workflow not found');
+    return core.runtime.executeWorkflow(ir, { triggerType: 'manual' });
   });
   ipcMain.handle('ax:runEphemeral', async (_e, ir) =>
-    getCore().runtime.executeSkill(ir, { ephemeral: true, triggerType: 'manual' }),
+    getCore().runtime.executeWorkflow(ir, { ephemeral: true, triggerType: 'manual' }),
   );
   ipcMain.handle('ax:approve', async (_e, approvalId: string) => getCore().runtime.continueAfterApproval(approvalId));
   ipcMain.handle('ax:reject', async (_e, approvalId: string) => {
@@ -27,11 +27,11 @@ export function registerRuntimeHandlers() {
     notifyStateChanged();
     return { ok: true };
   });
-  ipcMain.handle('ax:deleteSkill', async (_e, skillId: string) => {
+  ipcMain.handle('ax:deleteWorkflow', async (_e, workflowId: string) => {
     const core = getCore();
-    const deleted = core.store.deleteSkill(skillId);
-    if (!deleted) throw new Error('Skill not found');
-    core.runtime.removeSkill(skillId);
+    const deleted = core.store.deleteWorkflow(workflowId);
+    if (!deleted) throw new Error('Workflow not found');
+    core.runtime.removeWorkflow(workflowId);
     return { ok: true };
   });
   ipcMain.handle('ax:deleteExecution', async (_e, executionId: string) => {
@@ -53,10 +53,10 @@ export function registerRuntimeHandlers() {
     core.runtime.setGlobalActive(active);
     return { ok: true };
   });
-  ipcMain.handle('ax:setSkillActive', async (_e, skillId: string, active: boolean) => {
+  ipcMain.handle('ax:setWorkflowActive', async (_e, workflowId: string, active: boolean) => {
     const core = getCore();
-    core.store.setSkillActive(skillId, active);
-    core.runtime.setSkillActive(skillId, active);
+    core.store.setWorkflowActive(workflowId, active);
+    core.runtime.setWorkflowActive(workflowId, active);
     return { ok: true };
   });
 }

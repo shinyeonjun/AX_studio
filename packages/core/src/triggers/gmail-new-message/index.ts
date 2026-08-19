@@ -19,8 +19,8 @@ export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message';
         historyId: ctx.cursor.historyId,
       },
       {
-        executionId: `trigger-poll:${ctx.skillId}`,
-        skillId: ctx.skillId,
+        executionId: `trigger-poll:${ctx.workflowId}`,
+        workflowId: ctx.workflowId,
         variables: {},
         log: () => {},
       },

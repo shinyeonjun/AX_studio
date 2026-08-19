@@ -1,4 +1,4 @@
-import type { SideEffectLevel, SkillIR } from './schema.js';
+import type { SideEffectLevel, WorkflowIR } from './schema.js';
 
 export function requiresApproval(
   sideEffect: SideEffectLevel,
@@ -9,7 +9,7 @@ export function requiresApproval(
   return false;
 }
 
-export function getActionSideEffects(ir: SkillIR): Map<string, SideEffectLevel> {
+export function getActionSideEffects(ir: WorkflowIR): Map<string, SideEffectLevel> {
   const map = new Map<string, SideEffectLevel>();
   for (const step of ir.steps) {
     if (step.type === 'action') {
@@ -22,7 +22,7 @@ export function getActionSideEffects(ir: SkillIR): Map<string, SideEffectLevel> 
   return map;
 }
 
-export function validateApprovalPolicy(ir: SkillIR): string[] {
+export function validateApprovalPolicy(ir: WorkflowIR): string[] {
   const errors: string[] = [];
   const actionEffects = getActionSideEffects(ir);
 
@@ -42,7 +42,7 @@ export function validateApprovalPolicy(ir: SkillIR): string[] {
   return errors;
 }
 
-export function isDeployable(ir: SkillIR): boolean {
+export function isDeployable(ir: WorkflowIR): boolean {
   const approvalErrors = validateApprovalPolicy(ir);
   return approvalErrors.length === 0 && ir.steps.length > 0;
 }

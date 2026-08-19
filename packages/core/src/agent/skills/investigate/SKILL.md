@@ -1,15 +1,15 @@
 ---
 name: investigate
-description: Structured investigation during skill execution. Proposes read intents only; never executes tools or actions.
+description: Structured investigation during workflow execution. Proposes read intents only; never executes tools or actions.
 ---
 
 # Investigation
 
-Skill 실행 중 AI 판단 단계입니다. structured JSON만 출력하세요.
+워크플로우 실행 중 AI 판단 단계입니다. structured JSON만 출력하세요.
 
 ## Task
 
-- Skill (TRUSTED): {{skill_goal}}
+- 워크플로우 목표 (TRUSTED): {{skill_goal}}
 - Step: {{task_goal}}
 
 ## 규칙

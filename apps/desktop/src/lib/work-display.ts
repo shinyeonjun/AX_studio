@@ -1,6 +1,6 @@
-import type { SkillSummary } from '../types/app-state';
+import type { WorkSummary } from '../types/app-state';
 
-export function triggerLabel(trigger?: SkillSummary['trigger']): string {
+export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';
   if (trigger.type === 'schedule') return `반복 · ${trigger.schedule ?? ''}`;
   if (trigger.type === 'once') return '1회성';
@@ -9,11 +9,11 @@ export function triggerLabel(trigger?: SkillSummary['trigger']): string {
   return '수동 실행';
 }
 
-export function isOnceTrigger(trigger?: SkillSummary['trigger']): boolean {
+export function isOnceTrigger(trigger?: WorkSummary['trigger']): boolean {
   return trigger?.type === 'once';
 }
 
-export function isRecurringTrigger(trigger?: SkillSummary['trigger']): boolean {
+export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
   return trigger?.type === 'schedule' || trigger?.type === 'gmail.new_message' || trigger?.type === 'slack.new_message';
 }
 
@@ -21,7 +21,7 @@ export function isEventTriggerType(triggerType?: string | null): boolean {
   return triggerType === 'gmail.new_message' || triggerType === 'slack.new_message';
 }
 
-export function shouldRunSkillAfterSave(triggerType?: string): boolean {
+export function shouldRunWorkflowAfterSave(triggerType?: string): boolean {
   if (!triggerType || triggerType === 'once') return false;
   if (isEventTriggerType(triggerType)) return false;
   return triggerType === 'schedule' || triggerType === 'manual';
@@ -51,6 +51,7 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'pending_approval') return '승인을 기다리는 중입니다';
   if (errorCode === 'approval_rejected') return '승인이 거절되었습니다';
   if (errorCode === 'global_off_duty') return '전역 퇴근 상태입니다';
+  if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
   if (errorCode === 'skill_paused') return '업무가 중지되어 있습니다';
   return errorCode;
 }

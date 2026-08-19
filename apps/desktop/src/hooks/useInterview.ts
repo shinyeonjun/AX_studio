@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { shouldRunSkillAfterSave } from '../lib/skill-display';
+import type { InterviewState as CoreInterviewState } from '@ax-studio/core/interview-state';
+import type { InterviewDraft } from '@ax-studio/core/workflow-schema';
+import type { CompletenessResult } from '@ax-studio/core/requiredness';
+import { shouldRunWorkflowAfterSave } from '../lib/work-display';
 
 interface InterviewMessage {
   role: string;
@@ -8,16 +11,11 @@ interface InterviewMessage {
 
 type DraftTrigger = { type?: string; runAt?: string };
 
-export interface InterviewState {
-  sessionId?: string;
-  skillId?: string;
-  done?: boolean;
-  draft?: unknown;
-  summary?: string;
+export type InterviewState = Partial<CoreInterviewState> & {
   title?: string;
+  summary?: string;
   messages?: InterviewMessage[];
-  completeness?: { slots?: Array<{ slot: string; filled: boolean; label?: string }> };
-}
+};
 
 export interface UseInterviewOptions {
   refresh: () => Promise<void>;
@@ -73,7 +71,7 @@ function sessionTitle(state: InterviewState): string {
   if (state.title?.trim()) return state.title.trim();
   const draftName = (state.draft as { name?: string } | undefined)?.name;
   if (draftName?.trim()) return draftName.trim();
-  return state.skillId ? '업무' : '새 업무';
+  return state.workflowId ? '업무' : '새 업무';
 }
 
 export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
@@ -84,6 +82,21 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
+  const [editHint, setEditHint] = useState<string | null>(null);
+  const [workflowBaseline, setWorkflowBaseline] = useState<InterviewDraft | undefined>();
+  const [turnDiffBaseline, setTurnDiffBaseline] = useState<InterviewDraft | undefined>();
+
+  function cloneWorkflow(draft: InterviewDraft): InterviewDraft {
+    return JSON.parse(JSON.stringify(draft)) as InterviewDraft;
+  }
+
+  const emptyWorkflowBaseline = (): InterviewDraft => ({
+    name: '',
+    goal: '',
+    triggerType: 'manual',
+    assumptions: [],
+    nodes: [],
+  });
 
   const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
 
@@ -103,9 +116,12 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
     setBusy(false);
     setError('');
     setProgress('');
+    setEditHint(null);
+    setWorkflowBaseline(undefined);
+    setTurnDiffBaseline(undefined);
   };
 
-  const openSkillChat = async (skillId: string) => {
+  const openWorkChat = async (workflowId: string) => {
     invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
@@ -113,16 +129,21 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
     setComposerText('');
     setInterview(null);
     try {
-      const loaded = await window.ax.loadSkillChat(skillId);
+      const loaded = await window.ax.loadWorkChat(workflowId);
       if (!isCurrentSession(epoch)) return;
       const state = await hydrateSummary({
         ...(loaded.state as InterviewState),
         summary: loaded.summary,
         title: loaded.title,
-        skillId,
+        workflowId,
       });
       if (!isCurrentSession(epoch)) return;
       setInterview({ ...state, title: sessionTitle(state) });
+      if (state.workflow) {
+        const snapshot = cloneWorkflow(state.workflow);
+        setWorkflowBaseline(snapshot);
+        setTurnDiffBaseline(snapshot);
+      }
       setSaved(true);
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -140,6 +161,8 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
     setError('');
     setProgress('답변을 준비하고 있습니다');
     setSaved(false);
+    setWorkflowBaseline(emptyWorkflowBaseline());
+    setTurnDiffBaseline(emptyWorkflowBaseline());
     setInterview({ messages: [{ role: 'user', content: text }], title: '새 업무' });
     try {
       const res = await window.ax.startInterview(text);
@@ -168,6 +191,8 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
     setError('');
     setProgress('답변을 준비하고 있습니다');
     setComposerText('');
+    setEditHint(null);
+    setTurnDiffBaseline(prior.workflow ? cloneWorkflow(prior.workflow as InterviewDraft) : emptyWorkflowBaseline());
     setInterview({
       ...prior,
       done: false,
@@ -185,7 +210,7 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
       } else {
         setInterview({ ...next, title: sessionTitle(next) });
       }
-      if (next.skillId) await refresh();
+      if (next.workflowId) await refresh();
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
       setError(errorMessage(err));
@@ -213,7 +238,7 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
           current,
           '실행을 시작했습니다. 승인이 필요하면 승인 탭에서 처리할 수 있어요.',
         );
-        void window.ax.saveChatSession(next, next.summary, next.skillId);
+        void window.ax.saveChatSession(next, next.summary, next.workflowId);
         return next;
       });
     } catch (err) {
@@ -225,13 +250,13 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
   };
 
   const saveAsWork = async () => {
-    if (!interview?.draft || interview.skillId) return;
+    if (!interview?.draft || interview.workflowId) return;
     const draft = interview.draft;
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
     try {
-      const savedSkill = (await window.ax.saveSkill(draft)) as { skillId: string };
+      const savedWork = (await window.ax.saveWorkflow(draft)) as { workflowId: string };
       if (!isCurrentSession(epoch)) return;
       setSaved(true);
       await refresh();
@@ -240,8 +265,8 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
       reset();
 
       const trigger = draftTrigger(draft);
-      if (shouldRunSkillAfterSave(trigger?.type)) {
-        void window.ax.runSkill(savedSkill.skillId);
+      if (shouldRunWorkflowAfterSave(trigger?.type)) {
+        void window.ax.runWorkflow(savedWork.workflowId);
       }
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -251,21 +276,36 @@ export function useInterview({ refresh, onWorkSaved }: UseInterviewOptions) {
     }
   };
 
+  const beginEditStep = (prompt: string) => {
+    setEditHint(prompt);
+    setComposerText('');
+  };
+
   return {
     composerText,
     interview,
+    workflow: interview?.workflow as InterviewDraft | undefined,
+    workflowBaseline,
+    turnDiffBaseline,
+    workflowDiffBaseline: (interview?.workflowId ? workflowBaseline : turnDiffBaseline) as
+      | InterviewDraft
+      | undefined,
+    completeness: interview?.completeness as CompletenessResult | undefined,
+    editHint,
+    setEditHint,
+    beginEditStep,
     saved,
     busy,
     error,
     progress,
     setComposerText,
     reset,
-    openSkillChat,
+    openWorkChat,
     startInterview,
     sendAnswer,
     runOnce,
     saveAsWork,
-    isLinkedSkill: Boolean(interview?.skillId),
+    isLinkedWork: Boolean(interview?.workflowId),
     isImmediateOnce: interview?.draft ? isImmediateOnce(interview.draft) : false,
     isDeferredOnce: interview?.draft ? isDeferredOnce(interview.draft) : false,
     isRecurringDraft: interview?.draft ? isRecurringDraft(interview.draft) : false,

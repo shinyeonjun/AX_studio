@@ -1,5 +1,5 @@
 import type { Connector } from '../connectors/types.js';
-import type { Trigger } from '../skill/schema.js';
+import type { Trigger } from '../workflow/schema.js';
 
 export interface TriggerEvent {
   type: string;
@@ -18,7 +18,7 @@ export interface TriggerCursor {
 export type TriggerTransport = 'poll' | 'push';
 
 export interface TriggerPollContext {
-  skillId: string;
+  workflowId: string;
   trigger: Trigger;
   cursor: TriggerCursor;
   connectors: Record<string, Connector>;

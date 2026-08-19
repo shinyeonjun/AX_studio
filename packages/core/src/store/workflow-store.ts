@@ -1,35 +1,35 @@
 import type { AppDatabase } from './db.js';
-import type { SkillIR } from '../skill/schema.js';
-import * as skillRepo from './repositories/skill-repository.js';
+import type { WorkflowIR } from '../workflow/schema.js';
+import * as workflowRepo from './repositories/workflow-repository.js';
 import * as executionRepo from './repositories/execution-repository.js';
 import * as approvalRepo from './repositories/approval-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
 import * as chatSessionRepo from './repositories/chat-session-repository.js';
 
-export class SkillStore {
+export class WorkflowStore {
   constructor(private db: AppDatabase) {}
 
-  saveSkill(ir: SkillIR) {
-    return skillRepo.saveSkill(this.db, ir);
+  saveWorkflow(ir: WorkflowIR) {
+    return workflowRepo.saveWorkflow(this.db, ir);
   }
 
-  getSkill(skillId: string, version?: number) {
-    return skillRepo.getSkill(this.db, skillId, version);
+  getWorkflow(workflowId: string, version?: number) {
+    return workflowRepo.getWorkflow(this.db, workflowId, version);
   }
 
-  listSkills() {
-    return skillRepo.listSkills(this.db);
+  listWorkflows() {
+    return workflowRepo.listWorkflows(this.db);
   }
 
-  setSkillActive(skillId: string, active: boolean) {
-    skillRepo.setSkillActive(this.db, skillId, active);
+  setWorkflowActive(workflowId: string, active: boolean) {
+    workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
 
-  deleteSkill(skillId: string) {
-    return skillRepo.deleteSkill(this.db, skillId);
+  deleteWorkflow(workflowId: string) {
+    return workflowRepo.deleteWorkflow(this.db, workflowId);
   }
 
-  saveChatSession(params: { state: import('../interview/interview-state.js').InterviewState; summary?: string; skillId?: string }) {
+  saveChatSession(params: { state: import('../interview/interview-state.js').InterviewState; summary?: string; workflowId?: string }) {
     return chatSessionRepo.saveChatSession(this.db, params);
   }
 
@@ -37,12 +37,12 @@ export class SkillStore {
     return chatSessionRepo.getChatSession(this.db, sessionId);
   }
 
-  getChatSessionBySkillId(skillId: string) {
-    return chatSessionRepo.getChatSessionBySkillId(this.db, skillId);
+  getChatSessionByWorkflowId(workflowId: string) {
+    return chatSessionRepo.getChatSessionByWorkflowId(this.db, workflowId);
   }
 
-  linkChatSessionToSkill(sessionId: string, skillId: string) {
-    chatSessionRepo.linkChatSessionToSkill(this.db, sessionId, skillId);
+  linkChatSessionToWorkflow(sessionId: string, workflowId: string) {
+    chatSessionRepo.linkChatSessionToWorkflow(this.db, sessionId, workflowId);
   }
 
   listChatSessions(limit = 20) {
@@ -50,8 +50,8 @@ export class SkillStore {
   }
 
   createExecution(params: {
-    skillId?: string;
-    skillVersion?: number;
+    workflowId?: string;
+    workflowVersion?: number;
     ephemeral: boolean;
     triggerType?: string;
     irJson?: string;

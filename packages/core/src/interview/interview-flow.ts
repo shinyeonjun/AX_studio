@@ -1,7 +1,7 @@
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 import type { AgentHarness } from '../agent/harness.js';
 import { normalizeWorkflowActionNode } from '../connectors/capability-graph.js';
-import { validateApprovalPolicy } from '../skill/approval.js';
+import { validateApprovalPolicy } from '../workflow/approval.js';
 import { assessCompleteness, getNextQuestion } from './requiredness.js';
 import { buildIRFromWorkflow, UnknownCapabilityError } from './workflow-builder.js';
 import { createInterviewState, type InterviewState } from './interview-state.js';
@@ -64,7 +64,7 @@ async function runInterviewTurn(state: InterviewState, options: InterviewRunOpti
   const approvalErrors = validateApprovalPolicy({
     ...built,
     steps: built.steps ?? [],
-  } as SkillIR);
+  } as WorkflowIR);
   const deployable = completeness.deployable && approvalErrors.length === 0;
   const assistantMsg = deployable
     ? turn.nextQuestion.trim() || '업무 워크플로우를 이렇게 이해했습니다. 검토 후 맡길 수 있습니다.'

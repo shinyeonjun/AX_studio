@@ -1,5 +1,6 @@
 import type { ChatMessage } from './model/chat.js';
 import type { InterviewDraft, WorkflowNode } from '../interview/workflow-schema.js';
+import { formatCondition, type ConditionExpr } from '../runtime/condition-expr.js';
 
 export const INTERVIEW_RECENT_MESSAGE_COUNT = 8;
 const MESSAGE_SUMMARY_MAX_CHARS = 140;
@@ -38,7 +39,11 @@ function formatNode(node: WorkflowNode): string {
     return `- ai_decision ${node.id}: ${node.goal ?? ''}`.trim();
   }
   if (node.type === 'if') {
-    return `- if ${node.id}: ${node.condition ?? ''}`.trim();
+    const condition =
+      node.condition && typeof node.condition === 'object'
+        ? formatCondition(node.condition as ConditionExpr)
+        : String(node.condition ?? '');
+    return `- if ${node.id}: then=[${(node.thenStepIds ?? []).join(', ')}] else=[${(node.elseStepIds ?? []).join(', ')}] when ${condition}`;
   }
   return `- human_approval ${node.id}: ${node.reason ?? ''}`.trim();
 }

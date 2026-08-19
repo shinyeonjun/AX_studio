@@ -1,5 +1,5 @@
 import type { AppState } from '../../types/app-state';
-import { formatRelativeTime } from '../../lib/skill-display';
+import { formatRelativeTime } from '../../lib/work-display';
 import { PageHeader } from '../layout/PageHeader';
 
 interface ApprovalPageProps {

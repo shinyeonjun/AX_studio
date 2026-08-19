@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseSkillIR } from './skill/schema.js';
-import { validateApprovalPolicy } from './skill/approval.js';
-import { csMailSkillFixture } from './skill/fixtures.js';
+import { parseWorkflowIR } from './workflow/schema.js';
+import { validateApprovalPolicy } from './workflow/approval.js';
+import { csMailWorkflowFixture } from './workflow/fixtures.js';
 import { createDatabaseAsync } from './store/db.js';
-import { SkillStore } from './store/skill-store.js';
+import { WorkflowStore } from './store/workflow-store.js';
 import packageJson from '../package.json';
 
 describe('core package boundary', () => {
@@ -15,15 +15,15 @@ describe('core package boundary', () => {
 
   it('gmail.send fixture invalid without approval step removed', () => {
     const bad = {
-      ...csMailSkillFixture,
-      steps: csMailSkillFixture.steps.filter((s) => s.type !== 'human_approval'),
+      ...csMailWorkflowFixture,
+      steps: csMailWorkflowFixture.steps.filter((s) => s.type !== 'human_approval'),
     };
     expect(validateApprovalPolicy(bad).length).toBeGreaterThan(0);
   });
 
   it('store roundtrip', async () => {
-    const store = new SkillStore(await createDatabaseAsync(':memory:'));
-    const { skillId } = store.saveSkill(parseSkillIR(csMailSkillFixture));
-    expect(store.getSkill(skillId)?.name).toBe('고객 문의 처리');
+    const store = new WorkflowStore(await createDatabaseAsync(':memory:'));
+    const { workflowId } = store.saveWorkflow(parseWorkflowIR(csMailWorkflowFixture));
+    expect(store.getWorkflow(workflowId)?.name).toBe('고객 문의 처리');
   });
 });

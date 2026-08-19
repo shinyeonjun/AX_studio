@@ -55,6 +55,21 @@ describe('capability graph', () => {
     expect(caps.some((cap) => cap.id === 'gmail.new_message')).toBe(true);
     expect(caps.some((cap) => cap.id === 'gmail.messages.read')).toBe(false);
   });
+
+  it('shows full catalog on first interview turn when goal is already filled', () => {
+    const caps = relevantCapabilitiesForInterview(
+      {
+        name: '새 업무',
+        goal: 'Gmail 메일 정리해서 Slack에 보내줘',
+        triggerType: 'manual',
+        assumptions: [],
+        nodes: [],
+      },
+      ['gmail', 'slack'],
+    );
+    expect(caps.some((cap) => cap.id === 'gmail.new_message')).toBe(true);
+    expect(caps.some((cap) => cap.id === 'slack.message.send')).toBe(true);
+  });
 });
 
 describe('cron', () => {

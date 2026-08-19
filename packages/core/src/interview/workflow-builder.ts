@@ -1,7 +1,7 @@
 import { capabilityActionName, resolveCapability } from '../connectors/capability-graph.js';
 import { approvalReasonForAction } from '../runtime/approval-display.js';
-import type { SideEffectLevel, SkillIR, Step } from '../skill/schema.js';
-import { renderWorkSkillMarkdown } from './work-skill-document.js';
+import type { SideEffectLevel, WorkflowIR, Step } from '../workflow/schema.js';
+import { renderWorkflowDocument } from './workflow-document.js';
 import type { InterviewDraft, WorkflowNode } from './workflow-schema.js';
 
 export class UnknownCapabilityError extends Error {
@@ -21,6 +21,7 @@ export class UnknownCapabilityError extends Error {
 }
 
 const DEFAULT_TIMEZONE = 'Asia/Seoul';
+import { GMAIL_READ_WORKFLOW_NODE_ID } from './workflow-constants.js';
 
 function outputSchemaFromFields(node: WorkflowNode): Record<string, unknown> {
   const fields = node.outputFields?.length
@@ -82,7 +83,7 @@ function toStep(node: WorkflowNode): Step | null {
   }
 }
 
-function consolidateApprovals(steps: Step[], skillName: string): Step[] {
+function consolidateApprovals(steps: Step[], workName: string): Step[] {
   const withoutApprovals = steps.filter((step) => step.type !== 'human_approval');
   const out: Step[] = [];
   for (const step of withoutApprovals) {
@@ -90,7 +91,7 @@ function consolidateApprovals(steps: Step[], skillName: string): Step[] {
       out.push({
         type: 'human_approval',
         id: `approve_${step.id}`,
-        reason: approvalReasonForAction(skillName, step),
+        reason: approvalReasonForAction(workName, step),
         forActionIds: [step.id],
       });
     }
@@ -99,35 +100,61 @@ function consolidateApprovals(steps: Step[], skillName: string): Step[] {
   return out;
 }
 
-function buildTrigger(draft: InterviewDraft): SkillIR['trigger'] {
+function hasGmailReadStep(steps: Step[]): boolean {
+  return steps.some(
+    (step) =>
+      step.type === 'action' &&
+      step.connector === 'gmail' &&
+      (step.action === 'messages.read' || step.action === 'message.read'),
+  );
+}
+
+function injectGmailReadIfNeeded(steps: Step[], draft: InterviewDraft): Step[] {
+  if (draft.triggerType !== 'gmail.new_message' || hasGmailReadStep(steps)) return steps;
+  return [
+    {
+      type: 'action',
+      id: GMAIL_READ_WORKFLOW_NODE_ID,
+      connector: 'gmail',
+      action: 'messages.read',
+      params: { messageId: '{{messageId}}' },
+      sideEffect: 'NONE',
+    },
+    ...steps,
+  ];
+}
+
+function buildTrigger(draft: InterviewDraft): WorkflowIR['trigger'] | undefined {
   if (draft.triggerType === 'schedule') {
+    if (!draft.schedule?.trim()) return undefined;
     return {
       type: 'schedule',
-      schedule: draft.schedule ?? '0 9 * * 1',
-      timezone: draft.timezone ?? DEFAULT_TIMEZONE,
+      schedule: draft.schedule.trim(),
+      timezone: draft.timezone?.trim() || DEFAULT_TIMEZONE,
     };
   }
   if (draft.triggerType === 'once') {
-    return { type: 'once', runAt: draft.runAt ?? new Date(Date.now() + 60_000).toISOString() };
+    if (!draft.runAt?.trim()) return undefined;
+    return { type: 'once', runAt: draft.runAt.trim() };
   }
   if (draft.triggerType === 'gmail.new_message') {
-    return { type: 'gmail.new_message', accountId: draft.gmailAccount ?? 'primary' };
+    if (!draft.gmailAccount?.trim()) return undefined;
+    return { type: 'gmail.new_message', accountId: draft.gmailAccount.trim() };
   }
   if (draft.triggerType === 'slack.new_message') {
-    return { type: 'slack.new_message', channel: draft.slackChannel ?? '#general' };
+    if (!draft.slackChannel?.trim()) return undefined;
+    return { type: 'slack.new_message', channel: draft.slackChannel.trim() };
   }
   return { type: 'manual' };
 }
 
-const GMAIL_TRIGGER_INPUTS = ['messageId', 'from', 'subject', 'body', 'sender', 'snippet'] as const;
+const GMAIL_TRIGGER_INPUTS = ['messageId', 'from', 'subject', 'snippet', 'sender'] as const;
 const SLACK_TRIGGER_INPUTS = ['messageId', 'channel', 'text', 'user', 'sender', 'ts'] as const;
 
-export function buildIRFromWorkflow(draft: InterviewDraft): Partial<SkillIR> {
-  const steps = consolidateApprovals(
-    draft.nodes.map(toStep).filter((step): step is Step => step !== null),
-    draft.name,
-  );
-  const ir: Partial<SkillIR> = {
+export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> {
+  const rawSteps = draft.nodes.map(toStep).filter((step): step is Step => step !== null);
+  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, draft), draft.name);
+  const ir: Partial<WorkflowIR> = {
     name: draft.name,
     goal: draft.goal,
     version: 1,
@@ -153,6 +180,6 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<SkillIR> {
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
     ),
   };
-  ir.document = renderWorkSkillMarkdown(ir);
+  ir.document = renderWorkflowDocument(ir);
   return ir;
 }

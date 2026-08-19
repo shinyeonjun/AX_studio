@@ -1,6 +1,6 @@
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 
-export const csMailSkillFixture: SkillIR = {
+export const csMailWorkflowFixture: WorkflowIR = {
   name: '고객 문의 처리',
   goal: '고객 문의를 분류하고 중요 문의를 담당자에게 전달',
   version: 1,
@@ -17,7 +17,7 @@ export const csMailSkillFixture: SkillIR = {
     {
       type: 'if',
       id: 'if_critical',
-      condition: 'classify.category === "critical"',
+      condition: { op: 'eq', left: { ref: 'classify.category' }, right: { lit: 'critical' } },
       thenStepIds: ['slack_notify', 'draft_reply', 'approve_send'],
       elseStepIds: ['label_normal'],
     },
@@ -81,7 +81,7 @@ export const csMailSkillFixture: SkillIR = {
   },
 };
 
-export const weeklyReportSkillFixture: SkillIR = {
+export const weeklyReportWorkflowFixture: WorkflowIR = {
   name: '주간 매출 보고',
   goal: '주간 매출을 비교하고 이상 시 알림',
   version: 1,
@@ -106,7 +106,7 @@ export const weeklyReportSkillFixture: SkillIR = {
     {
       type: 'if',
       id: 'if_drop',
-      condition: 'analyze.changeRate <= -0.2',
+      condition: { op: 'lte', left: { ref: 'analyze.changeRate' }, right: { lit: -0.2 } },
       thenStepIds: ['slack_alert'],
       elseStepIds: ['slack_report'],
     },
@@ -135,7 +135,7 @@ export const weeklyReportSkillFixture: SkillIR = {
   dataPolicy: {},
 };
 
-export const dataPolicyFixture: SkillIR = {
+export const dataPolicyFixture: WorkflowIR = {
   name: '민감 메일 요약',
   goal: '메일 요약만 생성',
   version: 1,

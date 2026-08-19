@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatMessage } from '../agent/model/chat.js';
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 import { assessCompleteness, type CompletenessResult } from './requiredness.js';
 import type { InterviewDraft } from './workflow-schema.js';
 import { KO } from '../i18n/ko.js';
@@ -8,10 +8,10 @@ import { KO } from '../i18n/ko.js';
 export interface InterviewState {
   sessionId: string;
   userInstruction: string;
-  /** Linked skill after save; undefined while drafting. */
-  skillId?: string;
+  /** Linked workflow after save; undefined while drafting. */
+  workflowId?: string;
   /** Compiled IR used by runtime once the interview is done. */
-  draft: Partial<SkillIR>;
+  draft: Partial<WorkflowIR>;
   /** AI-owned workflow canvas, sent back to the model every turn. */
   workflow: InterviewDraft;
   completeness: CompletenessResult;
@@ -21,7 +21,7 @@ export interface InterviewState {
 
 export function emptyInterviewDraft(instruction: string): InterviewDraft {
   return {
-    name: KO.skill.defaultName,
+    name: KO.work.defaultName,
     goal: instruction,
     triggerType: 'manual',
     assumptions: [],
@@ -31,7 +31,7 @@ export function emptyInterviewDraft(instruction: string): InterviewDraft {
 
 export function createInterviewState(instruction: string): InterviewState {
   const workflow = emptyInterviewDraft(instruction);
-  const draft: Partial<SkillIR> = {
+  const draft: Partial<WorkflowIR> = {
     name: workflow.name,
     goal: instruction,
     steps: [],

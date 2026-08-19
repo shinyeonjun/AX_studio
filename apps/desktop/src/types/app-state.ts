@@ -7,7 +7,7 @@ export interface AiProviderState {
   mode?: AiConnectionMode;
 }
 
-export interface SkillSummary {
+export interface WorkSummary {
   id: string;
   name: string;
   active: boolean;
@@ -37,7 +37,7 @@ export interface AppState {
   slackSocketModeActive?: boolean;
   slackConnectionMode?: 'disconnected' | 'poll' | 'socket';
   slackLastError?: string;
-  skills: SkillSummary[];
+  works: WorkSummary[];
   connections: Array<{ connector: string; connected: boolean; account?: string; scopes?: string[] }>;
   pendingApprovals: number;
   approvals: Array<{
@@ -49,7 +49,7 @@ export interface AppState {
   }>;
   executions: Array<{
     id: string;
-    skillId?: string | null;
+    workflowId?: string | null;
     status: string;
     startedAt: string;
     errorCode?: string | null;

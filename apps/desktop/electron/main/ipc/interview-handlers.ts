@@ -1,18 +1,18 @@
 import { ipcMain } from 'electron';
 import {
   applyAnswer,
-  bootstrapInterviewFromSkill,
+  bootstrapInterviewFromWorkflow,
   explainExecution,
-  proposeSkillRevision,
+  proposeWorkflowRevision,
   startInterview,
-  summarizeSkill,
+  summarizeWorkflow,
   type InterviewState,
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { connectedConnectorIds } from './shared.js';
 
 async function persistSession(state: InterviewState, summary?: string) {
-  getCore().store.saveChatSession({ state, summary, skillId: state.skillId });
+  getCore().store.saveChatSession({ state, summary, workflowId: state.workflowId });
 }
 
 export function registerInterviewHandlers() {
@@ -35,41 +35,41 @@ export function registerInterviewHandlers() {
       connectedConnectors: connectedConnectorIds(core.store),
       onProgress: (event) => _e.sender.send('ax:agent-progress', event),
     });
-    const summary = next.done && next.draft ? summarizeSkill(next.draft) : undefined;
-    if (next.skillId && next.draft && next.done) {
-      const existing = core.store.getSkill(next.skillId);
+    const summary = next.done && next.draft ? summarizeWorkflow(next.draft) : undefined;
+    if (next.workflowId && next.draft && next.done) {
+      const existing = core.store.getWorkflow(next.workflowId);
       if (existing) {
-        core.store.saveSkill({ ...existing, ...next.draft, id: next.skillId });
+        core.store.saveWorkflow({ ...existing, ...next.draft, id: next.workflowId });
       }
     }
     await persistSession(next, summary);
     return next;
   });
 
-  ipcMain.handle('ax:loadSkillChat', async (_e, skillId: string) => {
+  ipcMain.handle('ax:loadWorkChat', async (_e, workflowId: string) => {
     const core = getCore();
-    const existing = core.store.getChatSessionBySkillId(skillId);
+    const existing = core.store.getChatSessionByWorkflowId(workflowId);
     if (existing) {
       return { state: existing.state, summary: existing.summary, title: existing.title };
     }
-    const ir = core.store.getSkill(skillId);
-    if (!ir) throw new Error('Skill not found');
-    const state = bootstrapInterviewFromSkill(ir, skillId);
-    const summary = summarizeSkill(state.draft);
-    core.store.saveChatSession({ state, summary, skillId });
+    const ir = core.store.getWorkflow(workflowId);
+    if (!ir) throw new Error('Workflow not found');
+    const state = bootstrapInterviewFromWorkflow(ir, workflowId);
+    const summary = summarizeWorkflow(state.draft);
+    core.store.saveChatSession({ state, summary, workflowId });
     return { state, summary, title: ir.name };
   });
 
-  ipcMain.handle('ax:saveChatSession', async (_e, state: InterviewState, summary?: string, skillId?: string) => {
-    getCore().store.saveChatSession({ state, summary, skillId });
+  ipcMain.handle('ax:saveChatSession', async (_e, state: InterviewState, summary?: string, workflowId?: string) => {
+    getCore().store.saveChatSession({ state, summary, workflowId });
     return { ok: true };
   });
 
-  ipcMain.handle('ax:summarize', async (_e, ir) => summarizeSkill(ir));
+  ipcMain.handle('ax:summarize', async (_e, ir) => summarizeWorkflow(ir));
   ipcMain.handle('ax:explain', async (_e, question: string) => explainExecution(getCore().store, question));
-  ipcMain.handle('ax:proposeRevision', async (_e, skillId: string, instruction: string) => {
+  ipcMain.handle('ax:proposeRevision', async (_e, workflowId: string, instruction: string) => {
     const core = getCore();
-    const ir = core.store.getSkill(skillId);
-    return proposeSkillRevision(ir ?? {}, instruction, { harness: core.agentHarness });
+    const ir = core.store.getWorkflow(workflowId);
+    return proposeWorkflowRevision(ir ?? {}, instruction, { harness: core.agentHarness });
   });
 }

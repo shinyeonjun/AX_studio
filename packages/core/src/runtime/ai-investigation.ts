@@ -1,23 +1,35 @@
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import type { AgentHarness } from '../agent/harness.js';
+import { extractGmailPlainBody } from '../connectors/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
-import { evaluateStepCondition } from './condition-eval.js';
+import { evaluateCondition } from './condition-expr.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';
-import type { SkillIR, Step } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
 
-export { evaluateStepCondition } from './condition-eval.js';
+export { evaluateCondition } from './condition-expr.js';
 
-function triggerBody(variables: Record<string, unknown>): string | undefined {
-  const body = variables.emailBody ?? variables.body ?? variables.snippet ?? variables.text;
-  return body != null ? String(body) : undefined;
+function emailBodyFromRun(
+  variables: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): string | undefined {
+  for (const result of Object.values(stepResults)) {
+    const body = extractGmailPlainBody(result);
+    if (body?.trim()) return body;
+  }
+  const snippet = variables.snippet ?? variables.body ?? variables.text;
+  return snippet != null ? String(snippet) : undefined;
 }
 
-function buildInvestigationUser(step: Step & { type: 'ai_decision' }, ctx: ConnectorContext): string {
+function buildInvestigationUser(
+  step: Step & { type: 'ai_decision' },
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+): string {
   const lines = [`Task: ${step.goal}`];
   if (ctx.variables.subject) lines.push(`Subject: ${String(ctx.variables.subject)}`);
   const from = ctx.variables.from ?? ctx.variables.sender;
   if (from) lines.push(`From: ${String(from)}`);
-  const body = triggerBody(ctx.variables);
+  const body = emailBodyFromRun(ctx.variables, stepResults);
   if (body) lines.push(`Body:\n${body}`);
   return lines.join('\n\n');
 }
@@ -71,7 +83,7 @@ function interpolateTemplates(
 
 export async function runAiDecision(
   step: Step & { type: 'ai_decision' },
-  ir: SkillIR,
+  ir: WorkflowIR,
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
   agentHarness: AgentHarness | undefined,
@@ -80,14 +92,14 @@ export async function runAiDecision(
   const maxReads = step.maxReads ?? 4;
   let reads = 0;
   const evidence: Array<{ source: string; detail: string }> = [];
-  const untrustedBody = triggerBody(ctx.variables);
+  const untrustedBody = emailBodyFromRun(ctx.variables, stepResults);
 
   while (reads < maxReads) {
     if (agentHarness) {
       const { output } = await agentHarness.run({
         role: 'investigate',
         outputSchema: InvestigationOutputSchema,
-        user: buildInvestigationUser(step, ctx),
+        user: buildInvestigationUser(step, ctx, stepResults),
         cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
         context: {
           skillGoal: ir.goal,

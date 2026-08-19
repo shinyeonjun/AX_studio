@@ -105,10 +105,7 @@ export function relevantCapabilitiesForInterview(
   connectedConnectors: string[],
 ): ConnectorCapability[] {
   const available = availableCapabilities(connectedConnectors);
-  const isBlankDraft =
-    !draft.goal.trim() &&
-    draft.nodes.length === 0 &&
-    draft.triggerType === 'manual';
+  const isBlankDraft = draft.nodes.length === 0 && draft.triggerType === 'manual';
 
   if (isBlankDraft) {
     return available.filter(

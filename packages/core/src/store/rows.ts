@@ -1,4 +1,4 @@
-export interface SkillRow {
+export interface WorkflowRow {
   id: string;
   name: string;
   active: number;
@@ -6,9 +6,9 @@ export interface SkillRow {
   updated_at: string;
 }
 
-export interface SkillVersionRow {
+export interface WorkflowVersionRow {
   id: string;
-  skill_id: string;
+  workflow_id: string;
   version: number;
   ir_json: string;
   created_at: string;
@@ -16,8 +16,8 @@ export interface SkillVersionRow {
 
 export interface ExecutionRow {
   id: string;
-  skill_id: string | null;
-  skill_version: number | null;
+  workflow_id: string | null;
+  workflow_version: number | null;
   ephemeral: number;
   status: string;
   started_at: string;

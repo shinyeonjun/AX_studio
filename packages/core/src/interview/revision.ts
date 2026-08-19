@@ -1,10 +1,10 @@
 import type { AgentHarness } from '../agent/harness.js';
-import type { SkillStore } from '../store/skill-store.js';
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 import { KO } from '../i18n/ko.js';
-import { SkillRevisionSchema } from './revision-schema.js';
+import { WorkflowRevisionSchema } from './revision-schema.js';
 
-export function explainExecution(store: SkillStore, question: string): string {
+export function explainExecution(store: WorkflowStore, question: string): string {
   const executions = store.listExecutions(20);
   const latest = executions[0];
   if (!latest) return KO.execution.noRecentRuns;
@@ -28,26 +28,26 @@ export function explainExecution(store: SkillStore, question: string): string {
   return KO.execution.recent(latest.startedAt, latest.status, latest.errorCode);
 }
 
-export interface SkillRevisionOptions {
+export interface WorkflowRevisionOptions {
   harness?: AgentHarness;
 }
 
-export async function proposeSkillRevision(
-  current: Partial<SkillIR>,
+export async function proposeWorkflowRevision(
+  current: Partial<WorkflowIR>,
   instruction: string,
-  options: SkillRevisionOptions = {},
+  options: WorkflowRevisionOptions = {},
 ): Promise<{ proposal: string; changes: string[] }> {
   if (options.harness) {
     const { output } = await options.harness.run({
       role: 'revise',
-      outputSchema: SkillRevisionSchema,
+      outputSchema: WorkflowRevisionSchema,
       user: instruction,
       context: {
-        skillJson: JSON.stringify(current, null, 2),
+        workflowJson: JSON.stringify(current, null, 2),
         instruction,
       },
     });
-    return SkillRevisionSchema.parse(output);
+    return WorkflowRevisionSchema.parse(output);
   }
 
   return {

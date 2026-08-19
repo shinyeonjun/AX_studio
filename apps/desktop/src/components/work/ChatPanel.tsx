@@ -7,11 +7,13 @@ interface ChatPanelProps {
   error: string;
   progress: string;
   composerText: string;
-  isLinkedSkill: boolean;
+  editHint: string | null;
+  isLinkedWork: boolean;
   isImmediateOnce: boolean;
   isDeferredOnce: boolean;
   isRecurringDraft: boolean;
   onComposerChange: (value: string) => void;
+  onClearEditHint: () => void;
   onStartInterview: () => void;
   onSendAnswer: () => void;
   onRunOnce: () => void;
@@ -33,11 +35,13 @@ export function ChatPanel({
   error,
   progress,
   composerText,
-  isLinkedSkill,
+  editHint,
+  isLinkedWork,
   isImmediateOnce,
   isDeferredOnce,
   isRecurringDraft,
   onComposerChange,
+  onClearEditHint,
   onStartInterview,
   onSendAnswer,
   onRunOnce,
@@ -73,7 +77,7 @@ export function ChatPanel({
           {!inConversation && (
             <div className="chat-welcome">
               <p>맡기고 싶은 업무를 말씀해주세요.</p>
-              <p className="muted">저장하기 전까지는 일회성 대화로 진행됩니다.</p>
+              <p className="muted">오른쪽에서 AX가 만드는 업무 흐름을 실시간으로 확인할 수 있어요.</p>
             </div>
           )}
 
@@ -115,39 +119,7 @@ export function ChatPanel({
               <div className="chat-turn-body">
                 <div className="chat-turn-content">
                   <div className="chat-summary">{interview.summary}</div>
-                  {!isLinkedSkill && (
-                    <div className="chat-actions">
-                      {isDeferredOnce ? (
-                        <>
-                          <button type="button" className="btn btn-primary" onClick={onSaveAsWork} disabled={busy}>
-                            예약 업무로 저장
-                          </button>
-                          <button type="button" className="btn" onClick={onRunOnce} disabled={busy}>
-                            지금 바로 실행
-                          </button>
-                        </>
-                      ) : isImmediateOnce ? (
-                        <>
-                          <button type="button" className="btn btn-primary" onClick={onRunOnce} disabled={busy}>
-                            한 번만 실행
-                          </button>
-                          <button type="button" className="btn" onClick={onSaveAsWork} disabled={busy}>
-                            업무로 저장
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" className="btn" onClick={onRunOnce} disabled={busy}>
-                            테스트 실행
-                          </button>
-                          <button type="button" className="btn btn-primary" onClick={onSaveAsWork} disabled={busy}>
-                            {isRecurringDraft ? '업무로 맡기기' : '업무로 저장'}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {isLinkedSkill && (
+                  {isLinkedWork && (
                     <div className="chat-actions">
                       <button type="button" className="btn btn-primary" onClick={onRunOnce} disabled={busy}>
                         지금 실행
@@ -155,9 +127,9 @@ export function ChatPanel({
                     </div>
                   )}
                   <p className="muted chat-actions-hint">
-                    {isLinkedSkill
-                      ? '수정 내용은 대화로 말하면 자동 반영됩니다.'
-                      : '저장 전에는 일회성으로 실행할 수 있습니다.'}
+                    {isLinkedWork
+                      ? '수정은 대화 또는 그래프에서 노드를 선택해 요청하세요.'
+                      : '아래 검토 영역에서 흐름을 확인한 뒤 맡길 수 있습니다.'}
                   </p>
                 </div>
               </div>
@@ -167,6 +139,14 @@ export function ChatPanel({
       </div>
 
       <div className="chat-composer-wrap">
+        {editHint && (
+          <div className="chat-edit-hint">
+            <span>{editHint}</span>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={onClearEditHint}>
+              취소
+            </button>
+          </div>
+        )}
         <div className="chat-composer">
           <textarea
             ref={inputRef}

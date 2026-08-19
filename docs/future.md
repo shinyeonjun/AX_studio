@@ -7,6 +7,7 @@
 - DB INSERT / UPDATE / DELETE + transaction policy
 - Loop / Parallel / Wait / SubSkill / Retry 엔진
 - Slack 채널 읽기, Outlook, Teams, Drive, Sheets API, Notion, Salesforce, Jira
+- **기본 업무 노드 로드맵** — `packages/core/src/nodes/README.md` (Formatter, Storage, Webhook, PDF Read, Google Calendar/Sheets 등)
 - Browser / Desktop RPA
 - 웹 검색
 - 회사 PDF 위 영역 지정

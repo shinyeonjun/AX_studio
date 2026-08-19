@@ -1,6 +1,6 @@
-import type { SkillIR } from '../skill/schema.js';
+import type { WorkflowIR } from '../workflow/schema.js';
 import { renderChatSummary } from './chat-summary.js';
 
-export function summarizeSkill(ir: Partial<SkillIR>): string {
+export function summarizeWorkflow(ir: Partial<WorkflowIR>): string {
   return renderChatSummary(ir);
 }

@@ -1,5 +1,5 @@
 import { resolveCapability } from '../connectors/capability-graph.js';
-import type { SkillIR, Step } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
 
 type ActionStep = Extract<Step, { type: 'action' }>;
 
@@ -13,7 +13,7 @@ function actionDetail(step: ActionStep): string {
   return '';
 }
 
-export function approvalReasonForAction(skillName: string, step: ActionStep): string {
+export function approvalReasonForAction(workName: string, step: ActionStep): string {
   const cap = resolveCapability(step.connector, step.action);
   const actionLabel =
     cap?.id === 'gmail.message.send'
@@ -22,29 +22,29 @@ export function approvalReasonForAction(skillName: string, step: ActionStep): st
         ? 'Slack 메시지 보내기'
         : `${step.connector}.${step.action}`;
   const detail = actionDetail(step);
-  return detail ? `${skillName} — ${actionLabel} (${detail})` : `${skillName} — ${actionLabel}`;
+  return detail ? `${workName} — ${actionLabel} (${detail})` : `${workName} — ${actionLabel}`;
 }
 
 export function formatApprovalTitle(params: {
-  skillName?: string;
+  workName?: string;
   reason: string;
   actionIds: string[];
-  ir?: SkillIR | null;
+  ir?: WorkflowIR | null;
 }): string {
-  const skillName = params.skillName ?? '업무';
+  const workName = params.workName ?? '업무';
   if (params.ir) {
     for (const actionId of params.actionIds) {
       const step = params.ir.steps.find((candidate) => candidate.type === 'action' && candidate.id === actionId);
       if (step?.type === 'action') {
-        return approvalReasonForAction(skillName, step);
+        return approvalReasonForAction(workName, step);
       }
     }
   }
   if (params.reason.includes('gmail') && params.reason.includes('send')) {
-    return `${skillName} — Gmail 메일 보내기`;
+    return `${workName} — Gmail 메일 보내기`;
   }
   if (params.reason === '실행 전 승인' || params.reason.includes('실행 전 승인')) {
-    return `${skillName} 실행 승인`;
+    return `${workName} 실행 승인`;
   }
   return params.reason;
 }

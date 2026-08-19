@@ -242,9 +242,9 @@ Goal:
 
 Deliverables:
 - pnpm workspace: `packages/core`, `apps/desktop` placeholder. engines Node 24
-- Zod `SkillIR` (`assumptions`, `sideEffects`, `dataPolicy` 포함)
+- Zod `WorkflowIR` (`assumptions`, `sideEffects`, `dataPolicy` 포함)
 - `ConnectorCapability` 카탈로그 타입. Gmail/Slack/rdb/local_sheet/report 선언 fixture
-- drizzle + better-sqlite3: `skills`, `skill_versions`, `executions`, `approvals`, `settings`. **`tasks` 테이블 없음**
+- drizzle + better-sqlite3: `skills`, `workflow_versions`, `executions`, `approvals`, `settings`. **`tasks` 테이블 없음**
 - `ModelProvider` 인터페이스만. 구현/AI SDK는 Phase 2
 - fixture 3개 (CS 메일+send 승인, 주간 보고, 가정/dataPolicy 예시)
 - sideEffect → approval helper: HIGH는 항상 승인, EXTERNAL은 Skill 플래그, 나머지 없음
@@ -483,7 +483,7 @@ npm run eval
 
 ```text
 Read docs/research/ax-studio.md and docs/plans/ax-studio.md.
-Implement Phase 1 only: pnpm workspace (Node 24), packages/core Skill IR as Zod schema (including assumptions, sideEffects, dataPolicy), drizzle+better-sqlite3 store (skills, skill_versions, executions, approvals, settings — no tasks table), sideEffect→approval helper (EXTERNAL_HIGH always, EXTERNAL via skill flag), ModelProvider interface only (no AI SDK impl), ConnectorCapability catalog types, and 3 fixtures.
+Implement Phase 1 only: pnpm workspace (Node 24), packages/core Skill IR as Zod schema (including assumptions, sideEffects, dataPolicy), drizzle+better-sqlite3 store (works, workflow_versions, executions, approvals, settings — no tasks table), sideEffect→approval helper (EXTERNAL_HIGH always, EXTERNAL via skill flag), ModelProvider interface only (no AI SDK impl), ConnectorCapability catalog types, and 3 fixtures.
 packages/core must not depend on electron or react. Create apps/desktop as an empty placeholder only. Do not add Electron, OAuth, interviewer, or UI.
 Keep the patch small and testable. Run the smallest schema/store tests. Report changed files and verification.
 ```

@@ -49,7 +49,7 @@ export class AgentHarness {
 
     logs.push({
       level: 'info',
-      message: `role=${request.role} skill=${definition.skillId} provider=${this.model.name} timeoutMs=${timeoutMs}`,
+      message: `role=${request.role} agentSkill=${definition.agentSkillId} provider=${this.model.name} timeoutMs=${timeoutMs}`,
     });
 
     const allowCloud = request.cloudAllowed ?? definition.policy.cloudAllowed ?? true;

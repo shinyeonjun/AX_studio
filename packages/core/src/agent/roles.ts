@@ -3,7 +3,7 @@ import type { AgentRoleDefinition, AgentRole } from './types.js';
 const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
   interview: {
     role: 'interview',
-    skillId: 'interview',
+    agentSkillId: 'interview',
     temperature: 0.2,
     policy: { maxTurns: 1, timeoutMs: 90_000 },
     modeInstructions:
@@ -11,7 +11,7 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
   },
   direct_compile: {
     role: 'direct_compile',
-    skillId: 'interview',
+    agentSkillId: 'interview',
     temperature: 0.1,
     policy: { maxTurns: 1, timeoutMs: 90_000 },
     modeInstructions:
@@ -19,16 +19,16 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
   },
   investigate: {
     role: 'investigate',
-    skillId: 'investigate',
+    agentSkillId: 'investigate',
     temperature: 0.2,
     policy: { maxTurns: 1, timeoutMs: 60_000 },
   },
   revise: {
     role: 'revise',
-    skillId: 'revise',
+    agentSkillId: 'revise',
     temperature: 0.2,
     policy: { maxTurns: 1, timeoutMs: 60_000 },
-    modeInstructions: '지금 모드는 Skill 수정 제안입니다. 실행하지 말고 변경 제안만 작성하세요.',
+    modeInstructions: '지금 모드는 워크플로우 수정 제안입니다. 실행하지 말고 변경 제안만 작성하세요.',
   },
 };
 

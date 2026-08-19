@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { SkillIR, Step } from '../skill/schema.js';
+import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { assessCompleteness } from './requiredness.js';
 import type { InterviewState } from './interview-state.js';
 import type { InterviewDraft, WorkflowNode } from './workflow-schema.js';
@@ -44,7 +44,7 @@ function workflowNodeFromStep(step: Step): WorkflowNode | null {
 }
 
 function triggerFields(
-  ir: SkillIR,
+  ir: WorkflowIR,
 ): Pick<InterviewDraft, 'triggerType' | 'schedule' | 'runAt' | 'gmailAccount' | 'slackChannel' | 'timezone'> {
   const trigger = ir.trigger;
   if (trigger?.type === 'schedule') {
@@ -66,7 +66,7 @@ function triggerFields(
   return { triggerType: 'manual' };
 }
 
-export function bootstrapInterviewFromSkill(ir: SkillIR, skillId: string): InterviewState {
+export function bootstrapInterviewFromWorkflow(ir: WorkflowIR, workflowId: string): InterviewState {
   const workflow: InterviewDraft = {
     name: ir.name,
     goal: ir.goal ?? ir.name,
@@ -91,6 +91,6 @@ export function bootstrapInterviewFromSkill(ir: SkillIR, skillId: string): Inter
         content: `「${ir.name}」 업무입니다. 수정하거나 추가 지시를 계속 말씀해주세요.`,
       },
     ],
-    skillId,
+    workflowId,
   };
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Tab, WorkFilter, WorkView, SettingsScreen } from './types/navigation';
-import type { SkillSummary } from './types/app-state';
-import { isOnceTrigger, isRecurringTrigger } from './lib/skill-display';
+import type { WorkSummary } from './types/app-state';
+import { isOnceTrigger, isRecurringTrigger } from './lib/work-display';
 import type { AiBrand } from './types/ai-provider';
 import { useAppState } from './hooks/useAppState';
 import { useInterview } from './hooks/useInterview';
@@ -39,9 +39,9 @@ export default function App() {
     }
   }, [tab, workView]);
 
-  const filteredSkills = useMemo(() => {
-    if (!state?.skills) return [];
-    return state.skills.filter((s) => {
+  const filteredWorks = useMemo(() => {
+    if (!state?.works) return [];
+    return state.works.filter((s) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -55,7 +55,7 @@ export default function App() {
         (workFilter === 'recurring' && isRecurringTrigger(s.trigger));
       return matchSearch && matchFilter;
     });
-  }, [state?.skills, search, workFilter]);
+  }, [state?.works, search, workFilter]);
 
   const startNewTask = () => {
     interview.reset();
@@ -63,8 +63,8 @@ export default function App() {
     setTab('work');
   };
 
-  const openTask = async (skillId: string) => {
-    await interview.openSkillChat(skillId);
+  const openTask = async (workflowId: string) => {
+    await interview.openWorkChat(workflowId);
     setWorkView('conversation');
     setTab('work');
   };
@@ -84,23 +84,23 @@ export default function App() {
     void aiSettings.openBrand(brand);
   };
 
-  const toggleSkill = async (skill: SkillSummary) => {
-    await window.ax.setSkillActive(skill.id, !skill.active);
+  const toggleWork = async (work: WorkSummary) => {
+    await window.ax.setWorkflowActive(work.id, !work.active);
     await refresh();
   };
 
-  const runSkill = async (skillId: string) => {
-    await window.ax.runSkill(skillId);
+  const runWorkflow = async (workflowId: string) => {
+    await window.ax.runWorkflow(workflowId);
     await refresh();
   };
 
-  const deleteSkill = async (skillId: string) => {
+  const deleteWorkflow = async (workflowId: string) => {
     if (!window.confirm('이 업무를 삭제할까요?')) return;
-    if (interview.interview?.skillId === skillId) {
+    if (interview.interview?.workflowId === workflowId) {
       interview.reset();
       setWorkView('list');
     }
-    await window.ax.deleteSkill(skillId);
+    await window.ax.deleteWorkflow(workflowId);
     await refresh();
   };
 
@@ -116,7 +116,7 @@ export default function App() {
         {tab === 'work' && (
           <WorkPage
             state={state}
-            skills={filteredSkills}
+            works={filteredWorks}
             workFilter={workFilter}
             search={search}
             view={workView}
@@ -124,11 +124,11 @@ export default function App() {
             onWorkFilterChange={setWorkFilter}
             onSearchChange={setSearch}
             onNewTask={startNewTask}
-            onOpenTask={openTask}
+            onOpenWork={openTask}
             onBackToList={backToList}
-            onRunSkill={runSkill}
-            onToggleSkill={toggleSkill}
-            onDeleteSkill={deleteSkill}
+            onRunWorkflow={runWorkflow}
+            onToggleWork={toggleWork}
+            onDeleteWork={deleteWorkflow}
           />
         )}
 

@@ -1,4 +1,4 @@
-import type { SkillStore } from '../store/skill-store.js';
+import type { WorkflowStore } from '../store/workflow-store.js';
 import type { Connector } from './types.js';
 import {
   MockGmailConnector,
@@ -65,7 +65,7 @@ export function instantiateConnector(id: ConnectorId, config?: Record<string, un
   }
 }
 
-export function buildConnectorsFromStore(store: SkillStore): Record<string, Connector> {
+export function buildConnectorsFromStore(store: WorkflowStore): Record<string, Connector> {
   const connectors = createDefaultConnectors();
   Object.assign(connectors, createAlwaysRealConnectors());
 

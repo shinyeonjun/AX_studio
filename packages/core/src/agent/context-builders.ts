@@ -18,7 +18,7 @@ import { formatWorkflowState } from './prompt-context.js';
 
 export function buildRoleSystemPrompt(role: AgentRole, context: AgentContext): string {
   const definition = getRoleDefinition(role);
-  const skill = loadAgentSkill(definition.skillId);
+  const skill = loadAgentSkill(definition.agentSkillId);
 
   if (role === 'interview') {
     const ctx = context as InterviewAgentContext;
@@ -67,7 +67,7 @@ export function buildRoleSystemPrompt(role: AgentRole, context: AgentContext): s
   if (role === 'revise') {
     const ctx = context as ReviseAgentContext;
     return renderSkillTemplate(skill.body, {
-      skill_json: ctx.skillJson,
+      skill_json: ctx.workflowJson,
       instruction: ctx.instruction,
       mode_instructions: definition.modeInstructions ?? '',
     });

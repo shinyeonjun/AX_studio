@@ -4,7 +4,7 @@ import type { InterviewState } from '../../interview/interview-state.js';
 
 export interface StoredChatSession {
   sessionId: string;
-  skillId?: string;
+  workflowId?: string;
   title: string;
   summary?: string;
   state: InterviewState;
@@ -22,7 +22,7 @@ function sessionTitle(state: InterviewState): string {
 
 function rowToSession(row: {
   id: string;
-  skill_id: string | null;
+  workflow_id: string | null;
   title: string;
   summary: string | null;
   state_json: string;
@@ -31,7 +31,7 @@ function rowToSession(row: {
   const payload = JSON.parse(row.state_json) as PersistedPayload;
   return {
     sessionId: row.id,
-    skillId: row.skill_id ?? undefined,
+    workflowId: row.workflow_id ?? undefined,
     title: row.title,
     summary: row.summary ?? payload.summary,
     state: payload.state,
@@ -41,25 +41,25 @@ function rowToSession(row: {
 
 export function saveChatSession(
   db: AppDatabase,
-  params: { state: InterviewState; summary?: string; skillId?: string },
+  params: { state: InterviewState; summary?: string; workflowId?: string },
 ): StoredChatSession {
   const now = new Date().toISOString();
   const sessionId = params.state.sessionId || randomUUID();
-  const state = { ...params.state, sessionId, skillId: params.skillId ?? params.state.skillId };
+  const state = { ...params.state, sessionId, workflowId: params.workflowId ?? params.state.workflowId };
   const title = sessionTitle(state);
   const payload: PersistedPayload = { state, summary: params.summary };
   const existing = db.prepare('SELECT id FROM chat_sessions WHERE id = ?').get(sessionId) as { id: string } | undefined;
 
   if (existing) {
     db.prepare(
-      'UPDATE chat_sessions SET skill_id = ?, title = ?, summary = ?, state_json = ?, updated_at = ? WHERE id = ?',
-    ).run(params.skillId ?? state.skillId ?? null, title, params.summary ?? null, JSON.stringify(payload), now, sessionId);
+      'UPDATE chat_sessions SET workflow_id = ?, title = ?, summary = ?, state_json = ?, updated_at = ? WHERE id = ?',
+    ).run(params.workflowId ?? state.workflowId ?? null, title, params.summary ?? null, JSON.stringify(payload), now, sessionId);
   } else {
     db.prepare(
-      'INSERT INTO chat_sessions (id, skill_id, title, summary, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO chat_sessions (id, workflow_id, title, summary, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     ).run(
       sessionId,
-      params.skillId ?? state.skillId ?? null,
+      params.workflowId ?? state.workflowId ?? null,
       title,
       params.summary ?? null,
       JSON.stringify(payload),
@@ -70,7 +70,7 @@ export function saveChatSession(
 
   return {
     sessionId,
-    skillId: params.skillId ?? state.skillId,
+    workflowId: params.workflowId ?? state.workflowId,
     title,
     summary: params.summary,
     state,
@@ -80,11 +80,11 @@ export function saveChatSession(
 
 export function getChatSession(db: AppDatabase, sessionId: string): StoredChatSession | null {
   const row = db
-    .prepare('SELECT id, skill_id, title, summary, state_json, updated_at FROM chat_sessions WHERE id = ?')
+    .prepare('SELECT id, workflow_id, title, summary, state_json, updated_at FROM chat_sessions WHERE id = ?')
     .get(sessionId) as
     | {
         id: string;
-        skill_id: string | null;
+        workflow_id: string | null;
         title: string;
         summary: string | null;
         state_json: string;
@@ -94,13 +94,13 @@ export function getChatSession(db: AppDatabase, sessionId: string): StoredChatSe
   return row ? rowToSession(row) : null;
 }
 
-export function getChatSessionBySkillId(db: AppDatabase, skillId: string): StoredChatSession | null {
+export function getChatSessionByWorkflowId(db: AppDatabase, workflowId: string): StoredChatSession | null {
   const row = db
-    .prepare('SELECT id, skill_id, title, summary, state_json, updated_at FROM chat_sessions WHERE skill_id = ?')
-    .get(skillId) as
+    .prepare('SELECT id, workflow_id, title, summary, state_json, updated_at FROM chat_sessions WHERE workflow_id = ?')
+    .get(workflowId) as
     | {
         id: string;
-        skill_id: string | null;
+        workflow_id: string | null;
         title: string;
         summary: string | null;
         state_json: string;
@@ -110,26 +110,26 @@ export function getChatSessionBySkillId(db: AppDatabase, skillId: string): Store
   return row ? rowToSession(row) : null;
 }
 
-export function linkChatSessionToSkill(db: AppDatabase, sessionId: string, skillId: string): void {
-  db.prepare('UPDATE chat_sessions SET skill_id = ?, updated_at = ? WHERE id = ?').run(
-    skillId,
+export function linkChatSessionToWorkflow(db: AppDatabase, sessionId: string, workflowId: string): void {
+  db.prepare('UPDATE chat_sessions SET workflow_id = ?, updated_at = ? WHERE id = ?').run(
+    workflowId,
     new Date().toISOString(),
     sessionId,
   );
 }
 
-export function deleteChatSessionBySkillId(db: AppDatabase, skillId: string): void {
-  db.prepare('DELETE FROM chat_sessions WHERE skill_id = ?').run(skillId);
+export function deleteChatSessionByWorkflowId(db: AppDatabase, workflowId: string): void {
+  db.prepare('DELETE FROM chat_sessions WHERE workflow_id = ?').run(workflowId);
 }
 
 export function listChatSessions(db: AppDatabase, limit = 20): StoredChatSession[] {
   const rows = db
     .prepare(
-      'SELECT id, skill_id, title, summary, state_json, updated_at FROM chat_sessions ORDER BY updated_at DESC LIMIT ?',
+      'SELECT id, workflow_id, title, summary, state_json, updated_at FROM chat_sessions ORDER BY updated_at DESC LIMIT ?',
     )
     .all(limit) as Array<{
     id: string;
-    skill_id: string | null;
+    workflow_id: string | null;
     title: string;
     summary: string | null;
     state_json: string;

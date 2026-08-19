@@ -1,38 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { parseSkillIR, validateSkillIR } from '../skill/schema.js';
-import { validateApprovalPolicy, isDeployable } from '../skill/approval.js';
-import { csMailSkillFixture, weeklyReportSkillFixture, dataPolicyFixture } from '../skill/fixtures.js';
+import { parseWorkflowIR, validateWorkflowIR } from '../workflow/schema.js';
+import { validateApprovalPolicy, isDeployable } from '../workflow/approval.js';
+import { csMailWorkflowFixture, weeklyReportWorkflowFixture, dataPolicyFixture } from '../workflow/fixtures.js';
 import { createDatabaseAsync } from '../store/db.js';
-import { SkillStore } from '../store/skill-store.js';
+import { WorkflowStore } from '../store/workflow-store.js';
 import { assessCompleteness, computeRequiredSlots } from '../interview/requiredness.js';
-import { SkillRuntime } from '../runtime/engine.js';
+import { WorkflowRuntime } from '../runtime/engine.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-describe('Skill IR', () => {
+describe('Workflow IR', () => {
   it('validates fixtures', () => {
-    expect(parseSkillIR(csMailSkillFixture).name).toBe('고객 문의 처리');
-    expect(parseSkillIR(weeklyReportSkillFixture).trigger?.type).toBe('schedule');
-    expect(parseSkillIR(dataPolicyFixture).dataPolicy.emailBody?.cloudAllowed).toBe(false);
+    expect(parseWorkflowIR(csMailWorkflowFixture).name).toBe('고객 문의 처리');
+    expect(parseWorkflowIR(weeklyReportWorkflowFixture).trigger?.type).toBe('schedule');
+    expect(parseWorkflowIR(dataPolicyFixture).dataPolicy.emailBody?.cloudAllowed).toBe(false);
   });
 
   it('requires approval for gmail send without human_approval', () => {
-    const bad = { ...csMailSkillFixture, steps: csMailSkillFixture.steps.filter((s) => s.type !== 'human_approval') };
+    const bad = { ...csMailWorkflowFixture, steps: csMailWorkflowFixture.steps.filter((s) => s.type !== 'human_approval') };
     const errors = validateApprovalPolicy(bad);
     expect(errors.length).toBeGreaterThan(0);
   });
 
   it('cs fixture is deployable', () => {
-    expect(isDeployable(csMailSkillFixture)).toBe(true);
+    expect(isDeployable(csMailWorkflowFixture)).toBe(true);
   });
 });
 
-describe('SkillStore', () => {
+describe('WorkflowStore', () => {
   it('CRUD roundtrip', async () => {
     const db = await createDatabaseAsync(':memory:');
-    const store = new SkillStore(db);
-    const { skillId } = store.saveSkill(csMailSkillFixture);
-    const loaded = store.getSkill(skillId);
+    const store = new WorkflowStore(db);
+    const { workflowId } = store.saveWorkflow(csMailWorkflowFixture);
+    const loaded = store.getWorkflow(workflowId);
     expect(loaded?.name).toBe('고객 문의 처리');
     store.setConnection('gmail', true);
     expect(store.getConnections()[0].connected).toBe(true);
@@ -72,8 +72,8 @@ describe('requiredness', () => {
 describe('Runtime', () => {
   it('runs CS flow with approval gate', async () => {
     const db = await createDatabaseAsync(':memory:');
-    const store = new SkillStore(db);
-    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
     runtime.mockGmail.messages.push({
       id: '1',
       from: 'customer@example.com',
@@ -81,8 +81,8 @@ describe('Runtime', () => {
       body: '결제가 두 번 됐습니다',
     });
 
-    const ir = { ...csMailSkillFixture, steps: csMailSkillFixture.steps.filter((s) => s.id !== 'send_reply' && s.id !== 'approve_send') };
-    const result = await runtime.executeSkill(ir, { ephemeral: true, input: { emailBody: runtime.mockGmail.messages[0].body } });
+    const ir = { ...csMailWorkflowFixture, steps: csMailWorkflowFixture.steps.filter((s) => s.id !== 'send_reply' && s.id !== 'approve_send') };
+    const result = await runtime.executeWorkflow(ir, { ephemeral: true, input: { emailBody: runtime.mockGmail.messages[0].body } });
     expect(result.status).toBe('success');
     expect(runtime.mockSlack.messages.length).toBeGreaterThan(0);
   });
