@@ -42,7 +42,14 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             options = dict(request.params.get("options") or {})
             engine = str(options.get("engine") or "auto")
             adapter = resolve_adapter(engine)
-            result = adapter.ingest(source_path, artifact_root, options)
+            try:
+                result = adapter.ingest(source_path, artifact_root, options)
+            except Exception:
+                if engine != "auto" or adapter.name == "basic":
+                    raise
+                from adapters.basic import BasicAdapter
+
+                result = BasicAdapter().ingest(source_path, artifact_root, options)
             return EngineResponse(
                 id=request.id,
                 ok=True,
@@ -51,6 +58,10 @@ def handle_request(request: EngineRequest) -> EngineResponse:
                     "artifactPath": result.artifact_path,
                     "engine": result.engine,
                     "summary": result.summary,
+                    "text": "\n\n".join(
+                        str(chunk.get("text") or "")
+                        for chunk in (result.manifest.get("chunks") or [])
+                    ).strip(),
                 },
             )
 
@@ -95,18 +106,23 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             query = str(request.params.get("query") or "").strip().lower()
             manifest = load_manifest(artifact_root, document_id)
             hits = []
+            query_terms = [term for term in query.split() if term]
             for chunk in manifest.get("chunks") or []:
                 text = str(chunk.get("text") or "")
-                if query and query not in text.lower():
+                lowered = text.lower()
+                if query_terms and not all(term in lowered for term in query_terms):
                     continue
+                overlap = sum(1 for term in query_terms if term in lowered)
+                score = overlap / len(query_terms) if query_terms else 0.0
                 hits.append(
                     {
                         "chunkId": chunk.get("id"),
                         "pageIndex": chunk.get("pageIndex"),
                         "snippet": text[:240],
-                        "score": 1.0 if query else 0.0,
+                        "score": round(score, 3),
                     }
                 )
+            hits.sort(key=lambda item: item["score"], reverse=True)
             return EngineResponse(id=request.id, ok=True, data={"hits": hits})
 
         return EngineResponse(id=request.id, ok=False, error=f"unknown_command:{request.command}")

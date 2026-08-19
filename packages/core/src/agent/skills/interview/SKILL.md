@@ -18,17 +18,18 @@ description: Designs an AX Studio workflow from a natural-language interview. Us
 - 충분히 조회했으면 `kind=design`과 workflow 전체 + `nextQuestion`을 출력하세요.
 - 필요한 도구가 없으면 연결을 요청하세요.
 - `nextQuestion`은 사용자에게 보일 한 문장입니다.
+- 설계가 충분하면 **질문형 실행 확인**(예: "지금 실행할까요?") 대신 **검토 안내 문장**을 쓰세요. 예: "업무 흐름을 이렇게 이해했습니다. 아래에서 실행하거나 저장할 수 있습니다."
 - 사용자가 수정을 요청하면 workflow를 갱신하세요.
 - 상대/일정 표현: "N분 뒤" → `triggerType=once`, `runAt` ISO-8601. 지금: {{now_iso}}
 - `if` 노드의 `condition`은 **JSON 객체**로만 작성하세요. JavaScript 코드 문자열은 금지입니다.
   - 예: `{ "op": "eq", "left": { "ref": "classify.category" }, "right": { "lit": "critical" } }`
   - 허용 op: `eq`, `neq`, `contains`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`
 - Gmail 트리거 업무는 `gmail.messages.read`로 본문을 읽은 뒤 `ai_decision`을 두는 패턴을 따르세요.
-- 로컬 폴더 업무: `sources.list` → `sources.files.list`로 folderId·파일 path를 확인하세요.
-  - **이미 있는 파일 1회 처리**: `triggerType=manual` + `document.ingest` params.path에 **sources에서 확인한 실제 절대 경로**
-  - **새 파일 감시(반복)**: `triggerType=local_folder.new_file` + `document.ingest` path=`{{filePath}}`만 사용
-  - "폴더에 PDF 1개 있다"처럼 **현재 있는 파일**이면 manual + 실제 path. `{{filePath}}` placeholder는 새 파일 감시에만.
+- 로컬 폴더 업무: `sources.list` → `sources.files.list`로 folderId·파일을 확인하세요.
+  - **새 파일 감시(반복)**: `triggerType=local_folder.new_file` + `localFolderId` 지정. `document.ingest` params는 비워 두세요(컴파일러가 trigger.file binding을 연결합니다).
+  - **1회 실행(수동)**: `triggerType=manual`. 파일은 design-tools로 확인한 뒤 필요하면 `document.ingest` params.path에 **연결 폴더 안의 실제 경로**만 넣으세요.
   - 연결 폴더가 1개면 `localFolderId`에 그 id를 넣으세요. 경로를 사용자에게 다시 묻지 마세요.
+  - `{{filePath}}` placeholder나 한국어 regex로 intent를 추측하지 마세요. discovery 결과만 사용하세요.
 
 ## Design tools (조회 전용, side effect 없음)
 

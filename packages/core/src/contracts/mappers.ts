@@ -43,20 +43,25 @@ export function fileRefFromExecutionVariables(variables: Record<string, unknown>
   return fileRefFromTriggerPayload(variables);
 }
 
-export function documentIngestParamsFromFileRef(file: FileRef): { path: string } {
-  return { path: file.path };
+export function documentIngestParamsFromFileRef(file: FileRef): DocumentIngestInput {
+  return { file };
 }
 
-export function documentIngestParamsFromInput(input: DocumentIngestInput): { path: string } | undefined {
+export function documentIngestParamsFromInput(input: DocumentIngestInput): DocumentIngestInput | undefined {
+  if (input.file) return { file: input.file };
   const path = documentIngestPath(input);
   return path ? { path } : undefined;
 }
 
-/** Merge template-resolved params with contract-derived document.ingest path. */
+/** Merge template-resolved params with contract-derived document.ingest input. */
 export function resolveDocumentIngestParams(
   params: Record<string, unknown>,
   variables: Record<string, unknown>,
 ): Record<string, unknown> {
+  if (params.file && typeof params.file === 'object') {
+    return params;
+  }
+
   const path = params.path;
   if (typeof path === 'string' && path.trim() && !path.includes('{{')) {
     return params;
@@ -65,8 +70,7 @@ export function resolveDocumentIngestParams(
   const file = fileRefFromExecutionVariables(variables);
   if (!file) return params;
 
-  const mapped = documentIngestParamsFromFileRef(file);
-  return { ...params, path: mapped.path };
+  return { ...params, file, path: undefined };
 }
 
 /** Keep trigger-shaped payload while attaching normalized FileRef for downstream contracts. */

@@ -42,6 +42,16 @@ export function isRecurringDraft(draft: unknown): boolean {
   return isRecurringTriggerType(draftTriggerType(draft));
 }
 
+export function isAffirmativeRunIntent(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+  return /^(y|yes|ok|okay|go|ㅇㅇ|응|네|맞아|좋아|실행|해줘|ㄱ|그래|맞습니다)[.!?]*$/u.test(normalized);
+}
+
+export function isRunConfirmationMessage(content: string): boolean {
+  return /실행할까|지금\s*실행|맡길\s*수|검토\s*후|이\s*구성|아래\s*에서/.test(content);
+}
+
 export function appendAssistantMessage(state: InterviewState, content: string): InterviewState {
   return {
     ...state,

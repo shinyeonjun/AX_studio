@@ -32,36 +32,46 @@ function moduleDir(): string {
   return dirname(fileURLToPath(import.meta.url));
 }
 
+const WORKER_REL = join('packages', 'document-engine', 'src', 'worker.py');
+
+function findUp(start: string, relativePath: string, maxHops = 10): string | undefined {
+  let dir = start;
+  for (let i = 0; i < maxHops; i += 1) {
+    const candidate = join(dir, relativePath);
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
+function pythonInVenv(engineRoot: string): string {
+  return process.platform === 'win32'
+    ? join(engineRoot, '.venv', 'Scripts', 'python.exe')
+    : join(engineRoot, '.venv', 'bin', 'python');
+}
+
+/** Walk from bundled Electron main and cwd — import.meta.url is not the source tree after vite bundle. */
 export function defaultWorkerScript(): string {
   const fromEnv = process.env.AX_DOCUMENT_ENGINE_WORKER;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
-  const fromCoreSrc = join(moduleDir(), '../../../document-engine/src/worker.py');
-  if (existsSync(fromCoreSrc)) return fromCoreSrc;
-
-  const fromCoreDist = join(moduleDir(), '../../../../document-engine/src/worker.py');
-  if (existsSync(fromCoreDist)) return fromCoreDist;
-
-  return fromCoreSrc;
+  return (
+    findUp(moduleDir(), WORKER_REL) ??
+    findUp(process.cwd(), WORKER_REL) ??
+    join(moduleDir(), '../../../document-engine/src/worker.py')
+  );
 }
 
 export function defaultPythonPath(): string {
   const fromEnv = process.env.AX_DOCUMENT_ENGINE_PYTHON;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
-  const repoVenv =
-    process.platform === 'win32'
-      ? join(moduleDir(), '../../../document-engine/.venv/Scripts/python.exe')
-      : join(moduleDir(), '../../../document-engine/.venv/bin/python');
-
-  if (existsSync(repoVenv)) return repoVenv;
-
-  const distVenv =
-    process.platform === 'win32'
-      ? join(moduleDir(), '../../../../document-engine/.venv/Scripts/python.exe')
-      : join(moduleDir(), '../../../../document-engine/.venv/bin/python');
-
-  if (existsSync(distVenv)) return distVenv;
+  const worker = defaultWorkerScript();
+  const engineRoot = dirname(dirname(worker));
+  const venvPython = pythonInVenv(engineRoot);
+  if (existsSync(venvPython)) return venvPython;
 
   return process.platform === 'win32' ? 'python' : 'python3';
 }
@@ -161,6 +171,12 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       params,
     };
 
+    if (!existsSync(this.workerScript)) {
+      throw new Error(
+        `document_engine_worker_missing:${this.workerScript}. packages/document-engine 경로를 확인하세요.`,
+      );
+    }
+
     const result = await runCommand(this.pythonPath, [this.workerScript], {
       timeoutMs: this.timeoutMs,
       cwd: this.workerCwd,
@@ -169,7 +185,8 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
 
     const stdout = result.stdout.trim();
     if (!stdout) {
-      throw new Error(result.stderr.trim() || 'document_engine_empty_response');
+      const detail = result.stderr.trim() || `python=${this.pythonPath} worker=${this.workerScript}`;
+      throw new Error(`document_engine_empty_response:${detail}`);
     }
 
     let parsed: DocumentEngineResponse<T>;

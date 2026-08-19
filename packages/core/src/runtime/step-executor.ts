@@ -5,6 +5,9 @@ import type { WorkflowStore } from '../store/workflow-store.js';
 import type { AgentHarness } from '../agent/harness.js';
 import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
 import { resolveDocumentIngestParams } from '../contracts/mappers.js';
+import type { FileRef } from '../contracts/artifacts/file-ref.js';
+import { applyStepBindings } from '../workflow/bindings.js';
+import { resolveIngestPath } from './source-resolver.js';
 
 function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
   return ir.steps.some(
@@ -12,74 +15,39 @@ function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
   );
 }
 
-function latestTableFromResults(stepResults: Record<string, unknown>): unknown {
-  for (const value of Object.values(stepResults).reverse()) {
-    if (Array.isArray(value) && value.length > 0) return value;
-  }
-  return undefined;
-}
-
-function latestDocumentFromResults(stepResults: Record<string, unknown>): unknown {
-  for (const value of Object.values(stepResults).reverse()) {
-    if (value && typeof value === 'object' && ('pages' in value || 'text' in value || 'artifactPath' in value)) {
-      return value;
-    }
-  }
-  return undefined;
-}
-
-function resolveTransformParams(
-  action: string,
+function resolveDocumentIngestPath(
   params: Record<string, unknown>,
-  stepResults: Record<string, unknown>,
   ctx: ConnectorContext,
-): Record<string, unknown> {
-  if (action === 'table_to_text') {
-    return {
-      ...params,
-      table: params.table ?? ctx.variables.sheetData ?? ctx.variables.queryResult ?? latestTableFromResults(stepResults),
-    };
-  }
-  if (action === 'document_to_text') {
-    return {
-      ...params,
-      document: params.document ?? latestDocumentFromResults(stepResults),
-    };
-  }
-  return params;
-}
+): { ok: true; params: Record<string, unknown> } | { ok: false; error: string; errorCode: string } {
+  const withInput = resolveDocumentIngestParams(params, ctx.variables);
+  const file = withInput.file as FileRef | undefined;
+  const path = typeof withInput.path === 'string' ? withInput.path : undefined;
 
-function latestTextFromResults(stepResults: Record<string, unknown>): string | undefined {
-  for (const value of Object.values(stepResults).reverse()) {
-    if (typeof value === 'string' && value.trim()) return value;
-    if (!value || typeof value !== 'object') continue;
-    const record = value as Record<string, unknown>;
-    for (const key of ['text', 'body', 'conclusion']) {
-      const candidate = record[key];
-      if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  if (ctx.resolveFileRef && file) {
+    const resolved = ctx.resolveFileRef(file);
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error: resolved.error ?? 'source_resolve_failed',
+        errorCode: resolved.errorCode ?? 'source_resolve_failed',
+      };
     }
+    return { ok: true, params: { ...withInput, path: resolved.path, file: resolved.file ?? file } };
   }
-  return undefined;
-}
 
-function enrichMessagingParams(
-  step: Extract<Step, { type: 'action' }>,
-  params: Record<string, unknown>,
-  stepResults: Record<string, unknown>,
-): Record<string, unknown> {
-  if (step.connector === 'slack' && step.action === 'message.send' && !params.text) {
-    const text = latestTextFromResults(stepResults);
-    return text ? { ...params, text } : params;
+  if (path && ctx.connections?.length) {
+    const resolved = resolveIngestPath({ path, file }, ctx.connections);
+    if (!resolved.ok) {
+      return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
+    }
+    return { ok: true, params: { ...withInput, path: resolved.path, file: resolved.file } };
   }
-  if (
-    step.connector === 'gmail' &&
-    (step.action === 'message.send' || step.action === 'draft.create') &&
-    !params.body
-  ) {
-    const body = latestTextFromResults(stepResults);
-    return body ? { ...params, body } : params;
+
+  if (!path && !file) {
+    return { ok: false, error: '문서 입력이 비어 있습니다.', errorCode: 'document_input_required' };
   }
-  return params;
+
+  return { ok: true, params: withInput };
 }
 
 export async function executeStep(
@@ -112,19 +80,19 @@ export async function executeStep(
       }
       const connector = connectors[step.connector];
       if (!connector) throw Object.assign(new Error(`Connector not found: ${step.connector}`), { code: 'connector_missing' });
-      const resolvedParams = resolveStepParams(step.params, ctx, stepResults);
-      let params =
-        step.connector === 'document' && step.action === 'ingest'
-          ? resolveDocumentIngestParams(resolvedParams, ctx.variables)
-          : step.connector === 'transform'
-            ? resolveTransformParams(step.action, resolvedParams, stepResults, ctx)
-            : resolvedParams;
-      params = enrichMessagingParams(step, params, stepResults);
-      const result = await connector.execute(
-        step.action,
-        params,
-        ctx,
-      );
+
+      let params = resolveStepParams(step.params, ctx, stepResults);
+      params = applyStepBindings(step, ir, params, stepResults, ctx.variables);
+
+      if (step.connector === 'document' && step.action === 'ingest') {
+        const resolved = resolveDocumentIngestPath(params, ctx);
+        if (!resolved.ok) {
+          throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
+        }
+        params = resolved.params;
+      }
+
+      const result = await connector.execute(step.action, params, ctx);
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
       stepResults[step.id] = result.data;
       break;

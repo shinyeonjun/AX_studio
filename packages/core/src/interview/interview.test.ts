@@ -208,17 +208,17 @@ describe('AI interview session', () => {
     expect(state.done).toBe(false);
   });
 
-  it('keeps done false for deployable drafts with open confirmation questions', async () => {
+  it('finalizes deployable drafts when nextQuestion is run/review confirmation', async () => {
     const confirmTurn: InterviewTurn = {
       ...completeSend,
-      nextQuestion: '이대로 진행할까요?',
+      nextQuestion: '워크플로우가 완성되었습니다. 지금 실행할까요?',
     };
     const model = new ScriptedModelProvider([confirmTurn]);
     const harness = createAgentHarness(model);
     const state = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness));
 
     expect(state.completeness?.deployable).toBe(true);
-    expect(state.done).toBe(false);
+    expect(state.done).toBe(true);
   });
 
   it('keeps one session and sends full chat history on the next API turn', async () => {

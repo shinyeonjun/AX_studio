@@ -1,4 +1,4 @@
-import type { ConnectorId } from '../catalog/connectors.js';
+import type { ConnectorId } from '../catalog/connector-types.js';
 import type { Connector } from './types.js';
 
 export interface ModuleRegistration {

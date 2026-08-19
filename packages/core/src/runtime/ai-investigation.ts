@@ -8,6 +8,30 @@ import type { WorkflowIR, Step } from '../workflow/schema.js';
 
 export { evaluateCondition } from './condition-expr.js';
 
+const INVESTIGATION_LIMIT_MESSAGE = 'Max investigation reads reached';
+
+function documentTextFromRun(
+  variables: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): string | undefined {
+  for (const key of ['transformText', 'documentText', 'text', 'body']) {
+    const value = variables[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  for (const result of Object.values(stepResults).reverse()) {
+    if (typeof result === 'string' && result.trim()) return result;
+    if (!result || typeof result !== 'object') continue;
+    const record = result as Record<string, unknown>;
+    for (const key of ['text', 'body', 'summary']) {
+      const candidate = record[key];
+      if (typeof candidate === 'string' && candidate.trim() && candidate !== INVESTIGATION_LIMIT_MESSAGE) {
+        return candidate;
+      }
+    }
+  }
+  return undefined;
+}
+
 function emailBodyFromRun(
   variables: Record<string, unknown>,
   stepResults: Record<string, unknown>,
@@ -31,6 +55,10 @@ function buildInvestigationUser(
   if (from) lines.push(`From: ${String(from)}`);
   const body = emailBodyFromRun(ctx.variables, stepResults);
   if (body) lines.push(`Body:\n${body}`);
+  const documentText = documentTextFromRun(ctx.variables, stepResults);
+  if (documentText && documentText !== body) {
+    lines.push(`Document:\n${documentText.slice(0, 12_000)}`);
+  }
   return lines.join('\n\n');
 }
 
@@ -145,7 +173,32 @@ export async function runAiDecision(
     return;
   }
 
-  stepResults[step.id] = { conclusion: 'Max investigation reads reached', evidence };
+  if (agentHarness) {
+    const { output } = await agentHarness.run({
+      role: 'investigate',
+      outputSchema: InvestigationOutputSchema,
+      user: `${buildInvestigationUser(step, ctx, stepResults)}\n\n추가 조회 없이 지금 결론만 내세요.`,
+      cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
+      context: {
+        skillGoal: ir.goal,
+        taskGoal: step.goal,
+        evidence,
+        connectedConnectors: Object.keys(connectors),
+        untrustedData: untrustedBody,
+      },
+    });
+    if (output.conclusion?.trim() && output.conclusion.trim() !== INVESTIGATION_LIMIT_MESSAGE) {
+      stepResults[step.id] = mapInvestigationOutput(step, output);
+      return;
+    }
+  }
+
+  const fallbackText = documentTextFromRun(ctx.variables, stepResults)?.slice(0, 2_000);
+  stepResults[step.id] = {
+    conclusion: fallbackText || '앞 단계 내용을 요약하지 못했습니다.',
+    summary: fallbackText || '앞 단계 내용을 요약하지 못했습니다.',
+    evidence,
+  };
 }
 
 export function resolveStepParams(

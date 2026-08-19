@@ -10,9 +10,11 @@ import {
   hydrateInterviewSummary,
   interviewErrorMessage,
   interviewSessionTitle,
+  isAffirmativeRunIntent,
   isDeferredOnce,
   isImmediateOnce,
   isRecurringDraft,
+  isRunConfirmationMessage,
   type InterviewState,
 } from './interview-helpers';
 
@@ -25,6 +27,8 @@ export interface UseInterviewOptions {
 
 export function useInterview({ refresh }: UseInterviewOptions) {
   const sessionEpochRef = useRef(0);
+  const savedWorkflowIdRef = useRef<string | undefined>();
+  const actionInFlightRef = useRef(false);
   const [composerText, setComposerText] = useState('');
   const [interview, setInterview] = useState<InterviewState | null>(null);
   const [saved, setSaved] = useState(false);
@@ -47,6 +51,8 @@ export function useInterview({ refresh }: UseInterviewOptions) {
 
   const reset = () => {
     invalidateSession();
+    savedWorkflowIdRef.current = undefined;
+    actionInFlightRef.current = false;
     setInterview(null);
     setSaved(false);
     setComposerText('');
@@ -81,6 +87,7 @@ export function useInterview({ refresh }: UseInterviewOptions) {
         setWorkflowBaseline(snapshot);
         setTurnDiffBaseline(snapshot);
       }
+      savedWorkflowIdRef.current = workflowId;
       setSaved(true);
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -98,6 +105,8 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     setError('');
     setProgress('답변을 준비하고 있습니다');
     setSaved(false);
+    savedWorkflowIdRef.current = undefined;
+    actionInFlightRef.current = false;
     setWorkflowBaseline(emptyInterviewDraftBaseline());
     setTurnDiffBaseline(emptyInterviewDraftBaseline());
     setInterview({ messages: [{ role: 'user', content: text }], title: '새 업무' });
@@ -120,9 +129,23 @@ export function useInterview({ refresh }: UseInterviewOptions) {
   };
 
   const sendAnswer = async () => {
-    if (!interview || !composerText.trim() || busy) return;
+    if (!interview || !composerText.trim() || busy || actionInFlightRef.current) return;
     const content = composerText.trim();
     const prior = interview;
+    const deployable = Boolean(prior.completeness?.deployable);
+    const lastAssistant = [...(prior.messages ?? [])].reverse().find((message) => message.role === 'assistant');
+    const wantsRun =
+      deployable &&
+      isAffirmativeRunIntent(content) &&
+      (prior.done || (lastAssistant ? isRunConfirmationMessage(lastAssistant.content) : false));
+
+    if (wantsRun && prior.draft && isImmediateOnce(prior.draft)) {
+      setComposerText('');
+      setEditHint(null);
+      await runOnce();
+      return;
+    }
+
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
@@ -166,21 +189,27 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     prior: InterviewState,
     epoch: number,
   ): Promise<string | undefined> => {
-    if (prior.workflowId) return prior.workflowId;
+    const existingId = prior.workflowId ?? savedWorkflowIdRef.current;
+    if (existingId) return existingId;
     const savedWork = (await window.ax.saveWorkflow(draft)) as { workflowId: string };
     if (!isCurrentSession(epoch)) return undefined;
+    savedWorkflowIdRef.current = savedWork.workflowId;
     return savedWork.workflowId;
   };
 
   const runOnce = async () => {
-    if (!interview?.draft) return;
+    if (!interview?.draft || busy || actionInFlightRef.current) return;
     const prior = interview;
     const epoch = sessionEpochRef.current;
+    actionInFlightRef.current = true;
     setBusy(true);
     setError('');
     try {
       const workflowId = await persistDraftWork(prior.draft, prior, epoch);
       if (!workflowId || !isCurrentSession(epoch)) return;
+      setInterview((current) =>
+        current && isCurrentSession(epoch) ? { ...current, workflowId } : current,
+      );
       const result = (await window.ax.runWorkflow(workflowId)) as {
         status?: string;
         errorCode?: string;
@@ -213,15 +242,17 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       if (!isCurrentSession(epoch)) return;
       setError(interviewErrorMessage(err));
     } finally {
+      actionInFlightRef.current = false;
       if (isCurrentSession(epoch)) setBusy(false);
     }
   };
 
   const saveAsWork = async () => {
-    if (!interview?.draft || interview.workflowId) return;
+    if (!interview?.draft || interview.workflowId || busy || actionInFlightRef.current) return;
     const draft = interview.draft;
     const prior = interview;
     const epoch = sessionEpochRef.current;
+    actionInFlightRef.current = true;
     setBusy(true);
     setError('');
     try {
@@ -252,6 +283,7 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       if (!isCurrentSession(epoch)) return;
       setError(interviewErrorMessage(err));
     } finally {
+      actionInFlightRef.current = false;
       if (isCurrentSession(epoch)) setBusy(false);
     }
   };

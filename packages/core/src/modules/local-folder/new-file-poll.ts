@@ -1,6 +1,6 @@
 import type { ConnectorContext, ConnectorResult } from '../types.js';
 import type { LocalFolderConnectionConfig } from './connection.js';
-import { scanFolder, trimSeenFileKeys } from './scan.js';
+import { MAX_FILES_PER_SCAN, scanFolder, trimSeenFileKeys } from './scan.js';
 
 export interface NewFilePollParams {
   folderId: string;
@@ -25,7 +25,10 @@ export async function newFilePoll(
   const initialized = Boolean(params.initialized);
 
   if (!initialized) {
-    const seenFileKeys = trimSeenFileKeys(files.map((file) => file.key));
+    const seenFileKeys =
+      files.length <= MAX_FILES_PER_SCAN
+        ? files.map((file) => file.key)
+        : trimSeenFileKeys(files.map((file) => file.key));
     ctx.log({
       at: new Date().toISOString(),
       level: 'info',

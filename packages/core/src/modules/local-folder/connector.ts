@@ -1,6 +1,8 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
 import type { LocalFolderConnectionConfig } from './connection.js';
 import { newFilePoll } from './new-file-poll.js';
+import { resolveFileWithinFolderRoot } from './path-security.js';
 import { scanFolder } from './scan.js';
 
 export class LocalFolderConnector implements Connector {
@@ -28,6 +30,39 @@ export class LocalFolderConnector implements Connector {
       if (!folder) return { ok: false, error: 'folder_not_found' };
       const files = scanFolder(folder.path, (params.extensions as string[]) ?? undefined);
       return { ok: true, data: { folder, files } };
+    }
+
+    if (action === 'read') {
+      const folderId = String(params.folderId ?? '');
+      const folder = folderId
+        ? this.config.folders.find((entry) => entry.id === folderId)
+        : this.config.folders.length === 1
+          ? this.config.folders[0]
+          : undefined;
+      if (!folder) return { ok: false, error: 'folder_not_found' };
+
+      const candidatePath =
+        typeof params.path === 'string'
+          ? params.path
+          : params.file && typeof params.file === 'object' && typeof (params.file as { path?: string }).path === 'string'
+            ? (params.file as { path: string }).path
+            : '';
+      if (!candidatePath.trim()) return { ok: false, error: 'path_required' };
+
+      const resolved = resolveFileWithinFolderRoot(folder.path, candidatePath.trim());
+      if (!resolved.ok) {
+        return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
+      }
+
+      const fileName = resolved.path.split(/[/\\]/).pop() ?? resolved.path;
+      const file = fileRefFromLocalScan({
+        folderId: folder.id,
+        folderPath: folder.path,
+        filePath: resolved.path,
+        fileName,
+        extension: typeof params.extension === 'string' ? params.extension : undefined,
+      });
+      return { ok: true, data: { file } };
     }
 
     return { ok: false, error: `Unknown local_folder action: ${action}` };

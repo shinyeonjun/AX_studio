@@ -5,6 +5,7 @@ import {
   validateWorkflowContracts,
   type ContractValidationIssue,
 } from './contract-validator.js';
+import { inferWorkflowBindings } from './bindings.js';
 
 interface AdapterRule {
   needed: ContractTypeName;
@@ -93,5 +94,6 @@ export function insertContractAdapters(ir: WorkflowIR): WorkflowIR {
 }
 
 export function applyContractCompilation(ir: WorkflowIR): WorkflowIR {
-  return insertContractAdapters(ir);
+  const adapted = insertContractAdapters(ir);
+  return inferWorkflowBindings(adapted);
 }

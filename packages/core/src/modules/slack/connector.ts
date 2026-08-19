@@ -1,6 +1,7 @@
 import { WebClient } from '@slack/web-api';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { pollSlackNewMessages } from './new-message-poll.js';
+import { composeSlackMessagePayload } from './format-message.js';
 
 export class SlackConnector implements Connector {
   name = 'slack';
@@ -12,9 +13,12 @@ export class SlackConnector implements Connector {
       const client = new WebClient(this.token);
       switch (action) {
         case 'message.send': {
+          const rawText = (params.text as string) ?? '';
+          const payload = composeSlackMessagePayload(rawText, ctx);
           const res = await client.chat.postMessage({
             channel: (params.channel as string) ?? '#general',
-            text: (params.text as string) ?? '',
+            text: payload.text,
+            ...(payload.blocks ? { blocks: payload.blocks } : {}),
           });
           ctx.log({ at: new Date().toISOString(), level: 'info', message: 'slack.send', data: { channel: params.channel } });
           return { ok: true, data: res };

@@ -1,12 +1,10 @@
-import { getCapability } from './capabilities.js';
+import { getCapability, CAPABILITY_CATALOG } from './capabilities.js';
 import { resolveCapability } from './capability-graph.js';
 import type { ContractTypeName } from '../contracts/capability-io.js';
 
-const TRIGGER_CAPABILITY_BY_TYPE: Record<string, string> = {
-  'gmail.new_message': 'gmail.new_message',
-  'slack.new_message': 'slack.new_message',
-  'local_folder.new_file': 'local_folder.new_file',
-};
+const TRIGGER_CAPABILITY_BY_TYPE: Record<string, string> = Object.fromEntries(
+  CAPABILITY_CATALOG.filter((cap) => cap.kind === 'trigger').map((cap) => [cap.id, cap.id]),
+);
 
 export function triggerCapabilityId(triggerType: string): string | undefined {
   return TRIGGER_CAPABILITY_BY_TYPE[triggerType];

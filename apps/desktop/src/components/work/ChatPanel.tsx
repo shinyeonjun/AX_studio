@@ -12,6 +12,7 @@ interface ChatPanelProps {
   isImmediateOnce: boolean;
   isDeferredOnce: boolean;
   isRecurringDraft: boolean;
+  reviewReady: boolean;
   onComposerChange: (value: string) => void;
   onClearEditHint: () => void;
   onStartInterview: () => void;
@@ -40,6 +41,7 @@ export function ChatPanel({
   isImmediateOnce,
   isDeferredOnce,
   isRecurringDraft,
+  reviewReady,
   onComposerChange,
   onClearEditHint,
   onStartInterview,
@@ -52,7 +54,7 @@ export function ChatPanel({
 
   const inConversation = Boolean(interview);
   const finished = Boolean(interview?.done);
-  const canSend = composerText.trim().length > 0 && !busy;
+  const canSend = composerText.trim().length > 0 && !busy && !reviewReady;
 
   const submit = () => {
     if (!canSend) return;
@@ -151,7 +153,13 @@ export function ChatPanel({
           <textarea
             ref={inputRef}
             rows={1}
-            placeholder="메시지 보내기"
+            placeholder={
+              reviewReady
+                ? '아래 버튼으로 실행하거나 저장하세요'
+                : finished
+                  ? '수정 요청을 입력하세요'
+                  : '메시지 보내기'
+            }
             value={composerText}
             onChange={(e) => onComposerChange(e.target.value)}
             onKeyDown={(e) => {
@@ -160,7 +168,7 @@ export function ChatPanel({
                 submit();
               }
             }}
-            disabled={busy}
+            disabled={busy || reviewReady}
           />
           <button
             type="button"

@@ -1,18 +1,20 @@
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { WorkflowRuntime } from './engine.js';
 import { getTriggerHandler } from '../triggers/registry.js';
-import { slackChannelMatches } from '../triggers/slack/new-message/channel-match.js';
-import { SlackSocketModeListener } from '../triggers/slack/new-message/socket-mode.js';
+import { PUSH_TRIGGER_DRIVERS } from '../modules/packages/catalog.js';
 import {
   TRIGGER_CURSOR_SETTING_KEY,
-  parseSlackConnectionConfig,
   type TriggerCursorStore,
   type TriggerEvent,
 } from '../triggers/types.js';
 
 const TIME_TRIGGER_TYPES = new Set(['manual', 'once', 'schedule']);
-const PUSH_POLL_FALLBACK = new Set(['slack.new_message']);
 const MAX_RECENT_EVENTS = 2000;
+
+interface ActivePushTransport {
+  stop(): Promise<void>;
+  isRunning(): boolean;
+}
 
 function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
   const { body: _body, ...payload } = event.payload;
@@ -26,7 +28,7 @@ export class TriggerEngine {
   private timers: Map<string, ReturnType<typeof setInterval>> = new Map();
   private tickMs = 30_000;
   private ticking = false;
-  private slackSocket?: SlackSocketModeListener;
+  private pushTransports = new Map<string, ActivePushTransport>();
   private recentEvents = new Set<string>();
 
   constructor(
@@ -43,39 +45,48 @@ export class TriggerEngine {
       this.timers.set('main', interval);
       void this.tick();
     }
-    void this.refreshSlackSocket();
+    void this.refreshPushTransports();
   }
 
   stop() {
     for (const timer of this.timers.values()) clearInterval(timer);
     this.timers.clear();
-    void this.refreshSlackSocket(null);
+    void this.refreshPushTransports(null);
+  }
+
+  pushTransportActive(triggerType: string): boolean {
+    return this.pushTransports.get(triggerType)?.isRunning() ?? false;
   }
 
   slackSocketActive(): boolean {
-    return this.slackSocket?.isRunning() ?? false;
+    return this.pushTransportActive('slack.new_message');
   }
 
+  async refreshPushTransports(disconnect?: null): Promise<void> {
+    for (const transport of this.pushTransports.values()) {
+      await transport.stop();
+    }
+    this.pushTransports.clear();
+
+    if (disconnect === null) return;
+
+    for (const driver of PUSH_TRIGGER_DRIVERS) {
+      const transport = await driver.refresh(this.store, (event) => {
+        void this.handlePushEvent(driver, event);
+      });
+      if (transport) {
+        this.pushTransports.set(driver.triggerType, transport);
+      }
+    }
+  }
+
+  /** Backward-compatible entry point used by desktop Slack settings. */
   async refreshSlackSocket(config?: { token: string; appToken?: string } | null): Promise<void> {
-    await this.slackSocket?.stop();
-    this.slackSocket = undefined;
-
-    if (config === null) return;
-
-    const slackConfig =
-      config === undefined
-        ? parseSlackConnectionConfig(
-            this.store.getConnections().find((entry) => entry.connector === 'slack')?.config,
-          )
-        : config;
-
-    if (!slackConfig?.token || !slackConfig.appToken) return;
-
-    const listener = new SlackSocketModeListener();
-    await listener.start(slackConfig.token, slackConfig.appToken, (event) => {
-      void this.handlePushEvent(event);
-    });
-    this.slackSocket = listener;
+    if (config === null) {
+      await this.refreshPushTransports(null);
+      return;
+    }
+    await this.refreshPushTransports();
   }
 
   private rememberEvent(key: string): boolean {
@@ -88,22 +99,22 @@ export class TriggerEngine {
     return true;
   }
 
-  private async handlePushEvent(event: TriggerEvent) {
-    if (event.type !== 'slack.new_message') return;
+  private async handlePushEvent(
+    driver: (typeof PUSH_TRIGGER_DRIVERS)[number],
+    event: TriggerEvent,
+  ) {
+    if (event.type !== driver.triggerType) return;
     if (!this.store.getSetting<boolean>('globalActive', true)) return;
-
-    const channel = String(event.payload.channel ?? '');
-    const channelId = String(event.payload.channelId ?? '');
 
     for (const skill of this.store.listWorkflows()) {
       if (!skill.active) continue;
 
       const ir = this.store.getWorkflow(skill.id);
       const trigger = ir?.trigger;
-      if (!ir || trigger?.type !== 'slack.new_message') continue;
-      if (!slackChannelMatches(trigger.channel, { channel, channelId })) continue;
+      if (!ir || !trigger || trigger.type !== driver.triggerType) continue;
+      if (!driver.matchesTrigger(trigger as { type: string; channel?: string }, event)) continue;
 
-      const dedupeKey = `${skill.id}:${String(event.payload.ts ?? event.payload.messageId ?? '')}`;
+      const dedupeKey = driver.dedupeKey(skill.id, event);
       if (!this.rememberEvent(dedupeKey)) continue;
 
       try {
@@ -127,12 +138,13 @@ export class TriggerEngine {
   }
 
   private shouldPollTriggerType(triggerType: string): boolean {
-    if (PUSH_POLL_FALLBACK.has(triggerType) && this.slackSocketActive()) {
+    const driver = PUSH_TRIGGER_DRIVERS.find((entry) => entry.triggerType === triggerType);
+    if (driver?.skipPollWhenActive && this.pushTransportActive(triggerType)) {
       return false;
     }
     const handler = getTriggerHandler(triggerType);
     if (!handler) return false;
-    if (handler.transport === 'push' && !PUSH_POLL_FALLBACK.has(triggerType)) {
+    if (handler.transport === 'push' && !driver?.skipPollWhenActive) {
       return false;
     }
     return typeof handler.poll === 'function';

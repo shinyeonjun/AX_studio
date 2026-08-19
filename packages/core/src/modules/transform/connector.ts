@@ -46,22 +46,6 @@ function documentToText(value: unknown): string {
   return pageText.trim();
 }
 
-function latestTableFromResults(stepResults: Record<string, unknown>): unknown {
-  for (const value of Object.values(stepResults).reverse()) {
-    if (Array.isArray(value) && value.length > 0) return value;
-  }
-  return undefined;
-}
-
-function latestDocumentFromResults(stepResults: Record<string, unknown>): unknown {
-  for (const value of Object.values(stepResults).reverse()) {
-    if (value && typeof value === 'object' && ('pages' in value || 'text' in value || 'artifactPath' in value)) {
-      return value;
-    }
-  }
-  return undefined;
-}
-
 export class TransformConnector implements Connector {
   name = 'transform';
 
@@ -72,21 +56,19 @@ export class TransformConnector implements Connector {
   ): Promise<ConnectorResult> {
     switch (action) {
       case 'table_to_text': {
-        const table =
-          params.table ??
-          (typeof params.sourceStep === 'string' ? ctx.variables[`${params.sourceStep}_result`] : undefined) ??
-          ctx.variables.sheetData ??
-          ctx.variables.queryResult ??
-          latestTableFromResults(ctx.variables as Record<string, unknown>);
+        const table = params.table;
+        if (table == null) {
+          return { ok: false, error: 'table_input_required', errorCode: 'table_input_required' };
+        }
         const text = tableToText(table);
         ctx.variables.transformText = text;
         return { ok: true, data: { text, kind: 'TextArtifact' } };
       }
       case 'document_to_text': {
-        const document =
-          params.document ??
-          (typeof params.sourceStep === 'string' ? ctx.variables[`${params.sourceStep}_result`] : undefined) ??
-          latestDocumentFromResults(ctx.variables as Record<string, unknown>);
+        const document = params.document;
+        if (document == null) {
+          return { ok: false, error: 'document_input_required', errorCode: 'document_input_required' };
+        }
         const text = documentToText(document);
         ctx.variables.transformText = text;
         return { ok: true, data: { text, kind: 'TextArtifact' } };

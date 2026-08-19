@@ -1,6 +1,3 @@
-import { gmailNewMessageHandler } from './gmail/new-message/index.js';
-import { localFolderNewFileHandler } from './local-folder/new-file/index.js';
-import { slackNewMessageHandler } from './slack/new-message/index.js';
 import type { TriggerHandler } from './types.js';
 
 const handlers = new Map<string, TriggerHandler>();
@@ -16,11 +13,3 @@ export function getTriggerHandler(type: string): TriggerHandler | undefined {
 export function listTriggerHandlers(): TriggerHandler[] {
   return [...handlers.values()];
 }
-
-export function registerDefaultTriggerHandlers(): void {
-  registerTriggerHandler(gmailNewMessageHandler);
-  registerTriggerHandler(localFolderNewFileHandler);
-  registerTriggerHandler(slackNewMessageHandler);
-}
-
-registerDefaultTriggerHandlers();

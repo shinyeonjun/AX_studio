@@ -152,9 +152,11 @@ export function runCommand(
           reject(error);
           return;
         }
+        const stdoutText = stdout?.toString() ?? '';
+        const stderrText = stderr?.toString() ?? '';
         resolve({
-          stdout: stdout?.toString() ?? '',
-          stderr: stderr?.toString() ?? '',
+          stdout: stdoutText,
+          stderr: stderrText || (error ? error.message : ''),
           exitCode: error ? exitCode || 1 : 0,
         });
       },

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   MockDocumentEngineClient,
   StdioDocumentEngineClient,
+  defaultPythonPath,
   defaultWorkerScript,
   setDocumentEngineClient,
 } from './engine-client.js';
@@ -53,6 +54,15 @@ describe('StdioDocumentEngineClient integration', () => {
     }
   });
 
+  it('resolves worker.py from the repo even if moduleDir is a bundled Electron path', () => {
+    expect(defaultWorkerScript()).toMatch(/packages[/\\]document-engine[/\\]src[/\\]worker\.py$/);
+    expect(existsSync(defaultWorkerScript())).toBe(true);
+    const python = defaultPythonPath();
+    if (python.includes('.venv')) {
+      expect(existsSync(python)).toBe(true);
+    }
+  });
+
   it('ingests a text file via basic adapter when python is available', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ax-doc-'));
     const filePath = join(dir, 'sample.txt');
@@ -68,6 +78,7 @@ describe('StdioDocumentEngineClient integration', () => {
       const result = await client.ingest(filePath, { engine: 'basic' });
       expect(result.summary.chunkCount).toBeGreaterThan(0);
       expect(result.summary.engine).toBe('basic');
+      expect(result.text).toContain('hello document engine');
 
       const page = await client.getPage(result.documentId, 0);
       expect(page.text).toContain('hello document engine');

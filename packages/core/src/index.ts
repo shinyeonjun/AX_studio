@@ -29,7 +29,6 @@ export * from './workflow/visual-display.js';
 export * from './interview/bootstrap-from-workflow.js';
 export * from './interview/chat-summary.js';
 export * from './interview/connected-resources.js';
-export * from './interview/draft-defaults.js';
 export * from './store/repositories/chat-session-repository.js';
 
 export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './bootstrap.js';

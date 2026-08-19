@@ -75,6 +75,9 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'path_required') return '문서 경로가 비어 있습니다';
   if (errorCode === 'manual_run_input_missing') return '실행할 파일을 찾지 못했습니다';
   if (errorCode === 'document_ingest_failed') return '문서 읽기에 실패했습니다';
+  if (errorCode === 'document_engine_empty_response') {
+    return 'Document Engine 응답이 없습니다. Python venv 설치 후 앱을 재시작해 주세요.';
+  }
   if (errorCode === 'slack_error') return 'Slack 전송에 실패했습니다';
   if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
   return errorCode;

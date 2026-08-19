@@ -68,6 +68,22 @@ export function buildConnectedResourcesFromConnections(
   };
 }
 
+export interface ListedFileRef extends ListedFile {
+  folderId: string;
+}
+
+export function findSinglePdfInResources(resources: ConnectedResourcesSnapshot): ListedFileRef | null {
+  const pdfs: ListedFileRef[] = [];
+  for (const folder of resources.localFolders) {
+    for (const file of folder.files) {
+      if (file.extension.toLowerCase() === '.pdf') {
+        pdfs.push({ ...file, folderId: folder.id });
+      }
+    }
+  }
+  return pdfs.length === 1 ? pdfs[0]! : null;
+}
+
 export function formatConnectedResourcesForPrompt(snapshot: ConnectedResourcesSnapshot | undefined): string {
   if (!snapshot?.localFolders.length) {
     return '(연결된 로컬 폴더 없음 — 설정 > 저장소 > 로컬 폴더에서 연결하세요)';

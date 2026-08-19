@@ -83,6 +83,7 @@ export function WorkPage({
               isImmediateOnce={interview.isImmediateOnce}
               isDeferredOnce={interview.isDeferredOnce}
               isRecurringDraft={interview.isRecurringDraft}
+              reviewReady={readyToCommit}
               onComposerChange={interview.setComposerText}
               onClearEditHint={() => interview.setEditHint(null)}
               onStartInterview={interview.startInterview}

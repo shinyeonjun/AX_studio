@@ -1,5 +1,6 @@
-import { readdirSync, statSync } from 'node:fs';
+import { lstatSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { isPathContainedInRoot, resolveFolderRoot } from './path-security.js';
 
 export interface ScannedFile {
   /** Stable dedupe key (absolute path). */
@@ -11,7 +12,7 @@ export interface ScannedFile {
   modifiedAt: string;
 }
 
-const MAX_FILES_PER_SCAN = 5_000;
+export const MAX_FILES_PER_SCAN = 5_000;
 
 function normalizeExtensions(extensions?: string[]): Set<string> | null {
   if (!extensions?.length) return null;
@@ -23,31 +24,40 @@ function normalizeExtensions(extensions?: string[]): Set<string> | null {
   );
 }
 
-function walkDirectory(rootPath: string, allowed: Set<string> | null, out: ScannedFile[]): void {
+function walkDirectory(
+  rootReal: string,
+  currentPath: string,
+  allowed: Set<string> | null,
+  out: ScannedFile[],
+): void {
   if (out.length >= MAX_FILES_PER_SCAN) return;
 
   let entries: string[];
   try {
-    entries = readdirSync(rootPath);
+    entries = readdirSync(currentPath);
   } catch {
     return;
   }
 
   for (const name of entries) {
     if (out.length >= MAX_FILES_PER_SCAN) break;
-    const filePath = join(rootPath, name);
+    const filePath = join(currentPath, name);
     let stat;
     try {
-      stat = statSync(filePath);
+      stat = lstatSync(filePath);
     } catch {
       continue;
     }
 
+    if (stat.isSymbolicLink()) continue;
+
     if (stat.isDirectory()) {
-      walkDirectory(filePath, allowed, out);
+      if (!isPathContainedInRoot(rootReal, filePath)) continue;
+      walkDirectory(rootReal, filePath, allowed, out);
       continue;
     }
     if (!stat.isFile()) continue;
+    if (!isPathContainedInRoot(rootReal, filePath)) continue;
 
     const extension = extname(name).toLowerCase();
     if (allowed && !allowed.has(extension)) continue;
@@ -64,12 +74,15 @@ function walkDirectory(rootPath: string, allowed: Set<string> | null, out: Scann
 }
 
 export function scanFolder(rootPath: string, extensions?: string[]): ScannedFile[] {
+  const root = resolveFolderRoot(rootPath);
+  if (!root.ok) return [];
+
   const allowed = normalizeExtensions(extensions);
   const files: ScannedFile[] = [];
-  walkDirectory(rootPath, allowed, files);
+  walkDirectory(root.rootReal, root.path, allowed, files);
   return files;
 }
 
-export function trimSeenFileKeys(keys: string[], max = 2_000): string[] {
+export function trimSeenFileKeys(keys: string[], max = MAX_FILES_PER_SCAN): string[] {
   return keys.length <= max ? keys : keys.slice(keys.length - max);
 }

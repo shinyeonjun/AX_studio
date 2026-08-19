@@ -1,5 +1,6 @@
 import { CONNECTOR_CATALOG, type ConnectorId } from './connectors.js';
 import { CAPABILITY_CATALOG, type ConnectorCapability } from './capabilities.js';
+import { triggerCapabilityId } from './capability-contracts.js';
 import type { InterviewDraft, WorkflowNode } from '../interview/workflow-schema.js';
 
 export function isConnectorAlwaysOn(connector: string): boolean {
@@ -61,11 +62,6 @@ export function availableCapabilities(connectedConnectors: string[]): ConnectorC
   );
 }
 
-const TRIGGER_CAPABILITY_BY_TYPE: Record<string, string> = {
-  'gmail.new_message': 'gmail.new_message',
-  'slack.new_message': 'slack.new_message',
-};
-
 function capabilityIdFromActionNode(node: WorkflowNode): string | undefined {
   if (node.type !== 'action' || !node.connector || !node.action) return undefined;
   return resolveCapability(node.connector, node.action)?.id;
@@ -77,7 +73,7 @@ function collectDraftCapabilityIds(draft: InterviewDraft): Set<string> {
     const capId = capabilityIdFromActionNode(node);
     if (capId) ids.add(capId);
   }
-  const triggerCap = TRIGGER_CAPABILITY_BY_TYPE[draft.triggerType];
+  const triggerCap = triggerCapabilityId(draft.triggerType);
   if (triggerCap) ids.add(triggerCap);
   return ids;
 }

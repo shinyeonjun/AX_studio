@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ConditionExprSchema, normalizeCondition } from '../runtime/condition-expr.js';
+import { PortBindingSchema } from './bindings.js';
 
 export const SideEffectLevelSchema = z.enum([
   'NONE',
@@ -49,6 +50,7 @@ export const ActionStepSchema = z.object({
   connector: z.string(),
   action: z.string(),
   params: z.record(z.unknown()).default({}),
+  bindings: z.record(PortBindingSchema).optional(),
   sideEffect: SideEffectLevelSchema,
 });
 
@@ -59,6 +61,7 @@ export const AiDecisionStepSchema = z.object({
   outputSchema: z.record(z.unknown()).optional(),
   investigation: z.boolean().default(false),
   maxReads: z.number().int().min(1).max(4).default(4),
+  bindings: z.record(PortBindingSchema).optional(),
 });
 
 export const IfStepSchema = z.object({

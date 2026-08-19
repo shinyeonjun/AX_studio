@@ -8,6 +8,8 @@ import type { AgentHarness } from '../agent/harness.js';
 import type { RuntimeConfig, ExecutionResult } from './types.js';
 import { executeStep } from './step-executor.js';
 import { resolveStepParams } from './ai-investigation.js';
+import { inferWorkflowBindings } from '../workflow/bindings.js';
+import { resolveFileRef } from './source-resolver.js';
 import {
   isExecutionCheckpoint,
   linearSteps,
@@ -95,27 +97,37 @@ export class WorkflowRuntime {
       };
     }
 
+    let workflowIr = inferWorkflowBindings(ir);
+
     const executionId = this.config.store.createExecution({
-      workflowId: ir.id,
-      workflowVersion: ir.version,
+      workflowId: workflowIr.id,
+      workflowVersion: workflowIr.version,
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
-      irJson: JSON.stringify(ir),
+      irJson: JSON.stringify(workflowIr),
     });
     this.config.onExecutionStarted?.(executionId);
 
     const log: ExecutionLogEntry[] = [];
+    const connections = this.config.store.getConnections();
     const ctx: ConnectorContext = {
       executionId,
-      workflowId: ir.id,
+      workflowId: workflowIr.id,
       variables: { ...options.input },
+      connections,
+      resolveFileRef: (file) => {
+        const resolved = resolveFileRef(file, connections);
+        return resolved.ok
+          ? { ok: true, path: resolved.path, file: resolved.file }
+          : { ok: false, error: resolved.error, errorCode: resolved.errorCode };
+      },
       log: (entry) => log.push(entry),
     };
 
     const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
 
     try {
-      await this.runSequence(linearSteps(ir.steps), ir, ctx, stepResults, []);
+      await this.runSequence(linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, []);
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       const result: ExecutionResult = { executionId, status: 'success', log };
       this.config.onExecutionFinished?.(result);
@@ -241,10 +253,18 @@ export class WorkflowRuntime {
     const log: ExecutionLogEntry[] = JSON.parse(execution.logJson ?? '[]') as ExecutionLogEntry[];
     const payload = approval.payload as { checkpoint?: unknown } | undefined;
     const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
+    const connections = this.config.store.getConnections();
     const ctx: ConnectorContext = {
       executionId: execution.id,
       workflowId: execution.workflowId ?? undefined,
       variables: { ...(checkpoint?.variables ?? {}) },
+      connections,
+      resolveFileRef: (file) => {
+        const resolved = resolveFileRef(file, connections);
+        return resolved.ok
+          ? { ok: true, path: resolved.path, file: resolved.file }
+          : { ok: false, error: resolved.error, errorCode: resolved.errorCode };
+      },
       log: (entry) => log.push(entry),
     };
     const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };

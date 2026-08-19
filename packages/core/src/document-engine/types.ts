@@ -51,6 +51,7 @@ export interface IngestDocumentResult {
   artifactPath: string;
   engine: string;
   summary: AxDocumentSummary;
+  text?: string;
 }
 
 export interface DocumentChunkHit {

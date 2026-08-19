@@ -2,8 +2,6 @@ import type { WorkflowIR } from '../workflow/schema.js';
 import type { AgentHarness } from '../agent/harness.js';
 import { normalizeWorkflowActionNode } from '../catalog/capability-graph.js';
 import { validateApprovalPolicy } from '../workflow/approval.js';
-import { buildConnectedResourcesFromConnections } from './connected-resources.js';
-import { resolveInterviewDraftDefaults } from './draft-defaults.js';
 import { runInterviewDiscoveryLoop } from './interview-discovery.js';
 import { createInterviewState, type InterviewState } from './interview-state.js';
 import { InterviewDraftSchema, type InterviewDraft, type InterviewTurn } from './workflow-schema.js';
@@ -24,9 +22,16 @@ function draftFromTurn(turn: InterviewTurn): InterviewDraft {
   return InterviewDraftSchema.parse(draft);
 }
 
+function isReviewOrRunConfirmation(nextQuestion: string): boolean {
+  const question = nextQuestion.trim();
+  if (!question) return false;
+  return /실행할까|지금\s*실행|맡길\s*수|검토\s*후|이\s*구성|아래\s*에서|확인\s*해\s*주|진행할까|이대로/.test(question);
+}
+
 function isOpenInterviewQuestion(nextQuestion: string): boolean {
   const question = nextQuestion.trim();
   if (!question) return false;
+  if (isReviewOrRunConfirmation(question)) return false;
   if (question.includes('?')) return true;
   if (/알려\s*(주|줘)|말씀\s*해|입력\s*해|선택\s*해/.test(question)) return true;
   return false;
@@ -50,16 +55,11 @@ async function runInterviewTurn(state: InterviewState, options: InterviewRunOpti
     },
   });
 
-  const connectedResources = buildConnectedResourcesFromConnections(options.designToolContext.connections);
   const workflowDraft = draftFromTurn(turn);
-  const workflow = resolveInterviewDraftDefaults(
-    {
-      ...workflowDraft,
-      nodes: workflowDraft.nodes.map(normalizeWorkflowActionNode),
-    },
-    connectedResources,
-    { userInstruction: state.userInstruction },
-  );
+  const workflow = {
+    ...workflowDraft,
+    nodes: workflowDraft.nodes.map(normalizeWorkflowActionNode),
+  };
 
   let built: ReturnType<typeof buildIRFromWorkflow>;
   try {

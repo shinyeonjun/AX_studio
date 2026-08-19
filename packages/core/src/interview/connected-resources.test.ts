@@ -7,7 +7,8 @@ import {
   buildLocalFolderResources,
   formatConnectedResourcesForPrompt,
 } from './connected-resources.js';
-import { resolveInterviewDraftDefaults } from './draft-defaults.js';
+import { inferWorkflowBindings } from '../workflow/bindings.js';
+import { validateWorkflowContracts } from '../workflow/contract-validator.js';
 
 describe('connected-resources', () => {
   it('formats connected folders and files for the interview prompt', () => {
@@ -43,123 +44,36 @@ describe('connected-resources', () => {
   });
 });
 
-describe('draft-defaults', () => {
-  it('uses the only pdf path for manual one-shot ingest', () => {
-    const draft = resolveInterviewDraftDefaults(
-      {
-        name: 'PDF 요약',
-        goal: '요약',
-        triggerType: 'manual',
-        assumptions: [],
-        nodes: [
-          {
-            type: 'action',
-            id: 'ingest',
-            connector: 'document',
-            action: 'ingest',
-            params: {},
-          },
-        ],
-      },
-      {
-        localFolders: [
-          {
-            id: 'folder-1',
-            label: 'Inbox',
-            path: 'C:/inbox',
-            files: [
-              {
-                filePath: 'C:/inbox/report.pdf',
-                fileName: 'report.pdf',
-                extension: '.pdf',
-              },
-            ],
-            totalFileCount: 1,
-            truncated: false,
-          },
-        ],
-      },
-    );
+describe('discovery + bindings compile path', () => {
+  it('binds local folder trigger file to document ingest without draft defaults', () => {
+    const ir = inferWorkflowBindings({
+      id: 'wf',
+      name: 'PDF',
+      goal: '요약',
+      version: 1,
+      trigger: { type: 'local_folder.new_file', folderId: 'folder-1', extensions: ['.pdf'] },
+      steps: [
+        {
+          type: 'action',
+          id: 'ingest',
+          connector: 'document',
+          action: 'ingest',
+          params: {},
+          sideEffect: 'NONE',
+        },
+      ],
+      inputs: ['folderId', 'filePath'],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
 
-    expect(draft.nodes[0]?.params?.path).toBe('C:/inbox/report.pdf');
-  });
-
-  it('fills folderId and trigger placeholder when watching for new files', () => {
-    const draft = resolveInterviewDraftDefaults(
-      {
-        name: 'PDF 요약',
-        goal: '새 PDF가 올라오면 요약',
-        triggerType: 'local_folder.new_file',
-        assumptions: [],
-        nodes: [
-          {
-            type: 'action',
-            id: 'ingest',
-            connector: 'document',
-            action: 'ingest',
-            params: {},
-          },
-        ],
-      },
-      {
-        localFolders: [
-          {
-            id: 'folder-1',
-            label: 'Inbox',
-            path: 'C:/inbox',
-            files: [],
-            totalFileCount: 0,
-            truncated: false,
-          },
-        ],
-      },
-      { userInstruction: '폴더에 새 PDF가 생기면 요약해줘' },
-    );
-
-    expect(draft.localFolderId).toBe('folder-1');
-    expect(draft.triggerType).toBe('local_folder.new_file');
-    expect(draft.nodes[0]?.params?.path).toBe('{{filePath}}');
-  });
-
-  it('bakes concrete path and manual trigger when user refers to an existing pdf', () => {
-    const draft = resolveInterviewDraftDefaults(
-      {
-        name: 'PDF 요약',
-        goal: 'PDF 요약 후 Slack 전송',
-        triggerType: 'local_folder.new_file',
-        assumptions: [],
-        nodes: [
-          {
-            type: 'action',
-            id: 'ingest',
-            connector: 'document',
-            action: 'ingest',
-            params: { path: '{{filePath}}' },
-          },
-        ],
-      },
-      {
-        localFolders: [
-          {
-            id: 'folder-1',
-            label: 'Inbox',
-            path: 'C:/inbox',
-            files: [
-              {
-                filePath: 'C:/inbox/report.pdf',
-                fileName: 'report.pdf',
-                extension: '.pdf',
-              },
-            ],
-            totalFileCount: 1,
-            truncated: false,
-          },
-        ],
-      },
-      { userInstruction: '연결된 폴더에 pdf 1개 있는데 그거 요약해서 slack으로 보내줘' },
-    );
-
-    expect(draft.triggerType).toBe('manual');
-    expect(draft.nodes[0]?.params?.path).toBe('C:/inbox/report.pdf');
+    expect(ir.steps[0]?.type === 'action' && ir.steps[0].bindings).toEqual({
+      source: { from: 'trigger', output: 'file' },
+    });
+    expect(validateWorkflowContracts(ir)).toEqual([]);
   });
 });
