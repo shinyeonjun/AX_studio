@@ -47,7 +47,7 @@ const UI_OVERLAY: Record<
     icon: grokIcon,
     cliModeLabel: 'CLI',
     cliLabel: 'agent CLI',
-    description: 'Cursor agent CLI + API 키 (둘 다 필요)',
+    description: 'xAI Grok · Cursor agent CLI 또는 xAI API',
   },
   ollama: {
     icon: openaiIcon,

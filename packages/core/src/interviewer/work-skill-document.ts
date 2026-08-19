@@ -1,4 +1,5 @@
 import type { SkillIR } from '../skill/schema.js';
+import { KO } from '../i18n/ko.js';
 
 function triggerLines(ir: Partial<SkillIR>): string[] {
   if (ir.trigger?.type === 'schedule') {
@@ -31,7 +32,7 @@ function stepLine(step: NonNullable<SkillIR['steps']>[number]): string {
 }
 
 export function renderWorkSkillMarkdown(ir: Partial<SkillIR>): string {
-  const name = ir.name ?? '새 업무';
+  const name = ir.name ?? KO.skill.defaultName;
   const slug =
     name
       .toLowerCase()
@@ -51,15 +52,15 @@ export function renderWorkSkillMarkdown(ir: Partial<SkillIR>): string {
     '',
     ir.goal ?? '',
     '',
-    '## 워크플로우',
+    '## ' + KO.workSkillDocument.sectionWorkflow,
     '',
-    ...(steps.length > 0 ? steps : ['- (노드 없음)']),
+    ...(steps.length > 0 ? steps : [KO.workSkillDocument.noSteps]),
   ];
   if (ir.success) {
-    sections.push('', '## 완료 조건', '', ir.success);
+    sections.push('', '## ' + KO.workSkillDocument.sectionCompletion, '', ir.success);
   }
   if (assumptions.length > 0) {
-    sections.push('', '## 가정', '', ...assumptions);
+    sections.push('', '## ' + KO.workSkillDocument.sectionAssumptions, '', ...assumptions);
   }
   return `${sections.join('\n')}\n`;
 }

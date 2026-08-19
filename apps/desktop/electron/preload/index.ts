@@ -21,11 +21,16 @@ contextBridge.exposeInMainWorld('ax', {
   getAiConfig: () => ipcRenderer.invoke('ax:getAiConfig'),
   saveAiBrandConfig: (brand: string, prefs: unknown) => ipcRenderer.invoke('ax:saveAiBrandConfig', brand, prefs),
   testAiCli: (brand: string) => ipcRenderer.invoke('ax:testAiCli', brand),
-  testAiApi: (brand: string, apiKey?: string) => ipcRenderer.invoke('ax:testAiApi', brand, apiKey),
+  testAiApi: (brand: string, apiKey?: string, mode?: string) => ipcRenderer.invoke('ax:testAiApi', brand, apiKey, mode),
   setEnvSecret: (key: string, value: string) => ipcRenderer.invoke('ax:setEnvSecret', key, value),
   getEnvSecretStatus: (key: string) => ipcRenderer.invoke('ax:getEnvSecretStatus', key),
   setCursorApiKey: (key: string) => ipcRenderer.invoke('ax:setCursorApiKey', key),
   testCursorApiKey: (key?: string) => ipcRenderer.invoke('ax:testCursorApiKey', key),
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   summarize: (ir: unknown) => ipcRenderer.invoke('ax:summarize', ir),
+  onAgentProgress: (listener: (event: { message: string }) => void) => {
+    const wrapped = (_e: unknown, event: { message: string }) => listener(event);
+    ipcRenderer.on('ax:agent-progress', wrapped);
+    return () => ipcRenderer.removeListener('ax:agent-progress', wrapped);
+  },
 });

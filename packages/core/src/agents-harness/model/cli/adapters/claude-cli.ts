@@ -24,7 +24,7 @@ export class ClaudeCliProvider implements ModelProvider {
         '--permission-mode',
         'dontAsk',
       ],
-      { timeoutMs: 180_000 },
+      { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
     );
     if (result.exitCode !== 0 && !result.stdout.trim()) {
       throw new Error(result.stderr.trim() || 'Claude CLI 호출에 실패했습니다.');
@@ -51,7 +51,7 @@ export class ClaudeCliProvider implements ModelProvider {
         '--permission-mode',
         'dontAsk',
       ],
-      { timeoutMs: 180_000 },
+      { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
     );
     if (result.exitCode !== 0 && !result.stdout.trim()) {
       throw new Error(result.stderr.trim() || 'Claude CLI 호출에 실패했습니다.');

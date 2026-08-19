@@ -54,6 +54,10 @@ export class SkillStore {
     approvalRepo.resolveApproval(this.db, id, approved);
   }
 
+  updateApprovalPayload(id: string, extra: Record<string, unknown>) {
+    approvalRepo.updateApprovalPayload(this.db, id, extra);
+  }
+
   getApproval(id: string) {
     return approvalRepo.getApproval(this.db, id);
   }

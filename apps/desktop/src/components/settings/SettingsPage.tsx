@@ -1,7 +1,7 @@
 import type { SettingsScreen } from '../../types/navigation';
 import type { AppState } from '../../types/app-state';
-import type { AiBrand, AiConnectionMode, CliModelOption } from '../../types/ai-provider';
-import type { DetectedAiCli } from '../../types/ai-provider';
+import type { AiBrand } from '../../types/ai-provider';
+import type { AiSettingsController } from '../../hooks/useAiSettings';
 import { brandFromSettingsScreen, SETTINGS_TITLES } from '../../constants/settings';
 import { PageHeader } from '../layout/PageHeader';
 import { ConnectorHub } from './connectors/ConnectorHub';
@@ -13,39 +13,10 @@ import { GmailConnectionForm } from './connectors/GmailConnectionForm';
 interface SettingsPageProps {
   screen: SettingsScreen;
   state: AppState | null;
-  cliProviders: DetectedAiCli[];
-  detecting: boolean;
-  activeBrand: AiBrand | null;
-  brandStatus: (brand: AiBrand) => 'active' | 'ready' | 'off';
-  brandMode: (brand: AiBrand) => AiConnectionMode;
-  modeSaving: boolean;
-  hubMessage: string;
-  onSelectBrand: (brand: AiBrand) => void;
-  onBrandModeChange: (brand: AiBrand, mode: AiConnectionMode) => void;
-  aiBrand: AiBrand | null;
-  aiMode: AiConnectionMode;
-  aiModel: string;
-  aiModels: CliModelOption[];
-  apiKeyDraft: string;
-  apiKeyConfigured: boolean;
-  apiKeyMasked?: string;
-  configFilePath?: string;
-  cliVerified: boolean;
-  apiVerified: boolean;
-  aiSaving: boolean;
-  aiTesting: boolean;
-  aiTestingCli: boolean;
-  aiMessage: string;
-  canSaveAi: boolean;
+  aiSettings: AiSettingsController;
   onScreenChange: (screen: SettingsScreen) => void;
   onOpenAi: () => void;
   onOpenAiBrand: (brand: AiBrand) => void;
-  onAiModeChange: (mode: AiConnectionMode) => void;
-  onAiModelChange: (value: string) => void;
-  onApiKeyChange: (value: string) => void;
-  onTestCli: () => void;
-  onTestApiKey: () => void;
-  onSaveAi: () => void;
   onConnectSlack: (token: string) => Promise<void>;
   onConnectGmail: () => Promise<void>;
   onDisconnectGmail: () => Promise<void>;
@@ -67,45 +38,16 @@ function settingsBackTarget(screen: SettingsScreen): SettingsScreen | null {
 export function SettingsPage({
   screen,
   state,
-  cliProviders,
-  detecting,
-  activeBrand,
-  brandStatus,
-  brandMode,
-  modeSaving,
-  hubMessage,
-  onSelectBrand,
-  onBrandModeChange,
-  aiBrand,
-  aiMode,
-  aiModel,
-  aiModels,
-  apiKeyDraft,
-  apiKeyConfigured,
-  apiKeyMasked,
-  configFilePath,
-  cliVerified,
-  apiVerified,
-  aiSaving,
-  aiTesting,
-  aiTestingCli,
-  aiMessage,
-  canSaveAi,
+  aiSettings,
   onScreenChange,
   onOpenAi,
   onOpenAiBrand,
-  onAiModeChange,
-  onAiModelChange,
-  onApiKeyChange,
-  onTestCli,
-  onTestApiKey,
-  onSaveAi,
   onConnectSlack,
   onConnectGmail,
   onDisconnectGmail,
 }: SettingsPageProps) {
   const backTarget = settingsBackTarget(screen);
-  const detailBrand = aiBrand ?? brandFromSettingsScreen(screen);
+  const detailBrand = aiSettings.brand ?? brandFromSettingsScreen(screen);
 
   return (
     <>
@@ -126,45 +68,45 @@ export function SettingsPage({
         {screen === 'ai' && (
           <AiHub
             state={state}
-            detecting={detecting}
-            activeBrand={activeBrand}
-            brandStatus={brandStatus}
-            brandMode={brandMode}
-            modeSaving={modeSaving}
-            hubMessage={hubMessage}
-            onSelectBrand={onSelectBrand}
-            onBrandModeChange={onBrandModeChange}
+            detecting={aiSettings.detecting}
+            activeBrand={aiSettings.activeBrand}
+            brandStatus={aiSettings.brandStatus}
+            brandMode={aiSettings.brandMode}
+            modeSaving={aiSettings.saving}
+            hubMessage={aiSettings.hubMessage}
+            onSelectBrand={(brand) => void aiSettings.selectBrand(brand)}
+            onBrandModeChange={aiSettings.setBrandMode}
             onOpenBrand={onOpenAiBrand}
           />
         )}
         {detailBrand && screen.startsWith('ai-') && (
           <AiBrandForm
             brand={detailBrand}
-            mode={aiMode}
-            model={aiModel}
-            models={aiModels}
-            cliOption={cliProviders.find(
+            mode={aiSettings.mode}
+            model={aiSettings.model}
+            models={aiSettings.models}
+            cliOption={aiSettings.cliProviders.find(
               (item) => item.id === (detailBrand === 'claude' ? 'claude-cli' : detailBrand === 'gpt' ? 'codex-cli' : 'cursor-cli'),
             )}
-            detecting={detecting}
-            apiKeyDraft={apiKeyDraft}
-            apiKeyConfigured={apiKeyConfigured}
-            apiKeyMasked={apiKeyMasked}
-            configFilePath={configFilePath}
-            cliVerified={cliVerified}
-            apiVerified={apiVerified}
-            saving={aiSaving}
-            testing={aiTesting}
-            testingCli={aiTestingCli}
-            message={aiMessage}
-            canSave={canSaveAi}
-            isActive={activeBrand === detailBrand}
-            onModeChange={onAiModeChange}
-            onModelChange={onAiModelChange}
-            onApiKeyChange={onApiKeyChange}
-            onTestCli={onTestCli}
-            onTestApiKey={onTestApiKey}
-            onSave={onSaveAi}
+            detecting={aiSettings.detecting}
+            apiKeyDraft={aiSettings.apiKeyDraft}
+            apiKeyConfigured={aiSettings.apiKeyConfigured}
+            apiKeyMasked={aiSettings.apiKeyMasked}
+            configFilePath={aiSettings.configFilePath}
+            cliVerified={aiSettings.cliVerified}
+            apiVerified={aiSettings.apiVerified}
+            saving={aiSettings.saving}
+            testing={aiSettings.testing}
+            testingCli={aiSettings.testingCli}
+            message={aiSettings.message}
+            canSave={aiSettings.canSave}
+            isActive={aiSettings.activeBrand === detailBrand}
+            onModeChange={aiSettings.selectMode}
+            onModelChange={aiSettings.setModel}
+            onApiKeyChange={aiSettings.setApiKeyDraft}
+            onTestCli={aiSettings.testCli}
+            onTestApiKey={aiSettings.testApiKey}
+            onSave={aiSettings.save}
           />
         )}
         {screen === 'slack' && <SlackConnectionForm state={state} onConnect={onConnectSlack} />}

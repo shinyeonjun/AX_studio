@@ -5,6 +5,7 @@ import type {
   DirectCompileAgentContext,
   InterviewAgentContext,
   InvestigateAgentContext,
+  ReviseAgentContext,
 } from './types.js';
 import { getRoleDefinition } from './roles.js';
 import { loadAgentSkill, renderSkillTemplate } from './skill-load.js';
@@ -48,6 +49,15 @@ export function buildRoleSystemPrompt(role: AgentRole, context: AgentContext): s
       task_goal: ctx.taskGoal,
       evidence_json: JSON.stringify(ctx.evidence),
       untrusted_block: untrusted ? `\n\n[UNTRUSTED DATA]\n${untrusted}` : '',
+    });
+  }
+
+  if (role === 'revise') {
+    const ctx = context as ReviseAgentContext;
+    return renderSkillTemplate(skill.body, {
+      skill_json: ctx.skillJson,
+      instruction: ctx.instruction,
+      mode_instructions: definition.modeInstructions ?? '',
     });
   }
 

@@ -1,13 +1,7 @@
-export interface CliModelOption {
-  id: string;
-  label: string;
-}
+import { exactModelOptions } from '../../model-options.js';
 
 /** 로컬 Ollama — v1 이후 OpenAI-compatible API 경로로 연결 예정 */
-export const OLLAMA_API_MODELS: CliModelOption[] = [
-  { id: 'llama3.3', label: 'Llama 3.3' },
-  { id: 'qwen2.5', label: 'Qwen 2.5' },
-];
+export const OLLAMA_API_MODELS = exactModelOptions(['llama3.3', 'qwen2.5']);
 
 export const OLLAMA_META = {
   label: 'Ollama',

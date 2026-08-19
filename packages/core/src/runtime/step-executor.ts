@@ -1,7 +1,6 @@
 import type { SkillIR, Step } from '../skill/schema.js';
 import { requiresApproval } from '../skill/approval.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
-import { MockGmailConnector } from '../connectors/mocks/index.js';
 import type { SkillStore } from '../store/skill-store.js';
 import type { AgentHarness } from '../agents-harness/harness.js';
 import { runAiDecision, resolveStepParams, evaluateStepCondition } from './ai-investigation.js';
@@ -14,8 +13,7 @@ export async function executeStep(
   store: SkillStore,
   connectors: Record<string, Connector>,
   agentHarness: AgentHarness | undefined,
-  mockGmail: MockGmailConnector,
-  runStep: (step: Step) => Promise<void>,
+  runSteps: (stepIds: string[]) => Promise<void>,
 ): Promise<void> {
   switch (step.type) {
     case 'action':
@@ -44,16 +42,13 @@ export async function executeStep(
       break;
 
     case 'ai_decision':
-      await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors, mockGmail);
+      await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors);
       break;
 
     case 'if':
       const cond = evaluateStepCondition(step.condition, stepResults);
       const ids = cond ? step.thenStepIds : step.elseStepIds ?? [];
-      for (const id of ids) {
-        const target = ir.steps.find((s) => s.id === id);
-        if (target) await runStep(target);
-      }
+      if (ids.length > 0) await runSteps(ids);
       break;
 
     case 'human_approval':

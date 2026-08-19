@@ -1,10 +1,5 @@
 import { exactModelOptions } from '../../model-options.js';
 
-export interface CliModelOption {
-  id: string;
-  label: string;
-}
-
 export const CLAUDE_CLI_MODELS = exactModelOptions([
   'sonnet',
   'opus',

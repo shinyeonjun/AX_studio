@@ -29,7 +29,7 @@ export function isBrandReady(
   const meta = AI_PROVIDER_UI_CATALOG[target];
   const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
   const hasApi = Boolean(brandSecrets[target]?.configured || verifiedApi[target]);
-  if (target === 'grok') {
+  if (target === 'grok' && mode === 'cli') {
     return assessGrokConnection(cli, hasApi, Boolean(verifiedCli[target])).ready;
   }
   if (mode === 'api') return hasApi;

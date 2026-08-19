@@ -38,12 +38,28 @@ export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; la
   return { ok: true, label: 'OpenAI API 연결됨' };
 }
 
+export async function verifyXaiApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
+  const response = await fetch('https://api.x.ai/v1/models', {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (response.status === 401) {
+    throw new Error('xAI API 키가 유효하지 않습니다.');
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `xAI API 확인 실패 (${response.status})`);
+  }
+  return { ok: true, label: 'xAI Grok API 연결됨' };
+}
+
 export async function verifyAiApiKey(
   brand: 'claude' | 'gpt' | 'grok',
   apiKey: string,
+  mode?: 'cli' | 'api',
 ): Promise<{ ok: true; label: string }> {
   if (brand === 'claude') return verifyAnthropicApiKey(apiKey);
   if (brand === 'gpt') return verifyOpenAiApiKey(apiKey);
+  if (mode === 'api') return verifyXaiApiKey(apiKey);
   const info = await verifyCursorApiKey(apiKey);
   return { ok: true, label: info.email ?? info.apiKeyName ?? 'Cursor API 연결됨' };
 }

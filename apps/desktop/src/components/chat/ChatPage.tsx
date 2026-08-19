@@ -6,6 +6,7 @@ interface ChatPageProps {
   saved: boolean;
   busy: boolean;
   error: string;
+  progress: string;
   instruction: string;
   answer: string;
   onInstructionChange: (value: string) => void;
@@ -29,6 +30,7 @@ export function ChatPage({
   interview,
   busy,
   error,
+  progress,
   instruction,
   answer,
   onInstructionChange,
@@ -61,7 +63,7 @@ export function ChatPage({
     const el = threadRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [interview?.messages, busy, error, interview?.summary, finished]);
+  }, [interview?.messages, busy, error, progress, interview?.summary, finished]);
 
   useEffect(() => {
     if (!busy) inputRef.current?.focus();
@@ -89,7 +91,7 @@ export function ChatPage({
                 <div className="chat-turn-content chat-typing" aria-live="polite">
                   <span /><span /><span />
                 </div>
-                <p className="muted chat-typing-label">답변을 준비하고 있습니다</p>
+                <p className="muted chat-typing-label">{progress || '답변을 준비하고 있습니다'}</p>
               </div>
             </div>
           )}

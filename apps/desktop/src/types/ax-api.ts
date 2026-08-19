@@ -32,13 +32,14 @@ export interface AxApi {
     prefs: { mode?: string; model?: string; apiKey?: string },
   ) => Promise<{ ok: boolean }>;
   testAiCli: (brand: string) => Promise<AiCliTestResult>;
-  testAiApi: (brand: string, apiKey?: string) => Promise<AiApiTestResult>;
+  testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
   setEnvSecret: (key: string, value: string) => Promise<{ ok: boolean; masked?: string }>;
   getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string }>;
   setCursorApiKey: (key: string) => Promise<{ ok: boolean; masked?: string }>;
   testCursorApiKey: (key?: string) => Promise<CursorApiKeyTestResult>;
   summarize: (ir: unknown) => Promise<string>;
   printPdf: (html: string) => Promise<unknown>;
+  onAgentProgress: (listener: (event: { message: string }) => void) => () => void;
 }
 
 declare global {

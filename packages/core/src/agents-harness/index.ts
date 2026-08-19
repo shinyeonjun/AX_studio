@@ -18,9 +18,11 @@ export type {
   AgentRoleDefinition,
   AgentRun,
   AgentRunLog,
+  AgentProgressEvent,
   DirectCompileAgentContext,
   InterviewAgentContext,
   InvestigateAgentContext,
+  ReviseAgentContext,
 } from './types.js';
 export * from './settings/index.js';
 export * from './model/index.js';

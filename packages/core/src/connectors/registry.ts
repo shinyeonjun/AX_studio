@@ -8,7 +8,12 @@ import {
   MockSlackConnector,
 } from './mocks/index.js';
 import { CONNECTOR_CATALOG, type ConnectorId } from './catalog.js';
-import { GmailConnector, type GmailConnectorConfig, parseGmailConnectionConfig } from './gmail/index.js';
+import {
+  GmailConnector,
+  type GmailConnectorConfig,
+  isLegacyGmailTokenConfig,
+  parseGmailConnectionConfig,
+} from './gmail/index.js';
 import { SlackConnector } from './slack/index.js';
 import { RdbConnector, type RdbConnectionConfig } from './rdb/index.js';
 import { ReportConnector } from './report/index.js';
@@ -43,8 +48,14 @@ export function instantiateConnector(id: ConnectorId, config?: Record<string, un
       return null;
     case 'gmail': {
       if (!config) return null;
-      if (parseGmailConnectionConfig(config)) return null;
-      return new GmailConnector(config as unknown as GmailConnectorConfig);
+      if (parseGmailConnectionConfig(config)) {
+        // OAuth record — hydrateGmailConnector loads credentials asynchronously.
+        return null;
+      }
+      if (isLegacyGmailTokenConfig(config)) {
+        return new GmailConnector(config as unknown as GmailConnectorConfig);
+      }
+      return null;
     }
     case 'rdb':
       if (config) return new RdbConnector(config as unknown as RdbConnectionConfig);

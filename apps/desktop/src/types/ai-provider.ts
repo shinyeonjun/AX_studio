@@ -1,17 +1,4 @@
-export type AiProviderId =
-  | 'codex-cli'
-  | 'claude-cli'
-  | 'cursor-cli'
-  | 'openai-api'
-  | 'anthropic-api';
-
-export type AiBrand = 'claude' | 'gpt' | 'grok' | 'ollama';
-export type AiConnectionMode = 'cli' | 'api';
-
-export interface CliModelOption {
-  id: string;
-  label: string;
-}
+export type { AiBrand, AiConnectionMode, AiProviderId, CliModelOption } from '@ax-studio/core/ai-catalog';
 
 export interface DetectedAiCli {
   id: 'codex-cli' | 'claude-cli' | 'cursor-cli';
@@ -22,7 +9,7 @@ export interface DetectedAiCli {
   apiKeyConfigured?: boolean;
   command?: string;
   version?: string;
-  models: CliModelOption[];
+  models: import('@ax-studio/core/ai-catalog').CliModelOption[];
   defaultModel: string;
 }
 
@@ -32,14 +19,14 @@ export interface AiSecretStatus {
 }
 
 export interface AiBrandTomlPrefs {
-  mode?: AiConnectionMode;
+  mode?: import('@ax-studio/core/ai-catalog').AiConnectionMode;
   model?: string;
 }
 
 export interface AiConfigSnapshot {
   path: string;
-  active?: { brand: AiBrand; mode: AiConnectionMode; model: string };
-  providers: Partial<Record<AiBrand, AiBrandTomlPrefs>>;
+  active?: { brand: import('@ax-studio/core/ai-catalog').AiBrand; mode: import('@ax-studio/core/ai-catalog').AiConnectionMode; model: string };
+  providers: Partial<Record<import('@ax-studio/core/ai-catalog').AiBrand, AiBrandTomlPrefs>>;
   secrets: Record<string, AiSecretStatus>;
 }
 

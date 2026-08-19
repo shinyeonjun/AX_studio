@@ -3,6 +3,16 @@ import type { SideEffectLevel, SkillIR, Step } from '../skill/schema.js';
 import { renderWorkSkillMarkdown } from './work-skill-document.js';
 import type { InterviewDraft, WorkflowNode } from './workflow-schema.js';
 
+export class UnknownCapabilityError extends Error {
+  readonly capability: string;
+
+  constructor(capability: string) {
+    super(`지원하지 않는 capability입니다: ${capability}`);
+    this.name = 'UnknownCapabilityError';
+    this.capability = capability;
+  }
+}
+
 const DEFAULT_TIMEZONE = 'Asia/Seoul';
 
 function outputSchemaFromFields(node: WorkflowNode): Record<string, unknown> {
@@ -20,15 +30,16 @@ function outputSchemaFromFields(node: WorkflowNode): Record<string, unknown> {
 function toActionStep(node: WorkflowNode): Step | null {
   if (!node.connector || !node.action) return null;
   const cap = resolveCapability(node.connector, node.action);
-  const connector = cap?.connector ?? node.connector;
-  const action = cap ? capabilityActionName(cap) : node.action;
+  if (!cap) {
+    throw new UnknownCapabilityError(`${node.connector}.${node.action}`);
+  }
   return {
     type: 'action',
     id: node.id,
-    connector,
-    action,
+    connector: cap.connector,
+    action: capabilityActionName(cap),
     params: node.params ?? {},
-    sideEffect: (cap?.sideEffect as SideEffectLevel | undefined) ?? 'EXTERNAL',
+    sideEffect: (cap.sideEffect as SideEffectLevel | undefined) ?? 'EXTERNAL',
   };
 }
 

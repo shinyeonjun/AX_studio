@@ -31,6 +31,8 @@ const BRAND_ENV_KEYS: Record<AiBrandId, string> = {
   ollama: 'OLLAMA_API_KEY',
 };
 
+const GROK_API_ENV_KEY = 'XAI_API_KEY';
+
 export function getAiConfigPath(): string {
   if (app.isPackaged) {
     return join(app.getPath('userData'), 'ai.toml');
@@ -139,22 +141,23 @@ export async function writeAiToml(config: AiTomlConfig): Promise<void> {
   await writeFile(getAiConfigPath(), serializeAiToml(config), 'utf8');
 }
 
-export function envKeyForBrand(brand: AiBrandId): string {
+export function envKeyForBrand(brand: AiBrandId, mode?: AiModeId): string {
+  if (brand === 'grok' && mode === 'api') return GROK_API_ENV_KEY;
   return BRAND_ENV_KEYS[brand];
 }
 
 export function isAiEnvKey(key: string): boolean {
-  return Object.values(BRAND_ENV_KEYS).includes(key);
+  return Object.values(BRAND_ENV_KEYS).includes(key) || key === GROK_API_ENV_KEY;
 }
 
-export async function setBrandSecret(brand: AiBrandId, value: string): Promise<void> {
-  const envKey = envKeyForBrand(brand);
+export async function setBrandSecret(brand: AiBrandId, value: string, mode?: AiModeId): Promise<void> {
+  const envKey = envKeyForBrand(brand, mode);
   await setOsSecret(envKey, value);
   process.env[envKey] = value;
 }
 
-export async function getSecretForBrand(brand: AiBrandId): Promise<string> {
-  const envKey = envKeyForBrand(brand);
+export async function getSecretForBrand(brand: AiBrandId, mode?: AiModeId): Promise<string> {
+  const envKey = envKeyForBrand(brand, mode);
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
@@ -185,7 +188,8 @@ export async function saveActiveAi(
 }
 
 export async function loadAiSecretsIntoEnv(): Promise<void> {
-  for (const envKey of Object.values(BRAND_ENV_KEYS)) {
+  const keys = [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY];
+  for (const envKey of keys) {
     const stored = (await getOsSecret(envKey))?.trim();
     if (stored) process.env[envKey] = stored;
   }
@@ -199,7 +203,7 @@ export async function loadAiTomlIntoEnv(): Promise<AiTomlConfig> {
 export async function migrateAiSecretsToOsStore(): Promise<void> {
   const config = await readAiToml();
   const envFile = await readEnvFile();
-  for (const envKey of Object.values(BRAND_ENV_KEYS)) {
+  for (const envKey of [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY]) {
     const existing = (await getOsSecret(envKey))?.trim();
     if (existing) continue;
     const fromToml = (config.secrets[envKey.toLowerCase()] ?? config.secrets[envKey] ?? '').trim();

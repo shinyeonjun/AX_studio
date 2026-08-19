@@ -3,6 +3,7 @@ import type { ChatMessage } from '../agents-harness/model/chat.js';
 import type { SkillIR } from '../skill/schema.js';
 import { assessCompleteness, type CompletenessResult } from './requiredness.js';
 import type { InterviewDraft } from './workflow-schema.js';
+import { KO } from '../i18n/ko.js';
 
 export interface InterviewState {
   sessionId: string;
@@ -18,7 +19,7 @@ export interface InterviewState {
 
 export function emptyInterviewDraft(instruction: string): InterviewDraft {
   return {
-    name: '새 업무',
+    name: KO.skill.defaultName,
     goal: instruction,
     triggerType: 'manual',
     assumptions: [],

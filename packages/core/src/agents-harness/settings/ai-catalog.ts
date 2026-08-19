@@ -25,6 +25,7 @@ const KNOWN_PROVIDERS = [
   'cursor-cli',
   'openai-api',
   'anthropic-api',
+  'grok-api',
 ] as const;
 
 export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand | null {

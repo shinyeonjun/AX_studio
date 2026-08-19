@@ -1,4 +1,4 @@
-import { execFile, execSync } from 'node:child_process';
+import { execFile, execSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
@@ -119,8 +119,17 @@ export function commandInvocation(command: string, args: string[]): CommandInvoc
 export function runCommand(
   command: string,
   args: string[],
-  options: { timeoutMs?: number; input?: string; cwd?: string } = {},
+  options: {
+    timeoutMs?: number;
+    input?: string;
+    cwd?: string;
+    abortSignal?: AbortSignal;
+    onStdoutLine?: (line: string) => void;
+  } = {},
 ): Promise<CommandResult> {
+  if (options.onStdoutLine) {
+    return runCommandStreaming(command, args, options);
+  }
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
 
@@ -134,11 +143,12 @@ export function runCommand(
         maxBuffer: 8 * 1024 * 1024,
         windowsHide: true,
         cwd: options.cwd,
+        signal: options.abortSignal,
       },
       (error, stdout, stderr) => {
         const code = error && 'code' in error ? error.code : 0;
         const exitCode = typeof code === 'number' ? code : error ? 1 : 0;
-        if (error && code === 'ETIMEDOUT') {
+        if (error && (code === 'ETIMEDOUT' || code === 'ABORT_ERR')) {
           reject(error);
           return;
         }
@@ -153,5 +163,79 @@ export function runCommand(
       child.stdin?.write(options.input);
       child.stdin?.end();
     }
+  });
+}
+
+export function runCommandStreaming(
+  command: string,
+  args: string[],
+  options: {
+    timeoutMs?: number;
+    cwd?: string;
+    abortSignal?: AbortSignal;
+    onStdoutLine?: (line: string) => void;
+  } = {},
+): Promise<CommandResult> {
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const invocation = commandInvocation(command, args);
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(invocation.file, invocation.args, {
+      env: invocation.env,
+      cwd: options.cwd,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let lineBuf = '';
+    let settled = false;
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      options.abortSignal?.removeEventListener('abort', onAbort);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve({
+        stdout,
+        stderr,
+        exitCode: child.exitCode ?? 0,
+      });
+    };
+
+    const timer = setTimeout(() => {
+      child.kill();
+      finish(Object.assign(new Error('ETIMEDOUT'), { code: 'ETIMEDOUT' }));
+    }, timeoutMs);
+
+    const onAbort = () => {
+      child.kill();
+      finish(Object.assign(new Error('ABORT_ERR'), { code: 'ABORT_ERR' }));
+    };
+    options.abortSignal?.addEventListener('abort', onAbort, { once: true });
+
+    child.stdout?.on('data', (chunk: Buffer | string) => {
+      const text = chunk.toString();
+      stdout += text;
+      lineBuf += text;
+      const lines = lineBuf.split(/\r?\n/);
+      lineBuf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line.trim()) options.onStdoutLine?.(line);
+      }
+    });
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      stderr += chunk.toString();
+    });
+    child.on('error', (error) => finish(error));
+    child.on('close', () => {
+      if (lineBuf.trim()) options.onStdoutLine?.(lineBuf);
+      finish();
+    });
   });
 }

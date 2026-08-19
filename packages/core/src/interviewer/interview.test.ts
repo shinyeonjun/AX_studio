@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../agents-harness/model/provider.js';
 import { chatMessagesFromInput, flattenChatPrompt, normalizeChatMessages } from '../agents-harness/model/chat.js';
+import { composedPrompt } from '../agents-harness/model/cli/shared.js';
 import { createAgentHarness } from '../agents-harness/harness.js';
 import { applyAnswer, startInterview } from './interview-flow.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
@@ -98,6 +99,23 @@ describe('chat session helpers', () => {
     expect(flattenChatPrompt('sys', messages)).toContain('Assistant: 누구에게요?');
   });
 
+  it('resume prompt keeps system + last user and drops prior turns', () => {
+    const resume = composedPrompt(
+      {
+        system: 'sys',
+        messages: [
+          { role: 'user', content: '메일 보내줘' },
+          { role: 'assistant', content: '누구에게요?' },
+          { role: 'user', content: '홍길동' },
+        ],
+      },
+      { resume: true },
+    );
+    expect(resume).toContain('sys');
+    expect(resume).toContain('홍길동');
+    expect(resume).not.toContain('누구에게요?');
+  });
+
   it('merges consecutive same-role messages', () => {
     const merged = normalizeChatMessages([
       { role: 'user', content: '하나' },
@@ -128,6 +146,20 @@ describe('workflow builder', () => {
     expect(decision && decision.type === 'ai_decision' && decision.outputSchema).toBeTruthy();
     expect(ir.document).toContain('# 메일');
     expect(ir.document).toContain('gmail.message.send');
+  });
+
+  it('hard-rejects unknown capabilities', () => {
+    expect(() =>
+      buildIRFromWorkflow({
+        name: '잘못된 워크플로우',
+        goal: '없는 도구',
+        triggerType: 'manual',
+        assumptions: [],
+        nodes: [
+          { type: 'action', id: 'boom', connector: 'salesforce', action: 'customer.destroy', params: {} },
+        ],
+      }),
+    ).toThrow(/salesforce\.customer\.destroy/);
   });
 });
 

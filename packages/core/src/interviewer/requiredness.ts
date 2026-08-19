@@ -1,5 +1,6 @@
 import type { SkillIR, Step } from '../skill/schema.js';
 import { isConnectorAlwaysOn, paramSlotId, resolveCapability } from '../connectors/capability-graph.js';
+import { requirementCopy, type RequirementQuestionKey } from '../i18n/ko.js';
 
 export type RequirementSlot = string;
 
@@ -17,16 +18,16 @@ export interface CompletenessResult {
   missingConnections: string[];
 }
 
-const CORE_QUESTIONS: Record<string, { label: string; question: string }> = {
-  goal: { label: '지시 의도', question: '이 업무의 목적을 한 문장으로 말해주세요.' },
-  trigger: { label: '트리거', question: '언제 이 업무를 실행할까요? (예: 새 메일, 매주 금요일)' },
-  'trigger.schedule': { label: '스케줄', question: '실행 스케줄을 알려주세요.' },
-  'trigger.timezone': { label: '타임존', question: '시간대는 어디로 할까요?' },
-  'trigger.runAt': { label: '예약 시각', question: '언제 한 번 실행할까요?' },
-  action: { label: '실행 액션', question: '실행할 작업을 설명해주세요.' },
-  approval: { label: '승인', question: '누구의 승인이 필요한가요? 어떤 조건에서 승인할까요?' },
-  completion: { label: '완료 조건', question: '업무가 완료되었다고 볼 조건은 무엇인가요?' },
-  'ai_decision.schema': { label: 'AI 출력 스키마', question: 'AI가 어떤 형태로 결과를 내야 할까요?' },
+const CORE_QUESTIONS: Record<RequirementQuestionKey, { label: string; question: string }> = {
+  goal: requirementCopy('goal'),
+  trigger: requirementCopy('trigger'),
+  'trigger.schedule': requirementCopy('trigger.schedule'),
+  'trigger.timezone': requirementCopy('trigger.timezone'),
+  'trigger.runAt': requirementCopy('trigger.runAt'),
+  action: requirementCopy('action'),
+  approval: requirementCopy('approval'),
+  completion: requirementCopy('completion'),
+  'ai_decision.schema': requirementCopy('ai_decision.schema'),
 };
 
 function hasExternalHigh(steps: Step[]): boolean {
@@ -155,5 +156,9 @@ export function getNextQuestion(result: CompletenessResult): string | null {
 }
 
 export function slotLabel(slot: SlotState): string {
-  return slot.label ?? CORE_QUESTIONS[slot.slot]?.label ?? slot.slot;
+  if (slot.label) return slot.label;
+  if (slot.slot in CORE_QUESTIONS) {
+    return CORE_QUESTIONS[slot.slot as RequirementQuestionKey].label;
+  }
+  return slot.slot;
 }

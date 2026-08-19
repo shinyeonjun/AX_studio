@@ -18,6 +18,7 @@ import {
   setBrandSecret,
   writeAiToml,
   type AiBrandId,
+  type AiModeId,
 } from '../ai-config-file.js';
 import { verifyAiApiKey } from '../ai-api-verify.js';
 import { testAiCli } from '../ai-cli-test.js';
@@ -33,7 +34,7 @@ export function registerAiHandlers() {
       secrets: Object.fromEntries(
         await Promise.all(
           (['claude', 'gpt', 'grok'] as AiBrandId[]).map(async (brand) => {
-            const val = await getSecretForBrand(brand);
+            const val = await getSecretForBrand(brand, config.providers[brand]?.mode);
             return [brand, { configured: Boolean(val), masked: val ? maskSecret(val) : undefined }];
           }),
         ),
@@ -52,7 +53,7 @@ export function registerAiHandlers() {
   });
   ipcMain.handle('ax:saveAiBrandConfig', async (_e, brand: AiBrandId, prefs: { mode?: string; model?: string; apiKey?: string }) => {
     if (prefs.apiKey?.trim()) {
-      await setBrandSecret(brand, prefs.apiKey.trim());
+      await setBrandSecret(brand, prefs.apiKey.trim(), prefs.mode as AiModeId | undefined);
     }
     const config = await readAiToml();
     config.providers[brand] = {
@@ -64,12 +65,12 @@ export function registerAiHandlers() {
     return { ok: true };
   });
   ipcMain.handle('ax:testAiCli', async (_e, brand: AiBrandId) => testAiCli(brand));
-  ipcMain.handle('ax:testAiApi', async (_e, brand: AiBrandId, apiKey?: string) => {
-    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand)) || '').trim();
+  ipcMain.handle('ax:testAiApi', async (_e, brand: AiBrandId, apiKey?: string, mode?: AiModeId) => {
+    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode)) || '').trim();
     if (!testKey) throw new Error('API 키가 없습니다.');
-    const result = await verifyAiApiKey(brand as 'claude' | 'gpt' | 'grok', testKey);
+    const result = await verifyAiApiKey(brand as 'claude' | 'gpt' | 'grok', testKey, mode);
     if (apiKey?.trim()) {
-      await setBrandSecret(brand, testKey);
+      await setBrandSecret(brand, testKey, mode);
     }
     return { ok: true, label: result.label, masked: maskSecret(testKey), saved: Boolean(apiKey?.trim()) };
   });
@@ -77,10 +78,14 @@ export function registerAiHandlers() {
     const trimmed = value.trim();
     if (!trimmed) throw new Error('값을 입력하세요.');
     if (isAiEnvKey(key)) {
-      const brand = (['claude', 'gpt', 'grok', 'ollama'] as AiBrandId[]).find(
-        (item) => envKeyForBrand(item) === key,
-      );
-      if (brand) await setBrandSecret(brand, trimmed);
+      if (key === 'XAI_API_KEY') {
+        await setBrandSecret('grok', trimmed, 'api');
+      } else {
+        const brand = (['claude', 'gpt', 'grok', 'ollama'] as AiBrandId[]).find(
+          (item) => envKeyForBrand(item) === key,
+        );
+        if (brand) await setBrandSecret(brand, trimmed);
+      }
     } else {
       await setEnvFileValue(key, trimmed);
       process.env[key] = trimmed;

@@ -1,10 +1,5 @@
 import { exactModelOptions } from '../../model-options.js';
 
-export interface CliModelOption {
-  id: string;
-  label: string;
-}
-
 /** Codex CLI 미탐지 시 fallback */
 export const OPENAI_CLI_MODELS = exactModelOptions([
   'gpt-5.4',

@@ -23,6 +23,16 @@ export function createApproval(
   return id;
 }
 
+export function updateApprovalPayload(db: AppDatabase, id: string, extra: Record<string, unknown>) {
+  const current = getApproval(db, id);
+  if (!current) return;
+  const payload =
+    current.payload && typeof current.payload === 'object'
+      ? { ...(current.payload as Record<string, unknown>), ...extra }
+      : extra;
+  db.prepare('UPDATE approvals SET payload_json = ? WHERE id = ?').run(JSON.stringify(payload), id);
+}
+
 export function resolveApproval(db: AppDatabase, id: string, approved: boolean) {
   db
     .prepare('UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ?')

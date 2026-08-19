@@ -29,6 +29,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.2,
+      abortSignal: input.abortSignal,
     });
     return result.object as T;
   }
@@ -39,6 +40,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.3,
+      abortSignal: input.abortSignal,
     });
     return result.text;
   }

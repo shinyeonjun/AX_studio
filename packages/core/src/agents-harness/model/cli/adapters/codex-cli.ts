@@ -32,7 +32,7 @@ export class CodexCliProvider implements ModelProvider {
           outPath,
           composedPrompt(input),
         ],
-        { timeoutMs: 180_000 },
+        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
       );
       try {
         return (await readFile(outPath, 'utf8')).trim();
@@ -69,7 +69,7 @@ export class CodexCliProvider implements ModelProvider {
           outPath,
           composedPrompt(input),
         ],
-        { timeoutMs: 180_000 },
+        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
       );
       try {
         return await readFile(outPath, 'utf8');

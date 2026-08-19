@@ -99,6 +99,7 @@ export default function App() {
             saved={interview.saved}
             busy={interview.busy}
             error={interview.error}
+            progress={interview.progress}
             instruction={interview.instruction}
             answer={interview.answer}
             onInstructionChange={interview.setInstruction}
@@ -124,39 +125,10 @@ export default function App() {
           <SettingsPage
             screen={settingsScreen}
             state={state}
-            cliProviders={aiSettings.cliProviders}
-            detecting={aiSettings.detecting}
-            activeBrand={aiSettings.activeBrand}
-            brandStatus={aiSettings.brandStatus}
-            brandMode={aiSettings.brandMode}
-            modeSaving={aiSettings.saving}
-            hubMessage={aiSettings.hubMessage}
-            onSelectBrand={(brand) => void aiSettings.selectBrand(brand)}
-            onBrandModeChange={aiSettings.setBrandMode}
-            aiBrand={aiSettings.brand}
-            aiMode={aiSettings.mode}
-            aiModel={aiSettings.model}
-            aiModels={aiSettings.models}
-            apiKeyDraft={aiSettings.apiKeyDraft}
-            apiKeyConfigured={aiSettings.apiKeyConfigured}
-            apiKeyMasked={aiSettings.apiKeyMasked}
-            configFilePath={aiSettings.configFilePath}
-            cliVerified={aiSettings.cliVerified}
-            apiVerified={aiSettings.apiVerified}
-            aiSaving={aiSettings.saving}
-            aiTesting={aiSettings.testing}
-            aiTestingCli={aiSettings.testingCli}
-            aiMessage={aiSettings.message}
-            canSaveAi={aiSettings.canSave}
+            aiSettings={aiSettings}
             onScreenChange={setSettingsScreen}
             onOpenAi={openAiSettings}
             onOpenAiBrand={openAiBrand}
-            onAiModeChange={aiSettings.selectMode}
-            onAiModelChange={aiSettings.setModel}
-            onApiKeyChange={aiSettings.setApiKeyDraft}
-            onTestCli={aiSettings.testCli}
-            onTestApiKey={aiSettings.testApiKey}
-            onSaveAi={aiSettings.save}
             onConnectSlack={(token) => window.ax.connectSlack(token).then(refresh)}
             onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
             onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}

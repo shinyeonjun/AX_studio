@@ -30,7 +30,11 @@ export class RdbConnector implements Connector {
 
     if (action === 'query.read' || action === 'query') {
       const table = (params.table as string) ?? '';
-      if (this.config.allowedTables && !this.config.allowedTables.includes(table)) {
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+        return { ok: false, error: 'invalid_table_name', errorCode: 'policy_denied' };
+      }
+      const allowed = this.config.allowedTables;
+      if (!allowed || allowed.length === 0 || !allowed.includes(table)) {
         return { ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' };
       }
 

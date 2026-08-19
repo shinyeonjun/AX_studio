@@ -7,16 +7,38 @@ import type { AgentHarness } from '../agents-harness/harness.js';
 import type { RuntimeConfig, ExecutionResult } from './types.js';
 import { executeStep } from './step-executor.js';
 import { resolveStepParams } from './ai-investigation.js';
+import {
+  isExecutionCheckpoint,
+  linearSteps,
+  stepsById,
+  type ExecutionCheckpoint,
+} from './control-flow.js';
+
+type PendingError = Error & {
+  code?: string;
+  approvalId?: string;
+  pending?: boolean;
+  checkpoint?: ExecutionCheckpoint;
+};
 
 export class SkillRuntime {
   connectors: Record<string, Connector>;
-  mockGmail: MockGmailConnector;
-  mockSlack: MockSlackConnector;
+  private readonly fallbackMockGmail = new MockGmailConnector();
+  private readonly fallbackMockSlack = new MockSlackConnector();
 
   constructor(private config: RuntimeConfig) {
     this.connectors = { ...createDefaultConnectors(), ...config.connectors };
-    this.mockGmail = (this.connectors.gmail as MockGmailConnector) ?? new MockGmailConnector();
-    this.mockSlack = (this.connectors.slack as MockSlackConnector) ?? new MockSlackConnector();
+  }
+
+  /** Test and dev helper when the runtime uses mock Gmail. */
+  get mockGmail(): MockGmailConnector {
+    const gmail = this.connectors.gmail;
+    return gmail instanceof MockGmailConnector ? gmail : this.fallbackMockGmail;
+  }
+
+  get mockSlack(): MockSlackConnector {
+    const slack = this.connectors.slack;
+    return slack instanceof MockSlackConnector ? slack : this.fallbackMockSlack;
   }
 
   async executeSkill(
@@ -60,15 +82,17 @@ export class SkillRuntime {
     const stepResults: Record<string, unknown> = {};
 
     try {
-      for (const step of ir.steps) {
-        await this.runStep(step, ir, ctx, stepResults);
-      }
-
+      await this.runSequence(linearSteps(ir.steps), ir, ctx, stepResults);
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       return { executionId, status: 'success', log };
     } catch (err) {
-      const error = err as Error & { code?: string; approvalId?: string; pending?: boolean };
+      const error = err as PendingError;
       if (error.pending && error.approvalId) {
+        if (error.checkpoint) {
+          this.config.store.updateApprovalPayload(error.approvalId, {
+            checkpoint: error.checkpoint,
+          });
+        }
         this.config.store.finishExecution(executionId, 'failed', 'pending_approval', log);
         return {
           executionId,
@@ -84,23 +108,37 @@ export class SkillRuntime {
     }
   }
 
-  private async runStep(
-    step: SkillIR['steps'][number],
+  private async runSequence(
+    sequence: Step[],
     ir: SkillIR,
     ctx: ConnectorContext,
     stepResults: Record<string, unknown>,
   ): Promise<void> {
-    await executeStep(
-      step,
-      ir,
-      ctx,
-      stepResults,
-      this.config.store,
-      this.connectors,
-      this.config.agentHarness,
-      this.mockGmail,
-      (target) => this.runStep(target, ir, ctx, stepResults),
-    );
+    for (let index = 0; index < sequence.length; index++) {
+      const step = sequence[index];
+      try {
+        await executeStep(
+          step,
+          ir,
+          ctx,
+          stepResults,
+          this.config.store,
+          this.connectors,
+          this.config.agentHarness,
+          (ids) => this.runSequence(stepsById(ir.steps, ids), ir, ctx, stepResults),
+        );
+      } catch (err) {
+        const error = err as PendingError;
+        if (error.pending && !error.checkpoint) {
+          error.checkpoint = {
+            variables: { ...ctx.variables },
+            stepResults: { ...stepResults },
+            remainingStepIds: sequence.slice(index + 1).map((item) => item.id),
+          };
+        }
+        throw error;
+      }
+    }
   }
 
   setGlobalActive(active: boolean) {
@@ -138,34 +176,60 @@ export class SkillRuntime {
     }
 
     const log: ExecutionLogEntry[] = JSON.parse(execution.logJson ?? '[]') as ExecutionLogEntry[];
+    const payload = approval.payload as { checkpoint?: unknown } | undefined;
+    const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
     const ctx: ConnectorContext = {
       executionId: execution.id,
       skillId: execution.skillId ?? undefined,
-      variables: {},
+      variables: { ...(checkpoint?.variables ?? {}) },
       log: (entry) => log.push(entry),
     };
-    const stepResults: Record<string, unknown> = {};
+    const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };
 
     try {
       for (const actionId of approval.actionIds) {
         const actionStep = ir?.steps.find((s: Step) => s.type === 'action' && s.id === actionId);
         if (!actionStep || actionStep.type !== 'action') continue;
         const connector = this.connectors[actionStep.connector];
-        if (!connector) throw Object.assign(new Error(`Connector not found: ${actionStep.connector}`), { code: 'connector_missing' });
+        if (!connector) {
+          throw Object.assign(new Error(`Connector not found: ${actionStep.connector}`), {
+            code: 'connector_missing',
+          });
+        }
         const result = await connector.execute(
           actionStep.action,
           resolveStepParams(actionStep.params, ctx, stepResults),
           ctx,
         );
-        if (!result.ok) throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
+        if (!result.ok) {
+          throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
+        }
         stepResults[actionId] = result.data;
+      }
+
+      if (ir && checkpoint?.remainingStepIds.length) {
+        await this.runSequence(stepsById(ir.steps, checkpoint.remainingStepIds), ir, ctx, stepResults);
       }
 
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'success', undefined, log);
       return { executionId: execution.id, status: 'success', log };
     } catch (err) {
-      const error = err as Error & { code?: string };
+      const error = err as PendingError;
+      if (error.pending && error.approvalId) {
+        if (error.checkpoint) {
+          this.config.store.updateApprovalPayload(error.approvalId, {
+            checkpoint: error.checkpoint,
+          });
+        }
+        this.config.store.finishExecution(execution.id, 'failed', 'pending_approval', log);
+        return {
+          executionId: execution.id,
+          status: 'pending_approval',
+          pendingApprovalId: error.approvalId,
+          log,
+        };
+      }
       const code = error.code ?? 'execution_failed';
       log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
       this.config.store.finishExecution(execution.id, 'failed', code, log);

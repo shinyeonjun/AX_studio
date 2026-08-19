@@ -1,7 +1,7 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
 
-export type AgentRole = 'interview' | 'direct_compile' | 'investigate';
+export type AgentRole = 'interview' | 'direct_compile' | 'investigate' | 'revise';
 
 export interface AgentExecutionPolicy {
   maxTurns: 1;
@@ -36,10 +36,20 @@ export interface InvestigateAgentContext {
   untrustedData?: string;
 }
 
+export interface ReviseAgentContext {
+  skillJson: string;
+  instruction: string;
+}
+
 export type AgentContext =
   | InterviewAgentContext
   | DirectCompileAgentContext
-  | InvestigateAgentContext;
+  | InvestigateAgentContext
+  | ReviseAgentContext;
+
+export interface AgentProgressEvent {
+  message: string;
+}
 
 export interface AgentRun<T> {
   role: AgentRole;
@@ -48,6 +58,9 @@ export interface AgentRun<T> {
   messages?: ChatMessage[];
   user?: string;
   temperature?: number;
+  sessionId?: string;
+  cloudAllowed?: boolean;
+  onProgress?: (event: AgentProgressEvent) => void;
 }
 
 export interface AgentRunLog {
@@ -60,6 +73,7 @@ export interface AgentResult<T> {
   role: AgentRole;
   provider: string;
   durationMs: number;
+  promptChars: number;
   policy: AgentExecutionPolicy;
   logs: AgentRunLog[];
 }

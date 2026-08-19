@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { AI_PROVIDER_UI_CATALOG, brandFromProvider, modelsForBrand } from '../constants/ai-providers';
 import { isBrandReady, resolveBrandModel } from '../lib/ai-settings/brand-readiness';
-import type { AiBrand, AiConnectionMode, AiSecretStatus, DetectedAiCli } from '../types/ai-provider';
+import { useAiDetection } from './ai-settings/useAiDetection';
+import type { AiBrand, AiConnectionMode } from '../types/ai-provider';
 import type { AiProviderState, AppState } from '../types/app-state';
 
 export function useAiSettings(
@@ -9,18 +10,26 @@ export function useAiSettings(
   onRefresh: () => Promise<void>,
   onAiSaved?: () => void,
 ) {
-  const [cliProviders, setCliProviders] = useState<DetectedAiCli[]>([]);
-  const [brandSecrets, setBrandSecrets] = useState<Record<string, AiSecretStatus>>({});
-  const [verifiedCli, setVerifiedCli] = useState<Partial<Record<AiBrand, boolean>>>({});
-  const [verifiedApi, setVerifiedApi] = useState<Partial<Record<AiBrand, boolean>>>({});
-  const [detecting, setDetecting] = useState(false);
+  const detection = useAiDetection();
+  const {
+    cliProviders,
+    brandSecrets,
+    verifiedCli,
+    setVerifiedCli,
+    verifiedApi,
+    setVerifiedApi,
+    detecting,
+    setDetecting,
+    configFilePath,
+    refreshDetection,
+  } = detection;
+
   const [brand, setBrand] = useState<AiBrand | null>(null);
   const [mode, setMode] = useState<AiConnectionMode>('cli');
   const [model, setModel] = useState('');
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeyMasked, setApiKeyMasked] = useState<string | undefined>();
-  const [configFilePath, setConfigFilePath] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testingCli, setTestingCli] = useState(false);
@@ -29,17 +38,6 @@ export function useAiSettings(
 
   const activeBrand = brandFromProvider(state?.aiProvider?.provider, state?.aiProvider?.brand);
   const activeMode = state?.aiProvider?.mode;
-
-  const refreshDetection = async () => {
-    const [detected, aiConfig] = await Promise.all([
-      window.ax.detectAiCli(),
-      window.ax.getAiConfig(),
-    ]);
-    setCliProviders(detected);
-    setBrandSecrets(aiConfig.secrets);
-    setConfigFilePath(aiConfig.path);
-    return { detected, aiConfig };
-  };
 
   const openAiHub = async () => {
     setDetecting(true);
@@ -65,10 +63,7 @@ export function useAiSettings(
       const savedBrand = brandFromProvider(saved?.provider, saved?.brand);
       const brandPrefs = aiConfig.providers[nextBrand] ?? state?.aiBrandConfigs?.[nextBrand];
       const isActive = savedBrand === nextBrand;
-      const nextMode =
-        nextBrand === 'grok'
-          ? 'cli'
-          : brandPrefs?.mode ?? (isActive && saved?.mode ? saved.mode : 'cli');
+      const nextMode = brandPrefs?.mode ?? (isActive && saved?.mode ? saved.mode : 'cli');
       const nextModel = resolveBrandModel(
         nextBrand,
         nextMode,
@@ -99,7 +94,6 @@ export function useAiSettings(
   };
 
   const brandMode = (target: AiBrand): AiConnectionMode => {
-    if (target === 'grok') return 'cli';
     if (activeBrand === target && activeMode) return activeMode;
     return state?.aiBrandConfigs?.[target]?.mode ?? 'cli';
   };
@@ -199,7 +193,7 @@ export function useAiSettings(
 
   const canSave = useMemo(() => {
     if (!brand || !model) return false;
-    if (brand === 'grok') {
+    if (brand === 'grok' && mode === 'cli') {
       const hasCli = Boolean(selectedCli?.binaryFound ?? selectedCli?.command ?? cliVerified);
       const hasApi = apiKeyConfigured || apiVerified || Boolean(apiKeyDraft.trim());
       return hasCli && hasApi;
@@ -255,7 +249,7 @@ export function useAiSettings(
     setMessage('');
     try {
       const draft = apiKeyDraft.trim();
-      const result = await window.ax.testAiApi(brand, draft || undefined);
+      const result = await window.ax.testAiApi(brand, draft || undefined, mode);
       setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
       if (draft) {
         setApiKeyDraft('');
@@ -278,24 +272,23 @@ export function useAiSettings(
     setMessage('');
     try {
       const draft = apiKeyDraft.trim();
-      const saveMode = brand === 'grok' ? 'cli' : mode;
       if (draft) {
-        await window.ax.saveAiBrandConfig(brand, { mode: saveMode, model, apiKey: draft });
+        await window.ax.saveAiBrandConfig(brand, { mode, model, apiKey: draft });
         setApiKeyDraft('');
         setApiKeyConfigured(true);
         setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
       } else {
-        await window.ax.saveAiBrandConfig(brand, { mode: saveMode, model });
+        await window.ax.saveAiBrandConfig(brand, { mode, model });
       }
 
-      const ready = isBrandReady(brand, saveMode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
+      const ready = isBrandReady(brand, mode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
       if (ready) {
-        const config: AiProviderState = { brand, mode: saveMode, model };
+        const config: AiProviderState = { brand, mode, model };
         await window.ax.setAiProvider(config);
         setMessage('저장되었습니다. 이 AI가 사용 중입니다.');
         onAiSaved?.();
-      } else if (brand === 'grok') {
-        setMessage('설정이 저장되었습니다. agent CLI와 API 키를 모두 확인하세요.');
+      } else if (brand === 'grok' && mode === 'cli') {
+        setMessage('설정이 저장되었습니다. agent CLI와 Cursor API 키를 모두 확인하세요.');
       } else {
         setMessage('설정이 ai.toml에 저장되었습니다.');
       }
@@ -345,3 +338,5 @@ export function useAiSettings(
     save,
   };
 }
+
+export type AiSettingsController = ReturnType<typeof useAiSettings>;

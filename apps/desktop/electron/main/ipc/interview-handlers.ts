@@ -15,6 +15,7 @@ export function registerInterviewHandlers() {
     return startInterview(instruction, {
       harness: core.agentHarness,
       connectedConnectors: connectedConnectorIds(core.store),
+      onProgress: (event) => _e.sender.send('ax:agent-progress', event),
     });
   });
   ipcMain.handle('ax:applyAnswer', async (_e, state, answer: string) => {
@@ -22,12 +23,14 @@ export function registerInterviewHandlers() {
     return applyAnswer(state, answer, {
       harness: core.agentHarness,
       connectedConnectors: connectedConnectorIds(core.store),
+      onProgress: (event) => _e.sender.send('ax:agent-progress', event),
     });
   });
   ipcMain.handle('ax:summarize', async (_e, ir) => summarizeSkill(ir));
   ipcMain.handle('ax:explain', async (_e, question: string) => explainExecution(getCore().store, question));
   ipcMain.handle('ax:proposeRevision', async (_e, skillId: string, instruction: string) => {
-    const ir = getCore().store.getSkill(skillId);
-    return proposeSkillRevision(ir ?? {}, instruction);
+    const core = getCore();
+    const ir = core.store.getSkill(skillId);
+    return proposeSkillRevision(ir ?? {}, instruction, { harness: core.agentHarness });
   });
 }

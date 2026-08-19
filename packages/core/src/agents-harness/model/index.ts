@@ -8,10 +8,12 @@ export {
   resolveCmdNodeRuntime,
   commandInvocation,
   runCommand,
+  runCommandStreaming,
   type CommandResult,
   type CommandInvocation,
 } from './cli-process.js';
 export * from './cli/index.js';
 export * from './anthropic-api.js';
 export * from './openai-api.js';
+export * from './grok-api.js';
 export * from './openai-compatible.js';

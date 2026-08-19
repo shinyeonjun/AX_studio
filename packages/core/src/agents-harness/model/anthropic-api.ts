@@ -13,7 +13,7 @@ function requireAnthropicApiKey(): string {
 async function callAnthropic(
   model: string,
   system: string,
-  input: { user?: string; messages?: import('./chat.js').ChatMessage[] },
+  input: { user?: string; messages?: import('./chat.js').ChatMessage[]; abortSignal?: AbortSignal },
   temperature: number,
 ): Promise<string> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -23,6 +23,7 @@ async function callAnthropic(
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
+    signal: input.abortSignal,
     body: JSON.stringify({
       model,
       max_tokens: 4096,

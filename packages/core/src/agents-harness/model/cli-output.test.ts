@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCursorNoiseLine, readableCliError, pickCliOutput } from './cli/output.js';
+import { isCursorNoiseLine, readableCliError, pickCliOutput, parseCursorStreamLine, cursorSessionIdFromEvent, cursorProgressFromEvent, cursorResultTextFromEvent } from './cli/output.js';
 
 describe('cursor cli stderr filtering', () => {
   it('treats cursor-retrieval tracing as noise', () => {
@@ -18,5 +18,16 @@ describe('cursor cli stderr filtering', () => {
       stderr: "cursor-retrieval: tracing to log",
     });
     expect(picked).toBe('{"ok":true}');
+  });
+});
+
+describe('cursor stream-json events', () => {
+  it('extracts session id, progress, and result text', () => {
+    const init = parseCursorStreamLine('{"type":"system","session_id":"abc"}');
+    expect(init && cursorSessionIdFromEvent(init)).toBe('abc');
+    expect(init && cursorProgressFromEvent(init)).toContain('준비');
+
+    const result = parseCursorStreamLine('{"type":"result","result":"{\\"ok\\":true}","session_id":"abc"}');
+    expect(result && cursorResultTextFromEvent(result)).toBe('{"ok":true}');
   });
 });

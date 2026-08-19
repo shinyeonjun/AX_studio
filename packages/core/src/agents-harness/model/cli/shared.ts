@@ -28,10 +28,18 @@ export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T
   }
 }
 
-export function composedPrompt(input: {
-  system: string;
-  user?: string;
-  messages?: import('../chat.js').ChatMessage[];
-}): string {
-  return flattenChatPrompt(input.system, chatMessagesFromInput(input));
+export function composedPrompt(
+  input: {
+    system: string;
+    user?: string;
+    messages?: import('../chat.js').ChatMessage[];
+  },
+  options: { resume?: boolean } = {},
+): string {
+  const messages = chatMessagesFromInput(input);
+  if (options.resume) {
+    const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+    return `${input.system}\n\nUser: ${lastUser?.content ?? ''}`.trim();
+  }
+  return flattenChatPrompt(input.system, messages);
 }

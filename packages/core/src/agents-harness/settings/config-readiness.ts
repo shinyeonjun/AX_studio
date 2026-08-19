@@ -6,16 +6,18 @@ import { resolveAiProviderConfig } from './config-resolve.js';
 import { resolveBinary } from '../model/cli-process.js';
 import { isAnthropicApiKeyConfigured } from '../model/anthropic-api.js';
 import { isOpenAiApiKeyConfigured } from '../model/openai-api.js';
+import { isXaiApiKeyConfigured } from '../model/grok-api.js';
 
 export function isAiProviderReady(config: AiProviderConfig): boolean {
   const resolved = resolveAiProviderConfig(config);
-  if (resolved.brand === 'grok') {
-    return isCursorApiKeyConfigured() && Boolean(resolveBinary(CLI_PROVIDER_META['cursor-cli'].binaries));
-  }
   if (resolved.mode === 'api') {
     if (resolved.brand === 'claude') return isAnthropicApiKeyConfigured();
     if (resolved.brand === 'gpt') return isOpenAiApiKeyConfigured();
-    return isCursorApiKeyConfigured() && isAiCliInstalled('cursor-cli');
+    if (resolved.brand === 'grok') return isXaiApiKeyConfigured();
+    return false;
+  }
+  if (resolved.brand === 'grok') {
+    return isCursorApiKeyConfigured() && Boolean(resolveBinary(CLI_PROVIDER_META['cursor-cli'].binaries));
   }
   if (!isCliProviderId(resolved.provider)) return false;
   return isAiCliInstalled(resolved.provider);

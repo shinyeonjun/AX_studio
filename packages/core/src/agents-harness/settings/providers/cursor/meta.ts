@@ -1,4 +1,4 @@
-import type { CliModelOption } from '../grok/meta.js';
+import type { CliModelOption } from '../../model-options.js';
 import { GROK_MODELS } from '../grok/meta.js';
 
 export const CURSOR_CLI_MODELS: CliModelOption[] = GROK_MODELS;

@@ -112,16 +112,12 @@ export function AiHub({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              {brand === 'grok' ? (
-                <span className="muted ai-provider-mode-label">agent CLI + API 키</span>
-              ) : (
-                <AiModeSwitch
+              <AiModeSwitch
                   mode={mode}
                   cliLabel={meta.cliModeLabel}
                   disabled={modeSaving}
                   onChange={(nextMode) => onBrandModeChange(brand, nextMode)}
                 />
-              )}
               <button type="button" className="btn btn-sm btn-secondary" onClick={() => onOpenBrand(brand)}>
                 설정
               </button>

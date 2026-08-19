@@ -112,6 +112,8 @@ async function loadSqlJs(): Promise<SqlJsStatic> {
 }
 
 class SqlJsDatabaseAdapter implements AppDatabase {
+  private persistTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor(
     private db: SqlJsRawDatabase,
     private filePath?: string,
@@ -146,13 +148,23 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   close(): void {
-    this.persist();
+    this.flushPersist();
     this.db.close();
+  }
+
+  private flushPersist(): void {
+    if (!this.filePath || this.filePath === ':memory:') return;
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = undefined;
+    }
+    writeFileSync(this.filePath, Buffer.from(this.db.export()));
   }
 
   private persist(): void {
     if (!this.filePath || this.filePath === ':memory:') return;
-    writeFileSync(this.filePath, Buffer.from(this.db.export()));
+    if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => this.flushPersist(), 250);
   }
 }
 

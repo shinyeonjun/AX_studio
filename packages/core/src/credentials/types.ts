@@ -1,5 +1,5 @@
 export interface CredentialRef {
-  connector: 'gmail';
+  connector: string;
   connectionId: string;
 }
 

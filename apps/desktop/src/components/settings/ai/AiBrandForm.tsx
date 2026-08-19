@@ -58,7 +58,7 @@ export function AiBrandForm({
   onSave,
 }: AiBrandFormProps) {
   const meta = AI_PROVIDER_UI_CATALOG[brand];
-  const isGrok = brand === 'grok';
+  const grokCli = brand === 'grok' && mode === 'cli';
   const cliConnected = Boolean(cliOption?.installed || cliVerified);
   const apiConnected = Boolean(apiKeyConfigured || apiVerified);
 
@@ -80,17 +80,15 @@ export function AiBrandForm({
           </div>
         </div>
 
-        {!isGrok && (
-          <AiModeSwitch
-            mode={mode}
-            cliLabel={meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
-            onChange={onModeChange}
-          />
-        )}
+        <AiModeSwitch
+          mode={mode}
+          cliLabel={meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
+          onChange={onModeChange}
+        />
 
         {detecting && <p className="muted">연결 상태를 확인하는 중...</p>}
 
-        {isGrok ? (
+        {grokCli ? (
           <GrokUnifiedSetup
             cliOption={cliOption}
             apiKeyDraft={apiKeyDraft}
@@ -142,7 +140,7 @@ export function AiBrandForm({
                   <label>API 키</label>
                   <input
                     type="password"
-                    placeholder="sk-..."
+                    placeholder={brand === 'grok' ? 'xai-...' : 'sk-...'}
                     value={apiKeyDraft}
                     onChange={(e) => onApiKeyChange(e.target.value)}
                   />
@@ -193,7 +191,7 @@ export function AiBrandForm({
 
       <div className="connection-guide">
         <h4>연결 팁</h4>
-        <div className="guide-placeholder">{isGrok ? grokSetupGuide() : defaultSetupGuide()}</div>
+        <div className="guide-placeholder">{grokCli ? grokSetupGuide() : defaultSetupGuide()}</div>
       </div>
     </div>
   );

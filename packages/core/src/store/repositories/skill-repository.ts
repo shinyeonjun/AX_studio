@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
 import type { SkillIR } from '../../skill/schema.js';
 import { parseSkillIR } from '../../skill/schema.js';
-import type { SkillRow } from '../rows.js';
 
 export function saveSkill(db: AppDatabase, ir: SkillIR): { skillId: string; version: number } {
   const now = new Date().toISOString();
@@ -40,19 +39,21 @@ export function getSkill(db: AppDatabase, skillId: string, version?: number): Sk
 }
 
 export function listSkills(db: AppDatabase): Array<{ id: string; name: string; active: boolean; latestVersion: number }> {
-  const allSkills = db.prepare('SELECT id, name, active FROM skills').all() as unknown as SkillRow[];
-  return allSkills.map((s) => {
-    const versions = db
-      .prepare('SELECT version FROM skill_versions WHERE skill_id = ?')
-      .all(s.id) as Array<{ version: number }>;
-    const latest = versions.sort((a, b) => b.version - a.version)[0];
-    return {
-      id: s.id,
-      name: s.name,
-      active: Boolean(s.active),
-      latestVersion: latest?.version ?? 0,
-    };
-  });
+  const rows = db
+    .prepare(
+      `SELECT s.id, s.name, s.active, COALESCE(MAX(sv.version), 0) AS latestVersion
+       FROM skills s
+       LEFT JOIN skill_versions sv ON sv.skill_id = s.id
+       GROUP BY s.id, s.name, s.active`,
+    )
+    .all() as Array<{ id: string; name: string; active: number; latestVersion: number }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    active: Boolean(row.active),
+    latestVersion: row.latestVersion ?? 0,
+  }));
 }
 
 export function setSkillActive(db: AppDatabase, skillId: string, active: boolean) {

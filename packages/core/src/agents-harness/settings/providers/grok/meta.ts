@@ -1,10 +1,5 @@
 import { exactModelOptions } from '../../model-options.js';
 
-export interface CliModelOption {
-  id: string;
-  label: string;
-}
-
 export const GROK_MODELS = exactModelOptions([
   'grok-4.6-high',
   'grok-4.6',
@@ -15,7 +10,7 @@ export const GROK_MODELS = exactModelOptions([
 
 export const GROK_META = {
   label: 'Grok',
-  description: 'xAI Grok · Cursor agent CLI',
+  description: 'xAI Grok · Cursor agent CLI 또는 xAI API',
   cliModels: GROK_MODELS,
   apiModels: GROK_MODELS,
   apiDefaultModel: 'grok-4.6',

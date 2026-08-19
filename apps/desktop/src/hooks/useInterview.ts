@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Tab } from '../types/navigation';
 
 interface InterviewMessage {
@@ -29,6 +29,11 @@ export function useInterview(
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState('');
+
+  useEffect(() => {
+    return window.ax.onAgentProgress((event) => setProgress(event.message));
+  }, []);
 
   const reset = () => {
     setInterview(null);
@@ -37,12 +42,14 @@ export function useInterview(
     setAnswer('');
     setBusy(false);
     setError('');
+    setProgress('');
   };
 
   const startInterview = async () => {
     if (!instruction.trim() || busy) return;
     setBusy(true);
     setError('');
+    setProgress('답변을 준비하고 있습니다');
     setSaved(false);
     setInterview({ messages: [{ role: 'user', content: instruction }] });
     try {
@@ -53,6 +60,7 @@ export function useInterview(
       setError(errorMessage(err));
     } finally {
       setBusy(false);
+      setProgress('');
     }
   };
 
@@ -61,6 +69,7 @@ export function useInterview(
     const content = answer.trim();
     setBusy(true);
     setError('');
+    setProgress('답변을 준비하고 있습니다');
     setAnswer('');
     setInterview({
       ...interview,
@@ -79,6 +88,7 @@ export function useInterview(
       setError(errorMessage(err));
     } finally {
       setBusy(false);
+      setProgress('');
     }
   };
 
@@ -110,6 +120,7 @@ export function useInterview(
     saved,
     busy,
     error,
+    progress,
     setInstruction,
     setAnswer,
     reset,

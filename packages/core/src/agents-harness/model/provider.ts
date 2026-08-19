@@ -1,5 +1,6 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './chat.js';
+import type { AgentProgressEvent } from '../types.js';
 
 export interface StructuredGenerateInput<T> {
   schema: ZodType<T>;
@@ -9,6 +10,10 @@ export interface StructuredGenerateInput<T> {
   /** Multi-turn session. API providers send this natively; CLI flattens it. */
   messages?: ChatMessage[];
   temperature?: number;
+  timeoutMs?: number;
+  sessionId?: string;
+  abortSignal?: AbortSignal;
+  onProgress?: (event: AgentProgressEvent) => void;
 }
 
 export interface TextGenerateInput {
@@ -16,6 +21,10 @@ export interface TextGenerateInput {
   user?: string;
   messages?: ChatMessage[];
   temperature?: number;
+  timeoutMs?: number;
+  sessionId?: string;
+  abortSignal?: AbortSignal;
+  onProgress?: (event: AgentProgressEvent) => void;
 }
 
 export interface ModelProvider {
