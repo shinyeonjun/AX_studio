@@ -1,0 +1,23 @@
+# AX Studio AI settings
+# 복사해서 ai.toml 로 저장하세요 (커밋하지 않음)
+# 개발: 프로젝트 루트 ai.toml / 릴리즈: userData ai.toml
+#
+# 여기에는 활성 AI / 모델만 둡니다.
+# API 키는 앱이 OS credential store에 저장합니다. toml에 넣지 마세요.
+
+[active]
+brand = "claude"
+mode = "cli"
+model = "sonnet"
+
+[providers.claude]
+mode = "cli"
+model = "sonnet"
+
+[providers.gpt]
+mode = "cli"
+model = "gpt-5.4"
+
+[providers.grok]
+mode = "api"
+model = "grok-4.6"

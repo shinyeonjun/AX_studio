@@ -1,0 +1,37 @@
+[
+  {
+    "id": "cs-mail",
+    "instruction": "고객 문의 메일을 분류하고 중요한 건 슬랙으로 알려줘",
+    "answers": ["support@ Gmail", "#support-critical", "알림 전송 완료"],
+    "requiredSlots": ["goal", "slack.channel", "gmail.account"],
+    "needsApproval": false
+  },
+  {
+    "id": "weekly-report",
+    "instruction": "매주 금요일 매출을 전주와 비교해서 슬랙에 보고해줘",
+    "answers": ["./data/sales.csv", "#sales", "Slack 보고 완료"],
+    "requiredSlots": ["trigger.schedule", "local_file.path", "slack.channel"],
+    "needsApproval": false
+  },
+  {
+    "id": "mail-with-send",
+    "instruction": "문의 메일에 답장 draft 만들고 승인 후 보내줘",
+    "answers": ["primary", "#support", "승인 후 전송"],
+    "requiredSlots": ["approval", "gmail.account"],
+    "needsApproval": true
+  },
+  {
+    "id": "investigation",
+    "instruction": "지난달 매출 떨어진 이유를 DB와 메일에서 조사해줘",
+    "answers": ["sales-db", "완료"],
+    "requiredSlots": ["rdb.connection"],
+    "needsApproval": false
+  },
+  {
+    "id": "simple-notify",
+    "instruction": "중요 메일 오면 슬랙에 알려줘",
+    "answers": ["#alerts", "알림"],
+    "requiredSlots": ["slack.channel"],
+    "needsApproval": false
+  }
+]

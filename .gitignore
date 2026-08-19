@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+release/
+*.tsbuildinfo
+
+# Local agent / editor instructions (repo에 올리지 않음)
+AGENTS.md
+
+# Local secrets and machine-specific config — never commit
+.env
+.env.*
+!.env.example
+ai.toml
+!.ai.toml.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Google Cloud OAuth client JSON (Console에서 다운로드한 파일)
+client_secret*.json
+*-credentials.json
+
+# OS / Electron credential files (userData 또는 실수로 복사된 파일)
+*.cred
+
+# Local SQLite (runtime userData / 실수로 루트에 생긴 경우)
+*.db
+*.db-wal
+*.db-shm
+
+# Logs & caches
+*.log
+npm-debug.log*
+.vite/
+.cache/
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+ 

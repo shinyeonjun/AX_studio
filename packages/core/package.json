@@ -1,0 +1,43 @@
+{
+  "name": "@ax-studio/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "eval": "vitest run --config vitest.eval.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^0.2.0",
+    "@slack/web-api": "^7.8.0",
+    "@types/sql.js": "^1.4.11",
+    "ai": "^4.3.0",
+    "docxtemplater": "^3.55.0",
+    "exceljs": "^4.4.0",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^144.0.0",
+    "handlebars": "^4.7.8",
+    "pg": "^8.13.3",
+    "pizzip": "^3.1.8",
+    "sql.js": "^1.14.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.11",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
