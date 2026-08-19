@@ -18,7 +18,7 @@ interface SettingsPageProps {
   onScreenChange: (screen: SettingsScreen) => void;
   onOpenAi: () => void;
   onOpenAiBrand: (brand: AiBrand) => void;
-  onConnectSlack: (token: string) => Promise<void>;
+  onConnectSlack: (payload: { token: string; appToken?: string }) => Promise<void>;
   onConnectGmail: () => Promise<void>;
   onDisconnectGmail: () => Promise<void>;
 }

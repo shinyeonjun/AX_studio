@@ -28,6 +28,10 @@ export const TriggerSchema = z.discriminatedUnion('type', [
     accountId: z.string(),
   }),
   z.object({
+    type: z.literal('slack.new_message'),
+    channel: z.string(),
+  }),
+  z.object({
     type: z.literal('once'),
     runAt: z.string(),
   }),

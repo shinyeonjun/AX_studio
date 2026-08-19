@@ -27,11 +27,12 @@ export const WorkflowNodeSchema = z.object({
 export const InterviewDraftSchema = z.object({
   name: z.string(),
   goal: z.string(),
-  triggerType: z.enum(['manual', 'schedule', 'once', 'gmail.new_message']),
+  triggerType: z.enum(['manual', 'schedule', 'once', 'gmail.new_message', 'slack.new_message']),
   schedule: z.string().optional(),
   timezone: z.string().optional(),
   runAt: z.string().optional(),
   gmailAccount: z.string().optional(),
+  slackChannel: z.string().optional(),
   success: z.string().optional(),
   assumptions: z.array(z.string()).default([]),
   nodes: z.array(WorkflowNodeSchema).default([]),

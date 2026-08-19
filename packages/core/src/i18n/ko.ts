@@ -43,6 +43,7 @@ export const KO = {
     triggerManual: '수동 실행',
     triggerSchedule: (schedule: string, timezone: string) => `스케줄: ${schedule} (${timezone})`,
     triggerGmail: (accountId: string) => `Gmail 새 메일: ${accountId}`,
+    triggerSlack: (channel: string) => `Slack 새 메시지: ${channel}`,
     triggerOnce: (runAt: string) => `1회 예약: ${runAt}`,
     sectionWorkflow: '워크플로우',
     sectionCompletion: '완료 조건',

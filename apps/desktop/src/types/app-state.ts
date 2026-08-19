@@ -31,6 +31,12 @@ export interface AppState {
   gmailEmail?: string;
   gmailScopes?: string[];
   gmailConnectedAt?: string;
+  slackTeam?: string;
+  slackBotUser?: string;
+  slackHasAppToken?: boolean;
+  slackSocketModeActive?: boolean;
+  slackConnectionMode?: 'disconnected' | 'poll' | 'socket';
+  slackLastError?: string;
   skills: SkillSummary[];
   connections: Array<{ connector: string; connected: boolean; account?: string; scopes?: string[] }>;
   pendingApprovals: number;

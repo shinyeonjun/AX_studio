@@ -9,6 +9,8 @@ export interface RuntimeConfig {
   connectors?: Record<string, Connector>;
   globalActive: boolean;
   skillActive: Record<string, boolean>;
+  onExecutionStarted?: (executionId: string) => void;
+  onExecutionFinished?: (result: ExecutionResult) => void;
 }
 
 export interface ExecutionResult {

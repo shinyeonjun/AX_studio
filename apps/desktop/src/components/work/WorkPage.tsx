@@ -141,14 +141,12 @@ export function WorkPage({
           busy={interview.busy}
           error={interview.error}
           progress={interview.progress}
-          instruction={interview.instruction}
-          answer={interview.answer}
+          composerText={interview.composerText}
           isLinkedSkill={interview.isLinkedSkill}
           isImmediateOnce={interview.isImmediateOnce}
           isDeferredOnce={interview.isDeferredOnce}
           isRecurringDraft={interview.isRecurringDraft}
-          onInstructionChange={interview.setInstruction}
-          onAnswerChange={interview.setAnswer}
+          onComposerChange={interview.setComposerText}
           onStartInterview={interview.startInterview}
           onSendAnswer={interview.sendAnswer}
           onRunOnce={interview.runOnce}

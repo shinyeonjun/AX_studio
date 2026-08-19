@@ -29,6 +29,7 @@ describe('harness dataPolicy', () => {
         skillGoal: 'g',
         taskGoal: 't',
         evidence: [],
+        connectedConnectors: ['gmail'],
         untrustedData: 'secret-email-body',
       },
     });

@@ -1,10 +1,12 @@
 import type { SkillIR } from '../skill/schema.js';
 import type { AgentHarness } from '../agent/harness.js';
+import { normalizeWorkflowActionNode } from '../connectors/capability-graph.js';
 import { validateApprovalPolicy } from '../skill/approval.js';
 import { assessCompleteness, getNextQuestion } from './requiredness.js';
 import { buildIRFromWorkflow, UnknownCapabilityError } from './workflow-builder.js';
 import { createInterviewState, type InterviewState } from './interview-state.js';
 import { InterviewDraftSchema, InterviewTurnSchema, type InterviewDraft, type InterviewTurn } from './workflow-schema.js';
+import { windowInterviewMessages } from '../agent/prompt-context.js';
 
 export interface InterviewRunOptions {
   harness: AgentHarness;
@@ -31,11 +33,15 @@ async function runInterviewTurn(state: InterviewState, options: InterviewRunOpti
     },
     sessionId: state.sessionId,
     onProgress: options.onProgress,
-    messages: state.messages,
+    messages: windowInterviewMessages(state.messages),
   });
   const turn = InterviewTurnSchema.parse(output);
 
-  const workflow = draftFromTurn(turn);
+  const workflowDraft = draftFromTurn(turn);
+  const workflow = {
+    ...workflowDraft,
+    nodes: workflowDraft.nodes.map(normalizeWorkflowActionNode),
+  };
   let built: ReturnType<typeof buildIRFromWorkflow>;
   try {
     built = buildIRFromWorkflow(workflow);

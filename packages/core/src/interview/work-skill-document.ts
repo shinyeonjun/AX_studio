@@ -16,6 +16,9 @@ function triggerLines(ir: Partial<SkillIR>): string[] {
   if (ir.trigger?.type === 'gmail.new_message') {
     return ['trigger:', '  type: gmail.new_message', `  accountId: ${ir.trigger.accountId}`];
   }
+  if (ir.trigger?.type === 'slack.new_message') {
+    return ['trigger:', '  type: slack.new_message', `  channel: ${ir.trigger.channel}`];
+  }
   return ['trigger:', '  type: manual'];
 }
 

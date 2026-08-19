@@ -11,6 +11,9 @@ function triggerSummary(trigger?: SkillIR['trigger']): string {
   if (trigger.type === 'gmail.new_message') {
     return KO.workSkillDocument.triggerGmail(trigger.accountId);
   }
+  if (trigger.type === 'slack.new_message') {
+    return KO.workSkillDocument.triggerSlack(trigger.channel);
+  }
   return KO.chatSummary.triggerManual;
 }
 

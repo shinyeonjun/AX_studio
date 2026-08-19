@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseSkillIR } from './skill/schema.js';
 import { validateApprovalPolicy } from './skill/approval.js';
 import { csMailSkillFixture } from './skill/fixtures.js';
-import { createDatabase } from './store/db.js';
+import { createDatabaseAsync } from './store/db.js';
 import { SkillStore } from './store/skill-store.js';
 import packageJson from '../package.json';
 
@@ -21,8 +21,8 @@ describe('core package boundary', () => {
     expect(validateApprovalPolicy(bad).length).toBeGreaterThan(0);
   });
 
-  it('store roundtrip', () => {
-    const store = new SkillStore(createDatabase(':memory:'));
+  it('store roundtrip', async () => {
+    const store = new SkillStore(await createDatabaseAsync(':memory:'));
     const { skillId } = store.saveSkill(parseSkillIR(csMailSkillFixture));
     expect(store.getSkill(skillId)?.name).toBe('고객 문의 처리');
   });

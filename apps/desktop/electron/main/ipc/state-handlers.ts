@@ -3,6 +3,7 @@ import {
   formatApprovalTitle,
   getAiProviderDisplay,
   isAiProviderReady,
+  getSlackConnectionStatus,
   parseGmailConnectionConfig,
   parseSkillIR,
 } from '@ax-studio/core';
@@ -57,6 +58,12 @@ export function registerStateHandlers() {
     const aiToml = await readAiToml();
     const gmailConn = core.store.getConnections().find((c) => c.connector === 'gmail');
     const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
+    const slackConn = core.store.getConnections().find((c) => c.connector === 'slack');
+    const slackStatus = getSlackConnectionStatus(
+      slackConn?.config,
+      Boolean(slackConn?.connected),
+      core.triggerEngine.slackSocketActive(),
+    );
     return {
       globalActive: core.store.getSetting('globalActive', true),
       aiProvider,
@@ -69,6 +76,12 @@ export function registerStateHandlers() {
       gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,
       gmailScopes: gmailConn?.connected ? gmailRecord?.scopes : undefined,
       gmailConnectedAt: gmailConn?.connected ? gmailRecord?.connectedAt : undefined,
+      slackTeam: slackStatus.connected ? slackStatus.team : undefined,
+      slackBotUser: slackStatus.connected ? slackStatus.botUser : undefined,
+      slackHasAppToken: slackStatus.hasAppToken,
+      slackSocketModeActive: slackStatus.socketModeActive,
+      slackConnectionMode: slackStatus.mode,
+      slackLastError: slackStatus.lastError,
       skills,
       connections: core.store.getConnections().map(({ connector, connected, config }) => ({
         connector,

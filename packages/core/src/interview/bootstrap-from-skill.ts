@@ -43,7 +43,9 @@ function workflowNodeFromStep(step: Step): WorkflowNode | null {
   }
 }
 
-function triggerFields(ir: SkillIR): Pick<InterviewDraft, 'triggerType' | 'schedule' | 'runAt' | 'gmailAccount' | 'timezone'> {
+function triggerFields(
+  ir: SkillIR,
+): Pick<InterviewDraft, 'triggerType' | 'schedule' | 'runAt' | 'gmailAccount' | 'slackChannel' | 'timezone'> {
   const trigger = ir.trigger;
   if (trigger?.type === 'schedule') {
     return {
@@ -57,6 +59,9 @@ function triggerFields(ir: SkillIR): Pick<InterviewDraft, 'triggerType' | 'sched
   }
   if (trigger?.type === 'gmail.new_message') {
     return { triggerType: 'gmail.new_message', gmailAccount: trigger.accountId };
+  }
+  if (trigger?.type === 'slack.new_message') {
+    return { triggerType: 'slack.new_message', slackChannel: trigger.channel };
   }
   return { triggerType: 'manual' };
 }

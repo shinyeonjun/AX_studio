@@ -107,6 +107,17 @@ export function computeRequiredSlots(ir: Partial<SkillIR>): SlotState[] {
     });
   }
 
+  if (ir.trigger?.type === 'slack.new_message') {
+    const cap = resolveCapability('slack', 'new_message');
+    const channelParam = cap?.params.find((p) => p.name === 'channel');
+    slots.push({
+      slot: cap && channelParam ? paramSlotId(cap, 'channel') : 'slack.new_message.channel',
+      filled: Boolean(ir.trigger.channel),
+      label: channelParam?.label ?? 'Slack 채널',
+      question: channelParam?.question ?? '어떤 Slack 채널을 감시할까요?',
+    });
+  }
+
   if (hasExternalHigh(steps)) {
     slots.push({
       slot: 'approval',
@@ -138,6 +149,7 @@ export function assessCompleteness(
     }
   }
   if (ir.trigger?.type === 'gmail.new_message') neededConnectors.add('gmail');
+  if (ir.trigger?.type === 'slack.new_message') neededConnectors.add('slack');
 
   const missingConnections = [...neededConnectors].filter((c) => !connectedConnectors.includes(c));
 

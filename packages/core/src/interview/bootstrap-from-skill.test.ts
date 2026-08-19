@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { csMailSkillFixture } from '../skill/fixtures.js';
 import { bootstrapInterviewFromSkill } from './bootstrap-from-skill.js';
-import { createDatabase } from '../store/db.js';
+import { createDatabaseAsync } from '../store/db.js';
 import { saveChatSession, getChatSessionBySkillId } from '../store/repositories/chat-session-repository.js';
 
 describe('bootstrapInterviewFromSkill', () => {
@@ -16,8 +16,8 @@ describe('bootstrapInterviewFromSkill', () => {
 });
 
 describe('chat session repository', () => {
-  it('persists and loads session by skill id', () => {
-    const db = createDatabase(':memory:');
+  it('persists and loads session by skill id', async () => {
+    const db = await createDatabaseAsync(':memory:');
     const state = bootstrapInterviewFromSkill(csMailSkillFixture, 'skill-1');
     saveChatSession(db, { state, summary: '요약', skillId: 'skill-1' });
     const loaded = getChatSessionBySkillId(db, 'skill-1');

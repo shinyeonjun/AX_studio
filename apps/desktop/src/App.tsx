@@ -140,7 +140,7 @@ export default function App() {
           />
         )}
 
-        {tab === 'activity' && <ActivityPage state={state} />}
+        {tab === 'activity' && <ActivityPage state={state} onRefresh={refresh} />}
 
         {tab === 'settings' && (
           <SettingsPage
@@ -150,7 +150,10 @@ export default function App() {
             onScreenChange={setSettingsScreen}
             onOpenAi={openAiSettings}
             onOpenAiBrand={openAiBrand}
-            onConnectSlack={(token) => window.ax.connectSlack(token).then(refresh)}
+            onConnectSlack={async (payload) => {
+              await window.ax.connectSlack(payload);
+              await refresh();
+            }}
             onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
             onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}
           />

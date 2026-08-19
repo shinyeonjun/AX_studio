@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabase } from '../store/db.js';
+import { createDatabaseAsync } from '../store/db.js';
 import { SkillStore } from '../store/skill-store.js';
 import { SkillRuntime } from './engine.js';
 import { TriggerEngine } from './trigger-engine.js';
@@ -31,7 +31,7 @@ const gmailNotifySkill: SkillIR = {
 
 describe('TriggerEngine', () => {
   it('baselines on first poll and fires once for each new gmail message', async () => {
-    const db = createDatabase(':memory:');
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
     runtime.mockGmail.messages.push({
@@ -65,7 +65,7 @@ describe('TriggerEngine', () => {
   });
 
   it('does not poll inactive skills', async () => {
-    const db = createDatabase(':memory:');
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
     const { skillId } = store.saveSkill(gmailNotifySkill);
@@ -82,5 +82,62 @@ describe('TriggerEngine', () => {
     });
     await engine.tick();
     expect(runtime.mockSlack.messages).toHaveLength(0);
+  });
+
+  it('baselines slack trigger and fires once for each new channel message', async () => {
+    const slackNotifySkill: SkillIR = {
+      name: 'Slack 알림',
+      goal: 'Slack 새 메시지 시 알림 채널로 전달',
+      version: 1,
+      trigger: { type: 'slack.new_message', channel: '#general' },
+      inputs: ['text', 'user', 'channel'],
+      steps: [
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#alerts', text: 'new slack message' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    const db = await createDatabaseAsync(':memory:');
+    const store = new SkillStore(db);
+    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
+    runtime.mockSlack.inbound.push({
+      channel: '#general',
+      text: '기존 메시지',
+      ts: '100.000',
+      user: 'U_OLD',
+    });
+
+    const { skillId } = store.saveSkill(slackNotifySkill);
+    store.setSkillActive(skillId, true);
+    const engine = new TriggerEngine(store, runtime);
+
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(0);
+
+    runtime.mockSlack.inbound.push({
+      channel: '#general',
+      text: '새 메시지',
+      ts: '101.000',
+      user: 'U_NEW',
+    });
+
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(1);
+    expect(runtime.mockSlack.messages[0]?.channel).toBe('#alerts');
+
+    await engine.tick();
+    expect(runtime.mockSlack.messages).toHaveLength(1);
   });
 });

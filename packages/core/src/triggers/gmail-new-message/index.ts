@@ -1,8 +1,9 @@
-import type { TriggerHandler, TriggerPollResult } from './types.js';
+import type { TriggerHandler, TriggerPollResult } from '../types.js';
 
 export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message'; accountId: string }> = {
   type: 'gmail.new_message',
   connector: 'gmail',
+  transport: 'poll',
 
   async poll(ctx) {
     const gmail = ctx.connectors.gmail;

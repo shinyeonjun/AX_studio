@@ -6,14 +6,12 @@ interface ChatPanelProps {
   busy: boolean;
   error: string;
   progress: string;
-  instruction: string;
-  answer: string;
+  composerText: string;
   isLinkedSkill: boolean;
   isImmediateOnce: boolean;
   isDeferredOnce: boolean;
   isRecurringDraft: boolean;
-  onInstructionChange: (value: string) => void;
-  onAnswerChange: (value: string) => void;
+  onComposerChange: (value: string) => void;
   onStartInterview: () => void;
   onSendAnswer: () => void;
   onRunOnce: () => void;
@@ -34,14 +32,12 @@ export function ChatPanel({
   busy,
   error,
   progress,
-  instruction,
-  answer,
+  composerText,
   isLinkedSkill,
   isImmediateOnce,
   isDeferredOnce,
   isRecurringDraft,
-  onInstructionChange,
-  onAnswerChange,
+  onComposerChange,
   onStartInterview,
   onSendAnswer,
   onRunOnce,
@@ -52,13 +48,7 @@ export function ChatPanel({
 
   const inConversation = Boolean(interview);
   const finished = Boolean(interview?.done);
-  const composerValue = inConversation ? answer : instruction;
-  const canSend = composerValue.trim().length > 0 && !busy;
-
-  const setComposerValue = (value: string) => {
-    if (inConversation) onAnswerChange(value);
-    else onInstructionChange(value);
-  };
+  const canSend = composerText.trim().length > 0 && !busy;
 
   const submit = () => {
     if (!canSend) return;
@@ -182,8 +172,8 @@ export function ChatPanel({
             ref={inputRef}
             rows={1}
             placeholder="메시지 보내기"
-            value={composerValue}
-            onChange={(e) => setComposerValue(e.target.value)}
+            value={composerText}
+            onChange={(e) => onComposerChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

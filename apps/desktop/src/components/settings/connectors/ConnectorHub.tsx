@@ -28,6 +28,23 @@ export function ConnectorHub({ state, onOpenAi, onOpenConnector }: ConnectorHubP
       {CONNECTOR_UI_IDS.map((id) => {
         const meta = CONNECTOR_UI_CATALOG[id];
         const connected = state?.connections?.find((c) => c.connector === id)?.connected;
+        const slackMode = id === 'slack' ? state?.slackConnectionMode : undefined;
+        const badge =
+          id === 'slack' && slackMode === 'socket'
+            ? '연결됨 · 실시간'
+            : id === 'slack' && slackMode === 'poll'
+              ? '연결됨 · Poll'
+              : connected
+                ? '연결됨'
+                : '미연결';
+        const badgeClass =
+          id === 'slack' && slackMode === 'socket'
+            ? 'connected'
+            : id === 'slack' && slackMode === 'poll'
+              ? 'ready'
+              : connected
+                ? 'connected'
+                : '';
         return (
           <button
             key={id}
@@ -40,11 +57,7 @@ export function ConnectorHub({ state, onOpenAi, onOpenConnector }: ConnectorHubP
               <div className="connection-card-title">{meta.title}</div>
               <div className="connection-card-desc">{meta.description}</div>
             </div>
-            {connected ? (
-              <span className="connection-badge connected">연결됨</span>
-            ) : (
-              <span className="connection-badge">미연결</span>
-            )}
+            <span className={`connection-badge ${badgeClass}`}>{badge}</span>
           </button>
         );
       })}

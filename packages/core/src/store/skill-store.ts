@@ -71,6 +71,14 @@ export class SkillStore {
     return executionRepo.listExecutions(this.db, limit);
   }
 
+  deleteExecution(id: string) {
+    return executionRepo.deleteExecution(this.db, id);
+  }
+
+  clearExecutions() {
+    return executionRepo.clearExecutions(this.db);
+  }
+
   createApproval(params: { executionId: string; actionIds: string[]; reason: string; payload?: unknown }) {
     return approvalRepo.createApproval(this.db, params);
   }

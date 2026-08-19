@@ -91,24 +91,15 @@ function applyMigrations(db: AppDatabase) {
   }
 }
 
-function useSqlJsBackend(): boolean {
+function useElectronSqlJsLoader(): boolean {
   return typeof process.versions.electron === 'string';
-}
-
-function createNodeSqliteDatabase(path: string): AppDatabase {
-  const nodeRequire = createRequire(import.meta.url);
-  const { DatabaseSync } = nodeRequire('node:sqlite') as typeof import('node:sqlite');
-  const db = new DatabaseSync(path);
-  db.exec('PRAGMA journal_mode = WAL');
-  applyMigrations(db as AppDatabase);
-  return db as AppDatabase;
 }
 
 let sqlJsModulePromise: Promise<SqlJsStatic> | null = null;
 
 async function loadSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsModulePromise) {
-    if (useSqlJsBackend()) {
+    if (useElectronSqlJsLoader()) {
       const nodeRequire = createRequire(import.meta.url);
       const initSqlJs = nodeRequire('sql.js/dist/sql-wasm.js') as typeof import('sql.js').default;
       const wasmPath = join(dirname(nodeRequire.resolve('sql.js/dist/sql-wasm.wasm')), 'sql-wasm.wasm');
@@ -193,49 +184,29 @@ async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   return adapter;
 }
 
-export function createDatabase(path: string): AppDatabase {
-  if (useSqlJsBackend()) {
-    throw new Error('Electron requires async database init. Use createDatabaseAsync().');
-  }
-  return createNodeSqliteDatabase(path);
+/** @deprecated Use createDatabaseAsync(). sql.js init is async in all environments. */
+export function createDatabase(_path: string): AppDatabase {
+  throw new Error('Use createDatabaseAsync() — sync database init is no longer supported.');
 }
 
 export async function createDatabaseAsync(path: string): Promise<AppDatabase> {
-  if (useSqlJsBackend()) {
-    return createSqlJsDatabase(path);
-  }
-  return createNodeSqliteDatabase(path);
+  return createSqlJsDatabase(path);
 }
 
 export async function openReadonlySqlite(filePath: string): Promise<{
   all(sql: string, params?: unknown[]): Record<string, unknown>[];
   close(): void;
 }> {
-  if (useSqlJsBackend()) {
-    const SQL = await loadSqlJs();
-    const db = new SQL.Database(readFileSync(filePath));
-    return {
-      all(sql: string, params: unknown[] = []) {
-        const stmt = db.prepare(sql);
-        if (params.length > 0) stmt.bind(params as (string | number | null)[]);
-        const rows: Record<string, unknown>[] = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows;
-      },
-      close() {
-        db.close();
-      },
-    };
-  }
-
-  const nodeRequire = createRequire(import.meta.url);
-  const { DatabaseSync } = nodeRequire('node:sqlite') as typeof import('node:sqlite');
-  const db = new DatabaseSync(filePath, { readOnly: true });
+  const SQL = await loadSqlJs();
+  const db = new SQL.Database(readFileSync(filePath));
   return {
     all(sql: string, params: unknown[] = []) {
       const stmt = db.prepare(sql);
-      return stmt.all(...(params as never[])) as Record<string, unknown>[];
+      if (params.length > 0) stmt.bind(params as (string | number | null)[]);
+      const rows: Record<string, unknown>[] = [];
+      while (stmt.step()) rows.push(stmt.getAsObject());
+      stmt.free();
+      return rows;
     },
     close() {
       db.close();

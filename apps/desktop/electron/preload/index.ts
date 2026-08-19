@@ -10,11 +10,14 @@ contextBridge.exposeInMainWorld('ax', {
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
   deleteSkill: (skillId: string) => ipcRenderer.invoke('ax:deleteSkill', skillId),
+  deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),
+  clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),
   setGlobalActive: (active: boolean) => ipcRenderer.invoke('ax:setGlobalActive', active),
   setSkillActive: (skillId: string, active: boolean) => ipcRenderer.invoke('ax:setSkillActive', skillId, active),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
   proposeRevision: (skillId: string, instruction: string) => ipcRenderer.invoke('ax:proposeRevision', skillId, instruction),
-  connectSlack: (token: string) => ipcRenderer.invoke('ax:connectSlack', token),
+  connectSlack: (payload: string | { token: string; appToken?: string }) =>
+    ipcRenderer.invoke('ax:connectSlack', payload),
   connectGmailOAuth: () => ipcRenderer.invoke('ax:connectGmailOAuth'),
   disconnectGmailOAuth: () => ipcRenderer.invoke('ax:disconnectGmailOAuth'),
   setAiProvider: (config: unknown) => ipcRenderer.invoke('ax:setAiProvider', config),
@@ -34,5 +37,10 @@ contextBridge.exposeInMainWorld('ax', {
     const wrapped = (_e: unknown, event: { message: string }) => listener(event);
     ipcRenderer.on('ax:agent-progress', wrapped);
     return () => ipcRenderer.removeListener('ax:agent-progress', wrapped);
+  },
+  onStateChanged: (listener: () => void) => {
+    const wrapped = () => listener();
+    ipcRenderer.on('ax:state-changed', wrapped);
+    return () => ipcRenderer.removeListener('ax:state-changed', wrapped);
   },
 });

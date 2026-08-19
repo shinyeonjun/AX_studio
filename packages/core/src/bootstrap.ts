@@ -10,12 +10,15 @@ import {
   normalizeAiProviderConfig,
   type AiProviderConfig,
 } from './agent/settings/config.js';
+import type { ExecutionResult } from './runtime/types.js';
 
 export interface AxStudioCoreOptions {
   dbPath: string;
   cloudApiKey?: string;
   cloudBaseURL?: string;
   cloudModel?: string;
+  onExecutionStarted?: (executionId: string) => void;
+  onExecutionFinished?: (result: ExecutionResult) => void;
 }
 
 export interface AxStudioCore {
@@ -45,7 +48,15 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   }
 
   const connectors = buildConnectorsFromStore(store);
-  const runtime = new SkillRuntime({ store, agentHarness, globalActive, skillActive, connectors });
+  const runtime = new SkillRuntime({
+    store,
+    agentHarness,
+    globalActive,
+    skillActive,
+    connectors,
+    onExecutionStarted: options.onExecutionStarted,
+    onExecutionFinished: options.onExecutionFinished,
+  });
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime);
 

@@ -11,6 +11,9 @@ export function useAppState() {
 
   useEffect(() => {
     refresh();
+    return window.ax.onStateChanged(() => {
+      void refresh();
+    });
   }, [refresh]);
 
   return { state, refresh };

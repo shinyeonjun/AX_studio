@@ -70,6 +70,7 @@ export class SkillRuntime {
       triggerType: options.triggerType,
       irJson: JSON.stringify(ir),
     });
+    this.config.onExecutionStarted?.(executionId);
 
     const log: ExecutionLogEntry[] = [];
     const ctx: ConnectorContext = {
@@ -79,12 +80,14 @@ export class SkillRuntime {
       log: (entry) => log.push(entry),
     };
 
-    const stepResults: Record<string, unknown> = {};
+    const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
 
     try {
       await this.runSequence(linearSteps(ir.steps), ir, ctx, stepResults);
       this.config.store.finishExecution(executionId, 'success', undefined, log);
-      return { executionId, status: 'success', log };
+      const result: ExecutionResult = { executionId, status: 'success', log };
+      this.config.onExecutionFinished?.(result);
+      return result;
     } catch (err) {
       const error = err as PendingError;
       if (error.pending && error.approvalId) {
@@ -94,17 +97,21 @@ export class SkillRuntime {
           });
         }
         this.config.store.finishExecution(executionId, 'failed', 'pending_approval', log);
-        return {
+        const result: ExecutionResult = {
           executionId,
           status: 'pending_approval',
           pendingApprovalId: error.approvalId,
           log,
         };
+        this.config.onExecutionFinished?.(result);
+        return result;
       }
       const code = error.code ?? 'execution_failed';
       log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
       this.config.store.finishExecution(executionId, 'failed', code, log);
-      return { executionId, status: 'failed', errorCode: code, log };
+      const result: ExecutionResult = { executionId, status: 'failed', errorCode: code, log };
+      this.config.onExecutionFinished?.(result);
+      return result;
     }
   }
 
@@ -217,7 +224,9 @@ export class SkillRuntime {
 
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'success', undefined, log);
-      return { executionId: execution.id, status: 'success', log };
+      const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log };
+      this.config.onExecutionFinished?.(successResult);
+      return successResult;
     } catch (err) {
       const error = err as PendingError;
       if (error.pending && error.approvalId) {
@@ -227,17 +236,21 @@ export class SkillRuntime {
           });
         }
         this.config.store.finishExecution(execution.id, 'failed', 'pending_approval', log);
-        return {
+        const pendingResult: ExecutionResult = {
           executionId: execution.id,
           status: 'pending_approval',
           pendingApprovalId: error.approvalId,
           log,
         };
+        this.config.onExecutionFinished?.(pendingResult);
+        return pendingResult;
       }
       const code = error.code ?? 'execution_failed';
       log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
       this.config.store.finishExecution(execution.id, 'failed', code, log);
-      return { executionId: execution.id, status: 'failed', errorCode: code, log };
+      const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };
+      this.config.onExecutionFinished?.(failedResult);
+      return failedResult;
     }
   }
 }

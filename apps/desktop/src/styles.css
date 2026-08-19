@@ -897,12 +897,37 @@ body {
   color: var(--red);
 }
 
+.timeline-dot.running {
+  border-color: var(--purple);
+  background: var(--purple-glow);
+  color: var(--purple-light);
+}
+
+.activity-hint {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .timeline-body {
   flex: 1;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px 16px;
+}
+
+.timeline-body-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-delete {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  min-height: 0;
 }
 
 .timeline-time {

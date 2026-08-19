@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { getCore } from '../core-instance.js';
+import { notifyStateChanged } from '../state-broadcast.js';
 
 export function registerRuntimeHandlers() {
   ipcMain.handle('ax:saveSkill', async (_e, ir) => {
@@ -23,6 +24,7 @@ export function registerRuntimeHandlers() {
     if (!approval) throw new Error('Approval not found');
     core.store.resolveApproval(approvalId, false);
     core.store.finishExecution(approval.executionId, 'cancelled', 'approval_rejected');
+    notifyStateChanged();
     return { ok: true };
   });
   ipcMain.handle('ax:deleteSkill', async (_e, skillId: string) => {
@@ -31,6 +33,19 @@ export function registerRuntimeHandlers() {
     if (!deleted) throw new Error('Skill not found');
     core.runtime.removeSkill(skillId);
     return { ok: true };
+  });
+  ipcMain.handle('ax:deleteExecution', async (_e, executionId: string) => {
+    const core = getCore();
+    const deleted = core.store.deleteExecution(executionId);
+    if (!deleted) throw new Error('Execution not found');
+    notifyStateChanged();
+    return { ok: true };
+  });
+  ipcMain.handle('ax:clearExecutions', async () => {
+    const core = getCore();
+    const removed = core.store.clearExecutions();
+    notifyStateChanged();
+    return { ok: true, removed };
   });
   ipcMain.handle('ax:setGlobalActive', async (_e, active: boolean) => {
     const core = getCore();

@@ -70,8 +70,8 @@ describe('agent interview skill', () => {
   it('loads SKILL.md from disk', () => {
     const skill = loadAgentSkill('interview');
     expect(skill.name).toBe('interview');
-    expect(skill.body).toContain('{{workflow_json}}');
-    expect(skill.body).toContain('gmail.message.send');
+    expect(skill.body).toContain('{{workflow_state}}');
+    expect(skill.body).toContain('{{capability_catalog}}');
   });
 
   it('prepends AGENTS.md constitution via harness system prompt', async () => {
@@ -80,8 +80,8 @@ describe('agent interview skill', () => {
     const first = await startInterview('안녕', { harness, connectedConnectors: CONNECTED });
     expect(first.messages).toHaveLength(2);
     expect(model.calls[0]?.system).toContain('AX Studio Agent 헌법');
-    expect(model.calls[0]?.system).toContain('대화가 워크플로우 에디터');
-    expect(model.calls[0]?.system).toContain('현재 워크플로우 초안');
+    expect(model.calls[0]?.system).toContain('현재 workflow');
+    expect(model.calls[0]?.system).not.toContain('{{workflow_state}}');
   });
 });
 
@@ -181,7 +181,7 @@ describe('AI interview session', () => {
       '메일을 누구에게 보낼까요?',
       'test@example.com',
     ]);
-    expect(model.calls[1]?.system).toContain('현재 워크플로우 초안');
+    expect(model.calls[1]?.system).toContain('현재 workflow');
     expect(model.calls[1]?.system).toContain('gmail.message.send');
     expect(second.draft.steps?.some((s) => s.type === 'action' && s.connector === 'gmail')).toBe(true);
     expect(second.draft.document).toContain('test@example.com');

@@ -83,6 +83,13 @@ export const CAPABILITY_CATALOG: ConnectorCapability[] = [
     ],
   },
   {
+    id: 'slack.new_message',
+    connector: 'slack',
+    kind: 'trigger',
+    description: 'Slack 채널 새 메시지 도착 시 업무 시작',
+    params: [{ name: 'channel', label: 'Slack 채널', question: '어떤 Slack 채널을 감시할까요?', required: true }],
+  },
+  {
     id: 'rdb.schema.describe',
     connector: 'rdb',
     kind: 'read',

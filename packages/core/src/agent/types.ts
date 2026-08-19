@@ -34,6 +34,7 @@ export interface InvestigateAgentContext {
   taskGoal: string;
   evidence: Array<{ source: string; detail: string }>;
   untrustedData?: string;
+  connectedConnectors: string[];
 }
 
 export interface ReviseAgentContext {

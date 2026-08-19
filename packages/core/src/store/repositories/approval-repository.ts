@@ -69,3 +69,10 @@ export function getPendingApprovals(db: AppDatabase) {
     payload: row.payload_json ? JSON.parse(row.payload_json) : undefined,
   }));
 }
+
+export function hasPendingApprovalForExecution(db: AppDatabase, executionId: string): boolean {
+  const row = db
+    .prepare('SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status = ? LIMIT 1')
+    .get(executionId, 'pending') as { found: number } | undefined;
+  return Boolean(row?.found);
+}

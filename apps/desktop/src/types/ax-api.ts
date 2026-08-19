@@ -17,11 +17,13 @@ export interface AxApi {
   approve: (id: string) => Promise<unknown>;
   reject: (id: string) => Promise<unknown>;
   deleteSkill: (skillId: string) => Promise<unknown>;
+  deleteExecution: (executionId: string) => Promise<unknown>;
+  clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setSkillActive: (skillId: string, active: boolean) => Promise<unknown>;
   explain: (q: string) => Promise<string>;
   proposeRevision: (skillId: string, instruction: string) => Promise<unknown>;
-  connectSlack: (token: string) => Promise<unknown>;
+  connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;
   connectGmailOAuth: () => Promise<{ ok: boolean; email?: string }>;
   disconnectGmailOAuth: () => Promise<{ ok: boolean }>;
   setAiProvider: (config: AiProviderState) => Promise<unknown>;
@@ -40,6 +42,7 @@ export interface AxApi {
   saveChatSession: (state: unknown, summary?: string, skillId?: string) => Promise<{ ok: boolean }>;
   printPdf: (html: string) => Promise<unknown>;
   onAgentProgress: (listener: (event: { message: string }) => void) => () => void;
+  onStateChanged: (listener: () => void) => () => void;
 }
 
 declare global {

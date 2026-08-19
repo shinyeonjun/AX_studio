@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { weeklyReportSkillFixture } from '../skill/fixtures.js';
-import { createDatabase } from '../store/db.js';
+import { createDatabaseAsync } from '../store/db.js';
 import { SkillStore } from '../store/skill-store.js';
 import { SkillRuntime } from './engine.js';
 import { linearSteps } from './control-flow.js';
@@ -15,11 +15,50 @@ describe('runtime control flow', () => {
   });
 
   it('runs exactly one slack branch for weekly report', async () => {
-    const db = createDatabase(':memory:');
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
     const result = await runtime.executeSkill(weeklyReportSkillFixture, { ephemeral: true });
     expect(result.status).toBe('success');
+    expect(runtime.mockSlack.messages).toHaveLength(1);
+  });
+
+  it('evaluates if conditions from trigger input', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new SkillStore(db);
+    const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
+    const ir: SkillIR = {
+      name: '발신자 필터',
+      goal: '특정 발신자만 알림',
+      version: 1,
+      steps: [
+        {
+          type: 'if',
+          id: 'filter_sender',
+          condition: "String(sender).includes('plosind@naver.com')",
+          thenStepIds: ['notify'],
+          elseStepIds: [],
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#inbox', text: 'matched' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+    await runtime.executeSkill(ir, {
+      ephemeral: true,
+      input: { sender: 'plosind@naver.com', from: 'plosind@naver.com' },
+    });
     expect(runtime.mockSlack.messages).toHaveLength(1);
   });
 
@@ -60,7 +99,7 @@ describe('runtime control flow', () => {
       dataPolicy: {},
     };
 
-    const db = createDatabase(':memory:');
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
     const first = await runtime.executeSkill(ir, { ephemeral: true });

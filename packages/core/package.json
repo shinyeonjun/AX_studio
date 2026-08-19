@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^0.2.0",
+    "@slack/socket-mode": "^3.0.0",
     "@slack/web-api": "^7.8.0",
     "@types/sql.js": "^1.4.11",
     "ai": "^4.3.0",

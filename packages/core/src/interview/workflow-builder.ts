@@ -8,7 +8,13 @@ export class UnknownCapabilityError extends Error {
   readonly capability: string;
 
   constructor(capability: string) {
-    super(`지원하지 않는 capability입니다: ${capability}`);
+    const hint =
+      capability.includes('send_message') ?
+        `${capability} → slack/gmail은 message.send 를 사용하세요 (예: slack.message.send)`
+      : capability.includes('slack.') && !capability.includes('message.send') ?
+        `${capability} → catalog id는 slack.message.send 입니다`
+      : '';
+    super(`지원하지 않는 capability입니다: ${capability}${hint ? `. ${hint}` : ''}`);
     this.name = 'UnknownCapabilityError';
     this.capability = capability;
   }
@@ -107,10 +113,14 @@ function buildTrigger(draft: InterviewDraft): SkillIR['trigger'] {
   if (draft.triggerType === 'gmail.new_message') {
     return { type: 'gmail.new_message', accountId: draft.gmailAccount ?? 'primary' };
   }
+  if (draft.triggerType === 'slack.new_message') {
+    return { type: 'slack.new_message', channel: draft.slackChannel ?? '#general' };
+  }
   return { type: 'manual' };
 }
 
 const GMAIL_TRIGGER_INPUTS = ['messageId', 'from', 'subject', 'body', 'sender', 'snippet'] as const;
+const SLACK_TRIGGER_INPUTS = ['messageId', 'channel', 'text', 'user', 'sender', 'ts'] as const;
 
 export function buildIRFromWorkflow(draft: InterviewDraft): Partial<SkillIR> {
   const steps = consolidateApprovals(
@@ -125,7 +135,12 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<SkillIR> {
     steps,
     success: draft.success ?? '작업 완료',
     assumptions: draft.assumptions,
-    inputs: draft.triggerType === 'gmail.new_message' ? [...GMAIL_TRIGGER_INPUTS] : [],
+    inputs:
+      draft.triggerType === 'gmail.new_message'
+        ? [...GMAIL_TRIGGER_INPUTS]
+        : draft.triggerType === 'slack.new_message'
+          ? [...SLACK_TRIGGER_INPUTS]
+          : [],
     permissions: {},
     approval: steps
       .filter((step): step is Extract<Step, { type: 'action' }> =>

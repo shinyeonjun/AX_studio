@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseSkillIR, validateSkillIR } from '../skill/schema.js';
 import { validateApprovalPolicy, isDeployable } from '../skill/approval.js';
 import { csMailSkillFixture, weeklyReportSkillFixture, dataPolicyFixture } from '../skill/fixtures.js';
-import { createDatabase } from '../store/db.js';
+import { createDatabaseAsync } from '../store/db.js';
 import { SkillStore } from '../store/skill-store.js';
 import { assessCompleteness, computeRequiredSlots } from '../interview/requiredness.js';
 import { SkillRuntime } from '../runtime/engine.js';
@@ -28,8 +28,8 @@ describe('Skill IR', () => {
 });
 
 describe('SkillStore', () => {
-  it('CRUD roundtrip', () => {
-    const db = createDatabase(':memory:');
+  it('CRUD roundtrip', async () => {
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const { skillId } = store.saveSkill(csMailSkillFixture);
     const loaded = store.getSkill(skillId);
@@ -71,7 +71,7 @@ describe('requiredness', () => {
 
 describe('Runtime', () => {
   it('runs CS flow with approval gate', async () => {
-    const db = createDatabase(':memory:');
+    const db = await createDatabaseAsync(':memory:');
     const store = new SkillStore(db);
     const runtime = new SkillRuntime({ store, globalActive: true, skillActive: {} });
     runtime.mockGmail.messages.push({

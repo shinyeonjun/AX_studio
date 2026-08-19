@@ -24,6 +24,7 @@ export * from './runtime/scheduler.js';
 export * from './runtime/trigger-engine.js';
 export * from './triggers/types.js';
 export * from './triggers/registry.js';
+export { SlackSocketModeListener } from './triggers/slack-new-message/socket-mode.js';
 export * from './runtime/approval-display.js';
 export * from './interview/bootstrap-from-skill.js';
 export * from './interview/chat-summary.js';
