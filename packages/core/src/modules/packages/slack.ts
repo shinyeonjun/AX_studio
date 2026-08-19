@@ -1,4 +1,3 @@
-import type { ConnectorCapability } from '../../catalog/capability-types.js';
 import type { ModulePackage } from '../module-package.js';
 import { MockSlackConnector } from '../mocks/index.js';
 import { SlackConnector } from '../slack/index.js';
@@ -8,6 +7,7 @@ import { slackChannelMatches } from '../../triggers/slack/new-message/channel-ma
 import { SlackSocketModeListener } from '../../triggers/slack/new-message/socket-mode.js';
 import { parseSlackConnectionConfig } from '../../triggers/types.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
+import { SLACK_CAPABILITIES, SLACK_CATALOG } from './catalog-data.js';
 
 function slackSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'slack');
@@ -31,42 +31,9 @@ function slackSources(ctx: DesignToolContext) {
   };
 }
 
-const SLACK_CAPABILITIES: ConnectorCapability[] = [
-  {
-    id: 'slack.message.send',
-    connector: 'slack',
-    kind: 'write',
-    label: 'Slack 메시지',
-    description: 'Slack 채널에 메시지 전송',
-    sideEffect: 'EXTERNAL',
-    params: [
-      { name: 'channel', label: 'Slack 채널', question: 'Slack 채널은 어디인가요?', required: true },
-      { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: false },
-    ],
-    io: { inputs: { text: 'TextArtifact' }, outputs: { message: 'SlackMessageRef' } },
-  },
-  {
-    id: 'slack.new_message',
-    connector: 'slack',
-    kind: 'trigger',
-    label: 'Slack 새 메시지',
-    description: 'Slack 채널 새 메시지 도착 시 업무 시작',
-    params: [{ name: 'channel', label: 'Slack 채널', question: '어떤 Slack 채널을 감시할까요?', required: true }],
-    io: { inputs: {}, outputs: { message: 'SlackMessageRef' } },
-  },
-];
-
 export const slackModulePackage: ModulePackage = {
   id: 'slack',
-  catalog: {
-    id: 'slack',
-    label: 'Slack',
-    description: 'Bot Token으로 메시지 전송',
-    connectable: true,
-    alwaysReal: false,
-    connectionKind: 'token',
-    emoji: '💬',
-  },
+  catalog: SLACK_CATALOG,
   capabilities: SLACK_CAPABILITIES,
   registration: {
     createMock: () => new MockSlackConnector(),

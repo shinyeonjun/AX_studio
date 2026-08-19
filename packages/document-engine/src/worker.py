@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from adapters import resolve_adapter
-from artifact_store import artifact_dir, load_manifest
+from artifact_store import artifact_dir, load_manifest, manifest_exists, sha256_file
 from protocol import EngineRequest, EngineResponse
 
 
@@ -25,6 +25,33 @@ def _page_by_index(manifest: dict[str, Any], page_index: int) -> dict[str, Any] 
     return None
 
 
+def _manifest_text(manifest: dict[str, Any]) -> str:
+    return "\n\n".join(
+        str(chunk.get("text") or "")
+        for chunk in (manifest.get("chunks") or [])
+    ).strip()
+
+
+def _ingest_response_data(
+    document_id: str,
+    artifact_root: Path,
+    manifest: dict[str, Any],
+    *,
+    cached: bool = False,
+) -> dict[str, Any]:
+    summary = manifest.get("summary") or {}
+    data: dict[str, Any] = {
+        "documentId": document_id,
+        "artifactPath": str(artifact_dir(artifact_root, document_id)),
+        "engine": manifest.get("engine") or summary.get("engine"),
+        "summary": summary,
+        "text": _manifest_text(manifest),
+    }
+    if cached:
+        data["cached"] = True
+    return data
+
+
 def handle_request(request: EngineRequest) -> EngineResponse:
     try:
         if request.command == "ping":
@@ -39,6 +66,15 @@ def handle_request(request: EngineRequest) -> EngineResponse:
                 return EngineResponse(id=request.id, ok=False, error="file_not_found")
 
             artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
+            document_id = sha256_file(source_path)
+            if manifest_exists(artifact_root, document_id):
+                manifest = load_manifest(artifact_root, document_id)
+                return EngineResponse(
+                    id=request.id,
+                    ok=True,
+                    data=_ingest_response_data(document_id, artifact_root, manifest, cached=True),
+                )
+
             options = dict(request.params.get("options") or {})
             engine = str(options.get("engine") or "auto")
             adapter = resolve_adapter(engine)
@@ -53,16 +89,7 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             return EngineResponse(
                 id=request.id,
                 ok=True,
-                data={
-                    "documentId": result.document_id,
-                    "artifactPath": result.artifact_path,
-                    "engine": result.engine,
-                    "summary": result.summary,
-                    "text": "\n\n".join(
-                        str(chunk.get("text") or "")
-                        for chunk in (result.manifest.get("chunks") or [])
-                    ).strip(),
-                },
+                data=_ingest_response_data(result.document_id, artifact_root, result.manifest),
             )
 
         artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))

@@ -11,9 +11,9 @@ export {
   CAPABILITY_CATALOG,
   getCapability,
   getCapabilitiesForConnector,
-} from '../modules/packages/catalog.js';
+} from '../modules/packages/catalog-data.js';
 
-import { getCapability } from '../modules/packages/catalog.js';
+import { getCapability } from '../modules/packages/catalog-data.js';
 import type { ConnectorConnection } from './capability-types.js';
 
 export function checkRequiredConnections(

@@ -2,7 +2,7 @@ import { getCapabilitiesForConnector } from './capabilities.js';
 import {
   CONNECTOR_CATALOG,
   CONNECTOR_IDS,
-} from '../modules/packages/catalog.js';
+} from '../modules/packages/catalog-data.js';
 import type { ConnectorCatalogEntry, ConnectorId } from './connector-types.js';
 
 export { CONNECTOR_IDS };

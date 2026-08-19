@@ -44,6 +44,10 @@ def write_manifest(
     return root
 
 
+def manifest_exists(artifact_root: Path, document_id: str) -> bool:
+    return (artifact_dir(artifact_root, document_id) / "manifest.json").is_file()
+
+
 def load_manifest(artifact_root: Path, document_id: str) -> dict[str, Any]:
     manifest_path = artifact_dir(artifact_root, document_id) / "manifest.json"
     if not manifest_path.is_file():

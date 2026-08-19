@@ -1,3 +1,3 @@
-import type { LocalFolderEntry } from '@ax-studio/core';
+import type { LocalFolderEntry } from '@ax-studio/core/local-folder';
 
 export type { LocalFolderEntry };

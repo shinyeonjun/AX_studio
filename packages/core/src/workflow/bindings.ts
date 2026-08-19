@@ -4,6 +4,7 @@ import { contractTypesCompatible } from '../contracts/compatibility.js';
 import {
   actionInputTypes,
   actionOutputTypes,
+  triggerCapabilityId,
   triggerOutputTypes,
 } from '../catalog/capability-contracts.js';
 import { getCapability } from '../catalog/capabilities.js';
@@ -27,14 +28,7 @@ interface AvailableOutput {
 
 function triggerOutputPorts(trigger: Trigger | undefined): AvailableOutput[] {
   if (!trigger) return [];
-  const capId =
-    trigger.type === 'gmail.new_message'
-      ? 'gmail.new_message'
-      : trigger.type === 'slack.new_message'
-        ? 'slack.new_message'
-        : trigger.type === 'local_folder.new_file'
-          ? 'local_folder.new_file'
-          : undefined;
+  const capId = triggerCapabilityId(trigger.type);
   if (!capId) return [];
 
   const cap = getCapability(capId);
@@ -321,14 +315,7 @@ export function bindingOutputType(
   ir: WorkflowIR,
 ): ContractTypeName | undefined {
   if (binding.from === 'trigger') {
-    const capId =
-      ir.trigger?.type === 'gmail.new_message'
-        ? 'gmail.new_message'
-        : ir.trigger?.type === 'slack.new_message'
-          ? 'slack.new_message'
-          : ir.trigger?.type === 'local_folder.new_file'
-            ? 'local_folder.new_file'
-            : undefined;
+    const capId = ir.trigger ? triggerCapabilityId(ir.trigger.type) : undefined;
     if (!capId) return undefined;
     return getCapability(capId)?.io?.outputs?.[binding.output] as ContractTypeName | undefined;
   }
@@ -377,12 +364,6 @@ export function triggerAvailableTypes(trigger: Trigger | undefined, inputs: stri
   const types = triggerOutputTypes(trigger?.type);
   if (trigger?.type === 'manual' && inputs.includes('filePath')) {
     return [...new Set([...types, 'FileRef', 'DocumentIngestInput'])];
-  }
-  if (trigger?.type === 'gmail.new_message') {
-    return [...new Set([...types, 'EmailMessageRef'])];
-  }
-  if (trigger?.type === 'slack.new_message') {
-    return [...new Set([...types, 'SlackMessageRef'])];
   }
   return types;
 }

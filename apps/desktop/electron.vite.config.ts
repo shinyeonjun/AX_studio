@@ -50,6 +50,7 @@ export default defineConfig({
         '@ax-studio/core/workflow-constants': resolve('../../packages/core/src/interview/workflow-constants.ts'),
         '@ax-studio/core/capabilities': resolve('../../packages/core/src/catalog/capabilities.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
+        '@ax-studio/core/local-folder': resolve('../../packages/core/src/modules/local-folder/connection.ts'),
       },
     },
     build: {

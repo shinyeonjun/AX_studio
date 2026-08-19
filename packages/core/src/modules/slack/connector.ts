@@ -13,10 +13,14 @@ export class SlackConnector implements Connector {
       const client = new WebClient(this.token);
       switch (action) {
         case 'message.send': {
+          const channel = typeof params.channel === 'string' ? params.channel.trim() : '';
+          if (!channel) {
+            return { ok: false, error: 'channel_required', errorCode: 'invalid_params' };
+          }
           const rawText = (params.text as string) ?? '';
           const payload = composeSlackMessagePayload(rawText, ctx);
           const res = await client.chat.postMessage({
-            channel: (params.channel as string) ?? '#general',
+            channel,
             text: payload.text,
             ...(payload.blocks ? { blocks: payload.blocks } : {}),
           });
