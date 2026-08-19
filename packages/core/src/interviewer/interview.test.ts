@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../models/provider.js';
-import { chatMessagesFromInput, flattenChatPrompt, normalizeChatMessages } from '../models/chat.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../agents-harness/model/provider.js';
+import { chatMessagesFromInput, flattenChatPrompt, normalizeChatMessages } from '../agents-harness/model/chat.js';
+import { createAgentHarness } from '../agents-harness/harness.js';
 import { applyAnswer, startInterview } from './interview-flow.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
 import type { InterviewTurn } from './workflow-schema.js';
-import { loadAgentSkill } from '../agent-skills/load.js';
+import { loadAgentSkill } from '../agents-harness/skill-load.js';
 
 class ScriptedModelProvider implements ModelProvider {
   readonly name = 'scripted';
@@ -54,7 +55,7 @@ const completeSend: InterviewTurn = {
       connector: 'gmail',
       action: 'message.send',
       params: {
-        to: 'plosind@naver.com',
+        to: 'test@example.com',
         subject: '테스트',
         body: '테스트 메일입니다.',
       },
@@ -70,6 +71,16 @@ describe('agent interview skill', () => {
     expect(skill.name).toBe('interview');
     expect(skill.body).toContain('{{workflow_json}}');
     expect(skill.body).toContain('gmail.message.send');
+  });
+
+  it('prepends AGENTS.md constitution via harness system prompt', async () => {
+    const model = new ScriptedModelProvider([incompleteSend]);
+    const harness = createAgentHarness(model);
+    const first = await startInterview('안녕', { harness, connectedConnectors: CONNECTED });
+    expect(first.messages).toHaveLength(2);
+    expect(model.calls[0]?.system).toContain('AX Studio Agent 헌법');
+    expect(model.calls[0]?.system).toContain('대화가 워크플로우 에디터');
+    expect(model.calls[0]?.system).toContain('현재 워크플로우 초안');
   });
 });
 
@@ -123,23 +134,24 @@ describe('workflow builder', () => {
 describe('AI interview session', () => {
   it('keeps one session and sends full chat history on the next API turn', async () => {
     const model = new ScriptedModelProvider([incompleteSend, completeSend]);
-    const first = await startInterview('1분 뒤 테스트 메일 보내줘', { model, connectedConnectors: CONNECTED });
+    const harness = createAgentHarness(model);
+    const first = await startInterview('1분 뒤 테스트 메일 보내줘', { harness, connectedConnectors: CONNECTED });
     expect(first.sessionId).toBeTruthy();
     expect(first.done).toBe(false);
     expect(first.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
     expect(model.calls[0]?.messages?.map((m) => m.role)).toEqual(['user']);
 
-    const second = await applyAnswer(first, 'plosind@naver.com', { model, connectedConnectors: CONNECTED });
+    const second = await applyAnswer(first, 'test@example.com', { harness, connectedConnectors: CONNECTED });
     expect(second.sessionId).toBe(first.sessionId);
     expect(second.done).toBe(true);
     expect(model.calls[1]?.messages?.map((m) => m.content)).toEqual([
       '1분 뒤 테스트 메일 보내줘',
       '메일을 누구에게 보낼까요?',
-      'plosind@naver.com',
+      'test@example.com',
     ]);
     expect(model.calls[1]?.system).toContain('현재 워크플로우 초안');
     expect(model.calls[1]?.system).toContain('gmail.message.send');
     expect(second.draft.steps?.some((s) => s.type === 'action' && s.connector === 'gmail')).toBe(true);
-    expect(second.draft.document).toContain('plosind@naver.com');
+    expect(second.draft.document).toContain('test@example.com');
   });
 });

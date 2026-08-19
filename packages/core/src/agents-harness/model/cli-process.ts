@@ -1,12 +1,18 @@
 import { execFile, execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 
 export interface CommandResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+}
+
+export interface CommandInvocation {
+  file: string;
+  args: string[];
+  env?: NodeJS.ProcessEnv;
 }
 
 export function extraBinDirs(): string[] {
@@ -16,6 +22,8 @@ export function extraBinDirs(): string[] {
     return [
       process.env.APPDATA ? join(process.env.APPDATA, 'npm') : '',
       join(home, 'AppData', 'Roaming', 'npm'),
+      join(home, '.local', 'bin'),
+      join(localAppData, 'cursor-agent'),
       join(localAppData, 'Programs', 'OpenAI', 'Codex', 'bin'),
       join(localAppData, 'Programs', 'cursor', 'resources', 'app', 'bin'),
     ].filter(Boolean);
@@ -72,22 +80,56 @@ export function resolveBinary(names: readonly string[]): string | null {
   return null;
 }
 
+/** agent.cmd wrapper → bundled node.exe + index.js. Avoid cmd.exe for Unicode prompts. */
+export function resolveCmdNodeRuntime(command: string): { file: string; script: string } | null {
+  if (process.platform !== 'win32' || !/\.cmd$/i.test(command)) return null;
+  const dir = dirname(command);
+  const localNode = join(dir, 'node.exe');
+  const localScript = join(dir, 'index.js');
+  if (existsSync(localNode) && existsSync(localScript)) {
+    return { file: localNode, script: localScript };
+  }
+  const versionsDir = join(dir, 'versions');
+  if (!existsSync(versionsDir)) return null;
+  const names = readdirSync(versionsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^\d{4}\.\d{1,2}\.\d{1,2}/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+    .reverse();
+  for (const name of names) {
+    const file = join(versionsDir, name, 'node.exe');
+    const script = join(versionsDir, name, 'index.js');
+    if (existsSync(file) && existsSync(script)) return { file, script };
+  }
+  return null;
+}
+
+export function commandInvocation(command: string, args: string[]): CommandInvocation {
+  const runtime = resolveCmdNodeRuntime(command);
+  if (runtime) {
+    return {
+      file: runtime.file,
+      args: [runtime.script, ...args],
+      env: { ...commandEnv(), CURSOR_INVOKED_AS: 'agent.cmd' },
+    };
+  }
+  return { file: command, args, env: commandEnv() };
+}
+
 export function runCommand(
   command: string,
   args: string[],
   options: { timeoutMs?: number; input?: string; cwd?: string } = {},
 ): Promise<CommandResult> {
   const timeoutMs = options.timeoutMs ?? 15_000;
-  const useCmd = process.platform === 'win32' && /\.cmd$/i.test(command);
-  const file = useCmd ? process.env.ComSpec || 'cmd.exe' : command;
-  const fileArgs = useCmd ? ['/d', '/s', '/c', `"${command}"`, ...args] : args;
+  const invocation = commandInvocation(command, args);
 
   return new Promise((resolve, reject) => {
     const child = execFile(
-      file,
-      fileArgs,
+      invocation.file,
+      invocation.args,
       {
-        env: commandEnv(),
+        env: invocation.env,
         timeout: timeoutMs,
         maxBuffer: 8 * 1024 * 1024,
         windowsHide: true,

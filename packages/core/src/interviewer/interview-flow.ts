@@ -1,14 +1,13 @@
 import type { SkillIR } from '../skill/schema.js';
-import type { ModelProvider } from '../models/provider.js';
+import type { AgentHarness } from '../agents-harness/harness.js';
 import { validateApprovalPolicy } from '../skill/approval.js';
 import { assessCompleteness, getNextQuestion } from './requiredness.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
 import { createInterviewState, type InterviewState } from './interview-state.js';
-import { buildInterviewSystemPrompt } from './interview-prompt.js';
 import { InterviewDraftSchema, InterviewTurnSchema, type InterviewDraft, type InterviewTurn } from './workflow-schema.js';
 
 export interface InterviewRunOptions {
-  model: ModelProvider;
+  harness: AgentHarness;
   connectedConnectors?: string[];
 }
 
@@ -18,25 +17,20 @@ function draftFromTurn(turn: InterviewTurn): InterviewDraft {
 }
 
 async function runInterviewTurn(state: InterviewState, options: InterviewRunOptions): Promise<InterviewState> {
-  if (!options.model) {
-    throw new Error('인터뷰에는 AI가 필요합니다. 설정에서 AI를 연결하세요.');
-  }
-
   const connectedConnectors = options.connectedConnectors ?? [];
   const priorCompleteness = assessCompleteness(state.draft, connectedConnectors);
-  const turn = InterviewTurnSchema.parse(
-    await options.model.generateStructured({
-      schema: InterviewTurnSchema,
-      system: buildInterviewSystemPrompt({
-        workflow: state.workflow,
-        completeness: priorCompleteness,
-        connectedConnectors,
-        nowIso: new Date().toISOString(),
-      }),
-      messages: state.messages,
-      temperature: 0.2,
-    }),
-  );
+  const { output } = await options.harness.run({
+    role: 'interview',
+    outputSchema: InterviewTurnSchema,
+    context: {
+      workflow: state.workflow,
+      completeness: priorCompleteness,
+      connectedConnectors,
+      nowIso: new Date().toISOString(),
+    },
+    messages: state.messages,
+  });
+  const turn = InterviewTurnSchema.parse(output);
 
   const workflow = draftFromTurn(turn);
   const built = buildIRFromWorkflow(workflow);

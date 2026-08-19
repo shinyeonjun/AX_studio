@@ -18,6 +18,9 @@ export interface DetectedAiCli {
   label: string;
   description: string;
   installed: boolean;
+  binaryFound?: boolean;
+  apiKeyConfigured?: boolean;
+  command?: string;
   version?: string;
   models: CliModelOption[];
   defaultModel: string;

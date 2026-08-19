@@ -28,6 +28,11 @@ export default defineConfig({
   },
   renderer: {
     root: 'src',
+    resolve: {
+      alias: {
+        '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agents-harness/settings/ai-catalog.ts'),
+      },
+    },
     build: {
       rollupOptions: {
         input: {

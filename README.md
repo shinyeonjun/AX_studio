@@ -47,12 +47,14 @@ npm run dev
 
 | 파일 | 역할 | Git |
 |---|---|---|
-| `.env` | 개발용 OAuth Client ID, (선택) API 키 | ❌ `.env.example`만 |
-| `ai.toml` | 활성 AI / 모델 | ❌ `.ai.toml.example`만. **API 키를 넣지 마세요** |
+| `.env` | 개발용 Gmail OAuth Client ID/Secret만 | ❌ `.env.example`만 |
+| `ai.toml` | 활성 AI / 모델 | ❌ `.ai.toml.example`만. **API 키 금지** |
 | `*.db` | 로컬 SQLite | ❌ |
-| OS credential store | Gmail refresh token, API 키 | 앱이 암호화 저장. 커밋 대상 아님 |
+| OS credential store | AI API 키, Gmail refresh token | PC마다 암호화 저장. Git/공유 대상 아님 |
 
-앱에서 AI API 키와 Gmail 토큰은 **OS credential store**(Electron `safeStorage`)에 둡니다. `ai.toml`에는 브랜드·모드·모델만 둡니다.
+**AI API 키(Cursor/OpenAI/Anthropic)는 `.env`에 넣지 않습니다.** 앱 설정에서 등록하면 OS credential store에만 저장됩니다. 릴리즈 후에도 사용자 키는 각 PC의 userData에 격리됩니다.
+
+개발용 `.env`에는 **Gmail OAuth 클라이언트**(앱 빌드용)만 둡니다. 사용자 API 키와 섞이지 않습니다.
 
 ### Gmail (개발자 1회)
 

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EMBEDDED_AGENT_SKILLS } from './embedded.js';
+import { EMBEDDED_AGENT_SKILLS, EMBEDDED_AGENTS_MD } from './embedded.js';
 
 export interface AgentSkillFile {
   id: string;
@@ -17,17 +17,16 @@ export function setAgentSkillsDir(dir: string | undefined) {
   skillsDirOverride = dir;
 }
 
-function candidateRoots(): string[] {
+function candidateSkillRoots(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
   const cwd = process.cwd();
   return [
     skillsDirOverride,
+    process.env.AX_AGENTS_HARNESS_SKILLS_DIR,
     process.env.AX_SKILLS_DIR,
-    join(cwd, 'skills'),
-    join(cwd, 'packages/core/skills'),
-    join(cwd, '../../packages/core/skills'),
-    join(here, '../../skills'),
-    join(here, '../../../skills'),
+    join(here, 'skills'),
+    join(cwd, 'packages/core/src/agents-harness/skills'),
+    join(cwd, 'src/agents-harness/skills'),
   ].filter((path): path is string => Boolean(path));
 }
 
@@ -46,7 +45,7 @@ export function renderSkillTemplate(body: string, vars: Record<string, string>):
 }
 
 function readSkillFromDisk(id: string): string | undefined {
-  for (const root of candidateRoots()) {
+  for (const root of candidateSkillRoots()) {
     const path = join(root, id, 'SKILL.md');
     if (existsSync(path)) return readFileSync(path, 'utf8');
   }
@@ -58,4 +57,11 @@ export function loadAgentSkill(id: string): AgentSkillFile {
   if (!raw) throw new Error(`Agent skill not found: ${id}`);
   const parsed = parseSkillMarkdown(raw);
   return { id, raw, ...parsed };
+}
+
+export function loadAgentsConstitution(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const path = join(here, 'agents.md');
+  if (existsSync(path)) return readFileSync(path, 'utf8').trim();
+  return EMBEDDED_AGENTS_MD.trim();
 }

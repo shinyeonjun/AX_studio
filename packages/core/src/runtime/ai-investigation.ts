@@ -1,7 +1,7 @@
 import type { SkillIR, Step } from '../skill/schema.js';
-import type { ModelProvider } from '../models/provider.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import { MockGmailConnector } from '../connectors/mocks/index.js';
+import type { AgentHarness } from '../agents-harness/harness.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';
 
 export async function runAiDecision(
@@ -9,7 +9,7 @@ export async function runAiDecision(
   ir: SkillIR,
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
-  model: ModelProvider | undefined,
+  agentHarness: AgentHarness | undefined,
   connectors: Record<string, Connector>,
   mockGmail: MockGmailConnector,
 ): Promise<void> {
@@ -18,12 +18,16 @@ export async function runAiDecision(
   const evidence: Array<{ source: string; detail: string }> = [];
 
   while (reads < maxReads) {
-    if (model) {
-      const untrusted = ctx.variables.emailBody ? `\n\n[UNTRUSTED DATA]\n${String(ctx.variables.emailBody)}` : '';
-      const output = await model.generateStructured({
-        schema: InvestigationOutputSchema,
-        system: `You are an AX assistant. Skill instruction (TRUSTED): ${ir.goal}. Only output structured JSON. Never choose tools or actions.`,
-        user: `Task: ${step.goal}. Evidence so far: ${JSON.stringify(evidence)}.${untrusted}`,
+    if (agentHarness) {
+      const { output } = await agentHarness.run({
+        role: 'investigate',
+        outputSchema: InvestigationOutputSchema,
+        context: {
+          skillGoal: ir.goal,
+          taskGoal: step.goal,
+          evidence,
+          untrustedData: ctx.variables.emailBody ? String(ctx.variables.emailBody) : undefined,
+        },
       });
 
       if (output.conclusion) {

@@ -3,12 +3,12 @@ import { SkillStore } from './store/skill-store.js';
 import { SkillRuntime } from './runtime/engine.js';
 import { Scheduler } from './runtime/scheduler.js';
 import { buildConnectorsFromStore } from './connectors/registry.js';
+import { createAgentHarness, type AgentHarness } from './agents-harness/harness.js';
 import {
-  createModelProvider,
   DEFAULT_AI_PROVIDER,
   normalizeAiProviderConfig,
   type AiProviderConfig,
-} from './models/ai-config.js';
+} from './agents-harness/settings/config.js';
 
 export interface AxStudioCoreOptions {
   dbPath: string;
@@ -17,14 +17,24 @@ export interface AxStudioCoreOptions {
   cloudModel?: string;
 }
 
-export async function createAxStudioCore(options: AxStudioCoreOptions) {
+export interface AxStudioCore {
+  db: Awaited<ReturnType<typeof createDatabaseAsync>>;
+  store: SkillStore;
+  runtime: SkillRuntime;
+  scheduler: Scheduler;
+  /** In-app AI는 Harness를 통해서만 호출합니다. ModelProvider는 Harness 내부에만 있습니다. */
+  agentHarness: AgentHarness;
+  refreshAgentHarness(config: AiProviderConfig): AgentHarness;
+}
+
+export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<AxStudioCore> {
   const db = await createDatabaseAsync(options.dbPath);
   const store = new SkillStore(db);
 
   const aiConfig = normalizeAiProviderConfig(
     store.getSetting<AiProviderConfig | unknown>('aiProvider', DEFAULT_AI_PROVIDER),
   );
-  const model = createModelProvider(aiConfig);
+  const agentHarness = createAgentHarness(aiConfig);
 
   const globalActive = store.getSetting<boolean>('globalActive', true);
   const skillActive: Record<string, boolean> = {};
@@ -33,8 +43,21 @@ export async function createAxStudioCore(options: AxStudioCoreOptions) {
   }
 
   const connectors = buildConnectorsFromStore(store);
-  const runtime = new SkillRuntime({ store, model, globalActive, skillActive, connectors });
+  const runtime = new SkillRuntime({ store, agentHarness, globalActive, skillActive, connectors });
   const scheduler = new Scheduler(store, runtime);
 
-  return { db, store, runtime, scheduler, model };
+  const core: AxStudioCore = {
+    db,
+    store,
+    runtime,
+    scheduler,
+    agentHarness,
+    refreshAgentHarness(config: AiProviderConfig) {
+      core.agentHarness.configure(normalizeAiProviderConfig(config));
+      runtime.setAgentHarness(core.agentHarness);
+      return core.agentHarness;
+    },
+  };
+
+  return core;
 }

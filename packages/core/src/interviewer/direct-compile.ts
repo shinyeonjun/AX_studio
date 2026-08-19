@@ -1,20 +1,21 @@
-import type { ModelProvider } from '../models/provider.js';
+import type { AgentHarness } from '../agents-harness/harness.js';
 import type { SkillIR } from '../skill/schema.js';
 import { buildIRFromWorkflow } from './workflow-builder.js';
-import { buildDirectCompileSystemPrompt } from './interview-prompt.js';
 import { InterviewDraftSchema } from './workflow-schema.js';
 
 export async function directCompileInstruction(
   instruction: string,
-  model: ModelProvider,
+  harness: AgentHarness,
+  connectedConnectors: string[] = [],
 ): Promise<Partial<SkillIR>> {
-  const parsed = InterviewDraftSchema.parse(
-    await model.generateStructured({
-      schema: InterviewDraftSchema,
-      system: buildDirectCompileSystemPrompt(new Date().toISOString()),
-      user: instruction,
-      temperature: 0.1,
-    }),
-  );
-  return buildIRFromWorkflow(parsed);
+  const { output } = await harness.run({
+    role: 'direct_compile',
+    outputSchema: InterviewDraftSchema,
+    user: instruction,
+    context: {
+      connectedConnectors,
+      nowIso: new Date().toISOString(),
+    },
+  });
+  return buildIRFromWorkflow(InterviewDraftSchema.parse(output));
 }

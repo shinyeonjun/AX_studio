@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ChatMessage } from '../models/chat.js';
+import type { ChatMessage } from '../agents-harness/model/chat.js';
 import type { SkillIR } from '../skill/schema.js';
 import { assessCompleteness, type CompletenessResult } from './requiredness.js';
 import type { InterviewDraft } from './workflow-schema.js';

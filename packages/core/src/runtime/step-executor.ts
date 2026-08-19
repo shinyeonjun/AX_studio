@@ -3,6 +3,7 @@ import { requiresApproval } from '../skill/approval.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import { MockGmailConnector } from '../connectors/mocks/index.js';
 import type { SkillStore } from '../store/skill-store.js';
+import type { AgentHarness } from '../agents-harness/harness.js';
 import { runAiDecision, resolveStepParams, evaluateStepCondition } from './ai-investigation.js';
 
 export async function executeStep(
@@ -12,7 +13,7 @@ export async function executeStep(
   stepResults: Record<string, unknown>,
   store: SkillStore,
   connectors: Record<string, Connector>,
-  model: import('../models/provider.js').ModelProvider | undefined,
+  agentHarness: AgentHarness | undefined,
   mockGmail: MockGmailConnector,
   runStep: (step: Step) => Promise<void>,
 ): Promise<void> {
@@ -43,7 +44,7 @@ export async function executeStep(
       break;
 
     case 'ai_decision':
-      await runAiDecision(step, ir, ctx, stepResults, model, connectors, mockGmail);
+      await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors, mockGmail);
       break;
 
     case 'if':

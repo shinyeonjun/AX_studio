@@ -1,6 +1,6 @@
 import type { AppState, SkillSummary } from '../../types/app-state';
 import type { WorkFilter } from '../../types/navigation';
-import { connectorEmoji, connectorLabel } from '../../lib/connectors';
+import { connectorEmoji, connectorLabel } from '../../constants/connectors';
 import { formatRelativeTime, triggerLabel } from '../../lib/skill-display';
 import { IconPlay, IconPause } from '../icons';
 import { PageHeader } from '../layout/PageHeader';

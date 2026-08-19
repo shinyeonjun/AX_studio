@@ -3,6 +3,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 
+/** .env에 둘 수 있는 값 — 개발용 OAuth 등. AI API 키는 OS credential store 전용. */
+export const ENV_FILE_ALLOWED_KEYS = new Set([
+  'GOOGLE_OAUTH_CLIENT_ID',
+  'GOOGLE_OAUTH_CLIENT_SECRET',
+]);
+
 export function getEnvFilePath(): string {
   if (app.isPackaged) {
     return join(app.getPath('userData'), '.env');
@@ -29,8 +35,9 @@ function parseEnvContent(content: string): Record<string, string> {
 
 function serializeEnv(values: Record<string, string>): string {
   const lines = [
-    '# AX Studio local secrets',
-    '# 개발: 프로젝트 루트 .env / 릴리즈: userData .env',
+    '# AX Studio — 개발/릴리즈 로컬 설정',
+    '# AI API 키는 이 파일에 넣지 마세요. 앱 설정 → OS 자격 증명에 암호화 저장됩니다.',
+    '',
   ];
   for (const [key, value] of Object.entries(values)) {
     lines.push(`${key}=${value}`);
@@ -45,6 +52,8 @@ export async function loadEnvFile(): Promise<Record<string, string>> {
   const content = await readFile(path, 'utf8');
   const parsed = parseEnvContent(content);
   for (const [key, value] of Object.entries(parsed)) {
+    if (!ENV_FILE_ALLOWED_KEYS.has(key)) continue;
+    if (!value.trim()) continue;
     process.env[key] = value;
   }
   return parsed;
@@ -58,11 +67,31 @@ export async function readEnvFile(): Promise<Record<string, string>> {
 }
 
 export async function setEnvFileValue(key: string, value: string): Promise<void> {
+  if (!ENV_FILE_ALLOWED_KEYS.has(key)) {
+    throw new Error(`${key}는 .env에 저장할 수 없습니다. 앱 설정에서 등록하세요.`);
+  }
   const path = getEnvFilePath();
   const current = await readEnvFile();
   current[key] = value;
   await writeFile(path, serializeEnv(current), 'utf8');
   process.env[key] = value;
+}
+
+/** AI API 키 등 금지된 항목을 .env 파일에서 제거한다. */
+export async function purgeDisallowedEnvFileKeys(): Promise<string[]> {
+  const path = getEnvFilePath();
+  if (!existsSync(path)) return [];
+  const current = await readEnvFile();
+  const removed = Object.keys(current).filter((key) => !ENV_FILE_ALLOWED_KEYS.has(key));
+  if (removed.length === 0) return [];
+  const kept = Object.fromEntries(
+    Object.entries(current).filter(([key]) => ENV_FILE_ALLOWED_KEYS.has(key)),
+  );
+  await writeFile(path, serializeEnv(kept), 'utf8');
+  for (const key of removed) {
+    delete process.env[key];
+  }
+  return removed;
 }
 
 export function maskSecret(value: string): string {

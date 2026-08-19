@@ -1,0 +1,34 @@
+import type { AgentRoleDefinition, AgentRole } from './types.js';
+
+const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
+  interview: {
+    role: 'interview',
+    skillId: 'interview',
+    temperature: 0.2,
+    policy: { maxTurns: 1, timeoutMs: 90_000 },
+    modeInstructions:
+      '지금 모드는 인터뷰입니다. 아래에 나열된 노드만 사용하세요. 없는 도구가 필요하면 연결을 요청하세요. 비어 있는 필수 정보만 한 가지 질문하세요.',
+  },
+  direct_compile: {
+    role: 'direct_compile',
+    skillId: 'interview',
+    temperature: 0.1,
+    policy: { maxTurns: 1, timeoutMs: 90_000 },
+    modeInstructions:
+      '지금 모드는 한 번에 컴파일입니다. 나열된 노드만 사용해 지시에서 알 수 있는 것을 모두 채우세요.',
+  },
+  investigate: {
+    role: 'investigate',
+    skillId: 'investigate',
+    temperature: 0.2,
+    policy: { maxTurns: 1, timeoutMs: 60_000 },
+  },
+};
+
+export function getRoleDefinition(role: AgentRole): AgentRoleDefinition {
+  return ROLE_DEFINITIONS[role];
+}
+
+export function listAgentRoles(): AgentRole[] {
+  return Object.keys(ROLE_DEFINITIONS) as AgentRole[];
+}

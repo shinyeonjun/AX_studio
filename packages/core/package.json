@@ -11,6 +11,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./ai-catalog": {
+      "types": "./dist/agents-harness/settings/ai-catalog.d.ts",
+      "import": "./dist/agents-harness/settings/ai-catalog.js",
+      "default": "./dist/agents-harness/settings/ai-catalog.js"
     }
   },
   "scripts": {

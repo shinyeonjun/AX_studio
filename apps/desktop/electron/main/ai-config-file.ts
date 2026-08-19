@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { getOsSecret, setOsSecret } from './credential-store.js';
+import { readEnvFile } from './env-file.js';
 
 export type AiBrandId = 'claude' | 'gpt' | 'grok' | 'ollama';
 export type AiModeId = 'cli' | 'api';
@@ -154,15 +155,11 @@ export async function setBrandSecret(brand: AiBrandId, value: string): Promise<v
 
 export async function getSecretForBrand(brand: AiBrandId): Promise<string> {
   const envKey = envKeyForBrand(brand);
-  const stored = (await getOsSecret(envKey))?.trim();
-  if (stored) return stored;
-  return (process.env[envKey] ?? '').trim();
+  return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
 export async function getSecretByEnvKey(envKey: string): Promise<string> {
-  const stored = (await getOsSecret(envKey))?.trim();
-  if (stored) return stored;
-  return (process.env[envKey] ?? '').trim();
+  return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
 export async function saveBrandPreferences(
@@ -199,15 +196,15 @@ export async function loadAiTomlIntoEnv(): Promise<AiTomlConfig> {
   return readAiToml();
 }
 
-/** 레거시 ai.toml [secrets]와 .env 키를 OS credential store로 옮기고 toml에서 비밀값을 제거한다. */
 export async function migrateAiSecretsToOsStore(): Promise<void> {
   const config = await readAiToml();
+  const envFile = await readEnvFile();
   for (const envKey of Object.values(BRAND_ENV_KEYS)) {
     const existing = (await getOsSecret(envKey))?.trim();
     if (existing) continue;
     const fromToml = (config.secrets[envKey.toLowerCase()] ?? config.secrets[envKey] ?? '').trim();
-    const fromEnv = (process.env[envKey] ?? '').trim();
-    const value = fromToml || fromEnv;
+    const fromEnvFile = (envFile[envKey] ?? '').trim();
+    const value = fromToml || fromEnvFile;
     if (value) await setOsSecret(envKey, value);
   }
   if (Object.keys(config.secrets).length > 0) {

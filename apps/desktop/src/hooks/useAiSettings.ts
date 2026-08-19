@@ -1,50 +1,8 @@
 import { useMemo, useState } from 'react';
 import { AI_PROVIDER_UI_CATALOG, brandFromProvider, modelsForBrand } from '../constants/ai-providers';
+import { isBrandReady, resolveBrandModel } from '../lib/ai-settings/brand-readiness';
 import type { AiBrand, AiConnectionMode, AiSecretStatus, DetectedAiCli } from '../types/ai-provider';
 import type { AiProviderState, AppState } from '../types/app-state';
-
-function resolveBrandModel(
-  target: AiBrand,
-  nextMode: AiConnectionMode,
-  cliProviders: DetectedAiCli[],
-  prefs?: { mode?: AiConnectionMode; model?: string },
-  activeModel?: string,
-): string {
-  const meta = AI_PROVIDER_UI_CATALOG[target];
-  const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
-  const apiModels = meta.apiModels;
-  const cliModels =
-    cli?.models && cli.models.length > 0 ? cli.models : meta.cliFallbackModels;
-  const preferred = prefs?.model ?? activeModel;
-  return (
-    (nextMode === 'api'
-      ? preferred && apiModels.some((item) => item.id === preferred)
-        ? preferred
-        : meta.apiDefaultModel
-      : preferred && cliModels.some((item) => item.id === preferred)
-        ? preferred
-        : cli?.defaultModel) ??
-    (nextMode === 'api' ? meta.apiDefaultModel : cli?.defaultModel) ??
-    ''
-  );
-}
-
-function isBrandReady(
-  target: AiBrand,
-  mode: AiConnectionMode,
-  cliProviders: DetectedAiCli[],
-  brandSecrets: Record<string, AiSecretStatus>,
-  verifiedCli: Partial<Record<AiBrand, boolean>>,
-  verifiedApi: Partial<Record<AiBrand, boolean>>,
-): boolean {
-  const meta = AI_PROVIDER_UI_CATALOG[target];
-  const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
-  const hasCli = Boolean(cli?.installed || cli?.command || verifiedCli[target]);
-  const hasApi = Boolean(brandSecrets[target]?.configured || verifiedApi[target]);
-  if (mode === 'api') return hasApi;
-  if (target === 'grok') return hasCli && hasApi;
-  return hasCli;
-}
 
 export function useAiSettings(
   state: AppState | null,
@@ -93,7 +51,6 @@ export function useAiSettings(
   };
 
   const openBrand = async (nextBrand: AiBrand) => {
-    const meta = AI_PROVIDER_UI_CATALOG[nextBrand];
     setBrand(nextBrand);
     setMessage('');
     setApiKeyDraft('');
@@ -109,16 +66,16 @@ export function useAiSettings(
       const brandPrefs = aiConfig.providers[nextBrand] ?? state?.aiBrandConfigs?.[nextBrand];
       const isActive = savedBrand === nextBrand;
       const nextMode =
-        brandPrefs?.mode ??
-        (isActive && saved?.mode ? saved.mode : 'cli');
-      const cli = detected.find((item) => item.id === meta.cliProviderId);
-      const models = modelsForBrand(nextBrand, nextMode, cli?.models);
-      const preferred = brandPrefs?.model ?? (isActive ? saved?.model : undefined);
-      const nextModel =
-        (preferred && models.some((item) => item.id === preferred) ? preferred : undefined) ??
-        (nextMode === 'api' ? meta.apiDefaultModel : cli?.defaultModel) ??
-        models[0]?.id ??
-        meta.apiDefaultModel;
+        nextBrand === 'grok'
+          ? 'cli'
+          : brandPrefs?.mode ?? (isActive && saved?.mode ? saved.mode : 'cli');
+      const nextModel = resolveBrandModel(
+        nextBrand,
+        nextMode,
+        detected,
+        brandPrefs,
+        isActive ? saved?.model : undefined,
+      );
       setMode(nextMode);
       setModel(nextModel);
     } finally {
@@ -128,20 +85,21 @@ export function useAiSettings(
 
   const selectMode = (nextMode: AiConnectionMode) => {
     if (!brand) return;
-    const meta = AI_PROVIDER_UI_CATALOG[brand];
-    const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
     const brandPrefs = state?.aiBrandConfigs?.[brand];
-    const models = modelsForBrand(brand, nextMode, cli?.models);
     setMode(nextMode);
     setModel(
-      (nextMode === 'api' ? brandPrefs?.model ?? meta.apiDefaultModel : brandPrefs?.model) ||
-        (nextMode === 'api' ? meta.apiDefaultModel : cli?.defaultModel) ||
-        models[0]?.id ||
-        meta.apiDefaultModel,
+      resolveBrandModel(
+        brand,
+        nextMode,
+        cliProviders,
+        brandPrefs,
+        activeBrand === brand ? state?.aiProvider?.model : undefined,
+      ),
     );
   };
 
   const brandMode = (target: AiBrand): AiConnectionMode => {
+    if (target === 'grok') return 'cli';
     if (activeBrand === target && activeMode) return activeMode;
     return state?.aiBrandConfigs?.[target]?.mode ?? 'cli';
   };
@@ -241,6 +199,11 @@ export function useAiSettings(
 
   const canSave = useMemo(() => {
     if (!brand || !model) return false;
+    if (brand === 'grok') {
+      const hasCli = Boolean(selectedCli?.binaryFound ?? selectedCli?.command ?? cliVerified);
+      const hasApi = apiKeyConfigured || apiVerified || Boolean(apiKeyDraft.trim());
+      return hasCli && hasApi;
+    }
     if (mode === 'cli') {
       return Boolean(selectedCli?.installed || selectedCli?.command || cliVerified);
     }
@@ -276,10 +239,11 @@ export function useAiSettings(
     try {
       const result = await window.ax.testAiCli(brand);
       setVerifiedCli((prev) => ({ ...prev, [brand]: true }));
-      setMessage(`CLI 연결됨: ${result.command}${result.version ? ` · ${result.version}` : ''}`);
+      const version = result.version ? ` · ${result.version}` : '';
+      setMessage(`agent CLI 확인됨: ${result.command}${version}`);
       await refreshDetection();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'CLI 연결 테스트에 실패했습니다.');
+      setMessage(error instanceof Error ? error.message : 'CLI 확인에 실패했습니다.');
     } finally {
       setTestingCli(false);
     }
@@ -314,23 +278,24 @@ export function useAiSettings(
     setMessage('');
     try {
       const draft = apiKeyDraft.trim();
-      if (mode === 'api' && draft) {
-        await window.ax.saveAiBrandConfig(brand, { mode, model, apiKey: draft });
+      const saveMode = brand === 'grok' ? 'cli' : mode;
+      if (draft) {
+        await window.ax.saveAiBrandConfig(brand, { mode: saveMode, model, apiKey: draft });
         setApiKeyDraft('');
         setApiKeyConfigured(true);
         setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
       } else {
-        await window.ax.saveAiBrandConfig(brand, { mode, model });
+        await window.ax.saveAiBrandConfig(brand, { mode: saveMode, model });
       }
 
-      const ready = isBrandReady(brand, mode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
+      const ready = isBrandReady(brand, saveMode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
       if (ready) {
-        const config: AiProviderState = { brand, mode, model };
+        const config: AiProviderState = { brand, mode: saveMode, model };
         await window.ax.setAiProvider(config);
         setMessage('저장되었습니다. 이 AI가 사용 중입니다.');
         onAiSaved?.();
-      } else if (mode === 'api' && brand === 'grok') {
-        setMessage('API 키는 저장되었습니다. Grok 사용을 위해 agent CLI 연결도 완료하세요.');
+      } else if (brand === 'grok') {
+        setMessage('설정이 저장되었습니다. agent CLI와 API 키를 모두 확인하세요.');
       } else {
         setMessage('설정이 ai.toml에 저장되었습니다.');
       }

@@ -3,7 +3,7 @@ import { parseSkillIR } from '../skill/schema.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../connectors/types.js';
 import { MockGmailConnector, MockSlackConnector } from '../connectors/mocks/index.js';
 import { createDefaultConnectors } from '../connectors/registry.js';
-import type { ModelProvider } from '../models/provider.js';
+import type { AgentHarness } from '../agents-harness/harness.js';
 import type { RuntimeConfig, ExecutionResult } from './types.js';
 import { executeStep } from './step-executor.js';
 import { resolveStepParams } from './ai-investigation.js';
@@ -97,7 +97,7 @@ export class SkillRuntime {
       stepResults,
       this.config.store,
       this.connectors,
-      this.config.model,
+      this.config.agentHarness,
       this.mockGmail,
       (target) => this.runStep(target, ir, ctx, stepResults),
     );
@@ -111,8 +111,8 @@ export class SkillRuntime {
     this.config.skillActive[skillId] = active;
   }
 
-  setModel(model: ModelProvider) {
-    this.config.model = model;
+  setAgentHarness(agentHarness: AgentHarness) {
+    this.config.agentHarness = agentHarness;
   }
 
   async continueAfterApproval(approvalId: string): Promise<ExecutionResult> {

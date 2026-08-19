@@ -1,6 +1,8 @@
 import { AI_PROVIDER_UI_CATALOG } from '../../../constants/ai-providers';
 import type { AiBrand, AiConnectionMode, CliModelOption } from '../../../types/ai-provider';
 import type { DetectedAiCli } from '../../../types/ai-provider';
+import { defaultSetupGuide, GrokUnifiedSetup, grokSetupGuide } from './GrokUnifiedSetup';
+import { AiModeSwitch } from './AiModeSwitch';
 
 interface AiBrandFormProps {
   brand: AiBrand;
@@ -56,7 +58,8 @@ export function AiBrandForm({
   onSave,
 }: AiBrandFormProps) {
   const meta = AI_PROVIDER_UI_CATALOG[brand];
-  const cliConnected = Boolean(cliOption?.installed || cliVerified || cliOption?.command);
+  const isGrok = brand === 'grok';
+  const cliConnected = Boolean(cliOption?.installed || cliVerified);
   const apiConnected = Boolean(apiKeyConfigured || apiVerified);
 
   const cliBadge = cliConnected
@@ -77,84 +80,86 @@ export function AiBrandForm({
           </div>
         </div>
 
-        <div className="connection-mode-toggle" role="tablist" aria-label="연결 방식">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'cli'}
-            className={`connection-mode-btn ${mode === 'cli' ? 'active' : ''}`}
-            onClick={() => onModeChange('cli')}
-          >
-            {meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'api'}
-            className={`connection-mode-btn ${mode === 'api' ? 'active' : ''}`}
-            onClick={() => onModeChange('api')}
-          >
-            API
-          </button>
-        </div>
+        {!isGrok && (
+          <AiModeSwitch
+            mode={mode}
+            cliLabel={meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
+            onChange={onModeChange}
+          />
+        )}
 
         {detecting && <p className="muted">연결 상태를 확인하는 중...</p>}
 
-        {mode === 'cli' && (
-          <div className="connection-mode-panel">
-            <div className="provider-option selected" style={{ marginBottom: 16 }}>
-              <div className="provider-option-header">
-                <div className="provider-option-title">{meta.cliLabel}</div>
-                <span className={`connection-badge ${cliConnected ? 'connected' : ''}`}>{cliBadge}</span>
+        {isGrok ? (
+          <GrokUnifiedSetup
+            cliOption={cliOption}
+            apiKeyDraft={apiKeyDraft}
+            apiKeyConfigured={apiKeyConfigured}
+            apiKeyMasked={apiKeyMasked}
+            cliVerified={cliVerified}
+            testing={testing}
+            testingCli={testingCli}
+            onApiKeyChange={onApiKeyChange}
+            onTestCli={onTestCli}
+            onTestApiKey={onTestApiKey}
+          />
+        ) : (
+          <>
+            {mode === 'cli' && (
+              <div className="connection-mode-panel">
+                <div className="provider-option selected" style={{ marginBottom: 16 }}>
+                  <div className="provider-option-header">
+                    <div className="provider-option-title">{meta.cliLabel}</div>
+                    <span className={`connection-badge ${cliConnected ? 'connected' : ''}`}>{cliBadge}</span>
+                  </div>
+                  <div className="provider-option-desc">
+                    {cliOption?.description ?? `${meta.cliLabel}가 PATH에 있어야 합니다.`}
+                  </div>
+                </div>
+                <button type="button" className="btn btn-secondary" onClick={onTestCli} disabled={testingCli}>
+                  {testingCli ? '확인 중...' : 'CLI 연결 테스트'}
+                </button>
               </div>
-              <div className="provider-option-desc">
-                {cliOption?.description ?? `${meta.cliLabel}가 PATH에 있어야 합니다.`}
-              </div>
-            </div>
-            <button type="button" className="btn btn-secondary" onClick={onTestCli} disabled={testingCli}>
-              {testingCli ? '확인 중...' : 'CLI 연결 테스트'}
-            </button>
-          </div>
-        )}
+            )}
 
-        {mode === 'api' && (
-          <div className="connection-mode-panel">
-            <p className="muted" style={{ marginBottom: 12 }}>
-              {brand === 'grok'
-                ? 'Cursor API 키를 등록하세요. Grok 실행에는 agent CLI도 필요합니다.'
-                : `${meta.title} API 키를 등록하세요.`}
-            </p>
-            <div className="provider-option selected" style={{ marginBottom: 16 }}>
-              <div className="provider-option-header">
-                <div className="provider-option-title">API 키</div>
-                <span className={`connection-badge ${apiConnected ? 'connected' : ''}`}>
-                  {apiConnected ? '연결됨' : '미연결'}
-                </span>
+            {mode === 'api' && (
+              <div className="connection-mode-panel">
+                <p className="muted" style={{ marginBottom: 12 }}>
+                  {`${meta.title} API 키를 등록하세요.`}
+                </p>
+                <div className="provider-option selected" style={{ marginBottom: 16 }}>
+                  <div className="provider-option-header">
+                    <div className="provider-option-title">API 키</div>
+                    <span className={`connection-badge ${apiConnected ? 'connected' : ''}`}>
+                      {apiConnected ? '연결됨' : '미연결'}
+                    </span>
+                  </div>
+                  {apiKeyConfigured && apiKeyMasked && (
+                    <div className="provider-option-desc">등록된 키: {apiKeyMasked}</div>
+                  )}
+                </div>
+                <div className="form-field">
+                  <label>API 키</label>
+                  <input
+                    type="password"
+                    placeholder="sk-..."
+                    value={apiKeyDraft}
+                    onChange={(e) => onApiKeyChange(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={onTestApiKey}
+                    disabled={testing || (!apiKeyDraft.trim() && !apiKeyConfigured)}
+                  >
+                    {testing ? '확인 중...' : 'API 연결 테스트'}
+                  </button>
+                </div>
               </div>
-              {apiKeyConfigured && apiKeyMasked && (
-                <div className="provider-option-desc">등록된 키: {apiKeyMasked}</div>
-              )}
-            </div>
-            <div className="form-field">
-              <label>API 키</label>
-              <input
-                type="password"
-                placeholder={brand === 'grok' ? 'crsr_...' : 'sk-...'}
-                value={apiKeyDraft}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={onTestApiKey}
-                disabled={testing || (!apiKeyDraft.trim() && !apiKeyConfigured)}
-              >
-                {testing ? '확인 중...' : 'API 연결 테스트'}
-              </button>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         <div className="form-field" style={{ marginTop: 20 }}>
@@ -180,7 +185,7 @@ export function AiBrandForm({
         </div>
 
         {message && (
-          <p className="muted" style={{ marginTop: 12 }}>
+          <p className={`connection-form-message ${message.includes('실패') || message.includes('없') ? 'error' : ''}`}>
             {message}
           </p>
         )}
@@ -188,12 +193,7 @@ export function AiBrandForm({
 
       <div className="connection-guide">
         <h4>연결 팁</h4>
-        <div className="guide-placeholder">
-          <p className="muted">
-            연결 테스트가 성공하면 <strong>연결됨</strong>으로 표시됩니다. 확인 후 <strong>저장하기</strong>를
-            누르면 ai.toml에 저장되고, 준비가 되면 이 AI가 앱에 적용됩니다.
-          </p>
-        </div>
+        <div className="guide-placeholder">{isGrok ? grokSetupGuide() : defaultSetupGuide()}</div>
       </div>
     </div>
   );

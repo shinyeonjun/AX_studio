@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { CLI_PROVIDER_META, normalizeModelOptions, parseCodexModelsOutput, type CliModelOption } from './catalog.js';
-import { resolveBinary, runCommand } from './cli-process.js';
+import { resolveBinary, runCommand } from '../model/cli-process.js';
 import type { CliProviderId } from './ai-provider-id.js';
 
 export interface DetectedAiCli {

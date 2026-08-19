@@ -7,8 +7,8 @@ out/
 release/
 *.tsbuildinfo
 
-# Local agent / editor instructions (repo에 올리지 않음)
-AGENTS.md
+# Local Cursor / editor instructions at repo root (repo에 올리지 않음)
+/AGENTS.md
 
 # Local secrets and machine-specific config — never commit
 .env
