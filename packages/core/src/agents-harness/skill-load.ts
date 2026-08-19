@@ -61,7 +61,7 @@ export function loadAgentSkill(id: string): AgentSkillFile {
 
 export function loadAgentsConstitution(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  const path = join(here, 'agents.md');
+  const path = join(here, 'AGENTS.md');
   if (existsSync(path)) return readFileSync(path, 'utf8').trim();
   return EMBEDDED_AGENTS_MD.trim();
 }

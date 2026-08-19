@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const harnessDir = join(root, 'src/agents-harness');
 const skillsDir = join(harnessDir, 'skills');
-const agentsMdPath = join(harnessDir, 'agents.md');
+const agentsMdPath = join(harnessDir, 'AGENTS.md');
 
 const ids = readdirSync(skillsDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
