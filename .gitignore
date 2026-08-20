@@ -6,6 +6,7 @@ dist/
 out/
 release/
 *.tsbuildinfo
+tmp/
 
 # Local Cursor / editor instructions at repo root (repo에 올리지 않음)
 /AGENTS.md

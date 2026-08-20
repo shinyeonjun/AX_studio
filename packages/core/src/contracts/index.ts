@@ -10,4 +10,5 @@ export {
 } from './artifacts/document.js';
 export * from './compatibility.js';
 export * from './mappers.js';
+export * from './document-ingest-resolve.js';
 export { TextArtifactSchema, TableArtifactSchema, JsonArtifactSchema } from './artifacts/text.js';

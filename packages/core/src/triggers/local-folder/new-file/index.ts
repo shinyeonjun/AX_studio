@@ -1,4 +1,4 @@
-import type { TriggerHandler, TriggerPollResult } from '../types.js';
+import type { TriggerHandler, TriggerPollResult } from '../../types.js';
 
 export const localFolderNewFileHandler: TriggerHandler<{
   type: 'local_folder.new_file';

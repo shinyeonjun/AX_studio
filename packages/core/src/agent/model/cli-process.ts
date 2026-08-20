@@ -123,6 +123,7 @@ export function runCommand(
     timeoutMs?: number;
     input?: string;
     cwd?: string;
+    env?: NodeJS.ProcessEnv;
     abortSignal?: AbortSignal;
     onStdoutLine?: (line: string) => void;
   } = {},
@@ -132,13 +133,14 @@ export function runCommand(
   }
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
+  const env = options.env ? { ...invocation.env, ...options.env } : invocation.env;
 
   return new Promise((resolve, reject) => {
     const child = execFile(
       invocation.file,
       invocation.args,
       {
-        env: invocation.env,
+        env,
         timeout: timeoutMs,
         maxBuffer: 8 * 1024 * 1024,
         windowsHide: true,
@@ -161,10 +163,8 @@ export function runCommand(
         });
       },
     );
-    if (options.input) {
-      child.stdin?.write(options.input);
-      child.stdin?.end();
-    }
+    if (options.input !== undefined) child.stdin?.write(options.input);
+    child.stdin?.end();
   });
 }
 
@@ -174,16 +174,18 @@ export function runCommandStreaming(
   options: {
     timeoutMs?: number;
     cwd?: string;
+    env?: NodeJS.ProcessEnv;
     abortSignal?: AbortSignal;
     onStdoutLine?: (line: string) => void;
   } = {},
 ): Promise<CommandResult> {
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
+  const env = options.env ? { ...invocation.env, ...options.env } : invocation.env;
 
   return new Promise((resolve, reject) => {
     const child = spawn(invocation.file, invocation.args, {
-      env: invocation.env,
+      env,
       cwd: options.cwd,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],

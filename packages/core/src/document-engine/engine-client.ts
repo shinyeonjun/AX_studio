@@ -104,7 +104,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     this.workerScript = options.workerScript ?? defaultWorkerScript();
     this.pythonPath = options.pythonPath ?? defaultPythonPath();
     this.artifactRoot = options.artifactRoot ?? defaultArtifactRoot();
-    this.timeoutMs = options.timeoutMs ?? 120_000;
+    this.timeoutMs = options.timeoutMs ?? 180_000;
     this.workerCwd = options.workerCwd ?? defaultWorkerCwd(this.workerScript);
   }
 
@@ -181,6 +181,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       timeoutMs: this.timeoutMs,
       cwd: this.workerCwd,
       input: JSON.stringify(payload),
+      env: { ...process.env, PYTHONUTF8: '1' },
     });
 
     const stdout = result.stdout.trim();

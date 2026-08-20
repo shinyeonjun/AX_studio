@@ -214,7 +214,11 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     label: 'HTML 생성',
     description: 'HTML 문서 렌더',
     sideEffect: 'REVERSIBLE',
-    params: [{ name: 'template', label: '문서 양식', question: '어떤 문서 양식을 사용할까요?', required: true }],
+    params: [
+      { name: 'template', label: 'Handlebars 템플릿', question: '문서 HTML 템플릿을 입력하세요.', required: false },
+      { name: 'title', label: '제목', question: '문서 제목', required: false },
+      { name: 'data', label: '데이터', question: '템플릿에 넣을 데이터', required: false },
+    ],
   },
   {
     id: 'document.docx.fill',
@@ -230,9 +234,12 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     connector: 'document',
     kind: 'write',
     label: 'PDF 생성',
-    description: 'PDF 문서 생성',
+    description: 'HTML을 PDF로 변환 (desktop printToPDF)',
     sideEffect: 'REVERSIBLE',
-    params: [{ name: 'template', label: '문서 양식', question: '어떤 문서 양식을 사용할까요?', required: true }],
+    params: [
+      { name: 'html', label: 'HTML', question: 'PDF로 변환할 HTML', required: false },
+      { name: 'title', label: '제목', question: 'PDF 제목', required: false },
+    ],
   },
 ];
 

@@ -1,5 +1,6 @@
 import type { ConnectorContext, ConnectorResult } from '../../types.js';
 import type { FileRef } from '../../../contracts/artifacts/file-ref.js';
+import { documentIngestPhysicalPath, resolveDocumentIngestExecution } from '../../../contracts/document-ingest-resolve.js';
 import { toDocumentArtifact } from '../../../contracts/artifacts/document-normalize.js';
 import { getDocumentEngineClient } from '../../../document-engine/engine-client.js';
 import type { DocumentActionHandler } from '../types.js';
@@ -8,23 +9,18 @@ function resolveIngestPhysicalPath(
   params: Record<string, unknown>,
   ctx: ConnectorContext,
 ): { ok: true; path: string } | { ok: false; error: string; errorCode: string } {
-  const path = typeof params.path === 'string' ? params.path.trim() : '';
-  if (path) return { ok: true, path };
+  const existingPath = documentIngestPhysicalPath(params);
+  if (existingPath) return { ok: true, path: existingPath };
 
-  const file = params.file as FileRef | undefined;
-  if (file && ctx.resolveFileRef) {
-    const resolved = ctx.resolveFileRef(file);
-    if (!resolved.ok || !resolved.path) {
-      return {
-        ok: false,
-        error: resolved.error ?? 'source_resolve_failed',
-        errorCode: resolved.errorCode ?? 'source_resolve_failed',
-      };
-    }
-    return { ok: true, path: resolved.path };
+  const resolved = resolveDocumentIngestExecution(params, ctx);
+  if (!resolved.ok) {
+    return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
   }
-
-  return { ok: false, error: '문서 입력이 비어 있습니다.', errorCode: 'document_input_required' };
+  const path = documentIngestPhysicalPath(resolved.params);
+  if (!path) {
+    return { ok: false, error: '문서 입력이 비어 있습니다.', errorCode: 'document_input_required' };
+  }
+  return { ok: true, path };
 }
 
 export const ingest: DocumentActionHandler = async (params, ctx): Promise<ConnectorResult> => {

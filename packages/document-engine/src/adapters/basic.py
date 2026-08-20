@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from artifact_store import artifact_dir, sha256_file, utc_now_iso, write_manifest
+from artifact_store import sha256_file, utc_now_iso, write_manifest
 from adapters.base import DocumentParserAdapter, IngestResult
+from ingest_options import normalize_ocr
+from parser_config import parser_cache_fingerprint
 
 
 def _read_text_file(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -59,6 +61,7 @@ class BasicAdapter(DocumentParserAdapter):
     def ingest(self, source_path: Path, artifact_root: Path, options: dict[str, Any]) -> IngestResult:
         document_id = sha256_file(source_path)
         suffix = source_path.suffix.lower()
+        ocr_mode = normalize_ocr(options.get("ocr"))
 
         tables: list[dict[str, Any]] = []
         images: list[dict[str, Any]] = []
@@ -78,6 +81,8 @@ class BasicAdapter(DocumentParserAdapter):
             "imageCount": len(images),
             "visualPageCount": len(visual_pages),
             "visualPages": visual_pages,
+            "ocrPageCount": 0,
+            "ocrPages": [],
             "engine": self.name,
         }
 
@@ -86,7 +91,9 @@ class BasicAdapter(DocumentParserAdapter):
             "sourcePath": str(source_path),
             "sourceHash": document_id,
             "engine": self.name,
+            "ocrMode": ocr_mode,
             "ingestedAt": utc_now_iso(),
+            **parser_cache_fingerprint(),
             "summary": summary,
             "pages": pages,
             "chunks": chunks,

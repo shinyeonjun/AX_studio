@@ -52,6 +52,15 @@ Override paths with env vars:
 
 ## Manual smoke test
 
+Prefer the CLI wrapper on Windows (avoids PowerShell stdout encoding issues):
+
+```powershell
+cd packages/document-engine
+.\.venv\Scripts\python.exe scripts/ingest-test.py C:\path\to\file.pdf --artifact-root .\out --engine docling --ocr auto
+```
+
+Raw worker (Linux/macOS or piping via Python subprocess):
+
 ```powershell
 $req = '{"id":"1","command":"ping","params":{}}'
 $req | python packages/document-engine/src/worker.py

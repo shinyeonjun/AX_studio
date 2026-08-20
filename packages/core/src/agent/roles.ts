@@ -13,7 +13,7 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
     role: 'investigate',
     agentSkillId: 'investigate',
     temperature: 0.2,
-    policy: { maxTurns: 1, timeoutMs: 60_000 },
+    policy: { maxTurns: 1, timeoutMs: 180_000 },
   },
   revise: {
     role: 'revise',

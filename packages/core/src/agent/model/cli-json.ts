@@ -12,7 +12,21 @@ export function extractJsonText(raw: string): string {
 
 export function parseJsonObject(raw: string): unknown {
   const text = extractJsonText(raw);
-  return JSON.parse(text);
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error('AI structured output was empty');
+  }
+  if (trimmed.startsWith('error:') || trimmed.startsWith('Error:')) {
+    throw new Error(trimmed.split('\n')[0]!.slice(0, 500));
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error(`AI structured output was not valid JSON: ${trimmed.slice(0, 160)}`);
+    }
+    throw err;
+  }
 }
 
 function structuredOutputCandidates(parsed: unknown): unknown[] {
@@ -58,6 +72,23 @@ export function zodToJsonSchema(schema: ZodType): Record<string, unknown> {
   return convert(schema);
 }
 
+/** Codex `--output-schema` requires every property key to appear in `required`. */
+export function zodToCodexJsonSchema(schema: ZodType): Record<string, unknown> {
+  const json = convert(schema);
+  if (json.type === 'object' && json.properties && typeof json.properties === 'object') {
+    const properties = Object.fromEntries(
+      Object.entries(json.properties as Record<string, Record<string, unknown>>).filter(([, value]) => {
+        if (value.type !== 'object') return true;
+        if (value.properties && Object.keys(value.properties).length > 0) return true;
+        return false;
+      }),
+    ) as Record<string, unknown>;
+    json.properties = properties;
+    json.required = Object.keys(properties);
+  }
+  return json;
+}
+
 function convert(schema: ZodType): Record<string, unknown> {
   type ZodDef = {
     typeName: string;
@@ -89,8 +120,15 @@ function convert(schema: ZodType): Record<string, unknown> {
       return { type: 'string', enum: def.values };
     case 'ZodArray':
       return { type: 'array', items: convert(def.type as ZodType) };
-    case 'ZodRecord':
-      return { type: 'object', additionalProperties: convert(def.valueType as ZodType) };
+    case 'ZodRecord': {
+      const valueSchema = convert(def.valueType as ZodType);
+      const additionalProperties =
+        Object.keys(valueSchema).length > 0 ? valueSchema : { type: 'string' };
+      return { type: 'object', additionalProperties };
+    }
+    case 'ZodUnknown':
+    case 'ZodAny':
+      return { type: 'string' };
     case 'ZodUnion':
     case 'ZodDiscriminatedUnion':
       return { oneOf: (def.options ?? []).map((option) => convert(option)) };

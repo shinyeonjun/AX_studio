@@ -12,7 +12,11 @@ import { GMAIL_CAPABILITIES, GMAIL_CATALOG } from './catalog-data.js';
 
 function gmailSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'gmail');
-  const record = parseGmailConnectionConfig(conn?.config);
+  const record = parseGmailConnectionConfig(
+    conn?.config && typeof conn.config === 'object' && !Array.isArray(conn.config)
+      ? (conn.config as Record<string, unknown>)
+      : undefined,
+  );
   if (!conn?.connected || !record) {
     return { connector: 'gmail', connected: false, sources: [] };
   }

@@ -8,7 +8,28 @@ from typing import Any
 
 from adapters import resolve_adapter
 from artifact_store import artifact_dir, load_manifest, manifest_exists, sha256_file
+from ingest_options import cache_usable, normalize_ocr
 from protocol import EngineRequest, EngineResponse
+
+
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+def _write_json_response(response: EngineResponse) -> None:
+    payload = json.dumps(response.to_dict(), ensure_ascii=False)
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout.buffer.write(payload.encode("utf-8"))
+        sys.stdout.buffer.flush()
+        return
+    sys.stdout.write(payload)
+    sys.stdout.flush()
 
 
 def _chunk_by_id(manifest: dict[str, Any], chunk_id: str) -> dict[str, Any] | None:
@@ -46,6 +67,9 @@ def _ingest_response_data(
         "engine": manifest.get("engine") or summary.get("engine"),
         "summary": summary,
         "text": _manifest_text(manifest),
+        "pages": manifest.get("pages") or [],
+        "images": manifest.get("images") or [],
+        "tables": manifest.get("tables") or [],
     }
     if cached:
         data["cached"] = True
@@ -67,17 +91,24 @@ def handle_request(request: EngineRequest) -> EngineResponse:
 
             artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
             document_id = sha256_file(source_path)
-            if manifest_exists(artifact_root, document_id):
-                manifest = load_manifest(artifact_root, document_id)
-                return EngineResponse(
-                    id=request.id,
-                    ok=True,
-                    data=_ingest_response_data(document_id, artifact_root, manifest, cached=True),
-                )
-
             options = dict(request.params.get("options") or {})
             engine = str(options.get("engine") or "auto")
+            ocr_mode = normalize_ocr(options.get("ocr"))
+            options["ocr"] = ocr_mode
             adapter = resolve_adapter(engine)
+            if manifest_exists(artifact_root, document_id):
+                manifest = load_manifest(artifact_root, document_id)
+                if cache_usable(
+                    manifest,
+                    requested_engine=engine,
+                    requested_ocr=ocr_mode,
+                    resolved_engine=adapter.name,
+                ):
+                    return EngineResponse(
+                        id=request.id,
+                        ok=True,
+                        data=_ingest_response_data(document_id, artifact_root, manifest, cached=True),
+                    )
             try:
                 result = adapter.ingest(source_path, artifact_root, options)
             except Exception:
@@ -161,18 +192,17 @@ def handle_request(request: EngineRequest) -> EngineResponse:
 
 
 def main() -> None:
+    _configure_stdio()
     raw = sys.stdin.read()
     if not raw.strip():
         response = EngineResponse(id="", ok=False, error="empty_request")
-        sys.stdout.write(json.dumps(response.to_dict()))
-        sys.stdout.flush()
+        _write_json_response(response)
         sys.exit(1)
 
     payload = json.loads(raw)
     request = EngineRequest.from_dict(payload)
     response = handle_request(request)
-    sys.stdout.write(json.dumps(response.to_dict(), ensure_ascii=False))
-    sys.stdout.flush()
+    _write_json_response(response)
     sys.exit(0 if response.ok else 1)
 
 

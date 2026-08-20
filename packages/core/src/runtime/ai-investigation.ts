@@ -113,6 +113,19 @@ function interpolateTemplates(
   });
 }
 
+function investigationUserPrompt(
+  step: Step & { type: 'ai_decision' },
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+  extra?: string,
+): string {
+  const base = buildInvestigationUser(step, ctx, stepResults);
+  if (!step.investigation) {
+    return `${base}\n\n추가 조회 없이 지금 결론만 내세요. needMore는 false로 두세요.`;
+  }
+  return extra ? `${base}\n\n${extra}` : base;
+}
+
 export async function runAiDecision(
   step: Step & { type: 'ai_decision' },
   ir: WorkflowIR,
@@ -121,7 +134,8 @@ export async function runAiDecision(
   agentHarness: AgentHarness | undefined,
   connectors: Record<string, Connector>,
 ): Promise<void> {
-  const maxReads = step.maxReads ?? 4;
+  const allowReads = step.investigation === true;
+  const maxReads = allowReads ? (step.maxReads ?? 4) : 1;
   let reads = 0;
   const evidence: Array<{ source: string; detail: string }> = [];
   const untrustedBody = emailBodyFromRun(ctx.variables, stepResults);
@@ -131,7 +145,7 @@ export async function runAiDecision(
       const { output } = await agentHarness.run({
         role: 'investigate',
         outputSchema: InvestigationOutputSchema,
-        user: buildInvestigationUser(step, ctx, stepResults),
+        user: investigationUserPrompt(step, ctx, stepResults),
         cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
         context: {
           skillGoal: ir.goal,
@@ -147,7 +161,7 @@ export async function runAiDecision(
         return;
       }
 
-      if (output.needMore && output.nextRead) {
+      if (allowReads && output.needMore && output.nextRead) {
         reads++;
         const readResult = await performCapabilityRead(
           output.nextRead,
@@ -177,7 +191,7 @@ export async function runAiDecision(
     const { output } = await agentHarness.run({
       role: 'investigate',
       outputSchema: InvestigationOutputSchema,
-      user: `${buildInvestigationUser(step, ctx, stepResults)}\n\n추가 조회 없이 지금 결론만 내세요.`,
+      user: investigationUserPrompt(step, ctx, stepResults, '추가 조회 없이 지금 결론만 내세요.'),
       cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
       context: {
         skillGoal: ir.goal,

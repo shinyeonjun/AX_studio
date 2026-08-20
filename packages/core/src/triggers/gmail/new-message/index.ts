@@ -1,4 +1,4 @@
-import type { TriggerHandler, TriggerPollResult } from '../types.js';
+import type { TriggerHandler, TriggerPollResult } from '../../types.js';
 
 export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message'; accountId: string }> = {
   type: 'gmail.new_message',

@@ -79,6 +79,8 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
     return 'Document Engine 응답이 없습니다. Python venv 설치 후 앱을 재시작해 주세요.';
   }
   if (errorCode === 'slack_error') return 'Slack 전송에 실패했습니다';
+  if (errorCode === 'agent_invoke_failed') return 'AI 판단 단계 호출에 실패했습니다';
+  if (errorCode === 'agent_timeout') return 'AI 판단 단계가 시간 초과되었습니다';
   if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
   return errorCode;
 }

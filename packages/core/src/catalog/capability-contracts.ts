@@ -18,7 +18,7 @@ export function triggerOutputTypes(triggerType: string | undefined): ContractTyp
   if (!capId) return [];
   const cap = getCapability(capId);
   if (!cap?.io?.outputs) return [];
-  return [...new Set(Object.values(cap.io.outputs))];
+  return [...new Set(Object.values(cap.io.outputs))] as ContractTypeName[];
 }
 
 export function actionCapabilityId(connector: string, action: string): string | undefined {
@@ -30,7 +30,7 @@ export function actionInputTypes(connector: string, action: string): ContractTyp
   if (!capId) return [];
   const cap = getCapability(capId);
   if (!cap?.io?.inputs) return [];
-  return [...new Set(Object.values(cap.io.inputs))];
+  return [...new Set(Object.values(cap.io.inputs))] as ContractTypeName[];
 }
 
 export function actionOutputTypes(connector: string, action: string): ContractTypeName[] {
@@ -38,7 +38,7 @@ export function actionOutputTypes(connector: string, action: string): ContractTy
   if (!capId) return [];
   const cap = getCapability(capId);
   if (!cap?.io?.outputs) return [];
-  return [...new Set(Object.values(cap.io.outputs))];
+  return [...new Set(Object.values(cap.io.outputs))] as ContractTypeName[];
 }
 
 export function getCapabilityIo(capabilityId: string) {

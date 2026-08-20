@@ -1,9 +1,36 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
-import { parseStructuredOutput, zodToJsonSchema } from '../../cli-json.js';
+import { zodToCodexJsonSchema } from '../../cli-json.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary, withTempDir } from '../shared.js';
+import { parseStructuredFromCliResult } from '../output.js';
+
+/** Codex CLI 0.147+ removed --ask-for-approval; clamp reasoning effort for structured exec. */
+export function codexExecArgs(
+  model: string,
+  prompt: string,
+  extras: string[] = [],
+  workDir?: string,
+): string[] {
+  return [
+    'exec',
+    '--skip-git-repo-check',
+    ...(workDir ? ['-C', workDir] : []),
+    '-s',
+    'read-only',
+    '--ephemeral',
+    '--color',
+    'never',
+    '-c',
+    'model_reasoning_effort=high',
+    '-m',
+    model,
+    ...extras,
+    '--',
+    prompt,
+  ];
+}
 
 export class CodexCliProvider implements ModelProvider {
   readonly name = 'codex-cli';
@@ -16,27 +43,15 @@ export class CodexCliProvider implements ModelProvider {
       const outPath = join(dir, 'last.txt');
       const result = await runCommand(
         command,
-        [
-          'exec',
-          '--skip-git-repo-check',
-          '--sandbox',
-          'read-only',
-          '--ask-for-approval',
-          'never',
-          '--ephemeral',
-          '--color',
-          'never',
-          '-m',
-          this.model,
-          '-o',
-          outPath,
-          composedPrompt(input),
-        ],
-        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
+        codexExecArgs(this.model, composedPrompt(input), ['-o', outPath], dir),
+        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {
         return (await readFile(outPath, 'utf8')).trim();
       } catch {
+        if (result.exitCode !== 0) {
+          throw new Error(result.stderr.trim() || 'Codex CLI 호출에 실패했습니다.');
+        }
         return result.stdout.trim() || result.stderr.trim();
       }
     });
@@ -44,39 +59,31 @@ export class CodexCliProvider implements ModelProvider {
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const command = requiredBinary('codex-cli');
-    const schema = zodToJsonSchema(input.schema);
+    const schema = zodToCodexJsonSchema(input.schema);
     const raw = await withTempDir(async (dir) => {
       const schemaPath = join(dir, 'schema.json');
       const outPath = join(dir, 'last.txt');
       await writeFile(schemaPath, JSON.stringify(schema), 'utf8');
       const result = await runCommand(
         command,
-        [
-          'exec',
-          '--skip-git-repo-check',
-          '--sandbox',
-          'read-only',
-          '--ask-for-approval',
-          'never',
-          '--ephemeral',
-          '--color',
-          'never',
-          '-m',
-          this.model,
+        codexExecArgs(this.model, composedPrompt(input), [
           '--output-schema',
           schemaPath,
           '-o',
           outPath,
-          composedPrompt(input),
-        ],
-        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
+        ], dir),
+        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {
-        return await readFile(outPath, 'utf8');
+        return {
+          stdout: await readFile(outPath, 'utf8'),
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+        };
       } catch {
-        return result.stdout || result.stderr;
+        return result;
       }
     });
-    return parseStructuredOutput(raw, input.schema);
+    return parseStructuredFromCliResult(raw, input.schema, 'Codex CLI 호출에 실패했습니다.');
   }
 }

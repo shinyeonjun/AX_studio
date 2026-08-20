@@ -4,50 +4,13 @@ import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { AgentHarness } from '../agent/harness.js';
 import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
-import { resolveDocumentIngestParams } from '../contracts/mappers.js';
-import type { FileRef } from '../contracts/artifacts/file-ref.js';
+import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../workflow/bindings.js';
-import { resolveIngestPath } from './source-resolver.js';
 
 function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
   return ir.steps.some(
     (step) => step.type === 'human_approval' && step.forActionIds.includes(actionId),
   );
-}
-
-function resolveDocumentIngestPath(
-  params: Record<string, unknown>,
-  ctx: ConnectorContext,
-): { ok: true; params: Record<string, unknown> } | { ok: false; error: string; errorCode: string } {
-  const withInput = resolveDocumentIngestParams(params, ctx.variables);
-  const file = withInput.file as FileRef | undefined;
-  const path = typeof withInput.path === 'string' ? withInput.path : undefined;
-
-  if (ctx.resolveFileRef && file) {
-    const resolved = ctx.resolveFileRef(file);
-    if (!resolved.ok) {
-      return {
-        ok: false,
-        error: resolved.error ?? 'source_resolve_failed',
-        errorCode: resolved.errorCode ?? 'source_resolve_failed',
-      };
-    }
-    return { ok: true, params: { ...withInput, path: resolved.path, file: resolved.file ?? file } };
-  }
-
-  if (path && ctx.connections?.length) {
-    const resolved = resolveIngestPath({ path, file }, ctx.connections);
-    if (!resolved.ok) {
-      return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
-    }
-    return { ok: true, params: { ...withInput, path: resolved.path, file: resolved.file } };
-  }
-
-  if (!path && !file) {
-    return { ok: false, error: '문서 입력이 비어 있습니다.', errorCode: 'document_input_required' };
-  }
-
-  return { ok: true, params: withInput };
 }
 
 export async function executeStep(
@@ -85,7 +48,7 @@ export async function executeStep(
       params = applyStepBindings(step, ir, params, stepResults, ctx.variables);
 
       if (step.connector === 'document' && step.action === 'ingest') {
-        const resolved = resolveDocumentIngestPath(params, ctx);
+        const resolved = resolveDocumentIngestExecution(params, ctx);
         if (!resolved.ok) {
           throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
         }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const InvestigationOutputSchema = z.object({
   needMore: z.boolean(),
   nextRead: z.string().optional(),
-  nextReadParams: z.record(z.unknown()).optional(),
+  nextReadParams: z.record(z.string(), z.string()).optional(),
   reason: z.string().optional(),
   conclusion: z.string().optional(),
   evidence: z.array(z.object({ source: z.string(), detail: z.string() })).optional(),

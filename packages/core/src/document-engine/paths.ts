@@ -6,7 +6,3 @@ export function defaultArtifactRoot(): string {
   if (fromEnv) return fromEnv;
   return join(homedir(), '.ax-studio', 'documents');
 }
-
-export function documentArtifactDir(artifactRoot: string, documentId: string): string {
-  return join(artifactRoot, documentId.slice(0, 2), documentId);
-}

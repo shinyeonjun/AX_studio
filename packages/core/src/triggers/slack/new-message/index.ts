@@ -1,4 +1,4 @@
-import type { TriggerHandler, TriggerPollResult } from '../types.js';
+import type { TriggerHandler, TriggerPollResult } from '../../types.js';
 
 /** Poll fallback when Socket Mode app token is not configured. */
 export const slackNewMessageHandler: TriggerHandler<{ type: 'slack.new_message'; channel: string }> = {

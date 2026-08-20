@@ -92,12 +92,15 @@ export class AgentHarness {
       };
     } catch (err) {
       if (controller.signal.aborted) {
-        throw new Error(`Agent timed out after ${timeoutMs}ms`);
+        throw Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout' });
       }
       logs.push({
         level: 'error',
         message: err instanceof Error ? err.message : String(err),
       });
+      if (err instanceof Error && !(err as Error & { code?: string }).code) {
+        throw Object.assign(err, { code: 'agent_invoke_failed' });
+      }
       throw err;
     } finally {
       clearTimeout(timer);

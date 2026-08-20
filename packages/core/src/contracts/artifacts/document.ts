@@ -5,6 +5,24 @@ export const DocumentPageSchema = z.object({
   index: z.number().int().nonnegative(),
   text: z.string().optional(),
   hasVisual: z.boolean().optional(),
+  sourceType: z.enum(['native', 'image', 'scan', 'mixed']).optional(),
+  ocrApplied: z.boolean().optional(),
+  imagePath: z.string().optional(),
+  ocrConfidence: z.number().nullable().optional(),
+});
+
+export const DocumentImageSchema = z.object({
+  id: z.string(),
+  pageIndex: z.number().int().nonnegative(),
+  path: z.string().optional(),
+  ocrText: z.string().optional(),
+  ocrConfidence: z.number().nullable().optional(),
+});
+
+export const DocumentTableSchema = z.object({
+  id: z.string(),
+  pageIndex: z.number().int().nonnegative(),
+  text: z.string().optional(),
 });
 
 export const DocumentArtifactSchema = z.object({
@@ -18,6 +36,8 @@ export const DocumentArtifactSchema = z.object({
   imageCount: z.number().int().nonnegative().optional(),
   text: z.string().optional(),
   pages: z.array(DocumentPageSchema).default([]),
+  images: z.array(DocumentImageSchema).default([]),
+  tables: z.array(DocumentTableSchema).default([]),
 });
 
 export type DocumentArtifact = z.infer<typeof DocumentArtifactSchema>;

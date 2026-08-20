@@ -363,7 +363,8 @@ export function stepProducesOutputTypes(step: Step): ContractTypeName[] {
 export function triggerAvailableTypes(trigger: Trigger | undefined, inputs: string[]): ContractTypeName[] {
   const types = triggerOutputTypes(trigger?.type);
   if (trigger?.type === 'manual' && inputs.includes('filePath')) {
-    return [...new Set([...types, 'FileRef', 'DocumentIngestInput'])];
+    const manualTypes: ContractTypeName[] = ['FileRef', 'DocumentIngestInput'];
+    return [...new Set([...types, ...manualTypes])];
   }
   return types;
 }

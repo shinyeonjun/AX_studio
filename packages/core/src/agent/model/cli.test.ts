@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { InvestigationOutputSchema } from '../../runtime/investigation-schema.js';
 import { parseCodexModelsOutput } from '../settings/catalog.js';
-import { parseStructuredOutput, zodToJsonSchema } from './cli-json.js';
+import { codexExecArgs } from './cli/adapters/codex-cli.js';
+import { cliFailureMessage } from './cli/output.js';
+import { parseStructuredOutput, parseJsonObject, zodToJsonSchema, zodToCodexJsonSchema } from './cli-json.js';
 import { normalizeAiProviderConfig } from '../settings/config.js';
 
 describe('normalizeAiProviderConfig', () => {
@@ -67,6 +70,22 @@ describe('cli json', () => {
     expect((json.required as string[]).includes('flag')).toBe(false);
   });
 
+  it('converts record schema for CLI json-schema', () => {
+    const schema = z.object({
+      params: z.record(z.unknown()).optional(),
+    });
+    const json = zodToJsonSchema(schema);
+    const params = (json.properties as Record<string, Record<string, unknown>>).params;
+    expect(params.additionalProperties).toEqual({ type: 'string' });
+  });
+
+  it('converts investigation schema for codex output-schema', () => {
+    const json = zodToCodexJsonSchema(InvestigationOutputSchema);
+    const properties = json.properties as Record<string, unknown>;
+    expect(properties.nextReadParams).toBeUndefined();
+    expect(json.required).toEqual(Object.keys(properties));
+  });
+
   it('converts discriminated union schema for CLI json-schema', () => {
     const schema = z.discriminatedUnion('kind', [
       z.object({ kind: z.literal('discover'), toolCalls: z.array(z.string()) }),
@@ -75,5 +94,37 @@ describe('cli json', () => {
     const json = zodToJsonSchema(schema);
     expect(Array.isArray(json.oneOf)).toBe(true);
     expect((json.oneOf as unknown[]).length).toBe(2);
+  });
+
+  it('surfaces CLI error text instead of raw JSON.parse messages', () => {
+    expect(() => parseJsonObject('error: unexpected argument --json-schema')).toThrow(
+      'error: unexpected argument --json-schema',
+    );
+  });
+});
+
+describe('codex cli adapter', () => {
+  it('uses current codex exec flags', () => {
+    const args = codexExecArgs('gpt-5.4', 'hello', ['-o', '/tmp/out.txt'], '/tmp/ax-cli');
+    expect(args).toContain('-s');
+    expect(args).toContain('read-only');
+    expect(args).toContain('-C');
+    expect(args).toContain('/tmp/ax-cli');
+    expect(args).toContain('-c');
+    expect(args).toContain('model_reasoning_effort=high');
+    expect(args).not.toContain('--ask-for-approval');
+    expect(args.at(-1)).toBe('hello');
+  });
+
+  it('extracts codex ERROR json from stderr', () => {
+    const message = cliFailureMessage(
+      {
+        exitCode: 1,
+        stdout: '',
+        stderr: 'ERROR: {"error":{"message":"Unsupported value: max"}}',
+      },
+      'fallback',
+    );
+    expect(message).toBe('Unsupported value: max');
   });
 });

@@ -14,8 +14,11 @@ if (!existsSync(python)) {
   process.exit(1);
 }
 
-const pip = [python, '-m', 'pip', 'install', '-r', join(root, 'packages', 'document-engine', 'requirements.txt')];
-execFileSync(pip[0], pip.slice(1), {
+const requirements = process.argv.includes('--docling')
+  ? join(root, 'packages', 'document-engine', 'requirements-docling.txt')
+  : join(root, 'packages', 'document-engine', 'requirements.txt');
+
+execFileSync(python, ['-m', 'pip', 'install', '-r', requirements], {
   stdio: 'inherit',
   cwd: root,
   env: { ...process.env, PYTHONUTF8: '1' },

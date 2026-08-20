@@ -1,7 +1,8 @@
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
-import { parseStructuredOutput, zodToJsonSchema } from '../../cli-json.js';
+import { zodToJsonSchema } from '../../cli-json.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary } from '../shared.js';
+import { parseStructuredFromCliResult } from '../output.js';
 
 export class ClaudeCliProvider implements ModelProvider {
   readonly name = 'claude-cli';
@@ -53,9 +54,6 @@ export class ClaudeCliProvider implements ModelProvider {
       ],
       { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
     );
-    if (result.exitCode !== 0 && !result.stdout.trim()) {
-      throw new Error(result.stderr.trim() || 'Claude CLI 호출에 실패했습니다.');
-    }
-    return parseStructuredOutput(result.stdout || result.stderr, input.schema);
+    return parseStructuredFromCliResult(result, input.schema, 'Claude CLI 호출에 실패했습니다.');
   }
 }

@@ -41,6 +41,13 @@ def write_manifest(
             handle.write(json.dumps(chunk, ensure_ascii=False))
             handle.write("\n")
 
+    for page in manifest.get("pages") or []:
+        index = page.get("index")
+        text = page.get("text")
+        if index is None or not isinstance(text, str) or not text.strip():
+            continue
+        (pages_dir / f"{int(index)}.txt").write_text(text, encoding="utf-8")
+
     return root
 
 

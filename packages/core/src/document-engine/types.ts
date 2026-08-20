@@ -5,40 +5,33 @@ export interface AxDocumentSummary {
   imageCount: number;
   visualPageCount: number;
   visualPages: number[];
+  ocrPageCount?: number;
+  ocrPages?: number[];
   engine: string;
 }
 
-export interface AxDocumentBlock {
+export interface AxDocumentPageDetail {
+  index: number;
+  text?: string | null;
+  hasVisual?: boolean;
+  sourceType?: 'native' | 'image' | 'scan' | 'mixed';
+  ocrApplied?: boolean;
+  imagePath?: string | null;
+  ocrConfidence?: number | null;
+}
+
+export interface AxDocumentImageRef {
   id: string;
   pageIndex: number;
-  kind: string;
-  text: string;
+  path?: string;
+  ocrText?: string;
+  ocrConfidence?: number | null;
 }
 
-export interface AxDocumentPage {
-  index: number;
-  hasVisual: boolean;
-  ocrConfidence: number | null;
-}
-
-export interface AxDocumentMetadata {
-  documentId: string;
-  sourcePath: string;
-  sourceHash: string;
-  engine: string;
-  ingestedAt: string;
-}
-
-/** AX-owned document contract. Docling types never cross this boundary. */
-export interface AxDocument {
+export interface AxDocumentTableRef {
   id: string;
-  artifactPath: string;
-  metadata: AxDocumentMetadata;
-  summary: AxDocumentSummary;
-  pages: AxDocumentPage[];
-  blocks: AxDocumentBlock[];
-  tables: unknown[];
-  images: unknown[];
+  pageIndex: number;
+  text?: string;
 }
 
 export interface IngestDocumentOptions {
@@ -52,6 +45,9 @@ export interface IngestDocumentResult {
   engine: string;
   summary: AxDocumentSummary;
   text?: string;
+  pages?: AxDocumentPageDetail[];
+  images?: AxDocumentImageRef[];
+  tables?: AxDocumentTableRef[];
 }
 
 export interface DocumentChunkHit {

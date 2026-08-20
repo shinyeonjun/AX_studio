@@ -1,6 +1,6 @@
 import { SocketModeClient } from '@slack/socket-mode';
 import { WebClient } from '@slack/web-api';
-import type { TriggerEvent } from '../types.js';
+import type { TriggerEvent } from '../../types.js';
 
 export type SlackSocketEventHandler = (event: TriggerEvent) => void;
 

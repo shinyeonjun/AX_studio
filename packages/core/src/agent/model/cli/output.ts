@@ -67,11 +67,29 @@ export function cursorResultTextFromEvent(event: Record<string, unknown>): strin
   return undefined;
 }
 
+function codexErrorFromStderr(stderr: string): string | null {
+  for (const line of stderr.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('ERROR:')) continue;
+    const payload = trimmed.slice('ERROR:'.length).trim();
+    try {
+      const parsed = JSON.parse(payload) as { error?: { message?: string } };
+      const message = parsed.error?.message?.trim();
+      if (message) return message;
+    } catch {
+      if (payload) return payload.slice(0, 500);
+    }
+  }
+  return null;
+}
+
 export function cliFailureMessage(
   result: { stdout: string; stderr: string; exitCode: number },
   fallbackMessage: string,
 ): string | null {
   if (result.exitCode === 0) return null;
+  const codexError = codexErrorFromStderr(result.stderr);
+  if (codexError) return codexError;
   const stderr = readableCliError(result.stderr, '');
   if (stderr) return stderr;
   const stdout = result.stdout.trim();
