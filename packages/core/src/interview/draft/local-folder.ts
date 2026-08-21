@@ -149,9 +149,6 @@ export function buildInterviewSessionHints(
   if (workScope === 'recurring' && mentionsLocalFolder) {
     lines.push('- 연결 폴더의 새 파일 업무라면 triggerType=local_folder.new_file을 사용하고, 시작 시 기존 파일을 baseline으로 처리하지 마세요.');
   }
-  if (workScope === 'once' && !lastUser.match(/언제|뒤|후|시각|시간|예약/)) {
-    lines.push('- 일회성 실행 시점이 명시되지 않았다면 manual을 plan에서 선택하기 전에 사용자의 의도를 확인하세요.');
-  }
 
   return lines.length > 0 ? lines.join('\n') : '(없음)';
 }

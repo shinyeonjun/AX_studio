@@ -88,7 +88,7 @@ describe('buildAssistantMessage', () => {
 
     const text = buildAssistantMessage('Slack 채널을 알려주세요.', completeness, false, 'once');
 
-    expect(text).toBe('Slack 채널을 알려주세요.');
+    expect(text).toBe('Slack 채널은?');
   });
 
   it('mentions missing connections in panel guidance', () => {

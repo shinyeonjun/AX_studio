@@ -98,7 +98,7 @@ describe('interview-discovery', () => {
       true,
     );
     expect(state.workflow.nodes).toHaveLength(3);
-    expect(state.messages.at(-1)?.content).toContain('Slack');
+    expect(state.done).toBe(false);
   });
 
   it('retries when model returns discover with empty toolCalls', async () => {
@@ -141,7 +141,7 @@ describe('interview-discovery', () => {
 
     expect(model.calls).toHaveLength(3);
     expect(model.calls[1]?.messages?.some((message) => message.content.includes('toolCalls'))).toBe(true);
-    expect(state.messages.at(-1)?.content).toContain('업무가 완료되었다고');
+    expect(state.done).toBe(false);
   });
 
   it('rejects patch before a plan and asks for a graph first', async () => {

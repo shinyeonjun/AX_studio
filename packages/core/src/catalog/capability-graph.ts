@@ -120,7 +120,7 @@ export function formatCapabilitiesForPrompt(capabilities: ConnectorCapability[])
         .map((param) => param.name)
         .join(', ');
       const req = required ? `, requiredParams=${required}` : '';
-      return `- ${cap.id}: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}${risk}${req})`;
+      return `- ${cap.id}@1: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}${risk}${req})`;
     })
     .join('\n');
 }

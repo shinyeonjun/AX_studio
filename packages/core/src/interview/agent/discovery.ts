@@ -107,6 +107,16 @@ function retryAsUser(messages: ChatMessage[], assistantNote: string, user: strin
   messages.push({ role: 'assistant', content: assistantNote }, { role: 'user', content: user });
 }
 
+const INVALID_CONDITION_RETRY_USER =
+  'triggerFilter와 if condition은 { "op": "contains", "left": { "ref": "from" }, "right": { "lit": "example.com" } } 형식으로 보내세요. field/value만 있는 객체는 left/right로 바꿔 주세요.';
+
+function conditionParseRetryMessage(err: unknown): string | undefined {
+  if (err instanceof Error && err.message === 'Invalid condition expression') {
+    return INVALID_CONDITION_RETRY_USER;
+  }
+  return undefined;
+}
+
 function discoverParseRetryMessage(err: unknown): string | undefined {
   if (!(err instanceof ZodError)) return undefined;
   if (!err.issues.some((issue) => issue.path[0] === 'toolCalls')) return undefined;
@@ -154,6 +164,14 @@ export async function runInterviewDiscoveryLoop(
             content: '[invalid discover output: toolCalls must contain at least one call]',
           },
           { role: 'user', content: EMPTY_DISCOVER_RETRY_USER },
+        );
+        continue;
+      }
+      const conditionRetry = conditionParseRetryMessage(err);
+      if (conditionRetry) {
+        discoveryMessages.push(
+          { role: 'assistant', content: '[invalid condition in interview output]' },
+          { role: 'user', content: conditionRetry },
         );
         continue;
       }

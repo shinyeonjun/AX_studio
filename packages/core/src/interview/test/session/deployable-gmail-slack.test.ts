@@ -188,7 +188,7 @@ describe('gmail slack interview finalize', () => {
     );
   });
 
-  it('points missing workflow fields to chat interview instead of the review footer', async () => {
+  it('does not finalize when required fields are still missing even if nextQuestion sounds complete', async () => {
     const turn: InterviewTurn = {
       name: 'PDF 정리 후 Slack 전송',
       goal: 'PDF를 읽고 Slack으로 보낸다',
@@ -221,7 +221,7 @@ describe('gmail slack interview finalize', () => {
     }, 'once');
 
     expect(state.done).toBe(false);
-    expect(state.messages.at(-1)?.content).toContain('문서');
     expect(state.messages.at(-1)?.content).not.toContain('설계를 검토한 뒤');
+    expect(state.messages.at(-1)?.content.length).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,7 @@ import { planToInterviewDraft } from '../plan/schema.js';
 import type { ConnectedResourcesSnapshot } from '../resources/connected-resources.js';
 import { applySlotValuesToDraft, mergePatch } from '../slots/patch.js';
 import { ensureRequiredParamKeysOnDraft } from '../slots/seed.js';
+import type { WorkScope } from './work-scope.js';
 import type { HydratedInterviewState } from './state.js';
 
 function keepKnownTrigger(next: InterviewDraft, previous: InterviewDraft): InterviewDraft {
@@ -22,6 +23,11 @@ function keepKnownTrigger(next: InterviewDraft, previous: InterviewDraft): Inter
     localFolderPath: next.localFolderPath ?? previous.localFolderPath,
     localFolderExtensions: next.localFolderExtensions ?? previous.localFolderExtensions,
   };
+}
+
+function seedOnceManualTrigger(draft: InterviewDraft, workScope: WorkScope): InterviewDraft {
+  if (workScope !== 'once' || draft.triggerType || draft.nodes.length === 0) return draft;
+  return { ...draft, triggerType: 'manual' };
 }
 
 export function buildWorkflowFromSession(
@@ -42,11 +48,14 @@ export function buildWorkflowFromSession(
     partialPlan = result.plan;
   }
 
-  const merged = keepKnownTrigger(
-    partialPlan
-      ? planToInterviewDraft(partialPlan, slotValues, state.userInstruction)
-      : applySlotValuesToDraft(state.workflow, slotValues),
-    state.workflow,
+  const merged = seedOnceManualTrigger(
+    keepKnownTrigger(
+      partialPlan
+        ? planToInterviewDraft(partialPlan, slotValues, state.userInstruction)
+        : applySlotValuesToDraft(state.workflow, slotValues),
+      state.workflow,
+    ),
+    state.workScope,
   );
 
   const workflow = ensureRequiredParamKeysOnDraft(

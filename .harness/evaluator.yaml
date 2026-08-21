@@ -1,0 +1,91 @@
+version: 1
+status: active
+frozen: true
+
+# Define checks before the first implementation experiment.
+# Prefer commands that produce deterministic pass/fail or measurable output.
+# Example:
+# checks:
+#   - name: targeted-regression
+#     type: command
+#     command: pytest tests/test_example.py -q
+#     required: true
+#   - name: full-test-suite
+#     type: command
+#     command: pytest -q
+#     required: true
+checks:
+  - name: core-tests
+    type: command
+    command: npm test -w @ax-studio/core
+    required: true
+  - name: core-typecheck
+    type: command
+    command: npx tsc -p packages/core/tsconfig.json --noEmit
+    required: true
+  - name: desktop-typecheck
+    type: command
+    command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+    required: true
+  - name: core-eval
+    type: command
+    command: npm run eval -w @ax-studio/core
+    required: true
+  - name: document-engine-tests
+    type: command
+    command: python -m unittest discover -s packages/document-engine/src -p '*_test.py' -v
+    required: true
+  - name: production-build
+    type: command
+    command: npm run build
+    required: true
+  - name: diff-whitespace
+    type: command
+    command: git diff --check
+    required: true
+
+# Optional numerical/structured metrics.
+# Example:
+# metrics:
+#   - name: p95_latency_ms
+#     direction: minimize
+#     command: python benchmarks/run.py --json
+#     json_path: $.p95_latency_ms
+metrics: []
+
+# Baseline is populated before implementation begins.
+baseline:
+  recorded: true
+  recorded_at: 2026-08-22T00:01:30+09:00
+  values:
+    core-tests: "FAIL: 60 files passed, 1 failed; 272 passed, 1 failed (work_scope_required in work-scope bootstrap)"
+    core-typecheck: "FAIL: merge-workflow.ts passes WorkScope | undefined"
+    desktop-typecheck: "PASS"
+    core-eval: "PASS: 11 tests"
+    document-engine-tests: "PASS: 14 tests, 2 skipped because pypdf is unavailable"
+    production-build: "FAIL: core build blocked by the same WorkScope type error"
+    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
+  notes: "Adoption checkpoint of the already-dirty tree. This is not a pristine repository baseline."
+
+# This checkpoint records the current tree after the QA experiments. The frozen
+# checks above are unchanged; the historical baseline remains the comparison point.
+current_checkpoint:
+  recorded: true
+  recorded_at: 2026-08-22T02:20:05+09:00
+  values:
+    core-tests: "PASS: 63 files, 298 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    core-eval: "PASS: 11 tests"
+    document-engine-tests: "PASS: 17 tests, 15 passed, 2 skipped because pypdf is unavailable"
+    production-build: "PASS: core, Electron main/preload, and renderer"
+    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
+  notes: "Experiment 026 kept. Interview questions and done are code-owned: chat uses completeness slot questions, done=deployable, once plans seed triggerType=manual, prompt lists availableCapabilities as actionRef@1. No live Gmail/Slack side effect executed."
+
+# Human/qualitative criteria are allowed only when objective checks are not sufficient.
+# Make them explicit instead of treating subjective judgment as a metric.
+human_review: []
+
+# If this evaluator is changed after baseline because it was genuinely invalid,
+# document the reason here and establish a new baseline.
+revision_history: []

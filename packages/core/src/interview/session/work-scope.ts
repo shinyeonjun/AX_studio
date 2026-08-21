@@ -52,7 +52,7 @@ export function resolveWorkScope(input: {
 
 export function workScopeSessionHint(workScope: WorkScope): string {
   if (workScope === 'once') {
-    return '- 일회성 업무입니다. 지금 실행이면 triggerType=manual, 미래의 한 번이면 triggerType=once와 runAt을 사용하세요. 사용자가 말하지 않은 시점은 추측하지 마세요.';
+    return '- 일회성 업무입니다. triggerType=manual을 쓰세요. 사용자가 미래 시각을 말했으면 once와 runAt. 실행 시점을 묻지 마세요.';
   }
   return '- 다회성 업무입니다. 이벤트·일정·새 파일·새 메일 중 사용자가 말한 시작 조건을 triggerType으로 표현하세요. manual/once를 대신 사용하지 마세요.';
 }

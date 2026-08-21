@@ -220,6 +220,45 @@ describe('interview-agent-schema', () => {
     });
   });
 
+  it('coerces string shorthand bindings on action nodes', () => {
+    const parsed = parseInterviewAgentOutput({
+      kind: 'plan',
+      name: 'PDF Slack',
+      goal: 'PDF를 요약해 Slack과 Gmail으로',
+      triggerType: 'local_folder.new_file',
+      localFolderId: 'folder-1',
+      nodes: [
+        {
+          type: 'action',
+          id: 'notify-slack',
+          connector: 'slack',
+          action: 'message.send',
+          bindings: {
+            text: 'summarize.summary',
+          },
+        },
+        {
+          type: 'action',
+          id: 'notify-gmail',
+          connector: 'gmail',
+          action: 'message.send',
+          bindings: {
+            body: { ref: 'summarize.body' },
+          },
+        },
+      ],
+      nextQuestion: '완료했습니다.',
+    });
+
+    if (parsed.kind !== 'plan') throw new Error('expected plan');
+    expect(parsed.plan.nodes[0]?.bindings).toEqual({
+      text: { from: 'summarize', output: 'summary' },
+    });
+    expect(parsed.plan.nodes[1]?.bindings).toEqual({
+      body: { from: 'summarize', output: 'body' },
+    });
+  });
+
   it('parses a trigger filter without embedding any domain-specific value', () => {
     const parsed = parseInterviewAgentOutput({
       kind: 'plan',
@@ -263,6 +302,26 @@ describe('interview-agent-schema', () => {
         { op: 'contains', left: { ref: 'from' }, right: { lit: 'naver.com' } },
         { op: 'contains', left: { ref: 'subject' }, right: { lit: '메일' } },
       ],
+    });
+  });
+
+  it('normalizes triggerFilter field/value shape from interview output', () => {
+    const parsed = parseInterviewAgentOutput({
+      kind: 'plan',
+      name: '네이버 메일 Slack',
+      goal: '네이버 메일만 요약해 Slack으로',
+      triggerType: 'gmail.new_message',
+      gmailAccount: 'primary',
+      triggerFilter: { op: 'contains', field: 'from', value: 'naver.com' },
+      nodes: [],
+      nextQuestion: '완료했습니다.',
+    });
+
+    if (parsed.kind !== 'plan') throw new Error('expected plan');
+    expect(parsed.plan.triggerFilter).toEqual({
+      op: 'contains',
+      left: { ref: 'from' },
+      right: { lit: 'naver.com' },
     });
   });
 });

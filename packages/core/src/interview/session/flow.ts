@@ -16,7 +16,7 @@ import {
   assessSessionCompleteness,
   finalizeCompleteness,
 } from './completeness.js';
-import { buildAssistantMessage, sessionStatus } from './messages.js';
+import { buildAssistantMessage, chatMissingSlots, sessionStatus, shouldFinalizeInterview } from './messages.js';
 import { workScopeSessionHint } from './work-scope.js';
 
 export interface InterviewRunOptions {
@@ -53,7 +53,7 @@ async function runInterviewTurn(state: InterviewState, options: InterviewRunOpti
           .filter(Boolean)
           .join('\n'),
         hasPartialPlan: Boolean(hydrated.partialPlan) || hydrated.workflow.nodes.length > 0,
-        missingRequired: priorCompleteness.missingRequired,
+        missingRequired: chatMissingSlots(priorCompleteness, hydrated.workScope).map((slot) => slot.slot),
         workScope: hydrated.workScope,
       }),
       nowIso: new Date().toISOString(),
@@ -111,7 +111,7 @@ async function runInterviewTurn(state: InterviewState, options: InterviewRunOpti
     connectedConnectors,
     hydrated.workScope,
   );
-  const finalized = deployable;
+  const finalized = shouldFinalizeInterview(deployable);
   const assistantMsg = buildAssistantMessage(
     result.nextQuestion,
     completeness,

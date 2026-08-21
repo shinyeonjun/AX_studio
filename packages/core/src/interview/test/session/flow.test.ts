@@ -292,7 +292,7 @@ describe('AI interview session', () => {
     expect(state.done).toBe(false);
   });
 
-  it('finalizes deployable drafts when nextQuestion is run/review confirmation', async () => {
+  it('finalizes deployable drafts from completeness, ignoring model nextQuestion', async () => {
     const confirmTurn: InterviewTurn = {
       ...completeSend,
       nextQuestion: '워크플로우가 완성되었습니다. 지금 실행할까요?',
@@ -303,6 +303,21 @@ describe('AI interview session', () => {
 
     expect(state.completeness?.deployable).toBe(true);
     expect(state.done).toBe(true);
+    expect(state.messages.at(-1)?.content).toContain('실행하거나 저장할 수 있습니다');
+  });
+
+  it('keeps done false when required slots are still missing even if nextQuestion sounds complete', async () => {
+    const confirmTurn: InterviewTurn = {
+      ...incompleteSend,
+      nextQuestion: '워크플로우가 완성되었습니다. 지금 실행할까요?',
+    };
+    const model = new ScriptedModelProvider([confirmTurn]);
+    const harness = createAgentHarness(model);
+    const state = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness), 'once');
+
+    expect(state.completeness?.deployable).toBe(false);
+    expect(state.done).toBe(false);
+    expect(state.messages.at(-1)?.content).not.toContain('지금 실행할까요');
   });
 
   it('keeps one session and sends full chat history on the next API turn', async () => {
@@ -326,7 +341,7 @@ describe('AI interview session', () => {
     expect(second.done).toBe(true);
     expect(model.calls[1]?.messages?.map((m) => m.content)).toEqual([
       '1분 뒤 테스트 메일 보내줘',
-      '메일을 누구에게 보낼까요?',
+      'send_mail — 메일을 누구에게 보낼까요?',
       'test@example.com',
     ]);
     expect(model.calls[1]?.system).toContain('현재 workflow');
@@ -362,12 +377,11 @@ describe('AI interview session', () => {
     const third = await applyAnswer(second, '제목을 변경된 제목으로 바꿔줘', interviewOptions(harness));
     expect(third.sessionId).toBe(first.sessionId);
     expect(third.done).toBe(true);
-    expect(third.messages.at(-1)?.content).toContain('변경된 제목');
     const send = third.draft.steps?.find((s) => s.type === 'action' && s.action === 'message.send');
     expect(send && send.type === 'action' && send.params.subject).toBe('변경된 제목');
   });
 
-  it('does not invent a trigger when the once plan omits its start condition', async () => {
+  it('seeds manual trigger when an once plan omits its start condition', async () => {
     const withNodes: InterviewTurn = {
       name: 'PDF 위험 분류',
       goal: 'PDF를 분류해 알린다',
@@ -404,16 +418,16 @@ describe('AI interview session', () => {
     const first = await startInterview('PDF 분류해서 Slack으로', interviewOptions(harness), 'once');
     expect(first.workflow.nodes.map((node) => node.id)).toEqual(['ingest', 'classify', 'critical_slack']);
     expect(first.workScope).toBe('once');
-    expect(first.workflow.triggerType).toBeUndefined();
-    expect(first.messages.at(-1)?.content).toContain('Slack');
+    expect(first.workflow.triggerType).toBe('manual');
     expect(first.messages.at(-1)?.content).not.toContain('시작 노드');
+    expect(first.messages.at(-1)?.content).not.toContain('지금 바로');
 
     const second = applyInterviewPatch(
       first,
       { set: { 'critical_slack.params.channel': '#ops' } },
       interviewOptions(harness),
     );
-    expect(second.workflow.triggerType).toBeUndefined();
+    expect(second.workflow.triggerType).toBe('manual');
     expect(second.workflow.nodes.map((node) => node.id)).toEqual(['ingest', 'classify', 'critical_slack']);
   });
 

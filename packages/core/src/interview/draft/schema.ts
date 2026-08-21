@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ConditionExprSchema, normalizeCondition } from '../../runtime/condition-expr.js';
-import { PortBindingSchema } from '../../workflow/bindings.js';
+import { ConditionExprSchema, preprocessConditionValue } from '../../runtime/condition-expr.js';
+import { PortBindingSchema, coercePortBinding } from '../../workflow/bindings.js';
 
 export function parseJsonRecordValue(value: unknown): unknown {
   if (typeof value !== 'string') return value;
@@ -27,22 +27,12 @@ export function parseBindingsRecord(value: unknown): unknown {
   const record = parsed as Record<string, unknown>;
   const normalized: Record<string, unknown> = {};
   for (const [port, binding] of Object.entries(record)) {
-    if (typeof binding === 'string') {
-      const inner = parseJsonRecordValue(binding);
-      if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
-        normalized[port] = inner;
-      } else {
-        return parsed;
-      }
-      continue;
+    const coerced = coercePortBinding(binding);
+    if (coerced) {
+      normalized[port] = coerced;
     }
-    if (binding && typeof binding === 'object' && !Array.isArray(binding)) {
-      normalized[port] = binding;
-      continue;
-    }
-    return parsed;
   }
-  return normalized;
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
 export const ActionInstanceSchema = z.object({
@@ -78,7 +68,7 @@ export const WorkflowNodeSchema = z.object({
   condition: z.preprocess(
     (value) => {
       const parsed = parseJsonRecordValue(value);
-      return parsed == null ? undefined : normalizeCondition(parsed);
+      return parsed == null ? undefined : preprocessConditionValue(parsed);
     },
     ConditionExprSchema.optional(),
   ),
@@ -104,7 +94,7 @@ export const InterviewDraftSchema = z.object({
   triggerFilter: z.preprocess(
     (value) => {
       const parsed = parseJsonRecordValue(value);
-      return parsed == null ? undefined : normalizeCondition(parsed);
+      return parsed == null ? undefined : preprocessConditionValue(parsed);
     },
     ConditionExprSchema.optional(),
   ),

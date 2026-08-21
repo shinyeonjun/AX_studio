@@ -10,7 +10,7 @@ tmp/
 
 # Local Cursor / editor instructions at repo root (repo에 올리지 않음)
 /AGENTS.md
-.harness/
+.cursor/
 
 # Local secrets and machine-specific config — never commit
 .env

@@ -1,6 +1,6 @@
 import {
+  availableCapabilities,
   formatCapabilitiesForPrompt,
-  relevantCapabilitiesForInterview,
   relevantCapabilitiesForInvestigate,
 } from '../catalog/capability-graph.js';
 import type {
@@ -28,7 +28,7 @@ export function buildRoleSystemPrompt(role: AgentRole, context: AgentContext): s
     const ctx = context as InterviewAgentContext;
     return renderSkillTemplate(skill.body, {
       capability_catalog: formatCapabilitiesForPrompt(
-        relevantCapabilitiesForInterview(ctx.workflow, ctx.connectedConnectors),
+        availableCapabilities(ctx.connectedConnectors),
       ),
       connected_connectors: ctx.connectedConnectors.join(', ') || '없음',
       design_tools: formatDesignToolsForPrompt(),

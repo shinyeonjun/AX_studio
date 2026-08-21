@@ -7,7 +7,7 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
     temperature: 0.2,
     policy: { maxTurns: 5, timeoutMs: 90_000 },
     modeInstructions:
-      '지금은 인터뷰 모드다. plan/patch 구조화 출력만 반환한다. 빈 값은 nextQuestion으로 한 번에 하나만 묻고 patch.set에 반영한다. 일회성 업무는 trigger=manual 고정, 다회성은 trigger도 채팅으로 채운다.',
+      '지금은 인터뷰 모드다. 사용 가능한 action 목록은 이미 컨텍스트에 있다. 그래프가 없으면 kind=plan, 있으면 kind=patch만 반환한다. nextQuestion은 비운다. 질문은 코드가 한다. 사용자 답은 missing_slots 키로 patch.set에 넣는다. 일회성은 triggerType=manual, 다회성 trigger만 채팅 답으로 채운다.',
   },
   investigate: {
     role: 'investigate',

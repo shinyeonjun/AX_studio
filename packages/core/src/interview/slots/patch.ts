@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { InterviewDraft } from '../draft/schema.js';
-import { parseNodeMemoSlot, parseNodeParamSlot, parseNodeTextSlot } from './ids.js';
+import { preprocessConditionValue } from '../../runtime/condition-expr.js';
 import { setNodeParam } from '../draft/actions.js';
+import { parseNodeMemoSlot, parseNodeParamSlot, parseNodeTextSlot } from './ids.js';
 
 export const InterviewPatchSchema = z.object({
   set: z.record(z.unknown()).default({}),
@@ -55,11 +56,11 @@ function applyScalarToDraft(draft: InterviewDraft, slot: string, value: unknown)
       if (triggerType) draft.triggerType = triggerType;
       return;
     }
-    case 'trigger.filter':
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        draft.triggerFilter = value as InterviewDraft['triggerFilter'];
-      }
+    case 'trigger.filter': {
+      const normalized = preprocessConditionValue(value);
+      if (normalized) draft.triggerFilter = normalized;
       return;
+    }
     case 'completion':
       draft.success = text;
       return;

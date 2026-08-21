@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { normalizeCondition, ConditionExprSchema } from '../../runtime/condition-expr.js';
+import { preprocessConditionValue, ConditionExprSchema } from '../../runtime/condition-expr.js';
 import {
   InterviewDraftSchema,
   parseBindingsRecord,
@@ -39,7 +39,7 @@ const WorkflowPlanNodeSchema = z.object({
   condition: z.preprocess(
     (value) => {
       const parsed = parseJsonRecordValue(value);
-      return parsed == null ? undefined : normalizeCondition(parsed);
+      return parsed == null ? undefined : preprocessConditionValue(parsed);
     },
     ConditionExprSchema.optional(),
   ),

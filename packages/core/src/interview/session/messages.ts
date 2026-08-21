@@ -10,40 +10,16 @@ function skipTriggerSlotInChat(workScope: WorkScope): boolean {
   return workScope === 'once';
 }
 
+export function chatMissingSlots(completeness: CompletenessResult, workScope: WorkScope): CompletenessResult['slots'] {
+  return completeness.slots.filter((slot) => {
+    if (slot.filled) return false;
+    if (isTriggerRequirementSlot(slot.slot) && skipTriggerSlotInChat(workScope)) return false;
+    return true;
+  });
+}
+
 function firstChatInterviewQuestion(completeness: CompletenessResult, workScope: WorkScope): string | null {
-  for (const slot of completeness.slots) {
-    if (!slot.filled && slot.question) {
-      if (isTriggerRequirementSlot(slot.slot) && skipTriggerSlotInChat(workScope)) continue;
-      return slot.question;
-    }
-  }
-  return null;
-}
-
-function isReviewOrRunConfirmation(nextQuestion: string): boolean {
-  const question = nextQuestion.trim();
-  if (!question) return false;
-  return /실행할까|지금\s*실행|맡길\s*수|검토\s*후|이\s*구성|아래\s*에서|확인\s*해\s*주|진행할까|이대로|저장하면\s*실행/.test(question);
-}
-
-function usableNextQuestion(nextQuestion: string): string {
-  const trimmed = nextQuestion.trim();
-  if (!trimmed || isReviewOrRunConfirmation(trimmed)) return '';
-  return trimmed;
-}
-
-function interviewMessage(
-  completeness: CompletenessResult,
-  nextQuestion: string,
-  workScope: WorkScope,
-): string {
-  const connection = connectionGuidance(completeness.missingConnections);
-  if (connection) return connection.message;
-
-  const trimmed = usableNextQuestion(nextQuestion);
-  if (trimmed) return trimmed;
-
-  return firstChatInterviewQuestion(completeness, workScope) ?? getNextQuestion(completeness) ?? READY_MESSAGE;
+  return chatMissingSlots(completeness, workScope).find((slot) => slot.question)?.question ?? null;
 }
 
 export function buildAssistantMessage(
@@ -52,14 +28,27 @@ export function buildAssistantMessage(
   deployable: boolean,
   workScope: WorkScope,
 ): string {
-  if (!deployable) {
-    return interviewMessage(completeness, nextQuestion, workScope);
+  const connection = connectionGuidance(completeness.missingConnections);
+  if (connection) return connection.message;
+
+  if (deployable) {
+    return READY_MESSAGE;
   }
-  return nextQuestion.trim() || READY_MESSAGE;
+
+  const provided = nextQuestion.trim();
+  if (provided && completeness.contractIssues?.length) {
+    return provided;
+  }
+
+  return firstChatInterviewQuestion(completeness, workScope) ?? getNextQuestion(completeness) ?? READY_MESSAGE;
+}
+
+export function shouldFinalizeInterview(deployable: boolean): boolean {
+  return deployable;
 }
 
 export function isRunConfirmationMessage(content: string): boolean {
-  return isReviewOrRunConfirmation(content);
+  return content.trim() === READY_MESSAGE;
 }
 
 export function sessionStatus(

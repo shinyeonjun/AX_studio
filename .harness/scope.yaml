@@ -1,0 +1,57 @@
+version: 1
+status: active
+
+# Current boundary: finish the existing contract/runtime QA without broadening into new
+# connectors or unrelated presentation work.
+allowed:
+  - packages/core/src/interview
+  - packages/core/src/workflow
+  - packages/core/src/runtime
+  - packages/core/src/triggers
+  - packages/core/src/store
+  - packages/core/src/contracts
+  - packages/core/src/modules/local-folder
+  - packages/core/src/modules/document
+  - apps/desktop/electron/main/ipc
+  - apps/desktop/electron/main/credential-store.ts
+  - packages/document-engine/src
+  - packages/core/src/agent/skills
+  - .harness
+
+# Paths or areas that should not be touched for the active task.
+avoid:
+  - packages/*/node_modules
+  - apps/*/node_modules
+  - external connector APIs
+  - unrelated UI redesign
+
+# Add entries only when evidence requires expanding the original scope.
+# Example:
+# expansions:
+#   - path: src/ipc/runtime.ts
+#     reason: Root cause was proven to cross the original parser boundary.
+expansions:
+  - path: packages/core/src/agent/skills
+    reason: The active contract is injected into the interview/investigation agent and must match the runtime output contract.
+  - path: packages/document-engine/src
+    reason: The same workflow boundary carries PDF engine/path/page/query inputs and needs explicit failure semantics.
+  - path: packages/core/src/runtime/condition-expr.ts
+    reason: AI plan/patch trigger and if-condition shapes must coerce or reject without crashing interview IPC.
+  - path: packages/core/src/workflow/bindings.ts
+    reason: AI binding ports may arrive as strings or ref objects and must normalize or drop without invalidating the whole draft.
+  - path: apps/desktop/electron.vite.config.ts
+    reason: Renderer bundle must not value-import interview-state and pull node:crypto into the browser.
+  - path: apps/desktop/src/hooks
+    reason: Renderer interview hooks must use lightweight core aliases instead of interview-state.
+
+  - path: packages/core/src/agent/roles.ts
+    reason: Interview role instructions must tell the model to patch slots, not invent the next question.
+  - path: packages/core/src/agent/context-builders.ts
+    reason: The planner must see the full connected capability list like an MCP tool catalog, not a draft-filtered subset.
+  - path: packages/core/src/interview/draft/local-folder.ts
+    reason: once-scope session hints currently push a scheduling question that fights the code-owned slot interviewer.
+
+notes:
+  - Existing dirty changes predate this checkpoint and are preserved.
+  - New changes must be surgical and recorded in experiments.tsv.
+  - This task replaces AI-owned nextQuestion/done-marker with code-owned slot questions and deployable completion.

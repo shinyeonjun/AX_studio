@@ -22,7 +22,7 @@ export {
   parseInterviewState,
 } from './session/state.js';
 export { isRecurringTriggerType, resolveWorkScope } from './session/work-scope.js';
-export { isRunConfirmationMessage } from './session/messages.js';
+export { isRunConfirmationMessage, shouldFinalizeInterview } from './session/messages.js';
 export { applyAnswer, startInterview, type InterviewRunOptions } from './session/flow.js';
 export { applyInterviewPatch, type InterviewPatchOptions } from './session/patch-turn.js';
 

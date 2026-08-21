@@ -63,11 +63,11 @@ Trigger and workflow-level slots stay global: `trigger.runAt`, `goal`, `slack.ne
 
 | Layer | Owns | Does not |
 |---|---|---|
-| AI | plan/replan, patch.set, memo, `nextQuestion` interview | Merge workflow JSON, parse user chat for slot values |
-| Code | merge patch/plan, compile, contract + graph validation, completeness | Replace AI questions with generic “fill the panel” copy |
+| AI | plan/replan, patch.set, `ai_decision` memo/outputFields | Chat question text, `done`, catalog action implementations |
+| Code | merge, compile, completeness, next slot question, deployable completion | Replace AI patch values with guessed answers |
 | UI | render `InterviewDraft`, read-only node detail panel | Action param forms; numbered chat lists |
 
-`done` follows `completeness.deployable` only. While incomplete, chat shows the AI `nextQuestion` (one natural interview question per turn). Channels, recipients, memo, and recurring triggers are collected via chat interview → AI `patch.set`. The right-side panel shows read-only status and connection guidance.
+`done` follows `completeness.deployable` only. While incomplete, chat shows the first unfilled slot question from completeness — not the model `nextQuestion`. Channels, recipients, memo, and recurring triggers are filled when the user answers and the model writes `patch.set`. The right-side panel shows read-only status and connection guidance.
 
 ## UI
 

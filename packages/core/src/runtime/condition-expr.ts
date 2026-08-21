@@ -189,6 +189,42 @@ function coerceConditionValue(value: unknown): ConditionValue | undefined {
   return undefined;
 }
 
+function normalizeComparisonOp(op: string): 'eq' | 'neq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte' | undefined {
+  const normalized = op.trim().toLowerCase();
+  if (normalized === 'includes' || normalized === 'include') return 'contains';
+  if (normalized === 'equals' || normalized === '==' || normalized === 'equal') return 'eq';
+  if (normalized === 'notequals' || normalized === '!=' || normalized === 'not_equal') return 'neq';
+  return isComparisonOp(normalized) ? normalized : undefined;
+}
+
+function readConditionOp(record: Record<string, unknown>): string {
+  if (typeof record.op === 'string') return record.op.trim().toLowerCase();
+  if (typeof record.operator === 'string') return record.operator.trim().toLowerCase();
+  return '';
+}
+
+function coerceConditionRef(value: unknown): ConditionValue | undefined {
+  if (value != null && typeof value === 'object') return coerceConditionValue(value);
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? { ref: trimmed } : undefined;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return { lit: value };
+  }
+  return undefined;
+}
+
+function coerceConditionSide(value: unknown, asLiteral: boolean): ConditionValue | undefined {
+  if (value != null && typeof value === 'object') return coerceConditionValue(value);
+  if (asLiteral) {
+    if (typeof value === 'string') return { lit: value.trim() };
+    if (typeof value === 'number' || typeof value === 'boolean') return { lit: value };
+    return undefined;
+  }
+  return coerceConditionRef(value);
+}
+
 /** Fix common LLM shapes before strict condition parsing. */
 export function coerceConditionInput(input: unknown): unknown {
   if (input == null) return input;
@@ -206,13 +242,22 @@ export function coerceConditionInput(input: unknown): unknown {
   if (typeof input !== 'object' || Array.isArray(input)) return input;
 
   const record = input as Record<string, unknown>;
-  const op = typeof record.op === 'string' ? record.op.trim().toLowerCase() : '';
+  const rawOp = readConditionOp(record);
+  const op = normalizeComparisonOp(rawOp) ?? rawOp;
 
   if (isComparisonOp(op)) {
-    const left = coerceConditionValue(record.left);
-    const right = coerceConditionValue(record.right);
+    const left = coerceConditionSide(record.left ?? record.field ?? record.lhs, false);
+    const right = coerceConditionSide(record.right ?? record.value ?? record.rhs, true);
     if (left && right) return { op, left, right };
     return input;
+  }
+
+  if (!rawOp && record.field != null && record.value !== undefined) {
+    const left = coerceConditionSide(record.field, false);
+    const right = coerceConditionSide(record.value, true);
+    if (left && right) {
+      return { op: 'contains', left, right };
+    }
   }
 
   if (op === 'and' || op === 'or') {
@@ -246,6 +291,12 @@ export function tryNormalizeCondition(input: unknown): ConditionExpr | undefined
   } catch {
     return undefined;
   }
+}
+
+/** Interview/draft preprocess: never throw; drop invalid filters instead of crashing IPC. */
+export function preprocessConditionValue(value: unknown): ConditionExpr | undefined {
+  if (value == null) return undefined;
+  return tryNormalizeCondition(value);
 }
 
 export function normalizeCondition(input: unknown): ConditionExpr {
