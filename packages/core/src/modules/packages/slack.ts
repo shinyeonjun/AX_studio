@@ -1,5 +1,4 @@
 import type { ModulePackage } from '../module-package.js';
-import { MockSlackConnector } from '../mocks/index.js';
 import { SlackConnector } from '../slack/index.js';
 import { getSlackConnectionStatus } from '../slack/connection.js';
 import { slackNewMessageHandler } from '../../triggers/slack/new-message/index.js';
@@ -36,8 +35,10 @@ export const slackModulePackage: ModulePackage = {
   catalog: SLACK_CATALOG,
   capabilities: SLACK_CAPABILITIES,
   registration: {
-    createMock: () => new MockSlackConnector(),
-    instantiate: (config) => (config?.token ? new SlackConnector(config.token as string) : null),
+    instantiate: (config) => {
+      const parsed = parseSlackConnectionConfig(config);
+      return parsed ? new SlackConnector(parsed.token) : null;
+    },
   },
   triggerHandlers: [slackNewMessageHandler],
   listSources: slackSources,

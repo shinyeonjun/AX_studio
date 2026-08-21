@@ -84,6 +84,11 @@ export default function App() {
     await refresh();
   };
 
+  const openSettings = (screen: SettingsScreen) => {
+    setSettingsScreen(screen);
+    setTab('settings');
+  };
+
   return (
     <div className="app">
       <Sidebar
@@ -109,14 +114,21 @@ export default function App() {
             onRunWorkflow={runWorkflow}
             onToggleWork={toggleWork}
             onDeleteWork={deleteWorkflow}
+            onOpenSettings={openSettings}
           />
         )}
 
         {tab === 'approval' && (
           <ApprovalPage
             approvals={state?.approvals ?? []}
-            onApprove={(id) => window.ax.approve(id).then(refresh)}
-            onReject={(id) => window.ax.reject(id).then(refresh)}
+            onApprove={async (id) => {
+              await window.ax.approve(id);
+              await refresh();
+            }}
+            onReject={async (id) => {
+              await window.ax.reject(id);
+              await refresh();
+            }}
           />
         )}
 

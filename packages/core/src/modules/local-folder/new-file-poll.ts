@@ -1,9 +1,10 @@
 import type { ConnectorContext, ConnectorResult } from '../types.js';
-import type { LocalFolderConnectionConfig } from './connection.js';
-import { MAX_FILES_PER_SCAN, scanFolder, trimSeenFileKeys } from './scan.js';
+import { findLocalFolder, type LocalFolderConnectionConfig } from './connection.js';
+import { MAX_FILES_PER_SCAN, scanFolderChecked, trimSeenFileKeys } from './scan.js';
 
 export interface NewFilePollParams {
   folderId: string;
+  folderPath?: string;
   initialized?: boolean;
   seenFileKeys?: string[];
   extensions?: string[];
@@ -17,10 +18,12 @@ export async function newFilePoll(
   const folderId = params.folderId;
   if (!folderId) return { ok: false, error: 'folder_id_required' };
 
-  const folder = config.folders.find((entry) => entry.id === folderId);
+  const folder = findLocalFolder(config, folderId, params.folderPath);
   if (!folder) return { ok: false, error: 'folder_not_found' };
 
-  const files = scanFolder(folder.path, params.extensions);
+  const scanned = scanFolderChecked(folder.path, params.extensions);
+  if (!scanned.ok) return { ok: false, error: scanned.error, errorCode: scanned.errorCode };
+  const files = scanned.files;
   const seen = new Set(params.seenFileKeys ?? []);
   const initialized = Boolean(params.initialized);
 

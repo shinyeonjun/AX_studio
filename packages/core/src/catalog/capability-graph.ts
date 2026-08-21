@@ -1,12 +1,12 @@
 import { CONNECTOR_CATALOG, type ConnectorId } from './connectors.js';
 import { CAPABILITY_CATALOG, type ConnectorCapability } from './capabilities.js';
 import { triggerCapabilityId } from './capability-contracts.js';
-import type { InterviewDraft, WorkflowNode } from '../interview/workflow-schema.js';
+import type { InterviewDraft, WorkflowNode } from '../interview/draft/schema.js';
 
 export function isConnectorAlwaysOn(connector: string): boolean {
   const entry = CONNECTOR_CATALOG[connector as ConnectorId];
   if (!entry) return false;
-  return entry.alwaysReal || entry.connectionKind === 'builtin';
+  return entry.runtimeAvailable && (entry.alwaysReal || entry.connectionKind === 'builtin');
 }
 
 const ACTION_ALIASES: Record<string, Record<string, string>> = {
@@ -25,18 +25,6 @@ function normalizeConnectorAction(connector: string, action: string): string {
     return trimmed.slice(connector.length + 1);
   }
   return ACTION_ALIASES[connector]?.[trimmed] ?? trimmed;
-}
-
-export function normalizeWorkflowActionNode(node: WorkflowNode): WorkflowNode {
-  if (node.type !== 'action' || !node.connector?.trim() || !node.action?.trim()) return node;
-  const connector = node.connector.trim();
-  const cap = resolveCapability(connector, node.action);
-  if (!cap) return node;
-  return {
-    ...node,
-    connector: cap.connector,
-    action: capabilityActionName(cap),
-  };
 }
 
 export function resolveCapability(connector: string, action: string): ConnectorCapability | undefined {
@@ -58,7 +46,9 @@ export function resolveCapability(connector: string, action: string): ConnectorC
 
 export function availableCapabilities(connectedConnectors: string[]): ConnectorCapability[] {
   return CAPABILITY_CATALOG.filter(
-    (cap) => isConnectorAlwaysOn(cap.connector) || connectedConnectors.includes(cap.connector),
+    (cap) =>
+      CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true &&
+      (isConnectorAlwaysOn(cap.connector) || connectedConnectors.includes(cap.connector)),
   );
 }
 
@@ -73,8 +63,10 @@ function collectDraftCapabilityIds(draft: InterviewDraft): Set<string> {
     const capId = capabilityIdFromActionNode(node);
     if (capId) ids.add(capId);
   }
-  const triggerCap = triggerCapabilityId(draft.triggerType);
-  if (triggerCap) ids.add(triggerCap);
+  if (draft.triggerType) {
+    const triggerCap = triggerCapabilityId(draft.triggerType);
+    if (triggerCap) ids.add(triggerCap);
+  }
   return ids;
 }
 
@@ -101,7 +93,7 @@ export function relevantCapabilitiesForInterview(
   connectedConnectors: string[],
 ): ConnectorCapability[] {
   const available = availableCapabilities(connectedConnectors);
-  const isBlankDraft = draft.nodes.length === 0 && draft.triggerType === 'manual';
+  const isBlankDraft = draft.nodes.length === 0 && (!draft.triggerType || draft.triggerType === 'manual');
 
   if (isBlankDraft) {
     return available.filter(

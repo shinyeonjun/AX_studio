@@ -12,7 +12,9 @@
 - **승인**에서 Gmail 발송 같은 외부 부작용을 사람이 확인합니다.
 - **활동**에서 실행 이력을 봅니다.
 
-v1 커넥터: Gmail, Slack, 읽기 전용 RDB, 로컬 표, 보고서(HTML/DOCX/PDF).
+v1 커넥터: Gmail, Slack, 읽기 전용 RDB, 연결된 로컬 폴더·문서, 보고서(HTML/DOCX/PDF).
+
+CSV/XLSX용 `local_sheet` 계약은 catalog에만 남아 있으며 실제 런타임 구현 전에는 설계·저장 대상에서 제외됩니다.
 
 ## 저장소 구조
 
@@ -22,6 +24,22 @@ apps/desktop      Electron 트레이 앱 (React)
 docs/plans        v1 범위 (고정)
 docs/future.md    나중에 할 일
 ```
+
+런타임 데이터 (Windows):
+
+```text
+%LOCALAPPDATA%\AXStudio\
+  data\ax-studio.db
+  credentials\          OS 암호화 (Gmail refresh, API keys)
+  config\ai.toml
+  documents\            ingest cache
+  templates\            PDF→HTML 양식
+  generated\reports|exports\
+  cache\chromium|document-engine\
+  logs\
+```
+
+개발 전용: repo `.env` (Gmail OAuth client), repo `ai.toml` (AI prefs, 키 없음).
 
 ## 요구 사항
 
@@ -52,7 +70,7 @@ npm run dev
 | `*.db` | 로컬 SQLite | ❌ |
 | OS credential store | AI API 키, Gmail refresh token | PC마다 암호화 저장. Git/공유 대상 아님 |
 
-**AI API 키(Cursor/OpenAI/Anthropic)는 `.env`에 넣지 않습니다.** 앱 설정에서 등록하면 OS credential store에만 저장됩니다. 릴리즈 후에도 사용자 키는 각 PC의 userData에 격리됩니다.
+**AI API 키(Cursor/OpenAI/Anthropic)는 `.env`에 넣지 않습니다.** 앱 설정에서 등록하면 OS credential store에만 저장됩니다. 사용자 데이터는 `%LOCALAPPDATA%\AXStudio\` (Windows)에 격리됩니다.
 
 개발용 `.env`에는 **Gmail OAuth 클라이언트**(앱 빌드용)만 둡니다. 사용자 API 키와 섞이지 않습니다.
 

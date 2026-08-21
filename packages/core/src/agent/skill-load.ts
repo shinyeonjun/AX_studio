@@ -44,6 +44,10 @@ export function renderSkillTemplate(body: string, vars: Record<string, string>):
   return body.replace(/\{\{(\w+)\}\}/g, (_all, key: string) => vars[key] ?? '');
 }
 
+export function connectorSkillId(connector: string): string {
+  return connector.trim().replace(/_/g, '-');
+}
+
 function readSkillFromDisk(id: string): string | undefined {
   for (const root of candidateSkillRoots()) {
     const path = join(root, id, 'SKILL.md');
@@ -57,6 +61,24 @@ export function loadAgentSkill(id: string): AgentSkillFile {
   if (!raw) throw new Error(`Agent skill not found: ${id}`);
   const parsed = parseSkillMarkdown(raw);
   return { id, raw, ...parsed };
+}
+
+export function loadConnectorSkill(connector: string): AgentSkillFile | undefined {
+  const id = connectorSkillId(connector);
+  const raw = readSkillFromDisk(id) ?? EMBEDDED_AGENT_SKILLS[id];
+  if (!raw) return undefined;
+  const parsed = parseSkillMarkdown(raw);
+  return { id, raw, ...parsed };
+}
+
+export function renderConnectorSkills(connectors: string[]): string {
+  const skills = connectors
+    .map((connector) => loadConnectorSkill(connector))
+    .filter((skill): skill is AgentSkillFile => Boolean(skill));
+  if (skills.length === 0) return '- 관련 도메인 스킬 없음';
+  return skills
+    .map((skill) => `### ${skill.name || skill.id}\n\n${skill.body}`)
+    .join('\n\n');
 }
 
 export function loadAgentsConstitution(): string {

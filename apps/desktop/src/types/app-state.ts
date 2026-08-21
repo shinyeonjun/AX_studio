@@ -27,6 +27,7 @@ export interface AppState {
   aiProviderInstalled?: boolean;
   envFilePath?: string;
   aiConfigPath?: string;
+  axDataRoot?: string;
   aiBrandConfigs?: Partial<Record<AiBrand, { mode?: AiConnectionMode; model?: string }>>;
   gmailOAuthConfigured?: boolean;
   gmailEmail?: string;

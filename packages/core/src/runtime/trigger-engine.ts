@@ -5,8 +5,11 @@ import { PUSH_TRIGGER_DRIVERS } from '../modules/packages/catalog.js';
 import {
   TRIGGER_CURSOR_SETTING_KEY,
   type TriggerCursorStore,
+  type TriggerCursor,
   type TriggerEvent,
 } from '../triggers/types.js';
+import { matchesTriggerFilter } from '../triggers/filter.js';
+import type { ExecutionResult } from './types.js';
 
 const TIME_TRIGGER_TYPES = new Set(['manual', 'once', 'schedule']);
 const MAX_RECENT_EVENTS = 2000;
@@ -24,12 +27,53 @@ function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
   };
 }
 
+function triggerRunWasAccepted(result: unknown): boolean {
+  const status = (result as Partial<ExecutionResult> | null)?.status;
+  return status === 'success' || status === 'pending_approval';
+}
+
+function eventDedupeKey(workflowId: string, event: TriggerEvent): string | undefined {
+  const payload = event.payload;
+  const eventId = [payload.messageId, payload.filePath, payload.ts].find(
+    (value): value is string => typeof value === 'string' && value.length > 0,
+  );
+  return eventId ? `${workflowId}:${event.type}:${eventId}` : undefined;
+}
+
+function cursorAfterEvent(
+  cursor: TriggerCursor,
+  event: TriggerEvent,
+): TriggerCursor {
+  const next = { ...cursor };
+  const payload = event.payload;
+
+  if (typeof payload.messageId === 'string') {
+    const seen = new Set(cursor.seenMessageIds ?? []);
+    seen.add(payload.messageId);
+    next.seenMessageIds = [...seen].slice(-500);
+  }
+  if (typeof payload.filePath === 'string') {
+    const seen = new Set(cursor.seenFileKeys ?? []);
+    seen.add(payload.filePath);
+    next.seenFileKeys = [...seen].slice(-5_000);
+  }
+  if (typeof payload.ts === 'string') {
+    next.lastMessageTs = payload.ts;
+  }
+
+  return next;
+}
+
 export class TriggerEngine {
   private timers: Map<string, ReturnType<typeof setInterval>> = new Map();
   private tickMs = 30_000;
   private ticking = false;
+  private lifecycleGeneration = 0;
+  private acceptingEvents = false;
   private pushTransports = new Map<string, ActivePushTransport>();
   private recentEvents = new Set<string>();
+  private pushRefreshGeneration = 0;
+  private pushRefreshQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private store: WorkflowStore,
@@ -39,6 +83,8 @@ export class TriggerEngine {
 
   start() {
     if (!this.timers.has('main')) {
+      this.lifecycleGeneration += 1;
+      this.acceptingEvents = true;
       const interval = setInterval(() => {
         void this.tick();
       }, this.tickMs);
@@ -48,10 +94,12 @@ export class TriggerEngine {
     void this.refreshPushTransports();
   }
 
-  stop() {
+  async stop(): Promise<void> {
+    this.lifecycleGeneration += 1;
+    this.acceptingEvents = false;
     for (const timer of this.timers.values()) clearInterval(timer);
     this.timers.clear();
-    void this.refreshPushTransports(null);
+    await this.refreshPushTransports(null);
   }
 
   pushTransportActive(triggerType: string): boolean {
@@ -63,21 +111,31 @@ export class TriggerEngine {
   }
 
   async refreshPushTransports(disconnect?: null): Promise<void> {
-    for (const transport of this.pushTransports.values()) {
-      await transport.stop();
-    }
-    this.pushTransports.clear();
+    const generation = ++this.pushRefreshGeneration;
+    const refresh = async () => {
+      for (const transport of this.pushTransports.values()) {
+        await transport.stop();
+      }
+      this.pushTransports.clear();
 
-    if (disconnect === null) return;
+      if (disconnect === null || generation !== this.pushRefreshGeneration) return;
 
-    for (const driver of PUSH_TRIGGER_DRIVERS) {
-      const transport = await driver.refresh(this.store, (event) => {
-        void this.handlePushEvent(driver, event);
-      });
-      if (transport) {
+      for (const driver of PUSH_TRIGGER_DRIVERS) {
+        const transport = await driver.refresh(this.store, (event) => {
+          void this.handlePushEvent(driver, event);
+        });
+        if (!transport) continue;
+
+        if (generation !== this.pushRefreshGeneration) {
+          await transport.stop();
+          return;
+        }
         this.pushTransports.set(driver.triggerType, transport);
       }
-    }
+    };
+
+    this.pushRefreshQueue = this.pushRefreshQueue.then(refresh, refresh);
+    await this.pushRefreshQueue;
   }
 
   /** Backward-compatible entry point used by desktop Slack settings. */
@@ -103,6 +161,7 @@ export class TriggerEngine {
     driver: (typeof PUSH_TRIGGER_DRIVERS)[number],
     event: TriggerEvent,
   ) {
+    if (!this.acceptingEvents) return;
     if (event.type !== driver.triggerType) return;
     if (!this.store.getSetting<boolean>('globalActive', true)) return;
 
@@ -113,15 +172,18 @@ export class TriggerEngine {
       const trigger = ir?.trigger;
       if (!ir || !trigger || trigger.type !== driver.triggerType) continue;
       if (!driver.matchesTrigger(trigger as { type: string; channel?: string }, event)) continue;
+      if (!matchesTriggerFilter(trigger, event)) continue;
 
       const dedupeKey = driver.dedupeKey(skill.id, event);
-      if (!this.rememberEvent(dedupeKey)) continue;
+      if (this.recentEvents.has(dedupeKey)) continue;
 
       try {
         const result = await this.runtime.executeWorkflow(ir, {
           triggerType: trigger.type,
           input: triggerInputFromEvent(event),
         });
+        if (!triggerRunWasAccepted(result)) continue;
+        this.rememberEvent(dedupeKey);
         this.onTriggeredRun?.(skill.id, result);
       } catch (err) {
         console.error(`[trigger-engine] push failed for skill ${skill.id}:`, err);
@@ -153,6 +215,7 @@ export class TriggerEngine {
   async tick() {
     if (this.ticking) return;
     this.ticking = true;
+    const generation = this.lifecycleGeneration;
 
     try {
       const globalActive = this.store.getSetting<boolean>('globalActive', true);
@@ -162,6 +225,7 @@ export class TriggerEngine {
       let cursorsChanged = false;
 
       for (const skill of this.store.listWorkflows()) {
+        if (generation !== this.lifecycleGeneration) return;
         if (!skill.active) continue;
 
         const ir = this.store.getWorkflow(skill.id);
@@ -181,25 +245,62 @@ export class TriggerEngine {
             cursor,
             connectors: this.runtime.connectors,
           });
+          if (generation !== this.lifecycleGeneration) return;
 
-          if (JSON.stringify(pollResult.cursor) !== JSON.stringify(cursor)) {
-            cursors[skill.id] = pollResult.cursor;
-            cursorsChanged = true;
-          }
-
+          let processedCursor: TriggerCursor = {
+            ...cursor,
+            initialized: pollResult.cursor.initialized ?? cursor.initialized,
+            folderId: pollResult.cursor.folderId ?? cursor.folderId,
+            channelId: pollResult.cursor.channelId ?? cursor.channelId,
+          };
           for (const event of pollResult.events) {
+            if (generation !== this.lifecycleGeneration) return;
+            const dedupeKey = eventDedupeKey(skill.id, event);
+            if (dedupeKey && this.recentEvents.has(dedupeKey)) {
+              // The in-memory key means this event was already accepted in this process.
+              // Persist its cursor progress as well, so a later event failure cannot make
+              // the already-accepted event appear unprocessed on the next poll.
+              processedCursor = cursorAfterEvent(processedCursor, event);
+              cursors[skill.id] = processedCursor;
+              this.saveCursors(cursors);
+              cursorsChanged = false;
+              continue;
+            }
+
+            if (!matchesTriggerFilter(trigger, event)) {
+              processedCursor = cursorAfterEvent(processedCursor, event);
+              if (dedupeKey) this.rememberEvent(dedupeKey);
+              cursors[skill.id] = processedCursor;
+              this.saveCursors(cursors);
+              cursorsChanged = false;
+              continue;
+            }
             const result = await this.runtime.executeWorkflow(ir, {
               triggerType: trigger.type,
               input: triggerInputFromEvent(event),
             });
+            if (generation !== this.lifecycleGeneration) return;
+            if (!triggerRunWasAccepted(result)) {
+              throw new Error(`trigger execution was not accepted: ${(result as Partial<ExecutionResult>).status ?? 'unknown'}`);
+            }
+            processedCursor = cursorAfterEvent(processedCursor, event);
+            if (dedupeKey) this.rememberEvent(dedupeKey);
+            cursors[skill.id] = processedCursor;
+            this.saveCursors(cursors);
+            cursorsChanged = false;
             this.onTriggeredRun?.(skill.id, result);
+          }
+
+          if (JSON.stringify(pollResult.cursor) !== JSON.stringify(processedCursor)) {
+            cursors[skill.id] = pollResult.cursor;
+            cursorsChanged = true;
           }
         } catch (err) {
           console.error(`[trigger-engine] poll failed for skill ${skill.id}:`, err);
         }
       }
 
-      if (cursorsChanged) {
+      if (cursorsChanged && generation === this.lifecycleGeneration) {
         this.saveCursors(cursors);
       }
     } finally {

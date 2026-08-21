@@ -57,8 +57,20 @@ export function registerAiHandlers() {
     return { ok: true, label: getAiProviderDisplay(config) };
   });
   ipcMain.handle('ax:saveAiBrandConfig', async (_e, brand: AiBrandId, prefs: { mode?: string; model?: string; apiKey?: string }) => {
-    if (brand === 'grok') {
+    if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
+    }
+    if (!prefs || typeof prefs !== 'object' || Array.isArray(prefs)) {
+      throw new Error('AI 설정 형식이 올바르지 않습니다.');
+    }
+    if (prefs.apiKey !== undefined && typeof prefs.apiKey !== 'string') {
+      throw new Error('API 키 형식이 올바르지 않습니다.');
+    }
+    if (prefs.model !== undefined && typeof prefs.model !== 'string') {
+      throw new Error('AI 모델 형식이 올바르지 않습니다.');
+    }
+    if (prefs.mode !== undefined && prefs.mode !== 'cli' && prefs.mode !== 'api') {
+      throw new Error('AI 연결 방식은 cli 또는 api여야 합니다.');
     }
     if (prefs.apiKey?.trim()) {
       await setBrandSecret(brand, prefs.apiKey.trim(), prefs.mode as AiModeId | undefined);
@@ -72,17 +84,19 @@ export function registerAiHandlers() {
     await writeAiToml(config);
     return { ok: true };
   });
-  ipcMain.handle('ax:testAiCli', async (_e, brand: AiBrandId) => {
-    if (brand === 'grok') {
+  ipcMain.handle('ax:testAiCli', async (_e, brand: unknown) => {
+    if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
     }
     return testAiCli(brand);
   });
-  ipcMain.handle('ax:testAiApi', async (_e, brand: AiBrandId, apiKey?: string, mode?: AiModeId) => {
-    if (brand === 'grok') {
+  ipcMain.handle('ax:testAiApi', async (_e, brand: unknown, apiKey?: unknown, mode?: unknown) => {
+    if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
     }
-    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode)) || '').trim();
+    if (apiKey !== undefined && typeof apiKey !== 'string') throw new Error('API 키 형식이 올바르지 않습니다.');
+    if (mode !== undefined && mode !== 'cli' && mode !== 'api') throw new Error('AI 연결 방식이 올바르지 않습니다.');
+    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode as AiModeId | undefined)) || '').trim();
     if (!testKey) throw new Error('API 키가 없습니다.');
     const result = await verifyAiApiKey(brand as 'claude' | 'gpt', testKey);
     if (apiKey?.trim()) {
@@ -90,7 +104,9 @@ export function registerAiHandlers() {
     }
     return { ok: true, label: result.label, masked: maskSecret(testKey), saved: Boolean(apiKey?.trim()) };
   });
-  ipcMain.handle('ax:setEnvSecret', async (_e, key: string, value: string) => {
+  ipcMain.handle('ax:setEnvSecret', async (_e, key: unknown, value: unknown) => {
+    if (typeof key !== 'string' || !key.trim()) throw new Error('환경 변수 이름이 필요합니다.');
+    if (typeof value !== 'string') throw new Error('환경 변수 값 형식이 올바르지 않습니다.');
     const trimmed = value.trim();
     if (!trimmed) throw new Error('값을 입력하세요.');
     if (isAiEnvKey(key)) {
@@ -102,7 +118,8 @@ export function registerAiHandlers() {
     }
     return { ok: true, masked: maskSecret(trimmed) };
   });
-  ipcMain.handle('ax:getEnvSecretStatus', async (_e, key: string) => {
+  ipcMain.handle('ax:getEnvSecretStatus', async (_e, key: unknown) => {
+    if (typeof key !== 'string' || !key.trim()) throw new Error('환경 변수 이름이 필요합니다.');
     if (isAiEnvKey(key)) {
       const val = (await getSecretByEnvKey(key)).trim();
       return {

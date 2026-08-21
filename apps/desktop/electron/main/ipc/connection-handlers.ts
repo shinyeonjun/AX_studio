@@ -4,6 +4,7 @@ import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
   SlackConnector,
+  LocalFolderConnector,
   validateSlackBotToken,
   getLocalFolderConnectionStatus,
   parseLocalFolderConnectionConfig,
@@ -14,17 +15,33 @@ import { getCore } from '../core-instance.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
-function readSlackPayload(payload: string | { token: string; appToken?: string }) {
-  const token = (typeof payload === 'string' ? payload : payload.token).trim();
+function readSlackPayload(payload: unknown): { token: string; appToken?: string } {
+  if (typeof payload === 'string') {
+    return { token: payload.trim() };
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Slack 연결 정보 형식이 올바르지 않습니다.');
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.token !== 'string') {
+    throw new Error('Slack Bot Token을 입력해 주세요.');
+  }
+  const token = record.token.trim();
   const appToken =
-    typeof payload === 'string' ? undefined : payload.appToken?.trim() || undefined;
+    record.appToken === undefined
+      ? undefined
+      : typeof record.appToken === 'string'
+        ? record.appToken.trim() || undefined
+        : (() => {
+            throw new Error('Slack App-Level Token 형식이 올바르지 않습니다.');
+          })();
   return { token, appToken };
 }
 
 export function registerConnectionHandlers() {
   ipcMain.handle(
     'ax:connectSlack',
-    async (_e, payload: string | { token: string; appToken?: string }) => {
+    async (_e, payload: unknown) => {
       const core = getCore();
       const { token, appToken } = readSlackPayload(payload);
 
@@ -55,25 +72,28 @@ export function registerConnectionHandlers() {
 
       core.runtime.connectors.slack = new SlackConnector(token);
 
-      let socketError: string | undefined;
-      try {
-        await core.triggerEngine.refreshSlackSocket({
-          token,
-          appToken: finalAppToken,
-        });
-      } catch (err) {
-        socketError = (err as Error).message;
-      }
-
-      const socketModeActive = core.triggerEngine.slackSocketActive();
-      core.store.setConnection('slack', true, {
+      const slackConfig = {
         token,
         appToken: finalAppToken,
         team: validation.team,
         botUser: validation.botUser,
         connectedAt: new Date().toISOString(),
-        lastError: socketError,
-      });
+      };
+      core.store.setConnection('slack', true, slackConfig);
+
+      let socketError: string | undefined;
+      try {
+        await core.triggerEngine.refreshSlackSocket();
+      } catch (err) {
+        socketError = (err as Error).message;
+      }
+
+      const socketModeActive = core.triggerEngine.slackSocketActive();
+      if (socketError) {
+        core.store.setConnection('slack', true, { ...slackConfig, lastError: socketError });
+      }
+
+      notifyStateChanged();
 
       if (socketError && finalAppToken) {
         return {
@@ -110,9 +130,13 @@ export function registerConnectionHandlers() {
     return { ok: true as const, path: result.filePaths[0] };
   });
 
-  ipcMain.handle('ax:addLocalFolder', async (_event, payload: { path: string; label?: string }) => {
+  ipcMain.handle('ax:addLocalFolder', async (_event, payload: unknown) => {
     const core = getCore();
-    const folderPath = payload.path?.trim();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('폴더 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    const folderPath = typeof record.path === 'string' ? record.path.trim() : '';
     if (!folderPath) {
       throw new Error('폴더 경로가 필요합니다.');
     }
@@ -128,26 +152,31 @@ export function registerConnectionHandlers() {
 
     const entry = {
       id: randomUUID(),
-      label: payload.label?.trim() || basename(folderPath),
+      label: typeof record.label === 'string' ? record.label.trim() || basename(folderPath) : basename(folderPath),
       path: folderPath,
       addedAt: new Date().toISOString(),
     };
     const nextConfig = upsertLocalFolder(config, entry);
-    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig);
+    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig as unknown as Record<string, unknown>);
+    core.runtime.setConnector('local_folder', new LocalFolderConnector(nextConfig));
     notifyStateChanged();
     return { ok: true, folder: entry, status: getLocalFolderConnectionStatus(nextConfig, true) };
   });
 
-  ipcMain.handle('ax:removeLocalFolder', async (_event, folderId: string) => {
+  ipcMain.handle('ax:removeLocalFolder', async (_event, folderId: unknown) => {
     const core = getCore();
-    if (!folderId) {
+    if (typeof folderId !== 'string' || !folderId.trim()) {
       throw new Error('folderId가 필요합니다.');
     }
 
     const existing = core.store.getConnections().find((entry) => entry.connector === 'local_folder');
     const config = parseLocalFolderConnectionConfig(existing?.config) ?? { folders: [] };
     const nextConfig = removeLocalFolder(config, folderId);
-    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig);
+    core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig as unknown as Record<string, unknown>);
+    core.runtime.setConnector(
+      'local_folder',
+      nextConfig.folders.length > 0 ? new LocalFolderConnector(nextConfig) : null,
+    );
     notifyStateChanged();
     return { ok: true, status: getLocalFolderConnectionStatus(nextConfig, nextConfig.folders.length > 0) };
   });

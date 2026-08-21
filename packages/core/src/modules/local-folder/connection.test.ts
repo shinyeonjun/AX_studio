@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  findLocalFolder,
   getLocalFolderConnectionStatus,
   parseLocalFolderConnectionConfig,
   removeLocalFolder,
@@ -33,5 +34,24 @@ describe('local-folder connection', () => {
     const removed = removeLocalFolder(second, 'f1');
     expect(removed.folders).toHaveLength(1);
     expect(getLocalFolderConnectionStatus(removed, true).folderCount).toBe(1);
+  });
+
+  it('resolves a folder by the discovered path when its id changed', () => {
+    const config = {
+      folders: [
+        { id: 'new-id', label: 'Docs', path: 'D:/Docs', addedAt: '2026-01-01T00:00:00.000Z' },
+        { id: 'other', label: 'Other', path: 'D:/Other', addedAt: '2026-01-01T00:00:00.000Z' },
+      ],
+    };
+
+    expect(findLocalFolder(config, 'old-id', 'd:/docs')?.id).toBe('new-id');
+  });
+
+  it('does not replace an explicit unknown folder with the only connected folder', () => {
+    const config = {
+      folders: [{ id: 'known', label: 'Docs', path: 'D:/Docs', addedAt: '2026-01-01T00:00:00.000Z' }],
+    };
+
+    expect(findLocalFolder(config, 'missing-id')).toBeUndefined();
   });
 });

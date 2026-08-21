@@ -19,7 +19,7 @@ def normalize_ocr(value: Any) -> str:
         return "off"
     if text in {"force", "on", "true", "1", "full"}:
         return "force"
-    return "auto"
+    raise ValueError(f"unsupported_ocr:{value}")
 
 
 def cache_usable(

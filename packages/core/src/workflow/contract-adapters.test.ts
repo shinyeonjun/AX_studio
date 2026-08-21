@@ -44,7 +44,7 @@ describe('insertContractAdapters', () => {
       'adapter_transform_table_to_text_before_slack_report',
       'slack_report',
     ]);
-    expect(validateWorkflowContracts(adapted)).toEqual([]);
+    expect(validateWorkflowContracts(adapted, { runtimeConnectors: { local_sheet: {} } })).toEqual([]);
   });
 
   it('inserts gmail read before slack send for gmail trigger workflows', () => {

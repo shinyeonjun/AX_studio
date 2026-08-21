@@ -1,7 +1,6 @@
-import { getCapability } from '@ax-studio/core/capabilities';
-import { GMAIL_READ_WORKFLOW_NODE_ID } from '@ax-studio/core/workflow-constants';
-import type { InterviewDraft, WorkflowNode } from '@ax-studio/core/workflow-schema';
-import type { CompletenessResult } from '@ax-studio/core/requiredness';
+import { getCapability } from '@ax-studio/core/catalog-data';
+import { GMAIL_READ_WORKFLOW_NODE_ID } from '@ax-studio/core/interview-constants';
+import type { CompletenessResult, InterviewDraft, WorkflowNode } from '@ax-studio/core';
 import type { Edge, Node } from '@xyflow/react';
 import {
   displayForTrigger,
@@ -139,7 +138,7 @@ function emitWorkflowNode(ctx: BuildContext, node: WorkflowNode): string {
     return emitSystemGmailRead(ctx);
   }
 
-  const display = displayForWorkflowNode(node, ctx.completeness?.slots);
+  const display = displayForWorkflowNode(ctx.draft, node, ctx.completeness?.slots);
   const flowId = `step:${node.id}`;
   addNode(ctx, flowId, {
     kind: display.kind,

@@ -1,11 +1,9 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { ipcMain } from 'electron';
+import { printHtmlToPdf } from '../document-print.js';
 
 export function registerUtilityHandlers() {
-  ipcMain.handle('ax:printPdf', async (_e, html: string) => {
-    const win = new BrowserWindow({ show: false });
-    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-    const pdf = await win.webContents.printToPDF({});
-    win.destroy();
-    return pdf;
+  ipcMain.handle('ax:printPdf', async (_e, html: unknown) => {
+    if (typeof html !== 'string') throw new Error('PDF로 변환할 HTML 형식이 올바르지 않습니다.');
+    return printHtmlToPdf(html);
   });
 }

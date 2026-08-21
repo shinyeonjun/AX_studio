@@ -128,6 +128,10 @@ def _looks_like_garbage_ocr(text: str) -> bool:
         return False
     if _GARBAGE_OCR_RE.search(stripped):
         return True
+    # Latin-only native text is valid text, not failed Korean OCR. The ratio
+    # check is only meaningful when the page actually contains Hangul.
+    if not re.search(r"[가-힣]", stripped):
+        return False
     hangul = len(re.findall(r"[가-힣]", stripped))
     return hangul < max(3, len(stripped) // 8) and len(stripped) > 20
 

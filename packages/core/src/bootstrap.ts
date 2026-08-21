@@ -10,13 +10,26 @@ import {
   normalizeAiProviderConfig,
   type AiProviderConfig,
 } from './agent/settings/config.js';
+import type { DesktopPrintBridge } from './document-write/desktop-print.js';
+import { setDesktopPrintBridge } from './document-write/desktop-print.js';
 import type { ExecutionResult } from './runtime/types.js';
+import {
+  resolveAxDataPaths,
+  setAxDataPaths,
+  type AxDataPaths,
+} from './paths/ax-data.js';
 
 export interface AxStudioCoreOptions {
-  dbPath: string;
+  /** Unified data root — preferred over dbPath alone. */
+  dataRoot?: string;
+  /** Pre-resolved layout; wins over dataRoot. */
+  paths?: AxDataPaths;
+  dbPath?: string;
   cloudApiKey?: string;
   cloudBaseURL?: string;
   cloudModel?: string;
+  /** Electron injects Chromium printToPDF; omit in core-only tests. */
+  desktopPrintBridge?: DesktopPrintBridge | null;
   onExecutionStarted?: (executionId: string) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
 }
@@ -33,7 +46,15 @@ export interface AxStudioCore {
 }
 
 export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<AxStudioCore> {
-  const db = await createDatabaseAsync(options.dbPath);
+  if (options.desktopPrintBridge !== undefined) {
+    setDesktopPrintBridge(options.desktopPrintBridge);
+  }
+
+  const paths = options.paths ?? resolveAxDataPaths({ dataRoot: options.dataRoot });
+  setAxDataPaths(paths);
+  const dbPath = options.dbPath ?? paths.database;
+
+  const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
 
   const aiConfig = normalizeAiProviderConfig(

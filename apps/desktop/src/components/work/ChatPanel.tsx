@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { InterviewState } from '../../hooks/interview-helpers';
+import type { WorkScope } from '@ax-studio/core';
+import { WorkScopeSwitch } from './WorkScopeSwitch';
 
 interface ChatPanelProps {
   interview: InterviewState | null;
@@ -13,6 +15,9 @@ interface ChatPanelProps {
   isDeferredOnce: boolean;
   isRecurringDraft: boolean;
   reviewReady: boolean;
+  workScope: WorkScope;
+  workScopeLocked: boolean;
+  onWorkScopeChange: (value: WorkScope) => void;
   onComposerChange: (value: string) => void;
   onClearEditHint: () => void;
   onStartInterview: () => void;
@@ -42,6 +47,9 @@ export function ChatPanel({
   isDeferredOnce,
   isRecurringDraft,
   reviewReady,
+  workScope,
+  workScopeLocked,
+  onWorkScopeChange,
   onComposerChange,
   onClearEditHint,
   onStartInterview,
@@ -141,6 +149,18 @@ export function ChatPanel({
       </div>
 
       <div className="chat-composer-wrap">
+        {!inConversation && (
+          <div className="chat-composer-toolbar">
+            <WorkScopeSwitch
+              value={workScope}
+              disabled={workScopeLocked}
+              onChange={onWorkScopeChange}
+            />
+            <span className="chat-composer-scope-hint">
+              {workScope === 'once' ? '지금 한 번 실행' : '이벤트·반복으로 자동 실행'}
+            </span>
+          </div>
+        )}
         {editHint && (
           <div className="chat-edit-hint">
             <span>{editHint}</span>

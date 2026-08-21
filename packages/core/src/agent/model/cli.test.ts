@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { InvestigationOutputSchema } from '../../runtime/investigation-schema.js';
+import { InterviewWireEnvelopeSchema } from '../../interview/agent/wire-schema.js';
 import { parseCodexModelsOutput } from '../settings/catalog.js';
 import { codexExecArgs } from './cli/adapters/codex-cli.js';
 import { cliFailureMessage } from './cli/output.js';
@@ -81,9 +82,26 @@ describe('cli json', () => {
 
   it('converts investigation schema for codex output-schema', () => {
     const json = zodToCodexJsonSchema(InvestigationOutputSchema);
-    const properties = json.properties as Record<string, unknown>;
-    expect(properties.nextReadParams).toBeUndefined();
+    const properties = json.properties as Record<string, Record<string, unknown>>;
     expect(json.required).toEqual(Object.keys(properties));
+    expect(properties.needMore).toEqual({ type: 'boolean' });
+    const params = properties.nextReadParams;
+    if (params) {
+      expect(params.type).toBe('string');
+    }
+  });
+
+  it('converts interview wire envelope for codex output-schema', () => {
+    const json = zodToCodexJsonSchema(InterviewWireEnvelopeSchema);
+    expect(json.type).toBe('object');
+    expect(json.oneOf).toBeUndefined();
+    expect(json.required).toEqual(Object.keys(json.properties as object));
+    const properties = json.properties as Record<string, Record<string, unknown>>;
+    expect(properties.kind.type).toBe('string');
+    expect(properties.payload.type).toBe('string');
+    expect(properties.toolCalls.type).toBe('string');
+    expect(properties.nextQuestion.type).toBe('string');
+    expect(JSON.stringify(json)).not.toContain('"oneOf"');
   });
 
   it('converts discriminated union schema for CLI json-schema', () => {
@@ -116,15 +134,27 @@ describe('codex cli adapter', () => {
     expect(args.at(-1)).toBe('hello');
   });
 
-  it('extracts codex ERROR json from stderr', () => {
+  it('extracts quoted message from truncated codex ERROR json', () => {
     const message = cliFailureMessage(
       {
         exitCode: 1,
         stdout: '',
-        stderr: 'ERROR: {"error":{"message":"Unsupported value: max"}}',
+        stderr: 'ERROR: {\n  "error": { "message": "schema is not valid" }',
       },
       'fallback',
     );
-    expect(message).toBe('Unsupported value: max');
+    expect(message).toBe('schema is not valid');
+  });
+
+  it('does not surface a lone brace as the CLI error', () => {
+    const message = cliFailureMessage(
+      {
+        exitCode: 1,
+        stdout: '',
+        stderr: 'ERROR: {',
+      },
+      'Codex CLI 호출에 실패했습니다.',
+    );
+    expect(message).toBe('Codex CLI 호출에 실패했습니다.');
   });
 });

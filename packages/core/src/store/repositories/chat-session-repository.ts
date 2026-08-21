@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
-import type { InterviewState } from '../../interview/interview-state.js';
+import { parseInterviewState, type InterviewState } from '../../interview/session/state.js';
 
 export interface StoredChatSession {
   sessionId: string;
@@ -28,13 +28,39 @@ function rowToSession(row: {
   state_json: string;
   updated_at: string;
 }): StoredChatSession {
-  const payload = JSON.parse(row.state_json) as PersistedPayload;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(row.state_json);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(`대화 세션 ${row.id}의 JSON이 손상되었습니다: ${detail}`), {
+      code: 'invalid_chat_session_json',
+      sessionId: row.id,
+    });
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !('state' in raw)) {
+    throw Object.assign(new Error(`대화 세션 ${row.id}의 상태 형식이 올바르지 않습니다.`), {
+      code: 'invalid_chat_session_json',
+      sessionId: row.id,
+    });
+  }
+  const payload = raw as PersistedPayload;
+  let state: InterviewState;
+  try {
+    state = parseInterviewState(payload.state);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(`대화 세션 ${row.id}의 상태가 손상되었습니다: ${detail}`), {
+      code: 'invalid_chat_session_state',
+      sessionId: row.id,
+    });
+  }
   return {
     sessionId: row.id,
     workflowId: row.workflow_id ?? undefined,
     title: row.title,
     summary: row.summary ?? payload.summary,
-    state: payload.state,
+    state,
     updatedAt: row.updated_at,
   };
 }
@@ -45,7 +71,11 @@ export function saveChatSession(
 ): StoredChatSession {
   const now = new Date().toISOString();
   const sessionId = params.state.sessionId || randomUUID();
-  const state = { ...params.state, sessionId, workflowId: params.workflowId ?? params.state.workflowId };
+  const state = parseInterviewState({
+    ...params.state,
+    sessionId,
+    workflowId: params.workflowId ?? params.state.workflowId,
+  });
   const title = sessionTitle(state);
   const payload: PersistedPayload = { state, summary: params.summary };
   const existing = db.prepare('SELECT id FROM chat_sessions WHERE id = ?').get(sessionId) as { id: string } | undefined;

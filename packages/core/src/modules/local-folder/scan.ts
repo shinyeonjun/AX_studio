@@ -14,6 +14,10 @@ export interface ScannedFile {
 
 export const MAX_FILES_PER_SCAN = 5_000;
 
+export type ScanFolderResult =
+  | { ok: true; files: ScannedFile[] }
+  | { ok: false; error: string; errorCode: string };
+
 function normalizeExtensions(extensions?: string[]): Set<string> | null {
   if (!extensions?.length) return null;
   return new Set(
@@ -79,8 +83,19 @@ export function scanFolder(rootPath: string, extensions?: string[]): ScannedFile
 
   const allowed = normalizeExtensions(extensions);
   const files: ScannedFile[] = [];
-  walkDirectory(root.rootReal, root.path, allowed, files);
+  walkDirectory(root.rootReal, root.rootReal, allowed, files);
   return files;
+}
+
+/** Runtime callers need to distinguish an empty folder from an inaccessible folder. */
+export function scanFolderChecked(rootPath: string, extensions?: string[]): ScanFolderResult {
+  const root = resolveFolderRoot(rootPath);
+  if (!root.ok) return root;
+
+  const allowed = normalizeExtensions(extensions);
+  const files: ScannedFile[] = [];
+  walkDirectory(root.rootReal, root.rootReal, allowed, files);
+  return { ok: true, files };
 }
 
 export function trimSeenFileKeys(keys: string[], max = MAX_FILES_PER_SCAN): string[] {

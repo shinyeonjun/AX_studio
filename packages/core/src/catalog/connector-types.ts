@@ -18,6 +18,8 @@ export interface ConnectorCatalogEntry {
   description: string;
   connectable: boolean;
   alwaysReal: boolean;
+  /** Whether the current runtime has a non-mock implementation for this connector. */
+  runtimeAvailable: boolean;
   connectionKind: ConnectorConnectionKind;
   emoji: string;
 }

@@ -9,8 +9,9 @@ import type {
 
 export interface AxApi {
   getState: () => Promise<unknown>;
-  startInterview: (instruction: string) => Promise<unknown>;
+  startInterview: (instruction: string, workScope?: 'once' | 'recurring') => Promise<unknown>;
   applyAnswer: (state: unknown, answer: string) => Promise<unknown>;
+  applyInterviewPatch: (state: unknown, patch: { set: Record<string, unknown> }) => Promise<unknown>;
   saveWorkflow: (ir: unknown) => Promise<unknown>;
   runWorkflow: (workflowId: string) => Promise<unknown>;
   runEphemeral: (ir: unknown) => Promise<unknown>;
@@ -44,7 +45,6 @@ export interface AxApi {
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string }>;
   saveChatSession: (state: unknown, summary?: string, workflowId?: string) => Promise<{ ok: boolean }>;
   printPdf: (html: string) => Promise<unknown>;
-  onAgentProgress: (listener: (event: { message: string }) => void) => () => void;
   onStateChanged: (listener: () => void) => () => void;
 }
 

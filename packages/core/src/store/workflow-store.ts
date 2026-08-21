@@ -22,14 +22,14 @@ export class WorkflowStore {
   }
 
   setWorkflowActive(workflowId: string, active: boolean) {
-    workflowRepo.setWorkflowActive(this.db, workflowId, active);
+    return workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
 
   deleteWorkflow(workflowId: string) {
     return workflowRepo.deleteWorkflow(this.db, workflowId);
   }
 
-  saveChatSession(params: { state: import('../interview/interview-state.js').InterviewState; summary?: string; workflowId?: string }) {
+  saveChatSession(params: { state: import('../interview/session/state.js').InterviewState; summary?: string; workflowId?: string }) {
     return chatSessionRepo.saveChatSession(this.db, params);
   }
 
@@ -85,6 +85,18 @@ export class WorkflowStore {
 
   resolveApproval(id: string, approved: boolean) {
     approvalRepo.resolveApproval(this.db, id, approved);
+  }
+
+  rejectPendingApproval(id: string) {
+    return approvalRepo.rejectPendingApproval(this.db, id);
+  }
+
+  failApproval(id: string) {
+    return approvalRepo.failApproval(this.db, id);
+  }
+
+  claimApproval(id: string) {
+    return approvalRepo.claimApproval(this.db, id);
   }
 
   updateApprovalPayload(id: string, extra: Record<string, unknown>) {

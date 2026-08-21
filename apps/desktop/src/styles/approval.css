@@ -1,4 +1,14 @@
 /* Approval */
+.approval-error {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--red);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 14px;
+}
+
 .approval-card {
   background: var(--bg-card);
   border: 1px solid var(--border);

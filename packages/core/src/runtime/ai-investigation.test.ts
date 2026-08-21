@@ -6,11 +6,11 @@ import type { WorkflowIR } from '../workflow/schema.js';
 import { resolveStepParams, runAiDecision } from './ai-investigation.js';
 
 describe('resolveStepParams', () => {
-  it('interpolates trigger and step result templates and maps message to text', () => {
+  it('interpolates only explicitly declared parameter values', () => {
     const params = resolveStepParams(
       {
         channel: '#ax테스트',
-        message: '📧 {{trigger.subject}}\n\n{{summarize.summary}}',
+        text: '📧 {{trigger.subject}}\n\n{{summarize.summary}}',
       },
       {
         executionId: 'exec-1',
@@ -24,6 +24,43 @@ describe('resolveStepParams', () => {
 
     expect(params.text).toBe('📧 테스트\n\n요약 본문');
     expect(params.channel).toBe('#ax테스트');
+    expect(params).not.toHaveProperty('message');
+  });
+
+  it('resolves nested ref objects and first matching item in list results', () => {
+    const params = resolveStepParams(
+      {
+        messageId: { ref: 'search-mails.messageId' },
+        text: { ref: 'summarize-mails.summary' },
+      },
+      { executionId: 'exec-1', variables: {}, log: () => {} },
+      {
+        'search-mails': [{ id: 'message-1', threadId: 'thread-1' }],
+        'summarize-mails': { summary: '요약 결과' },
+      },
+    );
+
+    expect(params).toEqual({ messageId: 'message-1', text: '요약 결과' });
+  });
+
+  it('fails closed when a template reference is missing', () => {
+    expect(() =>
+      resolveStepParams(
+        { text: '{{classify.summary}}' },
+        { executionId: 'exec-1', variables: {}, log: () => {} },
+        { classify: { riskLevel: 'high' } },
+      ),
+    ).toThrow(/classify\.summary/);
+  });
+
+  it('fails closed when an object binding reference is missing', () => {
+    expect(() =>
+      resolveStepParams(
+        { payload: { ref: 'classify.riskLevel' } },
+        { executionId: 'exec-1', variables: {}, log: () => {} },
+        { classify: {} },
+      ),
+    ).toThrow(/classify\.riskLevel/);
   });
 });
 
@@ -80,6 +117,7 @@ describe('runAiDecision', () => {
       {},
     );
     expect(model.calls).toBe(1);
-    expect(results.summarize).toMatchObject({ conclusion: '요약 완료', summary: '요약 완료' });
+    expect(results.summarize).toMatchObject({ conclusion: '요약 완료' });
+    expect(results.summarize).not.toHaveProperty('summary');
   });
 });

@@ -33,7 +33,9 @@ export const KO = {
     action: { label: '실행 액션', question: '실행할 작업을 설명해주세요.' },
     approval: { label: '승인', question: '누구의 승인이 필요한가요? 어떤 조건에서 승인할까요?' },
     completion: { label: '완료 조건', question: '업무가 완료되었다고 볼 조건은 무엇인가요?' },
+    'ai_decision.goal': { label: 'AI 판단 목적', question: '이 AI 단계는 무엇을 판단하거나 분류할까요?' },
     'ai_decision.schema': { label: 'AI 출력 스키마', question: 'AI가 어떤 형태로 결과를 내야 할까요?' },
+    'human_approval.reason': { label: '승인 사유', question: '사람에게 어떤 작업을 승인받을까요?' },
   },
   chatSummary: {
     triggerManual: '지금 한 번 (저장하지 않음)',

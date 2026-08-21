@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCondition, migrateLegacyCondition, normalizeCondition } from './condition-expr.js';
+import { coerceConditionInput, evaluateCondition, migrateLegacyCondition, normalizeCondition } from './condition-expr.js';
 
 describe('evaluateCondition', () => {
   it('evaluates declarative comparisons on step results', () => {
@@ -51,6 +51,35 @@ describe('evaluateCondition', () => {
       op: 'contains',
       left: { ref: 'sender' },
       right: { lit: 'plosind@naver.com' },
+    });
+  });
+
+  it('coerces and/or with left-right into args', () => {
+    expect(
+      normalizeCondition({
+        op: 'and',
+        left: { op: 'contains', left: { ref: 'from' }, right: { lit: 'naver.com' } },
+        right: { op: 'contains', left: { ref: 'subject' }, right: { lit: '안내' } },
+      }),
+    ).toEqual({
+      op: 'and',
+      args: [
+        { op: 'contains', left: { ref: 'from' }, right: { lit: 'naver.com' } },
+        { op: 'contains', left: { ref: 'subject' }, right: { lit: '안내' } },
+      ],
+    });
+  });
+
+  it('coerces string-encoded trigger filters from interview output', () => {
+    const coerced = coerceConditionInput(
+      '{"op":"and","left":{"op":"eq","left":{"ref":"from"},"right":{"lit":"plosind@naver.com"}},"right":{"op":"contains","left":{"ref":"subject"},"right":{"lit":"네이버"}}}',
+    );
+    expect(normalizeCondition(coerced)).toEqual({
+      op: 'and',
+      args: [
+        { op: 'eq', left: { ref: 'from' }, right: { lit: 'plosind@naver.com' } },
+        { op: 'contains', left: { ref: 'subject' }, right: { lit: '네이버' } },
+      ],
     });
   });
 });

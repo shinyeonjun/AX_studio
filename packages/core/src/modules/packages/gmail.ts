@@ -1,5 +1,4 @@
 import type { ModulePackage } from '../module-package.js';
-import { MockGmailConnector } from '../mocks/index.js';
 import {
   GmailConnector,
   type GmailConnectorConfig,
@@ -40,7 +39,6 @@ export const gmailModulePackage: ModulePackage = {
   catalog: GMAIL_CATALOG,
   capabilities: GMAIL_CAPABILITIES,
   registration: {
-    createMock: () => new MockGmailConnector(),
     instantiate: (config) => {
       if (!config) return null;
       if (parseGmailConnectionConfig(config)) return null;

@@ -7,7 +7,6 @@ export const transformModulePackage: ModulePackage = {
   catalog: TRANSFORM_CATALOG,
   capabilities: TRANSFORM_CAPABILITIES,
   registration: {
-    createMock: () => new TransformConnector(),
     instantiate: () => new TransformConnector(),
   },
 };

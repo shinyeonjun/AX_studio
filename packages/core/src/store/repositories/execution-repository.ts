@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
 import type { ExecutionRow } from '../rows.js';
-import { hasPendingApprovalForExecution } from './approval-repository.js';
+import { hasOpenApprovalForExecution } from './approval-repository.js';
 
 export function createExecution(
   db: AppDatabase,
@@ -76,38 +76,53 @@ export function listExecutions(db: AppDatabase, limit = 50) {
 export function deleteExecution(db: AppDatabase, id: string): boolean {
   const existing = db.prepare('SELECT id FROM executions WHERE id = ?').get(id);
   if (!existing) return false;
-  if (hasPendingApprovalForExecution(db, id)) {
+  if (hasOpenApprovalForExecution(db, id)) {
     throw new Error('승인 대기 중인 실행은 삭제할 수 없습니다.');
   }
-  db.prepare('DELETE FROM approvals WHERE execution_id = ?').run(id);
-  db.prepare('DELETE FROM executions WHERE id = ?').run(id);
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM approvals WHERE execution_id = ?').run(id);
+    db.prepare('DELETE FROM executions WHERE id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
   return true;
 }
 
 export function clearExecutions(db: AppDatabase): number {
   const pendingExecutionIds = (
-    db.prepare('SELECT execution_id FROM approvals WHERE status = ?').all('pending') as Array<{
+    db.prepare("SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing')").all() as Array<{
       execution_id: string;
     }>
   ).map((row) => row.execution_id);
 
-  if (pendingExecutionIds.length === 0) {
-    const countRow = db.prepare('SELECT COUNT(*) AS count FROM executions').get() as { count: number };
-    db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions)').run();
-    db.prepare('DELETE FROM executions').run();
+  db.exec('BEGIN');
+  try {
+    if (pendingExecutionIds.length === 0) {
+      const countRow = db.prepare('SELECT COUNT(*) AS count FROM executions').get() as { count: number };
+      db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions)').run();
+      db.prepare('DELETE FROM executions').run();
+      db.exec('COMMIT');
+      return countRow.count;
+    }
+
+    const placeholders = pendingExecutionIds.map(() => '?').join(', ');
+    const countRow = db
+      .prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`)
+      .get(...pendingExecutionIds) as { count: number };
+
+    db
+      .prepare(
+        `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE id NOT IN (${placeholders}))`,
+      )
+      .run(...pendingExecutionIds);
+    db.prepare(`DELETE FROM executions WHERE id NOT IN (${placeholders})`).run(...pendingExecutionIds);
+    db.exec('COMMIT');
     return countRow.count;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
   }
-
-  const placeholders = pendingExecutionIds.map(() => '?').join(', ');
-  const countRow = db
-    .prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`)
-    .get(...pendingExecutionIds) as { count: number };
-
-  db
-    .prepare(
-      `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE id NOT IN (${placeholders}))`,
-    )
-    .run(...pendingExecutionIds);
-  db.prepare(`DELETE FROM executions WHERE id NOT IN (${placeholders})`).run(...pendingExecutionIds);
-  return countRow.count;
 }

@@ -1,5 +1,8 @@
+import { builtInGoogleOAuthClientId } from './oauth-build.js';
+
 export function getGoogleOAuthClientId(): string | undefined {
-  return process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() || undefined;
+  const fromEnv = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+  return builtInGoogleOAuthClientId() ?? (fromEnv || undefined);
 }
 
 export function isGoogleOAuthConfigured(): boolean {
@@ -10,7 +13,7 @@ export function getGoogleOAuthCredentials(): { clientId: string; clientSecret?: 
   const clientId = getGoogleOAuthClientId();
   if (!clientId) {
     throw new Error(
-      'Gmail OAuth가 앱에 설정되지 않았습니다. 개발 빌드에서는 .env에 GOOGLE_OAUTH_CLIENT_ID를 추가하세요.',
+      'Gmail OAuth가 설정되지 않았습니다. 개발 빌드에서는 .env에 GOOGLE_OAUTH_CLIENT_ID를 추가하세요.',
     );
   }
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();

@@ -152,11 +152,108 @@ export function migrateLegacyCondition(condition: string): ConditionExpr | null 
   return null;
 }
 
-export function normalizeCondition(input: unknown): ConditionExpr {
-  const parsed = ConditionExprSchema.safeParse(input);
-  if (parsed.success) return parsed.data;
+function isComparisonOp(op: string): op is 'eq' | 'neq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte' {
+  return op === 'eq' || op === 'neq' || op === 'contains' || op === 'gt' || op === 'gte' || op === 'lt' || op === 'lte';
+}
+
+function coerceConditionValue(value: unknown): ConditionValue | undefined {
+  if (value == null) return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? { ref: trimmed } : undefined;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return { lit: value };
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.ref === 'string' && record.ref.trim()) {
+    return { ref: record.ref.trim() };
+  }
+  if ('lit' in record) {
+    const lit = record.lit;
+    if (typeof lit === 'string' || typeof lit === 'number' || typeof lit === 'boolean') {
+      return { lit };
+    }
+  }
+  if (typeof record.field === 'string' && record.field.trim()) {
+    return { ref: record.field.trim() };
+  }
+  if (
+    record.value !== undefined &&
+    (typeof record.value === 'string' || typeof record.value === 'number' || typeof record.value === 'boolean')
+  ) {
+    return { lit: record.value };
+  }
+  return undefined;
+}
+
+/** Fix common LLM shapes before strict condition parsing. */
+export function coerceConditionInput(input: unknown): unknown {
+  if (input == null) return input;
   if (typeof input === 'string') {
-    const migrated = migrateLegacyCondition(input);
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
+    const migrated = migrateLegacyCondition(trimmed);
+    if (migrated) return migrated;
+    try {
+      return coerceConditionInput(JSON.parse(trimmed));
+    } catch {
+      return input;
+    }
+  }
+  if (typeof input !== 'object' || Array.isArray(input)) return input;
+
+  const record = input as Record<string, unknown>;
+  const op = typeof record.op === 'string' ? record.op.trim().toLowerCase() : '';
+
+  if (isComparisonOp(op)) {
+    const left = coerceConditionValue(record.left);
+    const right = coerceConditionValue(record.right);
+    if (left && right) return { op, left, right };
+    return input;
+  }
+
+  if (op === 'and' || op === 'or') {
+    if (Array.isArray(record.args) && record.args.length > 0) {
+      return { op, args: record.args.map(coerceConditionInput) };
+    }
+    const args: unknown[] = [];
+    for (const key of ['left', 'right', 'condition', 'arg'] as const) {
+      const value = record[key];
+      if (value != null) args.push(coerceConditionInput(value));
+    }
+    if (Array.isArray(record.conditions)) {
+      args.push(...record.conditions.map(coerceConditionInput));
+    }
+    if (args.length > 0) return { op, args };
+    return input;
+  }
+
+  if (op === 'not') {
+    const arg = record.arg ?? record.left ?? record.condition;
+    if (arg != null) return { op: 'not', arg: coerceConditionInput(arg) };
+    return input;
+  }
+
+  return input;
+}
+
+export function tryNormalizeCondition(input: unknown): ConditionExpr | undefined {
+  try {
+    return normalizeCondition(input);
+  } catch {
+    return undefined;
+  }
+}
+
+export function normalizeCondition(input: unknown): ConditionExpr {
+  const coerced = coerceConditionInput(input);
+  const parsed = ConditionExprSchema.safeParse(coerced);
+  if (parsed.success) return parsed.data;
+  if (typeof coerced === 'string') {
+    const migrated = migrateLegacyCondition(coerced);
     if (migrated) return migrated;
   }
   throw new Error('Invalid condition expression');
@@ -174,5 +271,16 @@ export function formatCondition(expr: ConditionExpr): string {
       const right = 'lit' in expr.right ? JSON.stringify(expr.right.lit) : expr.right.ref;
       return `${left} ${expr.op} ${right}`;
     }
+  }
+}
+
+/** Normalize legacy/LLM shapes before display; never throws. */
+export function safeFormatCondition(input: unknown, fallback = '?'): string {
+  const normalized = tryNormalizeCondition(input);
+  if (!normalized) return fallback;
+  try {
+    return formatCondition(normalized);
+  } catch {
+    return fallback;
   }
 }

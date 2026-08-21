@@ -1,4 +1,7 @@
 import type { WorkSummary } from '../types/app-state';
+import { isRecurringTriggerType } from '@ax-studio/core/work-scope';
+
+export { isRecurringTriggerType };
 
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';
@@ -26,15 +29,6 @@ export function isPersistentWork(trigger?: WorkSummary['trigger']): boolean {
 
 export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
   return isRecurringTriggerType(trigger?.type);
-}
-
-export function isRecurringTriggerType(triggerType?: string | null): boolean {
-  return (
-    triggerType === 'schedule' ||
-    triggerType === 'gmail.new_message' ||
-    triggerType === 'slack.new_message' ||
-    triggerType === 'local_folder.new_file'
-  );
 }
 
 export function isEventTriggerType(triggerType?: string | null): boolean {

@@ -8,7 +8,7 @@ export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message';
   async poll(ctx) {
     const gmail = ctx.connectors.gmail;
     if (!gmail) {
-      return { events: [], cursor: ctx.cursor };
+      throw new Error('gmail_connector_missing');
     }
 
     const result = await gmail.execute(

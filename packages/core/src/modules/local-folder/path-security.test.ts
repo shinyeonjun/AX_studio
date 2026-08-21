@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { isPathContainedInRoot, resolveFileWithinFolderRoot } from './path-security.js';
-import { scanFolder, trimSeenFileKeys, MAX_FILES_PER_SCAN } from './scan.js';
+import { scanFolder, scanFolderChecked, trimSeenFileKeys, MAX_FILES_PER_SCAN } from './scan.js';
 
 describe('local folder path security', () => {
   it('rejects paths outside the connected folder root', () => {
@@ -44,6 +44,15 @@ describe('local folder path security', () => {
     const files = scanFolder(root);
     expect(files.some((file) => file.fileName === 'outside.txt')).toBe(false);
     expect(isPathContainedInRoot(root, outside)).toBe(false);
+  });
+
+  it('reports an inaccessible root instead of treating it as an empty folder', () => {
+    const result = scanFolderChecked(join(tmpdir(), 'ax-folder-does-not-exist'));
+    expect(result).toEqual({
+      ok: false,
+      error: 'folder_not_accessible',
+      errorCode: 'folder_not_accessible',
+    });
   });
 });
 

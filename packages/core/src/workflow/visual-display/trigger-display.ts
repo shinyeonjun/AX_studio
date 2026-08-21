@@ -1,7 +1,8 @@
 import { getCapability } from '../../catalog/capabilities.js';
 import { getConnectorLabel } from '../../catalog/connectors.js';
-import type { CompletenessResult } from '../../interview/requiredness.js';
-import type { InterviewDraft } from '../../interview/workflow-schema.js';
+import { safeFormatCondition } from '../../runtime/condition-expr.js';
+import type { CompletenessResult } from '../../interview/slots/requiredness.js';
+import type { InterviewDraft } from '../../interview/draft/schema.js';
 import { primaryParamValue, summaryFromGoalOrCapability, truncate, triggerLines } from './helpers.js';
 import type { TriggerDisplay, TriggerDisplayResult } from './types.js';
 
@@ -14,6 +15,7 @@ function triggerParamValues(draft: InterviewDraft): Record<string, string | unde
     case 'local_folder.new_file':
       return {
         folderId: draft.localFolderId?.trim(),
+        folderPath: draft.localFolderPath?.trim(),
         extensions: draft.localFolderExtensions?.trim(),
       };
     case 'schedule':
@@ -78,6 +80,21 @@ function triggerLabel(draft: InterviewDraft, slots?: CompletenessResult['slots']
     };
   }
 
+  if (!draft.triggerType) {
+    return {
+      label: '시작 조건 필요',
+      lines: [{ text: '시작 조건을 선택하세요', complete: false }],
+      tooltip: '시작 조건 미설정',
+      iconConnector: undefined,
+      card: {
+        header: 'Trigger',
+        brand: '미설정',
+        brandStyle: 'bracket',
+        summary: '시작 조건 필요',
+      },
+    };
+  }
+
   const cap = getCapability(draft.triggerType);
   if (!cap) {
     return {
@@ -94,6 +111,9 @@ function triggerLabel(draft: InterviewDraft, slots?: CompletenessResult['slots']
   }
 
   const lines = triggerLines(cap, values, slots);
+  if (draft.triggerFilter) {
+    lines.push({ text: `조건: ${safeFormatCondition(draft.triggerFilter)}`, complete: true });
+  }
   const primary = primaryParamValue(cap, values);
   const summary = primary ? truncate(primary, 24) : truncate(cap.label, 24);
   const detail = lines.map((line) => line.text).join(' · ');

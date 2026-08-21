@@ -1,6 +1,10 @@
-import { getCore } from '../core-instance.js';
+import { CONNECTOR_CATALOG, CONNECTOR_IDS } from '@ax-studio/core';
 
-const BUILTIN_CONNECTORS = ['document', 'local_sheet'];
+/** Connectors that need no user connection and have a real runtime implementation. */
+const BUILTIN_CONNECTORS = CONNECTOR_IDS.filter((id) => {
+  const entry = CONNECTOR_CATALOG[id];
+  return entry.runtimeAvailable && entry.alwaysReal && entry.connectionKind === 'builtin';
+});
 
 export function connectedConnectorIds(store: {
   getConnections: () => Array<{ connector: string; connected: boolean }>;
@@ -8,5 +12,3 @@ export function connectedConnectorIds(store: {
   const connected = store.getConnections().filter((c) => c.connected).map((c) => c.connector);
   return [...new Set([...connected, ...BUILTIN_CONNECTORS])];
 }
-
-export { BUILTIN_CONNECTORS };

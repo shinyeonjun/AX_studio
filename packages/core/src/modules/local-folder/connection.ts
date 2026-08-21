@@ -1,3 +1,5 @@
+import { normalize } from 'node:path';
+
 export interface LocalFolderEntry {
   id: string;
   label: string;
@@ -13,6 +15,25 @@ export interface LocalFolderConnectionStatus {
   connected: boolean;
   folders: LocalFolderEntry[];
   folderCount: number;
+}
+
+export function findLocalFolder(
+  config: LocalFolderConnectionConfig | null,
+  folderId?: string,
+  folderPath?: string,
+): LocalFolderEntry | undefined {
+  if (!config) return undefined;
+  if (folderId) {
+    const byId = config.folders.find((folder) => folder.id === folderId);
+    if (byId) return byId;
+  }
+  if (folderPath) {
+    const expected = normalize(folderPath).toLowerCase();
+    const byPath = config.folders.find((folder) => normalize(folder.path).toLowerCase() === expected);
+    if (byPath) return byPath;
+  }
+  if (folderId || folderPath) return undefined;
+  return config.folders.length === 1 ? config.folders[0] : undefined;
 }
 
 export function parseLocalFolderConnectionConfig(config: unknown): LocalFolderConnectionConfig | null {

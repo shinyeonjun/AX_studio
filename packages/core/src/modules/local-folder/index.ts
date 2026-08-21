@@ -8,4 +8,4 @@ export {
   type LocalFolderEntry,
 } from './connection.js';
 export { LocalFolderConnector } from './connector.js';
-export { scanFolder, type ScannedFile } from './scan.js';
+export { scanFolder, scanFolderChecked, type ScannedFile, type ScanFolderResult } from './scan.js';

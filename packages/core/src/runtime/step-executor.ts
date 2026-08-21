@@ -6,12 +6,7 @@ import type { AgentHarness } from '../agent/harness.js';
 import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../workflow/bindings.js';
-
-function hasHumanApprovalForAction(ir: WorkflowIR, actionId: string): boolean {
-  return ir.steps.some(
-    (step) => step.type === 'human_approval' && step.forActionIds.includes(actionId),
-  );
-}
+import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
 
 export async function executeStep(
   step: Step,
@@ -22,17 +17,24 @@ export async function executeStep(
   connectors: Record<string, Connector>,
   agentHarness: AgentHarness | undefined,
   runSteps: (stepIds: string[]) => Promise<void>,
+  approvedActionIds: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   switch (step.type) {
     case 'action':
+      {
+      const actionRef = step.actionRef ?? actionRefFor(step.connector, step.action);
+      const actionDefinition = resolveActionDefinition(actionRef);
+      if (!actionDefinition) {
+        throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
+      }
       if (
-        requiresApproval(step.sideEffect, ir.allowExternalAuto) &&
-        !hasHumanApprovalForAction(ir, step.id)
+        requiresApproval(actionDefinition.sideEffect ?? step.sideEffect, ir.allowExternalAuto) &&
+        !approvedActionIds.has(step.id)
       ) {
         const approvalId = store.createApproval({
           executionId: ctx.executionId,
           actionIds: [step.id],
-          reason: `외부 작업 승인 필요: ${step.connector}.${step.action}`,
+          reason: `외부 작업 승인 필요: ${actionDefinition.id}`,
           payload: step.params,
         });
         const err = new Error('Approval required') as Error & { code?: string; approvalId?: string; pending?: boolean };
@@ -41,13 +43,13 @@ export async function executeStep(
         err.pending = true;
         throw err;
       }
-      const connector = connectors[step.connector];
-      if (!connector) throw Object.assign(new Error(`Connector not found: ${step.connector}`), { code: 'connector_missing' });
+      const connector = connectors[actionDefinition.connector];
+      if (!connector) throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
 
-      let params = resolveStepParams(step.params, ctx, stepResults);
-      params = applyStepBindings(step, ir, params, stepResults, ctx.variables);
+      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables);
+      params = resolveStepParams(params, ctx, stepResults);
 
-      if (step.connector === 'document' && step.action === 'ingest') {
+      if (actionDefinition.id === 'document.ingest') {
         const resolved = resolveDocumentIngestExecution(params, ctx);
         if (!resolved.ok) {
           throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
@@ -55,10 +57,19 @@ export async function executeStep(
         params = resolved.params;
       }
 
-      const result = await connector.execute(step.action, params, ctx);
+      const missingParams = validateActionParams(actionDefinition, params);
+      if (missingParams.length > 0) {
+        throw Object.assign(
+          new Error(`${actionDefinition.id} 필수 파라미터가 비어 있습니다: ${missingParams.join(', ')}`),
+          { code: 'action_params_missing', data: { actionRef: actionDefinition.id, missingParams } },
+        );
+      }
+
+      const result = await connector.execute(actionDefinition.action, params, ctx);
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
       stepResults[step.id] = result.data;
       break;
+      }
 
     case 'ai_decision':
       await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors);
@@ -72,9 +83,12 @@ export async function executeStep(
     }
 
     case 'human_approval':
+      {
+      const pendingActionIds = step.forActionIds.filter((actionId) => !approvedActionIds.has(actionId));
+      if (step.forActionIds.length > 0 && pendingActionIds.length === 0) break;
       const humanApprovalId = store.createApproval({
         executionId: ctx.executionId,
-        actionIds: step.forActionIds,
+        actionIds: pendingActionIds.length > 0 ? pendingActionIds : step.forActionIds,
         reason: step.reason,
         payload: { stepId: step.id, type: 'human_approval' },
       });
@@ -87,5 +101,6 @@ export async function executeStep(
       humanErr.approvalId = humanApprovalId;
       humanErr.pending = true;
       throw humanErr;
+      }
   }
 }

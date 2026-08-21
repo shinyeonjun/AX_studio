@@ -6,6 +6,9 @@ export {
   loadAgentsConstitution,
   parseSkillMarkdown,
   renderSkillTemplate,
+  connectorSkillId,
+  loadConnectorSkill,
+  renderConnectorSkills,
   setAgentSkillsDir,
   type AgentSkillFile,
 } from './skill-load.js';

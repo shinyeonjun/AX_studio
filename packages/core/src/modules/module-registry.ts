@@ -3,7 +3,6 @@ import type { Connector } from './types.js';
 
 export interface ModuleRegistration {
   id: ConnectorId;
-  createMock: () => Connector;
   instantiate?: (config?: Record<string, unknown>) => Connector | null;
 }
 
@@ -19,10 +18,6 @@ export function getRegisteredModule(id: ConnectorId): ModuleRegistration | undef
 
 export function listRegisteredModules(): ModuleRegistration[] {
   return [...modules.values()];
-}
-
-export function createMockConnector(id: ConnectorId): Connector | null {
-  return modules.get(id)?.createMock() ?? null;
 }
 
 export function instantiateRegisteredConnector(

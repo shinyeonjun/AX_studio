@@ -12,6 +12,7 @@ export function codexExecArgs(
   prompt: string,
   extras: string[] = [],
   workDir?: string,
+  reasoningEffort: 'low' | 'medium' | 'high' = 'high',
 ): string[] {
   return [
     'exec',
@@ -23,7 +24,7 @@ export function codexExecArgs(
     '--color',
     'never',
     '-c',
-    'model_reasoning_effort=high',
+    `model_reasoning_effort=${reasoningEffort}`,
     '-m',
     model,
     ...extras,
@@ -60,6 +61,7 @@ export class CodexCliProvider implements ModelProvider {
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const command = requiredBinary('codex-cli');
     const schema = zodToCodexJsonSchema(input.schema);
+    const reasoningEffort = input.codexReasoningEffort ?? 'high';
     const raw = await withTempDir(async (dir) => {
       const schemaPath = join(dir, 'schema.json');
       const outPath = join(dir, 'last.txt');
@@ -71,7 +73,7 @@ export class CodexCliProvider implements ModelProvider {
           schemaPath,
           '-o',
           outPath,
-        ], dir),
+        ], dir, reasoningEffort),
         { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {

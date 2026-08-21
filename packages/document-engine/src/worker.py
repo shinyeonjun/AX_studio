@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from adapters import resolve_adapter
-from artifact_store import artifact_dir, load_manifest, manifest_exists, sha256_file
+from artifact_store import artifact_dir, load_manifest, manifest_exists, sha256_file, write_manifest
+from ax_paths import default_document_root
 from ingest_options import cache_usable, normalize_ocr
 from protocol import EngineRequest, EngineResponse
 
@@ -73,6 +74,9 @@ def _ingest_response_data(
     }
     if cached:
         data["cached"] = True
+    fallback_from = manifest.get("fallbackFrom")
+    if isinstance(fallback_from, str) and fallback_from:
+        data["fallbackFrom"] = fallback_from
     return data
 
 
@@ -89,7 +93,7 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             if not source_path.is_file():
                 return EngineResponse(id=request.id, ok=False, error="file_not_found")
 
-            artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
+            artifact_root = Path(str(request.params.get("artifactRoot") or default_document_root()))
             document_id = sha256_file(source_path)
             options = dict(request.params.get("options") or {})
             engine = str(options.get("engine") or "auto")
@@ -117,13 +121,46 @@ def handle_request(request: EngineRequest) -> EngineResponse:
                 from adapters.basic import BasicAdapter
 
                 result = BasicAdapter().ingest(source_path, artifact_root, options)
+                result.manifest["fallbackFrom"] = adapter.name
+                write_manifest(artifact_root, result.document_id, result.manifest)
             return EngineResponse(
                 id=request.id,
                 ok=True,
                 data=_ingest_response_data(result.document_id, artifact_root, result.manifest),
             )
 
-        artifact_root = Path(str(request.params.get("artifactRoot") or ".ax-studio/documents"))
+        if request.command == "pdf_to_html":
+            from write.pdf_to_html import convert_pdf_to_html
+            from ax_paths import default_template_root
+
+            source = request.params.get("path")
+            if not source:
+                return EngineResponse(id=request.id, ok=False, error="path_required")
+            source_path = Path(str(source))
+            if not source_path.is_file():
+                return EngineResponse(id=request.id, ok=False, error="file_not_found")
+
+            template_root = Path(str(request.params.get("templateRoot") or default_template_root()))
+            options = dict(request.params.get("options") or {})
+            result = convert_pdf_to_html(source_path, template_root, options)
+            return EngineResponse(
+                id=request.id,
+                ok=True,
+                data={
+                    "templateId": result.template_id,
+                    "sourcePath": result.source_path,
+                    "artifactPath": result.artifact_path,
+                    "htmlPath": result.html_path,
+                    "originalPdfPath": result.original_pdf_path,
+                    "metaPath": result.meta_path,
+                    "engine": result.engine,
+                    "pageCount": result.page_count,
+                    "html": result.html,
+                    "cached": result.cached,
+                },
+            )
+
+        artifact_root = Path(str(request.params.get("artifactRoot") or default_document_root()))
         document_id = str(request.params.get("documentId") or "")
         if not document_id:
             return EngineResponse(id=request.id, ok=False, error="document_id_required")
@@ -142,17 +179,25 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             page_index = request.params.get("pageIndex")
             if page_index is None:
                 return EngineResponse(id=request.id, ok=False, error="page_index_required")
+            if isinstance(page_index, bool):
+                return EngineResponse(id=request.id, ok=False, error="page_index_invalid")
+            try:
+                normalized_page_index = int(page_index)
+            except (TypeError, ValueError):
+                return EngineResponse(id=request.id, ok=False, error="page_index_invalid")
+            if normalized_page_index < 0:
+                return EngineResponse(id=request.id, ok=False, error="page_index_invalid")
             manifest = load_manifest(artifact_root, document_id)
-            page = _page_by_index(manifest, int(page_index))
+            page = _page_by_index(manifest, normalized_page_index)
             if page is None:
                 return EngineResponse(id=request.id, ok=False, error="page_not_found")
             page_dir = artifact_dir(artifact_root, document_id) / "pages"
-            text_path = page_dir / f"{int(page_index)}.txt"
+            text_path = page_dir / f"{normalized_page_index}.txt"
             text = text_path.read_text(encoding="utf-8") if text_path.is_file() else None
             chunk_texts = [
                 chunk.get("text", "")
                 for chunk in manifest.get("chunks") or []
-                if chunk.get("pageIndex") == int(page_index)
+                if chunk.get("pageIndex") == normalized_page_index
             ]
             return EngineResponse(
                 id=request.id,
@@ -162,6 +207,8 @@ def handle_request(request: EngineRequest) -> EngineResponse:
 
         if request.command == "search":
             query = str(request.params.get("query") or "").strip().lower()
+            if not query:
+                return EngineResponse(id=request.id, ok=False, error="query_required")
             manifest = load_manifest(artifact_root, document_id)
             hits = []
             query_terms = [term for term in query.split() if term]
@@ -171,7 +218,7 @@ def handle_request(request: EngineRequest) -> EngineResponse:
                 if query_terms and not all(term in lowered for term in query_terms):
                     continue
                 overlap = sum(1 for term in query_terms if term in lowered)
-                score = overlap / len(query_terms) if query_terms else 0.0
+                score = overlap / len(query_terms)
                 hits.append(
                     {
                         "chunkId": chunk.get("id"),
@@ -186,6 +233,8 @@ def handle_request(request: EngineRequest) -> EngineResponse:
         return EngineResponse(id=request.id, ok=False, error=f"unknown_command:{request.command}")
     except FileNotFoundError as error:
         return EngineResponse(id=request.id, ok=False, error=str(error))
+    except ValueError as error:
+        return EngineResponse(id=request.id, ok=False, error=str(error))
     except Exception as error:
         traceback.print_exc(file=sys.stderr)
         return EngineResponse(id=request.id, ok=False, error=str(error))
@@ -199,7 +248,16 @@ def main() -> None:
         _write_json_response(response)
         sys.exit(1)
 
-    payload = json.loads(raw)
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as error:
+        response = EngineResponse(id="", ok=False, error=f"invalid_request_json:{error.msg}")
+        _write_json_response(response)
+        sys.exit(1)
+    if not isinstance(payload, dict):
+        response = EngineResponse(id="", ok=False, error="request_object_required")
+        _write_json_response(response)
+        sys.exit(1)
     request = EngineRequest.from_dict(payload)
     response = handle_request(request)
     _write_json_response(response)

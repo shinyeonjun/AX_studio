@@ -5,6 +5,7 @@ export interface ConnectionRecord {
 }
 
 export const DESIGN_TOOL_IDS = [
+  'tools.list',
   'connections.list',
   'sources.list',
   'sources.files.list',

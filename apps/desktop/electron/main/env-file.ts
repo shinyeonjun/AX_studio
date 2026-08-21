@@ -3,17 +3,18 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 
-/** .env에 둘 수 있는 값 — 개발용 OAuth 등. AI API 키는 OS credential store 전용. */
+/** .env — 개발 전용 (Gmail OAuth client). 릴리즈 빌드에서는 사용하지 않음. */
 export const ENV_FILE_ALLOWED_KEYS = new Set([
   'GOOGLE_OAUTH_CLIENT_ID',
   'GOOGLE_OAUTH_CLIENT_SECRET',
 ]);
 
 export function getEnvFilePath(): string {
-  if (app.isPackaged) {
-    return join(app.getPath('userData'), '.env');
-  }
   return join(app.getAppPath(), '../../.env');
+}
+
+export function isDevEnvFileEnabled(): boolean {
+  return !app.isPackaged;
 }
 
 function parseEnvContent(content: string): Record<string, string> {
@@ -35,7 +36,7 @@ function parseEnvContent(content: string): Record<string, string> {
 
 function serializeEnv(values: Record<string, string>): string {
   const lines = [
-    '# AX Studio — 개발/릴리즈 로컬 설정',
+    '# AX Studio — 개발 전용',
     '# AI API 키는 이 파일에 넣지 마세요. 앱 설정 → OS 자격 증명에 암호화 저장됩니다.',
     '',
   ];
@@ -47,6 +48,7 @@ function serializeEnv(values: Record<string, string>): string {
 }
 
 export async function loadEnvFile(): Promise<Record<string, string>> {
+  if (!isDevEnvFileEnabled()) return {};
   const path = getEnvFilePath();
   if (!existsSync(path)) return {};
   const content = await readFile(path, 'utf8');
@@ -60,6 +62,7 @@ export async function loadEnvFile(): Promise<Record<string, string>> {
 }
 
 export async function readEnvFile(): Promise<Record<string, string>> {
+  if (!isDevEnvFileEnabled()) return {};
   const path = getEnvFilePath();
   if (!existsSync(path)) return {};
   const content = await readFile(path, 'utf8');
@@ -67,6 +70,9 @@ export async function readEnvFile(): Promise<Record<string, string>> {
 }
 
 export async function setEnvFileValue(key: string, value: string): Promise<void> {
+  if (!isDevEnvFileEnabled()) {
+    throw new Error('.env는 개발 빌드에서만 사용할 수 있습니다.');
+  }
   if (!ENV_FILE_ALLOWED_KEYS.has(key)) {
     throw new Error(`${key}는 .env에 저장할 수 없습니다. 앱 설정에서 등록하세요.`);
   }
@@ -79,6 +85,7 @@ export async function setEnvFileValue(key: string, value: string): Promise<void>
 
 /** AI API 키 등 금지된 항목을 .env 파일에서 제거한다. */
 export async function purgeDisallowedEnvFileKeys(): Promise<string[]> {
+  if (!isDevEnvFileEnabled()) return [];
   const path = getEnvFilePath();
   if (!existsSync(path)) return [];
   const current = await readEnvFile();

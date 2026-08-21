@@ -2,7 +2,9 @@ import { CONNECTOR_CATALOG, CONNECTOR_IDS, type ConnectorId } from '../../catalo
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
 
 const BUILTIN_CONNECTORS = new Set<ConnectorId>(
-  CONNECTOR_IDS.filter((id) => CONNECTOR_CATALOG[id].alwaysReal),
+  CONNECTOR_IDS.filter(
+    (id) => CONNECTOR_CATALOG[id].runtimeAvailable && CONNECTOR_CATALOG[id].alwaysReal,
+  ),
 );
 
 export const connectionsList: DesignToolHandler = (ctx) => {

@@ -5,7 +5,6 @@ import {
   GMAIL_OAUTH_SCOPES,
   buildGmailConnectorConfig,
   connectGmailViaLoopback,
-  createDefaultConnectors,
   fetchGmailProfileEmail,
   isLegacyGmailTokenConfig,
   parseGmailConnectionConfig,
@@ -125,6 +124,6 @@ export async function disconnectGmailOAuth(store: WorkflowStore, runtime: Workfl
     await getCredentialStore().delete(record.credentialRef);
   }
   store.setConnection('gmail', false);
-  runtime.connectors.gmail = createDefaultConnectors().gmail;
+  delete runtime.connectors.gmail;
   return { ok: true as const };
 }

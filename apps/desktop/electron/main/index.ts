@@ -1,18 +1,17 @@
 import { app } from 'electron';
-import { join } from 'node:path';
 import { createAxStudioCore } from '@ax-studio/core';
 import { createMainWindow, showMainWindow, setQuiting } from './app-window';
 import { createTray } from './tray';
-import { setCore, getCore } from './core-instance';
+import { setCore, getCoreIfInitialized } from './core-instance';
 import { registerIpcHandlers } from './ipc/handlers';
 import { loadEnvFile, purgeDisallowedEnvFileKeys } from './env-file';
+import { printHtmlToPdf } from './document-print.js';
 import { hydrateGmailConnector } from './gmail/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
 import { notifyStateChanged } from './state-broadcast.js';
-
-const userDataPath = app.getPath('userData');
-app.setPath('cache', join(userDataPath, 'chromium-cache'));
+import { initDesktopAxDataPaths } from './data-paths.js';
+import { migrateAxDataIfNeeded } from './data-migrate.js';
 
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -41,12 +40,18 @@ process.on('unhandledRejection', (reason) => {
 
 app.whenReady().then(async () => {
   try {
+    const paths = initDesktopAxDataPaths();
+    migrateAxDataIfNeeded(paths);
+    app.setPath('cache', paths.cache.chromium);
+
     await loadEnvFile();
     await migrateAiSecretsToOsStore();
     await purgeDisallowedEnvFileKeys();
     const aiToml = await loadAiTomlIntoEnv();
+
     const core = await createAxStudioCore({
-      dbPath: join(app.getPath('userData'), 'ax-studio.db'),
+      paths,
+      desktopPrintBridge: { printHtml: printHtmlToPdf },
       onExecutionStarted: () => notifyStateChanged(),
       onExecutionFinished: () => notifyStateChanged(),
     });
@@ -60,7 +65,7 @@ app.whenReady().then(async () => {
       core.store.setSetting('aiProvider', config);
       core.refreshAgentHarness(config);
     } else {
-      const stored = core.store.getSetting('aiProvider');
+      const stored = core.store.getSetting('aiProvider', undefined);
       const config = migrateDesktopAiProvider(stored);
       if (JSON.stringify(stored) !== JSON.stringify(config)) {
         core.store.setSetting('aiProvider', config);
@@ -81,8 +86,25 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on('before-quit', () => {
+let shutdownStarted = false;
+
+app.on('before-quit', (event) => {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
   setQuiting(true);
-  getCore().scheduler.stop();
-  getCore().triggerEngine.stop();
+  const core = getCoreIfInitialized();
+  if (!core) return;
+  event.preventDefault();
+  core.scheduler.stop();
+  void (async () => {
+    try {
+      await core.triggerEngine.stop();
+      await core.runtime.waitForIdle();
+    } catch (err) {
+      console.error('[AX Studio] 종료 중 정리 실패:', err);
+    } finally {
+      core.db.close?.();
+      app.quit();
+    }
+  })();
 });

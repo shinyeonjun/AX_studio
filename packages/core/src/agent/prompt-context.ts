@@ -1,5 +1,6 @@
 import type { ChatMessage } from './model/chat.js';
-import type { InterviewDraft, WorkflowNode } from '../interview/workflow-schema.js';
+import type { InterviewDraft, WorkflowNode } from '../interview/draft/schema.js';
+import { getNodeParams } from '../interview/draft/actions.js';
 import { formatCondition, type ConditionExpr } from '../runtime/condition-expr.js';
 
 export const INTERVIEW_RECENT_MESSAGE_COUNT = 8;
@@ -13,32 +14,37 @@ function truncate(text: string, max = MESSAGE_SUMMARY_MAX_CHARS): string {
 
 function formatTrigger(workflow: InterviewDraft): string {
   switch (workflow.triggerType) {
+    case undefined:
+      return '미설정';
     case 'manual':
       return 'manual';
     case 'once':
       return `once runAt=${workflow.runAt ?? '?'}`;
     case 'schedule':
-      return `schedule=${workflow.schedule ?? '?'} tz=${workflow.timezone ?? 'Asia/Seoul'}`;
+      return `schedule=${workflow.schedule ?? '?'} tz=${workflow.timezone ?? '?'}`;
     case 'gmail.new_message':
-      return `gmail.new_message account=${workflow.gmailAccount ?? '?'}`;
+      return `gmail.new_message account=${workflow.gmailAccount ?? '?'}${workflow.triggerFilter ? ` filter=${formatCondition(workflow.triggerFilter)}` : ''}`;
     case 'slack.new_message':
-      return `slack.new_message channel=${workflow.slackChannel ?? '?'}`;
+      return `slack.new_message channel=${workflow.slackChannel ?? '?'}${workflow.triggerFilter ? ` filter=${formatCondition(workflow.triggerFilter)}` : ''}`;
     case 'local_folder.new_file':
-      return `local_folder.new_file folderId=${workflow.localFolderId ?? '?'}${workflow.localFolderExtensions ? ` extensions=${workflow.localFolderExtensions}` : ''}`;
+      return `local_folder.new_file folderId=${workflow.localFolderId ?? '?'}${workflow.localFolderPath ? ` folderPath=${workflow.localFolderPath}` : ''}${workflow.localFolderExtensions ? ` extensions=${workflow.localFolderExtensions}` : ''}${workflow.triggerFilter ? ` filter=${formatCondition(workflow.triggerFilter)}` : ''}`;
     default:
       return workflow.triggerType;
   }
 }
 
-function formatNode(node: WorkflowNode): string {
+function formatNode(draft: InterviewDraft, node: WorkflowNode): string {
   if (node.type === 'action') {
-    const params = Object.entries(node.params ?? {})
+    const params = Object.entries(getNodeParams(draft, node))
       .map(([key, value]) => `${key}=${value}`)
       .join(', ');
-    return `- action ${node.id}: ${node.connector}.${node.action}${params ? ` (${params})` : ''}`;
+    const action = node.actionRef ?? `${node.connector ?? '?'}.${node.action ?? '?'}`;
+    return `- action ${node.id}: ${action}${params ? ` (${params})` : ''}`;
   }
   if (node.type === 'ai_decision') {
-    return `- ai_decision ${node.id}: ${node.goal ?? ''}`.trim();
+    const memo = node.memo?.trim();
+    const base = `- ai_decision ${node.id}: ${node.goal ?? ''}`.trim();
+    return memo ? `${base}\n  memo: ${truncate(memo, 120)}` : base;
   }
   if (node.type === 'if') {
     const condition =
@@ -64,7 +70,7 @@ export function formatWorkflowState(workflow: InterviewDraft): string {
     lines.push('nodes: (없음)');
   } else {
     lines.push('nodes:');
-    lines.push(...workflow.nodes.map(formatNode));
+    lines.push(...workflow.nodes.map((node) => formatNode(workflow, node)));
   }
   return lines.join('\n');
 }

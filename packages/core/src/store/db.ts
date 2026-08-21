@@ -1,5 +1,5 @@
 import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
@@ -145,6 +145,7 @@ async function loadSqlJs(): Promise<SqlJsStatic> {
 
 class SqlJsDatabaseAdapter implements AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
+  private transactionDepth = 0;
 
   constructor(
     private db: SqlJsRawDatabase,
@@ -152,7 +153,17 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   ) {}
 
   exec(sql: string): void {
+    const command = sql.trim().split(/\s+/, 1)[0]?.toUpperCase();
     this.db.run(sql);
+    if (command === 'BEGIN') {
+      this.transactionDepth += 1;
+      return;
+    }
+    if (command === 'COMMIT' || command === 'END' || command === 'ROLLBACK') {
+      this.transactionDepth = Math.max(0, this.transactionDepth - 1);
+      if (this.transactionDepth === 0) this.persist();
+      return;
+    }
     this.persist();
   }
 
@@ -186,15 +197,19 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 
   private flushPersist(): void {
     if (!this.filePath || this.filePath === ':memory:') return;
+    if (this.transactionDepth > 0) return;
     if (this.persistTimer) {
       clearTimeout(this.persistTimer);
       this.persistTimer = undefined;
     }
-    writeFileSync(this.filePath, Buffer.from(this.db.export()));
+    const temporaryPath = `${this.filePath}.tmp`;
+    writeFileSync(temporaryPath, Buffer.from(this.db.export()));
+    renameSync(temporaryPath, this.filePath);
   }
 
   private persist(): void {
     if (!this.filePath || this.filePath === ':memory:') return;
+    if (this.transactionDepth > 0) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
     this.persistTimer = setTimeout(() => this.flushPersist(), 250);
   }

@@ -69,3 +69,21 @@ export interface DocumentEngineResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+export interface PdfToHtmlOptions {
+  ocr?: 'auto' | 'off' | 'force';
+  engine?: 'auto' | 'basic' | 'docling';
+}
+
+export interface PdfToHtmlResult {
+  templateId: string;
+  sourcePath: string;
+  artifactPath: string;
+  htmlPath: string;
+  originalPdfPath: string;
+  metaPath: string;
+  engine: string;
+  pageCount: number;
+  html: string;
+  cached?: boolean;
+}

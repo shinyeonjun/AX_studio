@@ -1,10 +1,16 @@
+import { isAbsolute, resolve } from 'node:path';
 import type { FileRef } from '../contracts/artifacts/file-ref.js';
 import { fileRefFromLocalScan } from '../contracts/artifacts/file-ref.js';
 import {
+  findLocalFolder,
   parseLocalFolderConnectionConfig,
   type LocalFolderConnectionConfig,
 } from '../modules/local-folder/connection.js';
-import { resolveFileWithinFolderRoot } from '../modules/local-folder/path-security.js';
+import {
+  isPathContainedInRoot,
+  resolveFileWithinFolderRoot,
+  resolveFolderRoot,
+} from '../modules/local-folder/path-security.js';
 
 export interface SourceConnection {
   connector: string;
@@ -32,23 +38,8 @@ function localFolderConfig(connections: SourceConnection[]): LocalFolderConnecti
   return parseLocalFolderConnectionConfig(conn.config);
 }
 
-function folderForFileRef(
-  config: LocalFolderConnectionConfig,
-  file: FileRef,
-): { id: string; path: string } | undefined {
-  if (file.folderId) {
-    const match = config.folders.find((folder) => folder.id === file.folderId);
-    if (match) return match;
-  }
-  if (file.folderPath) {
-    const match = config.folders.find((folder) => folder.path === file.folderPath);
-    if (match) return match;
-  }
-  if (file.sourceId && file.sourceId !== 'local_folder') {
-    const match = config.folders.find((folder) => folder.id === file.sourceId);
-    if (match) return match;
-  }
-  return config.folders.length === 1 ? config.folders[0] : undefined;
+function folderForFileRef(config: LocalFolderConnectionConfig, file: FileRef) {
+  return findLocalFolder(config, file.folderId ?? file.sourceId, file.folderPath);
 }
 
 export function resolveFileRef(
@@ -92,7 +83,7 @@ export function resolveIngestPath(
     return resolveFileRef(input.file, connections);
   }
 
-  const path = input.path?.trim();
+  const path = input.path?.trim().replace(/^['"]|['"]$/g, '');
   if (!path) {
     return { ok: false, error: 'path_required', errorCode: 'path_required' };
   }
@@ -102,21 +93,49 @@ export function resolveIngestPath(
     return { ok: false, error: 'local_folder_not_connected', errorCode: 'local_folder_not_connected' };
   }
 
+  const errors: ResolveFileRefError[] = [];
+  const insideRootErrors: ResolveFileRefError[] = [];
+  const defaultError: ResolveFileRefError = {
+    ok: false,
+    error: 'path_outside_source',
+    errorCode: 'path_outside_source',
+  };
+
   for (const folder of config.folders) {
     const resolved = resolveFileWithinFolderRoot(folder.path, path);
-    if (!resolved.ok) continue;
-    const fileName = path.split(/[/\\]/).pop() ?? path;
-    return {
-      ok: true,
-      path: resolved.path,
-      file: fileRefFromLocalScan({
-        folderId: folder.id,
-        folderPath: folder.path,
-        filePath: resolved.path,
-        fileName,
-      }),
-    };
+    if (resolved.ok) {
+      const fileName = path.split(/[/\\]/).pop() ?? path;
+      return {
+        ok: true,
+        path: resolved.path,
+        file: fileRefFromLocalScan({
+          folderId: folder.id,
+          folderPath: folder.path,
+          filePath: resolved.path,
+          fileName,
+        }),
+      };
+    }
+    errors.push({ ok: false, error: resolved.error, errorCode: resolved.errorCode });
+
+    // A missing file inside a connected root must stay a file error even when
+    // another configured root reports that the same path is outside its root.
+    // This distinction is what lets the UI tell the user which boundary failed.
+    const root = resolveFolderRoot(folder.path);
+    if (root.ok) {
+      const lexicalPath = isAbsolute(path) ? path : resolve(folder.path, path);
+      if (isPathContainedInRoot(root.rootReal, lexicalPath)) {
+        insideRootErrors.push({ ok: false, error: resolved.error, errorCode: resolved.errorCode });
+      }
+    }
   }
 
-  return { ok: false, error: 'path_outside_source', errorCode: 'path_outside_source' };
+  return (
+    insideRootErrors.find((error) => error.errorCode === 'file_not_accessible') ??
+    insideRootErrors.find((error) => error.errorCode === 'not_a_file') ??
+    errors.find((error) => error.errorCode === 'path_outside_source') ??
+    errors.find((error) => error.errorCode === 'file_not_accessible') ??
+    errors[0] ??
+    defaultError
+  );
 }

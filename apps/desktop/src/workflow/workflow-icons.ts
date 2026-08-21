@@ -62,7 +62,7 @@ export function triggerNodeIcon(triggerType?: string): WorkflowNodeIcon {
 export function applyWorkflowNodeIcon<T extends { iconConnector?: string; iconSrc?: string; iconEmoji?: string }>(
   display: T,
   fallbackConnector?: string,
-): T & { iconSrc?: string; iconEmoji?: string } {
+): Omit<T, 'iconConnector'> & { iconSrc?: string; iconEmoji?: string } {
   const connector = display.iconConnector ?? fallbackConnector;
   const icon = connector ? workflowNodeIcon(connector) : { emoji: '⚙️', alt: 'Step' };
   const { iconConnector: _iconConnector, ...rest } = display;
@@ -71,14 +71,4 @@ export function applyWorkflowNodeIcon<T extends { iconConnector?: string; iconSr
     iconSrc: icon.src,
     iconEmoji: icon.emoji,
   };
-}
-
-/** @deprecated use workflowNodeIcon */
-export function connectorIconSrc(connector?: string): string | undefined {
-  return workflowNodeIcon(connector).src;
-}
-
-/** @deprecated use triggerNodeIcon */
-export function triggerIconSrc(triggerType?: string): string | undefined {
-  return triggerNodeIcon(triggerType).src;
 }

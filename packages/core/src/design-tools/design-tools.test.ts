@@ -37,6 +37,22 @@ describe('design-tools', () => {
     expect(JSON.stringify(results[2]?.data)).toContain('report.pdf');
   });
 
+  it('lists available design tools via tools.list', async () => {
+    const ctx = buildDesignToolContext([], ['document']);
+    const results = await executeDesignToolCalls([{ tool: 'tools.list' }], ctx);
+
+    expect(results[0]?.ok).toBe(true);
+    const tools = results[0]?.data as Array<{ id: string }>;
+    expect(tools.map((entry) => entry.id)).toEqual([
+      'tools.list',
+      'connections.list',
+      'sources.list',
+      'sources.files.list',
+      'capabilities.list',
+      'capabilities.describe',
+    ]);
+  });
+
   it('describes capabilities for connected connectors', async () => {
     const ctx = buildDesignToolContext([], ['document', 'local_sheet']);
     const results = await executeDesignToolCalls(

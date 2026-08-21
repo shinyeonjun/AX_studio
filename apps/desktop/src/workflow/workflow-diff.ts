@@ -1,4 +1,4 @@
-import type { InterviewDraft, WorkflowNode } from '@ax-studio/core/workflow-schema';
+import type { InterviewDraft, WorkflowNode } from '@ax-studio/core';
 
 export type WorkflowNodeChange = 'unchanged' | 'added' | 'modified';
 
@@ -21,8 +21,11 @@ function triggerSnapshot(draft: InterviewDraft): string {
   });
 }
 
-function nodeSnapshot(node: WorkflowNode): string {
-  return JSON.stringify(node);
+function nodeSnapshot(draft: InterviewDraft, node: WorkflowNode): string {
+  return JSON.stringify({
+    node,
+    action: draft.actions?.[node.id],
+  });
 }
 
 export function computeWorkflowDiff(
@@ -47,7 +50,7 @@ export function computeWorkflowDiff(
       addedCount += 1;
       continue;
     }
-    if (nodeSnapshot(prior) !== nodeSnapshot(node)) {
+    if (nodeSnapshot(baseline, prior) !== nodeSnapshot(current, node)) {
       nodeChanges.set(id, 'modified');
       modifiedCount += 1;
       continue;

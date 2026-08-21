@@ -3,13 +3,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { runCommand } from '../agent/model/cli-process.js';
-import { defaultArtifactRoot } from './paths.js';
+import { defaultArtifactRoot, defaultTemplateRoot } from './paths.js';
 import type {
   DocumentChunkHit,
   DocumentEngineRequest,
   DocumentEngineResponse,
   IngestDocumentOptions,
   IngestDocumentResult,
+  PdfToHtmlOptions,
+  PdfToHtmlResult,
 } from './types.js';
 
 export interface DocumentEngineClientOptions {
@@ -23,6 +25,7 @@ export interface DocumentEngineClientOptions {
 export interface DocumentEngineClient {
   ping(): Promise<boolean>;
   ingest(path: string, options?: IngestDocumentOptions): Promise<IngestDocumentResult>;
+  pdfToHtml(path: string, options?: PdfToHtmlOptions): Promise<PdfToHtmlResult>;
   getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }>;
   getPage(documentId: string, pageIndex: number): Promise<{ page: Record<string, unknown>; text: string | null }>;
   search(documentId: string, query: string): Promise<{ hits: DocumentChunkHit[] }>;
@@ -121,6 +124,18 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_ingest_failed');
+    }
+    return response.data;
+  }
+
+  async pdfToHtml(path: string, options: PdfToHtmlOptions = {}): Promise<PdfToHtmlResult> {
+    const response = await this.request<PdfToHtmlResult>('pdf_to_html', {
+      path,
+      templateRoot: defaultTemplateRoot(),
+      options,
+    });
+    if (!response.ok || !response.data) {
+      throw new Error(response.error ?? 'pdf_to_html_failed');
     }
     return response.data;
   }
@@ -231,6 +246,22 @@ export class MockDocumentEngineClient implements DocumentEngineClient {
     };
     this.documents.set(documentId, result);
     return result;
+  }
+
+  async pdfToHtml(path: string, options: PdfToHtmlOptions = {}): Promise<PdfToHtmlResult> {
+    const templateId = `mock-${Buffer.from(path).toString('hex').slice(0, 16)}`;
+    const html = `<html><body><h1>Mock template</h1><p>${path}</p></body></html>`;
+    return {
+      templateId,
+      sourcePath: path,
+      artifactPath: `/mock/templates/${templateId}`,
+      htmlPath: `/mock/templates/${templateId}/template.html`,
+      originalPdfPath: path,
+      metaPath: `/mock/templates/${templateId}/meta.json`,
+      engine: options.engine ?? 'mock',
+      pageCount: 1,
+      html,
+    };
   }
 
   async getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }> {

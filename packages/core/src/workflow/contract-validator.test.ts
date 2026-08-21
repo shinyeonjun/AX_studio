@@ -93,6 +93,30 @@ describe('validateWorkflowContracts', () => {
     expect(validateWorkflowContracts(ir)).toEqual([]);
   });
 
+  it('rejects a configured trigger whose required value is empty', () => {
+    const cases: WorkflowIR['trigger'][] = [
+      { type: 'schedule', schedule: '', timezone: 'Asia/Seoul' },
+      { type: 'schedule', schedule: '0 9 * * *', timezone: '' },
+      { type: 'once', runAt: '' },
+      { type: 'gmail.new_message', accountId: '' },
+      { type: 'slack.new_message', channel: '' },
+      { type: 'local_folder.new_file', folderId: '' },
+    ];
+
+    for (const trigger of cases) {
+      const issues = validateWorkflowContracts({ ...folderToDocument, trigger });
+      expect(issues.some((issue) => issue.code === 'invalid_workflow_schema')).toBe(true);
+    }
+  });
+
+  it('rejects an invalid schedule expression instead of saving a never-running workflow', () => {
+    const issues = validateWorkflowContracts({
+      ...folderToDocument,
+      trigger: { type: 'schedule', schedule: 'every Friday', timezone: 'Asia/Seoul' },
+    });
+    expect(issues.some((issue) => issue.code === 'invalid_workflow_schema')).toBe(true);
+  });
+
   it('rejects incompatible step chains', () => {
     const ir: WorkflowIR = {
       ...folderToDocument,
@@ -166,5 +190,129 @@ describe('validateWorkflowContracts', () => {
     const adapted = inferWorkflowBindings(ir);
     const issues = validateWorkflowContracts(adapted);
     expect(issues.some((issue) => issue.stepId === 'send')).toBe(true);
+  });
+
+  it('rejects references to undeclared AI output fields', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'classify',
+          goal: '위험도 분류',
+          outputSchema: {
+            type: 'object',
+            properties: { riskLevel: { type: 'string' } },
+            required: ['riskLevel'],
+          },
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops', text: '{{classify.summary}}' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      inputs: [],
+      trigger: { type: 'manual' },
+    };
+
+    expect(validateWorkflowContracts(ir).some((issue) => issue.code === 'invalid_workflow_reference')).toBe(true);
+  });
+
+  it('rejects AI output references when the decision has no output schema', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'classify',
+          goal: '위험도 분류',
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops', text: '{{classify.riskLevel}}' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      inputs: [],
+      trigger: { type: 'manual' },
+    };
+
+    expect(validateWorkflowContracts(ir)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_workflow_reference', stepId: 'classify' }),
+      ]),
+    );
+  });
+
+  it('rejects a classified workflow that sends every notification linearly', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'classify',
+          goal: '위험도 분류',
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'critical',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#critical', text: '{{classify.riskLevel}}' },
+          sideEffect: 'EXTERNAL',
+        },
+        {
+          type: 'action',
+          id: 'normal',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#normal', text: '{{classify.riskLevel}}' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      trigger: { type: 'manual' },
+      inputs: [],
+    };
+
+    expect(validateWorkflowContracts(ir).some((issue) => issue.code === 'invalid_control_flow')).toBe(true);
+  });
+
+  it('rejects an action side effect that disagrees with the catalog contract', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      steps: [
+        {
+          type: 'action',
+          id: 'send_mail',
+          connector: 'gmail',
+          action: 'message.send',
+          actionRef: 'gmail.message.send@1',
+          params: { to: 'a@example.com', body: 'notice' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      trigger: { type: 'manual' },
+      inputs: [],
+    };
+
+    expect(validateWorkflowContracts(ir)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_workflow_schema', stepId: 'send_mail' }),
+      ]),
+    );
   });
 });

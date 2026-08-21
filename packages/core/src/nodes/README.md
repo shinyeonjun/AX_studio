@@ -27,13 +27,13 @@
 | Gmail Read/Search | ● | `modules/gmail/` |
 | DB Schema / Query | ● | `modules/rdb/` |
 | Local Folder | ● | `modules/local-folder/` |
-| Document ingest/PDF/HTML/DOCX | ● | `modules/document/` |
-| File Read (generic) | ○ | `modules/stubs/file/` + `document.ingest` |
-| HTML/PDF/DOCX write | ● | `modules/document/` |
-| Storage Get/Set | ○ | `modules/stubs/storage/` or `nodes/state/` |
+| Document read (ingest) | ● | `document-engine/` + `modules/document/read/` |
+| File Read (generic) | ○ | future connector; no runtime implementation |
+| Document write (HTML/PDF/DOCX) | ● stub | `document-write/` + `modules/document/write/` |
+| Storage Get/Set | ○ | future node; no runtime implementation |
 | Gmail/Slack send | ● | `modules/gmail/`, `modules/slack/` |
-| Google Calendar/Drive/Sheets | ○ | `modules/stubs/google-*` |
-| HTTP GET/POST | ○ | `modules/stubs/http/` |
+| Google Calendar/Drive/Sheets | ○ | future connectors; no runtime implementation |
+| HTTP GET/POST | ○ | future connector; no runtime implementation |
 
 ## Triggers
 
@@ -42,7 +42,7 @@
 | Gmail New Message | ● | `triggers/gmail/new-message/` |
 | Slack New Message | ● | `triggers/slack/new-message/` |
 | Local Folder New File | ● | `triggers/local-folder/new-file/` |
-| Webhook | ○ | `triggers/stubs/webhook/` |
+| Webhook | ○ | future transport; no runtime implementation |
 
 ## Adding a new module
 

@@ -3,6 +3,7 @@ import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
 import { extractGmailPlainBody } from './body-extract.js';
 import { pollGmailNewMessages } from './new-message-poll.js';
+import { resolveGmailMessageId } from './message-id.js';
 
 export interface GmailConnectorConfig {
   clientId: string;
@@ -39,7 +40,14 @@ export class GmailConnector implements Connector {
       switch (action) {
         case 'messages.read':
         case 'message.read': {
-          const id = params.messageId as string;
+          const id = resolveGmailMessageId(params);
+          if (!id) {
+            return {
+              ok: false,
+              error: 'Gmail messageId가 필요합니다. 트리거 입력 또는 messages.read 바인딩을 확인하세요.',
+              errorCode: 'gmail_message_id_missing',
+            };
+          }
           const res = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
           const body = extractGmailPlainBody(res.data);
           return { ok: true, data: { ...res.data, body: body ?? res.data.snippet ?? '' } };
@@ -52,7 +60,9 @@ export class GmailConnector implements Connector {
         case 'draft.create': {
           const raw = buildGmailRawMessage({
             to: String(params.to ?? ''),
-            subject: String(params.subject ?? 'Re'),
+            // The catalog marks subject as optional. Preserve that contract
+            // instead of inventing a reply subject when the user omitted it.
+            subject: String(params.subject ?? ''),
             body: String(params.body ?? ''),
           });
           const res = await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
@@ -61,7 +71,9 @@ export class GmailConnector implements Connector {
         case 'message.send': {
           const raw = buildGmailRawMessage({
             to: String(params.to ?? ''),
-            subject: String(params.subject ?? 'Re'),
+            // The catalog marks subject as optional. Preserve that contract
+            // instead of inventing a reply subject when the user omitted it.
+            subject: String(params.subject ?? ''),
             body: String(params.body ?? ''),
           });
           const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });

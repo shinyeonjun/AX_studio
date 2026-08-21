@@ -34,7 +34,7 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     params: [
       { name: 'to', label: '수신자', question: '초안을 누구에게 보낼까요?', required: true },
       { name: 'subject', label: '제목', question: '메일 제목은요?', required: false },
-      { name: 'body', label: '본문', question: '메일 내용은요?', required: false },
+      { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
     ],
     io: { inputs: { body: 'TextArtifact' }, outputs: { draft: 'EmailMessageRef' } },
   },
@@ -48,7 +48,7 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     params: [
       { name: 'to', label: '수신자', question: '메일을 누구에게 보낼까요?', required: true },
       { name: 'subject', label: '제목', question: '메일 제목은요?', required: false },
-      { name: 'body', label: '본문', question: '메일 내용은요?', required: false },
+      { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
     ],
     io: { inputs: { body: 'TextArtifact' }, outputs: { message: 'EmailMessageRef' } },
   },
@@ -69,6 +69,7 @@ export const GMAIL_CATALOG: ConnectorCatalogEntry = {
   description: 'OAuth로 메일 읽기·발송',
   connectable: true,
   alwaysReal: false,
+  runtimeAvailable: true,
   connectionKind: 'oauth-loopback',
   emoji: '📧',
 };
@@ -83,7 +84,7 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     sideEffect: 'EXTERNAL',
     params: [
       { name: 'channel', label: 'Slack 채널', question: 'Slack 채널은 어디인가요?', required: true },
-      { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: false },
+      { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: true },
     ],
     io: { inputs: { text: 'TextArtifact' }, outputs: { message: 'SlackMessageRef' } },
   },
@@ -104,6 +105,7 @@ export const SLACK_CATALOG: ConnectorCatalogEntry = {
   description: 'Bot Token으로 메시지 전송',
   connectable: true,
   alwaysReal: false,
+  runtimeAvailable: true,
   connectionKind: 'token',
   emoji: '💬',
 };
@@ -156,6 +158,7 @@ export const LOCAL_FOLDER_CATALOG: ConnectorCatalogEntry = {
   description: '내 PC 폴더를 문서·파일 소스로 연결 · 새 파일 트리거',
   connectable: true,
   alwaysReal: false,
+  runtimeAvailable: true,
   connectionKind: 'config',
   emoji: '📁',
 };
@@ -230,6 +233,17 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     params: [{ name: 'template', label: '문서 양식', question: '어떤 문서 양식을 사용할까요?', required: true }],
   },
   {
+    id: 'document.pdf.toHtml',
+    connector: 'document',
+    kind: 'write',
+    label: 'PDF → HTML 양식',
+    description: 'PDF를 HTML 템플릿으로 변환 (Docling export_to_html)',
+    sideEffect: 'REVERSIBLE',
+    params: [
+      { name: 'path', label: 'PDF 경로', question: '어떤 PDF를 양식으로 등록할까요?', required: true },
+    ],
+  },
+  {
     id: 'document.pdf.generate',
     connector: 'document',
     kind: 'write',
@@ -249,6 +263,7 @@ export const DOCUMENT_CATALOG: ConnectorCatalogEntry = {
   description: 'HTML/DOCX/PDF 등 문서 읽기·생성',
   connectable: false,
   alwaysReal: true,
+  runtimeAvailable: true,
   connectionKind: 'builtin',
   emoji: '📄',
 };
@@ -281,6 +296,7 @@ export const RDB_CATALOG: ConnectorCatalogEntry = {
   description: 'SQLite/PostgreSQL 읽기',
   connectable: false,
   alwaysReal: false,
+  runtimeAvailable: true,
   connectionKind: 'config',
   emoji: '🗄️',
 };
@@ -304,6 +320,7 @@ export const LOCAL_SHEET_CATALOG: ConnectorCatalogEntry = {
   description: '로컬 CSV/xlsx 읽기',
   connectable: false,
   alwaysReal: false,
+  runtimeAvailable: false,
   connectionKind: 'builtin',
   emoji: '📊',
 };
@@ -337,6 +354,7 @@ export const TRANSFORM_CATALOG: ConnectorCatalogEntry = {
   description: '데이터 계약 변환 (테이블·문서 → 텍스트)',
   connectable: false,
   alwaysReal: true,
+  runtimeAvailable: true,
   connectionKind: 'builtin',
   emoji: '🔀',
 };

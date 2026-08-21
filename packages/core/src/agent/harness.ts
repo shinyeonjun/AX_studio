@@ -49,7 +49,7 @@ export class AgentHarness {
 
     logs.push({
       level: 'info',
-      message: `role=${request.role} agentSkill=${definition.agentSkillId} provider=${this.model.name} timeoutMs=${timeoutMs}`,
+      message: `role=${request.role} agentSkill=${definition.agentSkillId} provider=${this.model.name} timeoutMs=${timeoutMs}${request.logContext ? ` phase=${request.logContext}` : ''}`,
     });
 
     const allowCloud = request.cloudAllowed ?? definition.policy.cloudAllowed ?? true;
@@ -74,12 +74,16 @@ export class AgentHarness {
         sessionId: request.sessionId,
         abortSignal: controller.signal,
         onProgress: request.onProgress,
+        logContext: request.logContext,
+        codexReasoningEffort:
+          request.codexReasoningEffort ??
+          (request.role === 'interview' ? 'medium' : undefined),
       });
       const output = request.outputSchema.parse(raw);
       const durationMs = Date.now() - started;
       logs.push({
         level: 'info',
-        message: `provider=${this.model.name} durationMs=${durationMs} promptChars=${promptChars}`,
+        message: `provider=${this.model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
       });
       return {
         output,

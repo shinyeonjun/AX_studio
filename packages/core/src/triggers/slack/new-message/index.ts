@@ -9,7 +9,7 @@ export const slackNewMessageHandler: TriggerHandler<{ type: 'slack.new_message';
   async poll(ctx) {
     const slack = ctx.connectors.slack;
     if (!slack) {
-      return { events: [], cursor: ctx.cursor };
+      throw new Error('slack_connector_missing');
     }
 
     const result = await slack.execute(

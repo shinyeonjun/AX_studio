@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { AppState, WorkSummary } from '../../types/app-state';
-import type { WorkFilter } from '../../types/navigation';
+import type { WorkFilter, SettingsScreen } from '../../types/navigation';
 import type { useInterview } from '../../hooks/useInterview';
 import { PageHeader } from '../layout/PageHeader';
 import { IconSearch } from '../icons';
+import { WorkScopeSwitch } from './WorkScopeSwitch';
 import { ChatPanel } from './ChatPanel';
 import { WorkList } from './WorkList';
 import { WorkflowPreviewPanel } from '../../workflow/WorkflowPreviewPanel';
+import { WorkConversationSplit } from './WorkConversationSplit';
+import { useWorkflowPanelWidth } from '../../hooks/useWorkflowPanelWidth';
 import type { WorkflowVisualNodeData } from '../../workflow/types';
 
 type InterviewApi = ReturnType<typeof useInterview>;
@@ -27,6 +30,7 @@ interface WorkPageProps {
   onRunWorkflow: (workflowId: string) => void;
   onToggleWork: (work: WorkSummary) => void;
   onDeleteWork: (workflowId: string) => void;
+  onOpenSettings?: (screen: SettingsScreen) => void;
 }
 
 export function WorkPage({
@@ -44,12 +48,26 @@ export function WorkPage({
   onRunWorkflow,
   onToggleWork,
   onDeleteWork,
+  onOpenSettings,
 }: WorkPageProps) {
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
+  const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
+    useWorkflowPanelWidth();
+
+  const handleSelectNode = useCallback((node: Node<WorkflowVisualNodeData> | null) => {
+    setSelectedNode((prev) => {
+      const prevId = prev?.id ?? null;
+      const nextId = node?.id ?? null;
+      if (prevId === nextId) return prev;
+      return node;
+    });
+  }, []);
 
   useEffect(() => {
-    setSelectedNode(null);
-  }, [interview.workflow, interview.interview?.done]);
+    if (interview.interview?.done) {
+      setSelectedNode(null);
+    }
+  }, [interview.interview?.done]);
 
   if (view === 'conversation') {
     const title = interview.interview?.title ?? (interview.interview?.workflowId ? '업무' : '새 업무');
@@ -70,8 +88,12 @@ export function WorkPage({
           </div>
         </header>
 
-        <div className="work-conversation-body">
-          <div className="work-conversation-chat">
+        <WorkConversationSplit
+          width={workflowPanelWidth}
+          isResizing={isResizing}
+          onSplitterPointerDown={onSplitterPointerDown}
+          onSplitterDoubleClick={resetWidth}
+          chat={
             <ChatPanel
               interview={interview.interview}
               busy={interview.busy}
@@ -87,28 +109,35 @@ export function WorkPage({
               onComposerChange={interview.setComposerText}
               onClearEditHint={() => interview.setEditHint(null)}
               onStartInterview={interview.startInterview}
+              workScope={interview.workScope}
+              workScopeLocked={interview.workScopeLocked}
+              onWorkScopeChange={interview.setWorkScope}
               onSendAnswer={interview.sendAnswer}
               onRunOnce={interview.runOnce}
               onSaveAsWork={interview.saveAsWork}
             />
-          </div>
-
-          <WorkflowPreviewPanel
-            draft={interview.workflow}
-            baselineDraft={interview.workflowDiffBaseline}
-            completeness={interview.completeness}
-            done={readyToCommit}
-            title={title}
-            selectedNode={selectedNode}
-            onSelectNode={setSelectedNode}
-            onRequestEdit={interview.beginEditStep}
-            onCloseDetail={() => setSelectedNode(null)}
-          />
-        </div>
+          }
+          panel={
+            <WorkflowPreviewPanel
+              draft={interview.workflow}
+              baselineDraft={interview.workflowDiffBaseline}
+              completeness={interview.completeness}
+              done={readyToCommit}
+              title={title}
+              selectedNode={selectedNode}
+              panelBusy={interview.busy}
+              onSelectNode={handleSelectNode}
+              onRequestEdit={interview.beginEditStep}
+              onOpenSettings={onOpenSettings}
+              onCloseDetail={() => handleSelectNode(null)}
+              workScope={interview.workScope}
+            />
+          }
+        />
 
         {readyToCommit && !interview.isLinkedWork && (
           <footer className="work-review-footer">
-            <p className="work-review-footer-copy">이 구성으로 업무를 맡길까요?</p>
+            <p className="work-review-footer-copy">설계가 완료됐습니다. 이 구성으로 업무를 맡길까요?</p>
             <div className="work-review-footer-actions">
               {interview.isDeferredOnce ? (
                 <>
@@ -153,9 +182,16 @@ export function WorkPage({
         title="업무"
         subtitle="맡긴 업무를 관리하고 대화로 수정할 수 있습니다"
         action={
-          <button type="button" className="btn btn-primary" onClick={onNewTask}>
-            + 새 업무
-          </button>
+          <div className="work-new-task-actions">
+            <WorkScopeSwitch
+              value={interview.workScope}
+              disabled={interview.workScopeLocked}
+              onChange={interview.setWorkScope}
+            />
+            <button type="button" className="btn btn-primary" onClick={onNewTask}>
+              + 새 업무
+            </button>
+          </div>
         }
       />
       <div className="page-content">

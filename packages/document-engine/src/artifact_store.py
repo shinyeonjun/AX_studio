@@ -2,9 +2,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+_ARTIFACT_ID_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+def validate_artifact_id(artifact_id: str) -> str:
+    normalized = str(artifact_id or "").lower()
+    if not _ARTIFACT_ID_PATTERN.fullmatch(normalized):
+        raise ValueError("document_id_invalid")
+    return normalized
 
 
 def sha256_file(path: Path) -> str:
@@ -16,7 +28,8 @@ def sha256_file(path: Path) -> str:
 
 
 def artifact_dir(artifact_root: Path, document_id: str) -> Path:
-    return artifact_root / document_id[:2] / document_id
+    normalized_id = validate_artifact_id(document_id)
+    return artifact_root / normalized_id[:2] / normalized_id
 
 
 def write_manifest(
@@ -31,9 +44,6 @@ def write_manifest(
     for directory in (root, pages_dir, images_dir, tables_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
-    manifest_path = root / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-
     chunks = manifest.get("chunks") or []
     chunks_path = root / "chunks.jsonl"
     with chunks_path.open("w", encoding="utf-8") as handle:
@@ -47,6 +57,14 @@ def write_manifest(
         if index is None or not isinstance(text, str) or not text.strip():
             continue
         (pages_dir / f"{int(index)}.txt").write_text(text, encoding="utf-8")
+
+    # The manifest is the commit marker for an artifact. Write payload files
+    # first and replace the marker atomically so an interrupted ingest cannot
+    # make a partial directory look cacheable.
+    manifest_path = root / "manifest.json"
+    manifest_tmp = root / "manifest.json.tmp"
+    manifest_tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(manifest_tmp, manifest_path)
 
     return root
 

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import type { InterviewDraft } from '@ax-studio/core/workflow-schema';
-import type { CompletenessResult } from '@ax-studio/core/requiredness';
+import { useRef, useState } from 'react';
+import type { CompletenessResult, InterviewDraft, WorkScope } from '@ax-studio/core';
+import { isRunConfirmationMessage } from '@ax-studio/core/interview-messages';
 import { shouldRunWorkflowAfterSave } from '../lib/work-display';
 import {
   appendAssistantMessage,
@@ -14,10 +14,10 @@ import {
   isDeferredOnce,
   isImmediateOnce,
   isRecurringDraft,
-  isRunConfirmationMessage,
   type InterviewState,
 } from './interview-helpers';
 
+export type { WorkScope } from '@ax-studio/core';
 export type { InterviewState } from './interview-helpers';
 export { isDeferredOnce, isImmediateOnce, isRecurringDraft } from './interview-helpers';
 
@@ -27,7 +27,7 @@ export interface UseInterviewOptions {
 
 export function useInterview({ refresh }: UseInterviewOptions) {
   const sessionEpochRef = useRef(0);
-  const savedWorkflowIdRef = useRef<string | undefined>();
+  const savedWorkflowIdRef = useRef<string | undefined>(undefined);
   const actionInFlightRef = useRef(false);
   const [composerText, setComposerText] = useState('');
   const [interview, setInterview] = useState<InterviewState | null>(null);
@@ -38,16 +38,13 @@ export function useInterview({ refresh }: UseInterviewOptions) {
   const [editHint, setEditHint] = useState<string | null>(null);
   const [workflowBaseline, setWorkflowBaseline] = useState<InterviewDraft | undefined>();
   const [turnDiffBaseline, setTurnDiffBaseline] = useState<InterviewDraft | undefined>();
+  const [workScope, setWorkScope] = useState<WorkScope>('once');
 
   const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
 
   const invalidateSession = () => {
     sessionEpochRef.current += 1;
   };
-
-  useEffect(() => {
-    return window.ax.onAgentProgress((event) => setProgress(event.message));
-  }, []);
 
   const reset = () => {
     invalidateSession();
@@ -62,6 +59,7 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     setEditHint(null);
     setWorkflowBaseline(undefined);
     setTurnDiffBaseline(undefined);
+    setWorkScope('once');
   };
 
   const openWorkChat = async (workflowId: string) => {
@@ -111,10 +109,16 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     setTurnDiffBaseline(emptyInterviewDraftBaseline());
     setInterview({ messages: [{ role: 'user', content: text }], title: '새 업무' });
     try {
-      const res = await window.ax.startInterview(text);
+      const res = await window.ax.startInterview(text, workScope);
       if (!isCurrentSession(epoch)) return;
-      const next = res as InterviewState;
-      setInterview({ ...next, title: interviewSessionTitle(next) });
+      const next = res as InterviewState & { draft?: unknown };
+      if (next.done && next.draft) {
+        const summary = await window.ax.summarize(next.draft);
+        if (!isCurrentSession(epoch)) return;
+        setInterview({ ...next, summary, title: interviewSessionTitle(next) });
+      } else {
+        setInterview({ ...next, title: interviewSessionTitle(next) });
+      }
       setComposerText('');
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -277,7 +281,15 @@ export function useInterview({ refresh }: UseInterviewOptions) {
 
       const trigger = draftTrigger(draft);
       if (shouldRunWorkflowAfterSave(trigger?.type)) {
-        void window.ax.runWorkflow(workflowId);
+        const result = (await window.ax.runWorkflow(workflowId)) as {
+          status?: string;
+          errorCode?: string;
+        };
+        if (!isCurrentSession(epoch)) return;
+        await refresh();
+        if (result.status === 'failed' || result.status === 'cancelled') {
+          setError(`실행에 실패했습니다 (${result.errorCode ?? result.status}). 활동 탭에서 자세한 내용을 확인해 주세요.`);
+        }
       }
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -321,5 +333,8 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     isImmediateOnce: interview?.draft ? isImmediateOnce(interview.draft) : false,
     isDeferredOnce: interview?.draft ? isDeferredOnce(interview.draft) : false,
     isRecurringDraft: interview?.draft ? isRecurringDraft(interview.draft) : false,
+    workScope: (interview?.workScope as WorkScope | undefined) ?? workScope,
+    setWorkScope,
+    workScopeLocked: Boolean(interview?.sessionId) || busy,
   };
 }

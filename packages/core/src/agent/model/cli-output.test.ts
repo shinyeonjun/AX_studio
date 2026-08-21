@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { isCursorNoiseLine, readableCliError, pickCliOutput, parseCursorStreamLine, cursorSessionIdFromEvent, cursorProgressFromEvent, cursorResultTextFromEvent, cliFailureMessage } from './cli/output.js';
+import { z } from 'zod';
+import {
+  cliFailureMessage,
+  cursorProgressFromEvent,
+  cursorResultTextFromEvent,
+  cursorSessionIdFromEvent,
+  isCursorNoiseLine,
+  parseCursorStreamLine,
+  parseStructuredFromCliResult,
+  pickCliOutput,
+  readableCliError,
+} from './cli/output.js';
 
 describe('cursor cli stderr filtering', () => {
   it('treats cursor-retrieval tracing as noise', () => {
@@ -30,6 +41,20 @@ describe('cursor cli stderr filtering', () => {
       'fail',
     );
     expect(message).toBe('Error: Sandbox mode is enabled but not available');
+  });
+
+  it('does not attach Codex progress stderr to a schema validation error', async () => {
+    await expect(
+      parseStructuredFromCliResult(
+        {
+          exitCode: 0,
+          stdout: '{"ok":false}',
+          stderr: 'Reading additional input from stdin...\nOpenAI Codex v0.147.0',
+        },
+        z.object({ ok: z.literal(true) }),
+        'fail',
+      ),
+    ).rejects.toThrow(/\(\[\s*[\s\S]*Invalid literal value/);
   });
 });
 

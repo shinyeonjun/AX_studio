@@ -21,8 +21,59 @@
   --red-bg: rgba(239, 68, 68, 0.12);
   --amber: #f59e0b;
   --sidebar-width: 240px;
+  --wf-panel-width: 300px;
+  --wf-panel-width-review: 320px;
+  --scrollbar-size: 6px;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.26);
   --radius: 12px;
   --radius-sm: 8px;
+}
+
+/* Overlay scrollbars: hidden until hover */
+.scrollbar-overlay,
+.chat-thread,
+.page-content {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-overlay:hover,
+.chat-thread:hover,
+.page-content:hover {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar,
+.chat-thread::-webkit-scrollbar,
+.page-content::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.scrollbar-overlay::-webkit-scrollbar-track,
+.chat-thread::-webkit-scrollbar-track,
+.page-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-thumb,
+.chat-thread::-webkit-scrollbar-thumb,
+.page-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.scrollbar-overlay:hover::-webkit-scrollbar-thumb,
+.chat-thread:hover::-webkit-scrollbar-thumb,
+.page-content:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+.scrollbar-overlay:hover::-webkit-scrollbar-thumb:hover,
+.chat-thread:hover::-webkit-scrollbar-thumb:hover,
+.page-content:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 body {
@@ -102,4 +153,27 @@ select:focus {
 svg.icon {
   width: 16px;
   height: 16px;
+}
+
+.ui-error-fallback {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.ui-error-message {
+  max-width: 640px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--red);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

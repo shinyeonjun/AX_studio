@@ -1,5 +1,6 @@
 import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { AgentHarness } from '../agent/harness.js';
+import { z } from 'zod';
 import { extractGmailPlainBody } from '../modules/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
 import { evaluateCondition } from './condition-expr.js';
@@ -44,12 +45,15 @@ function emailBodyFromRun(
   return snippet != null ? String(snippet) : undefined;
 }
 
-function buildInvestigationUser(
+export function buildInvestigationUser(
   step: Step & { type: 'ai_decision' },
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
 ): string {
   const lines = [`Task: ${step.goal}`];
+  if (step.memo?.trim()) {
+    lines.push(`Criteria:\n${step.memo.trim()}`);
+  }
   if (ctx.variables.subject) lines.push(`Subject: ${String(ctx.variables.subject)}`);
   const from = ctx.variables.from ?? ctx.variables.sender;
   if (from) lines.push(`From: ${String(from)}`);
@@ -66,19 +70,40 @@ function mapInvestigationOutput(
   step: Step & { type: 'ai_decision' },
   output: Record<string, unknown>,
 ): Record<string, unknown> {
-  const result = { ...output };
-  const conclusion = typeof output.conclusion === 'string' ? output.conclusion.trim() : '';
-  if (!conclusion) return result;
+  return { ...output };
+}
 
+function investigationSchemaFor(step: Step & { type: 'ai_decision' }): z.ZodTypeAny {
   const properties = step.outputSchema?.properties;
-  if (properties && typeof properties === 'object') {
-    for (const key of Object.keys(properties as Record<string, unknown>)) {
-      if (result[key] == null || result[key] === '') {
-        result[key] = conclusion;
-      }
-    }
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+    return InvestigationOutputSchema;
   }
-  return result;
+
+  const required = new Set(
+    Array.isArray(step.outputSchema?.required)
+      ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
+      : [],
+  );
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const [key, definition] of Object.entries(properties)) {
+    const type = definition && typeof definition === 'object' && !Array.isArray(definition)
+      ? (definition as Record<string, unknown>).type
+      : undefined;
+    const enumValues = definition && typeof definition === 'object' && !Array.isArray(definition)
+      ? (definition as Record<string, unknown>).enum
+      : undefined;
+    let field: z.ZodTypeAny =
+      Array.isArray(enumValues) && enumValues.every((value) => typeof value === 'string')
+        ? z.enum(enumValues as [string, ...string[]]) :
+      type === 'string' ? z.string() :
+      type === 'number' || type === 'integer' ? z.number() :
+      type === 'boolean' ? z.boolean() :
+      type === 'array' ? z.array(z.unknown()) :
+      z.unknown();
+    if (!required.has(key)) field = field.optional();
+    shape[key] = field;
+  }
+  return InvestigationOutputSchema.extend(shape);
 }
 
 function lookupTemplatePath(
@@ -96,10 +121,72 @@ function lookupTemplatePath(
   const [stepId, ...rest] = path.split('.');
   let current: unknown = stepResults[stepId];
   for (const key of rest) {
+    if (Array.isArray(current)) {
+      if (/^\d+$/.test(key)) {
+        current = current[Number(key)];
+        continue;
+      }
+      const item = current.find(
+        (candidate) => candidate && typeof candidate === 'object' && key in (candidate as Record<string, unknown>),
+      );
+      if (item && typeof item === 'object') {
+        current = (item as Record<string, unknown>)[key];
+        continue;
+      }
+      if (key === 'messageId') {
+        const message = current.find(
+          (candidate) => candidate && typeof candidate === 'object' && 'id' in (candidate as Record<string, unknown>),
+        );
+        current = message && typeof message === 'object' ? (message as Record<string, unknown>).id : undefined;
+        continue;
+      }
+      return undefined;
+    }
     if (!current || typeof current !== 'object') return undefined;
-    current = (current as Record<string, unknown>)[key];
+    const record = current as Record<string, unknown>;
+    current = key === 'messageId' && record[key] == null ? record.id : record[key];
   }
   return current;
+}
+
+function resolveParamValue(
+  value: unknown,
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+): unknown {
+  if (typeof value === 'string') {
+    const exact = value.match(/^\{\{\s*([^{}]+?)\s*\}\}$/);
+    if (exact) {
+      const path = exact[1]!.trim();
+      const resolved = lookupTemplatePath(path, ctx, stepResults);
+      if (resolved == null) {
+        throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${path}`), {
+          code: 'unresolved_binding',
+          reference: path,
+        });
+      }
+      return resolved;
+    }
+    return interpolateTemplates(value, ctx, stepResults);
+  }
+  if (Array.isArray(value)) return value.map((item) => resolveParamValue(item, ctx, stepResults));
+  if (!value || typeof value !== 'object') return value;
+
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).length === 1 && typeof record.ref === 'string') {
+    const reference = record.ref.trim();
+    const resolved = lookupTemplatePath(reference, ctx, stepResults);
+    if (resolved == null) {
+      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${reference}`), {
+        code: 'unresolved_binding',
+        reference,
+      });
+    }
+    return resolved;
+  }
+  return Object.fromEntries(
+    Object.entries(record).map(([key, item]) => [key, resolveParamValue(item, ctx, stepResults)]),
+  );
 }
 
 function interpolateTemplates(
@@ -109,7 +196,13 @@ function interpolateTemplates(
 ): string {
   return value.replace(/\{\{([^}]+)\}\}/g, (_all, rawPath: string) => {
     const resolved = lookupTemplatePath(rawPath.trim(), ctx, stepResults);
-    return resolved == null ? '' : String(resolved);
+    if (resolved == null) {
+      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${rawPath.trim()}`), {
+        code: 'unresolved_binding',
+        reference: rawPath.trim(),
+      });
+    }
+    return String(resolved);
   });
 }
 
@@ -140,23 +233,30 @@ export async function runAiDecision(
   const evidence: Array<{ source: string; detail: string }> = [];
   const untrustedBody = emailBodyFromRun(ctx.variables, stepResults);
 
+  if (!agentHarness) {
+    throw Object.assign(new Error(`AI 판단 단계 ${step.id}를 실행할 Agent Harness가 없습니다.`), {
+      code: 'agent_unavailable',
+    });
+  }
+
   while (reads < maxReads) {
-    if (agentHarness) {
+    {
       const { output } = await agentHarness.run({
         role: 'investigate',
-        outputSchema: InvestigationOutputSchema,
+        outputSchema: investigationSchemaFor(step),
         user: investigationUserPrompt(step, ctx, stepResults),
         cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
         context: {
           skillGoal: ir.goal,
           taskGoal: step.goal,
+          taskMemo: step.memo,
           evidence,
           connectedConnectors: Object.keys(connectors),
           untrustedData: untrustedBody,
         },
       });
 
-      if (output.conclusion) {
+      if (output.conclusion || Object.keys(output).some((key) => !['needMore', 'nextRead', 'nextReadParams', 'reason', 'evidence'].includes(key))) {
         stepResults[step.id] = mapInvestigationOutput(step, output);
         return;
       }
@@ -167,7 +267,7 @@ export async function runAiDecision(
           output.nextRead,
           ctx,
           connectors,
-          output.nextReadParams ?? {},
+          (output.nextReadParams as Record<string, unknown> | undefined) ?? ({} as Record<string, unknown>),
         );
         evidence.push({ source: output.nextRead, detail: JSON.stringify(readResult).slice(0, 500) });
         continue;
@@ -176,26 +276,18 @@ export async function runAiDecision(
       stepResults[step.id] = mapInvestigationOutput(step, output);
       return;
     }
-
-    stepResults[step.id] = {
-      category: 'critical',
-      confidence: 0.9,
-      conclusion: 'Mock classification',
-      summary: 'Mock classification',
-      evidence,
-    };
-    return;
   }
 
-  if (agentHarness) {
+  {
     const { output } = await agentHarness.run({
       role: 'investigate',
-      outputSchema: InvestigationOutputSchema,
+      outputSchema: investigationSchemaFor(step),
       user: investigationUserPrompt(step, ctx, stepResults, '추가 조회 없이 지금 결론만 내세요.'),
       cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
       context: {
         skillGoal: ir.goal,
         taskGoal: step.goal,
+        taskMemo: step.memo,
         evidence,
         connectedConnectors: Object.keys(connectors),
         untrustedData: untrustedBody,
@@ -206,13 +298,9 @@ export async function runAiDecision(
       return;
     }
   }
-
-  const fallbackText = documentTextFromRun(ctx.variables, stepResults)?.slice(0, 2_000);
-  stepResults[step.id] = {
-    conclusion: fallbackText || '앞 단계 내용을 요약하지 못했습니다.',
-    summary: fallbackText || '앞 단계 내용을 요약하지 못했습니다.',
-    evidence,
-  };
+  throw Object.assign(new Error(`AI 판단 단계 ${step.id}가 유효한 결과를 반환하지 않았습니다.`), {
+    code: 'ai_output_missing',
+  });
 }
 
 export function resolveStepParams(
@@ -222,12 +310,7 @@ export function resolveStepParams(
 ): Record<string, unknown> {
   const resolved: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
-    resolved[key] = typeof value === 'string' ? interpolateTemplates(value, ctx, stepResults) : value;
+    resolved[key] = resolveParamValue(value, ctx, stepResults);
   }
-  if (!resolved.text && typeof resolved.message === 'string') {
-    resolved.text = resolved.message;
-  }
-  if (!resolved.text && ctx.variables.documentHtml) resolved.text = String(ctx.variables.documentHtml).slice(0, 500);
-  if (!resolved.body && stepResults.classify) resolved.body = JSON.stringify(stepResults.classify);
   return resolved;
 }

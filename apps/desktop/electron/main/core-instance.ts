@@ -12,3 +12,8 @@ export function getCore(): AxCore {
   if (!core) throw new Error('AX Studio core is not initialized');
   return core;
 }
+
+/** Returns the initialized core during shutdown without turning a partial startup into another error. */
+export function getCoreIfInitialized(): AxCore | null {
+  return core;
+}

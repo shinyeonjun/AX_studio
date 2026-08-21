@@ -1,5 +1,5 @@
 import type { ConnectorCapability } from '../../catalog/capabilities.js';
-import type { CompletenessResult } from '../../interview/requiredness.js';
+import type { CompletenessResult } from '../../interview/slots/requiredness.js';
 import type { WorkflowVisualLine } from './types.js';
 
 export function truncate(text: string, max = 28): string {

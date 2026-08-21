@@ -1,6 +1,6 @@
 import unittest
 
-from adapters.docling import _backfill_empty_tables, _table_like_ocr_excerpt
+from adapters.docling import _backfill_empty_tables, _looks_like_garbage_ocr, _table_like_ocr_excerpt
 
 
 class DoclingTableBackfillTest(unittest.TestCase):
@@ -28,6 +28,9 @@ class DoclingTableBackfillTest(unittest.TestCase):
         _backfill_empty_tables(tables, images)
         self.assertTrue(tables[0]["text"])
         self.assertEqual(tables[0]["sourceType"], "ocr")
+
+    def test_latin_native_text_is_not_misclassified_as_garbage_ocr(self) -> None:
+        self.assertFalse(_looks_like_garbage_ocr("This is a normal native PDF paragraph with no Korean text."))
 
 
 if __name__ == "__main__":

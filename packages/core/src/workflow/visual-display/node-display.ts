@@ -1,9 +1,10 @@
 import { getCapability } from '../../catalog/capabilities.js';
 import { getConnectorLabel } from '../../catalog/connectors.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
-import { formatCondition, type ConditionExpr } from '../../runtime/condition-expr.js';
-import type { CompletenessResult } from '../../interview/requiredness.js';
-import type { WorkflowNode } from '../../interview/workflow-schema.js';
+import { safeFormatCondition, type ConditionExpr } from '../../runtime/condition-expr.js';
+import type { CompletenessResult } from '../../interview/slots/requiredness.js';
+import type { InterviewDraft, WorkflowNode } from '../../interview/draft/schema.js';
+import { getNodeParams, resolveNodeConnectorAction } from '../../interview/draft/actions.js';
 import {
   paramLine,
   paramValue,
@@ -14,16 +15,19 @@ import {
 import type { NodeDisplayResult, WorkflowCardDisplay } from './types.js';
 
 function actionLines(
+  draft: InterviewDraft,
   node: WorkflowNode,
   slots: CompletenessResult['slots'] | undefined,
 ) {
-  if (!node.connector || !node.action) return [{ text: '설정 필요', complete: false }];
-  const cap = resolveCapability(node.connector, node.action);
+  const resolved = resolveNodeConnectorAction(draft, node);
+  if (!resolved) return [{ text: '설정 필요', complete: false }];
+  const cap = resolveCapability(resolved.connector, resolved.action);
   if (!cap) return [{ text: '연결 확인 필요', complete: false }];
 
+  const params = getNodeParams(draft, node);
   const lines = [];
   for (const param of cap.params) {
-    lines.push(paramLine(cap.id, param.name, param.label, paramValue(node.params, param.name), slots));
+    lines.push(paramLine(cap.id, param.name, param.label, paramValue(params, param.name), slots));
   }
   if (lines.length === 0 && node.goal?.trim()) {
     lines.push({ text: node.goal.trim(), complete: true });
@@ -31,10 +35,12 @@ function actionLines(
   return lines.slice(0, 3);
 }
 
-function actionCard(node: WorkflowNode): WorkflowCardDisplay {
-  const cap = node.connector && node.action ? resolveCapability(node.connector, node.action) : undefined;
-  const summary = summaryFromGoalOrCapability(node.goal, cap, node.params, 24);
-  const primary = cap ? primaryParamValue(cap, node.params) : undefined;
+function actionCard(draft: InterviewDraft, node: WorkflowNode): WorkflowCardDisplay {
+  const resolved = resolveNodeConnectorAction(draft, node);
+  const cap = resolved ? resolveCapability(resolved.connector, resolved.action) : undefined;
+  const params = getNodeParams(draft, node);
+  const summary = summaryFromGoalOrCapability(node.goal, cap, params, 24);
+  const primary = cap ? primaryParamValue(cap, params) : undefined;
   const captionSub =
     primary && primary !== summary && !node.goal?.trim()
       ? truncate(primary, 32)
@@ -44,7 +50,7 @@ function actionCard(node: WorkflowNode): WorkflowCardDisplay {
 
   return {
     header: 'Action',
-    brand: getConnectorLabel(node.connector ?? 'action'),
+    brand: getConnectorLabel(resolved?.connector ?? 'action'),
     brandStyle: 'bracket',
     summary,
     captionSub,
@@ -53,19 +59,21 @@ function actionCard(node: WorkflowNode): WorkflowCardDisplay {
 
 function conditionText(condition: ConditionExpr | undefined): string {
   if (!condition) return '조건: ?';
-  return formatCondition(condition);
+  return safeFormatCondition(condition);
 }
 
 export function displayForWorkflowNode(
+  draft: InterviewDraft,
   node: WorkflowNode,
   slots?: CompletenessResult['slots'],
 ): NodeDisplayResult {
   switch (node.type) {
     case 'action': {
-      const cap = node.connector && node.action ? resolveCapability(node.connector, node.action) : undefined;
-      const lines = actionLines(node, slots);
-      const label = cap?.label ?? getConnectorLabel(node.connector ?? 'action');
-      const card = actionCard(node);
+      const resolved = resolveNodeConnectorAction(draft, node);
+      const cap = resolved ? resolveCapability(resolved.connector, resolved.action) : undefined;
+      const lines = actionLines(draft, node, slots);
+      const label = cap?.label ?? getConnectorLabel(resolved?.connector ?? 'action');
+      const card = actionCard(draft, node);
       if (cap?.connector === 'slack') {
         card.brandStyle = 'plain';
       }
@@ -75,7 +83,7 @@ export function displayForWorkflowNode(
         label,
         subtitle: node.goal?.trim() || cap?.description,
         lines,
-        iconConnector: node.connector,
+        iconConnector: resolved?.connector,
         tooltip: detail ? `${label} · ${detail}` : label,
         card,
         incomplete: lines.some((line) => !line.complete),
@@ -83,17 +91,22 @@ export function displayForWorkflowNode(
     }
     case 'ai_decision': {
       const goal = node.goal?.trim() ?? '';
+      const memo = node.memo?.trim();
       const summary = goal ? truncate(goal, 24) : '목표 미설정';
+      const lines = node.outputFields?.length
+        ? node.outputFields
+            .slice(0, 2)
+            .map((field) => ({ text: field.description || field.name, complete: true }))
+        : [{ text: '결과 형식', complete: Boolean(node.outputFields?.length) }];
+      if (memo) {
+        lines.unshift({ text: truncate(memo, 28), complete: true });
+      }
       return {
         kind: 'ai_decision',
         label: 'AI',
-        subtitle: goal || undefined,
-        lines: node.outputFields?.length
-          ? node.outputFields
-              .slice(0, 2)
-              .map((field) => ({ text: field.description || field.name, complete: true }))
-          : [{ text: '결과 형식', complete: Boolean(node.outputFields?.length) }],
-        tooltip: goal || summary,
+        subtitle: goal || memo || undefined,
+        lines,
+        tooltip: memo ? `${goal || summary} · ${truncate(memo, 40)}` : goal || summary,
         card: {
           header: 'AI',
           brand: 'AI',
@@ -176,7 +189,7 @@ export function displayForCapability(
   };
 }
 
-export function editPromptForNode(node: WorkflowNode): string {
-  const display = displayForWorkflowNode(node);
+export function editPromptForNode(draft: InterviewDraft, node: WorkflowNode): string {
+  const display = displayForWorkflowNode(draft, node);
   return `${display.label} 단계를 어떻게 바꿀까요?`;
 }

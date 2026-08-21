@@ -3,6 +3,7 @@ import { capabilitiesList } from './tools/capabilities-list.js';
 import { connectionsList } from './tools/connections-list.js';
 import { sourcesFilesList } from './tools/sources-files-list.js';
 import { sourcesList } from './tools/sources-list.js';
+import { toolsList } from './tools/tools-list.js';
 import type { DesignToolHandler, DesignToolId } from './types.js';
 
 export interface DesignToolDefinition {
@@ -13,6 +14,12 @@ export interface DesignToolDefinition {
 }
 
 export const DESIGN_TOOL_REGISTRY: DesignToolDefinition[] = [
+  {
+    id: 'tools.list',
+    description: 'design-tools 조회 도구 목록 (id, 설명, args)',
+    args: '(none)',
+    handler: toolsList,
+  },
   {
     id: 'connections.list',
     description: '설정에 연결된 서비스·내장 도구 목록',

@@ -19,15 +19,20 @@ export interface AgentRoleDefinition {
 }
 
 export interface InterviewAgentContext {
-  workflow: import('../interview/workflow-schema.js').InterviewDraft;
-  completeness: import('../interview/requiredness.js').CompletenessResult;
+  workflow: import('../interview/draft/schema.js').InterviewDraft;
+  partialPlan?: import('../interview/plan/schema.js').WorkflowPlan;
+  slotValues: Record<string, unknown>;
+  completeness: import('../interview/slots/requiredness.js').CompletenessResult;
   connectedConnectors: string[];
+  connectedResources: string;
+  sessionHints: string;
   nowIso: string;
 }
 
 export interface InvestigateAgentContext {
   skillGoal: string;
   taskGoal: string;
+  taskMemo?: string;
   evidence: Array<{ source: string; detail: string }>;
   untrustedData?: string;
   connectedConnectors: string[];
@@ -57,6 +62,8 @@ export interface AgentRun<T> {
   sessionId?: string;
   cloudAllowed?: boolean;
   onProgress?: (event: AgentProgressEvent) => void;
+  logContext?: string;
+  codexReasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 export interface AgentRunLog {

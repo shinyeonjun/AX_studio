@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import type { CompletenessResult } from '@ax-studio/core/requiredness';
-import type { InterviewDraft } from '@ax-studio/core/workflow-schema';
+import type { CompletenessResult, InterviewDraft, WorkScope } from '@ax-studio/core';
 import type { Node } from '@xyflow/react';
+import type { SettingsScreen } from '../types/navigation';
 import { WorkflowGraph } from './WorkflowGraph.js';
 import { NodeDetailPanel } from './NodeDetailPanel.js';
 import type { WorkflowVisualNodeData } from './types.js';
@@ -14,9 +14,13 @@ interface WorkflowPreviewPanelProps {
   done?: boolean;
   title?: string;
   selectedNode: Node<WorkflowVisualNodeData> | null;
+  autoSelectSourceId?: string | null;
+  panelBusy?: boolean;
   onSelectNode: (node: Node<WorkflowVisualNodeData> | null) => void;
   onRequestEdit: (prompt: string) => void;
+  onOpenSettings?: (screen: SettingsScreen) => void;
   onCloseDetail: () => void;
+  workScope?: WorkScope;
 }
 
 function missingCount(completeness?: CompletenessResult): number {
@@ -30,9 +34,13 @@ export function WorkflowPreviewPanel({
   done = false,
   title,
   selectedNode,
+  autoSelectSourceId,
+  panelBusy = false,
   onSelectNode,
   onRequestEdit,
+  onOpenSettings,
   onCloseDetail,
+  workScope,
 }: WorkflowPreviewPanelProps) {
   const missing = useMemo(() => missingCount(completeness), [completeness]);
   const diff = useMemo(() => computeWorkflowDiff(baselineDraft, draft), [baselineDraft, draft]);
@@ -68,6 +76,7 @@ export function WorkflowPreviewPanel({
           completeness={completeness}
           expanded={done}
           selectedNodeId={selectedNode?.id ?? null}
+          autoSelectSourceId={done ? null : autoSelectSourceId ?? null}
           onSelectNode={onSelectNode}
         />
       </div>
@@ -76,8 +85,12 @@ export function WorkflowPreviewPanel({
         <NodeDetailPanel
           draft={draft}
           nodeData={selectedNode.data}
+          completeness={completeness}
+          busy={panelBusy}
           onRequestEdit={onRequestEdit}
+          onOpenSettings={onOpenSettings}
           onClose={onCloseDetail}
+          workScope={workScope}
         />
       )}
 

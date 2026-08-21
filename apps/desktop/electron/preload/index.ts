@@ -2,8 +2,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
-  startInterview: (instruction: string) => ipcRenderer.invoke('ax:startInterview', instruction),
+  startInterview: (instruction: string, workScope?: 'once' | 'recurring') =>
+    ipcRenderer.invoke('ax:startInterview', instruction, workScope),
   applyAnswer: (state: unknown, answer: string) => ipcRenderer.invoke('ax:applyAnswer', state, answer),
+  applyInterviewPatch: (state: unknown, patch: unknown) =>
+    ipcRenderer.invoke('ax:applyInterviewPatch', state, patch),
   saveWorkflow: (ir: unknown) => ipcRenderer.invoke('ax:saveWorkflow', ir),
   runWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:runWorkflow', workflowId),
   runEphemeral: (ir: unknown) => ipcRenderer.invoke('ax:runEphemeral', ir),
@@ -36,11 +39,6 @@ contextBridge.exposeInMainWorld('ax', {
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
   saveChatSession: (state: unknown, summary?: string, workflowId?: string) =>
     ipcRenderer.invoke('ax:saveChatSession', state, summary, workflowId),
-  onAgentProgress: (listener: (event: { message: string }) => void) => {
-    const wrapped = (_e: unknown, event: { message: string }) => listener(event);
-    ipcRenderer.on('ax:agent-progress', wrapped);
-    return () => ipcRenderer.removeListener('ax:agent-progress', wrapped);
-  },
   onStateChanged: (listener: () => void) => {
     const wrapped = () => listener();
     ipcRenderer.on('ax:state-changed', wrapped);

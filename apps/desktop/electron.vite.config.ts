@@ -10,12 +10,17 @@ const mainExternals = [
   '@slack/web-api',
 ];
 
+const googleOAuthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? '';
+
 export default defineConfig({
   main: {
     resolve: {
       alias: {
         '@ax-studio/core': resolve('../../packages/core/src/index.ts'),
       },
+    },
+    define: {
+      __GOOGLE_OAUTH_CLIENT_ID__: JSON.stringify(googleOAuthClientId),
     },
     plugins: [externalizeDepsPlugin({ exclude: ['@ax-studio/core'] })],
     build: {
@@ -41,16 +46,14 @@ export default defineConfig({
     root: 'src',
     resolve: {
       alias: {
-        '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
-        '@ax-studio/core/workflow-schema': resolve('../../packages/core/src/interview/workflow-schema.ts'),
-        '@ax-studio/core/requiredness': resolve('../../packages/core/src/interview/requiredness.ts'),
-        '@ax-studio/core/interview-state': resolve('../../packages/core/src/interview/interview-state.ts'),
-        '@ax-studio/core/capability-graph': resolve('../../packages/core/src/catalog/capability-graph.ts'),
-        '@ax-studio/core/condition-expr': resolve('../../packages/core/src/runtime/condition-expr.ts'),
-        '@ax-studio/core/workflow-constants': resolve('../../packages/core/src/interview/workflow-constants.ts'),
-        '@ax-studio/core/capabilities': resolve('../../packages/core/src/catalog/capabilities.ts'),
+        // Renderer aliases expose only browser-safe, pure presentation modules.
+        '@ax-studio/core/catalog-data': resolve('../../packages/core/src/modules/packages/catalog-data.ts'),
+        '@ax-studio/core/interview-constants': resolve('../../packages/core/src/interview/compile/constants.ts'),
+        '@ax-studio/core/panel-fields': resolve('../../packages/core/src/interview/presentation/panel-fields.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
-        '@ax-studio/core/local-folder': resolve('../../packages/core/src/modules/local-folder/connection.ts'),
+        '@ax-studio/core/work-scope': resolve('../../packages/core/src/interview/session/work-scope.ts'),
+        '@ax-studio/core/interview-messages': resolve('../../packages/core/src/interview/session/messages.ts'),
+        '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
       },
     },
     build: {

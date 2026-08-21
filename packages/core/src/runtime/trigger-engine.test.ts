@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../store/db.js';
 import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from './engine.js';
+import { createTestConnectors, mockGmail, mockLocalFolder, mockSlack } from '../modules/test-connectors.js';
 import { TriggerEngine } from './trigger-engine.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 
@@ -33,8 +34,8 @@ describe('TriggerEngine', () => {
   it('baselines on first poll and fires once for each new gmail message', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
-    runtime.mockGmail.messages.push({
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    mockGmail(runtime.connectors).messages.push({
       id: 'msg-existing',
       from: 'old@example.com',
       subject: '기존 메일',
@@ -47,9 +48,9 @@ describe('TriggerEngine', () => {
     const engine = new TriggerEngine(store, runtime);
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(0);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
 
-    runtime.mockGmail.messages.push({
+    mockGmail(runtime.connectors).messages.push({
       id: 'msg-new',
       from: 'plosind@naver.com',
       subject: '새 문의',
@@ -57,31 +58,107 @@ describe('TriggerEngine', () => {
     });
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
-    expect(runtime.mockSlack.messages[0]?.channel).toBe('#inbox');
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages[0]?.channel).toBe('#inbox');
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+  });
+
+  it('does not advance a poll cursor when workflow execution fails', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: createTestConnectors(),
+    });
+    const slack = mockSlack(runtime.connectors);
+    let attempts = 0;
+    runtime.connectors.slack = {
+      name: slack.name,
+      async execute(action, params, ctx) {
+        if (action === 'message.send' && attempts++ === 0) {
+          return { ok: false, error: 'temporary Slack failure', errorCode: 'temporary_failure' };
+        }
+        return slack.execute(action, params, ctx);
+      },
+    };
+
+    const { workflowId } = store.saveWorkflow(gmailNotifySkill);
+    store.setWorkflowActive(workflowId, true);
+    const engine = new TriggerEngine(store, runtime);
+
+    await engine.tick();
+    mockGmail(runtime.connectors).messages.push({
+      id: 'msg-retry',
+      from: 'sender@example.com',
+      subject: '재시도',
+      body: '처리되어야 하는 메일',
+    });
+
+    await engine.tick();
+    expect(slack.messages).toHaveLength(0);
+    const afterFailure = store.getSetting<{ seenMessageIds?: string[] }>('trigger.cursors', {})[workflowId];
+    expect(afterFailure?.seenMessageIds).not.toContain('msg-retry');
+
+    await engine.tick();
+    expect(slack.messages).toHaveLength(1);
+    expect(slack.messages[0]?.channel).toBe('#inbox');
+  });
+
+  it('filters event payloads before executing downstream steps', async () => {
+    const filteredWorkflow: WorkflowIR = {
+      ...gmailNotifySkill,
+      name: '발신자 필터 알림',
+      trigger: {
+        type: 'gmail.new_message',
+        accountId: 'primary',
+        filter: {
+          op: 'eq',
+          left: { ref: 'from' },
+          right: { lit: 'sender@example.com' },
+        },
+      },
+    };
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const { workflowId } = store.saveWorkflow(filteredWorkflow);
+    store.setWorkflowActive(workflowId, true);
+    const engine = new TriggerEngine(store, runtime);
+
+    await engine.tick();
+    mockGmail(runtime.connectors).messages.push(
+      { id: 'msg-other', from: 'other@example.com', subject: '무시', body: '무시' },
+      { id: 'msg-match', from: 'sender@example.com', subject: '처리', body: '처리' },
+    );
+
+    await engine.tick();
+
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages[0]?.text).toBe('new mail');
   });
 
   it('does not poll inactive works', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
     const { workflowId } = store.saveWorkflow(gmailNotifySkill);
     store.setWorkflowActive(workflowId, false);
 
     const engine = new TriggerEngine(store, runtime);
     await engine.tick();
 
-    runtime.mockGmail.messages.push({
+    mockGmail(runtime.connectors).messages.push({
       id: 'msg-new',
       from: 'a@b.com',
       subject: 'test',
       body: 'body',
     });
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(0);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
   });
 
   it('baselines slack trigger and fires once for each new channel message', async () => {
@@ -111,8 +188,8 @@ describe('TriggerEngine', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
-    runtime.mockSlack.inbound.push({
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    mockSlack(runtime.connectors).inbound.push({
       channel: '#general',
       text: '기존 메시지',
       ts: '100.000',
@@ -124,9 +201,9 @@ describe('TriggerEngine', () => {
     const engine = new TriggerEngine(store, runtime);
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(0);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
 
-    runtime.mockSlack.inbound.push({
+    mockSlack(runtime.connectors).inbound.push({
       channel: '#general',
       text: '새 메시지',
       ts: '101.000',
@@ -134,11 +211,11 @@ describe('TriggerEngine', () => {
     });
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
-    expect(runtime.mockSlack.messages[0]?.channel).toBe('#alerts');
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages[0]?.channel).toBe('#alerts');
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
   });
 
   it('baselines local folder trigger and fires once for each new file', async () => {
@@ -168,21 +245,21 @@ describe('TriggerEngine', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
-    runtime.mockLocalFolder.files['folder-inbox'] = ['/mock/inbox/existing.pdf'];
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    mockLocalFolder(runtime.connectors).files['folder-inbox'] = ['/mock/inbox/existing.pdf'];
 
     const { workflowId } = store.saveWorkflow(folderWorkflow);
     store.setWorkflowActive(workflowId, true);
     const engine = new TriggerEngine(store, runtime);
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(0);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
 
-    runtime.mockLocalFolder.files['folder-inbox'].push('/mock/inbox/report.pdf');
+    mockLocalFolder(runtime.connectors).files['folder-inbox'].push('/mock/inbox/report.pdf');
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
 
     await engine.tick();
-    expect(runtime.mockSlack.messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
   });
 });

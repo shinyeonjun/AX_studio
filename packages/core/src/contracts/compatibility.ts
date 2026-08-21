@@ -8,7 +8,7 @@ const COMPATIBLE_OUTPUTS: Record<ContractTypeName, ContractTypeName[]> = {
   DocumentArtifact: ['DocumentArtifact'],
   TextArtifact: ['TextArtifact'],
   TableArtifact: ['TableArtifact'],
-  JsonArtifact: ['JsonArtifact', 'TextArtifact'],
+  JsonArtifact: ['JsonArtifact'],
   EmailMessageRef: ['EmailMessageRef'],
   SlackChannelRef: ['SlackChannelRef'],
   SlackMessageRef: ['SlackMessageRef'],

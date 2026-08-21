@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { getOsSecret, setOsSecret } from '../credential-store.js';
+import { getDesktopAxDataPaths } from '../data-paths.js';
 import { readEnvFile } from '../env-file.js';
 
 export type AiBrandId = 'claude' | 'gpt' | 'grok' | 'ollama';
@@ -35,7 +36,7 @@ const GROK_API_ENV_KEY = 'XAI_API_KEY';
 
 export function getAiConfigPath(): string {
   if (app.isPackaged) {
-    return join(app.getPath('userData'), 'ai.toml');
+    return join(getDesktopAxDataPaths().config, 'ai.toml');
   }
   return join(app.getAppPath(), '../../ai.toml');
 }
@@ -110,7 +111,7 @@ function escapeTomlString(value: string): string {
 export function serializeAiToml(config: AiTomlConfig): string {
   const lines = [
     '# AX Studio AI settings',
-    '# 개발: 프로젝트 루트 ai.toml / 릴리즈: userData ai.toml',
+    '# 개발: 프로젝트 루트 ai.toml / 릴리즈: %LOCALAPPDATA%\\AXStudio\\config\\ai.toml',
     '# API 키는 이 파일에 저장하지 않습니다.',
     '',
   ];

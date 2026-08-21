@@ -14,24 +14,27 @@ import { getCore } from '../core-instance.js';
 import { getEnvFilePath } from '../env-file.js';
 import { getAiConfigPath, readAiToml } from '../ai/config-file.js';
 import { isGoogleOAuthConfigured } from '../gmail/oauth.js';
+import { getDesktopAxDataPaths } from '../data-paths.js';
 
 export function registerStateHandlers() {
   ipcMain.handle('ax:getState', async () => {
     const core = getCore();
     const pendingApprovals = core.store.getPendingApprovals().map((approval) => {
       const execution = core.store.getExecution(approval.executionId);
-      let ir = execution?.workflowId
-        ? core.store.getWorkflow(execution.workflowId, execution.workflowVersion ?? undefined)
-        : null;
-      if (execution?.irJson) {
+      let ir = null;
+      let snapshotError: string | undefined;
+      if (!execution?.irJson) {
+        snapshotError = '승인 재개에 필요한 실행 스냅샷이 없습니다.';
+      } else {
         try {
           ir = parseWorkflowIR(JSON.parse(execution.irJson));
-        } catch {
-          /* keep stored workflow copy */
+        } catch (error) {
+          snapshotError = error instanceof Error ? error.message : String(error);
         }
       }
       return {
         ...approval,
+        ...(snapshotError ? { errorCode: 'invalid_execution_snapshot', errorMessage: snapshotError } : {}),
         title: formatApprovalTitle({
           workName: ir?.name,
           reason: approval.reason,
@@ -46,8 +49,8 @@ export function registerStateHandlers() {
         try {
           const log = JSON.parse(execution.logJson) as Array<{ level?: string; message?: string }>;
           errorMessage = log.filter((entry) => entry.level === 'error').at(-1)?.message;
-        } catch {
-          /* ignore malformed logs */
+        } catch (error) {
+          errorMessage = `실행 로그가 손상되었습니다: ${error instanceof Error ? error.message : String(error)}`;
         }
       }
       return {
@@ -75,7 +78,7 @@ export function registerStateHandlers() {
         lastStatus: lastExecution?.status,
       };
     });
-    const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider'));
+    const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider', undefined));
     const aiToml = await readAiToml();
     const gmailConn = core.store.getConnections().find((c) => c.connector === 'gmail');
     const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
@@ -97,6 +100,7 @@ export function registerStateHandlers() {
       aiProviderInstalled: isAiProviderReady(aiProvider),
       envFilePath: getEnvFilePath(),
       aiConfigPath: getAiConfigPath(),
+      axDataRoot: getDesktopAxDataPaths().root,
       aiBrandConfigs: aiToml.providers,
       gmailOAuthConfigured: isGoogleOAuthConfigured(),
       gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,

@@ -1,6 +1,10 @@
-# Document Engine (Python sidecar)
+# Document Engine (Python sidecar — **read only**)
 
 Python worker for document ingest, parsing, and artifact storage. Node/Electron talks to it via **stdin/stdout JSON** (one request per process spawn).
+
+Document **generation** (HTML/PDF/DOCX write) lives in `packages/core/src/document-write/` — not in this package.
+
+Write-side PDF→HTML template import also uses this worker (`pdf_to_html` command).
 
 ## Architecture
 
@@ -15,7 +19,8 @@ Parser Adapter
   ├─ DoclingAdapter   (optional, requirements-docling.txt)
   └─ BasicAdapter     (pypdf + text, default fallback)
       ↓
-~/.ax-studio/documents/<hash>/manifest.json
+~/.ax-studio/documents/<hash>/manifest.json   (legacy)
+%LOCALAPPDATA%/AXStudio/documents/<hash>/     (desktop default)
 ```
 
 Docling types stay inside the Python adapter. Node only sees AX-owned summaries and artifact paths.
@@ -46,9 +51,11 @@ Override paths with env vars:
 
 | Variable | Purpose |
 |----------|---------|
+| `AX_DATA_ROOT` | AX Studio data root (desktop sets this) |
+| `AX_DOCUMENT_ARTIFACT_ROOT` | Override documents directory |
+| `AX_TEMPLATE_ROOT` | Override templates directory |
 | `AX_DOCUMENT_ENGINE_PYTHON` | Python executable |
 | `AX_DOCUMENT_ENGINE_WORKER` | Path to `worker.py` |
-| `AX_DOCUMENT_ARTIFACT_ROOT` | Artifact directory (default `~/.ax-studio/documents`) |
 
 ## Manual smoke test
 

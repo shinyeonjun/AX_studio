@@ -1,9 +1,9 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
-import type { LocalFolderConnectionConfig } from './connection.js';
+import { findLocalFolder, type LocalFolderConnectionConfig } from './connection.js';
 import { newFilePoll } from './new-file-poll.js';
 import { resolveFileWithinFolderRoot } from './path-security.js';
-import { scanFolder } from './scan.js';
+import { scanFolderChecked } from './scan.js';
 
 export class LocalFolderConnector implements Connector {
   name = 'local_folder';
@@ -16,6 +16,7 @@ export class LocalFolderConnector implements Connector {
         this.config,
         {
           folderId: String(params.folderId ?? ''),
+          folderPath: typeof params.folderPath === 'string' ? params.folderPath : undefined,
           initialized: Boolean(params.initialized),
           seenFileKeys: (params.seenFileKeys as string[]) ?? [],
           extensions: (params.extensions as string[]) ?? undefined,
@@ -26,19 +27,17 @@ export class LocalFolderConnector implements Connector {
 
     if (action === 'list') {
       const folderId = String(params.folderId ?? '');
-      const folder = this.config.folders.find((entry) => entry.id === folderId);
+      const folder = findLocalFolder(this.config, folderId);
       if (!folder) return { ok: false, error: 'folder_not_found' };
-      const files = scanFolder(folder.path, (params.extensions as string[]) ?? undefined);
+      const scanned = scanFolderChecked(folder.path, (params.extensions as string[]) ?? undefined);
+      if (!scanned.ok) return { ok: false, error: scanned.error, errorCode: scanned.errorCode };
+      const files = scanned.files;
       return { ok: true, data: { folder, files } };
     }
 
     if (action === 'read') {
       const folderId = String(params.folderId ?? '');
-      const folder = folderId
-        ? this.config.folders.find((entry) => entry.id === folderId)
-        : this.config.folders.length === 1
-          ? this.config.folders[0]
-          : undefined;
+      const folder = findLocalFolder(this.config, folderId);
       if (!folder) return { ok: false, error: 'folder_not_found' };
 
       const candidatePath =

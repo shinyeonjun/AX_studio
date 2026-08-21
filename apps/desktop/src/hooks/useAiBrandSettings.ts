@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AI_PROVIDER_UI_CATALOG, brandFromProvider, modelsForBrand } from '../constants/ai-providers';
 import { isBrandReady, resolveBrandModel } from '../lib/ai-settings/brand-readiness';
 import type { useAiDetection } from './ai-settings/useAiDetection';
-import type { AiBrand, AiConnectionMode, AiProviderState } from '../types/ai-provider';
+import type { AiBrand, AiConnectionMode } from '../types/ai-provider';
+import type { AiProviderState } from '../types/app-state';
 import type { AppState } from '../types/app-state';
 
 type AiDetection = ReturnType<typeof useAiDetection>;

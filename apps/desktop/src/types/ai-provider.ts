@@ -1,4 +1,4 @@
-export type { AiBrand, AiConnectionMode, AiProviderId, CliModelOption } from '@ax-studio/core/ai-catalog';
+export type { AiBrand, AiConnectionMode, AiProviderId, CliModelOption } from '@ax-studio/core';
 
 export interface DetectedAiCli {
   id: 'codex-cli' | 'claude-cli' | 'cursor-cli';
@@ -9,7 +9,7 @@ export interface DetectedAiCli {
   apiKeyConfigured?: boolean;
   command?: string;
   version?: string;
-  models: import('@ax-studio/core/ai-catalog').CliModelOption[];
+  models: import('@ax-studio/core').CliModelOption[];
   defaultModel: string;
 }
 
@@ -19,14 +19,14 @@ export interface AiSecretStatus {
 }
 
 export interface AiBrandTomlPrefs {
-  mode?: import('@ax-studio/core/ai-catalog').AiConnectionMode;
+  mode?: import('@ax-studio/core').AiConnectionMode;
   model?: string;
 }
 
 export interface AiConfigSnapshot {
   path: string;
-  active?: { brand: import('@ax-studio/core/ai-catalog').AiBrand; mode: import('@ax-studio/core/ai-catalog').AiConnectionMode; model: string };
-  providers: Partial<Record<import('@ax-studio/core/ai-catalog').AiBrand, AiBrandTomlPrefs>>;
+  active?: { brand: import('@ax-studio/core').AiBrand; mode: import('@ax-studio/core').AiConnectionMode; model: string };
+  providers: Partial<Record<import('@ax-studio/core').AiBrand, AiBrandTomlPrefs>>;
   secrets: Record<string, AiSecretStatus>;
 }
 

@@ -17,7 +17,9 @@ def docling_available() -> bool:
 
 
 def resolve_adapter(engine: str) -> DocumentParserAdapter:
-    normalized = (engine or "auto").lower()
+    normalized = (engine or "auto").strip().lower()
+    if normalized not in {"auto", "basic", "docling"}:
+        raise ValueError(f"unsupported_engine:{engine}")
     if normalized == "docling":
         from adapters.docling import DoclingAdapter
 

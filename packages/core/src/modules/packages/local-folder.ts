@@ -1,11 +1,11 @@
 import type { ModulePackage } from '../module-package.js';
-import { MockLocalFolderConnector } from '../mocks/index.js';
 import {
   LocalFolderConnector,
   getLocalFolderConnectionStatus,
   parseLocalFolderConnectionConfig,
 } from '../local-folder/index.js';
-import { buildLocalFolderResources } from '../../interview/connected-resources.js';
+import { buildLocalFolderResources } from '../../interview/resources/connected-resources.js';
+import { resolveFolderRoot } from '../local-folder/path-security.js';
 import { localFolderNewFileHandler } from '../../triggers/local-folder/new-file/index.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
 import { LOCAL_FOLDER_CAPABILITIES, LOCAL_FOLDER_CATALOG } from './catalog-data.js';
@@ -24,6 +24,7 @@ function localFolderSources(ctx: DesignToolContext) {
       label: folder.label,
       kind: 'local_folder',
       path: folder.path,
+      accessible: resolveFolderRoot(folder.path).ok,
       addedAt: folder.addedAt,
     })),
   };
@@ -45,6 +46,7 @@ function localFolderSourceFiles(ctx: DesignToolContext, args: Record<string, unk
       : undefined;
 
   const scanned = buildLocalFolderResources([folder], { extensions, maxFilesPerFolder: 100 })[0]!;
+  if (!scanned.accessible) throw new Error('folder_not_accessible');
   return {
     folderId: folder.id,
     label: folder.label,
@@ -60,7 +62,6 @@ export const localFolderModulePackage: ModulePackage = {
   catalog: LOCAL_FOLDER_CATALOG,
   capabilities: LOCAL_FOLDER_CAPABILITIES,
   registration: {
-    createMock: () => new MockLocalFolderConnector(),
     instantiate: (config) => {
       const parsed = parseLocalFolderConnectionConfig(config);
       if (parsed && parsed.folders.length > 0) return new LocalFolderConnector(parsed);

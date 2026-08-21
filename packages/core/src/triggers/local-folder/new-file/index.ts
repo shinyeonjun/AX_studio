@@ -3,6 +3,7 @@ import type { TriggerHandler, TriggerPollResult } from '../../types.js';
 export const localFolderNewFileHandler: TriggerHandler<{
   type: 'local_folder.new_file';
   folderId: string;
+  folderPath?: string;
   extensions?: string[];
 }> = {
   type: 'local_folder.new_file',
@@ -12,7 +13,7 @@ export const localFolderNewFileHandler: TriggerHandler<{
   async poll(ctx) {
     const localFolder = ctx.connectors.local_folder;
     if (!localFolder) {
-      return { events: [], cursor: ctx.cursor };
+      throw new Error('local_folder_connector_missing');
     }
 
     const folderChanged = Boolean(ctx.cursor.folderId && ctx.cursor.folderId !== ctx.trigger.folderId);
@@ -21,6 +22,7 @@ export const localFolderNewFileHandler: TriggerHandler<{
       'new_file.poll',
       {
         folderId: ctx.trigger.folderId,
+        folderPath: ctx.trigger.folderPath,
         extensions: ctx.trigger.extensions,
         initialized: (ctx.cursor.initialized ?? false) && !folderChanged,
         seenFileKeys: folderChanged ? [] : (ctx.cursor.seenFileKeys ?? []),

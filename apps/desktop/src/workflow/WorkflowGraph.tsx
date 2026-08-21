@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
   type Node,
   type OnSelectionChangeFunc,
 } from '@xyflow/react';
@@ -11,8 +13,7 @@ import '@xyflow/react/dist/style.css';
 import { draftToFlow } from './draft-to-flow.js';
 import { WorkflowStepNode } from './nodes/WorkflowStepNode.js';
 import type { WorkflowVisualNodeData } from './types.js';
-import type { CompletenessResult } from '@ax-studio/core/requiredness';
-import type { InterviewDraft } from '@ax-studio/core/workflow-schema';
+import type { CompletenessResult, InterviewDraft } from '@ax-studio/core';
 import { computeWorkflowDiff } from './workflow-diff.js';
 
 const nodeTypes = { workflowStep: WorkflowStepNode };
@@ -23,20 +24,29 @@ interface WorkflowGraphProps {
   completeness?: CompletenessResult;
   expanded?: boolean;
   selectedNodeId?: string | null;
+  autoSelectSourceId?: string | null;
   onSelectNode?: (node: Node<WorkflowVisualNodeData> | null) => void;
 }
 
-export function WorkflowGraph({
+function nodeIdsKey(nodes: Node<WorkflowVisualNodeData>[]): string {
+  return nodes.map((node) => node.id).join('\0');
+}
+
+function WorkflowGraphInner({
   draft,
   baselineDraft,
   completeness,
   expanded = false,
   selectedNodeId,
+  autoSelectSourceId,
   onSelectNode,
 }: WorkflowGraphProps) {
+  const { fitView } = useReactFlow();
   const [collapseSystemSteps, setCollapseSystemSteps] = useState(true);
-  const [enteringIds, setEnteringIds] = useState<Set<string>>(new Set());
+  const [enteringIds, setEnteringIds] = useState<Set<string>>(() => new Set());
   const prevNodeIdsRef = useRef<Set<string>>(new Set());
+  const selectedNodeIdRef = useRef<string | null>(selectedNodeId ?? null);
+  selectedNodeIdRef.current = selectedNodeId ?? null;
 
   const diff = useMemo(
     () => computeWorkflowDiff(baselineDraft, draft),
@@ -54,6 +64,8 @@ export function WorkflowGraph({
     [draft, completeness, diff, collapseSystemSteps],
   );
 
+  const graphNodeIdsKey = useMemo(() => nodeIdsKey(graph.nodes), [graph.nodes]);
+
   useEffect(() => {
     const currentIds = new Set(graph.nodes.map((node) => node.id));
     const entering = new Set<string>();
@@ -61,12 +73,40 @@ export function WorkflowGraph({
       if (!prevNodeIdsRef.current.has(id)) entering.add(id);
     }
     prevNodeIdsRef.current = currentIds;
-    if (entering.size > 0) {
-      setEnteringIds(entering);
-      const timer = window.setTimeout(() => setEnteringIds(new Set()), 700);
-      return () => window.clearTimeout(timer);
-    }
-  }, [graph.nodes]);
+    if (entering.size === 0) return;
+
+    setEnteringIds((prev) => {
+      if (prev.size === entering.size) {
+        let same = true;
+        for (const id of entering) {
+          if (!prev.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return entering;
+    });
+
+    const timer = window.setTimeout(() => setEnteringIds(new Set()), 700);
+    return () => window.clearTimeout(timer);
+  }, [graphNodeIdsKey]);
+
+  useEffect(() => {
+    if (!graph.hasContent) return;
+    const frame = window.requestAnimationFrame(() => {
+      void fitView({ padding: expanded ? 0.2 : 0.35, duration: 180 });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [graphNodeIdsKey, expanded, graph.hasContent, fitView]);
+
+  useEffect(() => {
+    if (!autoSelectSourceId || selectedNodeId || !onSelectNode) return;
+    const match = graph.nodes.find((node) => node.data.sourceId === autoSelectSourceId);
+    if (!match || match.data.kind === 'join') return;
+    onSelectNode(match);
+  }, [autoSelectSourceId, selectedNodeId, graphNodeIdsKey, graph.nodes, onSelectNode]);
 
   const nodes = useMemo(() => {
     return graph.nodes.map((node) => ({
@@ -80,24 +120,32 @@ export function WorkflowGraph({
     }));
   }, [graph.nodes, selectedNodeId, enteringIds]);
 
-  const handleSelectionChange: OnSelectionChangeFunc = ({ nodes: selected }) => {
-    const picked = selected[0] as Node<WorkflowVisualNodeData> | undefined;
-    if (!picked || picked.data.kind === 'join') {
-      onSelectNode?.(null);
-      return;
-    }
-    onSelectNode?.(picked);
-  };
+  const handleSelectionChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes: selected }) => {
+      const picked = selected[0] as Node<WorkflowVisualNodeData> | undefined;
+      const nextId = !picked || picked.data.kind === 'join' ? null : picked.id;
+      if (nextId === selectedNodeIdRef.current) return;
+      if (!nextId || !picked) {
+        onSelectNode?.(null);
+        return;
+      }
+      onSelectNode?.(picked);
+    },
+    [onSelectNode],
+  );
 
-  const handleNodeClick = (_event: React.MouseEvent, node: Node<WorkflowVisualNodeData>) => {
-    if (node.data.kind === 'system' && node.data.collapsed) {
-      setCollapseSystemSteps(false);
-      return;
-    }
-    if (node.data.kind === 'join') {
-      onSelectNode?.(null);
-    }
-  };
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node<WorkflowVisualNodeData>) => {
+      if (node.data.kind === 'system' && node.data.collapsed) {
+        setCollapseSystemSteps(false);
+        return;
+      }
+      if (node.data.kind === 'join') {
+        onSelectNode?.(null);
+      }
+    },
+    [onSelectNode],
+  );
 
   if (!graph.hasContent) {
     return (
@@ -134,8 +182,6 @@ export function WorkflowGraph({
         zoomOnScroll
         minZoom={0.35}
         maxZoom={1.4}
-        fitView
-        fitViewOptions={{ padding: expanded ? 0.2 : 0.35 }}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} size={1} color="rgba(255,255,255,0.04)" />
@@ -143,5 +189,13 @@ export function WorkflowGraph({
         {expanded && <Controls showInteractive={false} className="wf-controls" />}
       </ReactFlow>
     </div>
+  );
+}
+
+export function WorkflowGraph(props: WorkflowGraphProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowGraphInner {...props} />
+    </ReactFlowProvider>
   );
 }

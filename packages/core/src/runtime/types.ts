@@ -20,3 +20,12 @@ export interface ExecutionResult {
   log: ExecutionLogEntry[];
   pendingApprovalId?: string;
 }
+
+/** Inputs supplied by a trigger or the desktop manual-run boundary. */
+export interface WorkflowExecutionOptions {
+  ephemeral?: boolean;
+  triggerType?: string;
+  input?: Record<string, unknown>;
+  /** Explicit manual run from UI — inactive ephemeral workflows may still run once. */
+  forceManual?: boolean;
+}

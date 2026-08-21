@@ -14,6 +14,10 @@ class IngestOptionsTest(unittest.TestCase):
         self.assertEqual(normalize_ocr(True), "force")
         self.assertEqual(normalize_ocr("false"), "off")
 
+    def test_rejects_unknown_ocr_mode(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unsupported_ocr:unknown"):
+            normalize_ocr("unknown")
+
     def test_rejects_basic_cache_when_docling_is_resolved(self) -> None:
         manifest = {"engine": "basic", "ocrMode": "auto", **parser_cache_fingerprint()}
         self.assertFalse(

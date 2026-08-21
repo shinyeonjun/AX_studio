@@ -45,6 +45,11 @@
   flex: 1;
   overflow: auto;
   padding: 32px 24px 16px;
+  scrollbar-gutter: stable;
+}
+
+.work-conversation-chat .chat-thread {
+  padding-right: 20px;
 }
 
 .chat-thread-inner {
@@ -179,6 +184,18 @@
 .chat-composer-wrap {
   flex-shrink: 0;
   padding: 12px 24px 24px;
+}
+
+.chat-composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chat-composer-scope-hint {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .chat-composer {

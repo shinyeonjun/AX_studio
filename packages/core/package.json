@@ -16,6 +16,36 @@
       "types": "./dist/agent/settings/ai-catalog.d.ts",
       "import": "./dist/agent/settings/ai-catalog.js",
       "default": "./dist/agent/settings/ai-catalog.js"
+    },
+    "./catalog-data": {
+      "types": "./dist/modules/packages/catalog-data.d.ts",
+      "import": "./dist/modules/packages/catalog-data.js",
+      "default": "./dist/modules/packages/catalog-data.js"
+    },
+    "./interview-constants": {
+      "types": "./dist/interview/compile/constants.d.ts",
+      "import": "./dist/interview/compile/constants.js",
+      "default": "./dist/interview/compile/constants.js"
+    },
+    "./panel-fields": {
+      "types": "./dist/interview/presentation/panel-fields.d.ts",
+      "import": "./dist/interview/presentation/panel-fields.js",
+      "default": "./dist/interview/presentation/panel-fields.js"
+    },
+    "./visual-display": {
+      "types": "./dist/workflow/visual-display.d.ts",
+      "import": "./dist/workflow/visual-display.js",
+      "default": "./dist/workflow/visual-display.js"
+    },
+    "./work-scope": {
+      "types": "./dist/interview/session/work-scope.d.ts",
+      "import": "./dist/interview/session/work-scope.js",
+      "default": "./dist/interview/session/work-scope.js"
+    },
+    "./interview-messages": {
+      "types": "./dist/interview/session/messages.d.ts",
+      "import": "./dist/interview/session/messages.js",
+      "default": "./dist/interview/session/messages.js"
     }
   },
   "scripts": {

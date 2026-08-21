@@ -1,5 +1,4 @@
-import type { CompletenessResult } from '@ax-studio/core/requiredness';
-import type { InterviewDraft, WorkflowNode } from '@ax-studio/core/workflow-schema';
+import type { CompletenessResult, InterviewDraft, WorkflowNode } from '@ax-studio/core';
 import {
   displayForCapability as coreDisplayForCapability,
   displayForTrigger as coreDisplayForTrigger,
@@ -24,8 +23,12 @@ export function displayForTrigger(draft: InterviewDraft, slots?: CompletenessRes
   return { ...rest, iconSrc: icon.src, iconEmoji: icon.emoji };
 }
 
-export function displayForWorkflowNode(node: WorkflowNode, slots?: CompletenessResult['slots']) {
-  const base = coreDisplayForWorkflowNode(node, slots);
+export function displayForWorkflowNode(
+  draft: InterviewDraft,
+  node: WorkflowNode,
+  slots?: CompletenessResult['slots'],
+) {
+  const base = coreDisplayForWorkflowNode(draft, node, slots);
   if (base.kind === 'ai_decision') {
     const { iconConnector: _iconConnector, ...rest } = base;
     return { ...rest, iconEmoji: '✦' };

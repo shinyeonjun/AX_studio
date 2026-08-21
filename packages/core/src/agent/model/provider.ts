@@ -14,6 +14,8 @@ export interface StructuredGenerateInput<T> {
   sessionId?: string;
   abortSignal?: AbortSignal;
   onProgress?: (event: AgentProgressEvent) => void;
+  logContext?: string;
+  codexReasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 export interface TextGenerateInput {

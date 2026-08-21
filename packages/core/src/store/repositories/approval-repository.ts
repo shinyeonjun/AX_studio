@@ -2,6 +2,36 @@ import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
 import type { ApprovalRow } from '../rows.js';
 
+function parseApprovalJson<T>(raw: string, field: string, approvalId: string): T {
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(`승인 ${approvalId}의 ${field} JSON이 손상되었습니다: ${detail}`), {
+      code: 'invalid_approval_json',
+      approvalId,
+      field,
+    });
+  }
+}
+
+function parseActionIds(raw: string, approvalId: string): string[] {
+  const value = parseApprovalJson<unknown>(raw, 'action_ids', approvalId);
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw Object.assign(new Error(`승인 ${approvalId}의 action_ids 형식이 올바르지 않습니다.`), {
+      code: 'invalid_approval_json',
+      approvalId,
+      field: 'action_ids',
+    });
+  }
+  return value;
+}
+
+function parsePayload(raw: string | null, approvalId: string): unknown {
+  if (!raw) return undefined;
+  return parseApprovalJson(raw, 'payload', approvalId);
+}
+
 export function createApproval(
   db: AppDatabase,
   params: { executionId: string; actionIds: string[]; reason: string; payload?: unknown },
@@ -35,8 +65,35 @@ export function updateApprovalPayload(db: AppDatabase, id: string, extra: Record
 
 export function resolveApproval(db: AppDatabase, id: string, approved: boolean) {
   db
-    .prepare('UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ?')
+    .prepare("UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN ('pending', 'processing')")
     .run(approved ? 'approved' : 'rejected', new Date().toISOString(), id);
+}
+
+/** Rejects only a still-pending UI approval; a claimed approval belongs to its runner. */
+export function rejectPendingApproval(db: AppDatabase, id: string): boolean {
+  db
+    .prepare("UPDATE approvals SET status = 'rejected', resolved_at = ? WHERE id = ? AND status = 'pending'")
+    .run(new Date().toISOString(), id);
+  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
+  return Number(row?.count ?? 0) === 1;
+}
+
+/** Closes a claimed approval when its execution can no longer be resumed. */
+export function failApproval(db: AppDatabase, id: string): boolean {
+  db
+    .prepare("UPDATE approvals SET status = 'failed', resolved_at = ? WHERE id = ? AND status = 'processing'")
+    .run(new Date().toISOString(), id);
+  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
+  return Number(row?.count ?? 0) === 1;
+}
+
+/** Atomically reserves a pending approval so two UI clicks cannot resume it twice. */
+export function claimApproval(db: AppDatabase, id: string): boolean {
+  db
+    .prepare("UPDATE approvals SET status = 'processing' WHERE id = ? AND status = 'pending'")
+    .run(id);
+  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
+  return Number(row?.count ?? 0) === 1;
 }
 
 export function getApproval(db: AppDatabase, id: string) {
@@ -45,12 +102,12 @@ export function getApproval(db: AppDatabase, id: string) {
   return {
     id: row.id,
     executionId: row.execution_id,
-    actionIds: JSON.parse(row.action_ids_json) as string[],
+    actionIds: parseActionIds(row.action_ids_json, row.id),
     reason: row.reason,
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
-    payload: row.payload_json ? JSON.parse(row.payload_json) : undefined,
+    payload: parsePayload(row.payload_json, row.id),
   };
 }
 
@@ -61,18 +118,22 @@ export function getPendingApprovals(db: AppDatabase) {
   return rows.map((row) => ({
     id: row.id,
     executionId: row.execution_id,
-    actionIds: JSON.parse(row.action_ids_json) as string[],
+    actionIds: parseActionIds(row.action_ids_json, row.id),
     reason: row.reason,
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
-    payload: row.payload_json ? JSON.parse(row.payload_json) : undefined,
+    payload: parsePayload(row.payload_json, row.id),
   }));
 }
 
 export function hasPendingApprovalForExecution(db: AppDatabase, executionId: string): boolean {
+  return hasOpenApprovalForExecution(db, executionId);
+}
+
+export function hasOpenApprovalForExecution(db: AppDatabase, executionId: string): boolean {
   const row = db
-    .prepare('SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status = ? LIMIT 1')
-    .get(executionId, 'pending') as { found: number } | undefined;
+    .prepare("SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status IN ('pending', 'processing') LIMIT 1")
+    .get(executionId) as { found: number } | undefined;
   return Boolean(row?.found);
 }
