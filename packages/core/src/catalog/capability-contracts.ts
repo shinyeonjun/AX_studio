@@ -1,5 +1,5 @@
 import { getCapability, CAPABILITY_CATALOG } from './capabilities.js';
-import { resolveCapability } from './capability-graph.js';
+import { resolveCapability } from './capability-resolver.js';
 import type { ContractTypeName } from '../contracts/capability-io.js';
 
 const TRIGGER_CAPABILITY_BY_TYPE: Record<string, string> = Object.fromEntries(

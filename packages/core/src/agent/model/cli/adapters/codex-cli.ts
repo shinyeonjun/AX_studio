@@ -9,7 +9,7 @@ import { parseStructuredFromCliResult } from '../output.js';
 /** Codex CLI 0.147+ removed --ask-for-approval; clamp reasoning effort for structured exec. */
 export function codexExecArgs(
   model: string,
-  prompt: string,
+  _prompt: string,
   extras: string[] = [],
   workDir?: string,
   reasoningEffort: 'low' | 'medium' | 'high' = 'high',
@@ -29,23 +29,27 @@ export function codexExecArgs(
     model,
     ...extras,
     '--',
-    prompt,
+    // Codex reads the initial prompt from stdin when the positional prompt is "-".
+    // Keeping the full prompt out of argv is required on Windows, where CreateProcess
+    // rejects large command lines with ENAMETOOLONG.
+    '-',
   ];
 }
 
 export class CodexCliProvider implements ModelProvider {
   readonly name = 'codex-cli';
 
-  constructor(private model: string) {}
+  constructor(readonly model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
     const command = requiredBinary('codex-cli');
+    const prompt = composedPrompt(input);
     return withTempDir(async (dir) => {
       const outPath = join(dir, 'last.txt');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, composedPrompt(input), ['-o', outPath], dir),
-        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
+        codexExecArgs(this.model, prompt, ['-o', outPath], dir),
+        { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {
         return (await readFile(outPath, 'utf8')).trim();
@@ -60,6 +64,7 @@ export class CodexCliProvider implements ModelProvider {
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const command = requiredBinary('codex-cli');
+    const prompt = composedPrompt(input);
     const schema = zodToCodexJsonSchema(input.schema);
     const reasoningEffort = input.codexReasoningEffort ?? 'high';
     const raw = await withTempDir(async (dir) => {
@@ -68,13 +73,13 @@ export class CodexCliProvider implements ModelProvider {
       await writeFile(schemaPath, JSON.stringify(schema), 'utf8');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, composedPrompt(input), [
+        codexExecArgs(this.model, prompt, [
           '--output-schema',
           schemaPath,
           '-o',
           outPath,
         ], dir, reasoningEffort),
-        { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
+        { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {
         return {

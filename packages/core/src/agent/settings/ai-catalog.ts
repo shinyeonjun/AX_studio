@@ -26,6 +26,7 @@ const KNOWN_PROVIDERS = [
   'openai-api',
   'anthropic-api',
   'grok-api',
+  'ollama-api',
 ] as const;
 
 export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand | null {

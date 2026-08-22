@@ -6,11 +6,10 @@
  * - draft/       workflow canvas schema and draft normalization
  * - compile/     InterviewDraft → WorkflowIR
  * - slots/       node-level requirement slots, patch merge
- * - plan/        AI structural plan schema
- * - agent/       provider output contract and discovery loop
+ * - agent/       typed authoring tools, draft patch contract, provider wire schema
  * - resources/   connected connector resources for prompts
  * - presentation/ summaries and documents
- * - revision/    post-save workflow revision
+ * - revision/    execution explanation
  * - bootstrap/   resume interview from saved workflow
  */
 
@@ -24,29 +23,36 @@ export {
 export { isRecurringTriggerType, resolveWorkScope } from './session/work-scope.js';
 export { isRunConfirmationMessage, shouldFinalizeInterview } from './session/messages.js';
 export { applyAnswer, startInterview, type InterviewRunOptions } from './session/flow.js';
-export { applyInterviewPatch, type InterviewPatchOptions } from './session/patch-turn.js';
+export { applyAgentDraftPatch } from './session/apply-agent-patch.js';
 
 export { buildIRFromWorkflow, UnknownCapabilityError } from './compile/builder.js';
 export { GMAIL_READ_WORKFLOW_NODE_ID } from './compile/constants.js';
 
 export {
   InterviewDraftSchema,
-  InterviewTurnSchema,
   WorkflowNodeSchema,
   type ActionInstance,
   type InterviewDraft,
-  type InterviewTurn,
   type WorkflowNode,
 } from './draft/schema.js';
 
-export { InterviewPatchSchema, mergePatch, applySlotValuesToDraft, type InterviewPatch } from './slots/patch.js';
-export { WorkflowPlanSchema, planToInterviewDraft, type WorkflowPlan } from './plan/schema.js';
-
+export { applySlotValuesToDraft } from './slots/patch.js';
 export {
-  InterviewWireEnvelopeSchema,
-  interviewOutputSchemaForProvider,
-  expandInterviewWireEnvelope,
-} from './agent/wire-schema.js';
+  WorkflowDraftPatchSchema,
+  parseWorkflowDraftPatch,
+  type WorkflowDraftPatch,
+} from './agent/draft-patch.js';
+export {
+  AGENTIC_INTERVIEW_MAX_ROUNDS,
+  runAgenticInterviewLoop,
+  type AgenticInterviewResult,
+} from './agent/agent-loop.js';
+export {
+  AgenticInterviewWireEnvelopeSchema,
+  agenticInterviewOutputSchemaForProvider,
+  expandAgenticInterviewWireEnvelope,
+  parseAgenticInterviewOutput,
+} from './agent/agent-schema.js';
 
 export {
   assessCompleteness,
@@ -76,5 +82,4 @@ export {
   type ListedFileRef,
 } from './resources/connected-resources.js';
 
-export { explainExecution, proposeWorkflowRevision, type WorkflowRevisionOptions } from './revision/revision.js';
-export { WorkflowRevisionSchema } from './revision/schema.js';
+export { explainExecution } from './revision/revision.js';

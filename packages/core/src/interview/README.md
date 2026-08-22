@@ -5,12 +5,14 @@ Workflow design interview: natural language → **workflow graph** + **action in
 ## Flow
 
 ```text
-discover → plan/replan → patch → compile → assessCompleteness
+user message → Agent(read-only tools)* → typed draft patch → code validation → compile → assessCompleteness
 ```
 
-- **plan**: AI creates node graph once; required params seeded empty from catalog.
-- **patch**: fills `{nodeId}.params.{field}` and `{nodeId}.memo` (ai_decision criteria) without changing structure.
-- **compile**: code merges graph + `actions` map and builds Workflow IR. `ai_decision.memo` is passed to runtime investigate agent.
+- `tools`: Agent가 필요할 때 `connections.list`, `sources.files.list`, `capabilities.describe`, `workflow.inspect` 같은 read-only 도구를 호출한다.
+- `patch`: Agent가 `meta`, `upsertNodes`, `removeNodeIds`, `set`으로 draft만 수정한다. `baseRevision`이 현재 revision과 다르면 거부한다.
+- `compile`: 코드가 draft + `actions` map을 검수하고 Workflow IR을 만든다. `ai_decision.memo`는 runtime investigate agent로 전달된다.
+- 저장·승인·실행은 이 인터뷰 Agent의 권한이 아니다. deployable draft가 되면 UI가 저장/실행 동작을 표시한다.
+- `workflow.json` 저장은 사용자가 검토 카드에서 명시적으로 누른 경우에만 일어난다. 대화 세션 저장은 draft/history 보존이며 저장된 workflow를 자동으로 덮어쓰지 않는다.
 
 ## Work scope
 
@@ -18,8 +20,8 @@ At session start the user picks **once** (`일회성`) or **recurring** (`다회
 
 | Scope | Trigger handling |
 |---|---|
-| `once` | one-time scope; the plan chooses `manual` for now or `once` with `runAt` for a future execution |
-| `recurring` | trigger collected via chat interview → AI `patch.set` |
+| `once` | code가 `manual` trigger로 고정하고 실행 시 입력을 받는다 |
+| `recurring` | trigger 값을 Agent가 `patch.meta`로 제안하고 코드가 검수한다 |
 
 Saved workflows infer scope from trigger type when reopened (`bootstrapInterviewFromWorkflow`).
 
@@ -35,21 +37,22 @@ Stored (ir_json)
 └─ actions{}        # action instances keyed by node id
 ```
 
+채팅 세션은 `InterviewState`와 draft revision을 별도로 보존한다. `workflowId`가 있는 기존 업무도 대화 중에는 draft로만 수정되고, 저장 버튼을 누를 때만 새 workflow version으로 검수·저장된다.
+
 Action **definitions** (input/output, labels) live in the global capability catalog — not per workflow.
 
 ## Layout
 
 | Directory | Responsibility |
 |-----------|----------------|
-| `session/` | Turn loop, state, assistant messages, workflow merge |
+| `session/` | Turn loop, state, assistant messages, draft apply |
 | `draft/` | Canvas schema (`InterviewDraft`), `actions` map, local-folder normalization |
 | `compile/` | Draft → IR builder |
 | `slots/` | Node slot IDs, patch, requiredness, prompt formatting |
-| `plan/` | AI structural plan schema and normalization |
-| `agent/` | Provider output contract, wire envelope, discovery loop |
+| `agent/` | typed tools/patch output contract and provider-safe wire envelope |
 | `resources/` | Connected folders/files for agent prompts |
 | `presentation/` | Chat summaries and workflow documents |
-| `revision/` | Post-save workflow revision |
+| `revision/` | Execution explanation |
 | `bootstrap/` | Resume interview from saved workflow |
 | `test/` | Tests mirroring module layout |
 
@@ -63,11 +66,11 @@ Trigger and workflow-level slots stay global: `trigger.runAt`, `goal`, `slack.ne
 
 | Layer | Owns | Does not |
 |---|---|---|
-| AI | plan/replan, patch.set, `ai_decision` memo/outputFields | Chat question text, `done`, catalog action implementations |
-| Code | merge, compile, completeness, next slot question, deployable completion | Replace AI patch values with guessed answers |
+| AI | read-only tool calls, typed draft patch, `ai_decision` memo/outputFields, short acknowledgement | Chat question text, `done`, catalog action implementations, side effects |
+| Code | patch bounds/revision, graph/compile, completeness, next slot question, deployable completion | Replace user values with guesses |
 | UI | render `InterviewDraft`, read-only node detail panel | Action param forms; numbered chat lists |
 
-`done` follows `completeness.deployable` only. While incomplete, chat shows the first unfilled slot question from completeness — not the model `nextQuestion`. Channels, recipients, memo, and recurring triggers are filled when the user answers and the model writes `patch.set`. The right-side panel shows read-only status and connection guidance.
+`done` follows `completeness.deployable` only. While incomplete, chat shows the first unfilled slot question from completeness — not a model-selected question. Channels, recipients, memo, and recurring triggers are filled when the user answers and the Agent writes a bounded patch. The right-side panel shows the current draft revision, read-only status, and connection guidance. A deployable draft still requires an explicit save or run action; the Agent cannot persist or execute it.
 
 ## UI
 

@@ -55,8 +55,18 @@ export interface AppState {
     workflowId?: string | null;
     status: string;
     startedAt: string;
+    finishedAt?: string | null;
     errorCode?: string | null;
     errorMessage?: string;
     triggerType?: string | null;
+    currentStepId?: string;
+    currentStepStatus?: string;
+    currentStepMessage?: string;
+    lastLogMessage?: string;
+    aiOutput?: {
+      stepId: string;
+      fields: string[];
+      preview: Record<string, string>;
+    };
   }>;
 }

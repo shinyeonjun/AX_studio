@@ -5,8 +5,9 @@ import {
   actionOutputTypes,
 } from '../catalog/capability-contracts.js';
 import { resolveCapability } from '../catalog/capability-graph.js';
+import { isConnectorAlwaysOn } from '../catalog/capability-graph.js';
 import { getConnectorCatalogEntry } from '../catalog/connectors.js';
-import { skipInLinearScan, stepsById } from '../runtime/control-flow.js';
+import { linearContractSteps, stepsById } from './control-flow.js';
 import type { Step, WorkflowIR } from './schema.js';
 import { aiDecisionOutputPorts, bindingsSatisfyInputs, hasConcreteParamForPort, triggerAvailableTypes } from './bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from './action-definition.js';
@@ -31,6 +32,8 @@ export interface ContractValidationIssue {
 export interface WorkflowContractValidationOptions {
   /** Explicit runtime implementations supplied by a test or host process. */
   runtimeConnectors?: Record<string, unknown>;
+  /** Persisted connection ids available to the desktop host. */
+  connectedConnectors?: string[];
 }
 
 function referencePaths(value: unknown): string[] {
@@ -67,6 +70,10 @@ function outputFieldExists(step: Extract<Step, { type: 'ai_decision' }>, field: 
   return Object.prototype.hasOwnProperty.call(properties, field);
 }
 
+function outputFieldIsRequired(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
+  return Array.isArray(step.outputSchema?.required) && step.outputSchema.required.includes(field);
+}
+
 function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[] {
   const trigger = ir.trigger;
   if (!trigger) return [];
@@ -85,7 +92,9 @@ function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[]
             ? [['channel', trigger.channel]]
             : trigger.type === 'local_folder.new_file'
               ? [['folderId', trigger.folderId]]
-              : [];
+              : trigger.type === 'webhook.inbound'
+                ? [['path', trigger.path]]
+                : [];
 
   const issues = requiredFields.flatMap(([field, value]) =>
     typeof value === 'string' && value.trim().length > 0
@@ -110,6 +119,8 @@ function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[]
   return issues;
 }
 
+import { documentIngestPathSatisfied } from './ingest-source.js';
+
 function bindingForParameter(
   step: Extract<Step, { type: 'action' }>,
   parameter: string,
@@ -122,6 +133,18 @@ function bindingForParameter(
   return Boolean(step.bindings?.[aliases[parameter] ?? '']);
 }
 
+function actionParamConfigured(
+  step: Extract<Step, { type: 'action' }>,
+  parameter: string,
+): boolean {
+  if (parameter === 'path' && documentIngestPathSatisfied(step)) return true;
+  if (bindingForParameter(step, parameter)) return true;
+  const value = step.params[parameter];
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
 function validateActionConfiguration(
   step: Extract<Step, { type: 'action' }>,
 ): ContractValidationIssue[] {
@@ -129,7 +152,7 @@ function validateActionConfiguration(
   if (!definition) return [];
 
   const missing = validateActionParams(definition, step.params).filter(
-    (parameter) => !bindingForParameter(step, parameter),
+    (parameter) => !actionParamConfigured(step, parameter),
   );
   if (missing.length === 0) return [];
 
@@ -172,6 +195,16 @@ function validateWorkflowStructure(
           code: 'connector_unavailable',
           stepId: step.id,
           message: `${step.connector}는 현재 실행 구현이 없어 이 workflow에서 사용할 수 없습니다.`,
+        });
+      } else if (
+        options.connectedConnectors &&
+        !isConnectorAlwaysOn(step.connector) &&
+        !options.connectedConnectors.includes(step.connector)
+      ) {
+        issues.push({
+          code: 'connector_unavailable',
+          stepId: step.id,
+          message: `${step.connector} 연결이 없어 이 workflow를 저장할 수 없습니다.`,
         });
       }
       const definition = resolveActionDefinition(step.actionRef ?? actionRefFor(step.connector, step.action));
@@ -226,6 +259,39 @@ function validateWorkflowStructure(
     }
   }
 
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const reportedCycles = new Set<string>();
+  const visit = (stepId: string, path: string[]) => {
+    if (visiting.has(stepId)) {
+      const start = path.indexOf(stepId);
+      const cycle = [...path.slice(start >= 0 ? start : 0), stepId].join(' -> ');
+      if (!reportedCycles.has(cycle)) {
+        reportedCycles.add(cycle);
+        issues.push({
+          code: 'invalid_control_flow',
+          stepId,
+          message: `if 분기 순환이 발견되었습니다: ${cycle}`,
+        });
+      }
+      return;
+    }
+    if (visited.has(stepId)) return;
+
+    const current = byId.get(stepId);
+    if (!current) return;
+    visiting.add(stepId);
+    if (current.type === 'if') {
+      for (const targetId of [...current.thenStepIds, ...(current.elseStepIds ?? [])]) {
+        visit(targetId, [...path, targetId]);
+      }
+    }
+    visiting.delete(stepId);
+    visited.add(stepId);
+  };
+
+  for (const step of ir.steps) visit(step.id, [step.id]);
+
   const notifyActions = ir.steps.filter(
     (step): step is Extract<Step, { type: 'action' }> =>
       step.type === 'action' &&
@@ -260,19 +326,39 @@ function validateWorkflowStructure(
 
   const refs = ir.steps.flatMap((step) => {
     if (step.type === 'if') return conditionReferencePaths(step.condition);
-    if (step.type === 'action') return referencePaths(step.params);
+    if (step.type === 'action') {
+      const bindingRefs = Object.values(step.bindings ?? {})
+        .filter((binding) => binding.from !== 'trigger')
+        .map((binding) => `${binding.from}.${binding.output}`);
+      return [...referencePaths(step.params), ...bindingRefs];
+    }
     return [];
   });
+  const reportedReferences = new Set<string>();
   for (const reference of refs) {
     const [root, field] = reference.split('.', 2);
     if (!root || !field || root === 'trigger' || (ir.inputs ?? []).includes(root)) continue;
     const source = byId.get(root);
     if (!source || source.type !== 'ai_decision') continue;
     if (!outputFieldExists(source, field)) {
+      const issueKey = `${source.id}:${field}:declared`;
+      if (reportedReferences.has(issueKey)) continue;
+      reportedReferences.add(issueKey);
       issues.push({
         code: 'invalid_workflow_reference',
         stepId: source.id,
         message: `${source.id} 결과에 선언되지 않은 출력 필드 ${field}를 참조합니다.`,
+      });
+      continue;
+    }
+    if (!outputFieldIsRequired(source, field)) {
+      const issueKey = `${source.id}:${field}:required`;
+      if (reportedReferences.has(issueKey)) continue;
+      reportedReferences.add(issueKey);
+      issues.push({
+        code: 'invalid_workflow_reference',
+        stepId: source.id,
+        message: `${source.id}.${field}는 분기 또는 후속 action에서 사용되므로 outputSchema.required에 포함되어야 합니다.`,
       });
     }
   }
@@ -430,8 +516,13 @@ export function validateWorkflowContracts(
   options: WorkflowContractValidationOptions = {},
 ): ContractValidationIssue[] {
   const structuralIssues = validateWorkflowStructure(ir, options);
-  const skip = skipInLinearScan(ir.steps);
-  const linear = ir.steps.filter((step) => !skip.has(step.id));
+  // Do not enter the recursive contract walk after a graph cycle has already
+  // been identified. The graph is invalid and descending it would recurse
+  // forever before the caller can surface the actionable validation issue.
+  if (structuralIssues.some((issue) => issue.message.startsWith('if 분기 순환이 발견되었습니다:'))) {
+    return structuralIssues;
+  }
+  const linear = linearContractSteps(ir.steps);
   const available = triggerAvailableTypes(ir.trigger, ir.inputs ?? []);
   return [...structuralIssues, ...validateSequence(linear, available, new Set(['trigger']), ir, ir.steps).issues];
 }

@@ -8,7 +8,7 @@ describe('interview state hydration', () => {
       ...state,
       messages: [
         ...state.messages,
-        { role: 'assistant', content: '[interview_discover_1] provider=codex-cli promptChars=1200' },
+        { role: 'assistant', content: '[workflow_agent] provider=codex-cli promptChars=1200' },
         { role: 'assistant', content: '어느 채널로 보낼까요?' },
       ],
     });

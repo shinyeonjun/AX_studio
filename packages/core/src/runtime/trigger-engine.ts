@@ -20,11 +20,15 @@ interface ActivePushTransport {
 }
 
 function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
-  const { body: _body, ...payload } = event.payload;
-  return {
+  const { body: bodyField, ...payload } = event.payload;
+  const input: Record<string, unknown> = {
     ...payload,
     sender: event.payload.sender ?? event.payload.from ?? event.payload.user,
   };
+  if (event.type === 'webhook.inbound' && typeof bodyField === 'string') {
+    input.body = bodyField;
+  }
+  return input;
 }
 
 function triggerRunWasAccepted(result: unknown): boolean {

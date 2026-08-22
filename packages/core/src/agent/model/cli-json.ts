@@ -74,7 +74,13 @@ export function zodToJsonSchema(schema: ZodType): Record<string, unknown> {
 
 /** Codex `--output-schema` needs a finite, required-keys JSON Schema without empty objects or oneOf. */
 export function zodToCodexJsonSchema(schema: ZodType): Record<string, unknown> {
-  return sanitizeCodexSchema(convert(schema));
+  const sanitized = sanitizeCodexSchema(convert(schema));
+  if (sanitized.type !== 'object') {
+    throw new Error(
+      'Codex structured output schema must have a top-level object. Use a provider-specific wire envelope for union or scalar output.',
+    );
+  }
+  return sanitized;
 }
 
 function isCodexSafeProperty(value: Record<string, unknown>): boolean {

@@ -1,4 +1,4 @@
-import type { InterviewDraft, InterviewState as CoreInterviewState } from '@ax-studio/core';
+import type { ExecutionResult, InterviewDraft, InterviewState as CoreInterviewState } from '@ax-studio/core';
 import { isRecurringTriggerType } from '@ax-studio/core/work-scope';
 
 type DraftTrigger = { type?: string; runAt?: string };
@@ -54,6 +54,20 @@ export function appendAssistantMessage(state: InterviewState, content: string): 
     summary: undefined,
     messages: [...(state.messages ?? []), { role: 'assistant', content }],
   };
+}
+
+export function executionResultMessage(result: Pick<ExecutionResult, 'executionId' | 'status' | 'errorCode' | 'pendingApprovalId'>): string {
+  const executionId = result.executionId ? `실행 ID: ${result.executionId}` : '';
+  if (result.status === 'pending_approval') {
+    return `실행이 승인 대기 중입니다. 승인 탭에서 외부 작업을 확인해 주세요.${result.pendingApprovalId ? ` 승인 ID: ${result.pendingApprovalId}` : ''}${executionId ? `\n${executionId}` : ''}`;
+  }
+  if (result.status === 'success') {
+    return `실행이 완료되었습니다.${executionId ? `\n${executionId}` : ''}`;
+  }
+  if (result.status === 'cancelled') {
+    return `실행이 취소되었습니다.${result.errorCode ? ` (${result.errorCode})` : ''}${executionId ? `\n${executionId}` : ''}`;
+  }
+  return `실행에 실패했습니다${result.errorCode ? ` (${result.errorCode})` : ''}.${executionId ? `\n${executionId}` : ''}`;
 }
 
 export async function hydrateInterviewSummary(state: InterviewState): Promise<InterviewState> {

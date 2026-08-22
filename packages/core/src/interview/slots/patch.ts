@@ -1,14 +1,7 @@
-import { z } from 'zod';
 import type { InterviewDraft } from '../draft/schema.js';
 import { preprocessConditionValue } from '../../runtime/condition-expr.js';
-import { setNodeParam } from '../draft/actions.js';
+import { normalizeDraftActions, setNodeParam } from '../draft/actions.js';
 import { parseNodeMemoSlot, parseNodeParamSlot, parseNodeTextSlot } from './ids.js';
-
-export const InterviewPatchSchema = z.object({
-  set: z.record(z.unknown()).default({}),
-});
-
-export type InterviewPatch = z.infer<typeof InterviewPatchSchema>;
 
 const TRIGGER_TYPE_VALUES = [
   'manual',
@@ -109,21 +102,15 @@ function applyNodeTextSlot(draft: InterviewDraft, slot: string, value: unknown):
   return true;
 }
 
-export function mergePatch(
-  slotValues: Record<string, unknown>,
-  patch: InterviewPatch,
-): Record<string, unknown> {
-  return { ...slotValues, ...patch.set };
-}
-
 export function applySlotValuesToDraft(
   draft: InterviewDraft,
   slotValues: Record<string, unknown>,
 ): InterviewDraft {
+  const normalized = normalizeDraftActions(draft);
   let next: InterviewDraft = {
-    ...draft,
-    actions: { ...(draft.actions ?? {}) },
-    nodes: draft.nodes.map((node) => ({ ...node })),
+    ...normalized,
+    actions: { ...(normalized.actions ?? {}) },
+    nodes: normalized.nodes.map((node) => ({ ...node })),
   };
 
   for (const [slot, value] of Object.entries(slotValues)) {

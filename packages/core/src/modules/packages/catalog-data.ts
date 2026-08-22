@@ -1,3 +1,4 @@
+import { findDynamicCapability, listDynamicCapabilities } from '../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../catalog/capability-types.js';
 import type { ConnectorCatalogEntry, ConnectorId } from '../../catalog/connector-types.js';
 import { CONNECTOR_IDS } from '../../catalog/connector-types.js';
@@ -76,6 +77,42 @@ export const GMAIL_CATALOG: ConnectorCatalogEntry = {
 
 export const SLACK_CAPABILITIES: ConnectorCapability[] = [
   {
+    id: 'slack.channels.list',
+    connector: 'slack',
+    kind: 'read',
+    label: 'Slack 채널 목록',
+    description: '봇이 접근 가능한 채널 목록 조회',
+    sideEffect: 'NONE',
+    params: [],
+    io: { inputs: {}, outputs: { channels: 'TableArtifact' } },
+  },
+  {
+    id: 'slack.messages.search',
+    connector: 'slack',
+    kind: 'read',
+    label: 'Slack 메시지 검색',
+    description: '워크스페이스 메시지 검색',
+    sideEffect: 'NONE',
+    params: [
+      { name: 'query', label: '검색어', question: '어떤 메시지를 찾을까요?', required: true },
+      { name: 'limit', label: '개수', question: '몇 건까지 볼까요?', required: false },
+    ],
+    io: { inputs: {}, outputs: { hits: 'TableArtifact' } },
+  },
+  {
+    id: 'slack.messages.read',
+    connector: 'slack',
+    kind: 'read',
+    label: 'Slack 채널 읽기',
+    description: '채널 최근 메시지 읽기',
+    sideEffect: 'NONE',
+    params: [
+      { name: 'channel', label: 'Slack 채널', question: '어떤 채널을 읽을까요?', required: true },
+      { name: 'limit', label: '개수', question: '몇 건까지 볼까요?', required: false },
+    ],
+    io: { inputs: {}, outputs: { messages: 'TableArtifact' } },
+  },
+  {
     id: 'slack.message.send',
     connector: 'slack',
     kind: 'write',
@@ -102,7 +139,7 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
 export const SLACK_CATALOG: ConnectorCatalogEntry = {
   id: 'slack',
   label: 'Slack',
-  description: 'Bot Token으로 메시지 전송',
+  description: 'Bot Token으로 메시지 읽기·전송',
   connectable: true,
   alwaysReal: false,
   runtimeAvailable: true,
@@ -359,6 +396,64 @@ export const TRANSFORM_CATALOG: ConnectorCatalogEntry = {
   emoji: '🔀',
 };
 
+export const HTTP_CAPABILITIES: ConnectorCapability[] = [
+  {
+    id: 'http.request',
+    connector: 'http',
+    kind: 'read',
+    label: 'HTTP 요청',
+    description: '연결된 base URL로 REST 요청 (GET은 조회, 그 외는 쓰기)',
+    params: [
+      { name: 'method', label: 'HTTP 메서드', question: '어떤 HTTP 메서드를 사용할까요?', required: false },
+      { name: 'path', label: '경로', question: 'base URL 기준 경로는 무엇인가요?', required: true },
+      { name: 'headers', label: '헤더', question: '추가 헤더가 있나요?', required: false },
+      { name: 'body', label: '본문', question: '요청 본문이 있나요?', required: false },
+    ],
+    io: { inputs: {}, outputs: { response: 'TextArtifact' } },
+  },
+];
+
+export const HTTP_CATALOG: ConnectorCatalogEntry = {
+  id: 'http',
+  label: 'HTTP',
+  description: 'REST API 아웃바운드 요청',
+  connectable: true,
+  alwaysReal: false,
+  runtimeAvailable: true,
+  connectionKind: 'config',
+  emoji: '🌐',
+};
+
+export const WEBHOOK_CAPABILITIES: ConnectorCapability[] = [
+  {
+    id: 'webhook.inbound',
+    connector: 'webhook',
+    kind: 'trigger',
+    label: 'Webhook 수신',
+    description: '로컬 HTTP POST로 업무를 시작합니다',
+    params: [
+      {
+        name: 'path',
+        label: 'Webhook 경로',
+        question: 'Webhook 경로는 무엇인가요? (예: invoice-paid)',
+        required: true,
+      },
+    ],
+    io: { inputs: {}, outputs: { body: 'TextArtifact', path: 'TextArtifact' } },
+  },
+];
+
+export const WEBHOOK_CATALOG: ConnectorCatalogEntry = {
+  id: 'webhook',
+  label: 'Webhook',
+  description: '로컬 HTTP 수신 트리거',
+  connectable: true,
+  alwaysReal: false,
+  runtimeAvailable: true,
+  connectionKind: 'config',
+  emoji: '🔔',
+};
+
 export { CONNECTOR_IDS };
 
 export const CAPABILITY_CATALOG: ConnectorCapability[] = [
@@ -369,6 +464,8 @@ export const CAPABILITY_CATALOG: ConnectorCapability[] = [
   ...RDB_CAPABILITIES,
   ...LOCAL_SHEET_CAPABILITIES,
   ...TRANSFORM_CAPABILITIES,
+  ...HTTP_CAPABILITIES,
+  ...WEBHOOK_CAPABILITIES,
 ];
 
 export const CONNECTOR_CATALOG: Record<ConnectorId, ConnectorCatalogEntry> = {
@@ -379,12 +476,21 @@ export const CONNECTOR_CATALOG: Record<ConnectorId, ConnectorCatalogEntry> = {
   rdb: RDB_CATALOG,
   local_sheet: LOCAL_SHEET_CATALOG,
   transform: TRANSFORM_CATALOG,
+  http: HTTP_CATALOG,
+  webhook: WEBHOOK_CATALOG,
 };
 
 export function getCapability(id: string): ConnectorCapability | undefined {
-  return CAPABILITY_CATALOG.find((capability) => capability.id === id);
+  return findDynamicCapability(id) ?? CAPABILITY_CATALOG.find((capability) => capability.id === id);
 }
 
 export function getCapabilitiesForConnector(connector: string): ConnectorCapability[] {
-  return CAPABILITY_CATALOG.filter((capability) => capability.connector === connector);
+  const dynamic = listDynamicCapabilities().filter((capability) => capability.connector === connector);
+  const staticCaps = CAPABILITY_CATALOG.filter((capability) => capability.connector === connector);
+  const seen = new Set<string>();
+  return [...dynamic, ...staticCaps].filter((cap) => {
+    if (seen.has(cap.id)) return false;
+    seen.add(cap.id);
+    return true;
+  });
 }

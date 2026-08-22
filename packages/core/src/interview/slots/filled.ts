@@ -1,4 +1,6 @@
 import type { Step } from '../../workflow/schema.js';
+import type { PortBinding } from '../../workflow/bindings.js';
+import { documentIngestPathSatisfied } from '../../workflow/ingest-source.js';
 
 export function isActionParamFilled(value: unknown): boolean {
   if (value == null) return false;
@@ -20,16 +22,13 @@ export function isActionParamFilled(value: unknown): boolean {
   return Object.keys(record).length > 0;
 }
 
+export function isActionParamBound(binding: PortBinding | undefined): boolean {
+  if (!binding) return false;
+  return Boolean(binding.from && binding.output.trim());
+}
+
 export function actionStepParamFilled(step: Extract<Step, { type: 'action' }>, name: string): boolean {
-  if (
-    step.connector === 'document' &&
-    step.action === 'ingest' &&
-    name === 'path' &&
-    step.params.file &&
-    typeof step.params.file === 'object' &&
-    !Array.isArray(step.params.file)
-  ) {
-    return isActionParamFilled((step.params.file as Record<string, unknown>).path);
-  }
+  if (isActionParamBound(step.bindings?.[name])) return true;
+  if (name === 'path' && documentIngestPathSatisfied(step)) return true;
   return isActionParamFilled(step.params[name]);
 }

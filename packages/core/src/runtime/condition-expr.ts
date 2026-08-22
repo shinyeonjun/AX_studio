@@ -122,7 +122,7 @@ export function migrateLegacyCondition(condition: string): ConditionExpr | null 
     };
   }
 
-  const compareMatch = trimmed.match(/^([a-zA-Z0-9_.]+)\s*(===|!==|<=|>=|<|>)\s*(.+)$/);
+  const compareMatch = trimmed.match(/^([a-zA-Z0-9_.]+)\s*(===|!==|==|<=|>=|<|>)\s*(.+)$/);
   if (compareMatch) {
     const [, ref, op, rawRight] = compareMatch;
     const rightText = rawRight.trim();
@@ -139,6 +139,7 @@ export function migrateLegacyCondition(condition: string): ConditionExpr | null 
     const opMap: Record<string, 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte'> = {
       '===': 'eq',
       '!==': 'neq',
+      '==': 'eq',
       '<=': 'lte',
       '>=': 'gte',
       '<': 'lt',
@@ -171,6 +172,9 @@ function coerceConditionValue(value: unknown): ConditionValue | undefined {
   if (typeof record.ref === 'string' && record.ref.trim()) {
     return { ref: record.ref.trim() };
   }
+  if (typeof record.var === 'string' && record.var.trim()) {
+    return { ref: record.var.trim() };
+  }
   if ('lit' in record) {
     const lit = record.lit;
     if (typeof lit === 'string' || typeof lit === 'number' || typeof lit === 'boolean') {
@@ -200,6 +204,7 @@ function normalizeComparisonOp(op: string): 'eq' | 'neq' | 'contains' | 'gt' | '
 function readConditionOp(record: Record<string, unknown>): string {
   if (typeof record.op === 'string') return record.op.trim().toLowerCase();
   if (typeof record.operator === 'string') return record.operator.trim().toLowerCase();
+  if (typeof record.comparator === 'string') return record.comparator.trim().toLowerCase();
   return '';
 }
 
@@ -242,21 +247,38 @@ export function coerceConditionInput(input: unknown): unknown {
   if (typeof input !== 'object' || Array.isArray(input)) return input;
 
   const record = input as Record<string, unknown>;
+  for (const key of ['expression', 'when', 'predicate'] as const) {
+    if (typeof record[key] === 'string') {
+      return coerceConditionInput(record[key]);
+    }
+  }
+  if (record.compare != null && typeof record.compare === 'object') {
+    return coerceConditionInput(record.compare);
+  }
+  if (record.condition != null && record.condition !== input) {
+    return coerceConditionInput(record.condition);
+  }
+
   const rawOp = readConditionOp(record);
   const op = normalizeComparisonOp(rawOp) ?? rawOp;
 
   if (isComparisonOp(op)) {
-    const left = coerceConditionSide(record.left ?? record.field ?? record.lhs, false);
+    const left = coerceConditionSide(
+      record.left ?? record.field ?? record.variable ?? record.lhs,
+      false,
+    );
     const right = coerceConditionSide(record.right ?? record.value ?? record.rhs, true);
     if (left && right) return { op, left, right };
     return input;
   }
 
-  if (!rawOp && record.field != null && record.value !== undefined) {
-    const left = coerceConditionSide(record.field, false);
+  if (!rawOp && (record.field != null || record.variable != null) && record.value !== undefined) {
+    const left = coerceConditionSide(record.field ?? record.variable, false);
     const right = coerceConditionSide(record.value, true);
     if (left && right) {
-      return { op: 'contains', left, right };
+      const ref = 'ref' in left ? left.ref : '';
+      const defaultOp = ref.includes('.') ? 'eq' : 'contains';
+      return { op: defaultOp, left, right };
     }
   }
 

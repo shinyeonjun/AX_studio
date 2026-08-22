@@ -54,6 +54,7 @@ export default defineConfig({
         '@ax-studio/core/work-scope': resolve('../../packages/core/src/interview/session/work-scope.ts'),
         '@ax-studio/core/interview-messages': resolve('../../packages/core/src/interview/session/messages.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
+        '@ax-studio/core/workspace-commands': resolve('../../packages/core/src/workspace/commands.ts'),
       },
     },
     build: {

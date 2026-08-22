@@ -255,6 +255,50 @@ describe('validateWorkflowContracts', () => {
     );
   });
 
+  it('rejects optional AI outputs used by downstream params or bindings', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      trigger: { type: 'manual' },
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'classify',
+          goal: '위험도 분류',
+          outputSchema: {
+            type: 'object',
+            properties: {
+              riskLevel: { type: 'string' },
+              summary: { type: 'string' },
+            },
+            required: ['riskLevel'],
+          },
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops' },
+          bindings: { text: { from: 'classify', output: 'summary' } },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      inputs: [],
+    };
+
+    expect(validateWorkflowContracts(ir)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_workflow_reference',
+          stepId: 'classify',
+          message: expect.stringContaining('required'),
+        }),
+      ]),
+    );
+  });
+
   it('rejects a classified workflow that sends every notification linearly', () => {
     const ir: WorkflowIR = {
       ...folderToDocument,
@@ -291,6 +335,51 @@ describe('validateWorkflowContracts', () => {
     expect(validateWorkflowContracts(ir).some((issue) => issue.code === 'invalid_control_flow')).toBe(true);
   });
 
+  it('rejects cyclic if branches before recursive contract validation', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      trigger: { type: 'manual' },
+      steps: [
+        {
+          type: 'if',
+          id: 'root',
+          condition: 'true',
+          thenStepIds: ['branch_a'],
+          elseStepIds: [],
+        },
+        {
+          type: 'if',
+          id: 'branch_a',
+          condition: 'true',
+          thenStepIds: ['notify'],
+          elseStepIds: ['branch_b'],
+        },
+        {
+          type: 'if',
+          id: 'branch_b',
+          condition: 'false',
+          thenStepIds: ['notify'],
+          elseStepIds: ['branch_a'],
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'document',
+          action: 'pdf.generate',
+          actionRef: 'document.pdf.generate',
+          params: {},
+          sideEffect: 'REVERSIBLE',
+        },
+      ],
+    };
+
+    expect(validateWorkflowContracts(ir)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_control_flow', stepId: 'branch_a' }),
+      ]),
+    );
+  });
+
   it('rejects an action side effect that disagrees with the catalog contract', () => {
     const ir: WorkflowIR = {
       ...folderToDocument,
@@ -312,6 +401,29 @@ describe('validateWorkflowContracts', () => {
     expect(validateWorkflowContracts(ir)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 'invalid_workflow_schema', stepId: 'send_mail' }),
+      ]),
+    );
+  });
+
+  it('rejects external connector actions when the host has no connection', () => {
+    const ir: WorkflowIR = {
+      ...folderToDocument,
+      trigger: { type: 'manual' },
+      steps: [
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops', text: 'notice' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+    };
+
+    expect(validateWorkflowContracts(ir, { connectedConnectors: [] })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'connector_unavailable', stepId: 'notify' }),
       ]),
     );
   });

@@ -9,7 +9,7 @@ import {
   WorkflowIRSchema,
   parseWorkflowIR,
 } from './schema.js';
-import { ActionInstanceSchema, type ActionInstance } from '../interview/draft/schema.js';
+import { ActionInstanceSchema, type ActionInstance } from './action-instance.js';
 
 export const WORKFLOW_DOCUMENT_FORMAT = 'workflow-document@1' as const;
 

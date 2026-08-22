@@ -8,6 +8,8 @@ export const CONNECTOR_IDS = [
   'rdb',
   'local_sheet',
   'transform',
+  'http',
+  'webhook',
 ] as const;
 
 export type ConnectorId = (typeof CONNECTOR_IDS)[number];

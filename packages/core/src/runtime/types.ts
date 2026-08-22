@@ -10,7 +10,22 @@ export interface RuntimeConfig {
   globalActive: boolean;
   workflowActive: Record<string, boolean>;
   onExecutionStarted?: (executionId: string) => void;
+  onExecutionProgress?: (progress: ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
+}
+
+export type ExecutionProgressStatus =
+  | 'step_started'
+  | 'step_completed'
+  | 'waiting_approval'
+  | 'step_failed';
+
+export interface ExecutionProgress {
+  executionId: string;
+  stepId: string;
+  status: ExecutionProgressStatus;
+  at: string;
+  message: string;
 }
 
 export interface ExecutionResult {

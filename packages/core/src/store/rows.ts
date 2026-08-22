@@ -19,7 +19,7 @@ export interface ExecutionRow {
   workflow_id: string | null;
   workflow_version: number | null;
   ephemeral: number;
-  status: string;
+  status: ExecutionStatus;
   started_at: string;
   finished_at: string | null;
   error_code: string | null;
@@ -27,6 +27,14 @@ export interface ExecutionRow {
   ir_json: string | null;
   trigger_type: string | null;
 }
+
+/** Persisted execution lifecycle. `pending_approval` is resumable, not a failure. */
+export type ExecutionStatus =
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'pending_approval'
+  | 'cancelled';
 
 export interface ApprovalRow {
   id: string;

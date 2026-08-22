@@ -29,7 +29,7 @@ export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: str
   try {
     if (!existing) {
       db
-        .prepare('INSERT INTO workflows (id, name, active, created_at, updated_at) VALUES (?, ?, 1, ?, ?)')
+        .prepare('INSERT INTO workflows (id, name, active, created_at, updated_at) VALUES (?, ?, 0, ?, ?)')
         .run(workflowId, normalized.name, now, now);
     } else {
       db

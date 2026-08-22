@@ -2,6 +2,38 @@ import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '
 import { chatMessagesFromInput } from './chat.js';
 import { parseStructuredOutput } from './cli-json.js';
 
+export function toAnthropicMessages(input: {
+  system: string;
+  user?: string;
+  messages?: import('./chat.js').ChatMessage[];
+  images?: import('./provider.js').ModelImageInput[];
+}) {
+  const messages = chatMessagesFromInput(input);
+  let lastUserIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === 'user') lastUserIndex = index;
+  });
+  return messages.map((message, index) => {
+    if (index !== lastUserIndex || !input.images?.length) {
+      return { role: message.role, content: message.content };
+    }
+    return {
+      role: message.role,
+      content: [
+        { type: 'text' as const, text: message.content },
+        ...input.images.map((image) => ({
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: image.mimeType,
+            data: Buffer.from(image.data).toString('base64'),
+          },
+        })),
+      ],
+    };
+  });
+}
+
 function requireAnthropicApiKey(): string {
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   if (!key) {
@@ -28,10 +60,7 @@ async function callAnthropic(
       model,
       max_tokens: 4096,
       system,
-      messages: chatMessagesFromInput({ system, ...input }).map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
+    messages: toAnthropicMessages({ system, ...input }),
       temperature,
     }),
   });
@@ -49,8 +78,9 @@ async function callAnthropic(
 
 export class AnthropicApiProvider implements ModelProvider {
   readonly name = 'anthropic-api';
+  readonly supportsVision = true;
 
-  constructor(private model: string) {}
+  constructor(readonly model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
     return callAnthropic(this.model, input.system, input, input.temperature ?? 0.3);

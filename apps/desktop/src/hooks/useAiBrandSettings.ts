@@ -54,7 +54,7 @@ export function useAiBrandSettings(
         const savedBrand = brandFromProvider(saved?.provider, saved?.brand);
         const brandPrefs = aiConfig.providers[brand] ?? state?.aiBrandConfigs?.[brand];
         const active = savedBrand === brand;
-        const nextMode = brandPrefs?.mode ?? (active && saved?.mode ? saved.mode : 'cli');
+        const nextMode = brandPrefs?.mode ?? (active && saved?.mode ? saved.mode : brand === 'ollama' ? 'api' : 'cli');
         const nextModel = resolveBrandModel(
           brand,
           nextMode,
@@ -88,7 +88,7 @@ export function useAiBrandSettings(
     if (mode === 'cli') {
       return Boolean(selectedCli?.installed || selectedCli?.command || cliVerified);
     }
-    return apiKeyConfigured || apiVerified || Boolean(apiKeyDraft.trim());
+    return brand === 'ollama' ? apiVerified : apiKeyConfigured || apiVerified || Boolean(apiKeyDraft.trim());
   }, [mode, model, selectedCli, cliVerified, apiKeyConfigured, apiVerified, apiKeyDraft]);
 
   const status: 'active' | 'ready' | 'off' = isActive

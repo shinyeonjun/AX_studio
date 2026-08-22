@@ -4,8 +4,6 @@ import type { ChatMessage } from '../../agent/model/chat.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { KO } from '../../i18n/ko.js';
 import { InterviewDraftSchema, type InterviewDraft } from '../draft/schema.js';
-import type { WorkflowPlan } from '../plan/schema.js';
-import { WorkflowPlanSchema } from '../plan/schema.js';
 import { assessCompleteness, type CompletenessResult } from '../slots/requiredness.js';
 import { resolveWorkScope, type WorkScope } from './work-scope.js';
 
@@ -19,14 +17,14 @@ export interface InterviewState {
   workScope?: WorkScope;
   /** Linked workflow after save; undefined while drafting. */
   workflowId?: string;
+  /** Monotonic draft revision used by Agent patches to prevent stale writes. */
+  draftRevision: number;
   /** Compiled IR used by runtime once the interview is done. */
   draft: Partial<WorkflowIR>;
   /** Code-owned canonical workflow canvas for UI and compile. */
   workflow: InterviewDraft;
   /** Accumulated slot values from patch turns. */
   slotValues: Record<string, unknown>;
-  /** Latest structural plan from plan/replan turns. */
-  partialPlan?: WorkflowPlan;
   status: InterviewSessionStatus;
   completeness: CompletenessResult;
   done: boolean;
@@ -40,10 +38,10 @@ const PersistedInterviewStateSchema = z.object({
   userInstruction: z.string(),
   workScope: z.enum(['once', 'recurring']).optional(),
   workflowId: z.string().min(1).optional(),
+  draftRevision: z.number().int().min(0).default(0),
   draft: z.record(z.unknown()),
   workflow: InterviewDraftSchema,
   slotValues: z.record(z.unknown()),
-  partialPlan: WorkflowPlanSchema.optional(),
   status: z.enum(['collecting', 'planning', 'ready', 'done']),
   completeness: z.object({
     slots: z.array(z.object({ slot: z.string(), filled: z.boolean(), label: z.string().optional(), question: z.string().optional() })),
@@ -82,12 +80,16 @@ export function createInterviewState(instruction: string, workScope: WorkScope):
     permissions: {},
     approval: [],
     allowExternalAuto: true,
-    dataPolicy: { emailBody: { cloudAllowed: false } },
+    dataPolicy: {
+      emailBody: { cloudAllowed: false },
+      document: { cloudAllowed: false },
+    },
   };
   return {
     sessionId: randomUUID(),
     userInstruction: instruction,
     workScope,
+    draftRevision: 0,
     draft,
     workflow,
     slotValues,
@@ -101,7 +103,7 @@ export function createInterviewState(instruction: string, workScope: WorkScope):
 function isPersistedAgentDiagnostic(message: ChatMessage): boolean {
   return (
     message.role === 'assistant' &&
-    /^\[interview_(?:turn|discover_\d+)\]\s+provider=/.test(message.content.trim())
+    /^\[(?:interview|workflow_agent)[^\]]*\]\s+provider=/.test(message.content.trim())
   );
 }
 
@@ -116,6 +118,7 @@ export function hydrateInterviewState(state: InterviewState): HydratedInterviewS
   const slotValues = { ...(state.slotValues ?? {}) };
   return {
     ...state,
+    draftRevision: state.draftRevision ?? 0,
     messages: state.messages.filter((message) => !isPersistedAgentDiagnostic(message)),
     workScope,
     workflow,

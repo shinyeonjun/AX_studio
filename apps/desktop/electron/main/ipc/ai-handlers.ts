@@ -5,7 +5,7 @@ import {
   normalizeAiProviderConfig,
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
-import { getEnvFilePath, maskSecret, readEnvFile, setEnvFileValue } from '../env-file.js';
+import { ENV_FILE_ALLOWED_KEYS, getEnvFilePath, maskSecret, readEnvFile, setEnvFileValue } from '../env-file.js';
 import {
   getAiConfigPath,
   getSecretForBrand,
@@ -23,7 +23,7 @@ import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
 import { verifyAiApiKey } from '../ai/api-verify.js';
 import { testAiCli } from '../ai/cli-test.js';
 
-const UI_AI_BRANDS: AiBrandId[] = ['claude', 'gpt'];
+const UI_AI_BRANDS: AiBrandId[] = ['claude', 'gpt', 'ollama'];
 
 export function registerAiHandlers() {
   ipcMain.handle('ax:detectAiCli', async () => {
@@ -96,10 +96,11 @@ export function registerAiHandlers() {
     }
     if (apiKey !== undefined && typeof apiKey !== 'string') throw new Error('API 키 형식이 올바르지 않습니다.');
     if (mode !== undefined && mode !== 'cli' && mode !== 'api') throw new Error('AI 연결 방식이 올바르지 않습니다.');
+    const isOllama = brand === 'ollama' && mode === 'api';
     const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode as AiModeId | undefined)) || '').trim();
-    if (!testKey) throw new Error('API 키가 없습니다.');
-    const result = await verifyAiApiKey(brand as 'claude' | 'gpt', testKey);
-    if (apiKey?.trim()) {
+    if (!isOllama && !testKey) throw new Error('API 키가 없습니다.');
+    const result = await verifyAiApiKey(brand as 'claude' | 'gpt' | 'ollama', testKey || undefined);
+    if (apiKey?.trim() && !isOllama) {
       await setBrandSecret(brand, testKey, mode);
     }
     return { ok: true, label: result.label, masked: maskSecret(testKey), saved: Boolean(apiKey?.trim()) };
@@ -120,6 +121,9 @@ export function registerAiHandlers() {
   });
   ipcMain.handle('ax:getEnvSecretStatus', async (_e, key: unknown) => {
     if (typeof key !== 'string' || !key.trim()) throw new Error('환경 변수 이름이 필요합니다.');
+    if (!isAiEnvKey(key) && !ENV_FILE_ALLOWED_KEYS.has(key)) {
+      throw new Error('조회할 수 없는 환경 변수입니다.');
+    }
     if (isAiEnvKey(key)) {
       const val = (await getSecretByEnvKey(key)).trim();
       return {

@@ -1,7 +1,11 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
+import type { ModelImageInput } from './model/provider.js';
+import type { AgentProgressEvent } from './progress.js';
 
-export type AgentRole = 'interview' | 'investigate' | 'revise';
+export type { AgentProgressEvent } from './progress.js';
+
+export type AgentRole = 'interview' | 'investigate' | 'workspace';
 
 export interface AgentExecutionPolicy {
   maxTurns: number;
@@ -11,7 +15,7 @@ export interface AgentExecutionPolicy {
 
 export interface AgentRoleDefinition {
   role: AgentRole;
-  /** Agent harness SKILL.md id (interview, investigate, revise). Not a saved workflow. */
+  /** Agent harness SKILL.md id. Not a saved workflow. */
   agentSkillId: string;
   temperature: number;
   policy: AgentExecutionPolicy;
@@ -20,7 +24,7 @@ export interface AgentRoleDefinition {
 
 export interface InterviewAgentContext {
   workflow: import('../interview/draft/schema.js').InterviewDraft;
-  partialPlan?: import('../interview/plan/schema.js').WorkflowPlan;
+  draftRevision?: number;
   slotValues: Record<string, unknown>;
   completeness: import('../interview/slots/requiredness.js').CompletenessResult;
   connectedConnectors: string[];
@@ -38,19 +42,16 @@ export interface InvestigateAgentContext {
   connectedConnectors: string[];
 }
 
-export interface ReviseAgentContext {
-  workflowJson: string;
-  instruction: string;
+export interface WorkspaceAgentContext {
+  connectedConnectors: string[];
+  connectedResources: string;
+  nowIso: string;
 }
 
 export type AgentContext =
   | InterviewAgentContext
   | InvestigateAgentContext
-  | ReviseAgentContext;
-
-export interface AgentProgressEvent {
-  message: string;
-}
+  | WorkspaceAgentContext;
 
 export interface AgentRun<T> {
   role: AgentRole;
@@ -58,6 +59,7 @@ export interface AgentRun<T> {
   context: AgentContext;
   messages?: ChatMessage[];
   user?: string;
+  images?: ModelImageInput[];
   temperature?: number;
   sessionId?: string;
   cloudAllowed?: boolean;

@@ -16,8 +16,7 @@ function composeSystemPrompt(roleSystem: string): string {
 function redactUntrustedContext(context: AgentContext): AgentContext {
   if (!('untrustedData' in context)) return context;
   const ctx = context as InvestigateAgentContext;
-  if (!ctx.untrustedData) return context;
-  return { ...ctx, untrustedData: undefined };
+  return { ...ctx, untrustedData: undefined, evidence: [] };
 }
 
 export class AgentHarness {
@@ -39,6 +38,10 @@ export class AgentHarness {
     return this.model.name;
   }
 
+  get modelName(): string | undefined {
+    return this.model.model;
+  }
+
   async run<T>(request: AgentRun<T>): Promise<AgentResult<T>> {
     const definition = getRoleDefinition(request.role);
     const logs: AgentResult<T>['logs'] = [];
@@ -54,9 +57,17 @@ export class AgentHarness {
 
     const allowCloud = request.cloudAllowed ?? definition.policy.cloudAllowed ?? true;
     let context = request.context;
+    let images = request.images;
     if (!allowCloud && isCloudProvider(this.model.name)) {
       context = redactUntrustedContext(context);
+      images = undefined;
       logs.push({ level: 'info', message: 'dataPolicy: redacted untrusted data for cloud backend' });
+    }
+
+    if (images?.length && this.model.supportsVision !== true) {
+      throw Object.assign(new Error(`${this.model.name} Provider는 이미지 입력을 지원하지 않습니다.`), {
+        code: 'vision_unavailable',
+      });
     }
 
     const system = composeSystemPrompt(buildRoleSystemPrompt(request.role, context));
@@ -69,6 +80,7 @@ export class AgentHarness {
         system,
         messages: request.messages,
         user: request.user,
+        images,
         temperature,
         timeoutMs,
         sessionId: request.sessionId,
@@ -78,6 +90,7 @@ export class AgentHarness {
         codexReasoningEffort:
           request.codexReasoningEffort ??
           (request.role === 'interview' ? 'medium' : undefined),
+        maxTurns: definition.policy.maxTurns,
       });
       const output = request.outputSchema.parse(raw);
       const durationMs = Date.now() - started;

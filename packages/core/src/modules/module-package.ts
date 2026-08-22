@@ -9,11 +9,13 @@ export interface PushTriggerDriver {
   /** When Socket/push transport is active, skip poll for this trigger type. */
   skipPollWhenActive?: boolean;
   refresh: (
-    store: { getConnections(): Array<{ connector: string; config?: Record<string, unknown> }> },
+    store: {
+      getConnections(): Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }>;
+    },
     emit: (event: import('../triggers/types.js').TriggerEvent) => void,
   ) => Promise<{ stop(): Promise<void>; isRunning(): boolean } | undefined>;
   matchesTrigger: (
-    trigger: { type: string; channel?: string },
+    trigger: { type: string; channel?: string; path?: string },
     event: import('../triggers/types.js').TriggerEvent,
   ) => boolean;
   dedupeKey: (workflowId: string, event: import('../triggers/types.js').TriggerEvent) => string;

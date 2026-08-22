@@ -18,7 +18,7 @@ describe('ai_decision memo', () => {
           goal: 'PDF 위험도 분류',
           memo: 'critical=즉시 대응\nhigh=운영 영향\nnormal=일반 보고',
           outputFields: [
-            { name: 'risk', type: 'string', description: '위험도', enumValues: ['critical', 'high', 'normal'] },
+            { name: 'riskLevel', type: 'string', description: '위험도', enumValues: ['critical', 'high', 'normal'] },
           ],
         },
       ],
@@ -106,7 +106,7 @@ describe('validateInterviewDraftGraph', () => {
       assumptions: [],
       nodes: [
         { type: 'ai_decision', id: 'classify', goal: '분류' },
-        { type: 'if', id: 'if_critical', condition: 'risk == critical', thenStepIds: ['critical_slack'] },
+        { type: 'if', id: 'if_critical', condition: 'classify.riskLevel == critical', thenStepIds: ['critical_slack'] },
         { type: 'action', id: 'critical_slack', actionRef: 'slack.message.send@1' },
         { type: 'action', id: 'high_slack', actionRef: 'slack.message.send@1' },
       ],

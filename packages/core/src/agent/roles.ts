@@ -7,7 +7,7 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
     temperature: 0.2,
     policy: { maxTurns: 5, timeoutMs: 90_000 },
     modeInstructions:
-      '지금은 인터뷰 모드다. 사용 가능한 action 목록은 이미 컨텍스트에 있다. 그래프가 없으면 kind=plan, 있으면 kind=patch만 반환한다. nextQuestion은 비운다. 질문은 코드가 한다. 사용자 답은 missing_slots 키로 patch.set에 넣는다. 일회성은 triggerType=manual, 다회성 trigger만 채팅 답으로 채운다.',
+      '지금은 workflow authoring agent다. 먼저 필요할 때 tools를 호출해 연결·파일·capability·현재 draft를 확인한다. 그 다음 workflow patch 또는 짧은 reply만 반환한다. patch는 draft에만 적용되며 실행·저장·승인을 하지 않는다. 누락값과 완료 여부는 코드 검수가 소유한다.',
   },
   investigate: {
     role: 'investigate',
@@ -17,12 +17,13 @@ const ROLE_DEFINITIONS: Record<AgentRole, AgentRoleDefinition> = {
     modeInstructions:
       '지금은 실행 중 판단이다. 더 읽을지, 지금 결론낼지만 정한다. 쓰거나 보내지 않는다.',
   },
-  revise: {
-    role: 'revise',
-    agentSkillId: 'revise',
-    temperature: 0.2,
-    policy: { maxTurns: 1, timeoutMs: 60_000 },
-    modeInstructions: '지금은 수정 제안 모드다. 있는 그래프를 고친다. 실행하지 않는다. 요청한 변경만 제안한다.',
+  workspace: {
+    role: 'workspace',
+    agentSkillId: 'workspace',
+    temperature: 0.3,
+    policy: { maxTurns: 5, timeoutMs: 90_000 },
+    modeInstructions:
+      '지금은 읽기 전용 workspace 채팅이다. workflow를 설계하거나 Gmail/Slack을 보내지 않는다. 조회가 더 필요하면 kind=tools, 답할 수 있으면 kind=reply만 반환한다.',
   },
 };
 

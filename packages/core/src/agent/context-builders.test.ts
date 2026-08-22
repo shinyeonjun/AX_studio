@@ -26,6 +26,28 @@ describe('role prompt domain skills', () => {
     expect(prompt).not.toContain('{{connector_skills}}');
   });
 
+  it('injects read-only capability discovery tools for interview planning', () => {
+    const prompt = buildRoleSystemPrompt('interview', {
+      workflow: {
+        name: 'PDF 알림',
+        goal: 'PDF를 Slack과 Gmail로 알림',
+        assumptions: [],
+        nodes: [],
+      },
+      slotValues: {},
+      completeness: { slots: [], deployable: false, missingRequired: [], missingConnections: [] },
+      connectedConnectors: ['gmail', 'slack', 'document'],
+      connectedResources: '',
+      sessionHints: '',
+      nowIso: '2026-08-21T00:00:00.000Z',
+    });
+
+    expect(prompt).toContain('capabilities.list');
+    expect(prompt).toContain('capabilities.describe');
+    expect(prompt).toContain('workflow.inspect');
+    expect(prompt).not.toContain('requiredParams=to');
+  });
+
   it('injects connected read domains for investigation', () => {
     const prompt = buildRoleSystemPrompt('investigate', {
       skillGoal: '문서 요약',
@@ -36,5 +58,21 @@ describe('role prompt domain skills', () => {
 
     expect(prompt).toContain('# Document');
     expect(prompt).toContain('document.ingest');
+  });
+
+  it('does not inject a static catalog for disconnected domains', () => {
+    const prompt = buildRoleSystemPrompt('interview', {
+      workflow: { name: '알림', goal: 'PDF를 Gmail과 Slack으로 알림', assumptions: [], nodes: [] },
+      slotValues: {},
+      completeness: { slots: [], deployable: false, missingRequired: [], missingConnections: [] },
+      connectedConnectors: ['document'],
+      connectedResources: '',
+      sessionHints: '',
+      nowIso: '2026-08-21T00:00:00.000Z',
+    });
+
+    expect(prompt).toContain('capabilities.list');
+    expect(prompt).not.toContain('connection=required');
+    expect(prompt).not.toContain('requiredParams=to');
   });
 });

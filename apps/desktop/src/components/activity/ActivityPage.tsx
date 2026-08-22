@@ -109,15 +109,16 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
               const skill = state?.works.find((s) => s.id === e.workflowId);
               const ok = e.status === 'success';
               const running = e.status === 'running';
+              const pending = e.status === 'pending_approval';
               const failed = e.status === 'failed';
               const errorDetail = executionErrorLabel(e.errorCode);
               const deleting = busyId === e.id;
               return (
                 <div key={e.id} className="timeline-item">
                   <div
-                    className={`timeline-dot ${ok ? 'success' : failed ? 'failed' : running ? 'running' : ''}`}
+                    className={`timeline-dot ${ok ? 'success' : failed ? 'failed' : pending ? 'pending' : running ? 'running' : ''}`}
                   >
-                    {ok ? '✓' : failed ? '!' : running ? '…' : '·'}
+                    {ok ? '✓' : failed ? '!' : pending ? '!' : running ? '…' : '·'}
                   </div>
                   <div className="timeline-body">
                     <div className="timeline-body-header">
@@ -143,6 +144,25 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
                       {errorDetail ? ` · ${errorDetail}` : ''}
                       {e.errorMessage && e.errorMessage !== errorDetail ? ` · ${e.errorMessage}` : ''}
                     </div>
+                    {e.currentStepId && (
+                      <div className="timeline-step">
+                        현재 단계 · {e.currentStepId}
+                        {e.currentStepMessage ? ` · ${e.currentStepMessage}` : ''}
+                      </div>
+                    )}
+                    {e.lastLogMessage && !e.currentStepMessage && (
+                      <div className="timeline-step">최근 기록 · {e.lastLogMessage}</div>
+                    )}
+                    {e.aiOutput && (
+                      <div className="timeline-step">
+                        AI 분석 결과 · {e.aiOutput.fields.length > 0 ? e.aiOutput.fields.join(', ') : '출력 없음'}
+                        {Object.entries(e.aiOutput.preview).map(([field, value]) => (
+                          <div key={field}>
+                            {field}: {value || '(빈 값)'}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

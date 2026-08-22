@@ -1,4 +1,4 @@
-export type Tab = 'work' | 'approval' | 'activity' | 'settings';
+export type SidebarTab = 'work' | 'approval' | 'activity' | 'settings';
 
 export type WorkView = 'list' | 'conversation';
 
@@ -10,4 +10,6 @@ export type SettingsScreen =
   | 'ai-gpt'
   | 'slack'
   | 'gmail'
-  | 'local-folder';
+  | 'local-folder'
+  | 'http'
+  | 'webhook';

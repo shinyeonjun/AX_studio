@@ -25,7 +25,7 @@ export class CursorCliProvider implements ModelProvider {
   readonly name = 'cursor-cli';
   private readonly sessions = new Map<string, CursorSession>();
 
-  constructor(private model: string) {}
+  constructor(readonly model: string) {}
 
   private async workspaceFor(sessionId: string | undefined): Promise<{ dir: string; resume?: string; persist?: string }> {
     if (!sessionId) {

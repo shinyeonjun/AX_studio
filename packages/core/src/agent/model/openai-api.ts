@@ -3,9 +3,12 @@ import { OpenAICompatibleProvider } from './openai-compatible.js';
 
 export class OpenAiApiProvider implements ModelProvider {
   readonly name = 'openai-api';
+  readonly supportsVision = true;
+  readonly model: string;
   private inner: OpenAICompatibleProvider;
 
   constructor(model: string) {
+    this.model = model;
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY가 설정되지 않았습니다. 설정에서 API 키를 등록하세요.');

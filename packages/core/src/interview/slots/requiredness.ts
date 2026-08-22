@@ -8,6 +8,7 @@ import {
 } from '../../workflow/contract-validator.js';
 import { parseWorkflowIR } from '../../workflow/schema.js';
 import { nodeParamSlotId, nodeSlotLabel, nodeSlotQuestion, nodeTextSlotId } from './ids.js';
+import { branchHintsFromWorkflow } from './branch-hints.js';
 import { actionStepParamFilled } from './filled.js';
 import type { CompletenessResult, SlotState } from './types.js';
 
@@ -67,13 +68,15 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
     slots.push({ slot: 'action', filled: false, ...CORE_QUESTIONS.action });
   }
 
+  const branchHints = branchHintsFromWorkflow(ir);
+
   for (const step of steps) {
     if (step.type === 'ai_decision' && !step.goal.trim()) {
       slots.push({
         slot: nodeTextSlotId(step.id, 'goal'),
         filled: false,
         label: nodeSlotLabel(step.id, CORE_QUESTIONS['ai_decision.goal'].label),
-        question: nodeSlotQuestion(step.id, CORE_QUESTIONS['ai_decision.goal'].question),
+        question: nodeSlotQuestion(step.id, CORE_QUESTIONS['ai_decision.goal'].question, branchHints.get(step.id)),
       });
     }
     if (step.type === 'human_approval' && !step.reason.trim()) {
@@ -81,7 +84,7 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
         slot: nodeTextSlotId(step.id, 'reason'),
         filled: false,
         label: nodeSlotLabel(step.id, CORE_QUESTIONS['human_approval.reason'].label),
-        question: nodeSlotQuestion(step.id, CORE_QUESTIONS['human_approval.reason'].question),
+        question: nodeSlotQuestion(step.id, CORE_QUESTIONS['human_approval.reason'].question, branchHints.get(step.id)),
       });
     }
   }
@@ -114,7 +117,7 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
         slot: slotId,
         filled: actionStepParamFilled(step, name),
         label: nodeSlotLabel(step.id, label),
-        question: nodeSlotQuestion(step.id, question),
+        question: nodeSlotQuestion(step.id, question, branchHints.get(step.id)),
       });
     }
   }
@@ -155,7 +158,10 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
   if (hasExternalHigh(steps)) {
     slots.push({
       slot: 'approval',
-      filled: steps.some((s) => s.type === 'human_approval' && s.forActionIds.length > 0),
+      // High-risk actions request approval at the action boundary. An
+      // explicit human_approval node remains a legacy/branch-local option,
+      // but it is not a required planning slot anymore.
+      filled: true,
       ...CORE_QUESTIONS.approval,
     });
   }

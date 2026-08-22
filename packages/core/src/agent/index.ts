@@ -1,5 +1,6 @@
 export { HARNESS_TASK_PROMPT, writeHarnessTaskFile } from './task-file.js';
 export { AgentHarness, createAgentHarness } from './harness.js';
+export { isCloudProvider } from './cloud.js';
 export { getRoleDefinition, listAgentRoles } from './roles.js';
 export {
   loadAgentSkill,
@@ -24,7 +25,7 @@ export type {
   AgentProgressEvent,
   InterviewAgentContext,
   InvestigateAgentContext,
-  ReviseAgentContext,
+  WorkspaceAgentContext,
 } from './types.js';
 export * from './settings/index.js';
 export * from './model/index.js';

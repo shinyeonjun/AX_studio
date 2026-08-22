@@ -60,6 +60,7 @@ export function AiBrandForm({
   onSave,
 }: AiBrandFormProps) {
   const meta = AI_PROVIDER_UI_CATALOG[brand];
+  const isOllamaApi = brand === 'ollama' && mode === 'api';
   const cliConnected = Boolean(cliOption?.installed || cliVerified);
   const apiConnected = Boolean(apiKeyConfigured || apiVerified);
 
@@ -84,6 +85,7 @@ export function AiBrandForm({
         <AiModeSwitch
           mode={mode}
           cliLabel={meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
+          disabled={brand === 'ollama'}
           onChange={onModeChange}
         />
 
@@ -109,9 +111,9 @@ export function AiBrandForm({
         {mode === 'api' && (
           <div className="connection-mode-panel">
             <p className="muted" style={{ marginBottom: 12 }}>
-              {`${meta.title} API 키를 등록하세요.`}
+              {isOllamaApi ? '로컬 Ollama 서버가 실행 중이어야 합니다.' : `${meta.title} API 키를 등록하세요.`}
             </p>
-            <div className="provider-option selected" style={{ marginBottom: 16 }}>
+            {!isOllamaApi && <div className="provider-option selected" style={{ marginBottom: 16 }}>
               <div className="provider-option-header">
                 <div className="provider-option-title">API 키</div>
                 <span className={`connection-badge ${apiConnected ? 'connected' : ''}`}>
@@ -121,8 +123,8 @@ export function AiBrandForm({
               {apiKeyConfigured && apiKeyMasked && (
                 <div className="provider-option-desc">등록된 키: {apiKeyMasked}</div>
               )}
-            </div>
-            <div className="form-field">
+            </div>}
+            {!isOllamaApi && <div className="form-field">
               <label>API 키</label>
               <input
                 type="password"
@@ -130,13 +132,13 @@ export function AiBrandForm({
                 value={apiKeyDraft}
                 onChange={(e) => onApiKeyChange(e.target.value)}
               />
-            </div>
+            </div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={onTestApiKey}
-                disabled={testing || (!apiKeyDraft.trim() && !apiKeyConfigured)}
+                disabled={testing || (!isOllamaApi && !apiKeyDraft.trim() && !apiKeyConfigured)}
               >
                 {testing ? '확인 중...' : 'API 연결 테스트'}
               </button>

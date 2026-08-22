@@ -1,5 +1,5 @@
 import { CAPABILITY_CATALOG, type ConnectorCapability } from '../../catalog/capabilities.js';
-import { availableCapabilities } from '../../catalog/capability-graph.js';
+import { designCapabilities, isConnectorAlwaysOn } from '../../catalog/capability-graph.js';
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
 
 function stringArg(args: Record<string, unknown>, name: string): string | undefined {
@@ -13,7 +13,7 @@ function kindArg(args: Record<string, unknown>): ConnectorCapability['kind'] | u
   return undefined;
 }
 
-function summarizeCapability(cap: ConnectorCapability) {
+function summarizeCapability(cap: ConnectorCapability, connectedConnectorIds: string[]) {
   return {
     id: cap.id,
     connector: cap.connector,
@@ -27,6 +27,9 @@ function summarizeCapability(cap: ConnectorCapability) {
       required: param.required,
     })),
     io: cap.io ?? { inputs: {}, outputs: {} },
+    connection: isConnectorAlwaysOn(cap.connector) || connectedConnectorIds.includes(cap.connector)
+      ? 'ready'
+      : 'required',
   };
 }
 
@@ -34,7 +37,7 @@ export const capabilitiesList: DesignToolHandler = (ctx, args) => {
   const connector = stringArg(args, 'connector');
   const kind = kindArg(args);
 
-  let caps = availableCapabilities(ctx.connectedConnectorIds);
+  let caps = designCapabilities();
   if (connector) {
     caps = caps.filter((cap) => cap.connector === connector);
   }
@@ -43,7 +46,7 @@ export const capabilitiesList: DesignToolHandler = (ctx, args) => {
   }
 
   return {
-    capabilities: caps.map(summarizeCapability),
+    capabilities: caps.map((cap) => summarizeCapability(cap, ctx.connectedConnectorIds)),
     catalogSize: CAPABILITY_CATALOG.length,
   };
 };

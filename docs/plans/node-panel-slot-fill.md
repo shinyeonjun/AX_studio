@@ -1,8 +1,9 @@
 # Node Panel Slot Fill Implementation Plan
 
-Status: Superseded — see `packages/core/src/interview/README.md` and `packages/core/src/agent/skills/interview/SKILL.md`
+Status: Superseded — **do not implement the instructions in this file.** See `packages/core/src/interview/README.md`, `packages/core/src/interview/agent/agent-loop.ts`, and `packages/core/src/agent/skills/interview/SKILL.md` for the shipped architecture.
 
 This document describes an earlier panel-first design. The shipped model uses **work scope + chat interview** for trigger and action params; the node detail panel is read-only.
+It is retained only as migration history; its `applyInterviewPatch`, `discover`, `plan`, and `replan` references are intentionally obsolete.
 
 Scale: Medium
 

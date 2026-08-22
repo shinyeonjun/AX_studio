@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { basename, extname } from 'node:path';
 import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { AgentHarness } from '../agent/harness.js';
 import { z } from 'zod';
@@ -5,11 +7,42 @@ import { extractGmailPlainBody } from '../modules/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
 import { evaluateCondition } from './condition-expr.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';
+import { isCloudProvider } from '../agent/cloud.js';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
+import type { ModelImageInput } from '../agent/model/provider.js';
 
 export { evaluateCondition } from './condition-expr.js';
 
 const INVESTIGATION_LIMIT_MESSAGE = 'Max investigation reads reached';
+const MAX_UNTRUSTED_EMAIL_CHARS = 12_000;
+const MAX_UNTRUSTED_METADATA_CHARS = 2_000;
+const MAX_OUTPUT_PREVIEW_FIELDS = 16;
+const MAX_OUTPUT_PREVIEW_CHARS = 400;
+
+function truncateModelInput(value: string, maxChars: number): string {
+  const trimmed = value.trim();
+  return trimmed.length > maxChars
+    ? `${trimmed.slice(0, maxChars)}\n...[이하 생략]`
+    : trimmed;
+}
+
+function previewOutputValue(value: unknown): string {
+  if (typeof value === 'string') return truncateModelInput(value, MAX_OUTPUT_PREVIEW_CHARS);
+  if (value == null || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return truncateModelInput(JSON.stringify(value), MAX_OUTPUT_PREVIEW_CHARS);
+  } catch {
+    return '[표시할 수 없는 값]';
+  }
+}
+
+function previewDecisionOutput(output: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(output)
+      .slice(0, MAX_OUTPUT_PREVIEW_FIELDS)
+      .map(([key, value]) => [key, previewOutputValue(value)]),
+  );
+}
 
 function documentTextFromRun(
   variables: Record<string, unknown>,
@@ -33,35 +66,190 @@ function documentTextFromRun(
   return undefined;
 }
 
+function documentVisualsFromRun(
+  variables: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): string | undefined {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+
+  const addVisual = (pageIndex: unknown, path: unknown, ocrText: unknown, hasVisual = false) => {
+    const page = Number.isInteger(pageIndex) ? String(pageIndex) : '?';
+    const imagePath = typeof path === 'string' && path.trim() ? path.trim() : '';
+    const ocr = typeof ocrText === 'string' && ocrText.trim() ? ocrText.trim() : '';
+    const key = `${page}|${imagePath}|${ocr}`;
+    if (!imagePath && !ocr && !hasVisual) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const availability = ocr ? 'ocr_only' : 'visual_content_unavailable';
+    lines.push(
+      `- page=${page}${imagePath ? ` path=${imagePath}` : ''}${ocr ? ` OCR=${ocr}` : ''} visualContent=${availability}`,
+    );
+  };
+
+  const scanArtifact = (value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.images)) {
+      for (const image of record.images) {
+        if (!image || typeof image !== 'object' || Array.isArray(image)) continue;
+        const item = image as Record<string, unknown>;
+        addVisual(item.pageIndex, item.path, item.ocrText);
+      }
+    }
+    if (Array.isArray(record.pages)) {
+      for (const page of record.pages) {
+        if (!page || typeof page !== 'object' || Array.isArray(page)) continue;
+        const item = page as Record<string, unknown>;
+        if (item.hasVisual === true) addVisual(item.index, item.imagePath, item.text, true);
+      }
+    }
+  };
+
+  Object.values(variables).forEach(scanArtifact);
+  Object.values(stepResults).forEach(scanArtifact);
+  return lines.length > 0 ? lines.join('\n').slice(0, 8_000) : undefined;
+}
+
+interface DocumentVisualReference {
+  pageIndex?: number;
+  path: string;
+}
+
+function documentVisualReferencesFromRun(
+  variables: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): DocumentVisualReference[] {
+  const references: DocumentVisualReference[] = [];
+  const seen = new Set<string>();
+  const add = (pageIndex: unknown, path: unknown) => {
+    if (typeof path !== 'string' || !path.trim()) return;
+    const normalized = path.trim();
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    references.push({
+      pageIndex: Number.isInteger(pageIndex) ? Number(pageIndex) : undefined,
+      path: normalized,
+    });
+  };
+
+  const scanArtifact = (value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.images)) {
+      for (const image of record.images) {
+        if (!image || typeof image !== 'object' || Array.isArray(image)) continue;
+        const item = image as Record<string, unknown>;
+        add(item.pageIndex, item.path);
+      }
+    }
+    if (Array.isArray(record.pages)) {
+      for (const page of record.pages) {
+        if (!page || typeof page !== 'object' || Array.isArray(page)) continue;
+        const item = page as Record<string, unknown>;
+        if (item.hasVisual === true) add(item.index, item.imagePath);
+      }
+    }
+  };
+
+  Object.values(variables).forEach(scanArtifact);
+  Object.values(stepResults).forEach(scanArtifact);
+  return references;
+}
+
+function imageMimeType(path: string): string | undefined {
+  const extension = extname(path).toLowerCase();
+  return {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+  }[extension];
+}
+
+async function visionInputsFromRun(
+  variables: Record<string, unknown>,
+  stepResults: Record<string, unknown>,
+): Promise<ModelImageInput[]> {
+  const references = documentVisualReferencesFromRun(variables, stepResults);
+  const images: ModelImageInput[] = [];
+  let totalBytes = 0;
+  const maxImageBytes = 8 * 1024 * 1024;
+  const maxTotalBytes = 32 * 1024 * 1024;
+
+  for (const reference of references) {
+    const mimeType = imageMimeType(reference.path);
+    if (!mimeType) {
+      throw Object.assign(new Error(`지원하지 않는 PDF 이미지 형식입니다: ${reference.path}`), {
+        code: 'vision_unsupported_media',
+        path: reference.path,
+      });
+    }
+    let data: Buffer;
+    try {
+      data = await readFile(reference.path);
+    } catch (error) {
+      throw Object.assign(new Error(`PDF 시각 아티팩트 이미지를 읽을 수 없습니다: ${reference.path}`), {
+        code: 'vision_asset_unavailable',
+        path: reference.path,
+        cause: error,
+      });
+    }
+    if (data.length === 0 || data.length > maxImageBytes || totalBytes + data.length > maxTotalBytes) {
+      throw Object.assign(new Error(`PDF 시각 입력 크기가 허용 범위를 초과했습니다: ${reference.path}`), {
+        code: 'vision_input_too_large',
+        path: reference.path,
+      });
+    }
+    totalBytes += data.length;
+    images.push({
+      data: new Uint8Array(data),
+      mimeType,
+      pageIndex: reference.pageIndex,
+      filename: basename(reference.path),
+    });
+  }
+  return images;
+}
+
 function emailBodyFromRun(
   variables: Record<string, unknown>,
   stepResults: Record<string, unknown>,
 ): string | undefined {
   for (const result of Object.values(stepResults)) {
     const body = extractGmailPlainBody(result);
-    if (body?.trim()) return body;
+    if (body?.trim()) return truncateModelInput(body, MAX_UNTRUSTED_EMAIL_CHARS);
   }
   const snippet = variables.snippet ?? variables.body ?? variables.text;
-  return snippet != null ? String(snippet) : undefined;
+  return snippet != null ? truncateModelInput(String(snippet), MAX_UNTRUSTED_EMAIL_CHARS) : undefined;
 }
 
 export function buildInvestigationUser(
   step: Step & { type: 'ai_decision' },
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
+  options: { includeSensitiveData?: boolean } = {},
 ): string {
   const lines = [`Task: ${step.goal}`];
   if (step.memo?.trim()) {
     lines.push(`Criteria:\n${step.memo.trim()}`);
   }
-  if (ctx.variables.subject) lines.push(`Subject: ${String(ctx.variables.subject)}`);
+  if (options.includeSensitiveData === false) return lines.join('\n\n');
+  if (ctx.variables.subject) {
+    lines.push(`Subject: ${truncateModelInput(String(ctx.variables.subject), MAX_UNTRUSTED_METADATA_CHARS)}`);
+  }
   const from = ctx.variables.from ?? ctx.variables.sender;
-  if (from) lines.push(`From: ${String(from)}`);
+  if (from) lines.push(`From: ${truncateModelInput(String(from), MAX_UNTRUSTED_METADATA_CHARS)}`);
   const body = emailBodyFromRun(ctx.variables, stepResults);
   if (body) lines.push(`Body:\n${body}`);
   const documentText = documentTextFromRun(ctx.variables, stepResults);
   if (documentText && documentText !== body) {
     lines.push(`Document:\n${documentText.slice(0, 12_000)}`);
+  }
+  const documentVisuals = documentVisualsFromRun(ctx.variables, stepResults);
+  if (documentVisuals) {
+    lines.push(`Document visuals (image paths/OCR metadata):\n${documentVisuals}`);
   }
   return lines.join('\n\n');
 }
@@ -73,7 +261,10 @@ function mapInvestigationOutput(
   return { ...output };
 }
 
-function investigationSchemaFor(step: Step & { type: 'ai_decision' }): z.ZodTypeAny {
+function investigationSchemaFor(
+  step: Step & { type: 'ai_decision' },
+  requireDeclaredFields = true,
+): z.ZodTypeAny {
   const properties = step.outputSchema?.properties;
   if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
     return InvestigationOutputSchema;
@@ -81,7 +272,9 @@ function investigationSchemaFor(step: Step & { type: 'ai_decision' }): z.ZodType
 
   const required = new Set(
     Array.isArray(step.outputSchema?.required)
-      ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
+      ? requireDeclaredFields
+        ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
+        : []
       : [],
   );
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -106,104 +299,113 @@ function investigationSchemaFor(step: Step & { type: 'ai_decision' }): z.ZodType
   return InvestigationOutputSchema.extend(shape);
 }
 
-function lookupTemplatePath(
-  path: string,
-  ctx: ConnectorContext,
-  stepResults: Record<string, unknown>,
-): unknown {
-  if (path.startsWith('trigger.')) {
-    return ctx.variables[path.slice('trigger.'.length)];
-  }
-  if (!path.includes('.')) {
-    if (path in ctx.variables) return ctx.variables[path];
-    if (path in stepResults) return stepResults[path];
-  }
-  const [stepId, ...rest] = path.split('.');
-  let current: unknown = stepResults[stepId];
-  for (const key of rest) {
-    if (Array.isArray(current)) {
-      if (/^\d+$/.test(key)) {
-        current = current[Number(key)];
-        continue;
-      }
-      const item = current.find(
-        (candidate) => candidate && typeof candidate === 'object' && key in (candidate as Record<string, unknown>),
-      );
-      if (item && typeof item === 'object') {
-        current = (item as Record<string, unknown>)[key];
-        continue;
-      }
-      if (key === 'messageId') {
-        const message = current.find(
-          (candidate) => candidate && typeof candidate === 'object' && 'id' in (candidate as Record<string, unknown>),
-        );
-        current = message && typeof message === 'object' ? (message as Record<string, unknown>).id : undefined;
-        continue;
-      }
-      return undefined;
-    }
-    if (!current || typeof current !== 'object') return undefined;
-    const record = current as Record<string, unknown>;
-    current = key === 'messageId' && record[key] == null ? record.id : record[key];
-  }
-  return current;
+function requiredOutputFields(step: Step & { type: 'ai_decision' }): string[] {
+  return Array.isArray(step.outputSchema?.required)
+    ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
+    : [];
 }
 
-function resolveParamValue(
-  value: unknown,
-  ctx: ConnectorContext,
-  stepResults: Record<string, unknown>,
-): unknown {
-  if (typeof value === 'string') {
-    const exact = value.match(/^\{\{\s*([^{}]+?)\s*\}\}$/);
-    if (exact) {
-      const path = exact[1]!.trim();
-      const resolved = lookupTemplatePath(path, ctx, stepResults);
-      if (resolved == null) {
-        throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${path}`), {
-          code: 'unresolved_binding',
-          reference: path,
-        });
-      }
-      return resolved;
-    }
-    return interpolateTemplates(value, ctx, stepResults);
-  }
-  if (Array.isArray(value)) return value.map((item) => resolveParamValue(item, ctx, stepResults));
-  if (!value || typeof value !== 'object') return value;
-
-  const record = value as Record<string, unknown>;
-  if (Object.keys(record).length === 1 && typeof record.ref === 'string') {
-    const reference = record.ref.trim();
-    const resolved = lookupTemplatePath(reference, ctx, stepResults);
-    if (resolved == null) {
-      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${reference}`), {
-        code: 'unresolved_binding',
-        reference,
-      });
-    }
-    return resolved;
-  }
-  return Object.fromEntries(
-    Object.entries(record).map(([key, item]) => [key, resolveParamValue(item, ctx, stepResults)]),
+function workflowNeedsDocumentEvidence(ir: WorkflowIR): boolean {
+  return ir.steps.some(
+    (candidate) =>
+      candidate.type === 'action' &&
+      candidate.connector === 'document' &&
+      candidate.action === 'ingest',
   );
 }
 
-function interpolateTemplates(
-  value: string,
+function cloudDataAllowedForDecision(
+  ir: WorkflowIR,
+  requirements: { document: boolean; emailBody: boolean },
+): boolean {
+  const requiredPolicies = [
+    requirements.document ? ir.dataPolicy?.document?.cloudAllowed === true : true,
+    requirements.emailBody ? ir.dataPolicy?.emailBody?.cloudAllowed === true : true,
+  ];
+  return requiredPolicies.every(Boolean);
+}
+
+function hasDecisionEvidence(
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
-): string {
-  return value.replace(/\{\{([^}]+)\}\}/g, (_all, rawPath: string) => {
-    const resolved = lookupTemplatePath(rawPath.trim(), ctx, stepResults);
-    if (resolved == null) {
-      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${rawPath.trim()}`), {
-        code: 'unresolved_binding',
-        reference: rawPath.trim(),
-      });
-    }
-    return String(resolved);
+  evidence: Array<{ source: string; detail: string }>,
+): boolean {
+  return Boolean(
+    evidence.length > 0 ||
+      emailBodyFromRun(ctx.variables, stepResults)?.trim() ||
+      documentTextFromRun(ctx.variables, stepResults)?.trim() ||
+      documentVisualReferencesFromRun(ctx.variables, stepResults).length > 0,
+  );
+}
+
+function validateDecisionEvidence(
+  step: Step & { type: 'ai_decision' },
+  output: Record<string, unknown>,
+  evidenceAvailable: boolean,
+  evidenceRequired: boolean,
+): void {
+  const properties = step.outputSchema?.properties;
+  const declaresRiskLevel = Boolean(
+    properties &&
+      typeof properties === 'object' &&
+      !Array.isArray(properties) &&
+      'riskLevel' in properties,
+  ) || 'riskLevel' in output;
+  if (!declaresRiskLevel) return;
+
+  if (evidenceRequired && !evidenceAvailable) {
+    throw Object.assign(new Error(`AI 판단 단계 ${step.id}에 분석 근거가 없습니다.`), {
+      code: 'ai_evidence_missing',
+    });
+  }
+
+  const category = output.category;
+  const confidence = output.confidence;
+  if (category === 'undetermined' || (typeof confidence === 'number' && confidence <= 0)) {
+    throw Object.assign(new Error(`AI 판단 단계 ${step.id}가 근거 부족 결과를 반환했습니다.`), {
+      code: 'ai_output_undetermined',
+    });
+  }
+}
+
+function persistDecisionOutput(
+  step: Step & { type: 'ai_decision' },
+  output: Record<string, unknown>,
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+  evidenceAvailable: boolean,
+  evidenceRequired: boolean,
+): void {
+  validateDecisionEvidence(step, output, evidenceAvailable, evidenceRequired);
+  stepResults[step.id] = mapInvestigationOutput(step, output);
+  const declaredOutputFields =
+    step.outputSchema?.properties && typeof step.outputSchema.properties === 'object'
+      ? Object.keys(step.outputSchema.properties)
+      : [];
+  const missingOutputFields = requiredOutputFields(step).filter((field) => output[field] == null);
+  ctx.log({
+    at: new Date().toISOString(),
+    level: 'info',
+    code: 'ai_decision_completed',
+    message: `AI 분석 완료: ${step.id}`,
+    data: {
+      stepId: step.id,
+      evidenceAvailable,
+      outputFields: Object.keys(output),
+      declaredOutputFields,
+      missingOutputFields,
+      outputPreview: previewDecisionOutput(output),
+      riskLevel: typeof output.riskLevel === 'string' ? output.riskLevel : undefined,
+      confidence: typeof output.confidence === 'number' ? output.confidence : undefined,
+    },
   });
+}
+
+function hasRequiredOutputFields(
+  step: Step & { type: 'ai_decision' },
+  output: Record<string, unknown>,
+): boolean {
+  return requiredOutputFields(step).every((field) => output[field] != null);
 }
 
 function investigationUserPrompt(
@@ -211,8 +413,9 @@ function investigationUserPrompt(
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
   extra?: string,
+  includeSensitiveData = true,
 ): string {
-  const base = buildInvestigationUser(step, ctx, stepResults);
+  const base = buildInvestigationUser(step, ctx, stepResults, { includeSensitiveData });
   if (!step.investigation) {
     return `${base}\n\n추가 조회 없이 지금 결론만 내세요. needMore는 false로 두세요.`;
   }
@@ -239,13 +442,84 @@ export async function runAiDecision(
     });
   }
 
+  const documentRequired = workflowNeedsDocumentEvidence(ir);
+  const emailBodyRequired = Boolean(untrustedBody?.trim());
+  const cloudAllowed = cloudDataAllowedForDecision(ir, {
+    document: documentRequired,
+    emailBody: emailBodyRequired,
+  });
+  const includeSensitiveData = cloudAllowed || !isCloudProvider(agentHarness.providerName);
+  const documentEvidenceAvailable = hasDecisionEvidence(ctx, stepResults, evidence);
+  if (documentRequired && !includeSensitiveData) {
+    throw Object.assign(
+      new Error(
+        `PDF 분석을 위해 문서 내용이 ${agentHarness.providerName}에 전달되어야 하지만 현재 차단되었습니다. ` +
+          '로컬 AI provider를 사용하거나 workflow.dataPolicy.document.cloudAllowed=true를 명시한 뒤 다시 실행하세요.',
+      ),
+      {
+      code: 'ai_input_unavailable',
+      },
+    );
+  }
+  if (documentRequired && includeSensitiveData && !documentEvidenceAvailable) {
+    throw Object.assign(new Error('문서 분석에 사용할 PDF 근거가 없습니다.'), {
+      code: 'ai_evidence_missing',
+    });
+  }
+  const visionImages = includeSensitiveData
+    ? await visionInputsFromRun(ctx.variables, stepResults)
+    : [];
+  const visionNote = visionImages.length > 0
+    ? `실제 이미지 바이트가 첨부된 PDF 페이지: ${visionImages.map((image) => image.pageIndex ?? '?').join(', ')}`
+    : undefined;
+  const promptFor = (extra?: string) => investigationUserPrompt(
+    step,
+    ctx,
+    stepResults,
+    [extra, visionNote].filter(Boolean).join('\n\n') || undefined,
+    includeSensitiveData,
+  );
+  ctx.log({
+    at: new Date().toISOString(),
+    level: 'info',
+    code: 'ai_decision_started',
+    message: `AI 분석 시작: ${step.id}`,
+    data: {
+      stepId: step.id,
+      provider: agentHarness.providerName,
+      documentRequired,
+      sensitiveDataIncluded: includeSensitiveData,
+      imageCount: visionImages.length,
+    },
+  });
+
+  const runFinalConclusion = async () => {
+    const { output } = await agentHarness.run({
+      role: 'investigate',
+      outputSchema: investigationSchemaFor(step, true),
+      user: promptFor('추가 조회 없이 지금 결론을 내리고 선언된 출력 필드를 모두 채우세요.'),
+      images: visionImages.length > 0 ? visionImages : undefined,
+      cloudAllowed,
+      context: {
+        skillGoal: ir.goal,
+        taskGoal: step.goal,
+        taskMemo: step.memo,
+        evidence,
+        connectedConnectors: Object.keys(connectors),
+        untrustedData: untrustedBody,
+      },
+    });
+    return output;
+  };
+
   while (reads < maxReads) {
     {
       const { output } = await agentHarness.run({
         role: 'investigate',
-        outputSchema: investigationSchemaFor(step),
-        user: investigationUserPrompt(step, ctx, stepResults),
-        cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
+        outputSchema: investigationSchemaFor(step, !allowReads),
+        user: promptFor(),
+        images: visionImages.length > 0 ? visionImages : undefined,
+        cloudAllowed,
         context: {
           skillGoal: ir.goal,
           taskGoal: step.goal,
@@ -255,11 +529,6 @@ export async function runAiDecision(
           untrustedData: untrustedBody,
         },
       });
-
-      if (output.conclusion || Object.keys(output).some((key) => !['needMore', 'nextRead', 'nextReadParams', 'reason', 'evidence'].includes(key))) {
-        stepResults[step.id] = mapInvestigationOutput(step, output);
-        return;
-      }
 
       if (allowReads && output.needMore && output.nextRead) {
         reads++;
@@ -273,28 +542,76 @@ export async function runAiDecision(
         continue;
       }
 
-      stepResults[step.id] = mapInvestigationOutput(step, output);
+      if (output.conclusion || Object.keys(output).some((key) => !['needMore', 'nextRead', 'nextReadParams', 'reason', 'evidence'].includes(key))) {
+        if (allowReads && !hasRequiredOutputFields(step, output)) {
+          const finalOutput = await runFinalConclusion();
+          if (!hasRequiredOutputFields(step, finalOutput)) {
+            throw Object.assign(new Error(`AI 판단 단계 ${step.id}가 선언된 출력 필드를 모두 반환하지 않았습니다.`), {
+              code: 'ai_output_missing',
+            });
+          }
+          persistDecisionOutput(
+            step,
+            finalOutput,
+            ctx,
+            stepResults,
+            hasDecisionEvidence(ctx, stepResults, evidence),
+            documentRequired,
+          );
+          return;
+        }
+        persistDecisionOutput(
+          step,
+          output,
+          ctx,
+          stepResults,
+          hasDecisionEvidence(ctx, stepResults, evidence),
+          documentRequired,
+        );
+        return;
+      }
+
+      if (allowReads && requiredOutputFields(step).length > 0 && !hasRequiredOutputFields(step, output)) {
+        const finalOutput = await runFinalConclusion();
+        if (!hasRequiredOutputFields(step, finalOutput)) {
+          throw Object.assign(new Error(`AI 판단 단계 ${step.id}가 선언된 출력 필드를 모두 반환하지 않았습니다.`), {
+            code: 'ai_output_missing',
+          });
+        }
+        persistDecisionOutput(
+          step,
+          finalOutput,
+          ctx,
+          stepResults,
+          hasDecisionEvidence(ctx, stepResults, evidence),
+          documentRequired,
+        );
+        return;
+      }
+
+      persistDecisionOutput(
+        step,
+        output,
+        ctx,
+        stepResults,
+        hasDecisionEvidence(ctx, stepResults, evidence),
+        documentRequired,
+      );
       return;
     }
   }
 
   {
-    const { output } = await agentHarness.run({
-      role: 'investigate',
-      outputSchema: investigationSchemaFor(step),
-      user: investigationUserPrompt(step, ctx, stepResults, '추가 조회 없이 지금 결론만 내세요.'),
-      cloudAllowed: ir.dataPolicy?.emailBody?.cloudAllowed === true,
-      context: {
-        skillGoal: ir.goal,
-        taskGoal: step.goal,
-        taskMemo: step.memo,
-        evidence,
-        connectedConnectors: Object.keys(connectors),
-        untrustedData: untrustedBody,
-      },
-    });
+    const output = await runFinalConclusion();
     if (output.conclusion?.trim() && output.conclusion.trim() !== INVESTIGATION_LIMIT_MESSAGE) {
-      stepResults[step.id] = mapInvestigationOutput(step, output);
+      persistDecisionOutput(
+        step,
+        output,
+        ctx,
+        stepResults,
+        hasDecisionEvidence(ctx, stepResults, evidence),
+        documentRequired,
+      );
       return;
     }
   }
@@ -303,14 +620,6 @@ export async function runAiDecision(
   });
 }
 
-export function resolveStepParams(
-  params: Record<string, unknown>,
-  ctx: ConnectorContext,
-  stepResults: Record<string, unknown>,
-): Record<string, unknown> {
-  const resolved: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(params)) {
-    resolved[key] = resolveParamValue(value, ctx, stepResults);
-  }
-  return resolved;
-}
+// Backward-compatible export for callers that used the previous combined
+// module. The implementation lives in the parameter-resolution boundary.
+export { resolveStepParams } from './param-resolution.js';

@@ -7,6 +7,8 @@ import { localSheetModulePackage } from './local-sheet.js';
 import { rdbModulePackage } from './rdb.js';
 import { slackModulePackage } from './slack.js';
 import { transformModulePackage } from './transform.js';
+import { httpModulePackage } from './http.js';
+import { webhookModulePackage } from './webhook.js';
 
 export {
   CAPABILITY_CATALOG,
@@ -24,6 +26,8 @@ export const ALL_MODULE_PACKAGES: ModulePackage[] = [
   rdbModulePackage,
   localSheetModulePackage,
   transformModulePackage,
+  httpModulePackage,
+  webhookModulePackage,
 ];
 
 export const PUSH_TRIGGER_DRIVERS: PushTriggerDriver[] = ALL_MODULE_PACKAGES.flatMap((pkg) =>

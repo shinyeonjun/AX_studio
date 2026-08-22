@@ -1,9 +1,9 @@
 import { capabilityActionName, resolveCapability } from '../../catalog/capability-graph.js';
-import { approvalReasonForAction } from '../../runtime/approval-display.js';
 import type { SideEffectLevel, WorkflowIR, Step } from '../../workflow/schema.js';
 import { renderWorkflowDocument } from '../presentation/workflow-document.js';
 import type { InterviewDraft, WorkflowNode } from '../draft/schema.js';
 import { getNodeBindings, getNodeParams, normalizeDraftActions, resolveNodeConnectorAction } from '../draft/actions.js';
+import { normalizeDraftIfConditions, resolveIfNodeCondition } from '../draft/conditions.js';
 import { applyContractCompilation } from '../../workflow/contract-adapters.js';
 import { parseWorkflowIR, validateWorkflowIR } from '../../workflow/schema.js';
 import { GMAIL_READ_WORKFLOW_NODE_ID } from './constants.js';
@@ -80,17 +80,19 @@ function toStep(draft: InterviewDraft, node: WorkflowNode): Step | null {
         maxReads: node.investigation ? 4 : 1,
         bindings: node.bindings,
       };
-    case 'if':
-      if (!node.condition) {
+    case 'if': {
+      const condition = resolveIfNodeCondition(node);
+      if (!condition) {
         throw new Error(`${node.id} if 노드에 condition이 필요합니다.`);
       }
       return {
         type: 'if',
         id: node.id,
-        condition: node.condition,
+        condition,
         thenStepIds: node.thenStepIds ?? [],
         elseStepIds: node.elseStepIds,
       };
+    }
     case 'human_approval':
       return {
         type: 'human_approval',
@@ -101,21 +103,13 @@ function toStep(draft: InterviewDraft, node: WorkflowNode): Step | null {
   }
 }
 
-function consolidateApprovals(steps: Step[], workName: string): Step[] {
-  const withoutApprovals = steps.filter((step) => step.type !== 'human_approval');
-  const out: Step[] = [];
-  for (const step of withoutApprovals) {
-    if (step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH') {
-      out.push({
-        type: 'human_approval',
-        id: `approve_${step.id}`,
-        reason: approvalReasonForAction(workName, step),
-        forActionIds: [step.id],
-      });
-    }
-    out.push(step);
-  }
-  return out;
+function consolidateApprovals(steps: Step[]): Step[] {
+  // External side-effect approval is owned by action execution. Keep only
+  // valid, explicitly branched legacy gates so a flat approval node cannot
+  // run outside the branch that selected its action.
+  return steps.filter(
+    (step) => step.type !== 'human_approval' || step.forActionIds.length > 0,
+  );
 }
 
 function hasGmailReadStep(steps: Step[]): boolean {
@@ -240,16 +234,23 @@ function toActionStepLenient(draft: InterviewDraft, node: WorkflowNode): Step | 
 }
 
 function toStepLenient(draft: InterviewDraft, node: WorkflowNode): Step | null {
-  if (node.type === 'action') return toActionStepLenient(draft, node);
-  return toStep(draft, node);
+  try {
+    if (node.type === 'action') return toActionStepLenient(draft, node);
+    return toStep(draft, node);
+  } catch {
+    // Lenient compilation exists only to expose the rest of the draft to the
+    // deterministic slot/graph validator. A malformed branch must not mask
+    // the actual graph issue by throwing from the lenient path itself.
+    return null;
+  }
 }
 
 export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> {
-  const normalized = normalizeDraftActions(draft);
+  const normalized = normalizeDraftIfConditions(normalizeDraftActions(draft));
   const rawSteps = normalized.nodes
     .map((node) => toStepLenient(normalized, node))
     .filter((step): step is Step => step !== null);
-  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalized), normalized.name);
+  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalized));
   const ir: Partial<WorkflowIR> = {
     name: normalized.name,
     goal: normalized.goal,
@@ -265,8 +266,11 @@ export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<Workf
         step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH',
       )
       .map((step) => `${step.connector}.${step.action}`),
-    allowExternalAuto: true,
-    dataPolicy: { emailBody: { cloudAllowed: false } },
+    allowExternalAuto: false,
+    dataPolicy: {
+      emailBody: { cloudAllowed: false },
+      document: { cloudAllowed: false },
+    },
     sideEffects: Object.fromEntries(
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
     ),
@@ -284,7 +288,7 @@ export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<Workf
 }
 
 export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> {
-  const normalized = normalizeDraftActions(draft);
+  const normalized = normalizeDraftIfConditions(normalizeDraftActions(draft));
   const graphIssues = validateInterviewDraftStructure(normalized);
   if (graphIssues.length > 0) {
     const error = new Error(graphIssues[0]!.message) as Error & {
@@ -321,7 +325,7 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> 
     );
   }
 
-  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalized), normalized.name);
+  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalized));
   const ir: Partial<WorkflowIR> = {
     name: normalized.name,
     goal: normalized.goal,
@@ -337,8 +341,11 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> 
         step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH',
       )
       .map((step) => `${step.connector}.${step.action}`),
-    allowExternalAuto: true,
-    dataPolicy: { emailBody: { cloudAllowed: false } },
+    allowExternalAuto: false,
+    dataPolicy: {
+      emailBody: { cloudAllowed: false },
+      document: { cloudAllowed: false },
+    },
     sideEffects: Object.fromEntries(
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
     ),

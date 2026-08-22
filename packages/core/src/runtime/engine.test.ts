@@ -60,6 +60,30 @@ describe('runtime control flow', () => {
 
     expect(result.status).toBe('failed');
     expect(result.errorCode).toBe('invalid_workflow_schema');
+    expect(result.executionId).not.toBe('');
+    expect(store.getExecution(result.executionId)).toMatchObject({
+      status: 'failed',
+      errorCode: 'invalid_workflow_schema',
+    });
+  });
+
+  it('records preflight cancellation instead of hiding it from activity', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: false, workflowActive: {}, connectors: {} });
+
+    const result = await runtime.executeWorkflow(
+      { name: '퇴근 상태', goal: '실행하지 않음', version: 1, steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
+      { ephemeral: true, triggerType: 'manual' },
+    );
+
+    expect(result).toMatchObject({ status: 'cancelled', errorCode: 'global_off_duty' });
+    expect(result.executionId).not.toBe('');
+    expect(store.getExecution(result.executionId)).toMatchObject({
+      status: 'cancelled',
+      errorCode: 'global_off_duty',
+      ephemeral: true,
+    });
   });
 
   it('does not execute if-branch targets from the linear scan', () => {
@@ -82,6 +106,98 @@ describe('runtime control flow', () => {
     const result = await runtime.executeWorkflow(weeklyReportWorkflowFixture, { ephemeral: true });
     expect(result.status).toBe('success');
     expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+  });
+
+  it('records an ephemeral run without creating a saved workflow reference', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: createTestConnectors(),
+    });
+    const result = await runtime.executeWorkflow(
+      {
+        id: 'draft-only-workflow',
+        name: '일회 실행',
+        goal: '한 번만 알림',
+        version: 1,
+        steps: [
+          {
+            type: 'action',
+            id: 'notify',
+            connector: 'slack',
+            action: 'message.send',
+            params: { channel: '#once', text: 'done' },
+            sideEffect: 'EXTERNAL',
+          },
+        ],
+        permissions: {},
+        approval: [],
+        allowExternalAuto: true,
+        assumptions: [],
+        sideEffects: {},
+        dataPolicy: {},
+      },
+      { ephemeral: true, triggerType: 'manual' },
+    );
+
+    expect(result.status).toBe('success');
+    expect(store.listWorkflows()).toHaveLength(0);
+    expect(store.getExecution(result.executionId)).toMatchObject({
+      workflowId: null,
+      ephemeral: true,
+      status: 'success',
+    });
+  });
+
+  it('reports and persists step progress while a workflow runs', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const progress: string[] = [];
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: createTestConnectors(),
+      onExecutionProgress: (event) => progress.push(`${event.stepId}:${event.status}`),
+    });
+
+    const result = await runtime.executeWorkflow(
+      {
+        name: '진행 상태 기록',
+        goal: '단계 진행을 기록',
+        version: 1,
+        steps: [
+          {
+            type: 'action',
+            id: 'notify',
+            connector: 'slack',
+            action: 'message.send',
+            params: { channel: '#progress', text: 'done' },
+            sideEffect: 'EXTERNAL',
+          },
+        ],
+        permissions: {},
+        approval: [],
+        allowExternalAuto: true,
+        assumptions: [],
+        sideEffects: {},
+        dataPolicy: {},
+      },
+      { ephemeral: true, triggerType: 'manual' },
+    );
+
+    expect(result.status).toBe('success');
+    expect(progress).toEqual(['notify:step_started', 'notify:step_completed']);
+    const persistedLog = JSON.parse(store.getExecution(result.executionId)?.logJson ?? '[]') as Array<{
+      code?: string;
+    }>;
+    expect(persistedLog.map((entry) => entry.code).filter((code): code is string => Boolean(code))).toEqual([
+      'step_started',
+      'step_completed',
+    ]);
   });
 
   it('evaluates if conditions from trigger input', async () => {
@@ -235,6 +351,12 @@ describe('runtime control flow', () => {
 
     expect(result.status).toBe('success');
     expect(mockSlack(runtime.connectors).messages).toEqual([{ channel: '#normal', text: 'normal' }]);
+    const persistedLog = JSON.parse(store.getExecution(result.executionId)?.logJson ?? '[]') as Array<{
+      code?: string;
+      data?: { outputPreview?: Record<string, string> };
+    }>;
+    expect(persistedLog.find((entry) => entry.code === 'ai_decision_completed')?.data?.outputPreview)
+      .toMatchObject({ riskLevel: 'normal' });
   });
 
   it('resumes remaining steps after approval', async () => {
@@ -279,6 +401,11 @@ describe('runtime control flow', () => {
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
     expect(first.status).toBe('pending_approval');
+    expect(store.getExecution(first.executionId)).toMatchObject({
+      status: 'pending_approval',
+      errorCode: 'pending_approval',
+      finishedAt: null,
+    });
     expect(mockGmail(runtime.connectors).sent).toHaveLength(0);
     expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
 
@@ -353,10 +480,53 @@ describe('runtime control flow', () => {
       input: { flag: true },
     });
     expect(first.status).toBe('pending_approval');
+    expect(store.getExecution(first.executionId)?.status).toBe('pending_approval');
 
     const resumed = await runtime.continueAfterApproval(first.pendingApprovalId!);
     expect(resumed.status).toBe('success');
     expect(mockSlack(runtime.connectors).messages.map((m) => m.channel)).toEqual(['#branch', '#branch-follow', '#tail']);
+  });
+
+  it('does not resume an external approval while global execution is off', async () => {
+    const ir: WorkflowIR = {
+      name: '퇴근 승인 차단',
+      goal: '전역 실행 중지 중에는 승인 후 전송하지 않음',
+      version: 1,
+      steps: [
+        {
+          type: 'action',
+          id: 'send_alert',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops', text: 'must wait' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: createTestConnectors(),
+    });
+
+    const first = await runtime.executeWorkflow(ir, { ephemeral: true });
+    expect(first.status).toBe('pending_approval');
+    runtime.setGlobalActive(false);
+
+    const blocked = await runtime.continueAfterApproval(first.pendingApprovalId!);
+
+    expect(blocked).toMatchObject({ status: 'cancelled', errorCode: 'global_off_duty' });
+    expect(store.getApproval(first.pendingApprovalId!)?.status).toBe('pending');
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
   });
 
   it('does not let a high-side-effect action bypass approval when a branch skips its approval node', async () => {

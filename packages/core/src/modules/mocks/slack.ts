@@ -4,6 +4,19 @@ export class MockSlackConnector implements Connector {
   name = 'slack';
   inbound: Array<{ channel: string; text: string; ts: string; user?: string }> = [];
   messages: Array<{ channel: string; text: string }> = [];
+  channels: Array<{ id: string; name: string; isPrivate?: boolean }> = [
+    { id: 'C_GENERAL', name: 'general' },
+    { id: 'C_ALERTS', name: 'alerts', isPrivate: true },
+  ];
+  channelHistory: Record<string, Array<{ ts: string; text: string; user?: string }>> = {
+    C_GENERAL: [
+      { ts: '100.001', text: 'hello team', user: 'U1' },
+      { ts: '100.002', text: 'deploy finished', user: 'U2' },
+    ],
+  };
+  searchCorpus: Array<{ channelId: string; channel: string; ts: string; text: string; user?: string }> = [
+    { channelId: 'C_GENERAL', channel: 'general', ts: '100.002', text: 'deploy finished', user: 'U2' },
+  ];
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     switch (action) {
@@ -63,6 +76,45 @@ export class MockSlackConnector implements Connector {
             },
           },
         };
+      }
+      case 'channels.list':
+        return { ok: true, data: { channels: this.channels } };
+      case 'messages.search': {
+        const query = String(params.query ?? '').toLowerCase();
+        const matches = this.searchCorpus.filter((entry) => entry.text.toLowerCase().includes(query));
+        const hits = matches.map((entry) => ({
+          ref: {
+            connector: 'slack',
+            kind: 'message' as const,
+            id: `${entry.channelId}:${entry.ts}`,
+            label: `#${entry.channel}`,
+          },
+          score: 1,
+          snippet: entry.text,
+        }));
+        return {
+          ok: true,
+          data: {
+            hits,
+            matches: matches.map((entry) => ({
+              channel: entry.channel,
+              channelId: entry.channelId,
+              ts: entry.ts,
+              text: entry.text,
+              user: entry.user,
+            })),
+          },
+        };
+      }
+      case 'messages.read': {
+        const channel = String(params.channel ?? '#general');
+        const channelId =
+          channel.startsWith('C') ? channel : this.channels.find((entry) => `#${entry.name}` === channel || entry.name === channel.replace(/^#/, ''))?.id;
+        if (!channelId) {
+          return { ok: false, error: 'channel_not_found', errorCode: 'channel_not_found' };
+        }
+        const messages = this.channelHistory[channelId] ?? [];
+        return { ok: true, data: { channel, channelId, messages } };
       }
       default:
         return { ok: false, error: `Unknown slack action: ${action}` };

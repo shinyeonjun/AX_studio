@@ -27,6 +27,50 @@ function addCompileIssue(
   };
 }
 
+export function mergeGraphIssues(
+  completeness: ReturnType<typeof assessCompleteness>,
+  workflow: InterviewState['workflow'],
+): ReturnType<typeof assessCompleteness> {
+  const graphIssues = validateInterviewDraftGraph(workflow);
+  if (graphIssues.length === 0) return completeness;
+
+  const uniqueGraphIssues = graphIssues.filter(
+    (issue, index, all) =>
+      all.findIndex((candidate) => candidate.stepId === issue.stepId && candidate.message === issue.message) === index,
+  );
+  const slots = [...completeness.slots];
+  for (const issue of uniqueGraphIssues) {
+    slots.push({
+      slot: issue.stepId ? `graph.${issue.stepId}` : 'graph.workflow',
+      filled: false,
+      label: '흐름',
+      question: issue.message,
+    });
+  }
+
+  return {
+    ...completeness,
+    slots,
+    deployable: false,
+    contractIssues: [
+      ...(completeness.contractIssues ?? []),
+      ...uniqueGraphIssues.map((issue) => ({
+        code: 'missing_input_contract' as const,
+        stepId: issue.stepId,
+        message: issue.message,
+      })),
+    ].filter(
+      (issue, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            candidate.code === issue.code &&
+            candidate.stepId === issue.stepId &&
+            candidate.message === issue.message,
+        ) === index,
+    ),
+  };
+}
+
 function applyWorkScopeCompleteness(
   completeness: ReturnType<typeof assessCompleteness>,
   workScope: WorkScope | undefined,
@@ -45,36 +89,18 @@ function applyWorkScopeCompleteness(
   };
 }
 
-export function mergeGraphIssues(
-  completeness: ReturnType<typeof assessCompleteness>,
-  workflow: InterviewState['workflow'],
+export function assessGraphInvalidCompleteness(
+  state: InterviewState,
+  connectedConnectors: string[],
 ): ReturnType<typeof assessCompleteness> {
-  const graphIssues = validateInterviewDraftGraph(workflow);
-  if (graphIssues.length === 0) return completeness;
-
-  const slots = [...completeness.slots];
-  for (const issue of graphIssues) {
-    slots.push({
-      slot: issue.stepId ? `graph.${issue.stepId}` : 'graph.workflow',
-      filled: false,
-      label: '흐름',
-      question: issue.message,
-    });
-  }
-
-  return {
-    ...completeness,
-    slots,
-    deployable: false,
-    contractIssues: [
-      ...(completeness.contractIssues ?? []),
-      ...graphIssues.map((issue) => ({
-        code: 'missing_input_contract' as const,
-        stepId: issue.stepId,
-        message: issue.message,
-      })),
-    ],
-  };
+  return applyWorkScopeCompleteness(
+    mergeGraphIssues(
+      assessCompleteness(buildLenientIRFromWorkflow(state.workflow), connectedConnectors),
+      state.workflow,
+    ),
+    state.workScope,
+    state.workflow.triggerType,
+  );
 }
 
 export function assessSessionCompleteness(
@@ -93,10 +119,8 @@ export function assessSessionCompleteness(
       );
     }
   } catch (error) {
-    // Lenient compilation is for a conversationally incomplete plan. Graph
-    // structure is not a missing value and must remain a hard error.
     if ((error as { code?: string })?.code === 'workflow_graph_invalid') {
-      throw error;
+      return assessGraphInvalidCompleteness(state, connectedConnectors);
     }
     if (state.workflow.nodes.length > 0) {
       const completeness = applyWorkScopeCompleteness(

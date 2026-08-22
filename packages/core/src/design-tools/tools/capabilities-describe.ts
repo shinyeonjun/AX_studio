@@ -1,5 +1,5 @@
 import { getCapability } from '../../catalog/capabilities.js';
-import { availableCapabilities } from '../../catalog/capability-graph.js';
+import { availableCapabilities, designCapabilities } from '../../catalog/capability-graph.js';
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
 
 function stringArg(args: Record<string, unknown>, name: string): string | undefined {
@@ -16,6 +16,10 @@ export const capabilitiesDescribe: DesignToolHandler = (ctx, args) => {
   const cap = getCapability(id);
   if (!cap) {
     throw new Error('capability_not_found');
+  }
+
+  if (!designCapabilities().some((entry) => entry.id === id)) {
+    return { id, available: false, reason: 'capability_not_packaged' };
   }
 
   const available = availableCapabilities(ctx.connectedConnectorIds);

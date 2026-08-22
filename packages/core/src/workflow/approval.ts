@@ -23,23 +23,11 @@ export function getActionSideEffects(ir: WorkflowIR): Map<string, SideEffectLeve
 }
 
 export function validateApprovalPolicy(ir: WorkflowIR): string[] {
-  const errors: string[] = [];
-  const actionEffects = getActionSideEffects(ir);
-
-  for (const [actionId, level] of actionEffects) {
-    if (level === 'EXTERNAL_HIGH') {
-      const hasApproval = ir.steps.some(
-        (s) =>
-          s.type === 'human_approval' &&
-          s.forActionIds.includes(actionId),
-      );
-      if (!hasApproval) {
-        errors.push(`Action ${actionId} (${level}) requires human_approval step`);
-      }
-    }
-  }
-
-  return errors;
+  // Approval is enforced at the action execution boundary by requiresApproval.
+  // The graph may still contain explicit legacy human_approval gates, but they
+  // are not required for deployment and cannot be the policy source of truth.
+  void ir;
+  return [];
 }
 
 export function isDeployable(ir: WorkflowIR): boolean {

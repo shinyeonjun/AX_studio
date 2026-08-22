@@ -1,61 +1,19 @@
 import {
   getLocalFolderConnectionStatus,
-  scanFolder,
   type LocalFolderEntry,
 } from '../../modules/local-folder/index.js';
-import { resolveFolderRoot } from '../../modules/local-folder/path-security.js';
+import {
+  buildLocalFolderResources,
+  type ListedFile,
+  type LocalFolderResource,
+} from '../../modules/local-folder/resources.js';
 import type { ConnectionRecord } from '../../design-tools/types.js';
 
-export type { ConnectionRecord };
-
-export interface ListedFile {
-  filePath: string;
-  fileName: string;
-  extension: string;
-}
-
-export interface LocalFolderResource {
-  id: string;
-  label: string;
-  path: string;
-  accessible: boolean;
-  files: ListedFile[];
-  totalFileCount: number;
-  truncated: boolean;
-}
+export type { ConnectionRecord, ListedFile, LocalFolderResource };
+export { buildLocalFolderResources } from '../../modules/local-folder/resources.js';
 
 export interface ConnectedResourcesSnapshot {
   localFolders: LocalFolderResource[];
-}
-
-const DEFAULT_MAX_FILES_PER_FOLDER = 40;
-
-function toListedFile(file: { filePath: string; fileName: string; extension: string }): ListedFile {
-  return { filePath: file.filePath, fileName: file.fileName, extension: file.extension };
-}
-
-export function buildLocalFolderResources(
-  folders: LocalFolderEntry[],
-  options?: { maxFilesPerFolder?: number; extensions?: string[] },
-): LocalFolderResource[] {
-  const maxFiles = options?.maxFilesPerFolder ?? DEFAULT_MAX_FILES_PER_FOLDER;
-  const extensions = options?.extensions;
-
-  return folders.map((folder) => {
-    const access = resolveFolderRoot(folder.path);
-    const scanned = scanFolder(folder.path, extensions);
-    const truncated = scanned.length > maxFiles;
-    const files = (truncated ? scanned.slice(0, maxFiles) : scanned).map(toListedFile);
-    return {
-      id: folder.id,
-      label: folder.label,
-      path: folder.path,
-      accessible: access.ok,
-      files,
-      totalFileCount: scanned.length,
-      truncated,
-    };
-  });
 }
 
 export function buildConnectedResourcesFromConnections(
@@ -68,7 +26,9 @@ export function buildConnectedResourcesFromConnections(
     Boolean(localFolderConn?.connected),
   );
   return {
-    localFolders: buildLocalFolderResources(status.folders, options),
+    // A persisted config can outlive a disconnected connection. Do not scan
+    // or expose those paths to an agent until the connector is connected.
+    localFolders: status.connected ? buildLocalFolderResources(status.folders, options) : [],
   };
 }
 
@@ -115,8 +75,10 @@ export function formatConnectedResourcesForPrompt(snapshot: ConnectedResourcesSn
   if (inaccessibleCount > 0) {
     lines.push(`접근 불가 폴더 ${inaccessibleCount}개 확인됨 → 해당 폴더는 workflow 대상으로 선택하지 말고 설정에서 다시 연결하세요.`);
   }
-  if (pdfCount > 0) {
-    lines.push(`PDF ${pdfCount}개 확인됨 → 이 목록의 파일을 처리 대상으로 사용할 수 있습니다.`);
+  if (pdfCount === 1) {
+    lines.push('PDF 1개 → document.ingest params.file에 위 path를 넣으세요. 추측하지 말고 이 목록을 기준으로 사용합니다.');
+  } else if (pdfCount > 1) {
+    lines.push(`PDF ${pdfCount}개 → goal에 맞는 파일 path를 document.ingest params.file에 넣으세요. 목록이 불확실하면 sources.files.list로 확인하세요.`);
   } else {
     lines.push('PDF 없음 → 처리할 파일이 필요하면 연결 폴더와 파일 조건을 확인하세요.');
   }

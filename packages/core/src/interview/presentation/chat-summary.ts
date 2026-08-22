@@ -63,7 +63,9 @@ export function renderChatSummary(ir: Partial<WorkflowIR>): string {
     }
   }
 
-  const needsApproval = (ir.steps ?? []).some((step) => step.type === 'human_approval');
+  const needsApproval = (ir.steps ?? []).some(
+    (step) => step.type === 'human_approval' || (step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH'),
+  );
   if (needsApproval) {
     lines.push('', '외부 작업은 승인 후 실행됩니다.');
   }

@@ -1,10 +1,12 @@
 import type { AppDatabase } from './db.js';
 import type { WorkflowIR } from '../workflow/schema.js';
+import type { ExecutionStatus } from './rows.js';
 import * as workflowRepo from './repositories/workflow-repository.js';
 import * as executionRepo from './repositories/execution-repository.js';
 import * as approvalRepo from './repositories/approval-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
 import * as chatSessionRepo from './repositories/chat-session-repository.js';
+import * as workspaceChatRepo from './repositories/workspace-chat-repository.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
@@ -49,6 +51,30 @@ export class WorkflowStore {
     return chatSessionRepo.listChatSessions(this.db, limit);
   }
 
+  listChatSessionSummaries(limit = 20) {
+    return chatSessionRepo.listChatSessionSummaries(this.db, limit);
+  }
+
+  deleteChatSession(sessionId: string) {
+    chatSessionRepo.deleteChatSession(this.db, sessionId);
+  }
+
+  saveWorkspaceChat(params: { id?: string; messages: workspaceChatRepo.WorkspaceChatMessage[] }) {
+    return workspaceChatRepo.saveWorkspaceChat(this.db, params);
+  }
+
+  getWorkspaceChat(id: string) {
+    return workspaceChatRepo.getWorkspaceChat(this.db, id);
+  }
+
+  listWorkspaceChats(limit = 50) {
+    return workspaceChatRepo.listWorkspaceChats(this.db, limit);
+  }
+
+  deleteWorkspaceChat(id: string) {
+    workspaceChatRepo.deleteWorkspaceChat(this.db, id);
+  }
+
   createExecution(params: {
     workflowId?: string;
     workflowVersion?: number;
@@ -59,8 +85,21 @@ export class WorkflowStore {
     return executionRepo.createExecution(this.db, params);
   }
 
-  finishExecution(id: string, status: 'success' | 'failed' | 'cancelled', errorCode?: string, log?: unknown[]) {
+  finishExecution(
+    id: string,
+    status: Exclude<ExecutionStatus, 'running' | 'pending_approval'>,
+    errorCode?: string,
+    log?: unknown[],
+  ) {
     executionRepo.finishExecution(this.db, id, status, errorCode, log);
+  }
+
+  markExecutionPending(id: string, errorCode = 'pending_approval', log?: unknown[]) {
+    executionRepo.markExecutionPending(this.db, id, errorCode, log);
+  }
+
+  updateExecutionLog(id: string, log: unknown[]) {
+    executionRepo.updateExecutionLog(this.db, id, log);
   }
 
   getExecution(id: string) {

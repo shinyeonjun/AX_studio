@@ -6,9 +6,13 @@ import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '
 class CloudSpyProvider implements ModelProvider {
   readonly name = 'cursor-cli';
   lastUntrusted?: string;
+  lastSystem = '';
+  lastImages?: StructuredGenerateInput<unknown>['images'];
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
+    this.lastSystem = input.system;
     this.lastUntrusted = input.system.includes('[UNTRUSTED DATA]') ? 'present' : 'absent';
+    this.lastImages = input.images;
     return input.schema.parse({ ok: true });
   }
 
@@ -28,11 +32,29 @@ describe('harness dataPolicy', () => {
       context: {
         skillGoal: 'g',
         taskGoal: 't',
-        evidence: [],
+        evidence: [{ source: 'gmail.messages.read', detail: 'secret-evidence' }],
         connectedConnectors: ['gmail'],
         untrustedData: 'secret-email-body',
       },
     });
     expect(model.lastUntrusted).toBe('absent');
+    expect(model.lastSystem).not.toContain('secret-evidence');
+  });
+
+  it('redacts image bytes for cloud backends when cloudAllowed is false', async () => {
+    const model = new CloudSpyProvider();
+    await createAgentHarness(model).run({
+      role: 'investigate',
+      outputSchema: z.object({ ok: z.boolean() }),
+      cloudAllowed: false,
+      images: [{ data: new Uint8Array([1, 2, 3]), mimeType: 'image/png' }],
+      context: {
+        skillGoal: 'g',
+        taskGoal: 't',
+        evidence: [],
+        connectedConnectors: [],
+      },
+    });
+    expect(model.lastImages).toBeUndefined();
   });
 });

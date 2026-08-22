@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ContractTypeName } from '../contracts/capability-io.js';
+import { PortBindingSchema, coercePortBinding, type PortBinding } from './port-binding.js';
 import { contractTypesCompatible } from '../contracts/compatibility.js';
 import {
   actionInputTypes,
@@ -10,61 +11,10 @@ import {
 import { getCapability } from '../catalog/capabilities.js';
 import { resolveCapability } from '../catalog/capability-graph.js';
 import { fileRefFromExecutionVariables, fileRefFromTriggerPayload } from '../contracts/mappers.js';
-import { skipInLinearScan, stepsById } from '../runtime/control-flow.js';
+import { linearContractSteps, stepsById } from './control-flow.js';
 import type { Step, Trigger, WorkflowIR } from './schema.js';
 
-export const PortBindingSchema = z.object({
-  from: z.union([z.literal('trigger'), z.string()]),
-  output: z.string(),
-});
-
-export type PortBinding = z.infer<typeof PortBindingSchema>;
-
-function parseBindingReference(value: string): PortBinding | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-
-  const dot = trimmed.match(/^([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_.-]+)$/);
-  if (!dot) return undefined;
-
-  const [, from, output] = dot;
-  if (!from || !output) return undefined;
-  return from === 'trigger' ? { from: 'trigger', output } : { from, output };
-}
-
-/** Coerce LLM binding shapes into canonical PortBinding records. */
-export function coercePortBinding(value: unknown): PortBinding | undefined {
-  if (value == null) return undefined;
-
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value.trim());
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return coercePortBinding(parsed);
-      }
-    } catch {
-      // fall through to step.output reference parsing
-    }
-    return parseBindingReference(value);
-  }
-
-  if (typeof value !== 'object' || Array.isArray(value)) return undefined;
-
-  const record = value as Record<string, unknown>;
-  if (typeof record.ref === 'string') {
-    return parseBindingReference(record.ref);
-  }
-
-  const fromRaw = record.from;
-  const outputRaw = record.output;
-  if (fromRaw != null && outputRaw != null) {
-    const from = fromRaw === 'trigger' ? 'trigger' : String(fromRaw).trim();
-    const output = String(outputRaw).trim();
-    if (from && output) return { from, output };
-  }
-
-  return undefined;
-}
+export { PortBindingSchema, coercePortBinding, type PortBinding } from './port-binding.js';
 
 interface AvailableOutput {
   from: 'trigger' | string;
@@ -281,8 +231,7 @@ function inferSequenceBindings(
 }
 
 export function inferWorkflowBindings(ir: WorkflowIR): WorkflowIR {
-  const skip = skipInLinearScan(ir.steps);
-  const linear = ir.steps.filter((step) => !skip.has(step.id));
+  const linear = linearContractSteps(ir.steps);
   const updated = new Map<string, Step>();
   inferSequenceBindings(
     linear,

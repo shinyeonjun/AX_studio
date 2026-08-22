@@ -22,7 +22,7 @@ describe('connected-resources', () => {
     const text = formatConnectedResourcesForPrompt({ localFolders: snapshot });
     expect(text).toContain('folderId=folder-1');
     expect(text).toContain('report.pdf');
-    expect(text).toContain('PDF 1개 확인됨');
+    expect(text).toContain('document.ingest params.file');
     expect(text).toContain(dir);
   });
 
@@ -43,9 +43,28 @@ describe('connected-resources', () => {
     expect(snapshot.localFolders).toHaveLength(1);
     expect(snapshot.localFolders[0]?.files[0]?.fileName).toBe('a.txt');
   });
+
+  it('does not scan folders from a disconnected persisted connection', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ax-folder-'));
+    writeFileSync(join(dir, 'private.pdf'), 'private');
+
+    const snapshot = buildConnectedResourcesFromConnections([
+      {
+        connector: 'local_folder',
+        connected: false,
+        config: {
+          folders: [{ id: 'f1', label: 'Disconnected', path: dir, addedAt: '2026-01-01T00:00:00.000Z' }],
+        },
+      },
+    ]);
+
+    expect(snapshot.localFolders).toEqual([]);
+    expect(formatConnectedResourcesForPrompt(snapshot)).toContain('연결된 로컬 폴더 없음');
+    expect(formatConnectedResourcesForPrompt(snapshot)).not.toContain('private.pdf');
+  });
 });
 
-describe('discovery + bindings compile path', () => {
+describe('resource + bindings compile path', () => {
   it('binds local folder trigger file to document ingest without draft defaults', () => {
     const ir = inferWorkflowBindings({
       id: 'wf',

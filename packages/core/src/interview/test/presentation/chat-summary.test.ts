@@ -29,7 +29,7 @@ describe('renderChatSummary', () => {
 });
 
 describe('workflow builder approvals', () => {
-  it('creates one friendly approval per high-risk action', () => {
+  it('leaves approval ownership to action execution', () => {
     const ir = buildIRFromWorkflow({
       name: '테스트 메일 발송',
       goal: '보내기',
@@ -48,9 +48,8 @@ describe('workflow builder approvals', () => {
       ],
     });
     const approvals = ir.steps?.filter((step) => step.type === 'human_approval') ?? [];
-    expect(approvals).toHaveLength(1);
-    expect(approvals[0]?.type === 'human_approval' && approvals[0].reason).toContain('테스트 메일 발송');
-    expect(approvals[0]?.type === 'human_approval' && approvals[0].forActionIds).toEqual(['send_mail']);
+    expect(approvals).toHaveLength(0);
+    expect(renderChatSummary(ir)).toContain('외부 작업은 승인 후 실행됩니다.');
   });
 });
 

@@ -25,6 +25,7 @@ describe('Scheduler', () => {
       sideEffects: {},
       dataPolicy: {},
     });
+    store.setWorkflowActive('once-workflow', true);
 
     const statuses = ['failed', 'success'] as const;
     const runtime = {

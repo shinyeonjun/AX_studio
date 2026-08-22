@@ -3,9 +3,14 @@ import { parseWorkflowIR } from '../workflow/schema.js';
 import { validateWorkflowContracts } from '../workflow/contract-validator.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../modules/types.js';
 import type { AgentHarness } from '../agent/harness.js';
-import type { RuntimeConfig, ExecutionResult, WorkflowExecutionOptions } from './types.js';
+import type {
+  ExecutionProgress,
+  RuntimeConfig,
+  ExecutionResult,
+  WorkflowExecutionOptions,
+} from './types.js';
 import { executeStep } from './step-executor.js';
-import { resolveStepParams } from './ai-investigation.js';
+import { resolveStepParams } from './param-resolution.js';
 import { applyStepBindings, inferWorkflowBindings } from '../workflow/bindings.js';
 import { resolveFileRef } from './source-resolver.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
@@ -64,56 +69,47 @@ export class WorkflowRuntime {
       parsedIr = parseWorkflowIR(ir);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return {
-        executionId: '',
-        status: 'failed',
-        errorCode: 'invalid_workflow_schema',
-        log: [{ at: new Date().toISOString(), level: 'error', code: 'invalid_workflow_schema', message }],
-      };
+      return this.recordPreflightResult(options, undefined, 'failed', 'invalid_workflow_schema', message);
     }
     ir = parsedIr;
 
     if (!this.config.globalActive) {
-      return {
-        executionId: '',
-        status: 'cancelled',
-        errorCode: 'global_off_duty',
-        log: [{ at: new Date().toISOString(), level: 'warn', code: 'global_off_duty', message: '전역 퇴근 상태입니다.' }],
-      };
+      return this.recordPreflightResult(
+        options,
+        ir,
+        'cancelled',
+        'global_off_duty',
+        '전역 퇴근 상태입니다.',
+      );
     }
 
     if (ir.id && this.config.workflowActive[ir.id] === false && !options.forceManual) {
-      return {
-        executionId: '',
-        status: 'cancelled',
-        errorCode: 'workflow_paused',
-        log: [{ at: new Date().toISOString(), level: 'warn', code: 'workflow_paused', message: '워크플로우가 중지되어 있습니다.' }],
-      };
+      return this.recordPreflightResult(
+        options,
+        ir,
+        'cancelled',
+        'workflow_paused',
+        '워크플로우가 중지되어 있습니다.',
+      );
     }
 
     const contractIssues = validateWorkflowContracts(ir, { runtimeConnectors: this.connectors });
     if (contractIssues.length > 0) {
       const issue = contractIssues[0]!;
-      return {
-        executionId: '',
-        status: 'failed',
-        errorCode: 'contract_validation_failed',
-        log: [
-          {
-            at: new Date().toISOString(),
-            level: 'error',
-            code: 'contract_validation_failed',
-            message: issue.message,
-            data: { issues: contractIssues },
-          },
-        ],
-      };
+      return this.recordPreflightResult(
+        options,
+        ir,
+        'failed',
+        'contract_validation_failed',
+        issue.message,
+        { issues: contractIssues },
+      );
     }
 
     let workflowIr = inferWorkflowBindings(ir);
 
     const executionId = this.config.store.createExecution({
-      workflowId: workflowIr.id,
+      workflowId: options.ephemeral ? undefined : workflowIr.id,
       workflowVersion: workflowIr.version,
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
@@ -122,6 +118,10 @@ export class WorkflowRuntime {
     this.config.onExecutionStarted?.(executionId);
 
     const log: ExecutionLogEntry[] = [];
+    const appendLog = (entry: ExecutionLogEntry) => {
+      log.push(entry);
+      this.config.store.updateExecutionLog(executionId, log);
+    };
     const connections = this.config.store.getConnections();
     const ctx: ConnectorContext = {
       executionId,
@@ -134,7 +134,7 @@ export class WorkflowRuntime {
           ? { ok: true, path: resolved.path, file: resolved.file }
           : { ok: false, error: resolved.error, errorCode: resolved.errorCode };
       },
-      log: (entry) => log.push(entry),
+      log: appendLog,
     };
 
     const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
@@ -153,7 +153,7 @@ export class WorkflowRuntime {
             checkpoint: error.checkpoint,
           });
         }
-        this.config.store.finishExecution(executionId, 'failed', 'pending_approval', log);
+        this.config.store.markExecutionPending(executionId, 'pending_approval', log);
         const result: ExecutionResult = {
           executionId,
           status: 'pending_approval',
@@ -172,6 +172,43 @@ export class WorkflowRuntime {
     }
   }
 
+  private recordPreflightResult(
+    options: WorkflowExecutionOptions,
+    ir: WorkflowIR | undefined,
+    status: 'failed' | 'cancelled',
+    errorCode: string,
+    message: string,
+    data?: unknown,
+  ): ExecutionResult {
+    let irJson: string | undefined;
+    if (ir) {
+      try {
+        irJson = JSON.stringify(ir);
+      } catch {
+        irJson = undefined;
+      }
+    }
+    const executionId = this.config.store.createExecution({
+      workflowId: options.ephemeral ? undefined : ir?.id,
+      workflowVersion: ir?.version,
+      ephemeral: options.ephemeral ?? false,
+      triggerType: options.triggerType,
+      irJson,
+    });
+    this.config.onExecutionStarted?.(executionId);
+    const log: ExecutionLogEntry[] = [{
+      at: new Date().toISOString(),
+      level: status === 'failed' ? 'error' : 'warn',
+      code: errorCode,
+      message,
+      ...(data === undefined ? {} : { data }),
+    }];
+    this.config.store.finishExecution(executionId, status, errorCode, log);
+    const result: ExecutionResult = { executionId, status, errorCode, log };
+    this.config.onExecutionFinished?.(result);
+    return result;
+  }
+
   private async runSequence(
     sequence: Step[],
     ir: WorkflowIR,
@@ -184,6 +221,7 @@ export class WorkflowRuntime {
     for (let index = 0; index < sequence.length; index++) {
       const step = sequence[index];
       try {
+        this.reportStepProgress(ctx, step, 'step_started');
         await executeStep(
           step,
           ir,
@@ -204,8 +242,15 @@ export class WorkflowRuntime {
             ),
           approvedActionIds,
         );
+        this.reportStepProgress(ctx, step, 'step_completed');
       } catch (err) {
         const error = err as PendingError;
+        this.reportStepProgress(
+          ctx,
+          step,
+          error.pending ? 'waiting_approval' : 'step_failed',
+          error.pending ? '승인을 기다리고 있습니다.' : error.message,
+        );
         if (error.pending && !error.checkpoint) {
           error.checkpoint = {
             variables: { ...ctx.variables },
@@ -238,6 +283,29 @@ export class WorkflowRuntime {
         approvedActionIds,
       );
     }
+  }
+
+  private reportStepProgress(
+    ctx: ConnectorContext,
+    step: Step,
+    status: ExecutionProgress['status'],
+    message = status === 'step_started' ? '단계를 시작했습니다.' : '단계를 완료했습니다.',
+  ): void {
+    const at = new Date().toISOString();
+    ctx.log({
+      at,
+      level: status === 'step_failed' ? 'error' : status === 'waiting_approval' ? 'warn' : 'info',
+      code: status,
+      message,
+      data: { stepId: step.id, stepType: step.type },
+    });
+    this.config.onExecutionProgress?.({
+      executionId: ctx.executionId,
+      stepId: step.id,
+      status,
+      at,
+      message,
+    });
   }
 
   setGlobalActive(active: boolean) {
@@ -275,6 +343,17 @@ export class WorkflowRuntime {
         executionId: approval.executionId,
         status: 'failed',
         errorCode: approval.status === 'processing' ? 'approval_in_progress' : 'approval_already_resolved',
+        log: [],
+      };
+    }
+    // Approval is an external side-effect boundary. Turning the global
+    // execution switch off must also block a later approval resume; leave the
+    // approval pending so it can be retried after the user turns execution on.
+    if (!this.config.globalActive) {
+      return {
+        executionId: approval.executionId,
+        status: 'cancelled',
+        errorCode: 'global_off_duty',
         log: [],
       };
     }
@@ -356,7 +435,10 @@ export class WorkflowRuntime {
           ? { ok: true, path: resolved.path, file: resolved.file }
           : { ok: false, error: resolved.error, errorCode: resolved.errorCode };
       },
-      log: (entry) => log.push(entry),
+      log: (entry) => {
+        log.push(entry);
+        this.config.store.updateExecutionLog(execution.id, log);
+      },
     };
     const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };
 
@@ -438,7 +520,7 @@ export class WorkflowRuntime {
           });
         }
         this.config.store.resolveApproval(approvalId, true);
-        this.config.store.finishExecution(execution.id, 'failed', 'pending_approval', log);
+        this.config.store.markExecutionPending(execution.id, 'pending_approval', log);
         const pendingResult: ExecutionResult = {
           executionId: execution.id,
           status: 'pending_approval',

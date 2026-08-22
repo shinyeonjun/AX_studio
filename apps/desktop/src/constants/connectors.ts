@@ -4,7 +4,7 @@ import gmailIcon from '../images/connectors/gmail.png';
 import slackIcon from '../images/connectors/slack.png';
 import folderIcon from '../images/connectors/folder.svg';
 
-export type ConnectorUiId = 'gmail' | 'slack' | 'local_folder';
+export type ConnectorUiId = 'gmail' | 'slack' | 'local_folder' | 'http' | 'webhook';
 
 export interface ConnectorUiMeta {
   id: ConnectorUiId;
@@ -41,12 +41,29 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
     settingsScreen: 'local-folder',
     emoji: '📁',
   },
+  http: {
+    id: 'http',
+    title: 'HTTP API',
+    description: 'REST API 아웃바운드 요청',
+    emojiIcon: '🌐',
+    settingsScreen: 'http',
+    emoji: '🌐',
+  },
+  webhook: {
+    id: 'webhook',
+    title: 'Webhook',
+    description: '로컬 HTTP 수신 트리거',
+    emojiIcon: '🔔',
+    settingsScreen: 'webhook',
+    emoji: '🔔',
+  },
 };
 
 export const CONNECTOR_UI_IDS = Object.keys(CONNECTOR_UI_CATALOG) as ConnectorUiId[];
 
 export const MESSAGING_CONNECTOR_IDS: ConnectorUiId[] = ['gmail', 'slack'];
 export const STORAGE_CONNECTOR_IDS: ConnectorUiId[] = ['local_folder'];
+export const API_CONNECTOR_IDS: ConnectorUiId[] = ['http', 'webhook'];
 
 export function connectorLabel(id: string): string {
   return CONNECTOR_UI_CATALOG[id as ConnectorUiId]?.title ?? id;

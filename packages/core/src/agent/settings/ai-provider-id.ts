@@ -1,7 +1,7 @@
 export const CLI_PROVIDER_IDS = ['codex-cli', 'claude-cli', 'cursor-cli'] as const;
 export type CliProviderId = (typeof CLI_PROVIDER_IDS)[number];
 
-export const API_PROVIDER_IDS = ['openai-api', 'anthropic-api', 'grok-api'] as const;
+export const API_PROVIDER_IDS = ['openai-api', 'anthropic-api', 'grok-api', 'ollama-api'] as const;
 export type ApiProviderId = (typeof API_PROVIDER_IDS)[number];
 
 export const AI_PROVIDER_IDS = [...CLI_PROVIDER_IDS, ...API_PROVIDER_IDS] as const;

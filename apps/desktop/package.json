@@ -5,17 +5,21 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
+    "dev:poc": "node ../../scripts/desktop-dev-poc.mjs",
     "dev:kill": "taskkill /F /IM electron.exe /T 2>nul & exit 0",
     "dev:restart": "npm run dev:kill && npm run dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview"
   },
   "dependencies": {
+    "@assistant-ui/react": "0.15.16",
     "@ax-studio/core": "*",
     "@dagrejs/dagre": "^3.1.1",
     "@xyflow/react": "^12.11.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

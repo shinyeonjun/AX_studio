@@ -19,7 +19,8 @@ export * from './runtime/types.js';
 export * from './runtime/manual-run-input.js';
 export * from './runtime/engine.js';
 export * from './runtime/scheduler.js';
-export * from './runtime/trigger-engine.js';
+export * from './runtime/manual-workflow-run.js';
+export { setWebhookSecretResolver } from './triggers/webhook/secret-provider.js';
 export * from './triggers/types.js';
 export * from './triggers/registry.js';
 export * from './triggers/filter.js';
@@ -36,6 +37,11 @@ export {
 export * from './design-tools/index.js';
 export * from './workflow/visual-display.js';
 export * from './store/repositories/chat-session-repository.js';
+export * from './workspace/index.js';
+export * from './platform/index.js';
+export { summarizeApprovalGates, type ApprovalGateSummary, type ApprovalGateEntry } from './workflow/approval-gates.js';
+export * from './openapi/index.js';
+export * from './mcp/index.js';
 
 export * from './paths/index.js';
 export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './bootstrap.js';

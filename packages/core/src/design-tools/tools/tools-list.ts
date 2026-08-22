@@ -1,9 +1,13 @@
-import { listDesignTools } from '../registry.js';
-import type { DesignToolHandler } from '../types.js';
+export interface DesignToolListEntry {
+  id: string;
+  description: string;
+  args: string;
+}
 
-export const toolsList: DesignToolHandler = () =>
-  listDesignTools().map(({ id, description, args }) => ({
+export function formatDesignToolsList(entries: readonly DesignToolListEntry[]) {
+  return entries.map(({ id, description, args }) => ({
     id,
     description,
     args,
   }));
+}

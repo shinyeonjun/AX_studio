@@ -45,16 +45,4 @@ describe('connector skill routing', () => {
     expect(skills).not.toContain('gmail');
   });
 
-  it('routes revise skills from workflow JSON without accepting unknown connectors', () => {
-    const skills = connectorSkillsForRole('revise', {
-      workflowJson: JSON.stringify({
-        trigger: { type: 'gmail.new_message' },
-        steps: [{ type: 'action', connector: 'slack', action: 'message.send' }],
-        unknown: { connector: 'salesforce' },
-      }),
-      instruction: '조건을 바꿔줘',
-    });
-
-    expect(skills).toEqual(['gmail', 'slack']);
-  });
 });

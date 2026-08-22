@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { availableCapabilities, relevantCapabilitiesForInterview, resolveCapability } from './capability-graph.js';
+import { availableCapabilities, designCapabilities, resolveCapability } from './capability-graph.js';
+import { relevantCapabilitiesForInterview } from '../interview/resources/capability-relevance.js';
 import { cronMatches } from '../runtime/scheduler.js';
 
 describe('capability graph', () => {
@@ -11,6 +12,12 @@ describe('capability graph', () => {
 
     const withGmail = availableCapabilities(['gmail']);
     expect(withGmail.some((cap) => cap.id === 'gmail.message.send')).toBe(true);
+  });
+
+  it('keeps packaged notification actions visible for design before connection', () => {
+    const design = designCapabilities();
+    expect(design.some((cap) => cap.id === 'gmail.message.send')).toBe(true);
+    expect(design.some((cap) => cap.id === 'slack.message.send')).toBe(true);
   });
 
   it('resolves send aliases to gmail.message.send', () => {

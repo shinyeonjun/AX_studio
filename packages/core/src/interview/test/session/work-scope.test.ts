@@ -36,7 +36,7 @@ describe('work scope', () => {
 
     const text = buildAssistantMessage('Slack 채널을 알려주세요.', completeness, false, 'once');
 
-    expect(text).toBe('Slack 채널은?');
+    expect(text).toBe('오른쪽 그래프에서 빈 칸을 확인한 뒤 검토해 주세요.');
     expect(text).not.toContain('시작 노드');
   });
 

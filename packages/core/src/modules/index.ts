@@ -6,3 +6,5 @@ export * from './slack/index.js';
 export * from './rdb/index.js';
 export * from './document/index.js';
 export * from './local-folder/index.js';
+export * from './http/index.js';
+export * from './webhook/index.js';

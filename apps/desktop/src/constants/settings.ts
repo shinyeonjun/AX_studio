@@ -8,6 +8,8 @@ export const SETTINGS_TITLES: Record<SettingsScreen, string> = {
   slack: 'Slack 연결',
   gmail: 'Gmail 연결',
   'local-folder': '로컬 폴더 연결',
+  http: 'HTTP API 연결',
+  webhook: 'Webhook 수신',
 };
 
 export function settingsScreenForBrand(brand: AiBrand): SettingsScreen {

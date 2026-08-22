@@ -4,20 +4,37 @@ import { assessCompleteness } from '../../slots/requiredness.js';
 import { applyAnswer, startInterview } from '../../session/flow.js';
 import { createAgentHarness } from '../../../agent/harness.js';
 import { buildDesignToolContext } from '../../../design-tools/context.js';
-import type { InterviewTurn } from '../../draft/schema.js';
+import type { InterviewDraft } from '../../draft/schema.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../agent/model/provider.js';
+
+type ScriptedTurn = InterviewDraft & { agentMessage: string };
 
 class ScriptedModelProvider implements ModelProvider {
   readonly name = 'scripted';
   private index = 0;
 
-  constructor(private turns: InterviewTurn[]) {}
+  constructor(private turns: ScriptedTurn[]) {}
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const turn = this.turns[Math.min(this.index, this.turns.length - 1)];
     this.index += 1;
-    const { nextQuestion, ...plan } = turn;
-    return input.schema.parse({ kind: 'plan', plan, nextQuestion, payload: '', toolCalls: '' });
+    const { agentMessage, ...draft } = turn;
+    const revision = Number(input.system.match(/draft revision: (\d+)/)?.[1] ?? 0);
+    const { name, goal, triggerType, triggerFilter, schedule, timezone, runAt, gmailAccount, slackChannel,
+      localFolderId, localFolderPath, localFolderExtensions, success, assumptions, nodes } = draft;
+    return input.schema.parse({
+      kind: 'patch',
+      patch: {
+        baseRevision: revision,
+        meta: { name, goal, triggerType, triggerFilter, schedule, timezone, runAt, gmailAccount, slackChannel,
+          localFolderId, localFolderPath, localFolderExtensions, success, assumptions },
+        upsertNodes: nodes,
+        removeNodeIds: [],
+        set: {},
+        message: agentMessage,
+      },
+      message: agentMessage,
+    });
   }
 
   async generateText(_input: TextGenerateInput): Promise<string> {
@@ -63,7 +80,7 @@ describe('gmail slack interview finalize', () => {
   });
 
   it('finalizes after channel answer with review confirmation', async () => {
-    const turns: InterviewTurn[] = [
+    const turns: ScriptedTurn[] = [
       {
         name: '네이버 메일 Slack 알림',
         goal: '네이버 메일 요약 Slack',
@@ -93,7 +110,7 @@ describe('gmail slack interview finalize', () => {
           },
         ],
         success: 'Slack 알림 완료',
-        nextQuestion: '요약 내용을 어느 Slack 채널에 보낼까요?',
+        agentMessage: '요약 내용을 어느 Slack 채널에 보낼까요?',
       },
       {
         name: '네이버 메일 Slack 알림',
@@ -124,7 +141,7 @@ describe('gmail slack interview finalize', () => {
           },
         ],
         success: 'Slack 알림 완료',
-        nextQuestion: '업무 흐름을 이렇게 이해했습니다. 아래에서 실행하거나 저장할 수 있습니다.',
+        agentMessage: '업무 흐름을 이렇게 이해했습니다. 아래에서 실행하거나 저장할 수 있습니다.',
       },
     ];
 
@@ -144,7 +161,7 @@ describe('gmail slack interview finalize', () => {
   });
 
   it('does not invent a gmail account or completion condition', async () => {
-    const turn: InterviewTurn = {
+    const turn: ScriptedTurn = {
       name: '네이버 메일 Slack 알림',
       goal: '네이버 메일 요약 Slack',
       triggerType: 'gmail.new_message',
@@ -171,7 +188,7 @@ describe('gmail slack interview finalize', () => {
           params: { channel: '#ax테스트', text: '{{summarize.summary}}' },
         },
       ],
-      nextQuestion: '업무 흐름을 이렇게 이해했습니다. 아래에서 실행하거나 저장할 수 있습니다.',
+      agentMessage: '업무 흐름을 이렇게 이해했습니다. 아래에서 실행하거나 저장할 수 있습니다.',
     };
 
     const harness = createAgentHarness(new ScriptedModelProvider([turn]));
@@ -184,12 +201,14 @@ describe('gmail slack interview finalize', () => {
     expect(state.completeness?.deployable).toBe(false);
     expect(state.done).toBe(false);
     expect(state.completeness?.missingRequired).toEqual(
-      expect.arrayContaining(['gmail.new_message.accountId', 'completion']),
+      expect.arrayContaining(['gmail.new_message.accountId']),
     );
+    expect(state.completeness?.missingRequired).not.toContain('completion');
+    expect(state.draft.success).toBe('모든 알림 단계가 실행되면 완료');
   });
 
-  it('does not finalize when required fields are still missing even if nextQuestion sounds complete', async () => {
-    const turn: InterviewTurn = {
+  it('does not finalize when required fields are still missing even if the acknowledgement sounds complete', async () => {
+    const turn: ScriptedTurn = {
       name: 'PDF 정리 후 Slack 전송',
       goal: 'PDF를 읽고 Slack으로 보낸다',
       triggerType: 'manual',
@@ -210,7 +229,7 @@ describe('gmail slack interview finalize', () => {
           params: { channel: '#ax테스트', text: '요약' },
         },
       ],
-      nextQuestion: '설계를 검토한 뒤 AX Studio에서 저장하면 실행할 수 있습니다.',
+      agentMessage: '설계를 검토한 뒤 AX Studio에서 저장하면 실행할 수 있습니다.',
     };
 
     const harness = createAgentHarness(new ScriptedModelProvider([turn]));
@@ -221,7 +240,7 @@ describe('gmail slack interview finalize', () => {
     }, 'once');
 
     expect(state.done).toBe(false);
-    expect(state.messages.at(-1)?.content).not.toContain('설계를 검토한 뒤');
+    expect(state.messages.at(-1)?.content).toContain('오른쪽 그래프에서 빈 칸을 확인한 뒤 검토해 주세요.');
     expect(state.messages.at(-1)?.content.length).toBeGreaterThan(0);
   });
 });

@@ -1,9 +1,15 @@
 import { capabilitiesDescribe } from './tools/capabilities-describe.js';
+import { capabilitiesInvoke } from './tools/capabilities-invoke.js';
 import { capabilitiesList } from './tools/capabilities-list.js';
 import { connectionsList } from './tools/connections-list.js';
 import { sourcesFilesList } from './tools/sources-files-list.js';
+import { sourcesFileRead } from './tools/sources-file-read.js';
+import { sourcesSearch } from './tools/sources-search.js';
 import { sourcesList } from './tools/sources-list.js';
-import { toolsList } from './tools/tools-list.js';
+import { formatDesignToolsList } from './tools/tools-list.js';
+import { workflowInspect } from './tools/workflow-inspect.js';
+import { workflowsList } from './tools/workflows-list.js';
+import { workflowsRun } from './tools/workflows-run.js';
 import type { DesignToolHandler, DesignToolId } from './types.js';
 
 export interface DesignToolDefinition {
@@ -18,7 +24,7 @@ export const DESIGN_TOOL_REGISTRY: DesignToolDefinition[] = [
     id: 'tools.list',
     description: 'design-tools 조회 도구 목록 (id, 설명, args)',
     args: '(none)',
-    handler: toolsList,
+    handler: () => formatDesignToolsList(DESIGN_TOOL_REGISTRY),
   },
   {
     id: 'connections.list',
@@ -39,6 +45,18 @@ export const DESIGN_TOOL_REGISTRY: DesignToolDefinition[] = [
     handler: sourcesFilesList,
   },
   {
+    id: 'sources.file.read',
+    description: '연결 로컬 폴더 안 PDF 본문 일부 읽기 (read-only, 길이 제한)',
+    args: '{ folderId: string, path: string, maxChars?: number }',
+    handler: sourcesFileRead,
+  },
+  {
+    id: 'sources.search',
+    description: '로컬 폴더 텍스트 인덱스 검색 (인덱스 꺼짐 시 sources.files.list로 후퇴)',
+    args: '{ query: string, folderId?: string, limit?: number }',
+    handler: sourcesSearch,
+  },
+  {
     id: 'capabilities.list',
     description: '현재 연결 기준으로 워크플로우에 쓸 수 있는 capability 목록',
     args: '{ connector?: string, kind?: "read" | "write" | "trigger" }',
@@ -49,6 +67,30 @@ export const DESIGN_TOOL_REGISTRY: DesignToolDefinition[] = [
     description: 'capability id의 param·sideEffect 상세',
     args: '{ id: string }',
     handler: capabilitiesDescribe,
+  },
+  {
+    id: 'capabilities.invoke',
+    description: '읽기 전용 capability 실행 (Slack 검색/읽기 등). citations 포함',
+    args: '{ id: string, params?: Record<string, unknown> }',
+    handler: capabilitiesInvoke,
+  },
+  {
+    id: 'workflow.inspect',
+    description: '현재 draft workflow와 코드가 계산한 누락값·검수 결과 조회 (read-only)',
+    args: '(none)',
+    handler: workflowInspect,
+  },
+  {
+    id: 'workflows.list',
+    description: '저장된 업무(workflow) 목록 — 평챗에서 다시 실행할 때 id 확인용',
+    args: '(none)',
+    handler: workflowsList,
+  },
+  {
+    id: 'workflows.run',
+    description: '저장된 업무를 한 번 실행 (workflowId는 workflows.list 결과만 사용)',
+    args: '{ workflowId: string }',
+    handler: workflowsRun,
   },
 ];
 

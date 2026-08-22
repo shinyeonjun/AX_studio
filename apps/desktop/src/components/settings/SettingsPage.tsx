@@ -9,6 +9,8 @@ import { AiBrandDetail } from './ai/AiBrandDetail';
 import { SlackConnectionForm } from './connectors/SlackConnectionForm';
 import { GmailConnectionForm } from './connectors/GmailConnectionForm';
 import { LocalFolderConnectionForm } from './connectors/LocalFolderConnectionForm';
+import { HttpConnectionForm } from './connectors/HttpConnectionForm';
+import { WebhookConnectionForm } from './connectors/WebhookConnectionForm';
 
 interface SettingsPageProps {
   screen: SettingsScreen;
@@ -21,6 +23,23 @@ interface SettingsPageProps {
   onPickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
   onAddLocalFolder: (payload: { path: string; label?: string }) => Promise<void>;
   onRemoveLocalFolder: (folderId: string) => Promise<void>;
+  onConnectHttp: (payload: {
+    baseUrl: string;
+    label?: string;
+    authType: 'none' | 'bearer' | 'apiKey' | 'basic';
+    authHeader?: string;
+    username?: string;
+    token?: string;
+    password?: string;
+  }) => Promise<void>;
+  onDisconnectHttp: () => Promise<void>;
+  onConnectWebhook: (payload: {
+    port: number;
+    secret: string;
+    label?: string;
+    tunnelUrl?: string;
+  }) => Promise<void>;
+  onDisconnectWebhook: () => Promise<void>;
 }
 
 function settingsSubtitle(screen: SettingsScreen): string {
@@ -44,6 +63,10 @@ export function SettingsPage({
   onPickLocalFolder,
   onAddLocalFolder,
   onRemoveLocalFolder,
+  onConnectHttp,
+  onDisconnectHttp,
+  onConnectWebhook,
+  onDisconnectWebhook,
 }: SettingsPageProps) {
   const detection = useAiDetection();
   const { detecting, setDetecting, refreshDetection } = detection;
@@ -125,6 +148,16 @@ export function SettingsPage({
             onPickFolder={onPickLocalFolder}
             onAddFolder={onAddLocalFolder}
             onRemoveFolder={onRemoveLocalFolder}
+          />
+        )}
+        {screen === 'http' && (
+          <HttpConnectionForm state={state} onConnect={onConnectHttp} onDisconnect={onDisconnectHttp} />
+        )}
+        {screen === 'webhook' && (
+          <WebhookConnectionForm
+            state={state}
+            onConnect={onConnectWebhook}
+            onDisconnect={onDisconnectWebhook}
           />
         )}
       </div>

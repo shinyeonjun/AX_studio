@@ -11,12 +11,35 @@
   border-top: 1px solid var(--border);
 }
 
+.chat-main-page .work-conversation-body {
+  border-top: none;
+}
+
 .work-conversation-chat {
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-base);
+}
+
+.workflow-preview-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  height: 100%;
+  padding: 32px;
+  color: var(--text-muted);
+}
+
+.workflow-preview-empty p {
+  margin: 0;
+}
+
+.workflow-preview-empty code {
+  color: var(--text);
 }
 
 .work-conversation-splitter {

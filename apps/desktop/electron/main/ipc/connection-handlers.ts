@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from 'electron';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
@@ -13,6 +13,12 @@ import {
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
+import { getSlackSecret, saveSlackSecret } from '../slack/connection.js';
+import { disconnectHttp, validateAndConnectHttp } from '../http/connection.js';
+import {
+  disconnectWebhook,
+  validateAndConnectWebhook,
+} from '../webhook/connection.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
 function readSlackPayload(payload: unknown): { token: string; appToken?: string } {
@@ -55,29 +61,35 @@ export function registerConnectionHandlers() {
         throw new Error('App-Level Token은 xapp- 로 시작해야 합니다.');
       }
 
-      const existing = core.store.getConnections().find((entry) => entry.connector === 'slack')?.config as
-        | { appToken?: string }
+      const existingConnection = core.store.getConnections().find((entry) => entry.connector === 'slack');
+      const existing = existingConnection?.config as
+        | { appToken?: string; appTokenStored?: boolean; team?: string; botUser?: string; connectedAt?: string }
         | undefined;
-      const finalAppToken = appToken ?? existing?.appToken;
+      const existingSecret = await getSlackSecret();
+      const finalAppToken = appToken ?? existingSecret?.appToken;
 
       const validation = await validateSlackBotToken(token);
       if (!validation.ok) {
         core.store.setConnection('slack', false, {
-          token,
-          appToken: finalAppToken,
+          team: existing?.team,
+          botUser: existing?.botUser,
+          connectedAt: existing?.connectedAt,
+          tokenStored: Boolean(existingSecret),
+          appTokenStored: Boolean(existingSecret?.appToken),
           lastError: validation.error,
         });
         throw new Error(validation.error ?? 'Slack 연결에 실패했습니다.');
       }
 
+      await saveSlackSecret({ token, appToken: finalAppToken });
       core.runtime.connectors.slack = new SlackConnector(token);
 
       const slackConfig = {
-        token,
-        appToken: finalAppToken,
         team: validation.team,
         botUser: validation.botUser,
         connectedAt: new Date().toISOString(),
+        tokenStored: true,
+        appTokenStored: Boolean(finalAppToken),
       };
       core.store.setConnection('slack', true, slackConfig);
 
@@ -140,7 +152,7 @@ export function registerConnectionHandlers() {
     if (!folderPath) {
       throw new Error('폴더 경로가 필요합니다.');
     }
-    if (!existsSync(folderPath)) {
+    if (!existsSync(folderPath) || !statSync(folderPath).isDirectory()) {
       throw new Error('폴더를 찾을 수 없습니다.');
     }
 
@@ -179,5 +191,64 @@ export function registerConnectionHandlers() {
     );
     notifyStateChanged();
     return { ok: true, status: getLocalFolderConnectionStatus(nextConfig, nextConfig.folders.length > 0) };
+  });
+
+  ipcMain.handle('ax:connectHttp', async (_event, payload: unknown) => {
+    const core = getCore();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('HTTP 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    const authType = record.authType;
+    if (authType !== 'none' && authType !== 'bearer' && authType !== 'apiKey' && authType !== 'basic') {
+      throw new Error('인증 유형이 올바르지 않습니다.');
+    }
+    await validateAndConnectHttp(core.store, core.runtime, {
+      baseUrl: typeof record.baseUrl === 'string' ? record.baseUrl : '',
+      label: typeof record.label === 'string' ? record.label : undefined,
+      authType,
+      authHeader: typeof record.authHeader === 'string' ? record.authHeader : undefined,
+      username: typeof record.username === 'string' ? record.username : undefined,
+      token: typeof record.token === 'string' ? record.token : undefined,
+      password: typeof record.password === 'string' ? record.password : undefined,
+    });
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:disconnectHttp', async () => {
+    const core = getCore();
+    await disconnectHttp(core.store, core.runtime);
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:connectWebhook', async (_event, payload: unknown) => {
+    const core = getCore();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Webhook 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    const port = typeof record.port === 'number' ? record.port : Number(record.port);
+    await validateAndConnectWebhook(
+      core.store,
+      core.runtime,
+      {
+        port,
+        secret: typeof record.secret === 'string' ? record.secret : '',
+        label: typeof record.label === 'string' ? record.label : undefined,
+        tunnelUrl: typeof record.tunnelUrl === 'string' ? record.tunnelUrl : undefined,
+      },
+      () => core.triggerEngine.refreshPushTransports(),
+    );
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:disconnectWebhook', async () => {
+    const core = getCore();
+    await disconnectWebhook(core.store, () => core.triggerEngine.refreshPushTransports());
+    notifyStateChanged();
+    return { ok: true };
   });
 }

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { ConditionExprSchema, preprocessConditionValue } from '../../runtime/condition-expr.js';
-import { PortBindingSchema, coercePortBinding } from '../../workflow/bindings.js';
+import { PortBindingSchema, coercePortBinding } from '../../workflow/port-binding.js';
+import { ActionInstanceSchema, type ActionInstance } from '../../workflow/action-instance.js';
+import { MAX_WORKFLOW_STEPS } from '../../workflow/schema.js';
+export { ActionInstanceSchema, type ActionInstance } from '../../workflow/action-instance.js';
 
 export function parseJsonRecordValue(value: unknown): unknown {
   if (typeof value !== 'string') return value;
@@ -35,14 +38,6 @@ export function parseBindingsRecord(value: unknown): unknown {
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
-export const ActionInstanceSchema = z.object({
-  actionRef: z.string(),
-  connector: z.string().optional(),
-  action: z.string().optional(),
-  params: z.preprocess(parseJsonRecordValue, z.record(z.unknown()).default({})),
-  bindings: z.preprocess(parseBindingsRecord, z.record(PortBindingSchema).optional()),
-});
-
 export const WorkflowNodeSchema = z.object({
   type: z.enum(['action', 'ai_decision', 'if', 'human_approval']),
   id: z.string(),
@@ -65,13 +60,7 @@ export const WorkflowNodeSchema = z.object({
     )
     .optional(),
   investigation: z.boolean().optional(),
-  condition: z.preprocess(
-    (value) => {
-      const parsed = parseJsonRecordValue(value);
-      return parsed == null ? undefined : preprocessConditionValue(parsed);
-    },
-    ConditionExprSchema.optional(),
-  ),
+  condition: z.preprocess((value) => preprocessConditionValue(value), ConditionExprSchema.optional()),
   thenStepIds: z.array(z.string()).optional(),
   elseStepIds: z.array(z.string()).optional(),
   reason: z.string().optional(),
@@ -91,13 +80,7 @@ export const InterviewDraftSchema = z.object({
     'local_folder.new_file',
     ])
     .optional(),
-  triggerFilter: z.preprocess(
-    (value) => {
-      const parsed = parseJsonRecordValue(value);
-      return parsed == null ? undefined : preprocessConditionValue(parsed);
-    },
-    ConditionExprSchema.optional(),
-  ),
+  triggerFilter: z.preprocess((value) => preprocessConditionValue(value), ConditionExprSchema.optional()),
   schedule: z.string().optional(),
   timezone: z.string().optional(),
   runAt: z.string().optional(),
@@ -109,16 +92,10 @@ export const InterviewDraftSchema = z.object({
   success: z.string().optional(),
   assumptions: z.array(z.string()).default([]),
   /** Graph structure: trigger metadata + nodes. Action params live in `actions`. */
-  nodes: z.array(WorkflowNodeSchema).default([]),
+  nodes: z.array(WorkflowNodeSchema).max(MAX_WORKFLOW_STEPS).default([]),
   /** Per-action instance data keyed by node id (`slack.message.send@1`, params, bindings). */
   actions: z.record(ActionInstanceSchema).default({}),
 });
 
-export const InterviewTurnSchema = InterviewDraftSchema.extend({
-  nextQuestion: z.string(),
-});
-
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
-export type ActionInstance = z.infer<typeof ActionInstanceSchema>;
 export type InterviewDraft = z.infer<typeof InterviewDraftSchema>;
-export type InterviewTurn = z.infer<typeof InterviewTurnSchema>;

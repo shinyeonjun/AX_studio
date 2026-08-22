@@ -11,6 +11,15 @@ export interface StoredChatSession {
   updatedAt: string;
 }
 
+export interface StoredChatSessionSummary {
+  sessionId: string;
+  workflowId?: string;
+  title: string;
+  updatedAt: string;
+  corrupted?: boolean;
+  errorCode?: string;
+}
+
 interface PersistedPayload {
   state: InterviewState;
   summary?: string;
@@ -152,6 +161,10 @@ export function deleteChatSessionByWorkflowId(db: AppDatabase, workflowId: strin
   db.prepare('DELETE FROM chat_sessions WHERE workflow_id = ?').run(workflowId);
 }
 
+export function deleteChatSession(db: AppDatabase, sessionId: string): void {
+  db.prepare('DELETE FROM chat_sessions WHERE id = ?').run(sessionId);
+}
+
 export function listChatSessions(db: AppDatabase, limit = 20): StoredChatSession[] {
   const rows = db
     .prepare(
@@ -166,4 +179,44 @@ export function listChatSessions(db: AppDatabase, limit = 20): StoredChatSession
     updated_at: string;
   }>;
   return rows.map(rowToSession);
+}
+
+/** List metadata without allowing one corrupt state blob to break the sidebar. */
+export function listChatSessionSummaries(db: AppDatabase, limit = 20): StoredChatSessionSummary[] {
+  const rows = db
+    .prepare(
+      'SELECT id, workflow_id, title, summary, state_json, updated_at FROM chat_sessions ORDER BY updated_at DESC LIMIT ?',
+    )
+    .all(limit) as Array<{
+    id: string;
+    workflow_id: string | null;
+    title: string;
+    summary: string | null;
+    state_json: string;
+    updated_at: string;
+  }>;
+
+  return rows.map((row) => {
+    try {
+      const session = rowToSession(row);
+      return {
+        sessionId: session.sessionId,
+        workflowId: session.workflowId,
+        title: session.title,
+        updatedAt: session.updatedAt,
+      };
+    } catch (error) {
+      const code = error instanceof Error && 'code' in error
+        ? String((error as Error & { code?: unknown }).code)
+        : 'invalid_chat_session_json';
+      return {
+        sessionId: row.id,
+        workflowId: row.workflow_id ?? undefined,
+        title: `${row.title || '대화'} (복구 필요)`,
+        updatedAt: row.updated_at,
+        corrupted: true,
+        errorCode: code,
+      };
+    }
+  });
 }

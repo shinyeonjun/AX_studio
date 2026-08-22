@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react';
-import type { CompletenessResult, InterviewDraft, WorkScope } from '@ax-studio/core';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import type { CompletenessResult, InterviewDraft, WorkScope, WorkflowIR } from '@ax-studio/core';
 import { isRunConfirmationMessage } from '@ax-studio/core/interview-messages';
-import { shouldRunWorkflowAfterSave } from '../lib/work-display';
+import { parseWorkspaceCommand } from '../lib/parse-slash-command';
 import {
   appendAssistantMessage,
   cloneInterviewDraft,
-  draftTrigger,
   emptyInterviewDraftBaseline,
+  executionResultMessage,
   hydrateInterviewSummary,
   interviewErrorMessage,
   interviewSessionTitle,
@@ -16,6 +16,7 @@ import {
   isRecurringDraft,
   type InterviewState,
 } from './interview-helpers';
+import type { WorkspaceChatMessage } from '../components/workspace/AxWorkspaceChat';
 
 export type { WorkScope } from '@ax-studio/core';
 export type { InterviewState } from './interview-helpers';
@@ -23,13 +24,16 @@ export { isDeferredOnce, isImmediateOnce, isRecurringDraft } from './interview-h
 
 export interface UseInterviewOptions {
   refresh: () => Promise<void>;
+  onSessionsChanged?: () => void;
 }
 
-export function useInterview({ refresh }: UseInterviewOptions) {
+export function useInterview({ refresh, onSessionsChanged }: UseInterviewOptions) {
   const sessionEpochRef = useRef(0);
   const savedWorkflowIdRef = useRef<string | undefined>(undefined);
+  const workspaceSessionIdRef = useRef<string | undefined>(undefined);
   const actionInFlightRef = useRef(false);
-  const [composerText, setComposerText] = useState('');
+  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | undefined>();
+  const [chatMessages, setChatMessages] = useState<WorkspaceChatMessage[]>([]);
   const [interview, setInterview] = useState<InterviewState | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,7 +42,12 @@ export function useInterview({ refresh }: UseInterviewOptions) {
   const [editHint, setEditHint] = useState<string | null>(null);
   const [workflowBaseline, setWorkflowBaseline] = useState<InterviewDraft | undefined>();
   const [turnDiffBaseline, setTurnDiffBaseline] = useState<InterviewDraft | undefined>();
-  const [workScope, setWorkScope] = useState<WorkScope>('once');
+  const [allowExternalAuto, setAllowExternalAuto] = useState(false);
+
+  useEffect(() => {
+    const off = window.ax.onChatProgress?.(({ message }) => setProgress(message));
+    return () => off?.();
+  }, []);
 
   const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
 
@@ -49,17 +58,45 @@ export function useInterview({ refresh }: UseInterviewOptions) {
   const reset = () => {
     invalidateSession();
     savedWorkflowIdRef.current = undefined;
+    workspaceSessionIdRef.current = undefined;
+    setWorkspaceSessionId(undefined);
     actionInFlightRef.current = false;
     setInterview(null);
+    setChatMessages([]);
     setSaved(false);
-    setComposerText('');
     setBusy(false);
     setError('');
     setProgress('');
     setEditHint(null);
     setWorkflowBaseline(undefined);
     setTurnDiffBaseline(undefined);
-    setWorkScope('once');
+    setAllowExternalAuto(false);
+  };
+
+  const displayMessages: WorkspaceChatMessage[] = interview?.messages ?? chatMessages;
+
+  const startNewChat = () => {
+    reset();
+  };
+
+  const loadWorkspaceChat = async (id: string) => {
+    invalidateSession();
+    const epoch = sessionEpochRef.current;
+    setBusy(true);
+    setError('');
+    setInterview(null);
+    try {
+      const loaded = await window.ax.loadWorkspaceChat(id);
+      if (!isCurrentSession(epoch)) return;
+      workspaceSessionIdRef.current = loaded.id;
+      setWorkspaceSessionId(loaded.id);
+      setChatMessages(loaded.messages);
+    } catch (err) {
+      if (!isCurrentSession(epoch)) return;
+      setError(interviewErrorMessage(err));
+    } finally {
+      if (isCurrentSession(epoch)) setBusy(false);
+    }
   };
 
   const openWorkChat = async (workflowId: string) => {
@@ -67,8 +104,10 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
-    setComposerText('');
+    setChatMessages([]);
     setInterview(null);
+    workspaceSessionIdRef.current = undefined;
+    setWorkspaceSessionId(undefined);
     try {
       const loaded = await window.ax.loadWorkChat(workflowId);
       if (!isCurrentSession(epoch)) return;
@@ -95,19 +134,54 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     }
   };
 
-  const startInterview = async () => {
-    if (!composerText.trim() || busy) return;
-    const text = composerText.trim();
+  const openInterviewChat = async (sessionId: string) => {
+    invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
-    setProgress('답변을 준비하고 있습니다');
+    setChatMessages([]);
+    setInterview(null);
+    workspaceSessionIdRef.current = undefined;
+    setWorkspaceSessionId(undefined);
+    try {
+      const loaded = await window.ax.loadInterviewChat(sessionId);
+      if (!isCurrentSession(epoch)) return;
+      const state = await hydrateInterviewSummary({
+        ...(loaded.state as InterviewState),
+        summary: loaded.summary,
+        title: loaded.title,
+      });
+      if (!isCurrentSession(epoch)) return;
+      setInterview({ ...state, title: interviewSessionTitle(state) });
+      if (state.workflow) {
+        const snapshot = cloneInterviewDraft(state.workflow);
+        setWorkflowBaseline(snapshot);
+        setTurnDiffBaseline(snapshot);
+      }
+      savedWorkflowIdRef.current = state.workflowId;
+      setSaved(Boolean(state.workflowId));
+    } catch (err) {
+      if (!isCurrentSession(epoch)) return;
+      setError(interviewErrorMessage(err));
+    } finally {
+      if (isCurrentSession(epoch)) setBusy(false);
+    }
+  };
+
+  const startInterview = async (instruction: string, workScope: WorkScope) => {
+    const text = instruction.trim();
+    if (!text || busy) return;
+    const epoch = sessionEpochRef.current;
+    setBusy(true);
+    setError('');
+    setProgress('업무 흐름을 설계하고 있습니다');
     setSaved(false);
     savedWorkflowIdRef.current = undefined;
     actionInFlightRef.current = false;
     setWorkflowBaseline(emptyInterviewDraftBaseline());
     setTurnDiffBaseline(emptyInterviewDraftBaseline());
-    setInterview({ messages: [{ role: 'user', content: text }], title: '새 업무' });
+    setChatMessages([]);
+    setInterview({ messages: [{ role: 'user', content: text }], title: '새 업무', workScope });
     try {
       const res = await window.ax.startInterview(text, workScope);
       if (!isCurrentSession(epoch)) return;
@@ -119,7 +193,6 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       } else {
         setInterview({ ...next, title: interviewSessionTitle(next) });
       }
-      setComposerText('');
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
       setInterview(null);
@@ -132,9 +205,42 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     }
   };
 
-  const sendAnswer = async () => {
-    if (!interview || !composerText.trim() || busy || actionInFlightRef.current) return;
-    const content = composerText.trim();
+  const sendChat = async (text: string) => {
+    const epoch = sessionEpochRef.current;
+    const nextMessages: WorkspaceChatMessage[] = [...chatMessages, { role: 'user', content: text }];
+    setChatMessages(nextMessages);
+    setBusy(true);
+    setError('');
+    setProgress('연결된 리소스를 확인하고 있습니다');
+    try {
+      const res = (await window.ax.sendChat(nextMessages)) as {
+        role: 'assistant';
+        content: string;
+      };
+      if (!isCurrentSession(epoch)) return;
+      const finalMessages: WorkspaceChatMessage[] = [
+        ...nextMessages,
+        { role: 'assistant', content: res.content },
+      ];
+      setChatMessages(finalMessages);
+      const saved = await window.ax.saveWorkspaceChat(workspaceSessionIdRef.current, finalMessages);
+      if (!isCurrentSession(epoch)) return;
+      workspaceSessionIdRef.current = saved.id;
+      setWorkspaceSessionId(saved.id);
+      onSessionsChanged?.();
+    } catch (err) {
+      if (!isCurrentSession(epoch)) return;
+      setError(interviewErrorMessage(err));
+    } finally {
+      if (isCurrentSession(epoch)) {
+        setBusy(false);
+        setProgress('');
+      }
+    }
+  };
+
+  const sendAnswer = async (content: string) => {
+    if (!interview || !content.trim() || busy || actionInFlightRef.current) return;
     const prior = interview;
     const deployable = Boolean(prior.completeness?.deployable);
     const lastAssistant = [...(prior.messages ?? [])].reverse().find((message) => message.role === 'assistant');
@@ -144,7 +250,6 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       (prior.done || (lastAssistant ? isRunConfirmationMessage(lastAssistant.content) : false));
 
     if (wantsRun && prior.draft && isImmediateOnce(prior.draft)) {
-      setComposerText('');
       setEditHint(null);
       await runOnce();
       return;
@@ -154,7 +259,6 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     setBusy(true);
     setError('');
     setProgress('답변을 준비하고 있습니다');
-    setComposerText('');
     setEditHint(null);
     setTurnDiffBaseline(
       prior.workflow ? cloneInterviewDraft(prior.workflow as InterviewDraft) : emptyInterviewDraftBaseline(),
@@ -163,10 +267,10 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       ...prior,
       done: false,
       summary: undefined,
-      messages: [...(prior.messages ?? []), { role: 'user', content }],
+      messages: [...(prior.messages ?? []), { role: 'user', content: content.trim() }],
     });
     try {
-      const res = await window.ax.applyAnswer(prior, content);
+      const res = await window.ax.applyAnswer(prior, content.trim());
       if (!isCurrentSession(epoch)) return;
       const next = res as InterviewState & { draft?: unknown };
       if (next.done && next.draft) {
@@ -188,14 +292,71 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     }
   };
 
+  const sendMessage = async (rawText: string) => {
+    const text = rawText.trim();
+    if (!text || busy) return;
+    setError('');
+
+    if (interview) {
+      await sendAnswer(text);
+      return;
+    }
+
+    const command = parseWorkspaceCommand(text);
+    if (command.mode === 'once') {
+      if (!command.instruction) {
+        setError('/once 뒤에 실행할 업무를 입력해 주세요.');
+        return;
+      }
+      await startInterview(command.instruction, 'once');
+      return;
+    }
+    if (command.mode === 'workflow') {
+      if (!command.instruction) {
+        setError('/workflow 뒤에 자동화할 업무를 입력해 주세요.');
+        return;
+      }
+      await startInterview(command.instruction, 'recurring');
+      return;
+    }
+    await sendChat(command.text);
+  };
+
+  const approvalGates = useMemo(() => {
+    const draft = interview?.draft as Partial<WorkflowIR> | undefined;
+    if (!draft?.steps) return null;
+    let externalCount = 0;
+    let highRiskCount = 0;
+    for (const step of draft.steps) {
+      if (step.type !== 'action') continue;
+      if (step.sideEffect === 'EXTERNAL') externalCount += 1;
+      if (step.sideEffect === 'EXTERNAL_HIGH') highRiskCount += 1;
+    }
+    return { externalCount, highRiskCount };
+  }, [interview?.draft]);
+
+  useEffect(() => {
+    if (typeof interview?.draft?.allowExternalAuto === 'boolean') {
+      setAllowExternalAuto(interview.draft.allowExternalAuto);
+    }
+  }, [interview?.draft?.allowExternalAuto]);
+
+  const draftWithApprovalPolicy = (draft: unknown) => {
+    if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return draft;
+    return { ...(draft as Record<string, unknown>), allowExternalAuto };
+  };
+
   const persistDraftWork = async (
     draft: unknown,
     prior: InterviewState,
     epoch: number,
   ): Promise<string | undefined> => {
     const existingId = prior.workflowId ?? savedWorkflowIdRef.current;
-    if (existingId) return existingId;
-    const savedWork = (await window.ax.saveWorkflow(draft)) as { workflowId: string };
+    const payload =
+      existingId && draft && typeof draft === 'object' && !Array.isArray(draft)
+        ? { ...(draft as Record<string, unknown>), id: existingId }
+        : draft;
+    const savedWork = (await window.ax.saveWorkflow(payload)) as { workflowId: string };
     if (!isCurrentSession(epoch)) return undefined;
     savedWorkflowIdRef.current = savedWork.workflowId;
     return savedWork.workflowId;
@@ -209,39 +370,19 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     setBusy(true);
     setError('');
     try {
-      const workflowId = await persistDraftWork(prior.draft, prior, epoch);
-      if (!workflowId || !isCurrentSession(epoch)) return;
-      setInterview((current) =>
-        current && isCurrentSession(epoch) ? { ...current, workflowId } : current,
-      );
-      const result = (await window.ax.runWorkflow(workflowId)) as {
-        status?: string;
-        errorCode?: string;
-      };
+      const result = await window.ax.runEphemeral(draftWithApprovalPolicy(prior.draft));
       if (!isCurrentSession(epoch)) return;
-      const trigger = draftTrigger(prior.draft);
-      if (!trigger?.type || trigger.type === 'manual' || trigger.type === 'once') {
-        await window.ax.setWorkflowActive(workflowId, false);
-      }
       await refresh();
       if (!isCurrentSession(epoch)) return;
+      const next = appendAssistantMessage(prior, executionResultMessage(result));
+      await window.ax.saveChatSession(next, next.summary, next.workflowId);
+      if (!isCurrentSession(epoch)) return;
+      setInterview({ ...next, title: interviewSessionTitle(next) });
+      onSessionsChanged?.();
       if (result.status === 'failed' || result.status === 'cancelled') {
         const code = result.errorCode ?? result.status;
         setError(`실행에 실패했습니다 (${code}). 활동 탭에서 자세한 내용을 확인해 주세요.`);
-        return;
       }
-      setInterview((current) => {
-        if (!current || !isCurrentSession(epoch)) return current;
-        const next = appendAssistantMessage(
-          { ...current, workflowId },
-          result.status === 'pending_approval'
-            ? '실행 중 승인이 필요합니다. 승인 탭에서 처리해 주세요.'
-            : '실행을 시작했습니다. 활동 탭에서 진행 상황을 확인할 수 있어요.',
-        );
-        void window.ax.saveChatSession(next, next.summary, workflowId);
-        return { ...next, title: interviewSessionTitle(next) };
-      });
-      setSaved(true);
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
       setError(interviewErrorMessage(err));
@@ -252,8 +393,8 @@ export function useInterview({ refresh }: UseInterviewOptions) {
   };
 
   const saveAsWork = async () => {
-    if (!interview?.draft || interview.workflowId || busy || actionInFlightRef.current) return;
-    const draft = interview.draft;
+    if (!interview?.draft || busy || actionInFlightRef.current) return;
+    const draft = draftWithApprovalPolicy(interview.draft);
     const prior = interview;
     const epoch = sessionEpochRef.current;
     actionInFlightRef.current = true;
@@ -279,18 +420,6 @@ export function useInterview({ refresh }: UseInterviewOptions) {
       await refresh();
       if (!isCurrentSession(epoch)) return;
 
-      const trigger = draftTrigger(draft);
-      if (shouldRunWorkflowAfterSave(trigger?.type)) {
-        const result = (await window.ax.runWorkflow(workflowId)) as {
-          status?: string;
-          errorCode?: string;
-        };
-        if (!isCurrentSession(epoch)) return;
-        await refresh();
-        if (result.status === 'failed' || result.status === 'cancelled') {
-          setError(`실행에 실패했습니다 (${result.errorCode ?? result.status}). 활동 탭에서 자세한 내용을 확인해 주세요.`);
-        }
-      }
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
       setError(interviewErrorMessage(err));
@@ -302,12 +431,11 @@ export function useInterview({ refresh }: UseInterviewOptions) {
 
   const beginEditStep = (prompt: string) => {
     setEditHint(prompt);
-    setComposerText('');
   };
 
   return {
-    composerText,
     interview,
+    displayMessages,
     workflow: interview?.workflow as InterviewDraft | undefined,
     workflowBaseline,
     turnDiffBaseline,
@@ -322,19 +450,23 @@ export function useInterview({ refresh }: UseInterviewOptions) {
     busy,
     error,
     progress,
-    setComposerText,
     reset,
+    startNewChat,
+    loadWorkspaceChat,
+    workspaceSessionId,
     openWorkChat,
-    startInterview,
-    sendAnswer,
+    openInterviewChat,
+    sendMessage,
     runOnce,
     saveAsWork,
     isLinkedWork: Boolean(interview?.workflowId),
     isImmediateOnce: interview?.draft ? isImmediateOnce(interview.draft) : false,
     isDeferredOnce: interview?.draft ? isDeferredOnce(interview.draft) : false,
     isRecurringDraft: interview?.draft ? isRecurringDraft(interview.draft) : false,
-    workScope: (interview?.workScope as WorkScope | undefined) ?? workScope,
-    setWorkScope,
-    workScopeLocked: Boolean(interview?.sessionId) || busy,
+    workScope: interview?.workScope as WorkScope | undefined,
+    allowExternalAuto,
+    setAllowExternalAuto,
+    approvalGateCount: approvalGates?.externalCount ?? 0,
+    highRiskGateCount: approvalGates?.highRiskCount ?? 0,
   };
 }

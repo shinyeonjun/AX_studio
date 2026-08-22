@@ -1,12 +1,13 @@
-# Future (out of v1)
+# Future (out of north star)
 
-여기에 적는 것은 아이디어일 뿐, 현재 구현 범위가 아니다. `docs/plans/ax-studio.md`를 넓히지 않는다.
+여기에 적는 것은 아이디어일 뿐, 현재 구현도 최종 목표(`docs/plans/ax-north-star.md`)도 아니다.
 
-- Connector SDK / OpenAPI → capability 자동 등록
+북스타로 **옮겨 간 것** (여기 다시 넣지 말 것): OpenAPI/MCP catalog 주입, Slack 읽기, HTTP REST, Webhook(localhost + 사용자 터널), 평챗에서 저장 업무 실행, 로컬 검색 인덱스.
+
 - MySQL / MSSQL 방언 (같은 SQL capability, 드라이버만)
 - DB INSERT / UPDATE / DELETE + transaction policy
 - Loop / Parallel / Wait / SubSkill / Retry 엔진
-- Slack 채널 읽기, Outlook, Teams, Drive, Sheets API, Notion, Salesforce, Jira
+- Outlook, Teams, Drive, Sheets API, Notion, Salesforce, Jira
 - **기본 업무 노드 로드맵** — `packages/core/src/nodes/README.md` (Formatter, Storage, Webhook, PDF Read, Google Calendar/Sheets 등)
 - Browser / Desktop RPA
 - 웹 검색

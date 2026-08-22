@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseWorkflowIR, validateWorkflowIR } from '../workflow/schema.js';
-import { validateApprovalPolicy, isDeployable } from '../workflow/approval.js';
+import { requiresApproval, validateApprovalPolicy, isDeployable } from '../workflow/approval.js';
 import { csMailWorkflowFixture, weeklyReportWorkflowFixture, dataPolicyFixture } from '../workflow/fixtures.js';
 import { createDatabaseAsync } from '../store/db.js';
 import { createTestConnectors, mockGmail, mockSlack } from '../modules/test-connectors.js';
@@ -17,10 +17,11 @@ describe('Workflow IR', () => {
     expect(parseWorkflowIR(dataPolicyFixture).dataPolicy.emailBody?.cloudAllowed).toBe(false);
   });
 
-  it('requires approval for gmail send without human_approval', () => {
+  it('enforces gmail send approval at the action boundary', () => {
     const bad = { ...csMailWorkflowFixture, steps: csMailWorkflowFixture.steps.filter((s) => s.type !== 'human_approval') };
     const errors = validateApprovalPolicy(bad);
-    expect(errors.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+    expect(requiresApproval('EXTERNAL_HIGH', true)).toBe(true);
   });
 
   it('cs fixture is deployable', () => {

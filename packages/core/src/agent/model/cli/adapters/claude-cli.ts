@@ -7,25 +7,25 @@ import { parseStructuredFromCliResult } from '../output.js';
 export class ClaudeCliProvider implements ModelProvider {
   readonly name = 'claude-cli';
 
-  constructor(private model: string) {}
+  constructor(readonly model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
     const command = requiredBinary('claude-cli');
+    const prompt = composedPrompt(input);
     const result = await runCommand(
       command,
       [
         '-p',
-        composedPrompt(input),
         '--model',
         this.model,
         '--output-format',
         'text',
         '--max-turns',
-        '1',
+        String(input.maxTurns ?? 1),
         '--permission-mode',
         'dontAsk',
       ],
-      { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
+      { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
     );
     if (result.exitCode !== 0 && !result.stdout.trim()) {
       throw new Error(result.stderr.trim() || 'Claude CLI 호출에 실패했습니다.');
@@ -35,12 +35,12 @@ export class ClaudeCliProvider implements ModelProvider {
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const command = requiredBinary('claude-cli');
+    const prompt = composedPrompt(input);
     const schema = JSON.stringify(zodToJsonSchema(input.schema));
     const result = await runCommand(
       command,
       [
         '-p',
-        composedPrompt(input),
         '--model',
         this.model,
         '--output-format',
@@ -48,11 +48,11 @@ export class ClaudeCliProvider implements ModelProvider {
         '--json-schema',
         schema,
         '--max-turns',
-        '1',
+        String(input.maxTurns ?? 1),
         '--permission-mode',
         'dontAsk',
       ],
-      { timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
+      { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal },
     );
     return parseStructuredFromCliResult(result, input.schema, 'Claude CLI 호출에 실패했습니다.');
   }

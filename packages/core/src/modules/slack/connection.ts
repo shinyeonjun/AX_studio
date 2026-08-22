@@ -4,6 +4,8 @@ import { parseSlackConnectionConfig } from '../../triggers/types.js';
 export interface SlackConnectionRecord {
   token?: string;
   appToken?: string;
+  tokenStored?: boolean;
+  appTokenStored?: boolean;
   team?: string;
   botUser?: string;
   connectedAt?: string;
@@ -55,7 +57,8 @@ export function getSlackConnectionStatus(
   const parsed = parseSlackConnectionConfig(config);
   const record = (config && typeof config === 'object' ? config : {}) as SlackConnectionRecord;
 
-  if (!connected || !parsed?.token) {
+  const tokenAvailable = Boolean(parsed?.token) || record.tokenStored === true;
+  if (!connected || !tokenAvailable) {
     return {
       connected: false,
       hasAppToken: false,
@@ -65,7 +68,7 @@ export function getSlackConnectionStatus(
     };
   }
 
-  const hasAppToken = Boolean(parsed.appToken);
+  const hasAppToken = Boolean(parsed?.appToken) || record.appTokenStored === true;
   const mode = socketModeActive && hasAppToken ? 'socket' : 'poll';
 
   return {

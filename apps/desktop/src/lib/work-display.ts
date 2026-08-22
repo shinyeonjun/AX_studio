@@ -31,16 +31,6 @@ export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
   return isRecurringTriggerType(trigger?.type);
 }
 
-export function isEventTriggerType(triggerType?: string | null): boolean {
-  return triggerType === 'gmail.new_message' || triggerType === 'slack.new_message';
-}
-
-export function shouldRunWorkflowAfterSave(triggerType?: string): boolean {
-  if (!triggerType || triggerType === 'once') return false;
-  if (isEventTriggerType(triggerType)) return false;
-  return triggerType === 'schedule' || triggerType === 'manual';
-}
-
 export function executionTriggerLabel(triggerType?: string | null): string {
   if (!triggerType || triggerType === 'manual') return '수동 실행';
   if (triggerType === 'schedule') return '예약 실행';

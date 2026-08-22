@@ -3,6 +3,12 @@ import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
+const MAX_STREAM_OUTPUT_BYTES = 8 * 1024 * 1024;
+// Windows CreateProcess has a much smaller command-line limit than the
+// process environment's total argv budget. Prompts and structured payloads
+// must travel over stdin/files; keep argv as a small control channel.
+const MAX_COMMAND_ARGUMENT_BYTES = process.platform === 'win32' ? 24 * 1024 : 256 * 1024;
+
 export interface CommandResult {
   stdout: string;
   stderr: string;
@@ -116,6 +122,21 @@ export function commandInvocation(command: string, args: string[]): CommandInvoc
   return { file: command, args, env: commandEnv() };
 }
 
+function commandArgumentBytes(invocation: CommandInvocation): number {
+  return Buffer.byteLength([invocation.file, ...invocation.args].join(' '), 'utf8');
+}
+
+function commandArgumentLimitError(invocation: CommandInvocation): Error | undefined {
+  const bytes = commandArgumentBytes(invocation);
+  if (bytes <= MAX_COMMAND_ARGUMENT_BYTES) return undefined;
+  return Object.assign(
+    new Error(
+      `command arguments are too large (${bytes} bytes; limit ${MAX_COMMAND_ARGUMENT_BYTES}). Pass large data through stdin or a temporary file.`,
+    ),
+    { code: 'EARGTOOLARGE', bytes, limit: MAX_COMMAND_ARGUMENT_BYTES },
+  );
+}
+
 export function runCommand(
   command: string,
   args: string[],
@@ -133,6 +154,8 @@ export function runCommand(
   }
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
+  const argumentError = commandArgumentLimitError(invocation);
+  if (argumentError) return Promise.reject(argumentError);
   const env = options.env ? { ...invocation.env, ...options.env } : invocation.env;
 
   return new Promise((resolve, reject) => {
@@ -181,6 +204,8 @@ export function runCommandStreaming(
 ): Promise<CommandResult> {
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
+  const argumentError = commandArgumentLimitError(invocation);
+  if (argumentError) return Promise.reject(argumentError);
   const env = options.env ? { ...invocation.env, ...options.env } : invocation.env;
 
   return new Promise((resolve, reject) => {
@@ -224,8 +249,14 @@ export function runCommandStreaming(
     options.abortSignal?.addEventListener('abort', onAbort, { once: true });
 
     child.stdout?.on('data', (chunk: Buffer | string) => {
+      if (settled) return;
       const text = chunk.toString();
       stdout += text;
+      if (Buffer.byteLength(stdout, 'utf8') > MAX_STREAM_OUTPUT_BYTES) {
+        child.kill();
+        finish(Object.assign(new Error('command_output_too_large'), { code: 'EOUTPUTTOOLARGE' }));
+        return;
+      }
       lineBuf += text;
       const lines = lineBuf.split(/\r?\n/);
       lineBuf = lines.pop() ?? '';
@@ -234,7 +265,12 @@ export function runCommandStreaming(
       }
     });
     child.stderr?.on('data', (chunk: Buffer | string) => {
+      if (settled) return;
       stderr += chunk.toString();
+      if (Buffer.byteLength(stderr, 'utf8') > MAX_STREAM_OUTPUT_BYTES) {
+        child.kill();
+        finish(Object.assign(new Error('command_output_too_large'), { code: 'EOUTPUTTOOLARGE' }));
+      }
     });
     child.on('error', (error) => finish(error));
     child.on('close', () => {

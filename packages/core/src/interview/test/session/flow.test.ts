@@ -4,31 +4,42 @@ import { chatMessagesFromInput, flattenChatPrompt, normalizeChatMessages } from 
 import { composedPrompt } from '../../../agent/model/cli/shared.js';
 import { createAgentHarness } from '../../../agent/harness.js';
 import { applyAnswer, startInterview } from '../../session/flow.js';
-import { applyInterviewPatch } from '../../session/patch-turn.js';
+import { applyAgentDraftPatch } from '../../session/apply-agent-patch.js';
 import { buildIRFromWorkflow } from '../../compile/builder.js';
 import { assessCompleteness } from '../../slots/requiredness.js';
-import type { InterviewTurn } from '../../draft/schema.js';
+import type { InterviewDraft } from '../../draft/schema.js';
 import { loadAgentSkill } from '../../../agent/skill-load.js';
 import { buildDesignToolContext } from '../../../design-tools/context.js';
+
+type ScriptedTurn = InterviewDraft & { agentMessage: string };
 
 class ScriptedModelProvider implements ModelProvider {
   readonly name = 'scripted';
   readonly calls: StructuredGenerateInput<unknown>[] = [];
   private index = 0;
 
-  constructor(private turns: InterviewTurn[]) {}
+  constructor(private turns: ScriptedTurn[]) {}
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     this.calls.push(input as StructuredGenerateInput<unknown>);
     const turn = this.turns[Math.min(this.index, this.turns.length - 1)];
     this.index += 1;
-    const { nextQuestion, ...plan } = turn;
+    const { agentMessage, ...draft } = turn;
+    const revision = Number(input.system.match(/draft revision: (\d+)/)?.[1] ?? 0);
+    const { name, goal, triggerType, triggerFilter, schedule, timezone, runAt, gmailAccount, slackChannel,
+      localFolderId, localFolderPath, localFolderExtensions, success, assumptions, nodes } = draft;
     return input.schema.parse({
-      kind: 'plan',
-      plan,
-      nextQuestion,
-      payload: '',
-      toolCalls: '',
+      kind: 'patch',
+      patch: {
+        baseRevision: revision,
+        meta: { name, goal, triggerType, triggerFilter, schedule, timezone, runAt, gmailAccount, slackChannel,
+          localFolderId, localFolderPath, localFolderExtensions, success, assumptions },
+        upsertNodes: nodes,
+        removeNodeIds: [],
+        set: {},
+        message: agentMessage,
+      },
+      message: agentMessage,
     });
   }
 
@@ -38,7 +49,7 @@ class ScriptedModelProvider implements ModelProvider {
 }
 
 const CONNECTED = ['gmail', 'slack', 'local_sheet', 'rdb', 'document'];
-const DESIGN_CTX = buildDesignToolContext([], CONNECTED);
+const DESIGN_CTX = buildDesignToolContext([], CONNECTED, undefined, { interactionMode: 'authoring' });
 
 const interviewOptions = (harness: ReturnType<typeof createAgentHarness>) => ({
   harness,
@@ -46,7 +57,7 @@ const interviewOptions = (harness: ReturnType<typeof createAgentHarness>) => ({
   designToolContext: DESIGN_CTX,
 });
 
-const incompleteSend: InterviewTurn = {
+const incompleteSend: ScriptedTurn = {
   name: '테스트 메일',
   goal: '테스트 메일을 보낸다',
   triggerType: 'once',
@@ -61,10 +72,10 @@ const incompleteSend: InterviewTurn = {
       params: { subject: '테스트', body: '테스트 메일입니다.' },
     },
   ],
-  nextQuestion: '메일을 누구에게 보낼까요?',
+  agentMessage: '메일을 누구에게 보낼까요?',
 };
 
-const completeSend: InterviewTurn = {
+const completeSend: ScriptedTurn = {
   ...incompleteSend,
   nodes: [
     {
@@ -79,7 +90,7 @@ const completeSend: InterviewTurn = {
       },
     },
   ],
-  nextQuestion: '1분 뒤 메일 발송 워크플로우로 이해했습니다.',
+  agentMessage: '1분 뒤 메일 발송 워크플로우로 이해했습니다.',
   assumptions: ['제목과 본문은 테스트 기본값'],
   success: '메일 발송 완료',
 };
@@ -90,7 +101,8 @@ describe('agent interview skill', () => {
     expect(skill.name).toBe('interview');
     expect(skill.body).toContain('{{workflow_state}}');
     expect(skill.body).toContain('{{design_tools}}');
-    expect(skill.body).toContain('{{capability_catalog}}');
+    expect(skill.body).toContain('{{draft_revision}}');
+    expect(skill.body).not.toContain('{{capability_catalog}}');
   });
 
   it('prepends AGENTS.md constitution via harness system prompt', async () => {
@@ -99,7 +111,7 @@ describe('agent interview skill', () => {
     const first = await startInterview('안녕', interviewOptions(harness), 'once');
     expect(first.messages).toHaveLength(2);
     expect(model.calls[0]?.system).toContain('AX Studio Agent 헌법');
-    expect(model.calls[0]?.system).toContain('현재 workflow');
+    expect(model.calls[0]?.system).toContain('현재 draft');
     expect(model.calls[0]?.system).not.toContain('{{workflow_state}}');
   });
 });
@@ -178,7 +190,7 @@ describe('workflow builder', () => {
       ],
     });
     expect(ir.trigger?.type).toBe('once');
-    expect(ir.steps?.some((s) => s.type === 'human_approval')).toBe(true);
+    expect(ir.steps?.some((s) => s.type === 'human_approval')).toBe(false);
     const send = ir.steps?.find((s) => s.type === 'action' && s.action === 'message.send');
     expect(send).toMatchObject({ connector: 'gmail', sideEffect: 'EXTERNAL_HIGH' });
     const decision = ir.steps?.find((s) => s.type === 'ai_decision');
@@ -257,8 +269,8 @@ describe('workflow builder', () => {
 });
 
 describe('AI interview session', () => {
-  it('keeps done false while agent nextQuestion still asks the user', async () => {
-    const awaitingChannel: InterviewTurn = {
+  it('keeps done false while the agent acknowledgement still asks the user', async () => {
+    const awaitingChannel: ScriptedTurn = {
       name: 'PDF 요약',
       goal: 'PDF 요약 후 Slack 전송',
       triggerType: 'local_folder.new_file',
@@ -272,7 +284,12 @@ describe('AI interview session', () => {
           action: 'ingest',
           params: { path: '{{filePath}}' },
         },
-        { type: 'ai_decision', id: 'summarize', goal: '문서 요약' },
+        {
+          type: 'ai_decision',
+          id: 'summarize',
+          goal: '문서 요약',
+          outputFields: [{ name: 'result', type: 'string', description: '요약 결과' }],
+        },
         {
           type: 'action',
           id: 'notify',
@@ -281,7 +298,7 @@ describe('AI interview session', () => {
           params: { text: '{{summarize.result}}' },
         },
       ],
-      nextQuestion: '요약 내용을 어느 Slack 채널에 보낼까요? (예: #general)',
+      agentMessage: '요약 내용을 어느 Slack 채널에 보낼까요? (예: #general)',
     };
 
     const model = new ScriptedModelProvider([awaitingChannel]);
@@ -292,10 +309,10 @@ describe('AI interview session', () => {
     expect(state.done).toBe(false);
   });
 
-  it('finalizes deployable drafts from completeness, ignoring model nextQuestion', async () => {
-    const confirmTurn: InterviewTurn = {
+  it('finalizes deployable drafts from completeness, ignoring model acknowledgement', async () => {
+    const confirmTurn: ScriptedTurn = {
       ...completeSend,
-      nextQuestion: '워크플로우가 완성되었습니다. 지금 실행할까요?',
+      agentMessage: '워크플로우가 완성되었습니다. 지금 실행할까요?',
     };
     const model = new ScriptedModelProvider([confirmTurn]);
     const harness = createAgentHarness(model);
@@ -306,10 +323,10 @@ describe('AI interview session', () => {
     expect(state.messages.at(-1)?.content).toContain('실행하거나 저장할 수 있습니다');
   });
 
-  it('keeps done false when required slots are still missing even if nextQuestion sounds complete', async () => {
-    const confirmTurn: InterviewTurn = {
+  it('keeps done false when required slots are still missing even if the acknowledgement sounds complete', async () => {
+    const confirmTurn: ScriptedTurn = {
       ...incompleteSend,
-      nextQuestion: '워크플로우가 완성되었습니다. 지금 실행할까요?',
+      agentMessage: '워크플로우가 완성되었습니다. 지금 실행할까요?',
     };
     const model = new ScriptedModelProvider([confirmTurn]);
     const harness = createAgentHarness(model);
@@ -328,30 +345,37 @@ describe('AI interview session', () => {
     expect(first.done).toBe(false);
     expect(first.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
     expect(model.calls[0]?.messages?.map((m) => m.role)).toEqual(['user']);
+    expect(model.calls[0]?.messages?.[0]?.content).toBe('1분 뒤 테스트 메일 보내줘');
 
     const polluted = {
       ...first,
       messages: [
         ...first.messages,
-        { role: 'assistant' as const, content: '[interview_discover_1] provider=codex-cli promptChars=1200' },
+        { role: 'assistant' as const, content: '[workflow_agent] provider=codex-cli promptChars=1200' },
       ],
     };
     const second = await applyAnswer(polluted, 'test@example.com', interviewOptions(harness));
     expect(second.sessionId).toBe(first.sessionId);
     expect(second.done).toBe(true);
-    expect(model.calls[1]?.messages?.map((m) => m.content)).toEqual([
+    const secondUserFacing = model.calls[1]?.messages
+      ?.filter(
+        (m) =>
+          !m.content.startsWith('[design-tools]') && !m.content.startsWith('[design-tool results]'),
+      )
+      .map((m) => m.content);
+    expect(secondUserFacing).toEqual([
       '1분 뒤 테스트 메일 보내줘',
-      'send_mail — 메일을 누구에게 보낼까요?',
+      '오른쪽 그래프에서 빈 칸을 확인한 뒤 검토해 주세요.',
       'test@example.com',
     ]);
-    expect(model.calls[1]?.system).toContain('현재 workflow');
+    expect(model.calls[1]?.system).toContain('현재 draft');
     expect(model.calls[1]?.system).toContain('gmail.message.send');
     expect(second.draft.steps?.some((s) => s.type === 'action' && s.connector === 'gmail')).toBe(true);
     expect(second.draft.document).toContain('test@example.com');
   });
 
   it('accepts revision messages after deployable without losing session', async () => {
-    const reviseSubject: InterviewTurn = {
+    const updatedSubject: ScriptedTurn = {
       ...completeSend,
       nodes: [
         {
@@ -366,9 +390,9 @@ describe('AI interview session', () => {
           },
         },
       ],
-      nextQuestion: '제목을 변경된 제목으로 반영했습니다.',
+      agentMessage: '제목을 변경된 제목으로 반영했습니다.',
     };
-    const model = new ScriptedModelProvider([incompleteSend, completeSend, reviseSubject]);
+    const model = new ScriptedModelProvider([incompleteSend, completeSend, updatedSubject]);
     const harness = createAgentHarness(model);
     const first = await startInterview('1분 뒤 테스트 메일 보내줘', interviewOptions(harness), 'once');
     const second = await applyAnswer(first, 'test@example.com', interviewOptions(harness));
@@ -382,7 +406,7 @@ describe('AI interview session', () => {
   });
 
   it('seeds manual trigger when an once plan omits its start condition', async () => {
-    const withNodes: InterviewTurn = {
+    const withNodes: ScriptedTurn = {
       name: 'PDF 위험 분류',
       goal: 'PDF를 분류해 알린다',
       assumptions: [],
@@ -399,7 +423,7 @@ describe('AI interview session', () => {
           id: 'classify',
           goal: 'critical/high/normal 분류',
           outputFields: [
-            { name: 'risk', type: 'string', description: '위험도', enumValues: ['critical', 'high', 'normal'] },
+            { name: 'riskLevel', type: 'string', description: '위험도', enumValues: ['critical', 'high', 'normal'] },
           ],
         },
         {
@@ -407,10 +431,10 @@ describe('AI interview session', () => {
           id: 'critical_slack',
           connector: 'slack',
           action: 'message.send',
-          params: { channel: '#ax테스트', text: '{{classify.risk}}' },
+          params: { channel: '#ax테스트', text: '{{classify.riskLevel}}' },
         },
       ],
-      nextQuestion: 'critical일 때 알릴 Slack 채널을 알려주세요.',
+      agentMessage: 'critical일 때 알릴 Slack 채널을 알려주세요.',
     };
 
     const model = new ScriptedModelProvider([withNodes]);
@@ -422,18 +446,18 @@ describe('AI interview session', () => {
     expect(first.messages.at(-1)?.content).not.toContain('시작 노드');
     expect(first.messages.at(-1)?.content).not.toContain('지금 바로');
 
-    const second = applyInterviewPatch(
+    const second = applyAgentDraftPatch(
       first,
-      { set: { 'critical_slack.params.channel': '#ops' } },
-      interviewOptions(harness),
-    );
+      { baseRevision: first.draftRevision, set: { 'critical_slack.params.channel': '#ops' } },
+      interviewOptions(harness).designToolContext,
+    ).state;
     expect(second.workflow.triggerType).toBe('manual');
     expect(second.workflow.nodes.map((node) => node.id)).toEqual(['ingest', 'classify', 'critical_slack']);
   });
 
   it('does not emit numbered slot questions after the graph is shown', async () => {
     const triggerQuestion = '언제 이 업무를 실행할까요? (예: 새 메일, 매주 금요일)';
-    const withEmptySlots: InterviewTurn = {
+    const withEmptySlots: ScriptedTurn = {
       name: 'PDF 위험 분류',
       goal: 'PDF를 분류해 알린다',
       assumptions: [],
@@ -453,10 +477,10 @@ describe('AI interview session', () => {
           params: {},
         },
       ],
-      nextQuestion: triggerQuestion,
+      agentMessage: triggerQuestion,
     };
 
-    const model = new ScriptedModelProvider([withEmptySlots, { ...withEmptySlots, nextQuestion: triggerQuestion }]);
+    const model = new ScriptedModelProvider([withEmptySlots, { ...withEmptySlots, agentMessage: triggerQuestion }]);
     const harness = createAgentHarness(model);
     const first = await startInterview('PDF 분류해서 Slack으로', interviewOptions(harness), 'recurring');
     expect(first.workflow.triggerType).toBeUndefined();
@@ -465,7 +489,7 @@ describe('AI interview session', () => {
   });
 
   it('asks the interview question instead of a compile error', async () => {
-    const broken: InterviewTurn = {
+    const broken: ScriptedTurn = {
       name: '잘못된 도구',
       goal: '없는 도구',
       triggerType: 'manual',
@@ -479,7 +503,7 @@ describe('AI interview session', () => {
           params: {},
         },
       ],
-      nextQuestion: '이 알림을 어느 Slack 채널로 보낼까요?',
+      agentMessage: '이 알림을 어느 Slack 채널로 보낼까요?',
     };
 
     const model = new ScriptedModelProvider([broken]);

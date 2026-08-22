@@ -1,8 +1,8 @@
 version: 1
 status: active
 
-# Current boundary: finish the existing contract/runtime QA without broadening into new
-# connectors or unrelated presentation work.
+# Current boundary: migrate interview authoring to the existing Agent + typed-tool
+# architecture without broadening into new connectors or unrelated presentation work.
 allowed:
   - packages/core/src/interview
   - packages/core/src/workflow
@@ -16,6 +16,37 @@ allowed:
   - apps/desktop/electron/main/credential-store.ts
   - packages/document-engine/src
   - packages/core/src/agent/skills
+  - packages/core/src/agent/context-builders.ts
+  - packages/core/src/agent/harness.ts
+  - packages/core/src/agent/model
+  - packages/core/src/agent/roles.ts
+  - packages/core/src/catalog
+  - packages/core/src/design-tools
+  - packages/core/src/workspace
+  - packages/core/src/agent
+  - packages/core/src/agent/settings
+  - apps/desktop/src/components/chat
+  - apps/desktop/src/components/activity
+  - apps/desktop/src/components/layout
+  - apps/desktop/src/components/approval
+  - apps/desktop/src/components/work
+  - apps/desktop/src/components/workspace
+  - apps/desktop/src/styles
+  - apps/desktop/src/workflow
+  - apps/desktop/src/hooks/useInterview.ts
+  - apps/desktop/src/lib/parse-slash-command.ts
+  - apps/desktop/src/lib/work-display.ts
+  - packages/core/src/modules/packages
+  - packages/core/src/modules/gmail
+  - packages/core/src/modules/slack
+  - packages/core/src/modules/local-folder
+  - packages/core/src/modules
+  - apps/desktop/electron/main/gmail
+  - packages/core/src/agent/model/cli-process.ts
+  - packages/core/src/agent/model/cli-process.test.ts
+  - packages/core/src/agent/model/cli/adapters/codex-cli.ts
+  - packages/core/src/agent/model/cli/adapters/claude-cli.ts
+  - packages/core/src/agent/model/cli.test.ts
   - .harness
 
 # Paths or areas that should not be touched for the active task.
@@ -24,6 +55,7 @@ avoid:
   - apps/*/node_modules
   - external connector APIs
   - unrelated UI redesign
+  - apps/desktop/src/workflow
 
 # Add entries only when evidence requires expanding the original scope.
 # Example:
@@ -50,8 +82,54 @@ expansions:
     reason: The planner must see the full connected capability list like an MCP tool catalog, not a draft-filtered subset.
   - path: packages/core/src/interview/draft/local-folder.ts
     reason: once-scope session hints currently push a scheduling question that fights the code-owned slot interviewer.
+  - path: packages/core/src/agent/context-builders.ts
+    reason: Planner must receive the full runtime catalog while runtime investigation remains connection-scoped.
+  - path: packages/core/src/catalog
+    reason: Design-time catalog visibility must be separated from runtime connection availability.
+  - path: packages/core/src/design-tools
+    reason: MCP-like capability list/describe must expose packaged actions before OAuth/token connection.
+  - path: packages/core/src/runtime/ai-investigation.ts
+    reason: Document artifact visuals are retained by ingest but were omitted from the AI analysis prompt.
+  - path: packages/core/src/agent/harness.ts
+    reason: The deep audit must verify that dataPolicy redaction covers every model input, not only context fields.
+  - path: packages/core/src/agent/model
+    reason: Provider adapters flatten prompts and may change privacy, structured-output, timeout, or retry semantics.
+  - path: packages/core/src/agent/model/provider.ts
+    reason: Actual PDF vision support requires an explicit image-byte contract between AgentHarness and every model adapter.
+  - path: packages/core/src/agent/model/anthropic-api.ts
+    reason: Anthropic requires image bytes to be encoded as base64 content blocks rather than text metadata.
+  - path: packages/core/src/agent/model/openai-compatible.ts
+    reason: OpenAI-compatible adapters must map image bytes to multimodal user content.
+  - path: apps/desktop/electron/main/credential-store.ts
+    reason: Connector credential storage is part of the execution trust boundary and must be audited with IPC persistence.
+  - path: packages/core/src/catalog/capability-graph.ts
+    reason: Static analysis found a production dependency cycle because catalog graph helpers import interview draft types.
+  - path: packages/core/src/workflow/persisted-document.ts
+    reason: Persisted workflow storage imports interview action schemas, coupling storage format to the design session model.
+  - path: packages/core/src/modules/packages/local-folder.ts
+    reason: Connector package registration imports interview resource presentation code, coupling runtime modules to interview state.
+  - path: packages/core/src/runtime/engine.ts
+    reason: Approval and execution ownership must be isolated after the runtime diagnosis found branch-external approvals.
+  - path: apps/desktop/src/poc/assistant-ui
+    reason: User explicitly requested an isolated assistant-ui proof of concept before considering any ChatPanel replacement.
+  - path: apps/desktop/package.json
+    reason: The PoC needs the assistant-ui library dependency to verify React/Electron bundling and the custom runtime boundary.
+  - path: apps/desktop/src/components/workspace
+    reason: The promoted assistant-ui runtime has compile errors in message-part rendering and external-store conversion.
+  - path: packages/core/src/workspace
+    reason: Workspace chat persistence must separate database chat ids from provider resume ids.
+  - path: packages/core/src/agent/settings
+    reason: Ollama is advertised but currently resolves to Codex/OpenAI without constructing an Ollama-compatible provider.
 
-notes:
-  - Existing dirty changes predate this checkpoint and are preserved.
+  - path: packages/core/src/modules/http
+    reason: Phase 3 HTTP connector implementation per north star plan.
+  - path: packages/core/src/retrieval
+    reason: Phase 6 local retrieval index for bounded plain-chat search.
+  - path: apps/desktop/electron/main/http
+    reason: HTTP connection secrets and hydration for desktop runtime.
+  - path: apps/desktop/src/components/settings/connectors/HttpConnectionForm.tsx
+    reason: Phase 3 settings UI for HTTP API connection.
   - New changes must be surgical and recorded in experiments.tsv.
-  - This task replaces AI-owned nextQuestion/done-marker with code-owned slot questions and deployable completion.
+  - This task replaces the interview discovery/plan/patch protocol with a bounded Agent tool loop and draft-only typed patches.
+  - Vision expansion remains backend/provider-only; UI and external side effects are out of scope.
+  - Aggressive deletion is allowed only for interview protocol code proven unreachable after the new path is wired and tested.

@@ -14,6 +14,7 @@ export function isAiProviderReady(config: AiProviderConfig): boolean {
     if (resolved.brand === 'claude') return isAnthropicApiKeyConfigured();
     if (resolved.brand === 'gpt') return isOpenAiApiKeyConfigured();
     if (resolved.brand === 'grok') return isXaiApiKeyConfigured();
+    if (resolved.brand === 'ollama') return true;
     return false;
   }
   if (resolved.brand === 'grok') {
@@ -26,7 +27,13 @@ export function isAiProviderReady(config: AiProviderConfig): boolean {
 export function getAiProviderLabel(config: AiProviderConfig): string {
   const resolved = resolveAiProviderConfig(config);
   const brandLabel =
-    resolved.brand === 'claude' ? 'Claude' : resolved.brand === 'gpt' ? 'GPT' : 'Grok';
+    resolved.brand === 'claude'
+      ? 'Claude'
+      : resolved.brand === 'gpt'
+        ? 'GPT'
+        : resolved.brand === 'grok'
+          ? 'Grok'
+          : 'Ollama';
   const modeLabel =
     resolved.mode === 'api'
       ? 'API'

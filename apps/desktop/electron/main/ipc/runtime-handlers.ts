@@ -1,12 +1,55 @@
 import { ipcMain } from 'electron';
-import { buildManualRunInput, enrichManualRunInput, parseWorkflowIR, validateManualRunInput } from '@ax-studio/core';
+import {
+  parseWorkflowIR,
+  validateWorkflowForPersistence,
+  runManualWorkflow,
+} from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { notifyStateChanged } from '../state-broadcast.js';
+import { connectedConnectorIds } from './shared.js';
+
+function executionLogWithRejection(
+  logJson: string | null | undefined,
+): unknown[] {
+  let log: unknown[] = [];
+  if (logJson) {
+    try {
+      const parsed = JSON.parse(logJson) as unknown;
+      if (Array.isArray(parsed)) log = parsed;
+    } catch {
+      // Keep the cancellation auditable even when an older execution has a
+      // malformed log. The original malformed payload must not block the
+      // state transition.
+    }
+  }
+  return [
+    ...log,
+    {
+      at: new Date().toISOString(),
+      level: 'warn',
+      code: 'approval_rejected',
+      message: '승인이 거절되어 실행을 취소했습니다.',
+    },
+  ];
+}
 
 export function registerRuntimeHandlers() {
   ipcMain.handle('ax:saveWorkflow', async (_e, ir) => {
     const core = getCore();
-    const result = core.store.saveWorkflow(ir);
+    const parsed = parseWorkflowIR(ir);
+    const issues = validateWorkflowForPersistence(parsed, {
+      runtimeConnectors: core.runtime.connectors,
+      connectedConnectors: connectedConnectorIds(core.store),
+    });
+    if (issues.length > 0) {
+      const first = issues[0]!;
+      throw Object.assign(new Error(first.message), {
+        code: 'workflow_validation_failed',
+        issues,
+      });
+    }
+    const result = core.store.saveWorkflow(parsed);
+    notifyStateChanged();
     return result;
   });
   ipcMain.handle('ax:runWorkflow', async (_e, workflowId: string) => {
@@ -14,60 +57,24 @@ export function registerRuntimeHandlers() {
     if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('Workflow id가 필요합니다.');
     const ir = core.store.getWorkflow(workflowId);
     if (!ir) throw new Error('Workflow not found');
-    let input: Record<string, unknown>;
-    try {
-      input = buildManualRunInput(ir, core.store);
-    } catch (error) {
-      const failureCode = (error as { code?: string }).code ?? 'manual_run_input_failed';
-      const message = error instanceof Error ? error.message : String(error);
-      const executionId = core.store.createExecution({
-        workflowId,
-        workflowVersion: ir.version,
-        ephemeral: false,
-        triggerType: 'manual',
-        irJson: JSON.stringify(ir),
-      });
-      const log = [{
-        at: new Date().toISOString(),
-        level: 'error' as const,
-        code: failureCode,
-        message,
-      }];
-      core.store.finishExecution(executionId, 'failed', failureCode, log);
-      notifyStateChanged();
-      return { executionId, status: 'failed', errorCode: failureCode, log };
-    }
-    const enrichedInput = await enrichManualRunInput(ir, core.runtime.connectors, input);
-    const validation = validateManualRunInput(ir, enrichedInput);
-    if (!validation.ok) {
-      const executionId = core.store.createExecution({
-        workflowId,
-        workflowVersion: ir.version,
-        ephemeral: false,
-        triggerType: 'manual',
-        irJson: JSON.stringify(ir),
-      });
-      const log = [
-        {
-          at: new Date().toISOString(),
-          level: 'error' as const,
-          code: validation.errorCode,
-          message: validation.message,
-        },
-      ];
-      core.store.finishExecution(executionId, 'failed', validation.errorCode, log);
-      notifyStateChanged();
-      return { executionId, status: 'failed', errorCode: validation.errorCode, log };
-    }
-    return core.runtime.executeWorkflow(ir, {
-      triggerType: 'manual',
-      input: enrichedInput,
-      forceManual: true,
-    });
+    const result = await runManualWorkflow(
+      { store: core.store, runtime: core.runtime },
+      ir,
+      { ephemeral: false, workflowId },
+    );
+    notifyStateChanged();
+    return result;
   });
   ipcMain.handle('ax:runEphemeral', async (_e, ir) => {
+    const core = getCore();
     const parsed = parseWorkflowIR(ir);
-    return getCore().runtime.executeWorkflow(parsed, { ephemeral: true, triggerType: 'manual' });
+    const result = await runManualWorkflow(
+      { store: core.store, runtime: core.runtime },
+      parsed,
+      { ephemeral: true },
+    );
+    notifyStateChanged();
+    return result;
   });
   ipcMain.handle('ax:approve', async (_e, approvalId: unknown) => {
     const core = getCore();
@@ -88,7 +95,13 @@ export function registerRuntimeHandlers() {
     if (!core.store.rejectPendingApproval(approvalId)) {
       throw new Error('Approval is already being processed or resolved');
     }
-    core.store.finishExecution(approval.executionId, 'cancelled', 'approval_rejected');
+    const execution = core.store.getExecution(approval.executionId);
+    core.store.finishExecution(
+      approval.executionId,
+      'cancelled',
+      'approval_rejected',
+      executionLogWithRejection(execution?.logJson),
+    );
     notifyStateChanged();
     return { ok: true };
   });

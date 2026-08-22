@@ -10,6 +10,7 @@
     "test": "npm run test -w @ax-studio/core",
     "eval": "npm run eval -w @ax-studio/core",
     "dev": "npm run dev -w @ax-studio/desktop",
+    "dev:poc": "npm run dev:poc -w @ax-studio/desktop",
     "document-engine:setup": "python -m venv packages/document-engine/.venv && npm run document-engine:install",
     "document-engine:install": "node scripts/document-engine-install.mjs",
     "document-engine:install:docling": "node scripts/document-engine-install.mjs --docling"

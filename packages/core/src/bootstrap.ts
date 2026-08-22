@@ -31,6 +31,7 @@ export interface AxStudioCoreOptions {
   /** Electron injects Chromium printToPDF; omit in core-only tests. */
   desktopPrintBridge?: DesktopPrintBridge | null;
   onExecutionStarted?: (executionId: string) => void;
+  onExecutionProgress?: (progress: import('./runtime/types.js').ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
 }
 
@@ -76,6 +77,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     workflowActive,
     connectors,
     onExecutionStarted: options.onExecutionStarted,
+    onExecutionProgress: options.onExecutionProgress,
     onExecutionFinished: options.onExecutionFinished,
   });
   const scheduler = new Scheduler(store, runtime);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { InvestigationOutputSchema } from '../../runtime/investigation-schema.js';
-import { InterviewWireEnvelopeSchema } from '../../interview/agent/wire-schema.js';
+import { AgenticInterviewWireEnvelopeSchema } from '../../interview/agent/agent-schema.js';
 import { parseCodexModelsOutput } from '../settings/catalog.js';
 import { codexExecArgs } from './cli/adapters/codex-cli.js';
 import { cliFailureMessage } from './cli/output.js';
@@ -18,10 +18,13 @@ describe('normalizeAiProviderConfig', () => {
     });
   });
 
-  it('drops ollama api settings', () => {
-    expect(normalizeAiProviderConfig({ provider: 'ollama', baseURL: 'http://localhost:11434/v1' }).provider).toBe(
-      'claude-cli',
-    );
+  it('resolves Ollama API settings to the local OpenAI-compatible provider', () => {
+    expect(normalizeAiProviderConfig({ brand: 'ollama', mode: 'api' })).toEqual({
+      provider: 'ollama-api',
+      brand: 'ollama',
+      mode: 'api',
+      model: 'llama3.3',
+    });
   });
 });
 
@@ -92,7 +95,7 @@ describe('cli json', () => {
   });
 
   it('converts interview wire envelope for codex output-schema', () => {
-    const json = zodToCodexJsonSchema(InterviewWireEnvelopeSchema);
+    const json = zodToCodexJsonSchema(AgenticInterviewWireEnvelopeSchema);
     expect(json.type).toBe('object');
     expect(json.oneOf).toBeUndefined();
     expect(json.required).toEqual(Object.keys(json.properties as object));
@@ -100,18 +103,24 @@ describe('cli json', () => {
     expect(properties.kind.type).toBe('string');
     expect(properties.payload.type).toBe('string');
     expect(properties.toolCalls.type).toBe('string');
-    expect(properties.nextQuestion.type).toBe('string');
+    expect(properties.message.type).toBe('string');
     expect(JSON.stringify(json)).not.toContain('"oneOf"');
   });
 
-  it('converts discriminated union schema for CLI json-schema', () => {
+  it('converts a generic discriminated union for CLI json-schema', () => {
     const schema = z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('discover'), toolCalls: z.array(z.string()) }),
-      z.object({ kind: z.literal('design'), name: z.string(), nextQuestion: z.string() }),
+      z.object({ kind: z.literal('first'), value: z.string() }),
+      z.object({ kind: z.literal('second'), value: z.string() }),
     ]);
     const json = zodToJsonSchema(schema);
     expect(Array.isArray(json.oneOf)).toBe(true);
     expect((json.oneOf as unknown[]).length).toBe(2);
+  });
+
+  it('rejects a non-object root schema for Codex output-schema', () => {
+    expect(() => zodToCodexJsonSchema(z.string())).toThrow(
+      'Codex structured output schema must have a top-level object',
+    );
   });
 
   it('surfaces CLI error text instead of raw JSON.parse messages', () => {
@@ -131,7 +140,8 @@ describe('codex cli adapter', () => {
     expect(args).toContain('-c');
     expect(args).toContain('model_reasoning_effort=high');
     expect(args).not.toContain('--ask-for-approval');
-    expect(args.at(-1)).toBe('hello');
+    expect(args.at(-1)).toBe('-');
+    expect(args).not.toContain('hello');
   });
 
   it('extracts quoted message from truncated codex ERROR json', () => {

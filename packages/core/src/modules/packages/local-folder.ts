@@ -4,7 +4,7 @@ import {
   getLocalFolderConnectionStatus,
   parseLocalFolderConnectionConfig,
 } from '../local-folder/index.js';
-import { buildLocalFolderResources } from '../../interview/resources/connected-resources.js';
+import { buildLocalFolderResources } from '../local-folder/resources.js';
 import { resolveFolderRoot } from '../local-folder/path-security.js';
 import { localFolderNewFileHandler } from '../../triggers/local-folder/new-file/index.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
@@ -35,6 +35,7 @@ function localFolderSourceFiles(ctx: DesignToolContext, args: Record<string, unk
   if (!folderId) throw new Error('folderId_required');
 
   const conn = ctx.connections.find((entry) => entry.connector === 'local_folder');
+  if (!conn?.connected) throw new Error('local_folder_not_connected');
   const status = getLocalFolderConnectionStatus(conn?.config, Boolean(conn?.connected));
   const folder = status.folders.find((entry) => entry.id === folderId);
   if (!folder) throw new Error('folder_not_found');

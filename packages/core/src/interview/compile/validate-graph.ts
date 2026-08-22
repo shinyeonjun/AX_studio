@@ -1,5 +1,6 @@
 import type { InterviewDraft, WorkflowNode } from '../draft/schema.js';
 import { getNodeParams, resolveNodeConnectorAction } from '../draft/actions.js';
+import { resolveIfNodeCondition } from '../draft/conditions.js';
 import type { ConditionExpr } from '../../runtime/condition-expr.js';
 
 export interface DraftGraphIssue {
@@ -68,7 +69,7 @@ function addReferenceIssues(
 ): void {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const references = nodes.flatMap((node) => [
-    ...conditionRefs(node.type === 'if' ? node.condition : undefined),
+    ...(node.type === 'if' ? conditionRefs(resolveIfNodeCondition(node)) : []),
     ...(node.type === 'action' ? templateRefs(getNodeParams(draft, node)) : []),
   ]);
 
@@ -106,7 +107,7 @@ export function validateInterviewDraftStructure(draft: InterviewDraft): DraftGra
 
   for (const node of nodes) {
     if (node.type !== 'if') continue;
-    if (!node.condition || typeof node.condition !== 'object') {
+    if (!resolveIfNodeCondition(node)) {
       issues.push({ stepId: node.id, message: `${node.id} if 노드에 유효한 JSON condition이 필요합니다.` });
     }
     const thenIds = node.thenStepIds ?? [];
@@ -123,6 +124,13 @@ export function validateInterviewDraftStructure(draft: InterviewDraft): DraftGra
       }
     }
   }
+  return issues;
+}
+
+/** Contract-only validation used before a plan is persisted. */
+export function validateInterviewDraftReferences(draft: InterviewDraft): DraftGraphIssue[] {
+  const issues: DraftGraphIssue[] = [];
+  addReferenceIssues(issues, draft, draft.nodes ?? []);
   return issues;
 }
 
@@ -163,7 +171,7 @@ export function validateInterviewDraftGraph(draft: InterviewDraft): DraftGraphIs
     issues.push({
       stepId: decision?.id,
       message:
-        '분류 결과가 여러 값이면 if 노드로 갈라야 합니다. 예: classify → if critical / if high / if normal.',
+        '분류 결과가 여러 값이면 if 노드로 갈라야 합니다. enumValues마다 if condition과 then/else 연결을 만드세요 (N갈래면 if N−1개를 else로 연결).',
     });
   }
 

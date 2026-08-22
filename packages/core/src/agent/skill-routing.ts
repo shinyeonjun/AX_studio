@@ -6,7 +6,7 @@ import type {
   AgentRole,
   InterviewAgentContext,
   InvestigateAgentContext,
-  ReviseAgentContext,
+  WorkspaceAgentContext,
 } from './types.js';
 
 // Only connectors with a real runtime implementation may influence the agent
@@ -26,19 +26,6 @@ function addTriggerConnector(target: Set<string>, triggerType: unknown): void {
   addKnownConnector(target, capabilityId ? getCapability(capabilityId)?.connector : undefined);
 }
 
-function collectWorkflowConnectors(value: unknown, target: Set<string>): void {
-  if (!value || typeof value !== 'object') return;
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectWorkflowConnectors(entry, target));
-    return;
-  }
-  for (const [key, child] of Object.entries(value)) {
-    if (key === 'connector') addKnownConnector(target, child);
-    if (key === 'type') addTriggerConnector(target, child);
-    collectWorkflowConnectors(child, target);
-  }
-}
-
 function interviewConnectorSkills(context: InterviewAgentContext): string[] {
   const selected = new Set<string>();
   const draft = context.workflow;
@@ -55,6 +42,13 @@ function interviewConnectorSkills(context: InterviewAgentContext): string[] {
 }
 
 export function connectorSkillsForRole(role: AgentRole, context: AgentContext): string[] {
+  if (role === 'workspace') {
+    const selected = new Set<string>();
+    (context as WorkspaceAgentContext).connectedConnectors.forEach((connector) =>
+      addKnownConnector(selected, connector),
+    );
+    return CONNECTOR_IDS.filter((connector) => selected.has(connector));
+  }
   if (role === 'interview') return interviewConnectorSkills(context as InterviewAgentContext);
   if (role === 'investigate') {
     const selected = new Set<string>();
@@ -64,11 +58,5 @@ export function connectorSkillsForRole(role: AgentRole, context: AgentContext): 
     return CONNECTOR_IDS.filter((connector) => selected.has(connector));
   }
 
-  const selected = new Set<string>();
-  try {
-    collectWorkflowConnectors(JSON.parse((context as ReviseAgentContext).workflowJson), selected);
-  } catch {
-    return [];
-  }
-  return CONNECTOR_IDS.filter((connector) => selected.has(connector));
+  return [];
 }

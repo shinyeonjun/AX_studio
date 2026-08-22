@@ -3,10 +3,12 @@ import { requiresApproval } from '../workflow/approval.js';
 import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { AgentHarness } from '../agent/harness.js';
-import { runAiDecision, resolveStepParams, evaluateCondition } from './ai-investigation.js';
+import { runAiDecision, evaluateCondition } from './ai-investigation.js';
+import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
+import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 
 export async function executeStep(
   step: Step,
@@ -27,10 +29,12 @@ export async function executeStep(
       if (!actionDefinition) {
         throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
       }
-      if (
-        requiresApproval(actionDefinition.sideEffect ?? step.sideEffect, ir.allowExternalAuto) &&
-        !approvedActionIds.has(step.id)
-      ) {
+      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables);
+      params = resolveStepParams(params, ctx, stepResults);
+
+      const stepSideEffect = ir.sideEffects?.[step.id] ?? step.sideEffect;
+      const effectiveSideEffect = resolveEffectiveSideEffect(actionDefinition, params, stepSideEffect);
+      if (requiresApproval(effectiveSideEffect, ir.allowExternalAuto) && !approvedActionIds.has(step.id)) {
         const approvalId = store.createApproval({
           executionId: ctx.executionId,
           actionIds: [step.id],
@@ -43,11 +47,6 @@ export async function executeStep(
         err.pending = true;
         throw err;
       }
-      const connector = connectors[actionDefinition.connector];
-      if (!connector) throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
-
-      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables);
-      params = resolveStepParams(params, ctx, stepResults);
 
       if (actionDefinition.id === 'document.ingest') {
         const resolved = resolveDocumentIngestExecution(params, ctx);
@@ -65,6 +64,9 @@ export async function executeStep(
         );
       }
 
+      const connector = connectors[actionDefinition.connector];
+      if (!connector) throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
+
       const result = await connector.execute(actionDefinition.action, params, ctx);
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
       stepResults[step.id] = result.data;
@@ -78,6 +80,17 @@ export async function executeStep(
     case 'if': {
       const cond = evaluateCondition(step.condition, ctx.variables, stepResults);
       const ids = cond ? step.thenStepIds : step.elseStepIds ?? [];
+      ctx.log({
+        at: new Date().toISOString(),
+        level: 'info',
+        code: 'if_branch_selected',
+        message: `분기 선택: ${step.id}`,
+        data: {
+          stepId: step.id,
+          branch: cond ? 'then' : 'else',
+          targetStepIds: ids,
+        },
+      });
       if (ids.length > 0) await runSteps(ids);
       break;
     }

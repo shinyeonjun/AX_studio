@@ -1,20 +1,48 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateObject, generateText } from 'ai';
+import type { CoreMessage } from 'ai';
 import { chatMessagesFromInput } from './chat.js';
 import type { ModelProvider, ModelProviderConfig, StructuredGenerateInput, TextGenerateInput } from './provider.js';
 
-function toSdkMessages(input: { system: string; user?: string; messages?: import('./chat.js').ChatMessage[] }) {
-  return chatMessagesFromInput(input).map((message) => ({
-    role: message.role,
-    content: message.content,
-  }));
+export function toSdkMessages(input: {
+  system: string;
+  user?: string;
+  messages?: import('./chat.js').ChatMessage[];
+  images?: import('./provider.js').ModelImageInput[];
+}): CoreMessage[] {
+  const messages = chatMessagesFromInput(input);
+  let lastUserIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === 'user') lastUserIndex = index;
+  });
+  return messages.map((message, index): CoreMessage => {
+    if (index !== lastUserIndex || !input.images?.length) {
+      return message.role === 'assistant'
+        ? { role: 'assistant', content: message.content }
+        : { role: 'user', content: message.content };
+    }
+    return {
+      role: 'user',
+      content: [
+        { type: 'text' as const, text: message.content },
+        ...input.images.map((image) => ({
+          type: 'image' as const,
+          image: image.data,
+          mimeType: image.mimeType,
+        })),
+      ],
+    };
+  });
 }
 
 export class OpenAICompatibleProvider implements ModelProvider {
   readonly name = 'openai-compatible';
+  readonly supportsVision = true;
+  readonly model: string;
   private client: ReturnType<typeof createOpenAICompatible>;
 
   constructor(private config: ModelProviderConfig) {
+    this.model = config.model;
     this.client = createOpenAICompatible({
       name: 'ax-studio',
       baseURL: config.baseURL,

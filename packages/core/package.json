@@ -46,6 +46,11 @@
       "types": "./dist/interview/session/messages.d.ts",
       "import": "./dist/interview/session/messages.js",
       "default": "./dist/interview/session/messages.js"
+    },
+    "./workspace-commands": {
+      "types": "./dist/workspace/commands.d.ts",
+      "import": "./dist/workspace/commands.js",
+      "default": "./dist/workspace/commands.js"
     }
   },
   "scripts": {

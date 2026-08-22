@@ -3,7 +3,7 @@ import { buildAssistantMessage, isRunConfirmationMessage, shouldFinalizeIntervie
 import type { CompletenessResult } from '../../slots/types.js';
 
 describe('buildAssistantMessage', () => {
-  it('shows the completeness slot question when values are missing', () => {
+  it('does not ask non-blocking param slots in chat when the graph is already visible', () => {
     const completeness: CompletenessResult = {
       slots: [
         { slot: 'trigger', filled: true, label: '시작', question: '언제 실행할까요?' },
@@ -17,13 +17,10 @@ describe('buildAssistantMessage', () => {
 
     const text = buildAssistantMessage('critical일 때 알릴 Slack 채널을 알려주세요.', completeness, false, 'once');
 
-    expect(text).toBe('Slack 채널은?');
-    expect(text).not.toMatch(/^\d+\./m);
-    expect(text).not.toContain('오른쪽 패널에서 채워');
-    expect(text).not.toContain('언제 실행');
+    expect(text).toBe('오른쪽 그래프에서 빈 칸을 확인한 뒤 검토해 주세요.');
   });
 
-  it('asks trigger questions in chat for recurring scope', () => {
+  it('asks trigger questions in chat for recurring scope when trigger is blocking', () => {
     const completeness: CompletenessResult = {
       slots: [{ slot: 'trigger', filled: false, label: '시작', question: '언제 실행할까요?' }],
       missingRequired: ['trigger'],
@@ -41,7 +38,12 @@ describe('buildAssistantMessage', () => {
   it('ignores declarative completion text while required slots are missing', () => {
     const completeness: CompletenessResult = {
       slots: [
-        { slot: 'critical_slack.params.channel', filled: false, label: 'Slack', question: 'critical일 때 알릴 Slack 채널을 알려주세요.' },
+        {
+          slot: 'critical_slack.params.channel',
+          filled: false,
+          label: 'Slack',
+          question: '긴급(critical) 알림을 보낼 Slack 채널은 어디인가요?',
+        },
       ],
       missingRequired: ['critical_slack.params.channel'],
       deployable: false,
@@ -56,11 +58,28 @@ describe('buildAssistantMessage', () => {
       'once',
     );
 
-    expect(text).toBe('critical일 때 알릴 Slack 채널을 알려주세요.');
+    expect(text).toBe('오른쪽 그래프에서 빈 칸을 확인한 뒤 검토해 주세요.');
+    expect(text).not.toContain('critical_slack');
     expect(text).not.toContain('넘길 수 있습니다');
   });
 
-  it('uses the ready message when deployable, ignoring model nextQuestion', () => {
+  it('uses the code-owned contract question when contract issues exist', () => {
+    const completeness: CompletenessResult = {
+      slots: [
+        { slot: 'contract.workflow', filled: false, label: '데이터 연결', question: '분석 결과 연결을 확인해 주세요.' },
+      ],
+      missingRequired: [],
+      deployable: false,
+      missingConnections: [],
+      contractIssues: [{ code: 'missing_input_contract', message: '분석 결과 연결이 없습니다.' }],
+    };
+
+    expect(buildAssistantMessage('언제 실행할까요?', completeness, false, 'once')).toBe(
+      '분석 결과 연결을 확인해 주세요.',
+    );
+  });
+
+  it('uses the ready message when deployable, ignoring the model acknowledgement', () => {
     const completeness: CompletenessResult = {
       slots: [],
       missingRequired: [],

@@ -1,9 +1,14 @@
 import { getDesignTool } from './registry.js';
+import { isToolAllowedInMode, type InteractionMode } from '../platform/mode-policy.js';
 import type { DesignToolCall, DesignToolContext, DesignToolId, DesignToolResult } from './types.js';
-import { DESIGN_TOOL_IDS } from './types.js';
+import { DESIGN_TOOL_IDS, MAX_DESIGN_TOOL_CALLS_PER_TURN } from './types.js';
 
 function isDesignToolId(value: string): value is DesignToolId {
   return (DESIGN_TOOL_IDS as readonly string[]).includes(value);
+}
+
+function resolveInteractionMode(ctx: DesignToolContext): InteractionMode {
+  return ctx.interactionMode ?? (ctx.workflow ? 'authoring' : 'plain_chat');
 }
 
 export async function executeDesignTool(
@@ -12,6 +17,11 @@ export async function executeDesignTool(
 ): Promise<DesignToolResult> {
   if (!isDesignToolId(call.tool)) {
     return { tool: call.tool as DesignToolId, ok: false, error: 'unknown_tool' };
+  }
+
+  const mode = resolveInteractionMode(ctx);
+  if (!isToolAllowedInMode(call.tool, mode)) {
+    return { tool: call.tool, ok: false, error: `tool_not_allowed_in_${mode}` };
   }
 
   const definition = getDesignTool(call.tool);
@@ -35,6 +45,9 @@ export async function executeDesignToolCalls(
   calls: DesignToolCall[],
   ctx: DesignToolContext,
 ): Promise<DesignToolResult[]> {
+  if (calls.length > MAX_DESIGN_TOOL_CALLS_PER_TURN) {
+    throw new Error(`too_many_design_tool_calls:${MAX_DESIGN_TOOL_CALLS_PER_TURN}`);
+  }
   const results: DesignToolResult[] = [];
   for (const call of calls) {
     results.push(await executeDesignTool(call, ctx));
@@ -43,5 +56,9 @@ export async function executeDesignToolCalls(
 }
 
 export function formatDesignToolResults(results: DesignToolResult[]): string {
-  return JSON.stringify(results, null, 2);
+  const serialized = JSON.stringify(results, null, 2);
+  const maxChars = 60_000;
+  return serialized.length <= maxChars
+    ? serialized
+    : `${serialized.slice(0, maxChars)}\n...[design-tool results truncated]`;
 }

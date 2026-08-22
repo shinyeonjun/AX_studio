@@ -39,6 +39,10 @@ checks:
     type: command
     command: npm run build
     required: true
+  - name: north-star-qa
+    type: command
+    command: npm test -w @ax-studio/core -- src/north-star/north-star-qa.test.ts
+    required: true
   - name: diff-whitespace
     type: command
     command: git diff --check
@@ -71,16 +75,16 @@ baseline:
 # checks above are unchanged; the historical baseline remains the comparison point.
 current_checkpoint:
   recorded: true
-  recorded_at: 2026-08-22T02:20:05+09:00
+  recorded_at: 2026-08-23T00:16:16.0806590+09:00
   values:
-    core-tests: "PASS: 63 files, 298 tests"
+    core-tests: "PASS: 70 files, 343 tests"
     core-typecheck: "PASS"
     desktop-typecheck: "PASS"
     core-eval: "PASS: 11 tests"
     document-engine-tests: "PASS: 17 tests, 15 passed, 2 skipped because pypdf is unavailable"
     production-build: "PASS: core, Electron main/preload, and renderer"
     diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
-  notes: "Experiment 026 kept. Interview questions and done are code-owned: chat uses completeness slot questions, done=deployable, once plans seed triggerType=manual, prompt lists availableCapabilities as actionRef@1. No live Gmail/Slack side effect executed."
+  notes: "Experiment 064 kept. Agent authoring is tools/patch/reply with draft-only revisioned patches; workflow save/run remains explicit. Cloud design/workspace contexts block PDF body reads by default. No live Gmail/Slack side effect or provider-session E2E executed."
 
 # Human/qualitative criteria are allowed only when objective checks are not sufficient.
 # Make them explicit instead of treating subjective judgment as a metric.

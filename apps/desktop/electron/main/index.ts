@@ -1,5 +1,8 @@
 import { app } from 'electron';
-import { createAxStudioCore } from '@ax-studio/core';
+import {
+  createAxStudioCore,
+  setWebhookSecretResolver,
+} from '@ax-studio/core';
 import { createMainWindow, showMainWindow, setQuiting } from './app-window';
 import { createTray } from './tray';
 import { setCore, getCoreIfInitialized } from './core-instance';
@@ -7,6 +10,9 @@ import { registerIpcHandlers } from './ipc/handlers';
 import { loadEnvFile, purgeDisallowedEnvFileKeys } from './env-file';
 import { printHtmlToPdf } from './document-print.js';
 import { hydrateGmailConnector } from './gmail/connection.js';
+import { hydrateSlackConnector } from './slack/connection.js';
+import { hydrateHttpConnector } from './http/connection.js';
+import { getWebhookSecret, hydrateWebhookConnection } from './webhook/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
 import { notifyStateChanged } from './state-broadcast.js';
@@ -53,6 +59,7 @@ app.whenReady().then(async () => {
       paths,
       desktopPrintBridge: { printHtml: printHtmlToPdf },
       onExecutionStarted: () => notifyStateChanged(),
+      onExecutionProgress: () => notifyStateChanged(),
       onExecutionFinished: () => notifyStateChanged(),
     });
 
@@ -74,11 +81,15 @@ app.whenReady().then(async () => {
     }
 
     await hydrateGmailConnector(core.store, core.runtime);
+    await hydrateSlackConnector(core.store, core.runtime);
+    await hydrateHttpConnector(core.store, core.runtime);
+    await hydrateWebhookConnection(core.store);
+    setWebhookSecretResolver(() => getWebhookSecret());
 
     setCore(core);
+    registerIpcHandlers();
     createMainWindow();
     createTray();
-    registerIpcHandlers();
     core.scheduler.start();
     core.triggerEngine.start();
   } catch (err) {

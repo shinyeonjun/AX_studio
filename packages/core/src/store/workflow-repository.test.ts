@@ -47,6 +47,26 @@ describe('workflow persistence', () => {
     expect(store.getWorkflow('workflow-1')?.version).toBe(2);
   });
 
+  it('persists new workflows as disabled until explicitly enabled', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const { workflowId } = store.saveWorkflow({
+      id: 'wf-disabled',
+      name: '비활성 저장',
+      goal: 'test',
+      version: 1,
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    const listed = store.listWorkflows().find((row) => row.id === workflowId);
+    expect(listed?.active).toBe(false);
+  });
+
   it('persists a committed workflow and can reopen it after the database closes', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'ax-studio-db-'));
     const filePath = join(directory, 'state.sqlite');

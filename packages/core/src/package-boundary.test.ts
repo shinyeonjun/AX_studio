@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseWorkflowIR } from './workflow/schema.js';
-import { validateApprovalPolicy } from './workflow/approval.js';
+import { requiresApproval, validateApprovalPolicy } from './workflow/approval.js';
 import { csMailWorkflowFixture } from './workflow/fixtures.js';
 import { createDatabaseAsync } from './store/db.js';
 import { WorkflowStore } from './store/workflow-store.js';
@@ -13,12 +13,13 @@ describe('core package boundary', () => {
     expect(deps.react).toBeUndefined();
   });
 
-  it('gmail.send fixture invalid without approval step removed', () => {
+  it('gmail.send approval is enforced by the action boundary', () => {
     const bad = {
       ...csMailWorkflowFixture,
       steps: csMailWorkflowFixture.steps.filter((s) => s.type !== 'human_approval'),
     };
-    expect(validateApprovalPolicy(bad).length).toBeGreaterThan(0);
+    expect(validateApprovalPolicy(bad)).toEqual([]);
+    expect(requiresApproval('EXTERNAL_HIGH', true)).toBe(true);
   });
 
   it('store roundtrip', async () => {

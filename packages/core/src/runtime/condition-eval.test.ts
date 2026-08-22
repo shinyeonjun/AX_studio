@@ -54,6 +54,14 @@ describe('evaluateCondition', () => {
     });
   });
 
+  it('migrates double-equals shorthand emitted by workflow plans', () => {
+    expect(normalizeCondition('classify.riskLevel == critical')).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.riskLevel' },
+      right: { lit: 'critical' },
+    });
+  });
+
   it('coerces and/or with left-right into args', () => {
     expect(
       normalizeCondition({
@@ -108,6 +116,32 @@ describe('evaluateCondition', () => {
       op: 'contains',
       left: { ref: 'subject' },
       right: { lit: '안내' },
+    });
+  });
+
+  it('coerces variable/value if conditions from interview output', () => {
+    expect(
+      normalizeCondition({
+        variable: 'classify.riskLevel',
+        comparator: '==',
+        value: 'critical',
+      }),
+    ).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.riskLevel' },
+      right: { lit: 'critical' },
+    });
+  });
+
+  it('coerces wrapped expression strings', () => {
+    expect(
+      normalizeCondition({
+        expression: 'classify.riskLevel == critical',
+      }),
+    ).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.riskLevel' },
+      right: { lit: 'critical' },
     });
   });
 

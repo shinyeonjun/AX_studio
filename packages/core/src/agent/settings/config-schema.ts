@@ -11,6 +11,7 @@ export const AiProviderIdSchema = z.enum([
   'openai-api',
   'anthropic-api',
   'grok-api',
+  'ollama-api',
 ]);
 export const AiBrandSchema = z.enum(['claude', 'gpt', 'grok', 'ollama']);
 export const AiConnectionModeSchema = z.enum(['cli', 'api']);

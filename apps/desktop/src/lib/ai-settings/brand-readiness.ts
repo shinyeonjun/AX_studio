@@ -31,7 +31,7 @@ export function isBrandReady(
 ): boolean {
   const meta = AI_PROVIDER_UI_CATALOG[target];
   const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
-  const hasApi = Boolean(brandSecrets[target]?.configured || verifiedApi[target]);
+  const hasApi = target === 'ollama' ? Boolean(verifiedApi[target]) : Boolean(brandSecrets[target]?.configured || verifiedApi[target]);
   if (mode === 'api') return hasApi;
   const hasCliBinary = Boolean(cli?.binaryFound ?? cli?.command);
   return Boolean(cli?.installed || (hasCliBinary && verifiedCli[target]));

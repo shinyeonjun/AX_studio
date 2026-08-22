@@ -14,7 +14,7 @@ export const BRAND_API_PROVIDER: Record<AiBrand, AiProviderId> = {
   claude: 'anthropic-api',
   gpt: 'openai-api',
   grok: 'grok-api',
-  ollama: 'openai-api',
+  ollama: 'ollama-api',
 };
 
 const PROVIDER_BRAND: Partial<Record<AiProviderId, AiBrand>> = {
@@ -24,6 +24,7 @@ const PROVIDER_BRAND: Partial<Record<AiProviderId, AiBrand>> = {
   'openai-api': 'gpt',
   'cursor-cli': 'grok',
   'grok-api': 'grok',
+  'ollama-api': 'ollama',
 };
 
 const PROVIDER_MODE: Partial<Record<AiProviderId, AiConnectionMode>> = {
@@ -33,6 +34,7 @@ const PROVIDER_MODE: Partial<Record<AiProviderId, AiConnectionMode>> = {
   'openai-api': 'api',
   'anthropic-api': 'api',
   'grok-api': 'api',
+  'ollama-api': 'api',
 };
 
 export const API_DEFAULT_MODEL: Record<AiBrand, string> = {
@@ -49,6 +51,7 @@ export function migrateProviderId(value: unknown): AiProviderId | null {
   if (value === 'openai-api') return 'openai-api';
   if (value === 'anthropic-api') return 'anthropic-api';
   if (value === 'grok-api') return 'grok-api';
+  if (value === 'ollama-api') return 'ollama-api';
   return null;
 }
 

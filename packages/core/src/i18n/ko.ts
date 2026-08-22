@@ -20,10 +20,6 @@ export const KO = {
       pending_approval: '사람 승인 대기 중입니다.',
     } as Record<string, string>,
   },
-  revision: {
-    fallbackProposal: (goal: string | undefined, instruction: string) =>
-      `현재 목적: ${goal ?? ''}\n수정 지시: ${instruction}`,
-  },
   requiredness: {
     goal: { label: '지시 의도', question: '이 업무의 목적을 한 문장으로 말해주세요.' },
     trigger: { label: '트리거', question: '언제 이 업무를 실행할까요? (예: 새 메일, 매주 금요일)' },

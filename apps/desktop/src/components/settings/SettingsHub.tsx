@@ -3,6 +3,7 @@ import {
   CONNECTOR_UI_CATALOG,
   MESSAGING_CONNECTOR_IDS,
   STORAGE_CONNECTOR_IDS,
+  API_CONNECTOR_IDS,
 } from '../../constants/connectors';
 import { settingsScreenForBrand } from '../../constants/settings';
 import { useAiHub } from '../../hooks/useAiHub';
@@ -81,6 +82,26 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
                 description={meta.description}
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? `${count}개 연결` : '미연결'}
+                badgeClass={connected ? 'connected' : ''}
+                onClick={() => onOpenScreen(meta.settingsScreen)}
+              />
+            );
+          })}
+        </div>
+      </SettingsCategory>
+
+      <SettingsCategory title="API" description="외부 REST API를 워크플로우에 연결합니다.">
+        <div className="connection-hub">
+          {API_CONNECTOR_IDS.map((id) => {
+            const meta = CONNECTOR_UI_CATALOG[id];
+            const connected = state?.connections?.find((c) => c.connector === id)?.connected;
+            return (
+              <ConnectionCard
+                key={id}
+                title={meta.title}
+                description={meta.description}
+                emojiIcon={meta.emojiIcon}
+                badge={connected ? '연결됨' : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />

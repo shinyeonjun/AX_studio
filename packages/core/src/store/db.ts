@@ -77,6 +77,14 @@ const MIGRATION_SQL = `
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS workspace_chats (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    messages_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `;
 
 function columnNames(db: AppDatabase, table: string): string[] {
@@ -120,6 +128,14 @@ function applyMigrations(db: AppDatabase) {
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
   }
+  // Older builds incorrectly closed approval-waiting executions as failed.
+  // Repair only rows that still have an unresolved approval; resolved failures
+  // must remain historical failures.
+  db.exec(
+    "UPDATE executions SET status = 'pending_approval', finished_at = NULL, error_code = 'pending_approval' " +
+      "WHERE status = 'failed' AND error_code = 'pending_approval' " +
+      "AND id IN (SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing'))",
+  );
 }
 
 function useElectronSqlJsLoader(): boolean {
