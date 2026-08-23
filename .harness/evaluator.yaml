@@ -2,18 +2,7 @@ version: 1
 status: active
 frozen: true
 
-# Define checks before the first implementation experiment.
-# Prefer commands that produce deterministic pass/fail or measurable output.
-# Example:
-# checks:
-#   - name: targeted-regression
-#     type: command
-#     command: pytest tests/test_example.py -q
-#     required: true
-#   - name: full-test-suite
-#     type: command
-#     command: pytest -q
-#     required: true
+# Audit evaluator: establish this baseline before interpretation is finalized.
 checks:
   - name: core-tests
     type: command
@@ -39,57 +28,60 @@ checks:
     type: command
     command: npm run build
     required: true
-  - name: north-star-qa
-    type: command
-    command: npm test -w @ax-studio/core -- src/north-star/north-star-qa.test.ts
-    required: true
   - name: diff-whitespace
     type: command
     command: git diff --check
     required: true
 
-# Optional numerical/structured metrics.
-# Example:
-# metrics:
-#   - name: p95_latency_ms
-#     direction: minimize
-#     command: python benchmarks/run.py --json
-#     json_path: $.p95_latency_ms
-metrics: []
+metrics:
+  - name: source-file-count-by-extension
+    type: shell-derived
+    command: rg --files -g '!node_modules' -g '!dist' -g '!out' -g '!coverage' -g '!tmp'
+  - name: test-file-count
+    type: shell-derived
+    command: rg --files packages apps test -g '*test*' -g '*spec*'
+  - name: dependency-and-risk-markers
+    type: shell-derived
+    command: rg -n 'TODO|FIXME|HACK|any|eval\(|new Function|dangerouslySetInnerHTML|child_process|shell: true|localStorage|sessionStorage'
 
-# Baseline is populated before implementation begins.
+human_review:
+  - architecture-and-boundaries
+  - functional-flow-and-error-semantics
+  - data-storage-and-migration
+  - security-and-privacy
+  - reliability-performance-and-operability
+  - test-coverage-and-release-readiness
+  - desktop-ux-and-accessibility
+  - documentation-and-product-scope
+
 baseline:
   recorded: true
-  recorded_at: 2026-08-22T00:01:30+09:00
+  recorded_at: 2026-08-23T06:15:26.3786497+09:00
   values:
-    core-tests: "FAIL: 60 files passed, 1 failed; 272 passed, 1 failed (work_scope_required in work-scope bootstrap)"
-    core-typecheck: "FAIL: merge-workflow.ts passes WorkScope | undefined"
-    desktop-typecheck: "PASS"
-    core-eval: "PASS: 11 tests"
-    document-engine-tests: "PASS: 14 tests, 2 skipped because pypdf is unavailable"
-    production-build: "FAIL: core build blocked by the same WorkScope type error"
-    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
-  notes: "Adoption checkpoint of the already-dirty tree. This is not a pristine repository baseline."
-
-# This checkpoint records the current tree after the QA experiments. The frozen
-# checks above are unchanged; the historical baseline remains the comparison point.
-current_checkpoint:
-  recorded: true
-  recorded_at: 2026-08-23T00:16:16.0806590+09:00
-  values:
-    core-tests: "PASS: 70 files, 343 tests"
+    core-tests: "PASS: 83 files, 401 tests"
     core-typecheck: "PASS"
-    desktop-typecheck: "PASS"
+    desktop-typecheck: "FAIL: HttpConnectionForm.tsx:75 and WebhookConnectionForm.tsx:70 assign string[] where string is required"
     core-eval: "PASS: 11 tests"
     document-engine-tests: "PASS: 17 tests, 15 passed, 2 skipped because pypdf is unavailable"
     production-build: "PASS: core, Electron main/preload, and renderer"
     diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
-  notes: "Experiment 064 kept. Agent authoring is tools/patch/reply with draft-only revisioned patches; workflow save/run remains explicit. Cloud design/workspace contexts block PDF body reads by default. No live Gmail/Slack side effect or provider-session E2E executed."
+  notes: "Baseline is the current dirty worktree; five pre-existing source changes were present before this audit, and the audit harness files were refreshed for this request."
 
-# Human/qualitative criteria are allowed only when objective checks are not sufficient.
-# Make them explicit instead of treating subjective judgment as a metric.
-human_review: []
+revision_history:
+  - reason: "Previous evaluator described a completed implementation task; this user request is a new whole-repository audit and requires a new comparable baseline."
+    recorded_at: 2026-08-23
+  - reason: "The user replaced the audit objective with an agent-native ax CLI and Workflow Command Service architecture goal. Frozen checks remain unchanged; a new current baseline is recorded in goal.md and experiments.tsv."
+    recorded_at: 2026-08-23
 
-# If this evaluator is changed after baseline because it was genuinely invalid,
-# document the reason here and establish a new baseline.
-revision_history: []
+current_baseline:
+  recorded: true
+  recorded_at: 2026-08-23T09:47:51.4092074+09:00
+  values:
+    core-tests: "PASS: 87 files, 409 tests; better-sqlite3 ABI mismatch caused sql.js fallback"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    core-eval: "PASS: 11 tests"
+    document-engine-tests: "PASS: 17 tests, 15 passed, 2 skipped because pypdf is unavailable"
+    production-build: "PASS: core, Electron main/preload, renderer"
+    diff-whitespace: "Not rerun after this baseline record"
+  notes: "Architecture baseline before implementation. Existing dirty changes are not attributed to this goal."

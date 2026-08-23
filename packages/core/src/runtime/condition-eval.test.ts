@@ -145,6 +145,37 @@ describe('evaluateCondition', () => {
     });
   });
 
+  it('coerces equals array and ref/eq shorthand', () => {
+    expect(
+      normalizeCondition({
+        equals: ['classify.urgency', '긴급'],
+      }),
+    ).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.urgency' },
+      right: { lit: '긴급' },
+    });
+    expect(
+      normalizeCondition({
+        ref: 'classify.urgency',
+        eq: '긴급',
+      }),
+    ).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.urgency' },
+      right: { lit: '긴급' },
+    });
+    expect(
+      normalizeCondition({
+        when: { field: 'classify.urgency', value: '긴급' },
+      }),
+    ).toEqual({
+      op: 'eq',
+      left: { ref: 'classify.urgency' },
+      right: { lit: '긴급' },
+    });
+  });
+
   it('preprocessConditionValue drops invalid filters without throwing', () => {
     expect(preprocessConditionValue({ op: 'weird', left: 'x', right: 'y' })).toBeUndefined();
   });

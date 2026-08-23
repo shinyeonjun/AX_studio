@@ -4,7 +4,15 @@ import gmailIcon from '../images/connectors/gmail.png';
 import slackIcon from '../images/connectors/slack.png';
 import folderIcon from '../images/connectors/folder.svg';
 
-export type ConnectorUiId = 'gmail' | 'slack' | 'local_folder' | 'http' | 'webhook';
+export type ConnectorUiId =
+  | 'gmail'
+  | 'slack'
+  | 'local_folder'
+  | 'http'
+  | 'webhook'
+  | 'rdb'
+  | 'openapi'
+  | 'mcp';
 
 export interface ConnectorUiMeta {
   id: ConnectorUiId;
@@ -57,6 +65,30 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
     settingsScreen: 'webhook',
     emoji: '🔔',
   },
+  rdb: {
+    id: 'rdb',
+    title: '데이터베이스',
+    description: 'SQLite/PostgreSQL 읽기 전용 조회',
+    emojiIcon: '🗄️',
+    settingsScreen: 'rdb',
+    emoji: '🗄️',
+  },
+  openapi: {
+    id: 'openapi',
+    title: 'OpenAPI',
+    description: 'OpenAPI spec에서 동적 API 연결',
+    emojiIcon: '📜',
+    settingsScreen: 'openapi',
+    emoji: '📜',
+  },
+  mcp: {
+    id: 'mcp',
+    title: 'MCP',
+    description: 'MCP tool 정의를 워크플로우에 등록',
+    emojiIcon: '🔌',
+    settingsScreen: 'mcp',
+    emoji: '🔌',
+  },
 };
 
 export const CONNECTOR_UI_IDS = Object.keys(CONNECTOR_UI_CATALOG) as ConnectorUiId[];
@@ -64,6 +96,7 @@ export const CONNECTOR_UI_IDS = Object.keys(CONNECTOR_UI_CATALOG) as ConnectorUi
 export const MESSAGING_CONNECTOR_IDS: ConnectorUiId[] = ['gmail', 'slack'];
 export const STORAGE_CONNECTOR_IDS: ConnectorUiId[] = ['local_folder'];
 export const API_CONNECTOR_IDS: ConnectorUiId[] = ['http', 'webhook'];
+export const DATA_CONNECTOR_IDS: ConnectorUiId[] = ['rdb', 'openapi', 'mcp'];
 
 export function connectorLabel(id: string): string {
   return CONNECTOR_UI_CATALOG[id as ConnectorUiId]?.title ?? id;

@@ -125,8 +125,9 @@ export function AiBrandForm({
               )}
             </div>}
             {!isOllamaApi && <div className="form-field">
-              <label>API 키</label>
+              <label htmlFor={`${brand}-api-key`}>API 키</label>
               <input
+                id={`${brand}-api-key`}
                 type="password"
                 placeholder="sk-..."
                 value={apiKeyDraft}
@@ -147,8 +148,9 @@ export function AiBrandForm({
         )}
 
         <div className="form-field" style={{ marginTop: 20 }}>
-          <label>모델</label>
+          <label htmlFor={`${brand}-model`}>모델</label>
           <select
+            id={`${brand}-model`}
             className="filter-select"
             value={model}
             onChange={(e) => onModelChange(e.target.value)}

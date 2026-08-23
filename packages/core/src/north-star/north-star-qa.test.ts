@@ -16,7 +16,6 @@ import { createTestConnectors, mockSlack } from '../modules/test-connectors.js';
 import { createDatabaseAsync } from '../store/db.js';
 import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from '../runtime/engine.js';
-import { runSavedWorkflowById } from '../runtime/manual-workflow-run.js';
 import { parseExecutionLog, hasExecutionLogCode } from '../runtime/execution-log.js';
 import { applySnippetPolicy, MAX_CLOUD_SNIPPET_CHARS } from '../retrieval/snippet-policy.js';
 import { ingestOpenApiSpec } from '../openapi/ingest.js';
@@ -73,7 +72,7 @@ describe('North Star QA', () => {
   describe('1. plain chat knowledge (Slack / PDF / search)', () => {
     it('reads Slack via capabilities.invoke with citations', async () => {
       const slack = new MockSlackConnector();
-      const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], undefined, {
+      const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], {
         interactionMode: 'plain_chat',
         allowUntrustedData: true,
         connectors: { slack },
@@ -89,7 +88,7 @@ describe('North Star QA', () => {
 
     it('blocks Slack send in plain chat', async () => {
       const slack = new MockSlackConnector();
-      const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], undefined, {
+      const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], {
         interactionMode: 'plain_chat',
         connectors: { slack },
       });
@@ -121,7 +120,6 @@ describe('North Star QA', () => {
       const ctx = buildDesignToolContext(
         [{ connector: 'local_folder', connected: true, config: { folders: [{ id: 'f1', label: 'Inbox', path: dir }] } }],
         ['local_folder'],
-        undefined,
         { interactionMode: 'plain_chat', allowUntrustedData: false },
       );
       const result = await executeDesignTool(
@@ -141,62 +139,7 @@ describe('North Star QA', () => {
     });
   });
 
-  describe('2. saved workflow run from plain chat', () => {
-    it('workflows.list → workflows.run uses store id and hits approval gate', async () => {
-      const db = await createDatabaseAsync(':memory:');
-      const store = new WorkflowStore(db);
-      const runtime = new WorkflowRuntime({
-        store,
-        globalActive: true,
-        workflowActive: {},
-        connectors: createTestConnectors(),
-      });
-      const { workflowId } = store.saveWorkflow(slackNotifyWorkflow());
-      store.setWorkflowActive(workflowId, true);
-
-      const listCtx = buildDesignToolContext([], [], undefined, {
-        interactionMode: 'plain_chat',
-        workflowActions: {
-          list: () => store.listWorkflows().map((row) => ({ id: row.id, name: row.name, active: row.active })),
-          run: (id) => runSavedWorkflowById({ store, runtime }, id),
-        },
-      });
-
-      const [listed] = await executeDesignToolCalls([{ tool: 'workflows.list' }], listCtx);
-      const rows = (listed?.data as { workflows: Array<{ id: string }> }).workflows;
-      const ids = rows.map((row) => row.id);
-      expect(ids).toContain(workflowId);
-
-      const [run] = await executeDesignToolCalls([{ tool: 'workflows.run', args: { workflowId } }], listCtx);
-      expect(run?.ok).toBe(true);
-      const runData = run?.data as { status: string; executionId: string };
-      expect(runData.status).toBe('pending_approval');
-      expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
-
-      const execution = store.getExecution(runData.executionId);
-      expect(execution?.status).toBe('pending_approval');
-      const log = parseExecutionLog(execution?.logJson);
-      expect(
-        hasExecutionLogCode(log, 'waiting_approval') || hasExecutionLogCode(log, 'step_started'),
-      ).toBe(true);
-    });
-
-    it('rejects workflows.run for ids not in workflows.list', async () => {
-      const result = await executeDesignTool(
-        { tool: 'workflows.run', args: { workflowId: 'ghost' } },
-        buildDesignToolContext([], [], undefined, {
-          interactionMode: 'plain_chat',
-          workflowActions: {
-            list: () => [{ id: 'known', name: 'Known', active: false }],
-            run: async () => ({ executionId: 'x', status: 'success' }),
-          },
-        }),
-      );
-      expect(result.ok).toBe(false);
-    });
-  });
-
-  describe('3. /once ephemeral execution snapshot', () => {
+  describe('2. /once ephemeral execution snapshot', () => {
     it('ephemeral run keeps execution IR snapshot without saved workflow row', async () => {
       const db = await createDatabaseAsync(':memory:');
       const store = new WorkflowStore(db);
@@ -217,7 +160,7 @@ describe('North Star QA', () => {
     });
   });
 
-  describe('4. save disabled + explicit enable', () => {
+  describe('3. save disabled + explicit enable', () => {
     it('new saves are inactive until setWorkflowActive(true)', async () => {
       const db = await createDatabaseAsync(':memory:');
       const store = new WorkflowStore(db);
@@ -228,7 +171,7 @@ describe('North Star QA', () => {
     });
   });
 
-  describe('5–6. approval gate and duplicate resume', () => {
+  describe('4–5. approval gate and duplicate resume', () => {
     it('EXTERNAL requires approval by default; HIGH never relaxes', () => {
       expect(requiresApproval('EXTERNAL', false)).toBe(true);
       expect(requiresApproval('EXTERNAL', true)).toBe(false);
@@ -257,7 +200,7 @@ describe('North Star QA', () => {
     });
   });
 
-  describe('7. cloud model must not receive full untrusted source bodies', () => {
+  describe('6. cloud model must not receive full untrusted source bodies', () => {
     it('harness redacts untrusted evidence for cloud backends', async () => {
       const model = new CloudSpyProvider();
       const harness = createAgentHarness(model);

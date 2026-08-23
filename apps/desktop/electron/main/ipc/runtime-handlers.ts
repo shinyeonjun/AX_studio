@@ -1,12 +1,6 @@
 import { ipcMain } from 'electron';
-import {
-  parseWorkflowIR,
-  validateWorkflowForPersistence,
-  runManualWorkflow,
-} from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { notifyStateChanged } from '../state-broadcast.js';
-import { connectedConnectorIds } from './shared.js';
 
 function executionLogWithRejection(
   logJson: string | null | undefined,
@@ -34,48 +28,6 @@ function executionLogWithRejection(
 }
 
 export function registerRuntimeHandlers() {
-  ipcMain.handle('ax:saveWorkflow', async (_e, ir) => {
-    const core = getCore();
-    const parsed = parseWorkflowIR(ir);
-    const issues = validateWorkflowForPersistence(parsed, {
-      runtimeConnectors: core.runtime.connectors,
-      connectedConnectors: connectedConnectorIds(core.store),
-    });
-    if (issues.length > 0) {
-      const first = issues[0]!;
-      throw Object.assign(new Error(first.message), {
-        code: 'workflow_validation_failed',
-        issues,
-      });
-    }
-    const result = core.store.saveWorkflow(parsed);
-    notifyStateChanged();
-    return result;
-  });
-  ipcMain.handle('ax:runWorkflow', async (_e, workflowId: string) => {
-    const core = getCore();
-    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('Workflow id가 필요합니다.');
-    const ir = core.store.getWorkflow(workflowId);
-    if (!ir) throw new Error('Workflow not found');
-    const result = await runManualWorkflow(
-      { store: core.store, runtime: core.runtime },
-      ir,
-      { ephemeral: false, workflowId },
-    );
-    notifyStateChanged();
-    return result;
-  });
-  ipcMain.handle('ax:runEphemeral', async (_e, ir) => {
-    const core = getCore();
-    const parsed = parseWorkflowIR(ir);
-    const result = await runManualWorkflow(
-      { store: core.store, runtime: core.runtime },
-      parsed,
-      { ephemeral: true },
-    );
-    notifyStateChanged();
-    return result;
-  });
   ipcMain.handle('ax:approve', async (_e, approvalId: unknown) => {
     const core = getCore();
     if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('approvalId가 필요합니다.');

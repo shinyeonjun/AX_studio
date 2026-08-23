@@ -51,7 +51,7 @@ const UI_OVERLAY: Record<
     icon: openaiIcon,
     cliModeLabel: 'CLI',
     cliLabel: 'Ollama CLI',
-    description: '로컬 Ollama (준비 중)',
+    description: '로컬 Ollama · OpenAI-compatible API',
   },
 };
 

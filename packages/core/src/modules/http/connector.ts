@@ -67,6 +67,11 @@ export class HttpConnector implements Connector {
         message: 'http.request_failed',
         data: { method, path, status: result.status, truncated: result.truncated },
       });
+      return {
+        ok: false,
+        error: `http_${result.status}`,
+        errorCode: 'http_error',
+      };
     }
 
     return {

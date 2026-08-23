@@ -5,8 +5,8 @@ import * as workflowRepo from './repositories/workflow-repository.js';
 import * as executionRepo from './repositories/execution-repository.js';
 import * as approvalRepo from './repositories/approval-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
-import * as chatSessionRepo from './repositories/chat-session-repository.js';
 import * as workspaceChatRepo from './repositories/workspace-chat-repository.js';
+import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
@@ -31,40 +31,21 @@ export class WorkflowStore {
     return workflowRepo.deleteWorkflow(this.db, workflowId);
   }
 
-  saveChatSession(params: { state: import('../interview/session/state.js').InterviewState; summary?: string; workflowId?: string }) {
-    return chatSessionRepo.saveChatSession(this.db, params);
-  }
-
-  getChatSession(sessionId: string) {
-    return chatSessionRepo.getChatSession(this.db, sessionId);
-  }
-
-  getChatSessionByWorkflowId(workflowId: string) {
-    return chatSessionRepo.getChatSessionByWorkflowId(this.db, workflowId);
-  }
-
-  linkChatSessionToWorkflow(sessionId: string, workflowId: string) {
-    chatSessionRepo.linkChatSessionToWorkflow(this.db, sessionId, workflowId);
-  }
-
-  listChatSessions(limit = 20) {
-    return chatSessionRepo.listChatSessions(this.db, limit);
-  }
-
-  listChatSessionSummaries(limit = 20) {
-    return chatSessionRepo.listChatSessionSummaries(this.db, limit);
-  }
-
-  deleteChatSession(sessionId: string) {
-    chatSessionRepo.deleteChatSession(this.db, sessionId);
-  }
-
-  saveWorkspaceChat(params: { id?: string; messages: workspaceChatRepo.WorkspaceChatMessage[] }) {
+  saveWorkspaceChat(params: {
+    id?: string;
+    messages: workspaceChatRepo.WorkspaceChatMessage[];
+    workflowId?: string;
+    executionMode?: import('../workspace/commands.js').WorkspaceExecutionMode;
+  }) {
     return workspaceChatRepo.saveWorkspaceChat(this.db, params);
   }
 
   getWorkspaceChat(id: string) {
     return workspaceChatRepo.getWorkspaceChat(this.db, id);
+  }
+
+  getWorkspaceChatByWorkflowId(workflowId: string) {
+    return workspaceChatRepo.getWorkspaceChatByWorkflowId(this.db, workflowId);
   }
 
   listWorkspaceChats(limit = 50) {
@@ -164,5 +145,21 @@ export class WorkflowStore {
 
   getConnections() {
     return settingsRepo.getConnections(this.db);
+  }
+
+  claimTriggerReceipt(params: { dedupeKey: string; workflowId: string; triggerType: string }) {
+    return triggerReceiptRepo.claimTriggerReceipt(this.db, params);
+  }
+
+  completeTriggerReceipt(dedupeKey: string, executionId?: string) {
+    triggerReceiptRepo.completeTriggerReceipt(this.db, dedupeKey, executionId);
+  }
+
+  failTriggerReceipt(dedupeKey: string) {
+    triggerReceiptRepo.failTriggerReceipt(this.db, dedupeKey);
+  }
+
+  isTriggerReceiptCompleted(dedupeKey: string) {
+    return triggerReceiptRepo.isTriggerReceiptCompleted(this.db, dedupeKey);
   }
 }

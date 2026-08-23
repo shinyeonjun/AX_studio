@@ -12,4 +12,7 @@ export type SettingsScreen =
   | 'gmail'
   | 'local-folder'
   | 'http'
-  | 'webhook';
+  | 'webhook'
+  | 'rdb'
+  | 'openapi'
+  | 'mcp';

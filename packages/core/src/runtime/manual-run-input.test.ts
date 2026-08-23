@@ -49,7 +49,7 @@ describe('buildManualRunInput', () => {
     });
 
     const ir = folderWorkflow({ type: 'local_folder.new_file', folderId: 'folder-1', extensions: ['.pdf'] });
-    const input = buildManualRunInput(ir, store);
+    const input = await buildManualRunInput(ir, store);
     expect(input.filePath).toBe(pdfPath);
     expect(input.fileRef).toMatchObject({ path: pdfPath, name: 'sample.pdf' });
   });
@@ -66,7 +66,7 @@ describe('buildManualRunInput', () => {
     });
 
     const ir = folderWorkflow({ type: 'local_folder.new_file', folderId: 'folder-old', extensions: ['.pdf'] });
-    const input = buildManualRunInput(ir, store);
+    const input = await buildManualRunInput(ir, store);
     expect(input.filePath).toBe(pdfPath);
   });
 
@@ -82,7 +82,7 @@ describe('buildManualRunInput', () => {
     });
 
     const ir = folderWorkflow({ type: 'manual' });
-    const input = buildManualRunInput(ir, store);
+    const input = await buildManualRunInput(ir, store);
     expect(input.filePath).toBe(pdfPath);
   });
 
@@ -102,7 +102,7 @@ describe('buildManualRunInput', () => {
       ...ir.steps[0]!,
       params: { path: 'D:\\not-connected\\invented.pdf' },
     };
-    const input = buildManualRunInput(ir, store);
+    const input = await buildManualRunInput(ir, store);
     expect(input.filePath).toBe(pdfPath);
   });
 
@@ -121,7 +121,7 @@ describe('buildManualRunInput', () => {
       ],
     });
 
-    const input = buildManualRunInput(folderWorkflow({ type: 'manual' }), store);
+    const input = await buildManualRunInput(folderWorkflow({ type: 'manual' }), store);
     expect(input).toEqual({});
   });
 
@@ -139,7 +139,7 @@ describe('buildManualRunInput', () => {
       ],
     });
 
-    const input = buildManualRunInput(
+    const input = await buildManualRunInput(
       folderWorkflow({ type: 'local_folder.new_file', folderId: 'folder-empty', extensions: ['.pdf'] }),
       store,
     );
@@ -157,7 +157,7 @@ describe('buildManualRunInput', () => {
       folders: [{ id: 'folder-1', label: 'Test', path: folderPath }],
     });
 
-    const input = buildManualRunInput(
+    const input = await buildManualRunInput(
       folderWorkflow({ type: 'local_folder.new_file', folderId: 'folder-1', extensions: ['.pdf'] }),
       store,
     );

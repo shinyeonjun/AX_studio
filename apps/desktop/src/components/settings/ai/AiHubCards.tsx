@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { AI_PROVIDER_UI_CATALOG, ENABLED_AI_PROVIDER_IDS } from '../../../constants/ai-providers';
+import { aiBrandStatusLabel } from '../../../lib/ai-brand-labels';
 import type { AiBrand, AiConnectionMode } from '../../../types/ai-provider';
 import type { AppState } from '../../../types/app-state';
 import type { AiHubController } from '../../../hooks/useAiHub';
@@ -77,7 +78,7 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
                 <span
                   className={`connection-badge ${status === 'active' ? 'connected' : status === 'ready' ? 'ready' : ''}`}
                 >
-                  {status === 'active' ? '사용 중' : status === 'ready' ? '준비됨' : '미연결'}
+                  {aiBrandStatusLabel(brand, status)}
                 </span>
               </div>
 

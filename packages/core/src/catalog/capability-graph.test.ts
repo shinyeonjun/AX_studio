@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { availableCapabilities, designCapabilities, resolveCapability } from './capability-graph.js';
-import { relevantCapabilitiesForInterview } from '../interview/resources/capability-relevance.js';
 import { cronMatches } from '../runtime/scheduler.js';
 
 describe('capability graph', () => {
@@ -33,50 +32,6 @@ describe('capability graph', () => {
     expect(resolveCapability('slack', 'slack.message.send')?.id).toBe('slack.message.send');
   });
 
-  it('limits interview catalog to draft-referenced caps plus reads', () => {
-    const draft = {
-      name: 'Slack 알림',
-      goal: 'Slack에 보낸다',
-      triggerType: 'manual' as const,
-      assumptions: [],
-      nodes: [
-        {
-          type: 'action' as const,
-          id: 'notify',
-          connector: 'slack',
-          action: 'message.send',
-          params: { channel: '#general' },
-        },
-      ],
-    };
-    const caps = relevantCapabilitiesForInterview(draft, ['slack', 'gmail']);
-    expect(caps.some((cap) => cap.id === 'slack.message.send')).toBe(true);
-    expect(caps.some((cap) => cap.id === 'gmail.message.send')).toBe(false);
-  });
-
-  it('shows triggers and writes for blank interview draft', () => {
-    const caps = relevantCapabilitiesForInterview(
-      { name: '', goal: '', triggerType: 'manual', assumptions: [], nodes: [] },
-      ['gmail', 'slack'],
-    );
-    expect(caps.some((cap) => cap.id === 'gmail.new_message')).toBe(true);
-    expect(caps.some((cap) => cap.id === 'gmail.messages.read')).toBe(false);
-  });
-
-  it('shows full catalog on first interview turn when goal is already filled', () => {
-    const caps = relevantCapabilitiesForInterview(
-      {
-        name: '새 업무',
-        goal: 'Gmail 메일 정리해서 Slack에 보내줘',
-        triggerType: 'manual',
-        assumptions: [],
-        nodes: [],
-      },
-      ['gmail', 'slack'],
-    );
-    expect(caps.some((cap) => cap.id === 'gmail.new_message')).toBe(true);
-    expect(caps.some((cap) => cap.id === 'slack.message.send')).toBe(true);
-  });
 });
 
 describe('cron', () => {

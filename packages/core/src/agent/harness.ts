@@ -49,6 +49,8 @@ export class AgentHarness {
     const controller = new AbortController();
     const timeoutMs = definition.policy.timeoutMs;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const abortExternal = () => controller.abort();
+    request.abortSignal?.addEventListener('abort', abortExternal, { once: true });
 
     logs.push({
       level: 'info',
@@ -70,7 +72,9 @@ export class AgentHarness {
       });
     }
 
-    const system = composeSystemPrompt(buildRoleSystemPrompt(request.role, context));
+    const system = composeSystemPrompt(
+      request.systemPrompt ?? buildRoleSystemPrompt(request.role, context),
+    );
     const temperature = request.temperature ?? definition.temperature;
     const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
 
@@ -89,7 +93,7 @@ export class AgentHarness {
         logContext: request.logContext,
         codexReasoningEffort:
           request.codexReasoningEffort ??
-          (request.role === 'interview' ? 'medium' : undefined),
+          (request.role === 'command' ? 'medium' : undefined),
         maxTurns: definition.policy.maxTurns,
       });
       const output = request.outputSchema.parse(raw);
@@ -121,6 +125,7 @@ export class AgentHarness {
       throw err;
     } finally {
       clearTimeout(timer);
+      request.abortSignal?.removeEventListener('abort', abortExternal);
     }
   }
 }

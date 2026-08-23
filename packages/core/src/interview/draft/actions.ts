@@ -1,10 +1,10 @@
 import { actionRefFor, resolveActionDefinition } from '../../workflow/action-definition.js';
 import { capabilityActionName, resolveCapability } from '../../catalog/capability-graph.js';
 import type { PortBinding } from '../../workflow/bindings.js';
-import type { ActionInstance, InterviewDraft, WorkflowNode } from './schema.js';
+import type { ActionInstance, InterviewDraft, InterviewDraftInput, WorkflowNode } from './schema.js';
 
-export function getActionInstance(draft: InterviewDraft, nodeId: string): ActionInstance | undefined {
-  return draft.actions?.[nodeId];
+export function getActionInstance(draft: InterviewDraftInput, nodeId: string): ActionInstance | undefined {
+  return draft.actions?.[nodeId] as ActionInstance | undefined;
 }
 
 export function resolveNodeActionRef(node: WorkflowNode, instance?: ActionInstance): string | undefined {
@@ -19,7 +19,7 @@ export function resolveNodeActionRef(node: WorkflowNode, instance?: ActionInstan
 }
 
 export function resolveNodeConnectorAction(
-  draft: InterviewDraft,
+  draft: InterviewDraftInput,
   node: WorkflowNode,
 ): { connector: string; action: string; actionRef: string } | undefined {
   if (node.type !== 'action') return undefined;
@@ -44,13 +44,13 @@ export function resolveNodeConnectorAction(
   return undefined;
 }
 
-export function getNodeParams(draft: InterviewDraft, node: WorkflowNode): Record<string, unknown> {
+export function getNodeParams(draft: InterviewDraftInput, node: WorkflowNode): Record<string, unknown> {
   if (node.type !== 'action') return {};
   return getActionInstance(draft, node.id)?.params ?? {};
 }
 
 export function getNodeBindings(
-  draft: InterviewDraft,
+  draft: InterviewDraftInput,
   node: WorkflowNode,
 ): Record<string, PortBinding> | undefined {
   if (node.type !== 'action') return undefined;

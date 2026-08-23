@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { InterviewDraftSchema } from '../../draft/schema.js';
-import { applySlotValuesToDraft } from '../../slots/patch.js';
 import { isActionParamFilled } from '../../slots/filled.js';
 import { nodeParamSlotId, parseNodeParamSlot } from '../../slots/ids.js';
-import { ensureRequiredParamKeysOnDraft, seedDefaultSuccessCondition, seedNodeIntentFromWorkflowGoal } from '../../slots/seed.js';
 import { assessCompleteness } from '../../slots/requiredness.js';
 
 describe('interview-slots', () => {
@@ -55,119 +52,6 @@ describe('interview-slots', () => {
     const criticalQuestion = missing.slots.find((slot) => slot.slot === 'critical_slack.params.channel')?.question;
     expect(criticalQuestion).toBe('긴급(critical) 알림을 보낼 Slack 채널은 어디인가요?');
     expect(criticalQuestion).not.toContain('critical_slack');
-  });
-
-  it('patches node slots independently', () => {
-    const draft = InterviewDraftSchema.parse({
-        name: 'Slack 분기',
-        goal: '위험도별 Slack',
-        triggerType: 'manual',
-        nodes: [
-          {
-            type: 'action',
-            id: 'critical_slack',
-            actionRef: 'slack.message.send@1',
-            params: {},
-          },
-          {
-            type: 'action',
-            id: 'high_slack',
-            actionRef: 'slack.message.send@1',
-            params: {},
-          },
-        ],
-      });
-
-    const patched = applySlotValuesToDraft(draft, {
-      'critical_slack.params.channel': '#ax테스트',
-      'high_slack.params.channel': '#ax테스트2',
-    });
-
-    expect(patched.actions.critical_slack?.params).toEqual({
-      channel: '#ax테스트',
-    });
-    expect(patched.actions.high_slack?.params).toEqual({
-      channel: '#ax테스트2',
-    });
-  });
-
-  it('seeds empty required params from catalog', () => {
-    const draft = InterviewDraftSchema.parse({
-        name: 'Slack',
-        goal: '알림',
-        triggerType: 'manual',
-        nodes: [
-          {
-            type: 'action',
-            id: 'notify',
-            actionRef: 'slack.message.send@1',
-            params: {},
-          },
-        ],
-      });
-
-    const seeded = ensureRequiredParamKeysOnDraft(draft);
-    expect(seeded.actions.notify?.params).toEqual({ channel: '', text: '' });
-  });
-
-  it('does not inject empty path when document ingest already has file ref', () => {
-    const draft = InterviewDraftSchema.parse({
-        name: 'PDF',
-        goal: 'PDF 분류',
-        triggerType: 'manual',
-        nodes: [
-          {
-            type: 'action',
-            id: 'ingest_pdf',
-            actionRef: 'document.ingest@1',
-            params: {
-              file: { path: 'D:\\inbox\\report.pdf', name: 'report.pdf', folderId: 'folder-1' },
-            },
-          },
-        ],
-      });
-
-    const seeded = ensureRequiredParamKeysOnDraft(draft);
-    expect(seeded.actions.ingest_pdf?.params).toEqual({
-      file: { path: 'D:\\inbox\\report.pdf', name: 'report.pdf', folderId: 'folder-1' },
-    });
-    expect(seeded.actions.ingest_pdf?.params?.path).toBeUndefined();
-  });
-
-  it('seeds default success without asking completion in chat', () => {
-    const draft = InterviewDraftSchema.parse({
-        name: 'PDF 알림',
-        goal: 'PDF 위험도 알림',
-        triggerType: 'manual',
-        nodes: [
-          { type: 'action', id: 'critical_slack', actionRef: 'slack.message.send@1', params: {} },
-        ],
-      });
-
-    const seeded = seedDefaultSuccessCondition(draft);
-    expect(seeded.success).toBe('모든 알림 단계가 실행되면 완료');
-  });
-
-  it('seeds ai_decision goal from workflow goal', () => {
-    const draft = InterviewDraftSchema.parse({
-        name: 'PDF 위험도',
-        goal: 'PDF 위험도를 critical/high/normal로 분류',
-        triggerType: 'manual',
-        nodes: [
-          {
-            type: 'ai_decision',
-            id: 'classify_risk',
-            goal: '',
-            outputFields: [{ name: 'riskLevel', type: 'string', description: '위험도', enumValues: ['critical', 'high', 'normal'] }],
-          },
-        ],
-      });
-
-    const seeded = seedNodeIntentFromWorkflowGoal(draft);
-    expect(seeded.nodes[0]).toMatchObject({
-      goal: 'PDF 위험도를 critical/high/normal로 분류',
-      memo: 'critical, high, normal 중 하나로 분류합니다.',
-    });
   });
 
   it('does not require bound text params', () => {

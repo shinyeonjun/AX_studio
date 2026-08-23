@@ -24,7 +24,6 @@ describe('Slack read knowledge', () => {
     const ctx = buildDesignToolContext(
       [{ connector: 'slack', connected: true }],
       ['slack'],
-      undefined,
       { allowUntrustedData: true, connectors: { slack } },
     );
     const result = await executeDesignTool(
@@ -44,7 +43,6 @@ describe('Slack read knowledge', () => {
     const ctx = buildDesignToolContext(
       [{ connector: 'slack', connected: true }],
       ['slack'],
-      undefined,
       { allowUntrustedData: true, interactionMode: 'plain_chat', connectors: { slack } },
     );
     const result = await executeDesignTool(

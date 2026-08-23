@@ -10,6 +10,9 @@ export const SETTINGS_TITLES: Record<SettingsScreen, string> = {
   'local-folder': '로컬 폴더 연결',
   http: 'HTTP API 연결',
   webhook: 'Webhook 수신',
+  rdb: '데이터베이스 연결',
+  openapi: 'OpenAPI 연결',
+  mcp: 'MCP 연결',
 };
 
 export function settingsScreenForBrand(brand: AiBrand): SettingsScreen {

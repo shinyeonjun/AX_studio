@@ -2,9 +2,14 @@ import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { createNativeDatabase, openReadonlyNativeSqlite } from './db-native.js';
+
+export interface SqlRunResult {
+  changes: number;
+}
 
 export interface SqlStatement {
-  run(...params: unknown[]): void;
+  run(...params: unknown[]): SqlRunResult;
   all(...params: unknown[]): Record<string, unknown>[];
   get(...params: unknown[]): Record<string, unknown> | undefined;
 }
@@ -68,23 +73,31 @@ const MIGRATION_SQL = `
     config_json TEXT
   );
 
-  CREATE TABLE IF NOT EXISTS chat_sessions (
-    id TEXT PRIMARY KEY,
-    workflow_id TEXT UNIQUE,
-    title TEXT NOT NULL,
-    summary TEXT,
-    state_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
   CREATE TABLE IF NOT EXISTS workspace_chats (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     messages_json TEXT NOT NULL,
+    workflow_id TEXT,
+    execution_mode TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS trigger_receipts (
+    dedupe_key TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    trigger_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    execution_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workflow_versions_workflow_id ON workflow_versions(workflow_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_versions_workflow_version ON workflow_versions(workflow_id, version);
+  CREATE INDEX IF NOT EXISTS idx_executions_started_at ON executions(started_at);
+  CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
+  CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);
 `;
 
 function columnNames(db: AppDatabase, table: string): string[] {
@@ -117,9 +130,6 @@ function migrateLegacySkillTables(db: AppDatabase) {
       db.exec('ALTER TABLE executions RENAME COLUMN skill_version TO workflow_version');
     }
   }
-  if (tableExists(db, 'chat_sessions') && columnNames(db, 'chat_sessions').includes('skill_id')) {
-    db.exec('ALTER TABLE chat_sessions RENAME COLUMN skill_id TO workflow_id');
-  }
 }
 
 function applyMigrations(db: AppDatabase) {
@@ -128,9 +138,12 @@ function applyMigrations(db: AppDatabase) {
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
   }
-  // Older builds incorrectly closed approval-waiting executions as failed.
-  // Repair only rows that still have an unresolved approval; resolved failures
-  // must remain historical failures.
+  if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
+    db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');
+  }
+  if (!columnNames(db, 'workspace_chats').includes('execution_mode')) {
+    db.exec('ALTER TABLE workspace_chats ADD COLUMN execution_mode TEXT');
+  }
   db.exec(
     "UPDATE executions SET status = 'pending_approval', finished_at = NULL, error_code = 'pending_approval' " +
       "WHERE status = 'failed' AND error_code = 'pending_approval' " +
@@ -188,12 +201,15 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     const persist = () => this.persist();
     return {
       run(...params: unknown[]) {
-        db.run(sql, params as (string | number | null)[]);
+        const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
+        db.run(sql, bound);
         persist();
+        return { changes: db.getRowsModified() };
       },
       all(...params: unknown[]) {
+        const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
         const stmt = db.prepare(sql);
-        if (params.length > 0) stmt.bind(params as (string | number | null)[]);
+        if (bound.length > 0) stmt.bind(bound);
         const rows: Record<string, unknown>[] = [];
         while (stmt.step()) rows.push(stmt.getAsObject());
         stmt.free();
@@ -246,12 +262,35 @@ async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   return adapter;
 }
 
+function shouldUseSqlJsBackend(): boolean {
+  return process.env.AX_DB_BACKEND === 'sqljs';
+}
+
+function logDatabaseFallback(message: string, hint: string, error: unknown): void {
+  if (process.env.AX_DEBUG_DB !== '1') return;
+  const detail = error instanceof Error ? error.message : String(error);
+  console.warn(`[db] ${message}.${hint} ${detail}`);
+}
+
 /** @deprecated Use createDatabaseAsync(). sql.js init is async in all environments. */
 export function createDatabase(_path: string): AppDatabase {
   throw new Error('Use createDatabaseAsync() — sync database init is no longer supported.');
 }
 
 export async function createDatabaseAsync(path: string): Promise<AppDatabase> {
+  if (!shouldUseSqlJsBackend()) {
+    try {
+      const adapter = createNativeDatabase(path);
+      applyMigrations(adapter);
+      return adapter;
+    } catch (error) {
+      const hint =
+        typeof process.versions.electron === 'string'
+          ? ' Run `npm run ensure:native -w @ax-studio/desktop` (or `npm run dev`, which runs it automatically).'
+          : '';
+      logDatabaseFallback('better-sqlite3 unavailable; using sql.js', hint, error);
+    }
+  }
   return createSqlJsDatabase(path);
 }
 
@@ -259,6 +298,18 @@ export async function openReadonlySqlite(filePath: string): Promise<{
   all(sql: string, params?: unknown[]): Record<string, unknown>[];
   close(): void;
 }> {
+  if (!shouldUseSqlJsBackend()) {
+    try {
+      return openReadonlyNativeSqlite(filePath);
+    } catch (error) {
+      const hint =
+        typeof process.versions.electron === 'string'
+          ? ' Run `npm run ensure:native -w @ax-studio/desktop`.'
+          : '';
+      logDatabaseFallback('better-sqlite3 readonly open failed; using sql.js', hint, error);
+    }
+  }
+
   const SQL = await loadSqlJs();
   const db = new SQL.Database(readFileSync(filePath));
   return {

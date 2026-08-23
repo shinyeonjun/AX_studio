@@ -4,18 +4,27 @@
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "ensure:native": "node scripts/ensure-native-db.mjs",
+    "dev": "node scripts/ensure-native-db.mjs && electron-vite dev",
     "dev:poc": "node ../../scripts/desktop-dev-poc.mjs",
     "dev:kill": "taskkill /F /IM electron.exe /T 2>nul & exit 0",
     "dev:restart": "npm run dev:kill && npm run dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "pack": "npm run build && electron-builder --dir",
+    "pack:win": "npm run build && electron-builder --win",
+    "rebuild:native": "node scripts/ensure-native-db.mjs",
+    "postinstall": "node scripts/ensure-native-db.mjs"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.16",
     "@ax-studio/core": "*",
     "@dagrejs/dagre": "^3.1.1",
     "@xyflow/react": "^12.11.3",
+    "better-sqlite3": "^11.10.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

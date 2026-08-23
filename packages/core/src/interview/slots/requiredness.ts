@@ -13,7 +13,6 @@ import { actionStepParamFilled } from './filled.js';
 import type { CompletenessResult, SlotState } from './types.js';
 
 export type { RequirementSlot, SlotState, CompletenessResult } from './types.js';
-export { formatMissingSlotsForPrompt, formatSlotValuesForPrompt, buildInterviewTurnHints } from './prompts.js';
 
 const CORE_QUESTIONS: Record<RequirementQuestionKey, { label: string; question: string }> = {
   goal: requirementCopy('goal'),

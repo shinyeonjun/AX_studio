@@ -97,7 +97,6 @@ describe('local retrieval index', () => {
         },
       ],
       ['local_folder'],
-      undefined,
       { allowUntrustedData: false },
     );
 

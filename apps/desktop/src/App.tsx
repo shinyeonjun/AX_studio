@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { SettingsScreen, SidebarTab } from './types/navigation';
 import { useAppState } from './hooks/useAppState';
-import { useInterview } from './hooks/useInterview';
+import { useWorkspaceChat } from './hooks/useWorkspaceChat';
 import { useChatSessions } from './hooks/useChatSessions';
 import type { ChatSessionSummary } from './hooks/useChatSessions';
 import { useAiDetection } from './hooks/ai-settings/useAiDetection';
@@ -10,93 +10,90 @@ import { useTheme } from './hooks/useTheme';
 import { WorkspaceSidebar } from './components/layout/WorkspaceSidebar';
 import { ChatMainPage } from './components/chat/ChatMainPage';
 import { ActivityPage } from './components/activity/ActivityPage';
+import { ApprovalsPage } from './components/approval/ApprovalsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { StateBanner } from './components/layout/StateBanner';
+import { confirmDeleteChat, confirmDeleteWork } from './lib/confirm-delete';
+import { ipcErrorMessage } from './lib/ipc-error';
 
 export default function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('work');
-  const [settingsScreen, setSettingsScreen] = useState<SettingsScreen | null>(null);
+  const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>('hub');
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
+  const [actionError, setActionError] = useState('');
 
-  const { state, refresh } = useAppState();
+  const { state, error: stateError, refresh, isLoading, isStale } = useAppState();
   const detection = useAiDetection();
   const aiHub = useAiHub(state, refresh, detection);
   const { isDark, toggleTheme } = useTheme();
   const { sessions, refreshSessions } = useChatSessions();
-  const interview = useInterview({ refresh, onSessionsChanged: refreshSessions });
+  const workspaceChat = useWorkspaceChat({ refresh, onSessionsChanged: refreshSessions });
 
   useEffect(() => {
     void detection.refreshDetection();
   }, []);
 
   const startNewChat = () => {
-    interview.startNewChat();
+    workspaceChat.startNewChat();
     setActiveSessionId(undefined);
-    setSettingsScreen(null);
     setSidebarTab('work');
   };
 
   const selectSession = async (session: ChatSessionSummary) => {
-    setSettingsScreen(null);
     setSidebarTab('work');
     setActiveSessionId(session.id);
-    if (session.kind === 'interview' && session.workflowId) {
-      await interview.openWorkChat(session.workflowId);
-      return;
-    }
-    if (session.kind === 'interview') {
-      await interview.openInterviewChat(session.id);
-      return;
-    }
-    await interview.loadWorkspaceChat(session.id);
+    await workspaceChat.loadWorkspaceChat(session.id);
   };
 
   const deleteSession = async (session: ChatSessionSummary) => {
+    if (!confirmDeleteChat(session.title)) return;
+
     const isActive =
       activeSessionId === session.id ||
-      interview.workspaceSessionId === session.id ||
-      (session.kind === 'interview' &&
-        session.workflowId &&
-        interview.interview?.workflowId === session.workflowId);
+      workspaceChat.workspaceSessionId === session.id ||
+      (session.workflowId && workspaceChat.workspaceWorkflowState?.workflowId === session.workflowId);
 
-    if (session.kind === 'workspace') {
+    setActionError('');
+    try {
       await window.ax.deleteWorkspaceChat(session.id);
-    } else if (session.workflowId) {
-      await window.ax.deleteWorkflow(session.workflowId);
-      await refresh();
-    } else {
-      await window.ax.deleteInterviewChatSession(session.id);
-    }
 
-    if (isActive) {
-      interview.startNewChat();
-      setActiveSessionId(undefined);
-      setSettingsScreen(null);
-    }
+      if (isActive) {
+        workspaceChat.startNewChat();
+        setActiveSessionId(undefined);
+      }
 
-    await refreshSessions();
+      await refreshSessions();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '대화를 삭제하지 못했습니다.'));
+    }
   };
 
   const openWork = async (workflowId: string) => {
-    setSettingsScreen(null);
     setSidebarTab('work');
     setActiveSessionId(undefined);
-    await interview.openWorkChat(workflowId);
+    await workspaceChat.openWorkChat(workflowId);
     await refreshSessions();
   };
 
-  const deleteWork = async (workflowId: string) => {
-    const isActive = interview.interview?.workflowId === workflowId;
+  const deleteWork = async (workflowId: string, name: string) => {
+    if (!confirmDeleteWork(name)) return;
 
-    await window.ax.deleteWorkflow(workflowId);
+    const isActiveWorkspaceWorkflow = workspaceChat.workspaceWorkflowState?.workflowId === workflowId;
 
-    if (isActive) {
-      interview.startNewChat();
-      setActiveSessionId(undefined);
-      setSettingsScreen(null);
+    setActionError('');
+    try {
+      await window.ax.deleteWorkflow(workflowId);
+
+      if (isActiveWorkspaceWorkflow) {
+        workspaceChat.startNewChat();
+        setActiveSessionId(undefined);
+      }
+
+      await refresh();
+      await refreshSessions();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '업무를 삭제하지 못했습니다.'));
     }
-
-    await refresh();
-    await refreshSessions();
   };
 
   const openSettings = (screen: SettingsScreen) => {
@@ -106,71 +103,138 @@ export default function App() {
 
   const handleTabChange = (nextTab: SidebarTab) => {
     setSidebarTab(nextTab);
-    if (nextTab !== 'settings') setSettingsScreen(null);
+    if (nextTab === 'settings') {
+      setSettingsScreen((current) => current ?? 'hub');
+    }
   };
 
   const handleApprove = async (id: string) => {
-    await window.ax.approve(id);
-    await refresh();
+    setActionError('');
+    try {
+      await window.ax.approve(id);
+      await refresh();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '승인에 실패했습니다.'));
+      throw err;
+    }
   };
 
   const handleReject = async (id: string) => {
-    await window.ax.reject(id);
-    await refresh();
+    setActionError('');
+    try {
+      await window.ax.reject(id);
+      await refresh();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '거절에 실패했습니다.'));
+      throw err;
+    }
   };
 
   const toggleWorkActive = async (workflowId: string, active: boolean) => {
-    await window.ax.setWorkflowActive(workflowId, active);
-    await refresh();
+    setActionError('');
+    try {
+      await window.ax.setWorkflowActive(workflowId, active);
+      await refresh();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '업무 상태를 변경하지 못했습니다.'));
+    }
   };
 
-  const settingsContent =
-    settingsScreen && state ? (
-      <SettingsPage
-        screen={settingsScreen}
-        onScreenChange={setSettingsScreen}
-        state={state}
-        onRefresh={refresh}
-        onConnectSlack={async (payload) => {
-          await window.ax.connectSlack(payload);
-          await refresh();
-        }}
-        onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
-        onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}
-        onPickLocalFolder={() => window.ax.pickLocalFolder()}
-        onAddLocalFolder={async (payload) => {
-          await window.ax.addLocalFolder(payload);
-          await refresh();
-        }}
-        onRemoveLocalFolder={async (folderId) => {
-          await window.ax.removeLocalFolder(folderId);
-          await refresh();
-        }}
-        onConnectHttp={async (payload) => {
-          await window.ax.connectHttp(payload);
-          await refresh();
-        }}
-        onDisconnectHttp={async () => {
-          await window.ax.disconnectHttp();
-          await refresh();
-        }}
-        onConnectWebhook={async (payload) => {
-          await window.ax.connectWebhook(payload);
-          await refresh();
-        }}
-        onDisconnectWebhook={async () => {
-          await window.ax.disconnectWebhook();
-          await refresh();
-        }}
-      />
-    ) : null;
+  const settingsPage = state ? (
+    <SettingsPage
+      screen={settingsScreen}
+      onScreenChange={setSettingsScreen}
+      state={state}
+      onRefresh={refresh}
+      onConnectSlack={async (payload) => {
+        await window.ax.connectSlack(payload);
+        await refresh();
+      }}
+      onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
+      onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}
+      onPickLocalFolder={() => window.ax.pickLocalFolder()}
+      onAddLocalFolder={async (payload) => {
+        await window.ax.addLocalFolder(payload);
+        await refresh();
+      }}
+      onRemoveLocalFolder={async (folderId) => {
+        await window.ax.removeLocalFolder(folderId);
+        await refresh();
+      }}
+      onConnectHttp={async (payload) => {
+        await window.ax.connectHttp(payload);
+        await refresh();
+      }}
+      onDisconnectHttp={async () => {
+        await window.ax.disconnectHttp();
+        await refresh();
+      }}
+      onConnectWebhook={async (payload) => {
+        await window.ax.connectWebhook(payload);
+        await refresh();
+      }}
+      onDisconnectWebhook={async () => {
+        await window.ax.disconnectWebhook();
+        await refresh();
+      }}
+      onPickSqliteFile={() => window.ax.pickSqliteFile()}
+      onConnectRdb={async (payload) => {
+        await window.ax.connectRdb(payload);
+        await refresh();
+      }}
+      onDisconnectRdb={async () => {
+        await window.ax.disconnectRdb();
+        await refresh();
+      }}
+      onConnectOpenApi={async (payload) => {
+        await window.ax.connectOpenApi(payload);
+        await refresh();
+      }}
+      onDisconnectOpenApi={async () => {
+        await window.ax.disconnectOpenApi();
+        await refresh();
+      }}
+      onConnectMcp={async (payload) => {
+        await window.ax.connectMcp(payload);
+        await refresh();
+      }}
+      onDisconnectMcp={async () => {
+        await window.ax.disconnectMcp();
+        await refresh();
+      }}
+    />
+  ) : null;
+
+  const mainContent = (() => {
+    if (sidebarTab === 'activity') {
+      return <ActivityPage state={state} onRefresh={refresh} />;
+    }
+    if (sidebarTab === 'approval') {
+      return (
+        <ApprovalsPage
+          state={state}
+          onRefresh={refresh}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      );
+    }
+    if (sidebarTab === 'settings') {
+      return settingsPage ?? (
+        <div className="page-content">
+          <p className="muted">설정을 불러오는 중…</p>
+        </div>
+      );
+    }
+    return <ChatMainPage workspaceChat={workspaceChat} />;
+  })();
 
   return (
     <div className="app app--workspace">
       <WorkspaceSidebar
         tab={sidebarTab}
         sessions={sessions}
-        activeSessionId={activeSessionId ?? interview.workspaceSessionId}
+      activeSessionId={activeSessionId ?? workspaceChat.workspaceSessionId}
         pendingApprovals={state?.pendingApprovals ?? 0}
         state={state}
         onTabChange={handleTabChange}
@@ -181,25 +245,20 @@ export default function App() {
         onToggleWorkActive={toggleWorkActive}
         onDeleteWork={deleteWork}
         onOpenSettings={openSettings}
-        onApprove={handleApprove}
-        onReject={handleReject}
         aiHub={aiHub}
         aiDetecting={detection.detecting}
         isDark={isDark}
         onToggleTheme={toggleTheme}
       />
 
-      <main className="main main--chat">
-        {sidebarTab === 'activity' ? (
-          <ActivityPage state={state} onRefresh={refresh} />
-        ) : (
-          <ChatMainPage
-            interview={interview}
-            settingsScreen={settingsScreen}
-            onCloseSettings={() => setSettingsScreen(null)}
-            settingsContent={settingsContent}
-          />
-        )}
+      <main className="main main--workspace" id="workspace-main-panel">
+        <StateBanner
+          loading={isLoading}
+          stale={isStale}
+          error={stateError || actionError}
+          onRetry={() => void refresh()}
+        />
+        {mainContent}
       </main>
     </div>
   );

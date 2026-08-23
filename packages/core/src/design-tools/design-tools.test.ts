@@ -55,9 +55,6 @@ describe('design-tools', () => {
       'capabilities.list',
       'capabilities.describe',
       'capabilities.invoke',
-      'workflow.inspect',
-      'workflows.list',
-      'workflows.run',
     ]);
   });
 
@@ -98,7 +95,7 @@ describe('design-tools', () => {
           connected: true,
           config: { folders: [{ id: 'folder-1', label: 'Inbox', path: dir }] },
         },
-      ], ['local_folder', 'document'], undefined, { allowUntrustedData: true });
+      ], ['local_folder', 'document'], { allowUntrustedData: true });
       const [read] = await executeDesignToolCalls([
         { tool: 'sources.file.read', args: { folderId: 'folder-1', path: pdfPath, maxChars: 1_000 } },
       ], localReadContext);
@@ -213,27 +210,4 @@ describe('design-tools', () => {
     expect(formatted).toContain('[design-tool results truncated]');
   });
 
-  it('blocks workflow.inspect in plain chat', async () => {
-    const result = await executeDesignTool(
-      { tool: 'workflow.inspect' },
-      buildDesignToolContext([], [], undefined, { interactionMode: 'plain_chat' }),
-    );
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('tool_not_allowed_in_plain_chat');
-  });
-
-  it('rejects workflows.run for ids not returned by workflows.list', async () => {
-    const result = await executeDesignTool(
-      { tool: 'workflows.run', args: { workflowId: 'missing' } },
-      buildDesignToolContext([], [], undefined, {
-        interactionMode: 'plain_chat',
-        workflowActions: {
-          list: () => [{ id: 'known', name: 'Known', active: false }],
-          run: async () => ({ executionId: 'x', status: 'success' }),
-        },
-      }),
-    );
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('Workflow not found');
-  });
 });

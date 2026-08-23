@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CompletenessResult, InterviewDraft, WorkScope, WorkflowNode } from '@ax-studio/core';
+import type { CompletenessResult, InterviewDraft, WorkspaceExecutionMode, WorkflowNode } from '@ax-studio/core';
 import { connectionGuidance, panelFieldsForSource } from '@ax-studio/core/panel-fields';
 import type { SettingsScreen } from '../types/navigation';
 import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../constants/connectors';
@@ -14,7 +14,7 @@ interface NodeDetailPanelProps {
   onRequestEdit: (prompt: string) => void;
   onOpenSettings?: (screen: SettingsScreen) => void;
   onClose: () => void;
-  workScope?: WorkScope;
+  executionMode?: WorkspaceExecutionMode;
 }
 
 function findWorkflowNode(draft: InterviewDraft | undefined, sourceId?: string): WorkflowNode | undefined {
@@ -72,7 +72,7 @@ export function NodeDetailPanel({
   onRequestEdit,
   onOpenSettings,
   onClose,
-  workScope,
+  executionMode,
 }: NodeDetailPanelProps) {
   const isTrigger = nodeData?.sourceId === '__trigger__';
   const workflowNode = findWorkflowNode(draft, nodeData?.sourceId);
@@ -83,9 +83,9 @@ export function NodeDetailPanel({
   const connection = connectionGuidance(completeness?.missingConnections);
   const hasMissingChatFields = allFields.some((field) => field.required && !field.value.trim());
   const triggerScopeHint =
-    isTrigger && workScope === 'once'
+    isTrigger && executionMode === 'once'
       ? '일회성 업무는 지금 한 번 실행으로 시작합니다.'
-      : isTrigger && workScope === 'recurring'
+      : isTrigger && executionMode === 'workflow'
         ? '시작 조건은 왼쪽 채팅에서 알려주세요.'
         : null;
 

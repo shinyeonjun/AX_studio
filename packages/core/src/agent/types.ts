@@ -5,7 +5,7 @@ import type { AgentProgressEvent } from './progress.js';
 
 export type { AgentProgressEvent } from './progress.js';
 
-export type AgentRole = 'interview' | 'investigate' | 'workspace';
+export type AgentRole = 'command' | 'investigate';
 
 export interface AgentExecutionPolicy {
   maxTurns: number;
@@ -22,17 +22,6 @@ export interface AgentRoleDefinition {
   modeInstructions?: string;
 }
 
-export interface InterviewAgentContext {
-  workflow: import('../interview/draft/schema.js').InterviewDraft;
-  draftRevision?: number;
-  slotValues: Record<string, unknown>;
-  completeness: import('../interview/slots/requiredness.js').CompletenessResult;
-  connectedConnectors: string[];
-  connectedResources: string;
-  sessionHints: string;
-  nowIso: string;
-}
-
 export interface InvestigateAgentContext {
   skillGoal: string;
   taskGoal: string;
@@ -42,16 +31,15 @@ export interface InvestigateAgentContext {
   connectedConnectors: string[];
 }
 
-export interface WorkspaceAgentContext {
+export interface CommandAgentContext {
   connectedConnectors: string[];
   connectedResources: string;
   nowIso: string;
 }
 
 export type AgentContext =
-  | InterviewAgentContext
   | InvestigateAgentContext
-  | WorkspaceAgentContext;
+  | CommandAgentContext;
 
 export interface AgentRun<T> {
   role: AgentRole;
@@ -66,6 +54,13 @@ export interface AgentRun<T> {
   onProgress?: (event: AgentProgressEvent) => void;
   logContext?: string;
   codexReasoningEffort?: 'low' | 'medium' | 'high';
+  abortSignal?: AbortSignal;
+  /**
+   * Optional protocol-specific system prompt. The constitution remains
+   * mandatory, while callers can replace the role skill when a bounded
+   * machine-facing protocol is more appropriate than a human-facing skill.
+   */
+  systemPrompt?: string;
 }
 
 export interface AgentRunLog {

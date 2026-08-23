@@ -7,6 +7,8 @@ import {
   formatRelativeTime,
 } from '../../lib/work-display';
 import { PageHeader } from '../layout/PageHeader';
+import { confirmDeleteExecution } from '../../lib/confirm-delete';
+import { ipcErrorMessage } from '../../lib/ipc-error';
 
 interface ActivityPageProps {
   state: AppState | null;
@@ -26,16 +28,31 @@ function formatTimestamp(iso: string): string {
 }
 
 export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
-  const [explainQ, setExplainQ] = useState('왜 오늘 안 했어?');
+  const [explainQ, setExplainQ] = useState('실행이 멈췄거나 실패한 이유를 물어보세요');
   const [explainA, setExplainA] = useState('');
+  const [explainError, setExplainError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [explaining, setExplaining] = useState(false);
+
+  const executions = state?.executions ?? [];
+  const canExplain = executions.length > 0;
 
   const askExplain = async () => {
-    setExplainA(await window.ax.explain(explainQ));
+    if (!canExplain) return;
+    setExplaining(true);
+    setExplainError('');
+    try {
+      setExplainA(await window.ax.explain(explainQ));
+    } catch (err) {
+      setExplainError(ipcErrorMessage(err, '실행 기록을 분석하지 못했습니다.'));
+    } finally {
+      setExplaining(false);
+    }
   };
 
   const deleteExecution = async (executionId: string) => {
+    if (!confirmDeleteExecution()) return;
     setBusyId(executionId);
     try {
       await window.ax.deleteExecution(executionId);
@@ -60,8 +77,6 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
     }
   };
 
-  const executions = state?.executions ?? [];
-
   return (
     <>
       <PageHeader
@@ -81,17 +96,31 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
         }
       />
       <div className="page-content">
-        <div className="ask-bar">
+        <div className={`ask-bar${canExplain ? '' : ' ask-bar--disabled'}`}>
           <input
             value={explainQ}
             onChange={(e) => setExplainQ(e.target.value)}
-            placeholder="왜 오늘 안 했어?"
-            onKeyDown={(e) => e.key === 'Enter' && askExplain()}
+            placeholder="실행이 멈췄거나 실패한 이유를 물어보세요"
+            disabled={!canExplain || explaining}
+            onKeyDown={(e) => e.key === 'Enter' && void askExplain()}
           />
-          <button type="button" className="btn btn-primary" onClick={askExplain}>
-            물어보기
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void askExplain()}
+            disabled={!canExplain || explaining}
+          >
+            {explaining ? '분석 중…' : '묻기'}
           </button>
         </div>
+        {!canExplain && (
+          <p className="muted activity-hint">실행 기록이 생기면 AI에게 실행 결과를 물어볼 수 있습니다.</p>
+        )}
+        {explainError && (
+          <div className="approval-error" role="alert">
+            {explainError}
+          </div>
+        )}
         {explainA && <div className="review-box">{explainA}</div>}
 
         <p className="muted activity-hint">

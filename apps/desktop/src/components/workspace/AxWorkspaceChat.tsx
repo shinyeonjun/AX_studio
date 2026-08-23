@@ -12,7 +12,6 @@ import {
 } from '@assistant-ui/react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { axStudioLogo } from '../../constants/brand';
-import { WorkspaceReviewCard, type WorkspaceReviewActions } from './WorkspaceReviewCard';
 import { isRunResultMessage, WorkspaceRunResultCard } from './WorkspaceRunResultCard';
 import { WorkspaceMarkdown } from './WorkspaceMarkdown';
 
@@ -26,8 +25,6 @@ interface AxWorkspaceChatProps {
   busy: boolean;
   error: string;
   progress: string;
-  reviewReady: boolean;
-  reviewActions?: WorkspaceReviewActions;
   placeholder?: string;
   slashCommandsEnabled?: boolean;
   onSend: (text: string) => Promise<void>;
@@ -36,14 +33,20 @@ interface AxWorkspaceChatProps {
 const WORKSPACE_SLASH_COMMANDS = [
   {
     command: '/once',
-    label: '일회용',
-    description: 'workflow를 만든 뒤 한 번만 실행합니다.',
+    label: '일회 실행',
+    description: '업무를 설계한 뒤 한 번만 실행합니다.',
   },
   {
     command: '/workflow',
-    label: '다회용',
-    description: 'workflow.json을 저장해 반복 업무로 씁니다.',
+    label: '반복 업무',
+    description: '업무를 저장해 트리거마다 자동 실행합니다.',
   },
+] as const;
+
+const WELCOME_EXAMPLES = [
+  { label: '일회 실행 예시', text: '/once Slack에 오늘 일정 알려줘' },
+  { label: '반복 업무 예시', text: '/workflow Gmail 수신 시 Slack 알림' },
+  { label: '연결 확인', text: '연결된 폴더에 어떤 파일이 있어?' },
 ] as const;
 
 type WorkspaceSlashCommand = (typeof WORKSPACE_SLASH_COMMANDS)[number];
@@ -100,7 +103,6 @@ function AssistantMessage() {
 
 interface WorkspaceComposerProps {
   busy: boolean;
-  reviewReady: boolean;
   placeholder: string;
   slashCommandsEnabled: boolean;
   selectedCommand: WorkspaceSlashCommand['command'] | null;
@@ -110,14 +112,13 @@ interface WorkspaceComposerProps {
 
 function WorkspaceComposer({
   busy,
-  reviewReady,
   placeholder,
   slashCommandsEnabled,
   selectedCommand,
   onSelectCommand,
   onClearCommand,
 }: WorkspaceComposerProps) {
-  const disabled = busy || reviewReady;
+  const disabled = busy;
   const { value, setText } = unstable_useComposerInput({ disabled });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -253,8 +254,6 @@ export function AxWorkspaceChat({
   busy,
   error,
   progress,
-  reviewReady,
-  reviewActions,
   placeholder,
   slashCommandsEnabled = true,
   onSend,
@@ -282,9 +281,7 @@ export function AxWorkspaceChat({
       ? '한 번 실행할 업무를 입력하세요'
       : selectedCommand === '/workflow'
         ? '반복해서 실행할 업무를 입력하세요'
-        : reviewReady
-      ? '아래 카드에서 실행하거나 저장하세요'
-      : '무엇이든 물어보세요');
+        : '무엇이든 물어보세요');
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -295,8 +292,38 @@ export function AxWorkspaceChat({
               <div className="ax-workspace-welcome">
                 <h1>무엇을 도와드릴까요?</h1>
                 <p className="ax-workspace-welcome-hint">
-                  <code>/</code> 로 일회용 · 다회용 업무를 만들 수 있어요
+                  아래 예시를 누르거나 <code>/</code> 로 일회 실행 · 반복 업무를 시작하세요
                 </p>
+                <div className="ax-workspace-welcome-actions">
+                  <button
+                    type="button"
+                    className="ax-workspace-welcome-chip"
+                    onClick={() => setSelectedCommand('/once')}
+                  >
+                    일회 실행
+                  </button>
+                  <button
+                    type="button"
+                    className="ax-workspace-welcome-chip"
+                    onClick={() => setSelectedCommand('/workflow')}
+                  >
+                    반복 업무
+                  </button>
+                </div>
+                <ul className="ax-workspace-example-list">
+                  {WELCOME_EXAMPLES.map((example) => (
+                    <li key={example.label}>
+                      <button
+                        type="button"
+                        className="ax-workspace-example-btn"
+                        onClick={() => void onSend(example.text)}
+                      >
+                        <span className="ax-workspace-example-label">{example.label}</span>
+                        <span className="ax-workspace-example-text">{example.text}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           )}
@@ -304,7 +331,6 @@ export function AxWorkspaceChat({
             <ThreadPrimitive.Messages
               components={{ UserMessage, AssistantMessage }}
             />
-            {reviewReady && reviewActions && <WorkspaceReviewCard actions={reviewActions} />}
             {busy && (
               <div className="ax-workspace-message ax-workspace-message--assistant ax-workspace-typing" aria-live="polite">
                 <img
@@ -321,7 +347,11 @@ export function AxWorkspaceChat({
                 </div>
               </div>
             )}
-            {error && <div className="ax-workspace-error">{error}</div>}
+            {error && (
+              <div className="ax-workspace-error" role="alert">
+                {error}
+              </div>
+            )}
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>
 
@@ -329,7 +359,6 @@ export function AxWorkspaceChat({
           <ComposerPrimitive.Root className="ax-workspace-composer">
             <WorkspaceComposer
               busy={busy}
-              reviewReady={reviewReady}
               placeholder={composerPlaceholder}
               slashCommandsEnabled={slashCommandsEnabled}
               selectedCommand={selectedCommand}

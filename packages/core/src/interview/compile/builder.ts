@@ -1,7 +1,8 @@
 import { capabilityActionName, resolveCapability } from '../../catalog/capability-graph.js';
 import type { SideEffectLevel, WorkflowIR, Step } from '../../workflow/schema.js';
 import { renderWorkflowDocument } from '../presentation/workflow-document.js';
-import type { InterviewDraft, WorkflowNode } from '../draft/schema.js';
+import type { InterviewDraft, InterviewDraftInput, WorkflowNode } from '../draft/schema.js';
+import { InterviewDraftSchema } from '../draft/schema.js';
 import { getNodeBindings, getNodeParams, normalizeDraftActions, resolveNodeConnectorAction } from '../draft/actions.js';
 import { normalizeDraftIfConditions, resolveIfNodeCondition } from '../draft/conditions.js';
 import { applyContractCompilation } from '../../workflow/contract-adapters.js';
@@ -245,21 +246,23 @@ function toStepLenient(draft: InterviewDraft, node: WorkflowNode): Step | null {
   }
 }
 
-export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> {
-  const normalized = normalizeDraftIfConditions(normalizeDraftActions(draft));
-  const rawSteps = normalized.nodes
-    .map((node) => toStepLenient(normalized, node))
+export function buildLenientIRFromWorkflow(draft: InterviewDraftInput): Partial<WorkflowIR> {
+  const normalizedDraft = normalizeDraftIfConditions(
+    normalizeDraftActions(InterviewDraftSchema.parse(draft)),
+  );
+  const rawSteps = normalizedDraft.nodes
+    .map((node) => toStepLenient(normalizedDraft, node))
     .filter((step): step is Step => step !== null);
-  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalized));
+  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalizedDraft));
   const ir: Partial<WorkflowIR> = {
-    name: normalized.name,
-    goal: normalized.goal,
+    name: normalizedDraft.name,
+    goal: normalizedDraft.goal,
     version: 1,
-    trigger: buildTrigger(normalized),
+    trigger: buildTrigger(normalizedDraft),
     steps,
-    success: normalized.success,
-    assumptions: normalized.assumptions,
-    inputs: workflowInputs(normalized.triggerType, steps),
+    success: normalizedDraft.success,
+    assumptions: normalizedDraft.assumptions,
+    inputs: workflowInputs(normalizedDraft.triggerType, steps),
     permissions: {},
     approval: steps
       .filter((step): step is Extract<Step, { type: 'action' }> =>
@@ -268,8 +271,8 @@ export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<Workf
       .map((step) => `${step.connector}.${step.action}`),
     allowExternalAuto: false,
     dataPolicy: {
-      emailBody: { cloudAllowed: false },
-      document: { cloudAllowed: false },
+      emailBody: { cloudAllowed: true },
+      document: { cloudAllowed: true },
     },
     sideEffects: Object.fromEntries(
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
@@ -279,16 +282,17 @@ export function buildLenientIRFromWorkflow(draft: InterviewDraft): Partial<Workf
   // valid IR may enter contract compilation. Invalid partial data remains
   // visible as-is so the slot layer can ask for it instead of hiding a parser
   // or compiler defect behind a generic fallback.
-  const parsed = validateWorkflowIR(ir);
-  if (!parsed.ok) return ir;
+  const validation = validateWorkflowIR(ir);
+  if (!validation.ok) return ir;
 
-  const compiled = applyContractCompilation(parsed.value);
+  const compiled = applyContractCompilation(validation.value);
   compiled.document = renderWorkflowDocument(compiled);
   return compiled;
 }
 
-export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> {
-  const normalized = normalizeDraftIfConditions(normalizeDraftActions(draft));
+export function buildIRFromWorkflow(draft: InterviewDraftInput): Partial<WorkflowIR> {
+  const parsed = InterviewDraftSchema.parse(draft);
+  const normalized = normalizeDraftIfConditions(normalizeDraftActions(parsed));
   const graphIssues = validateInterviewDraftStructure(normalized);
   if (graphIssues.length > 0) {
     const error = new Error(graphIssues[0]!.message) as Error & {
@@ -343,8 +347,8 @@ export function buildIRFromWorkflow(draft: InterviewDraft): Partial<WorkflowIR> 
       .map((step) => `${step.connector}.${step.action}`),
     allowExternalAuto: false,
     dataPolicy: {
-      emailBody: { cloudAllowed: false },
-      document: { cloudAllowed: false },
+      emailBody: { cloudAllowed: true },
+      document: { cloudAllowed: true },
     },
     sideEffects: Object.fromEntries(
       steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),

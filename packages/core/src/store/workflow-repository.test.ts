@@ -13,7 +13,7 @@ describe('workflow persistence', () => {
     expect(store.setWorkflowActive('missing-workflow', true)).toBe(false);
   });
 
-  it('reports malformed connection JSON instead of treating it as no connection', async () => {
+  it('degrades malformed connection JSON instead of failing the whole settings load', async () => {
     const db = await createDatabaseAsync(':memory:');
     db.prepare('INSERT INTO connections (connector, connected, config_json) VALUES (?, ?, ?)').run(
       'local_folder',
@@ -22,7 +22,11 @@ describe('workflow persistence', () => {
     );
     const store = new WorkflowStore(db);
 
-    expect(() => store.getConnections()).toThrow('연결 local_folder의 JSON이 손상되었습니다');
+    const connections = store.getConnections();
+    expect(connections.find((entry) => entry.connector === 'local_folder')).toMatchObject({
+      connected: false,
+      configCorrupted: true,
+    });
   });
 
   it('allocates a new monotonic version for every save', async () => {

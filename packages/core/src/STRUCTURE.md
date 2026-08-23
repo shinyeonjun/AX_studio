@@ -22,7 +22,7 @@ modules/            Connector implementations (modules do not import each other)
   gmail/
   slack/
   local-folder/
-    resources.ts    Connector-owned folder/file snapshots; interview only formats them
+    resources.ts    Connector-owned folder/file snapshots
   document/         Document connector (read/ + write/ subdirs)
   rdb/
   transform/        Contract adapters (table/document → text)
@@ -47,20 +47,16 @@ triggers/           Trigger transport (poll/push) — domain events only
 workflow/           Workflow IR, approval policy, visual display, contract-validator, contract-adapters
   control-flow.ts   Graph/contract sequence helpers; runtime and contract linearization are separate
   port-binding.ts   Shared binding contract independent of binding inference
-  action-instance.ts Persisted action instance contract independent of interview state
+  action-instance.ts Persisted action instance contract independent of canvas state
 runtime/            Execution engine, scheduler, trigger engine
   param-resolution.ts Explicit template/ref resolution immediately before connector calls
-interview/          Workflow design interview
-  session/          Turn loop, state, messages
-  draft/            Canvas schema and draft normalization
+interview/          Legacy-named workflow canvas compatibility module
+  draft/            Canvas schema and action instances
   compile/          InterviewDraft → WorkflowIR
-  slots/            Node slots, patch, requiredness
-  agent/            Typed read tools, draft patches, provider wire schema
-  resources/        Connected resources for prompts
+  slots/            Node slot IDs and requiredness
   presentation/     Summaries and documents
   revision/         Execution explanation and revision-facing summaries
-  bootstrap/        Resume from saved workflow
-  test/             Module tests (mirrors layout above)
+  test/             Compiler and canvas tests
 design-tools/       Read-only agent design tools and tool execution boundary
 agent/              AI harness, role skills, connector domain skills, model providers
   skills/           role skills + gmail/slack/document/rdb/local-folder/transform domain skills
@@ -73,5 +69,5 @@ nodes/              Reserved for future generic workflow nodes; no runtime code
 
 1. **Modules do not know each other** — only shared `contracts/` types.
 2. **Triggers are start nodes** — output a contract; transport stays in `triggers/`.
-3. **Tools are the agent surface** — the Agent reads capabilities/resources through typed tools; the catalog remains the authoritative action contract.
+3. **Commands are the agent surface** — the Agent requests validated commands; the catalog remains the authoritative action contract.
 4. **Read vs write** — `document-engine/` (parse) + `document-write/` (generate); `modules/document/read|write/` are thin workflow adapters.

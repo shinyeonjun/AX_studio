@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "ax": "./dist/agent/commands/cli.js"
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -37,16 +40,6 @@
       "import": "./dist/workflow/visual-display.js",
       "default": "./dist/workflow/visual-display.js"
     },
-    "./work-scope": {
-      "types": "./dist/interview/session/work-scope.d.ts",
-      "import": "./dist/interview/session/work-scope.js",
-      "default": "./dist/interview/session/work-scope.js"
-    },
-    "./interview-messages": {
-      "types": "./dist/interview/session/messages.d.ts",
-      "import": "./dist/interview/session/messages.js",
-      "default": "./dist/interview/session/messages.js"
-    },
     "./workspace-commands": {
       "types": "./dist/workspace/commands.d.ts",
       "import": "./dist/workspace/commands.js",
@@ -65,6 +58,7 @@
     "@slack/web-api": "^7.8.0",
     "@types/sql.js": "^1.4.11",
     "ai": "^4.3.0",
+    "better-sqlite3": "^11.10.0",
     "docxtemplater": "^3.55.0",
     "google-auth-library": "^9.15.1",
     "googleapis": "^144.0.0",
@@ -75,6 +69,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.13.4",
     "@types/pg": "^8.11.11",
     "typescript": "^5.7.3",

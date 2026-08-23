@@ -7,9 +7,6 @@ import { sourcesFileRead } from './tools/sources-file-read.js';
 import { sourcesSearch } from './tools/sources-search.js';
 import { sourcesList } from './tools/sources-list.js';
 import { formatDesignToolsList } from './tools/tools-list.js';
-import { workflowInspect } from './tools/workflow-inspect.js';
-import { workflowsList } from './tools/workflows-list.js';
-import { workflowsRun } from './tools/workflows-run.js';
 import type { DesignToolHandler, DesignToolId } from './types.js';
 
 export interface DesignToolDefinition {
@@ -73,24 +70,6 @@ export const DESIGN_TOOL_REGISTRY: DesignToolDefinition[] = [
     description: '읽기 전용 capability 실행 (Slack 검색/읽기 등). citations 포함',
     args: '{ id: string, params?: Record<string, unknown> }',
     handler: capabilitiesInvoke,
-  },
-  {
-    id: 'workflow.inspect',
-    description: '현재 draft workflow와 코드가 계산한 누락값·검수 결과 조회 (read-only)',
-    args: '(none)',
-    handler: workflowInspect,
-  },
-  {
-    id: 'workflows.list',
-    description: '저장된 업무(workflow) 목록 — 평챗에서 다시 실행할 때 id 확인용',
-    args: '(none)',
-    handler: workflowsList,
-  },
-  {
-    id: 'workflows.run',
-    description: '저장된 업무를 한 번 실행 (workflowId는 workflows.list 결과만 사용)',
-    args: '{ workflowId: string }',
-    handler: workflowsRun,
   },
 ];
 

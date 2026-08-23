@@ -21,7 +21,7 @@ describe('mcp ingest', () => {
     expect(getCapability('mcp.demo.send_alert')?.sideEffect).toBe('EXTERNAL');
     expect(requiresApproval('EXTERNAL', false)).toBe(true);
 
-    const ctx = buildDesignToolContext([], ['mcp'], undefined, {
+    const ctx = buildDesignToolContext([], ['mcp'], {
       connectors: { mcp: connector },
     });
     const result = await invokeReadCapability(

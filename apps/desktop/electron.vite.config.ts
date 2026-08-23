@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 const sqlJsExternal = ['sql.js', 'sql.js/dist/sql-asm.js', 'sql.js/dist/sql-wasm.js'];
 const mainExternals = [
   ...sqlJsExternal,
+  'better-sqlite3',
   'undici',
   '@slack/socket-mode',
   '@slack/web-api',
@@ -27,6 +28,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('electron/main/index.ts'),
+          'scan-worker': resolve('../../packages/core/src/modules/local-folder/scan-worker.ts'),
         },
         external: mainExternals,
       },
@@ -51,8 +53,6 @@ export default defineConfig({
         '@ax-studio/core/interview-constants': resolve('../../packages/core/src/interview/compile/constants.ts'),
         '@ax-studio/core/panel-fields': resolve('../../packages/core/src/interview/presentation/panel-fields.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
-        '@ax-studio/core/work-scope': resolve('../../packages/core/src/interview/session/work-scope.ts'),
-        '@ax-studio/core/interview-messages': resolve('../../packages/core/src/interview/session/messages.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
         '@ax-studio/core/workspace-commands': resolve('../../packages/core/src/workspace/commands.ts'),
       },

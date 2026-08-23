@@ -98,4 +98,5 @@ export const InterviewDraftSchema = z.object({
 });
 
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
+export type InterviewDraftInput = z.input<typeof InterviewDraftSchema>;
 export type InterviewDraft = z.infer<typeof InterviewDraftSchema>;

@@ -104,7 +104,6 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
     db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
-    db.prepare('DELETE FROM chat_sessions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
     db.exec('COMMIT');
   } catch (error) {

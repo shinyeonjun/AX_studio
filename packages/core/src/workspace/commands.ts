@@ -1,3 +1,5 @@
+export type WorkspaceExecutionMode = 'once' | 'workflow';
+
 export type WorkspaceCommand =
   | { mode: 'chat'; text: string }
   | { mode: 'once'; instruction: string }

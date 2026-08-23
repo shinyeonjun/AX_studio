@@ -331,7 +331,7 @@ export const RDB_CATALOG: ConnectorCatalogEntry = {
   id: 'rdb',
   label: 'DB',
   description: 'SQLite/PostgreSQL 읽기',
-  connectable: false,
+  connectable: true,
   alwaysReal: false,
   runtimeAvailable: true,
   connectionKind: 'config',

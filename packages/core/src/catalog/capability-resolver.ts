@@ -18,7 +18,7 @@ function normalizeConnectorAction(connector: string, action: string): string {
   return ACTION_ALIASES[connector]?.[trimmed] ?? trimmed;
 }
 
-/** Resolve a packaged capability without depending on graph or interview models. */
+/** Resolve a packaged capability without depending on graph or canvas models. */
 export function resolveCapability(
   connector: string,
   action: string,

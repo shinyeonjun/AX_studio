@@ -4,9 +4,8 @@ import { triggerCapabilityId } from '../catalog/capability-contracts.js';
 import type {
   AgentContext,
   AgentRole,
-  InterviewAgentContext,
   InvestigateAgentContext,
-  WorkspaceAgentContext,
+  CommandAgentContext,
 } from './types.js';
 
 // Only connectors with a real runtime implementation may influence the agent
@@ -26,30 +25,14 @@ function addTriggerConnector(target: Set<string>, triggerType: unknown): void {
   addKnownConnector(target, capabilityId ? getCapability(capabilityId)?.connector : undefined);
 }
 
-function interviewConnectorSkills(context: InterviewAgentContext): string[] {
-  const selected = new Set<string>();
-  const draft = context.workflow;
-  const blank = draft.nodes.length === 0 && (!draft.triggerType || draft.triggerType === 'manual');
-
-  if (blank) {
-    context.connectedConnectors.forEach((connector) => addKnownConnector(selected, connector));
-  } else {
-    addTriggerConnector(selected, draft.triggerType);
-    draft.nodes.forEach((node) => addKnownConnector(selected, node.connector));
-  }
-
-  return CONNECTOR_IDS.filter((connector) => selected.has(connector));
-}
-
 export function connectorSkillsForRole(role: AgentRole, context: AgentContext): string[] {
-  if (role === 'workspace') {
+  if (role === 'command') {
     const selected = new Set<string>();
-    (context as WorkspaceAgentContext).connectedConnectors.forEach((connector) =>
+    (context as CommandAgentContext).connectedConnectors.forEach((connector) =>
       addKnownConnector(selected, connector),
     );
     return CONNECTOR_IDS.filter((connector) => selected.has(connector));
   }
-  if (role === 'interview') return interviewConnectorSkills(context as InterviewAgentContext);
   if (role === 'investigate') {
     const selected = new Set<string>();
     (context as InvestigateAgentContext).connectedConnectors.forEach((connector) =>

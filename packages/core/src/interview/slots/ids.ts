@@ -1,6 +1,7 @@
 const NODE_PARAM_SLOT = /^(.+)\.params\.(.+)$/;
 const NODE_MEMO_SLOT = /^(.+)\.memo$/;
 const NODE_TEXT_SLOT = /^(.+)\.(goal|reason)$/;
+const NODE_CONDITION_SLOT = /^(.+)\.condition$/;
 
 const NODE_ROLE_HINTS: Record<string, string> = {
   critical: '긴급(critical)',
@@ -45,6 +46,12 @@ export function parseNodeTextSlot(slot: string): { nodeId: string; field: NodeTe
   const match = NODE_TEXT_SLOT.exec(slot.trim());
   if (!match) return null;
   return { nodeId: match[1]!, field: match[2] as NodeTextSlotField };
+}
+
+export function parseNodeConditionSlot(slot: string): { nodeId: string } | null {
+  const match = NODE_CONDITION_SLOT.exec(slot.trim());
+  if (!match) return null;
+  return { nodeId: match[1]! };
 }
 
 /** Derive a user-facing branch hint from planner node ids like `critical_slack`. */

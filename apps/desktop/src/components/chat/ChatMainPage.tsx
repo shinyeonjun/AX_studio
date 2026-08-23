@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Node } from '@xyflow/react';
-import type { SettingsScreen } from '../../types/navigation';
-import type { useInterview } from '../../hooks/useInterview';
+import type { useWorkspaceChat } from '../../hooks/useWorkspaceChat';
 import { WorkflowPreviewPanel } from '../../workflow/WorkflowPreviewPanel';
 import { WorkConversationSplit } from '../work/WorkConversationSplit';
 import { useWorkflowPanelWidth } from '../../hooks/useWorkflowPanelWidth';
@@ -9,21 +8,13 @@ import type { WorkflowVisualNodeData } from '../../workflow/types';
 import { AxWorkspaceChat } from '../workspace/AxWorkspaceChat';
 import '../workspace/ax-workspace.css';
 
-type InterviewApi = ReturnType<typeof useInterview>;
+type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
 interface ChatMainPageProps {
-  interview: InterviewApi;
-  settingsScreen: SettingsScreen | null;
-  onCloseSettings: () => void;
-  settingsContent?: React.ReactNode;
+  workspaceChat: WorkspaceChatApi;
 }
 
-export function ChatMainPage({
-  interview,
-  settingsScreen,
-  onCloseSettings,
-  settingsContent,
-}: ChatMainPageProps) {
+export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
   const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
     useWorkflowPanelWidth();
@@ -38,77 +29,47 @@ export function ChatMainPage({
   }, []);
 
   useEffect(() => {
-    if (interview.interview?.done) {
+    if (workspaceChat.workspaceWorkflowState) {
       setSelectedNode(null);
     }
-  }, [interview.interview?.done]);
+  }, [workspaceChat.workspaceWorkflowState]);
 
-  if (settingsScreen && settingsContent) {
-    return (
-      <div className="chat-main-settings">
-        <header className="chat-main-settings-header">
-          <button type="button" className="btn btn-ghost" onClick={onCloseSettings}>
-            ← 대화로 돌아가기
-          </button>
-        </header>
-        <div className="chat-main-settings-body">{settingsContent}</div>
-      </div>
-    );
-  }
-
-  const title = interview.interview?.title ?? 'AX Workspace';
-  const isDraft = Boolean(interview.interview && !interview.interview.workflowId);
-  const finished = Boolean(interview.interview?.done);
-  const readyToCommit = finished && Boolean(interview.completeness?.deployable);
-  const showGraph = Boolean(interview.interview);
+  const workflowState = workspaceChat.workspaceWorkflowState;
+  const title = workflowState?.title ?? 'AX Workspace';
+  const showGraph = Boolean(workflowState);
 
   const chatBlock = (
     <div className="work-conversation-chat">
-      {interview.editHint && (
+      {workspaceChat.editHint && (
         <div className="chat-edit-hint">
-          <span>{interview.editHint}</span>
+          <span>{workspaceChat.editHint}</span>
           <button
             type="button"
             className="btn btn-sm btn-ghost"
-            onClick={() => interview.setEditHint(null)}
+            onClick={() => workspaceChat.setEditHint(null)}
           >
             취소
           </button>
         </div>
       )}
       <AxWorkspaceChat
-        messages={interview.displayMessages}
-        busy={interview.busy}
-        error={interview.error}
-        progress={interview.progress}
-        reviewReady={readyToCommit}
-        reviewActions={{
-          busy: interview.busy,
-          isLinkedWork: interview.isLinkedWork,
-          isImmediateOnce: interview.isImmediateOnce,
-          isDeferredOnce: interview.isDeferredOnce,
-          isRecurringDraft: interview.isRecurringDraft,
-          allowExternalAuto: interview.allowExternalAuto,
-          approvalGateCount: interview.approvalGateCount,
-          highRiskGateCount: interview.highRiskGateCount,
-          onAllowExternalAutoChange: interview.setAllowExternalAuto,
-          onRunOnce: interview.runOnce,
-          onSaveAsWork: interview.saveAsWork,
-        }}
-        slashCommandsEnabled={!interview.interview}
-        onSend={interview.sendMessage}
+        messages={workspaceChat.displayMessages}
+        busy={workspaceChat.busy}
+        error={workspaceChat.error}
+        progress={workspaceChat.progress}
+        slashCommandsEnabled
+        onSend={workspaceChat.sendMessage}
       />
     </div>
   );
 
   return (
-    <div className={`chat-main-page ${readyToCommit ? 'chat-main-page--review' : ''} ${showGraph ? '' : 'chat-main-page--solo'}`}>
-      {interview.interview && (
+    <div className={`chat-main-page ${showGraph ? '' : 'chat-main-page--solo'}`}>
+      {workflowState && (
         <header className="chat-main-header">
           <div className="chat-main-title-wrap">
             <h1 className="chat-main-title">{title}</h1>
-            {isDraft && !readyToCommit && <span className="draft-badge">설계 중</span>}
-            {readyToCommit && <span className="draft-badge draft-badge-done">검토</span>}
+            <span className="draft-badge draft-badge-done">workflow</span>
           </div>
         </header>
       )}
@@ -122,17 +83,17 @@ export function ChatMainPage({
           chat={chatBlock}
           panel={
             <WorkflowPreviewPanel
-              draft={interview.workflow}
-              baselineDraft={interview.workflowDiffBaseline}
-              completeness={interview.completeness}
-              done={readyToCommit}
+              draft={workflowState?.workflow}
+              baselineDraft={undefined}
+              completeness={workflowState?.completeness}
+              done
               title={title}
               selectedNode={selectedNode}
-              panelBusy={interview.busy}
+              panelBusy={workspaceChat.busy}
               onSelectNode={handleSelectNode}
-              onRequestEdit={interview.beginEditStep}
+              onRequestEdit={workspaceChat.beginEditStep}
               onCloseDetail={() => handleSelectNode(null)}
-              workScope={interview.workScope}
+              executionMode={workflowState?.executionMode}
             />
           }
         />

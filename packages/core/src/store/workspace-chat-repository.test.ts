@@ -32,12 +32,33 @@ describe('workspace chat persistence boundary', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const saved = store.saveWorkspaceChat({
+      workflowId: 'workflow-1',
       messages: [
         { role: 'user', content: '연결된 폴더를 확인해줘' },
         { role: 'assistant', content: '확인할게요.' },
       ],
     });
 
-    expect(store.getWorkspaceChat(saved.id)).toMatchObject({ id: saved.id, messages: saved.messages });
+    expect(store.getWorkspaceChat(saved.id)).toMatchObject({
+      id: saved.id,
+      workflowId: 'workflow-1',
+      messages: saved.messages,
+    });
+  });
+
+  it('persists execution mode and finds the latest chat mapped to a workflow', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const saved = store.saveWorkspaceChat({
+      workflowId: 'workflow-once',
+      executionMode: 'once',
+      messages: [{ role: 'user', content: '한 번 실행해줘' }],
+    });
+
+    expect(store.getWorkspaceChat(saved.id)).toMatchObject({ executionMode: 'once' });
+    expect(store.getWorkspaceChatByWorkflowId('workflow-once')).toMatchObject({
+      id: saved.id,
+      executionMode: 'once',
+    });
   });
 });

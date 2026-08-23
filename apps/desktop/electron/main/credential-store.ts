@@ -1,5 +1,5 @@
 import { safeStorage } from 'electron';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import type { CredentialRef, CredentialStore, OAuthCredential } from '@ax-studio/core';
 import { getCredentialPath, getCredentialsDir, getSecretPath } from './credential-paths.js';
 
@@ -22,10 +22,16 @@ export async function getOsSecret(name: string): Promise<string | null> {
   return safeStorage.decryptString(readFileSync(path));
 }
 
+function writeEncryptedAtomic(path: string, encrypted: Buffer): void {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, encrypted);
+  renameSync(tmp, path);
+}
+
 export async function setOsSecret(name: string, value: string): Promise<void> {
   assertEncryptionAvailable();
   ensureCredentialsDir();
-  writeFileSync(getSecretPath(name), safeStorage.encryptString(value));
+  writeEncryptedAtomic(getSecretPath(name), safeStorage.encryptString(value));
 }
 
 export async function deleteOsSecret(name: string): Promise<void> {
@@ -66,7 +72,7 @@ export class OsCredentialStore implements CredentialStore {
     ensureCredentialsDir();
     const payload: OAuthCredential = { refreshToken: credential.refreshToken };
     const encrypted = safeStorage.encryptString(JSON.stringify(payload));
-    writeFileSync(getCredentialPath(ref.connector, ref.connectionId), encrypted);
+    writeEncryptedAtomic(getCredentialPath(ref.connector, ref.connectionId), encrypted);
   }
 
   async delete(ref: CredentialRef): Promise<void> {

@@ -24,7 +24,7 @@ function toListedFile(file: ListedFile): ListedFile {
   return { filePath: file.filePath, fileName: file.fileName, extension: file.extension };
 }
 
-/** Connector-owned source snapshot; interview code only formats this data for prompts. */
+/** Connector-owned source snapshot; host command code exposes this data through source commands. */
 export function buildLocalFolderResources(
   folders: LocalFolderEntry[],
   options?: { maxFilesPerFolder?: number; extensions?: string[] },

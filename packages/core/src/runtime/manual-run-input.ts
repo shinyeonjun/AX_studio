@@ -1,5 +1,6 @@
 import { findLocalFolder, parseLocalFolderConnectionConfig } from '../modules/local-folder/connection.js';
-import { scanFolderChecked, type ScannedFile } from '../modules/local-folder/scan.js';
+import { scanFolderCheckedAsync } from '../modules/local-folder/scan-async.js';
+import type { ScannedFile } from '../modules/local-folder/scan.js';
 import { enrichTriggerPayloadWithFileRef } from '../contracts/mappers.js';
 import type { Connector } from '../modules/types.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
@@ -77,12 +78,12 @@ function inferExtensions(ir: WorkflowIR): string[] | undefined {
   return ['.pdf'];
 }
 
-function inputFromFolder(
+async function inputFromFolder(
   store: WorkflowStore,
   folderId: string | undefined,
   folderPath: string | undefined,
   extensions?: string[],
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const localFolderConn = store.getConnections().find((entry) => entry.connector === 'local_folder');
   const config = parseLocalFolderConnectionConfig(localFolderConn?.config);
   if (!config?.folders.length) return {};
@@ -90,7 +91,7 @@ function inputFromFolder(
   const folder = findLocalFolder(config, folderId, folderPath);
 
   if (folder) {
-    const scanned = scanFolderChecked(folder.path, extensions);
+    const scanned = await scanFolderCheckedAsync(folder.path, extensions);
     if (!scanned.ok) {
       throw Object.assign(new Error(`연결 폴더에 접근할 수 없습니다: ${folder.label}`), {
         code: scanned.errorCode,
@@ -106,7 +107,7 @@ function inputFromFolder(
   const matches: Array<{ folder: (typeof config.folders)[number]; file: ScannedFile }> = [];
   const inaccessible: Array<{ label: string; errorCode: string }> = [];
   for (const candidate of config.folders) {
-    const scanned = scanFolderChecked(candidate.path, extensions);
+    const scanned = await scanFolderCheckedAsync(candidate.path, extensions);
     if (!scanned.ok) {
       inaccessible.push({ label: candidate.label, errorCode: scanned.errorCode });
       continue;
@@ -133,10 +134,10 @@ function inputFromFolder(
 }
 
 /** Manual runs do not fire triggers — supply trigger-shaped input from connected resources. */
-export function buildManualRunInput(
+export async function buildManualRunInput(
   ir: WorkflowIR,
   store: WorkflowStore,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const extensions = inferExtensions(ir);
 
   if (ir.trigger?.type === 'local_folder.new_file') {

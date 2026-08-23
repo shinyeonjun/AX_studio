@@ -1,4 +1,5 @@
 export * from './workflow/schema.js';
+export * from './workflow/workflow-view.js';
 export * from './workflow/approval.js';
 export * from './workflow/fixtures.js';
 export * from './workflow/contract-validator.js';
@@ -36,7 +37,6 @@ export {
 } from './workflow/action-definition.js';
 export * from './design-tools/index.js';
 export * from './workflow/visual-display.js';
-export * from './store/repositories/chat-session-repository.js';
 export * from './workspace/index.js';
 export * from './platform/index.js';
 export { summarizeApprovalGates, type ApprovalGateSummary, type ApprovalGateEntry } from './workflow/approval-gates.js';

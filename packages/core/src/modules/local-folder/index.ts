@@ -9,3 +9,4 @@ export {
 } from './connection.js';
 export { LocalFolderConnector } from './connector.js';
 export { scanFolder, scanFolderChecked, type ScannedFile, type ScanFolderResult } from './scan.js';
+export { scanFolderAsync, scanFolderCheckedAsync } from './scan-async.js';

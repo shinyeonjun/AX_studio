@@ -40,7 +40,9 @@ export function setConnection(
     .run(connector, connected ? 1 : 0, configJson);
 }
 
-export function getConnections(db: AppDatabase): Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }> {
+export function getConnections(
+  db: AppDatabase,
+): Array<{ connector: string; connected: boolean; config?: Record<string, unknown>; configCorrupted?: boolean }> {
   const rows = db.prepare('SELECT connector, connected, config_json FROM connections').all() as unknown as ConnectionRow[];
   return rows.map((c) => {
     if (!c.config_json) {
@@ -58,10 +60,13 @@ export function getConnections(db: AppDatabase): Array<{ connector: string; conn
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw Object.assign(new Error(`연결 ${c.connector}의 JSON이 손상되었습니다: ${message}`), {
-        code: 'invalid_connection_json',
+      console.error(`[settings] connection JSON corrupted for ${c.connector}: ${message}`);
+      return {
         connector: c.connector,
-      });
+        connected: false,
+        config: undefined,
+        configCorrupted: true,
+      };
     }
   });
 }

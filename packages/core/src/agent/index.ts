@@ -23,9 +23,9 @@ export type {
   AgentRun,
   AgentRunLog,
   AgentProgressEvent,
-  InterviewAgentContext,
+  CommandAgentContext,
   InvestigateAgentContext,
-  WorkspaceAgentContext,
 } from './types.js';
 export * from './settings/index.js';
 export * from './model/index.js';
+export * from './commands/index.js';

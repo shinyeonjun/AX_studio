@@ -247,6 +247,9 @@ export function coerceConditionInput(input: unknown): unknown {
   if (typeof input !== 'object' || Array.isArray(input)) return input;
 
   const record = input as Record<string, unknown>;
+  if (record.when != null && typeof record.when === 'object') {
+    return coerceConditionInput(record.when);
+  }
   for (const key of ['expression', 'when', 'predicate'] as const) {
     if (typeof record[key] === 'string') {
       return coerceConditionInput(record[key]);
@@ -257,6 +260,21 @@ export function coerceConditionInput(input: unknown): unknown {
   }
   if (record.condition != null && record.condition !== input) {
     return coerceConditionInput(record.condition);
+  }
+
+  if (Array.isArray(record.equals) && record.equals.length >= 2) {
+    const left = coerceConditionSide(record.equals[0], false);
+    const right = coerceConditionSide(record.equals[1], true);
+    if (left && right) return { op: 'eq', left, right };
+  }
+
+  if (
+    (record.eq !== undefined || (typeof record.equals === 'string' || typeof record.equals === 'number' || typeof record.equals === 'boolean')) &&
+    (record.ref != null || record.field != null || record.variable != null)
+  ) {
+    const left = coerceConditionSide(record.ref ?? record.field ?? record.variable, false);
+    const right = coerceConditionSide(record.eq ?? record.equals, true);
+    if (left && right) return { op: 'eq', left, right };
   }
 
   const rawOp = readConditionOp(record);
@@ -315,7 +333,7 @@ export function tryNormalizeCondition(input: unknown): ConditionExpr | undefined
   }
 }
 
-/** Interview/draft preprocess: never throw; drop invalid filters instead of crashing IPC. */
+/** Workflow input preprocess: never throw; drop invalid filters instead of crashing IPC. */
 export function preprocessConditionValue(value: unknown): ConditionExpr | undefined {
   if (value == null) return undefined;
   return tryNormalizeCondition(value);

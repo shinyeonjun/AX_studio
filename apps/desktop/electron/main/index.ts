@@ -1,4 +1,6 @@
-import { app } from 'electron';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
   setWebhookSecretResolver,
@@ -13,11 +15,16 @@ import { hydrateGmailConnector } from './gmail/connection.js';
 import { hydrateSlackConnector } from './slack/connection.js';
 import { hydrateHttpConnector } from './http/connection.js';
 import { getWebhookSecret, hydrateWebhookConnection } from './webhook/connection.js';
+import { hydrateRdbConnector } from './rdb/connection.js';
+import { hydrateOpenApiConnector } from './openapi/connection.js';
+import { hydrateMcpConnector } from './mcp/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
 import { notifyStateChanged } from './state-broadcast.js';
-import { initDesktopAxDataPaths } from './data-paths.js';
+import { initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
 import { migrateAxDataIfNeeded } from './data-migrate.js';
+
+process.env.AX_SCAN_WORKER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'scan-worker.js');
 
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -84,6 +91,9 @@ app.whenReady().then(async () => {
     await hydrateSlackConnector(core.store, core.runtime);
     await hydrateHttpConnector(core.store, core.runtime);
     await hydrateWebhookConnection(core.store);
+    await hydrateRdbConnector(core.store, core.runtime);
+    await hydrateOpenApiConnector(core.store, core.runtime);
+    await hydrateMcpConnector(core.store, core.runtime);
     setWebhookSecretResolver(() => getWebhookSecret());
 
     setCore(core);
@@ -93,7 +103,20 @@ app.whenReady().then(async () => {
     core.scheduler.start();
     core.triggerEngine.start();
   } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     console.error('AX Studio 시작 실패:', err);
+    let logHint = '';
+    try {
+      logHint = `\n\n로그 위치: ${initDesktopAxDataPaths().logs}`;
+    } catch {
+      try {
+        logHint = `\n\n데이터 위치: ${resolveDesktopDataRoot()}`;
+      } catch {
+        // ignore
+      }
+    }
+    dialog.showErrorBox('AX Studio 시작 실패', `${detail}${logHint}`);
+    app.exit(1);
   }
 });
 

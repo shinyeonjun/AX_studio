@@ -2,47 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { connectorSkillsForRole } from './skill-routing.js';
 
 describe('connector skill routing', () => {
-  it('loads all connected domains for a blank interview', () => {
-    const skills = connectorSkillsForRole('interview', {
-      workflow: {
-        name: '',
-        goal: '',
-        triggerType: 'manual',
-        assumptions: [],
-        nodes: [],
-      },
-      completeness: { slots: [], deployable: false, missingRequired: [], missingConnections: [] },
+  it('loads connected domains for the command protocol', () => {
+    const skills = connectorSkillsForRole('command', {
       connectedConnectors: ['gmail', 'slack', 'unknown'],
       connectedResources: '',
-      sessionHints: '',
       nowIso: '2026-08-21T00:00:00.000Z',
     });
 
     expect(skills).toEqual(['gmail', 'slack']);
   });
 
-  it('narrows interview skills to the workflow domains', () => {
-    const skills = connectorSkillsForRole('interview', {
-      workflow: {
-        name: 'PDF 알림',
-        goal: 'PDF를 읽어 Slack으로 알림',
-        triggerType: 'local_folder.new_file',
-        localFolderId: 'folder-1',
-        assumptions: [],
-        nodes: [
-          { type: 'action', id: 'ingest', connector: 'document', action: 'ingest', params: {} },
-          { type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: {} },
-        ],
-      },
-      completeness: { slots: [], deployable: false, missingRequired: [], missingConnections: [] },
-      connectedConnectors: ['gmail', 'slack', 'document', 'local_folder'],
-      connectedResources: '',
-      sessionHints: '',
-      nowIso: '2026-08-21T00:00:00.000Z',
+  it('loads only connected domains for investigation', () => {
+    const skills = connectorSkillsForRole('investigate', {
+      skillGoal: '문서 요약',
+      taskGoal: '문서 evidence를 요약',
+      evidence: [],
+      connectedConnectors: ['slack', 'document'],
     });
 
-    expect(skills).toEqual(['slack', 'local_folder', 'document']);
+    expect(skills).toEqual(['slack', 'document']);
     expect(skills).not.toContain('gmail');
   });
-
 });

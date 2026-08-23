@@ -76,6 +76,7 @@ export class TriggerEngine {
   private acceptingEvents = false;
   private pushTransports = new Map<string, ActivePushTransport>();
   private recentEvents = new Set<string>();
+  private inFlightEvents = new Set<string>();
   private pushRefreshGeneration = 0;
   private pushRefreshQueue: Promise<void> = Promise.resolve();
 
@@ -125,16 +126,20 @@ export class TriggerEngine {
       if (disconnect === null || generation !== this.pushRefreshGeneration) return;
 
       for (const driver of PUSH_TRIGGER_DRIVERS) {
-        const transport = await driver.refresh(this.store, (event) => {
-          void this.handlePushEvent(driver, event);
-        });
-        if (!transport) continue;
+        try {
+          const transport = await driver.refresh(this.store, (event) => {
+            void this.handlePushEvent(driver, event);
+          });
+          if (!transport) continue;
 
-        if (generation !== this.pushRefreshGeneration) {
-          await transport.stop();
-          return;
+          if (generation !== this.pushRefreshGeneration) {
+            await transport.stop();
+            return;
+          }
+          this.pushTransports.set(driver.triggerType, transport);
+        } catch (error) {
+          console.error(`[trigger-engine] push transport refresh failed for ${driver.triggerType}:`, error);
         }
-        this.pushTransports.set(driver.triggerType, transport);
       }
     };
 
@@ -179,18 +184,36 @@ export class TriggerEngine {
       if (!matchesTriggerFilter(trigger, event)) continue;
 
       const dedupeKey = driver.dedupeKey(skill.id, event);
-      if (this.recentEvents.has(dedupeKey)) continue;
+      if (this.store.isTriggerReceiptCompleted(dedupeKey)) continue;
+      if (this.inFlightEvents.has(dedupeKey)) continue;
+      if (
+        !this.store.claimTriggerReceipt({
+          dedupeKey,
+          workflowId: skill.id,
+          triggerType: driver.triggerType,
+        })
+      ) {
+        continue;
+      }
 
+      this.inFlightEvents.add(dedupeKey);
       try {
         const result = await this.runtime.executeWorkflow(ir, {
           triggerType: trigger.type,
           input: triggerInputFromEvent(event),
         });
-        if (!triggerRunWasAccepted(result)) continue;
+        if (!triggerRunWasAccepted(result)) {
+          this.store.failTriggerReceipt(dedupeKey);
+          continue;
+        }
+        this.store.completeTriggerReceipt(dedupeKey, (result as ExecutionResult).executionId);
         this.rememberEvent(dedupeKey);
         this.onTriggeredRun?.(skill.id, result);
       } catch (err) {
+        this.store.failTriggerReceipt(dedupeKey);
         console.error(`[trigger-engine] push failed for skill ${skill.id}:`, err);
+      } finally {
+        this.inFlightEvents.delete(dedupeKey);
       }
     }
   }
@@ -260,10 +283,7 @@ export class TriggerEngine {
           for (const event of pollResult.events) {
             if (generation !== this.lifecycleGeneration) return;
             const dedupeKey = eventDedupeKey(skill.id, event);
-            if (dedupeKey && this.recentEvents.has(dedupeKey)) {
-              // The in-memory key means this event was already accepted in this process.
-              // Persist its cursor progress as well, so a later event failure cannot make
-              // the already-accepted event appear unprocessed on the next poll.
+            if (dedupeKey && this.store.isTriggerReceiptCompleted(dedupeKey)) {
               processedCursor = cursorAfterEvent(processedCursor, event);
               cursors[skill.id] = processedCursor;
               this.saveCursors(cursors);
@@ -279,13 +299,39 @@ export class TriggerEngine {
               cursorsChanged = false;
               continue;
             }
-            const result = await this.runtime.executeWorkflow(ir, {
-              triggerType: trigger.type,
-              input: triggerInputFromEvent(event),
-            });
+
+            if (
+              dedupeKey &&
+              !this.store.claimTriggerReceipt({
+                dedupeKey,
+                workflowId: skill.id,
+                triggerType: trigger.type,
+              })
+            ) {
+              processedCursor = cursorAfterEvent(processedCursor, event);
+              cursors[skill.id] = processedCursor;
+              this.saveCursors(cursors);
+              cursorsChanged = false;
+              continue;
+            }
+
+            let result: unknown;
+            try {
+              result = await this.runtime.executeWorkflow(ir, {
+                triggerType: trigger.type,
+                input: triggerInputFromEvent(event),
+              });
+            } catch (err) {
+              if (dedupeKey) this.store.failTriggerReceipt(dedupeKey);
+              throw err;
+            }
             if (generation !== this.lifecycleGeneration) return;
             if (!triggerRunWasAccepted(result)) {
+              if (dedupeKey) this.store.failTriggerReceipt(dedupeKey);
               throw new Error(`trigger execution was not accepted: ${(result as Partial<ExecutionResult>).status ?? 'unknown'}`);
+            }
+            if (dedupeKey) {
+              this.store.completeTriggerReceipt(dedupeKey, (result as ExecutionResult).executionId);
             }
             processedCursor = cursorAfterEvent(processedCursor, event);
             if (dedupeKey) this.rememberEvent(dedupeKey);

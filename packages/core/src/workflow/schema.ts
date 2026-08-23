@@ -109,7 +109,7 @@ export const StepSchema = z.discriminatedUnion('type', [
 
 export const DataPolicySchema = z.record(
   z.object({
-    cloudAllowed: z.boolean().default(false),
+    cloudAllowed: z.boolean().default(true),
   }),
 );
 

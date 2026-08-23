@@ -36,7 +36,7 @@ describe('openapi ingest', () => {
       new Response(JSON.stringify([{ id: 1, name: 'cat' }]), { status: 200 });
 
     try {
-      const ctx = buildDesignToolContext([], ['openapi'], undefined, {
+      const ctx = buildDesignToolContext([], ['openapi'], {
         connectors: { openapi: connector },
       });
       const result = await invokeReadCapability(ctx, 'openapi.petstore.listPets', {}, 'plain_chat');
@@ -49,7 +49,7 @@ describe('openapi ingest', () => {
 
   it('blocks write capabilities in plain chat', async () => {
     ingestOpenApiSpec('petstore', PETSTORE);
-    const ctx = buildDesignToolContext([], ['mcp'], undefined, { connectors: {} });
+    const ctx = buildDesignToolContext([], ['mcp'], { connectors: {} });
     await expect(
       invokeReadCapability(ctx, 'openapi.petstore.createPet', {}, 'plain_chat'),
     ).rejects.toThrow('capability_not_readable');

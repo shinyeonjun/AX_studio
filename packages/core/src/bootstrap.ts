@@ -3,8 +3,10 @@ import { WorkflowStore } from './store/workflow-store.js';
 import { WorkflowRuntime } from './runtime/engine.js';
 import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
+import { runSavedWorkflowById } from './runtime/manual-workflow-run.js';
 import { buildConnectorsFromStore } from './modules/registry.js';
 import { createAgentHarness, type AgentHarness } from './agent/harness.js';
+import { AxCommandService } from './agent/commands/service.js';
 import {
   DEFAULT_AI_PROVIDER,
   normalizeAiProviderConfig,
@@ -43,6 +45,8 @@ export interface AxStudioCore {
   triggerEngine: TriggerEngine;
   /** In-app AI는 Harness를 통해서만 호출합니다. ModelProvider는 Harness 내부에만 있습니다. */
   agentHarness: AgentHarness;
+  /** Single AI-facing workflow/resource command boundary for every host. */
+  commandService: AxCommandService;
   refreshAgentHarness(config: AiProviderConfig): AgentHarness;
 }
 
@@ -82,6 +86,9 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   });
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime);
+  const commandService = new AxCommandService(store, {
+    runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
+  });
 
   const core: AxStudioCore = {
     db,
@@ -90,6 +97,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     scheduler,
     triggerEngine,
     agentHarness,
+    commandService,
     refreshAgentHarness(config: AiProviderConfig) {
       core.agentHarness.configure(normalizeAiProviderConfig(config));
       runtime.setAgentHarness(core.agentHarness);

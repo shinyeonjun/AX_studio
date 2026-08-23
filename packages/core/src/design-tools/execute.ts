@@ -8,7 +8,7 @@ function isDesignToolId(value: string): value is DesignToolId {
 }
 
 function resolveInteractionMode(ctx: DesignToolContext): InteractionMode {
-  return ctx.interactionMode ?? (ctx.workflow ? 'authoring' : 'plain_chat');
+  return ctx.interactionMode ?? 'plain_chat';
 }
 
 export async function executeDesignTool(

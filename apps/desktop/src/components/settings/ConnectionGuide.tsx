@@ -1,26 +1,36 @@
 import { getGuideImageSrc } from '../../lib/guide-images';
 
 interface ConnectionGuideProps {
-  steps: string;
-  guideKey: string;
-  placeholderName: string;
+  title?: string;
+  steps: string | string[];
+  guideKey?: string;
+  /** @deprecated Guide images render only when packaged assets exist. */
+  placeholderName?: string;
 }
 
-export function ConnectionGuide({ steps, guideKey, placeholderName }: ConnectionGuideProps) {
-  const guideSrc = getGuideImageSrc(guideKey);
+function renderSteps(steps: string | string[]) {
+  if (typeof steps === 'string') {
+    return <p className="muted">{steps}</p>;
+  }
+  return (
+    <ol className="connection-guide-steps">
+      {steps.map((step) => (
+        <li key={step}>{step}</li>
+      ))}
+    </ol>
+  );
+}
+
+export function ConnectionGuide({ title, steps, guideKey }: ConnectionGuideProps) {
+  const guideSrc = guideKey ? getGuideImageSrc(guideKey) : undefined;
   return (
     <div className="connection-guide">
-      <h4>연결 방법</h4>
+      <h4>{title ?? '연결 방법'}</h4>
       <div className="guide-placeholder">
-        <p className="muted">{steps}</p>
+        {renderSteps(steps)}
         {guideSrc ? (
           <img src={guideSrc} alt={`${guideKey} 연결 가이드`} className="guide-image" />
-        ) : (
-          <div className="guide-image-slot">
-            <span>{placeholderName}</span>
-            <small>src/images/에 넣으면 여기에 표시됩니다</small>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

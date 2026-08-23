@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { InvestigationOutputSchema } from '../../runtime/investigation-schema.js';
-import { AgenticInterviewWireEnvelopeSchema } from '../../interview/agent/agent-schema.js';
 import { parseCodexModelsOutput } from '../settings/catalog.js';
 import { codexExecArgs } from './cli/adapters/codex-cli.js';
 import { cliFailureMessage } from './cli/output.js';
@@ -92,19 +91,6 @@ describe('cli json', () => {
     if (params) {
       expect(params.type).toBe('string');
     }
-  });
-
-  it('converts interview wire envelope for codex output-schema', () => {
-    const json = zodToCodexJsonSchema(AgenticInterviewWireEnvelopeSchema);
-    expect(json.type).toBe('object');
-    expect(json.oneOf).toBeUndefined();
-    expect(json.required).toEqual(Object.keys(json.properties as object));
-    const properties = json.properties as Record<string, Record<string, unknown>>;
-    expect(properties.kind.type).toBe('string');
-    expect(properties.payload.type).toBe('string');
-    expect(properties.toolCalls.type).toBe('string');
-    expect(properties.message.type).toBe('string');
-    expect(JSON.stringify(json)).not.toContain('"oneOf"');
   });
 
   it('converts a generic discriminated union for CLI json-schema', () => {

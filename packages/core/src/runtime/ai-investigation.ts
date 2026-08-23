@@ -319,8 +319,8 @@ function cloudDataAllowedForDecision(
   requirements: { document: boolean; emailBody: boolean },
 ): boolean {
   const requiredPolicies = [
-    requirements.document ? ir.dataPolicy?.document?.cloudAllowed === true : true,
-    requirements.emailBody ? ir.dataPolicy?.emailBody?.cloudAllowed === true : true,
+    requirements.document ? ir.dataPolicy?.document?.cloudAllowed !== false : true,
+    requirements.emailBody ? ir.dataPolicy?.emailBody?.cloudAllowed !== false : true,
   ];
   return requiredPolicies.every(Boolean);
 }

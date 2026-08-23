@@ -1,0 +1,167 @@
+import { z } from 'zod';
+import {
+  AiDecisionStepSchema,
+  HumanApprovalStepSchema,
+  IfStepSchema,
+  TriggerSchema,
+} from '../../workflow/schema.js';
+import { PortBindingSchema } from '../../workflow/port-binding.js';
+
+/**
+ * AX commands are the model-facing boundary. They are intentionally narrower
+ * than the storage and runtime APIs: an agent can request a domain operation,
+ * but it cannot choose a database query, shell command, or connector method.
+ */
+export const AX_COMMAND_NAMES = [
+  'command.list',
+  'resource.list',
+  'source.list',
+  'source.files.list',
+  'source.file.read',
+  'source.search',
+  'capability.list',
+  'capability.invoke',
+  'capability.describe',
+  'workflow.list',
+  'workflow.inspect',
+  'workflow.validate',
+  'workflow.create',
+  'workflow.update',
+  'workflow.delete',
+  'workflow.run',
+] as const;
+
+export type AxCommandName = (typeof AX_COMMAND_NAMES)[number];
+
+export const AxCommandSchema = z.object({
+  name: z.enum(AX_COMMAND_NAMES),
+  args: z.record(z.unknown()).default({}),
+});
+
+export const AxSourceListArgsSchema = z.object({
+  connector: z.string().trim().min(1).optional(),
+});
+
+export const AxSourceFilesListArgsSchema = z.object({
+  folderId: z.string().trim().min(1),
+  extensions: z.union([z.array(z.string().trim().min(1)), z.string().trim().min(1)]).optional(),
+});
+
+export const AxSourceFileReadArgsSchema = z.object({
+  folderId: z.string().trim().min(1),
+  path: z.string().trim().min(1),
+  maxChars: z.number().int().min(1_000).max(20_000).optional(),
+});
+
+export const AxSourceSearchArgsSchema = z.object({
+  query: z.string().trim().min(1),
+  folderId: z.string().trim().min(1).optional(),
+  limit: z.number().int().positive().optional(),
+});
+
+export const AxCapabilityInvokeArgsSchema = z.object({
+  id: z.string().trim().min(1),
+  params: z.record(z.unknown()).default({}),
+});
+
+export type AxCommand = z.infer<typeof AxCommandSchema>;
+
+export const AxCommandIssueSchema = z.object({
+  code: z.string(),
+  path: z.string().optional(),
+  message: z.string(),
+  expected: z.array(z.string()).optional(),
+  available: z.array(z.string()).optional(),
+});
+
+export type AxCommandIssue = z.infer<typeof AxCommandIssueSchema>;
+
+export const AxCommandStatusSchema = z.enum([
+  'ok',
+  'needs_input',
+  'not_found',
+  'conflict',
+  'invalid',
+  'forbidden',
+  'error',
+]);
+
+export type AxCommandStatus = z.infer<typeof AxCommandStatusSchema>;
+
+export const AxCommandResultSchema = z.object({
+  command: z.string(),
+  status: AxCommandStatusSchema,
+  data: z.unknown().optional(),
+  issues: z.array(AxCommandIssueSchema).default([]),
+});
+
+export type AxCommandResult = z.infer<typeof AxCommandResultSchema>;
+
+export interface AxCommandDefinition {
+  name: AxCommandName;
+  description: string;
+  args: Record<string, string>;
+  mutates: boolean;
+}
+
+/** The agent may describe an action, but the catalog supplies its risk level. */
+export const AxWorkflowActionStepInputSchema = z.object({
+  type: z.literal('action'),
+  id: z.string().min(1),
+  connector: z.string().min(1),
+  action: z.string().min(1),
+  actionRef: z.string().optional(),
+  params: z.record(z.unknown()).default({}),
+  bindings: z.record(PortBindingSchema).optional(),
+});
+
+export const AxWorkflowStepInputSchema = z.union([
+  AxWorkflowActionStepInputSchema,
+  AiDecisionStepSchema,
+  IfStepSchema,
+  HumanApprovalStepSchema,
+]);
+
+export const AxWorkflowCreateArgsSchema = z.object({
+  name: z.string().trim().min(1),
+  goal: z.string().trim().min(1),
+  trigger: TriggerSchema.optional(),
+  success: z.string().optional(),
+  assumptions: z.array(z.string()).max(200).default([]),
+  steps: z.array(AxWorkflowStepInputSchema).max(200).default([]),
+});
+
+export const AxWorkflowUpdateOperationSchema = z.discriminatedUnion('op', [
+  z.object({
+    op: z.literal('set'),
+    path: z.enum(['name', 'goal', 'trigger', 'success', 'assumptions']),
+    value: z.unknown(),
+  }),
+  z.object({
+    op: z.literal('upsert_step'),
+    step: AxWorkflowStepInputSchema,
+  }),
+  z.object({
+    op: z.literal('remove_step'),
+    stepId: z.string().min(1),
+  }),
+]);
+
+export const AxWorkflowUpdateArgsSchema = z.object({
+  workflowId: z.string().min(1),
+  baseVersion: z.number().int().min(1),
+  operations: z.array(AxWorkflowUpdateOperationSchema).min(1).max(50),
+});
+
+export const AxWorkflowDeleteArgsSchema = z.object({
+  workflowId: z.string().min(1),
+  baseVersion: z.number().int().min(1),
+});
+
+export const AxWorkflowRunArgsSchema = z.object({
+  workflowId: z.string().trim().min(1),
+});
+
+export function parseAxCommand(value: unknown): AxCommand {
+  return AxCommandSchema.parse(value);
+}

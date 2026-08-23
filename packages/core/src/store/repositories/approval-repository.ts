@@ -71,29 +71,26 @@ export function resolveApproval(db: AppDatabase, id: string, approved: boolean) 
 
 /** Rejects only a still-pending UI approval; a claimed approval belongs to its runner. */
 export function rejectPendingApproval(db: AppDatabase, id: string): boolean {
-  db
+  const result = db
     .prepare("UPDATE approvals SET status = 'rejected', resolved_at = ? WHERE id = ? AND status = 'pending'")
     .run(new Date().toISOString(), id);
-  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
-  return Number(row?.count ?? 0) === 1;
+  return result.changes === 1;
 }
 
 /** Closes a claimed approval when its execution can no longer be resumed. */
 export function failApproval(db: AppDatabase, id: string): boolean {
-  db
+  const result = db
     .prepare("UPDATE approvals SET status = 'failed', resolved_at = ? WHERE id = ? AND status = 'processing'")
     .run(new Date().toISOString(), id);
-  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
-  return Number(row?.count ?? 0) === 1;
+  return result.changes === 1;
 }
 
 /** Atomically reserves a pending approval so two UI clicks cannot resume it twice. */
 export function claimApproval(db: AppDatabase, id: string): boolean {
-  db
+  const result = db
     .prepare("UPDATE approvals SET status = 'processing' WHERE id = ? AND status = 'pending'")
     .run(id);
-  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
-  return Number(row?.count ?? 0) === 1;
+  return result.changes === 1;
 }
 
 export function getApproval(db: AppDatabase, id: string) {

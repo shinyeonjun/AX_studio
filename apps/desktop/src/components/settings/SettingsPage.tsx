@@ -11,6 +11,9 @@ import { GmailConnectionForm } from './connectors/GmailConnectionForm';
 import { LocalFolderConnectionForm } from './connectors/LocalFolderConnectionForm';
 import { HttpConnectionForm } from './connectors/HttpConnectionForm';
 import { WebhookConnectionForm } from './connectors/WebhookConnectionForm';
+import { RdbConnectionForm } from './connectors/RdbConnectionForm';
+import { OpenApiConnectionForm } from './connectors/OpenApiConnectionForm';
+import { McpConnectionForm } from './connectors/McpConnectionForm';
 
 interface SettingsPageProps {
   screen: SettingsScreen;
@@ -40,6 +43,25 @@ interface SettingsPageProps {
     tunnelUrl?: string;
   }) => Promise<void>;
   onDisconnectWebhook: () => Promise<void>;
+  onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  onConnectRdb: (payload: {
+    type: 'postgres' | 'sqlite';
+    connectionString?: string;
+    filePath?: string;
+    allowedTables?: string[];
+    rowLimit?: number;
+    label?: string;
+  }) => Promise<void>;
+  onDisconnectRdb: () => Promise<void>;
+  onConnectOpenApi: (payload: {
+    specId: string;
+    label?: string;
+    specUrl?: string;
+    specJson?: string;
+  }) => Promise<void>;
+  onDisconnectOpenApi: () => Promise<void>;
+  onConnectMcp: (payload: { serverId: string; label?: string; toolsJson: string }) => Promise<void>;
+  onDisconnectMcp: () => Promise<void>;
 }
 
 function settingsSubtitle(screen: SettingsScreen): string {
@@ -67,6 +89,13 @@ export function SettingsPage({
   onDisconnectHttp,
   onConnectWebhook,
   onDisconnectWebhook,
+  onPickSqliteFile,
+  onConnectRdb,
+  onDisconnectRdb,
+  onConnectOpenApi,
+  onDisconnectOpenApi,
+  onConnectMcp,
+  onDisconnectMcp,
 }: SettingsPageProps) {
   const detection = useAiDetection();
   const { detecting, setDetecting, refreshDetection } = detection;
@@ -159,6 +188,20 @@ export function SettingsPage({
             onConnect={onConnectWebhook}
             onDisconnect={onDisconnectWebhook}
           />
+        )}
+        {screen === 'rdb' && (
+          <RdbConnectionForm
+            state={state}
+            onPickSqliteFile={onPickSqliteFile}
+            onConnect={onConnectRdb}
+            onDisconnect={onDisconnectRdb}
+          />
+        )}
+        {screen === 'openapi' && (
+          <OpenApiConnectionForm state={state} onConnect={onConnectOpenApi} onDisconnect={onDisconnectOpenApi} />
+        )}
+        {screen === 'mcp' && (
+          <McpConnectionForm state={state} onConnect={onConnectMcp} onDisconnect={onDisconnectMcp} />
         )}
       </div>
     </>

@@ -1,13 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { WorkspaceExecutionMode } from '@ax-studio/core';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
-  startInterview: (instruction: string, workScope?: 'once' | 'recurring') =>
-    ipcRenderer.invoke('ax:startInterview', instruction, workScope),
-  applyAnswer: (state: unknown, answer: string) => ipcRenderer.invoke('ax:applyAnswer', state, answer),
-  saveWorkflow: (ir: unknown) => ipcRenderer.invoke('ax:saveWorkflow', ir),
-  runWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:runWorkflow', workflowId),
-  runEphemeral: (ir: unknown) => ipcRenderer.invoke('ax:runEphemeral', ir),
+  executeCommand: (command: unknown) => ipcRenderer.invoke('ax:command', command),
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
   deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
@@ -36,6 +32,26 @@ contextBridge.exposeInMainWorld('ax', {
   connectWebhook: (payload: { port: number; secret: string; label?: string; tunnelUrl?: string }) =>
     ipcRenderer.invoke('ax:connectWebhook', payload),
   disconnectWebhook: () => ipcRenderer.invoke('ax:disconnectWebhook'),
+  pickSqliteFile: () => ipcRenderer.invoke('ax:pickSqliteFile'),
+  connectRdb: (payload: {
+    type: 'postgres' | 'sqlite';
+    connectionString?: string;
+    filePath?: string;
+    allowedTables?: string[];
+    rowLimit?: number;
+    label?: string;
+  }) => ipcRenderer.invoke('ax:connectRdb', payload),
+  disconnectRdb: () => ipcRenderer.invoke('ax:disconnectRdb'),
+  connectOpenApi: (payload: {
+    specId: string;
+    label?: string;
+    specUrl?: string;
+    specJson?: string;
+  }) => ipcRenderer.invoke('ax:connectOpenApi', payload),
+  disconnectOpenApi: () => ipcRenderer.invoke('ax:disconnectOpenApi'),
+  connectMcp: (payload: { serverId: string; label?: string; toolsJson: string }) =>
+    ipcRenderer.invoke('ax:connectMcp', payload),
+  disconnectMcp: () => ipcRenderer.invoke('ax:disconnectMcp'),
   setAiProvider: (config: unknown) => ipcRenderer.invoke('ax:setAiProvider', config),
   detectAiCli: () => ipcRenderer.invoke('ax:detectAiCli'),
   getAiConfig: () => ipcRenderer.invoke('ax:getAiConfig'),
@@ -45,23 +61,27 @@ contextBridge.exposeInMainWorld('ax', {
   setEnvSecret: (key: string, value: string) => ipcRenderer.invoke('ax:setEnvSecret', key, value),
   getEnvSecretStatus: (key: string) => ipcRenderer.invoke('ax:getEnvSecretStatus', key),
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
-  summarize: (ir: unknown) => ipcRenderer.invoke('ax:summarize', ir),
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
-  loadInterviewChat: (sessionId: string) => ipcRenderer.invoke('ax:loadInterviewChat', sessionId),
-  saveChatSession: (state: unknown, summary?: string, workflowId?: string) =>
-    ipcRenderer.invoke('ax:saveChatSession', state, summary, workflowId),
-  sendChat: (
+  sendCommandChat: (
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    sessionId?: string,
-  ) => ipcRenderer.invoke('ax:sendChat', messages, sessionId),
+    requestId?: string,
+    workflowId?: string,
+    executionMode?: WorkspaceExecutionMode,
+  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId, executionMode),
+  cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
-  saveWorkspaceChat: (id: string | undefined, messages: Array<{ role: 'user' | 'assistant'; content: string }>) =>
-    ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages),
+  saveWorkspaceChat: (
+    id: string | undefined,
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    workflowId?: string,
+    executionMode?: WorkspaceExecutionMode,
+  ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId, executionMode),
   loadWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:loadWorkspaceChat', id),
+  loadWorkspaceChatByWorkflowId: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkspaceChatByWorkflowId', workflowId),
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),
-  deleteInterviewChatSession: (id: string) => ipcRenderer.invoke('ax:deleteInterviewChatSession', id),
-  onChatProgress: (listener: (event: { message: string }) => void) => {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string }) => listener(payload);
+  onChatProgress: (listener: (event: { message: string; requestId?: string }) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string; requestId?: string }) =>
+      listener(payload);
     ipcRenderer.on('ax:chat-progress', wrapped);
     return () => ipcRenderer.removeListener('ax:chat-progress', wrapped);
   },

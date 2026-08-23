@@ -19,9 +19,9 @@ AX Studio Harness는 Aside류 **실행 Agent**가 아니라 **워크플로우 �
 
 | Role | Purpose |
 |------|---------|
-| `interview` | 대화로 workflow draft → Workflow IR |
+| `command` | command protocol로 workflow를 조회·작성·수정 |
 | `investigate` | runtime evidence 기반 read 제안 |
 
 ## Model layer
 
-Harness 아래 `ModelProvider`만 교체합니다. Agent loop와 tool 실행은 app/core가 orchestration하고, provider는 구조화된 결과만 반환합니다. 역할별 provider 상한은 `interview/workspace=5`, `investigate=1`입니다.
+Harness 아래 `ModelProvider`만 교체합니다. Command 실행과 결과 적용은 app/core가 orchestration하고, provider는 구조화된 command 또는 답변만 반환합니다. 역할별 provider 상한은 `command=8`, `investigate=1`입니다.

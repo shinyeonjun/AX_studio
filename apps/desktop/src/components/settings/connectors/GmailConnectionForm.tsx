@@ -2,6 +2,7 @@ import { useState } from 'react';
 import gmailIcon from '../../../images/connectors/gmail.png';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { maskEmail } from '../../../lib/mask-email';
 
 interface GmailConnectionFormProps {
   state: AppState | null;
@@ -72,7 +73,11 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
 
         {connected ? (
           <>
-            {email && <p className="connection-account">{email}</p>}
+            {email && (
+              <p className="connection-account" title={email}>
+                연결 계정: {maskEmail(email)}
+              </p>
+            )}
 
             <div className="connection-capabilities" style={{ marginTop: 16 }}>
               <div className="provider-option-title" style={{ marginBottom: 8 }}>

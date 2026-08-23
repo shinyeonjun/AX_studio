@@ -2,36 +2,12 @@ import { useState } from 'react';
 import slackIcon from '../../../images/connectors/slack.png';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { slackCapabilityStatus } from '../../../lib/slack-status';
 
 interface SlackConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
   onConnect: (payload: { token: string; appToken?: string }) => Promise<void>;
-}
-
-function slackStatusLabel(state: AppState | null): { badge: string; badgeClass: string; detail: string } {
-  const mode = state?.slackConnectionMode ?? 'disconnected';
-  if (mode === 'socket') {
-    return {
-      badge: '연결됨 · 실시간',
-      badgeClass: 'connected',
-      detail: 'Socket Mode로 메시지를 즉시 받습니다.',
-    };
-  }
-  if (mode === 'poll') {
-    return {
-      badge: '연결됨 · Poll',
-      badgeClass: 'ready',
-      detail: state?.slackHasAppToken
-        ? 'App Token은 있지만 Socket Mode가 꺼져 있습니다. 앱을 다시 연결해 보세요.'
-        : 'Bot Token만 연결됐습니다. 실시간 트리거는 App Token(xapp-)이 필요합니다.',
-    };
-  }
-  return {
-    badge: '미연결',
-    badgeClass: '',
-    detail: 'Bot Token과 Socket Mode용 App Token이 필요합니다.',
-  };
 }
 
 export function SlackConnectionForm({ state, embedded = false, onConnect }: SlackConnectionFormProps) {
@@ -41,7 +17,8 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
   const [message, setMessage] = useState('');
 
   const connected = state?.connections?.find((c) => c.connector === 'slack')?.connected;
-  const status = slackStatusLabel(state);
+  const status = slackCapabilityStatus(state);
+  const canSubmit = Boolean(slackToken.trim() || (connected && (appToken.trim() || !status.realtimeTriggers)));
 
   const handleConnect = async () => {
     setBusy(true);
@@ -51,7 +28,11 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
         token: slackToken,
         appToken: appToken.trim() || undefined,
       });
-      setMessage('Slack 연결이 완료되었습니다.');
+      setMessage(
+        status.realtimeTriggers
+          ? 'Slack 연결이 완료되었습니다.'
+          : 'Slack 연결을 갱신했습니다. 실시간 트리거 상태를 확인하세요.',
+      );
       setSlackToken('');
       setAppToken('');
     } catch (error) {
@@ -61,6 +42,12 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
     }
   };
 
+  const connectLabel = connected
+    ? status.realtimeTriggers
+      ? '다시 연결'
+      : '실시간 트리거 다시 시도'
+    : '연결하기';
+
   return (
     <div className={embedded ? 'settings-panel' : 'connection-detail'}>
       <div className={`settings-section connection-form ${embedded ? 'connection-form-compact' : ''}`}>
@@ -68,34 +55,44 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
           <img src={slackIcon} alt="" className="connection-form-icon" />
           <div>
             <h3>Slack 연결</h3>
+            <p className="muted">{status.headline}</p>
             <p className="muted">{status.detail}</p>
           </div>
           <span className={`connection-badge ${status.badgeClass}`}>{status.badge}</span>
         </div>
+
+        <ul className="connection-capability-list" aria-label="Slack 기능 상태">
+          <li>{status.manualSend ? '✓' : '·'} 메시지 발송</li>
+          <li>{status.realtimeTriggers ? '✓' : '·'} 실시간 트리거</li>
+        </ul>
 
         {connected && (
           <div style={{ marginBottom: 16 }}>
             {state?.slackTeam && <p className="connection-account">워크스페이스: {state.slackTeam}</p>}
             {state?.slackBotUser && <p className="connection-account">봇: @{state.slackBotUser}</p>}
             {state?.slackLastError && (
-              <p className="connection-form-message error">Socket Mode: {state.slackLastError}</p>
+              <p className="connection-form-message error" role="alert">
+                Socket Mode: {state.slackLastError}
+              </p>
             )}
           </div>
         )}
 
         <div className="form-field">
-          <label>Bot Token</label>
+          <label htmlFor="slack-bot-token">Bot Token</label>
           <input
+            id="slack-bot-token"
             type="password"
             value={slackToken}
             onChange={(e) => setSlackToken(e.target.value)}
-            placeholder="xoxb-..."
+            placeholder={connected ? '변경할 때만 입력' : 'xoxb-...'}
             disabled={busy}
           />
         </div>
         <div className="form-field">
-          <label>App-Level Token (Socket Mode)</label>
+          <label htmlFor="slack-app-token">App-Level Token (Socket Mode)</label>
           <input
+            id="slack-app-token"
             type="password"
             value={appToken}
             onChange={(e) => setAppToken(e.target.value)}
@@ -107,13 +104,13 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
           <button
             type="button"
             className="btn btn-primary"
-            onClick={handleConnect}
-            disabled={busy || !slackToken.trim()}
+            onClick={() => void handleConnect()}
+            disabled={busy || !canSubmit}
           >
-            {busy ? '연결 중...' : connected ? '다시 연결' : '연결하기'}
+            {busy ? '연결 중...' : connectLabel}
           </button>
           {message && (
-            <p className={`connection-form-message ${message.includes('실패') ? 'error' : ''}`}>
+            <p className={`connection-form-message ${message.includes('실패') ? 'error' : ''}`} role="status">
               {message}
             </p>
           )}
@@ -123,7 +120,12 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
         <ConnectionGuide
           guideKey="slack"
           placeholderName="slack-guide.png"
-          steps="Slack 앱 생성 → Socket Mode ON → Bot Token Scopes + App Token(connections:write) → Install → xoxb/xapp 토큰 입력 → Event Subscriptions에서 message 이벤트 구독"
+          steps={[
+            'Slack 앱을 만들고 Socket Mode를 켭니다.',
+            'Bot Token Scopes와 App Token(connections:write)을 발급합니다.',
+            '앱을 워크스페이스에 설치한 뒤 xoxb / xapp 토큰을 입력합니다.',
+            'Event Subscriptions에서 message 이벤트를 구독합니다.',
+          ]}
         />
       )}
     </div>

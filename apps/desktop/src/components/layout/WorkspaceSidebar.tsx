@@ -156,10 +156,8 @@ interface WorkspaceSidebarProps {
   onDeleteSession: (session: ChatSessionSummary) => void;
   onOpenWork: (workflowId: string) => void;
   onToggleWorkActive: (workflowId: string, active: boolean) => void;
-  onDeleteWork: (workflowId: string) => void;
+  onDeleteWork: (workflowId: string, name: string) => void;
   onOpenSettings: (screen: SettingsScreen) => void;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
 }
 
 export function WorkspaceSidebar({
@@ -180,11 +178,8 @@ export function WorkspaceSidebar({
   onToggleWorkActive,
   onDeleteWork,
   onOpenSettings,
-  onApprove,
-  onReject,
 }: WorkspaceSidebarProps) {
   const works = state?.works ?? [];
-  const approvals = state?.approvals ?? [];
 
   return (
     <aside className="workspace-sidebar">
@@ -194,11 +189,10 @@ export function WorkspaceSidebar({
         <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
       </div>
 
-      <div className="workspace-sidebar-tabs" role="tablist">
+      <nav className="workspace-sidebar-tabs" aria-label="주요 메뉴">
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === 'work'}
+          aria-current={tab === 'work' ? 'page' : undefined}
           className={`workspace-sidebar-tab ${tab === 'work' ? 'active' : ''}`}
           onClick={() => onTabChange('work')}
         >
@@ -207,8 +201,7 @@ export function WorkspaceSidebar({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === 'approval'}
+          aria-current={tab === 'approval' ? 'page' : undefined}
           className={`workspace-sidebar-tab ${tab === 'approval' ? 'active' : ''}`}
           onClick={() => onTabChange('approval')}
         >
@@ -218,8 +211,7 @@ export function WorkspaceSidebar({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === 'activity'}
+          aria-current={tab === 'activity' ? 'page' : undefined}
           className={`workspace-sidebar-tab ${tab === 'activity' ? 'active' : ''}`}
           onClick={() => onTabChange('activity')}
         >
@@ -228,19 +220,19 @@ export function WorkspaceSidebar({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === 'settings'}
+          aria-current={tab === 'settings' ? 'page' : undefined}
           className={`workspace-sidebar-tab ${tab === 'settings' ? 'active' : ''}`}
           onClick={() => onTabChange('settings')}
         >
           <IconSettings />
           설정
         </button>
-      </div>
+      </nav>
 
       <div className="workspace-sidebar-panel scrollbar-overlay">
         {tab === 'work' && (
           <div className="sidebar-panel-section">
+            <h2 className="sidebar-section-title">저장된 업무</h2>
             {works.length === 0 ? (
               <p className="sidebar-empty">저장된 업무가 없습니다</p>
             ) : (
@@ -264,8 +256,8 @@ export function WorkspaceSidebar({
                     <button
                       type="button"
                       className="sidebar-session-delete"
-                      onClick={() => onDeleteWork(work.id)}
-                      aria-label={`${work.name} 삭제`}
+                      onClick={() => onDeleteWork(work.id, work.name)}
+                      aria-label={`${work.name} 업무 삭제`}
                       title="업무 삭제"
                     >
                       <IconTrash />
@@ -279,25 +271,17 @@ export function WorkspaceSidebar({
 
         {tab === 'approval' && (
           <div className="sidebar-panel-section">
-            {approvals.length === 0 ? (
-              <p className="sidebar-empty">대기 중인 승인이 없습니다</p>
-            ) : (
-              <ul className="sidebar-approval-list">
-                {approvals.map((approval) => (
-                  <li key={approval.id} className="sidebar-approval-item">
-                    <div className="sidebar-approval-title">{approval.title ?? approval.reason}</div>
-                    <div className="sidebar-approval-actions">
-                      <button type="button" className="btn btn-sm btn-primary" onClick={() => onApprove(approval.id)}>
-                        승인
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => onReject(approval.id)}>
-                        거절
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p className="sidebar-empty">
+              {pendingApprovals > 0
+                ? `대기 ${pendingApprovals}건 — 중앙 패널에서 승인·거절하세요.`
+                : '대기 중인 승인이 없습니다.'}
+            </p>
+          </div>
+        )}
+
+        {tab === 'activity' && (
+          <div className="sidebar-panel-section">
+            <p className="sidebar-empty">실행 기록은 중앙 패널에서 확인합니다.</p>
           </div>
         )}
 
@@ -359,6 +343,7 @@ export function WorkspaceSidebar({
       </div>
 
       <div className="workspace-sidebar-sessions">
+        <h2 className="sidebar-section-title">최근 대화</h2>
         <button type="button" className="sidebar-new-chat" onClick={onNewChat}>
           <IconPlus />
           새 대화
@@ -372,14 +357,13 @@ export function WorkspaceSidebar({
                 onClick={() => onSelectSession(session)}
               >
                 <span className="sidebar-session-title">{session.title}</span>
-                {session.kind === 'interview' && <span className="sidebar-session-tag">업무</span>}
               </button>
               <button
                 type="button"
                 className="sidebar-session-delete"
                 onClick={() => onDeleteSession(session)}
-                aria-label={`${session.title} 삭제`}
-                title={session.kind === 'interview' && session.workflowId ? '업무 삭제' : '대화 삭제'}
+                aria-label={`${session.title} 대화 삭제`}
+                title="대화 삭제"
               >
                 <IconTrash />
               </button>

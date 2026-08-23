@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { WorkspaceExecutionMode } from '@ax-studio/core';
 
 export interface ChatSessionSummary {
   id: string;
   title: string;
   updatedAt: string;
-  kind: 'workspace' | 'interview';
+  kind: 'workspace';
   workflowId?: string;
+  executionMode?: WorkspaceExecutionMode;
   corrupted?: boolean;
 }
 

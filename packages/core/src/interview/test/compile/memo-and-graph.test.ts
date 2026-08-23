@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildIRFromWorkflow } from '../../compile/builder.js';
 import { validateInterviewDraftGraph } from '../../compile/validate-graph.js';
-import { applySlotValuesToDraft } from '../../slots/patch.js';
 import { assessCompleteness } from '../../slots/requiredness.js';
 
 describe('ai_decision memo', () => {
@@ -28,21 +27,6 @@ describe('ai_decision memo', () => {
     expect(step && step.type === 'ai_decision' && step.memo).toContain('critical=');
   });
 
-  it('applies classify.memo via patch slot', () => {
-    const next = applySlotValuesToDraft(
-      {
-        name: 'PDF',
-        goal: '분류',
-        assumptions: [],
-        actions: {},
-        nodes: [{ type: 'ai_decision', id: 'classify', goal: '분류' }],
-      },
-      { 'classify.memo': 'critical=긴급\nnormal=보고' },
-    );
-
-    expect(next.nodes[0]?.type === 'ai_decision' && next.nodes[0].memo).toContain('critical=');
-  });
-
   it('keeps missing decision intent and output contract visible as required slots', () => {
     const ir = buildIRFromWorkflow({
       name: 'PDF',
@@ -58,29 +42,6 @@ describe('ai_decision memo', () => {
     expect(ir.steps?.find((step) => step.type === 'ai_decision')?.goal).toBe('');
   });
 
-  it('patches node intent fields without changing the graph', () => {
-    const next = applySlotValuesToDraft(
-      {
-        name: '승인',
-        goal: '승인',
-        assumptions: [],
-        actions: {},
-        nodes: [
-          { type: 'ai_decision', id: 'classify' },
-          { type: 'human_approval', id: 'approve', forActionIds: ['send'] },
-        ],
-      },
-      {
-        'classify.goal': '위험도 분류',
-        'approve.reason': '외부 메일 발송 승인',
-      },
-    );
-
-    expect(next.nodes).toMatchObject([
-      { id: 'classify', goal: '위험도 분류' },
-      { id: 'approve', reason: '외부 메일 발송 승인' },
-    ]);
-  });
 });
 
 describe('validateInterviewDraftGraph', () => {
@@ -106,7 +67,12 @@ describe('validateInterviewDraftGraph', () => {
       assumptions: [],
       nodes: [
         { type: 'ai_decision', id: 'classify', goal: '분류' },
-        { type: 'if', id: 'if_critical', condition: 'classify.riskLevel == critical', thenStepIds: ['critical_slack'] },
+        {
+          type: 'if',
+          id: 'if_critical',
+          condition: { op: 'eq', left: { ref: 'classify.riskLevel' }, right: { lit: 'critical' } },
+          thenStepIds: ['critical_slack'],
+        },
         { type: 'action', id: 'critical_slack', actionRef: 'slack.message.send@1' },
         { type: 'action', id: 'high_slack', actionRef: 'slack.message.send@1' },
       ],

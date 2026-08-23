@@ -11,6 +11,7 @@ function gmailDraft(triggerFilter: unknown): InterviewDraft {
     triggerFilter: triggerFilter as InterviewDraft['triggerFilter'],
     assumptions: [],
     nodes: [],
+    actions: {},
   };
 }
 

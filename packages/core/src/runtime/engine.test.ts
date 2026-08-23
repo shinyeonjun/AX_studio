@@ -612,12 +612,9 @@ describe('runtime control flow', () => {
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
-    const approvalId = first.pendingApprovalId!;
-    const resumed = await runtime.continueAfterApproval(approvalId);
 
-    expect(resumed.status).toBe('failed');
-    expect(resumed.errorCode).toBe('action_params_missing');
-    expect(store.getApproval(approvalId)?.status).toBe('approved');
+    expect(first.status).toBe('failed');
+    expect(first.errorCode).toBe('action_params_missing');
     expect(store.getPendingApprovals()).toHaveLength(0);
   });
 
@@ -654,12 +651,9 @@ describe('runtime control flow', () => {
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
-    const approvalId = first.pendingApprovalId!;
-    const resumed = await runtime.continueAfterApproval(approvalId);
 
-    expect(resumed.status).toBe('failed');
-    expect(resumed.errorCode).toBe('action_params_missing');
-    expect(store.getApproval(approvalId)?.status).toBe('approved');
+    expect(first.status).toBe('failed');
+    expect(first.errorCode).toBe('action_params_missing');
     expect(store.getPendingApprovals()).toHaveLength(0);
   });
 

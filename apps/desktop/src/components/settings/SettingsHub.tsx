@@ -4,6 +4,7 @@ import {
   MESSAGING_CONNECTOR_IDS,
   STORAGE_CONNECTOR_IDS,
   API_CONNECTOR_IDS,
+  DATA_CONNECTOR_IDS,
 } from '../../constants/connectors';
 import { settingsScreenForBrand } from '../../constants/settings';
 import { useAiHub } from '../../hooks/useAiHub';
@@ -11,6 +12,7 @@ import type { useAiDetection } from '../../hooks/ai-settings/useAiDetection';
 import type { AiBrand } from '../../types/ai-provider';
 import type { SettingsScreen } from '../../types/navigation';
 import type { AppState } from '../../types/app-state';
+import { slackCapabilityStatus } from '../../lib/slack-status';
 import { SettingsCategory } from './SettingsCategory';
 import { ConnectionCard } from './ConnectionCard';
 import { AiHubCards } from './ai/AiHubCards';
@@ -44,15 +46,13 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
           {MESSAGING_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
             const connected = state?.connections?.find((c) => c.connector === id)?.connected;
-            const slackMode = id === 'slack' ? state?.slackConnectionMode : undefined;
+            const slackStatus = id === 'slack' ? slackCapabilityStatus(state) : undefined;
             const badge =
-              id === 'slack' && slackMode === 'socket'
-                ? { label: '연결됨 · 실시간', className: 'connected' }
-                : id === 'slack' && slackMode === 'poll'
-                  ? { label: '연결됨 · Poll', className: 'ready' }
-                  : connected
-                    ? { label: '연결됨', className: 'connected' }
-                    : { label: '미연결', className: '' };
+              slackStatus
+                ? { label: slackStatus.badge, className: slackStatus.badgeClass }
+                : connected
+                  ? { label: '연결됨', className: 'connected' }
+                  : { label: '미연결', className: '' };
             return (
               <ConnectionCard
                 key={id}
@@ -93,6 +93,26 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
       <SettingsCategory title="API" description="외부 REST API를 워크플로우에 연결합니다.">
         <div className="connection-hub">
           {API_CONNECTOR_IDS.map((id) => {
+            const meta = CONNECTOR_UI_CATALOG[id];
+            const connected = state?.connections?.find((c) => c.connector === id)?.connected;
+            return (
+              <ConnectionCard
+                key={id}
+                title={meta.title}
+                description={meta.description}
+                emojiIcon={meta.emojiIcon}
+                badge={connected ? '연결됨' : '미연결'}
+                badgeClass={connected ? 'connected' : ''}
+                onClick={() => onOpenScreen(meta.settingsScreen)}
+              />
+            );
+          })}
+        </div>
+      </SettingsCategory>
+
+      <SettingsCategory title="데이터" description="DB·OpenAPI·MCP 소스를 연결합니다.">
+        <div className="connection-hub">
+          {DATA_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
             const connected = state?.connections?.find((c) => c.connector === id)?.connected;
             return (

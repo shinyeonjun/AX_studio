@@ -47,19 +47,17 @@ describe('platform mode policy', () => {
     expect(interactionModeFromCommand(parseWorkspaceCommand('/workflow save'))).toBe('authoring');
   });
 
-  it('blocks workflow.inspect in plain chat and workflows.* in authoring', () => {
-    expect(isToolAllowedInMode('workflow.inspect', 'plain_chat')).toBe(false);
+  it('allows only the read-only design-tool catalog in either interaction mode', () => {
     expect(isToolAllowedInMode('capabilities.list', 'plain_chat')).toBe(true);
-    expect(isToolAllowedInMode('workflows.run', 'authoring')).toBe(false);
-    expect(isToolAllowedInMode('workflow.inspect', 'authoring')).toBe(true);
+    expect(isToolAllowedInMode('capabilities.list', 'authoring')).toBe(true);
   });
 
   it('filters tool calls by mode', () => {
     const calls = [
       { tool: 'capabilities.list' as const },
-      { tool: 'workflow.inspect' as const },
+      { tool: 'sources.list' as const },
     ];
-    expect(filterToolCallsForMode(calls, 'plain_chat')).toEqual([{ tool: 'capabilities.list' }]);
+    expect(filterToolCallsForMode(calls, 'plain_chat')).toEqual(calls);
   });
 });
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { confirmRemoveLocalFolder } from '../../../lib/confirm-delete';
 
 interface LocalFolderConnectionFormProps {
   state: AppState | null;
@@ -67,6 +68,10 @@ export function LocalFolderConnectionForm({
   };
 
   const handleRemove = async (folderId: string) => {
+    const folder = folders.find((entry) => entry.id === folderId);
+    if (!folder) return;
+    if (!confirmRemoveLocalFolder(folder.label, folder.path)) return;
+
     setBusy(true);
     setMessage('');
     try {
@@ -110,9 +115,9 @@ export function LocalFolderConnectionForm({
         </div>
 
         <div className="form-field">
-          <label>폴더 경로</label>
+          <label htmlFor="local-folder-path">폴더 경로</label>
           <div className="local-folder-path-row">
-            <input type="text" value={selectedPath} readOnly placeholder="폴더를 선택하세요" />
+            <input id="local-folder-path" type="text" value={selectedPath} readOnly placeholder="폴더를 선택하세요" />
             <button type="button" className="btn secondary" onClick={() => void handlePick()} disabled={busy}>
               찾아보기
             </button>

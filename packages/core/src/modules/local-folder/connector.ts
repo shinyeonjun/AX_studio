@@ -3,7 +3,7 @@ import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
 import { findLocalFolder, type LocalFolderConnectionConfig } from './connection.js';
 import { newFilePoll } from './new-file-poll.js';
 import { resolveFileWithinFolderRoot } from './path-security.js';
-import { scanFolderChecked } from './scan.js';
+import { scanFolderCheckedAsync } from './scan-async.js';
 
 export class LocalFolderConnector implements Connector {
   name = 'local_folder';
@@ -29,7 +29,7 @@ export class LocalFolderConnector implements Connector {
       const folderId = String(params.folderId ?? '');
       const folder = findLocalFolder(this.config, folderId);
       if (!folder) return { ok: false, error: 'folder_not_found' };
-      const scanned = scanFolderChecked(folder.path, (params.extensions as string[]) ?? undefined);
+      const scanned = await scanFolderCheckedAsync(folder.path, (params.extensions as string[]) ?? undefined);
       if (!scanned.ok) return { ok: false, error: scanned.error, errorCode: scanned.errorCode };
       const files = scanned.files;
       return { ok: true, data: { folder, files } };

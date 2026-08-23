@@ -1,5 +1,7 @@
+import { fetchWithTimeout } from '../fetch-timeout.js';
+
 export async function verifyAnthropicApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -23,7 +25,7 @@ export async function verifyAnthropicApiKey(apiKey: string): Promise<{ ok: true;
 }
 
 export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
-  const response = await fetch('https://api.openai.com/v1/models', {
+  const response = await fetchWithTimeout('https://api.openai.com/v1/models', {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (response.status === 401) {
@@ -39,7 +41,7 @@ export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; la
 export async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
   const base = (process.env.OLLAMA_BASE_URL?.trim() || process.env.OLLAMA_HOST?.trim() || 'http://localhost:11434')
     .replace(/\/$/, '');
-  const response = await fetch(`${base}/api/tags`);
+  const response = await fetchWithTimeout(`${base}/api/tags`);
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || `Ollama 연결 확인 실패 (${response.status})`);

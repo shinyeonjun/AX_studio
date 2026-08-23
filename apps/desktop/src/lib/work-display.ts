@@ -1,7 +1,7 @@
 import type { WorkSummary } from '../types/app-state';
-import { isRecurringTriggerType } from '@ax-studio/core/work-scope';
-
-export { isRecurringTriggerType };
+export function isRecurringTriggerType(triggerType?: string | null): boolean {
+  return Boolean(triggerType && ['schedule', 'gmail.new_message', 'slack.new_message', 'local_folder.new_file'].includes(triggerType));
+}
 
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';

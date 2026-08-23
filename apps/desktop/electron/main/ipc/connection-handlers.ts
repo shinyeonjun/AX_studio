@@ -19,6 +19,9 @@ import {
   disconnectWebhook,
   validateAndConnectWebhook,
 } from '../webhook/connection.js';
+import { disconnectRdb, validateAndConnectRdb } from '../rdb/connection.js';
+import { disconnectOpenApi, validateAndConnectOpenApi } from '../openapi/connection.js';
+import { disconnectMcp, validateAndConnectMcp } from '../mcp/connection.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
 function readSlackPayload(payload: unknown): { token: string; appToken?: string } {
@@ -29,10 +32,7 @@ function readSlackPayload(payload: unknown): { token: string; appToken?: string 
     throw new Error('Slack 연결 정보 형식이 올바르지 않습니다.');
   }
   const record = payload as Record<string, unknown>;
-  if (typeof record.token !== 'string') {
-    throw new Error('Slack Bot Token을 입력해 주세요.');
-  }
-  const token = record.token.trim();
+  const token = typeof record.token === 'string' ? record.token.trim() : '';
   const appToken =
     record.appToken === undefined
       ? undefined
@@ -49,8 +49,10 @@ export function registerConnectionHandlers() {
     'ax:connectSlack',
     async (_e, payload: unknown) => {
       const core = getCore();
-      const { token, appToken } = readSlackPayload(payload);
+      const { token: inputToken, appToken } = readSlackPayload(payload);
 
+      const existingSecret = await getSlackSecret();
+      const token = inputToken || existingSecret?.token || '';
       if (!token) {
         throw new Error('Bot Token을 입력해 주세요.');
       }
@@ -65,7 +67,6 @@ export function registerConnectionHandlers() {
       const existing = existingConnection?.config as
         | { appToken?: string; appTokenStored?: boolean; team?: string; botUser?: string; connectedAt?: string }
         | undefined;
-      const existingSecret = await getSlackSecret();
       const finalAppToken = appToken ?? existingSecret?.appToken;
 
       const validation = await validateSlackBotToken(token);
@@ -248,6 +249,94 @@ export function registerConnectionHandlers() {
   ipcMain.handle('ax:disconnectWebhook', async () => {
     const core = getCore();
     await disconnectWebhook(core.store, () => core.triggerEngine.refreshPushTransports());
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:pickSqliteFile', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'SQLite DB 파일 선택',
+      properties: ['openFile'],
+      filters: [{ name: 'SQLite', extensions: ['db', 'sqlite', 'sqlite3'] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { ok: false, canceled: true as const };
+    }
+    return { ok: true as const, path: result.filePaths[0] };
+  });
+
+  ipcMain.handle('ax:connectRdb', async (_event, payload: unknown) => {
+    const core = getCore();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('DB 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    const type = record.type;
+    if (type !== 'postgres' && type !== 'sqlite') {
+      throw new Error('DB 유형이 올바르지 않습니다.');
+    }
+    await validateAndConnectRdb(core.store, core.runtime, {
+      type,
+      connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
+      filePath: typeof record.filePath === 'string' ? record.filePath : undefined,
+      allowedTables: Array.isArray(record.allowedTables)
+        ? record.allowedTables.filter((entry): entry is string => typeof entry === 'string')
+        : undefined,
+      rowLimit: typeof record.rowLimit === 'number' ? record.rowLimit : undefined,
+      label: typeof record.label === 'string' ? record.label : undefined,
+    });
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:disconnectRdb', async () => {
+    const core = getCore();
+    await disconnectRdb(core.store, core.runtime);
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:connectOpenApi', async (_event, payload: unknown) => {
+    const core = getCore();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('OpenAPI 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    await validateAndConnectOpenApi(core.store, core.runtime, {
+      specId: typeof record.specId === 'string' ? record.specId : '',
+      label: typeof record.label === 'string' ? record.label : undefined,
+      specUrl: typeof record.specUrl === 'string' ? record.specUrl : undefined,
+      specJson: typeof record.specJson === 'string' ? record.specJson : undefined,
+    });
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:disconnectOpenApi', async () => {
+    const core = getCore();
+    await disconnectOpenApi(core.store, core.runtime);
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:connectMcp', async (_event, payload: unknown) => {
+    const core = getCore();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('MCP 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    await validateAndConnectMcp(core.store, core.runtime, {
+      serverId: typeof record.serverId === 'string' ? record.serverId : '',
+      label: typeof record.label === 'string' ? record.label : undefined,
+      toolsJson: typeof record.toolsJson === 'string' ? record.toolsJson : '',
+    });
+    notifyStateChanged();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ax:disconnectMcp', async () => {
+    const core = getCore();
+    await disconnectMcp(core.store, core.runtime);
     notifyStateChanged();
     return { ok: true };
   });

@@ -32,22 +32,6 @@ export async function executeStep(
       let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables);
       params = resolveStepParams(params, ctx, stepResults);
 
-      const stepSideEffect = ir.sideEffects?.[step.id] ?? step.sideEffect;
-      const effectiveSideEffect = resolveEffectiveSideEffect(actionDefinition, params, stepSideEffect);
-      if (requiresApproval(effectiveSideEffect, ir.allowExternalAuto) && !approvedActionIds.has(step.id)) {
-        const approvalId = store.createApproval({
-          executionId: ctx.executionId,
-          actionIds: [step.id],
-          reason: `외부 작업 승인 필요: ${actionDefinition.id}`,
-          payload: step.params,
-        });
-        const err = new Error('Approval required') as Error & { code?: string; approvalId?: string; pending?: boolean };
-        err.code = 'pending_approval';
-        err.approvalId = approvalId;
-        err.pending = true;
-        throw err;
-      }
-
       if (actionDefinition.id === 'document.ingest') {
         const resolved = resolveDocumentIngestExecution(params, ctx);
         if (!resolved.ok) {
@@ -65,7 +49,25 @@ export async function executeStep(
       }
 
       const connector = connectors[actionDefinition.connector];
-      if (!connector) throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
+      if (!connector) {
+        throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
+      }
+
+      const stepSideEffect = ir.sideEffects?.[step.id] ?? step.sideEffect;
+      const effectiveSideEffect = resolveEffectiveSideEffect(actionDefinition, params, stepSideEffect);
+      if (requiresApproval(effectiveSideEffect, ir.allowExternalAuto) && !approvedActionIds.has(step.id)) {
+        const approvalId = store.createApproval({
+          executionId: ctx.executionId,
+          actionIds: [step.id],
+          reason: `외부 작업 승인 필요: ${actionDefinition.id}`,
+          payload: step.params,
+        });
+        const err = new Error('Approval required') as Error & { code?: string; approvalId?: string; pending?: boolean };
+        err.code = 'pending_approval';
+        err.approvalId = approvalId;
+        err.pending = true;
+        throw err;
+      }
 
       const result = await connector.execute(actionDefinition.action, params, ctx);
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });

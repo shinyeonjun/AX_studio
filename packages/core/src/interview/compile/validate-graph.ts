@@ -1,4 +1,4 @@
-import type { InterviewDraft, WorkflowNode } from '../draft/schema.js';
+import { InterviewDraftSchema, type InterviewDraft, type InterviewDraftInput, type WorkflowNode } from '../draft/schema.js';
 import { getNodeParams, resolveNodeConnectorAction } from '../draft/actions.js';
 import { resolveIfNodeCondition } from '../draft/conditions.js';
 import type { ConditionExpr } from '../../runtime/condition-expr.js';
@@ -94,9 +94,10 @@ function addReferenceIssues(
   }
 }
 
-export function validateInterviewDraftStructure(draft: InterviewDraft): DraftGraphIssue[] {
+export function validateInterviewDraftStructure(draft: InterviewDraftInput): DraftGraphIssue[] {
+  const parsed = InterviewDraftSchema.parse(draft);
   const issues: DraftGraphIssue[] = [];
-  const nodes = draft.nodes ?? [];
+  const nodes = parsed.nodes ?? [];
   const nodeIds = new Set<string>();
   for (const node of nodes) {
     if (nodeIds.has(node.id)) {
@@ -128,17 +129,19 @@ export function validateInterviewDraftStructure(draft: InterviewDraft): DraftGra
 }
 
 /** Contract-only validation used before a plan is persisted. */
-export function validateInterviewDraftReferences(draft: InterviewDraft): DraftGraphIssue[] {
+export function validateInterviewDraftReferences(draft: InterviewDraftInput): DraftGraphIssue[] {
+  const parsed = InterviewDraftSchema.parse(draft);
   const issues: DraftGraphIssue[] = [];
-  addReferenceIssues(issues, draft, draft.nodes ?? []);
+  addReferenceIssues(issues, parsed, parsed.nodes ?? []);
   return issues;
 }
 
 /** Draft-level checks before/alongside IR compile — n8n-style graph, not flat action lists. */
-export function validateInterviewDraftGraph(draft: InterviewDraft): DraftGraphIssue[] {
-  const issues: DraftGraphIssue[] = validateInterviewDraftStructure(draft);
-  const nodes = draft.nodes ?? [];
-  const notifyActions = nodes.filter((node) => isNotifyAction(draft, node));
+export function validateInterviewDraftGraph(draft: InterviewDraftInput): DraftGraphIssue[] {
+  const parsed = InterviewDraftSchema.parse(draft);
+  const issues: DraftGraphIssue[] = validateInterviewDraftStructure(parsed);
+  const nodes = parsed.nodes ?? [];
+  const notifyActions = nodes.filter((node) => isNotifyAction(parsed, node));
   const notifyCount = notifyActions.length;
   const hasDecision = nodes.some((node) => node.type === 'ai_decision');
   const hasBranch = nodes.some((node) => node.type === 'if');
@@ -177,7 +180,7 @@ export function validateInterviewDraftGraph(draft: InterviewDraft): DraftGraphIs
 
   for (const node of nodes) {
     if (node.type !== 'action') continue;
-    if (!resolveNodeConnectorAction(draft, node)) {
+    if (!resolveNodeConnectorAction(parsed, node)) {
       issues.push({
         stepId: node.id,
         message: `${node.id} action 노드에 actionRef가 필요합니다.`,
@@ -185,7 +188,7 @@ export function validateInterviewDraftGraph(draft: InterviewDraft): DraftGraphIs
     }
   }
 
-  addReferenceIssues(issues, draft, nodes);
+  addReferenceIssues(issues, parsed, nodes);
 
   return issues;
 }

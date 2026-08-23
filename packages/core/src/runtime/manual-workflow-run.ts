@@ -42,7 +42,7 @@ function recordManualRunFailure(
   return { executionId, status: 'failed', errorCode, log };
 }
 
-/** Shared manual-run path for IPC and plain-chat workflows.run. */
+/** Shared manual-run path for the command service and runtime IPC. */
 export async function runManualWorkflow(
   deps: ManualWorkflowRunDeps,
   ir: WorkflowIR,
@@ -58,7 +58,7 @@ export async function runManualWorkflow(
 
   let input: Record<string, unknown>;
   try {
-    input = buildManualRunInput(ir, deps.store);
+    input = await buildManualRunInput(ir, deps.store);
   } catch (error) {
     return recordManualRunFailure(
       deps,

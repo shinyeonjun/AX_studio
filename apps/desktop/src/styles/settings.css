@@ -53,8 +53,14 @@
 /* Settings — connection hub */
 .connection-hub {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .connection-hub {
+    grid-template-columns: 1fr;
+  }
 }
 
 .connection-card {
@@ -190,6 +196,12 @@
   background: var(--purple-glow);
   border-color: var(--purple);
   color: var(--purple-light);
+}
+
+.connection-badge.warning {
+  background: rgba(201, 138, 26, 0.12);
+  border-color: var(--amber);
+  color: var(--amber);
 }
 
 .ai-provider-card {

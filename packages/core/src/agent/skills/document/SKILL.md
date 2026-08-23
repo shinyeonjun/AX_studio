@@ -7,7 +7,7 @@ description: Design document reading and document making in AX Studio. Ingest on
 
 문서는 읽히는 일과 만들어지는 일이 다르다.
 
-읽기는 `document.ingest`로 한 번 연다. 폴더에서 온 파일이면 그 파일을 가리킨다. 연 결과는 증거이고, 바로 이어지는 요약·분류는 그 증거 위의 판단이다. 전체를 다시 열지 않는다.
+읽기는 `document.ingest`로 한 번 연다. 폴더에서 온 파일이면 그 파일을 가리킨다. host가 로컬 문서 엔진(기본 Docling)으로 PDF의 글·표·OCR을 추출하고, 그 결과가 증거가 된다. Docling을 직접 실행하거나 PDF 바이트를 임의로 다루지 않는다.
 
 일부만 필요하면 이미 연 문서에서 페이지·청크·검색으로 들어간다.
 

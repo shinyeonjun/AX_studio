@@ -48,10 +48,46 @@ function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, stri
 }
 
 async function readBodyWithLimit(response: Response, maxBytes: number): Promise<{ body: string; truncated: boolean }> {
-  const buffer = await response.arrayBuffer();
-  const truncated = buffer.byteLength > maxBytes;
-  const slice = truncated ? buffer.slice(0, maxBytes) : buffer;
-  return { body: Buffer.from(slice).toString('utf8'), truncated };
+  const contentLength = response.headers.get('content-length');
+  if (contentLength) {
+    const declared = Number(contentLength);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      await response.body?.cancel();
+      return { body: '', truncated: true };
+    }
+  }
+
+  if (!response.body) {
+    return { body: '', truncated: false };
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  let truncated = false;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      if (total + value.byteLength > maxBytes) {
+        const remaining = maxBytes - total;
+        if (remaining > 0) chunks.push(value.subarray(0, remaining));
+        truncated = true;
+        await reader.cancel();
+        break;
+      }
+
+      chunks.push(value);
+      total += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return { body: Buffer.concat(chunks).toString('utf8'), truncated };
 }
 
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
