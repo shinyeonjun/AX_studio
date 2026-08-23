@@ -13,14 +13,14 @@ import '@xyflow/react/dist/style.css';
 import { draftToFlow } from './draft-to-flow.js';
 import { WorkflowStepNode } from './nodes/WorkflowStepNode.js';
 import type { WorkflowVisualNodeData } from './types.js';
-import type { CompletenessResult, InterviewDraft } from '@ax-studio/core';
+import type { CompletenessResult, WorkflowCanvasDraft } from '@ax-studio/core';
 import { computeWorkflowDiff } from './workflow-diff.js';
 
 const nodeTypes = { workflowStep: WorkflowStepNode };
 
 interface WorkflowGraphProps {
-  draft?: InterviewDraft;
-  baselineDraft?: InterviewDraft;
+  draft?: WorkflowCanvasDraft;
+  baselineDraft?: WorkflowCanvasDraft;
   completeness?: CompletenessResult;
   expanded?: boolean;
   selectedNodeId?: string | null;

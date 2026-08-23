@@ -25,6 +25,8 @@ import { assertTransition, isTerminalStatus } from './state-machine.js';
 import { enumerateCandidates, replayCandidates, resolveReplayWinners } from './synthesis/index.js';
 import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
 import type { DiscoverySourceRegistry } from './sources/registry.js';
+import { ALL_MODULE_PACKAGES } from '../modules/packages/catalog.js';
+import type { WorkbookMaterializer } from '../contracts/discovery-source.js';
 
 export interface WorkDiscoveryServiceOptions {
   store: WorkflowStore;
@@ -84,6 +86,7 @@ export class WorkDiscoveryService {
   private readonly snapshotDir: string;
   private readonly sourceRegistry: DiscoverySourceRegistry;
   private readonly sourceReadsMax: number;
+  private readonly materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'];
 
   constructor(private readonly options: WorkDiscoveryServiceOptions) {
     const paths = getAxDataPaths();
@@ -92,6 +95,8 @@ export class WorkDiscoveryService {
     mkdirSync(this.snapshotDir, { recursive: true });
     this.sourceRegistry = options.sourceRegistry ?? createDefaultDiscoverySourceRegistry(options.store, this.artifactStore);
     this.sourceReadsMax = options.sourceReadsMax ?? 12;
+    this.materializeWorkbook = ALL_MODULE_PACKAGES.find((pkg) => pkg.id === 'local_sheet')?.materializeWorkbook
+      ?? (() => { throw new Error('local_sheet module must register materializeWorkbook'); });
   }
 
   start(args: DiscoveryStartArgs): { id: string; state: DiscoverySessionState['status'] } {
@@ -113,8 +118,6 @@ export class WorkDiscoveryService {
       budgets: {
         sourceReadsUsed: 0,
         sourceReadsMax: this.sourceReadsMax,
-        modelCallsUsed: 0,
-        modelCallsMax: 4,
         elapsedMs: 0,
       },
       createdAt: now,
@@ -402,7 +405,7 @@ export class WorkDiscoveryService {
   }
 
   private observeOutputArtifact(exampleId: string, artifactId: string): OutputObservation[] {
-    return observeArtifact(exampleId, artifactId, this.artifactStore);
+    return observeArtifact(exampleId, artifactId, this.artifactStore, this.materializeWorkbook);
   }
 
   private isCancelled(sessionId: string): boolean {

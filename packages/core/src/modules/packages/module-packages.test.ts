@@ -1,11 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import { CONNECTOR_IDS } from '../../catalog/connector-types.js';
 import { CAPABILITY_CATALOG, ALL_MODULE_PACKAGES } from '../packages/catalog.js';
 import { listRegisteredModules } from '../module-registry.js';
 import { getTriggerHandler } from '../../triggers/registry.js';
-import { listModuleSourceHandlers } from '../packages/register.js';
+import { listModuleSourceHandlers, registerAllModules } from '../packages/register.js';
 
 describe('module packages', () => {
+  beforeAll(() => {
+    registerAllModules();
+  });
+
   it('registers every package id', () => {
     const registered = new Set(listRegisteredModules().map((entry) => entry.id));
     for (const id of CONNECTOR_IDS) {

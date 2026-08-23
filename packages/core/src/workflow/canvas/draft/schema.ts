@@ -81,8 +81,3 @@ export const WorkflowCanvasDraftSchema = z.object({
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
 export type WorkflowCanvasDraftInput = z.input<typeof WorkflowCanvasDraftSchema>;
 export type WorkflowCanvasDraft = z.infer<typeof WorkflowCanvasDraftSchema>;
-
-/** Compatibility names for the existing canvas/UI contract. */
-export const InterviewDraftSchema = WorkflowCanvasDraftSchema;
-export type InterviewDraftInput = WorkflowCanvasDraftInput;
-export type InterviewDraft = WorkflowCanvasDraft;

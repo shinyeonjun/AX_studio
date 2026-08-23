@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildIRFromWorkflow } from '../interview/compile/builder.js';
+import { buildIRFromWorkflow } from '../workflow/canvas/compile/builder.js';
 import {
   mergeWorkflowDocument,
   parseStoredWorkflow,

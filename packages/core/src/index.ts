@@ -1,7 +1,6 @@
 export * from './workflow/schema.js';
 export * from './workflow/workflow-view.js';
 export * from './workflow/approval.js';
-export * from './workflow/fixtures.js';
 export * from './workflow/contract-validator.js';
 export * from './workflow/contract-adapters.js';
 export * from './contracts/index.js';
@@ -29,7 +28,7 @@ export type {
   DiscoveryStatus,
 } from './work-discovery/schema.js';
 export { observeDocumentArtifact, parseKoreanNumber } from './work-discovery/observation/observe-document.js';
-export * from './interview/index.js';
+export * from './workflow/canvas/index.js';
 export * from './runtime/types.js';
 export * from './runtime/manual-run-input.js';
 export * from './runtime/engine.js';

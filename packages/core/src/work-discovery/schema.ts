@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransformExprSchema } from './synthesis/transform-dsl.js';
+import { TransformExprSchema } from '../workflow/transform-expr/dsl.js';
 import { OutputObservationSchema } from './observation/schema.js';
 import { ClarificationQuestionSchema } from './clarification/types.js';
 
@@ -37,7 +37,6 @@ export const CandidateProgramSchema = z.object({
   score: z.object({
     total: z.number().min(0).max(1),
     replay: z.number().min(0).max(1),
-    semantic: z.number().min(0).max(1),
     simplicity: z.number().min(0).max(1),
   }),
   replayResults: z.array(z.object({
@@ -92,8 +91,6 @@ export const DiscoverySessionStateSchema = z.object({
   budgets: z.object({
     sourceReadsUsed: z.number().int().nonnegative(),
     sourceReadsMax: z.number().int().positive(),
-    modelCallsUsed: z.number().int().nonnegative(),
-    modelCallsMax: z.number().int().positive(),
     elapsedMs: z.number().int().nonnegative(),
     stoppedReason: z.string().optional(),
   }),

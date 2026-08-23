@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { observeDocumentArtifact } from './observation/observe-document.js';
 import { enumerateCandidates } from './synthesis/enumerator.js';
 import { replayCandidates } from './synthesis/replay-runner.js';
-import { buildTableArtifact } from '../modules/local-sheet/profile.js';
+import { buildTableArtifact } from '../contracts/artifacts/table-build.js';
 
 describe('work discovery synthesis', () => {
   it('replays a labeled number from a sqlite-like table snapshot', () => {

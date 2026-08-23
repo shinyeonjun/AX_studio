@@ -6,7 +6,7 @@ import {
 import { webhookInboundHandler, webhookPathsMatch } from '../../triggers/webhook/index.js';
 import { WebhookInboundListener } from '../../triggers/webhook/listener.js';
 import { resolveWebhookAuthSecret } from '../../triggers/webhook/secret-provider.js';
-import { WEBHOOK_CAPABILITIES, WEBHOOK_CATALOG } from './catalog-data.js';
+import { WEBHOOK_CAPABILITIES, WEBHOOK_CATALOG } from '../webhook/catalog.js';
 
 export const webhookModulePackage: ModulePackage = {
   id: 'webhook',

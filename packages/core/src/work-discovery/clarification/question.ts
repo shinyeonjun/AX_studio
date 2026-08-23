@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { TransformExpr } from '../synthesis/transform-dsl.js';
+import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 import type { CandidateProgram } from '../schema.js';
 import type { ClarificationQuestion } from './types.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';

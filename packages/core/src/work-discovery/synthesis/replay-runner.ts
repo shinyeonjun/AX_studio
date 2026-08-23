@@ -4,8 +4,8 @@ import type { CandidateProgram } from '../schema.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';
 import type { EnumeratedCandidate } from './enumerator.js';
 import { compareObservationValue, replayPassThreshold } from './compare.js';
-import { evaluateTransformExpr, type SnapshotTables } from './transform-evaluator.js';
-import type { TransformExpr } from './transform-dsl.js';
+import { evaluateTransformExpr, type SnapshotTables } from '../../workflow/transform-expr/evaluator.js';
+import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 
 export interface ReplayExample {
   exampleId: string;
@@ -93,7 +93,6 @@ export function replayCandidates(params: {
       score: {
         total,
         replay,
-        semantic: replay,
         simplicity: candidate.simplicity,
       },
       replayResults,

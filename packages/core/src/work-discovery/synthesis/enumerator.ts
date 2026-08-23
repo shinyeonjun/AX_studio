@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { SourceDescriptor } from '../schema.js';
-import type { TransformExpr } from './transform-dsl.js';
+import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 
 export interface EnumeratedCandidate {
   id: string;

@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import type { CompletenessResult, InterviewDraft, WorkflowNode } from '@ax-studio/core';
-import { connectionGuidance, panelFieldsForSource } from '@ax-studio/core/panel-fields';
+import type { CompletenessResult, WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
+import { connectionGuidance, panelFieldsForSource } from '@ax-studio/core/workflow/canvas/presentation/panel-fields';
 import type { SettingsScreen } from '../types/navigation';
 import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../constants/connectors';
 import type { WorkflowVisualNodeData } from './types.js';
 import { displayForTrigger, displayForWorkflowNode } from './node-display.js';
 
 interface NodeDetailPanelProps {
-  draft?: InterviewDraft;
+  draft?: WorkflowCanvasDraft;
   nodeData: WorkflowVisualNodeData | null;
   completeness?: CompletenessResult;
   busy?: boolean;
@@ -16,7 +16,7 @@ interface NodeDetailPanelProps {
   onClose: () => void;
 }
 
-function findWorkflowNode(draft: InterviewDraft | undefined, sourceId?: string): WorkflowNode | undefined {
+function findWorkflowNode(draft: WorkflowCanvasDraft | undefined, sourceId?: string): WorkflowNode | undefined {
   if (!sourceId || sourceId === '__trigger__') return undefined;
   return draft?.nodes?.find((node) => node.id === sourceId);
 }
@@ -26,7 +26,7 @@ function settingsScreenForConnector(connectorId: string): SettingsScreen | null 
 }
 
 function readOnlyDetailLines(
-  draft: InterviewDraft | undefined,
+  draft: WorkflowCanvasDraft | undefined,
   nodeData: WorkflowVisualNodeData,
   workflowNode: WorkflowNode | undefined,
 ): Array<{ label: string; value: string }> {

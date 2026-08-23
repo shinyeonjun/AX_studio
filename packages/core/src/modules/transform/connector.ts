@@ -1,6 +1,6 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
-import { TransformExprSchema } from '../../work-discovery/synthesis/transform-dsl.js';
-import { evaluateTransformExpr } from '../../work-discovery/synthesis/transform-evaluator.js';
+import { TransformExprSchema } from '../../workflow/transform-expr/dsl.js';
+import { evaluateTransformExpr } from '../../workflow/transform-expr/evaluator.js';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 
 function formatTableValue(value: unknown): string {

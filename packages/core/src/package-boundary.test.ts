@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseWorkflowIR } from './workflow/schema.js';
 import { requiresApproval, validateApprovalPolicy } from './workflow/approval.js';
-import { csMailWorkflowFixture } from './workflow/fixtures.js';
+import { csMailWorkflowFixture } from './testing/fixtures/workflows.js';
 import { createDatabaseAsync } from './store/db.js';
 import { WorkflowStore } from './store/workflow-store.js';
 import packageJson from '../package.json';

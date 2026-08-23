@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { CandidateProgram, DiscoveryBlueprint, DiscoverySessionState } from '../schema.js';
 import type { OutputObservation } from '../observation/schema.js';
-import type { TransformExpr } from '../synthesis/transform-dsl.js';
+import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 
 export function sourceIdFromExpr(expr: TransformExpr): string | undefined {
   if (expr.op === 'source') return expr.sourceId;

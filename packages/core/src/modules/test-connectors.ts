@@ -9,10 +9,11 @@ import {
   MockRdbConnector,
   MockSlackConnector,
 } from './mocks/index.js';
-import './register-defaults.js';
+import { registerAllModules } from './packages/register.js';
 
 /** Builds deterministic connectors for core tests; production bootstrap never calls this. */
 export function createTestConnectors(): Record<string, Connector> {
+  registerAllModules();
   const connectors: Record<string, Connector> = {};
   const mockFactories: Partial<Record<ConnectorId, () => Connector>> = {
     document: () => new MockDocumentConnector(),

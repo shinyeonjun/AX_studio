@@ -8,7 +8,7 @@ import { buildLocalFolderResources } from '../local-folder/resources.js';
 import { resolveFolderRoot } from '../local-folder/path-security.js';
 import { localFolderNewFileHandler } from '../../triggers/local-folder/new-file/index.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
-import { LOCAL_FOLDER_CAPABILITIES, LOCAL_FOLDER_CATALOG } from './catalog-data.js';
+import { LOCAL_FOLDER_CAPABILITIES, LOCAL_FOLDER_CATALOG } from '../local-folder/catalog.js';
 
 function localFolderSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'local_folder');

@@ -1,4 +1,4 @@
-import type { CompletenessResult, InterviewDraft, WorkflowNode } from '@ax-studio/core';
+import type { CompletenessResult, WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
 import {
   displayForCapability as coreDisplayForCapability,
   displayForTrigger as coreDisplayForTrigger,
@@ -14,7 +14,7 @@ import { applyWorkflowNodeIcon, triggerIconConnector, triggerNodeIcon, workflowN
 export type { WorkflowCardBrandStyle, WorkflowCardDisplay, WorkflowVisualLine };
 export { editPromptForNode, editPromptForTrigger };
 
-export function displayForTrigger(draft: InterviewDraft, slots?: CompletenessResult['slots']) {
+export function displayForTrigger(draft: WorkflowCanvasDraft, slots?: CompletenessResult['slots']) {
   const base = coreDisplayForTrigger(draft, slots);
   const connector = base.iconConnector ?? triggerIconConnector(draft.triggerType);
   if (connector) return applyWorkflowNodeIcon(base, connector);
@@ -24,7 +24,7 @@ export function displayForTrigger(draft: InterviewDraft, slots?: CompletenessRes
 }
 
 export function displayForWorkflowNode(
-  draft: InterviewDraft,
+  draft: WorkflowCanvasDraft,
   node: WorkflowNode,
   slots?: CompletenessResult['slots'],
 ) {

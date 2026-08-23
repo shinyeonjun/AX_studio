@@ -8,7 +8,7 @@ function candidate(id: string, path: string, sourceId: string, fn: 'sum' | 'coun
     id,
     observationPath: path,
     expr: { op: 'aggregate', input: { op: 'source', sourceId }, fn, column: 'amount' },
-    score: { total: 0.9, replay: 0.95, semantic: 0.95, simplicity: 0.7 },
+    score: { total: 0.9, replay: 0.95, simplicity: 0.7 },
     replayResults: [{ exampleId: 'ex_1', expected: 100, actual: 100, match: 1, pass: true }],
     status: 'accepted',
   };
@@ -35,8 +35,6 @@ function baseSession(candidates: CandidateProgram[]): DiscoverySessionState {
     budgets: {
       sourceReadsUsed: 1,
       sourceReadsMax: 10,
-      modelCallsUsed: 0,
-      modelCallsMax: 4,
       elapsedMs: 10,
     },
     createdAt: new Date().toISOString(),

@@ -30,6 +30,6 @@ const skillEntries = skillFiles.map(({ id, path }) => {
 
 const agentsMd = readFileSync(agentsMdPath, 'utf8');
 
-const out = `export const EMBEDDED_AGENT_SKILLS: Record<string, string> = {\n${skillEntries.join(',\n')}\n};\n\nexport const EMBEDDED_AGENTS_MD = ${JSON.stringify(agentsMd)};\n`;
+const out = `// GENERATED FILE — do not edit. Regenerate with: npm run build -w @ax-studio/core\n// Source: src/agent/skills/**/SKILL.md and src/agent/AGENTS.md via scripts/embed-skills.mjs\n\nexport const EMBEDDED_AGENT_SKILLS: Record<string, string> = {\n${skillEntries.join(',\n')}\n};\n\nexport const EMBEDDED_AGENTS_MD = ${JSON.stringify(agentsMd)};\n`;
 
 writeFileSync(join(harnessDir, 'embedded.ts'), out);

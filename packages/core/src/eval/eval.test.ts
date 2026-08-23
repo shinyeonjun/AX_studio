@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { parseWorkflowIR, validateWorkflowIR } from '../workflow/schema.js';
 import { requiresApproval, validateApprovalPolicy, isDeployable } from '../workflow/approval.js';
-import { csMailWorkflowFixture, weeklyReportWorkflowFixture, dataPolicyFixture } from '../workflow/fixtures.js';
+import { csMailWorkflowFixture, weeklyReportWorkflowFixture, dataPolicyFixture } from '../testing/fixtures/workflows.js';
 import { createDatabaseAsync } from '../store/db.js';
 import { createTestConnectors, mockGmail, mockSlack } from '../modules/test-connectors.js';
 import { WorkflowStore } from '../store/workflow-store.js';
-import { assessCompleteness, computeRequiredSlots } from '../interview/slots/requiredness.js';
+import { assessCompleteness, computeRequiredSlots } from '../workflow/canvas/slots/requiredness.js';
 import { WorkflowRuntime } from '../runtime/engine.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

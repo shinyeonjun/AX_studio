@@ -1,23 +1,27 @@
 import type { ArtifactStore } from '../../store/artifact-store.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { DiscoverySourceProvider } from '../../contracts/discovery-source.js';
+import { ALL_MODULE_PACKAGES } from '../../modules/packages/catalog.js';
 import { DiscoverySourceRegistry } from './registry.js';
 import { InputArtifactDiscoverySourceProvider } from './input-artifact-provider.js';
-import { LocalSheetDiscoverySourceProvider } from './local-sheet-provider.js';
-import { RdbDiscoverySourceProvider } from './rdb-provider.js';
 
 export function createDefaultDiscoverySourceRegistry(
-  store: WorkflowStore,
-  artifactStore: ArtifactStore,
+  _store: WorkflowStore,
+  _artifactStore: ArtifactStore,
 ): DiscoverySourceRegistry {
+  const moduleProviders = ALL_MODULE_PACKAGES.flatMap((pkg) =>
+    pkg.discoverySource ? [pkg.discoverySource] : [],
+  );
+  const materializeWorkbook = ALL_MODULE_PACKAGES.find((pkg) => pkg.id === 'local_sheet')?.materializeWorkbook;
+  if (!materializeWorkbook) {
+    throw new Error('local_sheet module must register materializeWorkbook');
+  }
   return new DiscoverySourceRegistry([
-    new InputArtifactDiscoverySourceProvider(),
-    new LocalSheetDiscoverySourceProvider(),
-    new RdbDiscoverySourceProvider(),
+    new InputArtifactDiscoverySourceProvider({ materializeWorkbook }),
+    ...moduleProviders,
   ]);
 }
 
 export * from './types.js';
 export * from './registry.js';
-export * from './rdb-provider.js';
-export * from './local-sheet-provider.js';
 export * from './input-artifact-provider.js';

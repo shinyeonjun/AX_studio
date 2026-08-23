@@ -5,6 +5,7 @@ import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
 import { runSavedWorkflowById } from './runtime/manual-workflow-run.js';
 import { buildConnectorsFromStore } from './modules/registry.js';
+import { registerAllModules } from './modules/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from './agent/harness.js';
 import { AxCommandService } from './agent/commands/service.js';
 import {
@@ -59,6 +60,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const paths = options.paths ?? resolveAxDataPaths({ dataRoot: options.dataRoot });
   setAxDataPaths(paths);
+  registerAllModules();
   const dbPath = options.dbPath ?? paths.database;
 
   const db = await createDatabaseAsync(dbPath);

@@ -50,8 +50,8 @@ export default defineConfig({
       alias: {
         // Renderer aliases expose only browser-safe, pure presentation modules.
         '@ax-studio/core/catalog-data': resolve('../../packages/core/src/modules/packages/catalog-data.ts'),
-        '@ax-studio/core/interview-constants': resolve('../../packages/core/src/interview/compile/constants.ts'),
-        '@ax-studio/core/panel-fields': resolve('../../packages/core/src/interview/presentation/panel-fields.ts'),
+        '@ax-studio/core/workflow/canvas/compile/constants': resolve('../../packages/core/src/workflow/canvas/compile/constants.ts'),
+        '@ax-studio/core/workflow/canvas/presentation/panel-fields': resolve('../../packages/core/src/workflow/canvas/presentation/panel-fields.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
       },

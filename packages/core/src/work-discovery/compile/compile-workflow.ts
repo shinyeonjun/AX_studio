@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { DiscoveryBlueprint } from '../schema.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { sourceIdFromExpr } from './blueprint.js';
-import type { TransformExpr } from '../synthesis/transform-dsl.js';
+import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 
 function sanitizeStepId(value: string): string {
   const slug = value.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24);

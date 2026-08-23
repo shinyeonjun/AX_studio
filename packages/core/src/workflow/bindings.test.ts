@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyStepBindings, coercePortBinding, inferWorkflowBindings } from './bindings.js';
-import { parseBindingsRecord } from '../interview/draft/schema.js';
+import { parseBindingsRecord } from '../workflow/canvas/draft/schema.js';
 import type { WorkflowIR } from './schema.js';
 
 describe('inferWorkflowBindings', () => {

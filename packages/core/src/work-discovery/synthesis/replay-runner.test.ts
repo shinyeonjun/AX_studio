@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildTableArtifact } from '../../modules/local-sheet/profile.js';
+import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import { enumerateCandidates, replayCandidates } from './index.js';
-import { evaluateTransformExpr } from './transform-evaluator.js';
+import { evaluateTransformExpr } from '../../workflow/transform-expr/evaluator.js';
 
 describe('transform synthesis replay', () => {
   const table = buildTableArtifact({

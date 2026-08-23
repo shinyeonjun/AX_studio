@@ -6,7 +6,7 @@ import { slackChannelMatches } from '../../triggers/slack/new-message/channel-ma
 import { SlackSocketModeListener } from '../../triggers/slack/new-message/socket-mode.js';
 import { parseSlackConnectionConfig } from '../../triggers/types.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
-import { SLACK_CAPABILITIES, SLACK_CATALOG } from './catalog-data.js';
+import { SLACK_CAPABILITIES, SLACK_CATALOG } from '../slack/catalog.js';
 
 function slackSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'slack');

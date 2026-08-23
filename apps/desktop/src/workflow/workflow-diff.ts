@@ -1,4 +1,4 @@
-import type { InterviewDraft, WorkflowNode } from '@ax-studio/core';
+import type { WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
 
 export type WorkflowNodeChange = 'unchanged' | 'added' | 'modified';
 
@@ -10,7 +10,7 @@ export interface WorkflowDiffSummary {
   hasChanges: boolean;
 }
 
-function triggerSnapshot(draft: InterviewDraft): string {
+function triggerSnapshot(draft: WorkflowCanvasDraft): string {
   return JSON.stringify({
     triggerType: draft.triggerType,
     schedule: draft.schedule ?? '',
@@ -21,7 +21,7 @@ function triggerSnapshot(draft: InterviewDraft): string {
   });
 }
 
-function nodeSnapshot(draft: InterviewDraft, node: WorkflowNode): string {
+function nodeSnapshot(draft: WorkflowCanvasDraft, node: WorkflowNode): string {
   return JSON.stringify({
     node,
     action: draft.actions?.[node.id],
@@ -29,8 +29,8 @@ function nodeSnapshot(draft: InterviewDraft, node: WorkflowNode): string {
 }
 
 export function computeWorkflowDiff(
-  baseline: InterviewDraft | undefined,
-  current: InterviewDraft | undefined,
+  baseline: WorkflowCanvasDraft | undefined,
+  current: WorkflowCanvasDraft | undefined,
 ): WorkflowDiffSummary {
   const nodeChanges = new Map<string, WorkflowNodeChange>();
   if (!baseline || !current) {

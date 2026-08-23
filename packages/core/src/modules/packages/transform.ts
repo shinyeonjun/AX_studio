@@ -1,6 +1,6 @@
 import type { ModulePackage } from '../module-package.js';
 import { TransformConnector } from '../transform/index.js';
-import { TRANSFORM_CAPABILITIES, TRANSFORM_CATALOG } from './catalog-data.js';
+import { TRANSFORM_CAPABILITIES, TRANSFORM_CATALOG } from '../transform/catalog.js';
 
 export const transformModulePackage: ModulePackage = {
   id: 'transform',

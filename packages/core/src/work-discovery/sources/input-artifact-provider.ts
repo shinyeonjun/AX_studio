@@ -1,14 +1,15 @@
 import { createHash } from 'node:crypto';
 import { extname } from 'node:path';
-import { readWorkbookFromPath } from '../../modules/local-sheet/read.js';
-import type { SourceDescriptor } from '../schema.js';
-import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from './types.js';
+import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from '../../contracts/discovery-source.js';
+import type { InputArtifactDiscoverySourceOptions } from './types.js';
 
 export class InputArtifactDiscoverySourceProvider implements DiscoverySourceProvider {
   readonly connector = 'input_artifact';
 
-  async listSources(ctx: DiscoverySourceContext): Promise<SourceDescriptor[]> {
-    const descriptors: SourceDescriptor[] = [];
+  constructor(private readonly options: InputArtifactDiscoverySourceOptions) {}
+
+  async listSources(ctx: DiscoverySourceContext) {
+    const descriptors = [];
     for (const artifactId of ctx.inputArtifactIds) {
       const stored = ctx.artifactStore.get(artifactId);
       if (!stored) continue;
@@ -18,7 +19,7 @@ export class InputArtifactDiscoverySourceProvider implements DiscoverySourceProv
         id: `input:${artifactId}`,
         connector: 'input_artifact',
         label: stored.fileName,
-        kind: 'workbook',
+        kind: 'workbook' as const,
         relevance: 0.9,
         profileSummary: stored.fileName,
         metadata: { artifactId, storedPath: stored.storedPath },
@@ -32,7 +33,7 @@ export class InputArtifactDiscoverySourceProvider implements DiscoverySourceProv
     const artifactId = sourceId.replace(/^input:/, '');
     const stored = ctx.artifactStore.get(artifactId);
     if (!stored) return null;
-    const { workbook, tables } = readWorkbookFromPath(stored.storedPath);
+    const { workbook, tables } = this.options.materializeWorkbook(stored.storedPath);
     const firstTableId = workbook.sheets[0]?.tables[0]?.artifactId;
     const table = firstTableId ? tables[firstTableId] : undefined;
     if (!table) return null;

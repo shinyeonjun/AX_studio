@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { displayForTrigger } from './trigger-display.js';
-import type { InterviewDraft } from '../../interview/draft/schema.js';
+import type { WorkflowCanvasDraft } from '../../workflow/canvas/draft/schema.js';
 
-function gmailDraft(triggerFilter: unknown): InterviewDraft {
+function gmailDraft(triggerFilter: unknown): WorkflowCanvasDraft {
   return {
     name: '테스트',
     goal: '네이버 메일 Slack 알림',
     triggerType: 'gmail.new_message',
     gmailAccount: 'primary',
-    triggerFilter: triggerFilter as InterviewDraft['triggerFilter'],
+    triggerFilter: triggerFilter as WorkflowCanvasDraft['triggerFilter'],
     assumptions: [],
     nodes: [],
     actions: {},

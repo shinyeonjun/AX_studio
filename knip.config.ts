@@ -1,0 +1,53 @@
+/** @type {import('knip').KnipConfig} */
+export default {
+  ignoreExportsUsedInFile: true,
+  ignoreIssues: {
+    'packages/core/src/index.ts': ['exports', 'types'],
+    'packages/core/src/**/index.ts': ['exports', 'types'],
+    'packages/core/src/modules/packages/catalog.ts': ['exports'],
+    'packages/core/src/modules/packages/catalog-data.ts': ['exports'],
+    'packages/core/src/retrieval/**': ['exports', 'types'],
+    'packages/core/src/store/rows.ts': ['types'],
+    'packages/core/src/store/repositories/**': ['exports', 'types'],
+    'packages/core/src/modules/module-package.ts': ['exports'],
+    'packages/core/src/modules/local-sheet/**': ['exports'],
+    'packages/core/src/contracts/artifacts/table-build.ts': ['exports'],
+    'packages/core/src/design-tools/**': ['exports', 'types'],
+    'packages/core/src/agent/commands/schema.ts': ['duplicates'],
+    'packages/core/src/document-write/**': ['exports'],
+    'packages/core/src/workflow/**': ['exports', 'types'],
+    'packages/core/src/work-discovery/**': ['exports', 'types'],
+    'packages/core/src/triggers/**': ['exports'],
+    'packages/core/src/runtime/**': ['exports'],
+    'packages/core/src/agent/settings/providers/**': ['exports'],
+    'apps/desktop/src/**': ['exports', 'types'],
+    'apps/desktop/electron/**': ['exports'],
+  },
+  ignoreBinaries: ['where.exe'],
+  workspaces: {
+    'packages/core': {
+      entry: [
+        'src/index.ts',
+        'src/bootstrap.ts',
+        'src/agent/commands/cli.ts',
+        'src/**/*.test.ts',
+        'src/testing/**/*.ts',
+        'scripts/embed-skills.mjs',
+      ],
+      project: ['src/**/*.ts', 'scripts/**/*.mjs'],
+      ignore: ['src/agent/embedded.ts'],
+    },
+    'apps/desktop': {
+      entry: [
+        'electron/main/index.ts',
+        'electron/preload/index.ts',
+        'src/main.tsx',
+        'src/types/ax-api.ts',
+        'electron/main/ipc/**/*.ts',
+        'electron/main/**/connection.ts',
+      ],
+      project: ['electron/**/*.ts', 'src/**/*.{ts,tsx}'],
+      ignoreDependencies: ['electron'],
+    },
+  },
+};

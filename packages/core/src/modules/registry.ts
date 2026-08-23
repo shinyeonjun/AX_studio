@@ -2,7 +2,6 @@ import type { WorkflowStore } from '../store/workflow-store.js';
 import type { Connector } from './types.js';
 import { CONNECTOR_CATALOG, type ConnectorId } from '../catalog/connectors.js';
 import { instantiateRegisteredConnector } from './module-registry.js';
-import './register-defaults.js';
 
 export { registerModule, type ModuleRegistration } from './module-registry.js';
 

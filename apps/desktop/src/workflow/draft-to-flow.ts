@@ -1,6 +1,6 @@
 import { getCapability } from '@ax-studio/core/catalog-data';
-import { GMAIL_READ_WORKFLOW_NODE_ID } from '@ax-studio/core/interview-constants';
-import type { CompletenessResult, InterviewDraft, WorkflowNode } from '@ax-studio/core';
+import { GMAIL_READ_WORKFLOW_NODE_ID } from '@ax-studio/core/workflow/canvas/compile/constants';
+import type { CompletenessResult, WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
 import type { Edge, Node } from '@xyflow/react';
 import {
   displayForTrigger,
@@ -24,7 +24,7 @@ export interface DraftToFlowOptions {
 }
 
 interface BuildContext extends DraftToFlowOptions {
-  draft: InterviewDraft;
+  draft: WorkflowCanvasDraft;
   nodes: Node<WorkflowVisualNodeData>[];
   edges: Edge[];
   byId: Map<string, WorkflowNode>;
@@ -211,7 +211,7 @@ function emitSequence(ctx: BuildContext, ids: string[], incoming: string | null)
   return last;
 }
 
-function shouldInjectGmailRead(draft: InterviewDraft, nodes: WorkflowNode[]): boolean {
+function shouldInjectGmailRead(draft: WorkflowCanvasDraft, nodes: WorkflowNode[]): boolean {
   if (draft.triggerType !== 'gmail.new_message') return false;
   return !nodes.some((node) => isGmailReadNode(node));
 }
@@ -223,7 +223,7 @@ export interface DraftFlowGraph {
 }
 
 export function draftToFlow(
-  draft: InterviewDraft | undefined,
+  draft: WorkflowCanvasDraft | undefined,
   options: DraftToFlowOptions = {},
 ): DraftFlowGraph {
   if (!draft) {

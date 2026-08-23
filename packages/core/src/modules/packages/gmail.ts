@@ -7,7 +7,7 @@ import {
 } from '../gmail/index.js';
 import { gmailNewMessageHandler } from '../../triggers/gmail/new-message/index.js';
 import type { DesignToolContext } from '../../design-tools/types.js';
-import { GMAIL_CAPABILITIES, GMAIL_CATALOG } from './catalog-data.js';
+import { GMAIL_CAPABILITIES, GMAIL_CATALOG } from '../gmail/catalog.js';
 
 function gmailSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'gmail');

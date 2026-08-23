@@ -3,7 +3,7 @@ import type { ArtifactStore } from '../../store/artifact-store.js';
 import { DocumentArtifactSchema } from '../../contracts/artifacts/document.js';
 import { TableArtifactSchema } from '../../contracts/artifacts/table.js';
 import { WorkbookArtifactSchema } from '../../contracts/artifacts/workbook.js';
-import { readWorkbookFromPath } from '../../modules/local-sheet/read.js';
+import type { WorkbookMaterializer } from '../../contracts/discovery-source.js';
 import type { OutputObservation } from './schema.js';
 import { observeDocumentArtifact } from './observe-document.js';
 import { observeTableArtifact } from './observe-table.js';
@@ -13,6 +13,7 @@ export function observeArtifact(
   exampleId: string,
   artifactId: string,
   artifactStore: ArtifactStore,
+  materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'],
 ): OutputObservation[] {
   const documentJson = artifactStore.getDocumentArtifact<unknown>(artifactId);
   if (documentJson) {
@@ -46,7 +47,7 @@ export function observeArtifact(
   if (!stored) return [];
   const ext = extname(stored.fileName).toLowerCase();
   if (['.csv', '.xlsx', '.xls'].includes(ext)) {
-    const { workbook, tables } = readWorkbookFromPath(stored.storedPath);
+    const { workbook, tables } = materializeWorkbook(stored.storedPath);
     return observeWorkbookArtifact(exampleId, workbook, tables);
   }
 

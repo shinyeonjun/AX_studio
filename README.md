@@ -7,19 +7,19 @@
 
 ## 하는 일
 
-- **대화**에서 업무를 지시하고, 빈칸만 인터뷰로 채웁니다.
+- **대화**에서 업무를 지시하고, 워크플로우 캔버스로 빈칸을 채웁니다.
 - **업무**에서 맡긴 워크플로우를 켜고 실행합니다.
 - **승인**에서 Gmail 발송 같은 외부 부작용을 사람이 확인합니다.
 - **활동**에서 실행 이력을 봅니다.
 
 v1 커넥터: Gmail, Slack, 읽기 전용 RDB, 연결된 로컬 폴더·문서, 보고서(HTML/DOCX/PDF).
 
-CSV/XLSX용 `local_sheet` 계약은 catalog에만 남아 있으며 실제 런타임 구현 전에는 설계·저장 대상에서 제외됩니다.
+CSV/XLSX용 `local_sheet`는 Work Discovery와 런타임에서 지원합니다.
 
 ## 저장소 구조
 
 ```text
-packages/core     Workflow IR, 인터뷰, 런타임, 커넥터
+packages/core     Workflow IR, workflow canvas, runtime, connectors, work discovery
 apps/desktop      Electron 트레이 앱 (React)
 docs/plans        v1 범위 (고정)
 docs/future.md    나중에 할 일

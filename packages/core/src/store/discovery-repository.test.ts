@@ -27,8 +27,6 @@ describe('discovery persistence', () => {
       budgets: {
         sourceReadsUsed: 0,
         sourceReadsMax: 12,
-        modelCallsUsed: 0,
-        modelCallsMax: 4,
         elapsedMs: 0,
       },
       createdAt: now,

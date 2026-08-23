@@ -25,15 +25,15 @@
       "import": "./dist/modules/packages/catalog-data.js",
       "default": "./dist/modules/packages/catalog-data.js"
     },
-    "./interview-constants": {
-      "types": "./dist/interview/compile/constants.d.ts",
-      "import": "./dist/interview/compile/constants.js",
-      "default": "./dist/interview/compile/constants.js"
+    "./workflow/canvas/compile/constants": {
+      "types": "./dist/workflow/canvas/compile/constants.d.ts",
+      "import": "./dist/workflow/canvas/compile/constants.js",
+      "default": "./dist/workflow/canvas/compile/constants.js"
     },
-    "./panel-fields": {
-      "types": "./dist/interview/presentation/panel-fields.d.ts",
-      "import": "./dist/interview/presentation/panel-fields.js",
-      "default": "./dist/interview/presentation/panel-fields.js"
+    "./workflow/canvas/presentation/panel-fields": {
+      "types": "./dist/workflow/canvas/presentation/panel-fields.d.ts",
+      "import": "./dist/workflow/canvas/presentation/panel-fields.js",
+      "default": "./dist/workflow/canvas/presentation/panel-fields.js"
     },
     "./visual-display": {
       "types": "./dist/workflow/visual-display.d.ts",
@@ -44,7 +44,10 @@
   "scripts": {
     "build": "node scripts/embed-skills.mjs && tsc",
     "test": "node scripts/embed-skills.mjs && vitest run",
+    "test:e2e": "node scripts/embed-skills.mjs && vitest run src/testing/e2e",
     "eval": "node scripts/embed-skills.mjs && vitest run --config vitest.eval.config.ts",
+    "knip": "knip --workspace packages/core",
+    "arch:check": "depcruise src --config ../../.dependency-cruiser.cjs --output-type err",
     "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit"
   },
   "dependencies": {

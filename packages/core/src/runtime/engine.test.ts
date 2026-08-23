@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { weeklyReportWorkflowFixture } from '../workflow/fixtures.js';
+import { weeklyReportWorkflowFixture } from '../testing/fixtures/workflows.js';
 import { createDatabaseAsync } from '../store/db.js';
 import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from './engine.js';

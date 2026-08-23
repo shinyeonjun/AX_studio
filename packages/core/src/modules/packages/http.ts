@@ -1,6 +1,6 @@
 import type { ModulePackage } from '../module-package.js';
 import { HttpConnector, mergeHttpAuthSecret, parseHttpConnectionConfig } from '../http/index.js';
-import { HTTP_CAPABILITIES, HTTP_CATALOG } from './catalog-data.js';
+import { HTTP_CAPABILITIES, HTTP_CATALOG } from '../http/catalog.js';
 
 export const httpModulePackage: ModulePackage = {
   id: 'http',

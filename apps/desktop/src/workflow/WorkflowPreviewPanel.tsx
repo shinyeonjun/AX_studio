@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CompletenessResult, InterviewDraft } from '@ax-studio/core';
+import type { CompletenessResult, WorkflowCanvasDraft } from '@ax-studio/core';
 import type { Node } from '@xyflow/react';
 import type { SettingsScreen } from '../types/navigation';
 import { WorkflowGraph } from './WorkflowGraph.js';
@@ -8,8 +8,8 @@ import type { WorkflowVisualNodeData } from './types.js';
 import { computeWorkflowDiff, diffLabel } from './workflow-diff.js';
 
 interface WorkflowPreviewPanelProps {
-  draft?: InterviewDraft;
-  baselineDraft?: InterviewDraft;
+  draft?: WorkflowCanvasDraft;
+  baselineDraft?: WorkflowCanvasDraft;
   completeness?: CompletenessResult;
   done?: boolean;
   title?: string;
