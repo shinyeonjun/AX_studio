@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { useWorkspaceChat } from '../../hooks/useWorkspaceChat';
+import { useDiscovery } from '../../hooks/useDiscovery';
 import { WorkflowPreviewPanel } from '../../workflow/WorkflowPreviewPanel';
 import { WorkConversationSplit } from '../work/WorkConversationSplit';
 import { useWorkflowPanelWidth } from '../../hooks/useWorkflowPanelWidth';
@@ -15,6 +16,11 @@ interface ChatMainPageProps {
 }
 
 export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
+  const discovery = useDiscovery({
+    onPublished: async () => {
+      await workspaceChat.reset();
+    },
+  });
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
   const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
     useWorkflowPanelWidth();
@@ -54,13 +60,18 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
       )}
       <AxWorkspaceChat
         messages={workspaceChat.displayMessages}
-        busy={workspaceChat.busy}
-        error={workspaceChat.error}
-        progress={workspaceChat.progress}
+        busy={workspaceChat.busy || discovery.busy}
+        error={workspaceChat.error || discovery.error}
+        progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
         workflowRegistered={workspaceChat.workflowRegistered}
+        discoveryView={discovery.view ?? undefined}
+        discoveryBusy={discovery.busy}
         onSend={workspaceChat.sendMessage}
         onRegisterWorkflow={workspaceChat.registerWorkflow}
+        onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
+        onDiscoveryAnswer={discovery.answer}
+        onDiscoveryPublish={() => void discovery.publish()}
       />
     </div>
   );

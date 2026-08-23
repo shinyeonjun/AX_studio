@@ -97,4 +97,24 @@ contextBridge.exposeInMainWorld('ax', {
     ipcRenderer.on('ax:state-changed', wrapped);
     return () => ipcRenderer.removeListener('ax:state-changed', wrapped);
   },
+  importArtifact: () => ipcRenderer.invoke('ax:importArtifact'),
+  discoveryStart: (payload: {
+    goal: string;
+    exampleArtifactIds: string[];
+    inputArtifactIds?: string[];
+    desiredRecurrence?: string;
+  }) => ipcRenderer.invoke('ax:discoveryStart', payload),
+  discoveryInspect: (sessionId: string) => ipcRenderer.invoke('ax:discoveryInspect', sessionId),
+  discoveryCancel: (sessionId: string) => ipcRenderer.invoke('ax:discoveryCancel', sessionId),
+  discoveryAnswer: (payload: {
+    sessionId: string;
+    questionId: string;
+    optionId: string;
+    expectedRevision?: number;
+  }) => ipcRenderer.invoke('ax:discoveryAnswer', payload),
+  discoveryPublish: (payload: {
+    sessionId: string;
+    name?: string;
+    expectedRevision?: number;
+  }) => ipcRenderer.invoke('ax:discoveryPublish', payload),
 });

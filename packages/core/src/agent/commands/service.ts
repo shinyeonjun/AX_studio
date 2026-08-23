@@ -9,6 +9,7 @@ import {
   getConnectorLabel,
 } from '../../catalog/connectors.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
+import { parseRdbConnectionConfig } from '../../modules/rdb/index.js';
 import {
   commandAccess,
   HOST_COMMAND_CONTEXT,
@@ -24,6 +25,15 @@ import {
   createWorkflowCommandGateway,
   type AxWorkflowCommandGateway,
 } from './workflow-gateway.js';
+import {
+  createDiscoveryCommandGateway,
+  type DiscoveryCommandGateway,
+} from './discovery-gateway.js';
+import {
+  DiscoveryCancelArgsSchema,
+  DiscoveryInspectArgsSchema,
+  DiscoveryStartArgsSchema,
+} from '../../work-discovery/schema.js';
 import {
   AX_COMMAND_NAMES,
   AxCommandSchema,
@@ -168,6 +178,41 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     args: { title: '카드 제목', blocks: '근거·판단·단계·안내 블록', inputs: '필요한 입력 목록', actions: '사용자 응답 버튼 목록' },
     mutates: false,
   },
+  {
+    name: 'discovery.start',
+    lifecycle: 'workflow',
+    description: '지난 결과물 예시로 업무 발견을 시작합니다.',
+    args: { goal: '업무 목표', exampleArtifactIds: 'artifact id list', inputArtifactIds: 'optional input artifacts' },
+    mutates: true,
+  },
+  {
+    name: 'discovery.inspect',
+    lifecycle: 'read',
+    description: '업무 발견 세션 상태를 조회합니다.',
+    args: { sessionId: 'discovery session id' },
+    mutates: false,
+  },
+  {
+    name: 'discovery.cancel',
+    lifecycle: 'workflow',
+    description: '진행 중인 업무 발견을 취소합니다.',
+    args: { sessionId: 'discovery session id' },
+    mutates: true,
+  },
+  {
+    name: 'discovery.answer',
+    lifecycle: 'workflow',
+    description: '모호한 후보에 대한 사용자 답변을 반영합니다.',
+    args: { sessionId: 'discovery session id', questionId: 'question id', optionId: 'selected option id' },
+    mutates: true,
+  },
+  {
+    name: 'discovery.publish',
+    lifecycle: 'workflow',
+    description: 'replay를 통과한 업무안을 workflow로 저장합니다.',
+    args: { sessionId: 'discovery session id', name: 'optional workflow name' },
+    mutates: true,
+  },
 ] as const satisfies readonly (AxCommandDefinition & { lifecycle: AxCommandLifecycle })[];
 
 const COMMAND_NAME_SET = new Set<string>(AX_COMMAND_NAMES);
@@ -229,10 +274,24 @@ export class AxCommandService {
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
     this.workflowGateway = createWorkflowCommandGateway(store, options);
+    const rdbConnection = store.getConnections().find((entry) => entry.connector === 'rdb' && entry.connected);
+    const rdbConfig = rdbConnection ? parseRdbConnectionConfig(rdbConnection.config) : null;
+    const exploration =
+      rdbConfig?.type === 'sqlite' && rdbConfig.filePath
+        ? {
+            rdb: {
+              filePath: rdbConfig.filePath,
+              allowedTables: rdbConfig.allowedTables ?? [],
+              rowLimit: rdbConfig.rowLimit,
+            },
+          }
+        : undefined;
+    this.discoveryGateway = createDiscoveryCommandGateway(store, { exploration });
   }
 
   private readonly readGateway: AxCommandReadGateway;
   private readonly workflowGateway: AxWorkflowCommandGateway;
+  private readonly discoveryGateway: DiscoveryCommandGateway;
 
   /**
    * Omitted context means an untrusted host caller. Agent callers must opt in
@@ -310,6 +369,16 @@ export class AxCommandService {
         return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
       case 'ui.present':
         return result(command.name, ...this.presentUi(command));
+      case 'discovery.start':
+        return result(command.name, ...this.discoveryGateway.start(command));
+      case 'discovery.inspect':
+        return result(command.name, ...this.discoveryGateway.inspect(command));
+      case 'discovery.cancel':
+        return result(command.name, ...this.discoveryGateway.cancel(command));
+      case 'discovery.answer':
+        return result(command.name, ...this.discoveryGateway.answer(command));
+      case 'discovery.publish':
+        return result(command.name, ...this.discoveryGateway.publish(command));
     }
   }
 

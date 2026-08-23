@@ -122,6 +122,9 @@ function inferStepBindings(
   ir: WorkflowIR,
   guaranteedSources: Set<string | 'trigger'>,
 ): Step {
+  if (step.type === 'ai_decision') {
+    return inferAiDecisionBindings(step, available, guaranteedSources);
+  }
   if (step.type !== 'action') return step;
 
   const cap = resolveCapability(step.connector, step.action);
@@ -151,6 +154,106 @@ function inferStepBindings(
   }
 
   return Object.keys(bindings).length > 0 ? { ...step, bindings } : step;
+}
+
+const AI_DECISION_DEFAULT_INPUTS: Record<string, ContractTypeName> = {
+  document: 'DocumentArtifact',
+  sourceText: 'TextArtifact',
+  emailBody: 'TextArtifact',
+  table: 'TableArtifact',
+};
+
+function inferAiDecisionInputContracts(
+  step: Extract<Step, { type: 'ai_decision' }>,
+  available: AvailableOutput[],
+): Record<string, ContractTypeName> {
+  if (step.inputContracts && Object.keys(step.inputContracts).length > 0) {
+    return step.inputContracts;
+  }
+  const inferred: Record<string, ContractTypeName> = {};
+  for (const [port, contract] of Object.entries(AI_DECISION_DEFAULT_INPUTS)) {
+    if (findCompatibleSource(available, contract)) inferred[port] = contract;
+  }
+  return inferred;
+}
+
+function inferAiDecisionBindings(
+  step: Extract<Step, { type: 'ai_decision' }>,
+  available: AvailableOutput[],
+  guaranteedSources: Set<string | 'trigger'>,
+): Extract<Step, { type: 'ai_decision' }> {
+  const inputContracts = inferAiDecisionInputContracts(step, available);
+  if (Object.keys(inputContracts).length === 0) return step;
+
+  const bindings = { ...(step.bindings ?? {}) };
+  for (const [inputPort, inputType] of Object.entries(inputContracts)) {
+    if (bindings[inputPort]) continue;
+    const source = findCompatibleSource(available, inputType);
+    if (!source) continue;
+    if (source.from !== 'trigger' && !guaranteedSources.has(source.from)) continue;
+    bindings[inputPort] = { from: source.from, output: source.port };
+  }
+
+  const next: Extract<Step, { type: 'ai_decision' }> = {
+    ...step,
+    inputContracts,
+    ...(Object.keys(bindings).length > 0 ? { bindings } : {}),
+  };
+  return next;
+}
+
+function textFromBoundValue(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of ['text', 'body', 'summary']) {
+    const candidate = record[key];
+    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  }
+  return undefined;
+}
+
+export interface AiDecisionBoundContext {
+  bound: Record<string, unknown>;
+  documentText?: string;
+  emailBody?: string;
+  hasDocumentArtifact: boolean;
+  usesExplicitBindings: boolean;
+}
+
+export function resolveAiDecisionBindings(
+  step: Extract<Step, { type: 'ai_decision' }>,
+  ir: WorkflowIR,
+  stepResults: Record<string, unknown>,
+  variables: Record<string, unknown>,
+): AiDecisionBoundContext {
+  const bindings = step.bindings ?? {};
+  const inputContracts = step.inputContracts ?? {};
+  const usesExplicitBindings = Object.keys(bindings).length > 0;
+  const bound: Record<string, unknown> = {};
+  let documentText: string | undefined;
+  let emailBody: string | undefined;
+  let hasDocumentArtifact = false;
+
+  for (const [port, binding] of Object.entries(bindings)) {
+    const value = resolveBindingValue(binding, ir, stepResults, variables);
+    bound[port] = value;
+    const contract = inputContracts[port];
+    if (contract === 'DocumentArtifact') {
+      hasDocumentArtifact = value != null;
+      const text = textFromBoundValue(value);
+      if (text) documentText = text;
+    }
+    if (contract === 'TextArtifact' || port === 'emailBody' || port === 'sourceText') {
+      const text = textFromBoundValue(value);
+      if (text) {
+        if (port === 'emailBody') emailBody = text;
+        else if (!documentText) documentText = text;
+      }
+    }
+  }
+
+  return { bound, documentText, emailBody, hasDocumentArtifact, usesExplicitBindings };
 }
 
 function mergeBranchAvailable(

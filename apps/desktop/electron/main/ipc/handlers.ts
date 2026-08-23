@@ -4,6 +4,7 @@ import { registerWorkspaceChatHandlers } from './workspace-chat-handlers.js';
 import { registerRuntimeHandlers } from './runtime-handlers.js';
 import { registerStateHandlers } from './state-handlers.js';
 import { registerUtilityHandlers } from './utility-handlers.js';
+import { registerDiscoveryHandlers } from './discovery-handlers.js';
 
 export function registerIpcHandlers() {
   registerStateHandlers();
@@ -12,4 +13,5 @@ export function registerIpcHandlers() {
   registerAiHandlers();
   registerConnectionHandlers();
   registerUtilityHandlers();
+  registerDiscoveryHandlers();
 }

@@ -8,6 +8,13 @@ import type {
   DetectedAiCli,
 } from './ai-provider';
 
+export interface AxCommandResult {
+  command: string;
+  status: string;
+  data?: unknown;
+  issues?: Array<{ code: string; message: string; path?: string }>;
+}
+
 export interface AxApi {
   getState: () => Promise<unknown>;
   approve: (id: string) => Promise<unknown>;
@@ -151,6 +158,30 @@ export interface AxApi {
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string }>;
   printPdf: (html: string) => Promise<unknown>;
   onStateChanged: (listener: () => void) => () => void;
+  importArtifact: () => Promise<
+    | { ok: true; artifact: { id: string; fileName: string; storedPath: string; sha256: string; size: number; createdAt: string } }
+    | { ok: false; canceled: true }
+    | { ok: false; error: string }
+  >;
+  discoveryStart: (payload: {
+    goal: string;
+    exampleArtifactIds: string[];
+    inputArtifactIds?: string[];
+    desiredRecurrence?: string;
+  }) => Promise<AxCommandResult>;
+  discoveryInspect: (sessionId: string) => Promise<AxCommandResult>;
+  discoveryCancel: (sessionId: string) => Promise<AxCommandResult>;
+  discoveryAnswer: (payload: {
+    sessionId: string;
+    questionId: string;
+    optionId: string;
+    expectedRevision?: number;
+  }) => Promise<AxCommandResult>;
+  discoveryPublish: (payload: {
+    sessionId: string;
+    name?: string;
+    expectedRevision?: number;
+  }) => Promise<AxCommandResult>;
 }
 
 declare global {

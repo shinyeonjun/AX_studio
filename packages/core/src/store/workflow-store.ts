@@ -7,6 +7,8 @@ import * as approvalRepo from './repositories/approval-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
 import * as workspaceChatRepo from './repositories/workspace-chat-repository.js';
 import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
+import * as discoveryRepo from './repositories/work-discovery-repository.js';
+import type { DiscoverySessionState } from '../work-discovery/schema.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
@@ -160,5 +162,41 @@ export class WorkflowStore {
 
   isTriggerReceiptCompleted(dedupeKey: string) {
     return triggerReceiptRepo.isTriggerReceiptCompleted(this.db, dedupeKey);
+  }
+
+  saveDiscoverySession(state: DiscoverySessionState) {
+    const existing = discoveryRepo.getDiscoverySession(this.db, state.id);
+    if (existing) {
+      discoveryRepo.updateDiscoverySession(this.db, state);
+      return;
+    }
+    discoveryRepo.insertDiscoverySession(this.db, state);
+  }
+
+  getDiscoverySessionState(id: string) {
+    return discoveryRepo.getDiscoverySession(this.db, id);
+  }
+
+  insertDiscoveryExample(params: {
+    sessionId: string;
+    label?: string;
+    outputArtifactIds: string[];
+    inputArtifactIds: string[];
+    observationsJson?: string;
+  }) {
+    return discoveryRepo.insertDiscoveryExample(this.db, params);
+  }
+
+  listDiscoveryExamples(sessionId: string) {
+    return discoveryRepo.listDiscoveryExamples(this.db, sessionId);
+  }
+
+  insertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: import('../contracts/artifacts/table.js').TableArtifact }) {
+    const { table: _table, ...record } = snapshot;
+    return discoveryRepo.insertDiscoverySnapshot(this.db, record);
+  }
+
+  listDiscoverySnapshots(sessionId: string) {
+    return discoveryRepo.listDiscoverySnapshots(this.db, sessionId);
   }
 }

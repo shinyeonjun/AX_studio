@@ -15,6 +15,20 @@ export { brandFromProvider, modelsForBrand } from './agent/settings/ai-catalog.j
 export { resolveClaudeCliModelId } from './agent/settings/providers/claude/meta.js';
 export * from './store/db.js';
 export * from './store/workflow-store.js';
+export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';
+export { importDiscoveryArtifact } from './store/import-discovery-artifact.js';
+export {
+  WorkDiscoveryService,
+  type WorkDiscoveryExplorationConfig,
+  type WorkDiscoveryServiceOptions,
+} from './work-discovery/service.js';
+export type {
+  DiscoveryInspectView,
+  DiscoverySessionState,
+  DiscoveryBlueprint,
+  DiscoveryStatus,
+} from './work-discovery/schema.js';
+export { observeDocumentArtifact, parseKoreanNumber } from './work-discovery/observation/observe-document.js';
 export * from './interview/index.js';
 export * from './runtime/types.js';
 export * from './runtime/manual-run-input.js';

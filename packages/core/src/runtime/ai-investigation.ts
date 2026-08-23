@@ -10,6 +10,7 @@ import { InvestigationOutputSchema } from './investigation-schema.js';
 import { isCloudProvider } from '../agent/cloud.js';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import type { ModelImageInput } from '../agent/model/provider.js';
+import { resolveAiDecisionBindings } from '../workflow/bindings.js';
 
 export { evaluateCondition } from './condition-expr.js';
 
@@ -229,7 +230,7 @@ export function buildInvestigationUser(
   step: Step & { type: 'ai_decision' },
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
-  options: { includeSensitiveData?: boolean } = {},
+  options: { includeSensitiveData?: boolean; ir?: WorkflowIR } = {},
 ): string {
   const lines = [`Task: ${step.goal}`];
   if (step.memo?.trim()) {
@@ -241,12 +242,27 @@ export function buildInvestigationUser(
   }
   const from = ctx.variables.from ?? ctx.variables.sender;
   if (from) lines.push(`From: ${truncateModelInput(String(from), MAX_UNTRUSTED_METADATA_CHARS)}`);
-  const body = emailBodyFromRun(ctx.variables, stepResults);
-  if (body) lines.push(`Body:\n${body}`);
-  const documentText = documentTextFromRun(ctx.variables, stepResults);
-  if (documentText && documentText !== body) {
-    lines.push(`Document:\n${documentText.slice(0, 12_000)}`);
+
+  const boundContext = options.ir
+    ? resolveAiDecisionBindings(step, options.ir, stepResults, ctx.variables)
+    : undefined;
+
+  if (boundContext?.usesExplicitBindings) {
+    const body = boundContext.emailBody;
+    if (body) lines.push(`Body:\n${body}`);
+    const documentText = boundContext.documentText;
+    if (documentText && documentText !== body) {
+      lines.push(`Document:\n${documentText.slice(0, 12_000)}`);
+    }
+  } else {
+    const body = emailBodyFromRun(ctx.variables, stepResults);
+    if (body) lines.push(`Body:\n${body}`);
+    const documentText = documentTextFromRun(ctx.variables, stepResults);
+    if (documentText && documentText !== body) {
+      lines.push(`Document:\n${documentText.slice(0, 12_000)}`);
+    }
   }
+
   const documentVisuals = documentVisualsFromRun(ctx.variables, stepResults);
   if (documentVisuals) {
     lines.push(`Document visuals (image paths/OCR metadata):\n${documentVisuals}`);
@@ -305,13 +321,37 @@ function requiredOutputFields(step: Step & { type: 'ai_decision' }): string[] {
     : [];
 }
 
-function workflowNeedsDocumentEvidence(ir: WorkflowIR): boolean {
+function workflowNeedsDocumentEvidence(ir: WorkflowIR, step: Step & { type: 'ai_decision' }): boolean {
+  const bound = resolveAiDecisionBindings(step, ir, {}, {});
+  if (bound.usesExplicitBindings) {
+    return bound.hasDocumentArtifact || Object.values(step.inputContracts ?? {}).includes('DocumentArtifact');
+  }
   return ir.steps.some(
     (candidate) =>
       candidate.type === 'action' &&
       candidate.connector === 'document' &&
       candidate.action === 'ingest',
   );
+}
+
+function hasDecisionEvidenceFromBindings(
+  step: Step & { type: 'ai_decision' },
+  ir: WorkflowIR,
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+  evidence: Array<{ source: string; detail: string }>,
+): boolean {
+  const bound = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables);
+  if (bound.usesExplicitBindings) {
+    return Boolean(
+      evidence.length > 0 ||
+        bound.emailBody?.trim() ||
+        bound.documentText?.trim() ||
+        bound.hasDocumentArtifact ||
+        documentVisualReferencesFromRun(ctx.variables, stepResults).length > 0,
+    );
+  }
+  return hasDecisionEvidence(ctx, stepResults, evidence);
 }
 
 function cloudDataAllowedForDecision(
@@ -412,10 +452,11 @@ function investigationUserPrompt(
   step: Step & { type: 'ai_decision' },
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
+  ir: WorkflowIR,
   extra?: string,
   includeSensitiveData = true,
 ): string {
-  const base = buildInvestigationUser(step, ctx, stepResults, { includeSensitiveData });
+  const base = buildInvestigationUser(step, ctx, stepResults, { includeSensitiveData, ir });
   if (!step.investigation) {
     return `${base}\n\n추가 조회 없이 지금 결론만 내세요. needMore는 false로 두세요.`;
   }
@@ -434,7 +475,11 @@ export async function runAiDecision(
   const maxReads = allowReads ? (step.maxReads ?? 4) : 1;
   let reads = 0;
   const evidence: Array<{ source: string; detail: string }> = [];
-  const untrustedBody = emailBodyFromRun(ctx.variables, stepResults);
+  const boundContext = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables);
+  const untrustedBody =
+    boundContext.usesExplicitBindings
+      ? boundContext.emailBody
+      : emailBodyFromRun(ctx.variables, stepResults);
 
   if (!investigationRunner) {
     throw Object.assign(new Error(`AI 판단 단계 ${step.id}를 실행할 조사 실행기가 없습니다.`), {
@@ -442,14 +487,14 @@ export async function runAiDecision(
     });
   }
 
-  const documentRequired = workflowNeedsDocumentEvidence(ir);
+  const documentRequired = workflowNeedsDocumentEvidence(ir, step);
   const emailBodyRequired = Boolean(untrustedBody?.trim());
   const cloudAllowed = cloudDataAllowedForDecision(ir, {
     document: documentRequired,
     emailBody: emailBodyRequired,
   });
   const includeSensitiveData = cloudAllowed || !isCloudProvider(investigationRunner.providerName);
-  const documentEvidenceAvailable = hasDecisionEvidence(ctx, stepResults, evidence);
+  const documentEvidenceAvailable = hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence);
   if (documentRequired && !includeSensitiveData) {
     throw Object.assign(
       new Error(
@@ -476,6 +521,7 @@ export async function runAiDecision(
     step,
     ctx,
     stepResults,
+    ir,
     [extra, visionNote].filter(Boolean).join('\n\n') || undefined,
     includeSensitiveData,
   );
@@ -553,7 +599,7 @@ export async function runAiDecision(
             finalOutput,
             ctx,
             stepResults,
-            hasDecisionEvidence(ctx, stepResults, evidence),
+            hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence),
             documentRequired,
           );
           return;
@@ -563,7 +609,7 @@ export async function runAiDecision(
           output,
           ctx,
           stepResults,
-          hasDecisionEvidence(ctx, stepResults, evidence),
+          hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence),
           documentRequired,
         );
         return;
@@ -581,7 +627,7 @@ export async function runAiDecision(
           finalOutput,
           ctx,
           stepResults,
-          hasDecisionEvidence(ctx, stepResults, evidence),
+          hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence),
           documentRequired,
         );
         return;
@@ -592,7 +638,7 @@ export async function runAiDecision(
         output,
         ctx,
         stepResults,
-        hasDecisionEvidence(ctx, stepResults, evidence),
+        hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence),
         documentRequired,
       );
       return;
@@ -607,7 +653,7 @@ export async function runAiDecision(
         output,
         ctx,
         stepResults,
-        hasDecisionEvidence(ctx, stepResults, evidence),
+        hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence),
         documentRequired,
       );
       return;

@@ -891,3 +891,55 @@
   }
 
 }
+
+.ax-workspace-attach-btn,
+.ax-discovery-review-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px 0;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent, #2563eb);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ax-discovery-review {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+}
+
+.ax-discovery-review-header h3 {
+  margin: 4px 0 0;
+}
+
+.ax-discovery-review-block {
+  margin-top: 14px;
+}
+
+.ax-discovery-review-block ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.ax-discovery-review-actions,
+.ax-discovery-review-footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ax-discovery-review-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #d1d5db);
+  background: transparent;
+  cursor: pointer;
+}

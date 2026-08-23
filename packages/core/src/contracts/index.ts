@@ -11,4 +11,22 @@ export {
 export * from './compatibility.js';
 export * from './mappers.js';
 export * from './document-ingest-resolve.js';
-export { TextArtifactSchema, TableArtifactSchema, JsonArtifactSchema } from './artifacts/text.js';
+export { TextArtifactSchema, JsonArtifactSchema } from './artifacts/text.js';
+export {
+  TableArtifactSchema,
+  TableColumnSchema,
+  TableRowSchema,
+  TableProfileSchema,
+  ScalarValueSchema,
+  type TableArtifact,
+  type TableColumn,
+  type TableRow,
+  type TableProfile,
+} from './artifacts/table.js';
+export {
+  WorkbookArtifactSchema,
+  WorkbookSheetSchema,
+  type WorkbookArtifact,
+  type WorkbookSheet,
+} from './artifacts/workbook.js';
+export { ArtifactMetadataSchema, type ArtifactMetadata } from './artifacts/base.js';

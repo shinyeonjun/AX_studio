@@ -1,0 +1,142 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { basename, extname } from 'node:path';
+import * as XLSX from 'xlsx';
+import type { FileRef } from '../../contracts/artifacts/file-ref.js';
+import type { TableArtifact } from '../../contracts/artifacts/table.js';
+import type { WorkbookArtifact } from '../../contracts/artifacts/workbook.js';
+import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
+import {
+  buildTableArtifact,
+  DEFAULT_TABLE_ROW_LIMIT,
+  MAX_WORKBOOK_SHEETS,
+} from './profile.js';
+
+export interface ReadSheetOptions {
+  path: string;
+  sheetName?: string;
+  rowLimit?: number;
+}
+
+export interface ReadWorkbookResult {
+  workbook: WorkbookArtifact;
+  tables: Record<string, TableArtifact>;
+}
+
+function fileRefForPath(path: string): FileRef {
+  const name = basename(path);
+  return fileRefFromLocalScan({
+    filePath: path,
+    fileName: name,
+    extension: extname(name),
+  });
+}
+
+function parseCsvMatrix(text: string): { headers: string[]; matrix: unknown[][] } {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return { headers: [], matrix: [] };
+  const headers = lines[0]!.split(',').map((cell) => cell.trim());
+  const matrix = lines.slice(1).map((line) => line.split(',').map((cell) => cell.trim()));
+  return { headers, matrix };
+}
+
+function sheetToMatrix(sheet: XLSX.WorkSheet): { headers: string[]; matrix: unknown[][] } {
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }) as unknown[][];
+  if (rows.length === 0) return { headers: [], matrix: [] };
+  const headers = (rows[0] ?? []).map((cell, index) => String(cell ?? `column_${index + 1}`));
+  const matrix = rows.slice(1);
+  return { headers, matrix };
+}
+
+export function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): ReadWorkbookResult {
+  const rowLimit = options.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
+  const ext = extname(path).toLowerCase();
+  const workbookId = `wb_${createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 16)}`;
+  const file = fileRefForPath(path);
+
+  if (ext === '.csv') {
+    const { headers, matrix } = parseCsvMatrix(readFileSync(path, 'utf8'));
+    const tableId = `tbl_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const table = buildTableArtifact({
+      id: tableId,
+      name: basename(path, ext),
+      headers,
+      matrix,
+      rowLimit,
+      source: { filePath: path, workbookSheet: basename(path, ext) },
+    });
+    const workbook: WorkbookArtifact = {
+      id: workbookId,
+      kind: 'workbook',
+      file,
+      sheets: [{
+        name: basename(path, ext),
+        index: 0,
+        visibility: 'visible',
+        imageCount: 0,
+        formulaCount: 0,
+        chartCount: 0,
+        tables: [{ id: tableId, artifactId: tableId }],
+      }],
+      namedRanges: [],
+    };
+    return { workbook, tables: { [tableId]: table } };
+  }
+
+  const xlsx = XLSX.read(readFileSync(path), { type: 'buffer', cellDates: true });
+  const sheetNames = xlsx.SheetNames.slice(0, MAX_WORKBOOK_SHEETS);
+  const tables: Record<string, TableArtifact> = {};
+  const sheets: WorkbookArtifact['sheets'] = [];
+
+  for (const [index, name] of sheetNames.entries()) {
+    const sheet = xlsx.Sheets[name];
+    if (!sheet) continue;
+    const { headers, matrix } = sheetToMatrix(sheet);
+    const tableId = `tbl_${createHash('sha256').update(`${workbookId}:${name}`).digest('hex').slice(0, 16)}`;
+    const table = buildTableArtifact({
+      id: tableId,
+      name,
+      headers,
+      matrix,
+      rowLimit,
+      source: { filePath: path, workbookSheet: name },
+    });
+    tables[tableId] = table;
+    const range = sheet['!ref'];
+    sheets.push({
+      name,
+      index,
+      visibility: 'visible',
+      imageCount: 0,
+      chartCount: 0,
+      tables: [{ id: tableId, artifactId: tableId, range }],
+      formulaCount: 0,
+    });
+  }
+
+  const workbook: WorkbookArtifact = {
+    id: workbookId,
+    kind: 'workbook',
+    file,
+    sheets,
+    namedRanges: (xlsx.Workbook?.Names ?? []).map((entry) => ({
+      name: String((entry as { Name?: string }).Name ?? ''),
+      ref: String((entry as { Ref?: string }).Ref ?? ''),
+    })).filter((entry) => entry.name),
+  };
+  return { workbook, tables };
+}
+
+export function readSheetFromPath(options: ReadSheetOptions): TableArtifact {
+  const { workbook, tables } = readWorkbookFromPath(options.path, { rowLimit: options.rowLimit });
+  if (options.sheetName) {
+    const sheet = workbook.sheets.find((entry) => entry.name === options.sheetName);
+    const tableId = sheet?.tables[0]?.artifactId;
+    if (tableId && tables[tableId]) return tables[tableId]!;
+  }
+  const firstTableId = workbook.sheets[0]?.tables[0]?.artifactId;
+  if (!firstTableId || !tables[firstTableId]) {
+    throw new Error('sheet_not_found');
+  }
+  return tables[firstTableId]!;
+}

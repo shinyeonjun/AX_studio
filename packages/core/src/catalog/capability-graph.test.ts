@@ -6,7 +6,7 @@ describe('capability graph', () => {
   it('hides gmail nodes until connected, keeps builtin tools', () => {
     const none = availableCapabilities([]);
     expect(none.some((cap) => cap.connector === 'gmail')).toBe(false);
-    expect(none.some((cap) => cap.id === 'local_sheet.read')).toBe(false);
+    expect(none.some((cap) => cap.id === 'local_sheet.read')).toBe(true);
     expect(none.some((cap) => cap.id === 'document.html.render')).toBe(true);
 
     const withGmail = availableCapabilities(['gmail']);

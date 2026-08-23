@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ConditionExprSchema, normalizeCondition } from '../runtime/condition-expr.js';
+import { ContractTypeNameSchema } from '../contracts/capability-io.js';
 import { PortBindingSchema } from './port-binding.js';
 import { actionRefFor } from './action-definition.js';
 
@@ -82,6 +83,8 @@ export const AiDecisionStepSchema = z.object({
   outputSchema: z.record(z.unknown()).optional(),
   investigation: z.boolean().default(false),
   maxReads: z.number().int().min(1).max(4).default(4),
+  /** Declared input ports and their contract types for explicit AI context binding. */
+  inputContracts: z.record(ContractTypeNameSchema).optional(),
   bindings: z.record(PortBindingSchema).optional(),
 });
 

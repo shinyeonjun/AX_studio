@@ -357,7 +357,7 @@ export const LOCAL_SHEET_CATALOG: ConnectorCatalogEntry = {
   description: '로컬 CSV/xlsx 읽기',
   connectable: false,
   alwaysReal: false,
-  runtimeAvailable: false,
+  runtimeAvailable: true,
   connectionKind: 'builtin',
   emoji: '📊',
 };

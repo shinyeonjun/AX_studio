@@ -97,6 +97,61 @@ const MIGRATION_SQL = `
   CREATE INDEX IF NOT EXISTS idx_executions_started_at ON executions(started_at);
   CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
   CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);
+
+  CREATE TABLE IF NOT EXISTS work_discovery_sessions (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 0,
+    user_goal TEXT NOT NULL,
+    state_json TEXT NOT NULL,
+    published_workflow_id TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_discovery_status
+  ON work_discovery_sessions(status, updated_at);
+
+  CREATE TABLE IF NOT EXISTS work_discovery_examples (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    label TEXT,
+    output_artifact_ids_json TEXT NOT NULL,
+    input_artifact_ids_json TEXT NOT NULL,
+    observations_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(session_id) REFERENCES work_discovery_sessions(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS work_discovery_snapshots (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    example_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    artifact_id TEXT,
+    manifest_path TEXT,
+    fingerprint TEXT NOT NULL,
+    query_json TEXT,
+    metadata_json TEXT,
+    captured_at TEXT NOT NULL,
+    FOREIGN KEY(session_id) REFERENCES work_discovery_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY(example_id) REFERENCES work_discovery_examples(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS work_discovery_replay_cases (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    example_id TEXT NOT NULL,
+    snapshot_set_id TEXT NOT NULL,
+    expected_observations_json TEXT NOT NULL,
+    last_result_json TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(session_id) REFERENCES work_discovery_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY(example_id) REFERENCES work_discovery_examples(id) ON DELETE CASCADE
+  );
 `;
 
 function columnNames(db: AppDatabase, table: string): string[] {

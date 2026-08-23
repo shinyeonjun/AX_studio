@@ -1,4 +1,4 @@
-import { canSatisfyInput, mergeAvailableTypes } from '../contracts/compatibility.js';
+import { canSatisfyInput, contractTypesCompatible, mergeAvailableTypes } from '../contracts/compatibility.js';
 import type { ContractTypeName } from '../contracts/capability-io.js';
 import {
   actionInputTypes,
@@ -9,7 +9,7 @@ import { isConnectorAlwaysOn } from '../catalog/capability-graph.js';
 import { getConnectorCatalogEntry } from '../catalog/connectors.js';
 import { linearContractSteps, stepsById } from './control-flow.js';
 import type { Step, WorkflowIR } from './schema.js';
-import { aiDecisionOutputPorts, bindingsSatisfyInputs, hasConcreteParamForPort, triggerAvailableTypes } from './bindings.js';
+import { aiDecisionOutputPorts, bindingsSatisfyInputs, bindingOutputType, hasConcreteParamForPort, triggerAvailableTypes } from './bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from './action-definition.js';
 import { isValidCronExpression } from './cron.js';
 
@@ -388,8 +388,41 @@ function stepContractIssues(
   guaranteedSources: Set<BindingSource>,
 ): { issues: ContractValidationIssue[]; nextAvailable: ContractTypeName[] } {
   if (step.type === 'ai_decision') {
+    const issues: ContractValidationIssue[] = [];
+    const contracts = step.inputContracts ?? {};
+    for (const [port, contract] of Object.entries(contracts)) {
+      const binding = step.bindings?.[port];
+      if (!binding) {
+        issues.push({
+          code: 'missing_input_contract',
+          stepId: step.id,
+          message: `${step.id} AI 단계에 ${port}(${contract}) 입력 바인딩이 필요합니다.`,
+          expected: [contract],
+          available,
+        });
+        continue;
+      }
+      const sourceType = bindingOutputType(binding, ir);
+      if (!sourceType || !contractTypesCompatible(sourceType, contract)) {
+        issues.push({
+          code: 'missing_input_contract',
+          stepId: step.id,
+          message: `${step.id}.${port} 바인딩이 ${contract} 계약과 호환되지 않습니다.`,
+          expected: [contract],
+          available: sourceType ? [sourceType] : available,
+        });
+      } else if (binding.from !== 'trigger' && !guaranteedSources.has(binding.from)) {
+        issues.push({
+          code: 'missing_input_contract',
+          stepId: step.id,
+          message: `${step.id}.${port} 바인딩 소스 ${binding.from}가 보장된 실행 경로에 없습니다.`,
+          expected: [contract],
+          available,
+        });
+      }
+    }
     return {
-      issues: [],
+      issues,
       nextAvailable: mergeAvailableTypes(available, aiDecisionOutputPorts(step).map((port) => port.type)),
     };
   }

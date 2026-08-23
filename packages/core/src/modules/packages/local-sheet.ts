@@ -1,4 +1,5 @@
 import type { ModulePackage } from '../module-package.js';
+import { LocalSheetConnector } from '../local-sheet/index.js';
 import { LOCAL_SHEET_CAPABILITIES, LOCAL_SHEET_CATALOG } from './catalog-data.js';
 
 export const localSheetModulePackage: ModulePackage = {
@@ -6,5 +7,6 @@ export const localSheetModulePackage: ModulePackage = {
   catalog: LOCAL_SHEET_CATALOG,
   capabilities: LOCAL_SHEET_CAPABILITIES,
   registration: {
+    instantiate: () => new LocalSheetConnector(),
   },
 };

@@ -31,6 +31,11 @@ export const AX_COMMAND_NAMES = [
   'workflow.run',
   'execution.enqueue_once',
   'ui.present',
+  'discovery.start',
+  'discovery.inspect',
+  'discovery.cancel',
+  'discovery.answer',
+  'discovery.publish',
 ] as const;
 
 export type AxCommandName = (typeof AX_COMMAND_NAMES)[number];

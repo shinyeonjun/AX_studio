@@ -7,11 +7,13 @@ import {
   type ThreadMessageLike,
 } from '@assistant-ui/react';
 import { useMemo, useRef } from 'react';
+import type { DiscoveryInspectView } from '@ax-studio/core';
 import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { axStudioLogo } from '../../constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from './WorkspaceRunResultCard';
 import { WorkspaceMarkdown } from './WorkspaceMarkdown';
 import { WorkspaceAssistantPresentation } from './WorkspaceAssistantPresentation';
+import { DiscoveryReviewCard } from './DiscoveryReviewCard';
 
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
@@ -28,13 +30,17 @@ interface AxWorkspaceChatProps {
   placeholder?: string;
   workflowId?: string;
   workflowRegistered?: boolean;
+  discoveryView?: DiscoveryInspectView;
+  discoveryBusy?: boolean;
   onSend: (text: string) => Promise<void>;
   onRegisterWorkflow?: () => Promise<void>;
+  onAttachExample?: () => Promise<void>;
+  onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
+  onDiscoveryPublish?: () => Promise<void> | void;
 }
 
 const WELCOME_EXAMPLES: Array<{ label: string; text: string }> = [
-  { label: 'PDF 확인하기', text: '연결된 폴더의 PDF를 읽고 Slack으로 요약해줘' },
-  { label: '반복 업무 만들기', text: 'Gmail 새 메일이 오면 내용을 요약해서 Slack으로 알려주는 반복 업무를 만들어줘' },
+  { label: '말로 만들기', text: 'Gmail 새 메일이 오면 내용을 요약해서 Slack으로 알려주는 반복 업무를 만들어줘' },
   { label: '연결 확인', text: '연결된 폴더에 어떤 파일이 있어?' },
 ];
 
@@ -126,8 +132,13 @@ export function AxWorkspaceChat({
   placeholder,
   workflowId,
   workflowRegistered = false,
+  discoveryView,
+  discoveryBusy = false,
   onSend,
   onRegisterWorkflow,
+  onAttachExample,
+  onDiscoveryAnswer,
+  onDiscoveryPublish,
 }: AxWorkspaceChatProps) {
   const threadMessages = useMemo(() => toThreadMessages(messages), [messages]);
 
@@ -141,7 +152,7 @@ export function AxWorkspaceChat({
     },
   });
 
-  const composerPlaceholder = placeholder ?? '무엇이든 물어보세요';
+  const composerPlaceholder = placeholder ?? '지난 결과물을 보여주거나, 하고 싶은 일을 적어주세요';
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -150,8 +161,21 @@ export function AxWorkspaceChat({
           {messages.length === 0 && !busy && (
             <div className="ax-workspace-empty-stage">
               <div className="ax-workspace-welcome">
-                <h1>무엇을 도와드릴까요?</h1>
-                <p className="ax-workspace-welcome-hint">필요한 선택이나 입력은 대화 안에서 안내합니다.</p>
+                <h1>지난 결과물을 보여주세요</h1>
+                <p className="ax-workspace-welcome-hint">
+                  지난번에 만든 보고서나 표를 첨부하면, 연결된 데이터에서 만드는 법을 찾아 재현해 드립니다.
+                </p>
+                {onAttachExample && (
+                  <button
+                    type="button"
+                    className="ax-workspace-attach-btn"
+                    disabled={discoveryBusy}
+                    onClick={() => void onAttachExample()}
+                  >
+                    지난 결과물 첨부하기
+                  </button>
+                )}
+                <p className="ax-workspace-welcome-hint">또는 아래처럼 말로 요청할 수도 있어요.</p>
                 <ul className="ax-workspace-example-list">
                   {WELCOME_EXAMPLES.map((example) => (
                     <li key={example.label}>
@@ -183,6 +207,14 @@ export function AxWorkspaceChat({
               </div>
             )}
             {error && <div className="ax-workspace-error" role="alert">{error}</div>}
+            {discoveryView && onDiscoveryAnswer && onDiscoveryPublish && (
+              <DiscoveryReviewCard
+                view={discoveryView}
+                busy={discoveryBusy}
+                onAnswer={onDiscoveryAnswer}
+                onPublish={onDiscoveryPublish}
+              />
+            )}
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>
 
