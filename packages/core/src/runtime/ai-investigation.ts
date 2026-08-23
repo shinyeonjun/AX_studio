@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import type { Connector, ConnectorContext } from '../modules/types.js';
-import type { AgentHarness } from '../agent/harness.js';
+import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import { z } from 'zod';
 import { extractGmailPlainBody } from '../modules/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
@@ -427,7 +427,7 @@ export async function runAiDecision(
   ir: WorkflowIR,
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
-  agentHarness: AgentHarness | undefined,
+  investigationRunner: InvestigationRunner | undefined,
   connectors: Record<string, Connector>,
 ): Promise<void> {
   const allowReads = step.investigation === true;
@@ -436,8 +436,8 @@ export async function runAiDecision(
   const evidence: Array<{ source: string; detail: string }> = [];
   const untrustedBody = emailBodyFromRun(ctx.variables, stepResults);
 
-  if (!agentHarness) {
-    throw Object.assign(new Error(`AI 판단 단계 ${step.id}를 실행할 Agent Harness가 없습니다.`), {
+  if (!investigationRunner) {
+    throw Object.assign(new Error(`AI 판단 단계 ${step.id}를 실행할 조사 실행기가 없습니다.`), {
       code: 'agent_unavailable',
     });
   }
@@ -448,12 +448,12 @@ export async function runAiDecision(
     document: documentRequired,
     emailBody: emailBodyRequired,
   });
-  const includeSensitiveData = cloudAllowed || !isCloudProvider(agentHarness.providerName);
+  const includeSensitiveData = cloudAllowed || !isCloudProvider(investigationRunner.providerName);
   const documentEvidenceAvailable = hasDecisionEvidence(ctx, stepResults, evidence);
   if (documentRequired && !includeSensitiveData) {
     throw Object.assign(
       new Error(
-        `PDF 분석을 위해 문서 내용이 ${agentHarness.providerName}에 전달되어야 하지만 현재 차단되었습니다. ` +
+        `PDF 분석을 위해 문서 내용이 ${investigationRunner.providerName}에 전달되어야 하지만 현재 차단되었습니다. ` +
           '로컬 AI provider를 사용하거나 workflow.dataPolicy.document.cloudAllowed=true를 명시한 뒤 다시 실행하세요.',
       ),
       {
@@ -486,7 +486,7 @@ export async function runAiDecision(
     message: `AI 분석 시작: ${step.id}`,
     data: {
       stepId: step.id,
-      provider: agentHarness.providerName,
+      provider: investigationRunner.providerName,
       documentRequired,
       sensitiveDataIncluded: includeSensitiveData,
       imageCount: visionImages.length,
@@ -494,8 +494,7 @@ export async function runAiDecision(
   });
 
   const runFinalConclusion = async () => {
-    const { output } = await agentHarness.run({
-      role: 'investigate',
+    const { output } = await investigationRunner.run({
       outputSchema: investigationSchemaFor(step, true),
       user: promptFor('추가 조회 없이 지금 결론을 내리고 선언된 출력 필드를 모두 채우세요.'),
       images: visionImages.length > 0 ? visionImages : undefined,
@@ -514,8 +513,7 @@ export async function runAiDecision(
 
   while (reads < maxReads) {
     {
-      const { output } = await agentHarness.run({
-        role: 'investigate',
+      const { output } = await investigationRunner.run({
         outputSchema: investigationSchemaFor(step, !allowReads),
         user: promptFor(),
         images: visionImages.length > 0 ? visionImages : undefined,

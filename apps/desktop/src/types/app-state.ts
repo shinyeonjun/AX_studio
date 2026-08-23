@@ -37,6 +37,7 @@ export interface AppState {
   slackBotUser?: string;
   slackHasAppToken?: boolean;
   slackSocketModeActive?: boolean;
+  slackSocketStatus?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
   slackConnectionMode?: 'disconnected' | 'poll' | 'socket';
   slackLastError?: string;
   localFolders?: LocalFolderEntry[];

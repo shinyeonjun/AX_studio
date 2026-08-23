@@ -1,12 +1,12 @@
 import { getCapability } from '../../catalog/capabilities.js';
 import { getConnectorLabel } from '../../catalog/connectors.js';
 import { safeFormatCondition } from '../../runtime/condition-expr.js';
-import type { CompletenessResult } from '../../interview/slots/requiredness.js';
-import type { InterviewDraft } from '../../interview/draft/schema.js';
+import type { CompletenessResult } from '../canvas/slots/requiredness.js';
+import type { WorkflowCanvasDraft } from '../canvas/draft/schema.js';
 import { primaryParamValue, summaryFromGoalOrCapability, truncate, triggerLines } from './helpers.js';
 import type { TriggerDisplay, TriggerDisplayResult } from './types.js';
 
-function triggerParamValues(draft: InterviewDraft): Record<string, string | undefined> {
+function triggerParamValues(draft: WorkflowCanvasDraft): Record<string, string | undefined> {
   switch (draft.triggerType) {
     case 'gmail.new_message':
       return { accountId: draft.gmailAccount?.trim() };
@@ -27,7 +27,7 @@ function triggerParamValues(draft: InterviewDraft): Record<string, string | unde
   }
 }
 
-function triggerLabel(draft: InterviewDraft, slots?: CompletenessResult['slots']): TriggerDisplayResult {
+function triggerLabel(draft: WorkflowCanvasDraft, slots?: CompletenessResult['slots']): TriggerDisplayResult {
   const values = triggerParamValues(draft);
 
   if (draft.triggerType === 'manual') {
@@ -134,7 +134,7 @@ function triggerLabel(draft: InterviewDraft, slots?: CompletenessResult['slots']
 }
 
 export function displayForTrigger(
-  draft: InterviewDraft,
+  draft: WorkflowCanvasDraft,
   slots?: CompletenessResult['slots'],
 ): TriggerDisplay {
   const base = triggerLabel(draft, slots);

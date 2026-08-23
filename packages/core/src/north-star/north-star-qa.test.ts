@@ -73,7 +73,6 @@ describe('North Star QA', () => {
     it('reads Slack via capabilities.invoke with citations', async () => {
       const slack = new MockSlackConnector();
       const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], {
-        interactionMode: 'plain_chat',
         allowUntrustedData: true,
         connectors: { slack },
       });
@@ -89,7 +88,6 @@ describe('North Star QA', () => {
     it('blocks Slack send in plain chat', async () => {
       const slack = new MockSlackConnector();
       const ctx = buildDesignToolContext([{ connector: 'slack', connected: true }], ['slack'], {
-        interactionMode: 'plain_chat',
         connectors: { slack },
       });
       const result = await executeDesignTool(
@@ -120,7 +118,7 @@ describe('North Star QA', () => {
       const ctx = buildDesignToolContext(
         [{ connector: 'local_folder', connected: true, config: { folders: [{ id: 'f1', label: 'Inbox', path: dir }] } }],
         ['local_folder'],
-        { interactionMode: 'plain_chat', allowUntrustedData: false },
+        { allowUntrustedData: false },
       );
       const result = await executeDesignTool(
         { tool: 'sources.file.read', args: { folderId: 'f1', path: pdfPath } },
@@ -139,7 +137,7 @@ describe('North Star QA', () => {
     });
   });
 
-  describe('2. /once ephemeral execution snapshot', () => {
+  describe('2. ephemeral execution snapshot', () => {
     it('ephemeral run keeps execution IR snapshot without saved workflow row', async () => {
       const db = await createDatabaseAsync(':memory:');
       const store = new WorkflowStore(db);

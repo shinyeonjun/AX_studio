@@ -16,14 +16,13 @@ function paramsArg(args: Record<string, unknown>): Record<string, unknown> {
 }
 
 export const capabilitiesInvoke: DesignToolHandler = async (ctx, args) => {
-  const mode = ctx.interactionMode ?? 'plain_chat';
   const capabilityId = requiredCapabilityId(args);
-  if (mode === 'plain_chat' && ctx.allowUntrustedData !== true && !allowsCloudPlainChatRead(capabilityId)) {
+  if (ctx.allowUntrustedData !== true && !allowsCloudPlainChatRead(capabilityId)) {
     throw new Error('source_content_requires_local_ai');
   }
 
-  const envelope = await invokeReadCapability(ctx, capabilityId, paramsArg(args), mode);
-  if (mode === 'plain_chat' && ctx.allowUntrustedData !== true) {
+  const envelope = await invokeReadCapability(ctx, capabilityId, paramsArg(args));
+  if (ctx.allowUntrustedData !== true) {
     return sanitizeCloudReadEnvelope(envelope);
   }
   return envelope;

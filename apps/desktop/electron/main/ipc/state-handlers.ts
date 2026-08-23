@@ -148,10 +148,11 @@ export function registerStateHandlers() {
     const gmailConn = core.store.getConnections().find((c) => c.connector === 'gmail');
     const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
     const slackConn = core.store.getConnections().find((c) => c.connector === 'slack');
+    const slackSocketStatus = core.triggerEngine.slackSocketStatus();
     const slackStatus = getSlackConnectionStatus(
       slackConn?.config,
       Boolean(slackConn?.connected),
-      core.triggerEngine.slackSocketActive(),
+      slackSocketStatus.phase === 'connected' && core.triggerEngine.slackSocketActive(),
     );
     const localFolderConn = core.store.getConnections().find((c) => c.connector === 'local_folder');
     const localFolderStatus = getLocalFolderConnectionStatus(
@@ -175,8 +176,9 @@ export function registerStateHandlers() {
       slackBotUser: slackStatus.connected ? slackStatus.botUser : undefined,
       slackHasAppToken: slackStatus.hasAppToken,
       slackSocketModeActive: slackStatus.socketModeActive,
+      slackSocketStatus: slackSocketStatus.phase,
       slackConnectionMode: slackStatus.mode,
-      slackLastError: slackStatus.lastError,
+      slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
       localFolders: localFolderStatus.folders,
       works,
       connections: core.store.getConnections().map(({ connector, connected, config }) => ({

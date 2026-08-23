@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { parseWorkspaceCommand } from '../lib/parse-slash-command';
 import {
   hydrateWorkflowSummary,
   workspaceChatErrorMessage,
   type WorkspaceWorkflowState,
 } from './workspace-chat-helpers';
-import type { WorkspaceExecutionMode } from '@ax-studio/core';
 import type { WorkspaceChatMessage } from '../components/workspace/AxWorkspaceChat';
 
 export type { WorkspaceWorkflowState } from './workspace-chat-helpers';
@@ -18,17 +16,23 @@ export interface UseWorkspaceChatOptions {
 export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceChatOptions) {
   const sessionEpochRef = useRef(0);
   const workspaceSessionIdRef = useRef<string | undefined>(undefined);
+  const activeRequestIdRef = useRef<string | undefined>(undefined);
+  const busyRef = useRef(false);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | undefined>();
   const [chatMessages, setChatMessages] = useState<WorkspaceChatMessage[]>([]);
   const [workspaceWorkflowState, setWorkspaceWorkflowState] = useState<WorkspaceWorkflowState | null>(null);
-  const [workspaceExecutionMode, setWorkspaceExecutionMode] = useState<WorkspaceExecutionMode | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
   const [editHint, setEditHint] = useState<string | null>(null);
+  const [workflowRegistered, setWorkflowRegistered] = useState(false);
 
   useEffect(() => {
-    const off = window.ax.onChatProgress?.(({ message }) => setProgress(message));
+    const off = window.ax.onChatProgress?.(({ message, requestId }) => {
+      const activeRequestId = activeRequestIdRef.current;
+      if (!activeRequestId || (requestId && requestId !== activeRequestId)) return;
+      setProgress(message);
+    });
     return () => off?.();
   }, []);
 
@@ -38,17 +42,26 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     sessionEpochRef.current += 1;
   };
 
+  const cancelActiveRequest = () => {
+    const requestId = activeRequestIdRef.current;
+    activeRequestIdRef.current = undefined;
+    busyRef.current = false;
+    setBusy(false);
+    if (requestId) void window.ax.cancelChat(requestId).catch(() => undefined);
+  };
+
   const reset = () => {
+    cancelActiveRequest();
     invalidateSession();
     workspaceSessionIdRef.current = undefined;
     setWorkspaceSessionId(undefined);
     setWorkspaceWorkflowState(null);
-    setWorkspaceExecutionMode(undefined);
     setChatMessages([]);
     setBusy(false);
     setError('');
     setProgress('');
     setEditHint(null);
+    setWorkflowRegistered(false);
   };
 
   const displayMessages: WorkspaceChatMessage[] = chatMessages;
@@ -58,18 +71,19 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const loadWorkspaceChat = async (id: string) => {
+    cancelActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
     setWorkspaceWorkflowState(null);
+    setWorkflowRegistered(false);
     try {
       const loaded = await window.ax.loadWorkspaceChat(id);
       if (!isCurrentSession(epoch)) return;
       workspaceSessionIdRef.current = loaded.id;
       setWorkspaceSessionId(loaded.id);
       setChatMessages(loaded.messages);
-      setWorkspaceExecutionMode(loaded.executionMode);
       if (loaded.workflowId) {
         const workflow = await window.ax.loadWorkChat(loaded.workflowId);
         if (!isCurrentSession(epoch)) return;
@@ -91,13 +105,14 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const openWorkChat = async (workflowId: string) => {
+    cancelActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
     setError('');
     setChatMessages([]);
     setWorkspaceWorkflowState(null);
-    setWorkspaceExecutionMode(undefined);
+    setWorkflowRegistered(false);
     workspaceSessionIdRef.current = undefined;
     setWorkspaceSessionId(undefined);
     try {
@@ -108,7 +123,6 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         workspaceSessionIdRef.current = mappedChat.id;
         setWorkspaceSessionId(mappedChat.id);
         setChatMessages(mappedChat.messages);
-        setWorkspaceExecutionMode(mappedChat.executionMode);
       }
       const state = await hydrateWorkflowSummary({
         ...(loaded.state as WorkspaceWorkflowState),
@@ -128,8 +142,12 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     }
   };
 
-  const sendChat = async (text: string, mode = workspaceExecutionMode) => {
+  const sendChat = async (text: string) => {
+    if (busyRef.current) return;
     const epoch = sessionEpochRef.current;
+    const requestId = crypto.randomUUID();
+    busyRef.current = true;
+    activeRequestIdRef.current = requestId;
     const nextMessages: WorkspaceChatMessage[] = [...chatMessages, { role: 'user', content: text }];
     const currentWorkflowId = workspaceWorkflowState?.workflowId;
     setChatMessages(nextMessages);
@@ -141,28 +159,32 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         workspaceSessionIdRef.current,
         nextMessages,
         currentWorkflowId,
-        mode,
       );
       if (!isCurrentSession(epoch)) return;
       workspaceSessionIdRef.current = initialSaved.id;
       setWorkspaceSessionId(initialSaved.id);
-      setWorkspaceExecutionMode(mode);
       onSessionsChanged?.();
       const res = (await window.ax.sendCommandChat(
         nextMessages,
-        undefined,
+        requestId,
         currentWorkflowId,
-        mode,
       )) as {
         role: 'assistant';
         content: string;
         changedWorkflowIds?: string[];
         removedWorkflowIds?: string[];
+        inputRequests?: import('@ax-studio/core').AxInputRequest[];
+        presentations?: import('@ax-studio/core').AxUiPresentation[];
       };
       if (!isCurrentSession(epoch)) return;
       const finalMessages: WorkspaceChatMessage[] = [
         ...nextMessages,
-        { role: 'assistant', content: res.content },
+        {
+          role: 'assistant',
+          content: res.content,
+          ...(res.inputRequests?.length ? { inputRequests: res.inputRequests } : {}),
+          ...(res.presentations?.length ? { presentations: res.presentations } : {}),
+        },
       ];
       setChatMessages(finalMessages);
       const changedWorkflowId = res.changedWorkflowIds?.[0];
@@ -170,17 +192,15 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         res.removedWorkflowIds?.includes(workspaceWorkflowState.workflowId)
         ? workspaceWorkflowState.workflowId
         : undefined;
-      const workflowId = removedWorkflowId ? undefined : changedWorkflowId ?? workspaceWorkflowState?.workflowId;
+      const workflowId = removedWorkflowId ? null : changedWorkflowId ?? workspaceWorkflowState?.workflowId;
       const saved = await window.ax.saveWorkspaceChat(
         workspaceSessionIdRef.current,
         finalMessages,
         workflowId,
-        mode,
       );
       if (!isCurrentSession(epoch)) return;
       workspaceSessionIdRef.current = saved.id;
       setWorkspaceSessionId(saved.id);
-      setWorkspaceExecutionMode(saved.executionMode ?? mode);
       onSessionsChanged?.();
       if (changedWorkflowId) {
         const workflow = await window.ax.loadWorkChat(changedWorkflowId);
@@ -202,6 +222,10 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       if (!isCurrentSession(epoch)) return;
       setError(workspaceChatErrorMessage(err));
     } finally {
+      if (activeRequestIdRef.current === requestId) {
+        activeRequestIdRef.current = undefined;
+        busyRef.current = false;
+      }
       if (isCurrentSession(epoch)) {
         setBusy(false);
         setProgress('');
@@ -209,29 +233,24 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     }
   };
 
+  const registerWorkflow = async () => {
+    const workflowId = workspaceWorkflowState?.workflowId;
+    if (!workflowId || busyRef.current || workflowRegistered) return;
+    setError('');
+    try {
+      await window.ax.setWorkflowActive(workflowId, true);
+      setWorkflowRegistered(true);
+      await refresh();
+    } catch (err) {
+      setError(workspaceChatErrorMessage(err));
+    }
+  };
+
   const sendMessage = async (rawText: string) => {
     const text = rawText.trim();
-    if (!text || busy) return;
+    if (!text || busyRef.current) return;
     setError('');
-
-    const command = parseWorkspaceCommand(text);
-    if (command.mode === 'once') {
-      if (!command.instruction) {
-        setError('/once 뒤에 실행할 업무를 입력해 주세요.');
-        return;
-      }
-      await sendChat(command.instruction, 'once');
-      return;
-    }
-    if (command.mode === 'workflow') {
-      if (!command.instruction) {
-        setError('/workflow 뒤에 자동화할 업무를 입력해 주세요.');
-        return;
-      }
-      await sendChat(command.instruction, 'workflow');
-      return;
-    }
-    await sendChat(command.text, workspaceExecutionMode);
+    await sendChat(text);
   };
 
   const beginEditStep = (prompt: string) => {
@@ -252,6 +271,8 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     loadWorkspaceChat,
     workspaceSessionId,
     openWorkChat,
+    workflowRegistered,
+    registerWorkflow,
     sendMessage,
   };
 }

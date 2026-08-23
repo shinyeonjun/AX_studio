@@ -1,9 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { WorkspaceExecutionMode } from '@ax-studio/core';
+import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
-  executeCommand: (command: unknown) => ipcRenderer.invoke('ax:command', command),
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
   deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
@@ -63,19 +62,27 @@ contextBridge.exposeInMainWorld('ax', {
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
   sendCommandChat: (
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>,
     requestId?: string,
     workflowId?: string,
-    executionMode?: WorkspaceExecutionMode,
-  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId, executionMode),
+  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (
     id: string | undefined,
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    workflowId?: string,
-    executionMode?: WorkspaceExecutionMode,
-  ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId, executionMode),
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>,
+    workflowId?: string | null,
+  ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId),
   loadWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:loadWorkspaceChat', id),
   loadWorkspaceChatByWorkflowId: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkspaceChatByWorkflowId', workflowId),
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),

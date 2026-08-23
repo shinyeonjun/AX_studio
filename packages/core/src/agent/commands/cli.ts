@@ -4,6 +4,7 @@ import { buildConnectorsFromStore } from '../../modules/registry.js';
 import { CONNECTOR_CATALOG, CONNECTOR_IDS, isConnectorAlwaysOn } from '../../catalog/index.js';
 import { createAxStudioCore } from '../../bootstrap.js';
 import { AxCommandSchema } from './schema.js';
+import { AGENT_COMMAND_CONTEXT } from './access.js';
 
 const USAGE = `AX command adapter
 
@@ -87,15 +88,24 @@ async function main(): Promise<void> {
 
   const core = await createAxStudioCore({});
   try {
-    const connections = core.store.getConnections();
-    const connected = connectedConnectorIds(core.store);
-    const designToolContext = buildDesignToolContext(connections, connected, {
-      interactionMode: 'plain_chat',
-      allowUntrustedData: true,
-      connectors: buildConnectorsFromStore(core.store),
+    const result = await core.commandService.execute(parsed.data, {
+      executionContext: AGENT_COMMAND_CONTEXT,
+      // Source/capability reads are the only commands that need connector
+      // instances. Keep that host setup out of workflow-only commands.
+      designToolContextFactory: () => {
+        const connections = core.store.getConnections();
+        const connected = connectedConnectorIds(core.store);
+        return buildDesignToolContext(connections, connected, {
+          allowUntrustedData: true,
+          connectors: buildConnectorsFromStore(core.store),
+        });
+      },
     });
-    const result = await core.commandService.execute(parsed.data, { designToolContext });
-    await core.runtime.waitForIdle();
+    // Reads and workflow changes complete at the command boundary. Only a run needs
+    // to wait for the asynchronous runtime execution it explicitly started.
+    if (parsed.data.name === 'workflow.run' || parsed.data.name === 'execution.enqueue_once') {
+      await core.runtime.waitForIdle();
+    }
     process.stdout.write(`${JSON.stringify(result)}\n`);
     if (result.status === 'error' || result.status === 'invalid' || result.status === 'forbidden') {
       process.exitCode = 2;

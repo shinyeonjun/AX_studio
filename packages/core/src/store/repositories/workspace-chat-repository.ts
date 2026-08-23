@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { AppDatabase } from '../db.js';
-import type { WorkspaceExecutionMode } from '../../workspace/commands.js';
+import {
+  AxInputRequestSchema,
+  AxUiPresentationSchema,
+  type AxInputRequest,
+  type AxUiPresentation,
+} from '../../agent/commands/schema.js';
 
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Optional host-rendered controls attached to this assistant message. */
+  inputRequests?: AxInputRequest[];
+  presentations?: AxUiPresentation[];
 }
 
 export interface WorkspaceChatRecord {
@@ -13,7 +21,6 @@ export interface WorkspaceChatRecord {
   title: string;
   messages: WorkspaceChatMessage[];
   workflowId?: string;
-  executionMode?: WorkspaceExecutionMode;
   updatedAt: string;
   /** Listed rows can be marked when old/corrupt JSON needs user deletion. */
   corrupted?: boolean;
@@ -23,6 +30,8 @@ const WorkspaceChatMessagesSchema = z.array(
   z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
+    inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
+    presentations: z.array(AxUiPresentationSchema).max(4).optional(),
   }),
 );
 
@@ -60,8 +69,8 @@ export function saveWorkspaceChat(
   params: {
     id?: string;
     messages: WorkspaceChatMessage[];
-    workflowId?: string;
-    executionMode?: WorkspaceExecutionMode;
+    /** Omitted preserves an existing mapping; null explicitly clears it. */
+    workflowId?: string | null;
   },
 ): WorkspaceChatRecord {
   const messages = WorkspaceChatMessagesSchema.parse(params.messages);
@@ -69,45 +78,46 @@ export function saveWorkspaceChat(
   const id = params.id?.trim() || randomUUID();
   const title = titleFromMessages(messages);
   const messagesJson = JSON.stringify(messages);
-  const existing = db.prepare('SELECT id FROM workspace_chats WHERE id = ?').get(id) as { id: string } | undefined;
+  const existing = db.prepare('SELECT id, workflow_id FROM workspace_chats WHERE id = ?').get(id) as
+    | { id: string; workflow_id?: string | null }
+    | undefined;
 
   if (existing) {
-    db.prepare(
-      'UPDATE workspace_chats SET title = ?, messages_json = ?, workflow_id = ?, execution_mode = ?, updated_at = ? WHERE id = ?',
-    ).run(
-      title,
-      messagesJson,
-      params.workflowId ?? null,
-      params.executionMode ?? null,
-      now,
-      id,
-    );
+    if (params.workflowId === undefined) {
+      db.prepare(
+        'UPDATE workspace_chats SET title = ?, messages_json = ?, updated_at = ? WHERE id = ?',
+      ).run(title, messagesJson, now, id);
+    } else {
+      db.prepare(
+        'UPDATE workspace_chats SET title = ?, messages_json = ?, workflow_id = ?, updated_at = ? WHERE id = ?',
+      ).run(title, messagesJson, params.workflowId, now, id);
+    }
   } else {
     db.prepare(
-      'INSERT INTO workspace_chats (id, title, messages_json, workflow_id, execution_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(id, title, messagesJson, params.workflowId ?? null, params.executionMode ?? null, now, now);
+      'INSERT INTO workspace_chats (id, title, messages_json, workflow_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(id, title, messagesJson, params.workflowId ?? null, now, now);
   }
+
+  const workflowId = params.workflowId === undefined ? existing?.workflow_id ?? undefined : params.workflowId ?? undefined;
 
   return {
     id,
     title,
     messages,
-    ...(params.workflowId ? { workflowId: params.workflowId } : {}),
-    ...(params.executionMode ? { executionMode: params.executionMode } : {}),
+    ...(workflowId ? { workflowId } : {}),
     updatedAt: now,
   };
 }
 
 export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatRecord | null {
   const row = db
-    .prepare('SELECT id, title, messages_json, workflow_id, execution_mode, updated_at FROM workspace_chats WHERE id = ?')
+    .prepare('SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE id = ?')
     .get(id) as
     | {
         id: string;
         title: string;
         messages_json: string;
         workflow_id?: string | null;
-        execution_mode?: WorkspaceExecutionMode | null;
         updated_at: string;
       }
     | undefined;
@@ -118,7 +128,6 @@ export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatReco
     title: row.title,
     messages,
     ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
-    ...(row.execution_mode ? { executionMode: row.execution_mode } : {}),
     updatedAt: row.updated_at,
   };
 }
@@ -126,7 +135,7 @@ export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatReco
 export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string): WorkspaceChatRecord | null {
   const row = db
     .prepare(
-      'SELECT id, title, messages_json, workflow_id, execution_mode, updated_at FROM workspace_chats WHERE workflow_id = ? ORDER BY updated_at DESC LIMIT 1',
+      'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE workflow_id = ? ORDER BY updated_at DESC LIMIT 1',
     )
     .get(workflowId) as
     | {
@@ -134,7 +143,6 @@ export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string
         title: string;
         messages_json: string;
         workflow_id?: string | null;
-        execution_mode?: WorkspaceExecutionMode | null;
         updated_at: string;
       }
     | undefined;
@@ -145,7 +153,6 @@ export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string
     title: row.title,
     messages,
     ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
-    ...(row.execution_mode ? { executionMode: row.execution_mode } : {}),
     updatedAt: row.updated_at,
   };
 }
@@ -153,14 +160,13 @@ export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string
 export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRecord[] {
   const rows = db
     .prepare(
-      'SELECT id, title, messages_json, workflow_id, execution_mode, updated_at FROM workspace_chats ORDER BY updated_at DESC LIMIT ?',
+      'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats ORDER BY updated_at DESC LIMIT ?',
     )
     .all(limit) as Array<{
     id: string;
     title: string;
     messages_json: string;
     workflow_id?: string | null;
-    execution_mode?: WorkspaceExecutionMode | null;
     updated_at: string;
   }>;
   return rows.map((row) => {
@@ -170,7 +176,6 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRe
         title: row.title,
         messages: parseMessages(row.messages_json, row.id),
         ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
-        ...(row.execution_mode ? { executionMode: row.execution_mode } : {}),
         updatedAt: row.updated_at,
       };
     } catch (error) {

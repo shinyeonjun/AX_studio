@@ -68,6 +68,7 @@ app.whenReady().then(async () => {
       onExecutionStarted: () => notifyStateChanged(),
       onExecutionProgress: () => notifyStateChanged(),
       onExecutionFinished: () => notifyStateChanged(),
+      onPushTransportStateChanged: () => notifyStateChanged(),
     });
 
     if (aiToml.active) {
@@ -88,7 +89,7 @@ app.whenReady().then(async () => {
     }
 
     await hydrateGmailConnector(core.store, core.runtime);
-    await hydrateSlackConnector(core.store, core.runtime);
+    const slackSecret = await hydrateSlackConnector(core.store, core.runtime);
     await hydrateHttpConnector(core.store, core.runtime);
     await hydrateWebhookConnection(core.store);
     await hydrateRdbConnector(core.store, core.runtime);
@@ -102,6 +103,13 @@ app.whenReady().then(async () => {
     createTray();
     core.scheduler.start();
     core.triggerEngine.start();
+    if (slackSecret?.appToken) {
+      try {
+        await core.triggerEngine.refreshSlackSocket(slackSecret);
+      } catch (err) {
+        console.error('[AX Studio] Slack Socket Mode 시작 실패:', err);
+      }
+    }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error('AX Studio 시작 실패:', err);

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { WorkspaceExecutionMode } from '@ax-studio/core';
 
 export interface ChatSessionSummary {
   id: string;
@@ -7,7 +6,6 @@ export interface ChatSessionSummary {
   updatedAt: string;
   kind: 'workspace';
   workflowId?: string;
-  executionMode?: WorkspaceExecutionMode;
   corrupted?: boolean;
 }
 

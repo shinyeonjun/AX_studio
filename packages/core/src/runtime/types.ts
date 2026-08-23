@@ -1,11 +1,11 @@
-import type { AgentHarness } from '../agent/harness.js';
+import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { Connector } from '../modules/types.js';
 import type { ExecutionLogEntry } from '../modules/types.js';
 
 export interface RuntimeConfig {
   store: WorkflowStore;
-  agentHarness?: AgentHarness;
+  investigationRunner?: InvestigationRunner;
   connectors?: Record<string, Connector>;
   globalActive: boolean;
   workflowActive: Record<string, boolean>;
@@ -43,4 +43,9 @@ export interface WorkflowExecutionOptions {
   input?: Record<string, unknown>;
   /** Explicit manual run from UI — inactive ephemeral workflows may still run once. */
   forceManual?: boolean;
+}
+
+/** Host-owned handle returned before an ephemeral run starts. */
+export interface EphemeralExecutionQueueItem {
+  jobId: string;
 }

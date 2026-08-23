@@ -96,7 +96,7 @@ export function registerConnectionHandlers() {
 
       let socketError: string | undefined;
       try {
-        await core.triggerEngine.refreshSlackSocket();
+        await core.triggerEngine.refreshSlackSocket({ token, appToken: finalAppToken });
       } catch (err) {
         socketError = (err as Error).message;
       }

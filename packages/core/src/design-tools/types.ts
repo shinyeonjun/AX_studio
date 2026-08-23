@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import type { InteractionMode } from '../platform/mode-policy.js';
 import type { Connector } from '../modules/types.js';
 
 export interface ConnectionRecord {
@@ -122,7 +121,6 @@ export type ParsedDesignToolCall = z.infer<typeof DesignToolCallSchema>;
 export interface DesignToolContext {
   connections: ConnectionRecord[];
   connectedConnectorIds: string[];
-  interactionMode?: InteractionMode;
   /**
    * Allows bounded untrusted source content to enter the current model turn.
    * The host sets this true by default because the product policy allows

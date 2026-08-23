@@ -3,8 +3,11 @@ import type { ConnectorCatalogEntry, ConnectorId } from '../catalog/connector-ty
 import type { DesignToolContext } from '../design-tools/types.js';
 import type { TriggerHandler } from '../triggers/types.js';
 import type { ModuleRegistration } from './module-registry.js';
+import type { PushTransportStateHandler } from '../triggers/push-state.js';
 
 export interface PushTriggerDriver {
+  /** Connector whose secure runtime configuration may be supplied at refresh time. */
+  connector?: string;
   triggerType: string;
   /** When Socket/push transport is active, skip poll for this trigger type. */
   skipPollWhenActive?: boolean;
@@ -13,6 +16,8 @@ export interface PushTriggerDriver {
       getConnections(): Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }>;
     },
     emit: (event: import('../triggers/types.js').TriggerEvent) => void,
+    configOverride?: Record<string, unknown>,
+    onStateChange?: PushTransportStateHandler,
   ) => Promise<{ stop(): Promise<void>; isRunning(): boolean } | undefined>;
   matchesTrigger: (
     trigger: { type: string; channel?: string; path?: string },

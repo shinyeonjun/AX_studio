@@ -85,3 +85,73 @@ current_baseline:
     production-build: "PASS: core, Electron main/preload, renderer"
     diff-whitespace: "Not rerun after this baseline record"
   notes: "Architecture baseline before implementation. Existing dirty changes are not attributed to this goal."
+
+previous_task:
+  name: conversational-workflow-registration-and-input-ui
+  evaluator_frozen: true
+  baseline_recorded_at: 2026-08-24T02:06:28.4324351+09:00
+  baseline:
+    core-tests: "PASS: 73 files, 330 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+  required_regressions:
+    - slash command parsing is no longer used by the desktop workspace chat
+    - input request result is delivered out-of-band and is not inserted into transcript text
+    - workflow registration uses the existing store/runtime activation boundary
+  final:
+    core-tests: "PASS: 74 files, 332 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    production-build: "PASS: core, Electron main/preload, and renderer"
+    command-chat-input-request-test: "PASS: typed request callback is separate from assistant reply"
+    slash-parser-runtime-reference: "PASS: no desktop runtime import or slash UI reference"
+  one-shot-execution:
+    command-access: "execution.enqueue_once is available only for once authoring context"
+    persistence: "one-shot execution does not create a workflow row"
+    queue: "one-shot jobs execute serially through a host-owned queue"
+    runtime: "queued jobs use Runtime ephemeral execution and existing approval/execution logs"
+
+current_task:
+  name: conditional-rich-assistant-presentation
+  evaluator_frozen: true
+  baseline_recorded_at: 2026-08-24T03:49:03.3548276+09:00
+  baseline:
+    core-tests: "PASS: 74 files, 334 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    production-build: "PASS: core, Electron main/preload, and renderer"
+    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
+  required_regressions:
+    - ui.present is non-mutating and schema-bounded
+    - command JSON is not inserted into the assistant transcript
+    - normal assistant replies render without a rich card
+    - presentation input/actions return through the existing user-message path
+    - old workspace chat messages remain readable
+    - former slash parser, mode-picker UI, and workspace-commands package alias are absent
+  final:
+    recorded_at: 2026-08-24T04:06:00.4518459+09:00
+    core-tests: "PASS: 73 files, 334 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    core-eval: "PASS: 11 tests"
+    document-engine-tests: "PASS: 17 tests, 2 skipped because pypdf is unavailable"
+    production-build: "PASS: core, Electron main/preload, and renderer"
+    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
+    legacy-cleanup: "PASS: no slash parser, slash mode-picker, or workspace-commands alias references"
+
+current_task:
+  name: agent-native-lifecycle-and-provider-boundary
+  evaluator_frozen: true
+  baseline_recorded_at: 2026-08-24T04:31:30.4070744+09:00
+  baseline:
+    core-tests: "PASS: 73 files, 334 tests"
+    core-typecheck: "PASS"
+    desktop-typecheck: "PASS"
+    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
+  required_regressions:
+    - no WorkspaceExecutionMode in workspace chat, presentation actions, IPC, or persistence contracts
+    - command definitions expose lifecycle and agent prompt no longer asks user to select execution mode
+    - natural-language command chat can create, update, delete, enqueue once, and run without mode gating
+    - workflow trigger and Runtime execution semantics remain unchanged
+    - old workspace chat rows remain readable when execution_mode is absent or legacy data exists
+    - Codex and Claude transports continue to satisfy their provider-specific schemas

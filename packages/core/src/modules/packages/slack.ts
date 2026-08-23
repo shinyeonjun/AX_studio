@@ -43,16 +43,17 @@ export const slackModulePackage: ModulePackage = {
   triggerHandlers: [slackNewMessageHandler],
   listSources: slackSources,
   pushTriggerDriver: {
+    connector: 'slack',
     triggerType: 'slack.new_message',
     skipPollWhenActive: true,
-    async refresh(store, emit) {
+    async refresh(store, emit, configOverride, onStateChange) {
       const slackConfig = parseSlackConnectionConfig(
-        store.getConnections().find((entry) => entry.connector === 'slack')?.config,
+        configOverride ?? store.getConnections().find((entry) => entry.connector === 'slack')?.config,
       );
       if (!slackConfig?.token || !slackConfig.appToken) return undefined;
 
       const listener = new SlackSocketModeListener();
-      await listener.start(slackConfig.token, slackConfig.appToken, emit);
+      await listener.start(slackConfig.token, slackConfig.appToken, emit, onStateChange);
       return listener;
     },
     matchesTrigger(trigger, event) {

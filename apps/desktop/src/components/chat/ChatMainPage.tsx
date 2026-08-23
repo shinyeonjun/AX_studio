@@ -57,8 +57,10 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         busy={workspaceChat.busy}
         error={workspaceChat.error}
         progress={workspaceChat.progress}
-        slashCommandsEnabled
+        workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
+        workflowRegistered={workspaceChat.workflowRegistered}
         onSend={workspaceChat.sendMessage}
+        onRegisterWorkflow={workspaceChat.registerWorkflow}
       />
     </div>
   );
@@ -93,7 +95,6 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
               onSelectNode={handleSelectNode}
               onRequestEdit={workspaceChat.beginEditStep}
               onCloseDetail={() => handleSelectNode(null)}
-              executionMode={workflowState?.executionMode}
             />
           }
         />

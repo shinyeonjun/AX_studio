@@ -10,6 +10,8 @@ allowed:
   - packages/core/src/workflow
   - packages/core/src/store
   - packages/core/src/runtime
+  - packages/core/src/modules
+  - packages/core/src/triggers
   - packages/core/src/workspace
   - packages/core/src/design-tools
   - packages/core/src/platform
@@ -21,6 +23,7 @@ allowed:
   - apps/desktop/src/hooks
   - apps/desktop/src/lib
   - apps/desktop/src/types
+  - apps/desktop/src/workflow
   - scripts
   - packages/core/package.json
   - apps/desktop/package.json
@@ -46,3 +49,21 @@ expansions:
   - date: 2026-08-23
     reason: "The new command service must be callable from both core agent/provider code and Electron IPC while reusing the existing catalog, workflow store, and Runtime."
     boundary: "agent/catalog/workflow/store/runtime/workspace plus desktop IPC/preload/chat"
+  - date: 2026-08-24
+    reason: "The Slack Socket Mode heartbeat warning originates in the core Slack trigger listener, which is outside the earlier command/runtime boundary."
+    boundary: "packages/core/src/triggers/slack heartbeat configuration"
+  - date: 2026-08-24
+    reason: "The user-facing command entry point must replace slash parsing and render host-provided workflow input requests and registration controls in the workspace chat."
+    boundary: "agent command result contract plus desktop workspace chat, hook, workflow preview, and IPC/preload types"
+  - date: 2026-08-24
+    reason: "One-shot execution needs a dedicated AI command and serialized ephemeral Runtime queue while preserving saved workflow boundaries."
+    boundary: "agent commands plus core Runtime and bootstrap wiring"
+  - date: 2026-08-24
+    reason: "Rich controls must be opt-in through a host-validated UI command and stay attached to the assistant message instead of rendering as a global side panel."
+    boundary: "agent command schema/service/chat loop, workspace chat persistence and IPC/preload contracts, desktop workspace renderer/hook"
+  - date: 2026-08-24
+    reason: "The OpenMausBot comparison confirms that user-facing lifecycle state belongs in the agent host command contract, not in slash-mode UI or chat persistence."
+    boundary: "agent command access/schema/chat loop, workspace chat persistence and IPC/preload, presentation renderer, workflow view trigger display, provider command transports"
+  - date: 2026-08-24
+    reason: "The user added a product direction based on competitor gaps and recurring silent-degradation pain: learn recurring work from input/output examples and regression-check future results. This is queued as a separate bounded capability rather than mixed into the current command migration."
+    boundary: "queued: example-bundle contract, hypothesis/replay/drift comparison, repair proposal, and bounded recurring-report UI; reuse catalog, Workflow IR, Docling evidence, Runtime, approval, and command chat"

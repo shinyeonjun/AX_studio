@@ -16,11 +16,9 @@ export function buildDesktopDesignToolContext(
   core: AxCore,
   connections: ConnectionRecord[],
   connectedConnectorIds: string[],
-  interactionMode: 'plain_chat' | 'authoring' = 'plain_chat',
 ): DesignToolContext {
   return buildDesignToolContext(connections, connectedConnectorIds, {
     allowUntrustedData: true,
-    interactionMode,
     connectors: core.runtime.connectors,
   });
 }

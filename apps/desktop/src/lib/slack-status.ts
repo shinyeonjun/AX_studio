@@ -12,6 +12,27 @@ export interface SlackCapabilityStatus {
 /** Split Slack connection into user-trustworthy capability states. */
 export function slackCapabilityStatus(state: AppState | null): SlackCapabilityStatus {
   const mode = state?.slackConnectionMode ?? 'disconnected';
+  const socketStatus = state?.slackSocketStatus;
+  if (socketStatus === 'connecting' || socketStatus === 'reconnecting') {
+    return {
+      badge: '재연결 중',
+      badgeClass: 'warning',
+      headline: '메시지 발송은 가능하지만 실시간 트리거를 다시 연결하고 있습니다.',
+      detail: socketStatus === 'connecting' ? 'Slack Socket Mode에 연결하는 중입니다.' : 'Slack WebSocket이 끊겨 자동 재연결 중입니다.',
+      manualSend: true,
+      realtimeTriggers: false,
+    };
+  }
+  if (socketStatus === 'error') {
+    return {
+      badge: '실시간 연결 오류',
+      badgeClass: 'warning',
+      headline: '메시지 발송은 가능하지만 실시간 트리거에 오류가 있습니다.',
+      detail: state?.slackLastError ?? 'Slack WebSocket 연결 오류를 확인해 주세요.',
+      manualSend: true,
+      realtimeTriggers: false,
+    };
+  }
   if (mode === 'socket') {
     return {
       badge: '실시간 연결됨',

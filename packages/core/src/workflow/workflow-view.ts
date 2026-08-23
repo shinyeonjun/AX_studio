@@ -1,17 +1,15 @@
 import type { ChatMessage } from '../agent/model/chat.js';
-import type { CompletenessResult } from '../interview/slots/types.js';
-import { assessCompleteness } from '../interview/slots/requiredness.js';
+import type { CompletenessResult } from './canvas/slots/types.js';
+import { assessCompleteness } from './canvas/slots/requiredness.js';
 import { actionRefFor } from './action-definition.js';
 import type { WorkflowIR, Step } from './schema.js';
-import { InterviewDraftSchema, type ActionInstance, type InterviewDraft, type WorkflowNode } from '../interview/draft/schema.js';
-import type { WorkspaceExecutionMode } from '../workspace/commands.js';
+import { WorkflowCanvasDraftSchema, type ActionInstance, type WorkflowCanvasDraft, type WorkflowNode } from './canvas/draft/schema.js';
 
 export interface WorkflowViewState {
   workflowId: string;
   userInstruction: string;
   draft: Partial<WorkflowIR>;
-  workflow: InterviewDraft;
-  executionMode: WorkspaceExecutionMode;
+  workflow: WorkflowCanvasDraft;
   completeness: CompletenessResult;
   done: true;
   messages: ChatMessage[];
@@ -72,7 +70,7 @@ function nodeFromStep(step: Step): { node: WorkflowNode; action?: ActionInstance
   return null;
 }
 
-function triggerFields(ir: WorkflowIR): Partial<InterviewDraft> {
+function triggerFields(ir: WorkflowIR): Partial<WorkflowCanvasDraft> {
   const trigger = ir.trigger;
   if (!trigger) return {};
   if (trigger.type === 'schedule') return { triggerType: 'schedule', schedule: trigger.schedule, timezone: trigger.timezone };
@@ -96,15 +94,8 @@ function triggerFields(ir: WorkflowIR): Partial<InterviewDraft> {
   return {};
 }
 
-function executionModeForTrigger(ir: WorkflowIR): WorkspaceExecutionMode {
-  const type = ir.trigger?.type;
-  return type === 'schedule' || type === 'gmail.new_message' || type === 'slack.new_message' || type === 'local_folder.new_file'
-    ? 'workflow'
-    : 'once';
-}
-
 export function buildWorkflowView(ir: WorkflowIR, workflowId: string): WorkflowViewState {
-  const actions: InterviewDraft['actions'] = {};
+  const actions: WorkflowCanvasDraft['actions'] = {};
   const nodes: WorkflowNode[] = [];
   for (const step of ir.steps) {
     const mapped = nodeFromStep(step);
@@ -113,7 +104,7 @@ export function buildWorkflowView(ir: WorkflowIR, workflowId: string): WorkflowV
     if (mapped.action) actions[mapped.node.id] = mapped.action;
   }
 
-  const workflow = InterviewDraftSchema.parse({
+  const workflow = WorkflowCanvasDraftSchema.parse({
     name: ir.name,
     goal: ir.goal,
     assumptions: ir.assumptions,
@@ -131,7 +122,6 @@ export function buildWorkflowView(ir: WorkflowIR, workflowId: string): WorkflowV
     userInstruction: ir.goal,
     draft: ir,
     workflow,
-    executionMode: executionModeForTrigger(ir),
     completeness: assessCompleteness(ir),
     done: true,
     messages: [assistantMessage],

@@ -34,8 +34,7 @@ export class WorkflowStore {
   saveWorkspaceChat(params: {
     id?: string;
     messages: workspaceChatRepo.WorkspaceChatMessage[];
-    workflowId?: string;
-    executionMode?: import('../workspace/commands.js').WorkspaceExecutionMode;
+    workflowId?: string | null;
   }) {
     return workspaceChatRepo.saveWorkspaceChat(this.db, params);
   }

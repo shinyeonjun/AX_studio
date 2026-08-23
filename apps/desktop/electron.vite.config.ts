@@ -54,7 +54,6 @@ export default defineConfig({
         '@ax-studio/core/panel-fields': resolve('../../packages/core/src/interview/presentation/panel-fields.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/agent/settings/ai-catalog.ts'),
-        '@ax-studio/core/workspace-commands': resolve('../../packages/core/src/workspace/commands.ts'),
       },
     },
     build: {

@@ -29,6 +29,8 @@ export const AX_COMMAND_NAMES = [
   'workflow.update',
   'workflow.delete',
   'workflow.run',
+  'execution.enqueue_once',
+  'ui.present',
 ] as const;
 
 export type AxCommandName = (typeof AX_COMMAND_NAMES)[number];
@@ -76,6 +78,80 @@ export const AxCommandIssueSchema = z.object({
 
 export type AxCommandIssue = z.infer<typeof AxCommandIssueSchema>;
 
+export const AxInputRequestTypeSchema = z.enum([
+  'text',
+  'email',
+  'slack_channel',
+  'folder',
+]);
+
+export const AxInputRequestSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  type: AxInputRequestTypeSchema,
+  required: z.boolean().default(true),
+  placeholder: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+export type AxInputRequest = z.infer<typeof AxInputRequestSchema>;
+
+/**
+ * A presentation is a bounded, host-rendered interaction—not executable UI.
+ * Actions carry user-facing text; they never
+ * carry command names, connector calls, HTML, or code.
+ */
+export const AxUiPresentationActionSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  label: z.string().trim().min(1).max(80),
+  value: z.string().trim().min(1).max(500),
+  tone: z.enum(['primary', 'secondary', 'danger']).default('secondary'),
+});
+
+export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('source'),
+    fileName: z.string().trim().min(1).max(240),
+    detail: z.string().trim().max(800).optional(),
+    citation: z.string().trim().max(240).optional(),
+  }),
+  z.object({
+    type: z.literal('decision'),
+    label: z.string().trim().min(1).max(120),
+    value: z.string().trim().min(1).max(240),
+    reason: z.string().trim().max(1_200).optional(),
+  }),
+  z.object({
+    type: z.literal('steps'),
+    title: z.string().trim().max(120).optional(),
+    items: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+  }),
+  z.object({
+    type: z.literal('note'),
+    text: z.string().trim().min(1).max(1_200),
+  }),
+]);
+
+export const AxUiPresentationSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  subtitle: z.string().trim().max(300).optional(),
+  blocks: z.array(AxUiPresentationBlockSchema).max(12).default([]),
+  inputs: z.array(AxInputRequestSchema).max(8).default([]),
+  actions: z.array(AxUiPresentationActionSchema).max(8).default([]),
+});
+
+export type AxUiPresentation = z.infer<typeof AxUiPresentationSchema>;
+
+export const AxCommandLifecycleSchema = z.enum([
+  'read',
+  'present',
+  'ephemeral',
+  'workflow',
+  'run',
+]);
+
+export type AxCommandLifecycle = z.infer<typeof AxCommandLifecycleSchema>;
+
 export const AxCommandStatusSchema = z.enum([
   'ok',
   'needs_input',
@@ -83,6 +159,7 @@ export const AxCommandStatusSchema = z.enum([
   'conflict',
   'invalid',
   'forbidden',
+  'queued',
   'error',
 ]);
 
@@ -93,12 +170,14 @@ export const AxCommandResultSchema = z.object({
   status: AxCommandStatusSchema,
   data: z.unknown().optional(),
   issues: z.array(AxCommandIssueSchema).default([]),
+  inputRequests: z.array(AxInputRequestSchema).default([]),
 });
 
 export type AxCommandResult = z.infer<typeof AxCommandResultSchema>;
 
 export interface AxCommandDefinition {
   name: AxCommandName;
+  lifecycle: AxCommandLifecycle;
   description: string;
   args: Record<string, string>;
   mutates: boolean;
@@ -161,6 +240,12 @@ export const AxWorkflowDeleteArgsSchema = z.object({
 export const AxWorkflowRunArgsSchema = z.object({
   workflowId: z.string().trim().min(1),
 });
+
+/** One-shot execution uses the same plan shape as workflow.create, but is never persisted. */
+export const AxExecutionEnqueueOnceArgsSchema = AxWorkflowCreateArgsSchema;
+
+/** Host-rendered UI is deliberately read-only and cannot execute a side effect. */
+export const AxUiPresentArgsSchema = AxUiPresentationSchema;
 
 export function parseAxCommand(value: unknown): AxCommand {
   return AxCommandSchema.parse(value);

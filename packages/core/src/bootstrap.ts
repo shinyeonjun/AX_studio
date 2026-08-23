@@ -5,7 +5,7 @@ import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
 import { runSavedWorkflowById } from './runtime/manual-workflow-run.js';
 import { buildConnectorsFromStore } from './modules/registry.js';
-import { createAgentHarness, type AgentHarness } from './agent/harness.js';
+import { createAgentHarness, createInvestigationRunner, type AgentHarness } from './agent/harness.js';
 import { AxCommandService } from './agent/commands/service.js';
 import {
   DEFAULT_AI_PROVIDER,
@@ -15,6 +15,7 @@ import {
 import type { DesktopPrintBridge } from './document-write/desktop-print.js';
 import { setDesktopPrintBridge } from './document-write/desktop-print.js';
 import type { ExecutionResult } from './runtime/types.js';
+import type { PushTransportState } from './triggers/push-state.js';
 import {
   resolveAxDataPaths,
   setAxDataPaths,
@@ -35,6 +36,7 @@ export interface AxStudioCoreOptions {
   onExecutionStarted?: (executionId: string) => void;
   onExecutionProgress?: (progress: import('./runtime/types.js').ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
+  onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void;
 }
 
 export interface AxStudioCore {
@@ -66,6 +68,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     store.getSetting<AiProviderConfig | unknown>('aiProvider', DEFAULT_AI_PROVIDER),
   );
   const agentHarness = createAgentHarness(aiConfig);
+  const investigationRunner = createInvestigationRunner(agentHarness);
 
   const globalActive = store.getSetting<boolean>('globalActive', true);
   const workflowActive: Record<string, boolean> = {};
@@ -76,7 +79,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const connectors = buildConnectorsFromStore(store);
   const runtime = new WorkflowRuntime({
     store,
-    agentHarness,
+    investigationRunner,
     globalActive,
     workflowActive,
     connectors,
@@ -85,9 +88,10 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     onExecutionFinished: options.onExecutionFinished,
   });
   const scheduler = new Scheduler(store, runtime);
-  const triggerEngine = new TriggerEngine(store, runtime);
+  const triggerEngine = new TriggerEngine(store, runtime, undefined, options.onPushTransportStateChanged);
   const commandService = new AxCommandService(store, {
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
+    enqueueOnce: (workflow) => runtime.enqueueEphemeralWorkflow(workflow, { triggerType: 'manual' }),
   });
 
   const core: AxStudioCore = {
@@ -100,7 +104,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     commandService,
     refreshAgentHarness(config: AiProviderConfig) {
       core.agentHarness.configure(normalizeAiProviderConfig(config));
-      runtime.setAgentHarness(core.agentHarness);
+      runtime.setInvestigationRunner(investigationRunner);
       return core.agentHarness;
     },
   };

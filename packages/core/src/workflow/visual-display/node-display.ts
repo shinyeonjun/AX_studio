@@ -2,9 +2,9 @@ import { getCapability } from '../../catalog/capabilities.js';
 import { getConnectorLabel } from '../../catalog/connectors.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
 import { safeFormatCondition, type ConditionExpr } from '../../runtime/condition-expr.js';
-import type { CompletenessResult } from '../../interview/slots/requiredness.js';
-import type { InterviewDraft, WorkflowNode } from '../../interview/draft/schema.js';
-import { getNodeParams, resolveNodeConnectorAction } from '../../interview/draft/actions.js';
+import type { CompletenessResult } from '../canvas/slots/requiredness.js';
+import type { WorkflowCanvasDraft, WorkflowNode } from '../canvas/draft/schema.js';
+import { getNodeParams, resolveNodeConnectorAction } from '../canvas/draft/actions.js';
 import {
   paramLine,
   paramValue,
@@ -15,7 +15,7 @@ import {
 import type { NodeDisplayResult, WorkflowCardDisplay } from './types.js';
 
 function actionLines(
-  draft: InterviewDraft,
+  draft: WorkflowCanvasDraft,
   node: WorkflowNode,
   slots: CompletenessResult['slots'] | undefined,
 ) {
@@ -35,7 +35,7 @@ function actionLines(
   return lines.slice(0, 3);
 }
 
-function actionCard(draft: InterviewDraft, node: WorkflowNode): WorkflowCardDisplay {
+function actionCard(draft: WorkflowCanvasDraft, node: WorkflowNode): WorkflowCardDisplay {
   const resolved = resolveNodeConnectorAction(draft, node);
   const cap = resolved ? resolveCapability(resolved.connector, resolved.action) : undefined;
   const params = getNodeParams(draft, node);
@@ -63,7 +63,7 @@ function conditionText(condition: ConditionExpr | undefined): string {
 }
 
 export function displayForWorkflowNode(
-  draft: InterviewDraft,
+  draft: WorkflowCanvasDraft,
   node: WorkflowNode,
   slots?: CompletenessResult['slots'],
 ): NodeDisplayResult {
@@ -189,7 +189,7 @@ export function displayForCapability(
   };
 }
 
-export function editPromptForNode(draft: InterviewDraft, node: WorkflowNode): string {
+export function editPromptForNode(draft: WorkflowCanvasDraft, node: WorkflowNode): string {
   const display = displayForWorkflowNode(draft, node);
   return `${display.label} 단계를 어떻게 바꿀까요?`;
 }

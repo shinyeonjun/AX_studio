@@ -2,7 +2,7 @@ import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { requiresApproval } from '../workflow/approval.js';
 import type { Connector, ConnectorContext } from '../modules/types.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
-import type { AgentHarness } from '../agent/harness.js';
+import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import { runAiDecision, evaluateCondition } from './ai-investigation.js';
 import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
@@ -17,7 +17,7 @@ export async function executeStep(
   stepResults: Record<string, unknown>,
   store: WorkflowStore,
   connectors: Record<string, Connector>,
-  agentHarness: AgentHarness | undefined,
+  investigationRunner: InvestigationRunner | undefined,
   runSteps: (stepIds: string[]) => Promise<void>,
   approvedActionIds: ReadonlySet<string> = new Set(),
 ): Promise<void> {
@@ -76,7 +76,7 @@ export async function executeStep(
       }
 
     case 'ai_decision':
-      await runAiDecision(step, ir, ctx, stepResults, agentHarness, connectors);
+      await runAiDecision(step, ir, ctx, stepResults, investigationRunner, connectors);
       break;
 
     case 'if': {

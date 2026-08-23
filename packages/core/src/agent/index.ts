@@ -1,5 +1,10 @@
 export { HARNESS_TASK_PROMPT, writeHarnessTaskFile } from './task-file.js';
-export { AgentHarness, createAgentHarness } from './harness.js';
+export { AgentHarness, createAgentHarness, createInvestigationRunner } from './harness.js';
+export type {
+  InvestigationRunRequest,
+  InvestigationRunResult,
+  InvestigationRunner,
+} from './investigation-runner.js';
 export { isCloudProvider } from './cloud.js';
 export { getRoleDefinition, listAgentRoles } from './roles.js';
 export {
@@ -7,9 +12,6 @@ export {
   loadAgentsConstitution,
   parseSkillMarkdown,
   renderSkillTemplate,
-  connectorSkillId,
-  loadConnectorSkill,
-  renderConnectorSkills,
   setAgentSkillsDir,
   type AgentSkillFile,
 } from './skill-load.js';

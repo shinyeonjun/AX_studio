@@ -43,7 +43,7 @@ describe('Slack read knowledge', () => {
     const ctx = buildDesignToolContext(
       [{ connector: 'slack', connected: true }],
       ['slack'],
-      { allowUntrustedData: true, interactionMode: 'plain_chat', connectors: { slack } },
+      { allowUntrustedData: true, connectors: { slack } },
     );
     const result = await executeDesignTool(
       { tool: 'capabilities.invoke', args: { id: 'slack.message.send', params: { channel: '#general', text: 'hi' } } },

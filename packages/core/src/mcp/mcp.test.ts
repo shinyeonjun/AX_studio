@@ -28,7 +28,6 @@ describe('mcp ingest', () => {
       ctx,
       'mcp.demo.search_docs',
       { args: { q: 'deploy' } },
-      'plain_chat',
     );
     expect((result.data as { result: { tool: string } }).result.tool).toBe('search_docs');
   });

@@ -8,7 +8,7 @@ import { deleteOsSecret, getOsSecret, setOsSecret } from '../credential-store.js
 
 const SLACK_SECRET_NAME = 'slack.tokens';
 
-interface SlackSecret {
+export interface SlackSecret {
   token: string;
   appToken?: string;
 }
@@ -42,9 +42,9 @@ export async function deleteSlackSecret(): Promise<void> {
 }
 
 /** Load secure Slack tokens and migrate the legacy plaintext DB record once. */
-export async function hydrateSlackConnector(store: WorkflowStore, runtime: WorkflowRuntime): Promise<void> {
+export async function hydrateSlackConnector(store: WorkflowStore, runtime: WorkflowRuntime): Promise<SlackSecret | null> {
   const connection = store.getConnections().find((entry) => entry.connector === 'slack');
-  if (!connection?.connected) return;
+  if (!connection?.connected) return null;
 
   let secret = await getSlackSecret();
   const legacy = parseSlackConnectionConfig(connection.config);
@@ -62,7 +62,23 @@ export async function hydrateSlackConnector(store: WorkflowStore, runtime: Workf
 
   if (!secret) {
     store.setConnection('slack', false);
-    return;
+    return null;
   }
+
+  const metadata = (connection.config ?? {}) as {
+    team?: unknown;
+    botUser?: unknown;
+    connectedAt?: unknown;
+    lastError?: unknown;
+  };
+  store.setConnection('slack', true, {
+    team: typeof metadata.team === 'string' ? metadata.team : undefined,
+    botUser: typeof metadata.botUser === 'string' ? metadata.botUser : undefined,
+    connectedAt: typeof metadata.connectedAt === 'string' ? metadata.connectedAt : undefined,
+    tokenStored: true,
+    appTokenStored: Boolean(secret.appToken),
+    ...(typeof metadata.lastError === 'string' ? { lastError: metadata.lastError } : {}),
+  });
   runtime.setConnector('slack', new SlackConnector(secret.token));
+  return secret;
 }

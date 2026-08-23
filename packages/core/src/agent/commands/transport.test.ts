@@ -1,0 +1,44 @@
+import { describe, expect, it } from 'vitest';
+import { createAxCommandChatTransport } from './transport.js';
+
+describe('AX command provider transports', () => {
+  it('normalizes Codex flat wire output into the canonical command', () => {
+    const transport = createAxCommandChatTransport('codex-cli');
+    const wire = transport.outputSchema.parse({
+      kind: 'command',
+      commandName: 'capability.list',
+      argsJson: '{"connector":"slack","kind":"write"}',
+      message: '',
+    });
+
+    expect(transport.normalize(wire)).toEqual({
+      kind: 'command',
+      command: {
+        name: 'capability.list',
+        args: { connector: 'slack', kind: 'write' },
+      },
+    });
+  });
+
+  it('normalizes Claude nested wire output without passing CLI details to chat', () => {
+    const transport = createAxCommandChatTransport('claude-cli');
+    const wire = transport.outputSchema.parse({
+      kind: 'command',
+      command: { name: 'capability.list', args: {} },
+      message: '',
+    });
+
+    expect(transport.normalize(wire)).toEqual({
+      kind: 'command',
+      command: { name: 'capability.list', args: {} },
+    });
+  });
+
+  it('keeps API and local providers on the canonical object contract', () => {
+    const transport = createAxCommandChatTransport('ollama-api');
+    expect(transport.normalize({
+      kind: 'reply',
+      message: '확인했습니다.',
+    })).toEqual({ kind: 'reply', message: '확인했습니다.' });
+  });
+});

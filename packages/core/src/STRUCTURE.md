@@ -58,8 +58,8 @@ interview/          Legacy-named workflow canvas compatibility module
   revision/         Execution explanation and revision-facing summaries
   test/             Compiler and canvas tests
 design-tools/       Read-only agent design tools and tool execution boundary
-agent/              AI harness, role skills, connector domain skills, model providers
-  skills/           role skills + gmail/slack/document/rdb/local-folder/transform domain skills
+agent/              AI harness, two bounded role skills, model providers
+  skills/           command authoring skill + bounded Runtime investigation skill
 store/              SQLite persistence
 credentials/
 nodes/              Reserved for future generic workflow nodes; no runtime code

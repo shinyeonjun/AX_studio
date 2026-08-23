@@ -78,7 +78,6 @@ const MIGRATION_SQL = `
     title TEXT NOT NULL,
     messages_json TEXT NOT NULL,
     workflow_id TEXT,
-    execution_mode TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -105,44 +104,13 @@ function columnNames(db: AppDatabase, table: string): string[] {
   return rows.map((row) => String(row.name ?? ''));
 }
 
-function tableExists(db: AppDatabase, name: string): boolean {
-  const row = db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
-    .get(name) as { name?: string } | undefined;
-  return Boolean(row?.name);
-}
-
-function migrateLegacySkillTables(db: AppDatabase) {
-  if (tableExists(db, 'skills') && !tableExists(db, 'workflows')) {
-    db.exec('ALTER TABLE skills RENAME TO workflows');
-  }
-  if (tableExists(db, 'skill_versions') && !tableExists(db, 'workflow_versions')) {
-    db.exec('ALTER TABLE skill_versions RENAME TO workflow_versions');
-  }
-  if (tableExists(db, 'workflow_versions') && columnNames(db, 'workflow_versions').includes('skill_id')) {
-    db.exec('ALTER TABLE workflow_versions RENAME COLUMN skill_id TO workflow_id');
-  }
-  if (tableExists(db, 'executions')) {
-    if (columnNames(db, 'executions').includes('skill_id')) {
-      db.exec('ALTER TABLE executions RENAME COLUMN skill_id TO workflow_id');
-    }
-    if (columnNames(db, 'executions').includes('skill_version')) {
-      db.exec('ALTER TABLE executions RENAME COLUMN skill_version TO workflow_version');
-    }
-  }
-}
-
 function applyMigrations(db: AppDatabase) {
-  migrateLegacySkillTables(db);
   db.exec(MIGRATION_SQL);
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
   }
   if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
     db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');
-  }
-  if (!columnNames(db, 'workspace_chats').includes('execution_mode')) {
-    db.exec('ALTER TABLE workspace_chats ADD COLUMN execution_mode TEXT');
   }
   db.exec(
     "UPDATE executions SET status = 'pending_approval', finished_at = NULL, error_code = 'pending_approval' " +

@@ -1,40 +1,27 @@
-import type { InteractionMode } from '../../platform/mode-policy.js';
-import type { WorkspaceExecutionMode } from '../../workspace/commands.js';
-import type { AxCommandName } from './schema.js';
+import type { AxCommandDefinition } from './schema.js';
 
 export interface AxCommandExecutionContext {
-  interactionMode: InteractionMode;
-  executionMode?: WorkspaceExecutionMode;
+  /** Identifies the trusted caller boundary, not a user-selectable mode. */
+  origin: 'agent' | 'host';
 }
 
-export const PLAIN_CHAT_COMMAND_CONTEXT: AxCommandExecutionContext = {
-  interactionMode: 'plain_chat',
+export const AGENT_COMMAND_CONTEXT: AxCommandExecutionContext = {
+  origin: 'agent',
 };
 
-const WORKFLOW_MUTATION_COMMANDS = new Set<AxCommandName>([
-  'workflow.create',
-  'workflow.update',
-  'workflow.delete',
-]);
+export const HOST_COMMAND_CONTEXT: AxCommandExecutionContext = {
+  origin: 'host',
+};
 
 export function commandAccess(
-  command: AxCommandName,
+  command: AxCommandDefinition,
   context: AxCommandExecutionContext,
 ): { allowed: true } | { allowed: false; reason: string } {
-  if (WORKFLOW_MUTATION_COMMANDS.has(command) && context.interactionMode !== 'authoring') {
+  if (context.origin === 'host' && command.lifecycle !== 'read' && command.lifecycle !== 'present') {
     return {
       allowed: false,
-      reason: 'workflow 변경은 authoring 대화에서만 허용됩니다.',
+      reason: '이 호출 경계에서는 조회·표시 command만 허용됩니다. 실행·저장은 agent command 경계를 사용하세요.',
     };
   }
-
-  if (command === 'workflow.run' &&
-      (context.interactionMode !== 'authoring' || context.executionMode !== 'once')) {
-    return {
-      allowed: false,
-      reason: 'workflow 실행은 명시적인 once 실행 모드에서만 허용됩니다.',
-    };
-  }
-
   return { allowed: true };
 }

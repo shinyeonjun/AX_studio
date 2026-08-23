@@ -19,5 +19,7 @@ Agent는 AX command 또는 제한된 실행 중 판단 결과만 반환합니다
 사용자 → Agent(command protocol) → host(command 검증·저장·실행) → Runtime(connector side effect)
 ```
 
-일반 대화와 workflow authoring/execution 권한은 host가 context allowlist로 강제합니다.
-프롬프트의 지시는 이 권한 검사를 대체하지 않습니다.
+명령 lifecycle은 명령 이름의 계약으로 표현합니다. `read`·`present`는 조회와
+대화 UI를, `ephemeral`·`workflow`·`run`은 각각 일회 큐·저장·실행을 뜻합니다.
+사용자는 별도의 실행 모드를 고르지 않습니다. host는 호출 원점과 lifecycle을
+검증하며, 프롬프트의 지시는 이 권한 검사를 대체하지 않습니다.

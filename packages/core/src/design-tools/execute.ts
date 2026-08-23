@@ -1,14 +1,9 @@
 import { getDesignTool } from './registry.js';
-import { isToolAllowedInMode, type InteractionMode } from '../platform/mode-policy.js';
 import type { DesignToolCall, DesignToolContext, DesignToolId, DesignToolResult } from './types.js';
 import { DESIGN_TOOL_IDS, MAX_DESIGN_TOOL_CALLS_PER_TURN } from './types.js';
 
 function isDesignToolId(value: string): value is DesignToolId {
   return (DESIGN_TOOL_IDS as readonly string[]).includes(value);
-}
-
-function resolveInteractionMode(ctx: DesignToolContext): InteractionMode {
-  return ctx.interactionMode ?? 'plain_chat';
 }
 
 export async function executeDesignTool(
@@ -17,11 +12,6 @@ export async function executeDesignTool(
 ): Promise<DesignToolResult> {
   if (!isDesignToolId(call.tool)) {
     return { tool: call.tool as DesignToolId, ok: false, error: 'unknown_tool' };
-  }
-
-  const mode = resolveInteractionMode(ctx);
-  if (!isToolAllowedInMode(call.tool, mode)) {
-    return { tool: call.tool, ok: false, error: `tool_not_allowed_in_${mode}` };
   }
 
   const definition = getDesignTool(call.tool);

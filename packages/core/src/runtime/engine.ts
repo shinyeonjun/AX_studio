@@ -1,10 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { parseWorkflowIR } from '../workflow/schema.js';
 import { validateWorkflowContracts } from '../workflow/contract-validator.js';
 import type { Connector, ConnectorContext, ExecutionLogEntry } from '../modules/types.js';
-import type { AgentHarness } from '../agent/harness.js';
+import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import type {
   ExecutionProgress,
+  EphemeralExecutionQueueItem,
   RuntimeConfig,
   ExecutionResult,
   WorkflowExecutionOptions,
@@ -33,6 +35,7 @@ export class WorkflowRuntime {
   connectors: Record<string, Connector>;
   private activeExecutionCount = 0;
   private idleWaiters: Array<() => void> = [];
+  private ephemeralQueueTail: Promise<void> = Promise.resolve();
 
   constructor(private config: RuntimeConfig) {
     this.connectors = { ...(config.connectors ?? {}) };
@@ -54,8 +57,27 @@ export class WorkflowRuntime {
     }
   }
 
+  /** Queue a one-shot plan without creating a saved workflow. */
+  enqueueEphemeralWorkflow(
+    ir: WorkflowIR,
+    options: Omit<WorkflowExecutionOptions, 'ephemeral'> = {},
+  ): EphemeralExecutionQueueItem {
+    const jobId = randomUUID();
+    const run = this.ephemeralQueueTail.then(() =>
+      this.executeWorkflow(ir, {
+        ...options,
+        ephemeral: true,
+        forceManual: true,
+      }),
+    );
+    this.ephemeralQueueTail = run.then(() => undefined, () => undefined);
+    void run.catch(() => undefined);
+    return { jobId };
+  }
+
   /** Waits until in-flight workflow writes have finished before the host closes the database. */
   async waitForIdle(): Promise<void> {
+    await this.ephemeralQueueTail;
     if (this.activeExecutionCount === 0) return;
     await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
   }
@@ -229,7 +251,7 @@ export class WorkflowRuntime {
           stepResults,
           this.config.store,
           this.connectors,
-          this.config.agentHarness,
+          this.config.investigationRunner,
           (ids) =>
             this.runSequence(
               stepsById(ir.steps, ids),
@@ -329,8 +351,8 @@ export class WorkflowRuntime {
     delete this.config.workflowActive[workflowId];
   }
 
-  setAgentHarness(agentHarness: AgentHarness) {
-    this.config.agentHarness = agentHarness;
+  setInvestigationRunner(investigationRunner: InvestigationRunner) {
+    this.config.investigationRunner = investigationRunner;
   }
 
   async continueAfterApproval(approvalId: string): Promise<ExecutionResult> {

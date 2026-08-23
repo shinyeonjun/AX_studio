@@ -39,11 +39,6 @@
       "types": "./dist/workflow/visual-display.d.ts",
       "import": "./dist/workflow/visual-display.js",
       "default": "./dist/workflow/visual-display.js"
-    },
-    "./workspace-commands": {
-      "types": "./dist/workspace/commands.d.ts",
-      "import": "./dist/workspace/commands.js",
-      "default": "./dist/workspace/commands.js"
     }
   },
   "scripts": {

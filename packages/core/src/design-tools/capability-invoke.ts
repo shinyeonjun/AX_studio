@@ -3,7 +3,6 @@ import { capabilityActionName } from '../catalog/capability-graph.js';
 import { isPlainChatSideEffectAllowed } from '../platform/side-effect-policy.js';
 import { citationsFromSearchHits } from '../platform/citations.js';
 import type { ConnectorContext } from '../modules/types.js';
-import type { InteractionMode } from '../platform/mode-policy.js';
 import type { DesignToolContext } from './types.js';
 
 function noopLog(): void {
@@ -21,7 +20,6 @@ export async function invokeReadCapability(
   ctx: DesignToolContext,
   capabilityId: string,
   params: Record<string, unknown>,
-  mode: InteractionMode,
 ): Promise<CapabilityInvokeEnvelope> {
   const id = capabilityId.trim();
   if (!id) throw new Error('capability_id_required');
@@ -30,7 +28,7 @@ export async function invokeReadCapability(
   if (!cap) throw new Error('capability_not_found');
   if (cap.kind !== 'read') throw new Error('capability_not_readable');
 
-  if (mode === 'plain_chat' && !isPlainChatSideEffectAllowed(cap.sideEffect)) {
+  if (!isPlainChatSideEffectAllowed(cap.sideEffect)) {
     throw new Error('capability_not_allowed_in_plain_chat');
   }
 

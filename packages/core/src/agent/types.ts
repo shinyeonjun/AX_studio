@@ -19,7 +19,6 @@ export interface AgentRoleDefinition {
   agentSkillId: string;
   temperature: number;
   policy: AgentExecutionPolicy;
-  modeInstructions?: string;
 }
 
 export interface InvestigateAgentContext {

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CompletenessResult, InterviewDraft, WorkspaceExecutionMode } from '@ax-studio/core';
+import type { CompletenessResult, InterviewDraft } from '@ax-studio/core';
 import type { Node } from '@xyflow/react';
 import type { SettingsScreen } from '../types/navigation';
 import { WorkflowGraph } from './WorkflowGraph.js';
@@ -20,7 +20,6 @@ interface WorkflowPreviewPanelProps {
   onRequestEdit: (prompt: string) => void;
   onOpenSettings?: (screen: SettingsScreen) => void;
   onCloseDetail: () => void;
-  executionMode?: WorkspaceExecutionMode;
 }
 
 function missingCount(completeness?: CompletenessResult): number {
@@ -40,7 +39,6 @@ export function WorkflowPreviewPanel({
   onRequestEdit,
   onOpenSettings,
   onCloseDetail,
-  executionMode,
 }: WorkflowPreviewPanelProps) {
   const missing = useMemo(() => missingCount(completeness), [completeness]);
   const diff = useMemo(() => computeWorkflowDiff(baselineDraft, draft), [baselineDraft, draft]);
@@ -90,7 +88,6 @@ export function WorkflowPreviewPanel({
           onRequestEdit={onRequestEdit}
           onOpenSettings={onOpenSettings}
           onClose={onCloseDetail}
-          executionMode={executionMode}
         />
       )}
 

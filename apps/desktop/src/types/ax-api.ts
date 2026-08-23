@@ -1,4 +1,4 @@
-import type { AxCommand, AxCommandResult, WorkspaceExecutionMode } from '@ax-studio/core';
+import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import type { AiProviderState } from './app-state';
 import type {
   AiApiTestResult,
@@ -10,7 +10,6 @@ import type {
 
 export interface AxApi {
   getState: () => Promise<unknown>;
-  executeCommand: (command: AxCommand) => Promise<AxCommandResult>;
   approve: (id: string) => Promise<unknown>;
   reject: (id: string) => Promise<unknown>;
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
@@ -19,16 +18,22 @@ export interface AxApi {
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   sendCommandChat: (
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>,
     requestId?: string,
     workflowId?: string,
-    executionMode?: WorkspaceExecutionMode,
   ) => Promise<{
     role: 'assistant';
     content: string;
     requestId: string;
     changedWorkflowIds: string[];
     removedWorkflowIds: string[];
+    inputRequests: AxInputRequest[];
+    presentations: AxUiPresentation[];
   }>;
   cancelChat: (requestId: string) => Promise<{ ok: boolean }>;
   listChatSessions: () => Promise<
@@ -38,37 +43,52 @@ export interface AxApi {
       updatedAt: string;
       kind: 'workspace';
       workflowId?: string;
-      executionMode?: WorkspaceExecutionMode;
       corrupted?: boolean;
     }>
   >;
   saveWorkspaceChat: (
     id: string | undefined,
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    workflowId?: string,
-    executionMode?: WorkspaceExecutionMode,
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>,
+    workflowId?: string | null,
   ) => Promise<{
     id: string;
     title: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>;
     workflowId?: string;
-    executionMode?: WorkspaceExecutionMode;
     updatedAt: string;
   }>;
   loadWorkspaceChat: (id: string) => Promise<{
     id: string;
     title: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>;
     workflowId?: string;
-    executionMode?: WorkspaceExecutionMode;
     updatedAt: string;
   }>;
   loadWorkspaceChatByWorkflowId: (workflowId: string) => Promise<{
     id: string;
     title: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      inputRequests?: AxInputRequest[];
+      presentations?: AxUiPresentation[];
+    }>;
     workflowId?: string;
-    executionMode?: WorkspaceExecutionMode;
     updatedAt: string;
   } | null>;
   deleteWorkspaceChat: (id: string) => Promise<{ ok: boolean }>;

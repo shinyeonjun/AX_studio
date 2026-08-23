@@ -4,10 +4,12 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../../store/db.js';
 import { WorkflowStore } from '../../store/workflow-store.js';
+import type { AxCommandReadContext, AxCommandReadGateway } from './read-gateway.js';
+import { HOST_COMMAND_CONTEXT } from './access.js';
 import { AxCommandService } from './service.js';
 
 describe('AxCommandService', () => {
-  const authoringContext = { executionContext: { interactionMode: 'authoring' as const, executionMode: 'workflow' as const } };
+  const commandChatContext = { executionContext: { origin: 'agent' as const } };
 
   it('exposes a bounded command contract instead of a shell surface', async () => {
     const db = await createDatabaseAsync(':memory:');
@@ -20,32 +22,42 @@ describe('AxCommandService', () => {
       commands: expect.arrayContaining([
         expect.objectContaining({ name: 'resource.list', mutates: false }),
         expect.objectContaining({ name: 'workflow.validate', mutates: false }),
+        expect.objectContaining({ name: 'ui.present', mutates: false }),
       ]),
     });
+    const commandNames = (response.data as { commands: Array<{ name: string }> }).commands.map((entry) => entry.name);
+    expect(commandNames).not.toContain('execution.enqueue_once');
+    expect(commandNames).not.toContain('workflow.create');
+    expect(commandNames).not.toContain('workflow.run');
     expect(JSON.stringify(response.data)).not.toContain('powershell');
-    expect(JSON.stringify(response.data)).not.toContain('workflow.create');
-    expect(JSON.stringify(response.data)).not.toContain('workflow.run');
   });
 
-  it('only exposes workflow mutations and once execution inside the matching context', async () => {
+  it('exposes command lifecycle instead of requiring a user-selected execution mode', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
 
-    const authoring = await service.execute(
-      { name: 'command.list' },
-      { executionContext: { interactionMode: 'authoring', executionMode: 'workflow' } },
-    );
-    const once = await service.execute(
-      { name: 'command.list' },
-      { executionContext: { interactionMode: 'authoring', executionMode: 'once' } },
-    );
+    const commands = await service.execute({ name: 'command.list' }, commandChatContext);
+    const entries = (commands.data as { commands: Array<{ name: string; lifecycle: string }> }).commands;
+    expect(entries.find((entry) => entry.name === 'execution.enqueue_once')).toMatchObject({ lifecycle: 'ephemeral' });
+    expect(entries.find((entry) => entry.name === 'workflow.create')).toMatchObject({ lifecycle: 'workflow' });
+    expect(entries.find((entry) => entry.name === 'workflow.run')).toMatchObject({ lifecycle: 'run' });
+  });
 
-    const authoringNames = (authoring.data as { commands: Array<{ name: string }> }).commands.map((entry) => entry.name);
-    const onceNames = (once.data as { commands: Array<{ name: string }> }).commands.map((entry) => entry.name);
-    expect(authoringNames).toContain('workflow.create');
-    expect(authoringNames).not.toContain('workflow.run');
-    expect(onceNames).toContain('workflow.create');
-    expect(onceNames).toContain('workflow.run');
+  it('blocks workflow and runtime side effects at the direct host boundary', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+
+    const listed = await service.execute({ name: 'command.list' }, { executionContext: HOST_COMMAND_CONTEXT });
+    const entries = (listed.data as { commands: Array<{ name: string }> }).commands;
+    expect(entries.map((entry) => entry.name)).not.toContain('workflow.create');
+    expect(entries.map((entry) => entry.name)).not.toContain('workflow.run');
+
+    const directCreate = await service.execute({
+      name: 'workflow.create',
+      args: { name: '직접 호출', goal: 'host 경계를 확인한다' },
+    }, { executionContext: HOST_COMMAND_CONTEXT });
+    expect(directCreate.status).toBe('forbidden');
+    expect(new WorkflowStore(db).listWorkflows()).toHaveLength(0);
   });
 
   it('returns structured missing-argument status without inventing a question', async () => {
@@ -59,6 +71,41 @@ describe('AxCommandService', () => {
       expect.objectContaining({ code: 'missing_argument', path: 'args.workflowId' }),
     ]);
     expect(JSON.stringify(response)).not.toContain('?');
+  });
+
+  it('validates a bounded presentation without executing a side effect', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+
+    const response = await service.execute({
+      name: 'ui.present',
+      args: {
+        title: '처리 전에 확인해 주세요',
+        blocks: [{ type: 'decision', label: '판단', value: '운영팀 확인' }],
+        inputs: [{ id: 'channel', label: 'Slack 채널', type: 'slack_channel' }],
+        actions: [{ id: 'continue', label: '진행', value: '진행해줘' }],
+      },
+    });
+
+    expect(response).toMatchObject({
+      command: 'ui.present',
+      status: 'ok',
+      data: { presentation: { title: '처리 전에 확인해 주세요' } },
+    });
+    expect(response.inputRequests).toEqual([]);
+    expect(new WorkflowStore(db).listWorkflows()).toHaveLength(0);
+  });
+
+  it('rejects executable-looking presentation payloads at the command boundary', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+
+    const response = await service.execute({
+      name: 'ui.present',
+      args: { title: '잘못된 카드', actions: [{ id: 'run', label: '실행', value: '' }] },
+    });
+
+    expect(response).toMatchObject({ command: 'ui.present', status: 'invalid', issues: [{ code: 'invalid_presentation' }] });
   });
 
   it('uses the catalog and persisted connections for capability discovery', async () => {
@@ -80,6 +127,38 @@ describe('AxCommandService', () => {
     });
   });
 
+  it('does not enter the source read gateway for workflow-only commands', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    let readCalls = 0;
+    let contextFactoryCalls = 0;
+    const readGateway: AxCommandReadGateway = {
+      execute: async () => {
+        readCalls += 1;
+        return { tool: 'sources.list', ok: true, data: { sources: [] } };
+      },
+    };
+    const service = new AxCommandService(new WorkflowStore(db), { readGateway });
+    const readOptions = {
+      designToolContextFactory: () => {
+        contextFactoryCalls += 1;
+        return {
+          connections: [],
+          connectedConnectorIds: [],
+        } satisfies AxCommandReadContext;
+      },
+    };
+
+    const workflows = await service.execute({ name: 'workflow.list' }, readOptions);
+    expect(workflows.status).toBe('ok');
+    expect(readCalls).toBe(0);
+    expect(contextFactoryCalls).toBe(0);
+
+    const sources = await service.execute({ name: 'source.list' }, readOptions);
+    expect(sources.status).toBe('ok');
+    expect(readCalls).toBe(1);
+    expect(contextFactoryCalls).toBe(1);
+  });
+
   it('creates, updates, and deletes through one versioned command boundary', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
@@ -87,7 +166,7 @@ describe('AxCommandService', () => {
     const created = await service.execute({
       name: 'workflow.create',
       args: { name: '명령 테스트', goal: '명령으로 수정한다' },
-    }, authoringContext);
+    }, commandChatContext);
     expect(created.status).toBe('ok');
     const createdData = created.data as { workflowId: string; version: number };
     expect(createdData.version).toBe(1);
@@ -111,7 +190,7 @@ describe('AxCommandService', () => {
           },
         ],
       },
-    }, authoringContext);
+    }, commandChatContext);
     expect(updated.status).toBe('ok');
     expect(updated.data).toMatchObject({ version: 2, workflow: { name: '수정된 workflow' } });
 
@@ -122,13 +201,13 @@ describe('AxCommandService', () => {
         baseVersion: 1,
         operations: [{ op: 'set', path: 'goal', value: '오래된 수정' }],
       },
-    }, authoringContext);
+    }, commandChatContext);
     expect(stale.status).toBe('conflict');
 
     const deleted = await service.execute({
       name: 'workflow.delete',
       args: { workflowId: createdData.workflowId, baseVersion: 2 },
-    }, authoringContext);
+    }, commandChatContext);
     expect(deleted).toMatchObject({ status: 'ok', data: { deleted: true } });
   });
 
@@ -151,7 +230,7 @@ describe('AxCommandService', () => {
           },
         ],
       },
-    }, authoringContext);
+    }, commandChatContext);
 
     expect(response.status).toBe('ok');
     expect(response.data).toMatchObject({
@@ -181,12 +260,12 @@ describe('AxCommandService', () => {
     const created = await service.execute({
       name: 'workflow.create',
       args: { name: '실행 테스트', goal: '실행 경계를 확인한다' },
-    }, { executionContext: { interactionMode: 'authoring', executionMode: 'once' } });
+    }, commandChatContext);
     const workflowId = (created.data as { workflowId: string }).workflowId;
 
     const run = await service.execute(
       { name: 'workflow.run', args: { workflowId } },
-      { executionContext: { interactionMode: 'authoring', executionMode: 'once' } },
+      commandChatContext,
     );
 
     expect(run).toMatchObject({
@@ -197,7 +276,7 @@ describe('AxCommandService', () => {
     expect(runCalls).toEqual([workflowId]);
   });
 
-  it('blocks workflow mutations without an explicit authoring context', async () => {
+  it('allows the agent command to persist a workflow without a separate user mode', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runCalls: string[] = [];
@@ -210,15 +289,40 @@ describe('AxCommandService', () => {
 
     const create = await service.execute({
       name: 'workflow.create',
-      args: { name: '차단 테스트', goal: '평챗에서는 저장하지 않는다' },
-    });
+      args: { name: '대화 workflow', goal: '자연어 command로 저장한다' },
+    }, commandChatContext);
 
-    expect(create).toMatchObject({ status: 'forbidden', issues: [{ code: 'command_forbidden' }] });
-    expect(store.listWorkflows()).toHaveLength(0);
+    expect(create).toMatchObject({ status: 'ok', data: { operation: 'created' } });
+    expect(store.listWorkflows()).toHaveLength(1);
     expect(runCalls).toHaveLength(0);
   });
 
-  it('does not run a saved workflow from the /workflow authoring context', async () => {
+  it('queues a validated one-shot plan without persisting a workflow', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const queued: unknown[] = [];
+    const service = new AxCommandService(store, {
+      enqueueOnce: (workflow) => {
+        queued.push(workflow);
+        return { jobId: 'job-1' };
+      },
+    });
+
+    const response = await service.execute({
+      name: 'execution.enqueue_once',
+      args: { name: '일회 테스트', goal: '한 번 실행한다' },
+    }, commandChatContext);
+
+    expect(response).toMatchObject({
+      command: 'execution.enqueue_once',
+      status: 'queued',
+      data: { queued: true, ephemeral: true, jobId: 'job-1' },
+    });
+    expect(queued).toHaveLength(1);
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('runs a saved workflow through the command lifecycle', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runCalls: string[] = [];
@@ -231,16 +335,16 @@ describe('AxCommandService', () => {
 
     const created = await service.execute(
       { name: 'workflow.create', args: { name: '저장 workflow', goal: '설계 중 실행하지 않는다' } },
-      authoringContext,
+      commandChatContext,
     );
     const workflowId = (created.data as { workflowId: string }).workflowId;
     const run = await service.execute(
       { name: 'workflow.run', args: { workflowId } },
-      authoringContext,
+      commandChatContext,
     );
 
-    expect(run).toMatchObject({ status: 'forbidden', issues: [{ code: 'command_forbidden' }] });
-    expect(runCalls).toHaveLength(0);
+    expect(run).toMatchObject({ status: 'ok', data: { executionId: 'execution-1' } });
+    expect(runCalls).toEqual([workflowId]);
   });
 
   it('routes source discovery through the existing guarded source handlers', async () => {
@@ -276,7 +380,6 @@ describe('AxCommandService', () => {
       designToolContext: {
         connections: store.getConnections(),
         connectedConnectorIds: ['local_folder'],
-        interactionMode: 'plain_chat',
         allowUntrustedData: false,
       },
     });

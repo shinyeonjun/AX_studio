@@ -7,6 +7,10 @@ import { loadAgentsConstitution } from './skill-load.js';
 import { getRoleDefinition } from './roles.js';
 import { isCloudProvider } from './cloud.js';
 import type { AgentContext, AgentResult, AgentRun, InvestigateAgentContext } from './types.js';
+import type {
+  InvestigationRunRequest,
+  InvestigationRunner,
+} from './investigation-runner.js';
 
 function composeSystemPrompt(roleSystem: string): string {
   const constitution = loadAgentsConstitution();
@@ -128,6 +132,18 @@ export class AgentHarness {
       request.abortSignal?.removeEventListener('abort', abortExternal);
     }
   }
+}
+
+/** Adapts the general harness to the narrow protocol consumed by Runtime. */
+export function createInvestigationRunner(harness: AgentHarness): InvestigationRunner {
+  return {
+    get providerName() {
+      return harness.providerName;
+    },
+    run<T>(request: InvestigationRunRequest<T>) {
+      return harness.run({ role: 'investigate', ...request });
+    },
+  };
 }
 
 function isModelProvider(value: AiProviderConfig | ModelProvider): value is ModelProvider {

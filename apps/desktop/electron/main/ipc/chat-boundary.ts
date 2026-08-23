@@ -1,6 +1,15 @@
+import {
+  AxInputRequestSchema,
+  AxUiPresentationSchema,
+  type AxInputRequest,
+  type AxUiPresentation,
+} from '@ax-studio/core';
+
 export type DesktopChatMessage = {
   role: 'user' | 'assistant';
   content: string;
+  inputRequests?: AxInputRequest[];
+  presentations?: AxUiPresentation[];
 };
 
 const MAX_CHAT_MESSAGES = 100;
@@ -43,7 +52,24 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (totalChars > MAX_CHAT_TOTAL_CHARS) {
       throw new Error(`대화 기록이 너무 큽니다. ${MAX_CHAT_TOTAL_CHARS.toLocaleString()}자 이내로 줄여 주세요.`);
     }
-    return { role: record.role, content: record.content };
+    const inputRequests = record.inputRequests === undefined
+      ? undefined
+      : AxInputRequestSchema.array().max(8).safeParse(record.inputRequests);
+    if (inputRequests && !inputRequests.success) {
+      throw new Error(`대화 ${index + 1}번째 메시지 입력 요청 형식이 올바르지 않습니다.`);
+    }
+    const presentations = record.presentations === undefined
+      ? undefined
+      : AxUiPresentationSchema.array().max(4).safeParse(record.presentations);
+    if (presentations && !presentations.success) {
+      throw new Error(`대화 ${index + 1}번째 메시지 UI 형식이 올바르지 않습니다.`);
+    }
+    return {
+      role: record.role,
+      content: record.content,
+      ...(inputRequests ? { inputRequests: inputRequests.data } : {}),
+      ...(presentations ? { presentations: presentations.data } : {}),
+    };
   });
 }
 

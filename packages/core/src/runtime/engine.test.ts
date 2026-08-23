@@ -5,7 +5,7 @@ import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from './engine.js';
 import { linearSteps } from './control-flow.js';
 import type { WorkflowIR } from '../workflow/schema.js';
-import { createAgentHarness } from '../agent/harness.js';
+import { createAgentHarness, createInvestigationRunner } from '../agent/harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../agent/model/provider.js';
 import { createTestConnectors, mockSlack, mockGmail } from '../modules/test-connectors.js';
 
@@ -101,7 +101,7 @@ describe('runtime control flow', () => {
       globalActive: true,
       workflowActive: {},
       connectors: createTestConnectors(),
-      agentHarness: createAgentHarness(new NoReadProvider()),
+      investigationRunner: createInvestigationRunner(createAgentHarness(new NoReadProvider())),
     });
     const result = await runtime.executeWorkflow(weeklyReportWorkflowFixture, { ephemeral: true });
     expect(result.status).toBe('success');
@@ -150,6 +150,47 @@ describe('runtime control flow', () => {
       ephemeral: true,
       status: 'success',
     });
+  });
+
+  it('serializes queued one-shot runs and records each as ephemeral', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const events: string[] = [];
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: {},
+      onExecutionStarted: (executionId) => events.push(`start:${executionId}`),
+      onExecutionFinished: (result) => events.push(`finish:${result.executionId}`),
+    });
+    const plan: WorkflowIR = {
+      id: 'queued-draft',
+      name: '큐 일회 실행',
+      goal: '한 번씩 순서대로 처리한다',
+      version: 1,
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    const first = runtime.enqueueEphemeralWorkflow(plan);
+    const second = runtime.enqueueEphemeralWorkflow(plan);
+    await runtime.waitForIdle();
+
+    expect(first.jobId).not.toBe(second.jobId);
+    expect(events).toHaveLength(4);
+    expect(events[0]?.startsWith('start:')).toBe(true);
+    expect(events[1]?.startsWith('finish:')).toBe(true);
+    expect(events[2]?.startsWith('start:')).toBe(true);
+    expect(events[3]?.startsWith('finish:')).toBe(true);
+    expect(store.listWorkflows()).toHaveLength(0);
+    expect(store.listExecutions(10)).toHaveLength(2);
+    expect(store.listExecutions(10).every((execution) => execution.ephemeral)).toBe(true);
   });
 
   it('reports and persists step progress while a workflow runs', async () => {
@@ -344,7 +385,7 @@ describe('runtime control flow', () => {
       globalActive: true,
       workflowActive: {},
       connectors: createTestConnectors(),
-      agentHarness: createAgentHarness(new RiskProvider()),
+      investigationRunner: createInvestigationRunner(createAgentHarness(new RiskProvider())),
     });
 
     const result = await runtime.executeWorkflow(ir, { ephemeral: true });

@@ -39,7 +39,7 @@ describe('openapi ingest', () => {
       const ctx = buildDesignToolContext([], ['openapi'], {
         connectors: { openapi: connector },
       });
-      const result = await invokeReadCapability(ctx, 'openapi.petstore.listPets', {}, 'plain_chat');
+      const result = await invokeReadCapability(ctx, 'openapi.petstore.listPets', {});
       expect(result.capabilityId).toBe('openapi.petstore.listPets');
       expect((result.data as { status: number }).status).toBe(200);
     } finally {
@@ -51,7 +51,7 @@ describe('openapi ingest', () => {
     ingestOpenApiSpec('petstore', PETSTORE);
     const ctx = buildDesignToolContext([], ['mcp'], { connectors: {} });
     await expect(
-      invokeReadCapability(ctx, 'openapi.petstore.createPet', {}, 'plain_chat'),
+      invokeReadCapability(ctx, 'openapi.petstore.createPet', {}),
     ).rejects.toThrow('capability_not_readable');
   });
 });

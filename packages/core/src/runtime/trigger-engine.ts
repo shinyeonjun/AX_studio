@@ -10,6 +10,7 @@ import {
 } from '../triggers/types.js';
 import { matchesTriggerFilter } from '../triggers/filter.js';
 import type { ExecutionResult } from './types.js';
+import type { PushTransportState } from '../triggers/push-state.js';
 
 const TIME_TRIGGER_TYPES = new Set(['manual', 'once', 'schedule']);
 const MAX_RECENT_EVENTS = 2000;
@@ -18,6 +19,8 @@ interface ActivePushTransport {
   stop(): Promise<void>;
   isRunning(): boolean;
 }
+
+type PushTriggerConfigOverrides = Readonly<Record<string, Record<string, unknown> | undefined>>;
 
 function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
   const { body: bodyField, ...payload } = event.payload;
@@ -79,11 +82,13 @@ export class TriggerEngine {
   private inFlightEvents = new Set<string>();
   private pushRefreshGeneration = 0;
   private pushRefreshQueue: Promise<void> = Promise.resolve();
+  private pushTransportStates = new Map<string, PushTransportState>();
 
   constructor(
     private store: WorkflowStore,
     private runtime: WorkflowRuntime,
     private onTriggeredRun?: (workflowId: string, result: unknown) => void,
+    private onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void,
   ) {}
 
   start() {
@@ -115,7 +120,19 @@ export class TriggerEngine {
     return this.pushTransportActive('slack.new_message');
   }
 
-  async refreshPushTransports(disconnect?: null): Promise<void> {
+  slackSocketStatus(): PushTransportState {
+    return this.pushTransportStates.get('slack.new_message') ?? { phase: 'disconnected' };
+  }
+
+  private updatePushTransportState(triggerType: string, state: PushTransportState) {
+    this.pushTransportStates.set(triggerType, state);
+    this.onPushTransportStateChanged?.(triggerType, state);
+  }
+
+  async refreshPushTransports(
+    disconnect?: null,
+    configOverrides?: PushTriggerConfigOverrides,
+  ): Promise<void> {
     const generation = ++this.pushRefreshGeneration;
     const refresh = async () => {
       for (const transport of this.pushTransports.values()) {
@@ -126,18 +143,34 @@ export class TriggerEngine {
       if (disconnect === null || generation !== this.pushRefreshGeneration) return;
 
       for (const driver of PUSH_TRIGGER_DRIVERS) {
+        this.updatePushTransportState(driver.triggerType, { phase: 'connecting' });
         try {
-          const transport = await driver.refresh(this.store, (event) => {
-            void this.handlePushEvent(driver, event);
-          });
-          if (!transport) continue;
+          const transport = await driver.refresh(
+            this.store,
+            (event) => {
+              void this.handlePushEvent(driver, event);
+            },
+            driver.connector ? configOverrides?.[driver.connector] : undefined,
+            (state) => this.updatePushTransportState(driver.triggerType, state),
+          );
+          if (!transport) {
+            this.updatePushTransportState(driver.triggerType, { phase: 'disconnected' });
+            continue;
+          }
 
           if (generation !== this.pushRefreshGeneration) {
             await transport.stop();
             return;
           }
           this.pushTransports.set(driver.triggerType, transport);
+          if (transport.isRunning()) {
+            this.updatePushTransportState(driver.triggerType, { phase: 'connected' });
+          }
         } catch (error) {
+          this.updatePushTransportState(driver.triggerType, {
+            phase: 'error',
+            error: error instanceof Error ? error.message : String(error),
+          });
           console.error(`[trigger-engine] push transport refresh failed for ${driver.triggerType}:`, error);
         }
       }
@@ -153,7 +186,7 @@ export class TriggerEngine {
       await this.refreshPushTransports(null);
       return;
     }
-    await this.refreshPushTransports();
+    await this.refreshPushTransports(undefined, { slack: config });
   }
 
   private rememberEvent(key: string): boolean {

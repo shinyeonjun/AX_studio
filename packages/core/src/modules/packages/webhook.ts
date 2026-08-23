@@ -17,10 +17,11 @@ export const webhookModulePackage: ModulePackage = {
   },
   triggerHandlers: [webhookInboundHandler],
   pushTriggerDriver: {
+    connector: 'webhook',
     triggerType: 'webhook.inbound',
-    async refresh(store, emit) {
+    async refresh(store, emit, configOverride) {
       const connection = store.getConnections().find((entry) => entry.connector === 'webhook');
-      const parsed = parseWebhookConnectionConfig(connection?.config);
+      const parsed = parseWebhookConnectionConfig(configOverride ?? connection?.config);
       if (!connection?.connected || !parsed) return undefined;
 
       const secret = await resolveWebhookAuthSecret(connection.config);

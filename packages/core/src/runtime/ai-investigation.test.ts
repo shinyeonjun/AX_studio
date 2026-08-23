@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAgentHarness } from '../agent/harness.js';
+import { createAgentHarness, createInvestigationRunner } from '../agent/harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../agent/model/provider.js';
 import type { ConnectorContext } from '../modules/types.js';
 import type { WorkflowIR } from '../workflow/schema.js';
@@ -181,7 +181,7 @@ describe('runAiDecision', () => {
       ir,
       ctx,
       results,
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       {},
     );
     expect(model.calls).toBe(1);
@@ -204,7 +204,7 @@ describe('runAiDecision', () => {
       privacyIr,
       { executionId: 'exec-1', variables: { subject: 'SECRET-SUBJECT' }, log: () => {} },
       { read: { body: 'SECRET-BODY' }, document: { text: 'SECRET-PDF-TEXT' } },
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       {},
     );
 
@@ -245,7 +245,7 @@ describe('runAiDecision', () => {
         documentIr,
         { executionId: 'exec-1', variables: {}, log: () => {} },
         { ingest: { text: 'PDF evidence' } },
-        createAgentHarness(model),
+        createInvestigationRunner(createAgentHarness(model)),
         {},
       ),
     ).rejects.toMatchObject({ code: 'ai_input_unavailable' });
@@ -281,7 +281,7 @@ describe('runAiDecision', () => {
       documentIr,
       { executionId: 'exec-1', variables: {}, log: () => {} },
       { ingest: { text: 'DEFAULT-PDF-EVIDENCE' } },
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       {},
     );
 
@@ -317,7 +317,7 @@ describe('runAiDecision', () => {
       documentIr,
       { executionId: 'exec-1', variables: {}, log: () => {} },
       { ingest: { text: 'EXPLICIT-PDF-EVIDENCE' } },
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       {},
     );
 
@@ -357,7 +357,7 @@ describe('runAiDecision', () => {
         documentIr,
         { executionId: 'exec-1', variables: { body: 'SECRET-EMAIL-BODY' }, log: () => {} },
         { ingest: { text: 'EXPLICIT-PDF-EVIDENCE' } },
-        createAgentHarness(model),
+        createInvestigationRunner(createAgentHarness(model)),
         {},
       ),
     ).rejects.toMatchObject({ code: 'ai_input_unavailable' });
@@ -383,7 +383,7 @@ describe('runAiDecision', () => {
       { ...ir, dataPolicy: { emailBody: { cloudAllowed: false } } },
       { executionId: 'exec-1', variables: {}, log: () => {} },
       results,
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       { gmail: { name: 'gmail', execute: async () => ({ ok: true, data: { body: 'evidence' } }) } },
     );
 
@@ -410,7 +410,7 @@ describe('runAiDecision', () => {
       { ...ir, dataPolicy: { emailBody: { cloudAllowed: false } } },
       { executionId: 'exec-1', variables: {}, log: () => {} },
       results,
-      createAgentHarness(model),
+      createInvestigationRunner(createAgentHarness(model)),
       {},
     );
 
@@ -436,7 +436,7 @@ describe('runAiDecision', () => {
         ir,
         { executionId: 'exec-1', variables: {}, log: () => {} },
         { ingest: { pages: [{ index: 0, hasVisual: true, imagePath }] } },
-        createAgentHarness(model),
+        createInvestigationRunner(createAgentHarness(model)),
         {},
       );
 
