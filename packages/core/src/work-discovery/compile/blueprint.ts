@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { TransformExpr } from '../synthesis/transform-dsl.js';
 import type { CandidateProgram, DiscoveryBlueprint, DiscoverySessionState } from '../schema.js';
+import type { OutputObservation } from '../observation/schema.js';
+import type { TransformExpr } from '../synthesis/transform-dsl.js';
 
 export function sourceIdFromExpr(expr: TransformExpr): string | undefined {
   if (expr.op === 'source') return expr.sourceId;
@@ -11,11 +12,26 @@ export function sourceIdFromExpr(expr: TransformExpr): string | undefined {
   return undefined;
 }
 
+export function partitionKey(candidate: CandidateProgram): string {
+  const sourceId = sourceIdFromExpr(candidate.expr) ?? 'unknown';
+  const aggregate = candidate.expr.op === 'aggregate'
+    ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}`
+    : candidate.expr.op === 'ratio'
+      ? 'ratio'
+      : candidate.expr.op;
+  return `${candidate.observationPath}|${sourceId}|${aggregate}`;
+}
+
 function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] {
-  return candidates.filter((candidate) =>
-    candidate.status === 'accepted' ||
-    candidate.replayResults.some((entry) => entry.pass),
-  );
+  return candidates.filter((candidate) => candidate.status === 'accepted');
+}
+
+export function requiredObservationPaths(observations: OutputObservation[]): string[] {
+  const paths = new Set<string>();
+  for (const observation of observations) {
+    if (observation.required) paths.add(observation.path);
+  }
+  return [...paths];
 }
 
 export function replayGateSummary(session: DiscoverySessionState): DiscoveryBlueprint['replaySummary'] {
@@ -37,32 +53,43 @@ export function canPublish(session: DiscoverySessionState): { ok: true } | { ok:
     return { ok: false, reason: 'pending_clarification' };
   }
   const winners = acceptedCandidates(session.candidates);
-  if (winners.length === 0) {
-    return { ok: false, reason: 'replay_gate_failed' };
+  const requiredPaths = requiredObservationPaths(session.observations);
+  if (requiredPaths.length === 0) {
+    return { ok: false, reason: 'no_required_observations' };
   }
-  const paths = new Set(winners.map((candidate) => candidate.observationPath));
-  if (paths.size !== winners.length) {
-    return { ok: false, reason: 'ambiguous_mappings' };
+  for (const path of requiredPaths) {
+    const forPath = winners.filter((candidate) => candidate.observationPath === path);
+    if (forPath.length === 0) {
+      return { ok: false, reason: 'missing_mapping' };
+    }
+    const unique = new Set(forPath.map(partitionKey));
+    if (unique.size > 1) {
+      return { ok: false, reason: 'ambiguous_mappings' };
+    }
   }
   return { ok: true };
 }
 
 export function buildDiscoveryBlueprint(session: DiscoverySessionState): DiscoveryBlueprint | undefined {
   const winners = acceptedCandidates(session.candidates);
-  if (winners.length === 0) return undefined;
+  const requiredPaths = requiredObservationPaths(session.observations);
+  if (requiredPaths.length === 0 || winners.length === 0) return undefined;
 
-  const replaySummary = replayGateSummary(session);
-  const fields = winners.map((candidate) => {
-    const observation = session.observations.find((entry) => entry.path === candidate.observationPath);
+  const fields = requiredPaths.map((path) => {
+    const candidate = winners.find((entry) => entry.observationPath === path);
+    const observation = session.observations.find((entry) => entry.path === path);
     return {
-      outputPath: candidate.observationPath,
+      outputPath: path,
       label: observation?.label,
-      mapping: candidate.expr,
-      confidence: candidate.score.replay,
-      status: 'resolved' as const,
+      mapping: candidate?.expr,
+      confidence: candidate?.score.replay ?? 0,
+      status: candidate?.expr ? 'resolved' as const : 'unresolved' as const,
     };
   });
 
+  if (fields.some((field) => !field.mapping)) return undefined;
+
+  const replaySummary = replayGateSummary(session);
   return {
     id: `bp_${randomUUID().replace(/-/g, '').slice(0, 12)}`,
     sessionId: session.id,
@@ -71,8 +98,13 @@ export function buildDiscoveryBlueprint(session: DiscoverySessionState): Discove
     triggerProposal: session.desiredRecurrence
       ? { type: 'schedule', schedule: session.desiredRecurrence, timezone: 'Asia/Seoul' }
       : { type: 'manual' },
+    sources: session.sourceInventory.map((source) => ({
+      id: source.id,
+      connector: source.connector,
+      metadata: source.metadata,
+    })),
     fields,
     replaySummary,
-    publishable: replaySummary.failed === 0 && fields.every((field) => field.mapping),
+    publishable: canPublish({ ...session, status: 'ready_to_publish', pendingQuestion: undefined }).ok,
   };
 }

@@ -39,7 +39,7 @@ function slugifyLabel(label: string): string {
     .replace(/^\.+|\.+$/g, '');
 }
 
-function observationFromNumber(
+export function observationFromNumber(
   exampleId: string,
   label: string,
   display: string,

@@ -56,6 +56,11 @@ export const DiscoveryBlueprintSchema = z.object({
   name: z.string(),
   goal: z.string(),
   triggerProposal: z.unknown().optional(),
+  sources: z.array(z.object({
+    id: z.string(),
+    connector: z.string(),
+    metadata: z.record(z.unknown()).optional(),
+  })).default([]),
   fields: z.array(z.object({
     outputPath: z.string(),
     label: z.string().optional(),
@@ -138,6 +143,22 @@ export const DiscoveryPublishArgsSchema = z.object({
 export type DiscoveryAnswerArgs = z.infer<typeof DiscoveryAnswerArgsSchema>;
 export type DiscoveryPublishArgs = z.infer<typeof DiscoveryPublishArgsSchema>;
 
+export interface DiscoveryFieldReview {
+  outputPath: string;
+  label?: string;
+  display?: string;
+  sourceId?: string;
+  mappingLabel?: string;
+  confidence?: number;
+  replayByExample: Array<{
+    exampleId: string;
+    expectedDisplay: string;
+    actualDisplay: string;
+    pass: boolean;
+    match: number;
+  }>;
+}
+
 export interface DiscoveryInspectView {
   sessionId: string;
   status: DiscoveryStatus;
@@ -146,8 +167,10 @@ export interface DiscoveryInspectView {
   publishable: boolean;
   pendingQuestion?: z.infer<typeof ClarificationQuestionSchema>;
   observations: Array<{ path: string; label?: string; display: string }>;
+  fieldReviews: DiscoveryFieldReview[];
   replaySummary: { total: number; passed: number; failed: number };
   workflowId?: string;
   errorCode?: string;
   errorMessage?: string;
+  supportedOutputFormats: string[];
 }

@@ -1,16 +1,22 @@
-# Goal: Work Discovery Phases 0–8
+# Goal: Work Discovery correctness-first completion
 
-Convert AX Studio workspace from NL-only workflow authoring to teach-by-example discovery:
-past output → observe → inventory → synthesize/replay → clarify → compile → publish.
+Complete Work Discovery so teach-by-example flows are verified end-to-end:
+historical output + optional input → observe → source inventory → synthesize/replay → clarify → compile → publish → runtime execution.
 
 ## Success criteria
-- Phase 0: `ai_decision` explicit input bindings (tests pass)
-- Phases 1–7: core `WorkDiscoveryService` pipeline with `discovery.*` commands
-- Phase 8: Desktop teach-by-example UX (import artifact, poll inspect, review card, publish)
+- North-star E2E passes (`packages/core/src/work-discovery/e2e/work-discovery-e2e.test.ts`)
+- `compileBlueprintToWorkflow` preserves `fields[].mapping` via `transform.evaluate`
+- ALL-pass multi-example replay; truncated aggregate rejection
+- Required observation publish gate; scoped clarification
+- `inputArtifactIds` consumed via `DiscoverySourceProvider` registry
 - `npm run build -w @ax-studio/core` passes
-- `npm test -w @ax-studio/core` passes
+- `npm test -w @ax-studio/core` passes (359+ tests)
+- `npm run eval -w @ax-studio/core` passes
 - `npx tsc --noEmit -p apps/desktop/tsconfig.json` passes
+- `npm run build -w @ax-studio/desktop` passes
+- document-engine pytest passes
 
 ## Non-goals
-- Phases 9–10 (drift/repair)
-- Full PDF parsing (text/CSV fixture path is sufficient for first slice)
+- Schema drift auto-repair (fixture only)
+- Agent semantic synthesis harness (deferred; deterministic path first)
+- Phases 9–10 drift/repair productization

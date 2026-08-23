@@ -1,21 +1,7 @@
 import type { CandidateProgram, DiscoverySessionState } from '../schema.js';
 import type { ClarificationQuestion } from './types.js';
-import { buildDiscoveryBlueprint } from '../compile/blueprint.js';
-
-function markCandidates(
-  candidates: CandidateProgram[],
-  selectedIds: Set<string>,
-): CandidateProgram[] {
-  return candidates.map((candidate) => {
-    if (!selectedIds.has(candidate.id)) {
-      return { ...candidate, status: 'rejected' as const };
-    }
-    return {
-      ...candidate,
-      status: 'accepted' as const,
-    };
-  });
-}
+import { buildDiscoveryBlueprint, canPublish } from '../compile/blueprint.js';
+import { buildClarificationQuestion } from './question.js';
 
 export function applyClarificationAnswer(
   session: DiscoverySessionState,
@@ -27,16 +13,35 @@ export function applyClarificationAnswer(
     throw new Error('clarification_option_not_found');
   }
 
+  const affectedPaths = new Set(question.affectedObservationPaths);
   const selectedIds = new Set(option.candidateIds);
-  const candidates = markCandidates(session.candidates, selectedIds);
+  const candidates: CandidateProgram[] = session.candidates.map((candidate) => {
+    if (!affectedPaths.has(candidate.observationPath)) {
+      return candidate;
+    }
+    if (selectedIds.has(candidate.id)) {
+      return { ...candidate, status: 'accepted' as const };
+    }
+    return { ...candidate, status: 'rejected' as const };
+  });
+
+  const pendingQuestion = buildClarificationQuestion({
+    sessionId: session.id,
+    candidates,
+  });
+
   const next: DiscoverySessionState = {
     ...session,
     revision: session.revision + 1,
-    status: 'ready_to_publish',
+    status: pendingQuestion ? 'needs_clarification' : 'ready_to_publish',
     candidates,
-    pendingQuestion: undefined,
+    pendingQuestion,
     updatedAt: new Date().toISOString(),
   };
-  next.blueprint = buildDiscoveryBlueprint(next);
+  if (!pendingQuestion && canPublish(next).ok) {
+    next.blueprint = buildDiscoveryBlueprint(next);
+  } else {
+    next.blueprint = undefined;
+  }
   return next;
 }

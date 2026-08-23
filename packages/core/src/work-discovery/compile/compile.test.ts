@@ -11,7 +11,15 @@ const session: DiscoverySessionState = {
   userGoal: '월간 매출 보고',
   exampleIds: ['ex_1'],
   sourceInventory: [],
-  observations: [],
+  observations: [{
+    id: 'obs_1',
+    exampleId: 'ex_1',
+    path: 'field.total',
+    label: 'total',
+    value: { kind: 'number', value: 100, display: '100' },
+    role: 'dynamic_value',
+    required: true,
+  }],
   candidates: [{
     id: 'c1',
     observationPath: 'field.total',
@@ -39,12 +47,15 @@ describe('compile', () => {
     expect(canPublish({ ...session, blueprint }).ok).toBe(true);
   });
 
-  it('compiles blueprint to valid WorkflowIR', () => {
+  it('compiles blueprint to valid WorkflowIR with preserved mappings', () => {
     const blueprint = buildDiscoveryBlueprint(session)!;
     const ir = compileBlueprintToWorkflow(blueprint, { name: '월간 보고' });
     const validated = validateWorkflowIR(ir);
     expect(validated.ok).toBe(true);
     expect(ir.trigger).toEqual({ type: 'manual' });
+    const evalSteps = ir.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
+    expect(evalSteps.length).toBeGreaterThan(0);
+    expect(evalSteps[0]?.params.expr).toBeTruthy();
     expect(JSON.parse(ir.document ?? '{}')).toMatchObject({ origin: 'discovery' });
   });
 

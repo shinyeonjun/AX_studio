@@ -12,7 +12,37 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: Discove
     <div className="ax-discovery-review">
       <h3>찾은 방법</h3>
       <p className="muted">{view.progress}</p>
-      {view.observations.length > 0 && (
+      {view.fieldReviews.length > 0 && (
+        <section>
+          <h4>필드별 학습 결과</h4>
+          <ul className="ax-discovery-field-reviews">
+            {view.fieldReviews.map((field) => (
+              <li key={field.outputPath}>
+                <strong>{field.label ?? field.outputPath}</strong>
+                {field.display && <div>관찰값: {field.display}</div>}
+                {field.sourceId && <div>Source: {field.sourceId}</div>}
+                {field.mappingLabel && <div>Learned rule: {field.mappingLabel}</div>}
+                {field.replayByExample.length > 0 && (
+                  <div>
+                    Replay:
+                    <ul>
+                      {field.replayByExample.map((entry) => (
+                        <li key={entry.exampleId}>
+                          {entry.exampleId} {entry.pass ? '✓' : '✗'} ({entry.actualDisplay})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {field.confidence != null && (
+                  <div>Confidence: {(field.confidence * 100).toFixed(0)}%</div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {view.observations.length > 0 && view.fieldReviews.length === 0 && (
         <section>
           <h4>결과물에서 찾은 항목</h4>
           <ul>
@@ -26,9 +56,9 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: Discove
       )}
       {view.replaySummary.total > 0 && (
         <section>
-          <h4>재현 결과</h4>
+          <h4>재현 요약</h4>
           <p>
-            {view.replaySummary.passed}/{view.replaySummary.total} 항목 재현 성공
+            {view.replaySummary.passed}/{view.replaySummary.total} 후보 검증 통과
           </p>
         </section>
       )}

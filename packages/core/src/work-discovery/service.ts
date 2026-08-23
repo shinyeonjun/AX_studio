@@ -1,44 +1,37 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import { ArtifactStore } from '../store/artifact-store.js';
 import { getAxDataPaths } from '../paths/ax-data.js';
-import { DocumentArtifactSchema } from '../contracts/artifacts/document.js';
 import type { TableArtifact } from '../contracts/artifacts/table.js';
 import { applyClarificationAnswer } from './clarification/answer-apply.js';
 import { buildClarificationQuestion } from './clarification/question.js';
-import { buildDiscoveryBlueprint, canPublish } from './compile/blueprint.js';
+import { buildDiscoveryBlueprint, canPublish, sourceIdFromExpr } from './compile/blueprint.js';
 import { compileBlueprintToWorkflow } from './compile/compile-workflow.js';
 import { inventorySources } from './exploration/inventory.js';
-import { observeDocumentArtifact } from './observation/observe-document.js';
+import { observeArtifact, SUPPORTED_OUTPUT_FORMATS } from './observation/observe-artifact.js';
 import type { OutputObservation } from './observation/schema.js';
 import {
   DiscoveryCancelArgsSchema,
   DiscoveryInspectArgsSchema,
   DiscoveryStartArgsSchema,
+  type DiscoveryFieldReview,
   type DiscoveryInspectView,
   type DiscoverySessionState,
   type DiscoveryStartArgs,
 } from './schema.js';
 import { assertTransition, isTerminalStatus } from './state-machine.js';
-import { enumerateCandidates, replayCandidates } from './synthesis/index.js';
-
-export interface WorkDiscoveryExplorationConfig {
-  rdb?: {
-    filePath: string;
-    allowedTables: string[];
-    rowLimit?: number;
-  };
-  localSheets?: Array<{ path: string; label: string }>;
-  sourceReadsMax?: number;
-}
+import { enumerateCandidates, replayCandidates, resolveReplayWinners } from './synthesis/index.js';
+import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
+import type { DiscoverySourceRegistry } from './sources/registry.js';
 
 export interface WorkDiscoveryServiceOptions {
   store: WorkflowStore;
   artifactStore?: ArtifactStore;
   snapshotDir?: string;
-  exploration?: WorkDiscoveryExplorationConfig;
+  sourceRegistry?: DiscoverySourceRegistry;
+  sourceReadsMax?: number;
 }
 
 function observationDisplay(observation: OutputObservation): string {
@@ -47,6 +40,15 @@ function observationDisplay(observation: OutputObservation): string {
   }
   if (observation.value.kind === 'text') return observation.value.value;
   return JSON.stringify(observation.value);
+}
+
+function formatMappingLabel(candidate: { expr: { op: string; fn?: string; column?: string; name?: string } }): string {
+  if (candidate.expr.op === 'aggregate') {
+    return `${candidate.expr.fn?.toUpperCase() ?? 'AGG'}(${candidate.expr.column ?? 'rows'})`;
+  }
+  if (candidate.expr.op === 'ratio') return 'RATIO(%)';
+  if (candidate.expr.op === 'column') return `COLUMN(${candidate.expr.name})`;
+  return candidate.expr.op;
 }
 
 function progressLabel(status: DiscoverySessionState['status']): string {
@@ -80,12 +82,16 @@ export class WorkDiscoveryService {
   private readonly running = new Set<string>();
   private readonly artifactStore: ArtifactStore;
   private readonly snapshotDir: string;
+  private readonly sourceRegistry: DiscoverySourceRegistry;
+  private readonly sourceReadsMax: number;
 
   constructor(private readonly options: WorkDiscoveryServiceOptions) {
     const paths = getAxDataPaths();
     this.artifactStore = options.artifactStore ?? new ArtifactStore(join(paths.root, 'artifacts'));
     this.snapshotDir = options.snapshotDir ?? join(paths.root, 'discovery', 'snapshots');
     mkdirSync(this.snapshotDir, { recursive: true });
+    this.sourceRegistry = options.sourceRegistry ?? createDefaultDiscoverySourceRegistry(options.store, this.artifactStore);
+    this.sourceReadsMax = options.sourceReadsMax ?? 12;
   }
 
   start(args: DiscoveryStartArgs): { id: string; state: DiscoverySessionState['status'] } {
@@ -93,6 +99,7 @@ export class WorkDiscoveryService {
     const now = new Date().toISOString();
     const sessionId = `wd_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
     const exampleIds: string[] = [];
+    const sessionInputArtifactIds = parsed.inputArtifactIds ?? [];
 
     const state: DiscoverySessionState = {
       id: sessionId,
@@ -105,7 +112,7 @@ export class WorkDiscoveryService {
       candidates: [],
       budgets: {
         sourceReadsUsed: 0,
-        sourceReadsMax: this.options.exploration?.sourceReadsMax ?? 12,
+        sourceReadsMax: this.sourceReadsMax,
         modelCallsUsed: 0,
         modelCallsMax: 4,
         elapsedMs: 0,
@@ -121,7 +128,7 @@ export class WorkDiscoveryService {
         sessionId,
         label: `example_${index + 1}`,
         outputArtifactIds: [artifactId],
-        inputArtifactIds: parsed.inputArtifactIds ?? [],
+        inputArtifactIds: sessionInputArtifactIds,
       });
       exampleIds.push(example.id);
     }
@@ -138,9 +145,30 @@ export class WorkDiscoveryService {
     const state = this.options.store.getDiscoverySessionState(parsed.sessionId);
     if (!state) return undefined;
 
-    const passed = state.candidates.filter((candidate) =>
-      candidate.status === 'accepted' || candidate.replayResults.some((entry) => entry.pass),
-    ).length;
+    const accepted = state.candidates.filter((candidate) => candidate.status === 'accepted');
+    const fieldReviews: DiscoveryFieldReview[] = [];
+    const paths = [...new Set(state.observations.filter((entry) => entry.required).map((entry) => entry.path))];
+    for (const path of paths) {
+      const observation = state.observations.find((entry) => entry.path === path);
+      const winner = accepted.find((candidate) => candidate.observationPath === path);
+      fieldReviews.push({
+        outputPath: path,
+        label: observation?.label,
+        display: observation ? observationDisplay(observation) : undefined,
+        sourceId: winner ? sourceIdFromExpr(winner.expr) : undefined,
+        mappingLabel: winner ? formatMappingLabel(winner) : undefined,
+        confidence: winner?.score.replay,
+        replayByExample: winner?.replayResults.map((entry) => ({
+          exampleId: entry.exampleId,
+          expectedDisplay: typeof entry.expected === 'object' && entry.expected && 'value' in (entry.expected as object)
+            ? String((entry.expected as { value?: unknown }).value ?? '')
+            : String(entry.expected ?? ''),
+          actualDisplay: String(entry.actual ?? ''),
+          pass: entry.pass,
+          match: entry.match,
+        })) ?? [],
+      });
+    }
 
     return {
       sessionId: state.id,
@@ -154,15 +182,28 @@ export class WorkDiscoveryService {
         label: observation.label,
         display: observationDisplay(observation),
       })),
+      fieldReviews,
       replaySummary: {
         total: state.candidates.length,
-        passed,
-        failed: Math.max(0, state.candidates.length - passed),
+        passed: accepted.length,
+        failed: Math.max(0, state.candidates.length - accepted.length),
       },
       workflowId: state.publishedWorkflowId,
       errorCode: state.errorCode,
       errorMessage: state.errorMessage,
+      supportedOutputFormats: [...SUPPORTED_OUTPUT_FORMATS],
     };
+  }
+
+  async waitForTerminal(sessionId: string, timeoutMs = 15_000): Promise<DiscoverySessionState | undefined> {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const state = this.options.store.getDiscoverySessionState(sessionId);
+      if (!state) return undefined;
+      if (isTerminalStatus(state.status) && !this.running.has(sessionId)) return state;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return this.options.store.getDiscoverySessionState(sessionId);
   }
 
   cancel(sessionId: string): DiscoverySessionState | undefined {
@@ -192,7 +233,8 @@ export class WorkDiscoveryService {
     if (!gate.ok) return { error: gate.reason };
     const blueprint = state.blueprint ?? buildDiscoveryBlueprint(state);
     if (!blueprint) return { error: 'blueprint_missing' };
-    const workflow = compileBlueprintToWorkflow(blueprint, { name });
+    const defaultSourcePath = this.resolveDefaultSourcePath(blueprint);
+    const workflow = compileBlueprintToWorkflow(blueprint, { name, defaultSourcePath });
     const saved = this.options.store.saveWorkflow(workflow);
     state.status = 'published';
     state.publishedWorkflowId = saved.workflowId;
@@ -200,6 +242,12 @@ export class WorkDiscoveryService {
     state.updatedAt = new Date().toISOString();
     this.options.store.saveDiscoverySession(state);
     return { workflowId: saved.workflowId };
+  }
+
+  private resolveDefaultSourcePath(blueprint: NonNullable<DiscoverySessionState['blueprint']>): string | undefined {
+    const source = blueprint.sources.find((entry) => entry.connector === 'input_artifact');
+    const storedPath = source?.metadata?.storedPath;
+    return typeof storedPath === 'string' ? storedPath : undefined;
   }
 
   private scheduleRun(sessionId: string): void {
@@ -234,31 +282,35 @@ export class WorkDiscoveryService {
     state = this.transition(state, 'observing_output');
     for (const example of examples) {
       if (this.isCancelled(sessionId)) return;
-      const found: OutputObservation[] = [];
       for (const artifactId of example.outputArtifactIds) {
-        const document = this.loadDocumentArtifact(artifactId);
-        if (!document) continue;
-        found.push(...observeDocumentArtifact(example.id, document));
+        observations.push(...this.observeOutputArtifact(example.id, artifactId));
       }
-      observations.push(...found);
     }
     state = this.patchState(sessionId, { observations });
 
     state = this.transition(state, 'inventory_sources');
     state = this.transition(state, 'exploring_sources');
 
-    const exploration = this.options.exploration;
     const snapshotsByExample: Record<string, Record<string, TableArtifact>> = {};
-    if (exploration && examples[0]) {
-      const inventory = await inventorySources(examples[0].id, observations, {
-        rdb: exploration.rdb,
-        localSheets: exploration.localSheets,
+    const allSources = new Map<string, DiscoverySessionState['sourceInventory'][number]>();
+    let sourceReadsUsed = state.budgets.sourceReadsUsed;
+
+    for (const example of examples) {
+      if (this.isCancelled(sessionId)) return;
+      const inventory = await inventorySources(this.sourceRegistry, {
+        store: this.options.store,
+        artifactStore: this.artifactStore,
         snapshotDir: this.snapshotDir,
+        exampleId: example.id,
+        observations,
+        inputArtifactIds: example.inputArtifactIds,
         budget: {
-          sourceReadsUsed: state.budgets.sourceReadsUsed,
+          sourceReadsUsed,
           sourceReadsMax: state.budgets.sourceReadsMax,
         },
       });
+      sourceReadsUsed = inventory.budget.sourceReadsUsed;
+      for (const source of inventory.sources) allSources.set(source.id, source);
       for (const snapshot of inventory.snapshots) {
         this.options.store.insertDiscoverySnapshot({
           id: snapshot.id,
@@ -272,29 +324,39 @@ export class WorkDiscoveryService {
           queryJson: snapshot.queryJson,
           metadataJson: snapshot.metadataJson,
           capturedAt: new Date().toISOString(),
-          table: snapshot.table,
         });
         if (snapshot.table) {
           snapshotsByExample[snapshot.exampleId] ??= {};
           snapshotsByExample[snapshot.exampleId]![snapshot.sourceId] = snapshot.table;
         }
       }
-      state = this.patchState(sessionId, {
-        sourceInventory: inventory.sources,
-        budgets: {
-          ...state.budgets,
-          sourceReadsUsed: inventory.budget.sourceReadsUsed,
-          stoppedReason: inventory.stoppedReason,
-        },
-      });
+      if (inventory.stoppedReason) break;
     }
+
+    const sourceInventory = [...allSources.values()].map((source) => {
+      if (source.connector !== 'input_artifact') return source;
+      const artifactId = String(source.metadata?.artifactId ?? source.id.replace(/^input:/, ''));
+      const stored = this.artifactStore.get(artifactId);
+      if (!stored) return source;
+      return {
+        ...source,
+        metadata: { ...source.metadata, artifactId, storedPath: stored.storedPath },
+      };
+    });
+
+    state = this.patchState(sessionId, {
+      sourceInventory,
+      budgets: {
+        ...state.budgets,
+        sourceReadsUsed,
+      },
+    });
 
     if (this.isCancelled(sessionId)) return;
 
     state = this.transition(state, 'synthesizing');
-    const exampleId = examples[0]?.id ?? '';
-    const enumerated = enumerateCandidates(observations, state.sourceInventory, snapshotsByExample[exampleId] ?? {});
-    const replayed = replayCandidates({
+    const enumerated = enumerateCandidates(observations, sourceInventory, snapshotsByExample[examples[0]?.id ?? ''] ?? {});
+    const replayedRaw = replayCandidates({
       candidates: enumerated,
       examples: examples.map((example) => ({
         exampleId: example.id,
@@ -302,20 +364,25 @@ export class WorkDiscoveryService {
       })),
       snapshotsByExample,
     });
+    const requiredPaths = [...new Set(observations.filter((entry) => entry.required).map((entry) => entry.path))];
+    const { candidates: replayed, ambiguousPaths } = resolveReplayWinners(replayedRaw, requiredPaths);
 
     state = this.transition(state, 'validating');
-    const hasAccepted = replayed.some((candidate) => candidate.status === 'accepted');
-    const question = hasAccepted ? buildClarificationQuestion({ sessionId, candidates: replayed }) : undefined;
-    const nextStatus = !hasAccepted
+    const accepted = replayed.filter((candidate) => candidate.status === 'accepted');
+    const question = ambiguousPaths.length > 0
+      ? buildClarificationQuestion({ sessionId, candidates: replayed })
+      : undefined;
+    const coveredPaths = new Set(accepted.map((candidate) => candidate.observationPath));
+    const allRequiredCovered = requiredPaths.every((path) => coveredPaths.has(path));
+    const nextStatus = accepted.length === 0 || !allRequiredCovered
       ? 'failed'
       : question
         ? 'needs_clarification'
         : 'ready_to_publish';
 
-    const blueprint = hasAccepted && !question ? buildDiscoveryBlueprint({
-      ...state,
-      candidates: replayed,
-    }) : undefined;
+    const blueprint = accepted.length > 0 && !question && allRequiredCovered
+      ? buildDiscoveryBlueprint({ ...state, candidates: replayed })
+      : undefined;
 
     state = this.patchState(sessionId, {
       candidates: replayed,
@@ -326,36 +393,16 @@ export class WorkDiscoveryService {
         elapsedMs: Date.now() - started,
       },
       status: nextStatus,
-      errorCode: hasAccepted ? undefined : 'no_matching_candidate',
-      errorMessage: hasAccepted ? undefined : 'No replay candidate matched the observed output.',
+      errorCode: accepted.length > 0 && allRequiredCovered ? undefined : 'no_matching_candidate',
+      errorMessage: accepted.length > 0 && allRequiredCovered
+        ? undefined
+        : 'Required output fields could not be replayed across every example.',
     });
     this.running.delete(sessionId);
   }
 
-  private loadDocumentArtifact(artifactId: string) {
-    const documentJson = this.artifactStore.getDocumentArtifact<unknown>(artifactId);
-    if (documentJson) {
-      const parsed = DocumentArtifactSchema.safeParse(documentJson);
-      if (parsed.success) return parsed.data;
-    }
-    const json = this.artifactStore.getJson<unknown>(artifactId);
-    if (json) {
-      const parsed = DocumentArtifactSchema.safeParse(json);
-      if (parsed.success) return parsed.data;
-    }
-    const stored = this.artifactStore.get(artifactId);
-    if (!stored) return undefined;
-    try {
-      return DocumentArtifactSchema.parse({
-        id: artifactId,
-        text: readFileSync(stored.storedPath, 'utf8'),
-        pages: [],
-        tables: [],
-        images: [],
-      });
-    } catch {
-      return undefined;
-    }
+  private observeOutputArtifact(exampleId: string, artifactId: string): OutputObservation[] {
+    return observeArtifact(exampleId, artifactId, this.artifactStore);
   }
 
   private isCancelled(sessionId: string): boolean {
@@ -393,3 +440,8 @@ export class WorkDiscoveryService {
     return next;
   }
 }
+
+// Backward-compatible type alias for callers that still pass exploration config.
+export type WorkDiscoveryExplorationConfig = {
+  sourceReadsMax?: number;
+};

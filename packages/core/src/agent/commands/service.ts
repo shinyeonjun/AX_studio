@@ -9,7 +9,6 @@ import {
   getConnectorLabel,
 } from '../../catalog/connectors.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
-import { parseRdbConnectionConfig } from '../../modules/rdb/index.js';
 import {
   commandAccess,
   HOST_COMMAND_CONTEXT,
@@ -274,19 +273,7 @@ export class AxCommandService {
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
     this.workflowGateway = createWorkflowCommandGateway(store, options);
-    const rdbConnection = store.getConnections().find((entry) => entry.connector === 'rdb' && entry.connected);
-    const rdbConfig = rdbConnection ? parseRdbConnectionConfig(rdbConnection.config) : null;
-    const exploration =
-      rdbConfig?.type === 'sqlite' && rdbConfig.filePath
-        ? {
-            rdb: {
-              filePath: rdbConfig.filePath,
-              allowedTables: rdbConfig.allowedTables ?? [],
-              rowLimit: rdbConfig.rowLimit,
-            },
-          }
-        : undefined;
-    this.discoveryGateway = createDiscoveryCommandGateway(store, { exploration });
+    this.discoveryGateway = createDiscoveryCommandGateway(store);
   }
 
   private readonly readGateway: AxCommandReadGateway;

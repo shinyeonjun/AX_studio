@@ -1,4 +1,7 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { TransformExprSchema } from '../../work-discovery/synthesis/transform-dsl.js';
+import { evaluateTransformExpr } from '../../work-discovery/synthesis/transform-evaluator.js';
+import type { TableArtifact } from '../../contracts/artifacts/table.js';
 
 function formatTableValue(value: unknown): string {
   if (value == null) return '';
@@ -72,6 +75,26 @@ export class TransformConnector implements Connector {
         const text = documentToText(document);
         ctx.variables.transformText = text;
         return { ok: true, data: { text, kind: 'TextArtifact' } };
+      }
+      case 'evaluate': {
+        const parsedExpr = TransformExprSchema.safeParse(params.expr);
+        if (!parsedExpr.success) {
+          return { ok: false, error: 'invalid_transform_expr', errorCode: 'invalid_transform_expr' };
+        }
+        const table = params.table as TableArtifact | undefined;
+        if (!table) {
+          return { ok: false, error: 'table_input_required', errorCode: 'table_input_required' };
+        }
+        const sourceId = typeof params.discoverySourceId === 'string'
+          ? params.discoverySourceId
+          : 'runtime:source';
+        const snapshots: Record<string, TableArtifact> = { [sourceId]: table };
+        const value = evaluateTransformExpr(parsedExpr.data, snapshots);
+        const outputPath = typeof params.outputPath === 'string' ? params.outputPath : 'result';
+        ctx.variables[outputPath] = value;
+        ctx.variables.discoveryFields ??= {};
+        (ctx.variables.discoveryFields as Record<string, unknown>)[outputPath] = value;
+        return { ok: true, data: { value, outputPath, kind: 'JsonArtifact' } };
       }
       default:
         return { ok: false, error: `Unknown transform action: ${action}` };

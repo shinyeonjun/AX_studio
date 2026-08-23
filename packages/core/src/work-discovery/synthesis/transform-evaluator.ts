@@ -2,6 +2,7 @@ import type { ScalarValue, TableArtifact } from '../../contracts/artifacts/table
 import type { ConditionExpr } from '../../runtime/condition-expr.js';
 import type { TransformExpr } from './transform-dsl.js';
 
+
 export type SnapshotTables = Record<string, TableArtifact>;
 
 function rowValue(row: TableArtifact['rows'][number], column: string): ScalarValue {
@@ -176,18 +177,4 @@ export function evaluateTransformExpr(expr: TransformExpr, snapshots: SnapshotTa
     default:
       throw new Error('unsupported_transform_op');
   }
-}
-
-export function compareObservationValue(expected: unknown, actual: ScalarValue): number {
-  if (expected == null || actual == null) return expected === actual ? 1 : 0;
-  const expectedNumber = typeof expected === 'number' ? expected : Number(String(expected).replace(/,/g, ''));
-  const actualNumber = typeof actual === 'number' ? actual : Number(String(actual).replace(/,/g, ''));
-  if (Number.isFinite(expectedNumber) && Number.isFinite(actualNumber)) {
-    if (expectedNumber === actualNumber) return 1;
-    const delta = Math.abs(expectedNumber - actualNumber);
-    const scale = Math.max(Math.abs(expectedNumber), Math.abs(actualNumber), 1);
-    if (delta / scale <= 0.01) return 0.95;
-    return 0;
-  }
-  return String(expected) === String(actual) ? 1 : 0;
 }

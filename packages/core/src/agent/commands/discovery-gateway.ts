@@ -2,7 +2,6 @@ import type { ArtifactStore } from '../../store/artifact-store.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
 import {
   WorkDiscoveryService,
-  type WorkDiscoveryExplorationConfig,
 } from '../../work-discovery/service.js';
 import {
   DiscoveryAnswerArgsSchema,
@@ -24,7 +23,7 @@ export interface DiscoveryCommandGateway {
 export interface DiscoveryGatewayOptions {
   artifactStore?: ArtifactStore;
   snapshotDir?: string;
-  exploration?: WorkDiscoveryExplorationConfig;
+  sourceReadsMax?: number;
 }
 
 export function createDiscoveryCommandGateway(
@@ -35,7 +34,7 @@ export function createDiscoveryCommandGateway(
     store,
     artifactStore: options.artifactStore,
     snapshotDir: options.snapshotDir,
-    exploration: options.exploration,
+    sourceReadsMax: options.sourceReadsMax,
   });
   return {
     start: (command) => start(service, command),

@@ -7,7 +7,7 @@ import { sourceIdFromExpr } from '../compile/blueprint.js';
 function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] {
   return candidates.filter((candidate) =>
     candidate.status === 'accepted' ||
-    candidate.replayResults.some((entry) => entry.pass),
+    (candidate.status !== 'rejected' && candidate.replayResults.length > 0 && candidate.replayResults.every((entry) => entry.pass)),
   );
 }
 

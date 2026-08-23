@@ -364,6 +364,16 @@ export const LOCAL_SHEET_CATALOG: ConnectorCatalogEntry = {
 
 export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
   {
+    id: 'transform.evaluate',
+    connector: 'transform',
+    kind: 'read',
+    label: '변환식 평가',
+    description: '검증된 TransformExpr를 결정론적으로 평가',
+    sideEffect: 'NONE',
+    params: [{ name: 'expr', label: '변환식', question: '변환식', required: true }],
+    io: { inputs: { table: 'TableArtifact' }, outputs: { value: 'JsonArtifact' } },
+  },
+  {
     id: 'transform.table_to_text',
     connector: 'transform',
     kind: 'read',

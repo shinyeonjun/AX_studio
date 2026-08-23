@@ -32,14 +32,7 @@ function fileRefForPath(path: string): FileRef {
   });
 }
 
-function parseCsvMatrix(text: string): { headers: string[]; matrix: unknown[][] } {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return { headers: [], matrix: [] };
-  const headers = lines[0]!.split(',').map((cell) => cell.trim());
-  const matrix = lines.slice(1).map((line) => line.split(',').map((cell) => cell.trim()));
-  return { headers, matrix };
-}
-
+import { parseCsvMatrix } from './csv-parse.js';
 function sheetToMatrix(sheet: XLSX.WorkSheet): { headers: string[]; matrix: unknown[][] } {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null }) as unknown[][];
   if (rows.length === 0) return { headers: [], matrix: [] };

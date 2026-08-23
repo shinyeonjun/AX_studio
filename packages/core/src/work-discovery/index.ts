@@ -11,7 +11,8 @@ export {
   replayGateSummary,
   sourceIdFromExpr,
 } from './compile/blueprint.js';
-export { evaluateTransformExpr, compareObservationValue } from './synthesis/transform-evaluator.js';
+export { evaluateTransformExpr } from './synthesis/transform-evaluator.js';
+export { compareObservationValue, replayPassThreshold } from './synthesis/compare.js';
 export { enumerateCandidates } from './synthesis/enumerator.js';
 export { replayCandidates } from './synthesis/replay-runner.js';
 export { inventorySources } from './exploration/inventory.js';

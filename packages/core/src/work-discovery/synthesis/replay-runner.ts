@@ -1,12 +1,39 @@
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { CandidateProgram } from '../schema.js';
+import { sourceIdFromExpr } from '../compile/blueprint.js';
 import type { EnumeratedCandidate } from './enumerator.js';
-import { compareObservationValue, evaluateTransformExpr } from './transform-evaluator.js';
+import { compareObservationValue, replayPassThreshold } from './compare.js';
+import { evaluateTransformExpr, type SnapshotTables } from './transform-evaluator.js';
+import type { TransformExpr } from './transform-dsl.js';
 
 export interface ReplayExample {
   exampleId: string;
   observations: OutputObservation[];
+}
+
+function isAggregateExpr(expr: TransformExpr): boolean {
+  return expr.op === 'aggregate' || expr.op === 'ratio';
+}
+
+function usesTruncatedSnapshot(expr: TransformExpr, snapshots: SnapshotTables): boolean {
+  if (expr.op === 'source') {
+    return snapshots[expr.sourceId]?.truncated === true;
+  }
+  if (expr.op === 'ratio') {
+    return usesTruncatedSnapshot(expr.numerator, snapshots) || usesTruncatedSnapshot(expr.denominator, snapshots);
+  }
+  if ('input' in expr) {
+    return usesTruncatedSnapshot(expr.input, snapshots);
+  }
+  return false;
+}
+
+function snapshotsForCandidate(expr: TransformExpr, snapshots: SnapshotTables): SnapshotTables {
+  const sourceId = sourceIdFromExpr(expr);
+  if (!sourceId) return snapshots;
+  const table = snapshots[sourceId];
+  return table ? { [sourceId]: table } : snapshots;
 }
 
 export function replayCandidates(params: {
@@ -19,34 +46,46 @@ export function replayCandidates(params: {
   for (const candidate of params.candidates) {
     const replayResults: CandidateProgram['replayResults'] = [];
     let replayScore = 0;
-    let replayCount = 0;
 
     for (const example of params.examples) {
       const observation = example.observations.find((entry) => entry.path === candidate.observationPath);
-      if (!observation || observation.value.kind !== 'number') continue;
-      const snapshots = params.snapshotsByExample[example.exampleId] ?? {};
+      if (!observation || !observation.required) continue;
+      const snapshots = snapshotsForCandidate(
+        candidate.expr,
+        params.snapshotsByExample[example.exampleId] ?? {},
+      );
+      if (isAggregateExpr(candidate.expr) && usesTruncatedSnapshot(candidate.expr, snapshots)) {
+        replayResults.push({
+          exampleId: example.exampleId,
+          expected: observation.value,
+          actual: null,
+          match: 0,
+          pass: false,
+        });
+        continue;
+      }
       let actual: unknown;
       try {
         actual = evaluateTransformExpr(candidate.expr, snapshots);
       } catch {
         actual = null;
       }
-      const match = compareObservationValue(observation.value.value, actual as never);
-      const pass = match >= 0.95;
+      const match = compareObservationValue(observation.value, actual as never);
+      const pass = replayPassThreshold(match);
       replayResults.push({
         exampleId: example.exampleId,
-        expected: observation.value.value,
+        expected: observation.value,
         actual,
         match,
         pass,
       });
       replayScore += match;
-      replayCount += 1;
     }
 
+    const replayCount = replayResults.length;
     const replay = replayCount > 0 ? replayScore / replayCount : 0;
+    const passedAll = replayCount > 0 && replayResults.every((entry) => entry.pass);
     const total = replay * 0.85 + candidate.simplicity * 0.15;
-    const accepted = replayResults.some((entry) => entry.pass);
     results.push({
       id: candidate.id,
       observationPath: candidate.observationPath,
@@ -58,7 +97,7 @@ export function replayCandidates(params: {
         simplicity: candidate.simplicity,
       },
       replayResults,
-      status: accepted ? 'accepted' : 'candidate',
+      status: passedAll ? 'accepted' : 'candidate',
     });
   }
 
