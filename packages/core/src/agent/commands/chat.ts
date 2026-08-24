@@ -10,6 +10,7 @@ import { inputRequestsForResult } from './input-requests.js';
 import type { AxCommandReadContext } from './read-gateway.js';
 import { AGENT_COMMAND_CONTEXT } from './access.js';
 import { AxCommandService } from './service.js';
+import type { WorkspaceSourceRecord } from '../../store/workspace-source-service.js';
 import {
   createAxCommandChatTransport,
 } from './transport.js';
@@ -28,6 +29,8 @@ export interface AxCommandChatOptions {
   userMessage: string;
   connectedConnectors?: string[];
   providerSessionId?: string;
+  workspaceSessionId?: string;
+  workspaceSources?: WorkspaceSourceRecord[];
   currentWorkflowId?: string;
   onProgress?: (event: { message: string }) => void;
   abortSignal?: AbortSignal;
@@ -48,6 +51,9 @@ function commandProtocolPrompt(options: AxCommandChatOptions, outputInstructions
     mutates: entry.mutates,
   }));
   const connected = options.connectedConnectors?.join(', ') || '없음';
+  const sessionSources = options.workspaceSources?.length
+    ? JSON.stringify(options.workspaceSources)
+    : '[]';
   return [
     'AX command protocol을 사용하는 workflow agent다.',
     '사용자의 요청을 이해한 뒤 host가 제공한 command만 사용한다.',
@@ -55,7 +61,8 @@ function commandProtocolPrompt(options: AxCommandChatOptions, outputInstructions
     '한 턴에는 command 하나 또는 최종 reply 하나만 반환한다.',
     '필요할 때만 조회 command를 사용한다: 사용자가 이름으로 지칭한 연결·폴더·파일을 식별해야 할 때는 resource.list/source.list/source.files.list를 호출하고, action 계약이나 연결 상태가 불명확할 때만 capability.list/describe를 호출한다.',
     '이미 대화·workflow·조회 결과에 있는 id/path/계약은 다시 조회하지 않는다. workflow.update/delete/validate는 대상 workflow id와 최신 버전이 없을 때만 workflow.inspect/list를 호출한다.',
-    'PDF 본문은 source.file.read 또는 document.ingest가 로컬 문서 엔진(기본 Docling)으로 추출한 evidence다. Docling을 직접 실행하지 않는다.',
+    '연결 폴더의 PDF 본문은 source.file.read가, 현재 대화에 업로드한 PDF 본문은 session.source.read가 로컬 문서 엔진(기본 Docling)으로 추출한 evidence다. Docling을 직접 실행하지 않는다.',
+    '현재 대화 세션에 업로드된 자료는 session.source.list/read로만 조회한다. source id를 사용하고 절대 경로를 만들거나 요구하지 않는다.',
     'command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.',
     'slack.message.send나 gmail.message.send를 직접 호출하는 command는 없다. 외부 발송을 포함한 일회 계획은 execution.enqueue_once로 검증 후 즉시 큐에 넣고 저장하지 않는다.',
     '사용자가 앞서 제안한 작업을 승인하면 같은 대화의 의도를 이어서 적절한 lifecycle command를 사용한다. command가 없다고 답하지 않는다.',
@@ -66,6 +73,7 @@ function commandProtocolPrompt(options: AxCommandChatOptions, outputInstructions
     'command 실행 결과와 내부 JSON을 사용자에게 그대로 노출하지 말고 한국어로 요약한다.',
     `현재 연결된 connector: ${connected}`,
     `현재 대화에 연결된 workflow: ${options.currentWorkflowId?.trim() || '없음'}`,
+    `현재 대화 세션 자료 manifest: ${sessionSources}`,
     `사용 가능한 command 계약: ${JSON.stringify(commands)}`,
     `provider 출력 계약: ${outputInstructions}`,
   ].join('\n');
@@ -123,6 +131,7 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
         designToolContext: options.designToolContext,
         designToolContextFactory: options.designToolContextFactory,
         executionContext: AGENT_COMMAND_CONTEXT,
+        workspaceSessionId: options.workspaceSessionId,
       });
       const inputRequests = inputRequestsForResult(result);
       const resultForLoop: AxCommandResult = { ...result, inputRequests };

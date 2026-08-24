@@ -1,4 +1,5 @@
 import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { WorkspaceSourceRecord } from '@ax-studio/core';
 import type { AiProviderState } from './app-state';
 import type {
   AiApiTestResult,
@@ -33,6 +34,7 @@ export interface AxApi {
     }>,
     requestId?: string,
     workflowId?: string,
+    workspaceSessionId?: string,
   ) => Promise<{
     role: 'assistant';
     content: string;
@@ -99,6 +101,14 @@ export interface AxApi {
     updatedAt: string;
   } | null>;
   deleteWorkspaceChat: (id: string) => Promise<{ ok: boolean }>;
+  listWorkspaceSources: (sessionId: string) => Promise<{
+    ok: boolean;
+    sources: WorkspaceSourceRecord[];
+  }>;
+  attachWorkspaceSource: (sessionId: string) => Promise<
+    | { ok: true; source: WorkspaceSourceRecord }
+    | { ok: false; canceled?: boolean; error?: string }
+  >;
   onChatProgress?: (listener: (event: { message: string; requestId?: string }) => void) => () => void;
   explain: (q: string) => Promise<string>;
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;

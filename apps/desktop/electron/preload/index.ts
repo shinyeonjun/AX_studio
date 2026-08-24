@@ -70,7 +70,8 @@ contextBridge.exposeInMainWorld('ax', {
     }>,
     requestId?: string,
     workflowId?: string,
-  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId),
+    workspaceSessionId?: string,
+  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId, workspaceSessionId),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (
@@ -86,6 +87,8 @@ contextBridge.exposeInMainWorld('ax', {
   loadWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:loadWorkspaceChat', id),
   loadWorkspaceChatByWorkflowId: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkspaceChatByWorkflowId', workflowId),
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),
+  listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
+  attachWorkspaceSource: (sessionId: string) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
   onChatProgress: (listener: (event: { message: string; requestId?: string }) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string; requestId?: string }) =>
       listener(payload);

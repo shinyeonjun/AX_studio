@@ -12,10 +12,13 @@ export async function importDiscoveryArtifact(
   const ext = extname(sourcePath).toLowerCase();
   if (ext !== '.pdf') return stored;
 
+  if (store.getDocumentArtifact(stored.id)) return stored;
+
   const ingested = await getDocumentEngineClient().ingest(stored.storedPath, {
     engine: 'auto',
     ocr: 'auto',
   });
+  store.putIngestResult(stored.id, ingested);
   const artifact = toDocumentArtifact(
     ingested,
     fileRefFromLocalScan({

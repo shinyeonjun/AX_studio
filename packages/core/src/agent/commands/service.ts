@@ -9,6 +9,11 @@ import {
   getConnectorLabel,
 } from '../../catalog/connectors.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { ArtifactStore } from '../../store/artifact-store.js';
+import {
+  WorkspaceSourceError,
+  type WorkspaceSourceService,
+} from '../../store/workspace-source-service.js';
 import {
   commandAccess,
   HOST_COMMAND_CONTEXT,
@@ -41,6 +46,8 @@ import {
   AxSourceFilesListArgsSchema,
   AxSourceListArgsSchema,
   AxSourceSearchArgsSchema,
+  AxSessionSourceListArgsSchema,
+  AxSessionSourceReadArgsSchema,
   AxUiPresentArgsSchema,
   type AxCommand,
   type AxCommandDefinition,
@@ -91,6 +98,20 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     lifecycle: 'read',
     description: '연결된 로컬 폴더의 검색 인덱스를 조회합니다.',
     args: { query: 'search query', folderId: 'connected folder id', limit: 'positive integer' },
+    mutates: false,
+  },
+  {
+    name: 'session.source.list',
+    lifecycle: 'read',
+    description: '현재 대화 세션에 업로드된 자료와 문서 엔진 상태를 조회합니다.',
+    args: {},
+    mutates: false,
+  },
+  {
+    name: 'session.source.read',
+    lifecycle: 'read',
+    description: '현재 대화 세션의 준비된 문서에서 제한된 Docling 본문과 페이지 근거를 읽습니다.',
+    args: { sourceId: 'session.source.list에서 반환한 source id', maxChars: '1000..20000' },
     mutates: false,
   },
   {
@@ -269,11 +290,13 @@ export class AxCommandService {
       runWorkflow?: (workflowId: string) => Promise<unknown>;
       enqueueOnce?: (workflow: import('../../workflow/schema.js').WorkflowIR) => Promise<unknown> | unknown;
       readGateway?: AxCommandReadGateway;
+      artifactStore?: ArtifactStore;
+      workspaceSources?: WorkspaceSourceService;
     } = {},
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
     this.workflowGateway = createWorkflowCommandGateway(store, options);
-    this.discoveryGateway = createDiscoveryCommandGateway(store);
+    this.discoveryGateway = createDiscoveryCommandGateway(store, { artifactStore: options.artifactStore });
   }
 
   private readonly readGateway: AxCommandReadGateway;
@@ -294,6 +317,7 @@ export class AxCommandService {
       designToolContext?: AxCommandReadContext;
       designToolContextFactory?: () => AxCommandReadContext;
       executionContext?: AxCommandExecutionContext;
+      workspaceSessionId?: string;
     } = {},
   ): Promise<AxCommandResult> {
     const parsed = AxCommandSchema.safeParse(raw);
@@ -332,6 +356,10 @@ export class AxCommandService {
         return result(command.name, ...await this.executeReadTool(command, 'sources.file.read', AxSourceFileReadArgsSchema, options.designToolContext, options.designToolContextFactory));
       case 'source.search':
         return result(command.name, ...await this.executeReadTool(command, 'sources.search', AxSourceSearchArgsSchema, options.designToolContext, options.designToolContextFactory));
+      case 'session.source.list':
+        return result(command.name, ...this.listSessionSources(command, options.workspaceSessionId));
+      case 'session.source.read':
+        return result(command.name, ...this.readSessionSource(command, options.workspaceSessionId));
       case 'capability.list':
         return result(command.name, 'ok', this.listCapabilities(command));
       case 'capability.describe':
@@ -396,6 +424,42 @@ export class AxCommandService {
     const error = execution.error ?? 'source_command_failed';
     const status = error === 'source_content_requires_local_ai' ? 'forbidden' : 'error';
     return [status, undefined, [issue(error, `command ${command.name} 실행 실패: ${error}`)]];
+  }
+
+  private listSessionSources(
+    command: AxCommand,
+    sessionId: string | undefined,
+  ): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+    const parsed = AxSessionSourceListArgsSchema.safeParse(command.args);
+    if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+    if (!sessionId?.trim()) {
+      return ['invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]];
+    }
+    if (!this.options.workspaceSources) {
+      return ['error', undefined, [issue('session_source_unavailable', '세션 자료 저장소를 사용할 수 없습니다.')]];
+    }
+    return ['ok', { sessionId: sessionId.trim(), sources: this.options.workspaceSources.list(sessionId) }];
+  }
+
+  private readSessionSource(
+    command: AxCommand,
+    sessionId: string | undefined,
+  ): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+    const parsed = AxSessionSourceReadArgsSchema.safeParse(command.args);
+    if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+    if (!sessionId?.trim()) {
+      return ['invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]];
+    }
+    if (!this.options.workspaceSources) {
+      return ['error', undefined, [issue('session_source_unavailable', '세션 자료 저장소를 사용할 수 없습니다.')]];
+    }
+    try {
+      return ['ok', this.options.workspaceSources.read(sessionId, parsed.data.sourceId, parsed.data.maxChars)];
+    } catch (error) {
+      const code = error instanceof WorkspaceSourceError ? error.code : 'session_source_read_failed';
+      const status: AxCommandResult['status'] = code.endsWith('not_found') ? 'not_found' : 'error';
+      return [status, undefined, [issue(code, '현재 대화 세션 자료를 읽을 수 없습니다.')]];
+    }
   }
 
   private listResources() {

@@ -7,6 +7,7 @@ import { WorkConversationSplit } from '../work/WorkConversationSplit';
 import { useWorkflowPanelWidth } from '../../hooks/useWorkflowPanelWidth';
 import type { WorkflowVisualNodeData } from '../../workflow/types';
 import { AxWorkspaceChat } from '../workspace/AxWorkspaceChat';
+import { WorkspaceContextPanel } from '../workspace/WorkspaceContextPanel';
 import '../workspace/ax-workspace.css';
 
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
@@ -60,7 +61,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
       )}
       <AxWorkspaceChat
         messages={workspaceChat.displayMessages}
-        busy={workspaceChat.busy || discovery.busy}
+        busy={workspaceChat.busy || workspaceChat.sourceBusy || discovery.busy}
         error={workspaceChat.error || discovery.error}
         progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
@@ -77,7 +78,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   );
 
   return (
-    <div className={`chat-main-page ${showGraph ? '' : 'chat-main-page--solo'}`}>
+    <div className="chat-main-page">
       {workflowState && (
         <header className="chat-main-header">
           <div className="chat-main-title-wrap">
@@ -87,31 +88,34 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         </header>
       )}
 
-      {showGraph ? (
-        <WorkConversationSplit
-          width={workflowPanelWidth}
-          isResizing={isResizing}
-          onSplitterPointerDown={onSplitterPointerDown}
-          onSplitterDoubleClick={resetWidth}
-          chat={chatBlock}
-          panel={
-            <WorkflowPreviewPanel
-              draft={workflowState?.workflow}
-              baselineDraft={undefined}
-              completeness={workflowState?.completeness}
-              done
-              title={title}
-              selectedNode={selectedNode}
-              panelBusy={workspaceChat.busy}
-              onSelectNode={handleSelectNode}
-              onRequestEdit={workspaceChat.beginEditStep}
-              onCloseDetail={() => handleSelectNode(null)}
-            />
-          }
-        />
-      ) : (
-        chatBlock
-      )}
+      <WorkConversationSplit
+        width={workflowPanelWidth}
+        isResizing={isResizing}
+        onSplitterPointerDown={onSplitterPointerDown}
+        onSplitterDoubleClick={resetWidth}
+        chat={chatBlock}
+        panel={
+          <WorkspaceContextPanel
+            sources={workspaceChat.workspaceSources}
+            sourceBusy={workspaceChat.sourceBusy}
+            onAttachSource={workspaceChat.attachWorkspaceSource}
+            workflow={showGraph ? (
+              <WorkflowPreviewPanel
+                draft={workflowState?.workflow}
+                baselineDraft={undefined}
+                completeness={workflowState?.completeness}
+                done
+                title={title}
+                selectedNode={selectedNode}
+                panelBusy={workspaceChat.busy}
+                onSelectNode={handleSelectNode}
+                onRequestEdit={workspaceChat.beginEditStep}
+                onCloseDetail={() => handleSelectNode(null)}
+              />
+            ) : undefined}
+          />
+        }
+      />
     </div>
   );
 }

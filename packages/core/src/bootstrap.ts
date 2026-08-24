@@ -8,6 +8,8 @@ import { buildConnectorsFromStore } from './modules/registry.js';
 import { registerAllModules } from './modules/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from './agent/harness.js';
 import { AxCommandService } from './agent/commands/service.js';
+import { ArtifactStore } from './store/artifact-store.js';
+import { WorkspaceSourceService } from './store/workspace-source-service.js';
 import {
   DEFAULT_AI_PROVIDER,
   normalizeAiProviderConfig,
@@ -50,6 +52,8 @@ export interface AxStudioCore {
   agentHarness: AgentHarness;
   /** Single AI-facing workflow/resource command boundary for every host. */
   commandService: AxCommandService;
+  /** Session-owned files and document-engine results. */
+  workspaceSources: WorkspaceSourceService;
   refreshAgentHarness(config: AiProviderConfig): AgentHarness;
 }
 
@@ -65,6 +69,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
+  const artifactStore = new ArtifactStore(paths.artifacts);
+  const workspaceSources = new WorkspaceSourceService(store, artifactStore, paths.sessions);
 
   const aiConfig = normalizeAiProviderConfig(
     store.getSetting<AiProviderConfig | unknown>('aiProvider', DEFAULT_AI_PROVIDER),
@@ -94,6 +100,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const commandService = new AxCommandService(store, {
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
     enqueueOnce: (workflow) => runtime.enqueueEphemeralWorkflow(workflow, { triggerType: 'manual' }),
+    artifactStore,
+    workspaceSources,
   });
 
   const core: AxStudioCore = {
@@ -104,6 +112,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     triggerEngine,
     agentHarness,
     commandService,
+    workspaceSources,
     refreshAgentHarness(config: AiProviderConfig) {
       core.agentHarness.configure(normalizeAiProviderConfig(config));
       runtime.setInvestigationRunner(investigationRunner);

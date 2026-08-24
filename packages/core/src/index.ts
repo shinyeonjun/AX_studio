@@ -17,6 +17,15 @@ export * from './store/workflow-store.js';
 export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';
 export { importDiscoveryArtifact } from './store/import-discovery-artifact.js';
 export {
+  WorkspaceSourceError,
+  WorkspaceSourceService,
+  type WorkspaceSourceDocument,
+  type WorkspaceSourceReadResult,
+  type WorkspaceSourceRecord,
+  type WorkspaceSourceStatus,
+  type WorkspaceSourceSummary,
+} from './store/workspace-source-service.js';
+export {
   WorkDiscoveryService,
   type WorkDiscoveryExplorationConfig,
   type WorkDiscoveryServiceOptions,

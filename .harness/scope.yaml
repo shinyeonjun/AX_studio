@@ -29,6 +29,16 @@ allowed:
   - apps/desktop/package.json
   - package.json
   - package-lock.json
+  - packages/core/src/paths
+  - packages/core/src/store
+  - packages/core/src/document-engine
+  - packages/core/src/agent/commands
+  - apps/desktop/src/components/chat
+  - apps/desktop/src/components/workspace
+  - apps/desktop/src/hooks
+  - apps/desktop/src/types
+  - apps/desktop/electron/main/ipc
+  - apps/desktop/electron/preload
 
 avoid_mutation:
   - node_modules
@@ -67,3 +77,6 @@ expansions:
   - date: 2026-08-24
     reason: "The user added a product direction based on competitor gaps and recurring silent-degradation pain: learn recurring work from input/output examples and regression-check future results. This is queued as a separate bounded capability rather than mixed into the current command migration."
     boundary: "queued: example-bundle contract, hypothesis/replay/drift comparison, repair proposal, and bounded recurring-report UI; reuse catalog, Workflow IR, Docling evidence, Runtime, approval, and command chat"
+  - date: 2026-08-24
+    reason: "The user approved session-scoped document context: upload into the conversation session, persist source/artifact/Docling metadata, and expose only bounded ids to the agent."
+    boundary: "session source repository/service, artifact ingest manifest, AxCommandService session-source reads, workspace chat IPC/preload/hook and source panel"

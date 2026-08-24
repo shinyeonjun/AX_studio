@@ -36,6 +36,7 @@ export function registerWorkspaceChatCommandHandlers() {
     messages: unknown,
     requestId?: unknown,
     workflowId?: unknown,
+    workspaceSessionId?: unknown,
   ) => {
     const core = getCore();
     const normalizedMessages = normalizeChatMessages(messages);
@@ -46,6 +47,13 @@ export function registerWorkspaceChatCommandHandlers() {
     if (workflowId !== undefined && (typeof workflowId !== 'string' || !workflowId.trim())) {
       throw new Error('workflow id 형식이 올바르지 않습니다.');
     }
+    if (workspaceSessionId !== undefined &&
+      (typeof workspaceSessionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceSessionId.trim()))) {
+      throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
+    }
+    const safeWorkspaceSessionId = typeof workspaceSessionId === 'string'
+      ? workspaceSessionId.trim()
+      : undefined;
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const controller = registerWorkspaceChat(chatRequestId);
@@ -61,6 +69,10 @@ export function registerWorkspaceChatCommandHandlers() {
         messages: history,
         userMessage,
         currentWorkflowId: typeof workflowId === 'string' ? workflowId.trim() : undefined,
+        workspaceSessionId: safeWorkspaceSessionId,
+        workspaceSources: safeWorkspaceSessionId
+          ? core.workspaceSources.list(safeWorkspaceSessionId)
+          : [],
         designToolContextFactory: () => buildDesktopDesignToolContext(
           core,
           core.store.getConnections(),

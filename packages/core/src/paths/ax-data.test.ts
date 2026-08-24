@@ -11,6 +11,8 @@ describe('AxDataPaths', () => {
     const paths = buildAxDataPaths('C:\\AXStudio');
     expect(paths.database).toBe('C:\\AXStudio\\data\\ax-studio.db');
     expect(paths.documents).toBe('C:\\AXStudio\\documents');
+    expect(paths.artifacts).toBe('C:\\AXStudio\\artifacts');
+    expect(paths.sessions).toBe('C:\\AXStudio\\sessions');
     expect(paths.templates).toBe('C:\\AXStudio\\templates');
     expect(paths.generated.reports).toBe('C:\\AXStudio\\generated\\reports');
     expect(paths.cache.chromium).toBe('C:\\AXStudio\\cache\\chromium');

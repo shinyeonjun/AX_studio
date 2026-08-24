@@ -54,10 +54,20 @@ export class ArtifactStore {
     writeFileSync(join(this.rootDir, `${id}.document.json`), JSON.stringify(value));
   }
 
+  putIngestResult(id: string, value: unknown): void {
+    writeFileSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
+  }
+
   getDocumentArtifact<T>(id: string): T | undefined {
     const metaPath = join(this.rootDir, `${id}.document.json`);
     if (!existsSync(metaPath)) return undefined;
     return JSON.parse(readFileSync(metaPath, 'utf8')) as T;
+  }
+
+  getIngestResult<T>(id: string): T | undefined {
+    const resultPath = join(this.rootDir, `${id}.ingest.json`);
+    if (!existsSync(resultPath)) return undefined;
+    return JSON.parse(readFileSync(resultPath, 'utf8')) as T;
   }
 
   getJson<T>(id: string): T | undefined {

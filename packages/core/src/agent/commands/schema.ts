@@ -19,6 +19,8 @@ export const AX_COMMAND_NAMES = [
   'source.files.list',
   'source.file.read',
   'source.search',
+  'session.source.list',
+  'session.source.read',
   'capability.list',
   'capability.invoke',
   'capability.describe',
@@ -64,6 +66,13 @@ export const AxSourceSearchArgsSchema = z.object({
   query: z.string().trim().min(1),
   folderId: z.string().trim().min(1).optional(),
   limit: z.number().int().positive().optional(),
+});
+
+export const AxSessionSourceListArgsSchema = z.object({});
+
+export const AxSessionSourceReadArgsSchema = z.object({
+  sourceId: z.string().trim().min(1),
+  maxChars: z.number().int().min(1_000).max(20_000).optional(),
 });
 
 export const AxCapabilityInvokeArgsSchema = z.object({

@@ -108,4 +108,23 @@ describe('workspace chat persistence boundary', () => {
     })).not.toHaveProperty('workflowId');
     expect(store.getWorkspaceChatByWorkflowId('workflow-persistent')).toBeNull();
   });
+
+  it('deletes session source rows with their owning chat', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '자료를 지워줘' }] });
+    store.insertWorkspaceSource({
+      id: 'src_delete_test',
+      sessionId: chat.id,
+      artifactId: 'art_delete_test',
+      fileName: 'delete.pdf',
+      status: 'ready',
+      createdAt: '2026-08-24T00:00:00.000Z',
+      updatedAt: '2026-08-24T00:00:00.000Z',
+    });
+
+    store.deleteWorkspaceChat(chat.id);
+
+    expect(store.listWorkspaceSources(chat.id)).toEqual([]);
+  });
 });

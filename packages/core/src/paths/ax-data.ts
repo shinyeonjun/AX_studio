@@ -8,6 +8,8 @@ export interface AxDataPaths {
   credentials: string;
   config: string;
   documents: string;
+  artifacts: string;
+  sessions: string;
   templates: string;
   generated: {
     reports: string;
@@ -46,6 +48,8 @@ export function buildAxDataPaths(root: string): AxDataPaths {
     credentials: join(root, 'credentials'),
     config: join(root, 'config'),
     documents: join(root, 'documents'),
+    artifacts: join(root, 'artifacts'),
+    sessions: join(root, 'sessions'),
     templates: join(root, 'templates'),
     generated: {
       reports: join(root, 'generated', 'reports'),
@@ -89,6 +93,8 @@ export function ensureAxDataLayout(paths: AxDataPaths): void {
     paths.credentials,
     paths.config,
     paths.documents,
+    paths.artifacts,
+    paths.sessions,
     paths.templates,
     paths.generated.reports,
     paths.generated.exports,

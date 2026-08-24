@@ -53,7 +53,9 @@ export function registerWorkspaceChatPersistenceHandlers() {
 
   ipcHandle('ax:deleteWorkspaceChat', async (_event, id: string) => {
     if (typeof id !== 'string' || !id.trim()) throw new Error('대화 id가 필요합니다.');
-    getCore().store.deleteWorkspaceChat(id);
+    const core = getCore();
+    core.workspaceSources.removeSession(id);
+    core.store.deleteWorkspaceChat(id);
     return { ok: true };
   });
 }

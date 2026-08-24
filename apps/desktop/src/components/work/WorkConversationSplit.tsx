@@ -31,7 +31,7 @@ export function WorkConversationSplit({
         className="work-conversation-splitter"
         role="separator"
         aria-orientation="vertical"
-        aria-label="워크플로우 패널 너비 조절"
+        aria-label="대화 컨텍스트 패널 너비 조절"
         aria-valuenow={width}
         aria-valuemin={WORKFLOW_PANEL_MIN_WIDTH}
         aria-valuemax={WORKFLOW_PANEL_MAX_WIDTH}

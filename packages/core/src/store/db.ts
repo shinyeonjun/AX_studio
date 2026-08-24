@@ -82,6 +82,22 @@ const MIGRATION_SQL = `
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS workspace_chat_sources (
+    id TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL REFERENCES workspace_chats(id) ON DELETE CASCADE,
+    artifact_id TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    mime_type TEXT,
+    status TEXT NOT NULL,
+    engine TEXT,
+    document_artifact_id TEXT,
+    summary_json TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS trigger_receipts (
     dedupe_key TEXT PRIMARY KEY,
     workflow_id TEXT NOT NULL,
@@ -97,6 +113,8 @@ const MIGRATION_SQL = `
   CREATE INDEX IF NOT EXISTS idx_executions_started_at ON executions(started_at);
   CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
   CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);
+  CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_chat_id
+  ON workspace_chat_sources(chat_id, created_at);
 
   CREATE TABLE IF NOT EXISTS work_discovery_sessions (
     id TEXT PRIMARY KEY,

@@ -90,7 +90,7 @@ export class WorkDiscoveryService {
 
   constructor(private readonly options: WorkDiscoveryServiceOptions) {
     const paths = getAxDataPaths();
-    this.artifactStore = options.artifactStore ?? new ArtifactStore(join(paths.root, 'artifacts'));
+    this.artifactStore = options.artifactStore ?? new ArtifactStore(paths.artifacts);
     this.snapshotDir = options.snapshotDir ?? join(paths.root, 'discovery', 'snapshots');
     mkdirSync(this.snapshotDir, { recursive: true });
     this.sourceRegistry = options.sourceRegistry ?? createDefaultDiscoverySourceRegistry(options.store, this.artifactStore);

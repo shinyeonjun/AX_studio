@@ -9,6 +9,7 @@ import * as workspaceChatRepo from './repositories/workspace-chat-repository.js'
 import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
 import * as discoveryRepo from './repositories/work-discovery-repository.js';
 import type { DiscoverySessionState } from '../work-discovery/schema.js';
+import * as workspaceSourceRepo from './repositories/workspace-source-repository.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
@@ -55,6 +56,25 @@ export class WorkflowStore {
 
   deleteWorkspaceChat(id: string) {
     workspaceChatRepo.deleteWorkspaceChat(this.db, id);
+  }
+
+  insertWorkspaceSource(record: workspaceSourceRepo.WorkspaceSourceRecord) {
+    return workspaceSourceRepo.insertWorkspaceSource(this.db, record);
+  }
+
+  updateWorkspaceSource(
+    id: string,
+    patch: Partial<Omit<workspaceSourceRepo.WorkspaceSourceRecord, 'id' | 'sessionId' | 'artifactId' | 'fileName' | 'createdAt'>>,
+  ) {
+    return workspaceSourceRepo.updateWorkspaceSource(this.db, id, patch);
+  }
+
+  getWorkspaceSource(sessionId: string, id: string) {
+    return workspaceSourceRepo.getWorkspaceSource(this.db, sessionId, id);
+  }
+
+  listWorkspaceSources(sessionId: string) {
+    return workspaceSourceRepo.listWorkspaceSources(this.db, sessionId);
   }
 
   createExecution(params: {
