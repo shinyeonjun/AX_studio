@@ -17,6 +17,20 @@ describe('ArtifactStore', () => {
     expect(second.sha256).toBe(first.sha256);
   });
 
+  it('ignores corrupt and unrelated metadata while importing files', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-artifacts-'));
+    const store = new ArtifactStore(root);
+    const source = join(root, 'sample.txt');
+    writeFileSync(source, 'fixture content');
+    writeFileSync(join(root, 'corrupt.json'), '{not valid json');
+    writeFileSync(join(root, 'unrelated.json'), JSON.stringify({ status: 'partial' }));
+
+    const imported = store.importFile(source);
+
+    expect(imported.fileName).toBe('sample.txt');
+    expect(store.get(imported.id)).toEqual(imported);
+  });
+
   it('stores and retrieves json artifacts', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-artifacts-'));
     const store = new ArtifactStore(root);
