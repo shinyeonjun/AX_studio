@@ -62,11 +62,10 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
     return;
   }
 
-  const { clientId, clientSecret } = getGoogleOAuthCredentials();
+  const { clientId } = getGoogleOAuthCredentials();
   runtime.connectors.gmail = new GmailConnector(
     buildGmailConnectorConfig({
       clientId,
-      clientSecret,
       credential,
       email: record.account || undefined,
     }),
@@ -74,10 +73,9 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
 }
 
 export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowRuntime) {
-  const { clientId, clientSecret } = getGoogleOAuthCredentials();
+  const { clientId } = getGoogleOAuthCredentials();
   const tokens = await connectGmailViaLoopback({
     clientId,
-    clientSecret,
     onAuthUrl: (url) => shell.openExternal(url),
   });
 
@@ -87,7 +85,6 @@ export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowR
 
   const runtimeConfig = buildGmailConnectorConfig({
     clientId,
-    clientSecret,
     credential: {
       refreshToken: tokens.refreshToken!,
       accessToken: tokens.accessToken,

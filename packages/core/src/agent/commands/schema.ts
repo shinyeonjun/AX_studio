@@ -33,6 +33,8 @@ export const AX_COMMAND_NAMES = [
   'workflow.delete',
   'workflow.run',
   'execution.enqueue_once',
+  'job.propose',
+  'job.commit',
   'context.update',
   'ui.present',
   'discovery.start',
@@ -123,7 +125,7 @@ export const AxUiPresentationActionSchema = z.object({
   value: z.string().trim().min(1).max(500),
   tone: z.enum(['primary', 'secondary', 'danger']).default('secondary'),
   /** A typed host confirmation marker; it is not a command or permission. */
-  purpose: z.enum(['reply', 'confirm_context']).default('reply'),
+  purpose: z.enum(['reply', 'confirm_context', 'confirm_job']).default('reply'),
 });
 
 export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [

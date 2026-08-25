@@ -10,6 +10,8 @@ export {
   connectGmailViaLoopback,
   fetchGmailProfileEmail,
   buildGmailConnectorConfig,
+  createOAuthState,
+  oauthCallbackStateMatches,
   type GmailOAuthOptions,
   type GmailOAuthResult,
 } from './oauth.js';

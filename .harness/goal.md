@@ -414,3 +414,100 @@ behavior.
   API calls.
 - Replacing the existing focused E2E specs or changing production behavior
   solely to make the QA harness pass.
+
+## Current task: Dev/Stable data split and Gmail OAuth hardening
+
+Separate unpackaged `npm run dev` from the installed AX Studio so dogfooding
+on this PC cannot share DB, credentials, or the Electron single-instance lock.
+Harden Gmail OAuth for a packaged RC: bake only `GOOGLE_OAUTH_CLIENT_ID` at
+build time, drop `client_secret`, and validate OAuth `state` on the loopback
+callback.
+
+### Success criteria
+
+- Unpackaged desktop uses `%LOCALAPPDATA%/AXStudio-dev` (and a Dev Electron
+  `userData`) unless `AX_DATA_ROOT` is set.
+- Packaged desktop keeps `%LOCALAPPDATA%/AXStudio`.
+- Dev and Stable can run at the same time (different app name / userData /
+  single-instance lock).
+- Existing AXStudio data is not migrated into AXStudio-dev.
+- Gmail OAuth no longer reads or documents `GOOGLE_OAUTH_CLIENT_SECRET`.
+- Loopback callback rejects a missing or mismatched OAuth `state`.
+- Production desktop build embeds `GOOGLE_OAUTH_CLIENT_ID` from repo `.env` if
+  the process env is empty.
+- Core oauth/path tests, desktop typecheck, and desktop production build pass.
+
+### Non-goals for this slice
+
+- HTTP multi-connection.
+- Removing `gmail.send` from requested scopes (forces re-consent; defer).
+- Google OAuth verification / public Gmail Restricted-scope launch.
+- Auto-copying current AXStudio data into the Dev profile.
+
+## Current task: packaged app crash on missing `undici`
+
+The installed AX Studio fails at main-process load with
+`Cannot find module 'undici'` from `@slack/socket-mode`. Vite externalizes
+that SDK; electron-builder packed `socket-mode` but skipped `undici` because
+it is only a peerDependency.
+
+### Success criteria
+
+- Packaged main process can `require('undici')` from `app.asar`.
+- Unpacked Windows build starts without the `Cannot find module 'undici'` dialog.
+- Desktop production build still passes.
+
+### Non-goals for this slice
+
+- Bundling `googleapis` back into the main chunk.
+- Changing Slack Socket Mode runtime behavior.
+
+## Current task: packaged launch schema + single release folder
+
+Installed AX Studio now fails after `undici` with `no such column: workflow_id`.
+The dogfood DB still has `executions.skill_id` / `skill_version`. Pack output
+must stay in `apps/desktop/release` only.
+
+### Success criteria
+
+- Opening a legacy DB with `executions.skill_id` migrates to `workflow_id` without throwing.
+- `createDatabaseAsync` can create a new execution on that database.
+- Windows installer is written to `apps/desktop/release`, not a second output folder.
+
+## Current task: persist desktop logs to the data-root logs folder
+
+Dev and packaged AX Studio create `<dataRoot>/logs` but never write `.log` files.
+Dogfood failures (agent timeout, command-chat max rounds) only appear in the UI.
+
+### Success criteria
+
+- Enabling file logging writes `logs/ax-studio-YYYY-MM-DD.log` under the AX data root.
+- File logging is off by default so core tests do not write into the real AXStudio folder.
+- Desktop main process enables file logging at startup and tees console plus command-chat failures.
+- Path and app-log unit tests pass; desktop typecheck passes.
+
+## Current task: job registration as a host transaction
+
+Replace the 8-round agent mutation loop for recurring scheduled work with a
+host-owned job registration flow. The user describes the job once; the agent
+emits one `job.propose` spec; the host compiles Workflow IR, shows a
+confirmation card, and commits on the confirm button without another LLM loop.
+
+### Success criteria
+
+- `job.propose` without a Slack channel returns `needs_input` and does not save a workflow.
+- `job.propose` with a full spec returns a confirmation card (`purpose: confirm_job`) and does not save yet.
+- `job.commit` without a prior propose, or without `allowJobCommit`, is forbidden and saves nothing.
+- After host-confirmed `job.commit`, a scheduled workflow is saved, optionally run once, mapped to the chat session, and `allowExternalAuto` is applied only after that confirmation.
+- Command chat intercepts the confirm action and skips extra model commands.
+- Recurring HTTP+AI+Slack work uses `job.propose` once; max rounds is not raised.
+- HTTP origin lock remains fail-closed: disconnected HTTP or an off-origin path does not save a workflow.
+- Targeted command tests, core typecheck, and desktop typecheck pass.
+- `job.propose` accepts compact string `interpret`/`notify`/`fetch`/`schedule` values and never shows raw Zod JSON in chat.
+
+### Non-goals for this slice
+
+- Multi-HTTP jobs, Gmail notify, or arbitrary Workflow IR from the agent in this path.
+- Raising `AX_COMMAND_CHAT_MAX_ROUNDS` or the 120s timeout as the product fix.
+- Persisting pending job drafts across process restart.
+- Packaging a new Stable installer.

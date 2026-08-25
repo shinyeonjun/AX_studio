@@ -40,7 +40,9 @@ describe('AxCommandService', () => {
     const entries = (commands.data as { commands: Array<{ name: string; lifecycle: string }> }).commands;
     expect(entries.find((entry) => entry.name === 'execution.enqueue_once')).toMatchObject({ lifecycle: 'ephemeral' });
     expect(entries.find((entry) => entry.name === 'workflow.create')).toMatchObject({ lifecycle: 'workflow' });
+    expect(entries.find((entry) => entry.name === 'job.propose')).toMatchObject({ lifecycle: 'workflow' });
     expect(entries.find((entry) => entry.name === 'workflow.run')).toMatchObject({ lifecycle: 'run' });
+    expect(entries.find((entry) => entry.name === 'job.commit')).toBeUndefined();
   });
 
   it('blocks workflow and runtime side effects at the direct host boundary', async () => {

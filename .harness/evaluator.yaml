@@ -214,6 +214,117 @@ post_http_write_task:
       diff-whitespace: "PASS: git diff --check"
     decision: "KEEP: explicit http.post is cataloged as write-only, read paths reject POST, and Runtime approval precedes network I/O."
 
+job_registration_task:
+  name: job-registration-host-transaction
+  evaluator_frozen: true
+  checks:
+    - name: job-registration-unit
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/agent/commands/job-registration.test.ts src/agent/commands/service.test.ts src/agent/commands/chat.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - propose does not persist until confirm
+    - commit is host-gated and skips the model loop
+    - HTTP origin lock fails closed
+    - allowExternalAuto is applied only after the confirmation card
+    - max rounds is unchanged
+  baseline:
+    recorded_at: 2026-08-25T12:53:38.8177862+09:00
+    values:
+      job-registration-unit: "PASS: service 18 + chat 7 = 25 tests; job-registration.test.ts does not exist"
+      gap: "Recurring scheduled HTTP+AI+Slack work still requires chained workflow.create/update/run inside the 8-round command loop. No job.propose/job.commit commands."
+  final:
+    recorded_at: 2026-08-25T13:02:35.2864672+09:00
+    values:
+      job-registration-unit: "PASS: 3 files, 33 tests (job-registration 7, chat 8, service 18)"
+      core-typecheck: "PASS"
+      desktop-typecheck: "PASS after core build"
+      diff-whitespace: "PASS for this change; pre-existing README.md trailing whitespace remains from earlier dirty worktree"
+    decision: "KEEP: job.propose compiles a scheduled HTTP+AI+Slack workflow, shows a confirm_job card, and host-commits without another LLM loop. Max rounds unchanged."
+
+packaged_undici_crash_task:
+  name: packaged-app-missing-undici
+  evaluator_frozen: true
+  checks:
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: pack-dir
+      type: command
+      command: npm run pack -w @ax-studio/desktop
+      required: true
+    - name: asar-contains-undici
+      type: command
+      command: node -e "const {execFileSync}=require('child_process'); const out=execFileSync('npx',['--yes','asar','list','apps/desktop/release/win-unpacked/resources/app.asar'],{encoding:'utf8'}); if(!out.split(/\\r?\\n/).some(l=>l.includes('node_modules/undici'))) process.exit(1);"
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - unpacked AX Studio.exe starts without the undici missing-module dialog
+    - installed app after rebuild uses the new installer
+  final:
+    recorded_at: 2026-08-25T11:55:54.4754802+09:00
+    values:
+      asar-contains-undici: "PASS: 237 undici paths in app.asar"
+      unpacked-launch: "PASS: AX Studio window title, no Error dialog"
+      nsis-installer: "PASS: apps/desktop/release/AX Studio Setup 0.1.0.exe"
+    decision: "KEEP: undici is a production dependency and is copied into the packaged asar"
+
+dev_stable_oauth_task:
+  name: dev-stable-split-and-gmail-oauth
+  evaluator_frozen: true
+  checks:
+    - name: path-and-oauth-unit
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/paths/ax-data.test.ts src/modules/gmail/oauth.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - unpackaged data root is AXStudio-dev and does not read AXStudio
+    - packaged RC still uses AXStudio
+    - Gmail connect works without client_secret
+    - Dev and installed app can run together
+  baseline:
+    recorded_at: 2026-08-25T11:22:00.7818754+09:00
+    values:
+      path-and-oauth-unit: "PASS: ax-data 3 tests; oauth.test.ts missing"
+      gap: "Unpackaged and packaged share AXStudio. OAuth still accepts client_secret and does not validate state."
+  final:
+    recorded_at: 2026-08-25T11:29:01.1166557+09:00
+    values:
+      path-and-oauth-unit: "PASS: ax-data 4 tests, oauth 1 test"
+      desktop-typecheck: "PASS"
+      core-typecheck: "PASS"
+      desktop-build: "PASS"
+      diff-whitespace: "PASS after README trailing-space fix"
+    decision: "KEEP"
+
 product_qa_task:
   name: repeated-realistic-product-qa
   evaluator_frozen: true

@@ -110,11 +110,7 @@ const MIGRATION_SQL = `
     updated_at TEXT NOT NULL
   );
 
-  CREATE INDEX IF NOT EXISTS idx_workflow_versions_workflow_id ON workflow_versions(workflow_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_versions_workflow_version ON workflow_versions(workflow_id, version);
   CREATE INDEX IF NOT EXISTS idx_executions_started_at ON executions(started_at);
-  CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
-  CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);
   CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_chat_id
   ON workspace_chat_sources(chat_id, created_at);
 
@@ -179,13 +175,28 @@ function columnNames(db: AppDatabase, table: string): string[] {
   return rows.map((row) => String(row.name ?? ''));
 }
 
+function renameColumnIfNeeded(db: AppDatabase, table: string, from: string, to: string) {
+  const names = columnNames(db, table);
+  if (names.includes(from) && !names.includes(to)) {
+    db.exec(`ALTER TABLE ${table} RENAME COLUMN ${from} TO ${to}`);
+  }
+}
+
 function applyMigrations(db: AppDatabase) {
   db.exec(MIGRATION_SQL);
+  renameColumnIfNeeded(db, 'executions', 'skill_id', 'workflow_id');
+  renameColumnIfNeeded(db, 'executions', 'skill_version', 'workflow_version');
   if (!columnNames(db, 'workflows').includes('policy_json')) {
     db.exec("ALTER TABLE workflows ADD COLUMN policy_json TEXT NOT NULL DEFAULT '{}'");
   }
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
+  }
+  if (!columnNames(db, 'executions').includes('workflow_id')) {
+    db.exec('ALTER TABLE executions ADD COLUMN workflow_id TEXT');
+  }
+  if (!columnNames(db, 'executions').includes('workflow_version')) {
+    db.exec('ALTER TABLE executions ADD COLUMN workflow_version INTEGER');
   }
   if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
     db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');
@@ -193,6 +204,12 @@ function applyMigrations(db: AppDatabase) {
   if (!columnNames(db, 'workspace_chats').includes('session_memo_json')) {
     db.exec("ALTER TABLE workspace_chats ADD COLUMN session_memo_json TEXT NOT NULL DEFAULT '{}'");
   }
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_workflow_versions_workflow_id ON workflow_versions(workflow_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_versions_workflow_version ON workflow_versions(workflow_id, version);
+    CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);
+  `);
   db.exec(
     "UPDATE executions SET status = 'pending_approval', finished_at = NULL, error_code = 'pending_approval' " +
       "WHERE status = 'failed' AND error_code = 'pending_approval' " +

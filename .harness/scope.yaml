@@ -113,3 +113,24 @@ expansions:
   - date: 2026-08-25
     reason: "The first product QA replay reproduced a deterministic loss: starting a new conversation cancelled the previous session's in-flight response. The user-flow contract requires the old request to remain persisted without updating the new session UI."
     boundary: "apps/desktop/src/hooks/useWorkspaceChat.ts request/session persistence boundary; no provider, connector, or Runtime changes"
+  - date: 2026-08-25
+    reason: "The user asked to isolate npm run dev data from the packaged app and harden Gmail OAuth before cutting a dogfood RC."
+    boundary: "desktop data-paths/app identity, Gmail OAuth loopback/state, env-file/example, electron-vite client_id bake, README; no HTTP connector expansion"
+  - date: 2026-08-25
+    reason: "Installed AX Studio crashed on launch because electron-builder omitted the Slack socket-mode peerDependency undici from app.asar."
+    boundary: "desktop/core package.json, electron-builder files, lockfile; pack verification only"
+  - date: 2026-08-25
+    reason: "After undici was packed, the installed app failed on the dogfood SQLite schema: executions still used skill_id. The user also asked for a single release/ output folder."
+    boundary: "packages/core/src/store/db.ts plus migration test; pack output remains apps/desktop/release"
+  - date: 2026-08-25
+    reason: "Dev and packaged dogfood had empty logs folders; the user asked to persist app/agent logs to files before further workflow debugging."
+    boundary: "core app-log + desktop main file-log install; command-chat/harness failure lines; no log viewer UI"
+  - date: 2026-08-25
+    reason: "Dogfood Daily Dev Brief burned the 8-round command loop on list/create/update/run. User approved job registration as a host transaction: one job.propose spec, confirmation card, host commit without another LLM loop."
+    boundary: "agent command schema/service/chat, job compile to Workflow IR, SKILL.md, desktop confirm_job intercept; no max-round bump, no multi-HTTP, no pack"
+  - date: 2026-08-25
+    reason: "job.propose compiles http.request GET, but catalog omits a fixed sideEffect while the contract validator compared the raw catalog undefined value. Persistence requires the method-resolved NONE/EXTERNAL level."
+    boundary: "packages/core/src/workflow/contract-validator.ts sideEffect comparison uses resolveEffectiveSideEffect"
+  - date: 2026-08-25
+    reason: "Dogfood one-shot run failed immediately: stored workflow-document reload defaulted http.request GET to EXTERNAL, then contract validation required NONE."
+    boundary: "packages/core/src/workflow/persisted-document.ts enrichActionStep uses resolveEffectiveSideEffect"

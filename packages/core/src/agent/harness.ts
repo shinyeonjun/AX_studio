@@ -5,6 +5,7 @@ import type { ModelProvider } from './model/provider.js';
 import { buildInvestigatePrompt } from './prompt/investigate-prompt.js';
 import { composeAgentSystemPrompt } from './prompt/compose.js';
 import { getRoleDefinition } from './types.js';
+import { appendAppLog } from '../paths/app-log.js';
 import type { AgentContext, AgentResult, AgentRun, InvestigateAgentContext } from './types.js';
 import type {
   InvestigationRunRequest,
@@ -119,7 +120,13 @@ export class AgentHarness {
       };
     } catch (err) {
       if (controller.signal.aborted) {
-        throw Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout' });
+        const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout' });
+        appendAppLog('error', timeoutError.message, {
+          code: 'agent_timeout',
+          role: request.role,
+          phase: request.logContext,
+        });
+        throw timeoutError;
       }
       logs.push({
         level: 'error',

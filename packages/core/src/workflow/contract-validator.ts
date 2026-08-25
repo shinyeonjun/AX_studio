@@ -11,6 +11,7 @@ import { linearContractSteps, stepsById } from './control-flow.js';
 import type { Step, WorkflowIR } from './schema.js';
 import { aiDecisionOutputPorts, bindingsSatisfyInputs, bindingOutputType, hasConcreteParamForPort, triggerAvailableTypes } from './bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from './action-definition.js';
+import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
 import { isValidCronExpression } from './cron.js';
 
 export type BindingSource = string | 'trigger';
@@ -216,11 +217,12 @@ function validateWorkflowStructure(
             message: `${step.id} actionRef와 connector/action이 일치하지 않습니다: ${definition.id}`,
           });
         }
-        if (step.sideEffect !== definition.sideEffect) {
+        const expectedSideEffect = resolveEffectiveSideEffect(definition, step.params ?? {});
+        if (step.sideEffect !== expectedSideEffect) {
           issues.push({
             code: 'invalid_workflow_schema',
             stepId: step.id,
-            message: `${step.id} sideEffect가 catalog와 다릅니다. ${definition.sideEffect}를 사용해야 합니다.`,
+            message: `${step.id} sideEffect가 catalog와 다릅니다. ${expectedSideEffect}를 사용해야 합니다.`,
           });
         }
       }

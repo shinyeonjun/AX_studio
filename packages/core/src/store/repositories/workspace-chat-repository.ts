@@ -239,7 +239,7 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatLi
          ORDER BY wc.updated_at DESC
          LIMIT ?`,
       )
-      .all(limit) as ListRow[];
+      .all(limit) as unknown as ListRow[];
   } catch {
     // JSON1 unavailable: list without a validity probe rather than parsing
     // every stored transcript; a corrupt chat still fails closed on open.
@@ -252,7 +252,7 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatLi
          ORDER BY wc.updated_at DESC
          LIMIT ?`,
       )
-      .all(limit) as ListRow[];
+      .all(limit) as unknown as ListRow[];
   }
   return rows.map((row) => {
     const corrupted = !row.valid_json;

@@ -11,8 +11,41 @@ import {
 
 let desktopPaths: AxDataPaths | null = null;
 
+const DEV_FOLDER = 'AXStudio-dev';
+
+function hasExplicitUserDataDir(): boolean {
+  return process.argv.some((arg) => arg === '--user-data-dir' || arg.startsWith('--user-data-dir='));
+}
+
+function defaultDataRoot(packaged: boolean): string {
+  const stable = resolvePlatformDataRoot();
+  if (packaged) return stable;
+  return join(stable, '..', DEV_FOLDER);
+}
+
+export function desktopAppDisplayName(packaged = app.isPackaged): string {
+  return packaged ? 'AX Studio' : 'AX Studio Dev';
+}
+
 export function resolveDesktopDataRoot(): string {
-  return process.env.AX_DATA_ROOT?.trim() || resolvePlatformDataRoot();
+  if (process.env.AX_DATA_ROOT?.trim()) return process.env.AX_DATA_ROOT.trim();
+  return defaultDataRoot(app.isPackaged);
+}
+
+/**
+ * Isolate unpackaged `npm run dev` from the installed app before ready /
+ * requestSingleInstanceLock. Tests that pass `--user-data-dir` keep Playwright isolation.
+ */
+export function applyDesktopAppIdentity(): void {
+  if (app.isPackaged) return;
+
+  app.setName(desktopAppDisplayName(false));
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.axstudio.desktop.dev');
+  }
+  if (hasExplicitUserDataDir()) return;
+
+  app.setPath('userData', join(defaultDataRoot(false), 'electron'));
 }
 
 export function initDesktopAxDataPaths(): AxDataPaths {

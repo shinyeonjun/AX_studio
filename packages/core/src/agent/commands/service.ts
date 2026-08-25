@@ -52,6 +52,7 @@ import {
   type AxCommandName,
   type AxCommandResult,
 } from './schema.js';
+import { commitJob, proposeJob, type PendingJobDraft } from './job-registration.js';
 
 const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
   {
@@ -188,6 +189,29 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     mutates: true,
   },
   {
+    name: 'job.propose',
+    lifecycle: 'workflow',
+    description: '반복 스케줄 업무 초안을 검증하고 확인 카드를 보여줍니다. 이 명령은 workflow를 저장하지 않습니다.',
+    args: {
+      name: '업무 이름',
+      goal: '업무 목적',
+      schedule: 'cron과 timezone (기본 0 21 * * *, Asia/Seoul)',
+      fetch: 'HTTP GET path와 선택 headers',
+      interpret: '조회 결과를 요약하는 AI 목표',
+      notify: 'Slack channel과 skipIfEmpty',
+      runOnceNow: '저장 직후 한 번 실행',
+      allowExternalAuto: '확인 후 Slack 자동 발송',
+    },
+    mutates: false,
+  },
+  {
+    name: 'job.commit',
+    lifecycle: 'workflow',
+    description: 'host 확인 카드 이후에만 초안 workflow를 저장하고 스케줄을 켭니다. agent가 직접 호출하지 않습니다.',
+    args: {},
+    mutates: true,
+  },
+  {
     name: 'context.update',
     lifecycle: 'context',
     description: '사용자가 확인한 임시 합의나 저장 workflow의 업무 기준을 context metadata로 저장합니다. Runtime 권한과 실행 계약은 바꾸지 않습니다.',
@@ -309,13 +333,17 @@ export class AxCommandService {
   private readonly readGateway: AxCommandReadGateway;
   private readonly workflowGateway: AxWorkflowCommandGateway;
   private readonly discoveryGateway: DiscoveryCommandGateway;
+  private readonly pendingJobs = new Map<string, PendingJobDraft>();
 
   /**
    * Omitted context means an untrusted host caller. Agent callers must opt in
    * explicitly so a forgotten boundary cannot gain workflow/run authority.
    */
   listCommands(executionContext: AxCommandExecutionContext = HOST_COMMAND_CONTEXT): readonly AxCommandDefinition[] {
-    return COMMAND_DEFINITIONS.filter((entry) => commandAccess(entry, executionContext).allowed);
+    return COMMAND_DEFINITIONS.filter((entry) => {
+      if (entry.name === 'job.commit') return false;
+      return commandAccess(entry, executionContext).allowed;
+    });
   }
 
   async execute(
@@ -328,6 +356,8 @@ export class AxCommandService {
       currentWorkflowId?: string;
       /** Only a host-rendered confirm_context action may enable this mutation. */
       allowContextUpdate?: boolean;
+      /** Only a host-rendered confirm_job action may enable this mutation. */
+      allowJobCommit?: boolean;
     } = {},
   ): Promise<AxCommandResult> {
     const parsed = AxCommandSchema.safeParse(raw);
@@ -392,6 +422,21 @@ export class AxCommandService {
         return result(command.name, ...await this.workflowGateway.run(command));
       case 'execution.enqueue_once':
         return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
+      case 'job.propose':
+        return result(command.name, ...proposeJob({
+          store: this.store,
+          pending: this.pendingJobs,
+          workspaceSessionId: options.workspaceSessionId,
+          args: command.args,
+        }));
+      case 'job.commit':
+        return result(command.name, ...await commitJob({
+          store: this.store,
+          pending: this.pendingJobs,
+          workspaceSessionId: options.workspaceSessionId,
+          allowJobCommit: options.allowJobCommit,
+          runWorkflow: this.options.runWorkflow,
+        }));
       case 'context.update':
         return result(command.name, ...this.updateContext(command, options));
       case 'ui.present':

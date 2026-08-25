@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron';
 import { join } from 'node:path';
+import { desktopAppDisplayName } from './data-paths.js';
 
 const DEV_RENDERER_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
 
@@ -35,6 +36,7 @@ export function createMainWindow() {
     width: 1440,
     height: 900,
     show: true,
+    title: desktopAppDisplayName(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

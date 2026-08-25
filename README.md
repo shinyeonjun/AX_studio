@@ -28,7 +28,9 @@ docs/future.md    나중에 할 일
 런타임 데이터 (Windows):
 
 ```text
-%LOCALAPPDATA%\AXStudio\
+%LOCALAPPDATA%\AXStudio\          설치본 (Stable)
+%LOCALAPPDATA%\AXStudio-dev\      npm run dev (Dev)
+
   data\ax-studio.db
   credentials\          OS 암호화 (Gmail refresh, API keys)
   config\ai.toml
@@ -39,7 +41,8 @@ docs/future.md    나중에 할 일
   logs\
 ```
 
-개발 전용: repo `.env` (Gmail OAuth client), repo `ai.toml` (AI prefs, 키 없음).
+개발 전용: repo `.env` (Gmail OAuth Client ID), repo `ai.toml` (AI prefs, 키 없음).
+`npm run dev`와 설치본은 데이터·자격 증명·싱글 인스턴스를 공유하지 않습니다.
 
 ## 요구 사항
 
@@ -65,12 +68,12 @@ npm run dev
 
 | 파일 | 역할 | Git |
 |---|---|---|
-| `.env` | 개발용 Gmail OAuth Client ID/Secret만 | ❌ `.env.example`만 |
+| `.env` | 개발용 Gmail OAuth Client ID만 | ❌ `.env.example`만 |
 | `ai.toml` | 활성 AI / 모델 | ❌ `.ai.toml.example`만. **API 키 금지** |
 | `*.db` | 로컬 SQLite | ❌ |
 | OS credential store | AI API 키, Gmail refresh token | PC마다 암호화 저장. Git/공유 대상 아님 |
 
-**AI API 키(Cursor/OpenAI/Anthropic)는 `.env`에 넣지 않습니다.** 앱 설정에서 등록하면 OS credential store에만 저장됩니다. 사용자 데이터는 `%LOCALAPPDATA%\AXStudio\` (Windows)에 격리됩니다.
+**AI API 키(Cursor/OpenAI/Anthropic)는 `.env`에 넣지 않습니다.** 앱 설정에서 등록하면 OS credential store에만 저장됩니다. 설치본 데이터는 `%LOCALAPPDATA%\AXStudio\`, 개발 실행은 `%LOCALAPPDATA%\AXStudio-dev\`에 격리됩니다.
 
 개발용 `.env`에는 **Gmail OAuth 클라이언트**(앱 빌드용)만 둡니다. 사용자 API 키와 섞이지 않습니다.
 
@@ -86,11 +89,11 @@ npm run dev
 
 ```env
 GOOGLE_OAUTH_CLIENT_ID=xxxxx.apps.googleusercontent.com
-GOOGLE_OAUTH_CLIENT_SECRET=   # PKCE 사용 시 비워도 됨
 ```
 
 앱을 재시작한 뒤 설정 → Gmail → **연결하기**.  
-흐름: 시스템 브라우저 + PKCE + `127.0.0.1` 랜덤 포트 loopback.
+흐름: 시스템 브라우저 + PKCE + `state` 검증 + `127.0.0.1` 랜덤 포트 loopback. 
+릴리즈 빌드(`npm run pack:win`)는 이 Client ID를 앱에 넣습니다. Secret은 넣지 않습니다.
 
 ## 스크립트
 
@@ -98,7 +101,7 @@ GOOGLE_OAUTH_CLIENT_SECRET=   # PKCE 사용 시 비워도 됨
 |---|---|
 | `npm run dev` | 데스크톱 개발 실행 |
 | `npm run build` | core + desktop 빌드 |
-| `npm test` | core 단위 테스트 |
+| `npm run pack:win` | Windows 설치본 빌드 (`apps/desktop`에서) |
 | `npm run eval` | core eval |
 
 ## 문서

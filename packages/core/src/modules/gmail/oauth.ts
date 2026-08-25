@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { google } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
@@ -28,12 +28,26 @@ function generatePkcePair() {
   return { codeVerifier, codeChallenge };
 }
 
+export function createOAuthState(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+export function oauthCallbackStateMatches(expected: string, received: string | null): boolean {
+  if (!received) return false;
+  const left = Buffer.from(expected);
+  const right = Buffer.from(received);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
 export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promise<GmailOAuthResult> {
   const scopes = [...(options.scopes ?? GMAIL_OAUTH_SCOPES)];
   const { codeVerifier, codeChallenge } = generatePkcePair();
+  const expectedState = createOAuthState();
   const session: { client?: OAuth2Client } = {};
 
   const code = await new Promise<string>((resolve, reject) => {
+    let settled = false;
     const server = createServer((req, res) => {
       const address = server.address();
       const port = typeof address === 'object' && address ? address.port : 0;
@@ -48,7 +62,20 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
         res.writeHead(400);
         res.end(`OAuth error: ${err}`);
         server.close();
-        reject(new Error(err));
+        if (!settled) {
+          settled = true;
+          reject(new Error(err));
+        }
+        return;
+      }
+      if (!oauthCallbackStateMatches(expectedState, url.searchParams.get('state'))) {
+        res.writeHead(400);
+        res.end('Invalid OAuth state');
+        server.close();
+        if (!settled) {
+          settled = true;
+          reject(new Error('Invalid OAuth state'));
+        }
         return;
       }
       const authCode = url.searchParams.get('code');
@@ -60,7 +87,10 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('Gmail 연결 완료. 이 창을 닫고 AX Studio로 돌아가세요.');
       server.close();
-      resolve(authCode);
+      if (!settled) {
+        settled = true;
+        resolve(authCode);
+      }
     });
 
     server.on('error', reject);
@@ -78,6 +108,7 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
         access_type: 'offline',
         prompt: 'consent',
         scope: scopes,
+        state: expectedState,
         code_challenge: codeChallenge,
         code_challenge_method: CodeChallengeMethod.S256,
       });

@@ -22,7 +22,8 @@ import { hydrateMcpConnector } from './mcp/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
 import { notifyStateChanged, notifyWorkspaceSourceChanged } from './state-broadcast.js';
-import { initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
+import { applyDesktopAppIdentity, initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
+import { installDesktopFileLog } from './file-log.js';
 import { migrateAxDataIfNeeded } from './data-migrate.js';
 import { E2EDocumentEngineClient } from './e2e-test-seam.js';
 import { abortAllWorkspaceChats } from './workspace-chat-registry.js';
@@ -62,15 +63,18 @@ async function hydrateConnectorsForStartup(
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 }
+applyDesktopAppIdentity();
+installDesktopFileLog();
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 const allowParallelInstance = process.env.AX_E2E === '1' || process.env.AX_PRODUCT_QA === '1';
 if (!gotSingleInstanceLock && !allowParallelInstance) {
+  const label = app.isPackaged ? 'AX Studio' : 'AX Studio Dev';
   console.error(
-    '[AX Studio] 이미 실행 중입니다. 기존 AX Studio 창을 모두 닫은 뒤 다시 `npm run dev` 하세요.',
+    `[${label}] 이미 실행 중입니다. 같은 종류의 창을 모두 닫은 뒤 다시 실행하세요.`,
   );
   console.error(
-    '[AX Studio] 창이 없는데도 이러면 작업 관리자에서 Electron 프로세스를 종료하세요.',
+    `[${label}] 창이 없는데도 이러면 작업 관리자에서 Electron 프로세스를 종료하세요.`,
   );
   app.exit(0);
 }

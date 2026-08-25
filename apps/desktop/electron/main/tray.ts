@@ -1,14 +1,16 @@
 import { app, Tray, Menu, nativeImage } from 'electron';
 import { getCore } from './core-instance';
 import { getMainWindow, setQuiting } from './app-window';
+import { desktopAppDisplayName } from './data-paths.js';
 
 let tray: Tray | null = null;
 
 export function createTray() {
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon);
+  const appName = desktopAppDisplayName();
   const menu = Menu.buildFromTemplate([
-    { label: 'AX Studio 열기', click: () => getMainWindow()?.show() },
+    { label: `${appName} 열기`, click: () => getMainWindow()?.show() },
     {
       label: '출근',
       click: () => {
@@ -33,7 +35,7 @@ export function createTray() {
       },
     },
   ]);
-  tray.setToolTip('AX Studio');
+  tray.setToolTip(appName);
   tray.setContextMenu(menu);
   tray.on('click', () => getMainWindow()?.show());
 }

@@ -1,13 +1,20 @@
 {
   "appId": "com.axstudio.desktop",
   "productName": "AX Studio",
+  "electronVersion": "34.5.8",
+  "electronDist": "../../node_modules/electron/dist",
   "directories": {
     "output": "release",
     "buildResources": "build"
   },
   "files": [
     "out/**/*",
-    "package.json"
+    "package.json",
+    {
+      "from": "../../node_modules/undici",
+      "to": "node_modules/undici",
+      "filter": ["**/*"]
+    }
   ],
   "asar": true,
   "win": {

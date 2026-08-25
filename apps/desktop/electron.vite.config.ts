@@ -1,5 +1,6 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const sqlJsExternal = ['sql.js', 'sql.js/dist/sql-asm.js', 'sql.js/dist/sql-wasm.js'];
@@ -19,7 +20,30 @@ const mainExternals = [
   'google-auth-library',
 ];
 
-const googleOAuthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? '';
+function readGoogleOAuthClientId(): string {
+  const fromEnv = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+  if (fromEnv) return fromEnv;
+  const envPath = resolve('../../.env');
+  if (!existsSync(envPath)) return '';
+  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    if (trimmed.slice(0, eq).trim() !== 'GOOGLE_OAUTH_CLIENT_ID') continue;
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    return value;
+  }
+  return '';
+}
+
+const googleOAuthClientId = readGoogleOAuthClientId();
 
 export default defineConfig({
   main: {

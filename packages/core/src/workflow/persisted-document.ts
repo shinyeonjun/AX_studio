@@ -10,6 +10,7 @@ import {
   parseWorkflowIR,
 } from './schema.js';
 import { ActionInstanceSchema, type ActionInstance } from './action-instance.js';
+import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
 
 export const WORKFLOW_DOCUMENT_FORMAT = 'workflow-document@1' as const;
 
@@ -66,7 +67,9 @@ function enrichActionStep(
     actionRef: instance.actionRef,
     params: instance.params ?? {},
     bindings: instance.bindings,
-    sideEffect: (cap.sideEffect as SideEffectLevel | undefined) ?? 'EXTERNAL',
+    sideEffect: definition
+      ? resolveEffectiveSideEffect(definition, instance.params ?? {})
+      : ((cap.sideEffect as SideEffectLevel | undefined) ?? 'EXTERNAL'),
   };
 }
 

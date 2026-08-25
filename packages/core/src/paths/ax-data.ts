@@ -24,16 +24,19 @@ export interface AxDataPaths {
   migration: string;
 }
 
-export function resolvePlatformDataRoot(): string {
+export const AX_DATA_FOLDER_STABLE = 'AXStudio';
+export const AX_DATA_FOLDER_DEV = 'AXStudio-dev';
+
+export function resolvePlatformDataRoot(folderName: string = AX_DATA_FOLDER_STABLE): string {
   if (process.platform === 'win32') {
     const local = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local');
-    return join(local, 'AXStudio');
+    return join(local, folderName);
   }
   if (process.platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'AXStudio');
+    return join(homedir(), 'Library', 'Application Support', folderName);
   }
   const xdg = process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share');
-  return join(xdg, 'AXStudio');
+  return join(xdg, folderName);
 }
 
 /** @deprecated Pre-unified layout under home directory. Used for one-time migration only. */

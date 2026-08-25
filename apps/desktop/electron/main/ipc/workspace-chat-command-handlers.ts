@@ -1,4 +1,5 @@
 import {
+  appendAppLog,
   explainExecution,
   runAxCommandChat,
   AX_COMMAND_CHAT_TIMEOUT_MS,
@@ -23,7 +24,7 @@ function workflowIdsChanged(result: { command: string; data?: unknown }): {
     const workflowId = (result.data as { workflowId?: unknown }).workflowId;
     if (typeof workflowId === 'string' && workflowId.trim()) {
       if (result.command === 'workflow.delete') return { removed: workflowId };
-      if (result.command === 'workflow.create' || result.command === 'workflow.update') {
+      if (result.command === 'workflow.create' || result.command === 'workflow.update' || result.command === 'job.commit') {
         return { changed: workflowId };
       }
     }
@@ -47,6 +48,21 @@ function isContextConfirmation(
   return messages.slice(0, -1).some((message) =>
     message.role === 'assistant' && message.presentations?.some((presentation) =>
       presentation.actions.some((action) => action.purpose === 'confirm_context' && action.value === userMessage),
+    ),
+  );
+}
+
+function isJobConfirmation(
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    presentations?: import('@ax-studio/core').AxUiPresentation[];
+  }>,
+  userMessage: string,
+): boolean {
+  return messages.slice(0, -1).some((message) =>
+    message.role === 'assistant' && message.presentations?.some((presentation) =>
+      presentation.actions.some((action) => action.purpose === 'confirm_job' && action.value === userMessage),
     ),
   );
 }
@@ -79,6 +95,7 @@ export function registerWorkspaceChatCommandHandlers() {
       : undefined;
     const effectiveWorkflowId = requestedWorkflowId || mappedWorkflowId;
     const contextUpdateConfirmed = isContextConfirmation(normalizedMessages, userMessage);
+    const jobCommitConfirmed = isJobConfirmation(normalizedMessages, userMessage);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
     const history = normalizedMessages.slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
@@ -119,6 +136,7 @@ export function registerWorkspaceChatCommandHandlers() {
           ? core.store.getWorkflowPolicy(effectiveWorkflowId)
           : {},
         allowContextUpdate: contextUpdateConfirmed,
+        allowJobCommit: jobCommitConfirmed,
         workspaceSessionId: safeWorkspaceSessionId,
         workspaceSources: safeWorkspaceSessionId
           ? core.workspaceSources.list(safeWorkspaceSessionId)
@@ -156,6 +174,10 @@ export function registerWorkspaceChatCommandHandlers() {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message.trim() : String(error);
+      appendAppLog('error', message && message !== '{' ? message : 'command chat failed', {
+        event: 'desktop_command_chat',
+        requestId: chatRequestId,
+      });
       throw new Error(message && message !== '{' ? message : '명령형 채팅 AI 호출에 실패했습니다. AI 연결을 확인하세요.');
     } finally {
       releaseWorkspaceChat(chatRequestId);
