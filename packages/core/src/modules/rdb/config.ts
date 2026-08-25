@@ -55,7 +55,7 @@ function normalizeAllowedTables(value: unknown): string[] | undefined {
 
 function normalizeRowLimit(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
-  return Math.min(Math.floor(value), 10_000);
+  return Math.min(Math.max(1, Math.floor(value)), 10_000);
 }
 
 export function validateRdbConnectionString(

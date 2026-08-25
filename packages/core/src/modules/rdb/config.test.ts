@@ -60,6 +60,21 @@ describe('rdb connection config', () => {
     expect(parseRdbConnectionConfig({ type: 'sqlite' })).toBeNull();
   });
 
+  it('normalizes row limits to a safe positive integer', () => {
+    const parseRowLimit = (rowLimit: unknown) => parseRdbConnectionConfig({
+      type: 'sqlite',
+      filePath: '/tmp/app.db',
+      rowLimit,
+    })?.rowLimit;
+
+    expect(parseRowLimit(0.5)).toBe(1);
+    expect(parseRowLimit(12.9)).toBe(12);
+    expect(parseRowLimit(20_000)).toBe(10_000);
+    expect(parseRowLimit(0)).toBeUndefined();
+    expect(parseRowLimit(-1)).toBeUndefined();
+    expect(parseRowLimit(Number.NaN)).toBeUndefined();
+  });
+
   it('probes a readable sqlite file and rejects a missing file', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-rdb-config-'));
     try {
