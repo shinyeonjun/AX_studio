@@ -69,6 +69,7 @@ export class Scheduler {
   private timers: Map<string, ReturnType<typeof setInterval>> = new Map();
   private tickMs = 30_000;
   private lifecycleGeneration = 0;
+  private tickInProgress = false;
 
   constructor(
     private store: WorkflowStore,
@@ -105,6 +106,16 @@ export class Scheduler {
   }
 
   private async tick() {
+    if (this.tickInProgress) return;
+    this.tickInProgress = true;
+    try {
+      await this.runTick();
+    } finally {
+      this.tickInProgress = false;
+    }
+  }
+
+  private async runTick() {
     const generation = this.lifecycleGeneration;
     const globalActive = this.store.getSetting<boolean>('globalActive', true);
     if (!globalActive) return;

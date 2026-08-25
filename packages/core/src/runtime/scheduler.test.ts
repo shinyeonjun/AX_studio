@@ -50,6 +50,47 @@ describe('Scheduler', () => {
     expect(store.getWorkflow('once-workflow')).toBeNull();
   });
 
+  it('does not start the same one-time job from overlapping ticks', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'once-slow',
+      name: '느린 일회성 작업',
+      goal: '실행 중인 작업을 중복 시작하지 않음',
+      version: 1,
+      trigger: { type: 'once', runAt: new Date(Date.now() - 1_000).toISOString() },
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    store.setWorkflowActive('once-slow', true);
+
+    let finishExecution!: (result: { status: 'failed' }) => void;
+    const execution = new Promise<{ status: 'failed' }>((resolve) => {
+      finishExecution = resolve;
+    });
+    const runtime = {
+      executeWorkflow: vi.fn(() => execution),
+      removeWorkflow: vi.fn(),
+    };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    const firstTick = tick();
+    await vi.waitFor(() => expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1));
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+
+    finishExecution({ status: 'failed' });
+    await firstTick;
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+  });
+
   it('lets a reactivated once job fire again after pending approval', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
