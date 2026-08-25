@@ -141,7 +141,11 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
   const timeoutMs = options.timeoutMs ?? AX_COMMAND_CHAT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const abortExternal = () => controller.abort();
-  options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+  if (options.abortSignal?.aborted) {
+    abortExternal();
+  } else {
+    options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+  }
 
   const session = {
     workflowId: activeWorkflowId,
@@ -163,6 +167,7 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
   };
 
   try {
+    if (controller.signal.aborted) throw new Error('ax_command_chat_timeout');
     if (options.allowJobCommit) {
       const result = await options.commandService.execute({ name: 'job.commit', args: {} }, {
         executionContext: AGENT_COMMAND_CONTEXT,
