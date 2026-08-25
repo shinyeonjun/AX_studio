@@ -25,14 +25,16 @@ export default {
   },
   ignoreBinaries: ['where.exe'],
   workspaces: {
+    '.': {
+      entry: ['test/product-qa/playwright.config.ts', 'test/product-qa/specs/**/*.ts'],
+      project: ['test/product-qa/**/*.ts'],
+      ignoreDependencies: ['electron'],
+    },
     'packages/core': {
       entry: [
-        'src/index.ts',
         'src/bootstrap.ts',
-        'src/agent/commands/cli.ts',
         'src/**/*.test.ts',
         'src/testing/**/*.ts',
-        'scripts/embed-skills.mjs',
       ],
       project: ['src/**/*.ts', 'scripts/**/*.mjs'],
     },
@@ -46,7 +48,16 @@ export default {
         'electron/main/**/connection.ts',
       ],
       project: ['electron/**/*.ts', 'src/**/*.{ts,tsx}'],
-      ignoreDependencies: ['electron'],
+      ignoreDependencies: [
+        '@slack/socket-mode',
+        '@slack/web-api',
+        'google-auth-library',
+        'googleapis',
+        'mysql2',
+        'pg',
+        'sql.js',
+        'undici',
+      ],
     },
   },
 };

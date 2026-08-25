@@ -258,11 +258,3 @@ export const PRODUCT_SURFACES: ProductSurface[] = [
   command('discovery.start', '발견 시작', '업무 발견 시작이', 'write'),
   command('ui.present', 'UI 카드', '확인 카드 표시가'),
 ];
-
-export function productReadySurfaces(): ProductSurface[] {
-  return PRODUCT_SURFACES.filter((surface) => surface.productReady);
-}
-
-export function catalogIds(): string[] {
-  return PRODUCT_SURFACES.map((surface) => surface.id);
-}
