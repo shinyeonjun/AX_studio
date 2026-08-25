@@ -55,10 +55,15 @@ export class WebhookInboundListener {
       void this.handleRequest(req, res, options, onEvent);
     });
 
-    await new Promise<void>((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(options.port, host, () => resolve());
-    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        this.server!.once('error', reject);
+        this.server!.listen(options.port, host, () => resolve());
+      });
+    } catch (error) {
+      this.server = undefined;
+      throw error;
+    }
   }
 
   async stop(): Promise<void> {
