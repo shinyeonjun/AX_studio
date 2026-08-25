@@ -88,10 +88,6 @@ export function loadScenarios(filters?: LoadScenarioOptions): ProductScenario[] 
   return merged;
 }
 
-export function listScenarios(): ProductScenario[] {
-  return loadScenarios();
-}
-
 export function coverageFor(scenarios: ProductScenario[]): {
   total: number;
   covered: number;

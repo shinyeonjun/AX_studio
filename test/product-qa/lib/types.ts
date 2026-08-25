@@ -142,13 +142,6 @@ export interface ScenarioRunResult {
   generated?: boolean;
 }
 
-export interface CoverageEntry {
-  id: string;
-  area: ProductSurfaceArea;
-  title: string;
-  covered: boolean;
-}
-
 export interface ProductQaReport {
   runId: string;
   mode: ProductQaMode;
