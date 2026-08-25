@@ -12,6 +12,27 @@ export interface StoredArtifact {
   createdAt: string;
 }
 
+function parseStoredArtifact(path: string): StoredArtifact | undefined {
+  try {
+    const value = JSON.parse(readFileSync(path, 'utf8')) as Partial<StoredArtifact> | null;
+    if (
+      !value ||
+      typeof value.id !== 'string' ||
+      typeof value.sha256 !== 'string' ||
+      typeof value.fileName !== 'string' ||
+      typeof value.storedPath !== 'string' ||
+      typeof value.size !== 'number' ||
+      typeof value.createdAt !== 'string' ||
+      (value.mimeType !== undefined && typeof value.mimeType !== 'string')
+    ) {
+      return undefined;
+    }
+    return value as StoredArtifact;
+  } catch {
+    return undefined;
+  }
+}
+
 export class ArtifactStore {
   constructor(private readonly rootDir: string) {
     mkdirSync(rootDir, { recursive: true });
@@ -79,9 +100,7 @@ export class ArtifactStore {
   get(id: string): StoredArtifact | undefined {
     const metaPath = join(this.rootDir, `${id}.json`);
     if (!existsSync(metaPath)) return undefined;
-    const record = JSON.parse(readFileSync(metaPath, 'utf8')) as StoredArtifact;
-    if (!record.storedPath) return undefined;
-    return record;
+    return parseStoredArtifact(metaPath);
   }
 
   /** Delete the stored file plus every sidecar written for this artifact id. */
@@ -96,7 +115,8 @@ export class ArtifactStore {
   findBySha(sha256: string): StoredArtifact | undefined {
     for (const name of readdirSync(this.rootDir)) {
       if (!name.endsWith('.json')) continue;
-      const record = JSON.parse(readFileSync(join(this.rootDir, name), 'utf8')) as StoredArtifact;
+      const record = parseStoredArtifact(join(this.rootDir, name));
+      if (!record) continue;
       if (record.sha256 === sha256) return record;
     }
     return undefined;
