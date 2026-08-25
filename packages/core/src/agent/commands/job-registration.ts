@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { parseHttpConnectionConfig } from '../../modules/http/connection.js';
+import {
+  httpEndpointsFromConnections,
+  matchHttpEndpoint,
+  type HttpEndpoint,
+} from '../../modules/http/connection.js';
 import { resolveHttpRequestUrl } from '../../modules/http/url-security.js';
 import { actionRefFor } from '../../workflow/action-definition.js';
 import { validateWorkflowContracts } from '../../workflow/contract-validator.js';
@@ -20,6 +24,11 @@ export const DEFAULT_JOB_TIMEZONE = 'Asia/Seoul';
 export function coerceJobProposeArgs(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const record = { ...(value as Record<string, unknown>) };
+  const asFilledString = (input: unknown): string | undefined =>
+    typeof input === 'string' && input.trim() ? input : undefined;
+  const asBoolean = (input: unknown): unknown =>
+    input === 'true' ? true : input === 'false' ? false : input;
+
   if (typeof record.interpret === 'string') record.interpret = { goal: record.interpret };
   if (typeof record.notify === 'string') record.notify = { channel: record.notify };
   if (typeof record.fetch === 'string') record.fetch = { path: record.fetch };
@@ -29,11 +38,42 @@ export function coerceJobProposeArgs(value: unknown): unknown {
       ? { cron: fields.slice(0, 5).join(' '), timezone: fields.slice(5).join(' ') }
       : { cron: record.schedule };
   }
+
+  // Lift the top-level aliases models emit when they answer a needs_input turn.
+  const topPath = asFilledString(record.httpPath) ?? asFilledString(record.path);
+  const topConnection = asFilledString(record.connectionId) ?? asFilledString(record.connection_id);
+  if (topPath || topConnection) {
+    const fetch = record.fetch && typeof record.fetch === 'object' && !Array.isArray(record.fetch)
+      ? { ...(record.fetch as Record<string, unknown>) }
+      : {};
+    if (topPath && fetch.path == null) fetch.path = topPath;
+    if (topConnection && fetch.connectionId == null) fetch.connectionId = topConnection;
+    record.fetch = fetch;
+  }
+  const topChannel = asFilledString(record.channel);
+  if (topChannel) {
+    const notify = record.notify && typeof record.notify === 'object' && !Array.isArray(record.notify)
+      ? { ...(record.notify as Record<string, unknown>) }
+      : {};
+    if (notify.channel == null) notify.channel = topChannel;
+    record.notify = notify;
+  }
+
   if (record.fetch && typeof record.fetch === 'object' && !Array.isArray(record.fetch)) {
     const fetch = { ...(record.fetch as Record<string, unknown>) };
     if (typeof fetch.method === 'string') fetch.method = fetch.method.trim().toUpperCase();
+    if (fetch.connectionId == null && typeof fetch.connection_id === 'string') {
+      fetch.connectionId = fetch.connection_id;
+    }
     record.fetch = fetch;
   }
+  if (record.notify && typeof record.notify === 'object' && !Array.isArray(record.notify)) {
+    const notify = { ...(record.notify as Record<string, unknown>) };
+    notify.skipIfEmpty = asBoolean(notify.skipIfEmpty);
+    record.notify = notify;
+  }
+  record.runOnceNow = asBoolean(record.runOnceNow);
+  record.allowExternalAuto = asBoolean(record.allowExternalAuto);
   return record;
 }
 
@@ -47,6 +87,7 @@ export const AxJobProposeArgsSchema = z.object({
   fetch: z.object({
     method: z.enum(['GET']).default('GET'),
     path: z.string().trim().min(1).max(2_000).optional(),
+    connectionId: z.string().trim().min(1).max(80).optional(),
     headers: z.record(z.string().max(500)).optional(),
   }).optional(),
   interpret: z.object({
@@ -71,6 +112,8 @@ export interface NormalizedJobSpec {
   cron: string;
   timezone: string;
   path: string;
+  connectionId: string;
+  httpLabel?: string;
   headers?: Record<string, string>;
   interpretGoal: string;
   channel: string;
@@ -92,16 +135,32 @@ function connectedIds(store: WorkflowStore): string[] {
   return store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
 }
 
-function httpBaseUrl(store: WorkflowStore): string | undefined {
-  const connection = store.getConnections().find((entry) => entry.connector === 'http' && entry.connected);
-  if (!connection) return undefined;
-  return parseHttpConnectionConfig(connection.config)?.baseUrl;
+function pickHttpEndpoint(
+  endpoints: readonly HttpEndpoint[],
+  path: string,
+  connectionId?: string,
+): { ok: true; endpoint: HttpEndpoint } | { ok: false; code: 'missing' | 'not_found' | 'ambiguous' | 'invalid_path' } {
+  if (endpoints.length === 0) return { ok: false, code: 'missing' };
+  const named = connectionId?.trim() ? matchHttpEndpoint(endpoints, connectionId) : undefined;
+  if (connectionId?.trim()) {
+    if (!named) return { ok: false, code: 'not_found' };
+    return resolveHttpRequestUrl(named.baseUrl, path).ok
+      ? { ok: true, endpoint: named }
+      : { ok: false, code: 'invalid_path' };
+  }
+  if (endpoints.length === 1) {
+    return resolveHttpRequestUrl(endpoints[0]!.baseUrl, path).ok
+      ? { ok: true, endpoint: endpoints[0]! }
+      : { ok: false, code: 'invalid_path' };
+  }
+  return { ok: false, code: 'ambiguous' };
 }
 
 export function compileScheduledHttpSlackJob(spec: NormalizedJobSpec): WorkflowIR {
   const fetchParams: Record<string, unknown> = {
     method: 'GET',
     path: spec.path,
+    connectionId: spec.connectionId,
   };
   if (spec.headers && Object.keys(spec.headers).length > 0) {
     fetchParams.headers = spec.headers;
@@ -172,7 +231,7 @@ export function compileScheduledHttpSlackJob(spec: NormalizedJobSpec): WorkflowI
   });
 }
 
-function confirmationPresentation(spec: NormalizedJobSpec, httpOrigin?: string): AxUiPresentation {
+function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: string): AxUiPresentation {
   const autoNote = spec.allowExternalAuto
     ? '확인하면 이후 스케줄 실행에서 Slack 발송을 매번 승인하지 않습니다.'
     : '확인해도 이후 Slack 발송은 실행마다 승인이 필요합니다.';
@@ -186,7 +245,7 @@ function confirmationPresentation(spec: NormalizedJobSpec, httpOrigin?: string):
         title: '등록 내용',
         items: [
           `스케줄: ${spec.cron} (${spec.timezone})`,
-          `HTTP GET: ${spec.path}${httpOrigin ? ` @ ${httpOrigin}` : ''}`,
+          `HTTP GET: ${spec.path}${httpLabel ? ` (${httpLabel})` : ''}`,
           `Slack: ${spec.channel}`,
           runNote,
         ],
@@ -242,10 +301,10 @@ export function proposeJob(options: {
   const path = data.fetch?.path?.trim() ?? '';
   const channel = data.notify?.channel?.trim() ?? '';
   if (!path) {
-    return missingInput(['httpPath'], 'HTTP 조회 경로가 필요합니다. 연결된 origin의 상대 경로를 보내 주세요.', 'args.httpPath');
+    return missingInput(['httpPath'], 'HTTP 조회 경로가 필요합니다. 연결한 HTTP의 상대 경로를 보내 주세요.', 'args.fetch.path');
   }
   if (!channel) {
-    return missingInput(['channel'], 'Slack 채널이 필요합니다.', 'args.channel');
+    return missingInput(['channel'], 'Slack 채널이 필요합니다.', 'args.notify.channel');
   }
 
   const cron = data.schedule?.cron?.trim() || DEFAULT_JOB_CRON;
@@ -256,22 +315,39 @@ export function proposeJob(options: {
 
   const connected = connectedIds(options.store);
   if (!connected.includes('http')) {
-    return ['invalid', undefined, [issue('http_connection_required', 'HTTP 연결이 없습니다. 설정에서 origin을 연결한 뒤 다시 등록해 주세요.')]];
+    return ['invalid', undefined, [issue('http_connection_required', 'HTTP 연결이 없습니다. 설정에서 HTTP를 연결한 뒤 다시 등록해 주세요.')]];
   }
   if (!connected.includes('slack')) {
     return ['invalid', undefined, [issue('slack_connection_required', 'Slack 연결이 없습니다. 설정에서 연결한 뒤 다시 등록해 주세요.')]];
   }
 
-  const baseUrl = httpBaseUrl(options.store);
-  if (!baseUrl) {
-    return ['invalid', undefined, [issue('http_connection_required', 'HTTP 연결 origin을 읽을 수 없습니다.')]];
+  const endpoints = httpEndpointsFromConnections(options.store.getConnections());
+  const availableConnections = endpoints
+    .map((entry) => (entry.label ? `${entry.label}(${entry.id})` : entry.id))
+    .join(', ');
+  const picked = pickHttpEndpoint(endpoints, path, data.fetch?.connectionId);
+  if (!picked.ok && picked.code === 'missing') {
+    return ['invalid', undefined, [issue('http_connection_required', 'HTTP 연결이 없습니다. 설정에서 HTTP를 연결한 뒤 다시 등록해 주세요.')]];
   }
-  const resolved = resolveHttpRequestUrl(baseUrl, path);
-  if (!resolved.ok) {
+  if (!picked.ok && picked.code === 'not_found') {
     return ['invalid', undefined, [issue(
-      resolved.errorCode === 'ssrf_blocked' ? 'http_origin_rejected' : 'invalid_http_path',
-      `HTTP 경로는 연결된 origin의 상대 경로여야 합니다: ${resolved.error}`,
-      'args.path',
+      'http_connection_not_found',
+      `이름이 일치하는 HTTP 연결이 없습니다. 사용 가능한 연결: ${availableConnections}`,
+      'args.fetch.connectionId',
+    )]];
+  }
+  if (!picked.ok && picked.code === 'ambiguous') {
+    return missingInput(
+      ['connectionId'],
+      `HTTP 연결이 여러 개입니다. 이 업무에 쓸 연결을 골라 주세요: ${availableConnections}`,
+      'args.fetch.connectionId',
+    );
+  }
+  if (!picked.ok) {
+    return ['invalid', undefined, [issue(
+      'http_origin_rejected',
+      'HTTP 경로는 저장한 연결 주소 안의 상대 경로여야 합니다.',
+      'args.fetch.path',
     )]];
   }
 
@@ -281,6 +357,8 @@ export function proposeJob(options: {
     cron,
     timezone,
     path,
+    connectionId: picked.endpoint.id,
+    httpLabel: picked.endpoint.label || picked.endpoint.baseUrl,
     headers: data.fetch?.headers,
     interpretGoal: data.interpret?.goal?.trim() || data.goal,
     channel,
@@ -292,13 +370,13 @@ export function proposeJob(options: {
   let ir: WorkflowIR;
   try {
     ir = compileScheduledHttpSlackJob(spec);
-  } catch (error) {
-    return ['invalid', undefined, [issue('invalid_workflow_schema', error instanceof Error ? error.message : String(error))]];
+  } catch {
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무를 워크플로 형식으로 변환하지 못했습니다. 입력 값을 확인해 주세요.')]];
   }
 
   const schema = validateWorkflowIR(ir);
   if (!schema.ok) {
-    return ['invalid', undefined, [issue('invalid_workflow_schema', schema.error)]];
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무를 워크플로 형식으로 변환하지 못했습니다. 입력 값을 확인해 주세요.')]];
   }
   const contractIssues = validateWorkflowContracts(schema.value, { connectedConnectors: connected });
   if (contractIssues.length > 0) {
@@ -306,7 +384,7 @@ export function proposeJob(options: {
   }
 
   options.pending.set(sessionId, { spec, ir });
-  const presentation = confirmationPresentation(spec, resolved.value.origin);
+  const presentation = confirmationPresentation(spec, spec.httpLabel);
   return ['ok', {
     saved: false,
     pending: true,
@@ -317,6 +395,8 @@ export function proposeJob(options: {
       schedule: spec.cron,
       timezone: spec.timezone,
       path: spec.path,
+      connectionId: spec.connectionId,
+      httpLabel: spec.httpLabel,
       channel: spec.channel,
       runOnceNow: spec.runOnceNow,
       allowExternalAuto: spec.allowExternalAuto,
@@ -353,6 +433,9 @@ export async function commitJob(options: {
 
   try {
     const saved = options.store.saveWorkflow(draft.ir);
+    // Drop the draft as soon as the workflow exists so a failure in any later
+    // step cannot leave a stale draft that would save a duplicate on retry.
+    options.pending.delete(sessionId);
     options.store.setWorkflowActive(saved.workflowId, true);
     const chat = options.store.getWorkspaceChat(sessionId);
     if (chat) {
@@ -362,7 +445,6 @@ export async function commitJob(options: {
         workflowId: saved.workflowId,
       });
     }
-    options.pending.delete(sessionId);
 
     let run: unknown;
     let runError: string | undefined;
@@ -379,7 +461,7 @@ export async function commitJob(options: {
     }
 
     const message = runError
-      ? `${draft.spec.name} 업무를 저장하고 스케줄을 켰습니다. 지금 실행은 실패했습니다: ${runError}`
+      ? `${draft.spec.name} 업무를 저장하고 스케줄을 켰습니다. 지금 실행은 실패했으니 실행 기록에서 원인을 확인해 주세요.`
       : draft.spec.runOnceNow
         ? `${draft.spec.name} 업무를 저장하고 스케줄을 켰습니다. 지금 한 번 실행을 시작했습니다.`
         : `${draft.spec.name} 업무를 저장하고 스케줄을 켰습니다.`;

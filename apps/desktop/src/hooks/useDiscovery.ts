@@ -111,11 +111,16 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
     }
   }, [options, refresh, sessionId]);
 
+  const dismissError = useCallback(() => {
+    setError('');
+  }, []);
+
   return {
     sessionId,
     view,
     busy,
     error,
+    dismissError,
     importAndStart,
     answer,
     answerQuestion,

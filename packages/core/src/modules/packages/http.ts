@@ -1,5 +1,5 @@
 import type { ModulePackage } from '../module-package.js';
-import { HttpConnector, mergeHttpAuthSecret, parseHttpConnectionConfig } from '../http/index.js';
+import { HttpConnector, mergeHttpAuthSecret, parseHttpEndpoints } from '../http/index.js';
 import { HTTP_CAPABILITIES, HTTP_CATALOG } from '../http/catalog.js';
 
 export const httpModulePackage: ModulePackage = {
@@ -8,10 +8,14 @@ export const httpModulePackage: ModulePackage = {
   capabilities: HTTP_CAPABILITIES,
   registration: {
     instantiate: (config) => {
-      const parsed = parseHttpConnectionConfig(config);
-      if (!parsed) return null;
-      const withSecret = mergeHttpAuthSecret(parsed, readInlineAuthSecret(config));
-      return withSecret ? new HttpConnector(withSecret) : null;
+      const endpoints = parseHttpEndpoints(config);
+      if (endpoints.length === 0) return null;
+      const inline = readInlineAuthSecret(config);
+      const usable = endpoints.flatMap((endpoint) => {
+        const merged = mergeHttpAuthSecret(endpoint, inline);
+        return merged ? [{ ...endpoint, ...merged, id: endpoint.id }] : [];
+      });
+      return usable.length > 0 ? new HttpConnector(usable) : null;
     },
   },
 };

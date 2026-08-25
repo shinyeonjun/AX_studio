@@ -39,6 +39,7 @@ describe('compileScheduledHttpSlackJob', () => {
       goal: '커밋 브리프',
       cron: '0 21 * * *',
       timezone: 'Asia/Seoul',
+      connectionId: 'default',
       path: '/repos/shinyeonjun/AX_studio/commits',
       interpretGoal: '리스크 요약',
       channel: '#ax테스트2',
@@ -50,6 +51,12 @@ describe('compileScheduledHttpSlackJob', () => {
     expect(ir.trigger).toEqual({ type: 'schedule', schedule: '0 21 * * *', timezone: 'Asia/Seoul' });
     expect(ir.allowExternalAuto).toBe(true);
     expect(ir.steps.map((step) => step.id)).toEqual(['fetch', 'brief', 'should_notify', 'notify']);
+    const fetch = ir.steps.find((step) => step.id === 'fetch');
+    expect(fetch && 'params' in fetch ? fetch.params : undefined).toMatchObject({
+      method: 'GET',
+      path: '/repos/shinyeonjun/AX_studio/commits',
+      connectionId: 'default',
+    });
     expect(validateWorkflowContracts(ir, { connectedConnectors: ['http', 'slack'] })).toEqual([]);
   });
 });
@@ -116,6 +123,61 @@ describe('job.propose / job.commit', () => {
     expect(store.listWorkflows()).toHaveLength(0);
   });
 
+  it('lifts top-level aliases and string booleans a retrying model emits', async () => {
+    const { store, service, chat } = await connectedService();
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        name: 'Daily Dev Brief',
+        goal: '전날 GitHub 커밋 리스크를 Slack에 요약한다',
+        schedule: '0 21 * * * Asia/Seoul',
+        httpPath: '/repos/shinyeonjun/AX_studio/commits',
+        channel: '#ax테스트2',
+        connection_id: 'default',
+        runOnceNow: 'true',
+        allowExternalAuto: 'false',
+        notify: { connector: 'slack', channel: '#ax테스트2', skipIfEmpty: 'true' },
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+
+    expect(response.status).toBe('ok');
+    expect(response.data).toMatchObject({
+      saved: false,
+      summary: {
+        path: '/repos/shinyeonjun/AX_studio/commits',
+        channel: '#ax테스트2',
+        connectionId: 'default',
+        runOnceNow: true,
+        allowExternalAuto: false,
+      },
+    });
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('reports an unknown connection name with the available connections', async () => {
+    const { store, service, chat } = await connectedService();
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'default', baseUrl: 'https://api.github.com/', label: 'GitHub' },
+        { id: 'tickets', baseUrl: 'https://api.example.com/v1/', label: 'Tickets' },
+      ],
+    });
+
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        fetch: { ...dailyBriefArgs.fetch, connectionId: 'NoSuchApi' },
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+
+    expect(response.status).toBe('invalid');
+    expect(response.issues[0]?.code).toBe('http_connection_not_found');
+    expect(response.issues[0]?.message).toContain('GitHub');
+    expect(response.issues[0]?.message).toContain('Tickets');
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
   it('does not leak Zod JSON when propose arguments are unusable', async () => {
     const { service, chat } = await connectedService();
     const response = await service.execute({
@@ -172,6 +234,11 @@ describe('job.propose / job.commit', () => {
     const workflow = store.getWorkflow(workflowId);
     expect(workflow?.allowExternalAuto).toBe(true);
     expect(workflow?.trigger).toMatchObject({ type: 'schedule', schedule: '0 21 * * *' });
+    const fetch = workflow?.steps.find((step) => step.id === 'fetch');
+    expect(fetch && 'params' in fetch ? fetch.params : undefined).toMatchObject({
+      connectionId: 'default',
+      path: '/repos/shinyeonjun/AX_studio/commits',
+    });
     expect(store.getWorkspaceChat(chat.id)?.workflowId).toBe(workflowId);
     expect(ran).toEqual([workflowId]);
   });
@@ -215,5 +282,46 @@ describe('job.propose / job.commit', () => {
     const agentNames = (agent.data as { commands: Array<{ name: string }> }).commands.map((entry) => entry.name);
     expect(agentNames).toContain('job.propose');
     expect(agentNames).not.toContain('job.commit');
+  });
+
+  it('binds a job to one HTTP connection and asks when two connections both fit', async () => {
+    const { store, service, chat } = await connectedService();
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'default', baseUrl: 'https://api.github.com/', label: 'GitHub' },
+        { id: 'tickets', baseUrl: 'https://api.example.com/v1/', label: 'Tickets' },
+      ],
+    });
+
+    const github = await service.execute({
+      name: 'job.propose',
+      args: dailyBriefArgs,
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+    expect(github.status).toBe('needs_input');
+    expect(github.issues[0]?.path).toBe('args.fetch.connectionId');
+
+    const bound = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        fetch: { ...dailyBriefArgs.fetch, connectionId: 'GitHub' },
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+    expect(bound.status).toBe('ok');
+    expect(bound.data).toMatchObject({
+      summary: { connectionId: 'default', httpLabel: 'GitHub' },
+    });
+
+    const named = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        fetch: { method: 'GET', path: '/health', connectionId: 'Tickets' },
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+    expect(named.status).toBe('ok');
+    expect(named.data).toMatchObject({
+      summary: { connectionId: 'tickets', httpLabel: 'Tickets' },
+    });
   });
 });

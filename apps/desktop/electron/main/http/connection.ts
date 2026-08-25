@@ -1,46 +1,43 @@
 import {
+  DEFAULT_HTTP_ENDPOINT_ID,
   HttpConnector,
-  mergeHttpAuthSecret,
+  mergeHttpEndpointsWithSecrets,
   normalizeHttpBaseUrl,
-  parseHttpConnectionConfig,
+  parseHttpEndpointSecrets,
+  parseHttpEndpoints,
   probeHttpBaseUrl,
+  removeHttpEndpoint,
+  serializeHttpEndpoints,
+  upsertHttpEndpoint,
+  type HttpEndpoint,
+  type HttpEndpointSecrets,
   type WorkflowRuntime,
   type WorkflowStore,
 } from '@ax-studio/core';
+import { randomUUID } from 'node:crypto';
 import { deleteOsSecret, getOsSecret, setOsSecret } from '../credential-store.js';
 
 const HTTP_SECRET_NAME = 'http.auth';
 
-interface HttpSecret {
-  token?: string;
-  password?: string;
+async function readHttpSecrets(): Promise<HttpEndpointSecrets> {
+  return parseHttpEndpointSecrets(parseJson(await getOsSecret(HTTP_SECRET_NAME)));
 }
 
-function parseHttpSecret(value: string | null): HttpSecret | null {
+function parseJson(value: string | null): unknown {
   if (!value) return null;
   try {
-    const parsed: unknown = JSON.parse(value);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    const record = parsed as Record<string, unknown>;
-    return {
-      token: typeof record.token === 'string' ? record.token : undefined,
-      password: typeof record.password === 'string' ? record.password : undefined,
-    };
+    return JSON.parse(value);
   } catch {
     return null;
   }
 }
 
-export async function getHttpSecret(): Promise<HttpSecret | null> {
-  return parseHttpSecret(await getOsSecret(HTTP_SECRET_NAME));
-}
-
-export async function saveHttpSecret(secret: HttpSecret): Promise<void> {
-  await setOsSecret(HTTP_SECRET_NAME, JSON.stringify(secret));
-}
-
-export async function deleteHttpSecret(): Promise<void> {
-  await deleteOsSecret(HTTP_SECRET_NAME);
+async function writeHttpSecrets(secrets: HttpEndpointSecrets): Promise<void> {
+  if (Object.keys(secrets).length === 0) {
+    await deleteOsSecret(HTTP_SECRET_NAME);
+    return;
+  }
+  await setOsSecret(HTTP_SECRET_NAME, JSON.stringify(secrets));
 }
 
 function httpProbeErrorMessage(error: string | undefined): string {
@@ -64,30 +61,41 @@ function httpProbeErrorMessage(error: string | undefined): string {
   }
 }
 
+function applyHttpConnector(
+  store: WorkflowStore,
+  runtime: WorkflowRuntime,
+  endpoints: HttpEndpoint[],
+  secrets: HttpEndpointSecrets,
+): void {
+  const merged = mergeHttpEndpointsWithSecrets(endpoints, secrets);
+  // Persist the full endpoint list (secrets never serialize) so a missing OS
+  // secret degrades to "disconnected" instead of silently erasing endpoints.
+  const config = endpoints.length > 0 ? serializeHttpEndpoints(endpoints) : undefined;
+  if (merged.length === 0) {
+    store.setConnection('http', false, config);
+    runtime.setConnector('http', null);
+    return;
+  }
+  store.setConnection('http', true, config);
+  runtime.setConnector('http', new HttpConnector(merged));
+}
+
 export async function hydrateHttpConnector(store: WorkflowStore, runtime: WorkflowRuntime): Promise<void> {
   const connection = store.getConnections().find((entry) => entry.connector === 'http');
   if (!connection?.connected) return;
-
-  const parsed = parseHttpConnectionConfig(connection.config);
-  if (!parsed) {
+  const endpoints = parseHttpEndpoints(connection.config);
+  if (endpoints.length === 0) {
     store.setConnection('http', false);
     return;
   }
-
-  const secret = await getHttpSecret();
-  const merged = mergeHttpAuthSecret(parsed, secret);
-  if (!merged) {
-    store.setConnection('http', false);
-    return;
-  }
-
-  runtime.setConnector('http', new HttpConnector(merged));
+  applyHttpConnector(store, runtime, endpoints, await readHttpSecrets());
 }
 
 export async function validateAndConnectHttp(
   store: WorkflowStore,
   runtime: WorkflowRuntime,
   payload: {
+    endpointId?: string;
     baseUrl: string;
     label?: string;
     authType: 'none' | 'bearer' | 'apiKey' | 'basic';
@@ -117,17 +125,22 @@ export async function validateAndConnectHttp(
               password: payload.password?.trim(),
             };
 
-  const existingSecret = await getHttpSecret();
+  const connection = store.getConnections().find((entry) => entry.connector === 'http');
+  const existing = parseHttpEndpoints(connection?.config);
+  const secrets = await readHttpSecrets();
+  const requestedId = payload.endpointId?.trim();
+  const matched = requestedId
+    ? existing.find((entry) => entry.id === requestedId)
+    : existing.find((entry) => entry.baseUrl.replace(/\/$/, '') === baseUrl.replace(/\/$/, ''));
+  const endpointId = matched?.id ?? (existing.length === 0 ? DEFAULT_HTTP_ENDPOINT_ID : randomUUID());
+  const existingSecret = secrets[endpointId];
+
   if (authType === 'bearer' || authType === 'apiKey') {
-    if (!auth.token) {
-      auth.token = existingSecret?.token?.trim();
-    }
+    if (!auth.token) auth.token = existingSecret?.token?.trim();
     if (!auth.token) throw new Error('인증 토큰을 입력해 주세요.');
   }
   if (authType === 'basic') {
-    if (!auth.password) {
-      auth.password = existingSecret?.password?.trim();
-    }
+    if (!auth.password) auth.password = existingSecret?.password?.trim();
     if (!auth.username || !auth.password) throw new Error('사용자 이름과 비밀번호를 입력해 주세요.');
   }
 
@@ -136,32 +149,43 @@ export async function validateAndConnectHttp(
     throw new Error(httpProbeErrorMessage(probe.error));
   }
 
+  const nextSecrets = { ...secrets };
   if (authType === 'none') {
-    await deleteHttpSecret();
+    delete nextSecrets[endpointId];
   } else {
-    await saveHttpSecret({
+    nextSecrets[endpointId] = {
       token: authType === 'bearer' || authType === 'apiKey' ? auth.token : undefined,
       password: authType === 'basic' ? auth.password : undefined,
-    });
+    };
   }
+  await writeHttpSecrets(nextSecrets);
 
-  store.setConnection('http', true, {
+  const next = upsertHttpEndpoint(connection?.config, {
+    id: endpointId,
     baseUrl,
     label: payload.label?.trim() || undefined,
-    authType,
-    authHeader: authType === 'apiKey' ? auth.header : undefined,
-    username: authType === 'basic' ? auth.username : undefined,
+    auth,
     authStored: authType !== 'none',
     connectedAt: new Date().toISOString(),
-    lastError: undefined,
   });
-
-  const merged = mergeHttpAuthSecret(parseHttpConnectionConfig(store.getConnections().find((e) => e.connector === 'http')?.config)!, await getHttpSecret());
-  if (merged) runtime.setConnector('http', new HttpConnector(merged));
+  applyHttpConnector(store, runtime, next, nextSecrets);
 }
 
-export async function disconnectHttp(store: WorkflowStore, runtime: WorkflowRuntime): Promise<void> {
-  await deleteHttpSecret();
-  store.setConnection('http', false);
-  runtime.setConnector('http', null);
+export async function disconnectHttp(
+  store: WorkflowStore,
+  runtime: WorkflowRuntime,
+  endpointId?: string,
+): Promise<void> {
+  const connection = store.getConnections().find((entry) => entry.connector === 'http');
+  const remaining = endpointId?.trim()
+    ? removeHttpEndpoint(connection?.config, endpointId)
+    : [];
+  const secrets = await readHttpSecrets();
+  if (endpointId?.trim()) {
+    delete secrets[endpointId.trim()];
+  } else {
+    for (const key of Object.keys(secrets)) delete secrets[key];
+  }
+  await writeHttpSecrets(remaining.length === 0 ? {} : secrets);
+  applyHttpConnector(store, runtime, remaining, secrets);
 }

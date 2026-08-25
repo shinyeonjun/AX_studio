@@ -115,6 +115,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
           messages: loaded.messages,
         };
         setWorkspaceWorkflowState(state);
+        setWorkflowRegistered(workflow.active === true);
       }
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
@@ -158,6 +159,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       if (!isCurrentSession(epoch)) return;
       if (!mappedChat) setChatMessages(state.messages ?? []);
       setWorkspaceWorkflowState(state);
+      setWorkflowRegistered(loaded.active === true);
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
       setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
@@ -244,6 +246,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
             messages: finalMessages,
           };
           setWorkspaceWorkflowState(state);
+          setWorkflowRegistered(workflow.active === true);
           await refresh();
         } else if ((res.removedWorkflowIds?.length ?? 0) > 0) {
           if (removedWorkflowId) setWorkspaceWorkflowState(null);
@@ -288,6 +291,10 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
 
   const beginEditStep = (prompt: string) => {
     setEditHint(prompt);
+  };
+
+  const dismissError = () => {
+    setError('');
   };
 
   const refreshWorkspaceSources = async (sessionId = workspaceSessionIdRef.current) => {
@@ -338,6 +345,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     beginEditStep,
     busy,
     error,
+    dismissError,
     progress,
     reset,
     startNewChat,

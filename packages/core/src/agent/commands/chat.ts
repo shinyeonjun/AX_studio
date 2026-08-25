@@ -216,6 +216,13 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
     appendAppLog('error', error instanceof Error ? error.message : String(error), {
       event: 'command_chat_failed',
     });
+    if (controller.signal.aborted) {
+      throw new Error(
+        options.abortSignal?.aborted
+          ? '요청이 취소되었습니다.'
+          : 'AI 응답이 제한 시간을 초과했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    }
     throw error;
   } finally {
     clearTimeout(timer);

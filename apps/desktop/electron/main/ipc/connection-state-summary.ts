@@ -2,7 +2,6 @@ import {
   getHttpConnectionStatus,
   getWebhookConnectionStatus,
   parseGmailConnectionConfig,
-  parseHttpConnectionConfig,
   parseRdbConnectionConfig,
 } from '@ax-studio/core';
 import { getOsSecret } from '../credential-store.js';
@@ -56,15 +55,18 @@ export async function summarizeConnection(
   if (connector === 'http') {
     const status = getHttpConnectionStatus(config, connected);
     const record = (config && typeof config === 'object' ? config : {}) as Record<string, unknown>;
-    const parsed = parseHttpConnectionConfig(config);
+    // Legacy singular fields mirror the first ready endpoint; the new
+    // `endpoints` shape stores authHeader/username per endpoint.
+    const first = status.endpoints[0];
     return {
       connector,
       connected: status.connected,
       label: status.label,
       baseUrl: status.baseUrl,
       authType: status.authType,
-      authHeader: typeof record.authHeader === 'string' ? record.authHeader : undefined,
-      username: parsed?.auth?.username ?? (typeof record.username === 'string' ? record.username : undefined),
+      authHeader: first?.authHeader ?? (typeof record.authHeader === 'string' ? record.authHeader : undefined),
+      username: first?.username ?? (typeof record.username === 'string' ? record.username : undefined),
+      endpoints: status.endpoints,
     };
   }
 

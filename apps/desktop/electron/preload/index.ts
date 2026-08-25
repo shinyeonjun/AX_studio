@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('ax', {
   addLocalFolder: (payload: { path: string; label?: string }) => ipcRenderer.invoke('ax:addLocalFolder', payload),
   removeLocalFolder: (folderId: string) => ipcRenderer.invoke('ax:removeLocalFolder', folderId),
   connectHttp: (payload: {
+    endpointId?: string;
     baseUrl: string;
     label?: string;
     authType: 'none' | 'bearer' | 'apiKey' | 'basic';
@@ -28,7 +29,7 @@ contextBridge.exposeInMainWorld('ax', {
     token?: string;
     password?: string;
   }) => ipcRenderer.invoke('ax:connectHttp', payload),
-  disconnectHttp: () => ipcRenderer.invoke('ax:disconnectHttp'),
+  disconnectHttp: (endpointId?: string) => ipcRenderer.invoke('ax:disconnectHttp', endpointId),
   connectWebhook: (payload: { port: number; secret: string; label?: string; tunnelUrl?: string }) =>
     ipcRenderer.invoke('ax:connectWebhook', payload),
   disconnectWebhook: () => ipcRenderer.invoke('ax:disconnectWebhook'),

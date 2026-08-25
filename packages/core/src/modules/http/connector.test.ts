@@ -102,16 +102,41 @@ describe('HttpConnector', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('rejects paths that escape the base prefix', async () => {
-    const connector = new HttpConnector({ baseUrl: 'https://api.example.com/v1/' });
+  it('sends GET to the HTTP connection saved on the step', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('ok', { status: 200, statusText: 'OK' })),
+    );
+
+    const connector = new HttpConnector([
+      { id: 'default', baseUrl: 'https://api.github.com/' },
+      { id: 'tickets', baseUrl: 'https://api.example.com/v1/' },
+    ]);
     const result = await connector.execute(
       'request',
-      { method: 'GET', path: '../../v2/users' },
+      { method: 'GET', path: '/tickets', connectionId: 'tickets' },
       { executionId: 'e1', variables: {}, log: vi.fn() },
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errorCode).toBe('ssrf_blocked');
-    }
+
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.example.com/v1/tickets',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('keeps GET inside the saved connection when connectionId is omitted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('ok', { status: 200 })));
+    const connector = new HttpConnector({ baseUrl: 'https://api.github.com/' });
+    const result = await connector.execute(
+      'request',
+      { method: 'GET', path: '/repos/shinyeonjun/AX_studio/commits' },
+      { executionId: 'e1', variables: {}, log: vi.fn() },
+    );
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.github.com/repos/shinyeonjun/AX_studio/commits',
+      expect.objectContaining({ method: 'GET' }),
+    );
   });
 });

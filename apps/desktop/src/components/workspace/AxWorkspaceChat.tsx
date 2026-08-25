@@ -33,6 +33,7 @@ interface AxWorkspaceChatProps {
   discoveryView?: DiscoveryInspectView;
   discoveryBusy?: boolean;
   onSend: (text: string) => Promise<void>;
+  onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
   onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
@@ -138,12 +139,20 @@ export function AxWorkspaceChat({
   discoveryView,
   discoveryBusy = false,
   onSend,
+  onDismissError,
   onRegisterWorkflow,
   onAttachExample,
   onDiscoveryAnswer,
   onDiscoveryPublish,
 }: AxWorkspaceChatProps) {
   const threadMessages = useMemo(() => toThreadMessages(messages), [messages]);
+  // Interactivity follows the newest assistant message, not the newest message:
+  // a failed send leaves the optimistic user message last, and the confirm
+  // card before it must stay usable for retry.
+  const lastAssistantIndex = messages.reduce(
+    (latest, message, index) => (message.role === 'assistant' ? index : latest),
+    -1,
+  );
 
   const runtime = useExternalStoreRuntime({
     messages: threadMessages,
@@ -200,7 +209,7 @@ export function AxWorkspaceChat({
                 key={`assistant-${index}`}
                 message={message}
                 busy={busy}
-                isLatest={index === messages.length - 1}
+                isLatest={index === lastAssistantIndex}
                 onSend={onSend}
               />
             ))}
@@ -210,7 +219,21 @@ export function AxWorkspaceChat({
                 <div className="ax-workspace-typing-content"><span /><span /><span /><p className="muted">{progress || '답변을 준비하고 있습니다'}</p></div>
               </div>
             )}
-            {error && <div className="ax-workspace-error" role="alert">{error}</div>}
+            {error && (
+              <div className="ax-workspace-error" role="alert">
+                <span>{error}</span>
+                {onDismissError && (
+                  <button
+                    type="button"
+                    className="ax-workspace-error-dismiss"
+                    aria-label="오류 닫기"
+                    onClick={onDismissError}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
             {discoveryView && onDiscoveryAnswer && onDiscoveryPublish && (
               <DiscoveryReviewCard
                 view={discoveryView}

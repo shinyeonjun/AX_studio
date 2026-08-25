@@ -10,6 +10,7 @@ export function registerWorkspaceWorkflowHandlers() {
     const ir = core.store.getWorkflow(normalizedWorkflowId);
     if (!ir) throw new Error('Workflow not found');
     const state = buildWorkflowView(ir, normalizedWorkflowId);
-    return { state, summary: summarizeWorkflow(state.draft), title: ir.name };
+    const active = core.store.listWorkflows().some((entry) => entry.id === normalizedWorkflowId && entry.active);
+    return { state, summary: summarizeWorkflow(state.draft), title: ir.name, active };
   });
 }

@@ -45,7 +45,44 @@ describe('Scheduler', () => {
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})['once-workflow']).toBeTruthy();
+    // deleteWorkflow prunes the workflow-keyed scheduler/trigger settings.
+    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
     expect(store.getWorkflow('once-workflow')).toBeNull();
+  });
+
+  it('lets a reactivated once job fire again after pending approval', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'once-approval',
+      name: '승인 대기 일회성',
+      goal: '승인 대기 후 재활성화하면 다시 실행',
+      version: 1,
+      trigger: { type: 'once', runAt: new Date(Date.now() - 1_000).toISOString() },
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    store.setWorkflowActive('once-approval', true);
+
+    const runtime = {
+      executeWorkflow: vi.fn(async () => ({ status: 'pending_approval' })),
+      removeWorkflow: vi.fn(),
+    };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+    expect(store.listWorkflows()[0]?.active).toBe(false);
+    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
+
+    store.setWorkflowActive('once-approval', true);
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
   });
 });

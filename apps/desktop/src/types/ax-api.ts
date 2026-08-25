@@ -120,6 +120,7 @@ export interface AxApi {
   addLocalFolder: (payload: { path: string; label?: string }) => Promise<unknown>;
   removeLocalFolder: (folderId: string) => Promise<unknown>;
   connectHttp: (payload: {
+    endpointId?: string;
     baseUrl: string;
     label?: string;
     authType: 'none' | 'bearer' | 'apiKey' | 'basic';
@@ -128,7 +129,7 @@ export interface AxApi {
     token?: string;
     password?: string;
   }) => Promise<unknown>;
-  disconnectHttp: () => Promise<unknown>;
+  disconnectHttp: (endpointId?: string) => Promise<unknown>;
   connectWebhook: (payload: {
     port: number;
     secret: string;
@@ -167,8 +168,7 @@ export interface AxApi {
   testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
   setEnvSecret: (key: string, value: string) => Promise<{ ok: boolean; masked?: string }>;
   getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string }>;
-  summarize: (ir: unknown) => Promise<string>;
-  loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string }>;
+  loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;
   printPdf: (html: string) => Promise<unknown>;
   onStateChanged: (listener: () => void) => () => void;
   onWorkspaceSourceChanged: (listener: (event: {

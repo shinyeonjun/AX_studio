@@ -11,6 +11,7 @@ interface HttpConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
   onConnect: (payload: {
+    endpointId?: string;
     baseUrl: string;
     label?: string;
     authType: HttpAuthType;
@@ -19,13 +20,26 @@ interface HttpConnectionFormProps {
     token?: string;
     password?: string;
   }) => Promise<void>;
-  onDisconnect: () => Promise<void>;
+  onDisconnect: (endpointId?: string) => Promise<void>;
 }
 
 export function HttpConnectionForm({ state, embedded = false, onConnect, onDisconnect }: HttpConnectionFormProps) {
   const httpEntry = connectionEntry(state, 'http');
-  const connected = Boolean(httpEntry?.connected);
+  const endpoints = httpEntry?.endpoints?.length
+    ? httpEntry.endpoints
+    : httpEntry?.connected && httpEntry.baseUrl
+      ? [{
+          id: 'default',
+          baseUrl: httpEntry.baseUrl,
+          label: httpEntry.label,
+          authType: httpEntry.authType,
+          authHeader: httpEntry.authHeader,
+          username: httpEntry.username,
+        }]
+      : [];
+  const connected = endpoints.length > 0;
   const formRef = useRef<HTMLDivElement>(null);
+  const [endpointId, setEndpointId] = useState<string | undefined>(undefined);
   const [baseUrl, setBaseUrl] = useState('');
   const [label, setLabel] = useState('');
   const [authType, setAuthType] = useState<HttpAuthType>('none');
@@ -36,36 +50,45 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
-  const loadFromConnection = () => {
-    if (!httpEntry?.connected) return;
-    setBaseUrl(httpEntry.baseUrl ?? '');
-    setLabel(httpEntry.label ?? '');
-    setAuthType(httpEntry.authType ?? 'none');
-    if (httpEntry.authHeader) setAuthHeader(httpEntry.authHeader);
-    if (httpEntry.username) setUsername(httpEntry.username);
+  const loadFromConnection = (id: string) => {
+    const endpoint = endpoints.find((entry) => entry.id === id);
+    if (!endpoint) return;
+    setEndpointId(endpoint.id);
+    setBaseUrl(endpoint.baseUrl ?? '');
+    setLabel(endpoint.label ?? '');
+    setAuthType(endpoint.authType ?? 'none');
+    setAuthHeader(endpoint.authHeader ?? 'X-API-Key');
+    setUsername(endpoint.username ?? '');
     setToken('');
     setPassword('');
     setMessage('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const connectedItems =
-    connected && httpEntry?.baseUrl
-      ? [
-          {
-            id: 'http',
-            title: httpEntry.label?.trim() || 'HTTP API',
-            subtitle: httpEntry.baseUrl,
-            meta: httpAuthLabel(httpEntry.authType, httpEntry.authHeader, httpEntry.username),
-          },
-        ]
-      : [];
+  const resetForm = () => {
+    setEndpointId(undefined);
+    setBaseUrl('');
+    setLabel('');
+    setAuthType('none');
+    setAuthHeader('X-API-Key');
+    setUsername('');
+    setToken('');
+    setPassword('');
+  };
+
+  const connectedItems = endpoints.map((endpoint) => ({
+    id: endpoint.id,
+    title: endpoint.label?.trim() || 'HTTP API',
+    subtitle: endpoint.baseUrl,
+    meta: httpAuthLabel(endpoint.authType, endpoint.authHeader, endpoint.username),
+  }));
 
   const handleConnect = async () => {
     setBusy(true);
     setMessage('');
     try {
       await onConnect({
+        endpointId,
         baseUrl,
         label: label.trim() || undefined,
         authType,
@@ -74,9 +97,8 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
         token: authType === 'bearer' || authType === 'apiKey' ? token : undefined,
         password: authType === 'basic' ? password : undefined,
       });
-      setMessage('HTTP API가 연결되었습니다.');
-      setToken('');
-      setPassword('');
+      setMessage(endpointId ? 'HTTP API를 수정했습니다.' : 'HTTP API가 연결되었습니다.');
+      resetForm();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'HTTP 연결에 실패했습니다.');
     } finally {
@@ -84,13 +106,15 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!confirmDisconnectConnector(httpEntry?.label?.trim() || 'HTTP API')) return;
+  const handleDisconnect = async (id?: string) => {
+    const target = id ? endpoints.find((entry) => entry.id === id) : undefined;
+    if (!confirmDisconnectConnector(target?.label?.trim() || target?.baseUrl || 'HTTP API')) return;
     setBusy(true);
     setMessage('');
     try {
-      await onDisconnect();
+      await onDisconnect(id);
       setMessage('HTTP 연결이 해제되었습니다.');
+      if (!id || id === endpointId) resetForm();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '연결 해제에 실패했습니다.');
     } finally {
@@ -105,8 +129,9 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
           title="REST API 연결"
           steps={[
             '서비스의 base URL을 입력합니다 (예: https://api.example.com/v1/).',
+            'HTTP는 여러 개 연결할 수 있습니다. 업무를 저장할 때 하나를 고릅니다.',
             '필요하면 Bearer, API Key, Basic 인증을 설정합니다.',
-            '연결 시 서버 응답을 확인합니다. 요청은 base URL 밖으로 나가지 않습니다.',
+            '연결 시 서버 응답을 확인합니다. 요청은 그 연결 주소 밖으로 나가지 않습니다.',
           ]}
         />
       )}
@@ -128,7 +153,7 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="내 API"
+          placeholder="GitHub"
           disabled={busy}
         />
 
@@ -193,12 +218,17 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
         )}
 
         <div className="connection-form-actions">
-          <button type="button" className="btn btn-primary" onClick={() => void handleConnect()} disabled={busy}>
-            {connected ? '다시 연결' : '연결'}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleConnect()}
+            disabled={busy || !baseUrl.trim()}
+          >
+            {endpointId ? '저장' : connected ? '추가 연결' : '연결'}
           </button>
-          {connected && (
-            <button type="button" className="btn btn-secondary" onClick={() => void handleDisconnect()} disabled={busy}>
-              연결 해제
+          {endpointId && (
+            <button type="button" className="btn btn-secondary" onClick={() => resetForm()} disabled={busy}>
+              취소
             </button>
           )}
         </div>
@@ -209,8 +239,8 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
           title="연결된 HTTP API"
           items={connectedItems}
           busy={busy}
-          onEdit={() => loadFromConnection()}
-          onDisconnect={() => void handleDisconnect()}
+          onEdit={(id) => loadFromConnection(id)}
+          onDisconnect={(id) => void handleDisconnect(id)}
         />
       </div>
     </div>

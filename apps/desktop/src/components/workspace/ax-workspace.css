@@ -525,6 +525,26 @@
   color: #b43f4a;
   font-size: 14px;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ax-workspace-error-dismiss {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ax-workspace-error-dismiss:hover {
+  opacity: 1;
 }
 
 .ax-run-result-card {

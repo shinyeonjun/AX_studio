@@ -69,6 +69,10 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         discoveryView={discovery.view ?? undefined}
         discoveryBusy={discovery.busy}
         onSend={workspaceChat.sendMessage}
+        onDismissError={() => {
+          workspaceChat.dismissError();
+          discovery.dismissError();
+        }}
         onRegisterWorkflow={workspaceChat.registerWorkflow}
         onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
         onDiscoveryAnswer={discovery.answer}

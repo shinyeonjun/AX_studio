@@ -21,6 +21,7 @@ function labelFor(name: string): string {
     folderId: '연결 폴더',
     path: '파일 경로',
     httpPath: 'HTTP 경로',
+    connectionId: 'HTTP 연결',
     workflowId: '워크플로우',
   };
   return labels[name] ?? name;

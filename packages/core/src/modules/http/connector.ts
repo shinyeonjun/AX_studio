@@ -1,13 +1,29 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
-import type { HttpConnectionConfig } from './connection.js';
+import {
+  DEFAULT_HTTP_ENDPOINT_ID,
+  matchHttpEndpoint,
+  type HttpConnectionConfig,
+  type HttpEndpoint,
+} from './connection.js';
 import { isSupportedHttpMethod } from './connection.js';
 import { performHttpRequest } from './request.js';
 import { resolveHttpRequestUrl } from './url-security.js';
 
+function asEndpoints(config: HttpConnectionConfig | readonly HttpEndpoint[]): HttpEndpoint[] {
+  const list: readonly HttpConnectionConfig[] = Array.isArray(config) ? config : [config];
+  return list.map((entry, index) => ({
+    ...entry,
+    id: entry.id?.trim() || (index === 0 ? DEFAULT_HTTP_ENDPOINT_ID : `http-${index + 1}`),
+  }));
+}
+
 export class HttpConnector implements Connector {
   name = 'http';
+  private readonly endpoints: HttpEndpoint[];
 
-  constructor(private readonly config: HttpConnectionConfig) {}
+  constructor(config: HttpConnectionConfig | readonly HttpEndpoint[]) {
+    this.endpoints = asEndpoints(config);
+  }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if (action !== 'request' && action !== 'post') {
@@ -30,7 +46,12 @@ export class HttpConnector implements Connector {
     }
 
     const path = typeof params.path === 'string' ? params.path : '';
-    const resolved = resolveHttpRequestUrl(this.config.baseUrl, path);
+    const connectionId = typeof params.connectionId === 'string' ? params.connectionId : undefined;
+    const endpoint = matchHttpEndpoint(this.endpoints, connectionId);
+    if (!endpoint) {
+      return { ok: false, error: 'http_connection_not_found', errorCode: 'invalid_params' };
+    }
+    const resolved = resolveHttpRequestUrl(endpoint.baseUrl, path);
     if (!resolved.ok) {
       return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
     }
@@ -55,7 +76,7 @@ export class HttpConnector implements Connector {
       method,
       headers: requestHeaders,
       body: serializedBody.body,
-      auth: this.config.auth,
+      auth: endpoint.auth,
     });
 
     if (!result.ok) {

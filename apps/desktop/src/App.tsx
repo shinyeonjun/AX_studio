@@ -169,8 +169,8 @@ export default function App() {
         await window.ax.connectHttp(payload);
         await refresh();
       }}
-      onDisconnectHttp={async () => {
-        await window.ax.disconnectHttp();
+      onDisconnectHttp={async (endpointId) => {
+        await window.ax.disconnectHttp(endpointId);
         await refresh();
       }}
       onConnectWebhook={async (payload) => {

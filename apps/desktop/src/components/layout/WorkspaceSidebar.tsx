@@ -266,16 +266,16 @@ export function WorkspaceSidebar({
                     <button type="button" className="sidebar-work-item" onClick={() => onOpenWork(work.id)}>
                       <span className="sidebar-work-name">{work.name}</span>
                       <span className={`sidebar-work-status ${work.active ? 'on' : 'off'}`}>
-                        {work.active ? '실행 중' : '중지'}
+                        {work.active ? '켜짐' : '꺼짐'}
                       </span>
                     </button>
                     <button
                       type="button"
                       className={`sidebar-work-toggle ${work.active ? 'on' : 'off'}`}
                       onClick={() => onToggleWorkActive(work.id, !work.active)}
-                      title={work.active ? '업무 중지' : '업무 활성화'}
+                      title={work.active ? '스케줄 끄기' : '스케줄 켜기'}
                     >
-                      {work.active ? '중지' : '활성화'}
+                      {work.active ? '끄기' : '켜기'}
                     </button>
                     <button
                       type="button"
@@ -344,6 +344,10 @@ export function WorkspaceSidebar({
                 const connected = isConnectorConnected(state, link.screen);
                 const localFolderCount =
                   link.screen === 'local-folder' ? state?.localFolders?.length ?? 0 : undefined;
+                const httpEndpointCount =
+                  link.screen === 'http'
+                    ? state?.connections?.find((connection) => connection.connector === 'http')?.endpoints?.length
+                    : undefined;
                 return (
                   <button
                     key={link.screen}
@@ -356,7 +360,7 @@ export function WorkspaceSidebar({
                     <SidebarConnectorStatus
                       connected={connected}
                       label={link.label}
-                      count={localFolderCount}
+                      count={localFolderCount ?? httpEndpointCount}
                     />
                   </button>
                 );

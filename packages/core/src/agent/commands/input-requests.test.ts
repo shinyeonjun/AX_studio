@@ -19,6 +19,22 @@ describe('inputRequestsForResult', () => {
     ]);
   });
 
+  it('labels the multi-HTTP connection chooser in Korean', () => {
+    const requests = inputRequestsForResult({
+      command: 'job.propose',
+      status: 'needs_input',
+      issues: [{
+        code: 'missing_argument',
+        path: 'args.fetch.connectionId',
+        message: '필요한 값이 없습니다: connectionId',
+      }],
+    });
+
+    expect(requests).toEqual([
+      expect.objectContaining({ label: 'HTTP 연결', required: true }),
+    ]);
+  });
+
   it('does not turn connector or data-contract errors into fake text fields', () => {
     expect(inputRequestsForResult({
       command: 'workflow.create',

@@ -122,11 +122,14 @@ export class Scheduler {
         if (generation !== this.lifecycleGeneration) return;
         const result = await this.runtime.executeWorkflow(ir, { triggerType: 'once' });
         if (generation !== this.lifecycleGeneration) return;
-        if (result.status === 'success' || result.status === 'pending_approval') {
-          this.markFired(s.id);
+        if (result.status === 'pending_approval') {
+          // Deactivate without marking lastFired so reactivating the job can
+          // fire it again; the paused execution resumes through approval.
           this.store.setWorkflowActive(s.id, false);
         }
         if (result.status === 'success') {
+          this.markFired(s.id);
+          this.store.setWorkflowActive(s.id, false);
           this.store.deleteWorkflow(s.id);
           this.runtime.removeWorkflow(s.id);
         }

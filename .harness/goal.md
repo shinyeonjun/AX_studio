@@ -505,9 +505,48 @@ confirmation card, and commits on the confirm button without another LLM loop.
 - Targeted command tests, core typecheck, and desktop typecheck pass.
 - `job.propose` accepts compact string `interpret`/`notify`/`fetch`/`schedule` values and never shows raw Zod JSON in chat.
 
+## Current task: multiple HTTP connections bound per job
+
+Settings can store more than one HTTP API. A job/workflow HTTP step saves
+`connectionId` once at registration. Later runs use that saved connection.
+Existing jobs without `connectionId` keep using the first/`default` HTTP.
+
+### Success criteria
+
+- Legacy `{ baseUrl }` config becomes the `default` HTTP endpoint.
+- A second HTTP can be added without replacing GitHub.
+- Disconnecting one HTTP leaves the others.
+- `http.request` GET uses `params.connectionId` when present, otherwise `default` or the only connection.
+- `job.propose` with one HTTP still auto-binds. With two, it asks for the connection name unless `fetch.connectionId` is set, then persists that id on the fetch step.
+- Relative paths cannot leave the saved connection's base URL.
+- Targeted HTTP/job tests, core typecheck, and desktop typecheck pass.
+
 ### Non-goals for this slice
 
-- Multi-HTTP jobs, Gmail notify, or arbitrary Workflow IR from the agent in this path.
-- Raising `AX_COMMAND_CHAT_MAX_ROUNDS` or the 120s timeout as the product fix.
-- Persisting pending job drafts across process restart.
+- A canvas picker UI to change HTTP after save (chat/workflow.update can still name another connection).
+- Arbitrary URLs that are not one of the saved HTTP connections.
+- Packaging a new Stable installer.
+
+## Current task: whole-product finishing pass (마감)
+
+Audit the entire product — core engine/runtime/workflow/store/modules, agent
+command plane, and the desktop UI/electron main — and fix concrete finishing
+defects: stale single-HTTP assumptions, dead code left by refactors, UI copy
+and state inconsistencies, IPC/type drift, and error paths that mislead the
+user. Only fix verified defects; no feature work, no speculative refactors.
+
+### Success criteria
+
+- Every remaining consumer of the HTTP connection model handles multiple
+  endpoints (module registry instantiate, read gateways, summaries, UI).
+- Audit findings classified BUG/RISK are fixed or explicitly deferred with a
+  reason; COSMETIC fixes only where trivial and safe.
+- Full evaluator green: core tests, core eval, core+desktop typecheck,
+  desktop production build, Electron E2E, product QA replay.
+- Final diff stays within the audited defects; no discarded experiment code.
+
+### Non-goals for this slice
+
+- New features or connector expansion.
+- Rewriting subsystems that merely look old but behave correctly.
 - Packaging a new Stable installer.

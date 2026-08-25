@@ -10,6 +10,7 @@ import {
 } from '../../catalog/connectors.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
 import type { ArtifactStore } from '../../store/artifact-store.js';
+import { httpEndpointsFromConnections } from '../../modules/http/connection.js';
 import {
   WorkspaceSourceError,
   type WorkspaceSourceService,
@@ -196,7 +197,7 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
       name: '업무 이름',
       goal: '업무 목적',
       schedule: 'cron과 timezone (기본 0 21 * * *, Asia/Seoul)',
-      fetch: 'HTTP GET path와 선택 headers',
+      fetch: 'HTTP GET path, 선택 headers, HTTP가 여러 개면 connectionId',
       interpret: '조회 결과를 요약하는 AI 목표',
       notify: 'Slack channel과 skipIfEmpty',
       runOnceNow: '저장 직후 한 번 실행',
@@ -572,6 +573,13 @@ export class AxCommandService {
       resources: CONNECTOR_IDS.map((id) => {
         const catalog = CONNECTOR_CATALOG[id];
         const connection = connections.get(id);
+        const endpoints = id === 'http'
+          ? httpEndpointsFromConnections(this.store.getConnections()).map((endpoint) => ({
+            id: endpoint.id,
+            label: endpoint.label,
+            baseUrl: endpoint.baseUrl,
+          }))
+          : undefined;
         return {
           id,
           label: getConnectorLabel(id),
@@ -579,6 +587,7 @@ export class AxCommandService {
           connected: isConnectorAlwaysOn(id) || Boolean(connection?.connected),
           connectable: catalog.connectable,
           connectionKind: catalog.connectionKind,
+          ...(endpoints ? { endpoints } : {}),
         };
       }),
     };

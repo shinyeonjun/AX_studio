@@ -97,19 +97,25 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
             const meta = CONNECTOR_UI_CATALOG[id];
             const entry = connectionEntry(state, id);
             const connected = Boolean(entry?.connected);
+            const httpEndpointCount = id === 'http' ? entry?.endpoints?.length ?? 0 : 0;
             const description =
-              id === 'http' && connected && entry?.baseUrl
+              id === 'http' && connected && httpEndpointCount > 1
+                ? entry?.endpoints?.map((endpoint) => endpoint.label?.trim() || endpoint.baseUrl).join(' · ') ?? meta.description
+                : id === 'http' && connected && entry?.baseUrl
                 ? entry.baseUrl
                 : id === 'webhook' && connected && entry?.localBaseUrl
                   ? entry.localBaseUrl
                   : meta.description;
+            const badge = connected
+              ? httpEndpointCount > 1 ? `${httpEndpointCount}개 연결` : '연결됨'
+              : '미연결';
             return (
               <ConnectionCard
                 key={id}
                 title={meta.title}
                 description={description}
                 emojiIcon={meta.emojiIcon}
-                badge={connected ? '연결됨' : '미연결'}
+                badge={badge}
                 badgeClass={connected ? 'connected' : ''}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />

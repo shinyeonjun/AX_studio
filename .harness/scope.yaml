@@ -134,3 +134,9 @@ expansions:
   - date: 2026-08-25
     reason: "Dogfood one-shot run failed immediately: stored workflow-document reload defaulted http.request GET to EXTERNAL, then contract validation required NONE."
     boundary: "packages/core/src/workflow/persisted-document.ts enrichActionStep uses resolveEffectiveSideEffect"
+  - date: 2026-08-25
+    reason: "User asked to store multiple HTTP APIs in settings and bind one onto a saved job so nightly runs do not pick again."
+    boundary: "HTTP endpoint list in connection config/secrets, HttpConnector connectionId, job.propose persist connectionId, settings list add/remove; no arbitrary URLs, no pack"
+  - date: 2026-08-25
+    reason: "User asked for a whole-product finishing pass (not HTTP only): audit core engine, agent command plane, and desktop UI/electron for concrete defects and close them."
+    boundary: "verified finishing defects anywhere in packages/core/src, apps/desktop/electron, apps/desktop/src; fixes only, no new features or subsystem rewrites"

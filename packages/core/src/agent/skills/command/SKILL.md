@@ -22,6 +22,7 @@ HTTP capability에서 `http.request`는 GET/HEAD 조회 전용이다. 외부 데
 command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.
 반복 스케줄 업무(매일 HTTP 조회 후 요약해 Slack으로 보내는 업무 등)는 job.propose를 한 번만 사용한다. resource.list/capability.list/workflow.create/update/run을 이어 호출하지 않는다. 빠진 값은 needs_input 이후 같은 job.propose에 채워 다시 보낸다. 저장은 host 확인 버튼이 처리하므로 job.commit을 호출하지 않는다.
 job.propose의 interpret/notify/fetch/schedule은 객체로 보내는 것이 좋지만, 요약 목표·채널·경로·cron 문자열만 있어도 된다.
+HTTP 연결이 여러 개면 fetch.connectionId에 연결 id 또는 표시 이름을 넣는다. 저장하면 이후 실행에서 다시 고르지 않는다.
 slack.message.send나 gmail.message.send를 직접 호출하는 command는 없다. 외부 발송을 포함한 일회 계획은 execution.enqueue_once로 검증 후 즉시 큐에 넣고 저장하지 않는다.
 사용자가 앞서 제안한 작업을 승인하면 같은 대화의 의도를 이어서 적절한 lifecycle command를 사용한다. command가 없다고 답하지 않는다.
 

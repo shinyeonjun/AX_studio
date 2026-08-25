@@ -11,6 +11,14 @@ export interface ConnectionEntry {
   authType?: HttpAuthType;
   authHeader?: string;
   username?: string;
+  endpoints?: Array<{
+    id: string;
+    baseUrl: string;
+    label?: string;
+    authType?: HttpAuthType;
+    authHeader?: string;
+    username?: string;
+  }>;
   port?: number;
   localBaseUrl?: string;
   tunnelUrl?: string;

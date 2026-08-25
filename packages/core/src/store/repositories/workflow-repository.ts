@@ -10,6 +10,7 @@ import {
   mergeAgentScopedContext,
   parseStoredAgentScopedContext,
 } from '../../agent/scoped-context.js';
+import * as settingsRepo from './settings-repository.js';
 
 export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: string; version: number } {
   const now = new Date().toISOString();
@@ -124,6 +125,19 @@ export function setWorkflowActive(db: AppDatabase, workflowId: string, active: b
   return Number(row?.count ?? 0) === 1;
 }
 
+// Settings blobs keyed by workflow id that must not outlive the workflow.
+// Owners: runtime/scheduler.ts (lastFired) and triggers/types.ts (cursors).
+const WORKFLOW_KEYED_SETTINGS = ['scheduler.lastFired', 'trigger.cursors'];
+
+function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
+  for (const key of WORKFLOW_KEYED_SETTINGS) {
+    const value = settingsRepo.getSetting<Record<string, unknown>>(db, key, {});
+    if (!value || typeof value !== 'object' || !(workflowId in value)) continue;
+    const { [workflowId]: _removed, ...rest } = value;
+    settingsRepo.setSetting(db, key, rest);
+  }
+}
+
 export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
   const existing = db.prepare('SELECT id FROM workflows WHERE id = ?').get(workflowId) as { id: string } | undefined;
   if (!existing) return false;
@@ -132,7 +146,9 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
     db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
+    db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
+    pruneWorkflowKeyedSettings(db, workflowId);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

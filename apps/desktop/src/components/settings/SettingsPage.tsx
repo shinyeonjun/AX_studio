@@ -32,6 +32,7 @@ interface SettingsPageProps {
   onAddLocalFolder: (payload: { path: string; label?: string }) => Promise<void>;
   onRemoveLocalFolder: (folderId: string) => Promise<void>;
   onConnectHttp: (payload: {
+    endpointId?: string;
     baseUrl: string;
     label?: string;
     authType: 'none' | 'bearer' | 'apiKey' | 'basic';
@@ -40,7 +41,7 @@ interface SettingsPageProps {
     token?: string;
     password?: string;
   }) => Promise<void>;
-  onDisconnectHttp: () => Promise<void>;
+  onDisconnectHttp: (endpointId?: string) => Promise<void>;
   onConnectWebhook: (payload: {
     port: number;
     secret: string;
