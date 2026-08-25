@@ -16,7 +16,8 @@ export interface ResolvedFolderPathError {
 export type ResolveFolderPathResult = ResolvedFolderPath | ResolvedFolderPathError;
 
 function normalizeForCompare(path: string): string {
-  return normalize(path).toLowerCase();
+  const normalized = normalize(path);
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
 /** Whether `targetReal` stays inside `rootReal` after normalization. */
