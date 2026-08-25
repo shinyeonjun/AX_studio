@@ -5,11 +5,13 @@ import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '
 
 class CloudSpyProvider implements ModelProvider {
   readonly name = 'cursor-cli';
+  structuredCalls = 0;
   lastUntrusted?: string;
   lastSystem = '';
   lastImages?: StructuredGenerateInput<unknown>['images'];
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
+    this.structuredCalls += 1;
     this.lastSystem = input.system;
     this.lastUntrusted = input.system.includes('[UNTRUSTED DATA]') ? 'present' : 'absent';
     this.lastImages = input.images;
@@ -56,5 +58,26 @@ describe('harness dataPolicy', () => {
       },
     });
     expect(model.lastImages).toBeUndefined();
+  });
+});
+
+describe('harness cancellation', () => {
+  it('does not invoke the provider when the request is already aborted', async () => {
+    const model = new CloudSpyProvider();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(createAgentHarness(model).run({
+      role: 'investigate',
+      outputSchema: z.object({ ok: z.boolean() }),
+      context: {
+        skillGoal: 'g',
+        taskGoal: 't',
+        evidence: [],
+        connectedConnectors: [],
+      },
+      abortSignal: controller.signal,
+    })).rejects.toMatchObject({ code: 'agent_aborted' });
+    expect(model.structuredCalls).toBe(0);
   });
 });

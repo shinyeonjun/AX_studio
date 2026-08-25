@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AgentHarness } from '../harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
 import { createDatabaseAsync } from '../../store/db.js';
@@ -23,6 +23,24 @@ function scriptedModel(outputs: unknown[], seen: StructuredGenerateInput<unknown
 }
 
 describe('runAxCommandChat', () => {
+  it('does not commit a job when the request is already aborted', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([], [])),
+      commandService: service,
+      messages: [],
+      userMessage: '확인',
+      allowJobCommit: true,
+      abortSignal: controller.signal,
+    })).rejects.toThrow('요청이 취소되었습니다.');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('executes a model command through AxCommandService and returns only the final reply', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

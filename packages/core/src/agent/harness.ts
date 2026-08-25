@@ -57,7 +57,11 @@ export class AgentHarness {
     const timeoutMs = definition.policy.timeoutMs;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const abortExternal = () => controller.abort();
-    request.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+    if (request.abortSignal?.aborted) {
+      abortExternal();
+    } else {
+      request.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+    }
 
     logs.push({
       level: 'info',
@@ -86,6 +90,9 @@ export class AgentHarness {
     const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
 
     try {
+      if (request.abortSignal?.aborted) {
+        throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
+      }
       const raw = await this.model.generateStructured({
         schema: request.outputSchema,
         system,
@@ -119,6 +126,9 @@ export class AgentHarness {
         logs,
       };
     } catch (err) {
+      if (request.abortSignal?.aborted) {
+        throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
+      }
       if (controller.signal.aborted) {
         const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout' });
         appendAppLog('error', timeoutError.message, {
