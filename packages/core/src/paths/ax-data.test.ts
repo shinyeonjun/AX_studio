@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 import {
   AX_DATA_FOLDER_DEV,
   AX_DATA_FOLDER_STABLE,
@@ -11,16 +12,17 @@ import {
 
 describe('AxDataPaths', () => {
   it('builds layout under root', () => {
-    const paths = buildAxDataPaths('C:\\AXStudio');
-    expect(paths.database).toBe('C:\\AXStudio\\data\\ax-studio.db');
-    expect(paths.documents).toBe('C:\\AXStudio\\documents');
-    expect(paths.artifacts).toBe('C:\\AXStudio\\artifacts');
-    expect(paths.sessions).toBe('C:\\AXStudio\\sessions');
-    expect(paths.templates).toBe('C:\\AXStudio\\templates');
-    expect(paths.generated.reports).toBe('C:\\AXStudio\\generated\\reports');
-    expect(paths.cache.chromium).toBe('C:\\AXStudio\\cache\\chromium');
-    expect(paths.migration).toBe('C:\\AXStudio\\config\\migration.json');
-    expect(paths.logs).toBe('C:\\AXStudio\\logs');
+    const root = join('AXStudio');
+    const paths = buildAxDataPaths(root);
+    expect(paths.database).toBe(join(root, 'data', 'ax-studio.db'));
+    expect(paths.documents).toBe(join(root, 'documents'));
+    expect(paths.artifacts).toBe(join(root, 'artifacts'));
+    expect(paths.sessions).toBe(join(root, 'sessions'));
+    expect(paths.templates).toBe(join(root, 'templates'));
+    expect(paths.generated.reports).toBe(join(root, 'generated', 'reports'));
+    expect(paths.cache.chromium).toBe(join(root, 'cache', 'chromium'));
+    expect(paths.migration).toBe(join(root, 'config', 'migration.json'));
+    expect(paths.logs).toBe(join(root, 'logs'));
   });
 
   it('prefers explicit dataRoot over env', () => {

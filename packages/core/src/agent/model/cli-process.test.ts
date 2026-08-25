@@ -39,7 +39,7 @@ describe('runCommand', () => {
 
   it('rejects oversized argv before spawning a child process', async () => {
     await expect(
-      runCommand(process.execPath, ['-e', `process.stdout.write(${JSON.stringify('x'.repeat(40_000))})`], {
+      runCommand(process.execPath, ['-e', `process.stdout.write(${JSON.stringify('x'.repeat(300_000))})`], {
         timeoutMs: 2_000,
       }),
     ).rejects.toMatchObject({ code: 'EARGTOOLARGE' });
