@@ -6,6 +6,10 @@ import { isPathContainedInRoot, resolveFileWithinFolderRoot } from './path-secur
 import { scanFolder, scanFolderChecked, trimSeenFileKeys, MAX_FILES_PER_SCAN } from './scan.js';
 
 describe('local folder path security', () => {
+  it.skipIf(process.platform === 'win32')('keeps POSIX path comparisons case-sensitive', () => {
+    expect(isPathContainedInRoot('/tmp/Connected', '/tmp/connected/secret.txt')).toBe(false);
+  });
+
   it('rejects paths outside the connected folder root', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-folder-'));
     const outside = mkdtempSync(join(tmpdir(), 'ax-outside-'));
