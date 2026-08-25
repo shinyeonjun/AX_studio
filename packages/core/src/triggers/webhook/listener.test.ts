@@ -1,6 +1,7 @@
 import { describe, expect, it, afterEach } from 'vitest';
 import { createServer } from 'node:http';
 import { WebhookInboundListener } from './listener.js';
+import { WEBHOOK_MAX_PAYLOAD_BYTES } from './security.js';
 
 describe('WebhookInboundListener', () => {
   const listeners: WebhookInboundListener[] = [];
@@ -47,6 +48,26 @@ describe('WebhookInboundListener', () => {
       body: '{}',
     });
     expect(response.status).toBe(401);
+  });
+
+  it('returns 413 without emitting an event when the payload is too large', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: unknown[] = [];
+    const port = 38_903;
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/test`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': 'hook-secret' },
+      body: 'x'.repeat(WEBHOOK_MAX_PAYLOAD_BYTES + 1),
+    });
+
+    expect(response.status).toBe(413);
+    expect(await response.text()).toBe('payload_too_large');
+    expect(events).toHaveLength(0);
   });
 
   it('can restart after its port was initially unavailable', async () => {
