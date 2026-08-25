@@ -25,6 +25,7 @@ interface SettingsPageProps {
   onScreenChange: (screen: SettingsScreen) => void;
   onRefresh: () => Promise<void>;
   onConnectSlack: (payload: { token: string; appToken?: string }) => Promise<void>;
+  onDisconnectSlack: () => Promise<void>;
   onConnectGmail: () => Promise<void>;
   onDisconnectGmail: () => Promise<void>;
   onPickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
@@ -85,6 +86,7 @@ export function SettingsPage({
   onScreenChange,
   onRefresh,
   onConnectSlack,
+  onDisconnectSlack,
   onConnectGmail,
   onDisconnectGmail,
   onPickLocalFolder,
@@ -174,7 +176,9 @@ export function SettingsPage({
             detection={detection}
           />
         )}
-        {screen === 'slack' && <SlackConnectionForm state={state} onConnect={onConnectSlack} />}
+        {screen === 'slack' && (
+          <SlackConnectionForm state={state} onConnect={onConnectSlack} onDisconnect={onDisconnectSlack} />
+        )}
         {screen === 'gmail' && (
           <GmailConnectionForm
             state={state}

@@ -25,6 +25,7 @@ import { notifyStateChanged, notifyWorkspaceSourceChanged } from './state-broadc
 import { initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
 import { migrateAxDataIfNeeded } from './data-migrate.js';
 import { E2EDocumentEngineClient } from './e2e-test-seam.js';
+import { abortAllWorkspaceChats } from './workspace-chat-registry.js';
 import type { SlackSecret } from './slack/connection.js';
 
 process.env.AX_SCAN_WORKER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'scan-worker.js');
@@ -131,14 +132,17 @@ app.whenReady().then(async () => {
       }
     }
 
-    const slackSecret = await hydrateConnectorsForStartup(core);
-    setWebhookSecretResolver(() => getWebhookSecret());
-
     setCore(core);
     unsubscribeWorkspaceSources = core.workspaceSources.subscribe((source) => notifyWorkspaceSourceChanged(source));
     registerIpcHandlers();
+    // Show the window before connector hydration so first paint is not held
+    // behind Gmail/Slack/HTTP/RDB secret loads and token refreshes.
     createMainWindow();
     createTray();
+
+    const slackSecret = await hydrateConnectorsForStartup(core);
+    setWebhookSecretResolver(() => getWebhookSecret());
+    notifyStateChanged();
     core.scheduler.start();
     core.triggerEngine.start();
     if (slackSecret?.appToken) {
@@ -179,10 +183,17 @@ app.on('before-quit', (event) => {
   unsubscribeWorkspaceSources = undefined;
   event.preventDefault();
   core.scheduler.stop();
+  abortAllWorkspaceChats();
   void (async () => {
     try {
       await core.triggerEngine.stop();
       await core.runtime.waitForIdle();
+      // Let a running PDF ingest settle so the source is not stranded as
+      // `processing`, but never hold quit longer than a few seconds.
+      await Promise.race([
+        core.workspaceSources.waitForIdle(),
+        new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+      ]);
     } catch (err) {
       console.error('[AX Studio] 종료 중 정리 실패:', err);
     } finally {

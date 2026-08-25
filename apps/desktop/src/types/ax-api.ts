@@ -113,6 +113,7 @@ export interface AxApi {
   onChatProgress?: (listener: (event: { message: string; requestId?: string }) => void) => () => void;
   explain: (q: string) => Promise<string>;
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;
+  disconnectSlack: () => Promise<{ ok: boolean }>;
   connectGmailOAuth: () => Promise<{ ok: boolean; email?: string }>;
   disconnectGmailOAuth: () => Promise<{ ok: boolean }>;
   pickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;

@@ -20,3 +20,9 @@ export function cancelWorkspaceChat(requestId: string): boolean {
   activeChats.delete(requestId);
   return true;
 }
+
+/** Abort every in-flight chat turn. Used on app shutdown so quit is not held by a provider call. */
+export function abortAllWorkspaceChats(): void {
+  for (const controller of activeChats.values()) controller.abort();
+  activeChats.clear();
+}

@@ -138,3 +138,15 @@ export function listWorkspaceSources(db: AppDatabase, sessionId: string): Worksp
     'SELECT * FROM workspace_chat_sources WHERE chat_id = ? ORDER BY created_at ASC',
   ).all(sessionId).map(toRecord);
 }
+
+/** How many sources outside the given session still reference this artifact. */
+export function countWorkspaceSourcesForArtifact(
+  db: AppDatabase,
+  artifactId: string,
+  excludeSessionId: string,
+): number {
+  const row = db.prepare(
+    'SELECT COUNT(*) AS n FROM workspace_chat_sources WHERE (artifact_id = ? OR document_artifact_id = ?) AND chat_id != ?',
+  ).get(artifactId, artifactId, excludeSessionId) as { n?: number } | undefined;
+  return Number(row?.n) || 0;
+}

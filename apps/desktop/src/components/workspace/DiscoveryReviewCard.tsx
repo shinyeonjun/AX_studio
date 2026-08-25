@@ -20,11 +20,11 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: Discove
               <li key={field.outputPath}>
                 <strong>{field.label ?? field.outputPath}</strong>
                 {field.display && <div>관찰값: {field.display}</div>}
-                {field.sourceId && <div>Source: {field.sourceId}</div>}
-                {field.mappingLabel && <div>Learned rule: {field.mappingLabel}</div>}
+                {field.sourceId && <div>데이터 출처: {field.sourceId}</div>}
+                {field.mappingLabel && <div>학습한 규칙: {field.mappingLabel}</div>}
                 {field.replayByExample.length > 0 && (
                   <div>
-                    Replay:
+                    재현 결과:
                     <ul>
                       {field.replayByExample.map((entry) => (
                         <li key={entry.exampleId}>
@@ -35,7 +35,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: Discove
                   </div>
                 )}
                 {field.confidence != null && (
-                  <div>Confidence: {(field.confidence * 100).toFixed(0)}%</div>
+                  <div>확신도: {(field.confidence * 100).toFixed(0)}%</div>
                 )}
               </li>
             ))}

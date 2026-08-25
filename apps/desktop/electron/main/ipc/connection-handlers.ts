@@ -13,7 +13,7 @@ import {
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
-import { getSlackSecret, saveSlackSecret } from '../slack/connection.js';
+import { deleteSlackSecret, getSlackSecret, saveSlackSecret } from '../slack/connection.js';
 import { disconnectHttp, validateAndConnectHttp } from '../http/connection.js';
 import {
   disconnectWebhook,
@@ -123,6 +123,16 @@ export function registerConnectionHandlers() {
       };
     },
   );
+  ipcMain.handle('ax:disconnectSlack', async () => {
+    const core = getCore();
+    await core.triggerEngine.refreshSlackSocket(null);
+    await deleteSlackSecret();
+    core.runtime.setConnector('slack', null);
+    core.store.setConnection('slack', false);
+    notifyStateChanged();
+    return { ok: true };
+  });
+
   ipcMain.handle('ax:connectGmailOAuth', async () => {
     const core = getCore();
     return connectGmailOAuth(core.store, core.runtime);

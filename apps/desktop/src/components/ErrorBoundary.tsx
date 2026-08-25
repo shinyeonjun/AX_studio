@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="ui-error-fallback">
           <h1>화면을 표시하지 못했습니다</h1>
-          <p className="muted">인터뷰 응답을 처리하는 중 오류가 발생했습니다. 앱을 다시 시작하거나 DevTools 콘솔을 확인해 주세요.</p>
+          <p className="muted">화면을 그리는 중 오류가 발생했습니다. 다시 시도하거나 앱을 재시작해 주세요.</p>
           <pre className="ui-error-message">{this.state.error.message}</pre>
           <button type="button" className="btn btn-primary" onClick={() => this.setState({ error: null })}>
             다시 시도

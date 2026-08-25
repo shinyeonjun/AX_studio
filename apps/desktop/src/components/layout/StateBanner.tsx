@@ -3,9 +3,10 @@ interface StateBannerProps {
   stale?: boolean;
   error?: string;
   onRetry?: () => void;
+  onDismiss?: () => void;
 }
 
-export function StateBanner({ loading, stale, error, onRetry }: StateBannerProps) {
+export function StateBanner({ loading, stale, error, onRetry, onDismiss }: StateBannerProps) {
   if (!loading && !stale && !error) return null;
 
   if (loading) {
@@ -23,6 +24,11 @@ export function StateBanner({ loading, stale, error, onRetry }: StateBannerProps
         {onRetry && (
           <button type="button" className="btn btn-sm btn-secondary" onClick={onRetry}>
             다시 시도
+          </button>
+        )}
+        {onDismiss && (
+          <button type="button" className="btn btn-sm btn-secondary" aria-label="오류 닫기" onClick={onDismiss}>
+            닫기
           </button>
         )}
       </div>

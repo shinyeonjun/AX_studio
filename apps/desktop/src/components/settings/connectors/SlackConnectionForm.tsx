@@ -3,14 +3,16 @@ import slackIcon from '../../../images/connectors/slack.png';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { slackCapabilityStatus } from '../../../lib/slack-status';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 interface SlackConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
   onConnect: (payload: { token: string; appToken?: string }) => Promise<void>;
+  onDisconnect?: () => Promise<void>;
 }
 
-export function SlackConnectionForm({ state, embedded = false, onConnect }: SlackConnectionFormProps) {
+export function SlackConnectionForm({ state, embedded = false, onConnect, onDisconnect }: SlackConnectionFormProps) {
   const [slackToken, setSlackToken] = useState('');
   const [appToken, setAppToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,6 +39,21 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
       setAppToken('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Slack 연결에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!onDisconnect) return;
+    if (!confirmDisconnectConnector('Slack')) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      await onDisconnect();
+      setMessage('Slack 연결이 해제되었습니다.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Slack 연결 해제에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -109,6 +126,16 @@ export function SlackConnectionForm({ state, embedded = false, onConnect }: Slac
           >
             {busy ? '연결 중...' : connectLabel}
           </button>
+          {connected && onDisconnect && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void handleDisconnect()}
+              disabled={busy}
+            >
+              연결 해제
+            </button>
+          )}
           {message && (
             <p className={`connection-form-message ${message.includes('실패') ? 'error' : ''}`} role="status">
               {message}

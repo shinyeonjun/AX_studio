@@ -23,7 +23,7 @@ describe('workspace chat persistence boundary', () => {
     const store = new WorkflowStore(db);
 
     expect(store.listWorkspaceChats()).toEqual([
-      expect.objectContaining({ id: 'broken-workspace-chat', corrupted: true, messages: [] }),
+      expect.objectContaining({ id: 'broken-workspace-chat', corrupted: true }),
     ]);
     expect(() => store.getWorkspaceChat('broken-workspace-chat')).toThrow(/corrupted/);
   });

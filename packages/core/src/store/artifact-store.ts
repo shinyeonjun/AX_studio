@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 export interface StoredArtifact {
@@ -82,6 +82,15 @@ export class ArtifactStore {
     const record = JSON.parse(readFileSync(metaPath, 'utf8')) as StoredArtifact;
     if (!record.storedPath) return undefined;
     return record;
+  }
+
+  /** Delete the stored file plus every sidecar written for this artifact id. */
+  remove(id: string): void {
+    const record = this.get(id);
+    if (record?.storedPath) rmSync(record.storedPath, { force: true });
+    for (const suffix of ['.json', '.document.json', '.ingest.json']) {
+      rmSync(join(this.rootDir, `${id}${suffix}`), { force: true });
+    }
   }
 
   findBySha(sha256: string): StoredArtifact | undefined {

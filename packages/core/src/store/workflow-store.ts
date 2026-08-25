@@ -93,6 +93,10 @@ export class WorkflowStore {
     return workspaceSourceRepo.listWorkspaceSources(this.db, sessionId);
   }
 
+  countWorkspaceSourcesForArtifact(artifactId: string, excludeSessionId: string) {
+    return workspaceSourceRepo.countWorkspaceSourcesForArtifact(this.db, artifactId, excludeSessionId);
+  }
+
   refreshWorkspaceChatTitle(sessionId: string) {
     return workspaceChatRepo.refreshWorkspaceChatTitle(this.db, sessionId);
   }

@@ -71,10 +71,12 @@ function UserMessage({ message }: { message: WorkspaceChatMessage }) {
 function AssistantMessage({
   message,
   busy,
+  isLatest,
   onSend,
 }: {
   message: WorkspaceChatMessage;
   busy: boolean;
+  isLatest: boolean;
   onSend: (text: string) => Promise<void>;
 }) {
   const content = isRunResultMessage(message.content)
@@ -90,6 +92,7 @@ function AssistantMessage({
           presentations={message.presentations}
           inputRequests={message.inputRequests}
           busy={busy}
+          interactive={isLatest}
           onSend={onSend}
         />
       </div>
@@ -197,6 +200,7 @@ export function AxWorkspaceChat({
                 key={`assistant-${index}`}
                 message={message}
                 busy={busy}
+                isLatest={index === messages.length - 1}
                 onSend={onSend}
               />
             ))}
@@ -226,7 +230,7 @@ export function AxWorkspaceChat({
               disabled={busy || workflowRegistered}
               onClick={() => void onRegisterWorkflow()}
             >
-              {workflowRegistered ? '워크플로우 등록됨' : '워크플로우 등록'}
+              {workflowRegistered ? '업무로 등록됨' : '업무로 등록'}
             </button>
           )}
           <ComposerPrimitive.Root className="ax-workspace-composer">

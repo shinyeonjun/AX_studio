@@ -42,7 +42,7 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
         <AiHubCards state={state} detecting={detecting} hub={hub} onOpenBrand={openBrand} />
       </SettingsCategory>
 
-      <SettingsCategory title="메시징" description="메일과 Slack 알림을 워크플로우에 연결합니다.">
+      <SettingsCategory title="메시징" description="메일과 Slack 알림을 업무에 연결합니다.">
         <div className="connection-hub">
           {MESSAGING_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
@@ -91,7 +91,7 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
         </div>
       </SettingsCategory>
 
-      <SettingsCategory title="API" description="외부 REST API를 워크플로우에 연결합니다.">
+      <SettingsCategory title="API" description="외부 REST API를 업무에 연결합니다.">
         <div className="connection-hub">
           {API_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];

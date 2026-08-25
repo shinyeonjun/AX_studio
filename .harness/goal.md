@@ -364,6 +364,19 @@ other write methods in this slice.
   integration (HTTP/Webhook/SQLite/PostgreSQL/MySQL), production build, and
   Electron E2E 13/13. `git diff --check` passed.
 
+## Completed task: quality-audit fixes 1–10 (2026-08-25)
+
+Applied the ten prioritized recommendations from the UI/UX + non-functional
+audit: stale assistant action lockout, dismissible error banner, theme-toggle
+click fix (overlay input), connector disconnect confirmations plus a Slack
+disconnect path, shutdown chat abort with bounded ingest wait, window-first
+startup with googleapis externalized from the main bundle (28MB→2.6MB),
+messages_json-free session listing via json_valid, terminology unification
+(업무) with Korean Discovery labels, dark-mode chat/run surface tokens,
+artifact GC on chat deletion, and a restored `test/manual` REST+PostgreSQL
+fixture. Verified with Core 96 files/403 tests, desktop typecheck/build, and
+deterministic smoke QA 16/16 (previously 15/16).
+
 ## Current task: product QA replay harness
 
 Build a deterministic, data-driven QA harness that exercises AX Studio through

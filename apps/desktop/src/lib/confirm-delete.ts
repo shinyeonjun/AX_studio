@@ -12,6 +12,12 @@ export function confirmDeleteExecution(): boolean {
   return window.confirm('이 실행 기록을 삭제할까요?');
 }
 
+export function confirmDisconnectConnector(name: string): boolean {
+  return window.confirm(
+    `${name} 연결을 해제할까요?\n\n이 연결을 사용하는 업무는 다음 실행부터 실패할 수 있습니다.`,
+  );
+}
+
 export function confirmRemoveLocalFolder(label: string, path: string): boolean {
   const name = label.trim() || path;
   return window.confirm(

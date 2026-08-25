@@ -13,6 +13,10 @@ const mainExternals = [
   'pg-native',
   'mysql2',
   'mysql2/promise',
+  // googleapis alone was ~25MB of the bundled main chunk; load it from
+  // node_modules at runtime like the other connector SDKs.
+  'googleapis',
+  'google-auth-library',
 ];
 
 const googleOAuthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? '';

@@ -58,7 +58,7 @@ export function WorkflowPreviewPanel({
     <aside className={`wf-preview ${done ? 'wf-preview-review' : ''}`}>
       <div className="wf-preview-header">
         <div>
-          <div className="wf-preview-kicker">워크플로우</div>
+          <div className="wf-preview-kicker">업무 흐름</div>
           <h2 className="wf-preview-title">{title?.trim() || draft?.name || '새 업무'}</h2>
           {diff.hasChanges && diffText && (
             <p className="wf-preview-diff">{diffText}</p>
@@ -93,7 +93,7 @@ export function WorkflowPreviewPanel({
 
       {selectedNode?.data.kind === 'system' && (
         <div className="wf-detail-panel wf-detail-panel-system">
-          <div className="wf-detail-kicker">자동 워크플로우 노드</div>
+          <div className="wf-detail-kicker">자동 업무 단계</div>
           <h3 className="wf-detail-title">{selectedNode.data.label}</h3>
           <p className="wf-detail-subtitle">
             {selectedNode.data.subtitle ?? selectedNode.data.tooltip ?? selectedNode.data.card?.summary}

@@ -150,6 +150,10 @@ export default function App() {
         await window.ax.connectSlack(payload);
         await refresh();
       }}
+      onDisconnectSlack={async () => {
+        await window.ax.disconnectSlack();
+        await refresh();
+      }}
       onConnectGmail={() => window.ax.connectGmailOAuth().then(refresh)}
       onDisconnectGmail={() => window.ax.disconnectGmailOAuth().then(refresh)}
       onPickLocalFolder={() => window.ax.pickLocalFolder()}
@@ -256,7 +260,11 @@ export default function App() {
           loading={isLoading}
           stale={isStale}
           error={stateError || actionError}
-          onRetry={() => void refresh()}
+          onRetry={() => {
+            setActionError('');
+            void refresh();
+          }}
+          onDismiss={actionError ? () => setActionError('') : undefined}
         />
         {mainContent}
       </main>

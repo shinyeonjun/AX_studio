@@ -3,6 +3,7 @@ import gmailIcon from '../../../images/connectors/gmail.png';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { maskEmail } from '../../../lib/mask-email';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 interface GmailConnectionFormProps {
   state: AppState | null;
@@ -43,6 +44,7 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector('Gmail')) return;
     setBusy(true);
     setMessage('');
     try {

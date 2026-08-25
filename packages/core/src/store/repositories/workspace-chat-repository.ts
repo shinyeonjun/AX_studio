@@ -33,8 +33,17 @@ export interface WorkspaceChatRecord {
   corrupted?: boolean;
 }
 
-export interface WorkspaceChatListRecord extends WorkspaceChatRecord {
+/**
+ * List rows intentionally omit `messages`: rendering the session list must not
+ * pay for parsing every stored transcript. Open a chat to load its messages.
+ */
+export interface WorkspaceChatListRecord {
+  id: string;
+  title: string;
+  workflowId?: string;
+  updatedAt: string;
   sourceCount: number;
+  corrupted?: boolean;
 }
 
 const WorkspaceChatMessagesSchema = z.array(
@@ -209,44 +218,52 @@ export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string
 }
 
 export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatListRecord[] {
-  const rows = db
-    .prepare(
-      `SELECT wc.id, wc.title, wc.messages_json, wc.workflow_id, wc.updated_at,
-              (SELECT COUNT(*) FROM workspace_chat_sources wcs WHERE wcs.chat_id = wc.id) AS source_count
-       FROM workspace_chats wc
-       ORDER BY wc.updated_at DESC
-       LIMIT ?`,
-    )
-    .all(limit) as Array<{
+  interface ListRow {
     id: string;
     title: string;
-    messages_json: string;
     workflow_id?: string | null;
     updated_at: string;
     source_count: number;
-  }>;
+    valid_json: number;
+  }
+  const sourceCountSql =
+    '(SELECT COUNT(*) FROM workspace_chat_sources wcs WHERE wcs.chat_id = wc.id) AS source_count';
+  let rows: ListRow[];
+  try {
+    rows = db
+      .prepare(
+        `SELECT wc.id, wc.title, wc.workflow_id, wc.updated_at,
+                json_valid(wc.messages_json) AS valid_json,
+                ${sourceCountSql}
+         FROM workspace_chats wc
+         ORDER BY wc.updated_at DESC
+         LIMIT ?`,
+      )
+      .all(limit) as ListRow[];
+  } catch {
+    // JSON1 unavailable: list without a validity probe rather than parsing
+    // every stored transcript; a corrupt chat still fails closed on open.
+    rows = db
+      .prepare(
+        `SELECT wc.id, wc.title, wc.workflow_id, wc.updated_at,
+                1 AS valid_json,
+                ${sourceCountSql}
+         FROM workspace_chats wc
+         ORDER BY wc.updated_at DESC
+         LIMIT ?`,
+      )
+      .all(limit) as ListRow[];
+  }
   return rows.map((row) => {
-    try {
-      return {
-        id: row.id,
-        title: row.title,
-        messages: parseMessages(row.messages_json, row.id),
-        ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
-        updatedAt: row.updated_at,
-        sourceCount: Number(row.source_count) || 0,
-      };
-    } catch (error) {
-      const code = error instanceof Error && 'code' in error ? String(error.code) : 'invalid_workspace_chat_json';
-      return {
-        id: row.id,
-        title: `${row.title || '대화'} (복구 필요)`,
-        messages: [],
-        updatedAt: row.updated_at,
-        corrupted: true,
-        errorCode: code,
-        sourceCount: Number(row.source_count) || 0,
-      } as WorkspaceChatListRecord & { errorCode: string };
-    }
+    const corrupted = !row.valid_json;
+    return {
+      id: row.id,
+      title: corrupted ? `${row.title || '대화'} (복구 필요)` : row.title,
+      ...(row.workflow_id && !corrupted ? { workflowId: row.workflow_id } : {}),
+      updatedAt: row.updated_at,
+      sourceCount: Number(row.source_count) || 0,
+      ...(corrupted ? { corrupted: true } : {}),
+    };
   });
 }
 

@@ -94,7 +94,7 @@ export function LocalFolderConnectionForm({
           <div>
             <h3>로컬 폴더 연결</h3>
             <p className="muted">
-              PDF·문서를 매번 업로드하지 않고, 연결한 폴더의 파일을 워크플로우에서 읽을 수 있습니다.
+              PDF·문서를 매번 업로드하지 않고, 연결한 폴더의 파일을 업무에서 읽을 수 있습니다.
             </p>
           </div>
           <span className={`connection-badge ${connected ? 'connected' : ''}`}>

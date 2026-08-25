@@ -84,7 +84,7 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
   mcp: {
     id: 'mcp',
     title: 'MCP',
-    description: 'MCP tool 정의를 워크플로우에 등록',
+    description: 'MCP tool 정의를 업무에 등록',
     emojiIcon: '🔌',
     settingsScreen: 'mcp',
     emoji: '🔌',

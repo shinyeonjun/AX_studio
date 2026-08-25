@@ -185,4 +185,39 @@ describe('WorkspaceSourceService', () => {
     service.removeSession(chat.id);
     expect(existsSync(join(root, 'sessions', chat.id))).toBe(false);
   });
+
+  it('garbage-collects artifacts on session removal unless another session references them', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-workspace-source-gc-'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const artifacts = new ArtifactStore(join(root, 'artifacts'));
+    const service = new WorkspaceSourceService(store, artifacts, join(root, 'sessions'));
+    setDocumentEngineClient(mockEngine());
+    const sharedPdf = join(root, 'shared.pdf');
+    const ownPdf = join(root, 'own.pdf');
+    writeFileSync(sharedPdf, '%PDF-1.7 shared fixture');
+    writeFileSync(ownPdf, '%PDF-1.7 own fixture');
+
+    const chatA = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'A' }] });
+    const chatB = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'B' }] });
+    const sharedA = await service.attachFile(chatA.id, sharedPdf, 'application/pdf');
+    const ownA = await service.attachFile(chatA.id, ownPdf, 'application/pdf');
+    await service.attachFile(chatB.id, sharedPdf, 'application/pdf');
+    await service.waitForIdle();
+
+    const sharedArtifact = artifacts.get(sharedA.artifactId)!;
+    const ownArtifact = artifacts.get(ownA.artifactId)!;
+    expect(existsSync(sharedArtifact.storedPath)).toBe(true);
+    expect(existsSync(ownArtifact.storedPath)).toBe(true);
+
+    service.removeSession(chatA.id);
+    store.deleteWorkspaceChat(chatA.id);
+
+    // Own artifact is gone with its sidecars; shared artifact survives for chat B.
+    expect(existsSync(ownArtifact.storedPath)).toBe(false);
+    expect(artifacts.get(ownA.artifactId)).toBeUndefined();
+    expect(artifacts.getDocumentArtifact(ownA.artifactId)).toBeUndefined();
+    expect(existsSync(sharedArtifact.storedPath)).toBe(true);
+    expect(artifacts.get(sharedA.artifactId)).toBeDefined();
+  });
 });

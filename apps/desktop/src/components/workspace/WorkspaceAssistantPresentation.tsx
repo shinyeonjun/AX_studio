@@ -5,6 +5,8 @@ interface WorkspaceAssistantPresentationProps {
   presentations?: AxUiPresentation[];
   inputRequests?: AxInputRequest[];
   busy: boolean;
+  /** Only the latest assistant turn may submit actions; stale cards render read-only. */
+  interactive?: boolean;
   onSend: (text: string) => Promise<void>;
 }
 
@@ -88,12 +90,15 @@ function PresentationBlock({ block }: { block: AxUiPresentation['blocks'][number
 function PresentationCard({
   presentation,
   busy,
+  interactive,
   onSend,
 }: {
   presentation: AxUiPresentation;
   busy: boolean;
+  interactive: boolean;
   onSend: (text: string) => Promise<void>;
 }) {
+  const locked = busy || !interactive;
   return (
     <section className="ax-workspace-presentation" aria-label={presentation.title}>
       <header className="ax-workspace-presentation-header">
@@ -112,7 +117,7 @@ function PresentationCard({
             <InputRequestCard
               key={request.id}
               request={request}
-              busy={busy}
+              busy={locked}
               onSend={onSend}
             />
           ))}
@@ -125,7 +130,7 @@ function PresentationCard({
               key={action.id}
               type="button"
               className={`ax-workspace-presentation-action ax-workspace-presentation-action--${action.tone}`}
-              disabled={busy}
+              disabled={locked}
               onClick={() => void onSend(action.value)}
             >
               {action.label}
@@ -141,6 +146,7 @@ export function WorkspaceAssistantPresentation({
   presentations = [],
   inputRequests = [],
   busy,
+  interactive = true,
   onSend,
 }: WorkspaceAssistantPresentationProps) {
   if (presentations.length === 0 && inputRequests.length === 0) return null;
@@ -152,6 +158,7 @@ export function WorkspaceAssistantPresentation({
           key={`${presentation.title}-${index}`}
           presentation={presentation}
           busy={busy}
+          interactive={interactive}
           onSend={onSend}
         />
       ))}
@@ -164,6 +171,7 @@ export function WorkspaceAssistantPresentation({
             actions: [],
           }}
           busy={busy}
+          interactive={interactive}
           onSend={onSend}
         />
       )}

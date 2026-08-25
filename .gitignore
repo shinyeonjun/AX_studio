@@ -42,6 +42,7 @@ npm-debug.log*
 .cache/
 coverage/
 /test-results/
+/test/test-results/
 /test/product-qa/runs/
 
 # OS

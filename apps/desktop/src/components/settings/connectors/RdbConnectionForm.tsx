@@ -3,6 +3,7 @@ import type { AppState } from '../../../types/app-state';
 import { connectionEntry, rdbTypeLabel } from '../../../lib/connection-display';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { ConnectedServiceList } from '../ConnectedServiceList';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 interface RdbConnectionFormProps {
   state: AppState | null;
@@ -112,6 +113,7 @@ export function RdbConnectionForm({
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector('데이터베이스')) return;
     setBusy(true);
     setMessage('');
     try {

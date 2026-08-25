@@ -583,6 +583,37 @@
   --ax-chat-composer-border: var(--border);
 }
 
+[data-theme='dark'] .ax-workspace-composer-shell textarea::placeholder,
+[data-theme='dark'] .ax-workspace-composer-shell input::placeholder {
+  color: #8a90a0;
+}
+
+[data-theme='dark'] .ax-workspace-send {
+  background: #ececec;
+  color: #1a1a1a;
+}
+
+[data-theme='dark'] .ax-workspace-send:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+[data-theme='dark'] .ax-workspace-send:disabled {
+  background: #3a4152;
+  color: #8a90a0;
+}
+
+[data-theme='dark'] .ax-workspace-error {
+  background: rgba(180, 63, 74, 0.16);
+  border-color: rgba(255, 130, 130, 0.35);
+  color: #ffb0b0;
+}
+
+[data-theme='dark'] .ax-run-result-card {
+  background: rgba(45, 98, 73, 0.2);
+  border-color: rgba(90, 180, 140, 0.35);
+  color: #9fd8bb;
+}
+
 [data-theme='dark'] .ax-workspace-welcome-hint code {
   background: rgba(122, 104, 200, 0.2);
   border-color: rgba(122, 104, 200, 0.35);

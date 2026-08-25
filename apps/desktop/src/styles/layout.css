@@ -44,20 +44,23 @@
 }
 
 .theme-toggle-input {
+  /* Invisible but covers the whole toggle so clicks land on the real input. */
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  margin: 0;
   border: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .theme-toggle-track {
   position: relative;
   display: block;
+  /* 장식용 트랙이 클릭을 가로채지 않도록 — 클릭은 label을 통해 input으로 전달된다. */
+  pointer-events: none;
   width: 52px;
   height: 26px;
   border-radius: 999px;

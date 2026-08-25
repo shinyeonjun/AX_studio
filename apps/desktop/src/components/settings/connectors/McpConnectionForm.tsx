@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 const DEFAULT_TOOLS_JSON = `[
   {
@@ -43,6 +44,7 @@ export function McpConnectionForm({ state, embedded = false, onConnect, onDiscon
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector('MCP')) return;
     setBusy(true);
     setMessage('');
     try {

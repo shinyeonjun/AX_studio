@@ -261,6 +261,21 @@ export class WorkspaceSourceService {
 
   removeSession(sessionId: string): void {
     const safeSessionId = assertSessionId(sessionId);
+    // GC artifacts this session imported, unless another session still
+    // references the same content (importFile dedupes by sha).
+    const artifactIds = new Set<string>();
+    for (const source of this.store.listWorkspaceSources(safeSessionId)) {
+      artifactIds.add(source.artifactId);
+      if (source.documentArtifactId) artifactIds.add(source.documentArtifactId);
+    }
+    for (const artifactId of artifactIds) {
+      if (this.store.countWorkspaceSourcesForArtifact(artifactId, safeSessionId) > 0) continue;
+      try {
+        this.artifactStore.remove(artifactId);
+      } catch {
+        // Losing a GC pass must not block session deletion.
+      }
+    }
     rmSync(join(this.sessionsRoot, safeSessionId), { recursive: true, force: true });
   }
 

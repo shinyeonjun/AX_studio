@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('ax', {
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
   connectSlack: (payload: string | { token: string; appToken?: string }) =>
     ipcRenderer.invoke('ax:connectSlack', payload),
+  disconnectSlack: () => ipcRenderer.invoke('ax:disconnectSlack'),
   connectGmailOAuth: () => ipcRenderer.invoke('ax:connectGmailOAuth'),
   disconnectGmailOAuth: () => ipcRenderer.invoke('ax:disconnectGmailOAuth'),
   pickLocalFolder: () => ipcRenderer.invoke('ax:pickLocalFolder'),

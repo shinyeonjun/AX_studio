@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 interface OpenApiConnectionFormProps {
   state: AppState | null;
@@ -42,6 +43,7 @@ export function OpenApiConnectionForm({ state, embedded = false, onConnect, onDi
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector('OpenAPI')) return;
     setBusy(true);
     setMessage('');
     try {

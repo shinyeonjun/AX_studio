@@ -83,7 +83,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         <header className="chat-main-header">
           <div className="chat-main-title-wrap">
             <h1 className="chat-main-title">{title}</h1>
-            <span className="draft-badge draft-badge-done">workflow</span>
+            <span className="draft-badge draft-badge-done">업무</span>
           </div>
         </header>
       )}

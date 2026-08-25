@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import { connectionEntry, httpAuthLabel } from '../../../lib/connection-display';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { ConnectedServiceList } from '../ConnectedServiceList';
 
@@ -84,6 +85,7 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector(httpEntry?.label?.trim() || 'HTTP API')) return;
     setBusy(true);
     setMessage('');
     try {

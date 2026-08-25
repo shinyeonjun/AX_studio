@@ -94,7 +94,7 @@ export function NodeDetailPanel({
     <div className="wf-detail-panel">
       <div className="wf-detail-header">
         <div>
-          <div className="wf-detail-kicker">워크플로우 노드</div>
+          <div className="wf-detail-kicker">업무 단계</div>
           <h3 className="wf-detail-title">{nodeData.label}</h3>
           {nodeData.subtitle && <p className="wf-detail-subtitle">{nodeData.subtitle}</p>}
         </div>

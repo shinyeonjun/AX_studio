@@ -3,6 +3,7 @@ import type { AppState } from '../../../types/app-state';
 import { connectionEntry } from '../../../lib/connection-display';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { ConnectedServiceList } from '../ConnectedServiceList';
+import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
 
 interface WebhookConnectionFormProps {
   state: AppState | null;
@@ -74,6 +75,7 @@ export function WebhookConnectionForm({
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnectConnector('Webhook 수신')) return;
     setBusy(true);
     setMessage('');
     try {
