@@ -37,6 +37,18 @@ describe('runCommand', () => {
     ).rejects.toMatchObject({ code: 'EOUTPUTTOOLARGE' });
   });
 
+  it('does not start a streaming command when already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      runCommand('command-that-must-not-be-spawned', [], {
+        abortSignal: controller.signal,
+        onStdoutLine: () => {},
+      }),
+    ).rejects.toMatchObject({ code: 'ABORT_ERR' });
+  });
+
   it('rejects oversized argv before spawning a child process', async () => {
     await expect(
       runCommand(process.execPath, ['-e', `process.stdout.write(${JSON.stringify('x'.repeat(300_000))})`], {
