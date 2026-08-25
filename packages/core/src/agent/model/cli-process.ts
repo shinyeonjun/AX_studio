@@ -202,6 +202,9 @@ export function runCommandStreaming(
     onStdoutLine?: (line: string) => void;
   } = {},
 ): Promise<CommandResult> {
+  if (options.abortSignal?.aborted) {
+    return Promise.reject(Object.assign(new Error('ABORT_ERR'), { code: 'ABORT_ERR' }));
+  }
   const timeoutMs = options.timeoutMs ?? 15_000;
   const invocation = commandInvocation(command, args);
   const argumentError = commandArgumentLimitError(invocation);
