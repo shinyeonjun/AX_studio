@@ -11,6 +11,7 @@ export interface GmailOAuthOptions {
   clientId: string;
   clientSecret?: string;
   scopes?: readonly string[];
+  timeoutMs?: number;
   /** OAuth URL을 브라우저 등으로 열 때 사용 */
   onAuthUrl?: (url: string) => void | Promise<void>;
 }
@@ -21,6 +22,8 @@ export interface GmailOAuthResult {
   expiryDate?: number;
   scopes: string[];
 }
+
+export const GMAIL_OAUTH_TIMEOUT_MS = 5 * 60_000;
 
 function generatePkcePair() {
   const codeVerifier = randomBytes(32).toString('base64url');
@@ -48,6 +51,18 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
 
   const code = await new Promise<string>((resolve, reject) => {
     let settled = false;
+    const timeoutMs = options.timeoutMs ?? GMAIL_OAUTH_TIMEOUT_MS;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const settle = (result: { code: string } | { error: Error }) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      if (server.listening) server.close();
+      if ('error' in result) reject(result.error);
+      else resolve(result.code);
+    };
+
     const server = createServer((req, res) => {
       const address = server.address();
       const port = typeof address === 'object' && address ? address.port : 0;
@@ -61,21 +76,13 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       if (err) {
         res.writeHead(400);
         res.end(`OAuth error: ${err}`);
-        server.close();
-        if (!settled) {
-          settled = true;
-          reject(new Error(err));
-        }
+        settle({ error: new Error(err) });
         return;
       }
       if (!oauthCallbackStateMatches(expectedState, url.searchParams.get('state'))) {
         res.writeHead(400);
         res.end('Invalid OAuth state');
-        server.close();
-        if (!settled) {
-          settled = true;
-          reject(new Error('Invalid OAuth state'));
-        }
+        settle({ error: new Error('Invalid OAuth state') });
         return;
       }
       const authCode = url.searchParams.get('code');
@@ -86,19 +93,17 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('Gmail 연결 완료. 이 창을 닫고 AX Studio로 돌아가세요.');
-      server.close();
-      if (!settled) {
-        settled = true;
-        resolve(authCode);
-      }
+      settle({ code: authCode });
     });
 
-    server.on('error', reject);
+    server.on('error', (error) => settle({ error }));
+    timer = setTimeout(() => {
+      settle({ error: Object.assign(new Error('Gmail OAuth timed out'), { code: 'oauth_timeout' }) });
+    }, timeoutMs);
     server.listen(0, '127.0.0.1', async () => {
       const address = server.address();
       if (!address || typeof address === 'string') {
-        server.close();
-        reject(new Error('Failed to bind loopback port'));
+        settle({ error: new Error('Failed to bind loopback port') });
         return;
       }
 
@@ -116,8 +121,7 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       try {
         await options.onAuthUrl?.(authUrl);
       } catch (error) {
-        server.close();
-        reject(error);
+        settle({ error: error instanceof Error ? error : new Error(String(error)) });
       }
     });
   });
