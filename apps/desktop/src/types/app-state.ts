@@ -1,5 +1,6 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
-import type { LocalFolderEntry } from './local-folder';
+import type { ConnectionEntry } from './connection-entry';
+import type { LocalFolderEntry } from '@ax-studio/core';
 
 export interface AiProviderState {
   provider?: string;
@@ -42,7 +43,7 @@ export interface AppState {
   slackLastError?: string;
   localFolders?: LocalFolderEntry[];
   works: WorkSummary[];
-  connections: Array<{ connector: string; connected: boolean; account?: string; scopes?: string[] }>;
+  connections: ConnectionEntry[];
   pendingApprovals: number;
   approvals: Array<{
     id: string;

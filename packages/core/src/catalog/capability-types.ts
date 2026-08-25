@@ -17,6 +17,8 @@ export const ConnectorCapabilitySchema = z.object({
   label: z.string(),
   description: z.string(),
   sideEffect: z.enum(['NONE', 'REVERSIBLE', 'EXTERNAL', 'EXTERNAL_HIGH']).optional(),
+  /** Optional method contract for read capabilities whose runtime action is generic. */
+  readMethods: z.array(z.string().min(1)).optional(),
   params: z.array(CapabilityParamSchema).default([]),
   io: CapabilityIOSchema.optional(),
 });

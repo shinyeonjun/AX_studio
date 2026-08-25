@@ -2,19 +2,21 @@ import type { AiProviderConfig } from './settings/config.js';
 import { resolveAiProviderConfig } from './settings/config.js';
 import { createModelProvider } from './model/factory.js';
 import type { ModelProvider } from './model/provider.js';
-import { buildRoleSystemPrompt } from './context-builders.js';
-import { loadAgentsConstitution } from './skill-load.js';
-import { getRoleDefinition } from './roles.js';
-import { isCloudProvider } from './cloud.js';
+import { buildInvestigatePrompt } from './prompt/investigate-prompt.js';
+import { composeAgentSystemPrompt } from './prompt/compose.js';
+import { getRoleDefinition } from './types.js';
 import type { AgentContext, AgentResult, AgentRun, InvestigateAgentContext } from './types.js';
 import type {
   InvestigationRunRequest,
   InvestigationRunner,
 } from './investigation-runner.js';
 
-function composeSystemPrompt(roleSystem: string): string {
-  const constitution = loadAgentsConstitution();
-  return `${constitution}\n\n---\n\n${roleSystem}`;
+const LOCAL_PROVIDER_NAMES = new Set(['mock', 'scripted', 'openai-compatible']);
+
+export function isCloudProvider(providerName: string): boolean {
+  if (LOCAL_PROVIDER_NAMES.has(providerName)) return false;
+  if (providerName.includes('ollama')) return false;
+  return true;
 }
 
 function redactUntrustedContext(context: AgentContext): AgentContext {
@@ -76,8 +78,8 @@ export class AgentHarness {
       });
     }
 
-    const system = composeSystemPrompt(
-      request.systemPrompt ?? buildRoleSystemPrompt(request.role, context),
+    const system = composeAgentSystemPrompt(
+      request.systemPrompt ?? buildInvestigatePrompt(request.role, context),
     );
     const temperature = request.temperature ?? definition.temperature;
     const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
@@ -134,7 +136,6 @@ export class AgentHarness {
   }
 }
 
-/** Adapts the general harness to the narrow protocol consumed by Runtime. */
 export function createInvestigationRunner(harness: AgentHarness): InvestigationRunner {
   return {
     get providerName() {

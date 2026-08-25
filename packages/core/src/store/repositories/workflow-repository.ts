@@ -4,6 +4,12 @@ import type { WorkflowIR } from '../../workflow/schema.js';
 import { parseWorkflowIR } from '../../workflow/schema.js';
 import { parseStoredWorkflow, serializeWorkflowForStorage } from '../../workflow/persisted-document.js';
 import { validateWorkflowForPersistence } from '../../workflow/contract-validator.js';
+import {
+  type AgentScopedContextMap,
+  type AgentScopedContextPatch,
+  mergeAgentScopedContext,
+  parseStoredAgentScopedContext,
+} from '../../agent/scoped-context.js';
 
 export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: string; version: number } {
   const now = new Date().toISOString();
@@ -70,6 +76,28 @@ export function getWorkflow(db: AppDatabase, workflowId: string, version?: numbe
       { code: 'invalid_workflow_json', workflowId, version: target.version },
     );
   }
+}
+
+export function getWorkflowPolicy(db: AppDatabase, workflowId: string): AgentScopedContextMap {
+  const row = db.prepare('SELECT policy_json FROM workflows WHERE id = ?').get(workflowId) as
+    | { policy_json?: string | null }
+    | undefined;
+  return parseStoredAgentScopedContext(row?.policy_json);
+}
+
+export function updateWorkflowPolicy(
+  db: AppDatabase,
+  workflowId: string,
+  patch: AgentScopedContextPatch,
+): AgentScopedContextMap | null {
+  const row = db.prepare('SELECT id, policy_json FROM workflows WHERE id = ?').get(workflowId) as
+    | { id: string; policy_json?: string | null }
+    | undefined;
+  if (!row) return null;
+  const next = mergeAgentScopedContext(parseStoredAgentScopedContext(row.policy_json), patch);
+  db.prepare('UPDATE workflows SET policy_json = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(next), new Date().toISOString(), workflowId);
+  return next;
 }
 
 export function listWorkflows(db: AppDatabase): Array<{ id: string; name: string; active: boolean; latestVersion: number }> {

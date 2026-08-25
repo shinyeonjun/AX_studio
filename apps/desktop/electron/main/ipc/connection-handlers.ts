@@ -272,13 +272,16 @@ export function registerConnectionHandlers() {
     }
     const record = payload as Record<string, unknown>;
     const type = record.type;
-    if (type !== 'postgres' && type !== 'sqlite') {
+    if (type !== 'mysql' && type !== 'postgres' && type !== 'sqlite') {
       throw new Error('DB 유형이 올바르지 않습니다.');
     }
     await validateAndConnectRdb(core.store, core.runtime, {
       type,
       connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
       filePath: typeof record.filePath === 'string' ? record.filePath : undefined,
+      allowedSchemas: Array.isArray(record.allowedSchemas)
+        ? record.allowedSchemas.filter((entry): entry is string => typeof entry === 'string')
+        : undefined,
       allowedTables: Array.isArray(record.allowedTables)
         ? record.allowedTables.filter((entry): entry is string => typeof entry === 'string')
         : undefined,

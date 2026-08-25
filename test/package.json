@@ -1,0 +1,10 @@
+{
+  "name": "@ax-studio/test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "product-qa": "node product-qa/run.mjs",
+    "product-qa:list": "node product-qa/run.mjs --list",
+    "product-qa:deterministic": "node product-qa/run.mjs --mode deterministic"
+  }
+}

@@ -12,7 +12,7 @@ import {
 let desktopPaths: AxDataPaths | null = null;
 
 export function resolveDesktopDataRoot(): string {
-  return resolvePlatformDataRoot();
+  return process.env.AX_DATA_ROOT?.trim() || resolvePlatformDataRoot();
 }
 
 export function initDesktopAxDataPaths(): AxDataPaths {

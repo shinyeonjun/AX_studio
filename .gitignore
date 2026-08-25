@@ -41,6 +41,8 @@ npm-debug.log*
 .vite/
 .cache/
 coverage/
+/test-results/
+/test/product-qa/runs/
 
 # OS
 .DS_Store

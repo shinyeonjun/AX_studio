@@ -1,5 +1,4 @@
-import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
-import type { WorkspaceSourceRecord } from '@ax-studio/core';
+import type { AxInputRequest, AxUiPresentation, WorkspaceSourceRecord, AxCommandResult } from '@ax-studio/core';
 import type { AiProviderState } from './app-state';
 import type {
   AiApiTestResult,
@@ -9,12 +8,7 @@ import type {
   DetectedAiCli,
 } from './ai-provider';
 
-export interface AxCommandResult {
-  command: string;
-  status: string;
-  data?: unknown;
-  issues?: Array<{ code: string; message: string; path?: string }>;
-}
+export type { AxCommandResult };
 
 export interface AxApi {
   getState: () => Promise<unknown>;
@@ -53,6 +47,7 @@ export interface AxApi {
       kind: 'workspace';
       workflowId?: string;
       corrupted?: boolean;
+      sourceCount?: number;
     }>
   >;
   saveWorkspaceChat: (
@@ -105,10 +100,16 @@ export interface AxApi {
     ok: boolean;
     sources: WorkspaceSourceRecord[];
   }>;
-  attachWorkspaceSource: (sessionId: string) => Promise<
-    | { ok: true; source: WorkspaceSourceRecord }
+  attachWorkspaceSource: (sessionId?: string | null) => Promise<
+    | { ok: true; sessionId: string; title: string; source: WorkspaceSourceRecord }
     | { ok: false; canceled?: boolean; error?: string }
   >;
+  e2eAttachWorkspaceSource?: (sessionId: string | null | undefined, filePath: string) => Promise<{
+    ok: true;
+    sessionId: string;
+    title: string;
+    source: WorkspaceSourceRecord;
+  }>;
   onChatProgress?: (listener: (event: { message: string; requestId?: string }) => void) => () => void;
   explain: (q: string) => Promise<string>;
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;
@@ -136,9 +137,10 @@ export interface AxApi {
   disconnectWebhook: () => Promise<unknown>;
   pickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
   connectRdb: (payload: {
-    type: 'postgres' | 'sqlite';
+    type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
+    allowedSchemas?: string[];
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
@@ -168,6 +170,10 @@ export interface AxApi {
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string }>;
   printPdf: (html: string) => Promise<unknown>;
   onStateChanged: (listener: () => void) => () => void;
+  onWorkspaceSourceChanged: (listener: (event: {
+    sessionId: string;
+    source: WorkspaceSourceRecord;
+  }) => void) => () => void;
   importArtifact: () => Promise<
     | { ok: true; artifact: { id: string; fileName: string; storedPath: string; sha256: string; size: number; createdAt: string } }
     | { ok: false; canceled: true }

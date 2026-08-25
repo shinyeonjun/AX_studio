@@ -10,7 +10,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
       updatedAt: chat.updatedAt,
       kind: 'workspace' as const,
       workflowId: chat.workflowId,
-      corrupted: chat.corrupted,
+      sourceCount: chat.sourceCount,
     }));
     return workspace.sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),

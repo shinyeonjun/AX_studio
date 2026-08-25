@@ -22,6 +22,14 @@ export class WorkflowStore {
     return workflowRepo.getWorkflow(this.db, workflowId, version);
   }
 
+  getWorkflowPolicy(workflowId: string) {
+    return workflowRepo.getWorkflowPolicy(this.db, workflowId);
+  }
+
+  updateWorkflowPolicy(workflowId: string, patch: import('../agent/scoped-context.js').AgentScopedContextPatch) {
+    return workflowRepo.updateWorkflowPolicy(this.db, workflowId, patch);
+  }
+
   listWorkflows() {
     return workflowRepo.listWorkflows(this.db);
   }
@@ -44,6 +52,14 @@ export class WorkflowStore {
 
   getWorkspaceChat(id: string) {
     return workspaceChatRepo.getWorkspaceChat(this.db, id);
+  }
+
+  getWorkspaceChatMemo(sessionId: string) {
+    return workspaceChatRepo.getWorkspaceChatMemo(this.db, sessionId);
+  }
+
+  updateWorkspaceChatMemo(sessionId: string, patch: import('../agent/scoped-context.js').AgentScopedContextPatch) {
+    return workspaceChatRepo.updateWorkspaceChatMemo(this.db, sessionId, patch);
   }
 
   getWorkspaceChatByWorkflowId(workflowId: string) {
@@ -75,6 +91,10 @@ export class WorkflowStore {
 
   listWorkspaceSources(sessionId: string) {
     return workspaceSourceRepo.listWorkspaceSources(this.db, sessionId);
+  }
+
+  refreshWorkspaceChatTitle(sessionId: string) {
+    return workspaceChatRepo.refreshWorkspaceChatTitle(this.db, sessionId);
   }
 
   createExecution(params: {

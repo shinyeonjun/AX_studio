@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './chat.js';
-import type { AgentProgressEvent } from '../progress.js';
+import type { AgentProgressEvent } from '../types.js';
 
 export interface ModelImageInput {
   data: Uint8Array;

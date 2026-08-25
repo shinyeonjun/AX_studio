@@ -31,6 +31,7 @@ import type { WorkbookMaterializer } from '../contracts/discovery-source.js';
 export interface WorkDiscoveryServiceOptions {
   store: WorkflowStore;
   artifactStore?: ArtifactStore;
+  resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceRegistry?: DiscoverySourceRegistry;
   sourceReadsMax?: number;
@@ -303,6 +304,7 @@ export class WorkDiscoveryService {
       const inventory = await inventorySources(this.sourceRegistry, {
         store: this.options.store,
         artifactStore: this.artifactStore,
+        resolveConnectionConfig: this.options.resolveConnectionConfig,
         snapshotDir: this.snapshotDir,
         exampleId: example.id,
         observations,

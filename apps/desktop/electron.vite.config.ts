@@ -9,6 +9,10 @@ const mainExternals = [
   'undici',
   '@slack/socket-mode',
   '@slack/web-api',
+  'pg',
+  'pg-native',
+  'mysql2',
+  'mysql2/promise',
 ];
 
 const googleOAuthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID ?? '';

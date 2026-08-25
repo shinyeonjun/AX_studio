@@ -1,14 +1,13 @@
-import { CLI_PROVIDER_META, resolveBinary, runCommand } from '@ax-studio/core';
-import type { AiBrandId } from './config-file.js';
+import { CLI_PROVIDER_META, resolveBinary, runCommand, type AiBrand } from '@ax-studio/core';
 
-const BRAND_CLI: Record<AiBrandId, 'claude-cli' | 'codex-cli' | 'cursor-cli'> = {
+const BRAND_CLI: Record<AiBrand, 'claude-cli' | 'codex-cli' | 'cursor-cli'> = {
   claude: 'claude-cli',
   gpt: 'codex-cli',
   grok: 'cursor-cli',
   ollama: 'codex-cli',
 };
 
-export async function testAiCli(brand: AiBrandId): Promise<{ ok: true; command: string; version?: string }> {
+export async function testAiCli(brand: AiBrand): Promise<{ ok: true; command: string; version?: string }> {
   const providerId = BRAND_CLI[brand];
   const meta = CLI_PROVIDER_META[providerId];
   const command = resolveBinary(meta.binaries);

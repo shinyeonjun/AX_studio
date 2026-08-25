@@ -20,6 +20,34 @@ describe('AX command provider transports', () => {
     });
   });
 
+  it('normalizes Codex commands when argsJson contains literal message line breaks', () => {
+    const transport = createAxCommandChatTransport('codex-cli');
+    const wire = transport.outputSchema.parse({
+      kind: 'command',
+      commandName: 'capability.invoke',
+      argsJson: `{
+        "id": "test.capability",
+        "params": {
+          "text": "
+[CRITICAL] 고객-티켓 불일치: Naver
+"
+        }
+      }`,
+      message: '',
+    });
+
+    expect(transport.normalize(wire)).toEqual({
+      kind: 'command',
+      command: {
+        name: 'capability.invoke',
+        args: {
+          id: 'test.capability',
+          params: { text: '\n[CRITICAL] 고객-티켓 불일치: Naver\n' },
+        },
+      },
+    });
+  });
+
   it('normalizes Claude nested wire output without passing CLI details to chat', () => {
     const transport = createAxCommandChatTransport('claude-cli');
     const wire = transport.outputSchema.parse({

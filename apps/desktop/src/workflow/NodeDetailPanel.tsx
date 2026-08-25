@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { CompletenessResult, WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
 import { connectionGuidance, panelFieldsForSource } from '@ax-studio/core/workflow/canvas/presentation/panel-fields';
 import type { SettingsScreen } from '../types/navigation';
-import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../constants/connectors';
+import { CONNECTOR_UI_CATALOG, isConnectorVisibleInUi, type ConnectorUiId } from '../constants/connectors';
 import type { WorkflowVisualNodeData } from './types.js';
 import { displayForTrigger, displayForWorkflowNode } from './node-display.js';
 
@@ -22,6 +22,7 @@ function findWorkflowNode(draft: WorkflowCanvasDraft | undefined, sourceId?: str
 }
 
 function settingsScreenForConnector(connectorId: string): SettingsScreen | null {
+  if (!isConnectorVisibleInUi(connectorId as ConnectorUiId)) return null;
   return CONNECTOR_UI_CATALOG[connectorId as ConnectorUiId]?.settingsScreen ?? null;
 }
 

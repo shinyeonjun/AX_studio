@@ -14,8 +14,9 @@ interface AiHubCardsProps {
 }
 
 function sortBrands(activeBrand: AiBrand | null): AiBrand[] {
-  if (!activeBrand) return [...ENABLED_AI_PROVIDER_IDS];
-  return [activeBrand, ...ENABLED_AI_PROVIDER_IDS.filter((brand) => brand !== activeBrand)];
+  const visible = [...ENABLED_AI_PROVIDER_IDS];
+  if (!activeBrand || !visible.includes(activeBrand)) return visible;
+  return [activeBrand, ...visible.filter((brand) => brand !== activeBrand)];
 }
 
 export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsProps) {

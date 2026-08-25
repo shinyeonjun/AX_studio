@@ -10,8 +10,6 @@ export * from './document-engine/index.js';
 export * from './document-write/index.js';
 export * from './credentials/index.js';
 export * from './agent/index.js';
-export { brandFromProvider, modelsForBrand } from './agent/settings/ai-catalog.js';
-export { resolveClaudeCliModelId } from './agent/settings/providers/claude/meta.js';
 export * from './store/db.js';
 export * from './store/workflow-store.js';
 export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';

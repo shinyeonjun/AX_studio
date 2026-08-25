@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { AppDatabase } from '../db.js';
+import { listWorkspaceSources } from './workspace-source-repository.js';
+import {
+  type AgentScopedContextMap,
+  type AgentScopedContextPatch,
+  mergeAgentScopedContext,
+  parseStoredAgentScopedContext,
+} from '../../agent/scoped-context.js';
 import {
   AxInputRequestSchema,
   AxUiPresentationSchema,
@@ -24,6 +31,10 @@ export interface WorkspaceChatRecord {
   updatedAt: string;
   /** Listed rows can be marked when old/corrupt JSON needs user deletion. */
   corrupted?: boolean;
+}
+
+export interface WorkspaceChatListRecord extends WorkspaceChatRecord {
+  sourceCount: number;
 }
 
 const WorkspaceChatMessagesSchema = z.array(
@@ -57,11 +68,50 @@ function parseMessages(messagesJson: string, id: string): WorkspaceChatMessage[]
   return parsed.data;
 }
 
-function titleFromMessages(messages: WorkspaceChatMessage[]): string {
+export function deriveWorkspaceChatTitle(
+  messages: WorkspaceChatMessage[],
+  sources: Array<{ fileName: string }>,
+): string {
   const firstUser = messages.find((message) => message.role === 'user' && message.content.trim());
-  if (!firstUser) return '새 대화';
-  const text = firstUser.content.trim();
-  return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+  if (firstUser) {
+    const text = firstUser.content.trim();
+    return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+  }
+  if (sources.length === 1) return sources[0]!.fileName;
+  if (sources.length > 1) return `${sources[0]!.fileName} 외 ${sources.length - 1}개`;
+  return '새 대화';
+}
+
+export function refreshWorkspaceChatTitle(db: AppDatabase, sessionId: string): string | null {
+  const chat = getWorkspaceChat(db, sessionId);
+  if (!chat) return null;
+  const sources = listWorkspaceSources(db, sessionId);
+  const title = deriveWorkspaceChatTitle(chat.messages, sources);
+  const now = new Date().toISOString();
+  db.prepare('UPDATE workspace_chats SET title = ?, updated_at = ? WHERE id = ?').run(title, now, sessionId);
+  return title;
+}
+
+export function getWorkspaceChatMemo(db: AppDatabase, sessionId: string): AgentScopedContextMap {
+  const row = db.prepare('SELECT session_memo_json FROM workspace_chats WHERE id = ?').get(sessionId) as
+    | { session_memo_json?: string | null }
+    | undefined;
+  return parseStoredAgentScopedContext(row?.session_memo_json);
+}
+
+export function updateWorkspaceChatMemo(
+  db: AppDatabase,
+  sessionId: string,
+  patch: AgentScopedContextPatch,
+): AgentScopedContextMap | null {
+  const current = db.prepare('SELECT id, session_memo_json FROM workspace_chats WHERE id = ?').get(sessionId) as
+    | { id: string; session_memo_json?: string | null }
+    | undefined;
+  if (!current) return null;
+  const next = mergeAgentScopedContext(parseStoredAgentScopedContext(current.session_memo_json), patch);
+  db.prepare('UPDATE workspace_chats SET session_memo_json = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(next), new Date().toISOString(), sessionId);
+  return next;
 }
 
 export function saveWorkspaceChat(
@@ -76,11 +126,12 @@ export function saveWorkspaceChat(
   const messages = WorkspaceChatMessagesSchema.parse(params.messages);
   const now = new Date().toISOString();
   const id = params.id?.trim() || randomUUID();
-  const title = titleFromMessages(messages);
-  const messagesJson = JSON.stringify(messages);
   const existing = db.prepare('SELECT id, workflow_id FROM workspace_chats WHERE id = ?').get(id) as
     | { id: string; workflow_id?: string | null }
     | undefined;
+  const sources = existing || params.id ? listWorkspaceSources(db, id) : [];
+  const title = deriveWorkspaceChatTitle(messages, sources);
+  const messagesJson = JSON.stringify(messages);
 
   if (existing) {
     if (params.workflowId === undefined) {
@@ -157,10 +208,14 @@ export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string
   };
 }
 
-export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRecord[] {
+export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatListRecord[] {
   const rows = db
     .prepare(
-      'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats ORDER BY updated_at DESC LIMIT ?',
+      `SELECT wc.id, wc.title, wc.messages_json, wc.workflow_id, wc.updated_at,
+              (SELECT COUNT(*) FROM workspace_chat_sources wcs WHERE wcs.chat_id = wc.id) AS source_count
+       FROM workspace_chats wc
+       ORDER BY wc.updated_at DESC
+       LIMIT ?`,
     )
     .all(limit) as Array<{
     id: string;
@@ -168,6 +223,7 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRe
     messages_json: string;
     workflow_id?: string | null;
     updated_at: string;
+    source_count: number;
   }>;
   return rows.map((row) => {
     try {
@@ -177,6 +233,7 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRe
         messages: parseMessages(row.messages_json, row.id),
         ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
         updatedAt: row.updated_at,
+        sourceCount: Number(row.source_count) || 0,
       };
     } catch (error) {
       const code = error instanceof Error && 'code' in error ? String(error.code) : 'invalid_workspace_chat_json';
@@ -187,7 +244,8 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatRe
         updatedAt: row.updated_at,
         corrupted: true,
         errorCode: code,
-      } as WorkspaceChatRecord & { errorCode: string };
+        sourceCount: Number(row.source_count) || 0,
+      } as WorkspaceChatListRecord & { errorCode: string };
     }
   });
 }

@@ -6,6 +6,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const harnessDir = join(root, 'src/agent');
 const skillsDir = join(harnessDir, 'skills');
 const agentsMdPath = join(harnessDir, 'AGENTS.md');
+const soulMdPath = join(harnessDir, 'soul.md');
 
 function findSkillFiles(directory, prefix = '') {
   const files = [];
@@ -29,7 +30,8 @@ const skillEntries = skillFiles.map(({ id, path }) => {
 });
 
 const agentsMd = readFileSync(agentsMdPath, 'utf8');
+const soulMd = readFileSync(soulMdPath, 'utf8');
 
-const out = `// GENERATED FILE — do not edit. Regenerate with: npm run build -w @ax-studio/core\n// Source: src/agent/skills/**/SKILL.md and src/agent/AGENTS.md via scripts/embed-skills.mjs\n\nexport const EMBEDDED_AGENT_SKILLS: Record<string, string> = {\n${skillEntries.join(',\n')}\n};\n\nexport const EMBEDDED_AGENTS_MD = ${JSON.stringify(agentsMd)};\n`;
+const out = `// GENERATED FILE — do not edit. Regenerate with: npm run build -w @ax-studio/core\n// Source: src/agent/skills/**/SKILL.md, src/agent/AGENTS.md, and src/agent/soul.md via scripts/embed-skills.mjs\n\nexport const EMBEDDED_AGENT_SKILLS: Record<string, string> = {\n${skillEntries.join(',\n')}\n};\n\nexport const EMBEDDED_AGENTS_MD = ${JSON.stringify(agentsMd)};\nexport const EMBEDDED_AGENT_SOUL = ${JSON.stringify(soulMd)};\n`;
 
 writeFileSync(join(harnessDir, 'embedded.ts'), out);

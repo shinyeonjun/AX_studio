@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { AppState } from '../../../types/app-state';
+import { connectionEntry } from '../../../lib/connection-display';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { ConnectedServiceList } from '../ConnectedServiceList';
 
 interface WebhookConnectionFormProps {
   state: AppState | null;
@@ -15,13 +17,37 @@ export function WebhookConnectionForm({
   onConnect,
   onDisconnect,
 }: WebhookConnectionFormProps) {
-  const connected = Boolean(state?.connections?.find((entry) => entry.connector === 'webhook')?.connected);
+  const webhookEntry = connectionEntry(state, 'webhook');
+  const connected = Boolean(webhookEntry?.connected);
+  const formRef = useRef<HTMLDivElement>(null);
   const [port, setPort] = useState('18789');
   const [secret, setSecret] = useState('');
   const [label, setLabel] = useState('');
   const [tunnelUrl, setTunnelUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+
+  const loadFromConnection = () => {
+    if (!webhookEntry?.connected) return;
+    if (webhookEntry.port != null) setPort(String(webhookEntry.port));
+    setLabel(webhookEntry.label ?? '');
+    setTunnelUrl(webhookEntry.tunnelUrl ?? '');
+    setSecret('');
+    setMessage('');
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const connectedItems =
+    connected && webhookEntry?.port != null
+      ? [
+          {
+            id: 'webhook',
+            title: webhookEntry.label?.trim() || 'Webhook',
+            subtitle: webhookEntry.localBaseUrl ?? `http://127.0.0.1:${webhookEntry.port}/hooks/`,
+            meta: webhookEntry.tunnelUrl ? `터널: ${webhookEntry.tunnelUrl}` : `포트 ${webhookEntry.port}`,
+          },
+        ]
+      : [];
 
   const handleConnect = async () => {
     const parsedPort = Number(port);
@@ -63,7 +89,7 @@ export function WebhookConnectionForm({
   const localExample = `http://127.0.0.1:${port || '18789'}/hooks/{path}`;
 
   return (
-    <div className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
+    <div ref={formRef} className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
       {!embedded && (
         <ConnectionGuide
           title="Webhook 수신"
@@ -93,7 +119,7 @@ export function WebhookConnectionForm({
           type="password"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
-          placeholder="X-AX-Webhook-Secret 헤더 값"
+          placeholder={connected ? '변경 시에만 입력' : 'X-AX-Webhook-Secret 헤더 값'}
           disabled={busy}
         />
 
@@ -134,6 +160,14 @@ export function WebhookConnectionForm({
         </div>
 
         {message && <p className="connection-form-message">{message}</p>}
+
+        <ConnectedServiceList
+          title="연결된 Webhook"
+          items={connectedItems}
+          busy={busy}
+          onEdit={() => loadFromConnection()}
+          onDisconnect={() => void handleDisconnect()}
+        />
       </div>
     </div>
   );

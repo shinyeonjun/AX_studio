@@ -42,6 +42,7 @@ export function formatCapabilitiesForPrompt(
           ? ', connection=required'
           : ', connection=ready';
       const risk = cap.sideEffect ? `, sideEffect=${cap.sideEffect}` : '';
+      const readMethods = cap.readMethods?.length ? `, readMethods=${cap.readMethods.join('|')}` : '';
       const required = (cap.params ?? [])
         .filter((param) => param.required)
         .map((param) => param.name)
@@ -58,9 +59,27 @@ export function formatCapabilitiesForPrompt(
       const inputs = formatPorts(cap.io?.inputs);
       const outputs = formatPorts(cap.io?.outputs);
       const io = inputs || outputs ? `, inputs=[${inputs}], outputs=[${outputs}]` : '';
-      return `- ${cap.id}@1: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}, kind=${cap.kind}${connection}${risk}${req}${paramText}${io})`;
+      return `- ${cap.id}@1: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}, kind=${cap.kind}${connection}${risk}${readMethods}${req}${paramText}${io})`;
     })
     .join('\n');
+}
+
+/** Validate a generic capability's method before it reaches a read-only gateway. */
+export function readCapabilityMethodIssue(
+  capability: ConnectorCapability,
+  params: Record<string, unknown>,
+): string | undefined {
+  if (!capability.readMethods?.length) return undefined;
+
+  const rawMethod = params.method;
+  const method =
+    rawMethod == null || (typeof rawMethod === 'string' && !rawMethod.trim())
+      ? capability.readMethods[0]
+      : typeof rawMethod === 'string'
+        ? rawMethod.trim().toUpperCase()
+        : '';
+
+  return capability.readMethods.includes(method) ? undefined : 'capability_method_not_allowed';
 }
 
 export function capabilityActionName(cap: ConnectorCapability): string {

@@ -26,7 +26,7 @@ export const RDB_CAPABILITIES: ConnectorCapability[] = [
 export const RDB_CATALOG: ConnectorCatalogEntry = {
   id: 'rdb',
   label: 'DB',
-  description: 'SQLite/PostgreSQL 읽기',
+  description: 'SQLite/PostgreSQL/MySQL 읽기',
   connectable: true,
   alwaysReal: false,
   runtimeAvailable: true,

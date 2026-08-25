@@ -13,6 +13,7 @@ import type { AiBrand } from '../../types/ai-provider';
 import type { SettingsScreen } from '../../types/navigation';
 import type { AppState } from '../../types/app-state';
 import { slackCapabilityStatus } from '../../lib/slack-status';
+import { connectionEntry } from '../../lib/connection-display';
 import { SettingsCategory } from './SettingsCategory';
 import { ConnectionCard } from './ConnectionCard';
 import { AiHubCards } from './ai/AiHubCards';
@@ -94,12 +95,19 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
         <div className="connection-hub">
           {API_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
-            const connected = state?.connections?.find((c) => c.connector === id)?.connected;
+            const entry = connectionEntry(state, id);
+            const connected = Boolean(entry?.connected);
+            const description =
+              id === 'http' && connected && entry?.baseUrl
+                ? entry.baseUrl
+                : id === 'webhook' && connected && entry?.localBaseUrl
+                  ? entry.localBaseUrl
+                  : meta.description;
             return (
               <ConnectionCard
                 key={id}
                 title={meta.title}
-                description={meta.description}
+                description={description}
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? '연결됨' : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
@@ -110,16 +118,21 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
         </div>
       </SettingsCategory>
 
-      <SettingsCategory title="데이터" description="DB·OpenAPI·MCP 소스를 연결합니다.">
+      <SettingsCategory title="데이터" description="읽기 전용 DB를 연결합니다.">
         <div className="connection-hub">
           {DATA_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
-            const connected = state?.connections?.find((c) => c.connector === id)?.connected;
+            const entry = connectionEntry(state, id);
+            const connected = Boolean(entry?.connected);
+            const description =
+              id === 'rdb' && connected && entry?.target
+                ? `${entry.label?.trim() || meta.title} · ${entry.target}`
+                : meta.description;
             return (
               <ConnectionCard
                 key={id}
                 title={meta.title}
-                description={meta.description}
+                description={description}
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? '연결됨' : '미연결'}
                 badgeClass={connected ? 'connected' : ''}

@@ -35,7 +35,6 @@ export default {
         'scripts/embed-skills.mjs',
       ],
       project: ['src/**/*.ts', 'scripts/**/*.mjs'],
-      ignore: ['src/agent/embedded.ts'],
     },
     'apps/desktop': {
       entry: [

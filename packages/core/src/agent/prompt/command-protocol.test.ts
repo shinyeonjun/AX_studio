@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildRoleSystemPrompt } from './context-builders.js';
+import { buildCommandProtocolPrompt } from './command-protocol.js';
+import { buildInvestigatePrompt } from './investigate-prompt.js';
 
 describe('role prompts', () => {
-  it('keeps the command prompt independent of connector skills', () => {
-    const prompt = buildRoleSystemPrompt('command', {
+  it('keeps the command protocol independent of connector skills', () => {
+    const prompt = buildCommandProtocolPrompt({
       connectedConnectors: ['gmail', 'slack', 'unknown'],
-      connectedResources: 'resource.list로 조회',
-      nowIso: '2026-08-21T00:00:00.000Z',
+      commands: [{ name: 'workflow.list' }],
+      outputInstructions: 'reply or command',
     });
 
     expect(prompt).toContain('AX command protocol');
@@ -16,7 +17,7 @@ describe('role prompts', () => {
   });
 
   it('uses catalog read capabilities for investigation', () => {
-    const prompt = buildRoleSystemPrompt('investigate', {
+    const prompt = buildInvestigatePrompt('investigate', {
       skillGoal: '문서 요약',
       taskGoal: '문서 evidence를 요약',
       evidence: [],

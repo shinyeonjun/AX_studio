@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { HARNESS_TASK_PROMPT, writeHarnessTaskFile } from '../../../task-file.js';
+import { HARNESS_TASK_PROMPT, writeHarnessTaskFile } from '../harness-task.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary, withTempDir } from '../shared.js';

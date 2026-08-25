@@ -76,20 +76,24 @@ revision_history:
     recorded_at: 2026-08-24
 
 current_task:
-  name: session-scoped-document-sources
+  name: http-webhook-rdb-completion
   evaluator_frozen: true
   checks:
-    - name: session-source-tests
+    - name: connector-integration
       type: command
-      command: npm test -w @ax-studio/core -- --run src/store/repositories/workspace-source-repository.test.ts src/store/workspace-source-service.test.ts src/agent/commands/session-source.test.ts src/agent/commands/chat.test.ts
+      command: npm run test:integration
       required: true
-    - name: source-regression-tests
+    - name: e2e-tests
       type: command
-      command: npm test -w @ax-studio/core -- --run src/store/artifact-store.test.ts src/store/import-discovery-artifact.test.ts src/document-engine/engine-client.test.ts
+      command: npm run test:e2e
       required: true
-    - name: core-typecheck
+    - name: e2e-typecheck
       type: command
-      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: core-tests
+      type: command
+      command: npm test -w @ax-studio/core
       required: true
     - name: desktop-typecheck
       type: command
@@ -99,38 +103,175 @@ current_task:
       type: command
       command: npm run build -w @ax-studio/desktop
       required: true
+    - name: document-engine-tests
+      type: command
+      command: .\\packages\\document-engine\\.venv\\Scripts\\python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'
+      required: true
     - name: diff-whitespace
       type: command
       command: git diff --check
       required: true
   human_review:
-    - session-source-isolation
-    - no-absolute-paths-in-agent-context
-    - docling-result-and-error-state
-    - panel-upload-and-reload-visibility
+    - local-http-and-webhook-boundaries
+    - rdb-read-only-and-allowlist-policy
+    - postgres-mysql-container-isolation-and-teardown
+    - desktop-mysql-connection-contract
+    - electron-main-preload-renderer-boundary
+    - isolated-e2e-data-root-and-cleanup
+    - source-attachment-docling-and-session-isolation
+    - failed-ingest-and-busy-state
+    - no-external-side-effects
 
   final:
-    recorded_at: 2026-08-24T10:06:48.6109340+09:00
-    session-source-tests: "PASS: 4 files, 9 tests"
-    source-regression-tests: "PASS: 3 files, 10 tests"
-    core-typecheck: "PASS"
-    desktop-typecheck: "PASS"
-    desktop-build: "PASS: root production build completed core, Electron main/preload, and renderer"
-    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
-    full-regression: "PASS: core 88 files/365 tests; core eval 11/11; document-engine 17 tests with 2 pypdf skips"
-    behavior: "PASS: session isolation, bounded source read, failed-ingest persistence, agent manifest path redaction, chat/source cleanup, and ingest-time chat/send race guard"
+    recorded_at: 2026-08-24T21:46:09.4033784+09:00
+    values:
+      connector-integration: "PASS: 6 tests; HTTP 2, Webhook 1, SQLite 1, PostgreSQL 1, MySQL 1"
+      e2e-tests: "PASS: 12 tests"
+      e2e-typecheck: "PASS"
+      core-tests: "PASS: 88 files, 368 tests"
+      core-typecheck: "PASS"
+      core-eval: "PASS: 11 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      document-engine-tests: "PASS: 17 tests"
+      diff-whitespace: "PASS: git diff --check; Git emitted only CRLF normalization warnings"
+    notes: "Integration uses dynamically published Docker ports and always removes test containers, volumes, and network. PostgreSQL/MySQL checks are read-only and allowlist protected. Connection strings are stored in the Electron host secret store, not connector metadata."
+
+manual_smoke_task:
+  name: manual-rest-postgres-gmail-slack-smoke
+  evaluator_frozen: true
+  checks:
+    - name: manual-fixture-script
+      type: command
+      command: npm run test:manual -- --check
+      required: true
+    - name: manual-rest-fixture
+      type: command
+      command: node test/manual/rest-api.test.mjs
+      required: true
+    - name: postgres-fixture
+      type: command
+      command: docker compose -f test/manual/compose.yml config
+      required: true
+    - name: existing-regressions
+      type: reference
+      command: npm run test:integration && npm run test:e2e && npm test -w @ax-studio/core
+      required: true
+  human_review:
+    - start-manual-fixture-and-copy-printed-values
+    - connect-http-and-postgres-in-desktop-settings
+    - review-workflow-before-gmail-slack-send
+    - verify-local-rest-post-and-postgres-read
+    - stop-fixture-and-confirm-owned-container-cleanup
+  final:
+    recorded_at: pending
+
+post_http_write_task:
+  name: explicit-http-post-write-capability
+  evaluator_frozen: true
+  checks:
+    - name: http-post-unit-and-policy
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/modules/http/connector.test.ts src/design-tools/capability-invoke.test.ts src/runtime/capability-read.test.ts src/runtime/engine.test.ts src/workflow/approval.test.ts src/workflow/side-effect-resolve.test.ts
+      required: true
+    - name: command-and-catalog-regressions
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/agent/commands/service.test.ts src/workflow/action-definition.test.ts src/catalog/capability-graph.test.ts
+      required: true
+    - name: connector-integration
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-regression
+      type: command
+      command: npm run test:e2e
+      required: true
+  human_review:
+    - read-only capability cannot send a POST
+    - http.post is represented as a write step and reaches approval before network I/O
+    - DELETE is not exposed by the command/catalog contract
+    - manual REST fixture accepts the explicit POST action and returned payload is observable
+  baseline:
+    recorded_at: 2026-08-25T08:18:03.9933277+09:00
+    values:
+      targeted-core: "PASS: 6 files, 43 tests"
+      connector-integration: "PASS: HTTP 2, Webhook 1, SQLite 1, PostgreSQL 1, MySQL 1"
+      core-typecheck: "PASS"
+    gap: "No explicit http.post catalog capability; low-level connector supports POST and the read-shaped generic request has no non-GET command regression."
+  final:
+    recorded_at: 2026-08-25T08:32:13.8333437+09:00
+    values:
+      http-post-unit-and-policy: "PASS: 8 files, 63 tests"
+      command-and-catalog-regressions: "PASS: 3 files, 31 tests"
+      connector-integration: "PASS: HTTP 2, Webhook 1, SQLite 1, PostgreSQL 1, MySQL 1"
+      core-typecheck: "PASS"
+      core-full-regression: "PASS: 96 files, 402 tests"
+      desktop-regression: "PASS: production build and Electron E2E 13/13"
+      diff-whitespace: "PASS: git diff --check"
+    decision: "KEEP: explicit http.post is cataloged as write-only, read paths reject POST, and Runtime approval precedes network I/O."
+
+product_qa_task:
+  name: repeated-realistic-product-qa
+  evaluator_frozen: true
+  checks:
+    - name: product-qa-smoke
+      type: command
+      command: node test/product-qa/run.mjs --runs 1 --no-build
+      required: true
+    - name: product-qa-repetition
+      type: command
+      command: node test/product-qa/run.mjs --runs 25 --no-build
+      required: true
+    - name: existing-e2e-regression
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - run a selected scenario with --scenario and inspect the JSON report
+    - confirm the repeated runner uses a fresh data root per Electron launch
+    - confirm no real Gmail, Slack, HTTP, or database connector is invoked
+    - inspect a failure artifact if an invariant fails
+  baseline:
+    recorded_at: 2026-08-25T08:47:37.2880533+09:00
+    values:
+      product-qa-smoke: "FAIL: test/product-qa/run.mjs does not exist"
+      product-qa-repetition: "NOT RUN: runner does not exist"
+      existing-e2e-regression: "FAIL: 12/13; settings connector traversal could not find OpenAPI card"
+      core-regression: "PASS: 96 files, 402 tests"
+      diff-whitespace: "NOT RUN: baseline recorded before product QA changes"
+    gap: "Static Electron E2E exists, but there is no data-driven repeated product QA runner or quantified invariant report. The current E2E baseline also exposes an existing settings-surface regression that must remain visible rather than be hidden by the new runner."
+  final:
+    recorded_at: pending
 
 current_baseline:
   recorded: true
-  recorded_at: 2026-08-24T09:33:07.4098212+09:00
+  recorded_at: 2026-08-24T21:12:23.7600422+09:00
   values:
-    session-source-tests: "PASS: 1 existing file, 4 tests; three requested source test files did not exist yet"
-    source-regression-tests: "PASS: 3 files, 10 tests"
-    core-typecheck: "PASS"
+    connector-integration: "FAIL: npm run test:integration script missing"
+    http-local-server: "NOT RUN: no integration runner"
+    webhook-local-server: "NOT RUN: no unified integration runner"
+    rdb-postgres: "NOT RUN: no RDB integration harness"
+    rdb-mysql: "NOT APPLICABLE: MySQL support absent"
+    core-tests: "PASS: 88 files, 368 tests"
     desktop-typecheck: "PASS"
-    desktop-build: "PASS: Electron main/preload and renderer"
-    diff-whitespace: "PASS: no whitespace errors; Git emitted CRLF normalization warnings"
-  notes: "Session-source baseline before implementation. The command selector accepted missing explicit test paths, so the session-source test check is not evidence of source behavior until those files exist. Existing dirty changes and docs/backend-flow-eli5-2026-08-24.html are not attributed to this goal."
+  notes: "Baseline for HTTP/Webhook/RDB completion before implementation. HTTP/Webhook production code remains unchanged; RDB has no MySQL path. Docker CLI is installed but the daemon was unavailable. The previous Electron E2E work and unrelated docs/backend-flow-eli5-2026-08-24.html are preserved."
+
+previous_task_session_sources:
+  name: session-scoped-document-sources
+  final_recorded_at: 2026-08-24T10:06:48.6109340+09:00
+  final: "Core 88 files/365 tests, source regressions, typechecks, build, session isolation, bounded reads, failed ingest, cleanup, and ingest-time chat/send guard passed."
 
 previous_task:
   name: conversational-workflow-registration-and-input-ui

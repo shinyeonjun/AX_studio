@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AX Studio 현재 백엔드 흐름과 데이터 저장 구조</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #5d687c;
+      --line: #dfe5ef;
+      --soft: #f5f7fb;
+      --blue: #2858c8;
+      --blue-soft: #eaf0ff;
+      --green: #087f5b;
+      --green-soft: #e7f8f1;
+      --amber: #a15c00;
+      --amber-soft: #fff4df;
+      --red: #a62d3f;
+      --red-soft: #ffeaee;
+      --purple: #7045ad;
+      --purple-soft: #f1eaff;
+      --shadow: 0 12px 28px rgba(28, 44, 76, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #fbfcfe;
+      font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 { line-height: 1.25; letter-spacing: -.025em; }
+    h1 { max-width: 880px; margin: 0; font-size: clamp(2rem, 5vw, 4rem); }
+    h2 { margin: 0 0 16px; font-size: clamp(1.45rem, 3vw, 2.15rem); }
+    h3 { margin: 0 0 8px; font-size: 1.08rem; }
+    h4 { margin: 0 0 8px; font-size: .98rem; }
+    p { margin: 0 0 12px; }
+    code, pre { font-family: "Cascadia Code", "Consolas", monospace; }
+    code { font-size: .9em; }
+    .wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      padding: 54px 0 34px;
+      background:
+        radial-gradient(circle at 87% 8%, #e8eeff 0, transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .lead {
+      max-width: 900px;
+      margin: 20px 0 0;
+      color: #303b50;
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+    }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .tag, .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: .8rem;
+      font-weight: 700;
+    }
+    .summary {
+      margin-top: 28px;
+      border: 1px solid #cbd8fb;
+      border-left: 6px solid var(--blue);
+      border-radius: 14px;
+      padding: 16px 18px;
+      background: var(--blue-soft);
+      box-shadow: var(--shadow);
+    }
+    .summary strong { color: #193d9f; }
+    section { padding: 42px 0; }
+    .section-intro { max-width: 820px; color: var(--muted); }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .diagram {
+      overflow-x: auto;
+      margin-top: 24px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .diagram svg { display: block; min-width: 980px; width: 100%; height: auto; }
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .flow-card {
+      min-height: 172px;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--blue);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+    }
+    .flow-card:nth-child(2) { border-top-color: var(--purple); }
+    .flow-card:nth-child(3) { border-top-color: var(--green); }
+    .flow-card:nth-child(4) { border-top-color: var(--amber); }
+    .flow-card:nth-child(5) { border-top-color: #df7a26; }
+    .flow-card:nth-child(6) { border-top-color: var(--red); }
+    .num {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 11px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--ink);
+      font-weight: 800;
+    }
+    .flow-card p { color: var(--muted); font-size: .88rem; }
+    .mini {
+      margin-top: 9px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      color: #3b4659;
+      background: var(--soft);
+      font-size: .76rem;
+      overflow-wrap: anywhere;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+    .timeline { display: grid; gap: 10px; margin-top: 18px; }
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .timeline-item .dot {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--blue);
+      font-size: .8rem;
+      font-weight: 800;
+    }
+    .timeline-item strong { display: block; }
+    .timeline-item span { color: var(--muted); font-size: .9rem; }
+    .callout {
+      margin-top: 18px;
+      border-radius: 13px;
+      padding: 14px 16px;
+      background: var(--green-soft);
+      color: #155542;
+    }
+    .callout.amber { background: var(--amber-soft); color: #754800; }
+    .callout.red { background: var(--red-soft); color: #762637; }
+    .callout.purple { background: var(--purple-soft); color: #53318b; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      font-size: .9rem;
+    }
+    th, td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { color: #38455b; background: var(--soft); font-size: .8rem; }
+    td:first-child { white-space: nowrap; font-weight: 800; }
+    pre {
+      margin: 12px 0 0;
+      overflow: auto;
+      padding: 16px;
+      border-radius: 12px;
+      color: #e8efff;
+      background: #1e2635;
+      font-size: .8rem;
+      line-height: 1.65;
+    }
+    .tree { line-height: 1.75; }
+    details {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 12px 14px;
+      background: #fff;
+    }
+    details summary { cursor: pointer; font-weight: 800; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+    .legend .disk::before { background: var(--green); }
+    .legend .network::before { background: var(--amber); }
+    .legend .secret::before { background: var(--red); }
+    .badge-good { color: var(--green); background: var(--green-soft); border-color: #b8ead8; }
+    .badge-watch { color: var(--amber); background: var(--amber-soft); border-color: #f1d39e; }
+    .badge-now { color: var(--red); background: var(--red-soft); border-color: #efbdc7; }
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 18px;
+    }
+    .state {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 10px;
+      background: #fff;
+      font-size: .82rem;
+    }
+    .state b { display: block; color: var(--blue); font-size: .78rem; }
+    .source-card {
+      border-left: 4px solid var(--green);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--soft);
+    }
+    .source-card p { color: var(--muted); font-size: .88rem; }
+    .footer {
+      margin-top: 24px;
+      padding: 24px 0 60px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .86rem;
+    }
+    @media (max-width: 980px) {
+      .flow-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .state-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      header { padding-top: 34px; }
+      .two-col, .three-col { grid-template-columns: 1fr; }
+      .flow-grid { grid-template-columns: 1fr 1fr; }
+      .state-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 540px) {
+      .wrap { width: min(100% - 22px, 1160px); }
+      section { padding: 30px 0; }
+      .panel, .diagram { padding: 15px; }
+      .flow-grid, .state-grid { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+      th, td { min-width: 150px; }
+      td:first-child { white-space: normal; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="eyebrow">AX Studio · current-code explainer</p>
+      <h1>예시 파일 하나가 어떻게 “맡길 수 있는 업무”가 되는가</h1>
+      <p class="lead">2026-08-24 현재 HEAD <code>ae65f54</code> 기준입니다. 최근 구조 변경인 Work Discovery, Command Protocol, Module Catalog, Artifact 저장, WorkflowIR 컴파일, Runtime 실행을 하나의 흐름으로 설명합니다.</p>
+      <div class="tag-row">
+        <span class="tag">Windows 로컬 앱</span>
+        <span class="tag">Electron + React</span>
+        <span class="tag">현재 HEAD ae65f54</span>
+        <span class="tag">오프라인 단일 HTML</span>
+      </div>
+      <div class="summary">
+        <strong>한 문장 요약:</strong>
+        사용자가 지난 결과물과 목표를 주면
+        <b>화면 → IPC → AxCommandService → Work Discovery → 검증된 WorkflowIR → 기존 Runtime</b>
+        순서로 흘러가고, 원본·중간 관찰값·세션 상태·실행 기록은 이 PC의 파일과 SQLite에 남습니다.
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="big-picture">
+      <div class="wrap">
+        <h2>1. 현재 전체 구조</h2>
+        <p class="section-intro">AX Studio의 “백엔드”는 인터넷에 있는 별도 서버가 아닙니다. Electron의 권한 있는 Main 프로세스와 Core가 백엔드 역할을 합니다. 화면은 직접 DB·파일·토큰을 만지지 않고, 정해진 명령만 호출합니다.</p>
+        <div class="diagram">
+          <svg viewBox="0 0 1220 330" role="img" aria-labelledby="flow-title flow-desc">
+            <title id="flow-title">AX Studio Work Discovery 전체 흐름</title>
+            <desc id="flow-desc">사용자가 예시 결과물을 고르면 Renderer, Preload와 IPC, AxCommandService, Work Discovery, WorkflowIR와 Runtime을 거쳐 로컬 저장소와 외부 연결을 사용한다.</desc>
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#63708a"/>
+              </marker>
+            </defs>
+            <rect x="18" y="95" width="158" height="116" rx="18" fill="#eaf0ff" stroke="#2858c8" stroke-width="2"/>
+            <text x="97" y="133" text-anchor="middle" font-size="21" font-weight="800" fill="#172033">화면</text>
+            <text x="97" y="163" text-anchor="middle" font-size="15" fill="#3c4c69">React Renderer</text>
+            <text x="97" y="187" text-anchor="middle" font-size="13" fill="#5d687c">파일 선택·채팅·검토</text>
+            <line x1="182" y1="153" x2="230" y2="153" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <rect x="235" y="95" width="158" height="116" rx="18" fill="#f1eaff" stroke="#7045ad" stroke-width="2"/>
+            <text x="314" y="133" text-anchor="middle" font-size="21" font-weight="800" fill="#172033">통로</text>
+            <text x="314" y="163" text-anchor="middle" font-size="15" fill="#3c4c69">Preload + IPC</text>
+            <text x="314" y="187" text-anchor="middle" font-size="13" fill="#5d687c">허용 채널·sender 검증</text>
+            <line x1="399" y1="153" x2="447" y2="153" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <rect x="452" y="74" width="190" height="158" rx="18" fill="#e7f8f1" stroke="#087f5b" stroke-width="2"/>
+            <text x="547" y="111" text-anchor="middle" font-size="21" font-weight="800" fill="#172033">문지기</text>
+            <text x="547" y="142" text-anchor="middle" font-size="15" fill="#3c4c69">AxCommandService</text>
+            <text x="547" y="167" text-anchor="middle" font-size="13" fill="#5d687c">schema·권한·catalog</text>
+            <text x="547" y="190" text-anchor="middle" font-size="13" fill="#5d687c">읽기 / 저장 / 실행 분리</text>
+            <line x1="648" y1="116" x2="700" y2="83" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <line x1="648" y1="153" x2="700" y2="153" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <line x1="648" y1="190" x2="700" y2="223" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <rect x="705" y="25" width="235" height="98" rx="18" fill="#fff4df" stroke="#a15c00" stroke-width="2"/>
+            <text x="822" y="60" text-anchor="middle" font-size="18" font-weight="800" fill="#172033">Work Discovery</text>
+            <text x="822" y="87" text-anchor="middle" font-size="13" fill="#5d687c">관찰·탐색·재현·질문</text>
+            <text x="822" y="107" text-anchor="middle" font-size="12" fill="#5d687c">control plane</text>
+            <rect x="705" y="125" width="235" height="98" rx="18" fill="#eaf0ff" stroke="#2858c8" stroke-width="2"/>
+            <text x="822" y="160" text-anchor="middle" font-size="18" font-weight="800" fill="#172033">WorkflowIR</text>
+            <text x="822" y="187" text-anchor="middle" font-size="13" fill="#5d687c">검증된 실행 설계도</text>
+            <text x="822" y="207" text-anchor="middle" font-size="12" fill="#5d687c">canvas/compiler가 생성</text>
+            <rect x="705" y="225" width="235" height="80" rx="18" fill="#f1eaff" stroke="#7045ad" stroke-width="2"/>
+            <text x="822" y="258" text-anchor="middle" font-size="18" font-weight="800" fill="#172033">Runtime</text>
+            <text x="822" y="283" text-anchor="middle" font-size="13" fill="#5d687c">실제 step 실행·승인</text>
+            <line x1="945" y1="74" x2="1000" y2="74" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <line x1="945" y1="174" x2="1000" y2="174" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <line x1="945" y1="264" x2="1000" y2="264" stroke="#63708a" stroke-width="3" marker-end="url(#arrow)"/>
+            <rect x="1005" y="28" width="195" height="88" rx="15" fill="#e7f8f1" stroke="#087f5b" stroke-width="2"/>
+            <text x="1102" y="62" text-anchor="middle" font-size="17" font-weight="800" fill="#172033">파일 저장</text>
+            <text x="1102" y="87" text-anchor="middle" font-size="13" fill="#5d687c">artifacts·documents</text>
+            <rect x="1005" y="130" width="195" height="88" rx="15" fill="#e7f8f1" stroke="#087f5b" stroke-width="2"/>
+            <text x="1102" y="164" text-anchor="middle" font-size="17" font-weight="800" fill="#172033">SQLite</text>
+            <text x="1102" y="189" text-anchor="middle" font-size="13" fill="#5d687c">세션·workflow·실행</text>
+            <rect x="1005" y="232" width="195" height="72" rx="15" fill="#ffeaee" stroke="#a62d3f" stroke-width="2"/>
+            <text x="1102" y="263" text-anchor="middle" font-size="17" font-weight="800" fill="#172033">외부 연결</text>
+            <text x="1102" y="286" text-anchor="middle" font-size="13" fill="#5d687c">AI·Gmail·Slack·RDB</text>
+          </svg>
+          <div class="legend" aria-label="그림 범례">
+            <span>프로그램 내부 경계</span>
+            <span class="disk">로컬 디스크</span>
+            <span class="network">업무 탐색/네트워크</span>
+            <span class="secret">비밀 데이터는 별도 보관</span>
+          </div>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card">
+            <span class="num">1</span>
+            <h3>예시 접수</h3>
+            <p>PDF, CSV, XLSX 결과물을 고르고 “다음부터 반복해줘”라고 말합니다.</p>
+            <div class="mini mono">ax:importArtifact</div>
+          </article>
+          <article class="flow-card">
+            <span class="num">2</span>
+            <h3>명령 통과</h3>
+            <p>UI가 직접 DB를 만지지 않고 AX command 하나를 호출합니다.</p>
+            <div class="mini mono">discovery.start</div>
+          </article>
+          <article class="flow-card">
+            <span class="num">3</span>
+            <h3>결과 관찰</h3>
+            <p>결과물 안의 숫자·필드·표를 관찰값으로 바꿉니다.</p>
+            <div class="mini mono">OutputObservation</div>
+          </article>
+          <article class="flow-card">
+            <span class="num">4</span>
+            <h3>자료 탐색</h3>
+            <p>연결된 파일·시트·SQLite를 제한된 읽기로 살펴봅니다.</p>
+            <div class="mini mono">DiscoverySourceProvider</div>
+          </article>
+          <article class="flow-card">
+            <span class="num">5</span>
+            <h3>재현 검증</h3>
+            <p>여러 예시에서 같은 결과가 나오는 후보만 남깁니다.</p>
+            <div class="mini mono">TransformExpr + replay</div>
+          </article>
+          <article class="flow-card">
+            <span class="num">6</span>
+            <h3>업무화</h3>
+            <p>통과한 blueprint를 WorkflowIR로 저장하고 기존 Runtime에 맡깁니다.</p>
+            <div class="mini mono">publish → execute</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="discovery">
+      <div class="wrap">
+        <h2>2. Work Discovery가 하는 일</h2>
+        <p class="section-intro">Work Discovery는 AI가 마음대로 코드를 만드는 기능이 아닙니다. 제한된 자료 읽기와 정해진 변환식으로 “이 결과를 어떻게 만들었는가”를 찾아보고, 과거 예시로 다시 계산해본 뒤에만 업무로 저장합니다.</p>
+        <div class="panel">
+          <div class="state-grid" aria-label="Work Discovery 상태 목록">
+            <div class="state"><b>collecting_examples</b>예시 접수</div>
+            <div class="state"><b>observing_output</b>결과물 항목 추출</div>
+            <div class="state"><b>inventory_sources</b>자료 종류 목록화</div>
+            <div class="state"><b>exploring_sources</b>제한된 자료 읽기</div>
+            <div class="state"><b>synthesizing</b>후보 변환식 생성</div>
+            <div class="state"><b>validating</b>모든 예시로 검증</div>
+            <div class="state"><b>needs_clarification</b>모호한 후보 질문</div>
+            <div class="state"><b>ready_to_publish</b>저장 가능</div>
+            <div class="state"><b>publishing</b>WorkflowIR 컴파일</div>
+            <div class="state"><b>published</b>workflow 연결 완료</div>
+            <div class="state"><b>failed</b>필수 결과 재현 실패</div>
+            <div class="state"><b>cancelled</b>사용자 취소</div>
+          </div>
+          <div class="callout">상태 전이는 코드에 고정되어 있습니다. 예를 들어 <code>validating → ready_to_publish</code>가 되려면 필수 관찰값이 후보에 모두 매핑되어야 하고, 질문이 남아 있으면 publish할 수 없습니다.</div>
+        </div>
+        <div class="two-col">
+          <article class="panel">
+            <h3>구체적인 예: 월간 보고서</h3>
+            <div class="timeline">
+              <div class="timeline-item"><div class="dot">1</div><div><strong>입력</strong><span><code>월간보고서.pdf</code>와 “매달 같은 보고서를 만들어줘”를 받습니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">2</div><div><strong>관찰</strong><span>PDF에서 “총매출: 12.4억”, “달성률: 84%” 같은 숫자를 찾습니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">3</div><div><strong>탐색</strong><span>연결된 <code>sales.xlsx</code>, local folder, SQLite 테이블을 목록화하고 일부만 읽습니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">4</div><div><strong>후보 생성</strong><span><code>SUM(sales.amount)</code>, 행 개수, 실제값/목표값 비율 같은 제한된 후보를 만듭니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">5</div><div><strong>재현</strong><span>과거 예시마다 계산 결과가 원본 숫자와 맞는지 비교합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">6</div><div><strong>업무화</strong><span>모든 필수 필드가 통과하면 읽기 step과 transform step이 있는 workflow로 컴파일합니다.</span></div></div>
+            </div>
+          </article>
+          <article class="panel">
+            <h3>지금의 후보 수학</h3>
+            <p>현재 deterministic path의 중심은 <code>TransformExpr</code>입니다. 임의의 JavaScript나 SQL이 아니라 아래처럼 제한된 표현식만 평가합니다.</p>
+            <pre><code>{
+  "op": "aggregate",
+  "input": {
+    "op": "source",
+    "sourceId": "sheet:C:\\data\\sales.xlsx"
+  },
+  "fn": "sum",
+  "column": "amount"
+}</code></pre>
+            <p class="mini">지원 예: source, column, filter, aggregate(count/sum/avg/min/max), ratio, lookup, select, sort, limit</p>
+            <div class="callout amber">즉 현재 기능은 “범용 AI 프로그램 합성”이 아니라 반복 사무업무에 맞춘 작은 변환 언어입니다. 이 제한이 안전성과 재현성의 핵심입니다.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="command-boundary">
+      <div class="wrap">
+        <h2>3. AI와 화면은 무엇을 직접 할 수 있는가?</h2>
+        <p class="section-intro">이번 구조 개편의 중요한 변화는 <code>AxCommandService</code>가 AI가 보는 단일 제어면이 된 것입니다. AI는 DB query나 shell command를 고르는 대신, 등록된 명령 이름과 인자만 요청합니다.</p>
+        <div class="diagram">
+          <svg viewBox="0 0 1040 240" role="img" aria-labelledby="command-title command-desc">
+            <title id="command-title">명령 경계와 권한</title>
+            <desc id="command-desc">Renderer와 Agent가 각각 AxCommandService를 통해 읽기, 표시, workflow, run 명령에 접근한다.</desc>
+            <defs>
+              <marker id="arrow-command" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#63708a"/>
+              </marker>
+            </defs>
+            <rect x="18" y="65" width="185" height="100" rx="16" fill="#eaf0ff" stroke="#2858c8" stroke-width="2"/>
+            <text x="110" y="102" text-anchor="middle" font-size="19" font-weight="800">Renderer</text>
+            <text x="110" y="129" text-anchor="middle" font-size="13" fill="#5d687c">host 호출</text>
+            <text x="110" y="149" text-anchor="middle" font-size="12" fill="#5d687c">검토 UI·상태 조회</text>
+            <line x1="210" y1="115" x2="300" y2="115" stroke="#63708a" stroke-width="3" marker-end="url(#arrow-command)"/>
+            <rect x="305" y="40" width="300" height="150" rx="18" fill="#e7f8f1" stroke="#087f5b" stroke-width="2"/>
+            <text x="455" y="78" text-anchor="middle" font-size="20" font-weight="800">AxCommandService</text>
+            <text x="455" y="108" text-anchor="middle" font-size="13" fill="#3c4c69">AxCommandSchema</text>
+            <text x="455" y="130" text-anchor="middle" font-size="13" fill="#3c4c69">commandAccess</text>
+            <text x="455" y="152" text-anchor="middle" font-size="13" fill="#3c4c69">read gateway · workflow gateway</text>
+            <line x1="610" y1="82" x2="690" y2="60" stroke="#63708a" stroke-width="3" marker-end="url(#arrow-command)"/>
+            <line x1="610" y1="115" x2="690" y2="115" stroke="#63708a" stroke-width="3" marker-end="url(#arrow-command)"/>
+            <line x1="610" y1="148" x2="690" y2="170" stroke="#63708a" stroke-width="3" marker-end="url(#arrow-command)"/>
+            <rect x="695" y="28" width="325" height="64" rx="13" fill="#f5f7fb" stroke="#dfe5ef" stroke-width="2"/>
+            <text x="857" y="55" text-anchor="middle" font-size="16" font-weight="800">read / present</text>
+            <text x="857" y="76" text-anchor="middle" font-size="12" fill="#5d687c">source·capability·UI 표시</text>
+            <rect x="695" y="102" width="325" height="64" rx="13" fill="#fff4df" stroke="#a15c00" stroke-width="2"/>
+            <text x="857" y="129" text-anchor="middle" font-size="16" font-weight="800">workflow / ephemeral</text>
+            <text x="857" y="150" text-anchor="middle" font-size="12" fill="#5d687c">저장·일회 실행·discovery</text>
+            <rect x="695" y="176" width="325" height="40" rx="13" fill="#ffeaee" stroke="#a62d3f" stroke-width="2"/>
+            <text x="857" y="201" text-anchor="middle" font-size="15" font-weight="800">run · 승인 정책 적용</text>
+          </svg>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <h3>명령의 예</h3>
+            <table>
+              <thead><tr><th>명령</th><th>역할</th></tr></thead>
+              <tbody>
+                <tr><td><code>source.list</code></td><td>연결된 자료 목록 보기</td></tr>
+                <tr><td><code>source.file.read</code></td><td>허용된 로컬 폴더 안의 제한된 파일 읽기</td></tr>
+                <tr><td><code>capability.invoke</code></td><td>catalog에 등록된 읽기 capability 실행</td></tr>
+                <tr><td><code>workflow.create/update</code></td><td>검증된 WorkflowIR 저장·버전 생성</td></tr>
+                <tr><td><code>discovery.start/publish</code></td><td>예시 기반 업무 발견 시작·workflow로 저장</td></tr>
+                <tr><td><code>workflow.run</code></td><td>저장된 workflow를 Runtime으로 실행</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h3>Host와 Agent의 차이</h3>
+            <table>
+              <thead><tr><th>발신자</th><th>허용되는 것</th></tr></thead>
+              <tbody>
+                <tr><td>Host / Renderer</td><td><code>read</code>, <code>present</code> 중심. UI가 실수로 workflow/run 권한을 얻지 않도록 제한</td></tr>
+                <tr><td>Agent context</td><td>정의된 workflow·discovery·ephemeral 명령을 요청할 수 있지만, 각 schema/catalog/contract 검증을 통과해야 함</td></tr>
+                <tr><td>모델 자체</td><td>임의 shell, unrestricted SQL, arbitrary filesystem, connector method를 직접 호출하지 않음</td></tr>
+              </tbody>
+            </table>
+            <div class="callout">이 경계는 “AI가 똑똑하니까 믿는다”가 아니라, AI가 틀려도 요청 가능한 행동의 종류와 인자를 코드가 제한한다는 의미입니다.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="wrap">
+        <h2>4. 코드 구조: 계약 → 카탈로그 → 모듈 → Workflow → Runtime</h2>
+        <div class="three-col">
+          <article class="source-card">
+            <h3>contracts</h3>
+            <p>Zod schema와 중립 타입입니다. TableArtifact, DocumentArtifact, FileRef, capability I/O 같은 공용 약속입니다.</p>
+          </article>
+          <article class="source-card">
+            <h3>catalog</h3>
+            <p>“무엇을 할 수 있는가”의 목록입니다. connector 구현을 직접 실행하지 않고 capability, side effect, 입력·출력 계약을 제공합니다.</p>
+          </article>
+          <article class="source-card">
+            <h3>modules</h3>
+            <p>Gmail, Slack, local folder/sheet, RDB, document, HTTP, webhook, transform의 실제 구현입니다. 모듈끼리 서로 직접 알지 않습니다.</p>
+          </article>
+          <article class="source-card">
+            <h3>workflow/canvas</h3>
+            <p>자연어·캔버스 초안을 실행 가능한 WorkflowIR로 컴파일합니다. 예전 interview namespace 대신 현재 canonical authoring 경계입니다.</p>
+          </article>
+          <article class="source-card">
+            <h3>work-discovery</h3>
+            <p>예시 결과물로 업무 방법을 찾는 control plane입니다. 직접 업무를 계속 실행하는 엔진이 아니라, 마지막에 WorkflowIR을 만듭니다.</p>
+          </article>
+          <article class="source-card">
+            <h3>runtime</h3>
+            <p>저장된 WorkflowIR의 step을 실제로 수행합니다. approval, execution log, scheduler, trigger 정책이 여기 있습니다.</p>
+          </article>
+        </div>
+        <div class="panel" style="margin-top:18px">
+          <h3>현재 module package 목록</h3>
+          <p><code>registerAllModules()</code>가 bootstrap에서 명시적으로 등록하는 canonical package는 Gmail, Slack, local-folder, document, RDB, local-sheet, transform, HTTP, webhook입니다.</p>
+          <div class="callout amber">OpenAPI와 MCP도 현재 Core/desktop에 직접 연결되는 코드와 테스트가 남아 있지만 canonical <code>ALL_MODULE_PACKAGES</code> 목록과는 별도 경로입니다. 둘을 계속 지원할 계획이면 module package/catalog/trigger/discovery 경계로 통합할지 결정해야 합니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="storage">
+      <div class="wrap">
+        <h2>5. 실제 저장 위치</h2>
+        <p class="section-intro">Windows 기준 기본 루트는 <code>%LOCALAPPDATA%\AXStudio\</code>입니다. 사용자의 업무 데이터는 기본적으로 이 PC에 남고, AI·Gmail·Slack 호출 때만 해당 외부 서비스로 나갑니다.</p>
+        <div class="two-col">
+          <div class="panel">
+            <h3>현재 디스크 구조</h3>
+            <pre class="tree" aria-label="AX Studio 현재 데이터 폴더 구조">%LOCALAPPDATA%\AXStudio\
+├─ data\
+│  └─ ax-studio.db                  ← 핵심 SQLite
+├─ artifacts\                       ← Work Discovery 원본/메타데이터
+│  ├─ art_xxx_file.pdf              ← 복사된 원본
+│  ├─ art_xxx.json                  ← sha256·경로·크기 메타데이터
+│  ├─ art_xxx.document.json         ← PDF 정규화 문서 참조
+│  └─ art_xxx.table.json             ← 생성된 표 artifact가 있을 때
+├─ discovery\
+│  └─ snapshots\                   ← source 읽기 결과 JSON manifest
+├─ credentials\                    ← OS 암호화 토큰
+├─ config\
+│  ├─ ai.toml                       ← 활성 AI 설정 일부
+│  └─ migration.json                ← 저장소 layout 기록
+├─ documents\                      ← Document Engine manifest/pages/chunks
+├─ templates\
+├─ generated\
+│  ├─ reports\
+│  └─ exports\
+├─ cache\
+│  ├─ chromium\
+│  └─ document-engine\
+└─ logs\</pre>
+            <p class="mini">정식 layout 생성 목록에는 기본 폴더가 있고, <code>artifacts</code>와 <code>discovery/snapshots</code>는 Work Discovery가 필요할 때 생성합니다.</p>
+          </div>
+          <div class="panel">
+            <h3>무엇을 어디에 두는가</h3>
+            <table>
+              <thead><tr><th>장소</th><th>저장 내용</th></tr></thead>
+              <tbody>
+                <tr><td>SQLite</td><td>workflow, version, execution, approval, settings, connections, workspace chat, discovery session/example/snapshot</td></tr>
+                <tr><td>artifacts</td><td>사용자가 고른 원본의 복사본과 SHA-256 기반 메타데이터. DB에는 artifact ID만 들어감</td></tr>
+                <tr><td>discovery/snapshots</td><td>탐색 중 읽은 표의 제한된 snapshot JSON과 manifest 경로</td></tr>
+                <tr><td>documents</td><td>Python Document Engine이 만든 문서 manifest, pages, chunks, images, tables</td></tr>
+                <tr><td>credentials</td><td>AI API key, Gmail refresh token, connector 비밀값. DB와 분리된 OS 암호화 파일</td></tr>
+                <tr><td>config/ai.toml</td><td>활성 provider/model 등 설정. API key를 넣는 파일이 아님</td></tr>
+              </tbody>
+            </table>
+            <div class="callout red"><b>주의:</b> <code>ax-studio.db</code>는 JSON 파일이 아니라 SQLite 파일입니다. 직접 텍스트 편집하지 말고, 백업 복사본을 만든 뒤 repository/API로 다루는 것이 안전합니다.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="database">
+      <div class="wrap">
+        <h2>6. SQLite 안의 표와 JSON 칸</h2>
+        <p class="section-intro">현재 DB migration에 정의된 표입니다. 큰 객체는 여러 칸으로 정규화하기보다 <code>TEXT</code> 안에 JSON 문자열로 저장하는 부분이 많습니다.</p>
+        <div class="panel">
+          <table>
+            <thead><tr><th>테이블</th><th>사람 말로</th><th>핵심 칼럼</th></tr></thead>
+            <tbody>
+              <tr><td>workflows</td><td>저장된 업무의 목록과 켜짐/꺼짐 상태</td><td><code>id</code>, name, active, created_at, updated_at</td></tr>
+              <tr><td>workflow_versions</td><td>업무 설계도의 버전 역사</td><td>workflow_id, version, <code>ir_json</code>, created_at</td></tr>
+              <tr><td>executions</td><td>실행 한 번의 결과와 실행 당시 설계도 복사본</td><td>status, workflow/version, <code>log_json</code>, <code>ir_json</code>, trigger_type</td></tr>
+              <tr><td>approvals</td><td>사람 확인이 필요한 외부 부작용</td><td>execution_id, <code>action_ids_json</code>, status, <code>payload_json</code></td></tr>
+              <tr><td>settings</td><td>전역 설정·스케줄 커서·trigger cursor</td><td>key, <code>value_json</code></td></tr>
+              <tr><td>connections</td><td>연결 상태와 비밀이 아닌 연결 설정</td><td>connector, connected, <code>config_json</code></td></tr>
+              <tr><td>workspace_chats</td><td>AI 명령형 workspace 대화 기록</td><td>title, <code>messages_json</code>, workflow_id</td></tr>
+              <tr><td>trigger_receipts</td><td>같은 외부 이벤트 중복 실행 방지</td><td>dedupe_key, status, execution_id, created_at</td></tr>
+              <tr><td>work_discovery_sessions</td><td>Work Discovery 한 번의 전체 상태</td><td>status, revision, user_goal, <code>state_json</code>, published_workflow_id</td></tr>
+              <tr><td>work_discovery_examples</td><td>세션에 연결한 출력/입력 artifact ID 목록</td><td>session_id, <code>output_artifact_ids_json</code>, <code>input_artifact_ids_json</code></td></tr>
+              <tr><td>work_discovery_snapshots</td><td>연결 source에서 읽은 표의 근거와 fingerprint</td><td>source_id, artifact_id, manifest_path, fingerprint, query/metadata JSON</td></tr>
+              <tr><td>work_discovery_replay_cases</td><td>재현 케이스를 저장하기 위한 표</td><td>expected_observations_json, last_result_json</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="two-col">
+          <details>
+            <summary>Work Discovery state_json 대표 모양</summary>
+            <pre><code>{
+  "id": "wd_abc123",
+  "status": "ready_to_publish",
+  "revision": 8,
+  "userGoal": "지난 월간 보고서를 다음부터 만들어줘",
+  "exampleIds": ["ex_1", "ex_2"],
+  "sourceInventory": [
+    {
+      "id": "input:art_sales",
+      "connector": "input_artifact",
+      "kind": "workbook",
+      "relevance": 0.9
+    }
+  ],
+  "observations": [
+    {
+      "path": "field.총매출",
+      "value": { "kind": "number", "value": 124000000, "display": "1.24억" },
+      "required": true
+    }
+  ],
+  "candidates": [],
+  "budgets": {
+    "sourceReadsUsed": 2,
+    "sourceReadsMax": 12,
+    "elapsedMs": 410
+  }
+}</code></pre>
+          </details>
+          <details>
+            <summary>TableArtifact 대표 모양</summary>
+            <pre><code>{
+  "id": "tbl_sales",
+  "kind": "table",
+  "columns": [
+    { "name": "amount", "type": "currency", "nullable": true }
+  ],
+  "rows": [
+    { "index": 0, "values": { "amount": 1200000 } }
+  ],
+  "profile": {
+    "rowCount": 1,
+    "columnCount": 1,
+    "columns": {
+      "amount": { "nullCount": 0, "sampleValues": [1200000] }
+    }
+  },
+  "truncated": false,
+  "source": {
+    "filePath": "C:\\data\\sales.xlsx",
+    "workbookSheet": "January"
+  }
+}</code></pre>
+          </details>
+          <details>
+            <summary>CandidateProgram 대표 모양</summary>
+            <pre><code>{
+  "id": "cand_123",
+  "observationPath": "field.총매출",
+  "expr": {
+    "op": "aggregate",
+    "input": { "op": "source", "sourceId": "input:art_sales" },
+    "fn": "sum",
+    "column": "amount"
+  },
+  "score": {
+    "total": 0.92,
+    "replay": 0.95,
+    "simplicity": 0.75
+  },
+  "replayResults": [
+    { "exampleId": "ex_1", "match": 1, "pass": true }
+  ],
+  "status": "accepted"
+}</code></pre>
+          </details>
+          <details>
+            <summary>Workspace chat 메시지 대표 모양</summary>
+            <pre><code>[
+  {
+    "role": "user",
+    "content": "지난 결과물과 같은 보고서를 만들어줘"
+  },
+  {
+    "role": "assistant",
+    "content": "자료를 살펴보고 재현 가능한 방법을 찾겠습니다.",
+    "inputRequests": [],
+    "presentations": [
+      {
+        "title": "확인한 자료",
+        "blocks": [
+          { "type": "source", "fileName": "report.pdf" }
+        ],
+        "actions": []
+      }
+    ]
+  }
+]</code></pre>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="artifacts">
+      <div class="wrap">
+        <h2>7. 파일·문서·시트는 어떻게 읽히는가?</h2>
+        <div class="three-col">
+          <article class="panel">
+            <h3>PDF / 문서</h3>
+            <p>파일을 <code>ArtifactStore</code>에 복사하고 SHA-256으로 ID를 만듭니다. PDF면 Node Core가 Python worker에 JSON 요청을 보내 Document Engine이 문서 artifact를 만듭니다.</p>
+            <p class="mini">manifest.json · pages/*.txt · chunks.jsonl · images/ · tables/</p>
+          </article>
+          <article class="panel">
+            <h3>CSV / XLSX / XLS</h3>
+            <p>local-sheet가 workbook과 table을 만들고, 열 타입·행·profile을 정규화합니다. 기본 표 읽기 한도는 5,000행, workbook은 최대 20개 sheet입니다.</p>
+            <p class="mini">WorkbookArtifact → TableArtifact → OutputObservation</p>
+          </article>
+          <article class="panel">
+            <h3>SQLite RDB</h3>
+            <p>Work Discovery의 source provider는 현재 SQLite 파일을 read-only로 열어 허용된 table만 보고, 기본 rowLimit은 200입니다.</p>
+            <p class="mini">rdb:table → 제한된 snapshot → fingerprint</p>
+          </article>
+        </div>
+        <div class="panel" style="margin-top:18px">
+          <h3>문서 처리의 실제 프로세스 경계</h3>
+          <div class="timeline">
+            <div class="timeline-item"><div class="dot">1</div><div><strong>Node Core가 Python worker를 spawn</strong><span>stdin으로 <code>{ id, command, params }</code> JSON을 보냅니다.</span></div></div>
+            <div class="timeline-item"><div class="dot">2</div><div><strong>Python이 adapter를 선택</strong><span><code>engine: auto</code>이면 Docling을 시도하고 실패 시 basic adapter로 fallback할 수 있습니다.</span></div></div>
+            <div class="timeline-item"><div class="dot">3</div><div><strong>manifest를 commit marker로 저장</strong><span>payload를 먼저 쓴 뒤 manifest를 교체해 부분 결과를 완성 artifact로 보이지 않게 합니다.</span></div></div>
+            <div class="timeline-item"><div class="dot">4</div><div><strong>Node가 JSON response를 받음</strong><span>페이지·청크·검색 결과를 Runtime과 Work Discovery가 사용할 수 있는 DocumentArtifact로 변환합니다.</span></div></div>
+          </div>
+          <div class="callout amber">현재 Work Discovery의 관찰 로직은 PDF/문서에서는 라벨 옆 숫자와 숫자+단위 패턴을 중심으로 찾고, 표에서는 숫자형 열의 값들을 관찰합니다. 모든 문서 의미를 자동으로 이해하는 단계는 아닙니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="publish-runtime">
+      <div class="wrap">
+        <h2>8. 발견한 업무가 실제로 실행되는 순간</h2>
+        <p class="section-intro">Work Discovery가 끝났다고 바로 외부 메일을 보내는 것이 아닙니다. 발견 단계는 실행 설계도를 만드는 단계이고, 실제 실행은 기존 Runtime의 계약·승인·연결 검증을 다시 통과합니다.</p>
+        <div class="two-col">
+          <article class="panel">
+            <h3>Publish 시점</h3>
+            <div class="timeline">
+              <div class="timeline-item"><div class="dot">1</div><div><strong>canPublish 확인</strong><span>status가 <code>ready_to_publish</code>이고 pending question이 없어야 합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">2</div><div><strong>Blueprint 생성</strong><span>accepted candidate의 source·mapping·confidence·replay summary를 묶습니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">3</div><div><strong>WorkflowIR 컴파일</strong><span>source마다 local_sheet/rdb read step을 만들고, 필드마다 transform.evaluate step을 만듭니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">4</div><div><strong>workflow 저장</strong><span><code>workflow_versions.ir_json</code>에 버전이 생기고 discovery session에 published workflow ID가 기록됩니다.</span></div></div>
+            </div>
+          </article>
+          <article class="panel">
+            <h3>Runtime 실행 시점</h3>
+            <div class="timeline">
+              <div class="timeline-item"><div class="dot">1</div><div><strong>사전 검증</strong><span>WorkflowIR schema, capability contract, 연결 상태, global/workflow active를 확인합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">2</div><div><strong>execution 생성</strong><span>running 상태와 실행 당시 IR snapshot을 먼저 저장합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">3</div><div><strong>step 실행·로그</strong><span>connector를 호출하고 <code>log_json</code>에 진행 상황을 누적합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">4</div><div><strong>성공·실패·승인 대기</strong><span>외부 부작용은 approval policy를 거치고, pending이면 checkpoint를 저장해 재개합니다.</span></div></div>
+            </div>
+          </article>
+        </div>
+        <div class="three-col">
+          <div class="panel"><h3>수동</h3><p><code>workflow.run</code>이 저장된 ID를 받아 Runtime을 호출합니다.</p></div>
+          <div class="panel"><h3>예약</h3><p>Scheduler가 약 30초마다 <code>schedule</code>/<code>once</code>를 검사하고 마지막 실행 시각을 settings에 기록합니다.</p></div>
+          <div class="panel"><h3>이벤트</h3><p>TriggerEngine이 polling/push/webhook을 받고 cursor와 <code>trigger_receipts</code>로 중복 실행을 줄입니다.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat">
+      <div class="wrap">
+        <h2>9. 일반 채팅은 어떻게 달라졌나?</h2>
+        <p class="section-intro">기존 인터뷰 전용 흐름 대신 현재 workspace는 명령형 채팅에 가깝습니다. AI 답변은 텍스트만 보내는 것이 아니라, 검토 카드·입력 요청·workflow 변경 결과를 구조화해 host가 렌더링합니다.</p>
+        <div class="two-col">
+          <div class="panel">
+            <div class="timeline">
+              <div class="timeline-item"><div class="dot">1</div><div><strong><code>ax:sendCommandChat</code></strong><span>Renderer가 최근 대화와 마지막 user message를 IPC로 보냅니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">2</div><div><strong>Command Chat</strong><span>AgentHarness가 AI를 호출하고 AxCommandService 명령을 처리합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">3</div><div><strong>호스트 콜백</strong><span>command result, input request, presentation을 수집합니다. presentation action은 실행 명령이 아닙니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">4</div><div><strong>화면 응답</strong><span>assistant 메시지와 구조화된 UI를 Renderer에 반환합니다.</span></div></div>
+              <div class="timeline-item"><div class="dot">5</div><div><strong>저장</strong><span>대화는 <code>workspace_chats.messages_json</code>에 저장되고 workflow ID와 연결할 수 있습니다.</span></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>입력 경계</h3>
+            <table>
+              <tbody>
+                <tr><td>메시지 수</td><td>최대 100개</td></tr>
+                <tr><td>한 메시지</td><td>최대 50,000자</td></tr>
+                <tr><td>전체 대화</td><td>최대 250,000자</td></tr>
+                <tr><td>입력 요청</td><td>메시지당 최대 8개</td></tr>
+                <tr><td>UI presentation</td><td>메시지당 최대 4개; 카드 내부 blocks/actions도 제한</td></tr>
+              </tbody>
+            </table>
+            <div class="callout">AI가 반환한 UI 카드는 HTML·코드·connector 호출을 담지 못합니다. 화면은 허용된 schema를 읽어 안전한 host UI로 그립니다.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="restart">
+      <div class="wrap">
+        <h2>10. 앱을 껐다 켜면 무엇이 살아나는가?</h2>
+        <div class="panel">
+          <table>
+            <thead><tr><th>상태</th><th>재시작 후</th><th>근거</th></tr></thead>
+            <tbody>
+              <tr><td>저장 workflow</td><td>DB에서 최신 version을 읽어 active 상태와 함께 복원</td><td>workflows + workflow_versions</td></tr>
+              <tr><td>실행 이력</td><td>status/log/IR snapshot을 Activity에서 조회</td><td>executions</td></tr>
+              <tr><td>승인 대기</td><td>approval row와 execution checkpoint를 읽어 재개 가능</td><td>approvals.payload_json + execution</td></tr>
+              <tr><td>연결 메타데이터</td><td>connections를 읽고 시작 시 connector를 hydrate</td><td>connections + credentials</td></tr>
+              <tr><td>이벤트 cursor</td><td>poll cursor와 receipt를 읽어 어느 정도 중복 방지</td><td>settings + trigger_receipts</td></tr>
+              <tr><td>Work Discovery 결과</td><td>session state, examples, snapshots를 조회 가능</td><td>work_discovery_* tables + files</td></tr>
+              <tr><td>진행 중 discovery pipeline</td><td>현재 코드에는 시작 시 자동 resume worker가 없음. 비터미널 session이 남을 수 있음</td><td>pipeline 실행 집합은 메모리 Set</td></tr>
+              <tr><td>메모리 상태</td><td>running set, in-flight 이벤트, AI client 같은 프로세스 메모리는 사라짐</td><td>프로세스 lifecycle</td></tr>
+            </tbody>
+          </table>
+          <div class="callout amber">“DB에 저장됐다”와 “앱이 재시작해 작업을 자동으로 이어간다”는 다른 약속입니다. 완성본에서는 두 가지를 각각 테스트해야 합니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="watch">
+      <div class="wrap">
+        <h2>11. 현재 코드에서 꼭 기억할 주의점</h2>
+        <p class="section-intro">아래는 오류라고 단정한 목록이 아니라, 지금 구조를 완성품 수준으로 가져갈 때 우선 확인해야 할 지점입니다.</p>
+        <div class="panel">
+          <table>
+            <thead><tr><th>우선도</th><th>현재 관찰</th><th>왜 중요한가</th><th>다음 검증/개선</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="status badge-now">P1</span></td>
+                <td><code>discovery.start</code> 입력은 <code>desiredRecurrence</code>를 받지만, 현재 <code>WorkDiscoveryService.start</code>의 초기 state에 이 값을 넣지 않습니다.</td>
+                <td>사용자가 반복 주기를 줘도 blueprint의 schedule 제안까지 전달되지 않을 수 있습니다.</td>
+                <td>state에 보존하고, “반복 주기 입력 → schedule trigger → Scheduler 실행” E2E 추가</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P1</span></td>
+                <td><code>work_discovery_replay_cases</code> 테이블은 migration에 존재하지만 현재 repository/service에서 쓰는 경로가 보이지 않습니다. 실제 replay 결과는 주로 session <code>state_json</code> 안에 있습니다.</td>
+                <td>DB 설계와 실제 source of truth가 어긋나면 조회·보관·마이그레이션 정책이 혼란스러워집니다.</td>
+                <td>정규 replay case를 사용할지, 미사용 표를 제거할지 결정</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P1</span></td>
+                <td>Work Discovery pipeline의 실행 집합은 메모리 <code>Set</code>이고 startup resume 경로가 없습니다.</td>
+                <td>앱 종료 중 탐색이 멈추면 session은 DB에 남지만 자동으로 이어지지 않습니다.</td>
+                <td>재시작 복구 상태, lease/timeout, 재실행 버튼 또는 안전한 resume 설계</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P1</span></td>
+                <td>현재 UI의 <code>useDiscovery</code>는 기본적으로 예시 하나를 시작하고 <code>inputArtifactIds: []</code>로 호출합니다. Core schema/E2E는 여러 예시와 입력 artifact를 지원합니다.</td>
+                <td>제품 화면에서 가장 중요한 “여러 과거 사례로 재현 검증” 기능이 아직 command/E2E 경로와 동일하게 노출되지 않을 수 있습니다.</td>
+                <td>UI에서 예시 최대 3개·입력 artifact 최대 10개를 선택하는 흐름 추가</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P1</span></td>
+                <td>후보 enumerator는 숫자 관찰값과 제한된 변환식 중심입니다. 의미 기반 컬럼 매칭이나 임의 업무 로직을 모두 해결하지 않습니다.</td>
+                <td>“무조건 알아서 배운다”는 제품 기대와 실제 deterministic 범위를 구분해야 합니다.</td>
+                <td>지원되는 업무 DSL 범위를 화면·문서·테스트에서 명확히 표시</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P2</span></td>
+                <td>ArtifactStore는 파일 전체를 읽어 SHA-256을 계산하고, 기존 artifact를 찾을 때 JSON 파일들을 순회합니다.</td>
+                <td>큰 파일이나 artifact가 많아지면 import 지연과 I/O가 커질 수 있습니다.</td>
+                <td>streaming hash, metadata index, artifact retention/backup 정책</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-watch">P2</span></td>
+                <td>snapshot과 execution log는 계속 누적되며, Work Discovery snapshot의 보관·정리 정책이 명확하지 않습니다.</td>
+                <td>개인 PC의 디스크·DB 크기와 민감 데이터 잔존 기간이 늘어납니다.</td>
+                <td>보관 기간, 삭제, export/backup, 개인정보 정리 정책 정의</td>
+              </tr>
+              <tr>
+                <td><span class="status badge-good">장점</span></td>
+                <td>계약 schema, catalog side effect, approval, command access, IPC sender 검증, sandbox/context isolation이 경계로 존재합니다.</td>
+                <td>기능이 늘어도 AI·UI가 바로 OS/connector 권한을 얻지 않도록 막는 기반입니다.</td>
+                <td>새 command/module 추가 때 동일한 contract·access·E2E 체크 유지</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="verification">
+      <div class="wrap">
+        <h2>12. 이번 문서 작성 시 확인한 상태</h2>
+        <div class="three-col">
+          <div class="panel"><span class="status badge-good">통과</span><h3 style="margin-top:12px">Core</h3><p>build 통과, 전체 테스트 <b>85개 파일 / 359개 테스트</b> 통과, eval <b>11개</b> 통과</p></div>
+          <div class="panel"><span class="status badge-good">통과</span><h3 style="margin-top:12px">Desktop</h3><p>TypeScript 검사 통과, <code>electron-vite build</code> 통과</p></div>
+          <div class="panel"><span class="status badge-good">통과</span><h3 style="margin-top:12px">Architecture</h3><p><code>npm run arch:check</code> 통과: 443 modules / 1,500 dependencies</p></div>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <span class="status badge-good">통과</span>
+            <h3 style="margin-top:12px">Document Engine</h3>
+            <p>Python unittest 17개 실행, 15개 통과, pypdf 의존성 부재로 2개 skip</p>
+          </div>
+          <div class="panel">
+            <span class="status badge-watch">빌드 경고</span>
+            <h3 style="margin-top:12px">DB dynamic import</h3>
+            <p>Desktop build는 성공했지만 <code>db.ts</code>가 dynamic import와 static import 양쪽에 걸려 chunk 이동이 안 된다는 Vite 경고가 남습니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="remember">
+      <div class="wrap">
+        <h2>13. 기억할 것</h2>
+        <div class="panel">
+          <div class="three-col">
+            <div><h3>무엇인가?</h3><p>AX Studio는 로컬 PC에서 AI에게 업무를 맡기고, 결과를 workflow로 반복 실행하는 Electron 앱입니다.</p></div>
+            <div><h3>새 핵심은?</h3><p>결과물을 보여주면 연결된 자료를 제한적으로 조사하고, 과거 예시를 재현한 뒤에만 업무로 publish하는 Work Discovery입니다.</p></div>
+            <div><h3>개발 질문은?</h3><p>“이 입력이 어느 command를 타고, 어떤 artifact/DB JSON이 바뀌며, 재시작 후 같은 판단을 다시 복구할 수 있는가?”를 기능마다 답해야 합니다.</p></div>
+          </div>
+          <div class="summary">
+            <strong>비유:</strong> 화면은 접수 창구, AxCommandService는 출입 통제, Work Discovery는 과거 작업을 조사하는 분석팀, WorkflowIR은 작업 지시서, Runtime은 실제 작업반, SQLite와 artifacts는 작업 대장과 자료 보관함입니다.
+            <br><br>
+            <b>비유의 한계:</b> 실제로는 한 PC 안의 여러 프로세스와 외부 네트워크가 섞여 있으므로, 장애·인증 만료·파일 변경·앱 재시작을 별도 상태로 다뤄야 합니다.
+          </div>
+        </div>
+        <details>
+          <summary>최소 용어집</summary>
+          <table>
+            <tbody>
+              <tr><td>Renderer</td><td>React 화면 프로세스</td></tr>
+              <tr><td>Main</td><td>Electron의 권한 있는 프로세스. 파일·OS·IPC·창을 관리</td></tr>
+              <tr><td>IPC</td><td>Renderer와 Main 사이의 프로세스 통신</td></tr>
+              <tr><td>AxCommandService</td><td>AI와 host가 사용할 수 있는 명령의 단일 도메인 경계</td></tr>
+              <tr><td>ArtifactStore</td><td>사용자 파일과 정규화 artifact를 로컬에 보관하는 저장소</td></tr>
+              <tr><td>TableArtifact</td><td>열·행·profile·truncated 정보를 가진 표 데이터 계약</td></tr>
+              <tr><td>TransformExpr</td><td>source/filter/sum/ratio 같은 제한된 데이터 변환식</td></tr>
+              <tr><td>WorkflowIR</td><td>실행할 step·trigger·approval·data policy가 담긴 JSON 설계도</td></tr>
+              <tr><td>Runtime</td><td>WorkflowIR을 실제 connector와 함께 실행하는 엔진</td></tr>
+              <tr><td>Replay</td><td>과거 예시의 기대값과 후보 계산값을 다시 비교하는 검증</td></tr>
+              <tr><td>Connector / Capability</td><td>외부 연결 구현 / 그 연결이 제공하는 읽기·쓰기·trigger 기능 계약</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      이 문서는 <code>D:\AX_studio</code>의 2026-08-24 현재 소스를 읽어 만든 개발용 ELI5 설명서입니다.
+      JSON 예시는 이해를 위한 대표 모양이며, 최종 계약은 각 TypeScript schema/repository 구현이 기준입니다.
+      이번 요청으로 추가된 파일은 이 HTML 문서이며 production source는 변경하지 않았습니다.
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { AppState } from '../../../types/app-state';
+import { connectionEntry, httpAuthLabel } from '../../../lib/connection-display';
 import { ConnectionGuide } from '../ConnectionGuide';
+import { ConnectedServiceList } from '../ConnectedServiceList';
 
 type HttpAuthType = 'none' | 'bearer' | 'apiKey' | 'basic';
 
@@ -20,7 +22,9 @@ interface HttpConnectionFormProps {
 }
 
 export function HttpConnectionForm({ state, embedded = false, onConnect, onDisconnect }: HttpConnectionFormProps) {
-  const connected = Boolean(state?.connections?.find((entry) => entry.connector === 'http')?.connected);
+  const httpEntry = connectionEntry(state, 'http');
+  const connected = Boolean(httpEntry?.connected);
+  const formRef = useRef<HTMLDivElement>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [label, setLabel] = useState('');
   const [authType, setAuthType] = useState<HttpAuthType>('none');
@@ -30,6 +34,31 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+
+  const loadFromConnection = () => {
+    if (!httpEntry?.connected) return;
+    setBaseUrl(httpEntry.baseUrl ?? '');
+    setLabel(httpEntry.label ?? '');
+    setAuthType(httpEntry.authType ?? 'none');
+    if (httpEntry.authHeader) setAuthHeader(httpEntry.authHeader);
+    if (httpEntry.username) setUsername(httpEntry.username);
+    setToken('');
+    setPassword('');
+    setMessage('');
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const connectedItems =
+    connected && httpEntry?.baseUrl
+      ? [
+          {
+            id: 'http',
+            title: httpEntry.label?.trim() || 'HTTP API',
+            subtitle: httpEntry.baseUrl,
+            meta: httpAuthLabel(httpEntry.authType, httpEntry.authHeader, httpEntry.username),
+          },
+        ]
+      : [];
 
   const handleConnect = async () => {
     setBusy(true);
@@ -68,7 +97,7 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
   };
 
   return (
-    <div className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
+    <div ref={formRef} className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
       {!embedded && (
         <ConnectionGuide
           title="REST API 연결"
@@ -173,6 +202,14 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
         </div>
 
         {message && <p className="connection-form-message">{message}</p>}
+
+        <ConnectedServiceList
+          title="연결된 HTTP API"
+          items={connectedItems}
+          busy={busy}
+          onEdit={() => loadFromConnection()}
+          onDisconnect={() => void handleDisconnect()}
+        />
       </div>
     </div>
   );

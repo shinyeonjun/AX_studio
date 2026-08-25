@@ -1,0 +1,35 @@
+{
+  "id": "session-isolation-new-chat-while-sending-deterministic",
+  "name": "새 대화 중 이전 응답 보존과 세션 격리 (deterministic)",
+  "description": "Fake agent로 실제 제품 결함 경로를 재현합니다. 세션 A 전송 직후 세션 B를 열고, A로 돌아왔을 때 메시지/응답 유실·혼입을 기록합니다.",
+  "mode": "deterministic",
+  "tags": ["session", "chat", "concurrency", "defect-hunt", "deterministic"],
+  "covers": ["session:new-while-sending"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "newChat", "label": "sessionA" },
+    {
+      "action": "sendMessage",
+      "label": "sessionA",
+      "waitForReply": false,
+      "text": "QA_SESSION_A please keep this conversation"
+    },
+    { "action": "waitMs", "ms": 600 },
+    { "action": "newChat", "label": "sessionB" },
+    {
+      "action": "sendMessage",
+      "label": "sessionB",
+      "text": "QA_SESSION_B this is the second conversation"
+    },
+    { "action": "waitForAssistantReply", "timeoutMs": 20000 },
+    { "action": "switchSession", "label": "sessionA" },
+    { "action": "waitForAssistantReply", "timeoutMs": 8000, "optional": true },
+    { "check": "userMessagePresent", "text": "QA_SESSION_A", "severity": "critical" },
+    { "check": "assistantMessageContains", "text": "QA-SESSION-A", "severity": "critical" },
+    { "check": "noCrossSessionBleed", "forbiddenInSession": "sessionA", "text": "QA_SESSION_B", "severity": "critical" },
+    { "check": "sessionCountAtLeast", "min": 2, "severity": "major" },
+    { "action": "switchSession", "label": "sessionB" },
+    { "check": "assistantMessageContains", "text": "QA-SESSION-B", "severity": "critical" },
+    { "action": "screenshot", "name": "final" }
+  ]
+}

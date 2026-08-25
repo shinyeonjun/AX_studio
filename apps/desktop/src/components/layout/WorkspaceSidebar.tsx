@@ -29,6 +29,21 @@ const SIDEBAR_CONNECTOR_LINKS: SidebarSettingsLink[] = [
     icon: CONNECTOR_UI_CATALOG.local_folder.icon,
     emojiIcon: CONNECTOR_UI_CATALOG.local_folder.emoji,
   },
+  {
+    screen: 'http',
+    label: 'HTTP API',
+    emojiIcon: CONNECTOR_UI_CATALOG.http.emojiIcon,
+  },
+  {
+    screen: 'webhook',
+    label: 'Webhook',
+    emojiIcon: CONNECTOR_UI_CATALOG.webhook.emojiIcon,
+  },
+  {
+    screen: 'rdb',
+    label: '데이터베이스',
+    emojiIcon: CONNECTOR_UI_CATALOG.rdb.emojiIcon,
+  },
 ];
 
 function isConnectorConnected(state: AppState | null, screen: SettingsScreen): boolean {
@@ -41,6 +56,15 @@ function isConnectorConnected(state: AppState | null, screen: SettingsScreen): b
   }
   if (screen === 'local-folder') {
     return (state.localFolders?.length ?? 0) > 0;
+  }
+  if (screen === 'http') {
+    return state.connections?.find((connection) => connection.connector === 'http')?.connected ?? false;
+  }
+  if (screen === 'webhook') {
+    return state.connections?.find((connection) => connection.connector === 'webhook')?.connected ?? false;
+  }
+  if (screen === 'rdb') {
+    return state.connections?.find((connection) => connection.connector === 'rdb')?.connected ?? false;
   }
   return false;
 }
@@ -357,6 +381,9 @@ export function WorkspaceSidebar({
                 onClick={() => onSelectSession(session)}
               >
                 <span className="sidebar-session-title">{session.title}</span>
+                {session.sourceCount != null && session.sourceCount > 0 && (
+                  <span className="sidebar-session-tag">자료 {session.sourceCount}개</span>
+                )}
               </button>
               <button
                 type="button"

@@ -3,6 +3,8 @@ import {
   detectAiCliProviders,
   getAiProviderDisplay,
   normalizeAiProviderConfig,
+  type AiBrand,
+  type AiConnectionMode,
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { ENV_FILE_ALLOWED_KEYS, getEnvFilePath, maskSecret, readEnvFile, setEnvFileValue } from '../env-file.js';
@@ -16,14 +18,12 @@ import {
   saveActiveAi,
   setBrandSecret,
   writeAiToml,
-  type AiBrandId,
-  type AiModeId,
 } from '../ai/config-file.js';
 import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
 import { verifyAiApiKey } from '../ai/api-verify.js';
 import { testAiCli } from '../ai/cli-test.js';
 
-const UI_AI_BRANDS: AiBrandId[] = ['claude', 'gpt', 'ollama'];
+const UI_AI_BRANDS: AiBrand[] = ['claude', 'gpt', 'ollama'];
 
 export function registerAiHandlers() {
   ipcMain.handle('ax:detectAiCli', async () => {
@@ -52,11 +52,11 @@ export function registerAiHandlers() {
     core.store.setSetting('aiProvider', config);
     core.refreshAgentHarness(config);
     if (config.brand && config.mode && config.model) {
-      await saveActiveAi(config.brand as AiBrandId, config.mode, config.model);
+      await saveActiveAi(config.brand as AiBrand, config.mode, config.model);
     }
     return { ok: true, label: getAiProviderDisplay(config) };
   });
-  ipcMain.handle('ax:saveAiBrandConfig', async (_e, brand: AiBrandId, prefs: { mode?: string; model?: string; apiKey?: string }) => {
+  ipcMain.handle('ax:saveAiBrandConfig', async (_e, brand: AiBrand, prefs: { mode?: string; model?: string; apiKey?: string }) => {
     if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
     }
@@ -73,7 +73,7 @@ export function registerAiHandlers() {
       throw new Error('AI 연결 방식은 cli 또는 api여야 합니다.');
     }
     if (prefs.apiKey?.trim()) {
-      await setBrandSecret(brand, prefs.apiKey.trim(), prefs.mode as AiModeId | undefined);
+      await setBrandSecret(brand, prefs.apiKey.trim(), prefs.mode as AiConnectionMode | undefined);
     }
     const config = await readAiToml();
     config.providers[brand] = {
@@ -97,7 +97,7 @@ export function registerAiHandlers() {
     if (apiKey !== undefined && typeof apiKey !== 'string') throw new Error('API 키 형식이 올바르지 않습니다.');
     if (mode !== undefined && mode !== 'cli' && mode !== 'api') throw new Error('AI 연결 방식이 올바르지 않습니다.');
     const isOllama = brand === 'ollama' && mode === 'api';
-    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode as AiModeId | undefined)) || '').trim();
+    const testKey = (apiKey?.trim() || (await getSecretForBrand(brand, mode as AiConnectionMode | undefined)) || '').trim();
     if (!isOllama && !testKey) throw new Error('API 키가 없습니다.');
     const result = await verifyAiApiKey(brand as 'claude' | 'gpt' | 'ollama', testKey || undefined);
     if (apiKey?.trim() && !isOllama) {
@@ -111,7 +111,7 @@ export function registerAiHandlers() {
     const trimmed = value.trim();
     if (!trimmed) throw new Error('값을 입력하세요.');
     if (isAiEnvKey(key)) {
-      const brand = (['claude', 'gpt', 'ollama'] as AiBrandId[]).find((item) => envKeyForBrand(item) === key);
+      const brand = (['claude', 'gpt', 'ollama'] as AiBrand[]).find((item) => envKeyForBrand(item) === key);
       if (brand) await setBrandSecret(brand, trimmed);
     } else {
       await setEnvFileValue(key, trimmed);

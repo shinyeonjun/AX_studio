@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import type { DocumentArtifact } from '../contracts/artifacts/document.js';
 import type { IngestDocumentResult } from '../document-engine/types.js';
 import type { WorkflowStore } from './workflow-store.js';
 import { ArtifactStore } from './artifact-store.js';
 import { importDiscoveryArtifact } from './import-discovery-artifact.js';
+import { WorkspaceSourceIngestQueue } from './workspace-source-ingest-queue.js';
 import * as sourceRepo from './repositories/workspace-source-repository.js';
 
 export type WorkspaceSourceStatus = sourceRepo.WorkspaceSourceStatus;
@@ -64,6 +65,7 @@ function errorCode(error: unknown): string {
 function errorMessage(code: string): string {
   if (code === 'document_engine_worker_missing') return '문서 엔진을 찾을 수 없습니다.';
   if (code === 'document_engine_timeout') return '문서 분석 시간이 초과되었습니다.';
+  if (code === 'workspace_source_artifact_missing') return '업로드한 원본 파일을 찾을 수 없습니다.';
   return '문서 분석에 실패했습니다.';
 }
 
@@ -156,16 +158,29 @@ function manifestSource(source: WorkspaceSourceRecord) {
 }
 
 export class WorkspaceSourceService {
+  private readonly ingestQueue = new WorkspaceSourceIngestQueue();
+  private readonly listeners = new Set<(source: WorkspaceSourceRecord) => void>();
+
   constructor(
     private readonly store: WorkflowStore,
     private readonly artifactStore: ArtifactStore,
     private readonly sessionsRoot: string,
   ) {
     mkdirSync(sessionsRoot, { recursive: true });
+    queueMicrotask(() => void this.resumePendingSources().catch(() => undefined));
   }
 
   list(sessionId: string): WorkspaceSourceRecord[] {
     return this.store.listWorkspaceSources(assertSessionId(sessionId));
+  }
+
+  subscribe(listener: (source: WorkspaceSourceRecord) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  waitForIdle(): Promise<void> {
+    return this.ingestQueue.waitForIdle();
   }
 
   async attachFile(sessionId: string, filePath: string, mimeType?: string): Promise<WorkspaceSourceRecord> {
@@ -187,40 +202,42 @@ export class WorkspaceSourceService {
       updatedAt: now,
     });
     this.writeManifest(source);
+    this.notify(source);
 
-    try {
-      if (extname(stored.fileName).toLowerCase() === '.pdf') {
-        await importDiscoveryArtifact(this.artifactStore, stored.storedPath);
-        const document = this.artifactStore.getDocumentArtifact<DocumentArtifact>(stored.id);
-        if (!document) throw new WorkspaceSourceError('document_ingest_missing_result');
-        const ingested = this.artifactStore.getIngestResult<IngestDocumentResult>(stored.id);
-        source = this.store.updateWorkspaceSource(id, {
-          status: 'ready',
-          engine: ingested?.engine ?? document.engine,
-          documentArtifactId: stored.id,
-          summary: summaryFrom(ingested, document),
-          errorCode: undefined,
-          errorMessage: undefined,
-          updatedAt: new Date().toISOString(),
-        }) ?? source;
-      } else {
-        source = this.store.updateWorkspaceSource(id, {
-          status: 'ready',
-          updatedAt: new Date().toISOString(),
-        }) ?? source;
-      }
-    } catch (error) {
-      const code = errorCode(error);
+    if (extname(stored.fileName).toLowerCase() === '.pdf') {
+      this.ingestQueue.enqueue(id, () => this.ingestPdf({
+        id,
+        sessionId: safeSessionId,
+        artifactId: stored.id,
+        storedPath: stored.storedPath,
+      }));
+    } else {
       source = this.store.updateWorkspaceSource(id, {
-        status: 'failed',
-        errorCode: code,
-        errorMessage: errorMessage(code),
+        status: 'ready',
         updatedAt: new Date().toISOString(),
       }) ?? source;
+      this.writeManifest(source);
+      this.notify(source);
     }
-
-    this.writeManifest(source);
+    this.store.refreshWorkspaceChatTitle(safeSessionId);
     return source;
+  }
+
+  async attachToSession(
+    sessionId: string | undefined,
+    filePath: string,
+    mimeType?: string,
+  ): Promise<{ sessionId: string; source: WorkspaceSourceRecord; title: string }> {
+    let safeSessionId = sessionId ? assertSessionId(sessionId) : undefined;
+    if (safeSessionId && !this.store.getWorkspaceChat(safeSessionId)) {
+      throw new WorkspaceSourceError('workspace_chat_not_found');
+    }
+    if (!safeSessionId) {
+      safeSessionId = this.store.saveWorkspaceChat({ messages: [] }).id;
+    }
+    const source = await this.attachFile(safeSessionId, filePath, mimeType);
+    const title = this.store.refreshWorkspaceChatTitle(safeSessionId) ?? source.fileName;
+    return { sessionId: safeSessionId, source, title };
   }
 
   read(sessionId: string, id: string, maxChars = 20_000): WorkspaceSourceReadResult {
@@ -245,6 +262,83 @@ export class WorkspaceSourceService {
   removeSession(sessionId: string): void {
     const safeSessionId = assertSessionId(sessionId);
     rmSync(join(this.sessionsRoot, safeSessionId), { recursive: true, force: true });
+  }
+
+  private async ingestPdf(job: {
+    id: string;
+    sessionId: string;
+    artifactId: string;
+    storedPath: string;
+  }): Promise<void> {
+    try {
+      await importDiscoveryArtifact(this.artifactStore, job.storedPath);
+      const document = this.artifactStore.getDocumentArtifact<DocumentArtifact>(job.artifactId);
+      if (!document) throw new WorkspaceSourceError('document_ingest_missing_result');
+      const ingested = this.artifactStore.getIngestResult<IngestDocumentResult>(job.artifactId);
+      const source = this.store.updateWorkspaceSource(job.id, {
+        status: 'ready',
+        engine: ingested?.engine ?? document.engine,
+        documentArtifactId: job.artifactId,
+        summary: summaryFrom(ingested, document),
+        errorCode: undefined,
+        errorMessage: undefined,
+        updatedAt: new Date().toISOString(),
+      });
+      if (!source) return;
+      this.writeManifest(source);
+      this.store.refreshWorkspaceChatTitle(job.sessionId);
+      this.notify(source);
+    } catch (error) {
+      const code = errorCode(error);
+      const source = this.store.updateWorkspaceSource(job.id, {
+        status: 'failed',
+        errorCode: code,
+        errorMessage: errorMessage(code),
+        updatedAt: new Date().toISOString(),
+      });
+      if (!source) return;
+      this.writeManifest(source);
+      this.store.refreshWorkspaceChatTitle(job.sessionId);
+      this.notify(source);
+    }
+  }
+
+  private async resumePendingSources(): Promise<void> {
+    for (const chat of this.store.listWorkspaceChats()) {
+      for (const source of this.store.listWorkspaceSources(chat.id)) {
+        if (source.status !== 'processing') continue;
+        const artifact = this.artifactStore.get(source.artifactId);
+        if (!artifact || !existsSync(artifact.storedPath)) {
+          const failed = this.store.updateWorkspaceSource(source.id, {
+            status: 'failed',
+            errorCode: 'workspace_source_artifact_missing',
+            errorMessage: errorMessage('workspace_source_artifact_missing'),
+            updatedAt: new Date().toISOString(),
+          });
+          if (failed) {
+            this.writeManifest(failed);
+            this.notify(failed);
+          }
+          continue;
+        }
+        this.ingestQueue.enqueue(source.id, () => this.ingestPdf({
+          id: source.id,
+          sessionId: source.sessionId,
+          artifactId: source.artifactId,
+          storedPath: artifact.storedPath,
+        }));
+      }
+    }
+  }
+
+  private notify(source: WorkspaceSourceRecord): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(source);
+      } catch {
+        // Observers must not change source persistence or queue outcomes.
+      }
+    }
   }
 
   private writeManifest(source: WorkspaceSourceRecord): void {

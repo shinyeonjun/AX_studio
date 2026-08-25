@@ -147,46 +147,45 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
   }
 }
 
+export function normalizeHttpBaseUrl(raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: false, error: 'empty_base_url' };
+  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return { ok: false, error: 'unsupported_protocol' };
+    }
+    return { ok: true, value: url.toString() };
+  } catch {
+    return { ok: false, error: 'invalid_base_url' };
+  }
+}
+
 export async function probeHttpBaseUrl(
   baseUrl: string,
   auth?: HttpAuthConfig,
   timeoutMs = 10_000,
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
-  let url: URL;
-  try {
-    url = new URL(baseUrl.trim());
-  } catch {
-    return { ok: false, error: 'invalid_base_url' };
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return { ok: false, error: 'unsupported_protocol' };
+  const normalized = normalizeHttpBaseUrl(baseUrl);
+  if (!normalized.ok) return { ok: false, error: normalized.error };
+
+  for (const method of ['HEAD', 'GET'] as const) {
+    const result = await performHttpRequest({
+      url: normalized.value,
+      method,
+      auth,
+      timeoutMs,
+      maxBytes: method === 'HEAD' ? 0 : 1024,
+    });
+    if (!result.ok) {
+      if (result.errorCode === 'timeout') return { ok: false, error: 'connection_timeout' };
+      if (result.errorCode === 'ssrf_blocked') return { ok: false, error: 'redirect_not_allowed' };
+      continue;
+    }
+    // Any non-redirect HTTP response means the host is reachable.
+    return { ok: true, status: result.status };
   }
 
-  const result = await performHttpRequest({
-    url: url.toString(),
-    method: 'HEAD',
-    auth,
-    timeoutMs,
-    maxBytes: 0,
-  });
-  if (!result.ok) {
-    if (result.errorCode === 'timeout') return { ok: false, error: 'connection_timeout' };
-    return { ok: false, error: result.error };
-  }
-  if (result.status >= 400) {
-    if (result.status === 405) {
-      const getResult = await performHttpRequest({
-        url: url.toString(),
-        method: 'GET',
-        auth,
-        timeoutMs,
-        maxBytes: 1024,
-      });
-      if (!getResult.ok) return { ok: false, error: getResult.error };
-      if (getResult.status >= 400) return { ok: false, status: getResult.status, error: `http_${getResult.status}` };
-      return { ok: true, status: getResult.status };
-    }
-    return { ok: false, status: result.status, error: `http_${result.status}` };
-  }
-  return { ok: true, status: result.status };
+  return { ok: false, error: 'connection_failed' };
 }

@@ -2,30 +2,28 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
+import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
 import { getOsSecret, setOsSecret } from '../credential-store.js';
 import { getDesktopAxDataPaths } from '../data-paths.js';
 import { readEnvFile } from '../env-file.js';
 
-export type AiBrandId = 'claude' | 'gpt' | 'grok' | 'ollama';
-export type AiModeId = 'cli' | 'api';
-
 export interface AiBrandTomlConfig {
-  mode?: AiModeId;
+  mode?: AiConnectionMode;
   model?: string;
 }
 
 export interface AiTomlConfig {
   active?: {
-    brand: AiBrandId;
-    mode: AiModeId;
+    brand: AiBrand;
+    mode: AiConnectionMode;
     model: string;
   };
-  providers: Partial<Record<AiBrandId, AiBrandTomlConfig>>;
+  providers: Partial<Record<AiBrand, AiBrandTomlConfig>>;
   /** 레거시 [secrets] 파싱용. 저장하지 않음. */
   secrets: Record<string, string>;
 }
 
-const BRAND_ENV_KEYS: Record<AiBrandId, string> = {
+const BRAND_ENV_KEYS: Record<AiBrand, string> = {
   claude: 'ANTHROPIC_API_KEY',
   gpt: 'OPENAI_API_KEY',
   grok: 'CURSOR_API_KEY',
@@ -81,8 +79,8 @@ export function parseAiToml(content: string): AiTomlConfig {
 
     if (section === 'active') {
       config.active ??= { brand: 'claude', mode: 'cli', model: 'sonnet' };
-      if (key === 'brand') config.active.brand = value as AiBrandId;
-      if (key === 'mode') config.active.mode = value as AiModeId;
+      if (key === 'brand') config.active.brand = value as AiBrand;
+      if (key === 'mode') config.active.mode = value as AiConnectionMode;
       if (key === 'model') config.active.model = value;
       continue;
     }
@@ -94,9 +92,9 @@ export function parseAiToml(content: string): AiTomlConfig {
 
     const providerMatch = section.match(/^providers\.(.+)$/);
     if (providerMatch) {
-      const brand = providerMatch[1] as AiBrandId;
+      const brand = providerMatch[1] as AiBrand;
       config.providers[brand] ??= {};
-      if (key === 'mode') config.providers[brand]!.mode = value as AiModeId;
+      if (key === 'mode') config.providers[brand]!.mode = value as AiConnectionMode;
       if (key === 'model') config.providers[brand]!.model = value;
     }
   }
@@ -142,7 +140,7 @@ export async function writeAiToml(config: AiTomlConfig): Promise<void> {
   await writeFile(getAiConfigPath(), serializeAiToml(config), 'utf8');
 }
 
-export function envKeyForBrand(brand: AiBrandId, mode?: AiModeId): string {
+export function envKeyForBrand(brand: AiBrand, mode?: AiConnectionMode): string {
   if (brand === 'grok' && mode === 'api') return GROK_API_ENV_KEY;
   return BRAND_ENV_KEYS[brand];
 }
@@ -151,13 +149,13 @@ export function isAiEnvKey(key: string): boolean {
   return Object.values(BRAND_ENV_KEYS).includes(key) || key === GROK_API_ENV_KEY;
 }
 
-export async function setBrandSecret(brand: AiBrandId, value: string, mode?: AiModeId): Promise<void> {
+export async function setBrandSecret(brand: AiBrand, value: string, mode?: AiConnectionMode): Promise<void> {
   const envKey = envKeyForBrand(brand, mode);
   await setOsSecret(envKey, value);
   process.env[envKey] = value;
 }
 
-export async function getSecretForBrand(brand: AiBrandId, mode?: AiModeId): Promise<string> {
+export async function getSecretForBrand(brand: AiBrand, mode?: AiConnectionMode): Promise<string> {
   const envKey = envKeyForBrand(brand, mode);
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
@@ -167,7 +165,7 @@ export async function getSecretByEnvKey(envKey: string): Promise<string> {
 }
 
 export async function saveBrandPreferences(
-  brand: AiBrandId,
+  brand: AiBrand,
   prefs: AiBrandTomlConfig,
 ): Promise<AiTomlConfig> {
   const config = await readAiToml();
@@ -177,8 +175,8 @@ export async function saveBrandPreferences(
 }
 
 export async function saveActiveAi(
-  brand: AiBrandId,
-  mode: AiModeId,
+  brand: AiBrand,
+  mode: AiConnectionMode,
   model: string,
 ): Promise<AiTomlConfig> {
   const config = await readAiToml();

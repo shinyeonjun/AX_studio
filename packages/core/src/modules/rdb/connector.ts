@@ -1,8 +1,14 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
-import { openReadonlySqlite } from '../../store/db.js';
+import {
+  formatRdbTableRef,
+  isAllowedRdbTable,
+  listRdbTables,
+  parseRdbTableRef,
+  readRdbRows,
+} from './client.js';
 
 export interface RdbConnectionConfig {
-  type: 'postgres' | 'sqlite';
+  type: 'mysql' | 'postgres' | 'sqlite';
   connectionString?: string;
   filePath?: string;
   allowedSchemas?: string[];
@@ -19,42 +25,41 @@ export class RdbConnector implements Connector {
     const rowLimit = this.config.rowLimit ?? 1000;
 
     if (action === 'schema.describe') {
-      if (this.config.type === 'sqlite' && this.config.filePath) {
-        const db = await openReadonlySqlite(this.config.filePath);
-        const tables = db.all("SELECT name FROM sqlite_master WHERE type='table'");
-        db.close();
-        return { ok: true, data: tables.map((t) => t.name) };
+      try {
+        const tables = await listRdbTables(this.config);
+        return { ok: true, data: tables.map(formatRdbTableRef) };
+      } catch (error) {
+        ctx.log({
+          at: new Date().toISOString(),
+          level: 'error',
+          message: 'rdb.schema_failed',
+          data: { error: error instanceof Error ? error.message : String(error) },
+        });
+        return { ok: false, error: 'rdb_schema_failed', errorCode: 'rdb_error' };
       }
-      return { ok: true, data: this.config.allowedTables ?? [] };
     }
 
     if (action === 'query.read' || action === 'query') {
-      const table = (params.table as string) ?? '';
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+      const ref = parseRdbTableRef(params.table);
+      if (!ref) {
         return { ok: false, error: 'invalid_table_name', errorCode: 'policy_denied' };
       }
-      const allowed = this.config.allowedTables;
-      if (!allowed || allowed.length === 0 || !allowed.includes(table)) {
+      if (!isAllowedRdbTable(this.config, ref)) {
         return { ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' };
       }
 
-      if (this.config.type === 'postgres' && this.config.connectionString) {
-        const pg = await import('pg');
-        const client = new pg.default.Client({ connectionString: this.config.connectionString });
-        await client.connect();
-        const sql = `SELECT * FROM ${table} LIMIT ${rowLimit}`;
-        const res = await client.query(sql);
-        await client.end();
-        ctx.variables.queryResult = res.rows;
-        return { ok: true, data: res.rows };
-      }
-
-      if (this.config.type === 'sqlite' && this.config.filePath) {
-        const db = await openReadonlySqlite(this.config.filePath);
-        const rows = db.all(`SELECT * FROM ${table} LIMIT ${rowLimit}`);
-        db.close();
+      try {
+        const rows = await readRdbRows(this.config, ref, rowLimit);
         ctx.variables.queryResult = rows;
         return { ok: true, data: rows };
+      } catch (error) {
+        ctx.log({
+          at: new Date().toISOString(),
+          level: 'error',
+          message: 'rdb.query_failed',
+          data: { table: formatRdbTableRef(ref), error: error instanceof Error ? error.message : String(error) },
+        });
+        return { ok: false, error: 'rdb_query_failed', errorCode: 'rdb_error' };
       }
     }
 

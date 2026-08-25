@@ -1,0 +1,20 @@
+{
+  "id": "basic-real-chat",
+  "name": "실제 AI 단일 대화 응답",
+  "description": "설정된 AI provider로 한 턴 대화가 정상 완료되는지, 응답 latency를 기록합니다.",
+  "mode": "live",
+  "tags": ["chat", "smoke", "latency"],
+  "covers": ["chat:new-send-reply"],
+  "timeoutMs": 180000,
+  "steps": [
+    { "action": "newChat", "label": "main" },
+    {
+      "action": "sendMessage",
+      "text": "QA_BASIC: 'READY' 한 단어만 답해줘."
+    },
+    { "action": "waitForAssistantReply", "timeoutMs": 180000 },
+    { "check": "assistantMessageContains", "text": "READY", "severity": "major" },
+    { "check": "composerEnabled", "severity": "minor" },
+    { "action": "screenshot", "name": "basic-reply" }
+  ]
+}

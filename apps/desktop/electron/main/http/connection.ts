@@ -1,6 +1,7 @@
 import {
   HttpConnector,
   mergeHttpAuthSecret,
+  normalizeHttpBaseUrl,
   parseHttpConnectionConfig,
   probeHttpBaseUrl,
   type WorkflowRuntime,
@@ -42,6 +43,27 @@ export async function deleteHttpSecret(): Promise<void> {
   await deleteOsSecret(HTTP_SECRET_NAME);
 }
 
+function httpProbeErrorMessage(error: string | undefined): string {
+  switch (error) {
+    case 'connection_timeout':
+      return '서버에 연결할 수 없습니다 (시간 초과).';
+    case 'redirect_not_allowed':
+      return 'Base URL이 다른 주소로 리다이렉트됩니다. 최종 URL을 직접 입력해 주세요.';
+    case 'invalid_base_url':
+      return 'Base URL 형식이 올바르지 않습니다.';
+    case 'unsupported_protocol':
+      return 'http 또는 https URL만 지원합니다.';
+    case 'empty_base_url':
+      return 'Base URL을 입력해 주세요.';
+    case 'connection_failed':
+      return 'Base URL에 연결할 수 없습니다. 서버 주소와 네트워크를 확인해 주세요.';
+    default:
+      return error
+        ? `Base URL에 연결할 수 없습니다. (${error})`
+        : 'Base URL에 연결할 수 없습니다.';
+  }
+}
+
 export async function hydrateHttpConnector(store: WorkflowStore, runtime: WorkflowRuntime): Promise<void> {
   const connection = store.getConnections().find((entry) => entry.connector === 'http');
   if (!connection?.connected) return;
@@ -75,8 +97,11 @@ export async function validateAndConnectHttp(
     password?: string;
   },
 ): Promise<void> {
-  const baseUrl = payload.baseUrl.trim();
-  if (!baseUrl) throw new Error('Base URL을 입력해 주세요.');
+  const normalized = normalizeHttpBaseUrl(payload.baseUrl);
+  if (!normalized.ok) {
+    throw new Error(httpProbeErrorMessage(normalized.error));
+  }
+  const baseUrl = normalized.value;
 
   const authType = payload.authType;
   const auth =
@@ -92,16 +117,23 @@ export async function validateAndConnectHttp(
               password: payload.password?.trim(),
             };
 
+  const existingSecret = await getHttpSecret();
   if (authType === 'bearer' || authType === 'apiKey') {
+    if (!auth.token) {
+      auth.token = existingSecret?.token?.trim();
+    }
     if (!auth.token) throw new Error('인증 토큰을 입력해 주세요.');
   }
   if (authType === 'basic') {
+    if (!auth.password) {
+      auth.password = existingSecret?.password?.trim();
+    }
     if (!auth.username || !auth.password) throw new Error('사용자 이름과 비밀번호를 입력해 주세요.');
   }
 
   const probe = await probeHttpBaseUrl(baseUrl, authType === 'none' ? undefined : auth);
   if (!probe.ok) {
-    throw new Error(probe.error === 'connection_timeout' ? '서버에 연결할 수 없습니다 (시간 초과).' : 'Base URL에 연결할 수 없습니다.');
+    throw new Error(httpProbeErrorMessage(probe.error));
   }
 
   if (authType === 'none') {

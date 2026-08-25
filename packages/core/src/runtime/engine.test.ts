@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { weeklyReportWorkflowFixture } from '../testing/fixtures/workflows.js';
 import { createDatabaseAsync } from '../store/db.js';
 import { WorkflowStore } from '../store/workflow-store.js';
@@ -150,6 +150,45 @@ describe('runtime control flow', () => {
       ephemeral: true,
       status: 'success',
     });
+  });
+
+  it('pauses explicit HTTP POST before the connector can perform network I/O', async () => {
+    const execute = vi.fn(async () => ({ ok: true, data: { created: true } }));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: { http: { name: 'http', execute } },
+    });
+
+    const result = await runtime.executeWorkflow({
+      name: 'HTTP POST 승인',
+      goal: '외부 API에 payload를 보낸다',
+      version: 1,
+      steps: [
+        {
+          type: 'action',
+          id: 'create_ticket',
+          connector: 'http',
+          action: 'post',
+          actionRef: 'http.post@1',
+          params: { path: 'tickets', body: { title: '승인 대기' } },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    }, { ephemeral: true });
+
+    expect(result.status).toBe('pending_approval');
+    expect(result.pendingApprovalId).toBeTruthy();
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('serializes queued one-shot runs and records each as ephemeral', async () => {

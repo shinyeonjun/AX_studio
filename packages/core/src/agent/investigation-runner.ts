@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod';
 import type { InvestigateAgentContext } from './types.js';
-import type { AgentProgressEvent } from './progress.js';
+import type { AgentProgressEvent } from './types.js';
 import type { ModelImageInput } from './model/provider.js';
 
 /** The only model-facing surface required by Runtime AI decision steps. */

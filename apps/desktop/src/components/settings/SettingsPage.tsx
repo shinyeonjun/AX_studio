@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import type { SettingsScreen } from '../../types/navigation';
-import { brandFromSettingsScreen, SETTINGS_TITLES } from '../../constants/settings';
+import {
+  brandFromSettingsScreen,
+  isSettingsScreenVisibleInUi,
+  SETTINGS_TITLES,
+} from '../../constants/settings';
 import type { AppState } from '../../types/app-state';
 import { useAiDetection } from '../../hooks/ai-settings/useAiDetection';
 import { PageHeader } from '../layout/PageHeader';
@@ -45,9 +49,10 @@ interface SettingsPageProps {
   onDisconnectWebhook: () => Promise<void>;
   onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
   onConnectRdb: (payload: {
-    type: 'postgres' | 'sqlite';
+    type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
+    allowedSchemas?: string[];
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
@@ -101,6 +106,12 @@ export function SettingsPage({
   const { detecting, setDetecting, refreshDetection } = detection;
   const detailBrand = brandFromSettingsScreen(screen);
   const backTarget = settingsBackTarget(screen);
+
+  useEffect(() => {
+    if (!isSettingsScreenVisibleInUi(screen)) {
+      onScreenChange('hub');
+    }
+  }, [screen, onScreenChange]);
 
   useEffect(() => {
     if (screen !== 'hub') return;

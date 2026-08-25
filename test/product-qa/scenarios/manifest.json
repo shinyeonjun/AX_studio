@@ -1,0 +1,8 @@
+{
+  "scenarios": [
+    "deterministic-smoke.json",
+    "session-isolation-new-chat-while-sending-deterministic.json",
+    "session-isolation-new-chat-while-sending.json",
+    "basic-real-chat.json"
+  ]
+}

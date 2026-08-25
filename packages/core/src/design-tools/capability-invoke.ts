@@ -1,5 +1,5 @@
 import { getCapability } from '../catalog/capabilities.js';
-import { capabilityActionName } from '../catalog/capability-graph.js';
+import { capabilityActionName, readCapabilityMethodIssue } from '../catalog/capability-graph.js';
 import { isPlainChatSideEffectAllowed } from '../platform/side-effect-policy.js';
 import { citationsFromSearchHits } from '../platform/citations.js';
 import type { ConnectorContext } from '../modules/types.js';
@@ -27,6 +27,9 @@ export async function invokeReadCapability(
   const cap = getCapability(id);
   if (!cap) throw new Error('capability_not_found');
   if (cap.kind !== 'read') throw new Error('capability_not_readable');
+
+  const methodIssue = readCapabilityMethodIssue(cap, params);
+  if (methodIssue) throw new Error(methodIssue);
 
   if (!isPlainChatSideEffectAllowed(cap.sideEffect)) {
     throw new Error('capability_not_allowed_in_plain_chat');

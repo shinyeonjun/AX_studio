@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  setDocumentEngineClient,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
 import { createMainWindow, showMainWindow, setQuiting } from './app-window';
@@ -15,23 +16,55 @@ import { hydrateGmailConnector } from './gmail/connection.js';
 import { hydrateSlackConnector } from './slack/connection.js';
 import { hydrateHttpConnector } from './http/connection.js';
 import { getWebhookSecret, hydrateWebhookConnection } from './webhook/connection.js';
-import { hydrateRdbConnector } from './rdb/connection.js';
+import { hydrateRdbConnector, resolveRdbConnectionConfig } from './rdb/connection.js';
 import { hydrateOpenApiConnector } from './openapi/connection.js';
 import { hydrateMcpConnector } from './mcp/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
-import { notifyStateChanged } from './state-broadcast.js';
+import { notifyStateChanged, notifyWorkspaceSourceChanged } from './state-broadcast.js';
 import { initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
 import { migrateAxDataIfNeeded } from './data-migrate.js';
+import { E2EDocumentEngineClient } from './e2e-test-seam.js';
+import type { SlackSecret } from './slack/connection.js';
 
 process.env.AX_SCAN_WORKER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'scan-worker.js');
+
+async function hydrateConnectorsForStartup(
+  core: Awaited<ReturnType<typeof createAxStudioCore>>,
+): Promise<SlackSecret | null> {
+  const tolerateHydrationFailure = process.env.AX_E2E === '1';
+
+  async function runStep<T>(label: string, step: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await step();
+    } catch (err) {
+      if (!tolerateHydrationFailure) throw err;
+      console.warn(`[AX Studio] E2E: skipped ${label} hydration:`, err);
+      return fallback;
+    }
+  }
+
+  await runStep('gmail', () => hydrateGmailConnector(core.store, core.runtime), undefined);
+  const slackSecret = await runStep(
+    'slack',
+    () => hydrateSlackConnector(core.store, core.runtime),
+    null,
+  );
+  await runStep('http', () => hydrateHttpConnector(core.store, core.runtime), undefined);
+  await runStep('webhook', () => hydrateWebhookConnection(core.store), undefined);
+  await runStep('rdb', () => hydrateRdbConnector(core.store, core.runtime), undefined);
+  await runStep('openapi', () => hydrateOpenApiConnector(core.store, core.runtime), undefined);
+  await runStep('mcp', () => hydrateMcpConnector(core.store, core.runtime), undefined);
+  return slackSecret;
+}
 
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
-if (!gotSingleInstanceLock) {
+const allowParallelInstance = process.env.AX_E2E === '1' || process.env.AX_PRODUCT_QA === '1';
+if (!gotSingleInstanceLock && !allowParallelInstance) {
   console.error(
     '[AX Studio] 이미 실행 중입니다. 기존 AX Studio 창을 모두 닫은 뒤 다시 `npm run dev` 하세요.',
   );
@@ -53,14 +86,22 @@ process.on('unhandledRejection', (reason) => {
 
 app.whenReady().then(async () => {
   try {
+    const isE2E = process.env.AX_E2E === '1';
     const paths = initDesktopAxDataPaths();
-    migrateAxDataIfNeeded(paths);
+    if (!isE2E) migrateAxDataIfNeeded(paths);
     app.setPath('cache', paths.cache.chromium);
 
-    await loadEnvFile();
-    await migrateAiSecretsToOsStore();
-    await purgeDisallowedEnvFileKeys();
-    const aiToml = await loadAiTomlIntoEnv();
+    if (process.env.AX_E2E === '1' && process.env.AX_E2E_DOCUMENT_ENGINE === 'mock') {
+      setDocumentEngineClient(new E2EDocumentEngineClient());
+    }
+
+    let aiToml: Awaited<ReturnType<typeof loadAiTomlIntoEnv>> | null = null;
+    if (!isE2E) {
+      await loadEnvFile();
+      await migrateAiSecretsToOsStore();
+      await purgeDisallowedEnvFileKeys();
+      aiToml = await loadAiTomlIntoEnv();
+    }
 
     const core = await createAxStudioCore({
       paths,
@@ -69,9 +110,11 @@ app.whenReady().then(async () => {
       onExecutionProgress: () => notifyStateChanged(),
       onExecutionFinished: () => notifyStateChanged(),
       onPushTransportStateChanged: () => notifyStateChanged(),
+      resolveConnectionConfig: async (connector, config) =>
+        connector === 'rdb' ? resolveRdbConnectionConfig(config) : config,
     });
 
-    if (aiToml.active) {
+    if (aiToml?.active) {
       const config = migrateDesktopAiProvider({
         brand: aiToml.active.brand,
         mode: aiToml.active.mode,
@@ -88,16 +131,11 @@ app.whenReady().then(async () => {
       }
     }
 
-    await hydrateGmailConnector(core.store, core.runtime);
-    const slackSecret = await hydrateSlackConnector(core.store, core.runtime);
-    await hydrateHttpConnector(core.store, core.runtime);
-    await hydrateWebhookConnection(core.store);
-    await hydrateRdbConnector(core.store, core.runtime);
-    await hydrateOpenApiConnector(core.store, core.runtime);
-    await hydrateMcpConnector(core.store, core.runtime);
+    const slackSecret = await hydrateConnectorsForStartup(core);
     setWebhookSecretResolver(() => getWebhookSecret());
 
     setCore(core);
+    unsubscribeWorkspaceSources = core.workspaceSources.subscribe((source) => notifyWorkspaceSourceChanged(source));
     registerIpcHandlers();
     createMainWindow();
     createTray();
@@ -129,6 +167,7 @@ app.whenReady().then(async () => {
 });
 
 let shutdownStarted = false;
+let unsubscribeWorkspaceSources: (() => void) | undefined;
 
 app.on('before-quit', (event) => {
   if (shutdownStarted) return;
@@ -136,6 +175,8 @@ app.on('before-quit', (event) => {
   setQuiting(true);
   const core = getCoreIfInitialized();
   if (!core) return;
+  unsubscribeWorkspaceSources?.();
+  unsubscribeWorkspaceSources = undefined;
   event.preventDefault();
   core.scheduler.stop();
   void (async () => {

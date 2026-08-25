@@ -154,6 +154,19 @@
   word-break: break-all;
 }
 
+.connected-service-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.connected-service-item-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .btn.secondary.danger {
   border-color: var(--red, #ef4444);
   color: var(--red, #ef4444);

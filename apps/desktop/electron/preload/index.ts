@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { AxInputRequest, AxUiPresentation, WorkspaceSourceRecord } from '@ax-studio/core';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
@@ -33,9 +33,10 @@ contextBridge.exposeInMainWorld('ax', {
   disconnectWebhook: () => ipcRenderer.invoke('ax:disconnectWebhook'),
   pickSqliteFile: () => ipcRenderer.invoke('ax:pickSqliteFile'),
   connectRdb: (payload: {
-    type: 'postgres' | 'sqlite';
+    type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
+    allowedSchemas?: string[];
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
@@ -88,7 +89,9 @@ contextBridge.exposeInMainWorld('ax', {
   loadWorkspaceChatByWorkflowId: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkspaceChatByWorkflowId', workflowId),
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),
   listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
-  attachWorkspaceSource: (sessionId: string) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
+  attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
+  e2eAttachWorkspaceSource: (sessionId: string | null | undefined, filePath: string) =>
+    ipcRenderer.invoke('ax:e2eAttachWorkspaceSource', sessionId, filePath),
   onChatProgress: (listener: (event: { message: string; requestId?: string }) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string; requestId?: string }) =>
       listener(payload);
@@ -99,6 +102,14 @@ contextBridge.exposeInMainWorld('ax', {
     const wrapped = () => listener();
     ipcRenderer.on('ax:state-changed', wrapped);
     return () => ipcRenderer.removeListener('ax:state-changed', wrapped);
+  },
+  onWorkspaceSourceChanged: (listener: (event: { sessionId: string; source: WorkspaceSourceRecord }) => void) => {
+    const wrapped = (
+      _event: Electron.IpcRendererEvent,
+      payload: { sessionId: string; source: WorkspaceSourceRecord },
+    ) => listener(payload);
+    ipcRenderer.on('ax:workspace-source-changed', wrapped);
+    return () => ipcRenderer.removeListener('ax:workspace-source-changed', wrapped);
   },
   importArtifact: () => ipcRenderer.invoke('ax:importArtifact'),
   discoveryStart: (payload: {

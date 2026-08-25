@@ -8,6 +8,12 @@
   "scripts": {
     "build": "npm run build -w @ax-studio/core && npm run build -w @ax-studio/desktop",
     "test": "npm run test -w @ax-studio/core",
+    "test:e2e": "node test/e2e/run.mjs",
+    "test:product-qa": "node test/product-qa/run.mjs",
+    "test:integration": "node test/integration/run.mjs",
+    "test:manual": "node test/manual/start.mjs",
+    "test:manual:http": "node test/manual/rest-api.mjs",
+    "test:manual:db": "node test/manual/postgres.mjs",
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",
@@ -27,6 +33,7 @@
     "better-sqlite3@11.10.0": true
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "dependency-cruiser": "^18.2.0",
     "knip": "^6.32.2"
   }

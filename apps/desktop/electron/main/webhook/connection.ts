@@ -29,7 +29,10 @@ export async function validateAndConnectWebhook(
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error('포트 번호가 올바르지 않습니다.');
   }
-  const secret = payload.secret.trim();
+  let secret = payload.secret.trim();
+  if (!secret) {
+    secret = (await getWebhookSecret())?.trim() ?? '';
+  }
   if (!secret) throw new Error('Webhook 비밀을 입력해 주세요.');
 
   await saveWebhookSecret(secret);

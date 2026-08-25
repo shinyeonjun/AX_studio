@@ -16,6 +16,18 @@ describe('action definitions', () => {
     });
   });
 
+  it('resolves HTTP POST as a write action with an external side effect', () => {
+    expect(actionRefFor('http', 'post')).toBe('http.post@1');
+    expect(resolveActionDefinition('http.post')).toMatchObject({
+      id: 'http.post',
+      connector: 'http',
+      action: 'post',
+      kind: 'write',
+      sideEffect: 'EXTERNAL',
+    });
+    expect(resolveActionDefinition('http.delete')).toBeUndefined();
+  });
+
   it('lists only executable actions, not triggers', () => {
     const definitions = listActionDefinitions();
     expect(definitions.some((definition) => definition.id === 'slack.new_message')).toBe(false);

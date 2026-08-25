@@ -11,6 +11,8 @@ import type { AxCommandReadContext } from './read-gateway.js';
 import { AGENT_COMMAND_CONTEXT } from './access.js';
 import { AxCommandService } from './service.js';
 import type { WorkspaceSourceRecord } from '../../store/workspace-source-service.js';
+import { type AgentScopedContextMap } from '../scoped-context.js';
+import { buildCommandProtocolPrompt } from '../prompt/command-protocol.js';
 import {
   createAxCommandChatTransport,
 } from './transport.js';
@@ -32,6 +34,10 @@ export interface AxCommandChatOptions {
   workspaceSessionId?: string;
   workspaceSources?: WorkspaceSourceRecord[];
   currentWorkflowId?: string;
+  sessionMemo?: AgentScopedContextMap;
+  workflowPolicy?: AgentScopedContextMap;
+  /** Set only when the current user message is a host-rendered context confirmation. */
+  allowContextUpdate?: boolean;
   onProgress?: (event: { message: string }) => void;
   abortSignal?: AbortSignal;
   timeoutMs?: number;
@@ -50,33 +56,15 @@ function commandProtocolPrompt(options: AxCommandChatOptions, outputInstructions
     args: entry.args,
     mutates: entry.mutates,
   }));
-  const connected = options.connectedConnectors?.join(', ') || '없음';
-  const sessionSources = options.workspaceSources?.length
-    ? JSON.stringify(options.workspaceSources)
-    : '[]';
-  return [
-    'AX command protocol을 사용하는 workflow agent다.',
-    '사용자의 요청을 이해한 뒤 host가 제공한 command만 사용한다.',
-    'shell, 임의 파일 경로, SQL, connector API 호출을 만들거나 실행하지 않는다.',
-    '한 턴에는 command 하나 또는 최종 reply 하나만 반환한다.',
-    '필요할 때만 조회 command를 사용한다: 사용자가 이름으로 지칭한 연결·폴더·파일을 식별해야 할 때는 resource.list/source.list/source.files.list를 호출하고, action 계약이나 연결 상태가 불명확할 때만 capability.list/describe를 호출한다.',
-    '이미 대화·workflow·조회 결과에 있는 id/path/계약은 다시 조회하지 않는다. workflow.update/delete/validate는 대상 workflow id와 최신 버전이 없을 때만 workflow.inspect/list를 호출한다.',
-    '연결 폴더의 PDF 본문은 source.file.read가, 현재 대화에 업로드한 PDF 본문은 session.source.read가 로컬 문서 엔진(기본 Docling)으로 추출한 evidence다. Docling을 직접 실행하지 않는다.',
-    '현재 대화 세션에 업로드된 자료는 session.source.list/read로만 조회한다. source id를 사용하고 절대 경로를 만들거나 요구하지 않는다.',
-    'command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.',
-    'slack.message.send나 gmail.message.send를 직접 호출하는 command는 없다. 외부 발송을 포함한 일회 계획은 execution.enqueue_once로 검증 후 즉시 큐에 넣고 저장하지 않는다.',
-    '사용자가 앞서 제안한 작업을 승인하면 같은 대화의 의도를 이어서 적절한 lifecycle command를 사용한다. command가 없다고 답하지 않는다.',
-    'command 결과가 needs_input이면 사용자에게 필요한 값만 자연어로 질문한다. 없는 값이나 식별자를 추측하지 않는다.',
-    'command 결과가 conflict이면 최신 workflow를 조회한 뒤 사용자의 변경 의도를 보존해서 다시 시도한다.',
-    '평범한 설명은 최종 reply로 답한다. 사용자가 검토·선택·입력할 구조화된 화면이 실제로 필요할 때만 ui.present를 사용한다.',
-    'ui.present의 JSON은 대화에 출력하지 않는다. actions는 버튼을 눌렀을 때 보낼 사용자 문장이고, connector·shell·임의 command를 실행하지 않는다.',
-    'command 실행 결과와 내부 JSON을 사용자에게 그대로 노출하지 말고 한국어로 요약한다.',
-    `현재 연결된 connector: ${connected}`,
-    `현재 대화에 연결된 workflow: ${options.currentWorkflowId?.trim() || '없음'}`,
-    `현재 대화 세션 자료 manifest: ${sessionSources}`,
-    `사용 가능한 command 계약: ${JSON.stringify(commands)}`,
-    `provider 출력 계약: ${outputInstructions}`,
-  ].join('\n');
+  return buildCommandProtocolPrompt({
+    connectedConnectors: options.connectedConnectors,
+    currentWorkflowId: options.currentWorkflowId,
+    workspaceSources: options.workspaceSources,
+    sessionMemo: options.sessionMemo,
+    workflowPolicy: options.workflowPolicy,
+    commands,
+    outputInstructions,
+  });
 }
 
 function commandContext(options: AxCommandChatOptions): CommandAgentContext {
@@ -103,6 +91,9 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
     ...options.messages,
     { role: 'user', content: options.userMessage },
   ];
+  let activeWorkflowId = options.currentWorkflowId?.trim() || undefined;
+  let sessionMemo = options.sessionMemo ?? {};
+  let workflowPolicy = options.workflowPolicy ?? {};
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? AX_COMMAND_CHAT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -115,7 +106,12 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
       const { output } = await options.harness.run({
         role: 'command',
         outputSchema,
-        systemPrompt: commandProtocolPrompt(options, transport.outputInstructions),
+        systemPrompt: commandProtocolPrompt({
+          ...options,
+          currentWorkflowId: activeWorkflowId,
+          sessionMemo,
+          workflowPolicy,
+        }, transport.outputInstructions),
         context: commandContext(options),
         messages,
         sessionId: options.providerSessionId,
@@ -132,6 +128,8 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
         designToolContextFactory: options.designToolContextFactory,
         executionContext: AGENT_COMMAND_CONTEXT,
         workspaceSessionId: options.workspaceSessionId,
+        currentWorkflowId: activeWorkflowId,
+        allowContextUpdate: options.allowContextUpdate,
       });
       const inputRequests = inputRequestsForResult(result);
       const resultForLoop: AxCommandResult = { ...result, inputRequests };
@@ -144,6 +142,20 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
             : undefined;
         const presentation = AxUiPresentationSchema.safeParse(presentationValue);
         if (presentation.success) options.onPresentation?.(presentation.data);
+      }
+      if (result.status === 'ok' && result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+        const data = result.data as { workflowId?: unknown; scope?: unknown; context?: unknown };
+        if (parsed.command.name === 'workflow.create' || parsed.command.name === 'workflow.update') {
+          if (typeof data.workflowId === 'string' && data.workflowId.trim()) activeWorkflowId = data.workflowId.trim();
+        }
+        if (parsed.command.name === 'workflow.delete' && data.workflowId === activeWorkflowId) {
+          activeWorkflowId = undefined;
+          workflowPolicy = {};
+        }
+        if (parsed.command.name === 'context.update' && data.context && typeof data.context === 'object' && !Array.isArray(data.context)) {
+          if (data.scope === 'session') sessionMemo = data.context as AgentScopedContextMap;
+          if (data.scope === 'workflow') workflowPolicy = data.context as AgentScopedContextMap;
+        }
       }
       messages.push(
         { role: 'assistant', content: JSON.stringify({ kind: 'command', command: parsed.command }) },

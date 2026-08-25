@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  hydrateWorkflowSummary,
-  workspaceChatErrorMessage,
-  type WorkspaceWorkflowState,
-} from './workspace-chat-helpers';
+import type { WorkspaceWorkflowState } from './workspace-chat-helpers';
+import { ipcErrorMessage } from '../lib/ipc-error';
 import type { WorkspaceChatMessage } from '../components/workspace/AxWorkspaceChat';
 import type { WorkspaceSourceRecord } from '@ax-studio/core';
 
@@ -40,22 +37,35 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     return () => off?.();
   }, []);
 
+  useEffect(() => {
+    const off = window.ax.onWorkspaceSourceChanged?.(({ sessionId, source }) => {
+      if (workspaceSessionIdRef.current !== sessionId) return;
+      setWorkspaceSources((current) => [
+        ...current.filter((entry) => entry.id !== source.id),
+        source,
+      ]);
+    });
+    return () => off?.();
+  }, []);
+
   const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
+
+  const isViewingSession = (sessionId: string | undefined) =>
+    workspaceSessionIdRef.current === sessionId;
 
   const invalidateSession = () => {
     sessionEpochRef.current += 1;
   };
 
-  const cancelActiveRequest = () => {
-    const requestId = activeRequestIdRef.current;
+  const detachActiveRequest = () => {
     activeRequestIdRef.current = undefined;
     busyRef.current = false;
     setBusy(false);
-    if (requestId) void window.ax.cancelChat(requestId).catch(() => undefined);
+    setProgress('');
   };
 
   const reset = () => {
-    cancelActiveRequest();
+    detachActiveRequest();
     invalidateSession();
     workspaceSessionIdRef.current = undefined;
     setWorkspaceSessionId(undefined);
@@ -78,7 +88,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const loadWorkspaceChat = async (id: string) => {
-    cancelActiveRequest();
+    detachActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
@@ -97,25 +107,25 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       if (loaded.workflowId) {
         const workflow = await window.ax.loadWorkChat(loaded.workflowId);
         if (!isCurrentSession(epoch)) return;
-        const state = await hydrateWorkflowSummary({
+        const state: WorkspaceWorkflowState = {
           ...(workflow.state as WorkspaceWorkflowState),
           summary: workflow.summary,
           title: workflow.title,
           workflowId: loaded.workflowId,
           messages: loaded.messages,
-        });
+        };
         setWorkspaceWorkflowState(state);
       }
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
-      setError(workspaceChatErrorMessage(err));
+      setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       if (isCurrentSession(epoch)) setBusy(false);
     }
   };
 
   const openWorkChat = async (workflowId: string) => {
-    cancelActiveRequest();
+    detachActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
     setBusy(true);
@@ -138,50 +148,55 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         if (!isCurrentSession(epoch)) return;
         setWorkspaceSources(sourceResult.sources);
       }
-      const state = await hydrateWorkflowSummary({
+      const state: WorkspaceWorkflowState = {
         ...(loaded.state as WorkspaceWorkflowState),
         summary: loaded.summary,
         title: loaded.title,
         workflowId,
         messages: mappedChat?.messages,
-      });
+      };
       if (!isCurrentSession(epoch)) return;
       if (!mappedChat) setChatMessages(state.messages ?? []);
       setWorkspaceWorkflowState(state);
     } catch (err) {
       if (!isCurrentSession(epoch)) return;
-      setError(workspaceChatErrorMessage(err));
+      setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       if (isCurrentSession(epoch)) setBusy(false);
     }
   };
 
   const sendChat = async (text: string) => {
-    if (busyRef.current || sourceBusyRef.current) return;
+    if (busyRef.current) return;
     const epoch = sessionEpochRef.current;
     const requestId = crypto.randomUUID();
+    const originSessionId = workspaceSessionIdRef.current;
+    const originWorkflowId = workspaceWorkflowState?.workflowId;
     busyRef.current = true;
     activeRequestIdRef.current = requestId;
     const nextMessages: WorkspaceChatMessage[] = [...chatMessages, { role: 'user', content: text }];
-    const currentWorkflowId = workspaceWorkflowState?.workflowId;
-    setChatMessages(nextMessages);
-    setBusy(true);
-    setError('');
-    setProgress('연결된 리소스를 확인하고 있습니다');
+    if (isCurrentSession(epoch)) {
+      setChatMessages(nextMessages);
+      setBusy(true);
+      setError('');
+      setProgress('연결된 리소스를 확인하고 있습니다');
+    }
+    let savedSessionId = originSessionId;
     try {
       const initialSaved = await window.ax.saveWorkspaceChat(
-        workspaceSessionIdRef.current,
+        originSessionId,
         nextMessages,
-        currentWorkflowId,
+        originWorkflowId,
       );
-      if (!isCurrentSession(epoch)) return;
-      workspaceSessionIdRef.current = initialSaved.id;
-      setWorkspaceSessionId(initialSaved.id);
-      onSessionsChanged?.();
+      savedSessionId = initialSaved.id;
+      if (isCurrentSession(epoch) && isViewingSession(originSessionId)) {
+        workspaceSessionIdRef.current = initialSaved.id;
+        setWorkspaceSessionId(initialSaved.id);
+      }
       const res = (await window.ax.sendCommandChat(
         nextMessages,
         requestId,
-        currentWorkflowId,
+        originWorkflowId,
         initialSaved.id,
       )) as {
         role: 'assistant';
@@ -191,7 +206,6 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         inputRequests?: import('@ax-studio/core').AxInputRequest[];
         presentations?: import('@ax-studio/core').AxUiPresentation[];
       };
-      if (!isCurrentSession(epoch)) return;
       const finalMessages: WorkspaceChatMessage[] = [
         ...nextMessages,
         {
@@ -201,44 +215,45 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
           ...(res.presentations?.length ? { presentations: res.presentations } : {}),
         },
       ];
-      setChatMessages(finalMessages);
       const changedWorkflowId = res.changedWorkflowIds?.[0];
-      const removedWorkflowId = workspaceWorkflowState?.workflowId &&
-        res.removedWorkflowIds?.includes(workspaceWorkflowState.workflowId)
-        ? workspaceWorkflowState.workflowId
+      const removedWorkflowId = originWorkflowId &&
+        res.removedWorkflowIds?.includes(originWorkflowId)
+        ? originWorkflowId
         : undefined;
-      const workflowId = removedWorkflowId ? null : changedWorkflowId ?? workspaceWorkflowState?.workflowId;
+      const workflowId = removedWorkflowId ? null : changedWorkflowId ?? originWorkflowId;
       const saved = await window.ax.saveWorkspaceChat(
-        workspaceSessionIdRef.current,
+        savedSessionId,
         finalMessages,
         workflowId,
       );
-      if (!isCurrentSession(epoch)) return;
-      workspaceSessionIdRef.current = saved.id;
-      setWorkspaceSessionId(saved.id);
+      savedSessionId = saved.id;
       onSessionsChanged?.();
-      const sourceResult = await window.ax.listWorkspaceSources(saved.id);
-      if (!isCurrentSession(epoch)) return;
-      setWorkspaceSources(sourceResult.sources);
-      if (changedWorkflowId) {
-        const workflow = await window.ax.loadWorkChat(changedWorkflowId);
-        if (!isCurrentSession(epoch)) return;
-        const state = await hydrateWorkflowSummary({
-          ...(workflow.state as WorkspaceWorkflowState),
-          summary: workflow.summary,
-          title: workflow.title,
-          workflowId: changedWorkflowId,
-          messages: finalMessages,
-        });
-        setWorkspaceWorkflowState(state);
-        await refresh();
-      } else if ((res.removedWorkflowIds?.length ?? 0) > 0) {
-        if (removedWorkflowId) setWorkspaceWorkflowState(null);
-        await refresh();
+      if (isViewingSession(savedSessionId)) {
+        setChatMessages(finalMessages);
+        workspaceSessionIdRef.current = saved.id;
+        setWorkspaceSessionId(saved.id);
+        const sourceResult = await window.ax.listWorkspaceSources(saved.id);
+        setWorkspaceSources(sourceResult.sources);
+        if (changedWorkflowId) {
+          const workflow = await window.ax.loadWorkChat(changedWorkflowId);
+          const state: WorkspaceWorkflowState = {
+            ...(workflow.state as WorkspaceWorkflowState),
+            summary: workflow.summary,
+            title: workflow.title,
+            workflowId: changedWorkflowId,
+            messages: finalMessages,
+          };
+          setWorkspaceWorkflowState(state);
+          await refresh();
+        } else if ((res.removedWorkflowIds?.length ?? 0) > 0) {
+          if (removedWorkflowId) setWorkspaceWorkflowState(null);
+          await refresh();
+        }
       }
     } catch (err) {
-      if (!isCurrentSession(epoch)) return;
-      setError(workspaceChatErrorMessage(err));
+      if (isCurrentSession(epoch) && isViewingSession(savedSessionId)) {
+        setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
+      }
     } finally {
       if (activeRequestIdRef.current === requestId) {
         activeRequestIdRef.current = undefined;
@@ -260,7 +275,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       setWorkflowRegistered(true);
       await refresh();
     } catch (err) {
-      setError(workspaceChatErrorMessage(err));
+      setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     }
   };
 
@@ -284,7 +299,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       const result = await window.ax.listWorkspaceSources(sessionId);
       if (workspaceSessionIdRef.current === sessionId) setWorkspaceSources(result.sources);
     } catch (err) {
-      setError(workspaceChatErrorMessage(err));
+      setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     }
   };
 
@@ -294,30 +309,21 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     setSourceBusy(true);
     setError('');
     try {
-      let sessionId = workspaceSessionIdRef.current;
-      if (!sessionId) {
-        const saved = await window.ax.saveWorkspaceChat(
-          undefined,
-          chatMessages,
-          workspaceWorkflowState?.workflowId,
-        );
-        sessionId = saved.id;
-        workspaceSessionIdRef.current = sessionId;
-        setWorkspaceSessionId(sessionId);
-        onSessionsChanged?.();
-      }
-      const result = await window.ax.attachWorkspaceSource(sessionId);
+      const result = await window.ax.attachWorkspaceSource(workspaceSessionIdRef.current);
       if (!result.ok) {
         if (result.error) setError(result.error);
         return;
       }
+      workspaceSessionIdRef.current = result.sessionId;
+      setWorkspaceSessionId(result.sessionId);
       setWorkspaceSources((current) => [
         ...current.filter((source) => source.id !== result.source.id),
         result.source,
       ]);
-      await refreshWorkspaceSources(sessionId);
+      await refreshWorkspaceSources(result.sessionId);
+      onSessionsChanged?.();
     } catch (err) {
-      setError(workspaceChatErrorMessage(err));
+      setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       sourceBusyRef.current = false;
       setSourceBusy(false);

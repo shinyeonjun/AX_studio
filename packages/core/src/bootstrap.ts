@@ -40,6 +40,7 @@ export interface AxStudioCoreOptions {
   onExecutionProgress?: (progress: import('./runtime/types.js').ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
   onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void;
+  resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
 }
 
 export interface AxStudioCore {
@@ -102,6 +103,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     enqueueOnce: (workflow) => runtime.enqueueEphemeralWorkflow(workflow, { triggerType: 'manual' }),
     artifactStore,
     workspaceSources,
+    resolveConnectionConfig: options.resolveConnectionConfig,
   });
 
   const core: AxStudioCore = {

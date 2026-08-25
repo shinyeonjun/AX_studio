@@ -1,0 +1,17 @@
+{
+  "id": "deterministic-smoke",
+  "name": "Deterministic smoke — UI/세션 경계",
+  "description": "Fake agent로 API 없이 composer·세션·응답 계약을 빠르게 확인합니다.",
+  "mode": "deterministic",
+  "tags": ["smoke", "chat", "deterministic"],
+  "covers": ["chat:new-send-reply"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "newChat", "label": "smoke" },
+    { "action": "sendMessage", "text": "hello" },
+    { "action": "waitForAssistantReply", "timeoutMs": 15000 },
+    { "check": "assistantMessageContains", "text": "E2E reply", "severity": "critical" },
+    { "check": "composerEnabled", "severity": "major" },
+    { "action": "screenshot", "name": "after-reply" }
+  ]
+}

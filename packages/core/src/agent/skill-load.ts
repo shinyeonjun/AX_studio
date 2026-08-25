@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EMBEDDED_AGENT_SKILLS, EMBEDDED_AGENTS_MD } from './embedded.js';
+import { EMBEDDED_AGENT_SKILLS } from './embedded.js';
 
 export interface AgentSkillFile {
   id: string;
@@ -57,11 +57,4 @@ export function loadAgentSkill(id: string): AgentSkillFile {
   if (!raw) throw new Error(`Agent skill not found: ${id}`);
   const parsed = parseSkillMarkdown(raw);
   return { id, raw, ...parsed };
-}
-
-export function loadAgentsConstitution(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const path = join(here, 'AGENTS.md');
-  if (existsSync(path)) return readFileSync(path, 'utf8').trim();
-  return EMBEDDED_AGENTS_MD.trim();
 }

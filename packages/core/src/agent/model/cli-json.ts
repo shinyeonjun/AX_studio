@@ -23,10 +23,73 @@ export function parseJsonObject(raw: string): unknown {
     return JSON.parse(text);
   } catch (err) {
     if (err instanceof SyntaxError) {
+      const repaired = escapeControlCharactersInJsonStrings(text);
+      if (repaired !== text) {
+        try {
+          return JSON.parse(repaired);
+        } catch {
+          // Fall through to the stable provider-facing diagnostic below.
+        }
+      }
       throw new Error(`AI structured output was not valid JSON: ${trimmed.slice(0, 160)}`);
     }
     throw err;
   }
+}
+
+/**
+ * Some CLI models emit literal line breaks inside a JSON string even though
+ * the outer response is otherwise JSON-shaped. Repair only JSON string
+ * control characters; never evaluate or otherwise reinterpret the payload.
+ */
+function escapeControlCharactersInJsonStrings(text: string): string {
+  let inString = false;
+  let escaped = false;
+  let repaired = '';
+
+  for (const character of text) {
+    if (escaped) {
+      repaired += character;
+      escaped = false;
+      continue;
+    }
+
+    if (character === '\\' && inString) {
+      repaired += character;
+      escaped = true;
+      continue;
+    }
+
+    if (character === '"') {
+      repaired += character;
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      if (character === '\n') {
+        repaired += '\\n';
+        continue;
+      }
+      if (character === '\r') {
+        repaired += '\\r';
+        continue;
+      }
+      if (character === '\t') {
+        repaired += '\\t';
+        continue;
+      }
+      const code = character.charCodeAt(0);
+      if (code < 0x20) {
+        repaired += `\\u${code.toString(16).padStart(4, '0')}`;
+        continue;
+      }
+    }
+
+    repaired += character;
+  }
+
+  return repaired;
 }
 
 function structuredOutputCandidates(parsed: unknown): unknown[] {

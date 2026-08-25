@@ -114,6 +114,20 @@ describe('cli json', () => {
       'error: unexpected argument --json-schema',
     );
   });
+
+  it('repairs literal control characters inside nested JSON strings', () => {
+    expect(
+      parseJsonObject(`{
+        "text": "
+[CRITICAL] 고객-티켓 불일치: Naver
+
+DB 고객 priority: normal
+"
+      }`),
+    ).toEqual({
+      text: '\n[CRITICAL] 고객-티켓 불일치: Naver\n\nDB 고객 priority: normal\n',
+    });
+  });
 });
 
 describe('codex cli adapter', () => {

@@ -22,6 +22,7 @@ export interface DiscoveryCommandGateway {
 
 export interface DiscoveryGatewayOptions {
   artifactStore?: ArtifactStore;
+  resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceReadsMax?: number;
 }
@@ -33,6 +34,7 @@ export function createDiscoveryCommandGateway(
   const service = new WorkDiscoveryService({
     store,
     artifactStore: options.artifactStore,
+    resolveConnectionConfig: options.resolveConnectionConfig,
     snapshotDir: options.snapshotDir,
     sourceReadsMax: options.sourceReadsMax,
   });

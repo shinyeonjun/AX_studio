@@ -36,6 +36,13 @@ describe('session source commands', () => {
       text: '세션 command 근거',
       pages: [{ index: 0, text: '세션 command 근거' }],
     });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const originalIngest = engine.ingest.bind(engine);
+    engine.ingest = async (path, options) => {
+      await gate;
+      return originalIngest(path, options);
+    };
     setDocumentEngineClient(engine);
     const sourceService = new WorkspaceSourceService(
       store,
@@ -44,8 +51,20 @@ describe('session source commands', () => {
     );
     const pdfPath = join(root, 'command.pdf');
     writeFileSync(pdfPath, '%PDF-1.7 fixture');
-    const source = await sourceService.attachFile(chat.id, pdfPath);
+    const registered = await sourceService.attachFile(chat.id, pdfPath);
+    expect(registered.status).toBe('processing');
     const commands = new AxCommandService(store, { workspaceSources: sourceService });
+    const pendingRead = await commands.execute(
+      { name: 'session.source.read', args: { sourceId: registered.id } },
+      { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id },
+    );
+    expect(pendingRead).toMatchObject({
+      status: 'needs_input',
+      issues: [{ code: 'workspace_source_processing' }],
+    });
+    release();
+    await sourceService.waitForIdle();
+    const source = sourceService.list(chat.id)[0]!;
 
     const listed = await commands.execute(
       { name: 'session.source.list' },

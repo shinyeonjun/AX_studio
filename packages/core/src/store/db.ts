@@ -24,6 +24,7 @@ const MIGRATION_SQL = `
   CREATE TABLE IF NOT EXISTS workflows (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    policy_json TEXT NOT NULL DEFAULT '{}',
     active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -77,6 +78,7 @@ const MIGRATION_SQL = `
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     messages_json TEXT NOT NULL,
+    session_memo_json TEXT NOT NULL DEFAULT '{}',
     workflow_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -179,11 +181,17 @@ function columnNames(db: AppDatabase, table: string): string[] {
 
 function applyMigrations(db: AppDatabase) {
   db.exec(MIGRATION_SQL);
+  if (!columnNames(db, 'workflows').includes('policy_json')) {
+    db.exec("ALTER TABLE workflows ADD COLUMN policy_json TEXT NOT NULL DEFAULT '{}'");
+  }
   if (!columnNames(db, 'executions').includes('ir_json')) {
     db.exec('ALTER TABLE executions ADD COLUMN ir_json TEXT');
   }
   if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
     db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');
+  }
+  if (!columnNames(db, 'workspace_chats').includes('session_memo_json')) {
+    db.exec("ALTER TABLE workspace_chats ADD COLUMN session_memo_json TEXT NOT NULL DEFAULT '{}'");
   }
   db.exec(
     "UPDATE executions SET status = 'pending_approval', finished_at = NULL, error_code = 'pending_approval' " +

@@ -7,6 +7,7 @@ export interface ChatSessionSummary {
   kind: 'workspace';
   workflowId?: string;
   corrupted?: boolean;
+  sourceCount?: number;
 }
 
 export function useChatSessions() {

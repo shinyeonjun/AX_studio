@@ -61,7 +61,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
       )}
       <AxWorkspaceChat
         messages={workspaceChat.displayMessages}
-        busy={workspaceChat.busy || workspaceChat.sourceBusy || discovery.busy}
+        busy={workspaceChat.busy || discovery.busy}
         error={workspaceChat.error || discovery.error}
         progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}

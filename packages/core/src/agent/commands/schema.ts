@@ -6,6 +6,7 @@ import {
   TriggerSchema,
 } from '../../workflow/schema.js';
 import { PortBindingSchema } from '../../workflow/port-binding.js';
+import { AgentScopedContextUpdateArgsSchema } from '../scoped-context.js';
 
 /**
  * AX commands are the model-facing boundary. They are intentionally narrower
@@ -32,6 +33,7 @@ export const AX_COMMAND_NAMES = [
   'workflow.delete',
   'workflow.run',
   'execution.enqueue_once',
+  'context.update',
   'ui.present',
   'discovery.start',
   'discovery.inspect',
@@ -120,6 +122,8 @@ export const AxUiPresentationActionSchema = z.object({
   label: z.string().trim().min(1).max(80),
   value: z.string().trim().min(1).max(500),
   tone: z.enum(['primary', 'secondary', 'danger']).default('secondary'),
+  /** A typed host confirmation marker; it is not a command or permission. */
+  purpose: z.enum(['reply', 'confirm_context']).default('reply'),
 });
 
 export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [
@@ -161,6 +165,7 @@ export const AxCommandLifecycleSchema = z.enum([
   'present',
   'ephemeral',
   'workflow',
+  'context',
   'run',
 ]);
 
@@ -260,6 +265,8 @@ export const AxExecutionEnqueueOnceArgsSchema = AxWorkflowCreateArgsSchema;
 
 /** Host-rendered UI is deliberately read-only and cannot execute a side effect. */
 export const AxUiPresentArgsSchema = AxUiPresentationSchema;
+
+export const AxContextUpdateArgsSchema = AgentScopedContextUpdateArgsSchema;
 
 export function parseAxCommand(value: unknown): AxCommand {
   return AxCommandSchema.parse(value);

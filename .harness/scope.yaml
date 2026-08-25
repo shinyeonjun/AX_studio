@@ -18,8 +18,11 @@ allowed:
   - apps/desktop/electron/main/ipc
   - apps/desktop/electron/main
   - apps/desktop/electron/preload
+  - test
+  - test/e2e
   - apps/desktop/src/components/chat
   - apps/desktop/src/components/workspace
+  - apps/desktop/src/components/settings
   - apps/desktop/src/hooks
   - apps/desktop/src/lib
   - apps/desktop/src/types
@@ -33,12 +36,18 @@ allowed:
   - packages/core/src/store
   - packages/core/src/document-engine
   - packages/core/src/agent/commands
+  - packages/core/src/agent/context
   - apps/desktop/src/components/chat
   - apps/desktop/src/components/workspace
   - apps/desktop/src/hooks
   - apps/desktop/src/types
   - apps/desktop/electron/main/ipc
   - apps/desktop/electron/preload
+
+  - test/product-qa
+  - test/e2e
+  - apps/desktop/electron/main/e2e-test-seam.ts
+  - package.json
 
 avoid_mutation:
   - node_modules
@@ -80,3 +89,27 @@ expansions:
   - date: 2026-08-24
     reason: "The user approved session-scoped document context: upload into the conversation session, persist source/artifact/Docling metadata, and expose only bounded ids to the agent."
     boundary: "session source repository/service, artifact ingest manifest, AxCommandService session-source reads, workspace chat IPC/preload/hook and source panel"
+  - date: 2026-08-24
+    reason: "The user requested maximum automated coverage of the real Electron user flow. A bounded test folder, Playwright harness, and AX_E2E-gated host seams are required because native file dialogs and external AI/connectors are not deterministic CI dependencies."
+    boundary: "test/e2e, root test scripts/dependencies, Electron IPC/preload test seam, desktop data-root resolution"
+  - date: 2026-08-24
+    reason: "The user requested completing HTTP/REST, inbound Webhook, and read-only RDB support with real local-server and PostgreSQL/MySQL verification."
+    boundary: "core HTTP/Webhook/RDB modules, desktop connector settings/connection IPC, test/integration, package dependencies, and Docker Compose fixtures"
+  - date: 2026-08-24
+    reason: "The user requested a developer-run smoke test combining the local REST API and PostgreSQL fixture with the already-connected Gmail/Slack connectors."
+    boundary: "test/manual REST fixture, PostgreSQL-only Compose fixture, manual test runner/README, root test script, and harness records; no production connector expansion"
+  - date: 2026-08-25
+    reason: "The user approved layered Agent context: AGENTS.md and soul.md for stable behavior, session memo for temporary agreements, and workflow policy for durable per-workflow rules."
+    boundary: "packages/core/src/agent context loading and prompt assembly, workspace chat persistence, workflow metadata persistence, and focused tests; no policy editor UI"
+  - date: 2026-08-25
+    reason: "The user requested separating uploaded PDF registration and Docling processing from interactive chat, while checking adjacent concrete coupling in the same source/chat/command path."
+    boundary: "workspace source service queue/status lifecycle, session source command readiness, desktop source IPC/preload/hook/panel state, focused Core and Electron E2E tests; no document-engine or external connector changes"
+  - date: 2026-08-25
+    reason: "The user requested a real HTTP write path after the low-level connector already supported POST but the agent catalog exposed only a read-shaped generic request."
+    boundary: "core HTTP catalog/connector/read-gateway guard, workflow/one-shot approval regression tests, command skill and manual REST documentation, and local integration coverage; DELETE/PUT/PATCH and external side effects remain excluded"
+  - date: 2026-08-25
+    reason: "The user requested realistic repeated product QA that measures user-flow regressions such as starting a new conversation while a previous response is still in flight."
+    boundary: "data-driven product QA scenarios, Playwright runner/reporter, deterministic E2E seam configuration, package script, and QA documentation; no real external connector calls or production behavior changes"
+  - date: 2026-08-25
+    reason: "The first product QA replay reproduced a deterministic loss: starting a new conversation cancelled the previous session's in-flight response. The user-flow contract requires the old request to remain persisted without updating the new session UI."
+    boundary: "apps/desktop/src/hooks/useWorkspaceChat.ts request/session persistence boundary; no provider, connector, or Runtime changes"

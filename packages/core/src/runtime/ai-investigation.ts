@@ -7,7 +7,7 @@ import { extractGmailPlainBody } from '../modules/gmail/body-extract.js';
 import { performCapabilityRead } from './capability-read.js';
 import { evaluateCondition } from './condition-expr.js';
 import { InvestigationOutputSchema } from './investigation-schema.js';
-import { isCloudProvider } from '../agent/cloud.js';
+import { isCloudProvider } from '../agent/harness.js';
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import type { ModelImageInput } from '../agent/model/provider.js';
 import { resolveAiDecisionBindings } from '../workflow/bindings.js';

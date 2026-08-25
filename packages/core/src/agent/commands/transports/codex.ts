@@ -20,7 +20,7 @@ function replyFrom(message: string): AxCommandChatOutput {
 export const codexCommandTransport: AxCommandChatTransport = {
   outputSchema: CodexCommandWireSchema,
   outputInstructions:
-    'Codex 형식: command는 commandName 문자열과 argsJson JSON 문자열로 반환하고, reply는 message에 넣는다. 예: {"kind":"command","commandName":"capability.list","argsJson":"{}","message":""}',
+    'Codex 형식: command는 commandName 문자열과 argsJson JSON 문자열로 반환하고, reply는 message에 넣는다. argsJson 안의 문자열 줄바꿈은 반드시 \\n으로 escape한다. 예: {"kind":"command","commandName":"capability.list","argsJson":"{}","message":""}',
   normalize(value) {
     const wire = CodexCommandWireSchema.parse(value);
     if (wire.kind === 'reply') return replyFrom(wire.message);

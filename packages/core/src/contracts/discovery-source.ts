@@ -26,6 +26,7 @@ export interface DiscoveryObservationRef {
 export interface DiscoverySourceContext {
   store: WorkflowStore;
   artifactStore: ArtifactStore;
+  resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir: string;
   exampleId: string;
   observations: DiscoveryObservationRef[];

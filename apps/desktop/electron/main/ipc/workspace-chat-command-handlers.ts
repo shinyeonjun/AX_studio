@@ -13,6 +13,7 @@ import {
   registerWorkspaceChat,
   releaseWorkspaceChat,
 } from '../workspace-chat-registry.js';
+import { runE2EChat } from '../e2e-test-seam.js';
 
 function workflowIdsChanged(result: { command: string; data?: unknown }): {
   changed?: string;
@@ -30,6 +31,26 @@ function workflowIdsChanged(result: { command: string; data?: unknown }): {
   return {};
 }
 
+/**
+ * A context mutation is authorized only by a host-rendered confirmation action
+ * from an earlier assistant message. Matching the stored action value keeps a
+ * normal chat sentence from becoming an implicit persistence permission.
+ */
+function isContextConfirmation(
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    presentations?: import('@ax-studio/core').AxUiPresentation[];
+  }>,
+  userMessage: string,
+): boolean {
+  return messages.slice(0, -1).some((message) =>
+    message.role === 'assistant' && message.presentations?.some((presentation) =>
+      presentation.actions.some((action) => action.purpose === 'confirm_context' && action.value === userMessage),
+    ),
+  );
+}
+
 export function registerWorkspaceChatCommandHandlers() {
   ipcHandle('ax:sendCommandChat', async (
     event,
@@ -42,8 +63,6 @@ export function registerWorkspaceChatCommandHandlers() {
     const normalizedMessages = normalizeChatMessages(messages);
     if (normalizedMessages.length === 0) throw new Error('대화 기록이 필요합니다.');
     const userMessage = requireLastUserMessage(normalizedMessages);
-    // Rendering metadata belongs to the host transcript, not the provider prompt.
-    const history = normalizedMessages.slice(0, -1).map(({ role, content }) => ({ role, content }));
     if (workflowId !== undefined && (typeof workflowId !== 'string' || !workflowId.trim())) {
       throw new Error('workflow id 형식이 올바르지 않습니다.');
     }
@@ -54,6 +73,14 @@ export function registerWorkspaceChatCommandHandlers() {
     const safeWorkspaceSessionId = typeof workspaceSessionId === 'string'
       ? workspaceSessionId.trim()
       : undefined;
+    const requestedWorkflowId = typeof workflowId === 'string' ? workflowId.trim() : undefined;
+    const mappedWorkflowId = safeWorkspaceSessionId
+      ? core.store.getWorkspaceChat(safeWorkspaceSessionId)?.workflowId
+      : undefined;
+    const effectiveWorkflowId = requestedWorkflowId || mappedWorkflowId;
+    const contextUpdateConfirmed = isContextConfirmation(normalizedMessages, userMessage);
+    // Rendering metadata belongs to the host transcript, not the provider prompt.
+    const history = normalizedMessages.slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const controller = registerWorkspaceChat(chatRequestId);
@@ -62,13 +89,36 @@ export function registerWorkspaceChatCommandHandlers() {
     let inputRequests: import('@ax-studio/core').AxInputRequest[] = [];
     const presentations: import('@ax-studio/core').AxUiPresentation[] = [];
     try {
+      if (process.env.AX_E2E === '1' && process.env.AX_E2E_FAKE_AGENT === '1') {
+        const reply = await runE2EChat({
+          core,
+          userMessage,
+          workspaceSessionId: safeWorkspaceSessionId,
+        });
+        return {
+          role: 'assistant' as const,
+          content: reply.content,
+          requestId: chatRequestId,
+          changedWorkflowIds: reply.changedWorkflowIds,
+          removedWorkflowIds: reply.removedWorkflowIds,
+          inputRequests: reply.inputRequests,
+          presentations: reply.presentations,
+        };
+      }
       const reply = await runAxCommandChat({
         harness: core.agentHarness,
         commandService: core.commandService,
         connectedConnectors: connectedConnectorIds(core.store),
         messages: history,
         userMessage,
-        currentWorkflowId: typeof workflowId === 'string' ? workflowId.trim() : undefined,
+        currentWorkflowId: effectiveWorkflowId,
+        sessionMemo: safeWorkspaceSessionId
+          ? core.store.getWorkspaceChatMemo(safeWorkspaceSessionId)
+          : {},
+        workflowPolicy: effectiveWorkflowId
+          ? core.store.getWorkflowPolicy(effectiveWorkflowId)
+          : {},
+        allowContextUpdate: contextUpdateConfirmed,
         workspaceSessionId: safeWorkspaceSessionId,
         workspaceSources: safeWorkspaceSessionId
           ? core.workspaceSources.list(safeWorkspaceSessionId)

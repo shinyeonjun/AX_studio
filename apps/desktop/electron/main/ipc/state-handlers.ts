@@ -15,6 +15,7 @@ import { getEnvFilePath } from '../env-file.js';
 import { getAiConfigPath, readAiToml } from '../ai/config-file.js';
 import { isGoogleOAuthConfigured } from '../gmail/oauth.js';
 import { getDesktopAxDataPaths } from '../data-paths.js';
+import { summarizeConnections } from './connection-state-summary.js';
 
 type PersistedExecutionLogEntry = {
   at?: string;
@@ -181,12 +182,7 @@ export function registerStateHandlers() {
       slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
       localFolders: localFolderStatus.folders,
       works,
-      connections: core.store.getConnections().map(({ connector, connected, config }) => ({
-        connector,
-        connected,
-        account: parseGmailConnectionConfig(config)?.account,
-        scopes: parseGmailConnectionConfig(config)?.scopes,
-      })),
+      connections: await summarizeConnections(core.store.getConnections()),
       pendingApprovals: pendingApprovals.length,
       approvals: pendingApprovals,
       executions,

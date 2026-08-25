@@ -34,14 +34,10 @@ import {
   type DiscoveryCommandGateway,
 } from './discovery-gateway.js';
 import {
-  DiscoveryCancelArgsSchema,
-  DiscoveryInspectArgsSchema,
-  DiscoveryStartArgsSchema,
-} from '../../work-discovery/schema.js';
-import {
   AX_COMMAND_NAMES,
   AxCommandSchema,
   AxCapabilityInvokeArgsSchema,
+  AxContextUpdateArgsSchema,
   AxSourceFileReadArgsSchema,
   AxSourceFilesListArgsSchema,
   AxSourceListArgsSchema,
@@ -192,6 +188,13 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     mutates: true,
   },
   {
+    name: 'context.update',
+    lifecycle: 'context',
+    description: '사용자가 확인한 임시 합의나 저장 workflow의 업무 기준을 context metadata로 저장합니다. Runtime 권한과 실행 계약은 바꾸지 않습니다.',
+    args: { scope: 'session | workflow', set: 'bounded string fields', remove: 'field names to remove', confirmed: 'host-confirmed UI response' },
+    mutates: true,
+  },
+  {
     name: 'ui.present',
     lifecycle: 'present',
     description: '필요할 때만 검토·선택·입력을 위한 안전한 UI 카드를 대화에 표시합니다. 외부 작업은 실행하지 않습니다.',
@@ -292,11 +295,15 @@ export class AxCommandService {
       readGateway?: AxCommandReadGateway;
       artifactStore?: ArtifactStore;
       workspaceSources?: WorkspaceSourceService;
+      resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
     } = {},
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
     this.workflowGateway = createWorkflowCommandGateway(store, options);
-    this.discoveryGateway = createDiscoveryCommandGateway(store, { artifactStore: options.artifactStore });
+    this.discoveryGateway = createDiscoveryCommandGateway(store, {
+      artifactStore: options.artifactStore,
+      resolveConnectionConfig: options.resolveConnectionConfig,
+    });
   }
 
   private readonly readGateway: AxCommandReadGateway;
@@ -318,6 +325,9 @@ export class AxCommandService {
       designToolContextFactory?: () => AxCommandReadContext;
       executionContext?: AxCommandExecutionContext;
       workspaceSessionId?: string;
+      currentWorkflowId?: string;
+      /** Only a host-rendered confirm_context action may enable this mutation. */
+      allowContextUpdate?: boolean;
     } = {},
   ): Promise<AxCommandResult> {
     const parsed = AxCommandSchema.safeParse(raw);
@@ -382,6 +392,8 @@ export class AxCommandService {
         return result(command.name, ...await this.workflowGateway.run(command));
       case 'execution.enqueue_once':
         return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
+      case 'context.update':
+        return result(command.name, ...this.updateContext(command, options));
       case 'ui.present':
         return result(command.name, ...this.presentUi(command));
       case 'discovery.start':
@@ -403,6 +415,47 @@ export class AxCommandService {
       return ['invalid', undefined, [issue('invalid_presentation', parsed.error.message)]];
     }
     return ['ok', { presentation: parsed.data }];
+  }
+
+  private updateContext(
+    command: AxCommand,
+    options: {
+      workspaceSessionId?: string;
+      currentWorkflowId?: string;
+      allowContextUpdate?: boolean;
+    },
+  ): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+    const parsed = AxContextUpdateArgsSchema.safeParse(command.args);
+    if (!parsed.success) {
+      return ['invalid', undefined, [issue('invalid_context_update', parsed.error.message)]];
+    }
+    if (!options.allowContextUpdate || parsed.data.confirmed !== true) {
+      return [
+        'needs_input',
+        undefined,
+        [issue('context_confirmation_required', '컨텍스트를 저장하기 전에 host 확인 UI에서 사용자의 확인이 필요합니다.')],
+      ];
+    }
+
+    if (parsed.data.scope === 'session') {
+      if (!options.workspaceSessionId?.trim()) {
+        return ['invalid', undefined, [issue('workspace_session_required', 'session memo를 저장하려면 현재 대화 세션이 필요합니다.')]];
+      }
+      const memo = this.store.updateWorkspaceChatMemo(options.workspaceSessionId.trim(), parsed.data);
+      if (!memo) {
+        return ['not_found', undefined, [issue('workspace_session_not_found', '현재 대화 세션을 찾을 수 없습니다.')]];
+      }
+      return ['ok', { scope: 'session', sessionId: options.workspaceSessionId.trim(), context: memo }];
+    }
+
+    if (!options.currentWorkflowId?.trim()) {
+      return ['invalid', undefined, [issue('workflow_required', 'workflow policy를 저장하려면 현재 workflow가 필요합니다.')]];
+    }
+    const policy = this.store.updateWorkflowPolicy(options.currentWorkflowId.trim(), parsed.data);
+    if (!policy) {
+      return ['not_found', undefined, [issue('workflow_not_found', '현재 workflow를 찾을 수 없습니다.')]];
+    }
+    return ['ok', { scope: 'workflow', workflowId: options.currentWorkflowId.trim(), context: policy }];
   }
 
   private async executeReadTool<T>(
@@ -457,7 +510,11 @@ export class AxCommandService {
       return ['ok', this.options.workspaceSources.read(sessionId, parsed.data.sourceId, parsed.data.maxChars)];
     } catch (error) {
       const code = error instanceof WorkspaceSourceError ? error.code : 'session_source_read_failed';
-      const status: AxCommandResult['status'] = code.endsWith('not_found') ? 'not_found' : 'error';
+      const status: AxCommandResult['status'] = code === 'workspace_source_processing'
+        ? 'needs_input'
+        : code.endsWith('not_found')
+          ? 'not_found'
+          : 'error';
       return [status, undefined, [issue(code, '현재 대화 세션 자료를 읽을 수 없습니다.')]];
     }
   }

@@ -1,4 +1,4 @@
-export type { AiBrand, AiConnectionMode, AiProviderId, CliModelOption } from '@ax-studio/core';
+export type { AiBrand, AiConnectionMode, CliModelOption } from '@ax-studio/core';
 
 export interface DetectedAiCli {
   id: 'codex-cli' | 'claude-cli' | 'cursor-cli';
@@ -28,12 +28,6 @@ export interface AiConfigSnapshot {
   active?: { brand: import('@ax-studio/core').AiBrand; mode: import('@ax-studio/core').AiConnectionMode; model: string };
   providers: Partial<Record<import('@ax-studio/core').AiBrand, AiBrandTomlPrefs>>;
   secrets: Record<string, AiSecretStatus>;
-}
-
-export interface EnvSecretStatus {
-  configured: boolean;
-  masked?: string;
-  envFilePath?: string;
 }
 
 export interface AiCliTestResult {

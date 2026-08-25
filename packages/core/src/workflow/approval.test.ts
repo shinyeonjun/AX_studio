@@ -75,4 +75,25 @@ describe('approval matrix', () => {
     expect(resolveEffectiveSideEffect(fixedHigh, { method: 'GET' })).toBe('EXTERNAL_HIGH');
     expect(requiresApproval('EXTERNAL_HIGH', true)).toBe(true);
   });
+
+  it('requires approval for the explicit HTTP POST action', () => {
+    const workflow = minimalWorkflow({
+      steps: [
+        {
+          type: 'action',
+          id: 'create_ticket',
+          connector: 'http',
+          action: 'post',
+          actionRef: 'http.post@1',
+          params: { path: 'tickets', body: { title: '검증' } },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+    });
+
+    expect(summarizeApprovalGates(workflow)).toMatchObject({
+      externalCount: 1,
+      gates: [{ stepId: 'create_ticket', actionRef: 'http.post@1', requiresApproval: true }],
+    });
+  });
 });
