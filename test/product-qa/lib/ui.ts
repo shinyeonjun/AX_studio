@@ -89,7 +89,7 @@ export async function openSettingsLink(page: Page, label: string): Promise<void>
 }
 
 export async function openAiSettings(page: Page, brand: 'Claude' | 'GPT'): Promise<void> {
-  await page.getByRole('button', { name: `${brand} 설정` }).click();
+  await page.getByRole('button', { name: `${brand} 설정`, exact: true }).click();
 }
 
 export async function toggleTheme(page: Page): Promise<void> {
@@ -121,4 +121,3 @@ export async function errorBannerText(page: Page): Promise<string> {
 export async function isAppAlive(page: Page): Promise<boolean> {
   return page.getByRole('button', { name: '새 대화' }).isVisible();
 }
-
