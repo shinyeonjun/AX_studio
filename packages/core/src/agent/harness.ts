@@ -77,19 +77,19 @@ export class AgentHarness {
       logs.push({ level: 'info', message: 'dataPolicy: redacted untrusted data for cloud backend' });
     }
 
-    if (images?.length && this.model.supportsVision !== true) {
-      throw Object.assign(new Error(`${this.model.name} Provider는 이미지 입력을 지원하지 않습니다.`), {
-        code: 'vision_unavailable',
-      });
-    }
-
-    const system = composeAgentSystemPrompt(
-      request.systemPrompt ?? buildInvestigatePrompt(request.role, context),
-    );
-    const temperature = request.temperature ?? definition.temperature;
-    const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
-
     try {
+      if (images?.length && this.model.supportsVision !== true) {
+        throw Object.assign(new Error(`${this.model.name} Provider는 이미지 입력을 지원하지 않습니다.`), {
+          code: 'vision_unavailable',
+        });
+      }
+
+      const system = composeAgentSystemPrompt(
+        request.systemPrompt ?? buildInvestigatePrompt(request.role, context),
+      );
+      const temperature = request.temperature ?? definition.temperature;
+      const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
+
       if (request.abortSignal?.aborted) {
         throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
       }
