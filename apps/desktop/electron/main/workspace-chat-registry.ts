@@ -9,8 +9,8 @@ export function registerWorkspaceChat(requestId: string): AbortController {
   return controller;
 }
 
-export function releaseWorkspaceChat(requestId: string): void {
-  activeChats.delete(requestId);
+export function releaseWorkspaceChat(requestId: string, controller: AbortController): void {
+  if (activeChats.get(requestId) === controller) activeChats.delete(requestId);
 }
 
 export function cancelWorkspaceChat(requestId: string): boolean {

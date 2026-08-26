@@ -180,7 +180,7 @@ export function registerWorkspaceChatCommandHandlers() {
       });
       throw new Error(message && message !== '{' ? message : '명령형 채팅 AI 호출에 실패했습니다. AI 연결을 확인하세요.');
     } finally {
-      releaseWorkspaceChat(chatRequestId);
+      releaseWorkspaceChat(chatRequestId, controller);
     }
   });
 
