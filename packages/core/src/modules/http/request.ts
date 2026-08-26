@@ -47,6 +47,20 @@ function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, stri
   return {};
 }
 
+function mergeHeadersWithAuth(
+  headers: Record<string, string> | undefined,
+  auth: HttpAuthConfig | undefined,
+): Record<string, string> {
+  const merged = { ...(headers ?? {}) };
+  for (const [authHeader, value] of Object.entries(buildAuthHeaders(auth))) {
+    for (const header of Object.keys(merged)) {
+      if (header.toLowerCase() === authHeader.toLowerCase()) delete merged[header];
+    }
+    merged[authHeader] = value;
+  }
+  return merged;
+}
+
 async function readBodyWithLimit(response: Response, maxBytes: number): Promise<{ body: string; truncated: boolean }> {
   const contentLength = response.headers.get('content-length');
   if (contentLength) {
@@ -98,7 +112,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
   const method = input.method.trim().toUpperCase() || 'GET';
   const timeoutMs = input.timeoutMs ?? HTTP_DEFAULT_TIMEOUT_MS;
   const maxBytes = input.maxBytes ?? HTTP_DEFAULT_MAX_RESPONSE_BYTES;
-  const headers = { ...buildAuthHeaders(input.auth), ...(input.headers ?? {}) };
+  const headers = mergeHeadersWithAuth(input.headers, input.auth);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
