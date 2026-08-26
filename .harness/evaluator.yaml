@@ -453,3 +453,48 @@ previous_task_agent_native:
     - workflow trigger and Runtime execution semantics remain unchanged
     - old workspace chat rows remain readable when execution_mode is absent or legacy data exists
     - Codex and Claude transports continue to satisfy their provider-specific schemas
+
+ci_required_verification:
+  frozen: true
+  checks:
+    - name: core-tests
+      command: npm test
+      required: true
+    - name: core-evaluation
+      command: npm run eval
+      required: true
+    - name: production-build
+      command: npm run build
+      required: true
+    - name: architecture
+      command: npm run arch:check
+      required: true
+    - name: deterministic-product-smoke
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: diff-whitespace
+      command: git diff --check
+      required: true
+  excluded_gaps:
+    - "npm run test:e2e: root entrypoint targets missing test/e2e/run.mjs"
+    - "npm run test:integration: root entrypoint targets missing test/integration/run.mjs"
+  human_review:
+    - inspect the workflow on a pull request and confirm the verify check is reported
+    - confirm CI uses no provider secrets and no live connector side effects
+    - confirm product QA artifacts are uploaded only when verification fails
+  baseline:
+    recorded_at: 2026-08-26T10:48:26.9665962+09:00
+    values:
+      core-tests: "NOT RUN: baseline commands recorded before implementation"
+      core-evaluation: "NOT RUN: baseline commands recorded before implementation"
+      production-build: "NOT RUN: baseline commands recorded before implementation"
+      architecture: "NOT RUN: baseline commands recorded before implementation"
+      deterministic-product-smoke: "NOT RUN: baseline commands recorded before implementation"
+      diff-whitespace: "NOT RUN: baseline commands recorded before implementation"
+    gap: "GitHub Actions workflow and main branch protection do not yet exist. Knip is currently non-comparable because the dirty worktree removes its root Product QA workspace and adds untracked exports/dependencies."
+  revision:
+    recorded_at: 2026-08-26T10:51:22.2051166+09:00
+    reason: "The initial evaluator used npm test -- --run, but this repository's npm forwarded --run as an unknown configuration flag. The root test script already invokes Vitest in run mode."
+    changed: "core-tests command changed from npm test -- --run to npm test"
+    previous_comparison: non-comparable
+  final: pending

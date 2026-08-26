@@ -550,3 +550,29 @@ user. Only fix verified defects; no feature work, no speculative refactors.
 - New features or connector expansion.
 - Rewriting subsystems that merely look old but behave correctly.
 - Packaging a new Stable installer.
+
+## Current task: required CI verification for `main`
+
+Add a repository-owned GitHub Actions verification workflow so pull requests and
+pushes to `main` run the same deterministic checks before merge. Keep the CI
+boundary honest: do not call missing `test/e2e` or `test/integration` entrypoints,
+and do not invoke live Gmail, Slack, AI, or database side effects from CI.
+
+### Success criteria
+
+- `.github/workflows/ci.yml` runs on pull requests and pushes to `main`.
+- The required `verify` job installs with `npm ci`, runs core tests/evaluation,
+  builds the application, checks architecture, and runs the
+  deterministic Electron product smoke suite under an isolated data root.
+- Pull requests receive a review checklist without exposing secrets or enabling
+  external connector side effects.
+- The known missing `test/e2e` and `test/integration` runners are recorded as
+  gaps rather than silently represented as passing CI checks.
+- The workflow itself passes YAML/static inspection and every local check that
+  can be run on this Windows host passes or has an evidence-backed baseline.
+
+### Non-goals
+
+- Repairing or inventing the missing `test/e2e` and `test/integration` runners.
+- Running live provider, connector, HTTP, or database tests in GitHub Actions.
+- Rewriting the existing dirty worktree or unrelated product code.
