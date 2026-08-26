@@ -497,4 +497,15 @@ ci_required_verification:
     reason: "The initial evaluator used npm test -- --run, but this repository's npm forwarded --run as an unknown configuration flag. The root test script already invokes Vitest in run mode."
     changed: "core-tests command changed from npm test -- --run to npm test"
     previous_comparison: non-comparable
+
+  latest_local_measurement:
+    recorded_at: 2026-08-26T11:03:40.5769376+09:00
+    values:
+      core-tests: "PASS: 102 files, 444 tests"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: core, Electron main/preload, and renderer; existing dynamic-import warning only"
+      architecture: "PASS: 469 modules, 1611 dependencies"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check; Git emitted only CRLF normalization warnings"
+    decision: "KEEP: the cross-platform test fixture now models an orphan approval explicitly without weakening production foreign-key enforcement."
   final: pending
