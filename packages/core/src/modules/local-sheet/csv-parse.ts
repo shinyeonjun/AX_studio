@@ -3,6 +3,7 @@ export function parseCsvMatrix(text: string): { headers: string[]; matrix: unkno
   let row: string[] = [];
   let field = '';
   let inQuotes = false;
+  let rowHadDelimiter = false;
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index]!;
@@ -18,27 +19,29 @@ export function parseCsvMatrix(text: string): { headers: string[]; matrix: unkno
       }
       continue;
     }
-    if (char === '"') {
+    if (char === '"' && field.length === 0) {
       inQuotes = true;
       continue;
     }
     if (char === ',') {
       row.push(field);
       field = '';
+      rowHadDelimiter = true;
       continue;
     }
     if (char === '\n') {
       row.push(field);
       field = '';
-      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      if (rowHadDelimiter || row.some((cell) => cell.length > 0)) rows.push(row);
       row = [];
+      rowHadDelimiter = false;
       continue;
     }
     if (char === '\r') continue;
     field += char;
   }
   row.push(field);
-  if (row.some((cell) => cell.length > 0)) rows.push(row);
+  if (rowHadDelimiter || row.some((cell) => cell.length > 0)) rows.push(row);
 
   if (rows.length === 0) return { headers: [], matrix: [] };
   const headers = rows[0]!.map((cell) => cell.trim());
