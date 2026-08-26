@@ -39,6 +39,8 @@ function runScanWorker(rootPath: string, extensions?: string[]): Promise<ScanFol
     worker.once('exit', (code) => {
       if (code !== 0) {
         reject(new Error(`scan_worker_exit_${code}`));
+      } else {
+        reject(new Error('scan_worker_exit_without_result'));
       }
     });
   });
