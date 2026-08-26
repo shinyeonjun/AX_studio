@@ -40,13 +40,15 @@ function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, n
 async function messageEvent(
   gmail: gmail_v1.Gmail,
   messageId: string,
-): Promise<GmailNewMessageEvent> {
+): Promise<GmailNewMessageEvent | undefined> {
   const res = await gmail.users.messages.get({
     userId: 'me',
     id: messageId,
     format: 'metadata',
     metadataHeaders: ['From', 'Subject'],
   });
+  if (!res.data.labelIds?.includes('INBOX')) return undefined;
+
   const from = headerValue(res.data.payload?.headers, 'From');
   const subject = headerValue(res.data.payload?.headers, 'Subject');
   const snippet = res.data.snippet ?? '';
@@ -125,7 +127,8 @@ export async function pollGmailNewMessages(
 
     const events: GmailNewMessageEvent[] = [];
     for (const messageId of messageIds) {
-      events.push(await messageEvent(gmail, messageId));
+      const event = await messageEvent(gmail, messageId);
+      if (event) events.push(event);
     }
 
     return {
