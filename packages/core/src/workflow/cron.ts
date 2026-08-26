@@ -69,3 +69,12 @@ export function parseCronExpression(expression: string): ParsedCronExpression | 
 export function isValidCronExpression(expression: string): boolean {
   return parseCronExpression(expression) !== null;
 }
+
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
