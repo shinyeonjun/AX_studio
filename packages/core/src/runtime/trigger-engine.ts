@@ -148,6 +148,7 @@ export class TriggerEngine {
           const transport = await driver.refresh(
             this.store,
             (event) => {
+              if (generation !== this.pushRefreshGeneration || !this.acceptingEvents) return;
               void this.handlePushEvent(driver, event);
             },
             driver.connector ? configOverrides?.[driver.connector] : undefined,
