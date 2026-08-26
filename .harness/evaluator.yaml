@@ -508,4 +508,10 @@ ci_required_verification:
       deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
       diff-whitespace: "PASS: git diff --check; Git emitted only CRLF normalization warnings"
     decision: "KEEP: the cross-platform approval fixture and the generated Product QA selector are now deterministic without weakening production constraints."
-  final: pending
+  final:
+    recorded_at: 2026-08-26T11:12:47.0114652+09:00
+    values:
+      github-ci: "PASS: PR #17 run 32921720752; verify completed successfully on Ubuntu"
+      main-branch-protection: "PASS: main requires strict verify status, enforces admins, blocks force-push/deletion, and requires conversation resolution"
+      local-regression: "PASS: core 102 files/444 tests, eval 11/11, build, architecture 469/1611, Product QA 3 tests/16 scenarios, diff check"
+    decision: "KEEP: the repository now has one required CI gate and matching local evidence without enabling live connector side effects."
