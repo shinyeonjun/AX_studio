@@ -124,7 +124,7 @@ describe('pollGmailNewMessages', () => {
   it('skips messages deleted after history listing without dropping later events', async () => {
     const messageGet = vi
       .fn()
-      .mockRejectedValueOnce(Object.assign(new Error('Requested entity was not found'), { code: 404 }))
+      .mockRejectedValueOnce(Object.assign(new Error('Requested entity was not found'), { status: 404 }))
       .mockResolvedValueOnce({
         data: {
           labelIds: ['INBOX'],
