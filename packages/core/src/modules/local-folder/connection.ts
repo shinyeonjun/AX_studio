@@ -80,7 +80,10 @@ export function upsertLocalFolder(
   entry: LocalFolderEntry,
 ): LocalFolderConnectionConfig {
   const folders = [...(config?.folders ?? [])];
-  const index = folders.findIndex((folder) => folder.id === entry.id || folder.path === entry.path);
+  const normalizedEntryPath = normalizeFolderPath(entry.path);
+  const index = folders.findIndex(
+    (folder) => folder.id === entry.id || normalizeFolderPath(folder.path) === normalizedEntryPath,
+  );
   if (index >= 0) {
     folders[index] = entry;
   } else {
