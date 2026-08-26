@@ -741,11 +741,18 @@ describe('runtime control flow', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+
+    // This is a persisted legacy/corrupt-state test. The live schema enforces
+    // approvals.execution_id -> executions.id, so temporarily bypass the
+    // constraint only while constructing the orphan row that the runtime must
+    // close safely.
+    db.exec('PRAGMA foreign_keys = OFF');
     const approvalId = store.createApproval({
       executionId: 'deleted-execution',
       actionIds: ['send_mail'],
       reason: '삭제된 실행 재개 확인',
     });
+    db.exec('PRAGMA foreign_keys = ON');
 
     const result = await runtime.continueAfterApproval(approvalId);
 

@@ -140,3 +140,18 @@ expansions:
   - date: 2026-08-25
     reason: "User asked for a whole-product finishing pass (not HTTP only): audit core engine, agent command plane, and desktop UI/electron for concrete defects and close them."
     boundary: "verified finishing defects anywhere in packages/core/src, apps/desktop/electron, apps/desktop/src; fixes only, no new features or subsystem rewrites"
+
+ci_required_verification:
+  include:
+    - .github/workflows/ci.yml
+    - .github/pull_request_template.md
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  exclude:
+    - test/e2e
+    - test/integration
+    - live Gmail, Slack, AI, HTTP, and database calls
+    - unrelated dirty worktree changes
+  rationale: "Add only a truthful merge gate around checks that exist and are deterministic on CI; missing runners remain explicit gaps."
