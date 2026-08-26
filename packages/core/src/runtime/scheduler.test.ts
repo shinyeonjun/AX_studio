@@ -91,6 +91,38 @@ describe('Scheduler', () => {
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
   });
 
+  it('does not run a one-time job with an invalid run time', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'once-invalid',
+      name: '잘못된 일회성 작업',
+      goal: '유효한 실행 시각이 필요함',
+      version: 1,
+      trigger: { type: 'once', runAt: 'not-a-date' },
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    store.setWorkflowActive('once-invalid', true);
+
+    const runtime = {
+      executeWorkflow: vi.fn(),
+      removeWorkflow: vi.fn(),
+    };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    await tick();
+
+    expect(runtime.executeWorkflow).not.toHaveBeenCalled();
+    expect(store.listWorkflows()[0]?.active).toBe(true);
+  });
+
   it('lets a reactivated once job fire again after pending approval', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
