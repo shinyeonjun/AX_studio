@@ -58,4 +58,23 @@ describe('performHttpRequest', () => {
       expect(result.truncated).toBe(true);
     }
   });
+
+  it('does not return a partial UTF-8 character when truncating a response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('가나', { status: 200 })),
+    );
+
+    const result = await performHttpRequest({
+      url: 'https://api.example.com/data',
+      method: 'GET',
+      maxBytes: 4,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      body: '가',
+      truncated: true,
+    });
+  });
 });

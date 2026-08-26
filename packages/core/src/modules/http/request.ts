@@ -87,7 +87,11 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
     reader.releaseLock();
   }
 
-  return { body: Buffer.concat(chunks).toString('utf8'), truncated };
+  const bytes = Buffer.concat(chunks);
+  const body = truncated
+    ? new TextDecoder().decode(bytes, { stream: true })
+    : bytes.toString('utf8');
+  return { body, truncated };
 }
 
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
