@@ -5,6 +5,7 @@ export interface SlackNewMessagePollParams {
   channel: string;
   initialized: boolean;
   lastMessageTs?: string;
+  cursorChannel?: string;
   channelId?: string;
 }
 
@@ -25,6 +26,7 @@ export interface SlackNewMessagePollResult {
   events: SlackNewMessageEvent[];
   cursor: {
     initialized: boolean;
+    channel: string;
     channelId?: string;
     lastMessageTs?: string;
   };
@@ -42,17 +44,29 @@ export async function pollSlackNewMessages(
   client: WebClient,
   params: SlackNewMessagePollParams,
 ): Promise<SlackNewMessagePollResult> {
-  const channelId = params.channelId ?? (await resolveChannelId(client, params.channel));
+  const cachedChannelMatches = !params.initialized || params.cursorChannel === params.channel;
+  let channelId = cachedChannelMatches ? params.channelId : undefined;
+  let channelChanged = Boolean(params.channelId && !cachedChannelMatches);
+
+  if (!channelId) {
+    channelId = await resolveChannelId(client, params.channel);
+    if (channelId && params.channelId) {
+      channelChanged = channelId !== params.channelId;
+    }
+  }
+
   if (!channelId) {
     return {
       events: [],
       cursor: {
-        initialized: params.initialized,
-        channelId: params.channelId,
-        lastMessageTs: params.lastMessageTs,
+        initialized: channelChanged ? false : params.initialized,
+        channel: params.channel,
+        lastMessageTs: channelChanged ? undefined : params.lastMessageTs,
       },
     };
   }
+
+  const initialized = params.initialized && !channelChanged;
 
   const messages: NonNullable<Awaited<ReturnType<WebClient['conversations']['history']>>['messages']> = [];
   let cursor: string | undefined;
@@ -61,19 +75,20 @@ export async function pollSlackNewMessages(
       channel: channelId,
       limit: 100,
       cursor,
-      oldest: params.initialized ? params.lastMessageTs ?? '0' : undefined,
+      oldest: initialized ? params.lastMessageTs ?? '0' : undefined,
     });
     messages.push(...(history.messages ?? []).filter(isUserMessage));
     cursor = history.response_metadata?.next_cursor || undefined;
-  } while (params.initialized && cursor);
+  } while (initialized && cursor);
 
-  if (!params.initialized) {
+  if (!initialized) {
     return {
       events: [],
       cursor: {
         initialized: true,
+        channel: params.channel,
         channelId,
-        lastMessageTs: messages[0]?.ts ?? params.lastMessageTs ?? '0',
+        lastMessageTs: messages[0]?.ts ?? '0',
       },
     };
   }
@@ -103,6 +118,7 @@ export async function pollSlackNewMessages(
     events,
     cursor: {
       initialized: true,
+      channel: params.channel,
       channelId,
       lastMessageTs: latestTs,
     },
