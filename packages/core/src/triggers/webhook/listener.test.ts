@@ -118,6 +118,7 @@ describe('WebhookInboundListener', () => {
     });
 
     expect(response.status).toBe(202);
+    expect(await response.text()).toBe('accepted');
     expect(events).toHaveLength(1);
   });
 
