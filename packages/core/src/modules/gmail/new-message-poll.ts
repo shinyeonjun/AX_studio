@@ -37,16 +37,31 @@ function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, n
   return headers?.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value ?? '';
 }
 
+function isNotFoundError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return String(error).includes('404');
+  const candidate = error as { code?: unknown; status?: unknown; message?: unknown };
+  return candidate.code === 404
+    || candidate.status === 404
+    || String(candidate.message ?? '').includes('404');
+}
+
 async function messageEvent(
   gmail: gmail_v1.Gmail,
   messageId: string,
 ): Promise<GmailNewMessageEvent | undefined> {
-  const res = await gmail.users.messages.get({
-    userId: 'me',
-    id: messageId,
-    format: 'metadata',
-    metadataHeaders: ['From', 'Subject'],
-  });
+  let res;
+  try {
+    res = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'metadata',
+      metadataHeaders: ['From', 'Subject'],
+    });
+  } catch (error) {
+    // A message can be deleted after it appears in history but before polling.
+    if (isNotFoundError(error)) return undefined;
+    throw error;
+  }
   if (!res.data.labelIds?.includes('INBOX')) return undefined;
 
   const from = headerValue(res.data.payload?.headers, 'From');
@@ -141,7 +156,7 @@ export async function pollGmailNewMessages(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('historyId') || message.includes('404')) {
+    if (message.includes('historyId') || isNotFoundError(err)) {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
       const seenMessageIds = trimSeenIds(
