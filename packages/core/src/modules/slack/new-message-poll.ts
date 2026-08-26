@@ -54,12 +54,18 @@ export async function pollSlackNewMessages(
     };
   }
 
-  const history = await client.conversations.history({
-    channel: channelId,
-    limit: 20,
-  });
-
-  const messages = (history.messages ?? []).filter(isUserMessage);
+  const messages: NonNullable<Awaited<ReturnType<WebClient['conversations']['history']>>['messages']> = [];
+  let cursor: string | undefined;
+  do {
+    const history = await client.conversations.history({
+      channel: channelId,
+      limit: 100,
+      cursor,
+      oldest: params.initialized ? params.lastMessageTs ?? '0' : undefined,
+    });
+    messages.push(...(history.messages ?? []).filter(isUserMessage));
+    cursor = history.response_metadata?.next_cursor || undefined;
+  } while (params.initialized && cursor);
 
   if (!params.initialized) {
     return {
