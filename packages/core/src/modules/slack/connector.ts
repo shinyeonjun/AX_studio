@@ -33,6 +33,7 @@ export class SlackConnector implements Connector {
             channel: String(params.channel ?? ''),
             initialized: Boolean(params.initialized),
             lastMessageTs: params.lastMessageTs as string | undefined,
+            cursorChannel: params.cursorChannel as string | undefined,
             channelId: params.channelId as string | undefined,
           });
           return { ok: true, data: poll };

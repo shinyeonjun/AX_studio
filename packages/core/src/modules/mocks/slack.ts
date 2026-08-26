@@ -42,6 +42,7 @@ export class MockSlackConnector implements Connector {
               events: [],
               cursor: {
                 initialized: true,
+                channel,
                 channelId: channel,
                 lastMessageTs: latest?.ts ?? lastMessageTs,
               },
@@ -71,6 +72,7 @@ export class MockSlackConnector implements Connector {
             events,
             cursor: {
               initialized: true,
+              channel,
               channelId: channel,
               lastMessageTs: latestTs,
             },
