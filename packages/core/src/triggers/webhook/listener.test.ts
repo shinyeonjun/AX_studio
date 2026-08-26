@@ -102,6 +102,25 @@ describe('WebhookInboundListener', () => {
     expect(events).toHaveLength(0);
   });
 
+  it('accepts a payload at the configured size limit', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: unknown[] = [];
+    const port = 38_905;
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/test`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': 'hook-secret' },
+      body: 'x'.repeat(WEBHOOK_MAX_PAYLOAD_BYTES),
+    });
+
+    expect(response.status).toBe(202);
+    expect(events).toHaveLength(1);
+  });
+
   it('can restart after its port was initially unavailable', async () => {
     const blocker = createServer();
     await new Promise<void>((resolve) => blocker.listen(0, '127.0.0.1', resolve));
