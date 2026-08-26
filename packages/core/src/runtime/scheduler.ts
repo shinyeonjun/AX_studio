@@ -128,7 +128,8 @@ export class Scheduler {
       if (!ir?.trigger) continue;
 
       if (ir.trigger.type === 'once') {
-        if (Date.parse(ir.trigger.runAt) > Date.now()) continue;
+        const runAt = Date.parse(ir.trigger.runAt);
+        if (!Number.isFinite(runAt) || runAt > Date.now()) continue;
         if (this.alreadyFiredThisMinute(s.id) || this.lastFired()[s.id]) continue;
         if (generation !== this.lifecycleGeneration) return;
         const result = await this.runtime.executeWorkflow(ir, { triggerType: 'once' });
