@@ -92,15 +92,23 @@ export async function readSlackChannelMessages(
   }
 
   const boundedLimit = Math.min(Math.max(limit, 1), MAX_MESSAGES);
-  const response = await client.conversations.history({ channel: channelId, limit: boundedLimit });
-  const messages = (response.messages ?? [])
-    .filter((message) => message.type === 'message' && !message.subtype)
-    .map((message) => ({
-      ts: message.ts,
-      text: message.text,
-      user: message.user,
-      threadTs: message.thread_ts,
-    }));
+  const messages: SlackMessageSummary[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const response = await client.conversations.history({ channel: channelId, limit: boundedLimit, cursor });
+    for (const message of response.messages ?? []) {
+      if (message.type !== 'message' || message.subtype) continue;
+      messages.push({
+        ts: message.ts,
+        text: message.text,
+        user: message.user,
+        threadTs: message.thread_ts,
+      });
+      if (messages.length >= boundedLimit) break;
+    }
+    cursor = response.response_metadata?.next_cursor || undefined;
+  } while (messages.length < boundedLimit && cursor);
 
   return { channel, channelId, messages };
 }
