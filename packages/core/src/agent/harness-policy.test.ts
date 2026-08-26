@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { createAgentHarness } from './harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from './model/provider.js';
@@ -22,6 +22,10 @@ class CloudSpyProvider implements ModelProvider {
     return input.user ?? '';
   }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('harness dataPolicy', () => {
   it('redacts untrusted data for cloud backends when cloudAllowed is false', async () => {
@@ -79,5 +83,29 @@ describe('harness cancellation', () => {
       abortSignal: controller.signal,
     })).rejects.toMatchObject({ code: 'agent_aborted' });
     expect(model.structuredCalls).toBe(0);
+  });
+
+  it('cleans up cancellation resources when vision validation rejects the request', async () => {
+    const model = new CloudSpyProvider();
+    const controller = new AbortController();
+    const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    await expect(createAgentHarness(model).run({
+      role: 'investigate',
+      outputSchema: z.object({ ok: z.boolean() }),
+      context: {
+        skillGoal: 'g',
+        taskGoal: 't',
+        evidence: [],
+        connectedConnectors: [],
+      },
+      images: [{ data: new Uint8Array([1, 2, 3]), mimeType: 'image/png' }],
+      abortSignal: controller.signal,
+    })).rejects.toMatchObject({ code: 'vision_unavailable' });
+
+    expect(model.structuredCalls).toBe(0);
+    expect(clearTimeoutSpy).toHaveBeenCalledOnce();
+    expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 });
