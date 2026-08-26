@@ -36,6 +36,31 @@ describe('local-folder connection', () => {
     expect(getLocalFolderConnectionStatus(removed, true).folderCount).toBe(1);
   });
 
+  it('updates an existing folder when the same Windows path uses different casing and separators', () => {
+    const initial = upsertLocalFolder(null, {
+      id: 'f1',
+      label: 'Old docs',
+      path: 'D:\\Docs',
+      addedAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const updated = upsertLocalFolder(initial, {
+      id: 'f2',
+      label: 'Docs',
+      path: 'd:/docs',
+      addedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    expect(updated.folders).toEqual([
+      {
+        id: 'f2',
+        label: 'Docs',
+        path: 'd:/docs',
+        addedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ]);
+  });
+
   it('resolves a folder by the discovered path when its id changed', () => {
     const config = {
       folders: [
