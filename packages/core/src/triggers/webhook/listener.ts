@@ -117,6 +117,13 @@ export class WebhookInboundListener {
         return;
       }
 
+      const contentLength = Number(req.headers['content-length']);
+      if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_PAYLOAD_BYTES) {
+        req.resume();
+        respond(res, 413, 'payload_too_large');
+        return;
+      }
+
       const rawBody = await readRequestBody(req, WEBHOOK_MAX_PAYLOAD_BYTES);
       if (!verifyWebhookAuth(headerRecord(req), options.secret, rawBody)) {
         respond(res, 401, 'unauthorized');
