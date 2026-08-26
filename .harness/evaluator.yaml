@@ -499,7 +499,7 @@ ci_required_verification:
     previous_comparison: non-comparable
 
   latest_local_measurement:
-    recorded_at: 2026-08-26T11:03:40.5769376+09:00
+    recorded_at: 2026-08-26T11:09:48.2692669+09:00
     values:
       core-tests: "PASS: 102 files, 444 tests"
       core-evaluation: "PASS: 11 tests"
@@ -507,5 +507,5 @@ ci_required_verification:
       architecture: "PASS: 469 modules, 1611 dependencies"
       deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
       diff-whitespace: "PASS: git diff --check; Git emitted only CRLF normalization warnings"
-    decision: "KEEP: the cross-platform test fixture now models an orphan approval explicitly without weakening production foreign-key enforcement."
+    decision: "KEEP: the cross-platform approval fixture and the generated Product QA selector are now deterministic without weakening production constraints."
   final: pending
