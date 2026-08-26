@@ -49,7 +49,7 @@ export async function newFilePoll(
   }
 
   const newFiles = files.filter((file) => !seen.has(file.key));
-  const seenFileKeys = trimSeenFileKeys([...seen, ...newFiles.map((file) => file.key)]);
+  const seenFileKeys = trimSeenFileKeys(files.map((file) => file.key));
 
   const events = newFiles.map((file) => ({
     type: 'local_folder.new_file' as const,
