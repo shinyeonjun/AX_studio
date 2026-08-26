@@ -98,22 +98,30 @@ export async function pollGmailNewMessages(
   }
 
   try {
-    const historyRes = await gmail.users.history.list({
-      userId: 'me',
-      startHistoryId: params.historyId,
-      historyTypes: ['messageAdded'],
-    });
-
-    const nextHistoryId = historyRes.data.historyId ?? params.historyId;
+    let pageToken: string | undefined;
+    let nextHistoryId = params.historyId;
     const messageIds: string[] = [];
-    for (const entry of historyRes.data.history ?? []) {
-      for (const added of entry.messagesAdded ?? []) {
-        const id = added.message?.id;
-        if (id && !seenIds.has(id)) {
-          messageIds.push(id);
+    const collectedIds = new Set<string>();
+
+    do {
+      const historyRes = await gmail.users.history.list({
+        userId: 'me',
+        startHistoryId: params.historyId,
+        historyTypes: ['messageAdded'],
+        pageToken,
+      });
+      nextHistoryId = historyRes.data.historyId ?? nextHistoryId;
+      for (const entry of historyRes.data.history ?? []) {
+        for (const added of entry.messagesAdded ?? []) {
+          const id = added.message?.id;
+          if (id && !seenIds.has(id) && !collectedIds.has(id)) {
+            collectedIds.add(id);
+            messageIds.push(id);
+          }
         }
       }
-    }
+      pageToken = historyRes.data.nextPageToken ?? undefined;
+    } while (pageToken);
 
     const events: GmailNewMessageEvent[] = [];
     for (const messageId of messageIds) {
