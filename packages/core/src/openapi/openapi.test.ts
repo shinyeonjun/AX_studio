@@ -3,6 +3,7 @@ import { clearDynamicCatalogForTests } from '../catalog/dynamic-catalog.js';
 import { getCapability } from '../catalog/capabilities.js';
 import { invokeReadCapability } from '../design-tools/capability-invoke.js';
 import { buildDesignToolContext } from '../design-tools/context.js';
+import { OpenApiConnector } from './connector.js';
 import { ingestOpenApiSpec } from './ingest.js';
 
 const PETSTORE = {
@@ -53,5 +54,33 @@ describe('openapi ingest', () => {
     await expect(
       invokeReadCapability(ctx, 'openapi.petstore.createPet', {}),
     ).rejects.toThrow('capability_not_readable');
+  });
+
+  it('encodes path parameters as a single URL segment', async () => {
+    const connector = new OpenApiConnector([{
+      id: 'petstore',
+      title: 'Petstore',
+      baseUrl: 'https://api.example.com',
+      operations: [{ operationId: 'getPet', method: 'GET', path: '/pets/{petId}' }],
+    }]);
+    const originalFetch = globalThis.fetch;
+    let requestedUrl = '';
+    globalThis.fetch = async (input) => {
+      requestedUrl = input.toString();
+      return new Response('{}', { status: 200 });
+    };
+
+    try {
+      const result = await connector.execute(
+        'petstore.getPet',
+        { pathParams: { petId: '../admin?role=owner' } },
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(requestedUrl).toBe('https://api.example.com/pets/..%2Fadmin%3Frole%3Downer');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

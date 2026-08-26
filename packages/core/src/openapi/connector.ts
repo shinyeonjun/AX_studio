@@ -5,7 +5,9 @@ import type { OpenApiSpec } from './parse.js';
 function substitutePath(path: string, params: Record<string, unknown>): string {
   return path.replace(/\{([^}]+)\}/g, (_, key: string) => {
     const value = params[key];
-    return typeof value === 'string' || typeof value === 'number' ? String(value) : `{${key}}`;
+    return typeof value === 'string' || typeof value === 'number'
+      ? encodeURIComponent(String(value))
+      : `{${key}}`;
   });
 }
 
