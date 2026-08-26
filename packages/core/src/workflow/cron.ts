@@ -20,7 +20,13 @@ function parseField(field: string, minimum: number, maximum: number): Set<number
     if (range.length === 1) {
       const value = range[0];
       if (!Number.isInteger(value) || value < minimum || value > maximum) return null;
-      values.add(value);
+      if (stepText === undefined) {
+        values.add(value);
+        continue;
+      }
+      for (let steppedValue = value; steppedValue <= maximum; steppedValue += step) {
+        values.add(steppedValue);
+      }
       continue;
     }
 
