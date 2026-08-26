@@ -13,21 +13,25 @@ export interface StoredArtifact {
 }
 
 function parseStoredArtifact(path: string): StoredArtifact | undefined {
+  const value = readJsonFile<Partial<StoredArtifact> | null>(path);
+  if (
+    !value ||
+    typeof value.id !== 'string' ||
+    typeof value.sha256 !== 'string' ||
+    typeof value.fileName !== 'string' ||
+    typeof value.storedPath !== 'string' ||
+    typeof value.size !== 'number' ||
+    typeof value.createdAt !== 'string' ||
+    (value.mimeType !== undefined && typeof value.mimeType !== 'string')
+  ) {
+    return undefined;
+  }
+  return value as StoredArtifact;
+}
+
+function readJsonFile<T>(path: string): T | undefined {
   try {
-    const value = JSON.parse(readFileSync(path, 'utf8')) as Partial<StoredArtifact> | null;
-    if (
-      !value ||
-      typeof value.id !== 'string' ||
-      typeof value.sha256 !== 'string' ||
-      typeof value.fileName !== 'string' ||
-      typeof value.storedPath !== 'string' ||
-      typeof value.size !== 'number' ||
-      typeof value.createdAt !== 'string' ||
-      (value.mimeType !== undefined && typeof value.mimeType !== 'string')
-    ) {
-      return undefined;
-    }
-    return value as StoredArtifact;
+    return JSON.parse(readFileSync(path, 'utf8')) as T;
   } catch {
     return undefined;
   }
@@ -82,19 +86,19 @@ export class ArtifactStore {
   getDocumentArtifact<T>(id: string): T | undefined {
     const metaPath = join(this.rootDir, `${id}.document.json`);
     if (!existsSync(metaPath)) return undefined;
-    return JSON.parse(readFileSync(metaPath, 'utf8')) as T;
+    return readJsonFile<T>(metaPath);
   }
 
   getIngestResult<T>(id: string): T | undefined {
     const resultPath = join(this.rootDir, `${id}.ingest.json`);
     if (!existsSync(resultPath)) return undefined;
-    return JSON.parse(readFileSync(resultPath, 'utf8')) as T;
+    return readJsonFile<T>(resultPath);
   }
 
   getJson<T>(id: string): T | undefined {
     const metaPath = join(this.rootDir, `${id}.json`);
     if (!existsSync(metaPath)) return undefined;
-    return JSON.parse(readFileSync(metaPath, 'utf8')) as T;
+    return readJsonFile<T>(metaPath);
   }
 
   get(id: string): StoredArtifact | undefined {

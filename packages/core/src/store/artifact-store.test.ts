@@ -37,4 +37,16 @@ describe('ArtifactStore', () => {
     store.putJson('doc_1', { id: 'doc_1', text: '총매출: 12.4억' });
     expect(store.getJson('doc_1')).toEqual({ id: 'doc_1', text: '총매출: 12.4억' });
   });
+
+  it('treats corrupt json sidecars as missing', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-artifacts-'));
+    const store = new ArtifactStore(root);
+    writeFileSync(join(root, 'doc_1.json'), '{not valid json');
+    writeFileSync(join(root, 'doc_1.document.json'), '{not valid json');
+    writeFileSync(join(root, 'doc_1.ingest.json'), '{not valid json');
+
+    expect(store.getJson('doc_1')).toBeUndefined();
+    expect(store.getDocumentArtifact('doc_1')).toBeUndefined();
+    expect(store.getIngestResult('doc_1')).toBeUndefined();
+  });
 });
