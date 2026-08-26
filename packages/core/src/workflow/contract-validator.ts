@@ -12,7 +12,7 @@ import type { Step, WorkflowIR } from './schema.js';
 import { aiDecisionOutputPorts, bindingsSatisfyInputs, bindingOutputType, hasConcreteParamForPort, triggerAvailableTypes } from './bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from './action-definition.js';
 import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
-import { isValidCronExpression } from './cron.js';
+import { isValidCronExpression, isValidTimeZone } from './cron.js';
 
 export type BindingSource = string | 'trigger';
 
@@ -115,6 +115,16 @@ function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[]
     issues.push({
       code: 'invalid_workflow_schema',
       message: `schedule cron 표현식이 올바르지 않습니다: ${trigger.schedule}`,
+    });
+  }
+  if (
+    trigger.type === 'schedule' &&
+    trigger.timezone.trim() &&
+    !isValidTimeZone(trigger.timezone)
+  ) {
+    issues.push({
+      code: 'invalid_workflow_schema',
+      message: `schedule timezone이 올바르지 않습니다: ${trigger.timezone}`,
     });
   }
   return issues;

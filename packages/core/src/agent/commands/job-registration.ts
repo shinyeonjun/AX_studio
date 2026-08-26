@@ -7,7 +7,7 @@ import {
 import { resolveHttpRequestUrl } from '../../modules/http/url-security.js';
 import { actionRefFor } from '../../workflow/action-definition.js';
 import { validateWorkflowContracts } from '../../workflow/contract-validator.js';
-import { isValidCronExpression } from '../../workflow/cron.js';
+import { isValidCronExpression, isValidTimeZone } from '../../workflow/cron.js';
 import {
   parseWorkflowIR,
   validateWorkflowIR,
@@ -309,6 +309,9 @@ export function proposeJob(options: {
   const timezone = data.schedule?.timezone?.trim() || DEFAULT_JOB_TIMEZONE;
   if (!isValidCronExpression(cron)) {
     return ['invalid', undefined, [issue('invalid_schedule', `cron 표현식이 올바르지 않습니다: ${cron}`, 'args.schedule.cron')]];
+  }
+  if (!isValidTimeZone(timezone)) {
+    return ['invalid', undefined, [issue('invalid_schedule', `timezone이 올바르지 않습니다: ${timezone}`, 'args.schedule.timezone')]];
   }
 
   const connected = connectedIds(options.store);
