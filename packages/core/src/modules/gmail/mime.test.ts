@@ -32,4 +32,14 @@ describe('gmail mime', () => {
     expect(decoded).toContain('charset=UTF-8');
     expect(decoded).toMatch(/Subject: =\?UTF-8\?B\?/);
   });
+
+  it.each([
+    ['to', { to: 'victim@example.com\r\nBcc: attacker@example.com', subject: 'Notice' }],
+    ['from', { to: 'victim@example.com', from: 'sender@example.com\nBcc: attacker@example.com', subject: 'Notice' }],
+    ['subject', { to: 'victim@example.com', subject: 'Notice\r\nBcc: attacker@example.com' }],
+  ])('rejects line breaks in the %s header', (header, params) => {
+    expect(() => buildPlainTextMime({ ...params, body: 'Body' })).toThrow(
+      `gmail_${header}_header_invalid`,
+    );
+  });
 });
