@@ -47,6 +47,17 @@ describe('local-folder connection', () => {
     expect(findLocalFolder(config, 'old-id', 'd:/docs')?.id).toBe('new-id');
   });
 
+  it('keeps POSIX folder paths case-sensitive', () => {
+    const config = {
+      folders: [
+        { id: 'upper', label: 'Docs', path: '/data/Docs', addedAt: '2026-01-01T00:00:00.000Z' },
+        { id: 'lower', label: 'docs', path: '/data/docs', addedAt: '2026-01-01T00:00:00.000Z' },
+      ],
+    };
+
+    expect(findLocalFolder(config, 'old-id', '/data/docs')?.id).toBe('lower');
+  });
+
   it('does not replace an explicit unknown folder with the only connected folder', () => {
     const config = {
       folders: [{ id: 'known', label: 'Docs', path: 'D:/Docs', addedAt: '2026-01-01T00:00:00.000Z' }],

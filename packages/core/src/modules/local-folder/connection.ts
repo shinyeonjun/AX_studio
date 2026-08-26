@@ -1,4 +1,4 @@
-import { normalize } from 'node:path';
+import { normalize, win32 } from 'node:path';
 
 export interface LocalFolderEntry {
   id: string;
@@ -17,6 +17,11 @@ export interface LocalFolderConnectionStatus {
   folderCount: number;
 }
 
+function normalizeFolderPath(path: string): string {
+  const isWindowsPath = /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('\\\\');
+  return isWindowsPath ? win32.normalize(path).toLowerCase() : normalize(path);
+}
+
 export function findLocalFolder(
   config: LocalFolderConnectionConfig | null,
   folderId?: string,
@@ -28,8 +33,8 @@ export function findLocalFolder(
     if (byId) return byId;
   }
   if (folderPath) {
-    const expected = normalize(folderPath).toLowerCase();
-    const byPath = config.folders.find((folder) => normalize(folder.path).toLowerCase() === expected);
+    const expected = normalizeFolderPath(folderPath);
+    const byPath = config.folders.find((folder) => normalizeFolderPath(folder.path) === expected);
     if (byPath) return byPath;
   }
   if (folderId || folderPath) return undefined;
