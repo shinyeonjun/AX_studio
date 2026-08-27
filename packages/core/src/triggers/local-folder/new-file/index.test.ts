@@ -10,6 +10,23 @@ function connectorReturning(cursor: Record<string, unknown>): Connector {
 }
 
 describe('localFolderNewFileHandler', () => {
+  it('re-baselines a legacy cursor before reusing its seen files', async () => {
+    const connector = connectorReturning({ initialized: true, folderId: 'inbox', seenFileKeys: ['old.pdf'] });
+
+    await localFolderNewFileHandler.poll!({
+      workflowId: 'workflow-1',
+      trigger: { type: 'local_folder.new_file', folderId: 'inbox', extensions: ['txt'] },
+      cursor: { initialized: true, folderId: 'inbox', seenFileKeys: ['old.pdf'] },
+      connectors: { local_folder: connector },
+    });
+
+    expect(connector.execute).toHaveBeenLastCalledWith(
+      'new_file.poll',
+      expect.objectContaining({ initialized: false, seenFileKeys: [], extensions: ['txt'] }),
+      expect.any(Object),
+    );
+  });
+
   it('re-baselines when the folder trigger configuration changes', async () => {
     const connector = connectorReturning({ initialized: true, folderId: 'inbox', seenFileKeys: ['old.pdf'] });
 

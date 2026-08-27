@@ -31,9 +31,7 @@ export const localFolderNewFileHandler: TriggerHandler<{
     }
 
     const configKey = folderConfigKey(ctx.trigger);
-    const configChanged = ctx.cursor.folderConfigKey !== undefined
-      ? ctx.cursor.folderConfigKey !== configKey
-      : Boolean(ctx.cursor.folderId && ctx.cursor.folderId !== ctx.trigger.folderId);
+    const configChanged = ctx.cursor.folderConfigKey !== configKey;
 
     const result = await localFolder.execute(
       'new_file.poll',
