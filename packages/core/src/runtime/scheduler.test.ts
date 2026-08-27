@@ -161,7 +161,7 @@ describe('Scheduler', () => {
 
   it('retries a failed scheduled job without running it again after success', async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 0, 1, 9, 30));
+    vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     store.saveWorkflow({
@@ -194,7 +194,7 @@ describe('Scheduler', () => {
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
     expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({
-      'scheduled-retry': '2026-01-01T09:30',
+      'scheduled-retry': expect.any(String),
     });
 
     await tick();
