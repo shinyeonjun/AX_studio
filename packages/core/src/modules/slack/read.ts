@@ -5,6 +5,12 @@ import { resolveSlackChannelId } from './channel-resolve.js';
 const MAX_CHANNELS = 200;
 const MAX_MESSAGES = 50;
 const MAX_SEARCH = 50;
+const DEFAULT_LIMIT = 20;
+
+function normalizeLimit(limit: number, max: number): number {
+  const integer = Number.isFinite(limit) ? Math.trunc(limit) : DEFAULT_LIMIT;
+  return Math.min(Math.max(integer, 1), max);
+}
 
 export interface SlackChannelSummary {
   id: string;
@@ -49,9 +55,9 @@ export async function listSlackChannels(client: WebClient): Promise<SlackChannel
 export async function searchSlackMessages(
   client: WebClient,
   query: string,
-  limit = 20,
+  limit = DEFAULT_LIMIT,
 ): Promise<{ hits: SearchHit[]; matches: Array<Record<string, unknown>> }> {
-  const boundedLimit = Math.min(Math.max(limit, 1), MAX_SEARCH);
+  const boundedLimit = normalizeLimit(limit, MAX_SEARCH);
   const response = await client.search.messages({ query, count: boundedLimit });
   const matches = response.messages?.matches ?? [];
   const hits: SearchHit[] = [];
@@ -84,14 +90,14 @@ export async function searchSlackMessages(
 export async function readSlackChannelMessages(
   client: WebClient,
   channel: string,
-  limit = 20,
+  limit = DEFAULT_LIMIT,
 ): Promise<{ channel: string; channelId: string; messages: SlackMessageSummary[] }> {
   const channelId = await resolveSlackChannelId(client, channel);
   if (!channelId) {
     throw new Error('channel_not_found');
   }
 
-  const boundedLimit = Math.min(Math.max(limit, 1), MAX_MESSAGES);
+  const boundedLimit = normalizeLimit(limit, MAX_MESSAGES);
   const messages: SlackMessageSummary[] = [];
   let cursor: string | undefined;
 
