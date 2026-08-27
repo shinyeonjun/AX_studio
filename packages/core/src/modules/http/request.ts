@@ -66,7 +66,7 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
   if (contentLength) {
     const declared = Number(contentLength);
     if (Number.isFinite(declared) && declared > maxBytes) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       return { body: '', truncated: true };
     }
   }
@@ -127,6 +127,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
     });
 
     if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
       return { ok: false, error: 'redirect_not_allowed', errorCode: 'ssrf_blocked', status: response.status };
     }
 
