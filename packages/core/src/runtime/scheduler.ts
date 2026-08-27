@@ -153,9 +153,9 @@ export class Scheduler {
       if (!cronMatches(ir.trigger.schedule, new Date(), ir.trigger.timezone)) continue;
       if (this.alreadyFiredThisMinute(s.id)) continue;
       if (generation !== this.lifecycleGeneration) return;
-      this.markFired(s.id);
       const result = await this.runtime.executeWorkflow(ir, { triggerType: 'schedule' });
       if (generation !== this.lifecycleGeneration) return;
+      if (result.status !== 'failed') this.markFired(s.id);
       this.onScheduledRun?.(s.id, result);
     }
   }
