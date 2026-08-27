@@ -13,4 +13,10 @@ describe('parseCronExpression', () => {
 
     expect([...parsed!.minute]).toEqual([5]);
   });
+
+  it('accepts 7 as the Sunday alias', () => {
+    const parsed = parseCronExpression('0 9 * * 7');
+
+    expect(parsed?.weekday).toEqual(new Set([0]));
+  });
 });

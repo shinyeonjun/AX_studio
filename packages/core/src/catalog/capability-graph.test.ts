@@ -52,4 +52,9 @@ describe('cron', () => {
     const friday = new Date(2026, 7, 21, 17, 0, 0);
     expect(cronMatches('0 17 20 * 5', friday)).toBe(true);
   });
+
+  it('matches Sunday when weekday uses the 7 alias', () => {
+    const sunday = new Date(2026, 7, 23, 9, 0, 0);
+    expect(cronMatches('0 9 * * 7', sunday)).toBe(true);
+  });
 });

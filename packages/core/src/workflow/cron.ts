@@ -45,6 +45,13 @@ function parseField(field: string, minimum: number, maximum: number): Set<number
   return values.size > 0 ? values : null;
 }
 
+function parseWeekdayField(field: string): Set<number> | null {
+  const weekdays = parseField(field, 0, 7);
+  if (!weekdays) return null;
+  if (weekdays.delete(7)) weekdays.add(0);
+  return weekdays;
+}
+
 export function parseCronExpression(expression: string): ParsedCronExpression | null {
   const fields = expression.trim().split(/\s+/);
   if (fields.length !== 5) return null;
@@ -53,7 +60,7 @@ export function parseCronExpression(expression: string): ParsedCronExpression | 
   const parsedHour = parseField(hour!, 0, 23);
   const parsedDay = parseField(day!, 1, 31);
   const parsedMonth = parseField(month!, 1, 12);
-  const parsedWeekday = parseField(weekday!, 0, 6);
+  const parsedWeekday = parseWeekdayField(weekday!);
   if (!parsedMinute || !parsedHour || !parsedDay || !parsedMonth || !parsedWeekday) return null;
   return {
     minute: parsedMinute,
