@@ -40,7 +40,8 @@ export class OpenApiConnector implements Connector {
           )
         : undefined;
     const path = substitutePath(operation.path, pathParams);
-    const url = new URL(path, `${spec.baseUrl}/`);
+    const url = new URL(spec.baseUrl);
+    url.pathname = `${url.pathname.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         url.searchParams.set(key, value);

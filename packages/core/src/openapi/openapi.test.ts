@@ -56,11 +56,11 @@ describe('openapi ingest', () => {
     ).rejects.toThrow('capability_not_readable');
   });
 
-  it('encodes path parameters as a single URL segment', async () => {
+  it('preserves the server base path and encodes path parameters as a single URL segment', async () => {
     const connector = new OpenApiConnector([{
       id: 'petstore',
       title: 'Petstore',
-      baseUrl: 'https://api.example.com',
+      baseUrl: 'https://api.example.com/v1',
       operations: [{ operationId: 'getPet', method: 'GET', path: '/pets/{petId}' }],
     }]);
     const originalFetch = globalThis.fetch;
@@ -78,7 +78,7 @@ describe('openapi ingest', () => {
       );
 
       expect(result.ok).toBe(true);
-      expect(requestedUrl).toBe('https://api.example.com/pets/..%2Fadmin%3Frole%3Downer');
+      expect(requestedUrl).toBe('https://api.example.com/v1/pets/..%2Fadmin%3Frole%3Downer');
     } finally {
       globalThis.fetch = originalFetch;
     }
