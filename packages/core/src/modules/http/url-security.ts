@@ -21,6 +21,10 @@ export function resolveHttpRequestUrl(baseUrl: string, path: string): ResolveHtt
   if (trimmedPath.includes('://') || trimmedPath.startsWith('//')) {
     return { ok: false, error: 'absolute_url_not_allowed', errorCode: 'ssrf_blocked' };
   }
+  const rawPathname = trimmedPath.split(/[?#]/, 1)[0]!;
+  if (/%(?:2f|5c)/i.test(rawPathname)) {
+    return { ok: false, error: 'encoded_path_separator_not_allowed', errorCode: 'ssrf_blocked' };
+  }
 
   let base: URL;
   try {
