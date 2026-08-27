@@ -115,6 +115,12 @@ describe('cli json', () => {
     );
   });
 
+  it('parses the first complete JSON object from explanatory output', () => {
+    expect(
+      parseJsonObject('Result: {"text":"keep {braces} and \\"quotes\\""}\nExample: {"text":"ignore"}'),
+    ).toEqual({ text: 'keep {braces} and "quotes"' });
+  });
+
   it('repairs literal control characters inside nested JSON strings', () => {
     expect(
       parseJsonObject(`{
