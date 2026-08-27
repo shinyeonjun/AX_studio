@@ -126,6 +126,7 @@ export function readSheetFromPath(options: ReadSheetOptions): TableArtifact {
     const sheet = workbook.sheets.find((entry) => entry.name === options.sheetName);
     const tableId = sheet?.tables[0]?.artifactId;
     if (tableId && tables[tableId]) return tables[tableId]!;
+    throw new Error('sheet_not_found');
   }
   const firstTableId = workbook.sheets[0]?.tables[0]?.artifactId;
   if (!firstTableId || !tables[firstTableId]) {
