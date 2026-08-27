@@ -81,6 +81,28 @@ describe('performHttpRequest', () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it('keeps redirect rejection stable when body cancellation fails', async () => {
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(stream, { status: 302, headers: { location: 'https://example.com' } })),
+    );
+
+    const result = await performHttpRequest({
+      url: 'https://api.example.com/data',
+      method: 'GET',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'redirect_not_allowed',
+      errorCode: 'ssrf_blocked',
+      status: 302,
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it('does not return a partial UTF-8 character when truncating a response', async () => {
     vi.stubGlobal(
       'fetch',
