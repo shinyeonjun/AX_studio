@@ -29,17 +29,32 @@ export function normalizeScalar(value: unknown): ScalarValue {
   return text;
 }
 
+function extrema(values: NonNullable<ScalarValue>[]): { min?: ScalarValue; max?: ScalarValue } {
+  if (values.length === 0) return {};
+  const type = typeof values[0];
+  if (!values.every((value) => typeof value === type)) return {};
+
+  let min = values[0]!;
+  let max = values[0]!;
+  for (const value of values.slice(1)) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
+}
+
 export function profileTable(columns: TableColumn[], rows: TableArtifact['rows']): TableProfile {
   const columnProfiles: TableProfile['columns'] = {};
   for (const column of columns) {
     const values = rows.map((row) => row.values[column.name]);
     const nonNull = values.filter((value) => value != null);
     const numeric = nonNull.filter((value): value is number => typeof value === 'number');
+    const { min, max } = extrema(nonNull);
     columnProfiles[column.name] = {
       nullCount: values.length - nonNull.length,
       distinctCount: new Set(nonNull.map((value) => JSON.stringify(value))).size,
-      min: nonNull.length > 0 ? nonNull.reduce((a, b) => (JSON.stringify(a) < JSON.stringify(b) ? a : b)) : undefined,
-      max: nonNull.length > 0 ? nonNull.reduce((a, b) => (JSON.stringify(a) > JSON.stringify(b) ? a : b)) : undefined,
+      min,
+      max,
       mean: numeric.length > 0 ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : undefined,
       sampleValues: nonNull.slice(0, 12),
     };

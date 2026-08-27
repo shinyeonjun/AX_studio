@@ -25,6 +25,21 @@ describe('TableArtifact', () => {
       profile: expect.objectContaining({ rowCount: 2, columnCount: 2 }),
     });
   });
+
+  it('profiles extrema using scalar value order', () => {
+    const artifact = buildTableArtifact({
+      id: 'tbl_extrema',
+      headers: ['amount', 'date', 'mixed'],
+      matrix: [
+        [10, '2026-10-01', 'text'],
+        [2, '2026-02-01', 3],
+      ],
+    });
+
+    expect(artifact.profile?.columns.amount).toMatchObject({ min: 2, max: 10 });
+    expect(artifact.profile?.columns.date).toMatchObject({ min: '2026-02-01', max: '2026-10-01' });
+    expect(artifact.profile?.columns.mixed).toMatchObject({ min: undefined, max: undefined });
+  });
 });
 
 describe('local sheet read', () => {
