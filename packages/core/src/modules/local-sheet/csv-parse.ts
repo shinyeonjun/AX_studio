@@ -1,4 +1,6 @@
 export function parseCsvMatrix(text: string): { headers: string[]; matrix: unknown[][] } {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';

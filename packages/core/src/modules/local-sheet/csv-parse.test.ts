@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { parseCsvMatrix } from './csv-parse.js';
 
 describe('parseCsvMatrix', () => {
+  it('ignores a UTF-8 BOM before plain or quoted headers', () => {
+    expect(parseCsvMatrix('\uFEFFname,note\nAlice,hello')).toEqual({
+      headers: ['name', 'note'],
+      matrix: [['Alice', 'hello']],
+    });
+    expect(parseCsvMatrix('\uFEFF"first,name",note\nAlice,hello')).toEqual({
+      headers: ['first,name', 'note'],
+      matrix: [['Alice', 'hello']],
+    });
+  });
+
   it('parses quoted commas, escaped quotes, and newlines', () => {
     expect(parseCsvMatrix('name,note\nAlice,"one, two"\nBob,"said ""hello""\nnext line"')).toEqual({
       headers: ['name', 'note'],
