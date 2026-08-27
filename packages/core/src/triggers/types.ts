@@ -15,6 +15,7 @@ export interface TriggerCursor {
   channel?: string;
   channelId?: string;
   folderId?: string;
+  folderConfigKey?: string;
   seenFileKeys?: string[];
 }
 
