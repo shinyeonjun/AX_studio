@@ -19,4 +19,11 @@ describe('parseCronExpression', () => {
 
     expect(parsed?.weekday).toEqual(new Set([0]));
   });
+
+  it.each([
+    '1-2-3 * * * *',
+    '*/2/3 * * * *',
+  ])('rejects extra field separators in %s', (expression) => {
+    expect(parseCronExpression(expression)).toBeNull();
+  });
 });
