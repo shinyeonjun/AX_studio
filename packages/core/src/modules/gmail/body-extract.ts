@@ -1,5 +1,7 @@
 type GmailPart = {
   mimeType?: string | null;
+  filename?: string | null;
+  headers?: Array<{ name?: string | null; value?: string | null }> | null;
   body?: { data?: string | null; size?: number | null } | null;
   parts?: GmailPart[] | null;
 };
@@ -7,6 +9,15 @@ type GmailPart = {
 function decodeBase64Url(data: string): string {
   const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
   return Buffer.from(normalized, 'base64').toString('utf8');
+}
+
+function isAttachment(part: GmailPart): boolean {
+  if (part.filename?.trim()) return true;
+  return (part.headers ?? []).some(
+    (header) =>
+      header.name?.toLowerCase() === 'content-disposition'
+      && /^\s*attachment(?:\s*;|\s*$)/i.test(header.value ?? ''),
+  );
 }
 
 function collectPlainText(part: GmailPart | undefined, chunks: string[]): void {
@@ -35,6 +46,7 @@ export function extractGmailPlainBody(message: unknown): string | undefined {
   const html: string[] = [];
   const walk = (part: GmailPart | undefined) => {
     if (!part) return;
+    if (isAttachment(part)) return;
     const mimeType = part.mimeType ?? '';
     if (part.body?.data) {
       const text = decodeBase64Url(part.body.data);
