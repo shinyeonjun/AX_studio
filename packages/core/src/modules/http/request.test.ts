@@ -59,6 +59,26 @@ describe('performHttpRequest', () => {
     }
   });
 
+  it('keeps the streamed truncation result when reader cancellation fails', async () => {
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('oversized'));
+      },
+      cancel,
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(stream)));
+
+    const result = await performHttpRequest({
+      url: 'https://api.example.com/data',
+      method: 'GET',
+      maxBytes: 4,
+    });
+
+    expect(result).toMatchObject({ ok: true, body: 'over', truncated: true });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it('cancels redirect response bodies when rejecting the redirect', async () => {
     const cancel = vi.fn();
     const stream = new ReadableStream<Uint8Array>({ cancel });
