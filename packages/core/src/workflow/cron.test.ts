@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cronMatches } from '../runtime/scheduler.js';
 import { parseCronExpression } from './cron.js';
 
 describe('parseCronExpression', () => {
@@ -18,6 +19,19 @@ describe('parseCronExpression', () => {
     const parsed = parseCronExpression('0 9 * * 7');
 
     expect(parsed?.weekday).toEqual(new Set([0]));
+  });
+
+  it('treats stepped wildcard calendar fields as wildcard-based', () => {
+    const parsed = parseCronExpression('0 9 */2 * */3');
+
+    expect(parsed?.dayIsWildcard).toBe(true);
+    expect(parsed?.weekdayIsWildcard).toBe(true);
+  });
+
+  it('does not let a stepped day wildcard override a weekday restriction', () => {
+    const wednesday = new Date('2026-08-05T09:00:00Z');
+
+    expect(cronMatches('0 9 */2 * 1', wednesday, 'UTC')).toBe(false);
   });
 
   it.each([

@@ -72,8 +72,8 @@ export function parseCronExpression(expression: string): ParsedCronExpression | 
     day: parsedDay,
     month: parsedMonth,
     weekday: parsedWeekday,
-    dayIsWildcard: day === '*',
-    weekdayIsWildcard: weekday === '*',
+    dayIsWildcard: day.startsWith('*'),
+    weekdayIsWildcard: weekday.startsWith('*'),
   };
 }
 
