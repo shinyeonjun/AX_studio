@@ -66,10 +66,12 @@ describe('DocumentEngineClient', () => {
       ok: false,
       errorCode: 'chunk_id_required',
     });
-    await expect(getPage({ documentId: 'doc-1', pageIndex: 'not-a-number' }, ctx)).resolves.toMatchObject({
-      ok: false,
-      errorCode: 'page_index_invalid',
-    });
+    for (const pageIndex of ['not-a-number', '', ' ', false]) {
+      await expect(getPage({ documentId: 'doc-1', pageIndex }, ctx)).resolves.toMatchObject({
+        ok: false,
+        errorCode: 'page_index_invalid',
+      });
+    }
     await expect(search({ documentId: 'doc-1', query: ' ' }, ctx)).resolves.toMatchObject({
       ok: false,
       errorCode: 'query_required',

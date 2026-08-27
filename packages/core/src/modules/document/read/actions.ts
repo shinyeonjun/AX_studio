@@ -95,6 +95,12 @@ export const getPage: DocumentActionHandler = async (params, ctx): Promise<Conne
   if (pageIndex === undefined || pageIndex === null) {
     return { ok: false, error: 'page_index_required', errorCode: 'page_index_required' };
   }
+  if (
+    (typeof pageIndex !== 'number' && typeof pageIndex !== 'string') ||
+    (typeof pageIndex === 'string' && !pageIndex.trim())
+  ) {
+    return { ok: false, error: 'page_index_invalid', errorCode: 'page_index_invalid' };
+  }
   const numericPageIndex = Number(pageIndex);
   if (!Number.isInteger(numericPageIndex) || numericPageIndex < 0) {
     return { ok: false, error: 'page_index_invalid', errorCode: 'page_index_invalid' };
