@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MockSlackConnector } from '../mocks/slack.js';
 import { executeDesignTool } from '../../design-tools/execute.js';
 import { buildDesignToolContext } from '../../design-tools/context.js';
-import { readSlackChannelMessages } from './read.js';
+import { readSlackChannelMessages, searchSlackMessages } from './read.js';
 
 describe('Slack read knowledge', () => {
   it('reads additional history pages to fill the requested user-message limit', async () => {
@@ -33,6 +33,24 @@ describe('Slack read knowledge', () => {
     expect(history).toHaveBeenNthCalledWith(2, { channel: 'C123', limit: 3, cursor: 'page-2' });
     expect(history).toHaveBeenCalledTimes(2);
     expect(result.messages.map((message) => message.ts)).toEqual(['103.000', '102.000', '101.000']);
+  });
+
+  it('normalizes fractional read limits before calling Slack', async () => {
+    const history = vi.fn().mockResolvedValue({ messages: [] });
+    const client = { conversations: { history } } as unknown as WebClient;
+
+    await readSlackChannelMessages(client, 'C123', 2.8);
+
+    expect(history).toHaveBeenCalledWith({ channel: 'C123', limit: 2, cursor: undefined });
+  });
+
+  it('uses the default search limit for non-finite values', async () => {
+    const messages = vi.fn().mockResolvedValue({ messages: { matches: [] } });
+    const client = { search: { messages } } as unknown as WebClient;
+
+    await searchSlackMessages(client, 'deploy', Number.NaN);
+
+    expect(messages).toHaveBeenCalledWith({ query: 'deploy', count: 20 });
   });
 
   it('searches messages with citations', async () => {
