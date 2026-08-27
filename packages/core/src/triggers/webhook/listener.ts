@@ -111,7 +111,7 @@ export class WebhookInboundListener {
       const pathSegment = url.pathname.slice(prefix.length);
       let path: string;
       try {
-        path = normalizeWebhookPath(pathSegment);
+        path = normalizeWebhookPath(decodeURIComponent(pathSegment));
       } catch {
         respond(res, 400, 'invalid_path');
         return;
