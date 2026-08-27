@@ -56,6 +56,26 @@ describe('openapi ingest', () => {
     ).rejects.toThrow('capability_not_readable');
   });
 
+  it('rejects duplicate explicit operation ids', () => {
+    expect(() => ingestOpenApiSpec('petstore', {
+      ...PETSTORE,
+      paths: {
+        '/pets': { get: { operationId: 'findPet' } },
+        '/pets/{petId}': { get: { operationId: 'findPet' } },
+      },
+    })).toThrow('openapi_operation_id_duplicate');
+  });
+
+  it('rejects collisions between generated operation ids', () => {
+    expect(() => ingestOpenApiSpec('petstore', {
+      ...PETSTORE,
+      paths: {
+        '/pet-list': { get: {} },
+        '/pet/list': { get: {} },
+      },
+    })).toThrow('openapi_operation_id_duplicate');
+  });
+
   it('preserves the server base path and encodes path parameters as a single URL segment', async () => {
     const connector = new OpenApiConnector([{
       id: 'petstore',
