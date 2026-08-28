@@ -41,6 +41,26 @@ describe('readSheetFromPath', () => {
 });
 
 describe('readWorkbookFromPath', () => {
+  it('preserves worksheet visibility metadata', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'ax-sheet-read-')), 'visibility.xlsx');
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['visible']]), 'Visible');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['hidden']]), 'Hidden');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['very hidden']]), 'VeryHidden');
+    workbook.Workbook = {
+      Sheets: [{ Hidden: 0 }, { Hidden: 1 }, { Hidden: 2 }],
+    };
+    writeFileSync(path, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
+
+    const result = readWorkbookFromPath(path);
+
+    expect(result.workbook.sheets.map(({ name, visibility }) => ({ name, visibility }))).toEqual([
+      { name: 'Visible', visibility: 'visible' },
+      { name: 'Hidden', visibility: 'hidden' },
+      { name: 'VeryHidden', visibility: 'veryHidden' },
+    ]);
+  });
+
   it('keeps CSV workbook and table ids stable for the same content', () => {
     const firstPath = join(mkdtempSync(join(tmpdir(), 'ax-sheet-read-')), 'sales.csv');
     const secondPath = join(mkdtempSync(join(tmpdir(), 'ax-sheet-read-')), 'sales.csv');

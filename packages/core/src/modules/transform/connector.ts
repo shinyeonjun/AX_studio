@@ -1,7 +1,7 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { TransformExprSchema } from '../../workflow/transform-expr/dsl.js';
 import { evaluateTransformExpr } from '../../workflow/transform-expr/evaluator.js';
-import type { TableArtifact } from '../../contracts/artifacts/table.js';
+import { TableArtifactSchema, type TableArtifact } from '../../contracts/artifacts/table.js';
 
 function formatTableValue(value: unknown): string {
   if (value == null) return '';
@@ -11,6 +11,18 @@ function formatTableValue(value: unknown): string {
 }
 
 function tableToText(table: unknown): string {
+  const artifact = TableArtifactSchema.safeParse(table);
+  if (artifact.success) {
+    const headers = artifact.data.columns.map((column) => column.name);
+    if (headers.length === 0) return '';
+    return [
+      headers.join('\t'),
+      ...artifact.data.rows.map((row) =>
+        headers.map((header) => formatTableValue(row.values[header])).join('\t'),
+      ),
+    ].join('\n');
+  }
+
   if (!Array.isArray(table) || table.length === 0) return '';
 
   const first = table[0];

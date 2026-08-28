@@ -3,7 +3,12 @@ import { clearDynamicCatalogForTests } from '../catalog/dynamic-catalog.js';
 import { getCapability } from '../catalog/capabilities.js';
 import { invokeReadCapability } from '../design-tools/capability-invoke.js';
 import { buildDesignToolContext } from '../design-tools/context.js';
-import { MockMcpClient, ingestMcpServer } from './index.js';
+import {
+  MockMcpClient,
+  ingestMcpServer,
+  parseMcpConnectionConfig,
+  parseMcpToolsJson,
+} from './index.js';
 import { requiresApproval } from '../workflow/approval.js';
 
 describe('mcp ingest', () => {
@@ -30,5 +35,20 @@ describe('mcp ingest', () => {
       { args: { q: 'deploy' } },
     );
     expect((result.data as { result: { tool: string } }).result.tool).toBe('search_docs');
+  });
+
+  it('normalizes tool names from settings input and persisted connections', () => {
+    const tools = parseMcpToolsJson('[{"name":"  search_docs  ","description":"Search docs"}]');
+    expect(tools).toEqual([{ name: 'search_docs', description: 'Search docs' }]);
+
+    expect(parseMcpConnectionConfig({ serverId: ' demo ', tools })).toEqual({
+      serverId: 'demo',
+      tools: [{ name: 'search_docs', description: 'Search docs' }],
+    });
+  });
+
+  it('rejects tool lists whose names are blank after normalization', () => {
+    expect(() => parseMcpToolsJson('[{"name":"   "}]')).toThrow('유효한 MCP tool 정의가 없습니다.');
+    expect(parseMcpConnectionConfig({ serverId: 'demo', tools: [{ name: '   ' }] })).toBeNull();
   });
 });

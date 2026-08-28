@@ -2,6 +2,7 @@ import type { WorkflowStore } from '../store/workflow-store.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import { parseCronExpression } from '../workflow/cron.js';
 import type { WorkflowRuntime } from '../runtime/engine.js';
+import type { ExecutionResult } from './types.js';
 
 export interface ScheduledJob {
   workflowId: string;
@@ -105,6 +106,18 @@ export class Scheduler {
     return this.lastFired()[workflowId] === minuteKey();
   }
 
+  private async executeScheduledWorkflow(
+    ir: WorkflowIR,
+    triggerType: 'once' | 'schedule',
+  ): Promise<ExecutionResult | null> {
+    try {
+      return await this.runtime.executeWorkflow(ir, { triggerType });
+    } catch (error) {
+      console.error(`[scheduler] execution failed for workflow ${ir.id}:`, error);
+      return null;
+    }
+  }
+
   private async tick() {
     if (this.tickInProgress) return;
     this.tickInProgress = true;
@@ -132,7 +145,8 @@ export class Scheduler {
         if (!Number.isFinite(runAt) || runAt > Date.now()) continue;
         if (this.alreadyFiredThisMinute(s.id) || this.lastFired()[s.id]) continue;
         if (generation !== this.lifecycleGeneration) return;
-        const result = await this.runtime.executeWorkflow(ir, { triggerType: 'once' });
+        const result = await this.executeScheduledWorkflow(ir, 'once');
+        if (!result) continue;
         if (generation !== this.lifecycleGeneration) return;
         if (result.status === 'pending_approval') {
           // Deactivate without marking lastFired so reactivating the job can
@@ -153,7 +167,8 @@ export class Scheduler {
       if (!cronMatches(ir.trigger.schedule, new Date(), ir.trigger.timezone)) continue;
       if (this.alreadyFiredThisMinute(s.id)) continue;
       if (generation !== this.lifecycleGeneration) return;
-      const result = await this.runtime.executeWorkflow(ir, { triggerType: 'schedule' });
+      const result = await this.executeScheduledWorkflow(ir, 'schedule');
+      if (!result) continue;
       if (generation !== this.lifecycleGeneration) return;
       if (result.status !== 'failed') this.markFired(s.id);
       this.onScheduledRun?.(s.id, result);
