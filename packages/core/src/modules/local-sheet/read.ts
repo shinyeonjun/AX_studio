@@ -41,6 +41,12 @@ function sheetToMatrix(sheet: XLSX.WorkSheet): { headers: string[]; matrix: unkn
   return { headers, matrix };
 }
 
+function sheetVisibility(hidden: number | undefined): 'visible' | 'hidden' | 'veryHidden' {
+  if (hidden === 1) return 'hidden';
+  if (hidden === 2) return 'veryHidden';
+  return 'visible';
+}
+
 export function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): ReadWorkbookResult {
   const rowLimit = options.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
   const ext = extname(path).toLowerCase();
@@ -100,7 +106,7 @@ export function readWorkbookFromPath(path: string, options: { rowLimit?: number 
     sheets.push({
       name,
       index,
-      visibility: 'visible',
+      visibility: sheetVisibility(xlsx.Workbook?.Sheets?.[index]?.Hidden),
       imageCount: 0,
       chartCount: 0,
       tables: [{ id: tableId, artifactId: tableId, range }],
