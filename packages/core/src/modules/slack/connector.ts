@@ -18,7 +18,10 @@ export class SlackConnector implements Connector {
           if (!channel) {
             return { ok: false, error: 'channel_required', errorCode: 'invalid_params' };
           }
-          const rawText = (params.text as string) ?? '';
+          const rawText = typeof params.text === 'string' ? params.text : '';
+          if (!rawText.trim()) {
+            return { ok: false, error: 'text_required', errorCode: 'invalid_params' };
+          }
           const payload = composeSlackMessagePayload(rawText, ctx);
           const res = await client.chat.postMessage({
             channel,
