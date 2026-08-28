@@ -123,6 +123,34 @@ describe('performHttpRequest', () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it('cancels unused HEAD response bodies', async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(stream, { status: 200 })));
+
+    const result = await performHttpRequest({
+      url: 'https://api.example.com/data',
+      method: 'HEAD',
+    });
+
+    expect(result).toMatchObject({ ok: true, body: '', truncated: false });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('keeps HEAD results stable when body cancellation fails', async () => {
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(stream, { status: 200 })));
+
+    const result = await performHttpRequest({
+      url: 'https://api.example.com/data',
+      method: 'HEAD',
+    });
+
+    expect(result).toMatchObject({ ok: true, body: '', truncated: false });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it('does not return a partial UTF-8 character when truncating a response', async () => {
     vi.stubGlobal(
       'fetch',
