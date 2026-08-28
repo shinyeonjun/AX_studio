@@ -277,6 +277,7 @@ export function runCommandStreaming(
     });
     child.on('error', (error) => finish(error));
     child.on('close', () => {
+      if (settled) return;
       if (lineBuf.trim()) options.onStdoutLine?.(lineBuf);
       finish();
     });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runCommand } from './cli-process.js';
 
 describe('runCommand', () => {
@@ -28,13 +28,29 @@ describe('runCommand', () => {
   });
 
   it('bounds streaming CLI output', async () => {
+    const onStdoutLine = vi.fn();
+
     await expect(
       runCommand(
         process.execPath,
         ['-e', "process.stdout.write('x'.repeat(9 * 1024 * 1024));"],
-        { timeoutMs: 2_000, onStdoutLine: () => {} },
+        { timeoutMs: 2_000, onStdoutLine },
       ),
     ).rejects.toMatchObject({ code: 'EOUTPUTTOOLARGE' });
+    expect(onStdoutLine).not.toHaveBeenCalled();
+  });
+
+  it('emits the final unterminated line when streaming succeeds', async () => {
+    const onStdoutLine = vi.fn();
+
+    await expect(
+      runCommand(process.execPath, ['-e', "process.stdout.write('final line');"], {
+        timeoutMs: 2_000,
+        onStdoutLine,
+      }),
+    ).resolves.toMatchObject({ exitCode: 0, stdout: 'final line' });
+    expect(onStdoutLine).toHaveBeenCalledOnce();
+    expect(onStdoutLine).toHaveBeenCalledWith('final line');
   });
 
   it('does not start a streaming command when already aborted', async () => {
