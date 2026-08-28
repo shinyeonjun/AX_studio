@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
 import * as XLSX from 'xlsx';
@@ -49,21 +49,22 @@ export function readWorkbookFromPath(path: string, options: { rowLimit?: number 
 
   if (ext === '.csv') {
     const { headers, matrix } = parseCsvMatrix(readFileSync(path, 'utf8'));
-    const tableId = `tbl_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const sheetName = basename(path, ext);
+    const tableId = `tbl_${createHash('sha256').update(`${workbookId}:${sheetName}`).digest('hex').slice(0, 16)}`;
     const table = buildTableArtifact({
       id: tableId,
-      name: basename(path, ext),
+      name: sheetName,
       headers,
       matrix,
       rowLimit,
-      source: { filePath: path, workbookSheet: basename(path, ext) },
+      source: { filePath: path, workbookSheet: sheetName },
     });
     const workbook: WorkbookArtifact = {
       id: workbookId,
       kind: 'workbook',
       file,
       sheets: [{
-        name: basename(path, ext),
+        name: sheetName,
         index: 0,
         visibility: 'visible',
         imageCount: 0,
