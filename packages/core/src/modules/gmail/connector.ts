@@ -58,23 +58,39 @@ export class GmailConnector implements Connector {
           return { ok: true, data: res.data.messages ?? [] };
         }
         case 'draft.create': {
+          const to = typeof params.to === 'string' ? params.to.trim() : '';
+          if (!to) {
+            return { ok: false, error: 'to_required', errorCode: 'invalid_params' };
+          }
+          const body = typeof params.body === 'string' ? params.body : '';
+          if (!body.trim()) {
+            return { ok: false, error: 'body_required', errorCode: 'invalid_params' };
+          }
           const raw = buildGmailRawMessage({
-            to: String(params.to ?? ''),
+            to,
             // The catalog marks subject as optional. Preserve that contract
             // instead of inventing a reply subject when the user omitted it.
             subject: String(params.subject ?? ''),
-            body: String(params.body ?? ''),
+            body,
           });
           const res = await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
           return { ok: true, data: res.data };
         }
         case 'message.send': {
+          const to = typeof params.to === 'string' ? params.to.trim() : '';
+          if (!to) {
+            return { ok: false, error: 'to_required', errorCode: 'invalid_params' };
+          }
+          const body = typeof params.body === 'string' ? params.body : '';
+          if (!body.trim()) {
+            return { ok: false, error: 'body_required', errorCode: 'invalid_params' };
+          }
           const raw = buildGmailRawMessage({
-            to: String(params.to ?? ''),
+            to,
             // The catalog marks subject as optional. Preserve that contract
             // instead of inventing a reply subject when the user omitted it.
             subject: String(params.subject ?? ''),
-            body: String(params.body ?? ''),
+            body,
           });
           const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
           return { ok: true, data: res.data };
