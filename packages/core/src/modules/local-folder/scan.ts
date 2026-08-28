@@ -20,12 +20,11 @@ export type ScanFolderResult =
 
 function normalizeExtensions(extensions?: string[]): Set<string> | null {
   if (!extensions?.length) return null;
-  return new Set(
-    extensions.map((ext) => {
-      const trimmed = ext.trim().toLowerCase();
-      return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
-    }),
-  );
+  const normalized = extensions
+    .map((ext) => ext.trim().toLowerCase())
+    .filter(Boolean)
+    .map((ext) => ext.startsWith('.') ? ext : `.${ext}`);
+  return normalized.length > 0 ? new Set(normalized) : null;
 }
 
 function walkDirectory(
