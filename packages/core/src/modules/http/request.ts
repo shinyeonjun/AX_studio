@@ -90,7 +90,7 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
         const remaining = maxBytes - total;
         if (remaining > 0) chunks.push(value.subarray(0, remaining));
         truncated = true;
-        await reader.cancel();
+        await reader.cancel().catch(() => undefined);
         break;
       }
 
