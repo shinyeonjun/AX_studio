@@ -15,5 +15,6 @@ export function sideEffectRequiresApproval(
 
 /** HTTP ingest default only — catalog manifest overrides at registration time. */
 export function defaultSideEffectForHttpMethod(method: string): SideEffectLevel {
-  return method.toUpperCase() === 'GET' ? 'NONE' : 'EXTERNAL';
+  const normalized = method.toUpperCase();
+  return normalized === 'GET' || normalized === 'HEAD' ? 'NONE' : 'EXTERNAL';
 }

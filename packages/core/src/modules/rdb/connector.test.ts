@@ -36,6 +36,9 @@ describe('RdbConnector sqlite', () => {
       const denied = await connector.execute('query.read', { table: 'secret_table' }, connectorContext());
       expect(denied).toEqual({ ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' });
 
+      const schemaDenied = await connector.execute('query.read', { table: 'attached.customers' }, connectorContext());
+      expect(schemaDenied).toEqual({ ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' });
+
       const invalid = await connector.execute('query.read', { table: 'bad-name' }, connectorContext());
       expect(invalid).toEqual({ ok: false, error: 'invalid_table_name', errorCode: 'policy_denied' });
     } finally {
