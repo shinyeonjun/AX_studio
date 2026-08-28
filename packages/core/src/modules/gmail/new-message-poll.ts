@@ -38,11 +38,12 @@ function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, n
 }
 
 function isNotFoundError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return String(error).includes('404');
-  const candidate = error as { code?: unknown; status?: unknown; message?: unknown };
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { code?: unknown; status?: unknown };
   return candidate.code === 404
+    || candidate.code === '404'
     || candidate.status === 404
-    || String(candidate.message ?? '').includes('404');
+    || candidate.status === '404';
 }
 
 async function messageEvent(
