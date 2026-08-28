@@ -32,7 +32,15 @@ export function formatRdbTableRef(ref: RdbTableRef): string {
   return ref.schema ? `${ref.schema}.${ref.table}` : ref.table;
 }
 
+function isAllowedSchema(config: RdbConnectionConfig, ref: RdbTableRef): boolean {
+  if (config.type === 'sqlite') return !ref.schema;
+  const allowed = config.allowedSchemas ?? [];
+  if (allowed.length === 0) return true;
+  return ref.schema ? allowed.includes(ref.schema) : false;
+}
+
 export function isAllowedRdbTable(config: RdbConnectionConfig, ref: RdbTableRef): boolean {
+  if (!isAllowedSchema(config, ref)) return false;
   const allowed = config.allowedTables ?? [];
   if (allowed.length === 0) return false;
   const formatted = formatRdbTableRef(ref);
@@ -40,13 +48,6 @@ export function isAllowedRdbTable(config: RdbConnectionConfig, ref: RdbTableRef)
     const normalized = entry.trim();
     return normalized === formatted || normalized === ref.table;
   });
-}
-
-function isAllowedSchema(config: RdbConnectionConfig, ref: RdbTableRef): boolean {
-  const allowed = config.allowedSchemas ?? [];
-  if (allowed.length === 0) return true;
-  if (config.type === 'sqlite') return !ref.schema;
-  return ref.schema ? allowed.includes(ref.schema) : false;
 }
 
 function filterTables(config: RdbConnectionConfig, tables: RdbTableInfo[]): RdbTableInfo[] {
