@@ -58,13 +58,15 @@ function resolveValue(
 }
 
 function compareValues(left: unknown, right: unknown): number | null {
-  if (typeof left === 'number' && typeof right === 'number') return left - right;
-  const leftNum = Number(left);
-  const rightNum = Number(right);
-  if (!Number.isNaN(leftNum) && !Number.isNaN(rightNum) && `${left}`.trim() !== '' && `${right}`.trim() !== '') {
-    return leftNum - rightNum;
-  }
-  return null;
+  const toNumber = (value: unknown): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const leftNum = toNumber(left);
+  const rightNum = toNumber(right);
+  return leftNum == null || rightNum == null ? null : leftNum - rightNum;
 }
 
 export function evaluateCondition(
