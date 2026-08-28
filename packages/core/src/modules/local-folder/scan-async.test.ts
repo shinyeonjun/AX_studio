@@ -8,6 +8,7 @@ describe('scanFolderCheckedAsync', () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
     tempDirs.length = 0;
@@ -26,6 +27,26 @@ describe('scanFolderCheckedAsync', () => {
     const result = await scanFolderCheckedAsync(folderPath, ['pdf']);
 
     expect(result).toMatchObject({
+      ok: true,
+      files: [{ fileName: 'report.pdf', extension: '.pdf' }],
+    });
+  });
+
+  it('falls back when the scan worker stops responding', async () => {
+    const folderPath = mkdtempSync(join(tmpdir(), 'ax-scan-folder-'));
+    const workerDir = mkdtempSync(join(tmpdir(), 'ax-scan-worker-'));
+    tempDirs.push(folderPath, workerDir);
+    writeFileSync(join(folderPath, 'report.pdf'), 'report');
+    const workerPath = join(workerDir, 'hanging-worker.js');
+    writeFileSync(workerPath, 'setInterval(() => {}, 1000);');
+    vi.stubEnv('VITEST', 'false');
+    vi.stubEnv('AX_SCAN_WORKER_PATH', workerPath);
+    vi.useFakeTimers();
+
+    const resultPromise = scanFolderCheckedAsync(folderPath, ['pdf']);
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    await expect(resultPromise).resolves.toMatchObject({
       ok: true,
       files: [{ fileName: 'report.pdf', extension: '.pdf' }],
     });
