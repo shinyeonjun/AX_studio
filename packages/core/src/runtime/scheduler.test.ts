@@ -200,4 +200,50 @@ describe('Scheduler', () => {
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
   });
+
+  it('isolates scheduled workflow exceptions and continues the same tick', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    for (const id of ['throws', 'succeeds']) {
+      store.saveWorkflow({
+        id,
+        name: id,
+        goal: '예약 실행 오류 격리',
+        version: 1,
+        trigger: { type: 'schedule', schedule: '30 9 * * *', timezone: 'Asia/Seoul' },
+        steps: [],
+        permissions: {},
+        approval: [],
+        allowExternalAuto: true,
+        assumptions: [],
+        sideEffects: {},
+        dataPolicy: {},
+      });
+      store.setWorkflowActive(id, true);
+    }
+
+    const failure = new Error('temporary runtime failure');
+    const runtime = {
+      executeWorkflow: vi.fn(async (ir: { id?: string }) => {
+        if (ir.id === 'throws') throw failure;
+        return { status: 'success' };
+      }),
+    };
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    await expect(tick()).resolves.toBeUndefined();
+
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+    expect(consoleError).toHaveBeenCalledWith(
+      '[scheduler] execution failed for workflow throws:',
+      failure,
+    );
+    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({
+      succeeds: expect.any(String),
+    });
+  });
 });

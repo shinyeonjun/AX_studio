@@ -2,6 +2,8 @@ import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { scanFolderChecked, type ScanFolderResult, type ScannedFile } from './scan.js';
 
+const SCAN_WORKER_TIMEOUT_MS = 30_000;
+
 function shouldUseSyncScan(): boolean {
   return process.env.VITEST === 'true' || process.env.AX_SCAN_SYNC === '1';
 }
@@ -28,15 +30,22 @@ function runScanWorker(rootPath: string, extensions?: string[]): Promise<ScanFol
     const worker = new Worker(workerScriptPath(), {
       workerData: { rootPath, extensions },
     });
+    const timeout = setTimeout(() => {
+      void worker.terminate();
+      reject(new Error('scan_worker_timeout'));
+    }, SCAN_WORKER_TIMEOUT_MS);
     worker.once('message', (message: ScanFolderResult) => {
+      clearTimeout(timeout);
       void worker.terminate();
       resolve(message);
     });
     worker.once('error', (error) => {
+      clearTimeout(timeout);
       void worker.terminate();
       reject(error);
     });
     worker.once('exit', (code) => {
+      clearTimeout(timeout);
       if (code !== 0) {
         reject(new Error(`scan_worker_exit_${code}`));
       } else {
