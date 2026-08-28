@@ -1,4 +1,5 @@
 import type { WebClient } from '@slack/web-api';
+import { takeUnseenSlackCursor } from './pagination.js';
 
 export async function resolveSlackChannelId(client: WebClient, channel: string): Promise<string | undefined> {
   if (/^[CGD][A-Z0-9]+$/i.test(channel)) {
@@ -7,6 +8,7 @@ export async function resolveSlackChannelId(client: WebClient, channel: string):
 
   const name = channel.startsWith('#') ? channel.slice(1) : channel;
   let cursor: string | undefined;
+  const seenCursors = new Set<string>();
 
   do {
     const response = await client.conversations.list({
@@ -16,7 +18,7 @@ export async function resolveSlackChannelId(client: WebClient, channel: string):
     });
     const found = response.channels?.find((entry) => entry.name === name);
     if (found?.id) return found.id;
-    cursor = response.response_metadata?.next_cursor || undefined;
+    cursor = takeUnseenSlackCursor(seenCursors, response.response_metadata?.next_cursor);
   } while (cursor);
 
   return undefined;
