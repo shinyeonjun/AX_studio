@@ -137,6 +137,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
     });
 
     if (method === 'HEAD') {
+      await response.body?.cancel().catch(() => undefined);
       return {
         ok: true,
         status: response.status,
