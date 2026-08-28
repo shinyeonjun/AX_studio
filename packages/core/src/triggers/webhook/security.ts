@@ -49,5 +49,6 @@ export function verifyWebhookAuth(
 
 export function buildWebhookLocalUrl(port: number, path: string): string {
   const normalized = normalizeWebhookPath(path);
-  return `http://127.0.0.1:${port}/hooks/${normalized}`;
+  const encodedPath = normalized.split('/').map(encodeURIComponent).join('/');
+  return `http://127.0.0.1:${port}/hooks/${encodedPath}`;
 }
