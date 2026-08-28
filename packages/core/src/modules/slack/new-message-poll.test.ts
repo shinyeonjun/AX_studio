@@ -81,6 +81,25 @@ describe('pollSlackNewMessages', () => {
     });
   });
 
+  it('stops polling history when Slack repeats a pagination cursor', async () => {
+    const history = vi.fn().mockResolvedValue({
+      messages: [{ type: 'message', ts: '201.000', text: 'new', user: 'U1' }],
+      response_metadata: { next_cursor: 'repeated' },
+    });
+    const client = { conversations: { history } } as unknown as WebClient;
+
+    const result = await pollSlackNewMessages(client, {
+      channel: '#general',
+      cursorChannel: '#general',
+      channelId: 'C123',
+      initialized: true,
+      lastMessageTs: '200.000',
+    });
+
+    expect(history).toHaveBeenCalledTimes(2);
+    expect(result.events).toHaveLength(1);
+  });
+
   it('resolves and baselines a newly configured channel instead of reusing the old channel id', async () => {
     const history = vi.fn().mockResolvedValue({
       messages: [{ type: 'message', ts: '300.000', text: 'existing', user: 'U1' }],
