@@ -1,5 +1,5 @@
-import { describe, expect, it, afterEach } from 'vitest';
-import { createServer, request } from 'node:http';
+import { describe, expect, it, afterEach, vi } from 'vitest';
+import { createServer, IncomingMessage, request } from 'node:http';
 import { WebhookInboundListener } from './listener.js';
 import { WEBHOOK_MAX_PAYLOAD_BYTES } from './security.js';
 
@@ -9,6 +9,7 @@ describe('WebhookInboundListener', () => {
   afterEach(async () => {
     await Promise.all(listeners.map((listener) => listener.stop()));
     listeners.length = 0;
+    vi.restoreAllMocks();
   });
 
   it('accepts signed POST and emits trigger event', async () => {
@@ -70,6 +71,25 @@ describe('WebhookInboundListener', () => {
 
     expect(response.status).toBe(400);
     expect(await response.text()).toBe('invalid_path');
+  });
+
+  it.each([
+    { port: 38_908, path: '/hooks/test', method: 'PUT', status: 405 },
+    { port: 38_909, path: '/unknown', method: 'POST', status: 404 },
+    { port: 38_910, path: '/hooks/%E0%A4%A', method: 'POST', status: 400 },
+  ])('drains rejected $status request bodies', async ({ port, path, method, status }) => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const resume = vi.spyOn(IncomingMessage.prototype, 'resume');
+
+    await listener.start({ port, secret: 'hook-secret' }, () => undefined);
+    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+      method,
+      body: 'rejected-body',
+    });
+
+    expect(response.status).toBe(status);
+    expect(resume).toHaveBeenCalled();
   });
 
   it('rejects requests without valid secret', async () => {
