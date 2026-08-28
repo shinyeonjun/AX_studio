@@ -1,6 +1,7 @@
 import type { WebClient } from '@slack/web-api';
 import type { SearchHit } from '../../platform/knowledge.js';
 import { resolveSlackChannelId } from './channel-resolve.js';
+import { takeUnseenSlackCursor } from './pagination.js';
 
 const MAX_CHANNELS = 200;
 const MAX_MESSAGES = 50;
@@ -28,7 +29,9 @@ export interface SlackMessageSummary {
 
 export async function listSlackChannels(client: WebClient): Promise<SlackChannelSummary[]> {
   const channels: SlackChannelSummary[] = [];
+  const seenChannelIds = new Set<string>();
   let cursor: string | undefined;
+  const seenCursors = new Set<string>();
 
   do {
     const response = await client.conversations.list({
@@ -37,7 +40,8 @@ export async function listSlackChannels(client: WebClient): Promise<SlackChannel
       cursor,
     });
     for (const entry of response.channels ?? []) {
-      if (!entry.id) continue;
+      if (!entry.id || seenChannelIds.has(entry.id)) continue;
+      seenChannelIds.add(entry.id);
       channels.push({
         id: entry.id,
         name: entry.name,
@@ -46,7 +50,7 @@ export async function listSlackChannels(client: WebClient): Promise<SlackChannel
       });
       if (channels.length >= MAX_CHANNELS) return channels;
     }
-    cursor = response.response_metadata?.next_cursor || undefined;
+    cursor = takeUnseenSlackCursor(seenCursors, response.response_metadata?.next_cursor);
   } while (cursor);
 
   return channels;
@@ -99,12 +103,16 @@ export async function readSlackChannelMessages(
 
   const boundedLimit = normalizeLimit(limit, MAX_MESSAGES);
   const messages: SlackMessageSummary[] = [];
+  const seenMessageTimestamps = new Set<string>();
   let cursor: string | undefined;
+  const seenCursors = new Set<string>();
 
   do {
     const response = await client.conversations.history({ channel: channelId, limit: boundedLimit, cursor });
     for (const message of response.messages ?? []) {
       if (message.type !== 'message' || message.subtype) continue;
+      if (message.ts && seenMessageTimestamps.has(message.ts)) continue;
+      if (message.ts) seenMessageTimestamps.add(message.ts);
       messages.push({
         ts: message.ts,
         text: message.text,
@@ -113,7 +121,7 @@ export async function readSlackChannelMessages(
       });
       if (messages.length >= boundedLimit) break;
     }
-    cursor = response.response_metadata?.next_cursor || undefined;
+    cursor = takeUnseenSlackCursor(seenCursors, response.response_metadata?.next_cursor);
   } while (messages.length < boundedLimit && cursor);
 
   return { channel, channelId, messages };

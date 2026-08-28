@@ -3,9 +3,22 @@ import { describe, expect, it, vi } from 'vitest';
 import { MockSlackConnector } from '../mocks/slack.js';
 import { executeDesignTool } from '../../design-tools/execute.js';
 import { buildDesignToolContext } from '../../design-tools/context.js';
-import { readSlackChannelMessages, searchSlackMessages } from './read.js';
+import { listSlackChannels, readSlackChannelMessages, searchSlackMessages } from './read.js';
 
 describe('Slack read knowledge', () => {
+  it('stops listing channels when Slack repeats a pagination cursor', async () => {
+    const list = vi.fn().mockResolvedValue({
+      channels: [{ id: 'C123', name: 'general' }],
+      response_metadata: { next_cursor: 'repeated' },
+    });
+    const client = { conversations: { list } } as unknown as WebClient;
+
+    const channels = await listSlackChannels(client);
+
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(channels).toHaveLength(1);
+  });
+
   it('reads additional history pages to fill the requested user-message limit', async () => {
     const history = vi
       .fn()
@@ -42,6 +55,33 @@ describe('Slack read knowledge', () => {
     await readSlackChannelMessages(client, 'C123', 2.8);
 
     expect(history).toHaveBeenCalledWith({ channel: 'C123', limit: 2, cursor: undefined });
+  });
+
+  it('stops reading history when Slack repeats a pagination cursor', async () => {
+    const history = vi.fn().mockResolvedValue({
+      messages: [{ type: 'message', ts: '101.000', text: 'message', user: 'U1' }],
+      response_metadata: { next_cursor: 'repeated' },
+    });
+    const client = { conversations: { history } } as unknown as WebClient;
+
+    const result = await readSlackChannelMessages(client, 'C123', 10);
+
+    expect(history).toHaveBeenCalledTimes(2);
+    expect(result.messages).toHaveLength(1);
+  });
+
+  it('stops resolving a missing channel when Slack repeats a pagination cursor', async () => {
+    const list = vi.fn().mockResolvedValue({
+      channels: [],
+      response_metadata: { next_cursor: 'repeated' },
+    });
+    const history = vi.fn();
+    const client = { conversations: { list, history } } as unknown as WebClient;
+
+    await expect(readSlackChannelMessages(client, '#missing')).rejects.toThrow('channel_not_found');
+
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(history).not.toHaveBeenCalled();
   });
 
   it('uses the default search limit for non-finite values', async () => {
