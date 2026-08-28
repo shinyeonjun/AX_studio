@@ -28,6 +28,7 @@ describe('platform sideEffect policy', () => {
 
   it('uses HTTP method only as ingest default', () => {
     expect(defaultSideEffectForHttpMethod('GET')).toBe('NONE');
+    expect(defaultSideEffectForHttpMethod('head')).toBe('NONE');
     expect(defaultSideEffectForHttpMethod('post')).toBe('EXTERNAL');
   });
 });

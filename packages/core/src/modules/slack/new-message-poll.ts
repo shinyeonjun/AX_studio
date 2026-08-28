@@ -1,5 +1,6 @@
 import type { WebClient } from '@slack/web-api';
 import { resolveSlackChannelId } from './channel-resolve.js';
+import { takeUnseenSlackCursor } from './pagination.js';
 
 export interface SlackNewMessagePollParams {
   channel: string;
@@ -69,7 +70,9 @@ export async function pollSlackNewMessages(
   const initialized = params.initialized && !channelChanged;
 
   const messages: NonNullable<Awaited<ReturnType<WebClient['conversations']['history']>>['messages']> = [];
+  const seenMessageTimestamps = new Set<string>();
   let cursor: string | undefined;
+  const seenCursors = new Set<string>();
   do {
     const history = await client.conversations.history({
       channel: channelId,
@@ -77,8 +80,12 @@ export async function pollSlackNewMessages(
       cursor,
       oldest: initialized ? params.lastMessageTs ?? '0' : undefined,
     });
-    messages.push(...(history.messages ?? []).filter(isUserMessage));
-    cursor = history.response_metadata?.next_cursor || undefined;
+    for (const message of (history.messages ?? []).filter(isUserMessage)) {
+      if (seenMessageTimestamps.has(message.ts!)) continue;
+      seenMessageTimestamps.add(message.ts!);
+      messages.push(message);
+    }
+    cursor = takeUnseenSlackCursor(seenCursors, history.response_metadata?.next_cursor);
   } while (initialized && cursor);
 
   if (!initialized) {
