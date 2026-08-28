@@ -13,6 +13,7 @@ const PETSTORE = {
   paths: {
     '/pets': {
       get: { operationId: 'listPets', responses: { '200': { description: 'ok' } } },
+      head: { operationId: 'checkPets', responses: { '200': { description: 'ok' } } },
       post: {
         operationId: 'createPet',
         'x-sideEffect': 'EXTERNAL',
@@ -31,6 +32,9 @@ describe('openapi ingest', () => {
     const { connector, capabilityIds } = ingestOpenApiSpec('petstore', PETSTORE);
     expect(capabilityIds).toContain('openapi.petstore.listPets');
     expect(getCapability('openapi.petstore.listPets')?.sideEffect).toBe('NONE');
+    expect(capabilityIds).toContain('openapi.petstore.checkPets');
+    expect(getCapability('openapi.petstore.checkPets')?.kind).toBe('read');
+    expect(getCapability('openapi.petstore.checkPets')?.sideEffect).toBe('NONE');
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
@@ -43,6 +47,30 @@ describe('openapi ingest', () => {
       const result = await invokeReadCapability(ctx, 'openapi.petstore.listPets', {});
       expect(result.capabilityId).toBe('openapi.petstore.listPets');
       expect((result.data as { status: number }).status).toBe(200);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('invokes HEAD operations without a response body', async () => {
+    const { connector } = ingestOpenApiSpec('petstore', PETSTORE);
+    const originalFetch = globalThis.fetch;
+    let requestedMethod = '';
+    globalThis.fetch = async (_input, init) => {
+      requestedMethod = init?.method ?? '';
+      return new Response(null, { status: 200 });
+    };
+
+    try {
+      const result = await connector.execute(
+        'petstore.checkPets',
+        {},
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(requestedMethod).toBe('HEAD');
+      expect(result.data).toMatchObject({ status: 200, body: '' });
     } finally {
       globalThis.fetch = originalFetch;
     }
