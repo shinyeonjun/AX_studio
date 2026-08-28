@@ -120,8 +120,10 @@ export async function pollGmailNewMessages(
     let nextHistoryId = params.historyId;
     const messageIds: string[] = [];
     const collectedIds = new Set<string>();
+    const seenPageTokens = new Set<string>();
 
     do {
+      if (pageToken) seenPageTokens.add(pageToken);
       const historyRes = await gmail.users.history.list({
         userId: 'me',
         startHistoryId: params.historyId,
@@ -138,7 +140,10 @@ export async function pollGmailNewMessages(
           }
         }
       }
-      pageToken = historyRes.data.nextPageToken ?? undefined;
+      const nextPageToken = historyRes.data.nextPageToken ?? undefined;
+      pageToken = nextPageToken && !seenPageTokens.has(nextPageToken)
+        ? nextPageToken
+        : undefined;
     } while (pageToken);
 
     const events: GmailNewMessageEvent[] = [];
