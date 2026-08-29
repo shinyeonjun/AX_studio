@@ -31,6 +31,12 @@ export interface HttpRequestError {
 
 export type PerformHttpRequestResult = HttpRequestResult | HttpRequestError;
 
+function normalizeTimeoutMs(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : HTTP_DEFAULT_TIMEOUT_MS;
+}
+
 function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, string> {
   if (!auth || auth.type === 'none') return {};
   if (auth.type === 'bearer' && auth.token) {
@@ -110,7 +116,7 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
 
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
   const method = input.method.trim().toUpperCase() || 'GET';
-  const timeoutMs = input.timeoutMs ?? HTTP_DEFAULT_TIMEOUT_MS;
+  const timeoutMs = normalizeTimeoutMs(input.timeoutMs);
   const maxBytes = input.maxBytes ?? HTTP_DEFAULT_MAX_RESPONSE_BYTES;
   const headers = mergeHeadersWithAuth(input.headers, input.auth);
 
