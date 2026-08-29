@@ -2,7 +2,17 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { scanFolderChecked } from './scan.js';
+import { normalizeExtensions, scanFolderChecked } from './scan.js';
+
+describe('normalizeExtensions', () => {
+  it('treats blank-only entries as no filter', () => {
+    expect(normalizeExtensions(['', '   '])).toBeNull();
+  });
+
+  it('drops blank entries while normalizing valid extensions', () => {
+    expect([...normalizeExtensions([' ', 'PDF'])!]).toEqual(['.pdf']);
+  });
+});
 
 describe('scanFolderChecked', () => {
   const tempDirs: string[] = [];
