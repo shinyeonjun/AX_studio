@@ -15,11 +15,13 @@ function parseField(field: string, minimum: number, maximum: number): Set<number
     const stepParts = rawPart.split('/');
     if (stepParts.length > 2) return null;
     const [rangePart, stepText] = stepParts;
+    if (stepText !== undefined && !/^\d+$/.test(stepText)) return null;
     const step = stepText === undefined ? 1 : Number(stepText);
     if (!Number.isInteger(step) || step < 1) return null;
 
     const rangeParts = rangePart!.split('-');
     if (rangeParts.length > 2) return null;
+    if (rangePart !== '*' && rangeParts.some((part) => !/^\d+$/.test(part))) return null;
     const range = rangePart === '*' ? [minimum, maximum] : rangeParts.map(Number);
     if (range.length === 1) {
       const value = range[0];
