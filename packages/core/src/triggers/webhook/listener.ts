@@ -106,7 +106,7 @@ export class WebhookInboundListener {
         return;
       }
 
-      const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const prefix = '/hooks/';
       if (!url.pathname.startsWith(prefix)) {
         rejectRequest(req, res, 404, 'not_found');

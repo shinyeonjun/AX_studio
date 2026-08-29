@@ -111,7 +111,9 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
   const method = input.method.trim().toUpperCase() || 'GET';
   const timeoutMs = input.timeoutMs ?? HTTP_DEFAULT_TIMEOUT_MS;
-  const maxBytes = input.maxBytes ?? HTTP_DEFAULT_MAX_RESPONSE_BYTES;
+  const maxBytes = input.maxBytes === undefined || !Number.isFinite(input.maxBytes)
+    ? HTTP_DEFAULT_MAX_RESPONSE_BYTES
+    : input.maxBytes;
   const headers = mergeHeadersWithAuth(input.headers, input.auth);
 
   const controller = new AbortController();

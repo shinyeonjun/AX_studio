@@ -38,6 +38,37 @@ describe('WebhookInboundListener', () => {
     expect(events[0]?.payload.body).toBe('{"total":42}');
   });
 
+  it('routes signed requests independently of the client-supplied host header', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: unknown[] = [];
+    const port = 38_911;
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+    const response = await new Promise<{ status: number | undefined }>((resolve, reject) => {
+      const req = request({
+        host: '127.0.0.1',
+        port,
+        path: '/hooks/test',
+        method: 'POST',
+        headers: {
+          host: '][',
+          'x-ax-webhook-secret': 'hook-secret',
+        },
+      }, (res) => {
+        res.resume();
+        res.on('end', () => resolve({ status: res.statusCode }));
+      });
+      req.on('error', reject);
+      req.end('{}');
+    });
+
+    expect(response.status).toBe(202);
+    expect(events).toHaveLength(1);
+  });
+
   it('decodes URL-encoded webhook paths before emitting the event', async () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
