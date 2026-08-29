@@ -40,6 +40,16 @@ describe('evaluateCondition', () => {
     ).toBe(true);
   });
 
+  it('does not fall back to trigger variables for explicit null step results', () => {
+    expect(
+      evaluateCondition(
+        { op: 'eq', left: { ref: 'status' }, right: { lit: 'pending' } },
+        { status: 'pending' },
+        { status: null },
+      ),
+    ).toBe(false);
+  });
+
   it('fails numeric comparisons closed for missing and non-numeric values', () => {
     for (const value of [null, false, '', 'not-a-number']) {
       expect(

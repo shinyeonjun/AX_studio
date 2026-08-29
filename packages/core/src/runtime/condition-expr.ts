@@ -40,7 +40,7 @@ export type ConditionExpr = {
 function resolveRef(ref: string, variables: Record<string, unknown>, stepResults: Record<string, unknown>): unknown {
   const path = ref.startsWith('trigger.') ? ref.slice('trigger.'.length) : ref;
   const [root, ...rest] = path.split('.');
-  let current: unknown = stepResults[root] ?? variables[root];
+  let current: unknown = Object.hasOwn(stepResults, root) ? stepResults[root] : variables[root];
   for (const key of rest) {
     if (current == null || typeof current !== 'object') return undefined;
     current = (current as Record<string, unknown>)[key];
