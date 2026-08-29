@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { performHttpRequest } from './request.js';
+import { HTTP_DEFAULT_TIMEOUT_MS, performHttpRequest } from './request.js';
 
 describe('performHttpRequest', () => {
   afterEach(() => {
@@ -58,6 +58,30 @@ describe('performHttpRequest', () => {
       expect(result.truncated).toBe(true);
     }
   });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+    'keeps the default response limit when maxBytes is %s',
+    async (maxBytes) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response('huge', {
+              status: 200,
+              headers: { 'content-length': String(1_048_577) },
+            }),
+        ),
+      );
+
+      const result = await performHttpRequest({
+        url: 'https://api.example.com/data',
+        method: 'GET',
+        maxBytes,
+      });
+
+      expect(result).toMatchObject({ ok: true, body: '', truncated: true });
+    },
+  );
 
   it('keeps the streamed truncation result when reader cancellation fails', async () => {
     const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
@@ -188,6 +212,28 @@ describe('performHttpRequest', () => {
       }),
     );
   });
+
+  it.each([
+    { timeoutMs: 0, expected: HTTP_DEFAULT_TIMEOUT_MS },
+    { timeoutMs: -1, expected: HTTP_DEFAULT_TIMEOUT_MS },
+    { timeoutMs: Number.NaN, expected: HTTP_DEFAULT_TIMEOUT_MS },
+    { timeoutMs: Number.POSITIVE_INFINITY, expected: HTTP_DEFAULT_TIMEOUT_MS },
+    { timeoutMs: 250, expected: 250 },
+  ])(
+    'normalizes timeoutMs $timeoutMs to $expected',
+    async ({ timeoutMs, expected }) => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('ok')));
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+      await performHttpRequest({
+        url: 'https://api.example.com/data',
+        method: 'GET',
+        timeoutMs,
+      });
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expected);
+    },
+  );
 
   it('protects a configured API key header case-insensitively', async () => {
     const fetchMock = vi.fn(async () => new Response('ok', { status: 200 }));

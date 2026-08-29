@@ -3,7 +3,7 @@ import { lstatSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { isPathContainedInRoot, resolveFolderRoot } from './path-security.js';
 import type { ScannedFile } from './scan.js';
-import { MAX_FILES_PER_SCAN } from './scan.js';
+import { MAX_FILES_PER_SCAN, normalizeExtensions } from './scan.js';
 
 interface ScanWorkerInput {
   rootPath: string;
@@ -19,16 +19,6 @@ interface ScanWorkerError {
   ok: false;
   error: string;
   errorCode: string;
-}
-
-function normalizeExtensions(extensions?: string[]): Set<string> | null {
-  if (!extensions?.length) return null;
-  return new Set(
-    extensions.map((ext) => {
-      const trimmed = ext.trim().toLowerCase();
-      return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
-    }),
-  );
 }
 
 function walkDirectory(

@@ -18,7 +18,7 @@ export type ScanFolderResult =
   | { ok: true; files: ScannedFile[] }
   | { ok: false; error: string; errorCode: string };
 
-function normalizeExtensions(extensions?: string[]): Set<string> | null {
+export function normalizeExtensions(extensions?: string[]): Set<string> | null {
   if (!extensions?.length) return null;
   const normalized = extensions
     .map((ext) => ext.trim().toLowerCase())
