@@ -20,6 +20,14 @@ function isAttachment(part: GmailPart): boolean {
   );
 }
 
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function collectPlainText(part: GmailPart | undefined, chunks: string[]): void {
   if (!part) return;
   const mimeType = part.mimeType ?? '';
@@ -59,6 +67,6 @@ export function extractGmailPlainBody(message: unknown): string | undefined {
   walk(payload);
 
   if (plain.length > 0) return plain.join('\n\n').trim();
-  if (html.length > 0) return html.join('\n\n').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (html.length > 0) return htmlToPlainText(html.join('\n\n'));
   return typeof record.snippet === 'string' ? record.snippet : undefined;
 }

@@ -4,6 +4,25 @@ export const DEFAULT_TABLE_ROW_LIMIT = 5_000;
 export const MODEL_PREVIEW_ROW_LIMIT = 50;
 export const MAX_WORKBOOK_SHEETS = 20;
 
+function uniqueHeaders(headers: string[]): string[] {
+  const normalized = headers.map((header, index) => header?.trim() || `column_${index + 1}`);
+  const reserved = new Set(normalized);
+  const used = new Set<string>();
+
+  return normalized.map((header) => {
+    if (!used.has(header)) {
+      used.add(header);
+      return header;
+    }
+
+    let suffix = 2;
+    while (reserved.has(`${header}_${suffix}`) || used.has(`${header}_${suffix}`)) suffix += 1;
+    const unique = `${header}_${suffix}`;
+    used.add(unique);
+    return unique;
+  });
+}
+
 export function inferColumnType(values: unknown[]): TableColumnType {
   const nonNull = values.filter((value) => value != null && `${value}`.trim() !== '');
   if (nonNull.length === 0) return 'unknown';
@@ -75,7 +94,7 @@ export function buildTableArtifact(params: {
   source?: TableArtifact['source'];
 }): TableArtifact {
   const rowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
-  const headers = params.headers.map((header, index) => header?.trim() || `column_${index + 1}`);
+  const headers = uniqueHeaders(params.headers);
   const columnValues = headers.map((_, columnIndex) =>
     params.matrix.map((row) => row[columnIndex]),
   );

@@ -17,11 +17,12 @@ export class OpenApiConnector implements Connector {
   constructor(private readonly specs: OpenApiSpec[]) {}
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
-    const [specId, operationId] = action.split('.', 2);
-    const spec = this.specs.find((entry) => entry.id === specId);
+    const spec = this.specs.find((entry) => action.startsWith(`${entry.id}.`));
     if (!spec) {
       return { ok: false, error: 'openapi_spec_not_found', errorCode: 'openapi_spec_not_found' };
     }
+    const specId = spec.id;
+    const operationId = action.slice(specId.length + 1);
     const operation = spec.operations.find((entry) => entry.operationId === operationId);
     if (!operation) {
       return { ok: false, error: 'openapi_operation_not_found', errorCode: 'openapi_operation_not_found' };

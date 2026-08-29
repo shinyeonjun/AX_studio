@@ -59,6 +59,30 @@ describe('performHttpRequest', () => {
     }
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+    'keeps the default response limit when maxBytes is %s',
+    async (maxBytes) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response('huge', {
+              status: 200,
+              headers: { 'content-length': String(1_048_577) },
+            }),
+        ),
+      );
+
+      const result = await performHttpRequest({
+        url: 'https://api.example.com/data',
+        method: 'GET',
+        maxBytes,
+      });
+
+      expect(result).toMatchObject({ ok: true, body: '', truncated: true });
+    },
+  );
+
   it('keeps the streamed truncation result when reader cancellation fails', async () => {
     const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
     const stream = new ReadableStream<Uint8Array>({

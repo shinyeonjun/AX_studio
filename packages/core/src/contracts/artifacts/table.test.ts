@@ -40,6 +40,30 @@ describe('TableArtifact', () => {
     expect(artifact.profile?.columns.date).toMatchObject({ min: '2026-02-01', max: '2026-10-01' });
     expect(artifact.profile?.columns.mixed).toMatchObject({ min: undefined, max: undefined });
   });
+
+  it('preserves values from duplicate and blank headers under unique column names', () => {
+    const artifact = buildTableArtifact({
+      id: 'tbl_duplicate_headers',
+      headers: ['amount', 'amount', 'amount_2', '', 'column_4'],
+      matrix: [[10, 20, 30, 40, 50]],
+    });
+
+    expect(artifact.columns.map((column) => column.name)).toEqual([
+      'amount',
+      'amount_3',
+      'amount_2',
+      'column_4',
+      'column_4_2',
+    ]);
+    expect(artifact.rows[0]?.values).toEqual({
+      amount: 10,
+      amount_3: 20,
+      amount_2: 30,
+      column_4: 40,
+      column_4_2: 50,
+    });
+    expect(artifact.profile?.columnCount).toBe(5);
+  });
 });
 
 describe('local sheet read', () => {
