@@ -67,12 +67,11 @@ export function defaultWorkerScript(): string {
   );
 }
 
-export function defaultPythonPath(): string {
+export function defaultPythonPath(workerScript = defaultWorkerScript()): string {
   const fromEnv = process.env.AX_DOCUMENT_ENGINE_PYTHON;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
-  const worker = defaultWorkerScript();
-  const engineRoot = dirname(dirname(worker));
+  const engineRoot = dirname(dirname(workerScript));
   const venvPython = pythonInVenv(engineRoot);
   if (existsSync(venvPython)) return venvPython;
 
@@ -105,7 +104,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
 
   constructor(options: DocumentEngineClientOptions = {}) {
     this.workerScript = options.workerScript ?? defaultWorkerScript();
-    this.pythonPath = options.pythonPath ?? defaultPythonPath();
+    this.pythonPath = options.pythonPath ?? defaultPythonPath(this.workerScript);
     this.artifactRoot = options.artifactRoot ?? defaultArtifactRoot();
     this.timeoutMs = options.timeoutMs ?? 180_000;
     this.workerCwd = options.workerCwd ?? defaultWorkerCwd(this.workerScript);
