@@ -76,6 +76,33 @@ describe('openapi ingest', () => {
     }
   });
 
+  it('invokes operations whose OpenAPI operationId contains dots', async () => {
+    const spec = {
+      ...PETSTORE,
+      paths: {
+        '/pets': {
+          get: { operationId: 'pets.list', responses: { '200': { description: 'ok' } } },
+        },
+      },
+    };
+    const { connector, capabilityIds } = ingestOpenApiSpec('petstore', spec);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response('{}', { status: 200 });
+
+    try {
+      expect(capabilityIds).toContain('openapi.petstore.pets.list');
+      const result = await connector.execute(
+        'petstore.pets.list',
+        {},
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      );
+
+      expect(result.ok).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('blocks write capabilities in plain chat', async () => {
     ingestOpenApiSpec('petstore', PETSTORE);
     const ctx = buildDesignToolContext([], ['mcp'], { connectors: {} });
