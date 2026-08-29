@@ -40,4 +40,14 @@ describe('parseCronExpression', () => {
   ])('rejects extra field separators in %s', (expression) => {
     expect(parseCronExpression(expression)).toBeNull();
   });
+
+  it.each([
+    '-5 * * * *',
+    '+5 * * * *',
+    '0x10 * * * *',
+    '1e1 * * * *',
+    '*/+2 * * * *',
+  ])('rejects non-decimal numeric syntax in %s', (expression) => {
+    expect(parseCronExpression(expression)).toBeNull();
+  });
 });
