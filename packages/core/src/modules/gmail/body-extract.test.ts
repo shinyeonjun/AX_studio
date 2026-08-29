@@ -42,4 +42,25 @@ describe('extractGmailPlainBody', () => {
 
     expect(body).toBe('message body');
   });
+
+  it('excludes script and style contents from an HTML-only body', () => {
+    const body = extractGmailPlainBody({
+      payload: {
+        mimeType: 'text/html',
+        body: {
+          data: encoded(`
+            <html>
+              <head>
+                <style>.hidden { display: none; }</style>
+                <script>window.trackingId = 'secret';</script>
+              </head>
+              <body><h1>Order update</h1><p>Your order has shipped.</p></body>
+            </html>
+          `),
+        },
+      },
+    });
+
+    expect(body).toBe('Order update Your order has shipped.');
+  });
 });
