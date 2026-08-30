@@ -360,3 +360,27 @@ main_based_work_discovery_phase_3:
   expansions:
     - "Desktop E2E reached the real pipeline but exposed a Core observation bug: ArtifactStore metadata was accepted as an empty DocumentArtifact, so the output CSV was never observed."
     - "Post-commit review exposed two follow-up correctness gaps in the same path: persisted workbook JSON was hidden behind the document marker and cancellable review states were narrower than the Core state machine."
+
+main_based_work_discovery_phase_4:
+  status: completed
+  expansion_reason: "Phase 3 completed; the repository declares test:e2e and test:integration entry points but both target missing runner files."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - package.json
+    - test/e2e/run.mjs
+    - test/integration/run.mjs
+    - test/product-qa/run.mjs
+    - test/product-qa/lib/types.ts
+    - test/product-qa/lib/desktop-app.ts
+    - packages/core/package.json
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - live provider accounts and external connector side effects
+    - connector production behavior outside runner wiring
+  expansions:
+    - "The runner validation surfaced a pre-existing Phase 3 Product QA type declaration error in test/product-qa/lib/types.ts; fix it because the repository-level E2E entry point must be typecheckable."
+    - "After that syntax fix, test typecheck exposed an Electron launch environment type mismatch; normalize optional process environment values before passing them to Playwright."

@@ -880,3 +880,53 @@ main_based_work_discovery_phase_3_task:
       diff-whitespace: "PASS: git diff --check"
     decision: KEEP
     notes: "The real Electron path now reaches ready_to_publish, isolates a new chat, and persists publication. Workbook and stored-file observation dispatch are both covered, all Core-supported cancellable review states are exposed, packaged artifact overrides are disabled, and existing .gitignore remains unrelated and unchanged."
+
+main_based_work_discovery_phase_4_task:
+  name: repository-test-entrypoints
+  evaluator_frozen: true
+  checks:
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - root E2E runner invokes the real Electron Product QA suite and fails when the child process fails
+    - root integration runner invokes Core integration coverage without live credentials or external side effects
+    - default runners do not create or track generated test artifacts
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T23:47:27.9546989+09:00
+    values:
+      root-e2e-runner: "FAIL: test/e2e/run.mjs is missing"
+      root-integration-runner: "FAIL: test/integration/run.mjs is missing"
+      core-regression: "PASS: measured in previous Phase 3 checkpoint"
+      test-typecheck: "FAIL: test/product-qa/lib/types.ts has an extra closing brace after the Phase 3 workflowPresent check"
+      diff-whitespace: "PASS: measured before Phase 4 implementation"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-30T23:53:52.4849231+09:00
+    values:
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+      root-integration-runner: "PASS: 9 Core suites, 52 tests"
+      core-regression: "PASS: 3 files, 20 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
+  expansions: []

@@ -113,7 +113,6 @@ export type ScenarioCheck =
       check: 'workflowPresent';
       text: string;
       severity?: DefectSeverity;
-    }
     };
 
 export type ScenarioStep = ScenarioAction | ScenarioCheck;

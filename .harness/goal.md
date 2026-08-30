@@ -767,3 +767,40 @@ deterministic fixtures and a narrowly gated test seam.
   isolation boundary.
 - Root integration/E2E runner repair, persistence schema hardening, or result
   drift/repair behavior.
+
+## Current task: main-based Work Discovery production path — Phase 4
+
+Restore the repository-level test entry points so a fresh checkout has one
+truthful command for the Electron product path and one for Core integration
+coverage. The runners must forward failures, avoid external providers, and
+keep their selected suites bounded and reproducible.
+
+### Phase 4 success criteria
+
+- `npm run test:e2e` builds the desktop app when needed and runs the
+  deterministic Electron Product QA suite through the real main/preload/
+  renderer boundary.
+- `npm run test:integration` runs the Core integration boundary suite and
+  returns the underlying test exit status instead of silently passing.
+- Both root runners work from a clean checkout, accept documented extra
+  arguments where appropriate, and do not require live provider credentials or
+  external network side effects.
+- Existing Core, Desktop, Product QA, architecture, and whitespace checks
+  remain green.
+
+### Phase 4 non-goals
+
+- Adding new connector behavior or replacing the existing unit-test suite.
+- Starting Docker services or requiring unavailable external infrastructure for
+  the default integration command.
+- Persistence schema changes or result drift/repair behavior; those remain the
+  next bounded phases.
+
+### Phase 4 final checkpoint (2026-08-30)
+
+- `npm run test:e2e` now builds the desktop app and passes the deterministic
+  Electron Product QA suite.
+- `npm run test:integration` now runs the bounded Core integration boundary
+  suite without external credentials or side effects.
+- The repository test harness typechecks cleanly with
+  `npx tsc -p test/tsconfig.json --noEmit`.

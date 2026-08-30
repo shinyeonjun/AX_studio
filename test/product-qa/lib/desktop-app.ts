@@ -64,15 +64,18 @@ function useIsolatedElectronProfile(): boolean {
   return process.env.AX_PRODUCT_QA_ISOLATED === '1';
 }
 
-function buildEnv(options: LaunchOptions): NodeJS.ProcessEnv {
+function buildEnv(options: LaunchOptions): Record<string, string> {
   const dataRoot = resolveDataRoot(options);
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  Object.assign(env, {
     AX_DATA_ROOT: dataRoot,
     AX_PRODUCT_QA: '1',
     AX_PRODUCT_QA_RUN_ID: options.runId,
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-  };
+  });
   delete env.ELECTRON_RENDERER_URL;
 
   if (options.mode === 'deterministic') {
