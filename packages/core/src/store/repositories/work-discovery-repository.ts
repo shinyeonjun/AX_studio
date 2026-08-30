@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
-import type { DiscoverySessionState } from '../../work-discovery/schema.js';
+import {
+  DiscoverySessionStateSchema,
+  type DiscoverySessionState,
+} from '../../work-discovery/schema.js';
 
 export interface DiscoveryExampleRecord {
   id: string;
@@ -34,6 +37,29 @@ export interface DiscoveryReplayCaseRecord {
   expectedObservationsJson: string;
   lastResultJson?: string;
   createdAt: string;
+}
+
+function parseDiscoverySessionState(stateJson: string, sessionId: string): DiscoverySessionState {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(stateJson);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(`work discovery session ${sessionId} state is corrupted: ${detail}`), {
+      code: 'invalid_discovery_session_json',
+      sessionId,
+    });
+  }
+
+  const parsed = DiscoverySessionStateSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw Object.assign(new Error(`work discovery session ${sessionId} state has an invalid shape`), {
+      code: 'invalid_discovery_session_state',
+      sessionId,
+      issues: parsed.error.issues,
+    });
+  }
+  return parsed.data;
 }
 
 export function insertDiscoverySession(db: AppDatabase, state: DiscoverySessionState): void {
@@ -78,16 +104,17 @@ export function getDiscoverySession(db: AppDatabase, sessionId: string): Discove
     | { state_json?: string }
     | undefined;
   if (!row?.state_json) return undefined;
-  return JSON.parse(row.state_json) as DiscoverySessionState;
+  return parseDiscoverySessionState(row.state_json, sessionId);
 }
 
 export function listDiscoverySessions(db: AppDatabase): DiscoverySessionState[] {
   const rows = db.prepare(
-    'SELECT state_json FROM work_discovery_sessions ORDER BY updated_at ASC, id ASC',
-  ).all() as Array<{ state_json?: string }>;
+    'SELECT id, state_json FROM work_discovery_sessions ORDER BY updated_at ASC, id ASC',
+  ).all() as Array<{ id: string; state_json?: string }>;
   return rows
-    .filter((row): row is { state_json: string } => typeof row.state_json === 'string' && row.state_json.length > 0)
-    .map((row) => JSON.parse(row.state_json) as DiscoverySessionState);
+    .filter((row): row is { id: string; state_json: string } =>
+      typeof row.state_json === 'string' && row.state_json.length > 0)
+    .map((row) => parseDiscoverySessionState(row.state_json, row.id));
 }
 
 export function insertDiscoveryExample(
