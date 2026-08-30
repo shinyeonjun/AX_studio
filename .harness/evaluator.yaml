@@ -659,6 +659,7 @@ work_discovery_bounded_retry_task:
       desktop-build: "PASS"
       diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
     notes: "Baseline before adding restart-recovery coverage. The repository already contains the prior Work Discovery contract and replay-persistence slices plus unrelated user WIP."
+
   final:
     recorded_at: 2026-08-30T17:49:04.2949810+09:00
     values:
@@ -669,3 +670,51 @@ work_discovery_bounded_retry_task:
       core-build: "PASS"
       desktop-build: "PASS"
       diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+
+agent_prompt_public_api_task:
+  name: agent-prompt-and-job-contract-public-seam
+  evaluator_frozen: true
+  checks:
+    - name: targeted-agent
+      type: command
+      command: npm test -w @ax-studio/core -- src/agent/public-api.test.ts src/agent/prompt/command-protocol.test.ts src/agent/commands/job-registration.test.ts
+      required: true
+    - name: core-tests
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: core-build
+      type: command
+      command: npm run build -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check -w @ax-studio/core
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - Agent root entrypoint exposes the intended prompt and job contracts
+    - configured skill content takes precedence without changing default embedded skills
+    - unrelated dirty WIP remains outside the Agent commit
+  baseline:
+    recorded_at: unknown
+    values:
+      core-tests: "PASS: 114 files, 582 tests before Agent public-surface wiring"
+    notes: "The exact pre-change wall-clock timestamp was not retained by the terminal output; the baseline run occurred before the public API patch."
+  final:
+    recorded_at: 2026-08-30T19:12:12.7281748+09:00
+    values:
+      targeted-agent: "PASS: 3 files, 17 tests"
+      core-tests: "PASS: 115 files, 584 tests; 2 skipped"
+      core-typecheck: "PASS"
+      core-build: "PASS"
+      architecture: "PASS: 483 modules, 1665 dependencies"
+      diff-whitespace: "PASS: git diff --check; CRLF normalization warnings only"
+    decision: "KEEP: the existing Agent WIP now has a tested public seam without changing prompt or job runtime semantics."
