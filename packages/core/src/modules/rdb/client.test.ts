@@ -32,4 +32,18 @@ describe('rdb client helpers', () => {
     expect(isAllowedRdbTable(baseConfig({ allowedTables: [] }), { table: 'customers' })).toBe(false);
     expect(isAllowedRdbTable(baseConfig(), { table: 'customers' })).toBe(false);
   });
+
+  it('enforces schema allowlists before allowing a table', () => {
+    const config = baseConfig({
+      allowedSchemas: ['public'],
+      allowedTables: ['customers'],
+    });
+    expect(isAllowedRdbTable(config, { schema: 'public', table: 'customers' })).toBe(true);
+    expect(isAllowedRdbTable(config, { schema: 'private', table: 'customers' })).toBe(false);
+    expect(isAllowedRdbTable(config, { table: 'customers' })).toBe(false);
+    expect(isAllowedRdbTable({ type: 'sqlite', filePath: '/tmp/app.db', allowedTables: ['customers'] }, {
+      schema: 'attached',
+      table: 'customers',
+    })).toBe(false);
+  });
 });

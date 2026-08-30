@@ -6,14 +6,15 @@ function lookupTemplatePath(
   stepResults: Record<string, unknown>,
 ): unknown {
   if (path.startsWith('trigger.')) {
-    return ctx.variables[path.slice('trigger.'.length)];
+    const key = path.slice('trigger.'.length);
+    return Object.hasOwn(ctx.variables, key) ? ctx.variables[key] : undefined;
   }
   if (!path.includes('.')) {
-    if (path in ctx.variables) return ctx.variables[path];
-    if (path in stepResults) return stepResults[path];
+    if (Object.hasOwn(ctx.variables, path)) return ctx.variables[path];
+    if (Object.hasOwn(stepResults, path)) return stepResults[path];
   }
   const [stepId, ...rest] = path.split('.');
-  let current: unknown = stepResults[stepId];
+  let current: unknown = Object.hasOwn(stepResults, stepId) ? stepResults[stepId] : undefined;
   for (const key of rest) {
     if (Array.isArray(current)) {
       if (/^\d+$/.test(key)) {
@@ -21,7 +22,8 @@ function lookupTemplatePath(
         continue;
       }
       const item = current.find(
-        (candidate) => candidate && typeof candidate === 'object' && key in (candidate as Record<string, unknown>),
+        (candidate) => candidate && typeof candidate === 'object'
+          && Object.hasOwn(candidate as Record<string, unknown>, key),
       );
       if (item && typeof item === 'object') {
         current = (item as Record<string, unknown>)[key];
@@ -29,7 +31,8 @@ function lookupTemplatePath(
       }
       if (key === 'messageId') {
         const message = current.find(
-          (candidate) => candidate && typeof candidate === 'object' && 'id' in (candidate as Record<string, unknown>),
+          (candidate) => candidate && typeof candidate === 'object'
+            && Object.hasOwn(candidate as Record<string, unknown>, 'id'),
         );
         current = message && typeof message === 'object' ? (message as Record<string, unknown>).id : undefined;
         continue;
@@ -38,7 +41,8 @@ function lookupTemplatePath(
     }
     if (!current || typeof current !== 'object') return undefined;
     const record = current as Record<string, unknown>;
-    current = key === 'messageId' && record[key] == null ? record.id : record[key];
+    const value = Object.hasOwn(record, key) ? record[key] : undefined;
+    current = key === 'messageId' && value == null && Object.hasOwn(record, 'id') ? record.id : value;
   }
   return current;
 }

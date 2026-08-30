@@ -12,8 +12,10 @@ export interface TriggerCursor {
   seenMessageIds?: string[];
   historyId?: string;
   lastMessageTs?: string;
+  channel?: string;
   channelId?: string;
   folderId?: string;
+  folderConfigKey?: string;
   seenFileKeys?: string[];
 }
 

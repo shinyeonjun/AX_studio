@@ -44,6 +44,9 @@ export class HttpConnector implements Connector {
     if (!isSupportedHttpMethod(method)) {
       return { ok: false, error: 'unsupported_method', errorCode: 'invalid_params' };
     }
+    if (action === 'request' && method !== 'GET' && method !== 'HEAD') {
+      return { ok: false, error: 'http_request_method_read_only', errorCode: 'invalid_params' };
+    }
 
     const path = typeof params.path === 'string' ? params.path : '';
     const connectionId = typeof params.connectionId === 'string' ? params.connectionId : undefined;

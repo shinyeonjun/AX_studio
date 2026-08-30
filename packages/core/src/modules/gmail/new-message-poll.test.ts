@@ -73,6 +73,68 @@ describe('pollGmailNewMessages', () => {
     });
   });
 
+  it('stops when history page tokens cycle while preserving collected messages', async () => {
+    const historyList = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          historyId: '101',
+          nextPageToken: 'page-2',
+          history: [{ messagesAdded: [{ message: { id: 'message-1' } }] }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          historyId: '102',
+          nextPageToken: 'page-1',
+          history: [{ messagesAdded: [{ message: { id: 'message-2' } }] }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          historyId: '103',
+          nextPageToken: 'page-2',
+          history: [{ messagesAdded: [{ message: { id: 'message-3' } }] }],
+        },
+      });
+    const messageGet = vi.fn(async ({ id }: { id: string }) => ({
+      data: {
+        labelIds: ['INBOX'],
+        snippet: `snippet ${id}`,
+        payload: { headers: [{ name: 'From', value: `${id}@example.com` }] },
+      },
+    }));
+    const gmail = {
+      users: {
+        history: { list: historyList },
+        messages: { get: messageGet },
+      },
+    } as unknown as gmail_v1.Gmail;
+
+    const result = await pollGmailNewMessages(gmail, {
+      initialized: true,
+      historyId: '100',
+      seenMessageIds: [],
+    });
+
+    expect(historyList).toHaveBeenCalledTimes(3);
+    expect(historyList.mock.calls.map(([request]) => request.pageToken)).toEqual([
+      undefined,
+      'page-2',
+      'page-1',
+    ]);
+    expect(result.events.map((event) => event.payload.messageId)).toEqual([
+      'message-1',
+      'message-2',
+      'message-3',
+    ]);
+    expect(result.cursor).toEqual({
+      initialized: true,
+      historyId: '103',
+      seenMessageIds: ['message-1', 'message-2', 'message-3'],
+    });
+  });
+
   it('ignores messages outside the inbox while advancing the cursor', async () => {
     const messageGet = vi
       .fn()
@@ -186,5 +248,50 @@ describe('pollGmailNewMessages', () => {
       historyId: '100',
       seenMessageIds: [],
     })).rejects.toBe(failure);
+  });
+
+  it('does not treat a non-404 failure mentioning 404 as a deleted message', async () => {
+    const failure = Object.assign(new Error('upstream 503 while reading message 404-report'), { code: 503 });
+    const gmail = {
+      users: {
+        history: {
+          list: vi.fn().mockResolvedValue({
+            data: {
+              historyId: '103',
+              history: [{ messagesAdded: [{ message: { id: 'message-1' } }] }],
+            },
+          }),
+        },
+        messages: { get: vi.fn().mockRejectedValue(failure) },
+      },
+    } as unknown as gmail_v1.Gmail;
+
+    await expect(pollGmailNewMessages(gmail, {
+      initialized: true,
+      historyId: '100',
+      seenMessageIds: [],
+    })).rejects.toBe(failure);
+  });
+
+  it('does not treat a non-404 history failure mentioning historyId as an expired cursor', async () => {
+    const failure = Object.assign(new Error('service unavailable while reading historyId'), { code: 503 });
+    const profileGet = vi.fn();
+    const messageList = vi.fn();
+    const gmail = {
+      users: {
+        getProfile: profileGet,
+        history: { list: vi.fn().mockRejectedValue(failure) },
+        messages: { list: messageList },
+      },
+    } as unknown as gmail_v1.Gmail;
+
+    await expect(pollGmailNewMessages(gmail, {
+      initialized: true,
+      historyId: '100',
+      seenMessageIds: [],
+    })).rejects.toBe(failure);
+
+    expect(profileGet).not.toHaveBeenCalled();
+    expect(messageList).not.toHaveBeenCalled();
   });
 });

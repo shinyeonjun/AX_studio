@@ -8,6 +8,16 @@ describe('gmail mime', () => {
     expect(encoded).not.toContain('테스트');
   });
 
+  it('folds long Unicode subjects into RFC 2047 encoded words', () => {
+    const subject = '월간 실적 보고서 📈 '.repeat(12).trim();
+    const encoded = encodeMimeHeaderValue(subject);
+    const words = encoded.split('\r\n ');
+
+    expect(words.length).toBeGreaterThan(1);
+    expect(words.every((word) => word.length <= 75)).toBe(true);
+    expect(words.map((word) => Buffer.from(word.slice(10, -2), 'base64').toString('utf8')).join('')).toBe(subject);
+  });
+
   it('builds UTF-8 plain text MIME with encoded subject and body', () => {
     const mime = buildPlainTextMime({
       to: 'plosind@naver.com',
@@ -31,5 +41,15 @@ describe('gmail mime', () => {
     const decoded = Buffer.from(raw, 'base64url').toString('utf8');
     expect(decoded).toContain('charset=UTF-8');
     expect(decoded).toMatch(/Subject: =\?UTF-8\?B\?/);
+  });
+
+  it.each([
+    ['to', { to: 'victim@example.com\r\nBcc: attacker@example.com', subject: 'Notice' }],
+    ['from', { to: 'victim@example.com', from: 'sender@example.com\nBcc: attacker@example.com', subject: 'Notice' }],
+    ['subject', { to: 'victim@example.com', subject: 'Notice\r\nBcc: attacker@example.com' }],
+  ])('rejects line breaks in the %s header', (header, params) => {
+    expect(() => buildPlainTextMime({ ...params, body: 'Body' })).toThrow(
+      `gmail_${header}_header_invalid`,
+    );
   });
 });

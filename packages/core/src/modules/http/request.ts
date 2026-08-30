@@ -31,6 +31,18 @@ export interface HttpRequestError {
 
 export type PerformHttpRequestResult = HttpRequestResult | HttpRequestError;
 
+function normalizeTimeoutMs(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : HTTP_DEFAULT_TIMEOUT_MS;
+}
+
+function normalizeMaxBytes(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : HTTP_DEFAULT_MAX_RESPONSE_BYTES;
+}
+
 function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, string> {
   if (!auth || auth.type === 'none') return {};
   if (auth.type === 'bearer' && auth.token) {
@@ -47,12 +59,26 @@ function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, stri
   return {};
 }
 
+function mergeHeadersWithAuth(
+  headers: Record<string, string> | undefined,
+  auth: HttpAuthConfig | undefined,
+): Record<string, string> {
+  const merged = { ...(headers ?? {}) };
+  for (const [authHeader, value] of Object.entries(buildAuthHeaders(auth))) {
+    for (const header of Object.keys(merged)) {
+      if (header.toLowerCase() === authHeader.toLowerCase()) delete merged[header];
+    }
+    merged[authHeader] = value;
+  }
+  return merged;
+}
+
 async function readBodyWithLimit(response: Response, maxBytes: number): Promise<{ body: string; truncated: boolean }> {
   const contentLength = response.headers.get('content-length');
   if (contentLength) {
     const declared = Number(contentLength);
     if (Number.isFinite(declared) && declared > maxBytes) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       return { body: '', truncated: true };
     }
   }
@@ -76,7 +102,7 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
         const remaining = maxBytes - total;
         if (remaining > 0) chunks.push(value.subarray(0, remaining));
         truncated = true;
-        await reader.cancel();
+        await reader.cancel().catch(() => undefined);
         break;
       }
 
@@ -96,9 +122,9 @@ async function readBodyWithLimit(response: Response, maxBytes: number): Promise<
 
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
   const method = input.method.trim().toUpperCase() || 'GET';
-  const timeoutMs = input.timeoutMs ?? HTTP_DEFAULT_TIMEOUT_MS;
-  const maxBytes = input.maxBytes ?? HTTP_DEFAULT_MAX_RESPONSE_BYTES;
-  const headers = { ...buildAuthHeaders(input.auth), ...(input.headers ?? {}) };
+  const timeoutMs = normalizeTimeoutMs(input.timeoutMs);
+  const maxBytes = normalizeMaxBytes(input.maxBytes);
+  const headers = mergeHeadersWithAuth(input.headers, input.auth);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -113,6 +139,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
     });
 
     if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel().catch(() => undefined);
       return { ok: false, error: 'redirect_not_allowed', errorCode: 'ssrf_blocked', status: response.status };
     }
 
@@ -122,6 +149,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
     });
 
     if (method === 'HEAD') {
+      await response.body?.cancel().catch(() => undefined);
       return {
         ok: true,
         status: response.status,

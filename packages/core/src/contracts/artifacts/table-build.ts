@@ -4,6 +4,25 @@ export const DEFAULT_TABLE_ROW_LIMIT = 5_000;
 export const MODEL_PREVIEW_ROW_LIMIT = 50;
 export const MAX_WORKBOOK_SHEETS = 20;
 
+function uniqueHeaders(headers: string[]): string[] {
+  const normalized = headers.map((header, index) => header?.trim() || `column_${index + 1}`);
+  const reserved = new Set(normalized);
+  const used = new Set<string>();
+
+  return normalized.map((header) => {
+    if (!used.has(header)) {
+      used.add(header);
+      return header;
+    }
+
+    let suffix = 2;
+    while (reserved.has(`${header}_${suffix}`) || used.has(`${header}_${suffix}`)) suffix += 1;
+    const unique = `${header}_${suffix}`;
+    used.add(unique);
+    return unique;
+  });
+}
+
 export function inferColumnType(values: unknown[]): TableColumnType {
   const nonNull = values.filter((value) => value != null && `${value}`.trim() !== '');
   if (nonNull.length === 0) return 'unknown';
@@ -29,17 +48,32 @@ export function normalizeScalar(value: unknown): ScalarValue {
   return text;
 }
 
+function extrema(values: NonNullable<ScalarValue>[]): { min?: ScalarValue; max?: ScalarValue } {
+  if (values.length === 0) return {};
+  const type = typeof values[0];
+  if (!values.every((value) => typeof value === type)) return {};
+
+  let min = values[0]!;
+  let max = values[0]!;
+  for (const value of values.slice(1)) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
+}
+
 export function profileTable(columns: TableColumn[], rows: TableArtifact['rows']): TableProfile {
   const columnProfiles: TableProfile['columns'] = {};
   for (const column of columns) {
     const values = rows.map((row) => row.values[column.name]);
     const nonNull = values.filter((value) => value != null);
     const numeric = nonNull.filter((value): value is number => typeof value === 'number');
+    const { min, max } = extrema(nonNull);
     columnProfiles[column.name] = {
       nullCount: values.length - nonNull.length,
       distinctCount: new Set(nonNull.map((value) => JSON.stringify(value))).size,
-      min: nonNull.length > 0 ? nonNull.reduce((a, b) => (JSON.stringify(a) < JSON.stringify(b) ? a : b)) : undefined,
-      max: nonNull.length > 0 ? nonNull.reduce((a, b) => (JSON.stringify(a) > JSON.stringify(b) ? a : b)) : undefined,
+      min,
+      max,
       mean: numeric.length > 0 ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : undefined,
       sampleValues: nonNull.slice(0, 12),
     };
@@ -60,7 +94,7 @@ export function buildTableArtifact(params: {
   source?: TableArtifact['source'];
 }): TableArtifact {
   const rowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
-  const headers = params.headers.map((header, index) => header?.trim() || `column_${index + 1}`);
+  const headers = uniqueHeaders(params.headers);
   const columnValues = headers.map((_, columnIndex) =>
     params.matrix.map((row) => row[columnIndex]),
   );

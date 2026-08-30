@@ -117,6 +117,17 @@ describe('validateWorkflowContracts', () => {
     expect(issues.some((issue) => issue.code === 'invalid_workflow_schema')).toBe(true);
   });
 
+  it('rejects an invalid schedule timezone instead of saving a never-running workflow', () => {
+    const issues = validateWorkflowContracts({
+      ...folderToDocument,
+      trigger: { type: 'schedule', schedule: '0 9 * * *', timezone: 'Mars/Olympus' },
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      code: 'invalid_workflow_schema',
+      message: 'schedule timezone이 올바르지 않습니다: Mars/Olympus',
+    }));
+  });
+
   it('rejects incompatible step chains', () => {
     const ir: WorkflowIR = {
       ...folderToDocument,

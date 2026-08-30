@@ -5,8 +5,29 @@ export function extractJsonText(raw: string): string {
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) return fenced[1].trim();
   const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start >= 0 && end > start) return trimmed.slice(start, end + 1);
+  if (start >= 0) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < trimmed.length; index += 1) {
+      const character = trimmed[index];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (character === '\\' && inString) {
+        escaped = true;
+        continue;
+      }
+      if (character === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (character === '{') depth += 1;
+      if (character === '}' && --depth === 0) return trimmed.slice(start, index + 1);
+    }
+  }
   return trimmed;
 }
 

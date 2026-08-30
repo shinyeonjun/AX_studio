@@ -38,11 +38,12 @@ function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, n
 }
 
 function isNotFoundError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return String(error).includes('404');
-  const candidate = error as { code?: unknown; status?: unknown; message?: unknown };
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { code?: unknown; status?: unknown };
   return candidate.code === 404
+    || candidate.code === '404'
     || candidate.status === 404
-    || String(candidate.message ?? '').includes('404');
+    || candidate.status === '404';
 }
 
 async function messageEvent(
@@ -119,8 +120,10 @@ export async function pollGmailNewMessages(
     let nextHistoryId = params.historyId;
     const messageIds: string[] = [];
     const collectedIds = new Set<string>();
+    const seenPageTokens = new Set<string>();
 
     do {
+      if (pageToken) seenPageTokens.add(pageToken);
       const historyRes = await gmail.users.history.list({
         userId: 'me',
         startHistoryId: params.historyId,
@@ -137,7 +140,10 @@ export async function pollGmailNewMessages(
           }
         }
       }
-      pageToken = historyRes.data.nextPageToken ?? undefined;
+      const nextPageToken = historyRes.data.nextPageToken ?? undefined;
+      pageToken = nextPageToken && !seenPageTokens.has(nextPageToken)
+        ? nextPageToken
+        : undefined;
     } while (pageToken);
 
     const events: GmailNewMessageEvent[] = [];
@@ -155,8 +161,7 @@ export async function pollGmailNewMessages(
       },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('historyId') || isNotFoundError(err)) {
+    if (isNotFoundError(err)) {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
       const seenMessageIds = trimSeenIds(

@@ -6,10 +6,11 @@ export async function fetchWithTimeout(
   timeoutMs = DEFAULT_VERIFY_TIMEOUT_MS,
 ): Promise<Response> {
   const controller = new AbortController();
-  let timedOut = false;
+  const timeoutError = new Error(
+    `요청 시간이 초과되었습니다 (${Math.round(timeoutMs / 1000)}초).`,
+  );
   const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
+    controller.abort(timeoutError);
   }, timeoutMs);
   const signal = init.signal
     ? AbortSignal.any([init.signal, controller.signal])
@@ -17,8 +18,8 @@ export async function fetchWithTimeout(
   try {
     return await fetch(input, { ...init, signal });
   } catch (error) {
-    if (timedOut) {
-      throw new Error(`요청 시간이 초과되었습니다 (${Math.round(timeoutMs / 1000)}초).`);
+    if (signal.reason === timeoutError) {
+      throw timeoutError;
     }
     throw error;
   } finally {

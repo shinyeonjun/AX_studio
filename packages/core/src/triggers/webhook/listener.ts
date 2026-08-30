@@ -54,6 +54,11 @@ function respond(res: ServerResponse, status: number, body: string): void {
   res.end(body);
 }
 
+function rejectRequest(req: IncomingMessage, res: ServerResponse, status: number, body: string): void {
+  req.resume();
+  respond(res, status, body);
+}
+
 export class WebhookInboundListener {
   private server?: Server;
 
@@ -97,30 +102,29 @@ export class WebhookInboundListener {
   ): Promise<void> {
     try {
       if (req.method !== 'POST') {
-        respond(res, 405, 'method_not_allowed');
+        rejectRequest(req, res, 405, 'method_not_allowed');
         return;
       }
 
-      const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const prefix = '/hooks/';
       if (!url.pathname.startsWith(prefix)) {
-        respond(res, 404, 'not_found');
+        rejectRequest(req, res, 404, 'not_found');
         return;
       }
 
       const pathSegment = url.pathname.slice(prefix.length);
       let path: string;
       try {
-        path = normalizeWebhookPath(pathSegment);
+        path = normalizeWebhookPath(decodeURIComponent(pathSegment));
       } catch {
-        respond(res, 400, 'invalid_path');
+        rejectRequest(req, res, 400, 'invalid_path');
         return;
       }
 
       const contentLength = Number(req.headers['content-length']);
       if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_PAYLOAD_BYTES) {
-        req.resume();
-        respond(res, 413, 'payload_too_large');
+        rejectRequest(req, res, 413, 'payload_too_large');
         return;
       }
 
@@ -153,10 +157,10 @@ export class WebhookInboundListener {
       respond(res, 202, 'accepted');
     } catch (err) {
       if ((err as Error).message === 'payload_too_large') {
-        respond(res, 413, 'payload_too_large');
+        rejectRequest(req, res, 413, 'payload_too_large');
         return;
       }
-      respond(res, 500, 'internal_error');
+      rejectRequest(req, res, 500, 'internal_error');
     }
   }
 }

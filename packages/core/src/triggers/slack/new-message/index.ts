@@ -18,6 +18,7 @@ export const slackNewMessageHandler: TriggerHandler<{ type: 'slack.new_message';
         channel: ctx.trigger.channel,
         initialized: ctx.cursor.initialized ?? false,
         lastMessageTs: ctx.cursor.lastMessageTs,
+        cursorChannel: ctx.cursor.channel,
         channelId: ctx.cursor.channelId,
       },
       {

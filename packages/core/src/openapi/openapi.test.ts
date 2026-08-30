@@ -13,6 +13,7 @@ const PETSTORE = {
   paths: {
     '/pets': {
       get: { operationId: 'listPets', responses: { '200': { description: 'ok' } } },
+      head: { operationId: 'checkPets', responses: { '200': { description: 'ok' } } },
       post: {
         operationId: 'createPet',
         'x-sideEffect': 'EXTERNAL',
@@ -31,6 +32,9 @@ describe('openapi ingest', () => {
     const { connector, capabilityIds } = ingestOpenApiSpec('petstore', PETSTORE);
     expect(capabilityIds).toContain('openapi.petstore.listPets');
     expect(getCapability('openapi.petstore.listPets')?.sideEffect).toBe('NONE');
+    expect(capabilityIds).toContain('openapi.petstore.checkPets');
+    expect(getCapability('openapi.petstore.checkPets')?.kind).toBe('read');
+    expect(getCapability('openapi.petstore.checkPets')?.sideEffect).toBe('NONE');
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
@@ -48,6 +52,57 @@ describe('openapi ingest', () => {
     }
   });
 
+  it('invokes HEAD operations without a response body', async () => {
+    const { connector } = ingestOpenApiSpec('petstore', PETSTORE);
+    const originalFetch = globalThis.fetch;
+    let requestedMethod = '';
+    globalThis.fetch = async (_input, init) => {
+      requestedMethod = init?.method ?? '';
+      return new Response(null, { status: 200 });
+    };
+
+    try {
+      const result = await connector.execute(
+        'petstore.checkPets',
+        {},
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(requestedMethod).toBe('HEAD');
+      expect(result.data).toMatchObject({ status: 200, body: '' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('invokes operations whose OpenAPI operationId contains dots', async () => {
+    const spec = {
+      ...PETSTORE,
+      paths: {
+        '/pets': {
+          get: { operationId: 'pets.list', responses: { '200': { description: 'ok' } } },
+        },
+      },
+    };
+    const { connector, capabilityIds } = ingestOpenApiSpec('petstore', spec);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response('{}', { status: 200 });
+
+    try {
+      expect(capabilityIds).toContain('openapi.petstore.pets.list');
+      const result = await connector.execute(
+        'petstore.pets.list',
+        {},
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      );
+
+      expect(result.ok).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('blocks write capabilities in plain chat', async () => {
     ingestOpenApiSpec('petstore', PETSTORE);
     const ctx = buildDesignToolContext([], ['mcp'], { connectors: {} });
@@ -56,11 +111,31 @@ describe('openapi ingest', () => {
     ).rejects.toThrow('capability_not_readable');
   });
 
-  it('encodes path parameters as a single URL segment', async () => {
+  it('rejects duplicate explicit operation ids', () => {
+    expect(() => ingestOpenApiSpec('petstore', {
+      ...PETSTORE,
+      paths: {
+        '/pets': { get: { operationId: 'findPet' } },
+        '/pets/{petId}': { get: { operationId: 'findPet' } },
+      },
+    })).toThrow('openapi_operation_id_duplicate');
+  });
+
+  it('rejects collisions between generated operation ids', () => {
+    expect(() => ingestOpenApiSpec('petstore', {
+      ...PETSTORE,
+      paths: {
+        '/pet-list': { get: {} },
+        '/pet/list': { get: {} },
+      },
+    })).toThrow('openapi_operation_id_duplicate');
+  });
+
+  it('preserves the server base path and encodes path parameters as a single URL segment', async () => {
     const connector = new OpenApiConnector([{
       id: 'petstore',
       title: 'Petstore',
-      baseUrl: 'https://api.example.com',
+      baseUrl: 'https://api.example.com/v1',
       operations: [{ operationId: 'getPet', method: 'GET', path: '/pets/{petId}' }],
     }]);
     const originalFetch = globalThis.fetch;
@@ -78,7 +153,7 @@ describe('openapi ingest', () => {
       );
 
       expect(result.ok).toBe(true);
-      expect(requestedUrl).toBe('https://api.example.com/pets/..%2Fadmin%3Frole%3Downer');
+      expect(requestedUrl).toBe('https://api.example.com/v1/pets/..%2Fadmin%3Frole%3Downer');
     } finally {
       globalThis.fetch = originalFetch;
     }

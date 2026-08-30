@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -66,10 +66,12 @@ describe('DocumentEngineClient', () => {
       ok: false,
       errorCode: 'chunk_id_required',
     });
-    await expect(getPage({ documentId: 'doc-1', pageIndex: 'not-a-number' }, ctx)).resolves.toMatchObject({
-      ok: false,
-      errorCode: 'page_index_invalid',
-    });
+    for (const pageIndex of ['not-a-number', '', ' ', false]) {
+      await expect(getPage({ documentId: 'doc-1', pageIndex }, ctx)).resolves.toMatchObject({
+        ok: false,
+        errorCode: 'page_index_invalid',
+      });
+    }
     await expect(search({ documentId: 'doc-1', query: ' ' }, ctx)).resolves.toMatchObject({
       ok: false,
       errorCode: 'query_required',
@@ -96,6 +98,29 @@ describe('StdioDocumentEngineClient integration', () => {
     const python = defaultPythonPath();
     if (python.includes('.venv')) {
       expect(existsSync(python)).toBe(true);
+    }
+  });
+
+  it('resolves Python from the virtual environment beside a custom worker', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ax-custom-doc-engine-'));
+    const workerScript = join(directory, 'engine', 'src', 'worker.py');
+    const pythonPath = process.platform === 'win32'
+      ? join(directory, 'engine', '.venv', 'Scripts', 'python.exe')
+      : join(directory, 'engine', '.venv', 'bin', 'python');
+    const configuredPython = process.env.AX_DOCUMENT_ENGINE_PYTHON;
+
+    try {
+      delete process.env.AX_DOCUMENT_ENGINE_PYTHON;
+      mkdirSync(join(directory, 'engine', '.venv', process.platform === 'win32' ? 'Scripts' : 'bin'), {
+        recursive: true,
+      });
+      writeFileSync(pythonPath, '');
+
+      expect(defaultPythonPath(workerScript)).toBe(pythonPath);
+    } finally {
+      if (configuredPython === undefined) delete process.env.AX_DOCUMENT_ENGINE_PYTHON;
+      else process.env.AX_DOCUMENT_ENGINE_PYTHON = configuredPython;
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 

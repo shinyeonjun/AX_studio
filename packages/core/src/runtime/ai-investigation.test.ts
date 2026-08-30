@@ -65,6 +65,24 @@ describe('resolveStepParams', () => {
       ),
     ).toThrow(/classify\.riskLevel/);
   });
+
+  it('fails closed when a template reference names an inherited property', () => {
+    expect(() =>
+      resolveStepParams(
+        { text: '{{toString}}' },
+        { executionId: 'exec-1', variables: {}, log: () => {} },
+        {},
+      ),
+    ).toThrow(/toString/);
+
+    expect(() =>
+      resolveStepParams(
+        { text: '{{classify.constructor}}' },
+        { executionId: 'exec-1', variables: {}, log: () => {} },
+        { classify: { riskLevel: 'high' } },
+      ),
+    ).toThrow(/classify\.constructor/);
+  });
 });
 
 class CountingProvider implements ModelProvider {

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
 import * as XLSX from 'xlsx';
@@ -41,6 +41,12 @@ function sheetToMatrix(sheet: XLSX.WorkSheet): { headers: string[]; matrix: unkn
   return { headers, matrix };
 }
 
+function sheetVisibility(hidden: number | undefined): 'visible' | 'hidden' | 'veryHidden' {
+  if (hidden === 1) return 'hidden';
+  if (hidden === 2) return 'veryHidden';
+  return 'visible';
+}
+
 export function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): ReadWorkbookResult {
   const rowLimit = options.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
   const ext = extname(path).toLowerCase();
@@ -49,21 +55,22 @@ export function readWorkbookFromPath(path: string, options: { rowLimit?: number 
 
   if (ext === '.csv') {
     const { headers, matrix } = parseCsvMatrix(readFileSync(path, 'utf8'));
-    const tableId = `tbl_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const sheetName = basename(path, ext);
+    const tableId = `tbl_${createHash('sha256').update(`${workbookId}:${sheetName}`).digest('hex').slice(0, 16)}`;
     const table = buildTableArtifact({
       id: tableId,
-      name: basename(path, ext),
+      name: sheetName,
       headers,
       matrix,
       rowLimit,
-      source: { filePath: path, workbookSheet: basename(path, ext) },
+      source: { filePath: path, workbookSheet: sheetName },
     });
     const workbook: WorkbookArtifact = {
       id: workbookId,
       kind: 'workbook',
       file,
       sheets: [{
-        name: basename(path, ext),
+        name: sheetName,
         index: 0,
         visibility: 'visible',
         imageCount: 0,
@@ -99,7 +106,7 @@ export function readWorkbookFromPath(path: string, options: { rowLimit?: number 
     sheets.push({
       name,
       index,
-      visibility: 'visible',
+      visibility: sheetVisibility(xlsx.Workbook?.Sheets?.[index]?.Hidden),
       imageCount: 0,
       chartCount: 0,
       tables: [{ id: tableId, artifactId: tableId, range }],
@@ -126,6 +133,7 @@ export function readSheetFromPath(options: ReadSheetOptions): TableArtifact {
     const sheet = workbook.sheets.find((entry) => entry.name === options.sheetName);
     const tableId = sheet?.tables[0]?.artifactId;
     if (tableId && tables[tableId]) return tables[tableId]!;
+    throw new Error('sheet_not_found');
   }
   const firstTableId = workbook.sheets[0]?.tables[0]?.artifactId;
   if (!firstTableId || !tables[firstTableId]) {

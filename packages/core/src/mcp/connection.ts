@@ -15,19 +15,21 @@ export interface McpConnectionConfig {
   tools: McpToolDefinition[];
 }
 
+function normalizeToolDefinition(value: unknown): McpToolDefinition | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const tool = value as McpToolDefinition;
+  if (typeof tool.name !== 'string') return null;
+  const name = tool.name.trim();
+  return name ? { ...tool, name } : null;
+}
+
 export function parseMcpConnectionConfig(config: unknown): McpConnectionConfig | null {
   if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
   const record = config as McpConnectionRecord;
   const serverId = typeof record.serverId === 'string' ? record.serverId.trim() : '';
   if (!serverId) return null;
   if (!Array.isArray(record.tools) || record.tools.length === 0) return null;
-  const tools = record.tools.filter(
-    (tool): tool is McpToolDefinition =>
-      Boolean(tool) &&
-      typeof tool === 'object' &&
-      typeof (tool as McpToolDefinition).name === 'string' &&
-      (tool as McpToolDefinition).name.trim().length > 0,
-  );
+  const tools = record.tools.map(normalizeToolDefinition).filter((tool) => tool !== null);
   if (tools.length === 0) return null;
   return {
     serverId,
@@ -46,13 +48,7 @@ export function parseMcpToolsJson(raw: string): McpToolDefinition[] {
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error('MCP tools 배열이 필요합니다.');
   }
-  const tools = parsed.filter(
-    (tool): tool is McpToolDefinition =>
-      Boolean(tool) &&
-      typeof tool === 'object' &&
-      typeof (tool as McpToolDefinition).name === 'string' &&
-      (tool as McpToolDefinition).name.trim().length > 0,
-  );
+  const tools = parsed.map(normalizeToolDefinition).filter((tool) => tool !== null);
   if (tools.length === 0) throw new Error('유효한 MCP tool 정의가 없습니다.');
   return tools;
 }

@@ -50,16 +50,19 @@ export function parseOpenApiSpec(id: string, raw: unknown): OpenApiSpec {
   if (!paths) throw new Error('openapi_paths_required');
 
   const operations: OpenApiOperation[] = [];
+  const operationIds = new Set<string>();
   for (const [path, pathItem] of Object.entries(paths)) {
     const item = asRecord(pathItem);
     if (!item) continue;
-    for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+    for (const method of ['get', 'head', 'post', 'put', 'patch', 'delete']) {
       const operation = asRecord(item[method]);
       if (!operation) continue;
       const operationId =
         typeof operation.operationId === 'string' && operation.operationId.trim()
           ? operation.operationId.trim()
           : `${method}_${path.replace(/[^\w]+/g, '_')}`;
+      if (operationIds.has(operationId)) throw new Error('openapi_operation_id_duplicate');
+      operationIds.add(operationId);
       operations.push({
         operationId,
         method: method.toUpperCase(),

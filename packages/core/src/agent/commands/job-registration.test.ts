@@ -123,6 +123,27 @@ describe('job.propose / job.commit', () => {
     expect(store.listWorkflows()).toHaveLength(0);
   });
 
+  it('rejects an invalid timezone before proposing a job that can never run', async () => {
+    const { store, service, chat } = await connectedService();
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        name: 'Daily Dev Brief',
+        goal: '전날 GitHub 커밋 리스크를 Slack에 요약한다',
+        schedule: { cron: '0 21 * * *', timezone: 'Mars/Olympus' },
+        fetch: '/repos/shinyeonjun/AX_studio/commits',
+        notify: '#ax테스트2',
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+
+    expect(response.status).toBe('invalid');
+    expect(response.issues).toContainEqual(expect.objectContaining({
+      code: 'invalid_schedule',
+      path: 'args.schedule.timezone',
+    }));
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
   it('lifts top-level aliases and string booleans a retrying model emits', async () => {
     const { store, service, chat } = await connectedService();
     const response = await service.execute({

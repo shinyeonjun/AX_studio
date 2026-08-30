@@ -102,6 +102,28 @@ describe('HttpConnector', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('does not allow write methods through the read-only request action', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const connector = new HttpConnector({ baseUrl: 'https://api.example.com/v1/' });
+
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      const result = await connector.execute(
+        'request',
+        { method, path: 'tickets' },
+        { executionId: 'e1', variables: {}, log: vi.fn() },
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'http_request_method_read_only',
+        errorCode: 'invalid_params',
+      });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('sends GET to the HTTP connection saved on the step', async () => {
     vi.stubGlobal(
       'fetch',

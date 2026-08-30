@@ -40,6 +40,38 @@ describe('evaluateCondition', () => {
     ).toBe(true);
   });
 
+  it('does not fall back to trigger variables for explicit null step results', () => {
+    expect(
+      evaluateCondition(
+        { op: 'eq', left: { ref: 'status' }, right: { lit: 'pending' } },
+        { status: 'pending' },
+        { status: null },
+      ),
+    ).toBe(false);
+  });
+
+  it('fails numeric comparisons closed for missing and non-numeric values', () => {
+    for (const value of [null, false, '', 'not-a-number']) {
+      expect(
+        evaluateCondition(
+          { op: 'gte', left: { ref: 'value' }, right: { lit: 0 } },
+          { value },
+          {},
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it('supports numeric strings in numeric comparisons', () => {
+    expect(
+      evaluateCondition(
+        { op: 'gt', left: { ref: 'value' }, right: { lit: 10 } },
+        { value: '10.5' },
+        {},
+      ),
+    ).toBe(true);
+  });
+
   it('migrates legacy string conditions', () => {
     const migrated = migrateLegacyCondition('classify.category === "critical"');
     expect(migrated).toEqual({

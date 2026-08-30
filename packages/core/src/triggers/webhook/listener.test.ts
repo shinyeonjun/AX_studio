@@ -1,5 +1,5 @@
-import { describe, expect, it, afterEach } from 'vitest';
-import { createServer, request } from 'node:http';
+import { describe, expect, it, afterEach, vi } from 'vitest';
+import { createServer, IncomingMessage, request } from 'node:http';
 import { WebhookInboundListener } from './listener.js';
 import { WEBHOOK_MAX_PAYLOAD_BYTES } from './security.js';
 
@@ -9,6 +9,7 @@ describe('WebhookInboundListener', () => {
   afterEach(async () => {
     await Promise.all(listeners.map((listener) => listener.stop()));
     listeners.length = 0;
+    vi.restoreAllMocks();
   });
 
   it('accepts signed POST and emits trigger event', async () => {
@@ -35,6 +36,91 @@ describe('WebhookInboundListener', () => {
     expect(events[0]?.type).toBe('webhook.inbound');
     expect(events[0]?.payload.path).toBe('invoice-paid');
     expect(events[0]?.payload.body).toBe('{"total":42}');
+  });
+
+  it('routes signed requests independently of the client-supplied host header', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: unknown[] = [];
+    const port = 38_911;
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+    const response = await new Promise<{ status: number | undefined }>((resolve, reject) => {
+      const req = request({
+        host: '127.0.0.1',
+        port,
+        path: '/hooks/test',
+        method: 'POST',
+        headers: {
+          host: '][',
+          'x-ax-webhook-secret': 'hook-secret',
+        },
+      }, (res) => {
+        res.resume();
+        res.on('end', () => resolve({ status: res.statusCode }));
+      });
+      req.on('error', reject);
+      req.end('{}');
+    });
+
+    expect(response.status).toBe(202);
+    expect(events).toHaveLength(1);
+  });
+
+  it('decodes URL-encoded webhook paths before emitting the event', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: Array<{ payload: Record<string, unknown> }> = [];
+    const port = 38_906;
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/${encodeURIComponent('결제 완료')}`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': 'hook-secret' },
+      body: '{}',
+    });
+
+    expect(response.status).toBe(202);
+    expect(events[0]?.payload.path).toBe('결제 완료');
+  });
+
+  it('rejects malformed URL encoding in webhook paths', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const port = 38_907;
+
+    await listener.start({ port, secret: 'hook-secret' }, () => undefined);
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/%E0%A4%A`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': 'hook-secret' },
+      body: '{}',
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.text()).toBe('invalid_path');
+  });
+
+  it.each([
+    { port: 38_908, path: '/hooks/test', method: 'PUT', status: 405 },
+    { port: 38_909, path: '/unknown', method: 'POST', status: 404 },
+    { port: 38_910, path: '/hooks/%E0%A4%A', method: 'POST', status: 400 },
+  ])('drains rejected $status request bodies', async ({ port, path, method, status }) => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const resume = vi.spyOn(IncomingMessage.prototype, 'resume');
+
+    await listener.start({ port, secret: 'hook-secret' }, () => undefined);
+    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+      method,
+      body: 'rejected-body',
+    });
+
+    expect(response.status).toBe(status);
+    expect(resume).toHaveBeenCalled();
   });
 
   it('rejects requests without valid secret', async () => {
