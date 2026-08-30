@@ -59,7 +59,7 @@ describe('performHttpRequest', () => {
     }
   });
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+  it.each([-1, Number.NaN, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY])(
     'keeps the default response limit when maxBytes is %s',
     async (maxBytes) => {
       vi.stubGlobal(
