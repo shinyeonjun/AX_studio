@@ -329,3 +329,32 @@ main_based_work_discovery_phase_2:
     - external connector APIs
     - live provider accounts
   expansions: []
+
+main_based_work_discovery_phase_3:
+  status: completed
+  expansion_reason: "Phase 2 completed; the remaining user-visible Discovery path has no deterministic Electron coverage from import through publish and chat-context isolation."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/electron/main/ipc/discovery-handlers.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/components/workspace/DiscoveryReviewCard.tsx
+    - apps/desktop/src/components/workspace/ax-workspace.css
+    - packages/core/src/work-discovery/observation/observe-artifact.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - test/product-qa/lib/types.ts
+    - test/product-qa/lib/ui.ts
+    - test/product-qa/lib/step-runner.ts
+    - test/product-qa/scenarios/manifest.json
+    - test/product-qa/scenarios/discovery-desktop-deterministic.json
+    - test/fixtures/discovery/**
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packaged production test seams
+    - external connector APIs
+    - live provider accounts
+  expansions:
+    - "Desktop E2E reached the real pipeline but exposed a Core observation bug: ArtifactStore metadata was accepted as an empty DocumentArtifact, so the output CSV was never observed."

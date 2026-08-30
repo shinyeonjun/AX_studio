@@ -9,6 +9,25 @@ import { observeDocumentArtifact } from './observe-document.js';
 import { observeTableArtifact } from './observe-table.js';
 import { observeWorkbookArtifact } from './observe-workbook.js';
 
+const DOCUMENT_ARTIFACT_FIELDS = [
+  'source',
+  'artifactPath',
+  'engine',
+  'pageCount',
+  'chunkCount',
+  'tableCount',
+  'imageCount',
+  'text',
+  'pages',
+  'images',
+  'tables',
+] as const;
+
+function looksLikeDocumentArtifact(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  return DOCUMENT_ARTIFACT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(value, field));
+}
+
 export function observeArtifact(
   exampleId: string,
   artifactId: string,
@@ -16,7 +35,7 @@ export function observeArtifact(
   materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'],
 ): OutputObservation[] {
   const documentJson = artifactStore.getDocumentArtifact<unknown>(artifactId);
-  if (documentJson) {
+  if (documentJson && looksLikeDocumentArtifact(documentJson)) {
     const parsed = DocumentArtifactSchema.safeParse(documentJson);
     if (parsed.success) return observeDocumentArtifact(exampleId, parsed.data);
   }
@@ -26,7 +45,7 @@ export function observeArtifact(
   if (tableParsed.success) return observeTableArtifact(exampleId, tableParsed.data);
 
   const json = artifactStore.getJson<unknown>(artifactId);
-  if (json) {
+  if (json && looksLikeDocumentArtifact(json)) {
     const document = DocumentArtifactSchema.safeParse(json);
     if (document.success) return observeDocumentArtifact(exampleId, document.data);
     const workbook = WorkbookArtifactSchema.safeParse(json);

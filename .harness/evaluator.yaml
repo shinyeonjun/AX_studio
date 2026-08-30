@@ -822,3 +822,57 @@ main_based_work_discovery_phase_2_task:
       diff-whitespace: "PASS: git diff --check"
     decision: KEEP
     notes: "Connected local-folder configurations now enumerate nested CSV/XLS/XLSX files, profile only contained files, and tolerate inaccessible folders or empty workbook inputs. Existing .gitignore remains unrelated and unchanged."
+
+main_based_work_discovery_phase_3_task:
+  name: desktop-work-discovery-electron-path
+  evaluator_frozen: true
+  evaluator_revision:
+    recorded_at: 2026-08-30T23:09:14.3360530+09:00
+    reason: "The first real Electron run reached the Discovery pipeline but exposed an observation-dispatch defect; include its focused regression in the frozen Core checks."
+  checks:
+    - name: desktop-discovery-e2e
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier handwritten --scenario discovery-desktop-deterministic --strict --skip-build
+      required: true
+    - name: deterministic-product-smoke
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: discovery-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/local-sheet/discovery-source.test.ts src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/agent/commands/service.test.ts
+      required: true
+    - name: observation-dispatch-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - Discovery reaches a ready review card through the actual Electron IPC boundary
+    - a new chat has no review card from the previous chat
+    - publish removes the review card only after the workflow save succeeds
+    - test seams are not registered for packaged production and reject paths outside test/fixtures
+    - existing .gitignore remains unchanged
+  final:
+    recorded_at: 2026-08-30T23:10:55.3038510+09:00
+    values:
+      desktop-discovery-e2e: "PASS: 1 Playwright test, 1 scenario"
+      deterministic-product-smoke: "PASS: 4 Playwright tests, including the new Discovery scenario and generated 14-scenario batch"
+      discovery-core-regression: "PASS: 5 files, 40 tests"
+      observation-dispatch-regression: "PASS: 1 test"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "The real Electron path now reaches ready_to_publish, isolates a new chat, and persists publication. The observation dispatch regression and the empty-stage overlay fixes were kept; existing .gitignore remains unrelated and unchanged."

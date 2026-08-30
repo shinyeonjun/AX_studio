@@ -174,7 +174,7 @@ export function AxWorkspaceChat({
     <AssistantRuntimeProvider runtime={runtime}>
       <div className={`ax-workspace-chat${messages.length === 0 && !busy ? ' ax-workspace-chat--empty' : ''}`}>
         <ThreadPrimitive.Root className="ax-workspace-thread">
-          {messages.length === 0 && !busy && (
+          {messages.length === 0 && !busy && !discoveryView && (
             <div className="ax-workspace-empty-stage">
               <div className="ax-workspace-welcome">
                 <h1>지난 결과물을 보여주세요</h1>

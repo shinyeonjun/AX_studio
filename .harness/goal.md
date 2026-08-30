@@ -741,3 +741,29 @@ local folders usable as Work Discovery spreadsheet sources.
   side effects.
 - Adding provider-wide failure isolation or drift/repair behavior; those remain
   later bounded phases.
+
+## Current task: main-based Work Discovery production path — Phase 3
+
+Prove the Desktop Work Discovery path through the real Electron boundary with
+deterministic fixtures and a narrowly gated test seam.
+
+### Phase 3 success criteria
+
+- A deterministic Electron scenario configures a fixture folder, imports a
+  spreadsheet example, starts Discovery, and reaches `ready_to_publish`.
+- The scenario verifies that changing to a new Workspace chat removes the old
+  Discovery card and that publishing persists a workflow through the Desktop
+  IPC boundary.
+- Discovery-only E2E seams are exposed only for an unpackaged `AX_E2E=1` run,
+  accept only regular files/directories inside `test/fixtures`, and are absent
+  from packaged production.
+- The existing Product QA smoke/session/document scenarios and Core Discovery
+  regressions remain green.
+
+### Phase 3 non-goals
+
+- Live-provider or external-connector side effects.
+- Recovery retry fault injection; this phase proves the happy path and chat
+  isolation boundary.
+- Root integration/E2E runner repair, persistence schema hardening, or result
+  drift/repair behavior.

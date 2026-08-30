@@ -21,7 +21,7 @@ const RUNNING_STATUSES = new Set<DiscoveryInspectView['status']>([
 
 export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel, onRetry }: DiscoveryReviewCardProps) {
   return (
-    <div className="ax-discovery-review">
+    <div className="ax-discovery-review" data-discovery-status={view.status}>
       <h3>찾은 방법</h3>
       <p className="muted">{view.progress}</p>
       {view.fieldReviews.length > 0 && (

@@ -93,7 +93,11 @@ contextBridge.exposeInMainWorld('ax', {
   listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
   attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
   ...(process.env.AX_E2E === '1'
-    ? { e2eSetWorkspaceSourcePath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetWorkspaceSourcePath', filePath) }
+    ? {
+        e2eSetWorkspaceSourcePath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetWorkspaceSourcePath', filePath),
+        e2eSetDiscoveryArtifactPath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetDiscoveryArtifactPath', filePath),
+        e2eConfigureDiscoveryFolder: (folderPath: string) => ipcRenderer.invoke('ax:e2eConfigureDiscoveryFolder', folderPath),
+      }
     : {}),
   onChatProgress: (listener: (event: { message: string; requestId?: string }) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string; requestId?: string }) =>
