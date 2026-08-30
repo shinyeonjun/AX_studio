@@ -804,3 +804,38 @@ keep their selected suites bounded and reproducible.
   suite without external credentials or side effects.
 - The repository test harness typechecks cleanly with
   `npx tsc -p test/tsconfig.json --noEmit`.
+
+## Current task: main-based Work Discovery production path — Phase 5
+
+Make persisted artifact sidecars trustworthy at the ArtifactStore boundary.
+The existing JSON file layout remains compatible, but typed document, ingest,
+workbook, and table payloads must be validated when written and read. Artifact
+IDs must remain filenames inside the configured artifact root.
+
+### Phase 5 success criteria
+
+- Document and document-engine ingest sidecars are validated against explicit
+  schemas on write and read; malformed sidecars are treated as unavailable.
+- Workbook and table sidecars have typed read/write helpers, and Work
+  Discovery uses them without regressing existing generic JSON artifacts.
+- Artifact IDs reject path separators, traversal, empty values, and other
+  filename-escaping input before any filesystem access.
+- Existing PDF, spreadsheet, workspace-source, Work Discovery, root
+  integration, Desktop, and Product QA checks remain green.
+
+### Phase 5 non-goals
+
+- Changing the on-disk directory layout or migrating existing valid sidecars.
+- Retrofitting every unrelated SQLite JSON column in one patch.
+- Changing document-engine output semantics, connector behavior, or workflow
+  execution.
+
+### Phase 5 final checkpoint (2026-08-31)
+
+- ArtifactStore typed sidecars now validate on write and fail closed on read.
+- Workbook and table sidecars use explicit typed helpers while generic JSON
+  remains available for intentionally untyped payloads.
+- Filename-escaping IDs and metadata paths outside the artifact root are
+  rejected without touching the outside path.
+- Full Core tests, Core eval, Core/Desktop build, root integration, and root
+  Electron E2E remain green.

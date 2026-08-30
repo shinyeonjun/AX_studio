@@ -35,9 +35,9 @@ describe('observeArtifact', () => {
     const materialized = readWorkbookFromPath(sourcePath);
     const artifactStore = new ArtifactStore(join(root, 'artifacts'));
 
-    artifactStore.putJson(materialized.workbook.id, materialized.workbook);
+    artifactStore.putWorkbookArtifact(materialized.workbook.id, materialized.workbook);
     for (const [tableId, table] of Object.entries(materialized.tables)) {
-      artifactStore.putJson(tableId, table);
+      artifactStore.putTableArtifact(tableId, table);
     }
 
     const observations = observeArtifact(

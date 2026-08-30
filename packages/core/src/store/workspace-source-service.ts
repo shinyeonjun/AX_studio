@@ -246,7 +246,7 @@ export class WorkspaceSourceService {
     if (source.status === 'processing') throw new WorkspaceSourceError('workspace_source_processing');
     if (source.status === 'failed') throw new WorkspaceSourceError(source.errorCode ?? 'workspace_source_failed');
     const document = source.documentArtifactId
-      ? this.artifactStore.getDocumentArtifact<DocumentArtifact>(source.documentArtifactId)
+      ? this.artifactStore.getDocumentArtifact(source.documentArtifactId)
       : undefined;
     if (!document) throw new WorkspaceSourceError('workspace_source_document_missing');
     const bounded = Number.isFinite(maxChars)
@@ -287,9 +287,9 @@ export class WorkspaceSourceService {
   }): Promise<void> {
     try {
       await importDiscoveryArtifact(this.artifactStore, job.storedPath);
-      const document = this.artifactStore.getDocumentArtifact<DocumentArtifact>(job.artifactId);
+      const document = this.artifactStore.getDocumentArtifact(job.artifactId);
       if (!document) throw new WorkspaceSourceError('document_ingest_missing_result');
-      const ingested = this.artifactStore.getIngestResult<IngestDocumentResult>(job.artifactId);
+      const ingested = this.artifactStore.getIngestResult(job.artifactId);
       const source = this.store.updateWorkspaceSource(job.id, {
         status: 'ready',
         engine: ingested?.engine ?? document.engine,
@@ -361,7 +361,7 @@ export class WorkspaceSourceService {
     mkdirSync(sourceDir, { recursive: true });
     writeFileSync(join(sourceDir, 'manifest.json'), JSON.stringify({ source: manifestSource(source) }, null, 2));
     if (source.status !== 'ready' || !source.documentArtifactId) return;
-    const document = this.artifactStore.getDocumentArtifact<DocumentArtifact>(source.documentArtifactId);
+    const document = this.artifactStore.getDocumentArtifact(source.documentArtifactId);
     if (!document) return;
     writeFileSync(join(sourceDir, 'docling.json'), JSON.stringify({
       sourceId: source.id,

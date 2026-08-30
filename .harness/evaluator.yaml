@@ -930,3 +930,58 @@ main_based_work_discovery_phase_4_task:
     decision: KEEP
     notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
   expansions: []
+
+main_based_work_discovery_phase_5_task:
+  name: artifact-store-persistence-contract
+  evaluator_frozen: true
+  checks:
+    - name: artifact-store-contract
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/artifact-store.test.ts
+      required: true
+    - name: typed-persistence-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/import-discovery-artifact.test.ts src/store/workspace-source-service.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - typed sidecars reject malformed data and read malformed legacy files as unavailable
+    - invalid IDs cannot escape the ArtifactStore root
+    - generic putJson/getJson remains compatible for intentionally untyped payloads
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T23:56:23.7122432+09:00
+    values:
+      artifact-store-contract: "PASS: 4 existing tests"
+      typed-persistence-regression: "PASS: existing document/workspace/observation tests; no typed sidecar rejection coverage"
+      core-typecheck: "PASS: existing Core source"
+      root-integration-runner: "PASS: Phase 4 runner, 9 suites/52 tests"
+      diff-whitespace: "PASS: measured before Phase 5 implementation"
+    gap: "ArtifactStore typed sidecar writes/reads are unchecked beyond JSON syntax, and caller-provided IDs are not explicitly constrained to a filename-safe format."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T00:06:20.3231640+09:00
+    values:
+      artifact-store-contract: "PASS: 8 tests"
+      typed-persistence-regression: "PASS: 4 files, 16 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 Core suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+      full-core-regression: "PASS: 117 files, 603 tests, 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+    decision: KEEP
+    notes: "Typed document/ingest/workbook/table persistence is validated without changing the existing on-disk layout. Invalid IDs and outside stored paths fail closed. Existing .gitignore remains unrelated and unchanged."
+  expansions: []

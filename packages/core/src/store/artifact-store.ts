@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { DocumentArtifactSchema, type DocumentArtifact } from '../contracts/artifacts/document.js';
+import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
+import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
+import { IngestDocumentResultSchema } from '../document-engine/schema.js';
+import type { IngestDocumentResult } from '../document-engine/types.js';
 
 export interface StoredArtifact {
   id: string;
@@ -12,14 +17,39 @@ export interface StoredArtifact {
   createdAt: string;
 }
 
-function parseStoredArtifact(path: string): StoredArtifact | undefined {
+const ARTIFACT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$/;
+
+function isArtifactId(value: unknown): value is string {
+  return typeof value === 'string' && ARTIFACT_ID_PATTERN.test(value);
+}
+
+function assertArtifactId(value: string): string {
+  if (!isArtifactId(value)) throw new Error('invalid_artifact_id');
+  return value;
+}
+
+function isWithinRoot(rootDir: string, filePath: string): boolean {
+  const root = resolve(rootDir);
+  const candidate = resolve(filePath);
+  const child = relative(root, candidate);
+  return child !== '' && child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child);
+}
+
+function artifactJsonPath(rootDir: string, id: string, suffix = ''): string | undefined {
+  if (!isArtifactId(id)) return undefined;
+  return join(rootDir, `${id}${suffix}.json`);
+}
+
+function parseStoredArtifact(path: string, rootDir: string): StoredArtifact | undefined {
   const value = readJsonFile<Partial<StoredArtifact> | null>(path);
   if (
     !value ||
+    !isArtifactId(value.id) ||
     typeof value.id !== 'string' ||
     typeof value.sha256 !== 'string' ||
     typeof value.fileName !== 'string' ||
     typeof value.storedPath !== 'string' ||
+    !isWithinRoot(rootDir, value.storedPath) ||
     typeof value.size !== 'number' ||
     typeof value.createdAt !== 'string' ||
     (value.mimeType !== undefined && typeof value.mimeType !== 'string')
@@ -37,6 +67,23 @@ function readJsonFile<T>(path: string): T | undefined {
   }
 }
 
+function writeJsonFile(path: string, value: unknown, errorCode = 'invalid_artifact_json'): void {
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    throw new Error(errorCode);
+  }
+  if (serialized === undefined) throw new Error(errorCode);
+  writeFileSync(path, serialized, 'utf8');
+}
+
+function parseTyped<T>(path: string | undefined, schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } }): T | undefined {
+  if (!path || !existsSync(path)) return undefined;
+  const parsed = schema.safeParse(readJsonFile<unknown>(path));
+  return parsed.success ? parsed.data : undefined;
+}
+
 export class ArtifactStore {
   constructor(private readonly rootDir: string) {
     mkdirSync(rootDir, { recursive: true });
@@ -52,7 +99,7 @@ export class ArtifactStore {
     const existing = this.findBySha(sha256);
     if (existing) return existing;
 
-    const id = options.id ?? `art_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const id = assertArtifactId(options.id ?? `art_${randomUUID().replace(/-/g, '').slice(0, 16)}`);
     const fileName = basename(sourcePath);
     const storedPath = join(this.rootDir, `${id}_${fileName}`);
     if (!existsSync(storedPath)) {
@@ -67,48 +114,77 @@ export class ArtifactStore {
       size: buffer.length,
       createdAt: new Date().toISOString(),
     };
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(record));
+    writeJsonFile(join(this.rootDir, `${id}.json`), record);
     return record;
   }
 
   putJson(id: string, value: unknown): void {
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(value));
+    const safeId = assertArtifactId(id);
+    writeJsonFile(join(this.rootDir, `${safeId}.json`), value);
   }
 
   putDocumentArtifact(id: string, value: unknown): void {
-    writeFileSync(join(this.rootDir, `${id}.document.json`), JSON.stringify(value));
+    const safeId = assertArtifactId(id);
+    const parsed = DocumentArtifactSchema.safeParse(value);
+    if (!parsed.success) throw new Error('invalid_document_artifact');
+    if (parsed.data.id !== safeId) throw new Error('artifact_id_mismatch');
+    writeJsonFile(join(this.rootDir, `${safeId}.document.json`), parsed.data);
   }
 
   putIngestResult(id: string, value: unknown): void {
-    writeFileSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
+    const safeId = assertArtifactId(id);
+    const parsed = IngestDocumentResultSchema.safeParse(value);
+    if (!parsed.success) throw new Error('invalid_ingest_result');
+    writeJsonFile(join(this.rootDir, `${safeId}.ingest.json`), parsed.data);
   }
 
-  getDocumentArtifact<T>(id: string): T | undefined {
-    const metaPath = join(this.rootDir, `${id}.document.json`);
-    if (!existsSync(metaPath)) return undefined;
-    return readJsonFile<T>(metaPath);
+  putTableArtifact(id: string, value: unknown): void {
+    const safeId = assertArtifactId(id);
+    const parsed = TableArtifactSchema.safeParse(value);
+    if (!parsed.success) throw new Error('invalid_table_artifact');
+    if (parsed.data.id !== safeId) throw new Error('artifact_id_mismatch');
+    writeJsonFile(join(this.rootDir, `${safeId}.json`), parsed.data);
   }
 
-  getIngestResult<T>(id: string): T | undefined {
-    const resultPath = join(this.rootDir, `${id}.ingest.json`);
-    if (!existsSync(resultPath)) return undefined;
-    return readJsonFile<T>(resultPath);
+  putWorkbookArtifact(id: string, value: unknown): void {
+    const safeId = assertArtifactId(id);
+    const parsed = WorkbookArtifactSchema.safeParse(value);
+    if (!parsed.success) throw new Error('invalid_workbook_artifact');
+    if (parsed.data.id !== safeId) throw new Error('artifact_id_mismatch');
+    writeJsonFile(join(this.rootDir, `${safeId}.json`), parsed.data);
+  }
+
+  getDocumentArtifact(id: string): DocumentArtifact | undefined {
+    return parseTyped(artifactJsonPath(this.rootDir, id, '.document'), DocumentArtifactSchema);
+  }
+
+  getIngestResult(id: string): IngestDocumentResult | undefined {
+    return parseTyped(artifactJsonPath(this.rootDir, id, '.ingest'), IngestDocumentResultSchema);
+  }
+
+  getTableArtifact(id: string): TableArtifact | undefined {
+    return parseTyped(artifactJsonPath(this.rootDir, id), TableArtifactSchema);
+  }
+
+  getWorkbookArtifact(id: string): WorkbookArtifact | undefined {
+    return parseTyped(artifactJsonPath(this.rootDir, id), WorkbookArtifactSchema);
   }
 
   getJson<T>(id: string): T | undefined {
-    const metaPath = join(this.rootDir, `${id}.json`);
-    if (!existsSync(metaPath)) return undefined;
+    const metaPath = artifactJsonPath(this.rootDir, id);
+    if (!metaPath || !existsSync(metaPath)) return undefined;
     return readJsonFile<T>(metaPath);
   }
 
   get(id: string): StoredArtifact | undefined {
-    const metaPath = join(this.rootDir, `${id}.json`);
-    if (!existsSync(metaPath)) return undefined;
-    return parseStoredArtifact(metaPath);
+    const metaPath = artifactJsonPath(this.rootDir, id);
+    if (!metaPath || !existsSync(metaPath)) return undefined;
+    return parseStoredArtifact(metaPath, this.rootDir);
   }
 
   /** Delete the stored file plus every sidecar written for this artifact id. */
   remove(id: string): void {
+    if (!isArtifactId(id)) return;
     const record = this.get(id);
     if (record?.storedPath) rmSync(record.storedPath, { force: true });
     for (const suffix of ['.json', '.document.json', '.ingest.json']) {
@@ -119,7 +195,7 @@ export class ArtifactStore {
   findBySha(sha256: string): StoredArtifact | undefined {
     for (const name of readdirSync(this.rootDir)) {
       if (!name.endsWith('.json')) continue;
-      const record = parseStoredArtifact(join(this.rootDir, name));
+      const record = parseStoredArtifact(join(this.rootDir, name), this.rootDir);
       if (!record) continue;
       if (record.sha256 === sha256) return record;
     }

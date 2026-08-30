@@ -384,3 +384,31 @@ main_based_work_discovery_phase_4:
   expansions:
     - "The runner validation surfaced a pre-existing Phase 3 Product QA type declaration error in test/product-qa/lib/types.ts; fix it because the repository-level E2E entry point must be typecheckable."
     - "After that syntax fix, test typecheck exposed an Electron launch environment type mismatch; normalize optional process environment values before passing them to Playwright."
+
+main_based_work_discovery_phase_5:
+  status: completed
+  expansion_reason: "Phase 4 restored the repository runners; the ArtifactStore boundary still accepts unchecked typed sidecars and composes caller-provided IDs directly into paths."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/artifact-store.ts
+    - packages/core/src/store/artifact-store.test.ts
+    - packages/core/src/document-engine/schema.ts
+    - packages/core/src/document-engine/index.ts
+    - packages/core/src/contracts/artifacts/document.ts
+    - packages/core/src/contracts/artifacts/table.ts
+    - packages/core/src/contracts/artifacts/workbook.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - packages/core/src/store/import-discovery-artifact.test.ts
+    - packages/core/src/store/workspace-source-service.ts
+    - packages/core/src/store/workspace-source-service.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - existing valid artifact filenames and on-disk directory layout
+    - document-engine implementation, connector behavior, and workflow runtime
+  expansions:
+    - "The initial architecture check after Phase 5 exposed five pre-existing Phase 2/3 dependency violations; these are recorded as the next bounded architecture phase rather than hidden in the persistence patch."
