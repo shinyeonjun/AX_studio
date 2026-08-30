@@ -81,6 +81,34 @@ function executionLogSummary(logJson: string | null): {
   }
 }
 
+function executionQualityState(execution: {
+  status: string;
+  errorCode: string | null;
+  irJson?: string;
+}): { technicalStatus: string; resultStatus: 'passed' | 'failed' | 'not_evaluated' } {
+  if (execution.errorCode === 'input_schema_drift') {
+    return { technicalStatus: 'blocked', resultStatus: 'not_evaluated' };
+  }
+  if (execution.errorCode === 'output_contract_failed') {
+    return { technicalStatus: 'completed', resultStatus: 'failed' };
+  }
+  if (execution.status === 'success') {
+    let hasOutputContract = false;
+    if (execution.irJson) {
+      try {
+        hasOutputContract = Boolean(parseWorkflowIR(JSON.parse(execution.irJson)).outputContract);
+      } catch {
+        hasOutputContract = false;
+      }
+    }
+    return { technicalStatus: 'completed', resultStatus: hasOutputContract ? 'passed' : 'not_evaluated' };
+  }
+  if (execution.status === 'pending_approval') {
+    return { technicalStatus: 'waiting_approval', resultStatus: 'not_evaluated' };
+  }
+  return { technicalStatus: execution.status, resultStatus: 'not_evaluated' };
+}
+
 export function registerStateHandlers() {
   ipcMain.handle('ax:getState', async () => {
     const core = getCore();
@@ -110,6 +138,7 @@ export function registerStateHandlers() {
     });
     const executions = core.store.listExecutions(50).map((execution) => {
       const logSummary = executionLogSummary(execution.logJson);
+      const quality = executionQualityState(execution);
       const errorMessage =
         logSummary.errorMessage ??
         (execution.status === 'failed' && execution.logJson ? '실행 로그를 읽지 못했습니다.' : undefined);
@@ -121,6 +150,8 @@ export function registerStateHandlers() {
         finishedAt: execution.finishedAt,
         errorCode: execution.errorCode,
         errorMessage,
+        technicalStatus: quality.technicalStatus,
+        resultStatus: quality.resultStatus,
         triggerType: execution.triggerType,
         currentStepId: logSummary.currentStepId,
         currentStepStatus: logSummary.currentStepStatus,

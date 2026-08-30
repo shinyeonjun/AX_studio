@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ConditionExprSchema, normalizeCondition } from '../runtime/condition-expr.js';
 import { ContractTypeNameSchema } from '../contracts/capability-io.js';
+import { OutputContractSchema } from '../contracts/output-contract.js';
 import { PortBindingSchema } from './port-binding.js';
 import { actionRefFor } from './action-definition.js';
 
@@ -132,6 +133,8 @@ export const WorkflowIRSchema = z.object({
   assumptions: z.array(z.string()).max(MAX_WORKFLOW_STEPS).default([]),
   sideEffects: z.record(SideEffectLevelSchema).default({}),
   dataPolicy: DataPolicySchema.default({}),
+  /** Historical output/input quality contract used by the runtime gate. */
+  outputContract: OutputContractSchema.optional(),
   /** Human-readable work contract (SKILL.md). Runtime executes `steps`, not this text. */
   document: z.string().optional(),
 });

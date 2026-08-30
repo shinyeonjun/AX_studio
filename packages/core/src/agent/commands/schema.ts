@@ -33,6 +33,7 @@ export const AX_COMMAND_NAMES = [
   'workflow.delete',
   'workflow.run',
   'execution.enqueue_once',
+  'execution.explain',
   'job.propose',
   'job.commit',
   'context.update',
@@ -265,6 +266,10 @@ export const AxWorkflowRunArgsSchema = z.object({
 
 /** One-shot execution uses the same plan shape as workflow.create, but is never persisted. */
 export const AxExecutionEnqueueOnceArgsSchema = AxWorkflowCreateArgsSchema;
+
+export const AxExecutionExplainArgsSchema = z.object({
+  executionId: z.string().trim().min(1),
+});
 
 /** Host-rendered UI is deliberately read-only and cannot execute a side effect. */
 export const AxUiPresentArgsSchema = AxUiPresentationSchema;

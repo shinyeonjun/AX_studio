@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TransformExprSchema } from '../workflow/transform-expr/dsl.js';
 import { OutputObservationSchema } from './observation/schema.js';
 import { ClarificationQuestionSchema } from './clarification/types.js';
+import { OutputContractSchema } from '../contracts/output-contract.js';
 
 export const DiscoveryStatusSchema = z.enum([
   'collecting_examples',
@@ -84,6 +85,7 @@ export const DiscoveryBlueprintSchema = z.object({
     passed: z.number().int().nonnegative(),
     failed: z.number().int().nonnegative(),
   }),
+  outputContract: OutputContractSchema.optional(),
   publishable: z.boolean(),
 });
 

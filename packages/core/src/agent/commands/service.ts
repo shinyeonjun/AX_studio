@@ -46,6 +46,7 @@ import {
   AxSessionSourceListArgsSchema,
   AxSessionSourceReadArgsSchema,
   AxUiPresentArgsSchema,
+  AxExecutionExplainArgsSchema,
   type AxCommand,
   type AxCommandDefinition,
   type AxCommandIssue,
@@ -53,6 +54,7 @@ import {
   type AxCommandName,
   type AxCommandResult,
 } from './schema.js';
+import { parseWorkflowIR } from '../../workflow/schema.js';
 import { commitJob, proposeJob, type PendingJobDraft } from './job-registration.js';
 
 const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
@@ -190,6 +192,13 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     mutates: true,
   },
   {
+    name: 'execution.explain',
+    lifecycle: 'read',
+    description: '실행이 기술적으로 끝났는지와 결과 품질이 왜 통과·차단되었는지 안전하게 설명합니다.',
+    args: { executionId: 'execution id' },
+    mutates: false,
+  },
+  {
     name: 'job.propose',
     lifecycle: 'workflow',
     description: '반복 스케줄 업무 초안을 검증하고 확인 카드를 보여줍니다. 이 명령은 workflow를 저장하지 않습니다.',
@@ -298,6 +307,67 @@ function result(
   issues: AxCommandIssue[] = [],
 ): AxCommandResult {
   return { command, status, ...(data === undefined ? {} : { data }), issues, inputRequests: [] };
+}
+
+const QUALITY_ISSUE_CODES = new Set([
+  'source_unavailable',
+  'schema_column_missing',
+  'schema_type_changed',
+  'output_section_missing',
+  'output_type_changed',
+  'output_volume_anomaly',
+]);
+
+function boundedText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  return text ? text.slice(0, maxLength) : undefined;
+}
+
+function qualityIssuesFromLog(logJson: string, errorCode: string | null): {
+  phase?: string;
+  issues: Array<{ code: string; path: string; message: string; expected?: string; actual?: string }>;
+} {
+  let entries: unknown;
+  try {
+    entries = JSON.parse(logJson);
+  } catch {
+    return { issues: [] };
+  }
+  if (!Array.isArray(entries)) return { issues: [] };
+
+  for (const entry of [...entries].reverse()) {
+    if (!entry || typeof entry !== 'object') continue;
+    const record = entry as Record<string, unknown>;
+    if (record.code !== 'output_contract_failed' && record.code !== 'input_schema_drift') continue;
+    const data = record.data && typeof record.data === 'object' && !Array.isArray(record.data)
+      ? record.data as Record<string, unknown>
+      : undefined;
+    const issues = Array.isArray(data?.issues)
+      ? data.issues.flatMap((raw): Array<{ code: string; path: string; message: string; expected?: string; actual?: string }> => {
+        if (!raw || typeof raw !== 'object') return [];
+        const issueRecord = raw as Record<string, unknown>;
+        const code = boundedText(issueRecord.code, 80);
+        const path = boundedText(issueRecord.path, 200);
+        const message = boundedText(issueRecord.message, 500);
+        const expected = boundedText(issueRecord.expected, 120);
+        const actual = boundedText(issueRecord.actual, 120);
+        if (!code || !path || !message || !QUALITY_ISSUE_CODES.has(code)) return [];
+        return [{
+          code,
+          path,
+          message,
+          ...(expected ? { expected } : {}),
+          ...(actual ? { actual } : {}),
+        }];
+      })
+      : [];
+    return {
+      phase: boundedText(data?.phase, 80),
+      issues,
+    };
+  }
+  return { issues: [] };
 }
 
 function summarizeCapability(cap: ReturnType<typeof designCapabilities>[number], connected: string[]) {
@@ -442,6 +512,8 @@ export class AxCommandService {
         return result(command.name, ...await this.workflowGateway.run(command));
       case 'execution.enqueue_once':
         return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
+      case 'execution.explain':
+        return result(command.name, ...this.explainExecution(command));
       case 'job.propose':
         return result(command.name, ...proposeJob({
           store: this.store,
@@ -584,6 +656,64 @@ export class AxCommandService {
           : 'error';
       return [status, undefined, [issue(code, '현재 대화 세션 자료를 읽을 수 없습니다.')]];
     }
+  }
+
+  private explainExecution(command: AxCommand): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+    const parsed = AxExecutionExplainArgsSchema.safeParse(command.args);
+    if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+    const execution = this.store.getExecution(parsed.data.executionId);
+    if (!execution) {
+      return ['not_found', undefined, [issue('execution_not_found', '실행을 찾을 수 없습니다.', 'args.executionId')]];
+    }
+
+    let hasOutputContract = false;
+    if (execution.irJson) {
+      try {
+        hasOutputContract = Boolean(parseWorkflowIR(JSON.parse(execution.irJson)).outputContract);
+      } catch {
+        hasOutputContract = false;
+      }
+    }
+
+    const quality = qualityIssuesFromLog(execution.logJson, execution.errorCode);
+    const qualityFailure = execution.errorCode === 'output_contract_failed' || execution.errorCode === 'input_schema_drift';
+    const technicalStatus = execution.errorCode === 'input_schema_drift'
+      ? 'blocked'
+      : execution.errorCode === 'output_contract_failed'
+        ? 'completed'
+        : execution.status === 'success'
+          ? 'completed'
+          : execution.status === 'pending_approval'
+            ? 'waiting_approval'
+            : execution.status;
+    const resultStatus = execution.errorCode === 'output_contract_failed'
+      ? 'failed'
+      : execution.errorCode === 'input_schema_drift'
+        ? 'not_evaluated'
+        : execution.status === 'success' && hasOutputContract
+          ? 'passed'
+          : 'not_evaluated';
+    const reason = quality.issues[0]?.message ?? (
+      execution.errorCode === 'input_schema_drift'
+        ? '입력 자료의 열 구조가 과거 기준과 달라 결과를 평가하지 않았습니다.'
+        : execution.errorCode === 'output_contract_failed'
+          ? '실행은 끝났지만 결과가 과거 기준을 벗어났습니다.'
+          : undefined
+    );
+
+    return ['ok', {
+      executionId: execution.id,
+      workflowId: execution.workflowId ?? undefined,
+      workflowVersion: execution.workflowVersion ?? undefined,
+      triggerType: execution.triggerType ?? undefined,
+      status: execution.status,
+      technicalStatus,
+      resultStatus,
+      hasOutputContract,
+      ...(reason ? { reason } : {}),
+      ...(quality.phase ? { phase: quality.phase } : {}),
+      ...(qualityFailure || quality.issues.length > 0 ? { issues: quality.issues } : {}),
+    }];
   }
 
   private listResources() {

@@ -24,6 +24,12 @@ import {
   type ExecutionCheckpoint,
 } from './control-flow.js';
 import { validateExecutionLog } from './execution-log.js';
+import {
+  createContractFailure,
+  isContractFailure,
+  validateInputSchema,
+  validateOutputContract,
+} from './output-contract.js';
 
 type PendingError = Error & {
   code?: string;
@@ -31,6 +37,14 @@ type PendingError = Error & {
   pending?: boolean;
   checkpoint?: ExecutionCheckpoint;
 };
+
+function isExternalAction(step: Step, ir: WorkflowIR): boolean {
+  return step.type === 'action' &&
+    (ir.sideEffects?.[step.id] ?? step.sideEffect) in {
+      EXTERNAL: true,
+      EXTERNAL_HIGH: true,
+    };
+}
 
 export class WorkflowRuntime {
   connectors: Record<string, Connector>;
@@ -164,6 +178,10 @@ export class WorkflowRuntime {
 
     try {
       await this.runSequence(linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, [], new Set());
+      if (workflowIr.outputContract) {
+        const output = validateOutputContract(workflowIr.outputContract, ctx.variables, stepResults);
+        if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
+      }
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       const result: ExecutionResult = { executionId, status: 'success', log };
       this.config.onExecutionFinished?.(result);
@@ -187,7 +205,13 @@ export class WorkflowRuntime {
         return result;
       }
       const code = error.code ?? 'execution_failed';
-      log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
+      log.push({
+        at: new Date().toISOString(),
+        level: 'error',
+        code,
+        message: error.message,
+        ...(isContractFailure(error) ? { data: error.data } : {}),
+      });
       this.config.store.finishExecution(executionId, 'failed', code, log);
       const result: ExecutionResult = { executionId, status: 'failed', errorCode: code, log };
       this.config.onExecutionFinished?.(result);
@@ -245,6 +269,10 @@ export class WorkflowRuntime {
       const step = sequence[index];
       try {
         this.reportStepProgress(ctx, step, 'step_started');
+        if (ir.outputContract && isExternalAction(step, ir)) {
+          const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+          if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
+        }
         await executeStep(
           step,
           ir,
@@ -265,6 +293,10 @@ export class WorkflowRuntime {
             ),
           approvedActionIds,
         );
+        if (ir.outputContract && step.type === 'action') {
+          const input = validateInputSchema(ir.outputContract, step.id, stepResults[step.id]);
+          if (!input.ok) throw createContractFailure('input_schema_drift', 'after_source_step', input);
+        }
         this.reportStepProgress(ctx, step, 'step_completed');
       } catch (err) {
         const error = err as PendingError;
@@ -506,6 +538,10 @@ export class WorkflowRuntime {
             { code: 'action_params_missing' },
           );
         }
+        if (ir.outputContract && isExternalAction(actionStep, ir)) {
+          const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+          if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
+        }
         const result = await connector.execute(
           actionDefinition.action,
           params,
@@ -515,6 +551,10 @@ export class WorkflowRuntime {
           throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
         }
         stepResults[actionId] = result.data;
+        if (ir.outputContract) {
+          const input = validateInputSchema(ir.outputContract, actionId, result.data);
+          if (!input.ok) throw createContractFailure('input_schema_drift', 'after_source_step', input);
+        }
       }
 
       if (ir && checkpoint?.remainingStepIds.length) {
@@ -526,6 +566,11 @@ export class WorkflowRuntime {
           checkpoint.pendingOuterStepIds ?? [],
           new Set(approval.actionIds),
         );
+      }
+
+      if (ir.outputContract) {
+        const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+        if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
       }
 
       this.config.store.resolveApproval(approvalId, true);
@@ -553,7 +598,13 @@ export class WorkflowRuntime {
         return pendingResult;
       }
       const code = error.code ?? 'execution_failed';
-      log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
+      log.push({
+        at: new Date().toISOString(),
+        level: 'error',
+        code,
+        message: error.message,
+        ...(isContractFailure(error) ? { data: error.data } : {}),
+      });
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'failed', code, log);
       const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };

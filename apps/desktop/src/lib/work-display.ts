@@ -66,6 +66,8 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'agent_invoke_failed') return 'AI 판단 단계 호출에 실패했습니다';
   if (errorCode === 'agent_timeout') return 'AI 판단 단계가 시간 초과되었습니다';
   if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
+  if (errorCode === 'output_contract_failed') return '결과 품질 검증에서 차단되었습니다';
+  if (errorCode === 'input_schema_drift') return '입력 자료 구조가 변경되었습니다';
   return errorCode;
 }
 

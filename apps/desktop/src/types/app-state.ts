@@ -60,6 +60,8 @@ export interface AppState {
     finishedAt?: string | null;
     errorCode?: string | null;
     errorMessage?: string;
+    technicalStatus?: string;
+    resultStatus?: 'passed' | 'failed' | 'not_evaluated';
     triggerType?: string | null;
     currentStepId?: string;
     currentStepStatus?: string;

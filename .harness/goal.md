@@ -875,3 +875,49 @@ discovery without creating a module-to-module dependency.
   the Electron worker still bundles and runs through the existing output path.
 - Full Core tests, Core evaluation, Core/Desktop build, root integration, and
   root Electron E2E remain green.
+
+## Current task: main-based Work Discovery production path — Phase 9
+
+Add a persisted output contract and runtime quality gate for published Work
+Discovery workflows. Historical observations define presence/type baselines;
+multiple examples may additionally define conservative numeric and row-volume
+ranges. Input schema drift and output degradation must be recorded as distinct
+technical/result failures, and external actions must not run after a failed
+quality check. Expose a minimal `execution.explain` read command without
+returning raw execution parameters or result payloads.
+
+### Phase 9 success criteria
+
+- Discovery blueprints and compiled workflows persist bounded output and input
+  contracts without storing raw historical values.
+- Runtime detects missing source columns, incompatible source types, missing
+  output sections, output type changes, and multi-sample numeric/row-volume
+  anomalies with stable issue codes.
+- A failed contract prevents later external side effects and separates
+  technical execution status from result quality in the execution record/log.
+- `execution.explain` returns an inspectable, sanitized reason for a blocked or
+  degraded execution.
+- Desktop activity distinguishes technical completion from result-quality
+  failure for these executions.
+- Core typecheck, focused contract/runtime/command tests, full Core tests,
+  evaluation, build, integration, Electron E2E, and architecture checks pass.
+
+### Phase 9 non-goals
+
+- No automatic repair, remapping, threshold/recipient/approval/schedule
+  changes, or provider-side writes; those belong to Phase 10.
+- No raw output rows, message bodies, or historical values in contracts,
+  failure logs, or `execution.explain`.
+- No change to the existing ArtifactStore layout or connector semantics beyond
+  the runtime quality gate.
+
+### Phase 9 final checkpoint (2026-08-31)
+
+- Work Discovery now compiles bounded output/input contracts into persisted
+  workflow versions; single-sample numeric baselines remain presence/type-only.
+- Runtime blocks external actions when input schema or output quality drifts and
+  stores only sanitized issue metadata.
+- `execution.explain` and Desktop activity expose the distinction between
+  technical completion and result-quality failure.
+- Core, evaluation, build, Desktop typecheck, integration, Electron E2E,
+  architecture, and whitespace checks passed.

@@ -42,6 +42,14 @@ describe('compile', () => {
     const blueprint = buildDiscoveryBlueprint(session);
     expect(blueprint?.publishable).toBe(true);
     expect(blueprint?.fields).toHaveLength(1);
+    expect(blueprint?.outputContract).toMatchObject({
+      version: 1,
+      fields: [{
+        path: 'field.total',
+        kind: 'number',
+        baseline: { sampleCount: 1, numericMin: 100, numericMax: 100 },
+      }],
+    });
     expect(canPublish({ ...session, blueprint }).ok).toBe(true);
   });
 
@@ -54,6 +62,11 @@ describe('compile', () => {
     const evalSteps = ir.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
     expect(evalSteps.length).toBeGreaterThan(0);
     expect(evalSteps[0]?.params.expr).toBeTruthy();
+    expect(ir.outputContract?.inputSchemas).toEqual([{
+      sourceId: 'rdb:sales',
+      stepId: expect.stringMatching(/^read_/),
+      columns: [{ name: 'amount', type: 'number' }],
+    }]);
     expect(JSON.parse(ir.document ?? '{}')).toMatchObject({ origin: 'discovery' });
   });
 

@@ -11,6 +11,7 @@ export {
 export * from './compatibility.js';
 export * from './mappers.js';
 export * from './document-ingest-resolve.js';
+export * from './output-contract.js';
 export { TextArtifactSchema, JsonArtifactSchema } from './artifacts/text.js';
 export {
   TableArtifactSchema,
