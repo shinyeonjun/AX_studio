@@ -10,6 +10,7 @@ export const DiscoveryStatusSchema = z.enum([
   'exploring_sources',
   'synthesizing',
   'validating',
+  'needs_attention',
   'needs_clarification',
   'ready_to_publish',
   'publishing',
@@ -19,6 +20,17 @@ export const DiscoveryStatusSchema = z.enum([
 ]);
 
 export type DiscoveryStatus = z.infer<typeof DiscoveryStatusSchema>;
+
+export const DiscoveryRecoveryCheckpointSchema = z.enum([
+  'collecting_examples',
+  'observing_output',
+  'inventory_sources',
+  'exploring_sources',
+  'synthesizing',
+  'validating',
+]);
+
+export type DiscoveryRecoveryCheckpoint = z.infer<typeof DiscoveryRecoveryCheckpointSchema>;
 
 export const SourceDescriptorSchema = z.object({
   id: z.string(),
@@ -82,6 +94,8 @@ export const DiscoverySessionStateSchema = z.object({
   userGoal: z.string(),
   exampleIds: z.array(z.string()),
   desiredRecurrence: z.string().optional(),
+  recoveryCheckpoint: DiscoveryRecoveryCheckpointSchema.optional(),
+  autoRecoveryAttempts: z.number().int().nonnegative().optional(),
   sourceInventory: z.array(SourceDescriptorSchema).default([]),
   observations: z.array(OutputObservationSchema).default([]),
   candidates: z.array(CandidateProgramSchema).default([]),
@@ -120,9 +134,15 @@ export const DiscoveryCancelArgsSchema = z.object({
   sessionId: z.string().trim().min(1),
 });
 
+export const DiscoveryRetryArgsSchema = z.object({
+  sessionId: z.string().trim().min(1),
+  expectedRevision: z.number().int().nonnegative(),
+});
+
 export type DiscoveryStartArgs = z.infer<typeof DiscoveryStartArgsSchema>;
 export type DiscoveryInspectArgs = z.infer<typeof DiscoveryInspectArgsSchema>;
 export type DiscoveryCancelArgs = z.infer<typeof DiscoveryCancelArgsSchema>;
+export type DiscoveryRetryArgs = z.infer<typeof DiscoveryRetryArgsSchema>;
 
 export const DiscoveryAnswerArgsSchema = z.object({
   sessionId: z.string().trim().min(1),
@@ -160,6 +180,8 @@ export interface DiscoveryInspectView {
   sessionId: string;
   status: DiscoveryStatus;
   revision: number;
+  recoveryCheckpoint?: DiscoveryRecoveryCheckpoint;
+  autoRecoveryAttempts?: number;
   progress: string;
   publishable: boolean;
   pendingQuestion?: z.infer<typeof ClarificationQuestionSchema>;

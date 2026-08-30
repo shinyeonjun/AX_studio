@@ -104,6 +104,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     artifactStore,
     workspaceSources,
     resolveConnectionConfig: options.resolveConnectionConfig,
+    autoResumeDiscovery: true,
   });
 
   const core: AxStudioCore = {

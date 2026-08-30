@@ -89,6 +89,12 @@ describe('work discovery north-star e2e', () => {
     const finalState = await service.waitForTerminal(started.id, 20_000);
     expect(finalState?.status).toBe('ready_to_publish');
 
+    const replayCases = store.listDiscoveryReplayCases(started.id);
+    expect(replayCases).toHaveLength(1);
+    expect(replayCases[0]?.exampleId).toBe(finalState?.exampleIds[0]);
+    expect(JSON.parse(replayCases[0]?.expectedObservationsJson ?? '[]')).not.toHaveLength(0);
+    expect(JSON.parse(replayCases[0]?.lastResultJson ?? '[]')).not.toHaveLength(0);
+
     const published = service.publish(started.id, '월간 매출 보고');
     expect('workflowId' in published).toBe(true);
     if (!('workflowId' in published)) return;

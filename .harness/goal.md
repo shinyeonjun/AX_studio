@@ -576,3 +576,94 @@ and do not invoke live Gmail, Slack, AI, or database side effects from CI.
 - Repairing or inventing the missing `test/e2e` and `test/integration` runners.
 - Running live provider, connector, HTTP, or database tests in GitHub Actions.
 - Rewriting the existing dirty worktree or unrelated product code.
+
+## Current task: Work Discovery session contract hardening
+
+Make the agreed Work Discovery session contract true at the public service and
+command boundaries before attempting the larger lifecycle deepening. Preserve
+the requested recurrence in durable session state, reject stale answer/publish
+mutations, and make repeated publication of one session idempotent.
+
+### Success criteria
+
+- `desiredRecurrence` supplied to `start()` is present after session reload and is used by blueprint compilation.
+- `answer()` and `publish()` reject a stale `expectedRevision` without changing session state or creating a workflow.
+- Matching-revision answer and publish paths retain existing behavior.
+- Repeating publish for an already published session returns the original workflow id and does not create another workflow version/row.
+- Targeted Work Discovery tests, full Core tests, Core typecheck, and diff-whitespace checks pass.
+
+### Non-goals for this slice
+
+- Automatic restart recovery and retry leases for an interrupted pipeline.
+- Persisting every replay case as a first-class queryable record.
+- Source binary copying or a new artifact storage backend.
+
+## Current task: first-class Work Discovery replay cases
+
+Persist each discovery session's per-example replay evidence through the
+existing `work_discovery_replay_cases` storage boundary. Re-running a session
+must update the same replay case for that session/example instead of creating
+duplicates, so later restart recovery and inspection can rely on durable
+evidence rather than only the session JSON blob.
+
+### Success criteria
+
+- Every completed replay example has one persisted replay case with its expected observations and latest candidate results.
+- Re-running the same session/example updates the existing replay case without duplicate rows.
+- Replay cases remain isolated by discovery session and example.
+- Existing Work Discovery behavior, targeted tests, Core tests, Core typecheck, and diff-whitespace checks remain green.
+
+### Non-goals for this slice
+
+- Automatically resuming an interrupted pipeline after app restart.
+- Replacing live source reads with snapshot replay during recovery.
+- New UI for browsing replay-case history.
+
+## Current task: Work Discovery restart recovery
+
+Resume an interrupted Work Discovery pipeline from durable checkpoints when a
+new service instance starts. A completed source inventory checkpoint must use
+the persisted source snapshot manifests instead of silently reading changed
+live sources; incomplete earlier stages may fall back to a clean pipeline
+restart without claiming that the old checkpoint was reused.
+
+### Success criteria
+
+- A new `WorkDiscoveryService` configured for startup recovery schedules persisted in-progress sessions.
+- Sessions at `synthesizing` or `validating` resume from persisted observations, source inventory, and snapshot manifests without calling live source providers.
+- The resumed session writes/upserts replay cases and reaches the same clarification/ready outcome as a clean run.
+- Published and cancelled sessions are never auto-resumed.
+- Existing session-contract, replay-persistence, Work Discovery, Core typecheck, and diff-whitespace checks remain green.
+
+### Non-goals for this slice
+
+- Infinite or automatic retry loops; one recovery attempt and `needs-attention` state come later.
+- Recovery of missing/corrupt snapshot manifests beyond a safe clean restart/failure path.
+- Desktop recovery UI or external connector changes.
+- Broad refactoring of `WorkDiscoveryService`, Desktop UI, or unrelated dirty WIP.
+
+## Current task: bounded Work Discovery recovery retry
+
+Make automatic recovery bounded and user-visible. A persisted in-progress
+session may receive one automatic recovery attempt. If that attempt fails, the
+session must enter `needs_attention` instead of becoming an unrecoverable
+terminal failure or being retried in a loop. A user may explicitly retry with
+the current session revision; the retry must reuse a safe persisted synthesis
+checkpoint when available and must not publish or reread a missing snapshot
+silently.
+
+### Success criteria
+
+- The session schema and inspect view can represent `needs_attention` and its recovery checkpoint.
+- A second startup does not automatically rerun a session whose automatic recovery attempt is already recorded.
+- Automatic recovery failure becomes `needs_attention` with a durable error and checkpoint.
+- `discovery.retry` requires the current `expectedRevision`, resumes the safe checkpoint, and returns a conflict without mutation for stale callers.
+- Published and cancelled sessions remain terminal and cannot be retried.
+- Focused recovery/command tests, Core tests, Core typecheck, and diff-whitespace checks pass.
+
+### Non-goals for this slice
+
+- Restarting from an arbitrary historical checkpoint selected by the user.
+- A desktop-specific recovery card or new external connector behavior.
+- Automatic retries beyond the single startup attempt.
+- Deleting session evidence or changing workflow publication semantics.

@@ -7,6 +7,8 @@ import {
   getDiscoverySession,
   insertDiscoveryExample,
   insertDiscoverySession,
+  listDiscoveryReplayCases,
+  upsertDiscoveryReplayCase,
 } from './repositories/work-discovery-repository.js';
 import type { DiscoverySessionState } from '../work-discovery/schema.js';
 
@@ -47,5 +49,53 @@ describe('discovery persistence', () => {
     expect(loaded?.userGoal).toBe('월간 보고');
     expect(loaded?.status).toBe('collecting_examples');
     db2.close?.();
+  });
+
+  it('upserts one replay case per session example', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const now = new Date().toISOString();
+    const state: DiscoverySessionState = {
+      id: 'wd_replay_case',
+      status: 'synthesizing',
+      revision: 1,
+      userGoal: '월간 보고',
+      exampleIds: ['ex_replay_case'],
+      sourceInventory: [],
+      observations: [],
+      candidates: [],
+      budgets: { sourceReadsUsed: 0, sourceReadsMax: 12, elapsedMs: 0 },
+      createdAt: now,
+      updatedAt: now,
+    };
+    insertDiscoverySession(db, state);
+    insertDiscoveryExample(db, {
+      sessionId: state.id,
+      outputArtifactIds: ['doc_replay'],
+      inputArtifactIds: [],
+    });
+
+    upsertDiscoveryReplayCase(db, {
+      id: 'replay_wd_replay_case_ex_replay_case',
+      sessionId: state.id,
+      exampleId: 'ex_replay_case',
+      snapshotSetId: 'snapset_wd_replay_case_ex_replay_case',
+      expectedObservationsJson: '[{"path":"field.total","value":100}]',
+      lastResultJson: '[{"candidateId":"candidate_1","pass":false}]',
+      createdAt: now,
+    });
+    upsertDiscoveryReplayCase(db, {
+      id: 'replay_wd_replay_case_ex_replay_case',
+      sessionId: state.id,
+      exampleId: 'ex_replay_case',
+      snapshotSetId: 'snapset_wd_replay_case_ex_replay_case',
+      expectedObservationsJson: '[{"path":"field.total","value":100}]',
+      lastResultJson: '[{"candidateId":"candidate_1","pass":true}]',
+      createdAt: now,
+    });
+
+    const cases = listDiscoveryReplayCases(db, state.id);
+    expect(cases).toHaveLength(1);
+    expect(cases[0]?.lastResultJson).toContain('"pass":true');
+    db.close?.();
   });
 });

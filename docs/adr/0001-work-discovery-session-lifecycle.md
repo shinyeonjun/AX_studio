@@ -1,0 +1,3 @@
+# Work Discovery sessions preserve evidence and require explicit publication
+
+Work Discovery treats each discovery session as a durable, isolated process: it keeps a source snapshot stable, resumes from the last saved checkpoint after restart, rejects stale mutations, and requires every required source and example to pass replay plus explicit user confirmation before creating a new workflow. Publish is idempotent, cancelled and published sessions are terminal, recoverable failures can be retried without silently changing evidence, and session evidence remains available until the user explicitly deletes it. This favors reproducible results and safe recovery over live-source freshness, partial publication, and silent best-effort completion.
