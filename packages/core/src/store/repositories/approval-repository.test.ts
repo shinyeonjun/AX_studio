@@ -4,6 +4,23 @@ import { claimApproval, createApproval, getApproval } from './approval-repositor
 import { createExecution, deleteExecution } from './execution-repository.js';
 
 describe('approval persistence boundaries', () => {
+  it.each([
+    ['false', false],
+    ['zero', 0],
+    ['empty string', ''],
+  ])('preserves a %s approval payload', async (_label, payload) => {
+    const db = await createDatabaseAsync(':memory:');
+    const executionId = createExecution(db, { ephemeral: true });
+    const approvalId = createApproval(db, {
+      executionId,
+      actionIds: ['notify'],
+      reason: 'payload round trip',
+      payload,
+    });
+
+    expect(getApproval(db, approvalId)?.payload).toBe(payload);
+  });
+
   it('reports corrupted approval JSON with its record and field', async () => {
     const db = await createDatabaseAsync(':memory:');
     const executionId = 'execution-1';

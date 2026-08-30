@@ -48,7 +48,7 @@ export function createApproval(
       params.reason,
       'pending',
       new Date().toISOString(),
-      params.payload ? JSON.stringify(params.payload) : null,
+      params.payload === undefined ? null : JSON.stringify(params.payload),
     );
   return id;
 }
