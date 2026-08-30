@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 export async function clickNewChat(page: Page): Promise<void> {
-  await page.getByRole('button', { name: '새 대화' }).click();
+  await page.getByRole('button', { name: '새 대화', exact: true }).click();
 }
 
 export async function sendMessage(page: Page, text: string): Promise<void> {
@@ -63,17 +63,18 @@ export async function readVisibleMessages(page: Page): Promise<Array<{ role: 'us
   return merged;
 }
 
-export async function attachFixtureViaE2e(page: Page, fixturePath: string, sessionId?: string): Promise<void> {
+export async function attachFixtureViaE2e(page: Page, fixturePath: string): Promise<void> {
   await page.evaluate(
-    async ({ path, sessionId: sid }) => {
-      const ax = (window as unknown as { ax?: { e2eAttachWorkspaceSource?: (s: string | null, p: string) => Promise<unknown> } }).ax;
-      if (!ax?.e2eAttachWorkspaceSource) {
-        throw new Error('e2eAttachWorkspaceSource unavailable (AX_E2E=1 required)');
+    async (path) => {
+      const ax = (window as unknown as { ax?: { e2eSetWorkspaceSourcePath?: (p: string) => Promise<unknown> } }).ax;
+      if (!ax?.e2eSetWorkspaceSourcePath) {
+        throw new Error('e2eSetWorkspaceSourcePath unavailable (AX_E2E=1 required)');
       }
-      await ax.e2eAttachWorkspaceSource(sid ?? null, path);
+      await ax.e2eSetWorkspaceSourcePath(path);
     },
-    { path: fixturePath, sessionId },
+    fixturePath,
   );
+  await page.getByRole('button', { name: '자료 추가', exact: true }).click();
 }
 
 export async function openSidebarTab(
@@ -119,5 +120,5 @@ export async function errorBannerText(page: Page): Promise<string> {
 }
 
 export async function isAppAlive(page: Page): Promise<boolean> {
-  return page.getByRole('button', { name: '새 대화' }).isVisible();
+  return page.getByRole('button', { name: '새 대화', exact: true }).isVisible();
 }

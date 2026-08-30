@@ -104,12 +104,7 @@ export interface AxApi {
     | { ok: true; sessionId: string; title: string; source: WorkspaceSourceRecord }
     | { ok: false; canceled?: boolean; error?: string }
   >;
-  e2eAttachWorkspaceSource?: (sessionId: string | null | undefined, filePath: string) => Promise<{
-    ok: true;
-    sessionId: string;
-    title: string;
-    source: WorkspaceSourceRecord;
-  }>;
+  e2eSetWorkspaceSourcePath?: (filePath: string) => Promise<{ ok: true }>;
   onChatProgress?: (listener: (event: { message: string; requestId?: string }) => void) => () => void;
   explain: (q: string) => Promise<string>;
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;

@@ -114,7 +114,7 @@ export async function launchDesktop(options: LaunchOptions): Promise<DesktopCont
 
   const page = await app.firstWindow({ timeout: 120_000 });
   await page.waitForLoadState('domcontentloaded');
-  await page.getByRole('button', { name: '새 대화' }).waitFor({ state: 'visible', timeout: 60_000 });
+  await page.getByRole('button', { name: '새 대화', exact: true }).waitFor({ state: 'visible', timeout: 60_000 });
 
   return { app, page, dataRoot, mode: options.mode, artifactDir };
 }
