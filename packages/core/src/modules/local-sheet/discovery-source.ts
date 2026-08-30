@@ -6,10 +6,10 @@ import {
   findLocalFolder,
   parseLocalFolderConnectionConfig,
   type LocalFolderEntry,
-} from '../local-folder/connection.js';
-import { resolveFileWithinFolderRoot } from '../local-folder/path-security.js';
-import { scanFolderCheckedAsync } from '../local-folder/scan-async.js';
-import type { ScannedFile } from '../local-folder/scan.js';
+} from '../../platform/local-folder-config.js';
+import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
+import type { ScannedFile } from '../../platform/local-folder-scan.js';
 import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from '../../contracts/discovery-source.js';
 
 const SHEET_EXTENSIONS = ['csv', 'xlsx', 'xls'];

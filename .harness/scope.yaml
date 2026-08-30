@@ -412,3 +412,33 @@ main_based_work_discovery_phase_5:
     - document-engine implementation, connector behavior, and workflow runtime
   expansions:
     - "The initial architecture check after Phase 5 exposed five pre-existing Phase 2/3 dependency violations; these are recorded as the next bounded architecture phase rather than hidden in the persistence patch."
+
+main_based_work_discovery_phase_6:
+  status: completed
+  expansion_reason: "Phase 5 completion exposed five existing dependency-cruiser violations: one Work Discovery test importing local-sheet and four local-sheet discovery imports from local-folder implementation modules."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - .dependency-cruiser.cjs
+    - packages/core/src/platform/local-folder-config.ts
+    - packages/core/src/platform/local-folder-path.ts
+    - packages/core/src/platform/local-folder-scan.ts
+    - packages/core/src/platform/local-folder-scan-async.ts
+    - packages/core/src/platform/local-folder-scan-worker.ts
+    - packages/core/src/modules/local-folder/connection.ts
+    - packages/core/src/modules/local-folder/path-security.ts
+    - packages/core/src/modules/local-folder/scan.ts
+    - packages/core/src/modules/local-folder/scan-async.ts
+    - packages/core/src/modules/local-folder/scan-worker.ts
+    - packages/core/src/modules/local-sheet/discovery-source.ts
+    - packages/core/src/modules/local-sheet/discovery-source.test.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - apps/desktop/electron.vite.config.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - connector behavior, Work Discovery semantics, and workflow runtime
+    - weakening or deleting dependency-cruiser rules
+  expansions: []

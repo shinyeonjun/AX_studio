@@ -985,3 +985,59 @@ main_based_work_discovery_phase_5_task:
     decision: KEEP
     notes: "Typed document/ingest/workbook/table persistence is validated without changing the existing on-disk layout. Invalid IDs and outside stored paths fail closed. Existing .gitignore remains unrelated and unchanged."
   expansions: []
+
+main_based_work_discovery_phase_6_task:
+  name: architecture-boundary-recovery
+  evaluator_frozen: true
+  checks:
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: local-boundary-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/local-sheet/discovery-source.test.ts src/modules/local-folder/path-security.test.ts src/modules/local-folder/scan.test.ts src/modules/local-folder/scan-async.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - dependency-cruiser rules remain strict and the five baseline violations are removed by moving shared primitives behind a platform boundary
+    - Work Discovery tests no longer import connector implementation modules
+    - local-sheet discovery and the Electron worker preserve existing scan behavior
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-31T00:11:37.3592856+09:00
+    values:
+      architecture-check: "FAIL: 5 dependency violations (one Work Discovery-to-local-sheet edge and four local-sheet-to-local-folder edges)"
+      local-boundary-regression: "PASS: 5 files, 15 tests with 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+    decision: BASELINE
+    gap: "The implementation boundaries are not represented in the dependency graph even though runtime behavior is covered."
+  final:
+    recorded_at: 2026-08-31T00:19:39.7830403+09:00
+    values:
+      architecture-check: "PASS: no dependency violations, 491 modules and 1690 dependencies cruised"
+      local-boundary-regression: "PASS: 5 files, 15 tests with 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+      full-core-regression: "PASS: 117 files, 603 tests with 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; scan-worker.js emitted"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+    decision: KEEP
+    notes: "Shared local-folder primitives now have a platform-level home, compatibility wrappers preserve existing callers, and the Work Discovery test no longer crosses into local-sheet implementation code. Existing .gitignore remains unrelated and unchanged."
+  expansions: []

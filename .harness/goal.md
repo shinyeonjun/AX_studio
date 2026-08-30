@@ -839,3 +839,39 @@ IDs must remain filenames inside the configured artifact root.
   rejected without touching the outside path.
 - Full Core tests, Core eval, Core/Desktop build, root integration, and root
   Electron E2E remain green.
+
+## Current task: main-based Work Discovery production path — Phase 6
+
+Recover the module boundaries exposed by the architecture check. The existing
+dependency rules are intentional and must remain strict: Work Discovery must
+not import connector implementations, and connector modules must not import
+each other. Shared local-folder configuration, path-safety, scanning, and
+worker primitives need a platform-level home that can be used by local-sheet
+discovery without creating a module-to-module dependency.
+
+### Phase 6 success criteria
+
+- `npm run arch:check` reports zero dependency violations without weakening or
+  deleting an existing rule.
+- Work Discovery observation tests use contract-level fixtures and do not
+  import the local-sheet implementation.
+- Local-sheet discovery uses shared platform local-folder primitives while
+  existing local-folder callers and the Electron scan worker remain compatible.
+- Core typecheck, the affected Core regressions, root integration, full Core
+  tests, Core evaluation, Desktop build, and root Electron E2E remain green.
+
+### Phase 6 non-goals
+
+- Changing connector behavior, Work Discovery semantics, or workflow execution.
+- Rewriting the local-folder scanner or introducing live-provider behavior.
+- Broad module renaming, unrelated cleanup, or weakening architecture rules.
+
+### Phase 6 final checkpoint (2026-08-31)
+
+- The strict architecture check reports zero violations after moving shared
+  local-folder configuration, path, scan, async, and worker primitives behind
+  the platform boundary.
+- Work Discovery observation tests use contract-level workbook fixtures, and
+  the Electron worker still bundles and runs through the existing output path.
+- Full Core tests, Core evaluation, Core/Desktop build, root integration, and
+  root Electron E2E remain green.
