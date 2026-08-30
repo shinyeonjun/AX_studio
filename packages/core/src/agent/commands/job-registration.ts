@@ -104,6 +104,8 @@ export const AxJobProposeArgsSchema = z.object({
 
 export const AxJobCommitArgsSchema = z.object({});
 
+export type AxJobProposeArgs = z.infer<typeof AxJobProposeArgsSchema>;
+
 export interface NormalizedJobSpec {
   name: string;
   goal: string;

@@ -257,3 +257,28 @@ work_discovery_bounded_retry:
     - document-engine implementation
     - workflow publication semantics
   expansions: []
+
+agent_prompt_public_api:
+  status: active
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/index.ts
+    - packages/core/src/agent/prompt/index.ts
+    - packages/core/src/agent/prompt
+    - packages/core/src/agent/skill-load.ts
+    - packages/core/src/agent/commands/index.ts
+    - packages/core/src/agent/commands/job-registration.ts
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/harness.ts
+    - packages/core/src/agent/public-api.test.ts
+    - packages/core/package.json
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - apps/desktop
+    - external connector APIs
+    - live provider accounts
+    - job schema and persistence behavior
+  expansions: []

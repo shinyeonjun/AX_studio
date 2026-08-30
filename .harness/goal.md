@@ -667,3 +667,26 @@ silently.
 - A desktop-specific recovery card or new external connector behavior.
 - Automatic retries beyond the single startup attempt.
 - Deleting session evidence or changing workflow publication semantics.
+
+## Current task: Agent prompt and job contract public seam
+
+Finish the existing Agent WIP unit by making its prompt composition, skill
+directory override, and job proposal output type reachable through stable
+Agent entrypoints. Preserve the existing prompt and job-registration runtime
+behavior while making the intended contracts testable.
+
+### Success criteria
+
+- A caller of the Core Agent entrypoint can configure an external skill root
+  and the command prompt uses its `command/SKILL.md` content.
+- The prompt barrel is used by the existing harness and command-chat paths and
+  is reachable from the Agent entrypoint.
+- `AxJobProposeArgs` is re-exported through the command and Agent entrypoints.
+- Focused Agent tests, the full Core suite, Core typecheck/build,
+  dependency-cruiser, and diff-whitespace checks pass.
+
+### Non-goals for this slice
+
+- Changing the job schema, scheduling semantics, or workflow persistence.
+- Reworking prompt wording, model providers, or connector behavior.
+- Completing unrelated Product QA, path-security, or RDB WIP changes.

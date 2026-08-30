@@ -12,7 +12,7 @@ import { AGENT_COMMAND_CONTEXT } from './access.js';
 import { AxCommandService } from './service.js';
 import type { WorkspaceSourceRecord } from '../../store/workspace-source-service.js';
 import { type AgentScopedContextMap } from '../scoped-context.js';
-import { buildCommandProtocolPrompt } from '../prompt/command-protocol.js';
+import { buildCommandProtocolPrompt } from '../prompt/index.js';
 import {
   createAxCommandChatTransport,
 } from './transport.js';

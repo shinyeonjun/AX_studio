@@ -13,3 +13,4 @@ export {
   compileScheduledHttpSlackJob,
   coerceJobProposeArgs,
 } from './job-registration.js';
+export type { AxJobProposeArgs } from './job-registration.js';

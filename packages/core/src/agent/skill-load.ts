@@ -11,10 +11,17 @@ export interface AgentSkillFile {
   raw: string;
 }
 
+let skillsDirOverride: string | undefined;
+
+export function setAgentSkillsDir(dir: string | undefined) {
+  skillsDirOverride = dir;
+}
+
 function candidateSkillRoots(): string[] {
   const here = dirname(fileURLToPath(import.meta.url));
   const cwd = process.cwd();
   return [
+    skillsDirOverride,
     process.env.AX_AGENTS_HARNESS_SKILLS_DIR,
     process.env.AX_SKILLS_DIR,
     join(here, 'skills'),
