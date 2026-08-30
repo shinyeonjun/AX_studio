@@ -155,3 +155,105 @@ ci_required_verification:
     - live Gmail, Slack, AI, HTTP, and database calls
     - unrelated dirty worktree changes
   rationale: "Add only a truthful merge gate around checks that exist and are deterministic on CI; missing runners remain explicit gaps."
+
+work_discovery_session_contract:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - CONTEXT.md
+    - docs/adr/0001-work-discovery-session-lifecycle.md
+    - packages/core/src/work-discovery/schema.ts
+    - packages/core/src/work-discovery/service.ts
+    - packages/core/src/work-discovery/clarification
+    - packages/core/src/work-discovery/compile
+    - packages/core/src/agent/commands/discovery-gateway.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/store/repositories/workflow-repository.ts
+    - packages/core/src/work-discovery/service.test.ts
+    - packages/core/src/testing/e2e/work-discovery-e2e.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - apps/desktop
+    - external connector APIs
+    - live provider accounts
+    - broad artifact-store or document-engine refactors
+  expansions: []
+
+work_discovery_replay_cases:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - CONTEXT.md
+    - docs/adr/0001-work-discovery-session-lifecycle.md
+    - packages/core/src/store/db.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/store/repositories/work-discovery-repository.ts
+    - packages/core/src/store/discovery-repository.test.ts
+    - packages/core/src/work-discovery/service.ts
+    - packages/core/src/testing/e2e/work-discovery-e2e.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - apps/desktop
+    - external connector APIs
+    - live provider accounts
+    - schema changes outside replay-case persistence
+  expansions: []
+
+work_discovery_restart_recovery:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - CONTEXT.md
+    - docs/adr/0001-work-discovery-session-lifecycle.md
+    - packages/core/src/work-discovery/schema.ts
+    - packages/core/src/work-discovery/state-machine.ts
+    - packages/core/src/work-discovery/service.ts
+    - packages/core/src/work-discovery/service.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/store/repositories/work-discovery-repository.ts
+    - packages/core/src/store/discovery-repository.test.ts
+    - packages/core/src/agent/commands/discovery-gateway.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/bootstrap.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - apps/desktop renderer and UI
+    - external connector APIs
+    - live provider accounts
+    - document-engine implementation
+  expansions: []
+
+work_discovery_bounded_retry:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - CONTEXT.md
+    - docs/adr/0001-work-discovery-session-lifecycle.md
+    - packages/core/src/work-discovery/schema.ts
+    - packages/core/src/work-discovery/state-machine.ts
+    - packages/core/src/work-discovery/service.ts
+    - packages/core/src/work-discovery/service.test.ts
+    - packages/core/src/agent/commands/discovery-gateway.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/bootstrap.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - apps/desktop renderer and UI
+    - external connector APIs
+    - live provider accounts
+    - document-engine implementation
+    - workflow publication semantics
+  expansions: []

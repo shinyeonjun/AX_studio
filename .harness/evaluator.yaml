@@ -515,3 +515,157 @@ ci_required_verification:
       main-branch-protection: "PASS: main requires strict verify status, enforces admins, blocks force-push/deletion, and requires conversation resolution"
       local-regression: "PASS: core 102 files/444 tests, eval 11/11, build, architecture 469/1611, Product QA 3 tests/16 scenarios, diff check"
     decision: "KEEP: the repository now has one required CI gate and matching local evidence without enabling live connector side effects."
+
+work_discovery_session_contract_task:
+  name: work-discovery-session-contract-hardening
+  evaluator_frozen: true
+  checks:
+    - name: targeted-work-discovery
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts
+      required: true
+    - name: core-tests
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - desired-recurrence-survives-session-reload
+    - stale-answer-and-publish-are-rejected-without-mutation
+    - repeated-publish-does-not-create-a-duplicate-workflow
+    - unrelated-dirty-worktree-is-not-rewritten
+  baseline:
+    recorded_at: 2026-08-30T17:18:26.1361671+09:00
+    values:
+      targeted-work-discovery: "PASS: 2 files, 7 tests"
+      core-tests: "PASS: 107 files, 462 tests"
+      core-typecheck: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline includes the pre-existing dirty worktree. No Work Discovery production files were changed before this baseline."
+  final:
+    recorded_at: pending
+
+work_discovery_replay_persistence_task:
+  name: work-discovery-replay-case-persistence
+  evaluator_frozen: true
+  checks:
+    - name: targeted-work-discovery-and-storage
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/store/discovery-repository.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - one-replay-case-per-session-example
+    - replay-case-upsert-does-not-duplicate-on-rerun
+    - expected-observations-and-latest-results-are-readable
+    - session-and-example-isolation
+  baseline:
+    recorded_at: 2026-08-30T17:28:31.5642131+09:00
+    values:
+      targeted-work-discovery-and-storage: "PASS: 3 files, 13 tests"
+      core-typecheck: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline includes the first session-contract slice and pre-existing unrelated dirty worktree changes. Replay cases are not yet written by the pipeline."
+  final:
+    recorded_at: 2026-08-30T17:49:04.2949810+09:00
+    values:
+      targeted-work-discovery-and-storage: "PASS: 3 files, 16 tests"
+      core-suite: "PASS: 107 files, 470 tests"
+      core-typecheck: "PASS"
+      architecture-check: "PASS: 474 modules, 1637 dependencies"
+      core-build: "PASS"
+      desktop-build: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+
+work_discovery_restart_recovery_task:
+  name: work-discovery-restart-recovery
+  evaluator_frozen: true
+  checks:
+    - name: targeted-work-discovery-recovery
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/store/discovery-repository.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - startup-recovery-only-schedules-nonterminal-in-progress-sessions
+    - persisted-snapshot-manifest-prevents-live-reread-on-safe-checkpoint
+    - published-and-cancelled-sessions-are-not-resumed
+    - recovery-does-not-claim-to-reuse-missing-snapshot-data
+  baseline:
+    recorded_at: 2026-08-30T17:37:11.8010721+09:00
+    values:
+      targeted-work-discovery-recovery: "PASS: 3 files, 14 tests"
+      core-typecheck: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+
+work_discovery_bounded_retry_task:
+  name: bounded-work-discovery-recovery-retry
+  evaluator_frozen: true
+  checks:
+    - name: targeted-recovery-and-command
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/agent/commands/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - automatic-recovery-attempt-is-recorded-before-scheduling
+    - repeated-startup-does-not-create-an-automatic-retry-loop
+    - recovery-failure-is-needs-attention-not-terminal-failed
+    - stale-manual-retry-is-rejected-without-mutation
+    - retry-does-not-read-live-sources-when-safe-manifest-is-available
+  baseline:
+    recorded_at: 2026-08-30T17:53:42.9400100+09:00
+    values:
+      targeted-recovery-and-command: "PASS: 3 files, 32 tests"
+      core-typecheck: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline before bounded retry coverage. Existing restart recovery, session contract, replay persistence, and unrelated user WIP are present."
+  final:
+    recorded_at: 2026-08-30T18:03:44.2597768+09:00
+    values:
+      targeted-recovery-and-command: "PASS: 2 files, 30 tests"
+      core-suite: "PASS: 107 files, 474 tests"
+      core-typecheck: "PASS"
+      architecture-check: "PASS: 474 modules, 1637 dependencies"
+      core-build: "PASS"
+      desktop-build: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline before adding restart-recovery coverage. The repository already contains the prior Work Discovery contract and replay-persistence slices plus unrelated user WIP."
+  final:
+    recorded_at: 2026-08-30T17:49:04.2949810+09:00
+    values:
+      targeted-work-discovery-recovery: "PASS: 3 files, 16 tests"
+      core-suite: "PASS: 107 files, 470 tests"
+      core-typecheck: "PASS"
+      architecture-check: "PASS: 474 modules, 1637 dependencies"
+      core-build: "PASS"
+      desktop-build: "PASS"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"

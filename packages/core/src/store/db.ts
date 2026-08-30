@@ -323,6 +323,7 @@ async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   } else {
     db = new SQL.Database();
   }
+  db.run('PRAGMA foreign_keys = ON');
   const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
   applyMigrations(adapter);
   return adapter;

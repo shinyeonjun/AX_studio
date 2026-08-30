@@ -221,6 +221,10 @@ export class WorkflowStore {
     return discoveryRepo.getDiscoverySession(this.db, id);
   }
 
+  listDiscoverySessions() {
+    return discoveryRepo.listDiscoverySessions(this.db);
+  }
+
   insertDiscoveryExample(params: {
     sessionId: string;
     label?: string;
@@ -240,7 +244,20 @@ export class WorkflowStore {
     return discoveryRepo.insertDiscoverySnapshot(this.db, record);
   }
 
+  upsertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: import('../contracts/artifacts/table.js').TableArtifact }) {
+    const { table: _table, ...record } = snapshot;
+    return discoveryRepo.upsertDiscoverySnapshot(this.db, record);
+  }
+
   listDiscoverySnapshots(sessionId: string) {
     return discoveryRepo.listDiscoverySnapshots(this.db, sessionId);
+  }
+
+  upsertDiscoveryReplayCase(replayCase: discoveryRepo.DiscoveryReplayCaseRecord) {
+    return discoveryRepo.upsertDiscoveryReplayCase(this.db, replayCase);
+  }
+
+  listDiscoveryReplayCases(sessionId: string) {
+    return discoveryRepo.listDiscoveryReplayCases(this.db, sessionId);
   }
 }

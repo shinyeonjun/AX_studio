@@ -32,6 +32,7 @@ export type {
   DiscoveryInspectView,
   DiscoverySessionState,
   DiscoveryBlueprint,
+  DiscoveryRecoveryCheckpoint,
   DiscoveryStatus,
 } from './work-discovery/schema.js';
 export { observeDocumentArtifact, parseKoreanNumber } from './work-discovery/observation/observe-document.js';

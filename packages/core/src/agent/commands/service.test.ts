@@ -42,6 +42,7 @@ describe('AxCommandService', () => {
     expect(entries.find((entry) => entry.name === 'workflow.create')).toMatchObject({ lifecycle: 'workflow' });
     expect(entries.find((entry) => entry.name === 'job.propose')).toMatchObject({ lifecycle: 'workflow' });
     expect(entries.find((entry) => entry.name === 'workflow.run')).toMatchObject({ lifecycle: 'run' });
+    expect(entries.find((entry) => entry.name === 'discovery.retry')).toMatchObject({ lifecycle: 'workflow' });
     expect(entries.find((entry) => entry.name === 'job.commit')).toBeUndefined();
   });
 

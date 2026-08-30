@@ -40,6 +40,7 @@ export const AX_COMMAND_NAMES = [
   'discovery.start',
   'discovery.inspect',
   'discovery.cancel',
+  'discovery.retry',
   'discovery.answer',
   'discovery.publish',
 ] as const;

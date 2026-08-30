@@ -230,7 +230,12 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     name: 'discovery.start',
     lifecycle: 'workflow',
     description: '지난 결과물 예시로 업무 발견을 시작합니다.',
-    args: { goal: '업무 목표', exampleArtifactIds: 'artifact id list', inputArtifactIds: 'optional input artifacts' },
+    args: {
+      goal: '업무 목표',
+      exampleArtifactIds: 'artifact id list',
+      inputArtifactIds: 'optional input artifacts',
+      desiredRecurrence: 'optional cron schedule',
+    },
     mutates: true,
   },
   {
@@ -248,17 +253,29 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     mutates: true,
   },
   {
+    name: 'discovery.retry',
+    lifecycle: 'workflow',
+    description: '복구 확인이 필요한 업무 발견 세션을 마지막 안전 지점부터 다시 시도합니다.',
+    args: { sessionId: 'discovery session id', expectedRevision: 'last inspected session revision' },
+    mutates: true,
+  },
+  {
     name: 'discovery.answer',
     lifecycle: 'workflow',
     description: '모호한 후보에 대한 사용자 답변을 반영합니다.',
-    args: { sessionId: 'discovery session id', questionId: 'question id', optionId: 'selected option id' },
+    args: {
+      sessionId: 'discovery session id',
+      questionId: 'question id',
+      optionId: 'selected option id',
+      expectedRevision: 'last inspected session revision',
+    },
     mutates: true,
   },
   {
     name: 'discovery.publish',
     lifecycle: 'workflow',
     description: 'replay를 통과한 업무안을 workflow로 저장합니다.',
-    args: { sessionId: 'discovery session id', name: 'optional workflow name' },
+    args: { sessionId: 'discovery session id', name: 'optional workflow name', expectedRevision: 'last inspected session revision' },
     mutates: true,
   },
 ] as const satisfies readonly (AxCommandDefinition & { lifecycle: AxCommandLifecycle })[];
@@ -321,6 +338,7 @@ export class AxCommandService {
       artifactStore?: ArtifactStore;
       workspaceSources?: WorkspaceSourceService;
       resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
+      autoResumeDiscovery?: boolean;
     } = {},
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
@@ -328,6 +346,7 @@ export class AxCommandService {
     this.discoveryGateway = createDiscoveryCommandGateway(store, {
       artifactStore: options.artifactStore,
       resolveConnectionConfig: options.resolveConnectionConfig,
+      autoResume: options.autoResumeDiscovery,
     });
   }
 
@@ -448,6 +467,8 @@ export class AxCommandService {
         return result(command.name, ...this.discoveryGateway.inspect(command));
       case 'discovery.cancel':
         return result(command.name, ...this.discoveryGateway.cancel(command));
+      case 'discovery.retry':
+        return result(command.name, ...this.discoveryGateway.retry(command));
       case 'discovery.answer':
         return result(command.name, ...this.discoveryGateway.answer(command));
       case 'discovery.publish':
