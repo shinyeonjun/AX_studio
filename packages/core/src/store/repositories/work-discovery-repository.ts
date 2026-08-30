@@ -62,6 +62,28 @@ function parseDiscoverySessionState(stateJson: string, sessionId: string): Disco
   return parsed.data;
 }
 
+function parseArtifactIds(raw: unknown, exampleId: string, field: string): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(String(raw));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(`work discovery example ${exampleId} ${field} is corrupted: ${detail}`), {
+      code: 'invalid_discovery_example_json',
+      exampleId,
+      field,
+    });
+  }
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw Object.assign(new Error(`work discovery example ${exampleId} ${field} has an invalid shape`), {
+      code: 'invalid_discovery_example_artifact_ids',
+      exampleId,
+      field,
+    });
+  }
+  return value;
+}
+
 export function insertDiscoverySession(db: AppDatabase, state: DiscoverySessionState): void {
   db.prepare(
     `INSERT INTO work_discovery_sessions
@@ -160,8 +182,8 @@ export function listDiscoveryExamples(db: AppDatabase, sessionId: string): Disco
     id: String(row.id),
     sessionId: String(row.session_id),
     label: row.label ? String(row.label) : undefined,
-    outputArtifactIds: JSON.parse(String(row.output_artifact_ids_json)) as string[],
-    inputArtifactIds: JSON.parse(String(row.input_artifact_ids_json)) as string[],
+    outputArtifactIds: parseArtifactIds(row.output_artifact_ids_json, String(row.id), 'output_artifact_ids'),
+    inputArtifactIds: parseArtifactIds(row.input_artifact_ids_json, String(row.id), 'input_artifact_ids'),
     observationsJson: String(row.observations_json),
     createdAt: String(row.created_at),
   }));
