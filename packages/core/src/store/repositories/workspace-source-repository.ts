@@ -33,9 +33,22 @@ export interface WorkspaceSourceRecord {
 function parseSummary(value: unknown): WorkspaceSourceSummary | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   try {
-    const parsed = JSON.parse(value) as WorkspaceSourceSummary;
-    if (!parsed || typeof parsed !== 'object') return undefined;
-    return parsed;
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const isCount = (candidate: unknown) => Number.isInteger(candidate) && Number(candidate) >= 0;
+    const isPageList = (candidate: unknown) => Array.isArray(candidate) && candidate.every(isCount);
+    if (
+      !isCount(parsed.pageCount)
+      || !isCount(parsed.chunkCount)
+      || !isCount(parsed.tableCount)
+      || !isCount(parsed.imageCount)
+      || !isCount(parsed.visualPageCount)
+      || !isPageList(parsed.visualPages)
+      || typeof parsed.engine !== 'string'
+      || (parsed.ocrPageCount !== undefined && !isCount(parsed.ocrPageCount))
+      || (parsed.ocrPages !== undefined && !isPageList(parsed.ocrPages))
+    ) return undefined;
+    return parsed as unknown as WorkspaceSourceSummary;
   } catch {
     return undefined;
   }
@@ -47,6 +60,7 @@ function toRecord(row: Record<string, unknown>): WorkspaceSourceRecord {
     throw new Error(`invalid_workspace_source_status:${status}`);
   }
   const optional = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+  const summary = parseSummary(row.summary_json);
   return {
     id: String(row.id),
     sessionId: String(row.chat_id),
@@ -56,7 +70,7 @@ function toRecord(row: Record<string, unknown>): WorkspaceSourceRecord {
     status,
     ...(optional(row.engine) ? { engine: optional(row.engine) } : {}),
     ...(optional(row.document_artifact_id) ? { documentArtifactId: optional(row.document_artifact_id) } : {}),
-    ...(parseSummary(row.summary_json) ? { summary: parseSummary(row.summary_json) } : {}),
+    ...(summary ? { summary } : {}),
     ...(optional(row.error_code) ? { errorCode: optional(row.error_code) } : {}),
     ...(optional(row.error_message) ? { errorMessage: optional(row.error_message) } : {}),
     createdAt: String(row.created_at),
