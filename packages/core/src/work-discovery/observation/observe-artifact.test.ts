@@ -27,4 +27,30 @@ describe('observeArtifact', () => {
       value: { kind: 'number', value: 300 },
     });
   });
+
+  it('observes a persisted workbook and its table artifacts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-observe-workbook-'));
+    const sourcePath = join(root, 'report.csv');
+    writeFileSync(sourcePath, 'total\n300\n');
+    const materialized = readWorkbookFromPath(sourcePath);
+    const artifactStore = new ArtifactStore(join(root, 'artifacts'));
+
+    artifactStore.putJson(materialized.workbook.id, materialized.workbook);
+    for (const [tableId, table] of Object.entries(materialized.tables)) {
+      artifactStore.putJson(tableId, table);
+    }
+
+    const observations = observeArtifact(
+      'example-2',
+      materialized.workbook.id,
+      artifactStore,
+      readWorkbookFromPath,
+    );
+
+    expect(observations).toHaveLength(1);
+    expect(observations[0]).toMatchObject({
+      path: 'total',
+      value: { kind: 'number', value: 300 },
+    });
+  });
 });

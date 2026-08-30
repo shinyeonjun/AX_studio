@@ -780,6 +780,10 @@ main_based_work_discovery_phase_1_task:
 main_based_work_discovery_phase_2_task:
   name: connected-folder-spreadsheet-discovery
   evaluator_frozen: true
+  baseline_reconciliation:
+    status: partial
+    reference: "main_based_work_discovery_phase_1_keep-071"
+    notes: "The shared Core/Desktop/smoke checks were measured before Phase 2. The Phase 2-specific local-sheet regression test was introduced with the implementation, so its pre-change result is not reconstructable without backfilling evidence."
   checks:
     - name: local-sheet-discovery
       type: command
@@ -865,14 +869,14 @@ main_based_work_discovery_phase_3_task:
     - test seams are not registered for packaged production and reject paths outside test/fixtures
     - existing .gitignore remains unchanged
   final:
-    recorded_at: 2026-08-30T23:10:55.3038510+09:00
+    recorded_at: 2026-08-30T23:39:00.7298363+09:00
     values:
       desktop-discovery-e2e: "PASS: 1 Playwright test, 1 scenario"
       deterministic-product-smoke: "PASS: 4 Playwright tests, including the new Discovery scenario and generated 14-scenario batch"
-      discovery-core-regression: "PASS: 5 files, 40 tests"
-      observation-dispatch-regression: "PASS: 1 test"
+      discovery-core-regression: "PASS: 5 files, 41 tests"
+      observation-dispatch-regression: "PASS: 2 tests"
       desktop-typecheck: "PASS"
       desktop-build: "PASS: Electron main/preload/renderer"
       diff-whitespace: "PASS: git diff --check"
     decision: KEEP
-    notes: "The real Electron path now reaches ready_to_publish, isolates a new chat, and persists publication. The observation dispatch regression and the empty-stage overlay fixes were kept; existing .gitignore remains unrelated and unchanged."
+    notes: "The real Electron path now reaches ready_to_publish, isolates a new chat, and persists publication. Workbook and stored-file observation dispatch are both covered, all Core-supported cancellable review states are exposed, packaged artifact overrides are disabled, and existing .gitignore remains unrelated and unchanged."

@@ -97,7 +97,7 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
     return () => window.clearInterval(timer);
   }, [activeSessionId, activeView?.status, refresh]);
 
-  const startFromArtifact = useCallback(async (goal: string, artifactId: string, expectedContextKey?: number) => {
+  const startFromArtifact = useCallback(async (goal: string, artifactId: string, expectedContextKey: number) => {
     const contextKey = workspaceContextKeyRef.current;
     if (expectedContextKey !== undefined && expectedContextKey !== contextKey) return;
     const epoch = operationEpochRef.current;

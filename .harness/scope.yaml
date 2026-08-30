@@ -341,6 +341,7 @@ main_based_work_discovery_phase_3:
     - apps/desktop/electron/main/ipc/discovery-handlers.ts
     - apps/desktop/electron/preload/index.ts
     - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
     - apps/desktop/src/components/workspace/DiscoveryReviewCard.tsx
     - apps/desktop/src/components/workspace/ax-workspace.css
     - packages/core/src/work-discovery/observation/observe-artifact.ts
@@ -358,3 +359,4 @@ main_based_work_discovery_phase_3:
     - live provider accounts
   expansions:
     - "Desktop E2E reached the real pipeline but exposed a Core observation bug: ArtifactStore metadata was accepted as an empty DocumentArtifact, so the output CSV was never observed."
+    - "Post-commit review exposed two follow-up correctness gaps in the same path: persisted workbook JSON was hidden behind the document marker and cancellable review states were narrower than the Core state machine."

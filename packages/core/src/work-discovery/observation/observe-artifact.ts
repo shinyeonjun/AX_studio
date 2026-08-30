@@ -45,9 +45,11 @@ export function observeArtifact(
   if (tableParsed.success) return observeTableArtifact(exampleId, tableParsed.data);
 
   const json = artifactStore.getJson<unknown>(artifactId);
-  if (json && looksLikeDocumentArtifact(json)) {
-    const document = DocumentArtifactSchema.safeParse(json);
-    if (document.success) return observeDocumentArtifact(exampleId, document.data);
+  if (json) {
+    if (looksLikeDocumentArtifact(json)) {
+      const document = DocumentArtifactSchema.safeParse(json);
+      if (document.success) return observeDocumentArtifact(exampleId, document.data);
+    }
     const workbook = WorkbookArtifactSchema.safeParse(json);
     if (workbook.success) {
       const tables: Record<string, import('../../contracts/artifacts/table.js').TableArtifact> = {};

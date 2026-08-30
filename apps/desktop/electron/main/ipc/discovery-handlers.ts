@@ -50,7 +50,7 @@ function validateDiscoveryArtifactPath(rawPath: unknown): string {
 }
 
 function pickDiscoveryArtifactPath(): string | undefined {
-  const configuredPath = process.env.AX_E2E === '1'
+  const configuredPath = process.env.AX_E2E === '1' && !app.isPackaged
     ? process.env.AX_E2E_DISCOVERY_ARTIFACT_PATH?.trim() || e2eDiscoveryArtifactPath
     : undefined;
   e2eDiscoveryArtifactPath = undefined;
