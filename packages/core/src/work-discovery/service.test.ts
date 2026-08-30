@@ -206,6 +206,27 @@ describe('WorkDiscoveryService', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const now = new Date().toISOString();
+    const source = {
+      id: 'test:sales',
+      connector: 'test',
+      label: 'Sales',
+      kind: 'table' as const,
+      relevance: 1,
+    };
+    const baseState: DiscoverySessionState = {
+      id: 'wd_recovery',
+      status: checkpointStatus,
+      revision: 4,
+      userGoal: '저장된 자료로 매출 보고 자동화',
+      exampleIds: [],
+      sourceInventory: [source],
+      observations: [],
+      candidates: [],
+      budgets: { sourceReadsUsed: 1, sourceReadsMax: 12, elapsedMs: 10 },
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.saveDiscoverySession(baseState);
     const example = store.insertDiscoveryExample({
       sessionId: 'wd_recovery',
       outputArtifactIds: ['output_already_observed'],
@@ -218,13 +239,6 @@ describe('WorkDiscoveryService', () => {
     });
     const manifestPath = join(snapshotDir, `${table.id}.json`);
     writeFileSync(manifestPath, JSON.stringify(table));
-    const source = {
-      id: 'test:sales',
-      connector: 'test',
-      label: 'Sales',
-      kind: 'table' as const,
-      relevance: 1,
-    };
     const observations = [{
       id: 'observation_recovery_total',
       exampleId: example.id,
@@ -235,17 +249,9 @@ describe('WorkDiscoveryService', () => {
       required: true,
     }];
     store.saveDiscoverySession({
-      id: 'wd_recovery',
-      status: checkpointStatus,
-      revision: 4,
-      userGoal: '저장된 자료로 매출 보고 자동화',
+      ...baseState,
       exampleIds: [example.id],
-      sourceInventory: [source],
       observations,
-      candidates: [],
-      budgets: { sourceReadsUsed: 1, sourceReadsMax: 12, elapsedMs: 10 },
-      createdAt: now,
-      updatedAt: now,
     });
     store.insertDiscoverySnapshot({
       id: 'snap_recovery',
@@ -296,11 +302,6 @@ describe('WorkDiscoveryService', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const now = new Date().toISOString();
-    const example = store.insertDiscoveryExample({
-      sessionId: 'wd_retry',
-      outputArtifactIds: ['output_already_observed'],
-      inputArtifactIds: [],
-    });
     const source = {
       id: 'test:sales',
       connector: 'test',
@@ -308,6 +309,25 @@ describe('WorkDiscoveryService', () => {
       kind: 'table' as const,
       relevance: 1,
     };
+    const baseState: DiscoverySessionState = {
+      id: 'wd_retry',
+      status: 'synthesizing',
+      revision: 4,
+      userGoal: '복구 재시도 테스트',
+      exampleIds: [],
+      sourceInventory: [source],
+      observations: [],
+      candidates: [],
+      budgets: { sourceReadsUsed: 1, sourceReadsMax: 12, elapsedMs: 10 },
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.saveDiscoverySession(baseState);
+    const example = store.insertDiscoveryExample({
+      sessionId: 'wd_retry',
+      outputArtifactIds: ['output_already_observed'],
+      inputArtifactIds: [],
+    });
     const observations = [{
       id: 'observation_retry_total',
       exampleId: example.id,
@@ -320,17 +340,9 @@ describe('WorkDiscoveryService', () => {
     const table = buildTableArtifact({ id: 'table_retry', headers: ['amount'], matrix: [[100]] });
     const manifestPath = join(snapshotDir, `${table.id}.json`);
     store.saveDiscoverySession({
-      id: 'wd_retry',
-      status: 'synthesizing',
-      revision: 4,
-      userGoal: '복구 재시도 테스트',
+      ...baseState,
       exampleIds: [example.id],
-      sourceInventory: [source],
       observations,
-      candidates: [],
-      budgets: { sourceReadsUsed: 1, sourceReadsMax: 12, elapsedMs: 10 },
-      createdAt: now,
-      updatedAt: now,
     });
     store.insertDiscoverySnapshot({
       id: 'snap_retry',

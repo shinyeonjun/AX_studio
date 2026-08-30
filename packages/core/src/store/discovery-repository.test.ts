@@ -59,7 +59,7 @@ describe('discovery persistence', () => {
       status: 'synthesizing',
       revision: 1,
       userGoal: '월간 보고',
-      exampleIds: ['ex_replay_case'],
+      exampleIds: [],
       sourceInventory: [],
       observations: [],
       candidates: [],
@@ -68,7 +68,7 @@ describe('discovery persistence', () => {
       updatedAt: now,
     };
     insertDiscoverySession(db, state);
-    insertDiscoveryExample(db, {
+    const example = insertDiscoveryExample(db, {
       sessionId: state.id,
       outputArtifactIds: ['doc_replay'],
       inputArtifactIds: [],
@@ -77,7 +77,7 @@ describe('discovery persistence', () => {
     upsertDiscoveryReplayCase(db, {
       id: 'replay_wd_replay_case_ex_replay_case',
       sessionId: state.id,
-      exampleId: 'ex_replay_case',
+      exampleId: example.id,
       snapshotSetId: 'snapset_wd_replay_case_ex_replay_case',
       expectedObservationsJson: '[{"path":"field.total","value":100}]',
       lastResultJson: '[{"candidateId":"candidate_1","pass":false}]',
@@ -86,7 +86,7 @@ describe('discovery persistence', () => {
     upsertDiscoveryReplayCase(db, {
       id: 'replay_wd_replay_case_ex_replay_case',
       sessionId: state.id,
-      exampleId: 'ex_replay_case',
+      exampleId: example.id,
       snapshotSetId: 'snapset_wd_replay_case_ex_replay_case',
       expectedObservationsJson: '[{"path":"field.total","value":100}]',
       lastResultJson: '[{"candidateId":"candidate_1","pass":true}]',

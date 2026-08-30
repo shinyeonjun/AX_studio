@@ -6,6 +6,15 @@ import { createDatabaseAsync } from './db.js';
 import { WorkflowStore } from './workflow-store.js';
 
 describe('legacy database migrations', () => {
+  it('enables foreign-key enforcement for every database backend', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      expect((db.prepare('PRAGMA foreign_keys').get() as { foreign_keys?: number } | undefined)?.foreign_keys).toBe(1);
+    } finally {
+      db.close?.();
+    }
+  });
+
   it('renames executions.skill_id to workflow_id on existing databases', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'ax-legacy-db-'));
     const filePath = join(directory, 'ax-studio.db');
