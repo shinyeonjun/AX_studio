@@ -22,6 +22,36 @@ interface ActivePushTransport {
 
 type PushTriggerConfigOverrides = Readonly<Record<string, Record<string, unknown> | undefined>>;
 
+function isTriggerCursor(value: unknown): value is TriggerCursor {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const cursor = value as Record<string, unknown>;
+  const optionalBooleanFields = ['initialized'] as const;
+  const optionalStringFields = [
+    'historyId',
+    'lastMessageTs',
+    'channel',
+    'channelId',
+    'folderId',
+    'folderConfigKey',
+  ] as const;
+  const optionalStringArrayFields = ['seenMessageIds', 'seenFileKeys'] as const;
+
+  return optionalBooleanFields.every((key) => cursor[key] === undefined || typeof cursor[key] === 'boolean')
+    && optionalStringFields.every((key) => cursor[key] === undefined || typeof cursor[key] === 'string')
+    && optionalStringArrayFields.every(
+      (key) => cursor[key] === undefined
+        || (Array.isArray(cursor[key]) && cursor[key].every((entry) => typeof entry === 'string')),
+    );
+}
+
+function parseTriggerCursorStore(value: unknown): TriggerCursorStore {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).map(([workflowId, cursor]) => [workflowId, isTriggerCursor(cursor) ? cursor : {}]),
+  );
+}
+
 function triggerInputFromEvent(event: TriggerEvent): Record<string, unknown> {
   const { body: bodyField, ...payload } = event.payload;
   const input: Record<string, unknown> = {
@@ -253,7 +283,9 @@ export class TriggerEngine {
   }
 
   private loadCursors(): TriggerCursorStore {
-    return this.store.getSetting<TriggerCursorStore>(TRIGGER_CURSOR_SETTING_KEY, {});
+    return parseTriggerCursorStore(
+      this.store.getSetting<unknown>(TRIGGER_CURSOR_SETTING_KEY, {}),
+    );
   }
 
   private saveCursors(cursors: TriggerCursorStore) {
