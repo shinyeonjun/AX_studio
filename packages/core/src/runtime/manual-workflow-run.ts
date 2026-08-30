@@ -48,7 +48,7 @@ export async function runManualWorkflow(
   ir: WorkflowIR,
   options: ManualWorkflowRunOptions,
 ): Promise<ExecutionResult> {
-  if (!deps.store.getSetting<boolean>('globalActive', true)) {
+  if (!deps.store.getGlobalActive()) {
     return deps.runtime.executeWorkflow(ir, {
       ephemeral: options.ephemeral,
       triggerType: 'manual',
