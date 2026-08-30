@@ -38,6 +38,8 @@ interface AxWorkspaceChatProps {
   onAttachExample?: () => Promise<void>;
   onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
   onDiscoveryPublish?: () => Promise<void> | void;
+  onDiscoveryCancel?: () => Promise<void> | void;
+  onDiscoveryRetry?: () => Promise<void> | void;
 }
 
 const WELCOME_EXAMPLES: Array<{ label: string; text: string }> = [
@@ -144,6 +146,8 @@ export function AxWorkspaceChat({
   onAttachExample,
   onDiscoveryAnswer,
   onDiscoveryPublish,
+  onDiscoveryCancel,
+  onDiscoveryRetry,
 }: AxWorkspaceChatProps) {
   const threadMessages = useMemo(() => toThreadMessages(messages), [messages]);
   // Interactivity follows the newest assistant message, not the newest message:
@@ -240,6 +244,8 @@ export function AxWorkspaceChat({
                 busy={discoveryBusy}
                 onAnswer={onDiscoveryAnswer}
                 onPublish={onDiscoveryPublish}
+                onCancel={onDiscoveryCancel}
+                onRetry={onDiscoveryRetry}
               />
             )}
           </ThreadPrimitive.Viewport>

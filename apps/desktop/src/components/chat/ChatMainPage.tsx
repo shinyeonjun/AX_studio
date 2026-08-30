@@ -18,6 +18,7 @@ interface ChatMainPageProps {
 
 export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const discovery = useDiscovery({
+    workspaceContextKey: workspaceChat.workspaceContextKey,
     onPublished: async () => {
       await workspaceChat.reset();
     },
@@ -77,6 +78,8 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
         onDiscoveryAnswer={discovery.answer}
         onDiscoveryPublish={() => void discovery.publish()}
+        onDiscoveryCancel={discovery.cancel}
+        onDiscoveryRetry={discovery.retry}
       />
     </div>
   );

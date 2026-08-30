@@ -550,7 +550,15 @@ work_discovery_session_contract_task:
       diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
     notes: "Baseline includes the pre-existing dirty worktree. No Work Discovery production files were changed before this baseline."
   final:
-    recorded_at: pending
+    recorded_at: 2026-08-30T22:43:10.8909222+09:00
+    values:
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Workspace context invalidation, revision-aware answer/publish, retry IPC, and bounded cancel/retry UI are implemented. Existing .gitignore remains unrelated and unchanged."
 
 work_discovery_replay_persistence_task:
   name: work-discovery-replay-case-persistence
@@ -718,3 +726,45 @@ agent_prompt_public_api_task:
       architecture: "PASS: 483 modules, 1665 dependencies"
       diff-whitespace: "PASS: git diff --check; CRLF normalization warnings only"
     decision: "KEEP: the existing Agent WIP now has a tested public seam without changing prompt or job runtime semantics."
+
+main_based_work_discovery_phase_1_task:
+  name: main-based-work-discovery-session-boundary
+  evaluator_frozen: true
+  checks:
+    - name: discovery-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/agent/commands/service.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: deterministic-product-smoke
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a new Workspace chat has no Discovery card from a previous chat
+    - selecting an existing Workspace chat does not retain another chat's Discovery session
+    - stale answer/publish responses are visible as a conflict
+    - cancel and retry controls are only enabled for valid Discovery states
+    - unrelated dirty .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T22:33:10.8302558+09:00
+    values:
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline ran from codex/work-discovery-completion-20260830 at origin/main 99050ee. Existing dirty .gitignore is unrelated and was not changed."
+  final:
+    recorded_at: pending

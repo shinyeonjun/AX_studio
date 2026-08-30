@@ -61,6 +61,18 @@ export function registerDiscoveryHandlers() {
     }, agentContext);
   });
 
+  ipcHandle('ax:discoveryRetry', async (_event, payload: unknown) => {
+    const core = getCore();
+    const args =
+      payload && typeof payload === 'object'
+        ? (payload as Record<string, unknown>)
+        : {};
+    return core.commandService.execute({
+      name: 'discovery.retry',
+      args,
+    }, agentContext);
+  });
+
   ipcHandle('ax:discoveryAnswer', async (_event, payload: unknown) => {
     const core = getCore();
     const args =

@@ -183,6 +183,10 @@ export interface AxApi {
   }) => Promise<AxCommandResult>;
   discoveryInspect: (sessionId: string) => Promise<AxCommandResult>;
   discoveryCancel: (sessionId: string) => Promise<AxCommandResult>;
+  discoveryRetry: (payload: {
+    sessionId: string;
+    expectedRevision: number;
+  }) => Promise<AxCommandResult>;
   discoveryAnswer: (payload: {
     sessionId: string;
     questionId: string;

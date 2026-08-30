@@ -17,6 +17,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   const activeRequestIdRef = useRef<string | undefined>(undefined);
   const busyRef = useRef(false);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | undefined>();
+  const [workspaceContextKey, setWorkspaceContextKey] = useState(0);
   const [chatMessages, setChatMessages] = useState<WorkspaceChatMessage[]>([]);
   const [workspaceWorkflowState, setWorkspaceWorkflowState] = useState<WorkspaceWorkflowState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,6 +66,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const reset = () => {
+    setWorkspaceContextKey((current) => current + 1);
     detachActiveRequest();
     invalidateSession();
     workspaceSessionIdRef.current = undefined;
@@ -88,6 +90,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const loadWorkspaceChat = async (id: string) => {
+    setWorkspaceContextKey((current) => current + 1);
     detachActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
@@ -126,6 +129,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   };
 
   const openWorkChat = async (workflowId: string) => {
+    setWorkspaceContextKey((current) => current + 1);
     detachActiveRequest();
     invalidateSession();
     const epoch = sessionEpochRef.current;
@@ -351,6 +355,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     startNewChat,
     loadWorkspaceChat,
     workspaceSessionId,
+    workspaceContextKey,
     openWorkChat,
     workflowRegistered,
     registerWorkflow,

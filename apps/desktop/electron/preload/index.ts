@@ -123,6 +123,8 @@ contextBridge.exposeInMainWorld('ax', {
   }) => ipcRenderer.invoke('ax:discoveryStart', payload),
   discoveryInspect: (sessionId: string) => ipcRenderer.invoke('ax:discoveryInspect', sessionId),
   discoveryCancel: (sessionId: string) => ipcRenderer.invoke('ax:discoveryCancel', sessionId),
+  discoveryRetry: (payload: { sessionId: string; expectedRevision: number }) =>
+    ipcRenderer.invoke('ax:discoveryRetry', payload),
   discoveryAnswer: (payload: {
     sessionId: string;
     questionId: string;
