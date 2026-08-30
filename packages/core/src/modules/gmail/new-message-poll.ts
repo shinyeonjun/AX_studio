@@ -161,8 +161,7 @@ export async function pollGmailNewMessages(
       },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('historyId') || isNotFoundError(err)) {
+    if (isNotFoundError(err)) {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
       const seenMessageIds = trimSeenIds(
