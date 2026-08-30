@@ -92,8 +92,9 @@ contextBridge.exposeInMainWorld('ax', {
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),
   listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
   attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
-  e2eAttachWorkspaceSource: (sessionId: string | null | undefined, filePath: string) =>
-    ipcRenderer.invoke('ax:e2eAttachWorkspaceSource', sessionId, filePath),
+  ...(process.env.AX_E2E === '1'
+    ? { e2eSetWorkspaceSourcePath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetWorkspaceSourcePath', filePath) }
+    : {}),
   onChatProgress: (listener: (event: { message: string; requestId?: string }) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: { message: string; requestId?: string }) =>
       listener(payload);
