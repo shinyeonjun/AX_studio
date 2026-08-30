@@ -93,7 +93,12 @@ export class Scheduler {
   }
 
   private lastFired(): Record<string, string> {
-    return this.store.getSetting<Record<string, string>>('scheduler.lastFired', {});
+    const stored = this.store.getSetting<unknown>('scheduler.lastFired', {});
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+
+    return Object.fromEntries(
+      Object.entries(stored).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    );
   }
 
   private markFired(workflowId: string) {
