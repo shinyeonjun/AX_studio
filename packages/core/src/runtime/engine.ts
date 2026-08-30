@@ -30,6 +30,7 @@ import {
   validateInputSchema,
   validateOutputContract,
 } from './output-contract.js';
+import { suggestRepairCandidates } from '../workflow/repair.js';
 
 type PendingError = Error & {
   code?: string;
@@ -295,7 +296,10 @@ export class WorkflowRuntime {
         );
         if (ir.outputContract && step.type === 'action') {
           const input = validateInputSchema(ir.outputContract, step.id, stepResults[step.id]);
-          if (!input.ok) throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          if (!input.ok) {
+            this.recordRepairProposal(ir, step.id, stepResults[step.id]);
+            throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          }
         }
         this.reportStepProgress(ctx, step, 'step_completed');
       } catch (err) {
@@ -361,6 +365,24 @@ export class WorkflowRuntime {
       at,
       message,
     });
+  }
+
+  private recordRepairProposal(workflow: WorkflowIR, stepId: string, data: unknown): void {
+    try {
+      if (!workflow.id || !workflow.outputContract) return;
+      // Ephemeral plans and unsaved drafts must not create durable repair state.
+      if (!this.config.store.getWorkflow(workflow.id, workflow.version)) return;
+      const candidates = suggestRepairCandidates(workflow.outputContract, stepId, data);
+      if (candidates.length === 0) return;
+      this.config.store.createRepairProposal({
+        workflowId: workflow.id,
+        baseVersion: workflow.version,
+        candidates,
+      });
+    } catch {
+      // The quality gate remains authoritative even if the optional proposal
+      // persistence path is unavailable.
+    }
   }
 
   setGlobalActive(active: boolean) {
@@ -553,7 +575,10 @@ export class WorkflowRuntime {
         stepResults[actionId] = result.data;
         if (ir.outputContract) {
           const input = validateInputSchema(ir.outputContract, actionId, result.data);
-          if (!input.ok) throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          if (!input.ok) {
+            this.recordRepairProposal(ir, actionId, result.data);
+            throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          }
         }
       }
 

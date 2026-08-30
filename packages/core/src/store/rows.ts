@@ -57,3 +57,15 @@ export interface ConnectionRow {
   connected: number;
   config_json: string | null;
 }
+
+export interface WorkflowRepairProposalRow {
+  id: string;
+  workflow_id: string;
+  base_version: number;
+  status: string;
+  dedupe_key: string;
+  proposal_json: string;
+  applied_version: number | null;
+  created_at: string;
+  updated_at: string;
+}

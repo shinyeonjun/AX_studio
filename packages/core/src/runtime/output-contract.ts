@@ -117,12 +117,13 @@ function inferColumnType(values: unknown[]): InputContractColumnType {
     : 'string';
 }
 
-interface ActualColumn {
+export interface ActualInputColumn {
   name: string;
   type: InputContractColumnType;
 }
 
-function actualColumns(value: unknown): ActualColumn[] | undefined {
+/** Describes only source column names/types; row values never leave this seam. */
+export function describeInputColumns(value: unknown): ActualInputColumn[] | undefined {
   const table = TableArtifactSchema.safeParse(value);
   if (table.success) {
     return table.data.columns.map((column) => ({ name: column.name, type: column.type }));
@@ -142,7 +143,7 @@ function numericType(type: InputContractColumnType): boolean {
   return type === 'number' || type === 'integer' || type === 'currency' || type === 'percentage';
 }
 
-function compatibleColumnType(
+export function inputColumnTypesCompatible(
   expected: InputContractColumnType,
   actual: InputContractColumnType,
 ): boolean {
@@ -162,7 +163,7 @@ export function validateInputSchema(
 ): ContractCheckResult {
   const schema = contract.inputSchemas.find((entry) => entry.stepId === stepId);
   if (!schema || schema.columns.length === 0) return ok();
-  const columns = actualColumns(data);
+  const columns = describeInputColumns(data);
   if (!columns) {
     return {
       ok: false,
@@ -189,7 +190,7 @@ export function validateInputSchema(
       });
       continue;
     }
-    if (!compatibleColumnType(expected.type, actual)) {
+    if (!inputColumnTypesCompatible(expected.type, actual)) {
       issues.push({
         code: 'schema_type_changed',
         path: expected.name,

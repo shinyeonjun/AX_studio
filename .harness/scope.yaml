@@ -483,3 +483,37 @@ main_based_work_discovery_phase_9:
     - Phase 10 repair behavior, proposal storage, and workflow auto-remapping
   expansions:
     - "The master-plan Phase 9 requires technical completion and result-quality failure to be distinct in the UI; add only the activity-state fields and labels needed to render that distinction."
+
+main_based_work_discovery_phase_10:
+  status: completed
+  expansion_reason: "Phase 9 completed the quality gate; the next master-plan step is conservative repair that proposes, replays, and version-applies only source-column renames without changing workflow meaning."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/repair.ts
+    - packages/core/src/workflow/repair.test.ts
+    - packages/core/src/runtime/output-contract.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/store/db.ts
+    - packages/core/src/store/rows.ts
+    - packages/core/src/store/repositories/workflow-repair-repository.ts
+    - packages/core/src/store/repositories/workflow-repair-repository.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/work-discovery/repair.ts
+    - packages/core/src/work-discovery/repair.test.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/repair-gateway.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - docs/reports/work-discovery-transition.phase-10.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - automatic workflow meaning changes, raw historical payload persistence, and external connector side effects
+    - connector implementations, Desktop redesign, and live provider accounts
+  expansions: []

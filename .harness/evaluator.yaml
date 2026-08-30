@@ -1147,3 +1147,116 @@ main_based_work_discovery_phase_9_task:
     decision: KEEP
     notes: "Output/input drift is detected before external delivery; the 80–120 to 3 fixture produced zero Slack messages, while the existing one-sample 300 to 600 path remained compatible. Contracts and explain/UI surfaces omit raw rows and payloads. Existing .gitignore remains unrelated and unchanged."
   expansions: []
+
+main_based_work_discovery_phase_10_task:
+  name: conservative-workflow-repair
+  evaluator_frozen: true
+  checks:
+    - name: repair-candidate-and-apply
+      type: command
+      command: npm test -w @ax-studio/core -- src/workflow/repair.test.ts
+      required: true
+    - name: historical-replay
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/repair.test.ts
+      required: true
+    - name: repair-persistence
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/repositories/workflow-repair-repository.test.ts
+      required: true
+    - name: repair-runtime-proposal
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/engine.test.ts
+      required: true
+    - name: repair-command
+      type: command
+      command: npm test -w @ax-studio/core -- src/agent/commands/service.test.ts
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: full-core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval -w @ax-studio/core
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - repair proposals are bounded and contain no raw rows, values, credentials, or connector payloads
+    - inspect and apply use persisted historical snapshots only; unavailable evidence blocks apply
+    - apply mutates only selected source-column mapping/input schema and creates a new version
+    - thresholds, recipients, approvals, triggers, schedules, side effects, and external action params are unchanged
+    - the prior workflow version remains readable for rollback
+    - runtime never auto-applies a proposal and existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-31T01:01:41.9403327+09:00
+    values:
+      repair-candidate-and-apply: "PENDING: Phase 10 repair module and test seam do not exist yet"
+      historical-replay: "PENDING: historical repair replay module and fixture do not exist yet"
+      repair-persistence: "PENDING: repair proposal persistence table/repository do not exist yet"
+      repair-runtime-proposal: "PASS: src/runtime/engine.test.ts, 25 tests; schema drift does not persist repair proposals"
+      repair-command: "PASS: src/agent/commands/service.test.ts, 19 tests; repair commands are not cataloged"
+      architecture-check: "PASS: zero dependency violations, 495 modules and 1705 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: Phase 9 checkpoint, 119 files/609 tests/3 skipped"
+      core-evaluation: "PASS: Phase 9 checkpoint, 11 tests"
+      production-build: "PASS: Phase 9 checkpoint"
+      desktop-typecheck: "PASS: Phase 9 checkpoint"
+      root-integration-runner: "PASS: Phase 9 checkpoint, 9 suites/56 tests"
+      test-typecheck: "PASS: Phase 9 checkpoint"
+      root-e2e-runner: "PASS: Phase 9 checkpoint, 4 Playwright tests including 14-scenario batch"
+      diff-whitespace: "PASS: harness-only Phase 10 setup"
+    gap: "Phase 9 blocks drift but cannot explain a safe candidate, replay it against historical evidence, or create a reversible versioned repair."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T01:26:49.0009816+09:00
+    values:
+      repair-candidate-and-apply: "PASS: src/workflow/repair.test.ts, 3 tests"
+      historical-replay: "PASS: src/work-discovery/repair.test.ts, 2 tests; 3/3 historical cases plus unavailable evidence"
+      repair-persistence: "PASS: src/store/repositories/workflow-repair-repository.test.ts, 2 tests"
+      repair-runtime-proposal: "PASS: src/runtime/engine.test.ts, 26 tests"
+      repair-command: "PASS: src/agent/commands/service.test.ts, 21 tests"
+      architecture-check: "PASS: zero dependency violations, 502 modules and 1750 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 122 files/620 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      root-integration-runner: "PASS: 9 suites/56 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: 4 Product QA tests including the 14-scenario batch; run-2026-08-30T16-23-17-144Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "Repair proposals are bounded to source-column rename/remap candidates, historical replay is fail-closed, apply creates a new version while retaining the prior version, and no runtime auto-apply or protected workflow meaning changes occur."
+  expansions: []

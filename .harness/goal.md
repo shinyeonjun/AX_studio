@@ -921,3 +921,59 @@ returning raw execution parameters or result payloads.
   technical completion and result-quality failure.
 - Core, evaluation, build, Desktop typecheck, integration, Electron E2E,
   architecture, and whitespace checks passed.
+
+## Current task: main-based Work Discovery production path — Phase 10
+
+Add conservative repair support for persisted Work Discovery workflows. When
+the Phase 9 input-schema gate detects a missing or changed source column, the
+runtime may persist a bounded rename/remap proposal, but it must never change
+workflow meaning automatically. A repair can be inspected, rejected, or
+applied only after every persisted historical replay case passes. Applying a
+repair creates a new workflow version and leaves the prior version available
+for rollback.
+
+### Phase 10 success criteria
+
+- Input-schema drift can produce a deduplicated, bounded repair proposal with
+  rename/remap candidates and no raw rows, values, credentials, or payloads.
+- `repair.list`, `repair.inspect`, `repair.apply`, and `repair.reject` are
+  exposed through the command boundary with stale-version and lifecycle
+  checks.
+- A candidate is applicable only when every available historical replay case
+  passes; missing or unreadable replay evidence blocks apply.
+- Apply changes only the selected source-column mapping and its matching input
+  schema, creates a new workflow version, and does not alter thresholds,
+  recipients, approvals, triggers, schedules, side effects, or external action
+  parameters.
+- Reject is durable and apply is reversible by retaining the pre-repair
+  workflow version; no automatic repair occurs during runtime execution.
+- Core typecheck, focused repair/replay/command/runtime tests, full Core,
+  evaluation, build, Desktop typecheck, integration, Electron E2E,
+  architecture, and whitespace checks pass.
+
+### Phase 10 non-goals
+
+- No automatic workflow remapping or semantic inference beyond proposing a
+  user-reviewable column rename/remap candidate.
+- No threshold, recipient, approval, AND/OR, schedule, trigger, side-effect,
+  connector, or external action parameter changes.
+- No live-source replay, provider calls, or external connector side effects
+  during inspect or apply.
+- No new workflow editor or broad UI redesign; command and existing versioned
+  storage surfaces are sufficient for this phase.
+
+### Phase 10 final checkpoint (2026-08-31T01:26:49.0009816+09:00)
+
+- Conservative repair is complete: input-schema drift can create a bounded,
+  deduplicated rename/remap proposal; inspect and apply replay only persisted
+  historical snapshots, and unavailable evidence blocks apply.
+- `repair.list`, `repair.inspect`, `repair.apply`, and `repair.reject` enforce
+  read/mutation boundaries, stale-version checks, lifecycle checks, and
+  user-selected candidate application.
+- Applying a candidate changes only the source-column mapping and matching
+  input schema, creates the next workflow version, and retains the previous
+  version for rollback. Runtime execution never auto-applies a repair.
+- Focused repair/runtime/command checks passed 5 files/54 tests; full Core
+  passed 122 files/620 tests with 3 skips; evaluation passed 11/11;
+  architecture, typechecks, production build, integration, Electron E2E,
+  and whitespace checks passed.

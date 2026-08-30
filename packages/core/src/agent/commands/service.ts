@@ -35,6 +35,10 @@ import {
   type DiscoveryCommandGateway,
 } from './discovery-gateway.js';
 import {
+  createRepairCommandGateway,
+  type RepairCommandGateway,
+} from './repair-gateway.js';
+import {
   AX_COMMAND_NAMES,
   AxCommandSchema,
   AxCapabilityInvokeArgsSchema,
@@ -197,6 +201,34 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     description: '실행이 기술적으로 끝났는지와 결과 품질이 왜 통과·차단되었는지 안전하게 설명합니다.',
     args: { executionId: 'execution id' },
     mutates: false,
+  },
+  {
+    name: 'repair.list',
+    lifecycle: 'read',
+    description: 'schema drift에서 생성된 보수적 repair 제안 목록을 조회합니다.',
+    args: { workflowId: 'workflow id (optional)', status: 'proposed | applied | rejected (optional)' },
+    mutates: false,
+  },
+  {
+    name: 'repair.inspect',
+    lifecycle: 'read',
+    description: 'repair 후보와 과거 replay 결과를 조회합니다. 조회만으로 workflow는 변경되지 않습니다.',
+    args: { repairId: 'repair.list에서 반환한 repair id' },
+    mutates: false,
+  },
+  {
+    name: 'repair.apply',
+    lifecycle: 'workflow',
+    description: '모든 과거 replay를 통과한 선택 후보만 새 workflow 버전으로 적용합니다.',
+    args: { repairId: 'repair id', candidateId: 'candidate id', baseVersion: '확인한 workflow version' },
+    mutates: true,
+  },
+  {
+    name: 'repair.reject',
+    lifecycle: 'workflow',
+    description: 'repair 제안을 적용하지 않기로 기록합니다.',
+    args: { repairId: 'repair id', baseVersion: '확인한 workflow version', reason: '거부 사유 (optional)' },
+    mutates: true,
   },
   {
     name: 'job.propose',
@@ -409,6 +441,7 @@ export class AxCommandService {
       workspaceSources?: WorkspaceSourceService;
       resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
       autoResumeDiscovery?: boolean;
+      repairSnapshotRoot?: string;
     } = {},
   ) {
     this.readGateway = options.readGateway ?? createDesignToolReadGateway(store);
@@ -418,11 +451,15 @@ export class AxCommandService {
       resolveConnectionConfig: options.resolveConnectionConfig,
       autoResume: options.autoResumeDiscovery,
     });
+    this.repairGateway = createRepairCommandGateway(store, {
+      snapshotRoot: options.repairSnapshotRoot,
+    });
   }
 
   private readonly readGateway: AxCommandReadGateway;
   private readonly workflowGateway: AxWorkflowCommandGateway;
   private readonly discoveryGateway: DiscoveryCommandGateway;
+  private readonly repairGateway: RepairCommandGateway;
   private readonly pendingJobs = new Map<string, PendingJobDraft>();
 
   /**
@@ -514,6 +551,14 @@ export class AxCommandService {
         return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
       case 'execution.explain':
         return result(command.name, ...this.explainExecution(command));
+      case 'repair.list':
+        return result(command.name, ...this.repairGateway.list(command));
+      case 'repair.inspect':
+        return result(command.name, ...this.repairGateway.inspect(command));
+      case 'repair.apply':
+        return result(command.name, ...this.repairGateway.apply(command));
+      case 'repair.reject':
+        return result(command.name, ...this.repairGateway.reject(command));
       case 'job.propose':
         return result(command.name, ...proposeJob({
           store: this.store,
