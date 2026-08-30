@@ -6,6 +6,7 @@ export function parseCsvMatrix(text: string): { headers: string[]; matrix: unkno
   let field = '';
   let inQuotes = false;
   let rowHadDelimiter = false;
+  let rowHadQuotedField = false;
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index]!;
@@ -23,6 +24,7 @@ export function parseCsvMatrix(text: string): { headers: string[]; matrix: unkno
     }
     if (char === '"' && field.length === 0) {
       inQuotes = true;
+      rowHadQuotedField = true;
       continue;
     }
     if (char === ',') {
@@ -34,16 +36,17 @@ export function parseCsvMatrix(text: string): { headers: string[]; matrix: unkno
     if (char === '\n') {
       row.push(field);
       field = '';
-      if (rowHadDelimiter || row.some((cell) => cell.length > 0)) rows.push(row);
+      if (rowHadDelimiter || rowHadQuotedField || row.some((cell) => cell.length > 0)) rows.push(row);
       row = [];
       rowHadDelimiter = false;
+      rowHadQuotedField = false;
       continue;
     }
     if (char === '\r') continue;
     field += char;
   }
   row.push(field);
-  if (rowHadDelimiter || row.some((cell) => cell.length > 0)) rows.push(row);
+  if (rowHadDelimiter || rowHadQuotedField || row.some((cell) => cell.length > 0)) rows.push(row);
 
   if (rows.length === 0) return { headers: [], matrix: [] };
   const headers = rows[0]!.map((cell) => cell.trim());

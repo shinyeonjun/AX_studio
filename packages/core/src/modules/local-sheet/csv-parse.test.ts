@@ -39,4 +39,18 @@ describe('parseCsvMatrix', () => {
       ],
     });
   });
+
+  it('preserves a quoted empty value in a single-column row', () => {
+    expect(parseCsvMatrix('value\n""\n\nnext')).toEqual({
+      headers: ['value'],
+      matrix: [
+        [''],
+        ['next'],
+      ],
+    });
+    expect(parseCsvMatrix('value\n""')).toEqual({
+      headers: ['value'],
+      matrix: [['']],
+    });
+  });
 });
