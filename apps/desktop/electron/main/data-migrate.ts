@@ -11,7 +11,12 @@ interface MigrationRecord {
 
 function readMigration(paths: AxDataPaths): MigrationRecord | null {
   if (!existsSync(paths.migration)) return null;
-  const parsed: unknown = JSON.parse(readFileSync(paths.migration, 'utf8'));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(paths.migration, 'utf8'));
+  } catch {
+    throw new Error(`AX Studio 저장소 마이그레이션 기록을 읽을 수 없습니다: ${paths.migration}`);
+  }
   if (!parsed || typeof parsed !== 'object') {
     throw new Error(`AX Studio 저장소 마이그레이션 기록이 올바르지 않습니다: ${paths.migration}`);
   }
