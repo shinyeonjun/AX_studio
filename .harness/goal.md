@@ -690,3 +690,54 @@ behavior while making the intended contracts testable.
 - Changing the job schema, scheduling semantics, or workflow persistence.
 - Reworking prompt wording, model providers, or connector behavior.
 - Completing unrelated Product QA, path-security, or RDB WIP changes.
+
+## Current task: main-based Work Discovery production path
+
+Starting from the merged `main` baseline, make the user-facing Work Discovery
+path safe and verifiable in small phases. The first phase owns the boundary
+between a Workspace chat session and its Discovery session.
+
+### Phase 1 success criteria
+
+- Starting, loading, switching, deleting, or creating a Workspace chat cannot
+  leave an unrelated Discovery review card attached to the visible chat.
+- Discovery answer and publish mutations include the last inspected revision
+  and surface revision conflicts instead of silently ignoring them.
+- Desktop exposes bounded cancel and retry actions for Discovery states that
+  support them; no retry loop is introduced.
+- Existing Core behavior, Desktop typecheck/build, deterministic Product QA
+  smoke, and whitespace checks remain green.
+
+### Phase 1 non-goals
+
+- Changing the Work Discovery algorithm, WorkflowIR, Runtime, or connector
+  side effects.
+- Fixing connected-folder spreadsheet inventory; that is the next bounded
+  phase.
+- Adding root integration/E2E runners, drift detection, or repair behavior in
+  this phase.
+
+## Current task: main-based Work Discovery production path — Phase 2
+
+Starting after the completed Desktop session-boundary phase, make connected
+local folders usable as Work Discovery spreadsheet sources.
+
+### Phase 2 success criteria
+
+- A connected local-folder configuration with one or more folders yields
+  discoverable CSV, XLS, and XLSX file descriptors, including nested files.
+- Each descriptor can be profiled through a stable source ID and returns a
+  table without reading outside its configured folder.
+- Missing folders, malformed local-folder configuration, unsupported files, and
+  corrupt spreadsheets are skipped or rejected without crashing the whole
+  discovery inventory.
+- Existing local-folder path-security tests, Work Discovery/Core regression,
+  Desktop typecheck/build, deterministic Product QA smoke, and whitespace
+  checks remain green.
+
+### Phase 2 non-goals
+
+- Changing the Work Discovery algorithm, WorkflowIR, Runtime, or connector
+  side effects.
+- Adding provider-wide failure isolation or drift/repair behavior; those remain
+  later bounded phases.

@@ -282,3 +282,50 @@ agent_prompt_public_api:
     - live provider accounts
     - job schema and persistence behavior
   expansions: []
+
+main_based_work_discovery_phase_1:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/src/App.tsx
+    - apps/desktop/src/components/chat/ChatMainPage.tsx
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/DiscoveryReviewCard.tsx
+    - apps/desktop/src/hooks/useDiscovery.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/electron/main/ipc/discovery-handlers.ts
+    - apps/desktop/src/**/*.test.ts
+    - apps/desktop/src/**/*.test.tsx
+    - apps/desktop/electron/**/*.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packages/core production behavior
+    - external connector APIs
+    - live provider accounts
+    - test/e2e and test/integration root runners
+  expansions: []
+
+main_based_work_discovery_phase_2:
+  status: completed
+  expansion_reason: "Phase 1 completed; repository review and a red regression test confirmed that local-sheet discovery reads an obsolete folderPath shape and never scans connected folders."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/modules/local-sheet/discovery-source.ts
+    - packages/core/src/modules/local-sheet/discovery-source.test.ts
+    - packages/core/src/modules/local-folder/connection.ts
+    - packages/core/src/modules/local-folder/scan-async.ts
+    - packages/core/src/modules/local-folder/path-security.ts
+    - packages/core/src/modules/local-folder/**/*.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packages/core production behavior outside local sheet/folder source resolution
+    - external connector APIs
+    - live provider accounts
+  expansions: []
