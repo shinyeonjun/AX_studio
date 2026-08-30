@@ -8,6 +8,7 @@ import {
   insertDiscoveryExample,
   insertDiscoverySession,
   listDiscoveryReplayCases,
+  listDiscoverySessions,
   upsertDiscoveryReplayCase,
 } from './repositories/work-discovery-repository.js';
 import type { DiscoverySessionState } from '../work-discovery/schema.js';
@@ -49,6 +50,47 @@ describe('discovery persistence', () => {
     expect(loaded?.userGoal).toBe('월간 보고');
     expect(loaded?.status).toBe('collecting_examples');
     db2.close?.();
+  });
+
+  it('reports malformed session JSON with the affected session id', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO work_discovery_sessions
+        (id, status, revision, user_goal, state_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run('wd_corrupt', 'collecting_examples', 1, '월간 보고', '{', now, now);
+
+    expect(() => getDiscoverySession(db, 'wd_corrupt')).toThrowError(
+      expect.objectContaining({ code: 'invalid_discovery_session_json', sessionId: 'wd_corrupt' }),
+    );
+    expect(() => listDiscoverySessions(db)).toThrowError(
+      expect.objectContaining({ code: 'invalid_discovery_session_json', sessionId: 'wd_corrupt' }),
+    );
+    db.close?.();
+  });
+
+  it('rejects stored session JSON that does not match the discovery schema', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO work_discovery_sessions
+        (id, status, revision, user_goal, state_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      'wd_invalid',
+      'collecting_examples',
+      1,
+      '월간 보고',
+      JSON.stringify({ id: 'wd_invalid', status: 'collecting_examples' }),
+      now,
+      now,
+    );
+
+    expect(() => getDiscoverySession(db, 'wd_invalid')).toThrowError(
+      expect.objectContaining({ code: 'invalid_discovery_session_state', sessionId: 'wd_invalid' }),
+    );
+    db.close?.();
   });
 
   it('upserts one replay case per session example', async () => {
