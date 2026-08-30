@@ -13,7 +13,10 @@ describe('execution-log', () => {
     expect(hasExecutionLogCode(log, 'http.request_failed')).toBe(true);
   });
 
-  it('returns empty array for malformed log JSON', () => {
+  it('returns an empty array for malformed JSON or invalid log entries', () => {
     expect(parseExecutionLog('not-json')).toEqual([]);
+    expect(parseExecutionLog('[null]')).toEqual([]);
+    expect(parseExecutionLog('[{"at":"now","level":"debug","message":"detail"}]')).toEqual([]);
+    expect(parseExecutionLog('[{"at":"now","level":"info","message":"ok","code":42}]')).toEqual([]);
   });
 });

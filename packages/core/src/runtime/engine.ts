@@ -23,6 +23,7 @@ import {
   stepsById,
   type ExecutionCheckpoint,
 } from './control-flow.js';
+import { validateExecutionLog } from './execution-log.js';
 
 type PendingError = Error & {
   code?: string;
@@ -424,8 +425,7 @@ export class WorkflowRuntime {
     let log: ExecutionLogEntry[];
     try {
       const parsedLog: unknown = JSON.parse(execution.logJson ?? '[]');
-      if (!Array.isArray(parsedLog)) throw new Error('실행 로그가 배열이 아닙니다.');
-      log = parsedLog as ExecutionLogEntry[];
+      log = validateExecutionLog(parsedLog);
     } catch (error) {
       this.config.store.failApproval(approvalId);
       const message = error instanceof Error ? error.message : String(error);
