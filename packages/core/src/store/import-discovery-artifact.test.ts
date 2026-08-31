@@ -2,7 +2,6 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
-import { toDocumentArtifact } from '../contracts/artifacts/document-normalize.js';
 import {
   MockDocumentEngineClient,
   setDocumentEngineClient,
@@ -46,7 +45,7 @@ describe('importDiscoveryArtifact', () => {
     writeFileSync(pdfPath, '%PDF-1.4 mock');
 
     const stored = await importDiscoveryArtifact(store, pdfPath);
-    const json = store.getDocumentArtifact<ReturnType<typeof toDocumentArtifact>>(stored.id);
+    const json = store.getDocumentArtifact(stored.id);
 
     expect(json?.id).toBe(stored.id);
     expect(json?.engine).toBe('docling');

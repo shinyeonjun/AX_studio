@@ -24,7 +24,6 @@ export interface ConnectionEntry {
   tunnelUrl?: string;
   dbType?: RdbType;
   target?: string;
-  connectionString?: string;
   allowedSchemas?: string[];
   allowedTables?: string[];
   rowLimit?: number;

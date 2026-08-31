@@ -5,9 +5,12 @@ import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from './engine.js';
 import { linearSteps } from './control-flow.js';
 import type { WorkflowIR } from '../workflow/schema.js';
+import type { ArtifactSink } from '../modules/types.js';
 import { createAgentHarness, createInvestigationRunner } from '../agent/harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../agent/model/provider.js';
 import { createTestConnectors, mockSlack, mockGmail } from '../modules/test-connectors.js';
+import { buildTableArtifact } from '../contracts/artifacts/table-build.js';
+import { OutputContractSchema } from '../contracts/output-contract.js';
 
 class NoReadProvider implements ModelProvider {
   readonly name = 'test-agent';
@@ -34,6 +37,89 @@ class RiskProvider implements ModelProvider {
 }
 
 describe('runtime control flow', () => {
+  it('injects the generated-artifact sink into fresh and approval-resumed contexts', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const artifactSink: ArtifactSink = {
+      putBytes: vi.fn(() => ({
+        id: 'unused',
+        sha256: 'unused',
+        fileName: 'unused.pdf',
+        size: 0,
+        createdAt: '2026-08-31T00:00:00.000Z',
+      })),
+    };
+    const observedSinks: Array<ArtifactSink | undefined> = [];
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      artifactSink,
+      connectors: {
+        document: {
+          name: 'document',
+          execute: async (_action, _params, ctx) => {
+            observedSinks.push(ctx.artifactSink);
+            return { ok: true, data: { observed: true } };
+          },
+        },
+        gmail: {
+          name: 'gmail',
+          execute: async (_action, _params, ctx) => {
+            observedSinks.push(ctx.artifactSink);
+            return { ok: true, data: { observed: true } };
+          },
+        },
+      },
+    });
+
+    const first = await runtime.executeWorkflow({
+      name: 'PDF sink injection',
+      goal: 'fresh and resumed contexts share the host-owned artifact sink',
+      version: 1,
+      steps: [
+        {
+          type: 'action',
+          id: 'render',
+          connector: 'document',
+          action: 'html.render',
+          actionRef: 'document.html.render',
+          params: {},
+          sideEffect: 'REVERSIBLE',
+        },
+        {
+          type: 'human_approval',
+          id: 'approve_pdf',
+          reason: 'PDF 생성 승인',
+          forActionIds: ['send'],
+        },
+        {
+          type: 'action',
+          id: 'send',
+          connector: 'gmail',
+          action: 'message.send',
+          actionRef: 'gmail.message.send',
+          params: { to: 'test@example.com', body: 'approved' },
+          sideEffect: 'EXTERNAL_HIGH',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    }, { ephemeral: true });
+
+    expect(first.status).toBe('pending_approval');
+    expect(observedSinks).toEqual([artifactSink]);
+
+    const resumed = await runtime.continueAfterApproval(first.pendingApprovalId!);
+
+    expect(resumed.status).toBe('success');
+    expect(observedSinks).toEqual([artifactSink, artifactSink]);
+  });
+
   it('replaces and removes live connectors without restarting the runtime', async () => {
     const store = new WorkflowStore(await createDatabaseAsync(':memory:'));
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: {} });
@@ -960,5 +1046,164 @@ describe('runtime control flow', () => {
 
     expect(result.status).toBe('failed');
     expect(result.errorCode).toBe('connector_missing');
+  });
+
+  it('blocks external delivery when the discovered output falls outside its baseline', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const table = buildTableArtifact({
+      id: 'customers_current',
+      headers: ['customer_count'],
+      matrix: [[1], [2], [3]],
+    });
+    const connectors = createTestConnectors();
+    connectors.local_sheet = {
+      name: 'local_sheet',
+      execute: async (_action, _params, ctx) => {
+        ctx.variables.sheet = table;
+        return { ok: true, data: table };
+      },
+    };
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors,
+    });
+    const outputContract = OutputContractSchema.parse({
+      version: 1,
+      fields: [{
+        path: 'field.customer_count',
+        kind: 'number',
+        required: true,
+        baseline: { sampleCount: 2, numericMin: 80, numericMax: 120, numericToleranceRatio: 0.2 },
+      }],
+      inputSchemas: [{
+        sourceId: 'input:customers',
+        stepId: 'read_customers',
+        columns: [{ name: 'customer_count', type: 'number' }],
+      }],
+    });
+
+    const result = await runtime.executeWorkflow({
+      name: '고객 수 결과 게이트',
+      goal: '비정상 고객 수를 외부에 보내지 않는다',
+      version: 1,
+      trigger: { type: 'manual' },
+      inputs: ['sourcePath'],
+      steps: [
+        {
+          type: 'action',
+          id: 'read_customers',
+          connector: 'local_sheet',
+          action: 'read',
+          params: { path: 'customers.csv' },
+          sideEffect: 'NONE',
+        },
+        {
+          type: 'action',
+          id: 'evaluate_customer_count',
+          connector: 'transform',
+          action: 'evaluate',
+          params: {
+            expr: { op: 'aggregate', input: { op: 'source', sourceId: 'input:customers' }, fn: 'count' },
+            discoverySourceId: 'input:customers',
+            outputPath: 'field.customer_count',
+          },
+          bindings: { table: { from: 'read_customers', output: 'sheet' } },
+          sideEffect: 'NONE',
+        },
+        {
+          type: 'action',
+          id: 'send_customer_count',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ops', text: 'customer count' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+      outputContract,
+    }, { ephemeral: true });
+
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'output_contract_failed' });
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
+    expect(JSON.stringify(result.log)).toContain('output_volume_anomaly');
+  });
+
+  it('persists a bounded repair proposal on input schema drift without applying it', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const table = buildTableArtifact({
+      id: 'customers_renamed',
+      headers: ['customers'],
+      matrix: [[42]],
+    });
+    const connectors = createTestConnectors();
+    connectors.local_sheet = {
+      name: 'local_sheet',
+      execute: async (_action, _params, ctx) => {
+        ctx.variables.sheet = table;
+        return { ok: true, data: table };
+      },
+    };
+    const workflow = {
+      id: 'workflow-runtime-repair',
+      version: 1,
+      name: 'runtime repair proposal',
+      goal: 'schema drift를 제안으로만 남긴다',
+      trigger: { type: 'manual' as const },
+      inputs: ['sourcePath'],
+      steps: [{
+        type: 'action' as const,
+        id: 'read_customers',
+        connector: 'local_sheet',
+        action: 'read',
+        params: { path: 'customers.csv' },
+        sideEffect: 'NONE' as const,
+      }],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+      outputContract: {
+        version: 1 as const,
+        fields: [],
+        inputSchemas: [{
+          sourceId: 'input:customers',
+          stepId: 'read_customers',
+          columns: [{ name: 'customer_count', type: 'number' as const }],
+        }],
+      },
+    };
+    store.saveWorkflow(workflow);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: { [workflow.id]: true },
+      connectors,
+    });
+
+    const result = await runtime.executeWorkflow(workflow);
+
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'input_schema_drift' });
+    expect(store.listRepairProposals({ workflowId: workflow.id })).toMatchObject([{
+      baseVersion: 1,
+      status: 'proposed',
+      candidates: [{
+        op: 'rename_column',
+        from: 'customer_count',
+        to: 'customers',
+      }],
+      replay: { status: 'not_run' },
+    }]);
+    db.close?.();
   });
 });

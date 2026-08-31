@@ -36,6 +36,9 @@ export type ScenarioAction =
   | { action: 'sendMessage'; text: string; label?: string; waitForReply?: boolean }
   | { action: 'waitMs'; ms: number }
   | { action: 'waitForAssistantReply'; timeoutMs?: number; optional?: boolean }
+  | { action: 'startDiscoveryFixture'; artifact: string; folder: string; label?: string }
+  | { action: 'waitForDiscovery'; status: string; timeoutMs?: number }
+  | { action: 'publishDiscovery'; name?: string }
   | { action: 'switchSession'; label?: string; titleContains?: string }
   | { action: 'deleteSession'; titleContains?: string; label?: string }
   | { action: 'attachFixture'; fixture: string; label?: string }
@@ -100,6 +103,15 @@ export type ScenarioCheck =
     }
   | {
       check: 'appAlive';
+      severity?: DefectSeverity;
+    }
+  | {
+      check: 'discoveryCardPresent' | 'discoveryCardAbsent';
+      severity?: DefectSeverity;
+    }
+  | {
+      check: 'workflowPresent';
+      text: string;
       severity?: DefectSeverity;
     };
 

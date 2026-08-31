@@ -550,7 +550,15 @@ work_discovery_session_contract_task:
       diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
     notes: "Baseline includes the pre-existing dirty worktree. No Work Discovery production files were changed before this baseline."
   final:
-    recorded_at: pending
+    recorded_at: 2026-08-30T22:43:10.8909222+09:00
+    values:
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Workspace context invalidation, revision-aware answer/publish, retry IPC, and bounded cancel/retry UI are implemented. Existing .gitignore remains unrelated and unchanged."
 
 work_discovery_replay_persistence_task:
   name: work-discovery-replay-case-persistence
@@ -718,3 +726,687 @@ agent_prompt_public_api_task:
       architecture: "PASS: 483 modules, 1665 dependencies"
       diff-whitespace: "PASS: git diff --check; CRLF normalization warnings only"
     decision: "KEEP: the existing Agent WIP now has a tested public seam without changing prompt or job runtime semantics."
+
+main_based_work_discovery_phase_1_task:
+  name: main-based-work-discovery-session-boundary
+  evaluator_frozen: true
+  checks:
+    - name: discovery-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/agent/commands/service.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: deterministic-product-smoke
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a new Workspace chat has no Discovery card from a previous chat
+    - selecting an existing Workspace chat does not retain another chat's Discovery session
+    - stale answer/publish responses are visible as a conflict
+    - cancel and retry controls are only enabled for valid Discovery states
+    - unrelated dirty .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T22:33:10.8302558+09:00
+    values:
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
+    notes: "Baseline ran from codex/work-discovery-completion-20260830 at origin/main 99050ee. Existing dirty .gitignore is unrelated and was not changed."
+  final:
+    recorded_at: 2026-08-30T22:43:10.8909222+09:00
+    values:
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Workspace context invalidation, revision-aware answer/publish, retry IPC, and bounded cancel/retry UI are implemented. Existing .gitignore remains unrelated and unchanged."
+
+main_based_work_discovery_phase_2_task:
+  name: connected-folder-spreadsheet-discovery
+  evaluator_frozen: true
+  baseline_reconciliation:
+    status: partial
+    reference: "main_based_work_discovery_phase_1_keep-071"
+    notes: "The shared Core/Desktop/smoke checks were measured before Phase 2. The Phase 2-specific local-sheet regression test was introduced with the implementation, so its pre-change result is not reconstructable without backfilling evidence."
+  checks:
+    - name: local-sheet-discovery
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/local-sheet/discovery-source.test.ts src/modules/local-folder/path-security.test.ts
+      required: true
+    - name: discovery-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/agent/commands/service.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: deterministic-product-smoke
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a configured local-folder source lists nested CSV/XLS/XLSX files with readable labels
+    - a source ID cannot be used to profile a file outside its connected folder
+    - an inaccessible folder or malformed workbook does not abort unrelated source discovery
+    - existing .gitignore remains unchanged
+  final:
+    recorded_at: 2026-08-30T22:51:36.9686360+09:00
+    values:
+      local-sheet-discovery: "PASS: 2 files, 10 tests collected / 7 passed, 3 Windows skips"
+      discovery-core-regression: "PASS: 3 files, 36 tests"
+      core-typecheck: "PASS"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      deterministic-product-smoke: "PASS: 3 Playwright tests, 16 scenarios"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Connected local-folder configurations now enumerate nested CSV/XLS/XLSX files, profile only contained files, and tolerate inaccessible folders or empty workbook inputs. Existing .gitignore remains unrelated and unchanged."
+
+main_based_work_discovery_phase_3_task:
+  name: desktop-work-discovery-electron-path
+  evaluator_frozen: true
+  evaluator_revision:
+    recorded_at: 2026-08-30T23:09:14.3360530+09:00
+    reason: "The first real Electron run reached the Discovery pipeline but exposed an observation-dispatch defect; include its focused regression in the frozen Core checks."
+  checks:
+    - name: desktop-discovery-e2e
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier handwritten --scenario discovery-desktop-deterministic --strict --skip-build
+      required: true
+    - name: deterministic-product-smoke
+      type: command
+      command: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+      required: true
+    - name: discovery-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/local-sheet/discovery-source.test.ts src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/agent/commands/service.test.ts
+      required: true
+    - name: observation-dispatch-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: desktop-build
+      type: command
+      command: npm run build -w @ax-studio/desktop
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - Discovery reaches a ready review card through the actual Electron IPC boundary
+    - a new chat has no review card from the previous chat
+    - publish removes the review card only after the workflow save succeeds
+    - test seams are not registered for packaged production and reject paths outside test/fixtures
+    - existing .gitignore remains unchanged
+  final:
+    recorded_at: 2026-08-30T23:39:00.7298363+09:00
+    values:
+      desktop-discovery-e2e: "PASS: 1 Playwright test, 1 scenario"
+      deterministic-product-smoke: "PASS: 4 Playwright tests, including the new Discovery scenario and generated 14-scenario batch"
+      discovery-core-regression: "PASS: 5 files, 41 tests"
+      observation-dispatch-regression: "PASS: 2 tests"
+      desktop-typecheck: "PASS"
+      desktop-build: "PASS: Electron main/preload/renderer"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "The real Electron path now reaches ready_to_publish, isolates a new chat, and persists publication. Workbook and stored-file observation dispatch are both covered, all Core-supported cancellable review states are exposed, packaged artifact overrides are disabled, and existing .gitignore remains unrelated and unchanged."
+
+main_based_work_discovery_phase_4_task:
+  name: repository-test-entrypoints
+  evaluator_frozen: true
+  checks:
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/service.test.ts src/testing/e2e/work-discovery-e2e.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - root E2E runner invokes the real Electron Product QA suite and fails when the child process fails
+    - root integration runner invokes Core integration coverage without live credentials or external side effects
+    - default runners do not create or track generated test artifacts
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T23:47:27.9546989+09:00
+    values:
+      root-e2e-runner: "FAIL: test/e2e/run.mjs is missing"
+      root-integration-runner: "FAIL: test/integration/run.mjs is missing"
+      core-regression: "PASS: measured in previous Phase 3 checkpoint"
+      test-typecheck: "FAIL: test/product-qa/lib/types.ts has an extra closing brace after the Phase 3 workflowPresent check"
+      diff-whitespace: "PASS: measured before Phase 4 implementation"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-30T23:53:52.4849231+09:00
+    values:
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+      root-integration-runner: "PASS: 9 Core suites, 52 tests"
+      core-regression: "PASS: 3 files, 20 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+main_based_connector_pdf_phase_2:
+  evaluator_frozen: true
+  checks:
+    - name: artifact-store-bytes
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/artifact-store.test.ts
+      required: true
+    - name: pdf-generate-action
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/document/write/pdf/generate.test.ts src/document-write/pdf/generate.test.ts src/document-write/pdf/to-html.test.ts
+      required: true
+    - name: runtime-pdf-injection
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/engine.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: full-core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval -w @ax-studio/core
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - generated PDF bytes are persisted only below the configured generated/reports root
+    - artifact references expose id, hash, file name, MIME type, size, and timestamp but no local stored path
+    - the PDF generation action exposes neither raw PDF bytes nor generated document HTML in workflow variables, step results, checkpoints, or logs
+    - fresh and approval-resumed runtime contexts receive the same artifact sink
+    - no external provider side effects or unrelated .gitignore changes are included
+  baseline:
+    recorded_at: 2026-08-31T12:34:06.4209694+09:00
+    values:
+      artifact-store-bytes: "PASS: src/store/artifact-store.test.ts, 6 tests; no generated-byte persistence contract exists yet"
+      pdf-generate-action: "PASS: existing pure PDF tests only, 2 files/3 tests; requested module action test file is absent and silently ignored by Vitest"
+      runtime-pdf-injection: "PASS: src/runtime/engine.test.ts, 28 tests; no artifact sink is injected"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 123 files/634 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      architecture-check: "PASS: zero dependency violations, 503 modules and 1751 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: BASELINE
+    gap: "The PDF action can print bytes in memory but has no durable generated-report sink, safe artifact reference contract, or runtime injection seam."
+  final:
+    recorded_at: 2026-08-31T12:50:37.8037370+09:00
+    values:
+      artifact-store-bytes: "PASS: src/store/artifact-store.test.ts, 8 tests"
+      pdf-generate-action: "PASS: 3 files/7 tests; real ArtifactStore persistence, no raw bytes/path/HTML in action state, bridge and storage fail-closed cases"
+      runtime-pdf-injection: "PASS: src/runtime/engine.test.ts, 29 tests; the same sink reaches fresh and approval-resumed contexts"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 124 files/641 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      architecture-check: "PASS: zero dependency violations, 504 modules and 1760 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      document-engine-tests: "PASS: 17 tests, 15 passed and 2 skipped because pypdf is unavailable"
+      root-integration-runner: "PASS: 9 suites/58 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: 4 Product QA tests including generated 14-scenario batch"
+      knip: "PASS: npm run knip"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "PDF output now crosses a host-owned generated/reports sink and workflow state receives only a safe artifact reference. The pure write engine remains byte-producing, while the connector adapter is the durable and fail-closed boundary. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+connector_foundation_phase_1_task:
+  name: connector-foundation-safety-and-acceptance
+  evaluator_frozen: true
+  checks:
+    - name: rdb-renderer-secret-boundary
+      type: command
+      command: npx vitest run apps/desktop/electron/main/ipc/connection-state-summary.test.ts
+      required: true
+    - name: trigger-receipt-lease
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/repositories/trigger-receipt-repository.test.ts
+      required: true
+    - name: webhook-idempotency
+      type: command
+      command: npm test -w @ax-studio/core -- src/triggers/webhook/listener.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - remote RDB credentials are absent from every renderer-facing connection summary and form state
+    - stale receipt reclamation is time-bounded and does not reclaim fresh or completed receipts
+    - provider idempotency/event keys are preserved without making keyless Webhook events collide
+    - existing .gitignore and unrelated connector behavior remain unchanged
+  baseline:
+    recorded_at: 2026-08-31T11:54:51.3960698+09:00
+    values:
+      rdb-renderer-secret-boundary: "UNAVAILABLE: connection-state-summary test file does not exist yet"
+      trigger-receipt-lease: "UNAVAILABLE: trigger-receipt repository test file does not exist yet"
+      webhook-idempotency: "PASS: src/triggers/webhook/listener.test.ts, 12 tests; no idempotency-key regression coverage"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      core-regression: "PASS: 122 files/620 tests/3 skipped"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    gap: "The source-backed RDB renderer secret leak and stale trigger receipt behavior have no focused regression seam; Webhook currently generates a fresh request id for every request and has no provider idempotency-key coverage."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T12:01:20.2861771+09:00
+    values:
+      rdb-renderer-secret-boundary: "PASS: 1 focused Vitest test; remote secret absent from summary and serialized output"
+      trigger-receipt-lease: "PASS: 1 focused Core test; stale processing reclaimed once, fresh/completed deduplicated"
+      webhook-idempotency: "PASS: 14 listener tests; provider-key retries stable and keyless deliveries remain unique"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      core-regression: "PASS: 123 files/623 tests/3 skipped"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "RDB credentials no longer cross the renderer-facing state boundary; stale trigger receipts can be reclaimed with a bounded lease; Webhook provider idempotency/event keys are preserved while keyless requests retain unique local IDs. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+main_based_work_discovery_phase_5_task:
+  name: artifact-store-persistence-contract
+  evaluator_frozen: true
+  checks:
+    - name: artifact-store-contract
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/artifact-store.test.ts
+      required: true
+    - name: typed-persistence-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/import-discovery-artifact.test.ts src/store/workspace-source-service.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - typed sidecars reject malformed data and read malformed legacy files as unavailable
+    - invalid IDs cannot escape the ArtifactStore root
+    - generic putJson/getJson remains compatible for intentionally untyped payloads
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-30T23:56:23.7122432+09:00
+    values:
+      artifact-store-contract: "PASS: 4 existing tests"
+      typed-persistence-regression: "PASS: existing document/workspace/observation tests; no typed sidecar rejection coverage"
+      core-typecheck: "PASS: existing Core source"
+      root-integration-runner: "PASS: Phase 4 runner, 9 suites/52 tests"
+      diff-whitespace: "PASS: measured before Phase 5 implementation"
+    gap: "ArtifactStore typed sidecar writes/reads are unchecked beyond JSON syntax, and caller-provided IDs are not explicitly constrained to a filename-safe format."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T00:06:20.3231640+09:00
+    values:
+      artifact-store-contract: "PASS: 8 tests"
+      typed-persistence-regression: "PASS: 4 files, 16 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 Core suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+      full-core-regression: "PASS: 117 files, 603 tests, 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+    decision: KEEP
+    notes: "Typed document/ingest/workbook/table persistence is validated without changing the existing on-disk layout. Invalid IDs and outside stored paths fail closed. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+main_based_work_discovery_phase_6_task:
+  name: architecture-boundary-recovery
+  evaluator_frozen: true
+  checks:
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: local-boundary-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/local-sheet/discovery-source.test.ts src/modules/local-folder/path-security.test.ts src/modules/local-folder/scan.test.ts src/modules/local-folder/scan-async.test.ts src/work-discovery/observation/observe-artifact.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - dependency-cruiser rules remain strict and the five baseline violations are removed by moving shared primitives behind a platform boundary
+    - Work Discovery tests no longer import connector implementation modules
+    - local-sheet discovery and the Electron worker preserve existing scan behavior
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-31T00:11:37.3592856+09:00
+    values:
+      architecture-check: "FAIL: 5 dependency violations (one Work Discovery-to-local-sheet edge and four local-sheet-to-local-folder edges)"
+      local-boundary-regression: "PASS: 5 files, 15 tests with 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+    decision: BASELINE
+    gap: "The implementation boundaries are not represented in the dependency graph even though runtime behavior is covered."
+  final:
+    recorded_at: 2026-08-31T00:19:39.7830403+09:00
+    values:
+      architecture-check: "PASS: no dependency violations, 491 modules and 1690 dependencies cruised"
+      local-boundary-regression: "PASS: 5 files, 15 tests with 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      root-integration-runner: "PASS: 9 suites, 56 tests"
+      diff-whitespace: "PASS: git diff --check"
+      full-core-regression: "PASS: 117 files, 603 tests with 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; scan-worker.js emitted"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: desktop build plus 4 Playwright tests, including Discovery and generated 14-scenario batch"
+    decision: KEEP
+    notes: "Shared local-folder primitives now have a platform-level home, compatibility wrappers preserve existing callers, and the Work Discovery test no longer crosses into local-sheet implementation code. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+main_based_work_discovery_phase_9_task:
+  name: work-discovery-baseline-and-drift-gate
+  evaluator_frozen: true
+  checks:
+    - name: output-contract-unit
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/output-contract.test.ts src/work-discovery/validation/output-contract.test.ts
+      required: true
+    - name: output-contract-runtime
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/engine.test.ts
+      required: true
+    - name: discovery-contract-compile
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/compile/compile.test.ts
+      required: true
+    - name: execution-explain-command
+      type: command
+      command: npm test -w @ax-studio/core -- src/agent/commands/service.test.ts
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: full-core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval -w @ax-studio/core
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - output contracts contain only bounded schema/range metadata, never raw historical payloads
+    - output/input quality failures use stable codes and stop external connector execution
+    - technical execution and business-result quality remain distinguishable in explain output
+    - execution.explain does not expose raw params, rows, message bodies, or secrets
+    - Desktop activity labels output-contract failure as result-quality failure while preserving technical completion
+    - existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-31T00:33:42.2187761+09:00
+    values:
+      output-contract-unit: "FAIL: no test file exists for the requested contract checks"
+      output-contract-runtime: "PASS: existing runtime suite; no semantic output gate coverage"
+      discovery-contract-compile: "PASS: existing compile suite; no persisted contract assertions"
+      execution-explain-command: "PASS: existing command suite; execution.explain is not a command"
+      architecture-check: "PASS: no dependency violations, 490 modules and 1689 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 117 files, 603 tests, 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: previous Phase 6 checkpoint; no Phase 9 code changed"
+      root-integration-runner: "PASS: previous Phase 6 checkpoint; 9 suites/56 tests"
+      test-typecheck: "PASS: previous Phase 6 checkpoint"
+      root-e2e-runner: "PASS: previous Phase 6 checkpoint; 4 Playwright tests"
+      diff-whitespace: "PASS: harness-only change"
+    gap: "Before this phase, published Work Discovery workflows have no persisted output baseline or runtime semantic degradation gate."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T00:51:46.5186034+09:00
+    values:
+      output-contract-unit: "PASS: 2 files, 5 tests"
+      output-contract-runtime: "PASS: 25 runtime tests"
+      discovery-contract-compile: "PASS: 3 compile tests"
+      execution-explain-command: "PASS: 19 command-service tests"
+      architecture-check: "PASS: no dependency violations, 495 modules and 1705 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 119 files, 609 tests, 3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      root-integration-runner: "PASS: 9 suites, 56 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: 4 Playwright tests including Discovery and generated 14-scenario batch; run-2026-08-30T15-51-11-173Z"
+      diff-whitespace: "PASS: git diff --check"
+    decision: KEEP
+    notes: "Output/input drift is detected before external delivery; the 80–120 to 3 fixture produced zero Slack messages, while the existing one-sample 300 to 600 path remained compatible. Contracts and explain/UI surfaces omit raw rows and payloads. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
+main_based_work_discovery_phase_10_task:
+  name: conservative-workflow-repair
+  evaluator_frozen: true
+  checks:
+    - name: repair-candidate-and-apply
+      type: command
+      command: npm test -w @ax-studio/core -- src/workflow/repair.test.ts
+      required: true
+    - name: historical-replay
+      type: command
+      command: npm test -w @ax-studio/core -- src/work-discovery/repair.test.ts
+      required: true
+    - name: repair-persistence
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/repositories/workflow-repair-repository.test.ts
+      required: true
+    - name: repair-runtime-proposal
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/engine.test.ts
+      required: true
+    - name: repair-command
+      type: command
+      command: npm test -w @ax-studio/core -- src/agent/commands/service.test.ts
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: full-core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval -w @ax-studio/core
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - repair proposals are bounded and contain no raw rows, values, credentials, or connector payloads
+    - inspect and apply use persisted historical snapshots only; unavailable evidence blocks apply
+    - apply mutates only selected source-column mapping/input schema and creates a new version
+    - thresholds, recipients, approvals, triggers, schedules, side effects, and external action params are unchanged
+    - the prior workflow version remains readable for rollback
+    - runtime never auto-applies a proposal and existing .gitignore remains unchanged
+  baseline:
+    recorded_at: 2026-08-31T01:01:41.9403327+09:00
+    values:
+      repair-candidate-and-apply: "PENDING: Phase 10 repair module and test seam do not exist yet"
+      historical-replay: "PENDING: historical repair replay module and fixture do not exist yet"
+      repair-persistence: "PENDING: repair proposal persistence table/repository do not exist yet"
+      repair-runtime-proposal: "PASS: src/runtime/engine.test.ts, 25 tests; schema drift does not persist repair proposals"
+      repair-command: "PASS: src/agent/commands/service.test.ts, 19 tests; repair commands are not cataloged"
+      architecture-check: "PASS: zero dependency violations, 495 modules and 1705 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: Phase 9 checkpoint, 119 files/609 tests/3 skipped"
+      core-evaluation: "PASS: Phase 9 checkpoint, 11 tests"
+      production-build: "PASS: Phase 9 checkpoint"
+      desktop-typecheck: "PASS: Phase 9 checkpoint"
+      root-integration-runner: "PASS: Phase 9 checkpoint, 9 suites/56 tests"
+      test-typecheck: "PASS: Phase 9 checkpoint"
+      root-e2e-runner: "PASS: Phase 9 checkpoint, 4 Playwright tests including 14-scenario batch"
+      diff-whitespace: "PASS: harness-only Phase 10 setup"
+    gap: "Phase 9 blocks drift but cannot explain a safe candidate, replay it against historical evidence, or create a reversible versioned repair."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T01:26:49.0009816+09:00
+    values:
+      repair-candidate-and-apply: "PASS: src/workflow/repair.test.ts, 3 tests"
+      historical-replay: "PASS: src/work-discovery/repair.test.ts, 2 tests; 3/3 historical cases plus unavailable evidence"
+      repair-persistence: "PASS: src/store/repositories/workflow-repair-repository.test.ts, 2 tests"
+      repair-runtime-proposal: "PASS: src/runtime/engine.test.ts, 26 tests"
+      repair-command: "PASS: src/agent/commands/service.test.ts, 21 tests"
+      architecture-check: "PASS: zero dependency violations, 502 modules and 1750 dependencies cruised"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 122 files/620 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      root-integration-runner: "PASS: 9 suites/56 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: 4 Product QA tests including the 14-scenario batch; run-2026-08-30T16-23-17-144Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "Repair proposals are bounded to source-column rename/remap candidates, historical replay is fail-closed, apply creates a new version while retaining the prior version, and no runtime auto-apply or protected workflow meaning changes occur."
+  expansions: []

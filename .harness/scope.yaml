@@ -282,3 +282,296 @@ agent_prompt_public_api:
     - live provider accounts
     - job schema and persistence behavior
   expansions: []
+
+main_based_work_discovery_phase_1:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/src/App.tsx
+    - apps/desktop/src/components/chat/ChatMainPage.tsx
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/DiscoveryReviewCard.tsx
+    - apps/desktop/src/hooks/useDiscovery.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/electron/main/ipc/discovery-handlers.ts
+    - apps/desktop/src/**/*.test.ts
+    - apps/desktop/src/**/*.test.tsx
+    - apps/desktop/electron/**/*.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packages/core production behavior
+    - external connector APIs
+    - live provider accounts
+    - test/e2e and test/integration root runners
+  expansions: []
+
+main_based_work_discovery_phase_2:
+  status: completed
+  expansion_reason: "Phase 1 completed; repository review and a red regression test confirmed that local-sheet discovery reads an obsolete folderPath shape and never scans connected folders."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/modules/local-sheet/discovery-source.ts
+    - packages/core/src/modules/local-sheet/discovery-source.test.ts
+    - packages/core/src/modules/local-folder/connection.ts
+    - packages/core/src/modules/local-folder/scan-async.ts
+    - packages/core/src/modules/local-folder/path-security.ts
+    - packages/core/src/modules/local-folder/**/*.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packages/core production behavior outside local sheet/folder source resolution
+    - external connector APIs
+    - live provider accounts
+  expansions: []
+
+main_based_work_discovery_phase_3:
+  status: completed
+  expansion_reason: "Phase 2 completed; the remaining user-visible Discovery path has no deterministic Electron coverage from import through publish and chat-context isolation."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/electron/main/ipc/discovery-handlers.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/DiscoveryReviewCard.tsx
+    - apps/desktop/src/components/workspace/ax-workspace.css
+    - packages/core/src/work-discovery/observation/observe-artifact.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - test/product-qa/lib/types.ts
+    - test/product-qa/lib/ui.ts
+    - test/product-qa/lib/step-runner.ts
+    - test/product-qa/scenarios/manifest.json
+    - test/product-qa/scenarios/discovery-desktop-deterministic.json
+    - test/fixtures/discovery/**
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packaged production test seams
+    - external connector APIs
+    - live provider accounts
+  expansions:
+    - "Desktop E2E reached the real pipeline but exposed a Core observation bug: ArtifactStore metadata was accepted as an empty DocumentArtifact, so the output CSV was never observed."
+    - "Post-commit review exposed two follow-up correctness gaps in the same path: persisted workbook JSON was hidden behind the document marker and cancellable review states were narrower than the Core state machine."
+
+main_based_work_discovery_phase_4:
+  status: completed
+  expansion_reason: "Phase 3 completed; the repository declares test:e2e and test:integration entry points but both target missing runner files."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - package.json
+    - test/e2e/run.mjs
+    - test/integration/run.mjs
+    - test/product-qa/run.mjs
+    - test/product-qa/lib/types.ts
+    - test/product-qa/lib/desktop-app.ts
+    - packages/core/package.json
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - live provider accounts and external connector side effects
+    - connector production behavior outside runner wiring
+  expansions:
+    - "The runner validation surfaced a pre-existing Phase 3 Product QA type declaration error in test/product-qa/lib/types.ts; fix it because the repository-level E2E entry point must be typecheckable."
+    - "After that syntax fix, test typecheck exposed an Electron launch environment type mismatch; normalize optional process environment values before passing them to Playwright."
+
+main_based_work_discovery_phase_5:
+  status: completed
+  expansion_reason: "Phase 4 restored the repository runners; the ArtifactStore boundary still accepts unchecked typed sidecars and composes caller-provided IDs directly into paths."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/artifact-store.ts
+    - packages/core/src/store/artifact-store.test.ts
+    - packages/core/src/document-engine/schema.ts
+    - packages/core/src/document-engine/index.ts
+    - packages/core/src/contracts/artifacts/document.ts
+    - packages/core/src/contracts/artifacts/table.ts
+    - packages/core/src/contracts/artifacts/workbook.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - packages/core/src/store/import-discovery-artifact.test.ts
+    - packages/core/src/store/workspace-source-service.ts
+    - packages/core/src/store/workspace-source-service.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - existing valid artifact filenames and on-disk directory layout
+    - document-engine implementation, connector behavior, and workflow runtime
+  expansions:
+    - "The initial architecture check after Phase 5 exposed five pre-existing Phase 2/3 dependency violations; these are recorded as the next bounded architecture phase rather than hidden in the persistence patch."
+
+main_based_work_discovery_phase_6:
+  status: completed
+  expansion_reason: "Phase 5 completion exposed five existing dependency-cruiser violations: one Work Discovery test importing local-sheet and four local-sheet discovery imports from local-folder implementation modules."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - .dependency-cruiser.cjs
+    - packages/core/src/platform/local-folder-config.ts
+    - packages/core/src/platform/local-folder-path.ts
+    - packages/core/src/platform/local-folder-scan.ts
+    - packages/core/src/platform/local-folder-scan-async.ts
+    - packages/core/src/platform/local-folder-scan-worker.ts
+    - packages/core/src/modules/local-folder/connection.ts
+    - packages/core/src/modules/local-folder/path-security.ts
+    - packages/core/src/modules/local-folder/scan.ts
+    - packages/core/src/modules/local-folder/scan-async.ts
+    - packages/core/src/modules/local-folder/scan-worker.ts
+    - packages/core/src/modules/local-sheet/discovery-source.ts
+    - packages/core/src/modules/local-sheet/discovery-source.test.ts
+    - packages/core/src/work-discovery/observation/observe-artifact.test.ts
+    - apps/desktop/electron.vite.config.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - connector behavior, Work Discovery semantics, and workflow runtime
+    - weakening or deleting dependency-cruiser rules
+  expansions: []
+
+main_based_work_discovery_phase_9:
+  status: completed
+  expansion_reason: "Phase 6 restored the module boundaries; the master plan's next production risk is silent result degradation after a technically successful run."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/contracts/output-contract.ts
+    - packages/core/src/contracts/index.ts
+    - packages/core/src/workflow/schema.ts
+    - packages/core/src/work-discovery/schema.ts
+    - packages/core/src/work-discovery/compile/blueprint.ts
+    - packages/core/src/work-discovery/compile/compile-workflow.ts
+    - packages/core/src/work-discovery/validation/output-contract.ts
+    - packages/core/src/work-discovery/validation/output-contract.test.ts
+    - packages/core/src/runtime/output-contract.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - packages/core/src/runtime/output-contract.test.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/work-discovery/compile/compile.test.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - docs/reports/work-discovery-transition.phase-9.md
+    - apps/desktop/electron/main/ipc/state-handlers.ts
+    - apps/desktop/src/types/app-state.ts
+    - apps/desktop/src/components/activity/ActivityPage.tsx
+    - apps/desktop/src/lib/work-display.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - connector implementations and external provider accounts
+    - raw execution outputs, message bodies, and historical values in persisted logs
+    - Phase 10 repair behavior, proposal storage, and workflow auto-remapping
+  expansions:
+    - "The master-plan Phase 9 requires technical completion and result-quality failure to be distinct in the UI; add only the activity-state fields and labels needed to render that distinction."
+
+main_based_work_discovery_phase_10:
+  status: completed
+  expansion_reason: "Phase 9 completed the quality gate; the next master-plan step is conservative repair that proposes, replays, and version-applies only source-column renames without changing workflow meaning."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/repair.ts
+    - packages/core/src/workflow/repair.test.ts
+    - packages/core/src/runtime/output-contract.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/store/db.ts
+    - packages/core/src/store/rows.ts
+    - packages/core/src/store/repositories/workflow-repair-repository.ts
+    - packages/core/src/store/repositories/workflow-repair-repository.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/work-discovery/repair.ts
+    - packages/core/src/work-discovery/repair.test.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/repair-gateway.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - docs/reports/work-discovery-transition.phase-10.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - automatic workflow meaning changes, raw historical payload persistence, and external connector side effects
+    - connector implementations, Desktop redesign, and live provider accounts
+  expansions: []
+
+connector_foundation_phase_1:
+  status: completed
+  expansion_reason: "The ordered connector completion plan starts with two source-backed security/reliability findings and a stable Webhook retry seam before product-surface expansion."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/repositories/trigger-receipt-repository.ts
+    - packages/core/src/store/repositories/trigger-receipt-repository.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/triggers/webhook/listener.ts
+    - packages/core/src/triggers/webhook/listener.test.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.test.ts
+    - apps/desktop/src/types/connection-entry.ts
+    - apps/desktop/src/components/settings/connectors/RdbConnectionForm.tsx
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - live Gmail/Slack/provider accounts and external side effects
+    - PDF, HTTP, Gmail, Slack product behavior outside the three selected seams
+    - broad schema migrations and UI redesign
+  expansions: []
+
+main_based_connector_pdf_phase_2:
+  status: completed
+  expansion_reason: "The existing PDF action returns raw bytes only in workflow memory; durable generated-report storage is the smallest prerequisite for later UI export and Gmail/Slack attachments."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/artifact-store.ts
+    - packages/core/src/store/artifact-store.test.ts
+    - packages/core/src/modules/types.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/bootstrap.ts
+    - packages/core/src/modules/mocks/document.ts
+    - packages/core/src/modules/document/write/pdf/generate.ts
+    - packages/core/src/modules/document/write/pdf/generate.test.ts
+    - packages/core/src/modules/document/README.md
+    - packages/core/src/document-write/README.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - source artifact ingestion semantics and Work Discovery workflow meaning
+    - Python document-engine conversion behavior
+    - Desktop renderer/UI, PDF download IPC, Gmail/Slack delivery, and live provider accounts
+    - raw PDF bytes, HTML, credentials, or local absolute paths in workflow state/logs
+  expansions:
+    - reason: "The lower-level document-write README still described PDF output as an untracked report.pdf after the durable generated-report boundary was added."
+      boundary: "packages/core/src/document-write/README.md"
+    - reason: "The test-only document connector still exposed the removed reportPdfBytes contract and would hide regressions behind a stale mock."
+      boundary: "packages/core/src/modules/mocks/document.ts"

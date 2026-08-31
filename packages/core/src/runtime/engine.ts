@@ -24,6 +24,13 @@ import {
   type ExecutionCheckpoint,
 } from './control-flow.js';
 import { validateExecutionLog } from './execution-log.js';
+import {
+  createContractFailure,
+  isContractFailure,
+  validateInputSchema,
+  validateOutputContract,
+} from './output-contract.js';
+import { suggestRepairCandidates } from '../workflow/repair.js';
 
 type PendingError = Error & {
   code?: string;
@@ -31,6 +38,14 @@ type PendingError = Error & {
   pending?: boolean;
   checkpoint?: ExecutionCheckpoint;
 };
+
+function isExternalAction(step: Step, ir: WorkflowIR): boolean {
+  return step.type === 'action' &&
+    (ir.sideEffects?.[step.id] ?? step.sideEffect) in {
+      EXTERNAL: true,
+      EXTERNAL_HIGH: true,
+    };
+}
 
 export class WorkflowRuntime {
   connectors: Record<string, Connector>;
@@ -151,6 +166,7 @@ export class WorkflowRuntime {
       workflowId: workflowIr.id,
       variables: { ...options.input },
       connections,
+      artifactSink: this.config.artifactSink,
       resolveFileRef: (file) => {
         const resolved = resolveFileRef(file, connections);
         return resolved.ok
@@ -164,6 +180,10 @@ export class WorkflowRuntime {
 
     try {
       await this.runSequence(linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, [], new Set());
+      if (workflowIr.outputContract) {
+        const output = validateOutputContract(workflowIr.outputContract, ctx.variables, stepResults);
+        if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
+      }
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       const result: ExecutionResult = { executionId, status: 'success', log };
       this.notifyExecutionFinished(result);
@@ -187,7 +207,13 @@ export class WorkflowRuntime {
         return result;
       }
       const code = error.code ?? 'execution_failed';
-      log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
+      log.push({
+        at: new Date().toISOString(),
+        level: 'error',
+        code,
+        message: error.message,
+        ...(isContractFailure(error) ? { data: error.data } : {}),
+      });
       this.config.store.finishExecution(executionId, 'failed', code, log);
       const result: ExecutionResult = { executionId, status: 'failed', errorCode: code, log };
       this.notifyExecutionFinished(result);
@@ -245,6 +271,10 @@ export class WorkflowRuntime {
       const step = sequence[index];
       try {
         this.reportStepProgress(ctx, step, 'step_started');
+        if (ir.outputContract && isExternalAction(step, ir)) {
+          const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+          if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
+        }
         await executeStep(
           step,
           ir,
@@ -265,6 +295,13 @@ export class WorkflowRuntime {
             ),
           approvedActionIds,
         );
+        if (ir.outputContract && step.type === 'action') {
+          const input = validateInputSchema(ir.outputContract, step.id, stepResults[step.id]);
+          if (!input.ok) {
+            this.recordRepairProposal(ir, step.id, stepResults[step.id]);
+            throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          }
+        }
         this.reportStepProgress(ctx, step, 'step_completed');
       } catch (err) {
         const error = err as PendingError;
@@ -329,6 +366,24 @@ export class WorkflowRuntime {
       at,
       message,
     });
+  }
+
+  private recordRepairProposal(workflow: WorkflowIR, stepId: string, data: unknown): void {
+    try {
+      if (!workflow.id || !workflow.outputContract) return;
+      // Ephemeral plans and unsaved drafts must not create durable repair state.
+      if (!this.config.store.getWorkflow(workflow.id, workflow.version)) return;
+      const candidates = suggestRepairCandidates(workflow.outputContract, stepId, data);
+      if (candidates.length === 0) return;
+      this.config.store.createRepairProposal({
+        workflowId: workflow.id,
+        baseVersion: workflow.version,
+        candidates,
+      });
+    } catch {
+      // The quality gate remains authoritative even if the optional proposal
+      // persistence path is unavailable.
+    }
   }
 
   private notifyExecutionStarted(executionId: string): void {
@@ -488,6 +543,9 @@ export class WorkflowRuntime {
         log: failureLog,
       };
     }
+    const resolvedApprovedActions = approvedActions.filter(
+      (step): step is Extract<Step, { type: 'action' }> => Boolean(step),
+    );
     const payload = approval.payload as { checkpoint?: unknown } | undefined;
     const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
     const connections = this.config.store.getConnections();
@@ -496,6 +554,7 @@ export class WorkflowRuntime {
       workflowId: execution.workflowId ?? undefined,
       variables: { ...(checkpoint?.variables ?? {}) },
       connections,
+      artifactSink: this.config.artifactSink,
       resolveFileRef: (file) => {
         const resolved = resolveFileRef(file, connections);
         return resolved.ok
@@ -518,12 +577,12 @@ export class WorkflowRuntime {
         });
       }
       const remainingStepIds = new Set(checkpoint?.remainingStepIds ?? []);
-      for (const actionStep of approvedActions) {
-        const actionId = actionStep!.id;
+      for (const actionStep of resolvedApprovedActions) {
+        const actionId = actionStep.id;
         // A branch may have captured the approved action in its remaining sequence.
         // In that case runSequence will execute it exactly once with this approval present.
         if (remainingStepIds.has(actionId)) continue;
-        const actionRef = actionStep!.actionRef ?? actionRefFor(actionStep!.connector, actionStep!.action);
+        const actionRef = actionStep.actionRef ?? actionRefFor(actionStep.connector, actionStep.action);
         const actionDefinition = resolveActionDefinition(actionRef);
         if (!actionDefinition) {
           throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
@@ -550,6 +609,10 @@ export class WorkflowRuntime {
             { code: 'action_params_missing' },
           );
         }
+        if (ir.outputContract && isExternalAction(actionStep, ir)) {
+          const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+          if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
+        }
         const result = await connector.execute(
           actionDefinition.action,
           params,
@@ -559,6 +622,13 @@ export class WorkflowRuntime {
           throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
         }
         stepResults[actionId] = result.data;
+        if (ir.outputContract) {
+          const input = validateInputSchema(ir.outputContract, actionId, result.data);
+          if (!input.ok) {
+            this.recordRepairProposal(ir, actionId, result.data);
+            throw createContractFailure('input_schema_drift', 'after_source_step', input);
+          }
+        }
       }
 
       if (ir && checkpoint?.remainingStepIds.length) {
@@ -570,6 +640,11 @@ export class WorkflowRuntime {
           checkpoint.pendingOuterStepIds ?? [],
           new Set(approval.actionIds),
         );
+      }
+
+      if (ir.outputContract) {
+        const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
+        if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
       }
 
       this.config.store.resolveApproval(approvalId, true);
@@ -597,7 +672,13 @@ export class WorkflowRuntime {
         return pendingResult;
       }
       const code = error.code ?? 'execution_failed';
-      log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
+      log.push({
+        at: new Date().toISOString(),
+        level: 'error',
+        code,
+        message: error.message,
+        ...(isContractFailure(error) ? { data: error.data } : {}),
+      });
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'failed', code, log);
       const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };

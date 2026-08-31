@@ -136,7 +136,8 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
           ) : (
             executions.map((e) => {
               const skill = state?.works.find((s) => s.id === e.workflowId);
-              const ok = e.status === 'success';
+              const resultFailed = e.resultStatus === 'failed';
+              const ok = e.status === 'success' && !resultFailed;
               const running = e.status === 'running';
               const pending = e.status === 'pending_approval';
               const failed = e.status === 'failed';
@@ -166,10 +167,11 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
                       </button>
                     </div>
                     <div className="timeline-status">
-                      {skill?.name ?? '일회 실행'} — {executionStatusLabel(e.status)}
+                      {skill?.name ?? '일회 실행'} — {resultFailed ? '결과 품질 실패' : executionStatusLabel(e.status)}
                     </div>
                     <div className="muted">
                       {executionTriggerLabel(e.triggerType)}
+                      {resultFailed ? ' · 기술 실행 완료 · 결과 품질 차단' : ''}
                       {errorDetail ? ` · ${errorDetail}` : ''}
                       {e.errorMessage && e.errorMessage !== errorDetail ? ` · ${e.errorMessage}` : ''}
                     </div>

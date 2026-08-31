@@ -77,6 +77,52 @@ export async function attachFixtureViaE2e(page: Page, fixturePath: string): Prom
   await page.getByRole('button', { name: '자료 추가', exact: true }).click();
 }
 
+export async function startDiscoveryFixture(page: Page, artifactPath: string, folderPath: string): Promise<void> {
+  await page.evaluate(
+    async ({ artifact, folder }) => {
+      const ax = (window as unknown as {
+        ax?: {
+          e2eSetDiscoveryArtifactPath?: (path: string) => Promise<unknown>;
+          e2eConfigureDiscoveryFolder?: (path: string) => Promise<unknown>;
+        };
+      }).ax;
+      if (!ax?.e2eSetDiscoveryArtifactPath || !ax.e2eConfigureDiscoveryFolder) {
+        throw new Error('Discovery E2E seam unavailable (AX_E2E=1 required)');
+      }
+      await ax.e2eConfigureDiscoveryFolder(folder);
+      await ax.e2eSetDiscoveryArtifactPath(artifact);
+    },
+    { artifact: artifactPath, folder: folderPath },
+  );
+  await page.getByRole('button', { name: '지난 결과물 첨부하기', exact: true }).click();
+}
+
+export async function waitForDiscoveryStatus(page: Page, status: string, timeoutMs: number): Promise<void> {
+  await page.waitForFunction(
+    (expected) => document.querySelector('.ax-discovery-review')?.getAttribute('data-discovery-status') === expected,
+    status,
+    { timeout: timeoutMs },
+  );
+}
+
+export async function publishDiscovery(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '이대로 맡기기', exact: true }).click();
+  await page.locator('.ax-discovery-review').waitFor({ state: 'detached', timeout: 20_000 });
+}
+
+export async function hasWorkflow(page: Page, name: string): Promise<boolean> {
+  return page.evaluate(async (expected) => {
+    const state = await (window as unknown as { ax: { getState: () => Promise<unknown> } }).ax.getState();
+    const works = state && typeof state === 'object' && 'works' in state
+      ? (state as { works?: unknown }).works
+      : undefined;
+    return Array.isArray(works) && works.some((work) => {
+      if (!work || typeof work !== 'object' || !('name' in work)) return false;
+      return typeof work.name === 'string' && work.name.includes(expected);
+    });
+  }, name);
+}
+
 export async function openSidebarTab(
   page: Page,
   tab: 'work' | 'approval' | 'activity' | 'settings',

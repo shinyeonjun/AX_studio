@@ -168,6 +168,21 @@ const MIGRATION_SQL = `
     FOREIGN KEY(session_id) REFERENCES work_discovery_sessions(id) ON DELETE CASCADE,
     FOREIGN KEY(example_id) REFERENCES work_discovery_examples(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS workflow_repair_proposals (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    base_version INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    dedupe_key TEXT NOT NULL UNIQUE,
+    proposal_json TEXT NOT NULL,
+    applied_version INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workflow_repair_proposals_workflow
+  ON workflow_repair_proposals(workflow_id, created_at);
 `;
 
 function columnNames(db: AppDatabase, table: string): string[] {

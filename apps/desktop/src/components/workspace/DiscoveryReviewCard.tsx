@@ -5,11 +5,30 @@ interface DiscoveryReviewCardProps {
   busy: boolean;
   onAnswer: (questionId: string, optionId: string) => Promise<void> | void;
   onPublish: () => Promise<void> | void;
+  onCancel?: () => Promise<void> | void;
+  onRetry?: () => Promise<void> | void;
 }
 
-export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: DiscoveryReviewCardProps) {
+const RUNNING_STATUSES = new Set<DiscoveryInspectView['status']>([
+  'collecting_examples',
+  'observing_output',
+  'inventory_sources',
+  'exploring_sources',
+  'synthesizing',
+  'validating',
+  'publishing',
+]);
+
+const CANCELLABLE_STATUSES = new Set<DiscoveryInspectView['status']>([
+  ...RUNNING_STATUSES,
+  'needs_attention',
+  'needs_clarification',
+  'ready_to_publish',
+]);
+
+export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel, onRetry }: DiscoveryReviewCardProps) {
   return (
-    <div className="ax-discovery-review">
+    <div className="ax-discovery-review" data-discovery-status={view.status}>
       <h3>찾은 방법</h3>
       <p className="muted">{view.progress}</p>
       {view.fieldReviews.length > 0 && (
@@ -85,6 +104,20 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish }: Discove
           {view.status === 'published' ? '맡기기 완료' : '이대로 맡기기'}
         </button>
       )}
+      {(CANCELLABLE_STATUSES.has(view.status) && onCancel) || (view.status === 'needs_attention' && onRetry) ? (
+        <div className="ax-discovery-review-actions">
+          {CANCELLABLE_STATUSES.has(view.status) && onCancel && (
+            <button type="button" className="ax-discovery-review-btn" disabled={busy} onClick={() => void onCancel()}>
+              중단하기
+            </button>
+          )}
+          {view.status === 'needs_attention' && onRetry && (
+            <button type="button" className="ax-discovery-review-btn" disabled={busy} onClick={() => void onRetry()}>
+              다시 시도
+            </button>
+          )}
+        </div>
+      ) : null}
       {view.errorMessage && <p className="ax-workspace-error">{view.errorMessage}</p>}
     </div>
   );

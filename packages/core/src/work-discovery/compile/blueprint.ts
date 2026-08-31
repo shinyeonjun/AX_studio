@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { CandidateProgram, DiscoveryBlueprint, DiscoverySessionState } from '../schema.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
+import { buildOutputContract } from '../validation/output-contract.js';
 
 export function sourceIdFromExpr(expr: TransformExpr): string | undefined {
   if (expr.op === 'source') return expr.sourceId;
@@ -105,6 +106,7 @@ export function buildDiscoveryBlueprint(session: DiscoverySessionState): Discove
     })),
     fields,
     replaySummary,
+    outputContract: buildOutputContract(session.observations),
     publishable: canPublish({ ...session, status: 'ready_to_publish', pendingQuestion: undefined }).ok,
   };
 }

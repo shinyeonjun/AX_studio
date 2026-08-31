@@ -105,6 +105,8 @@ export interface AxApi {
     | { ok: false; canceled?: boolean; error?: string }
   >;
   e2eSetWorkspaceSourcePath?: (filePath: string) => Promise<{ ok: true }>;
+  e2eSetDiscoveryArtifactPath?: (filePath: string) => Promise<{ ok: true }>;
+  e2eConfigureDiscoveryFolder?: (folderPath: string) => Promise<{ ok: true }>;
   onChatProgress?: (listener: (event: { message: string; requestId?: string }) => void) => () => void;
   explain: (q: string) => Promise<string>;
   connectSlack: (payload: string | { token: string; appToken?: string }) => Promise<unknown>;
@@ -183,6 +185,10 @@ export interface AxApi {
   }) => Promise<AxCommandResult>;
   discoveryInspect: (sessionId: string) => Promise<AxCommandResult>;
   discoveryCancel: (sessionId: string) => Promise<AxCommandResult>;
+  discoveryRetry: (payload: {
+    sessionId: string;
+    expectedRevision: number;
+  }) => Promise<AxCommandResult>;
   discoveryAnswer: (payload: {
     sessionId: string;
     questionId: string;

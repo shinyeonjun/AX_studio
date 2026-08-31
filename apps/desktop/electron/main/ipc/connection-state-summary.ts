@@ -104,8 +104,6 @@ export async function summarizeConnection(
       label: typeof record.label === 'string' ? record.label.trim() || undefined : undefined,
       dbType: parsed?.type,
       target: formatRdbTarget(record, storedConnectionString),
-      connectionString:
-        connected && parsed?.type !== 'sqlite' ? storedConnectionString ?? undefined : undefined,
       allowedSchemas: parsed?.allowedSchemas,
       allowedTables: parsed?.allowedTables,
       rowLimit: parsed?.rowLimit,

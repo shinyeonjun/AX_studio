@@ -8,6 +8,7 @@ import { buildConnectorsFromStore } from './modules/registry.js';
 import { registerAllModules } from './modules/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from './agent/harness.js';
 import { AxCommandService } from './agent/commands/service.js';
+import type { ArtifactReference, ArtifactSink } from './modules/types.js';
 import { ArtifactStore } from './store/artifact-store.js';
 import { WorkspaceSourceService } from './store/workspace-source-service.js';
 import {
@@ -71,6 +72,20 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
   const artifactStore = new ArtifactStore(paths.artifacts);
+  const generatedArtifactStore = new ArtifactStore(paths.generated.reports);
+  const generatedArtifactSink: ArtifactSink = {
+    putBytes(data, options): ArtifactReference {
+      const stored = generatedArtifactStore.putBytes(data, options);
+      return {
+        id: stored.id,
+        sha256: stored.sha256,
+        fileName: stored.fileName,
+        ...(stored.mimeType ? { mimeType: stored.mimeType } : {}),
+        size: stored.size,
+        createdAt: stored.createdAt,
+      };
+    },
+  };
   const workspaceSources = new WorkspaceSourceService(store, artifactStore, paths.sessions);
 
   const aiConfig = normalizeAiProviderConfig(
@@ -92,6 +107,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     globalActive,
     workflowActive,
     connectors,
+    artifactSink: generatedArtifactSink,
     onExecutionStarted: options.onExecutionStarted,
     onExecutionProgress: options.onExecutionProgress,
     onExecutionFinished: options.onExecutionFinished,

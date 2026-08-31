@@ -33,6 +33,11 @@ export const AX_COMMAND_NAMES = [
   'workflow.delete',
   'workflow.run',
   'execution.enqueue_once',
+  'execution.explain',
+  'repair.list',
+  'repair.inspect',
+  'repair.apply',
+  'repair.reject',
   'job.propose',
   'job.commit',
   'context.update',
@@ -265,6 +270,31 @@ export const AxWorkflowRunArgsSchema = z.object({
 
 /** One-shot execution uses the same plan shape as workflow.create, but is never persisted. */
 export const AxExecutionEnqueueOnceArgsSchema = AxWorkflowCreateArgsSchema;
+
+export const AxExecutionExplainArgsSchema = z.object({
+  executionId: z.string().trim().min(1),
+});
+
+export const AxRepairListArgsSchema = z.object({
+  workflowId: z.string().trim().min(1).optional(),
+  status: z.enum(['proposed', 'applied', 'rejected']).optional(),
+});
+
+export const AxRepairInspectArgsSchema = z.object({
+  repairId: z.string().trim().min(1),
+});
+
+export const AxRepairApplyArgsSchema = z.object({
+  repairId: z.string().trim().min(1),
+  candidateId: z.string().trim().min(1),
+  baseVersion: z.number().int().min(1),
+});
+
+export const AxRepairRejectArgsSchema = z.object({
+  repairId: z.string().trim().min(1),
+  baseVersion: z.number().int().min(1),
+  reason: z.string().trim().min(1).max(500).optional(),
+});
 
 /** Host-rendered UI is deliberately read-only and cannot execute a side effect. */
 export const AxUiPresentArgsSchema = AxUiPresentationSchema;

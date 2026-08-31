@@ -1,0 +1,39 @@
+{
+  "id": "discovery-desktop-deterministic",
+  "name": "Desktop Work Discovery 전체 경로와 대화 격리",
+  "description": "Electron IPC를 통해 연결 폴더 입력과 지난 결과물 예시로 Discovery를 실행하고, 새 대화 격리와 workflow 저장을 확인합니다.",
+  "mode": "deterministic",
+  "tags": ["discovery", "desktop", "e2e", "deterministic"],
+  "covers": ["command:discovery.start", "discovery:explain"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "openTab", "tab": "work" },
+    { "action": "newChat", "label": "discoveryA" },
+    {
+      "action": "startDiscoveryFixture",
+      "artifact": "discovery/output.csv",
+      "folder": "discovery/input"
+    },
+    { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
+    { "check": "discoveryCardPresent", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "이대로 맡기기", "severity": "critical" },
+    {
+      "action": "sendMessage",
+      "label": "discoveryA",
+      "text": "__e2e:plain-reply__"
+    },
+    { "action": "newChat", "label": "discoveryB" },
+    { "check": "discoveryCardAbsent", "severity": "critical" },
+    {
+      "action": "startDiscoveryFixture",
+      "artifact": "discovery/output.csv",
+      "folder": "discovery/input"
+    },
+    { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
+    { "action": "publishDiscovery" },
+    { "check": "workflowPresent", "text": "지난 결과물과 같은 방식으로", "severity": "critical" },
+    { "check": "discoveryCardAbsent", "severity": "major" },
+    { "check": "appAlive", "severity": "critical" },
+    { "action": "screenshot", "name": "published" }
+  ]
+}

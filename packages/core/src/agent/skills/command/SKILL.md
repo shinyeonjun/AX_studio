@@ -20,6 +20,8 @@ HTTP capability에서 `http.request`는 GET/HEAD 조회 전용이다. 외부 데
 세션 자료 manifest의 status가 processing이면 자료가 아직 분석 중인 것이다. 자료가 없다고 단정하거나 연결 폴더의 다른 파일로 대체하지 말고, 준비될 때까지 기다려야 한다고 답한다. session.source.read의 workspace_source_processing 결과도 같은 의미다.
 
 command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.
+실행 결과가 이상하거나 차단된 이유를 확인할 때는 execution.explain으로 기술 상태와 결과 품질 이유만 조회한다. 원본 실행 로그·행·메시지 본문을 직접 노출하지 않는다.
+입력 스키마 drift로 repair 제안이 생기면 repair.list/repair.inspect로 후보와 과거 replay 상태를 먼저 확인한다. repair.apply는 사용자가 선택한 candidateId와 기준 버전을 명시하고, 모든 저장된 과거 replay가 통과한 경우에만 사용한다. repair는 source column rename/remap만 다루며 threshold·recipient·approval·trigger·schedule·side effect·외부 action params를 자동 변경하지 않는다. 적용하지 않을 때는 repair.reject를 사용한다.
 반복 스케줄 업무(매일 HTTP 조회 후 요약해 Slack으로 보내는 업무 등)는 job.propose를 한 번만 사용한다. resource.list/capability.list/workflow.create/update/run을 이어 호출하지 않는다. 빠진 값은 needs_input 이후 같은 job.propose에 채워 다시 보낸다. 저장은 host 확인 버튼이 처리하므로 job.commit을 호출하지 않는다.
 job.propose의 interpret/notify/fetch/schedule은 객체로 보내는 것이 좋지만, 요약 목표·채널·경로·cron 문자열만 있어도 된다.
 HTTP 연결이 여러 개면 fetch.connectionId에 연결 id 또는 표시 이름을 넣는다. 저장하면 이후 실행에서 다시 고르지 않는다.

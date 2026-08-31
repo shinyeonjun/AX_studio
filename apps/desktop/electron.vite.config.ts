@@ -60,7 +60,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('electron/main/index.ts'),
-          'scan-worker': resolve('../../packages/core/src/modules/local-folder/scan-worker.ts'),
+          'scan-worker': resolve('../../packages/core/src/platform/local-folder-scan-worker.ts'),
         },
         external: mainExternals,
       },

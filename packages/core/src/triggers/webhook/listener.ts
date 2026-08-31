@@ -48,6 +48,23 @@ function headerRecord(req: IncomingMessage): Record<string, string | string[] | 
   return req.headers;
 }
 
+const PROVIDER_EVENT_ID_HEADERS = [
+  'idempotency-key',
+  'x-idempotency-key',
+  'x-event-id',
+  'x-webhook-id',
+  'x-github-delivery',
+] as const;
+
+function providerEventId(req: IncomingMessage): string | undefined {
+  for (const name of PROVIDER_EVENT_ID_HEADERS) {
+    const value = req.headers[name];
+    const candidate = Array.isArray(value) ? value[0] : value;
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  return undefined;
+}
+
 function respond(res: ServerResponse, status: number, body: string): void {
   res.statusCode = status;
   res.setHeader('content-type', 'text/plain; charset=utf-8');
@@ -134,7 +151,9 @@ export class WebhookInboundListener {
         return;
       }
 
-      const requestId = randomUUID();
+      // Prefer a provider's stable event key so retries can be deduplicated.
+      // Keyless callers still receive a unique local request id.
+      const requestId = providerEventId(req) ?? randomUUID();
       const receivedAt = new Date().toISOString();
       const body = rawBody.toString('utf8');
       const headers: Record<string, string> = {};

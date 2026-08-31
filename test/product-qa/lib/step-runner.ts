@@ -4,6 +4,7 @@ import {
   clickNewChat,
   deleteSessionByTitle,
   errorBannerText,
+  hasWorkflow,
   isAppAlive,
   isComposerDisabled,
   listSessionTitles,
@@ -12,10 +13,13 @@ import {
   openSettingsLink,
   openSidebarTab,
   pageTitleText,
+  publishDiscovery,
   readVisibleMessages,
+  startDiscoveryFixture,
   sendMessage,
   switchSessionByTitle,
   toggleTheme,
+  waitForDiscoveryStatus,
   waitForComposerBusy,
   waitForComposerReady,
 } from './ui.js';
@@ -162,6 +166,18 @@ export class StepRunner {
           if (step.optional) return;
           throw err;
         }
+        return;
+      }
+      case 'startDiscoveryFixture': {
+        await startDiscoveryFixture(page, fixturePath(step.artifact), fixturePath(step.folder));
+        return;
+      }
+      case 'waitForDiscovery': {
+        await waitForDiscoveryStatus(page, step.status, step.timeoutMs ?? 30_000);
+        return;
+      }
+      case 'publishDiscovery': {
+        await publishDiscovery(page);
         return;
       }
       case 'switchSession': {
@@ -386,6 +402,28 @@ export class StepRunner {
           expected: 'new chat button visible',
           actual: alive ? 'alive' : 'missing new chat',
           passed: alive,
+        };
+      }
+      case 'discoveryCardPresent':
+      case 'discoveryCardAbsent': {
+        const visible = await page.locator('.ax-discovery-review').isVisible().catch(() => false);
+        const passed = step.check === 'discoveryCardPresent' ? visible : !visible;
+        return {
+          ...base,
+          check: step.check,
+          expected: step.check === 'discoveryCardPresent' ? 'Discovery review card visible' : 'Discovery review card absent',
+          actual: visible ? 'visible' : 'absent',
+          passed,
+        };
+      }
+      case 'workflowPresent': {
+        const present = await hasWorkflow(page, step.text);
+        return {
+          ...base,
+          check: step.check,
+          expected: `workflow name contains ${step.text}`,
+          actual: present ? 'matched' : 'workflow not found',
+          passed: present,
         };
       }
       default:

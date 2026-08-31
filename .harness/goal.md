@@ -78,6 +78,30 @@ without invoking real Gmail, Slack, Codex, Claude, or external network side effe
 ## Non-goals
 - Schema drift auto-repair (fixture only)
 - Agent semantic synthesis harness (deferred; deterministic path first)
+
+## Current task: PR #117 correctness repair
+
+Close the published Work Discovery runtime seams exposed during review before
+merging the PR. The compiled workflow must retain enough session identity for
+repair replay, RDB reads must satisfy transform evaluation's table contract,
+and expressions that reference multiple sources must receive every bound
+snapshot at runtime.
+
+### Success criteria
+
+- A compiled Discovery workflow document retains its source session id.
+- A compiled RDB source binds its declared `rows` output to transform evaluation.
+- Raw RDB row arrays are normalized at the transform boundary without changing
+  the existing RDB connector result contract.
+- Multi-source transform expressions receive and evaluate all source snapshots.
+- Focused regression tests fail on the pre-fix behavior and pass after the fix.
+- The frozen repository evaluator and PR CI pass after the branch is rebased on
+  the latest `main`.
+
+### Non-goals
+
+- Changing the public RDB query result shape.
+- Reworking repair proposal persistence or unrelated connector behavior.
 - Phases 9–10 drift/repair productization
 
 ## Current task: HTTP, Webhook, and RDB connector completion
@@ -690,3 +714,378 @@ behavior while making the intended contracts testable.
 - Changing the job schema, scheduling semantics, or workflow persistence.
 - Reworking prompt wording, model providers, or connector behavior.
 - Completing unrelated Product QA, path-security, or RDB WIP changes.
+
+## Current task: main-based Work Discovery production path
+
+Starting from the merged `main` baseline, make the user-facing Work Discovery
+path safe and verifiable in small phases. The first phase owns the boundary
+between a Workspace chat session and its Discovery session.
+
+### Phase 1 success criteria
+
+- Starting, loading, switching, deleting, or creating a Workspace chat cannot
+  leave an unrelated Discovery review card attached to the visible chat.
+- Discovery answer and publish mutations include the last inspected revision
+  and surface revision conflicts instead of silently ignoring them.
+- Desktop exposes bounded cancel and retry actions for Discovery states that
+  support them; no retry loop is introduced.
+- Existing Core behavior, Desktop typecheck/build, deterministic Product QA
+  smoke, and whitespace checks remain green.
+
+### Phase 1 non-goals
+
+- Changing the Work Discovery algorithm, WorkflowIR, Runtime, or connector
+  side effects.
+- Fixing connected-folder spreadsheet inventory; that is the next bounded
+  phase.
+- Adding root integration/E2E runners, drift detection, or repair behavior in
+  this phase.
+
+## Current task: main-based Work Discovery production path — Phase 2
+
+Starting after the completed Desktop session-boundary phase, make connected
+local folders usable as Work Discovery spreadsheet sources.
+
+### Phase 2 success criteria
+
+- A connected local-folder configuration with one or more folders yields
+  discoverable CSV, XLS, and XLSX file descriptors, including nested files.
+- Each descriptor can be profiled through a stable source ID and returns a
+  table without reading outside its configured folder.
+- Missing folders, malformed local-folder configuration, unsupported files, and
+  corrupt spreadsheets are skipped or rejected without crashing the whole
+  discovery inventory.
+- Existing local-folder path-security tests, Work Discovery/Core regression,
+  Desktop typecheck/build, deterministic Product QA smoke, and whitespace
+  checks remain green.
+
+### Phase 2 non-goals
+
+- Changing the Work Discovery algorithm, WorkflowIR, Runtime, or connector
+  side effects.
+- Adding provider-wide failure isolation or drift/repair behavior; those remain
+  later bounded phases.
+
+## Current task: main-based Work Discovery production path — Phase 3
+
+Prove the Desktop Work Discovery path through the real Electron boundary with
+deterministic fixtures and a narrowly gated test seam.
+
+### Phase 3 success criteria
+
+- A deterministic Electron scenario configures a fixture folder, imports a
+  spreadsheet example, starts Discovery, and reaches `ready_to_publish`.
+- The scenario verifies that changing to a new Workspace chat removes the old
+  Discovery card and that publishing persists a workflow through the Desktop
+  IPC boundary.
+- Discovery-only E2E seams are exposed only for an unpackaged `AX_E2E=1` run,
+  accept only regular files/directories inside `test/fixtures`, and are absent
+  from packaged production.
+- The existing Product QA smoke/session/document scenarios and Core Discovery
+  regressions remain green.
+
+### Phase 3 non-goals
+
+- Live-provider or external-connector side effects.
+- Recovery retry fault injection; this phase proves the happy path and chat
+  isolation boundary.
+- Root integration/E2E runner repair, persistence schema hardening, or result
+  drift/repair behavior.
+
+## Current task: main-based Work Discovery production path — Phase 4
+
+Restore the repository-level test entry points so a fresh checkout has one
+truthful command for the Electron product path and one for Core integration
+coverage. The runners must forward failures, avoid external providers, and
+keep their selected suites bounded and reproducible.
+
+### Phase 4 success criteria
+
+- `npm run test:e2e` builds the desktop app when needed and runs the
+  deterministic Electron Product QA suite through the real main/preload/
+  renderer boundary.
+- `npm run test:integration` runs the Core integration boundary suite and
+  returns the underlying test exit status instead of silently passing.
+- Both root runners work from a clean checkout, accept documented extra
+  arguments where appropriate, and do not require live provider credentials or
+  external network side effects.
+- Existing Core, Desktop, Product QA, architecture, and whitespace checks
+  remain green.
+
+### Phase 4 non-goals
+
+- Adding new connector behavior or replacing the existing unit-test suite.
+- Starting Docker services or requiring unavailable external infrastructure for
+  the default integration command.
+- Persistence schema changes or result drift/repair behavior; those remain the
+  next bounded phases.
+
+### Phase 4 final checkpoint (2026-08-30)
+
+- `npm run test:e2e` now builds the desktop app and passes the deterministic
+  Electron Product QA suite.
+- `npm run test:integration` now runs the bounded Core integration boundary
+  suite without external credentials or side effects.
+- The repository test harness typechecks cleanly with
+  `npx tsc -p test/tsconfig.json --noEmit`.
+
+## Current task: main-based Work Discovery production path — Phase 5
+
+Make persisted artifact sidecars trustworthy at the ArtifactStore boundary.
+The existing JSON file layout remains compatible, but typed document, ingest,
+workbook, and table payloads must be validated when written and read. Artifact
+IDs must remain filenames inside the configured artifact root.
+
+### Phase 5 success criteria
+
+- Document and document-engine ingest sidecars are validated against explicit
+  schemas on write and read; malformed sidecars are treated as unavailable.
+- Workbook and table sidecars have typed read/write helpers, and Work
+  Discovery uses them without regressing existing generic JSON artifacts.
+- Artifact IDs reject path separators, traversal, empty values, and other
+  filename-escaping input before any filesystem access.
+- Existing PDF, spreadsheet, workspace-source, Work Discovery, root
+  integration, Desktop, and Product QA checks remain green.
+
+### Phase 5 non-goals
+
+- Changing the on-disk directory layout or migrating existing valid sidecars.
+- Retrofitting every unrelated SQLite JSON column in one patch.
+- Changing document-engine output semantics, connector behavior, or workflow
+  execution.
+
+### Phase 5 final checkpoint (2026-08-31)
+
+- ArtifactStore typed sidecars now validate on write and fail closed on read.
+- Workbook and table sidecars use explicit typed helpers while generic JSON
+  remains available for intentionally untyped payloads.
+- Filename-escaping IDs and metadata paths outside the artifact root are
+  rejected without touching the outside path.
+- Full Core tests, Core eval, Core/Desktop build, root integration, and root
+  Electron E2E remain green.
+
+## Current task: main-based Work Discovery production path — Phase 6
+
+Recover the module boundaries exposed by the architecture check. The existing
+dependency rules are intentional and must remain strict: Work Discovery must
+not import connector implementations, and connector modules must not import
+each other. Shared local-folder configuration, path-safety, scanning, and
+worker primitives need a platform-level home that can be used by local-sheet
+discovery without creating a module-to-module dependency.
+
+### Phase 6 success criteria
+
+- `npm run arch:check` reports zero dependency violations without weakening or
+  deleting an existing rule.
+- Work Discovery observation tests use contract-level fixtures and do not
+  import the local-sheet implementation.
+- Local-sheet discovery uses shared platform local-folder primitives while
+  existing local-folder callers and the Electron scan worker remain compatible.
+- Core typecheck, the affected Core regressions, root integration, full Core
+  tests, Core evaluation, Desktop build, and root Electron E2E remain green.
+
+### Phase 6 non-goals
+
+- Changing connector behavior, Work Discovery semantics, or workflow execution.
+- Rewriting the local-folder scanner or introducing live-provider behavior.
+- Broad module renaming, unrelated cleanup, or weakening architecture rules.
+
+### Phase 6 final checkpoint (2026-08-31)
+
+- The strict architecture check reports zero violations after moving shared
+  local-folder configuration, path, scan, async, and worker primitives behind
+  the platform boundary.
+- Work Discovery observation tests use contract-level workbook fixtures, and
+  the Electron worker still bundles and runs through the existing output path.
+- Full Core tests, Core evaluation, Core/Desktop build, root integration, and
+  root Electron E2E remain green.
+
+## Current task: main-based Work Discovery production path — Phase 9
+
+Add a persisted output contract and runtime quality gate for published Work
+Discovery workflows. Historical observations define presence/type baselines;
+multiple examples may additionally define conservative numeric and row-volume
+ranges. Input schema drift and output degradation must be recorded as distinct
+technical/result failures, and external actions must not run after a failed
+quality check. Expose a minimal `execution.explain` read command without
+returning raw execution parameters or result payloads.
+
+### Phase 9 success criteria
+
+- Discovery blueprints and compiled workflows persist bounded output and input
+  contracts without storing raw historical values.
+- Runtime detects missing source columns, incompatible source types, missing
+  output sections, output type changes, and multi-sample numeric/row-volume
+  anomalies with stable issue codes.
+- A failed contract prevents later external side effects and separates
+  technical execution status from result quality in the execution record/log.
+- `execution.explain` returns an inspectable, sanitized reason for a blocked or
+  degraded execution.
+- Desktop activity distinguishes technical completion from result-quality
+  failure for these executions.
+- Core typecheck, focused contract/runtime/command tests, full Core tests,
+  evaluation, build, integration, Electron E2E, and architecture checks pass.
+
+### Phase 9 non-goals
+
+- No automatic repair, remapping, threshold/recipient/approval/schedule
+  changes, or provider-side writes; those belong to Phase 10.
+- No raw output rows, message bodies, or historical values in contracts,
+  failure logs, or `execution.explain`.
+- No change to the existing ArtifactStore layout or connector semantics beyond
+  the runtime quality gate.
+
+### Phase 9 final checkpoint (2026-08-31)
+
+- Work Discovery now compiles bounded output/input contracts into persisted
+  workflow versions; single-sample numeric baselines remain presence/type-only.
+- Runtime blocks external actions when input schema or output quality drifts and
+  stores only sanitized issue metadata.
+- `execution.explain` and Desktop activity expose the distinction between
+  technical completion and result-quality failure.
+- Core, evaluation, build, Desktop typecheck, integration, Electron E2E,
+  architecture, and whitespace checks passed.
+
+## Current task: connector foundation safety and acceptance — Phase 1
+
+Begin the ordered completion plan for the six in-scope product surfaces:
+PDF, Webhook, HTTP/REST, RDB, Gmail, and Slack. This first bounded slice fixes
+the already-evidenced secret and trigger-reliability risks and establishes
+public behavior seams for the later connector/product work. It does not add
+rich Gmail/Slack messaging, PDF template editing, or broad settings redesign.
+
+### Phase 1 success criteria
+
+- Remote RDB credentials remain in the main-process/OS secret boundary and are
+  never returned in renderer connection state or loaded into the renderer form.
+- A trigger receipt whose `processing` lease is stale can be reclaimed exactly
+  once, while fresh `processing` and `completed` receipts remain deduplicated.
+- Webhook events preserve an authenticated provider idempotency/event key when
+  supplied, so a retry produces the same event request id; requests without a
+  key retain unique request ids.
+- Focused regression tests exercise the three public seams before and after
+  the implementation.
+- Existing Core and Desktop type/build checks remain green; no external
+  Gmail/Slack credentials or side effects are used.
+
+### Phase 1 non-goals
+
+- No PDF template editor, PDF artifact download/preview, or Gmail/Slack
+  attachment implementation.
+- No HTTP/DB query-builder or connector action-lab UI.
+- No provider-side live tests, schema migration, or broad trigger redesign.
+- No changes to the existing unrelated dirty `.gitignore` modification.
+
+### Phase 1 final checkpoint (2026-08-31T12:01:20.2861771+09:00)
+
+- Remote RDB connection strings are no longer returned in renderer-facing
+  connection summaries or restored into the RDB settings form.
+- Trigger receipts reclaim only stale `processing` rows using a bounded lease;
+  fresh and completed rows remain deduplicated.
+- Webhook listener preserves supported provider idempotency/event headers and
+  still generates unique IDs for keyless requests.
+- Focused tests, full Core regression, Core/Desktop/test typechecks, evaluation,
+  architecture check, production build, root integration runner, Electron E2E,
+  and whitespace checks passed.
+
+## Current task: main-based Work Discovery production path — Phase 10
+
+Add conservative repair support for persisted Work Discovery workflows. When
+the Phase 9 input-schema gate detects a missing or changed source column, the
+runtime may persist a bounded rename/remap proposal, but it must never change
+workflow meaning automatically. A repair can be inspected, rejected, or
+applied only after every persisted historical replay case passes. Applying a
+repair creates a new workflow version and leaves the prior version available
+for rollback.
+
+### Phase 10 success criteria
+
+- Input-schema drift can produce a deduplicated, bounded repair proposal with
+  rename/remap candidates and no raw rows, values, credentials, or payloads.
+- `repair.list`, `repair.inspect`, `repair.apply`, and `repair.reject` are
+  exposed through the command boundary with stale-version and lifecycle
+  checks.
+- A candidate is applicable only when every available historical replay case
+  passes; missing or unreadable replay evidence blocks apply.
+- Apply changes only the selected source-column mapping and its matching input
+  schema, creates a new workflow version, and does not alter thresholds,
+  recipients, approvals, triggers, schedules, side effects, or external action
+  parameters.
+- Reject is durable and apply is reversible by retaining the pre-repair
+  workflow version; no automatic repair occurs during runtime execution.
+- Core typecheck, focused repair/replay/command/runtime tests, full Core,
+  evaluation, build, Desktop typecheck, integration, Electron E2E,
+  architecture, and whitespace checks pass.
+
+### Phase 10 non-goals
+
+- No automatic workflow remapping or semantic inference beyond proposing a
+  user-reviewable column rename/remap candidate.
+- No threshold, recipient, approval, AND/OR, schedule, trigger, side-effect,
+  connector, or external action parameter changes.
+- No live-source replay, provider calls, or external connector side effects
+  during inspect or apply.
+- No new workflow editor or broad UI redesign; command and existing versioned
+  storage surfaces are sufficient for this phase.
+
+### Phase 10 final checkpoint (2026-08-31T01:26:49.0009816+09:00)
+
+- Conservative repair is complete: input-schema drift can create a bounded,
+  deduplicated rename/remap proposal; inspect and apply replay only persisted
+  historical snapshots, and unavailable evidence blocks apply.
+- `repair.list`, `repair.inspect`, `repair.apply`, and `repair.reject` enforce
+  read/mutation boundaries, stale-version checks, lifecycle checks, and
+  user-selected candidate application.
+- Applying a candidate changes only the source-column mapping and matching
+  input schema, creates the next workflow version, and retains the previous
+  version for rollback. Runtime execution never auto-applies a repair.
+- Focused repair/runtime/command checks passed 5 files/54 tests; full Core
+  passed 122 files/620 tests with 3 skips; evaluation passed 11/11;
+  architecture, typechecks, production build, integration, Electron E2E,
+  and whitespace checks passed.
+
+## Current task: main-based connector completion — PDF Phase 2
+
+Make the existing PDF write path durable on the main-aligned baseline. A
+successful desktop PDF print must be persisted under the configured generated
+reports directory, and the workflow runtime must retain only a safe artifact
+reference and sanitized execution metadata. The raw PDF bytes must not travel
+through workflow variables, step results, checkpoints, or execution logs.
+
+### Phase 2 success criteria
+
+- `ArtifactStore` can persist generated bytes with a content hash, safe file
+  name, metadata sidecar, and deduplicated lookup under its configured root.
+- The runtime injects a generated-report artifact sink into both fresh and
+  approval-resumed executions.
+- `document.pdf.generate` persists completed PDF output under
+  `generated/reports`, returns an artifact reference without a local path or
+  raw bytes, and logs only sanitized artifact metadata.
+- Missing persistence infrastructure fails closed with a stable connector
+  error instead of reporting a durable PDF success.
+- Focused PDF/store/runtime tests, full Core regression, typechecks, build,
+  architecture, and whitespace checks pass without changing external provider
+  behavior or the unrelated `.gitignore` edit.
+
+### Phase 2 non-goals
+
+- No PDF template editor, browser preview, user-selected export/download IPC,
+  or renderer redesign in this slice.
+- No Gmail/Slack attachment delivery, live provider calls, or credential
+  changes.
+- No change to the Python PDF-to-HTML conversion engine or broad artifact
+  schema migration.
+
+### Phase 2 final checkpoint (2026-08-31T12:50:37.8037370+09:00)
+
+- Generated PDF bytes are persisted below `paths.generated.reports` with a
+  content hash, safe file name, metadata sidecar, and content deduplication.
+- Fresh and approval-resumed runtime contexts receive the same host-owned
+  artifact sink; the PDF connector exposes only a path-free artifact reference
+  and sanitized `pdf_generated` metadata.
+- Missing storage and missing desktop print infrastructure fail closed, and
+  storage failures have a distinct error code.
+- Focused PDF/store/runtime checks passed 3 files/41 tests; full Core passed
+  124 files/641 tests with 3 skips; Desktop typecheck, document-engine tests,
+  integration, Product QA/E2E, knip, evaluation, architecture, production
+  build, and whitespace checks passed.

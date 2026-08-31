@@ -7,6 +7,13 @@ export const PortBindingSchema = z.object({
 
 export type PortBinding = z.infer<typeof PortBindingSchema>;
 
+/** Reserved binding prefix used to pass additional transform snapshots. */
+export const SNAPSHOT_BINDING_PREFIX = 'snapshot.';
+
+export function snapshotBindingPort(sourceId: string): string {
+  return `${SNAPSHOT_BINDING_PREFIX}${sourceId}`;
+}
+
 function parseBindingReference(value: string): PortBinding | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;

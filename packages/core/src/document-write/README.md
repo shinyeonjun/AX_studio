@@ -29,7 +29,12 @@ ReportData(JSON) + templateHtml
   → document-write/html/render (Handlebars)
   → document-write/pdf/generate
   → DesktopPrintBridge
-  → report.pdf
+  → runtime ArtifactSink
+  → generated/reports/<artifact-id>_<file-name> + metadata sidecar
 ```
+
+The pure write engine returns PDF bytes to its caller; the document connector
+adapter is responsible for persisting them and exposing only a safe artifact
+reference to workflow state. Physical paths remain host-owned.
 
 Read/parse: `packages/document-engine/` (Python) + `packages/core/src/document-engine/` (TS client).

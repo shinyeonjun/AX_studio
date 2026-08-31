@@ -10,6 +10,12 @@ import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.j
 import * as discoveryRepo from './repositories/work-discovery-repository.js';
 import type { DiscoverySessionState } from '../work-discovery/schema.js';
 import * as workspaceSourceRepo from './repositories/workspace-source-repository.js';
+import * as repairRepo from './repositories/workflow-repair-repository.js';
+import type {
+  RepairCandidateOperation,
+  RepairProposal,
+  RepairReplaySummary,
+} from '../workflow/repair.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
@@ -196,7 +202,12 @@ export class WorkflowStore {
     return settingsRepo.getConnections(this.db);
   }
 
-  claimTriggerReceipt(params: { dedupeKey: string; workflowId: string; triggerType: string }) {
+  claimTriggerReceipt(params: {
+    dedupeKey: string;
+    workflowId: string;
+    triggerType: string;
+    processingLeaseMs?: number;
+  }) {
     return triggerReceiptRepo.claimTriggerReceipt(this.db, params);
   }
 
@@ -263,5 +274,32 @@ export class WorkflowStore {
 
   listDiscoveryReplayCases(sessionId: string) {
     return discoveryRepo.listDiscoveryReplayCases(this.db, sessionId);
+  }
+
+  createRepairProposal(params: {
+    workflowId: string;
+    baseVersion: number;
+    candidates: RepairCandidateOperation[];
+  }) {
+    return repairRepo.createWorkflowRepairProposal(this.db, params);
+  }
+
+  getRepairProposal(id: string) {
+    return repairRepo.getWorkflowRepairProposal(this.db, id);
+  }
+
+  listRepairProposals(options: { workflowId?: string; status?: RepairProposal['status'] } = {}) {
+    return repairRepo.listWorkflowRepairProposals(this.db, options);
+  }
+
+  updateRepairProposalReplay(id: string, replay: RepairReplaySummary) {
+    return repairRepo.updateWorkflowRepairProposalReplay(this.db, id, replay);
+  }
+
+  updateRepairProposal(
+    id: string,
+    patch: { status: RepairProposal['status']; appliedVersion?: number; rejectionReason?: string },
+  ) {
+    return repairRepo.updateWorkflowRepairProposal(this.db, id, patch);
   }
 }

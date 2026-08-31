@@ -1,8 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { DiscoveryBlueprint } from '../schema.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
+import { snapshotBindingPort } from '../../workflow/port-binding.js';
 import { sourceIdFromExpr } from './blueprint.js';
 import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
+import type {
+  InputContract,
+  InputContractColumnType,
+} from '../../contracts/output-contract.js';
 
 function sanitizeStepId(value: string): string {
   const slug = value.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24);
@@ -41,9 +46,168 @@ function readStepForSource(source: DiscoveryBlueprint['sources'][number]): Workf
   return undefined;
 }
 
+function outputPortForSourceId(sourceId: string): 'rows' | 'sheet' {
+  return sourceId.startsWith('rdb:') ? 'rows' : 'sheet';
+}
+
 function collectSourceIds(expr: TransformExpr, bucket: Set<string>): void {
-  const sourceId = sourceIdFromExpr(expr);
-  if (sourceId) bucket.add(sourceId);
+  for (const sourceId of sourceIdsInExpr(expr)) bucket.add(sourceId);
+}
+
+function sourceIdsInExpr(expr: TransformExpr): string[] {
+  if (expr.op === 'source') return [expr.sourceId];
+  if (expr.op === 'ratio') {
+    return [...new Set([
+      ...sourceIdsInExpr(expr.numerator),
+      ...sourceIdsInExpr(expr.denominator),
+    ])];
+  }
+  return sourceIdsInExpr(expr.input);
+}
+
+function mergeColumnType(
+  current: InputContractColumnType | undefined,
+  next: InputContractColumnType,
+): InputContractColumnType {
+  if (!current || current === next) return next;
+  return 'unknown';
+}
+
+function addColumnRequirement(
+  bucket: Map<string, Map<string, InputContractColumnType>>,
+  sourceId: string,
+  name: string,
+  type: InputContractColumnType,
+): void {
+  const columns = bucket.get(sourceId) ?? new Map<string, InputContractColumnType>();
+  columns.set(name, mergeColumnType(columns.get(name), type));
+  bucket.set(sourceId, columns);
+}
+
+function addColumnsForSources(
+  bucket: Map<string, Map<string, InputContractColumnType>>,
+  sourceIds: string[],
+  names: string[],
+  type: InputContractColumnType,
+): void {
+  for (const sourceId of sourceIds) {
+    for (const name of names) addColumnRequirement(bucket, sourceId, name, type);
+  }
+}
+
+function collectConditionColumns(
+  condition: unknown,
+  bucket: Map<string, Map<string, InputContractColumnType>>,
+  sourceIds: string[],
+): void {
+  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) return;
+  const record = condition as Record<string, unknown>;
+  if (typeof record.ref === 'string') {
+    addColumnsForSources(bucket, sourceIds, [record.ref], 'unknown');
+  }
+  for (const value of Object.values(record)) {
+    if (value && typeof value === 'object') collectConditionColumns(value, bucket, sourceIds);
+  }
+}
+
+function collectInputColumns(
+  expr: TransformExpr,
+  bucket: Map<string, Map<string, InputContractColumnType>>,
+  expectedType: InputContractColumnType = 'unknown',
+): void {
+  switch (expr.op) {
+    case 'source':
+      return;
+    case 'column':
+      addColumnsForSources(bucket, sourceIdsInExpr(expr.input), [expr.name], expectedType);
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'filter':
+      collectConditionColumns(expr.where, bucket, sourceIdsInExpr(expr.input));
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'aggregate':
+      if (expr.column) {
+        addColumnsForSources(bucket, sourceIdsInExpr(expr.input), [expr.column], 'number');
+      }
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'ratio':
+      collectInputColumns(expr.numerator, bucket, 'number');
+      collectInputColumns(expr.denominator, bucket, 'number');
+      return;
+    case 'lookup':
+      addColumnsForSources(bucket, sourceIdsInExpr(expr.input), [expr.keyColumn], 'unknown');
+      addColumnsForSources(bucket, sourceIdsInExpr(expr.input), [expr.valueColumn], expectedType);
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'select':
+      addColumnsForSources(bucket, sourceIdsInExpr(expr.input), expr.columns, 'unknown');
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'sort':
+      addColumnsForSources(bucket, sourceIdsInExpr(expr.input), expr.by.map((entry) => entry.column), 'unknown');
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    case 'limit':
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+  }
+}
+
+function inputTypeForOutputKind(kind: string | undefined): InputContractColumnType {
+  if (kind === 'number') return 'number';
+  if (kind === 'text') return 'string';
+  if (kind === 'date') return 'date';
+  return 'unknown';
+}
+
+function buildInputSchemas(
+  blueprint: DiscoveryBlueprint,
+  readStepBySource: Map<string, string>,
+): InputContract[] {
+  const columnsBySource = new Map<string, Map<string, InputContractColumnType>>();
+  for (const field of blueprint.fields) {
+    if (!field.mapping) continue;
+    const expectedType = inputTypeForOutputKind(
+      blueprint.outputContract?.fields.find((entry) => entry.path === field.outputPath)?.kind,
+    );
+    collectInputColumns(field.mapping, columnsBySource, expectedType);
+  }
+
+  return [...columnsBySource.entries()].flatMap(([sourceId, columns]) => {
+    const stepId = readStepBySource.get(sourceId);
+    if (!stepId || columns.size === 0) return [];
+    return [{
+      sourceId,
+      stepId,
+      columns: [...columns.entries()].map(([name, type]) => ({ name, type })),
+    }];
+  });
+}
+
+function mergeInputSchemas(
+  existing: InputContract[],
+  generated: InputContract[],
+): InputContract[] {
+  const merged = new Map<string, InputContract>();
+  for (const schema of [...existing, ...generated]) {
+    const key = `${schema.sourceId}\0${schema.stepId}`;
+    const previous = merged.get(key);
+    if (!previous) {
+      merged.set(key, schema);
+      continue;
+    }
+    const columns = new Map(previous.columns.map((column) => [column.name, column.type]));
+    for (const column of schema.columns) {
+      columns.set(column.name, mergeColumnType(columns.get(column.name), column.type));
+    }
+    merged.set(key, {
+      ...previous,
+      columns: [...columns.entries()].map(([name, type]) => ({ name, type })),
+    });
+  }
+  return [...merged.values()];
 }
 
 export function compileBlueprintToWorkflow(
@@ -75,6 +239,19 @@ export function compileBlueprintToWorkflow(
     if (!field.mapping) continue;
     const sourceId = sourceIdFromExpr(field.mapping);
     const readStepId = sourceId ? readStepBySource.get(sourceId) : undefined;
+    const bindings: Record<string, { from: string; output: 'rows' | 'sheet' }> = {};
+    if (sourceId && readStepId) {
+      bindings.table = { from: readStepId, output: outputPortForSourceId(sourceId) };
+    }
+    for (const referencedSourceId of sourceIdsInExpr(field.mapping)) {
+      if (referencedSourceId === sourceId) continue;
+      const referencedReadStepId = readStepBySource.get(referencedSourceId);
+      if (!referencedReadStepId) continue;
+      bindings[snapshotBindingPort(referencedSourceId)] = {
+        from: referencedReadStepId,
+        output: outputPortForSourceId(referencedSourceId),
+      };
+    }
     steps.push({
       type: 'action',
       id: `eval_${sanitizeStepId(field.outputPath)}`,
@@ -85,9 +262,7 @@ export function compileBlueprintToWorkflow(
         discoverySourceId: sourceId,
         outputPath: field.outputPath,
       },
-      bindings: readStepId
-        ? { table: { from: readStepId, output: 'sheet' } }
-        : undefined,
+      bindings: Object.keys(bindings).length > 0 ? bindings : undefined,
       sideEffect: 'NONE',
     });
   }
@@ -105,6 +280,16 @@ export function compileBlueprintToWorkflow(
   }
   permissions['transform.evaluate'] = true;
 
+  const outputContract = blueprint.outputContract
+    ? {
+      ...blueprint.outputContract,
+      inputSchemas: mergeInputSchemas(
+        blueprint.outputContract.inputSchemas,
+        buildInputSchemas(blueprint, readStepBySource),
+      ),
+    }
+    : undefined;
+
   return {
     version: 1,
     name: options.name ?? blueprint.name,
@@ -118,9 +303,11 @@ export function compileBlueprintToWorkflow(
     assumptions: ['work discovery에서 컴파일됨'],
     sideEffects: {},
     dataPolicy: {},
+    outputContract,
     document: JSON.stringify({
       origin: 'discovery',
       blueprintId: blueprint.id,
+      sessionId: blueprint.sessionId,
       defaultSourcePath: options.defaultSourcePath,
       fields: blueprint.fields.map((field) => ({
         outputPath: field.outputPath,

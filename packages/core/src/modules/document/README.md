@@ -52,14 +52,21 @@ cd packages/document-engine
 .venv/Scripts/python.exe scripts/pdf-to-html-test.py path/to/form.pdf --engine docling
 ```
 
-### Write — report render (planned full loop)
+### Write — report render
 
 ```text
 ai_decision (report body)
   → modules/document/write/html  →  document-write/html/render
   → modules/document/write/pdf   →  document-write/pdf/generate  →  DesktopPrintBridge
-  → ctx.variables.reportPdfBytes  →  Slack/Gmail attachment (pending)
+  → generated/reports/<artifact-id>_<file-name> + metadata sidecar
+  → safe `reportPdfArtifact` reference in runtime state
+  → Slack/Gmail attachment (next delivery slice)
 ```
+
+`document.pdf.generate` never places PDF bytes or a local storage path in
+workflow variables, step results, checkpoints, or execution logs. The runtime
+owns an artifact sink backed by `paths.generated.reports`; later delivery and
+UI export use the artifact id through a host-owned read boundary.
 
 ## Adding a write format
 
