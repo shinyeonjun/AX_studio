@@ -1,4 +1,6 @@
 import { dialog } from 'electron';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { copyFile, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { ArtifactStore, getAxDataPaths, type StoredArtifact } from '@ax-studio/core';
@@ -40,12 +42,16 @@ export async function resolveGeneratedArtifactSourcePath(
   rootDir: string,
   storedPath: string,
   expectedSize: number,
+  expectedSha256: string,
 ): Promise<string | undefined> {
   try {
     const [realRoot, realFile] = await Promise.all([realpath(rootDir), realpath(storedPath)]);
     if (!isWithinRoot(realRoot, realFile)) return undefined;
     const fileStat = await stat(realFile);
     if (!fileStat.isFile() || fileStat.size !== expectedSize) return undefined;
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(realFile)) hash.update(chunk);
+    if (hash.digest('hex') !== expectedSha256) return undefined;
     return realFile;
   } catch {
     return undefined;
@@ -101,7 +107,7 @@ function defaultDependencies(): GeneratedArtifactExportDependencies {
   return {
     getArtifact: (artifactId) => store.get(artifactId),
     resolveSourcePath: (artifact) =>
-      resolveGeneratedArtifactSourcePath(store.root, artifact.storedPath, artifact.size),
+      resolveGeneratedArtifactSourcePath(store.root, artifact.storedPath, artifact.size, artifact.sha256),
     showSaveDialog: async (fileName) => {
       const result = await dialog.showSaveDialog({
         title: 'PDF 저장',
