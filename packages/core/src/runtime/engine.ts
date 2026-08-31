@@ -443,6 +443,27 @@ export class WorkflowRuntime {
         log: failureLog,
       };
     }
+    const approvedActions = approval.actionIds.map((actionId) =>
+      ir.steps.find(
+        (step): step is Extract<Step, { type: 'action' }> => step.type === 'action' && step.id === actionId,
+      ),
+    );
+    if (new Set(approval.actionIds).size !== approval.actionIds.length || approvedActions.some((step) => !step)) {
+      this.config.store.failApproval(approvalId);
+      const failureLog = [{
+        at: new Date().toISOString(),
+        level: 'error' as const,
+        code: 'invalid_approval_actions',
+        message: '승인 대상 작업이 실행 스냅샷과 일치하지 않습니다.',
+      }];
+      this.config.store.finishExecution(execution.id, 'failed', 'invalid_approval_actions', failureLog);
+      return {
+        executionId: approval.executionId,
+        status: 'failed',
+        errorCode: 'invalid_approval_actions',
+        log: failureLog,
+      };
+    }
     const payload = approval.payload as { checkpoint?: unknown } | undefined;
     const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
     const connections = this.config.store.getConnections();
@@ -473,13 +494,12 @@ export class WorkflowRuntime {
         });
       }
       const remainingStepIds = new Set(checkpoint?.remainingStepIds ?? []);
-      for (const actionId of approval.actionIds) {
+      for (const actionStep of approvedActions) {
+        const actionId = actionStep!.id;
         // A branch may have captured the approved action in its remaining sequence.
         // In that case runSequence will execute it exactly once with this approval present.
         if (remainingStepIds.has(actionId)) continue;
-        const actionStep = ir?.steps.find((s: Step) => s.type === 'action' && s.id === actionId);
-        if (!actionStep || actionStep.type !== 'action') continue;
-        const actionRef = actionStep.actionRef ?? actionRefFor(actionStep.connector, actionStep.action);
+        const actionRef = actionStep!.actionRef ?? actionRefFor(actionStep!.connector, actionStep!.action);
         const actionDefinition = resolveActionDefinition(actionRef);
         if (!actionDefinition) {
           throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
@@ -490,7 +510,7 @@ export class WorkflowRuntime {
             code: 'connector_missing',
           });
         }
-        let params = applyStepBindings(actionStep, ir, actionStep.params, stepResults, ctx.variables);
+        let params = applyStepBindings(actionStep!, ir, actionStep!.params, stepResults, ctx.variables);
         params = resolveStepParams(params, ctx, stepResults);
         if (actionDefinition.id === 'document.ingest') {
           const resolved = resolveDocumentIngestExecution(params, ctx);

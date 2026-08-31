@@ -236,7 +236,7 @@ export class TriggerEngine {
   ) {
     if (!this.acceptingEvents) return;
     if (event.type !== driver.triggerType) return;
-    if (!this.store.getSetting<boolean>('globalActive', true)) return;
+    if (!this.store.getGlobalActive()) return;
 
     for (const skill of this.store.listWorkflows()) {
       if (!skill.active) continue;
@@ -311,7 +311,7 @@ export class TriggerEngine {
     const generation = this.lifecycleGeneration;
 
     try {
-      const globalActive = this.store.getSetting<boolean>('globalActive', true);
+      const globalActive = this.store.getGlobalActive();
       if (!globalActive) return;
 
       const cursors = this.loadCursors();
