@@ -161,7 +161,7 @@ export function registerStateHandlers() {
       Boolean(localFolderConn?.connected),
     );
     return {
-      globalActive: core.store.getSetting('globalActive', true),
+      globalActive: core.store.getGlobalActive(),
       aiProvider,
       aiProviderLabel: getAiProviderDisplay(aiProvider),
       aiProviderInstalled: isAiProviderReady(aiProvider),
