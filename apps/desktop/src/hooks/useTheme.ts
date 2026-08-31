@@ -5,9 +5,21 @@ export type ThemeMode = 'light' | 'dark';
 const STORAGE_KEY = 'ax-theme';
 
 export function getStoredTheme(): ThemeMode {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === 'dark' || stored === 'light') return stored;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+export function storeTheme(theme: ThemeMode) {
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // Keep the in-memory theme when storage is unavailable.
+  }
 }
 
 export function applyTheme(theme: ThemeMode) {
@@ -19,7 +31,7 @@ export function useTheme() {
 
   useEffect(() => {
     applyTheme(theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+    storeTheme(theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
