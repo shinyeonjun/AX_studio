@@ -56,6 +56,16 @@ function assertArtifactId(id: string): void {
   }
 }
 
+function safeFileName(fileName: string): string {
+  const leaf = fileName.replace(/^.*[\\/]/, '');
+  const sanitized = leaf
+    .replace(/[\u0000-\u001f\u007f]/g, '_')
+    .replace(/[<>:"|?*]/g, '_')
+    .trim()
+    .replace(/[. ]+$/g, '');
+  return sanitized && sanitized !== '.' && sanitized !== '..' ? sanitized.slice(0, 180) : 'artifact.bin';
+}
+
 export class ArtifactStore {
   constructor(private readonly rootDir: string) {
     mkdirSync(rootDir, { recursive: true });
@@ -88,6 +98,42 @@ export class ArtifactStore {
       createdAt: new Date().toISOString(),
     };
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(record));
+    return record;
+  }
+
+  putBytes(
+    data: Uint8Array,
+    options: { id?: string; fileName: string; mimeType?: string },
+  ): StoredArtifact {
+    if (options.id !== undefined) assertArtifactId(options.id);
+    const buffer = Buffer.from(data);
+    const sha256 = createHash('sha256').update(buffer).digest('hex');
+    const existingBySha = this.findBySha(sha256);
+    if (existingBySha) return existingBySha;
+
+    const id = options.id ?? `art_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const metadataPath = join(this.rootDir, `${id}.json`);
+    if (existsSync(metadataPath)) {
+      const existingById = this.get(id);
+      if (!existingById || existingById.sha256 !== sha256) {
+        throw new Error(`Artifact id already exists with different content: ${id}`);
+      }
+      return existingById;
+    }
+
+    const fileName = safeFileName(options.fileName);
+    const storedPath = join(this.rootDir, `${id}_${fileName}`);
+    writeFileSync(storedPath, buffer);
+    const record: StoredArtifact = {
+      id,
+      sha256,
+      fileName,
+      storedPath,
+      mimeType: options.mimeType,
+      size: buffer.length,
+      createdAt: new Date().toISOString(),
+    };
+    writeFileSync(metadataPath, JSON.stringify(record));
     return record;
   }
 

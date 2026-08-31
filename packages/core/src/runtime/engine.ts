@@ -166,6 +166,7 @@ export class WorkflowRuntime {
       workflowId: workflowIr.id,
       variables: { ...options.input },
       connections,
+      artifactSink: this.config.artifactSink,
       resolveFileRef: (file) => {
         const resolved = resolveFileRef(file, connections);
         return resolved.ok
@@ -529,6 +530,7 @@ export class WorkflowRuntime {
       workflowId: execution.workflowId ?? undefined,
       variables: { ...(checkpoint?.variables ?? {}) },
       connections,
+      artifactSink: this.config.artifactSink,
       resolveFileRef: (file) => {
         const resolved = resolveFileRef(file, connections);
         return resolved.ok

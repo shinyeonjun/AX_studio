@@ -542,3 +542,36 @@ connector_foundation_phase_1:
     - PDF, HTTP, Gmail, Slack product behavior outside the three selected seams
     - broad schema migrations and UI redesign
   expansions: []
+
+main_based_connector_pdf_phase_2:
+  status: completed
+  expansion_reason: "The existing PDF action returns raw bytes only in workflow memory; durable generated-report storage is the smallest prerequisite for later UI export and Gmail/Slack attachments."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/artifact-store.ts
+    - packages/core/src/store/artifact-store.test.ts
+    - packages/core/src/modules/types.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/bootstrap.ts
+    - packages/core/src/modules/mocks/document.ts
+    - packages/core/src/modules/document/write/pdf/generate.ts
+    - packages/core/src/modules/document/write/pdf/generate.test.ts
+    - packages/core/src/modules/document/README.md
+    - packages/core/src/document-write/README.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - source artifact ingestion semantics and Work Discovery workflow meaning
+    - Python document-engine conversion behavior
+    - Desktop renderer/UI, PDF download IPC, Gmail/Slack delivery, and live provider accounts
+    - raw PDF bytes, HTML, credentials, or local absolute paths in workflow state/logs
+  expansions:
+    - reason: "The lower-level document-write README still described PDF output as an untracked report.pdf after the durable generated-report boundary was added."
+      boundary: "packages/core/src/document-write/README.md"
+    - reason: "The test-only document connector still exposed the removed reportPdfBytes contract and would hide regressions behind a stale mock."
+      boundary: "packages/core/src/modules/mocks/document.ts"

@@ -931,6 +931,87 @@ main_based_work_discovery_phase_4_task:
     notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
   expansions: []
 
+main_based_connector_pdf_phase_2:
+  evaluator_frozen: true
+  checks:
+    - name: artifact-store-bytes
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/artifact-store.test.ts
+      required: true
+    - name: pdf-generate-action
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/document/write/pdf/generate.test.ts src/document-write/pdf/generate.test.ts src/document-write/pdf/to-html.test.ts
+      required: true
+    - name: runtime-pdf-injection
+      type: command
+      command: npm test -w @ax-studio/core -- src/runtime/engine.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: full-core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval -w @ax-studio/core
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - generated PDF bytes are persisted only below the configured generated/reports root
+    - artifact references expose id, hash, file name, MIME type, size, and timestamp but no local stored path
+    - the PDF generation action exposes neither raw PDF bytes nor generated document HTML in workflow variables, step results, checkpoints, or logs
+    - fresh and approval-resumed runtime contexts receive the same artifact sink
+    - no external provider side effects or unrelated .gitignore changes are included
+  baseline:
+    recorded_at: 2026-08-31T12:34:06.4209694+09:00
+    values:
+      artifact-store-bytes: "PASS: src/store/artifact-store.test.ts, 6 tests; no generated-byte persistence contract exists yet"
+      pdf-generate-action: "PASS: existing pure PDF tests only, 2 files/3 tests; requested module action test file is absent and silently ignored by Vitest"
+      runtime-pdf-injection: "PASS: src/runtime/engine.test.ts, 28 tests; no artifact sink is injected"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 123 files/634 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      architecture-check: "PASS: zero dependency violations, 503 modules and 1751 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: BASELINE
+    gap: "The PDF action can print bytes in memory but has no durable generated-report sink, safe artifact reference contract, or runtime injection seam."
+  final:
+    recorded_at: 2026-08-31T12:50:37.8037370+09:00
+    values:
+      artifact-store-bytes: "PASS: src/store/artifact-store.test.ts, 8 tests"
+      pdf-generate-action: "PASS: 3 files/7 tests; real ArtifactStore persistence, no raw bytes/path/HTML in action state, bridge and storage fail-closed cases"
+      runtime-pdf-injection: "PASS: src/runtime/engine.test.ts, 29 tests; the same sink reaches fresh and approval-resumed contexts"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      full-core-regression: "PASS: 124 files/641 tests/3 skipped"
+      core-evaluation: "PASS: 11 tests"
+      architecture-check: "PASS: zero dependency violations, 504 modules and 1760 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      document-engine-tests: "PASS: 17 tests, 15 passed and 2 skipped because pypdf is unavailable"
+      root-integration-runner: "PASS: 9 suites/58 tests"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      root-e2e-runner: "PASS: 4 Product QA tests including generated 14-scenario batch"
+      knip: "PASS: npm run knip"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "PDF output now crosses a host-owned generated/reports sink and workflow state receives only a safe artifact reference. The pure write engine remains byte-producing, while the connector adapter is the durable and fail-closed boundary. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
 connector_foundation_phase_1_task:
   name: connector-foundation-safety-and-acceptance
   evaluator_frozen: true

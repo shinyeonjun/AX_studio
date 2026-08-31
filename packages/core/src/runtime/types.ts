@@ -1,12 +1,13 @@
 import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { Connector } from '../modules/types.js';
-import type { ExecutionLogEntry } from '../modules/types.js';
+import type { ArtifactSink, ExecutionLogEntry } from '../modules/types.js';
 
 export interface RuntimeConfig {
   store: WorkflowStore;
   investigationRunner?: InvestigationRunner;
   connectors?: Record<string, Connector>;
+  artifactSink?: ArtifactSink;
   globalActive: boolean;
   workflowActive: Record<string, boolean>;
   onExecutionStarted?: (executionId: string) => void;

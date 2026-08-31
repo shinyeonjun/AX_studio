@@ -56,23 +56,43 @@ export class MockDocumentConnector implements Connector {
     if (action === 'html.render' || action === 'pdf.generate' || action === 'docx.fill') {
       const html = `<html><body><h1>${params.title ?? 'Document'}</h1><pre>${JSON.stringify(params.data ?? ctx.variables, null, 2)}</pre></body></html>`;
       this.outputs.push({ format: action, content: html });
-      ctx.variables.documentHtml = html;
       if (action === 'pdf.generate') {
-        ctx.variables.reportPdfBytes = Buffer.from('mock-pdf');
-        ctx.variables.reportPdfSize = 8;
-        ctx.variables.generatedPdfName = 'report.pdf';
+        if (!ctx.artifactSink) {
+          return {
+            ok: false,
+            error: 'PDF 저장소가 준비되지 않았습니다.',
+            errorCode: 'pdf_artifact_store_unavailable',
+          };
+        }
+        const bytes = Buffer.from('mock-pdf');
+        const stored = ctx.artifactSink.putBytes(bytes, {
+          fileName: 'report.pdf',
+          mimeType: 'application/pdf',
+        });
+        const artifact = {
+          id: stored.id,
+          sha256: stored.sha256,
+          fileName: stored.fileName,
+          ...(stored.mimeType ? { mimeType: stored.mimeType } : {}),
+          size: stored.size,
+          createdAt: stored.createdAt,
+        };
+        ctx.variables.reportPdfArtifact = artifact;
+        ctx.variables.reportPdfArtifactId = artifact.id;
+        ctx.variables.reportPdfSize = artifact.size;
+        ctx.variables.generatedPdfName = artifact.fileName;
         return {
           ok: true,
           data: {
-            html,
             needsDesktopPrint: false,
-            pdfBytes: Buffer.from('mock-pdf'),
-            size: 8,
+            size: artifact.size,
             mimeType: 'application/pdf',
-            fileName: 'report.pdf',
+            fileName: artifact.fileName,
+            artifact,
           },
         };
       }
+      ctx.variables.documentHtml = html;
       return { ok: true, data: { html } };
     }
     return { ok: false, error: `Unknown document action: ${action}` };
