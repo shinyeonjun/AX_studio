@@ -138,7 +138,7 @@ export class WorkflowRuntime {
       triggerType: options.triggerType,
       irJson: JSON.stringify(workflowIr),
     });
-    this.config.onExecutionStarted?.(executionId);
+    this.notifyExecutionStarted(executionId);
 
     const log: ExecutionLogEntry[] = [];
     const appendLog = (entry: ExecutionLogEntry) => {
@@ -166,7 +166,7 @@ export class WorkflowRuntime {
       await this.runSequence(linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, [], new Set());
       this.config.store.finishExecution(executionId, 'success', undefined, log);
       const result: ExecutionResult = { executionId, status: 'success', log };
-      this.config.onExecutionFinished?.(result);
+      this.notifyExecutionFinished(result);
       return result;
     } catch (err) {
       const error = err as PendingError;
@@ -183,14 +183,14 @@ export class WorkflowRuntime {
           pendingApprovalId: error.approvalId,
           log,
         };
-        this.config.onExecutionFinished?.(result);
+        this.notifyExecutionFinished(result);
         return result;
       }
       const code = error.code ?? 'execution_failed';
       log.push({ at: new Date().toISOString(), level: 'error', code, message: error.message });
       this.config.store.finishExecution(executionId, 'failed', code, log);
       const result: ExecutionResult = { executionId, status: 'failed', errorCode: code, log };
-      this.config.onExecutionFinished?.(result);
+      this.notifyExecutionFinished(result);
       return result;
     }
   }
@@ -218,7 +218,7 @@ export class WorkflowRuntime {
       triggerType: options.triggerType,
       irJson,
     });
-    this.config.onExecutionStarted?.(executionId);
+    this.notifyExecutionStarted(executionId);
     const log: ExecutionLogEntry[] = [{
       at: new Date().toISOString(),
       level: status === 'failed' ? 'error' : 'warn',
@@ -228,7 +228,7 @@ export class WorkflowRuntime {
     }];
     this.config.store.finishExecution(executionId, status, errorCode, log);
     const result: ExecutionResult = { executionId, status, errorCode, log };
-    this.config.onExecutionFinished?.(result);
+    this.notifyExecutionFinished(result);
     return result;
   }
 
@@ -322,13 +322,37 @@ export class WorkflowRuntime {
       message,
       data: { stepId: step.id, stepType: step.type },
     });
-    this.config.onExecutionProgress?.({
+    this.notifyExecutionProgress({
       executionId: ctx.executionId,
       stepId: step.id,
       status,
       at,
       message,
     });
+  }
+
+  private notifyExecutionStarted(executionId: string): void {
+    try {
+      this.config.onExecutionStarted?.(executionId);
+    } catch {
+      // Observers must not change execution outcomes.
+    }
+  }
+
+  private notifyExecutionProgress(progress: ExecutionProgress): void {
+    try {
+      this.config.onExecutionProgress?.(progress);
+    } catch {
+      // Observers must not change execution outcomes.
+    }
+  }
+
+  private notifyExecutionFinished(result: ExecutionResult): void {
+    try {
+      this.config.onExecutionFinished?.(result);
+    } catch {
+      // Observers must not change execution outcomes.
+    }
   }
 
   setGlobalActive(active: boolean) {
@@ -551,7 +575,7 @@ export class WorkflowRuntime {
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'success', undefined, log);
       const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log };
-      this.config.onExecutionFinished?.(successResult);
+      this.notifyExecutionFinished(successResult);
       return successResult;
     } catch (err) {
       const error = err as PendingError;
@@ -569,7 +593,7 @@ export class WorkflowRuntime {
           pendingApprovalId: error.approvalId,
           log,
         };
-        this.config.onExecutionFinished?.(pendingResult);
+        this.notifyExecutionFinished(pendingResult);
         return pendingResult;
       }
       const code = error.code ?? 'execution_failed';
@@ -577,7 +601,7 @@ export class WorkflowRuntime {
       this.config.store.resolveApproval(approvalId, true);
       this.config.store.finishExecution(execution.id, 'failed', code, log);
       const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };
-      this.config.onExecutionFinished?.(failedResult);
+      this.notifyExecutionFinished(failedResult);
       return failedResult;
     }
   }
