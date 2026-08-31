@@ -6,6 +6,21 @@ import { createDatabaseAsync } from './db.js';
 import { WorkflowStore } from './workflow-store.js';
 
 describe('workflow persistence', () => {
+  it('fails closed when the persisted global execution state is not boolean', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+
+    expect(store.getGlobalActive()).toBe(true);
+    store.setSetting('globalActive', false);
+    expect(store.getGlobalActive()).toBe(false);
+    store.setSetting('globalActive', true);
+    expect(store.getGlobalActive()).toBe(true);
+    store.setSetting('globalActive', 'true');
+    expect(store.getGlobalActive()).toBe(false);
+    store.setSetting('globalActive', { enabled: true });
+    expect(store.getGlobalActive()).toBe(false);
+  });
+
   it('reports when activating a workflow ID that does not exist', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
