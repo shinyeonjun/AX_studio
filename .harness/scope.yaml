@@ -575,3 +575,30 @@ main_based_connector_pdf_phase_2:
       boundary: "packages/core/src/document-write/README.md"
     - reason: "The test-only document connector still exposed the removed reportPdfBytes contract and would hide regressions behind a stale mock."
       boundary: "packages/core/src/modules/mocks/document.ts"
+
+main_based_connector_pdf_phase_3:
+  status: completed
+  expansion_reason: "Phase 2 made generated PDF bytes durable but intentionally stopped before a user-controlled export boundary; Activity needs a path-free result summary and native save flow to make that output usable."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/electron/main/ipc/artifact-handlers.ts
+    - apps/desktop/electron/main/ipc/artifact-handlers.test.ts
+    - apps/desktop/electron/main/ipc/execution-log-summary.ts
+    - apps/desktop/electron/main/ipc/execution-log-summary.test.ts
+    - apps/desktop/electron/main/ipc/state-handlers.ts
+    - apps/desktop/electron/main/ipc/handlers.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/src/types/app-state.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/components/activity/ActivityPage.tsx
+    - apps/desktop/src/styles/activity.css
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - raw PDF bytes, storedPath, arbitrary renderer-selected paths, and credentials
+    - PDF generation semantics, Gmail/Slack/provider behavior, and live accounts
+    - broad renderer redesign, retention policy, or attachment delivery
+  expansions: []

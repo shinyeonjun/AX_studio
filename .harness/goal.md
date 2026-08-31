@@ -1089,3 +1089,51 @@ through workflow variables, step results, checkpoints, or execution logs.
   124 files/641 tests with 3 skips; Desktop typecheck, document-engine tests,
   integration, Product QA/E2E, knip, evaluation, architecture, production
   build, and whitespace checks passed.
+
+## Current task: main-based connector completion — PDF Phase 3
+
+Make persisted generated PDF artifacts findable and exportable from the
+Desktop Activity surface. The renderer may receive only sanitized artifact
+metadata and an opaque artifact ID; the main process must resolve the ID below
+the configured generated-reports directory, validate the stored file, and let
+the user choose the export destination through the native save dialog.
+
+### Phase 3 success criteria
+
+- `pdf_generated` execution log entries are summarized into safe PDF metadata
+  without exposing `storedPath`, raw bytes, or arbitrary filesystem paths.
+- A trusted main-process IPC handler can export only a valid generated PDF by
+  opaque artifact ID, rejects invalid/missing/non-PDF/out-of-root files, and
+  reports cancellation or copy failures without leaking paths.
+- The preload and renderer types expose the export operation explicitly, and
+  Activity shows a keyboard-accessible PDF result row only when an artifact is
+  present, with pending/success/error feedback.
+- Focused export/state-summary tests, Core regression, Desktop/test
+  typechecks, production build, integration/Electron QA, architecture, and
+  whitespace checks pass without changing provider behavior or the unrelated
+  `.gitignore` edit.
+
+### Phase 3 non-goals
+
+- No PDF template editor, browser preview, report library redesign, or
+  automatic cleanup/retention policy.
+- No Gmail/Slack attachment delivery, live provider calls, or credential
+  changes.
+- No raw artifact content, local absolute paths, or renderer-controlled output
+  destinations cross the IPC boundary.
+
+### Phase 3 final checkpoint (2026-08-31T14:26:14.4605446+09:00)
+
+- Generated PDF metadata is projected into Activity without stored paths or raw
+  PDF bytes.
+- Main-process export resolves opaque artifact IDs below the generated-reports
+  root, validates PDF MIME, regular-file status, canonical containment, and
+  exact size, then copies only to a native save-dialog destination.
+- Activity exposes a keyboard-accessible export action with pending, success,
+  cancellation, and path-free error states.
+- Focused export/state-summary tests passed 2 files/7 tests; Core passed 125
+  files/649 tests with 3 skips; typechecks, architecture, production build,
+  integration, Product QA/E2E, and whitespace checks passed.
+- Completed Codex Security diff scan found 0 findings across all 13 reviewed
+  change-inventory items. Native dialog UI automation remains a documented
+  limitation; its provider seam is covered by unit tests.

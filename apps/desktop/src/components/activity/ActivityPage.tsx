@@ -34,6 +34,9 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [explaining, setExplaining] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [exportedId, setExportedId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<{ executionId: string; message: string } | null>(null);
 
   const executions = state?.executions ?? [];
   const canExplain = executions.length > 0;
@@ -75,6 +78,35 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
     } finally {
       setClearing(false);
     }
+  };
+
+  const exportPdf = async (executionId: string, artifactId: string) => {
+    setExportingId(executionId);
+    setExportedId(null);
+    setExportError(null);
+    try {
+      const result = await window.ax.exportGeneratedArtifact(artifactId);
+      if (!result.ok) {
+        if (!result.canceled) {
+          setExportError({
+            executionId,
+            message: result.error ?? 'PDF를 저장하지 못했습니다.',
+          });
+        }
+        return;
+      }
+      setExportedId(executionId);
+    } catch (err) {
+      setExportError({ executionId, message: ipcErrorMessage(err, 'PDF를 저장하지 못했습니다.') });
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const formatFileSize = (size: number): string => {
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -143,6 +175,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
               const failed = e.status === 'failed';
               const errorDetail = executionErrorLabel(e.errorCode);
               const deleting = busyId === e.id;
+              const generatedPdf = e.generatedPdf;
               return (
                 <div key={e.id} className="timeline-item">
                   <div
@@ -192,6 +225,33 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
                             {field}: {value || '(빈 값)'}
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {generatedPdf && (
+                      <div className="generated-pdf" data-testid="generated-pdf">
+                        <div className="generated-pdf-copy">
+                          <span className="generated-pdf-eyebrow">생성된 파일 · PDF</span>
+                          <div className="generated-pdf-name" title={generatedPdf.fileName}>
+                            {generatedPdf.fileName}
+                          </div>
+                          <div className="generated-pdf-size">{formatFileSize(generatedPdf.size)}</div>
+                        </div>
+                        <div className="generated-pdf-action" aria-live="polite">
+                          <button
+                            type="button"
+                            className="btn btn-sm generated-pdf-button"
+                            onClick={() => void exportPdf(e.id, generatedPdf.artifactId)}
+                            disabled={exportingId !== null || deleting || clearing}
+                            aria-label={`${generatedPdf.fileName} PDF 저장`}
+                          >
+                            {exportingId === e.id ? '저장 중…' : exportedId === e.id ? '저장됨' : 'PDF 저장'}
+                          </button>
+                          {exportError?.executionId === e.id && (
+                            <div className="generated-pdf-error" role="alert">
+                              {exportError.message}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
