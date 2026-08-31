@@ -16,70 +16,7 @@ import { getAiConfigPath, readAiToml } from '../ai/config-file.js';
 import { isGoogleOAuthConfigured } from '../gmail/oauth.js';
 import { getDesktopAxDataPaths } from '../data-paths.js';
 import { summarizeConnections } from './connection-state-summary.js';
-
-type PersistedExecutionLogEntry = {
-  at?: string;
-  level?: 'info' | 'warn' | 'error';
-  code?: string;
-  message?: string;
-  data?: unknown;
-};
-
-const STEP_PROGRESS_CODES = new Set(['step_started', 'step_completed', 'waiting_approval', 'step_failed']);
-
-function executionLogSummary(logJson: string | null): {
-  errorMessage?: string;
-  currentStepId?: string;
-  currentStepStatus?: string;
-  currentStepMessage?: string;
-  lastLogMessage?: string;
-  aiOutput?: {
-    stepId: string;
-    fields: string[];
-    preview: Record<string, string>;
-  };
-} {
-  if (!logJson) return {};
-  try {
-    const parsed = JSON.parse(logJson) as unknown;
-    if (!Array.isArray(parsed)) return {};
-    const entries = parsed.filter(
-      (entry): entry is PersistedExecutionLogEntry => Boolean(entry && typeof entry === 'object'),
-    );
-    const last = entries.at(-1);
-    const errorMessage = entries.filter((entry) => entry.level === 'error').at(-1)?.message;
-    const current = [...entries].reverse().find((entry) => STEP_PROGRESS_CODES.has(entry.code ?? ''));
-    const aiCompleted = [...entries].reverse().find((entry) => entry.code === 'ai_decision_completed');
-    const data = current?.data;
-    const stepId =
-      data && typeof data === 'object' && 'stepId' in data && typeof data.stepId === 'string'
-        ? data.stepId
-        : undefined;
-    const aiData = aiCompleted?.data;
-    const aiRecord = aiData && typeof aiData === 'object' && !Array.isArray(aiData)
-      ? (aiData as Record<string, unknown>)
-      : undefined;
-    const aiStepId = typeof aiRecord?.stepId === 'string' ? aiRecord.stepId : undefined;
-    const aiFields = Array.isArray(aiRecord?.outputFields)
-      ? aiRecord.outputFields.filter((field): field is string => typeof field === 'string')
-      : [];
-    const aiPreview = aiRecord?.outputPreview;
-    const aiPreviewRecord = aiPreview && typeof aiPreview === 'object' && !Array.isArray(aiPreview)
-      ? Object.fromEntries(
-          Object.entries(aiPreview).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
-        )
-      : {};
-    return {
-      ...(errorMessage ? { errorMessage } : {}),
-      ...(stepId && current?.code ? { currentStepId: stepId, currentStepStatus: current.code } : {}),
-      ...(current?.message ? { currentStepMessage: current.message } : {}),
-      ...(last?.message ? { lastLogMessage: last.message } : {}),
-      ...(aiStepId ? { aiOutput: { stepId: aiStepId, fields: aiFields, preview: aiPreviewRecord } } : {}),
-    };
-  } catch {
-    return {};
-  }
-}
+import { executionLogSummary } from './execution-log-summary.js';
 
 function executionQualityState(execution: {
   status: string;
@@ -158,6 +95,7 @@ export function registerStateHandlers() {
         currentStepMessage: logSummary.currentStepMessage,
         lastLogMessage: logSummary.lastLogMessage,
         aiOutput: logSummary.aiOutput,
+        generatedPdf: logSummary.generatedPdf,
       };
     });
     const works = core.store.listWorkflows().map((s) => {

@@ -10,6 +10,10 @@ import type {
 
 export type { AxCommandResult };
 
+export type GeneratedArtifactExportResult =
+  | { ok: true; fileName: string }
+  | { ok: false; canceled?: boolean; error?: string };
+
 export interface AxApi {
   getState: () => Promise<unknown>;
   approve: (id: string) => Promise<unknown>;
@@ -17,6 +21,7 @@ export interface AxApi {
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
   deleteExecution: (executionId: string) => Promise<unknown>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
+  exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   sendCommandChat: (

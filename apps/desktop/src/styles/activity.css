@@ -105,3 +105,94 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+.generated-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 24%, var(--border));
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--red-bg) 55%, var(--bg-card));
+}
+
+.generated-pdf-copy {
+  min-width: 0;
+}
+
+.generated-pdf-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--red);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.generated-pdf-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generated-pdf-size {
+  margin-top: 1px;
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.generated-pdf-action {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.generated-pdf-button {
+  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
+  color: var(--red);
+}
+
+.generated-pdf-button:hover {
+  border-color: var(--red);
+  background: var(--red-bg);
+}
+
+.generated-pdf-button:disabled {
+  cursor: wait;
+}
+
+.generated-pdf-error {
+  max-width: 220px;
+  color: var(--red);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .generated-pdf {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .generated-pdf-action {
+    align-items: flex-start;
+  }
+
+  .generated-pdf-error {
+    max-width: none;
+    text-align: left;
+  }
+}

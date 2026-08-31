@@ -931,6 +931,89 @@ main_based_work_discovery_phase_4_task:
     notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
   expansions: []
 
+main_based_connector_pdf_phase_3:
+  evaluator_frozen: true
+  status: completed
+  checks:
+    - name: artifact-export-unit
+      type: command
+      command: npx vitest run apps/desktop/electron/main/ipc/artifact-handlers.test.ts apps/desktop/electron/main/ipc/execution-log-summary.test.ts
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - renderer receives only artifactId and display metadata, never storedPath or raw PDF bytes
+    - only generated-reports artifacts with application/pdf metadata can reach export
+    - source files are real files contained below the generated-reports root
+    - the destination comes only from the native save dialog, and returned IPC results do not contain paths
+    - Activity feedback remains usable with keyboard focus and does not add generic dashboard chrome
+    - existing .gitignore and provider behavior remain unchanged
+  baseline:
+    recorded_at: 2026-08-31T14:03:16.3349780+09:00
+    values:
+      artifact-export-unit: "FAIL: focused command exited because the new export/state-summary test files did not exist yet"
+      core-regression: "PASS: 125 files, 649 tests, 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      architecture-check: "PASS: zero dependency violations, 505 modules and 1769 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      root-integration-runner: "PASS: 10 files, 59 tests"
+      root-e2e-runner: "PASS: 4 Product QA tests including the 14-scenario batch; run-2026-08-31T05-02-46-580Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    gap: "Persisted PDF artifacts are not currently represented in Activity and have no user export boundary."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T14:26:14.4605446+09:00
+    values:
+      artifact-export-unit: "PASS: 2 files, 7 tests"
+      core-regression: "PASS: 125 files, 649 tests, 3 skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      architecture-check: "PASS: zero dependency violations, 505 modules and 1769 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      root-integration-runner: "PASS: 10 files, 59 tests"
+      root-e2e-runner: "PASS: 4 Product QA tests including the 14-scenario batch; run-2026-08-31T05-13-14-169Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "Generated PDF metadata is projected without paths or bytes, export is main-process-owned and root/size/MIME checked, Activity exposes a keyboard-accessible native-save action, and provider behavior plus the unrelated .gitignore edit remain unchanged."
+  expansions: []
+
 main_based_connector_pdf_phase_2:
   evaluator_frozen: true
   checks:

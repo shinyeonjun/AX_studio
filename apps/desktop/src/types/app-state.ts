@@ -72,5 +72,11 @@ export interface AppState {
       fields: string[];
       preview: Record<string, string>;
     };
+    generatedPdf?: {
+      artifactId: string;
+      fileName: string;
+      size: number;
+      mimeType: 'application/pdf';
+    };
   }>;
 }
