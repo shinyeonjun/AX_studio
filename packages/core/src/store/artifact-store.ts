@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export interface StoredArtifact {
   id: string;
@@ -12,7 +12,17 @@ export interface StoredArtifact {
   createdAt: string;
 }
 
-function parseStoredArtifact(path: string): StoredArtifact | undefined {
+function isWithinRoot(rootDir: string, path: string): boolean {
+  const relativePath = relative(resolve(rootDir), resolve(path));
+  return (
+    relativePath !== '' &&
+    relativePath !== '..' &&
+    !relativePath.startsWith(`..${sep}`) &&
+    !isAbsolute(relativePath)
+  );
+}
+
+function parseStoredArtifact(rootDir: string, path: string): StoredArtifact | undefined {
   const value = readJsonFile<Partial<StoredArtifact> | null>(path);
   if (
     !value ||
@@ -22,7 +32,8 @@ function parseStoredArtifact(path: string): StoredArtifact | undefined {
     typeof value.storedPath !== 'string' ||
     typeof value.size !== 'number' ||
     typeof value.createdAt !== 'string' ||
-    (value.mimeType !== undefined && typeof value.mimeType !== 'string')
+    (value.mimeType !== undefined && typeof value.mimeType !== 'string') ||
+    !isWithinRoot(rootDir, value.storedPath)
   ) {
     return undefined;
   }
@@ -37,6 +48,12 @@ function readJsonFile<T>(path: string): T | undefined {
   }
 }
 
+function assertArtifactId(id: string): void {
+  if (!id || id === '.' || id === '..' || id.includes('/') || id.includes('\\')) {
+    throw new Error(`Invalid artifact id: ${JSON.stringify(id)}`);
+  }
+}
+
 export class ArtifactStore {
   constructor(private readonly rootDir: string) {
     mkdirSync(rootDir, { recursive: true });
@@ -47,6 +64,7 @@ export class ArtifactStore {
   }
 
   importFile(sourcePath: string, options: { id?: string; mimeType?: string } = {}): StoredArtifact {
+    if (options.id !== undefined) assertArtifactId(options.id);
     const buffer = readFileSync(sourcePath);
     const sha256 = createHash('sha256').update(buffer).digest('hex');
     const existing = this.findBySha(sha256);
@@ -72,43 +90,51 @@ export class ArtifactStore {
   }
 
   putJson(id: string, value: unknown): void {
+    assertArtifactId(id);
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(value));
   }
 
   putDocumentArtifact(id: string, value: unknown): void {
+    assertArtifactId(id);
     writeFileSync(join(this.rootDir, `${id}.document.json`), JSON.stringify(value));
   }
 
   putIngestResult(id: string, value: unknown): void {
+    assertArtifactId(id);
     writeFileSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
   }
 
   getDocumentArtifact<T>(id: string): T | undefined {
+    assertArtifactId(id);
     const metaPath = join(this.rootDir, `${id}.document.json`);
     if (!existsSync(metaPath)) return undefined;
     return readJsonFile<T>(metaPath);
   }
 
   getIngestResult<T>(id: string): T | undefined {
+    assertArtifactId(id);
     const resultPath = join(this.rootDir, `${id}.ingest.json`);
     if (!existsSync(resultPath)) return undefined;
     return readJsonFile<T>(resultPath);
   }
 
   getJson<T>(id: string): T | undefined {
+    assertArtifactId(id);
     const metaPath = join(this.rootDir, `${id}.json`);
     if (!existsSync(metaPath)) return undefined;
     return readJsonFile<T>(metaPath);
   }
 
   get(id: string): StoredArtifact | undefined {
+    assertArtifactId(id);
     const metaPath = join(this.rootDir, `${id}.json`);
     if (!existsSync(metaPath)) return undefined;
-    return parseStoredArtifact(metaPath);
+    return parseStoredArtifact(this.rootDir, metaPath);
   }
 
   /** Delete the stored file plus every sidecar written for this artifact id. */
   remove(id: string): void {
+    assertArtifactId(id);
     const record = this.get(id);
     if (record?.storedPath) rmSync(record.storedPath, { force: true });
     for (const suffix of ['.json', '.document.json', '.ingest.json']) {
@@ -119,7 +145,7 @@ export class ArtifactStore {
   findBySha(sha256: string): StoredArtifact | undefined {
     for (const name of readdirSync(this.rootDir)) {
       if (!name.endsWith('.json')) continue;
-      const record = parseStoredArtifact(join(this.rootDir, name));
+      const record = parseStoredArtifact(this.rootDir, join(this.rootDir, name));
       if (!record) continue;
       if (record.sha256 === sha256) return record;
     }
