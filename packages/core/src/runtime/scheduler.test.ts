@@ -289,4 +289,44 @@ describe('Scheduler', () => {
       succeeds: expect.any(String),
     });
   });
+
+  it('recovers on the next tick after an unexpected scheduler failure', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'scheduled-recovery',
+      name: '예약 오류 복구',
+      goal: '일시적인 스케줄러 오류 후 다음 tick에서 실행',
+      version: 1,
+      trigger: { type: 'schedule', schedule: '30 9 * * *', timezone: 'Asia/Seoul' },
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    store.setWorkflowActive('scheduled-recovery', true);
+
+    const failure = new Error('temporary store failure');
+    vi.spyOn(store, 'listWorkflows').mockImplementationOnce(() => {
+      throw failure;
+    });
+    const runtime = {
+      executeWorkflow: vi.fn(async () => ({ status: 'success' })),
+    };
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    await expect(tick()).resolves.toBeUndefined();
+    expect(consoleError).toHaveBeenCalledWith('[scheduler] tick failed:', failure);
+    expect(runtime.executeWorkflow).not.toHaveBeenCalled();
+
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+  });
 });

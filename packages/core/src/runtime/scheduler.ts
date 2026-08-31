@@ -128,6 +128,8 @@ export class Scheduler {
     this.tickInProgress = true;
     try {
       await this.runTick();
+    } catch (error) {
+      console.error('[scheduler] tick failed:', error);
     } finally {
       this.tickInProgress = false;
     }
