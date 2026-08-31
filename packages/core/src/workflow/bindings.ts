@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import type { ContractTypeName } from '../contracts/capability-io.js';
-import { PortBindingSchema, coercePortBinding, type PortBinding } from './port-binding.js';
+import {
+  PortBindingSchema,
+  SNAPSHOT_BINDING_PREFIX,
+  coercePortBinding,
+  type PortBinding,
+} from './port-binding.js';
 import { contractTypesCompatible } from '../contracts/compatibility.js';
 import {
   actionInputTypes,
@@ -432,6 +437,19 @@ function applyBoundValueToParams(
   params: Record<string, unknown>,
 ): Record<string, unknown> {
   if (value == null) return params;
+
+  if (inputPort.startsWith(SNAPSHOT_BINDING_PREFIX)) {
+    const sourceId = inputPort.slice(SNAPSHOT_BINDING_PREFIX.length);
+    if (!sourceId) return params;
+    const existingTables =
+      params.tables && typeof params.tables === 'object' && !Array.isArray(params.tables)
+        ? params.tables as Record<string, unknown>
+        : {};
+    return {
+      ...params,
+      tables: { ...existingTables, [sourceId]: value },
+    };
+  }
 
   if (inputPort === 'source') {
     if (typeof value === 'object') {

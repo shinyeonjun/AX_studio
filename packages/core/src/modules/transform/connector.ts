@@ -1,7 +1,28 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { TransformExprSchema } from '../../workflow/transform-expr/dsl.js';
 import { evaluateTransformExpr } from '../../workflow/transform-expr/evaluator.js';
+import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import { TableArtifactSchema, type TableArtifact } from '../../contracts/artifacts/table.js';
+
+function normalizeTableInput(value: unknown, sourceId: string): TableArtifact | undefined {
+  const artifact = TableArtifactSchema.safeParse(value);
+  if (artifact.success) return artifact.data;
+  if (!Array.isArray(value)) return undefined;
+
+  const rows = value.filter(
+    (row): row is Record<string, unknown> =>
+      Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+  );
+  if (rows.length !== value.length) return undefined;
+
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  return buildTableArtifact({
+    id: `runtime_${sourceId}`,
+    headers,
+    matrix: rows.map((row) => headers.map((header) => row[header])),
+    source: sourceId.startsWith('rdb:') ? { table: sourceId.slice('rdb:'.length) } : undefined,
+  });
+}
 
 function formatTableValue(value: unknown): string {
   if (value == null) return '';
@@ -93,14 +114,23 @@ export class TransformConnector implements Connector {
         if (!parsedExpr.success) {
           return { ok: false, error: 'invalid_transform_expr', errorCode: 'invalid_transform_expr' };
         }
-        const table = params.table as TableArtifact | undefined;
-        if (!table) {
+        if (params.table == null) {
           return { ok: false, error: 'table_input_required', errorCode: 'table_input_required' };
         }
         const sourceId = typeof params.discoverySourceId === 'string'
           ? params.discoverySourceId
           : 'runtime:source';
+        const table = normalizeTableInput(params.table, sourceId);
+        if (!table) {
+          return { ok: false, error: 'table_input_invalid', errorCode: 'table_input_invalid' };
+        }
         const snapshots: Record<string, TableArtifact> = { [sourceId]: table };
+        if (params.tables && typeof params.tables === 'object' && !Array.isArray(params.tables)) {
+          for (const [tableSourceId, value] of Object.entries(params.tables as Record<string, unknown>)) {
+            const normalized = normalizeTableInput(value, tableSourceId);
+            if (normalized) snapshots[tableSourceId] = normalized;
+          }
+        }
         const value = evaluateTransformExpr(parsedExpr.data, snapshots);
         const outputPath = typeof params.outputPath === 'string' ? params.outputPath : 'result';
         ctx.variables[outputPath] = value;

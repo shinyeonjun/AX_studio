@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DiscoveryBlueprint } from '../schema.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
+import { snapshotBindingPort } from '../../workflow/port-binding.js';
 import { sourceIdFromExpr } from './blueprint.js';
 import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 import type {
@@ -43,6 +44,10 @@ function readStepForSource(source: DiscoveryBlueprint['sources'][number]): Workf
     };
   }
   return undefined;
+}
+
+function outputPortForSourceId(sourceId: string): 'rows' | 'sheet' {
+  return sourceId.startsWith('rdb:') ? 'rows' : 'sheet';
 }
 
 function collectSourceIds(expr: TransformExpr, bucket: Set<string>): void {
@@ -234,6 +239,19 @@ export function compileBlueprintToWorkflow(
     if (!field.mapping) continue;
     const sourceId = sourceIdFromExpr(field.mapping);
     const readStepId = sourceId ? readStepBySource.get(sourceId) : undefined;
+    const bindings: Record<string, { from: string; output: 'rows' | 'sheet' }> = {};
+    if (sourceId && readStepId) {
+      bindings.table = { from: readStepId, output: outputPortForSourceId(sourceId) };
+    }
+    for (const referencedSourceId of sourceIdsInExpr(field.mapping)) {
+      if (referencedSourceId === sourceId) continue;
+      const referencedReadStepId = readStepBySource.get(referencedSourceId);
+      if (!referencedReadStepId) continue;
+      bindings[snapshotBindingPort(referencedSourceId)] = {
+        from: referencedReadStepId,
+        output: outputPortForSourceId(referencedSourceId),
+      };
+    }
     steps.push({
       type: 'action',
       id: `eval_${sanitizeStepId(field.outputPath)}`,
@@ -244,9 +262,7 @@ export function compileBlueprintToWorkflow(
         discoverySourceId: sourceId,
         outputPath: field.outputPath,
       },
-      bindings: readStepId
-        ? { table: { from: readStepId, output: 'sheet' } }
-        : undefined,
+      bindings: Object.keys(bindings).length > 0 ? bindings : undefined,
       sideEffect: 'NONE',
     });
   }
@@ -291,6 +307,7 @@ export function compileBlueprintToWorkflow(
     document: JSON.stringify({
       origin: 'discovery',
       blueprintId: blueprint.id,
+      sessionId: blueprint.sessionId,
       defaultSourcePath: options.defaultSourcePath,
       fields: blueprint.fields.map((field) => ({
         outputPath: field.outputPath,

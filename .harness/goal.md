@@ -78,6 +78,30 @@ without invoking real Gmail, Slack, Codex, Claude, or external network side effe
 ## Non-goals
 - Schema drift auto-repair (fixture only)
 - Agent semantic synthesis harness (deferred; deterministic path first)
+
+## Current task: PR #117 correctness repair
+
+Close the published Work Discovery runtime seams exposed during review before
+merging the PR. The compiled workflow must retain enough session identity for
+repair replay, RDB reads must satisfy transform evaluation's table contract,
+and expressions that reference multiple sources must receive every bound
+snapshot at runtime.
+
+### Success criteria
+
+- A compiled Discovery workflow document retains its source session id.
+- A compiled RDB source binds its declared `rows` output to transform evaluation.
+- Raw RDB row arrays are normalized at the transform boundary without changing
+  the existing RDB connector result contract.
+- Multi-source transform expressions receive and evaluate all source snapshots.
+- Focused regression tests fail on the pre-fix behavior and pass after the fix.
+- The frozen repository evaluator and PR CI pass after the branch is rebased on
+  the latest `main`.
+
+### Non-goals
+
+- Changing the public RDB query result shape.
+- Reworking repair proposal persistence or unrelated connector behavior.
 - Phases 9–10 drift/repair productization
 
 ## Current task: HTTP, Webhook, and RDB connector completion
