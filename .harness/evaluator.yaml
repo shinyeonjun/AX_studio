@@ -1014,6 +1014,95 @@ main_based_connector_pdf_phase_3:
     notes: "Generated PDF metadata is projected without paths or bytes, export is main-process-owned and root/size/MIME checked, Activity exposes a keyboard-accessible native-save action, and provider behavior plus the unrelated .gitignore edit remain unchanged."
   expansions: []
 
+main_based_connector_webhook_vertical_slice:
+  name: webhook-vertical-slice
+  evaluator_frozen: true
+  checks:
+    - name: webhook-focused
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/triggers/webhook/listener.test.ts src/triggers/webhook/security.test.ts src/runtime/trigger-engine.test.ts
+      required: true
+    - name: webhook-desktop-state
+      type: command
+      command: npx vitest run --root apps/desktop electron/main/ipc/connection-state-summary.test.ts electron/main/webhook/connection.test.ts electron/main/slack/connection.test.ts src/lib/slack-status.test.ts
+      required: true
+    - name: webhook-manual-fixture-check
+      type: command
+      command: node test/manual/webhook.mjs --check
+      required: true
+    - name: root-integration-runner
+      type: command
+      command: npm run test:integration
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: test-typecheck
+      type: command
+      command: npx tsc -p test/tsconfig.json --noEmit
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: root-e2e-runner
+      type: command
+      command: npm run test:e2e
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - settings-connects-only-when-listener-is-healthy
+    - curl-shared-secret-and-hmac-post-reaches-active-workflow
+    - duplicate-provider-event-is-executed-once
+    - invalid-request-does-not-create-execution
+    - restart-and-disconnect-clean-up-the-local-port
+    - manual-fixture-has-no-external-provider-side-effects
+    - renderer-never-receives-the-webhook-secret
+  baseline:
+    recorded_at: 2026-08-31T15:41:48.8612389+09:00
+    values:
+      webhook-focused: "PASS: 3 files, 30 tests"
+      webhook-desktop-state: "PASS: 1 file, 1 test"
+      webhook-manual-fixture-check: "FAIL: test/manual/webhook.mjs does not exist"
+      root-integration-runner: "PASS: 10 files, 59 tests"
+      core-typecheck: "PASS"
+      desktop-typecheck: "PASS"
+      test-typecheck: "PASS"
+      architecture-check: "PASS: zero dependency violations, 505 modules and 1769 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      root-e2e-runner: "PASS: 4 Product QA tests including the 14-scenario batch; run-2026-08-31T06-41-04-595Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    gap: "Existing listener and TriggerEngine tests cover local delivery, but they do not prove duplicate provider ids execute once, listener stop/restart behavior, or that a port collision cannot leave renderer state falsely connected. No local manual Webhook sender exists."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T16:43:38.2827736+09:00
+    values:
+      webhook-focused: "PASS: 3 files, 32 tests"
+      webhook-desktop-state: "PASS: 4 files, 5 tests"
+      webhook-manual-fixture-check: "PASS: helper configuration and loopback policy"
+      root-integration-runner: "PASS: 11 files, 72 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      architecture-check: "PASS: zero dependency violations, 505 modules and 1771 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      root-e2e-runner: "PASS: 4 deterministic Product QA tests including the 14-scenario batch; run-2026-08-31T07-37-08-210Z"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "Live Product QA also passed both current-data scenarios after an unreadable Slack safeStorage value was degraded to disconnected/reconnectable state. The final Codex Security diff scan ec906d1f-0d4f-4246-98f3-1eedccfe7fbc reviewed 19 formal diff items with 0 findings; the parent review also covered the manual sender and report. Existing .gitignore remains unrelated and unchanged."
+
 main_based_connector_pdf_phase_2:
   evaluator_frozen: true
   checks:

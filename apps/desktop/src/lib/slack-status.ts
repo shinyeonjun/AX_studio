@@ -59,7 +59,7 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
     badge: '미연결',
     badgeClass: '',
     headline: 'Slack을 연결하면 알림 발송과 트리거를 사용할 수 있습니다.',
-    detail: 'Bot Token과 Socket Mode용 App Token이 필요합니다.',
+    detail: state?.slackLastError ?? 'Bot Token과 Socket Mode용 App Token이 필요합니다.',
     manualSend: false,
     realtimeTriggers: false,
   };

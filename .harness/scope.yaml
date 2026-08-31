@@ -551,6 +551,7 @@ main_based_connector_pdf_phase_2:
     - .harness/scope.yaml
     - .harness/evaluator.yaml
     - .harness/experiments.tsv
+    - package.json
     - packages/core/src/store/artifact-store.ts
     - packages/core/src/store/artifact-store.test.ts
     - packages/core/src/modules/types.ts
@@ -602,3 +603,46 @@ main_based_connector_pdf_phase_3:
     - PDF generation semantics, Gmail/Slack/provider behavior, and live accounts
     - broad renderer redesign, retention policy, or attachment delivery
   expansions: []
+
+main_based_connector_webhook_vertical_slice:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/runtime/trigger-engine.ts
+    - packages/core/src/runtime/trigger-engine.test.ts
+    - packages/core/src/triggers/webhook/listener.ts
+    - packages/core/src/triggers/webhook/listener.test.ts
+    - packages/core/src/triggers/webhook/security.test.ts
+    - packages/core/src/modules/packages/webhook.ts
+    - packages/core/src/store/repositories/trigger-receipt-repository.ts
+    - packages/core/src/store/repositories/trigger-receipt-repository.test.ts
+    - apps/desktop/electron/main/webhook/connection.ts
+    - apps/desktop/electron/main/webhook/connection.test.ts
+    - apps/desktop/electron/main/index.ts
+    - apps/desktop/electron/main/slack/connection.ts
+    - apps/desktop/electron/main/slack/connection.test.ts
+    - apps/desktop/electron/main/ipc/connection-handlers.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.ts
+    - apps/desktop/electron/main/ipc/state-handlers.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.test.ts
+    - apps/desktop/src/types/app-state.ts
+    - apps/desktop/src/types/connection-entry.ts
+    - apps/desktop/src/components/settings/connectors/WebhookConnectionForm.tsx
+    - apps/desktop/src/lib/slack-status.ts
+    - apps/desktop/src/lib/slack-status.test.ts
+    - test/manual/README.md
+    - test/manual/webhook.mjs
+    - test/integration/run.mjs
+    - docs/reports/connector-webhook-vertical-slice.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - live Gmail/Slack/provider accounts and external side effects
+    - PDF, REST, RDB, Gmail, and Slack behavior outside the Webhook seam
+    - broad schema migrations, tunnel provisioning, and renderer redesign
+  expansions:
+    - reason: "Live Product QA exposed that a stale Slack safeStorage ciphertext can abort the entire Electron startup before the user can re-authenticate; the connector hydration boundary must degrade to a recoverable disconnected state."
+      boundary: "apps/desktop/electron/main/slack/connection.ts, apps/desktop/electron/main/slack/connection.test.ts, apps/desktop/src/lib/slack-status.ts, apps/desktop/src/lib/slack-status.test.ts"

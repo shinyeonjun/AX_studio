@@ -3,10 +3,15 @@ import {
   getWebhookConnectionStatus,
   parseGmailConnectionConfig,
   parseRdbConnectionConfig,
+  type PushTransportState,
 } from '@ax-studio/core';
 import { getOsSecret } from '../credential-store.js';
 
 const RDB_SECRET_NAME = 'rdb.connection-string';
+
+export interface ConnectionSummaryOptions {
+  webhookTransport?: PushTransportState;
+}
 
 function formatRdbTarget(
   config: Record<string, unknown>,
@@ -41,6 +46,7 @@ export async function summarizeConnection(
   connector: string,
   connected: boolean,
   config: Record<string, unknown> | undefined,
+  options: ConnectionSummaryOptions = {},
 ): Promise<Record<string, unknown>> {
   if (connector === 'gmail') {
     const gmail = parseGmailConnectionConfig(config);
@@ -72,13 +78,19 @@ export async function summarizeConnection(
 
   if (connector === 'webhook') {
     const status = getWebhookConnectionStatus(config, connected);
+    const listenerStatus = options.webhookTransport?.phase;
+    const listenerHealthy = listenerStatus === undefined || listenerStatus === 'connected';
     return {
       connector,
-      connected: status.connected,
+      connected: status.connected && listenerHealthy,
       label: status.label,
       port: status.port,
       localBaseUrl: status.localBaseUrl,
       tunnelUrl: status.tunnelUrl,
+      ...(listenerStatus ? { listenerStatus } : {}),
+      ...(options.webhookTransport?.error || status.lastError
+        ? { lastError: options.webhookTransport?.error ?? status.lastError }
+        : {}),
     };
   }
 
@@ -119,8 +131,9 @@ export async function summarizeConnections(
     connected: boolean;
     config?: Record<string, unknown>;
   }>,
+  options: ConnectionSummaryOptions = {},
 ): Promise<Record<string, unknown>[]> {
   return Promise.all(
-    connections.map(({ connector, connected, config }) => summarizeConnection(connector, connected, config)),
+    connections.map(({ connector, connected, config }) => summarizeConnection(connector, connected, config, options)),
   );
 }

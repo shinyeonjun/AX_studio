@@ -1137,3 +1137,55 @@ the user choose the export destination through the native save dialog.
 - Completed Codex Security diff scan found 0 findings across all 13 reviewed
   change-inventory items. Native dialog UI automation remains a documented
   limitation; its provider seam is covered by unit tests.
+
+## Current task: main-based connector completion — Webhook vertical slice
+
+Make the Webhook path directly usable before moving to REST/DB, Gmail, and
+Slack. The saved connection must correspond to a running local listener, a
+real authenticated POST must reach the matching active workflow exactly once
+per provider event id, and the Desktop state must expose listener failures
+instead of showing a false connected state. Add a local manual fixture so the
+developer can verify the path with curl without external provider accounts.
+
+### Webhook success criteria
+
+- Connecting a valid port and secret starts a local listener and persists only
+  non-secret connection metadata; disconnect stops it and removes the secret.
+- A signed or shared-secret POST returns an explicit accepted response and
+  reaches the matching active workflow with bounded path/body/header input.
+- Repeating the same provider event id does not execute the workflow twice;
+  keyless deliveries remain distinct.
+- Invalid method/path/auth/oversized payloads are rejected without execution.
+- A port collision or listener startup failure is visible as a disconnected or
+  errored transport state and never remains a false healthy connection.
+- Restart/hydration starts the configured listener when its secret is present;
+  stop/reconnect leaves no live listener behind.
+- A local manual Webhook fixture and step-by-step curl smoke scenario are
+  documented, with cleanup and no external network/provider side effects.
+- Focused Webhook tests, Core regression, typechecks, architecture check,
+  integration/E2E checks, production build, and whitespace check pass.
+
+### Webhook non-goals
+
+- No public tunnel provisioning, outbound Webhook action, or provider-specific
+  webhook management API.
+- No Gmail/Slack implementation in this slice and no live credentials.
+- No broad trigger-engine rewrite or database schema migration.
+- No changes to the unrelated dirty `.gitignore` file.
+
+### Webhook vertical slice final checkpoint (2026-08-31T16:43:38.2827736+09:00)
+
+- The Webhook setting now reflects the actual loopback listener state; port
+  collisions and refresh failures cannot remain falsely connected.
+- Authenticated shared-secret/HMAC POSTs reach active workflows, stable
+  provider event IDs are deduplicated per workflow, and auth headers are
+  excluded from workflow input.
+- A stale Slack OS-encrypted token no longer aborts desktop startup; it becomes
+  a disconnected, user-visible reconnect state.
+- Focused Webhook tests passed 32/32; Desktop state/recovery tests 5/5; Core
+  integration 72/72; full Core 651 passed with 3 skips; live Product QA 2/2;
+  deterministic Product QA/E2E 4/4; types, architecture, build, evaluation,
+  knip, and whitespace checks passed.
+- Final Codex Security diff scan reviewed 19 formal change items and reported
+  0 findings. Manual loopback smoke delivery was separately executed for both
+  shared-secret and HMAC modes.

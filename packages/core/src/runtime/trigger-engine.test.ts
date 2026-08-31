@@ -1,10 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { createServer } from 'node:http';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../store/db.js';
 import { WorkflowStore } from '../store/workflow-store.js';
 import { WorkflowRuntime } from './engine.js';
 import { createTestConnectors, mockGmail, mockLocalFolder, mockSlack } from '../modules/test-connectors.js';
 import { TriggerEngine } from './trigger-engine.js';
 import type { WorkflowIR } from '../workflow/schema.js';
+
+async function findFreePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => resolve());
+  });
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  if (!port) throw new Error('failed to allocate a free port');
+  return port;
+}
+
+async function waitForWebhookListener(engine: TriggerEngine): Promise<void> {
+  await vi.waitFor(() => {
+    expect(engine.pushTransportStatus('webhook.inbound')).toMatchObject({ phase: 'connected' });
+    expect(engine.pushTransportActive('webhook.inbound')).toBe(true);
+  });
+}
 
 const gmailNotifySkill: WorkflowIR = {
   name: '새 메일 알림',
@@ -373,7 +394,7 @@ describe('TriggerEngine', () => {
   });
 
   it('runs enabled webhook workflows and ignores disabled ones', async () => {
-    const port = 38_910;
+    const port = await findFreePort();
     const webhookWorkflow: WorkflowIR = {
       name: 'Webhook 업무',
       goal: 'Webhook 수신 시 Slack 알림',
@@ -415,28 +436,122 @@ describe('TriggerEngine', () => {
     const { workflowId } = store.saveWorkflow(webhookWorkflow);
     store.setWorkflowActive(workflowId, true);
     const engine = new TriggerEngine(store, runtime);
-    engine.start();
-    await engine.refreshPushTransports();
+    try {
+      engine.start();
+      await waitForWebhookListener(engine);
 
-    const accepted = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
-      method: 'POST',
-      headers: { 'x-ax-webhook-secret': 'hook-secret' },
-      body: '{"id":1}',
+      const unauthorized = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
+        method: 'POST',
+        headers: { 'x-ax-webhook-secret': 'wrong-secret' },
+        body: '{"id":0}',
+      });
+      expect(unauthorized.status).toBe(401);
+
+      const wrongMethod = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`);
+      expect(wrongMethod.status).toBe(405);
+
+      const unmatchedPath = await fetch(`http://127.0.0.1:${port}/hooks/unknown`, {
+        method: 'POST',
+        headers: { 'x-ax-webhook-secret': 'hook-secret' },
+        body: '{"id":0}',
+      });
+      expect(unmatchedPath.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(store.listExecutions(10)).toHaveLength(0);
+
+      const accepted = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
+        method: 'POST',
+        headers: {
+          'x-ax-webhook-secret': 'hook-secret',
+          'idempotency-key': 'invoice-paid-1',
+        },
+        body: '{"id":1}',
+      });
+      expect(accepted.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+      expect(store.listExecutions(10)).toEqual([
+        expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
+      ]);
+
+      const repeated = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
+        method: 'POST',
+        headers: {
+          'x-ax-webhook-secret': 'hook-secret',
+          'idempotency-key': 'invoice-paid-1',
+        },
+        body: '{"id":1}',
+      });
+      expect(repeated.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+      expect(store.listExecutions(10)).toHaveLength(1);
+
+      store.setWorkflowActive(workflowId, false);
+      const ignored = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
+        method: 'POST',
+        headers: { 'x-ax-webhook-secret': 'hook-secret' },
+        body: '{"id":2}',
+      });
+      expect(ignored.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+
+      await engine.stop();
+      await expect(fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`)).rejects.toThrow();
+
+      store.setWorkflowActive(workflowId, true);
+      engine.start();
+      await waitForWebhookListener(engine);
+      const restarted = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
+        method: 'POST',
+        headers: {
+          'x-ax-webhook-secret': 'hook-secret',
+          'idempotency-key': 'invoice-paid-2',
+        },
+        body: '{"id":2}',
+      });
+      expect(restarted.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(mockSlack(runtime.connectors).messages).toHaveLength(2);
+      expect(store.listExecutions(10)).toHaveLength(2);
+    } finally {
+      await engine.stop();
+    }
+  });
+
+  it('reports a listener startup failure when the configured port is occupied', async () => {
+    const blocker = createServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(0, '127.0.0.1', () => resolve());
     });
-    expect(accepted.status).toBe(202);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    const address = blocker.address();
+    const port = typeof address === 'object' && address ? address.port : 0;
+    if (!port) throw new Error('failed to allocate a blocker port');
 
-    store.setWorkflowActive(workflowId, false);
-    const ignored = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
-      method: 'POST',
-      headers: { 'x-ax-webhook-secret': 'hook-secret' },
-      body: '{"id":2}',
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({
+      store,
+      globalActive: true,
+      workflowActive: {},
+      connectors: createTestConnectors(),
     });
-    expect(ignored.status).toBe(202);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    store.setConnection('webhook', true, {
+      port,
+      secret: 'hook-secret',
+      secretStored: true,
+    });
+    const engine = new TriggerEngine(store, runtime);
 
-    await engine.stop();
+    try {
+      engine.start();
+      await vi.waitFor(() => expect(engine.pushTransportStatus('webhook.inbound')).toMatchObject({ phase: 'error' }));
+      expect(engine.pushTransportActive('webhook.inbound')).toBe(false);
+    } finally {
+      await engine.stop();
+      await new Promise<void>((resolve, reject) => blocker.close((error) => (error ? reject(error) : resolve())));
+    }
   });
 });

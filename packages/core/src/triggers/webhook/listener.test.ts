@@ -1,5 +1,6 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { createServer, IncomingMessage, request } from 'node:http';
+import { createHmac } from 'node:crypto';
 import { WebhookInboundListener } from './listener.js';
 import { WEBHOOK_MAX_PAYLOAD_BYTES } from './security.js';
 
@@ -27,6 +28,8 @@ describe('WebhookInboundListener', () => {
       headers: {
         'content-type': 'application/json',
         'x-ax-webhook-secret': 'hook-secret',
+        authorization: 'Bearer hook-secret',
+        cookie: 'session=should-not-forward',
       },
       body: '{"total":42}',
     });
@@ -36,6 +39,9 @@ describe('WebhookInboundListener', () => {
     expect(events[0]?.type).toBe('webhook.inbound');
     expect(events[0]?.payload.path).toBe('invoice-paid');
     expect(events[0]?.payload.body).toBe('{"total":42}');
+    expect(events[0]?.payload.headers).not.toHaveProperty('x-ax-webhook-secret');
+    expect(events[0]?.payload.headers).not.toHaveProperty('authorization');
+    expect(events[0]?.payload.headers).not.toHaveProperty('cookie');
   });
 
   it('preserves a provider idempotency key as the event request id across retries', async () => {
@@ -64,6 +70,34 @@ describe('WebhookInboundListener', () => {
     expect(events).toHaveLength(2);
     expect(events[0]?.payload.requestId).toBe('provider-event-42');
     expect(events[1]?.payload.requestId).toBe('provider-event-42');
+  });
+
+  it('accepts HMAC requests without forwarding authentication headers', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const events: Array<{ payload: Record<string, unknown> }> = [];
+    const port = 38_914;
+    const body = '{"attempt":1}';
+    const signature = createHmac('sha256', 'hook-secret').update(body).digest('hex');
+
+    await listener.start({ port, secret: 'hook-secret' }, (event) => {
+      events.push(event);
+    });
+
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/retryable`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-ax-signature': `sha256=${signature}`,
+        'x-api-key': 'should-not-forward',
+      },
+      body,
+    });
+
+    expect(response.status).toBe(202);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.payload.headers).not.toHaveProperty('x-ax-signature');
+    expect(events[0]?.payload.headers).not.toHaveProperty('x-api-key');
   });
 
   it('keeps keyless webhook deliveries distinguishable', async () => {

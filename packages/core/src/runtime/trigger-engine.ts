@@ -146,6 +146,10 @@ export class TriggerEngine {
     return this.pushTransports.get(triggerType)?.isRunning() ?? false;
   }
 
+  pushTransportStatus(triggerType: string): PushTransportState | undefined {
+    return this.pushTransportStates.get(triggerType);
+  }
+
   slackSocketActive(): boolean {
     return this.pushTransportActive('slack.new_message');
   }
