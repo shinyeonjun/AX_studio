@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build -w @ax-studio/core && npm run build -w @ax-studio/desktop",
-    "test": "npm run test -w @ax-studio/core --",
+    "test": "npm run test:manual:webhook:security && npm run test -w @ax-studio/core --",
     "test:e2e": "node test/e2e/run.mjs",
     "test:product-qa": "node test/product-qa/run.mjs",
     "test:integration": "node test/integration/run.mjs",
@@ -15,6 +15,7 @@
     "test:manual:http": "node test/manual/rest-api.mjs",
     "test:manual:db": "node test/manual/postgres.mjs",
     "test:manual:webhook": "node test/manual/webhook.mjs",
+    "test:manual:webhook:security": "node --test test/manual/webhook.test.mjs",
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",

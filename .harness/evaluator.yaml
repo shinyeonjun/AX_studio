@@ -1582,3 +1582,69 @@ main_based_work_discovery_phase_10_task:
     decision: KEEP
     notes: "Repair proposals are bounded to source-column rename/remap candidates, historical replay is fail-closed, apply creates a new version while retaining the prior version, and no runtime auto-apply or protected workflow meaning changes occur."
   expansions: []
+
+security_report_manual_webhook_redirect_hardening:
+  status: completed
+  evaluator_frozen: true
+  checks:
+    - name: manual-webhook-security
+      type: command
+      command: node --test test/manual/webhook.test.mjs
+      required: true
+    - name: manual-webhook-check
+      type: command
+      command: node test/manual/webhook.mjs --check
+      required: true
+    - name: webhook-core-regression
+      type: command
+      command: npm test -w @ax-studio/core -- --run src/triggers/webhook/listener.test.ts src/triggers/webhook/security.test.ts src/runtime/trigger-engine.test.ts
+      required: true
+    - name: root-test-ci-path
+      type: command
+      command: npm test
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - no redirect destination receives a request in shared-secret or HMAC mode
+    - direct loopback 202 and no-network check behavior remain intact
+    - root npm test executes the new black-box regression under CI Node 22
+    - no production Webhook protocol or unrelated connector behavior changes
+    - the primary worktree's user-owned .gitignore remains untouched
+  baseline:
+    recorded: true
+    recorded_at: 2026-08-31T17:44:27.4465588+09:00
+    values:
+      manual-webhook-security: "FAIL: 2/3 tests passed; 302/307 redirects reached the second origin 3 times"
+      manual-webhook-check: "PASS: helper configuration validated without network I/O"
+      webhook-core-regression: "PASS: 3 files/32 tests"
+      root-test-ci-path: "PASS: 125 Core files/651 tests/3 skipped; manual helper regression is not yet wired"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      architecture-check: "PASS: zero violations across 505 modules/1771 dependencies"
+      diff-whitespace: "PASS: harness and regression-test additions have no whitespace errors"
+    gap: "The helper automatically follows 302/307 responses after validating only the initial loopback URL, forwarding both authentication modes to a second origin."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T17:53:32.9665788+09:00
+    values:
+      manual-webhook-security: "PASS: 3/3 black-box tests on Node 24 and Node 22; redirect destinations received zero requests"
+      manual-webhook-check: "PASS: helper configuration validated without network I/O"
+      webhook-core-regression: "PASS: 3 files/32 tests"
+      root-test-ci-path: "PASS: manual security 3/3 plus 125 Core files/651 tests/3 skipped"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      architecture-check: "PASS: zero violations across 505 modules/1771 dependencies"
+      diff-whitespace: "PASS: git diff --check"
+      argument-forwarding: "PASS: npm test -- --help runs the security test then forwards --help to Vitest"
+      independent-review: "PASS: no surviving redirect bypass; one confirmed script-order regression fixed"
+    decision: KEEP
+    notes: "Manual redirect handling is the narrow shared boundary for all URL sources, repeats, and authentication modes. Report open questions about public proxy policy, provider-header policy, and HMAC freshness remain product/deployment decisions rather than validated findings."
