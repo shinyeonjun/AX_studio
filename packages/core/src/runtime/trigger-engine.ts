@@ -391,7 +391,6 @@ export class TriggerEngine {
               if (dedupeKey) this.store.failTriggerReceipt(dedupeKey);
               throw err;
             }
-            if (generation !== this.lifecycleGeneration) return;
             if (!triggerRunWasAccepted(result)) {
               if (dedupeKey) this.store.failTriggerReceipt(dedupeKey);
               throw new Error(`trigger execution was not accepted: ${(result as Partial<ExecutionResult>).status ?? 'unknown'}`);
@@ -404,6 +403,7 @@ export class TriggerEngine {
             cursors[skill.id] = processedCursor;
             this.saveCursors(cursors);
             cursorsChanged = false;
+            if (generation !== this.lifecycleGeneration) return;
             this.onTriggeredRun?.(skill.id, result);
           }
 
