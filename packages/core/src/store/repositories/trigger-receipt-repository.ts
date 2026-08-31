@@ -20,18 +20,12 @@ export function claimTriggerReceipt(
     .run(params.dedupeKey, params.workflowId, params.triggerType, now, now);
   if (inserted.changes > 0) return true;
 
-  const existing = db
-    .prepare('SELECT status FROM trigger_receipts WHERE dedupe_key = ?')
-    .get(params.dedupeKey) as { status?: string } | undefined;
-  if (!existing) return false;
-  if (existing.status === 'completed' || existing.status === 'processing') return false;
-  if (existing.status === 'failed') {
-    db.prepare(
-      `UPDATE trigger_receipts SET status = 'processing', updated_at = ? WHERE dedupe_key = ?`,
-    ).run(now, params.dedupeKey);
-    return true;
-  }
-  return false;
+  const retried = db.prepare(
+    `UPDATE trigger_receipts
+     SET status = 'processing', updated_at = ?
+     WHERE dedupe_key = ? AND status = 'failed'`,
+  ).run(now, params.dedupeKey);
+  return retried.changes > 0;
 }
 
 export function completeTriggerReceipt(
