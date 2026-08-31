@@ -51,7 +51,7 @@ describe('workflow panel resize session', () => {
       releasePointerCapture: () => {
         captured = false;
       },
-    } as HTMLDivElement;
+    } as unknown as HTMLDivElement;
     const onWidthChange = vi.fn();
     const onResizingChange = vi.fn();
 

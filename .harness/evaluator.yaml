@@ -931,6 +931,75 @@ main_based_work_discovery_phase_4_task:
     notes: "Both repository entry points now execute real bounded suites and propagate child failures. Product QA test declarations and Electron launch environment typing are valid. Existing .gitignore remains unrelated and unchanged."
   expansions: []
 
+connector_foundation_phase_1_task:
+  name: connector-foundation-safety-and-acceptance
+  evaluator_frozen: true
+  checks:
+    - name: rdb-renderer-secret-boundary
+      type: command
+      command: npx vitest run apps/desktop/electron/main/ipc/connection-state-summary.test.ts
+      required: true
+    - name: trigger-receipt-lease
+      type: command
+      command: npm test -w @ax-studio/core -- src/store/repositories/trigger-receipt-repository.test.ts
+      required: true
+    - name: webhook-idempotency
+      type: command
+      command: npm test -w @ax-studio/core -- src/triggers/webhook/listener.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: core-regression
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - remote RDB credentials are absent from every renderer-facing connection summary and form state
+    - stale receipt reclamation is time-bounded and does not reclaim fresh or completed receipts
+    - provider idempotency/event keys are preserved without making keyless Webhook events collide
+    - existing .gitignore and unrelated connector behavior remain unchanged
+  baseline:
+    recorded_at: 2026-08-31T11:54:51.3960698+09:00
+    values:
+      rdb-renderer-secret-boundary: "UNAVAILABLE: connection-state-summary test file does not exist yet"
+      trigger-receipt-lease: "UNAVAILABLE: trigger-receipt repository test file does not exist yet"
+      webhook-idempotency: "PASS: src/triggers/webhook/listener.test.ts, 12 tests; no idempotency-key regression coverage"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      core-regression: "PASS: 122 files/620 tests/3 skipped"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    gap: "The source-backed RDB renderer secret leak and stale trigger receipt behavior have no focused regression seam; Webhook currently generates a fresh request id for every request and has no provider idempotency-key coverage."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T12:01:20.2861771+09:00
+    values:
+      rdb-renderer-secret-boundary: "PASS: 1 focused Vitest test; remote secret absent from summary and serialized output"
+      trigger-receipt-lease: "PASS: 1 focused Core test; stale processing reclaimed once, fresh/completed deduplicated"
+      webhook-idempotency: "PASS: 14 listener tests; provider-key retries stable and keyless deliveries remain unique"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      core-regression: "PASS: 123 files/623 tests/3 skipped"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "RDB credentials no longer cross the renderer-facing state boundary; stale trigger receipts can be reclaimed with a bounded lease; Webhook provider idempotency/event keys are preserved while keyless requests retain unique local IDs. Existing .gitignore remains unrelated and unchanged."
+  expansions: []
+
 main_based_work_discovery_phase_5_task:
   name: artifact-store-persistence-contract
   evaluator_frozen: true

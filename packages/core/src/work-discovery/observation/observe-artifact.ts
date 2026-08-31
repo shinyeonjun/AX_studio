@@ -1,5 +1,6 @@
 import { extname } from 'node:path';
 import type { ArtifactStore } from '../../store/artifact-store.js';
+import type { DocumentArtifact } from '../../contracts/artifacts/document.js';
 import type { WorkbookMaterializer } from '../../contracts/discovery-source.js';
 import type { OutputObservation } from './schema.js';
 import { observeDocumentArtifact } from './observe-document.js';
@@ -12,7 +13,7 @@ export function observeArtifact(
   artifactStore: ArtifactStore,
   materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'],
 ): OutputObservation[] {
-  const document = artifactStore.getDocumentArtifact(artifactId);
+  const document = artifactStore.getDocumentArtifact<DocumentArtifact>(artifactId);
   if (document) return observeDocumentArtifact(exampleId, document);
 
   const tableJson = artifactStore.getTableArtifact(`${artifactId}.table`);

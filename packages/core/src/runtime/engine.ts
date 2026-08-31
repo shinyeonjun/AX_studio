@@ -518,6 +518,9 @@ export class WorkflowRuntime {
         log: failureLog,
       };
     }
+    const resolvedApprovedActions = approvedActions.filter(
+      (step): step is Extract<Step, { type: 'action' }> => Boolean(step),
+    );
     const payload = approval.payload as { checkpoint?: unknown } | undefined;
     const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
     const connections = this.config.store.getConnections();
@@ -548,12 +551,12 @@ export class WorkflowRuntime {
         });
       }
       const remainingStepIds = new Set(checkpoint?.remainingStepIds ?? []);
-      for (const actionStep of approvedActions) {
-        const actionId = actionStep!.id;
+      for (const actionStep of resolvedApprovedActions) {
+        const actionId = actionStep.id;
         // A branch may have captured the approved action in its remaining sequence.
         // In that case runSequence will execute it exactly once with this approval present.
         if (remainingStepIds.has(actionId)) continue;
-        const actionRef = actionStep!.actionRef ?? actionRefFor(actionStep!.connector, actionStep!.action);
+        const actionRef = actionStep.actionRef ?? actionRefFor(actionStep.connector, actionStep.action);
         const actionDefinition = resolveActionDefinition(actionRef);
         if (!actionDefinition) {
           throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });

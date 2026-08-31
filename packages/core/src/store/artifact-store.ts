@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
+import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
 
 export interface StoredArtifact {
   id: string;
@@ -104,6 +106,22 @@ export class ArtifactStore {
     writeFileSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
   }
 
+  /** Compatibility surface for persisted Work Discovery table artifacts. */
+  putTableArtifact(id: string, value: TableArtifact): void {
+    assertArtifactId(id);
+    const parsed = TableArtifactSchema.safeParse(value);
+    if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid table artifact');
+    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
+  }
+
+  /** Compatibility surface for persisted Work Discovery workbook artifacts. */
+  putWorkbookArtifact(id: string, value: WorkbookArtifact): void {
+    assertArtifactId(id);
+    const parsed = WorkbookArtifactSchema.safeParse(value);
+    if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid workbook artifact');
+    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
+  }
+
   getDocumentArtifact<T>(id: string): T | undefined {
     assertArtifactId(id);
     const metaPath = join(this.rootDir, `${id}.document.json`);
@@ -116,6 +134,16 @@ export class ArtifactStore {
     const resultPath = join(this.rootDir, `${id}.ingest.json`);
     if (!existsSync(resultPath)) return undefined;
     return readJsonFile<T>(resultPath);
+  }
+
+  getTableArtifact(id: string): TableArtifact | undefined {
+    const parsed = TableArtifactSchema.safeParse(this.getJson<unknown>(id));
+    return parsed.success ? parsed.data : undefined;
+  }
+
+  getWorkbookArtifact(id: string): WorkbookArtifact | undefined {
+    const parsed = WorkbookArtifactSchema.safeParse(this.getJson<unknown>(id));
+    return parsed.success ? parsed.data : undefined;
   }
 
   getJson<T>(id: string): T | undefined {

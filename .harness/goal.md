@@ -922,6 +922,48 @@ returning raw execution parameters or result payloads.
 - Core, evaluation, build, Desktop typecheck, integration, Electron E2E,
   architecture, and whitespace checks passed.
 
+## Current task: connector foundation safety and acceptance — Phase 1
+
+Begin the ordered completion plan for the six in-scope product surfaces:
+PDF, Webhook, HTTP/REST, RDB, Gmail, and Slack. This first bounded slice fixes
+the already-evidenced secret and trigger-reliability risks and establishes
+public behavior seams for the later connector/product work. It does not add
+rich Gmail/Slack messaging, PDF template editing, or broad settings redesign.
+
+### Phase 1 success criteria
+
+- Remote RDB credentials remain in the main-process/OS secret boundary and are
+  never returned in renderer connection state or loaded into the renderer form.
+- A trigger receipt whose `processing` lease is stale can be reclaimed exactly
+  once, while fresh `processing` and `completed` receipts remain deduplicated.
+- Webhook events preserve an authenticated provider idempotency/event key when
+  supplied, so a retry produces the same event request id; requests without a
+  key retain unique request ids.
+- Focused regression tests exercise the three public seams before and after
+  the implementation.
+- Existing Core and Desktop type/build checks remain green; no external
+  Gmail/Slack credentials or side effects are used.
+
+### Phase 1 non-goals
+
+- No PDF template editor, PDF artifact download/preview, or Gmail/Slack
+  attachment implementation.
+- No HTTP/DB query-builder or connector action-lab UI.
+- No provider-side live tests, schema migration, or broad trigger redesign.
+- No changes to the existing unrelated dirty `.gitignore` modification.
+
+### Phase 1 final checkpoint (2026-08-31T12:01:20.2861771+09:00)
+
+- Remote RDB connection strings are no longer returned in renderer-facing
+  connection summaries or restored into the RDB settings form.
+- Trigger receipts reclaim only stale `processing` rows using a bounded lease;
+  fresh and completed rows remain deduplicated.
+- Webhook listener preserves supported provider idempotency/event headers and
+  still generates unique IDs for keyless requests.
+- Focused tests, full Core regression, Core/Desktop/test typechecks, evaluation,
+  architecture check, production build, root integration runner, Electron E2E,
+  and whitespace checks passed.
+
 ## Current task: main-based Work Discovery production path — Phase 10
 
 Add conservative repair support for persisted Work Discovery workflows. When

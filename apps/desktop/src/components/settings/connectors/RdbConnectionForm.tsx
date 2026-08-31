@@ -52,7 +52,7 @@ export function RdbConnectionForm({
       setFilePath(rdbEntry.target ?? '');
       setConnectionString('');
     } else {
-      setConnectionString(rdbEntry.connectionString ?? '');
+      setConnectionString('');
       setFilePath('');
     }
     setMessage('');

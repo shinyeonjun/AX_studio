@@ -517,3 +517,28 @@ main_based_work_discovery_phase_10:
     - automatic workflow meaning changes, raw historical payload persistence, and external connector side effects
     - connector implementations, Desktop redesign, and live provider accounts
   expansions: []
+
+connector_foundation_phase_1:
+  status: completed
+  expansion_reason: "The ordered connector completion plan starts with two source-backed security/reliability findings and a stable Webhook retry seam before product-surface expansion."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/store/repositories/trigger-receipt-repository.ts
+    - packages/core/src/store/repositories/trigger-receipt-repository.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/triggers/webhook/listener.ts
+    - packages/core/src/triggers/webhook/listener.test.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.ts
+    - apps/desktop/electron/main/ipc/connection-state-summary.test.ts
+    - apps/desktop/src/types/connection-entry.ts
+    - apps/desktop/src/components/settings/connectors/RdbConnectionForm.tsx
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - live Gmail/Slack/provider accounts and external side effects
+    - PDF, HTTP, Gmail, Slack product behavior outside the three selected seams
+    - broad schema migrations and UI redesign
+  expansions: []

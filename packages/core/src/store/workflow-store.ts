@@ -202,7 +202,12 @@ export class WorkflowStore {
     return settingsRepo.getConnections(this.db);
   }
 
-  claimTriggerReceipt(params: { dedupeKey: string; workflowId: string; triggerType: string }) {
+  claimTriggerReceipt(params: {
+    dedupeKey: string;
+    workflowId: string;
+    triggerType: string;
+    processingLeaseMs?: number;
+  }) {
     return triggerReceiptRepo.claimTriggerReceipt(this.db, params);
   }
 
