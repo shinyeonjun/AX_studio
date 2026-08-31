@@ -180,6 +180,10 @@ export class WorkflowStore {
     return settingsRepo.getSetting(this.db, key, defaultValue);
   }
 
+  getGlobalActive(): boolean {
+    return settingsRepo.getGlobalActive(this.db);
+  }
+
   setSetting(key: string, value: unknown) {
     settingsRepo.setSetting(this.db, key, value);
   }

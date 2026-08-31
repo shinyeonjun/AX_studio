@@ -15,6 +15,11 @@ export function getSetting<T>(db: AppDatabase, key: string, defaultValue: T): T 
   }
 }
 
+export function getGlobalActive(db: AppDatabase): boolean {
+  const value = getSetting<unknown>(db, 'globalActive', true);
+  return typeof value === 'boolean' ? value : false;
+}
+
 export function setSetting(db: AppDatabase, key: string, value: unknown) {
   const valueJson = JSON.stringify(value);
   db

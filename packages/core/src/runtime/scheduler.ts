@@ -130,7 +130,7 @@ export class Scheduler {
 
   private async runTick() {
     const generation = this.lifecycleGeneration;
-    const globalActive = this.store.getSetting<boolean>('globalActive', true);
+    const globalActive = this.store.getGlobalActive();
     if (!globalActive) return;
 
     const works = this.store.listWorkflows();
