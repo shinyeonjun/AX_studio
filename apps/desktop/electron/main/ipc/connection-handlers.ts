@@ -13,7 +13,7 @@ import {
 } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { connectGmailOAuth, disconnectGmailOAuth } from '../gmail/connection.js';
-import { deleteSlackSecret, getSlackSecret, saveSlackSecret } from '../slack/connection.js';
+import { deleteSlackSecret, getSlackSecretForConnect, saveSlackSecret } from '../slack/connection.js';
 import { disconnectHttp, validateAndConnectHttp } from '../http/connection.js';
 import {
   disconnectWebhook,
@@ -51,7 +51,7 @@ export function registerConnectionHandlers() {
       const core = getCore();
       const { token: inputToken, appToken } = readSlackPayload(payload);
 
-      const existingSecret = await getSlackSecret();
+      const existingSecret = await getSlackSecretForConnect(inputToken);
       const token = inputToken || existingSecret?.token || '';
       if (!token) {
         throw new Error('Bot Token을 입력해 주세요.');

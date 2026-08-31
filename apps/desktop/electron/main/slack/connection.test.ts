@@ -11,7 +11,7 @@ vi.mock('../credential-store.js', () => ({
   deleteOsSecret: vi.fn(),
 }));
 
-import { hydrateSlackConnector } from './connection.js';
+import { getSlackSecretForConnect, hydrateSlackConnector } from './connection.js';
 
 describe('Slack desktop connection hydration', () => {
   afterEach(() => {
@@ -47,5 +47,19 @@ describe('Slack desktop connection hydration', () => {
       }),
     ]);
     expect(runtime.setConnector).not.toHaveBeenCalled();
+  });
+
+  it('allows a replacement bot token when the stored OS secret cannot be decrypted', async () => {
+    credentialState.read.mockRejectedValue(new Error('safeStorage decrypt failed'));
+
+    await expect(getSlackSecretForConnect('xoxb-replacement')).resolves.toBeNull();
+  });
+
+  it('reports the stored-secret error when no replacement token is supplied', async () => {
+    credentialState.read.mockRejectedValue(new Error('safeStorage decrypt failed'));
+
+    await expect(getSlackSecretForConnect()).rejects.toThrow(
+      '저장된 Slack 인증 정보를 읽을 수 없습니다. 다시 연결해 주세요.',
+    );
   });
 });

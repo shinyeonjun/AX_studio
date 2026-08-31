@@ -45,6 +45,16 @@ export async function getSlackSecret(): Promise<SlackSecret | null> {
   return parseSlackSecret(await getOsSecret(SLACK_SECRET_NAME));
 }
 
+/** Allow a replacement token to recover from an unreadable persisted secret. */
+export async function getSlackSecretForConnect(inputToken?: string): Promise<SlackSecret | null> {
+  try {
+    return await getSlackSecret();
+  } catch {
+    if (inputToken?.trim()) return null;
+    throw new Error(SLACK_SECRET_READ_ERROR);
+  }
+}
+
 export async function saveSlackSecret(secret: SlackSecret): Promise<void> {
   await setOsSecret(SLACK_SECRET_NAME, JSON.stringify(secret));
 }
