@@ -14,6 +14,7 @@ const integrationSpecs = [
   'src/store/discovery-repository.test.ts',
   'src/modules/http/request.probe.test.ts',
   'src/triggers/webhook/listener.test.ts',
+  'src/runtime/trigger-engine.test.ts',
   'src/modules/rdb/connector.test.ts',
 ];
 

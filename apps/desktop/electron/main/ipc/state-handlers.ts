@@ -124,6 +124,7 @@ export function registerStateHandlers() {
       Boolean(slackConn?.connected),
       slackSocketStatus.phase === 'connected' && core.triggerEngine.slackSocketActive(),
     );
+    const webhookTransport = core.triggerEngine.pushTransportStatus('webhook.inbound');
     const localFolderConn = core.store.getConnections().find((c) => c.connector === 'local_folder');
     const localFolderStatus = getLocalFolderConnectionStatus(
       localFolderConn?.config,
@@ -151,7 +152,7 @@ export function registerStateHandlers() {
       slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
       localFolders: localFolderStatus.folders,
       works,
-      connections: await summarizeConnections(core.store.getConnections()),
+      connections: await summarizeConnections(core.store.getConnections(), { webhookTransport }),
       pendingApprovals: pendingApprovals.length,
       approvals: pendingApprovals,
       executions,

@@ -161,7 +161,11 @@ export function WebhookConnectionForm({
           )}
         </div>
 
-        {message && <p className="connection-form-message">{message}</p>}
+        {(message || (!connected && webhookEntry?.lastError)) && (
+          <p className={`connection-form-message ${!message && webhookEntry?.lastError ? 'error' : ''}`}>
+            {message || webhookEntry?.lastError}
+          </p>
+        )}
 
         <ConnectedServiceList
           title="연결된 Webhook"

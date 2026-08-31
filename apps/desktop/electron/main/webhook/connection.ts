@@ -36,15 +36,23 @@ export async function validateAndConnectWebhook(
   if (!secret) throw new Error('Webhook 비밀을 입력해 주세요.');
 
   await saveWebhookSecret(secret);
-  store.setConnection('webhook', true, {
+  const connectedAt = new Date().toISOString();
+  const config = {
     port,
     label: payload.label?.trim() || undefined,
     tunnelUrl: payload.tunnelUrl?.trim() || undefined,
     secretStored: true,
-    connectedAt: new Date().toISOString(),
+    connectedAt,
     lastError: undefined,
-  });
-  await refreshTransports();
+  };
+  store.setConnection('webhook', true, config);
+  try {
+    await refreshTransports();
+  } catch (error) {
+    const lastError = error instanceof Error ? error.message : String(error);
+    store.setConnection('webhook', false, { ...config, lastError });
+    throw error;
+  }
 }
 
 export async function disconnectWebhook(

@@ -1,7 +1,8 @@
 # AX Studio 수동 테스트 픽스처
 
 실제 앱을 켜 둔 채로 REST API와 PostgreSQL을 매번 새로 만들 필요 없이,
-한 명령으로 로컬 픽스처를 띄우고 끝나면 깨끗하게 정리합니다.
+한 명령으로 로컬 픽스처를 띄우고 끝나면 깨끗하게 정리합니다. Webhook은
+앱의 로컬 수신 리스너로 보내는 전용 발신 도구를 제공합니다.
 
 ## 요구 사항
 
@@ -17,6 +18,7 @@ npm run test:manual
 # 개별 실행
 npm run test:manual:http   # REST API만
 npm run test:manual:db     # PostgreSQL만
+npm run test:manual:webhook -- --check  # Webhook 발신 도구 자체 확인
 ```
 
 시작하면 아래 값이 출력됩니다. Ctrl+C 로 종료하면 REST 프로세스와
@@ -61,3 +63,35 @@ npm run test:manual:db     # PostgreSQL만
    승인 화면에서 내용을 검토한 뒤에만 진행하세요.
 6. 확인이 끝나면 픽스처 터미널에서 Ctrl+C — REST 서버 종료, `ax-manual-postgres`
    컨테이너 삭제까지 자동으로 정리됩니다.
+
+## Webhook 수동 스모크
+
+1. AX Studio 설정 → Webhook에서 로컬 포트(기본 `18789`)와 공유 비밀을
+   저장합니다. 연결 성공 후 `http://127.0.0.1:18789/hooks/`가 표시되어야
+   합니다.
+2. `webhook.inbound` 트리거의 경로를 `invoice-paid`로 설정한 활성 워크플로를
+   준비합니다. 외부 발송 액션이 있다면 첫 확인에서는 승인 단계가 있는
+   워크플로를 사용합니다.
+3. 별도 터미널에서 같은 event id를 두 번 보내 봅니다.
+
+   ```bash
+   npm run test:manual:webhook -- --url http://127.0.0.1:18789/hooks/invoice-paid --secret hook-secret --event-id manual-invoice-paid-1 --repeat 2
+   ```
+
+   두 번 모두 `202 accepted`가 나오고 Activity에는 실행이 한 건만 생겨야
+   합니다. 실행 기록의 트리거가 `webhook.inbound`인지도 확인합니다.
+4. HMAC 경로도 확인할 수 있습니다.
+
+   ```bash
+   npm run test:manual:webhook -- --url http://127.0.0.1:18789/hooks/invoice-paid --secret hook-secret --auth hmac --event-id manual-hmac-1 --repeat 1
+   ```
+
+5. 잘못된 비밀은 `401`, `GET /hooks/invoice-paid`는 `405`입니다. `/hooks/`
+   밖의 경로는 `404`이고, 인증된 `/hooks/unknown`은 재시도 폭주를 막기 위해
+   `202`로 접수하지만 일치하는 워크플로가 없으므로 Activity 실행을 만들면
+   안 됩니다. 인증용 헤더는 워크플로 입력으로 전달되지 않습니다. Webhook
+   설정에서 중지를 누른 뒤 같은 요청이 연결 오류가 되는지도 확인합니다.
+
+수동 발신 도구는 실수로 외부 서비스에 요청하지 않도록 loopback URL만
+허용합니다. ngrok 같은 공개 터널은 제품의 `터널 URL` 참고란에 기록할 수
+있지만, 터널 생성·관리 자체는 이 도구의 책임이 아닙니다.

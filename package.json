@@ -14,6 +14,7 @@
     "test:manual": "node test/manual/start.mjs",
     "test:manual:http": "node test/manual/rest-api.mjs",
     "test:manual:db": "node test/manual/postgres.mjs",
+    "test:manual:webhook": "node test/manual/webhook.mjs",
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",

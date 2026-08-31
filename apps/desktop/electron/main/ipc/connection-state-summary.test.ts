@@ -22,4 +22,17 @@ describe('renderer-facing connection summaries', () => {
     expect(JSON.stringify(summary)).not.toContain('secret');
     expect(summary.target).toBe('localhost:5432/ax');
   });
+
+  it('does not report a Webhook connection as healthy when its listener failed', async () => {
+    const summary = await summarizeConnection(
+      'webhook',
+      true,
+      { port: 18_789, secretStored: true },
+      { webhookTransport: { phase: 'error', error: 'EADDRINUSE' } },
+    );
+
+    expect(summary.connected).toBe(false);
+    expect(summary.listenerStatus).toBe('error');
+    expect(summary.lastError).toBe('EADDRINUSE');
+  });
 });

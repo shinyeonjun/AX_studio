@@ -56,6 +56,18 @@ const PROVIDER_EVENT_ID_HEADERS = [
   'x-github-delivery',
 ] as const;
 
+const SENSITIVE_REQUEST_HEADERS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'set-cookie',
+  'x-ax-webhook-secret',
+  'x-ax-signature',
+  'x-api-key',
+  'x-auth-token',
+  'x-access-token',
+]);
+
 function providerEventId(req: IncomingMessage): string | undefined {
   for (const name of PROVIDER_EVENT_ID_HEADERS) {
     const value = req.headers[name];
@@ -158,6 +170,7 @@ export class WebhookInboundListener {
       const body = rawBody.toString('utf8');
       const headers: Record<string, string> = {};
       for (const [key, value] of Object.entries(req.headers)) {
+        if (SENSITIVE_REQUEST_HEADERS.has(key.toLowerCase())) continue;
         if (typeof value === 'string') headers[key] = value;
         else if (Array.isArray(value)) headers[key] = value.join(',');
       }

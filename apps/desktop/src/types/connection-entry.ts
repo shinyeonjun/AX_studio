@@ -22,6 +22,8 @@ export interface ConnectionEntry {
   port?: number;
   localBaseUrl?: string;
   tunnelUrl?: string;
+  listenerStatus?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
+  lastError?: string;
   dbType?: RdbType;
   target?: string;
   allowedSchemas?: string[];

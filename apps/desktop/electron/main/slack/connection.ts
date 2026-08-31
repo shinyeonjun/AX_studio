@@ -7,6 +7,7 @@ import {
 import { deleteOsSecret, getOsSecret, setOsSecret } from '../credential-store.js';
 
 const SLACK_SECRET_NAME = 'slack.tokens';
+const SLACK_SECRET_READ_ERROR = '저장된 Slack 인증 정보를 읽을 수 없습니다. 다시 연결해 주세요.';
 
 export interface SlackSecret {
   token: string;
@@ -29,8 +30,29 @@ function parseSlackSecret(value: string | null): SlackSecret | null {
   }
 }
 
+function persistedSlackMetadata(config: unknown): Record<string, unknown> {
+  const record = (config && typeof config === 'object' ? config : {}) as Record<string, unknown>;
+  return {
+    ...(typeof record.team === 'string' ? { team: record.team } : {}),
+    ...(typeof record.botUser === 'string' ? { botUser: record.botUser } : {}),
+    ...(typeof record.connectedAt === 'string' ? { connectedAt: record.connectedAt } : {}),
+    ...(record.tokenStored === true ? { tokenStored: true } : {}),
+    ...(record.appTokenStored === true ? { appTokenStored: true } : {}),
+  };
+}
+
 export async function getSlackSecret(): Promise<SlackSecret | null> {
   return parseSlackSecret(await getOsSecret(SLACK_SECRET_NAME));
+}
+
+/** Allow a replacement token to recover from an unreadable persisted secret. */
+export async function getSlackSecretForConnect(inputToken?: string): Promise<SlackSecret | null> {
+  try {
+    return await getSlackSecret();
+  } catch {
+    if (inputToken?.trim()) return null;
+    throw new Error(SLACK_SECRET_READ_ERROR);
+  }
 }
 
 export async function saveSlackSecret(secret: SlackSecret): Promise<void> {
@@ -46,7 +68,15 @@ export async function hydrateSlackConnector(store: WorkflowStore, runtime: Workf
   const connection = store.getConnections().find((entry) => entry.connector === 'slack');
   if (!connection?.connected) return null;
 
-  let secret = await getSlackSecret();
+  let secret: SlackSecret | null = null;
+  let secretReadFailed = false;
+  try {
+    secret = await getSlackSecret();
+  } catch {
+    // A stale OS-encrypted value must not prevent the application from
+    // starting; the user needs a chance to replace it from Settings.
+    secretReadFailed = true;
+  }
   const legacy = parseSlackConnectionConfig(connection.config);
   if (!secret && legacy) {
     secret = legacy;
@@ -61,7 +91,13 @@ export async function hydrateSlackConnector(store: WorkflowStore, runtime: Workf
   }
 
   if (!secret) {
-    store.setConnection('slack', false);
+    store.setConnection(
+      'slack',
+      false,
+      secretReadFailed
+        ? { ...persistedSlackMetadata(connection.config), lastError: SLACK_SECRET_READ_ERROR }
+        : undefined,
+    );
     return null;
   }
 
