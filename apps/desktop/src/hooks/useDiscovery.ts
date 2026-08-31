@@ -46,12 +46,14 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
   const [error, setError] = useState('');
   const activeSessionRef = useRef<string | null>(null);
   const operationEpochRef = useRef(0);
+  const refreshEpochRef = useRef(0);
   const workspaceContextKeyRef = useRef(workspaceContextKey);
   const previousContextKeyRef = useRef(workspaceContextKey);
   workspaceContextKeyRef.current = workspaceContextKey;
 
   const clearState = useCallback(() => {
     operationEpochRef.current += 1;
+    refreshEpochRef.current += 1;
     activeSessionRef.current = null;
     setSessionId(null);
     setSessionContextKey(null);
@@ -67,9 +69,15 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
   }, [clearState, workspaceContextKey]);
 
   const refresh = useCallback(async (id: string, epoch = operationEpochRef.current) => {
+    const refreshEpoch = ++refreshEpochRef.current;
+    const isCurrent = () => (
+      refreshEpoch === refreshEpochRef.current
+      && epoch === operationEpochRef.current
+      && activeSessionRef.current === id
+    );
     try {
       const result = await window.ax.discoveryInspect(id);
-      if (epoch !== operationEpochRef.current || activeSessionRef.current !== id) return null;
+      if (!isCurrent()) return null;
       const data = unwrap<DiscoveryInspectView>(result);
       if (data) {
         setView(data);
@@ -77,7 +85,7 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
       }
       setError(commandError(result, '업무 발견 상태를 불러오지 못했습니다.').message);
     } catch (err) {
-      if (epoch === operationEpochRef.current && activeSessionRef.current === id) {
+      if (isCurrent()) {
         setError(err instanceof Error ? err.message : String(err));
       }
     }
