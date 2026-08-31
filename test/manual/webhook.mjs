@@ -116,7 +116,12 @@ async function main() {
   const headers = buildHeaders(auth, secret, eventId, body);
   console.log(`[webhook] sending ${repeat} delivery(ies) to ${url.origin}${url.pathname} with event id ${eventId}`);
   for (let attempt = 1; attempt <= repeat; attempt += 1) {
-    const response = await fetch(url, { method: 'POST', headers, body });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      redirect: 'manual',
+    });
     const responseBody = await response.text();
     console.log(`[webhook] delivery ${attempt}/${repeat}: ${response.status} ${responseBody}`);
     if (response.status !== 202) {

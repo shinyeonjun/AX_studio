@@ -646,3 +646,23 @@ main_based_connector_webhook_vertical_slice:
   expansions:
     - reason: "Live Product QA exposed that a stale Slack safeStorage ciphertext can abort the entire Electron startup before the user can re-authenticate; the connector hydration boundary must degrade to a recoverable disconnected state."
       boundary: "apps/desktop/electron/main/slack/connection.ts, apps/desktop/electron/main/slack/connection.test.ts, apps/desktop/src/lib/slack-status.ts, apps/desktop/src/lib/slack-status.test.ts"
+
+security_report_manual_webhook_redirect_hardening:
+  status: completed
+  expansion_reason: "The completed PR #122 security review reproduced cross-origin forwarding through the manual sender's default redirect handling; all helper inputs converge on one fetch boundary."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - package.json
+    - test/manual/webhook.mjs
+    - test/manual/webhook.test.mjs
+    - test/manual/README.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - packages/core and apps/desktop production behavior
+    - public tunnel, reverse proxy, and provider configuration
+    - Webhook authentication protocol, listener behavior, and receipt persistence
+    - live provider accounts and external side effects
+  expansions: []

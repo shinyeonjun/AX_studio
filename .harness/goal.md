@@ -1189,3 +1189,44 @@ developer can verify the path with curl without external provider accounts.
 - Final Codex Security diff scan reviewed 19 formal change items and reported
   0 findings. Manual loopback smoke delivery was separately executed for both
   shared-secret and HMAC modes.
+
+## Current task: security-report hardening — manual Webhook redirects
+
+Close the only reproducible hardening candidate from the PR #122 security
+report. The local manual Webhook sender must never automatically follow a
+redirect after its initial loopback URL validation, because a redirect can
+otherwise forward the request body, event ID, shared secret, or HMAC signature
+to a different origin.
+
+### Security hardening success criteria
+
+- Every HTTP redirect is handled as a failed delivery without contacting its
+  destination, for both shared-secret and HMAC modes.
+- A direct loopback `202` request still sends the original body, event ID, and
+  selected authentication header successfully.
+- `--check` remains network-free and successful.
+- The black-box regression test is part of the root `npm test` CI path.
+- Focused Webhook regressions, the root test suite, production build,
+  architecture check, and whitespace check pass on the latest `main` baseline.
+
+### Security hardening non-goals
+
+- No production Webhook listener, authentication protocol, receipt storage,
+  provider-header projection, tunnel, proxy, or rate-limit redesign.
+- No compatibility-breaking timestamp/nonce requirement without a provider
+  protocol and migration decision.
+- No live provider, tunnel, Gmail, or Slack calls.
+- No change to the user-owned `.gitignore` modification in the primary
+  worktree.
+
+### Security hardening final checkpoint (2026-08-31T17:53:32.9665788+09:00)
+
+- The manual sender now handles redirects without following them, so 302/307
+  destinations receive no request in shared-secret or HMAC mode.
+- Direct loopback 202 delivery and network-free `--check` behavior remain
+  intact.
+- The black-box test runs on Node 22 and Node 24 and is part of root
+  `npm test`.
+- Independent review found no surviving redirect bypass. Its one confirmed
+  test-argument forwarding regression was fixed by keeping the existing Core
+  test command last in the root script.
