@@ -6,7 +6,12 @@
     <title>AX Studio</title>
     <script>
       (function () {
-        var stored = localStorage.getItem('ax-theme');
+        var stored;
+        try {
+          stored = localStorage.getItem('ax-theme');
+        } catch (_) {
+          // Continue with the system preference when storage is unavailable.
+        }
         var dark =
           stored === 'dark' ||
           (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);

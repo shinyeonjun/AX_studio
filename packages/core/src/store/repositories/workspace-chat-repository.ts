@@ -268,6 +268,5 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatLi
 }
 
 export function deleteWorkspaceChat(db: AppDatabase, id: string): void {
-  db.prepare('DELETE FROM workspace_chat_sources WHERE chat_id = ?').run(id);
   db.prepare('DELETE FROM workspace_chats WHERE id = ?').run(id);
 }

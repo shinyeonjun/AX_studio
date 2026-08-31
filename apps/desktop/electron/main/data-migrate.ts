@@ -1,4 +1,4 @@
-import { copyFileSync, cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AxDataPaths } from '@ax-studio/core';
 import { legacyHomeDataRoot } from '@ax-studio/core';
@@ -35,14 +35,9 @@ function writeMigration(paths: AxDataPaths): void {
   writeFileSync(paths.migration, JSON.stringify(record, null, 2), 'utf8');
 }
 
-function dirHasEntries(path: string): boolean {
-  if (!existsSync(path)) return false;
-  return readdirSync(path).length > 0;
-}
-
 function copyDirIfSourceExists(source: string, dest: string): void {
-  if (!existsSync(source) || dirHasEntries(dest)) return;
-  cpSync(source, dest, { recursive: true });
+  if (!existsSync(source)) return;
+  cpSync(source, dest, { recursive: true, force: false, errorOnExist: false });
 }
 
 function copyFileIfMissing(source: string, dest: string): void {
