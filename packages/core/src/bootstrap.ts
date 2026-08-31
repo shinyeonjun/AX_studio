@@ -79,7 +79,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const agentHarness = createAgentHarness(aiConfig);
   const investigationRunner = createInvestigationRunner(agentHarness);
 
-  const globalActive = store.getSetting<boolean>('globalActive', true);
+  const globalActive = store.getGlobalActive();
   const workflowActive: Record<string, boolean> = {};
   for (const workflow of store.listWorkflows()) {
     workflowActive[workflow.id] = workflow.active;
