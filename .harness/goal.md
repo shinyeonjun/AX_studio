@@ -2480,15 +2480,15 @@ closing release-blocking defects and recording known limitations.
 
 ### Verification
 
-### Verification checkpoint (2026-09-02T09:15:00.3194676+09:00)
+### Final verification (2026-09-02T09:19:35.4420188+09:00)
 
 - The release audit passed across the current safe product surface: Core 130
   files/705 tests passed with 3 skips, integration 72/72, connector seam 2/2,
   deterministic Product QA full 61/61 and smoke 19/19, with zero defects.
 - The first GitHub Actions run exposed a release-packaging omission: two new
   Product QA scenario fixtures were present locally but ignored by the
-  repository's broad `test/` rule. The candidate remains pending until those
-  fixtures are included and CI is green.
+  repository's broad `test/` rule. The fixtures were added explicitly, and the
+  subsequent GitHub Actions verification passed.
 - Core evaluation passed 11/11, desktop TypeScript checking and the production
   build passed, dependency architecture reported zero violations across 513
   modules and 1,823 dependencies, and Knip reported no issues.
@@ -2496,10 +2496,10 @@ closing release-blocking defects and recording known limitations.
   the packaged app launched with isolated data and rendered its first screen.
   The installer is `AX Studio Setup 0.1.0.exe` (106,127,243 bytes) and the
   unpacked executable is `AX Studio.exe` (190,557,184 bytes).
-- No product-code failure was found; the required follow-up is limited to
-  including the missing test fixtures. The candidate remains without Figma
-  changes, external side effects, secret exposure, destructive cleanup, or
-  public upload.
+- No product-code failure was found; the only release-blocking omission was
+  corrected by including the missing fixtures. The candidate is now frozen
+  without Figma changes, external side effects, secret exposure, destructive
+  cleanup, or public upload.
 - Known limits remain explicit: live AI/account paths and real Gmail/Slack/HTTP
   delivery or remote/database mutation were not run; eight side-effect
   scenarios remain intentionally excluded from the deterministic coverage
