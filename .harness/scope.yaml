@@ -1533,7 +1533,7 @@ figma_workflow_tabs:
       implementation-boundary: "PASS: no production source, tests, connector state, credentials, or external side effect was changed"
 
 demo_release_hardening:
-  status: completed
+  status: active
   objective: "Audit and harden the current AX Studio worktree into a reproducible local Windows demo release candidate without adding product scope or causing external side effects."
   allowed_mutation:
     - "apps/desktop/**"
@@ -1572,20 +1572,5 @@ demo_release_hardening:
       manual-surface-review: "PARTIAL: automated safe paths and packaged first screen reviewed; live connector/account paths and real external delivery intentionally not run"
       implementation-boundary: "PASS: no Figma, secret, credential, external side effect, destructive cleanup, or unrelated source change in this follow-up"
   final:
-    recorded_at: 2026-09-02T09:08:04.1533191+09:00
-    decision: KEEP
-    values:
-      core-tests: "PASS: npm test completed with 705 passed and 3 skipped across 130 test files"
-      integration-tests: "PASS: npm run test:integration completed with 72/72 tests"
-      connector-seam: "PASS: npm run test:connector-lab:check completed with 2/2 tests"
-      deterministic-product-qa: "PASS: full tier 61/61 and core tier 55/55 scenario runs; 0 defects and 0 critical findings; coverage 49/57 with 8 side-effect surfaces intentionally excluded"
-      smoke-product-qa: "PASS: deterministic smoke completed 19/19 scenario runs"
-      typecheck-build: "PASS: desktop TypeScript check and npm run build"
-      architecture: "PASS: 513 modules and 1823 dependencies cruised with no violations"
-      knip: "PASS: npm run knip reported no issues"
-      eval: "PASS: npm run eval completed with 11/11 tests"
-      package: "PASS: Windows NSIS installer and win-unpacked package generated; packaged app first-screen smoke passed with isolated data"
-      package-artifacts: "PASS: installer 106127243 bytes, SHA256 AA224A7FA1FD3A3B52EB4B8D828F3CC245574350ECAE70DD6EEBBD36B02F39F; unpacked AX Studio.exe 190557184 bytes, SHA256 DD2189B798E79728F6D4A7F4005F4827B77067D9AD82FBCD124125091463CA9D"
-      package-boundary: "PASS: app.asar contains 0 matches for .env, ai.toml, credentials, PEM, or key artifacts; release output is ignored by Git"
-      manual-surface-review: "PASS WITH LIMITATIONS: safe automated flows and packaged first screen reviewed; live connector/account paths and real external delivery intentionally not run"
-      implementation-boundary: "PASS: no Figma, secret, credential, external side effect, destructive cleanup, public upload, or unrelated source change in this follow-up"
+    recorded_at: null
+    decision: PENDING

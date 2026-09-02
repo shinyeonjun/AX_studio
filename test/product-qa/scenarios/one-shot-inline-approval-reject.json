@@ -1,0 +1,19 @@
+{
+  "id": "one-shot-inline-approval-reject",
+  "name": "One-shot inline approval — 대화 안에서 취소",
+  "description": "일회 실행의 승인 대기를 대화 카드에서 취소하고 실행이 중단되는지 확인합니다.",
+  "mode": "deterministic",
+  "tags": ["chat", "approval", "deterministic"],
+  "covers": ["runtime:approvals-activity"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "newChat", "label": "inline-approval-reject" },
+    { "action": "sendMessage", "text": "__e2e:inline-approval__" },
+    { "action": "waitMs", "ms": 1800 },
+    { "check": "inlineApprovalPresent", "severity": "critical" },
+    { "action": "clickInlineApproval", "decision": "reject" },
+    { "check": "inlineApprovalAbsent", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "실행 취소", "severity": "critical" },
+    { "check": "composerEnabled", "severity": "major" }
+  ]
+}

@@ -2922,22 +2922,8 @@ demo_release_hardening:
       manual-surface-review: "PARTIAL: automated safe paths and packaged first screen reviewed; live connector/account paths and real external delivery intentionally not run"
       implementation-boundary: "PASS: no Figma, secret, credential, external side effect, destructive cleanup, or unrelated source change in this follow-up"
   final:
-    recorded_at: 2026-09-02T09:08:04.1533191+09:00
-    decision: KEEP
-    values:
-      core-tests: "PASS: 130 files; 705 passed and 3 skipped"
-      integration-tests: "PASS: 11 files; 72/72 tests"
-      connector-seam: "PASS: 2/2 loopback connector-lab checks"
-      deterministic-product-qa: "PASS: full 61/61 and core 55/55 scenario runs; 0 defects and 0 critical findings; 49/57 coverage with 8 intentional side-effect exclusions"
-      smoke-product-qa: "PASS: 19/19 scenario runs"
-      typecheck-build: "PASS: desktop tsc and production build"
-      architecture: "PASS: no dependency violations; 513 modules and 1823 dependencies"
-      knip: "PASS: no issues reported"
-      eval: "PASS: 11/11 evaluator checks"
-      package: "PASS: Windows NSIS installer and win-unpacked package generated; isolated packaged-app first-screen smoke passed"
-      package-boundary: "PASS: no sensitive config/credential artifacts found in app.asar; release output remains ignored"
-      manual-surface-review: "PASS WITH LIMITATIONS: safe current-surface flows reviewed; live external accounts and side effects excluded"
-      implementation-boundary: "PASS: no Figma mutation, secret exposure, external mutation, destructive cleanup, or unrelated refactor"
+    recorded_at: null
+    decision: PENDING
 
 workspace_flow_accuracy:
   evaluator: "Focused Workspace flow-state regression checks, status-card consistency, TypeScript/build checks, and manual Electron review against Figma 03 새 UI"
