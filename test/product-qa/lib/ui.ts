@@ -10,6 +10,18 @@ export async function sendMessage(page: Page, text: string): Promise<void> {
   await page.getByRole('button', { name: '메시지 보내기' }).click();
 }
 
+export async function clickInlineApproval(page: Page, decision: 'approve' | 'reject'): Promise<void> {
+  const card = page.locator('.ax-workspace-inline-approval').last();
+  await card.getByRole('button', {
+    name: decision === 'approve' ? '승인하고 실행' : '취소',
+    exact: true,
+  }).click();
+}
+
+export async function inlineApprovalVisible(page: Page): Promise<boolean> {
+  return page.locator('.ax-workspace-inline-approval').isVisible().catch(() => false);
+}
+
 export async function isComposerDisabled(page: Page): Promise<boolean> {
   return page.getByRole('textbox', { name: '메시지 입력' }).isDisabled();
 }

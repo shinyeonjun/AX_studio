@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { AxInputRequest, AxInputRequestOption, AxUiPresentation } from '@ax-studio/core';
 
 interface WorkspaceAssistantPresentationProps {
   presentations?: AxUiPresentation[];
@@ -13,46 +13,91 @@ interface WorkspaceAssistantPresentationProps {
 function InputRequestCard({
   request,
   busy,
+  value,
+  onChange,
+  onClear,
+  showSubmit = true,
   onSend,
 }: {
   request: AxInputRequest;
   busy: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+  showSubmit?: boolean;
   onSend: (text: string) => Promise<void>;
 }) {
-  const [value, setValue] = useState('');
   const submit = () => {
     const normalized = value.trim();
     if ((!normalized && request.required) || busy) return;
     void onSend(`${request.label}: ${normalized}`);
-    setValue('');
+    onClear();
   };
+  const options = request.options ?? [];
+  const selectedOption = options.find((option) => option.value === value);
+  const inputId = `ax-input-${request.id}`;
+  const reasonId = request.reason ? `${inputId}-reason` : undefined;
 
   return (
     <div className="ax-workspace-presentation-input" data-testid={`input-request-${request.id}`}>
       <div className="ax-workspace-presentation-input-copy">
-        <strong>{request.label}</strong>
-        {request.reason && <span>{request.reason}</span>}
+        <label htmlFor={inputId}><strong>{request.label}</strong></label>
+        {request.reason && <span id={reasonId}>{request.reason}</span>}
       </div>
       <div className="ax-workspace-presentation-input-row">
-        <input
-          type={request.type === 'email' ? 'email' : 'text'}
-          value={value}
-          placeholder={request.placeholder ?? '값을 입력하세요'}
-          disabled={busy}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              submit();
-            }
-          }}
-        />
-        <button type="button" disabled={busy || (request.required && !value.trim())} onClick={submit}>
-          입력
-        </button>
+        {options.length > 0 ? (
+          <select
+            id={inputId}
+            value={value}
+            disabled={busy}
+            aria-required={request.required}
+            aria-describedby={reasonId}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            <option value="">{request.placeholder ?? '선택해 주세요'}</option>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id={inputId}
+            type={request.type === 'email' ? 'email' : 'text'}
+            value={value}
+            placeholder={request.placeholder ?? '값을 입력하세요'}
+            disabled={busy}
+            aria-required={request.required}
+            aria-describedby={reasonId}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={showSubmit ? (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                submit();
+              }
+            } : undefined}
+          />
+        )}
+        {showSubmit && (
+          <button type="button" disabled={busy || (request.required && !value.trim())} onClick={submit}>
+            입력
+          </button>
+        )}
       </div>
+      {selectedOption?.description && (
+        <span className="ax-workspace-presentation-option-description">{selectedOption.description}</span>
+      )}
     </div>
   );
+}
+
+function selectedInputText(request: AxInputRequest, value: string): string {
+  const normalized = value.trim();
+  const option: AxInputRequestOption | undefined = request.options?.find((entry) => entry.value === normalized);
+  return option
+    ? `${request.label}: ${option.label} (ID: ${option.value})`
+    : `${request.label}: ${normalized}`;
 }
 
 function PresentationBlock({ block }: { block: AxUiPresentation['blocks'][number] }) {
@@ -99,8 +144,25 @@ function PresentationCard({
   onSend: (text: string) => Promise<void>;
 }) {
   const locked = busy || !interactive;
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const batchInputs = presentation.inputMode === 'batch';
+  const requiredInputsReady = presentation.inputs
+    .filter((request) => request.required)
+    .every((request) => Boolean(inputValues[request.id]?.trim()));
+  const submitAction = (action: AxUiPresentation['actions'][number]) => {
+    if (locked || (batchInputs && !requiredInputsReady)) return;
+    const values = batchInputs
+      ? presentation.inputs.map((request) => selectedInputText(request, inputValues[request.id] ?? '')).join('\n')
+      : '';
+    void onSend([values, action.value].filter(Boolean).join('\n'));
+    if (batchInputs) setInputValues({});
+  };
+
   return (
-    <section className="ax-workspace-presentation" aria-label={presentation.title}>
+    <section
+      className={`ax-workspace-presentation${batchInputs ? ' ax-workspace-presentation--form' : ''}`}
+      aria-label={presentation.title}
+    >
       <header className="ax-workspace-presentation-header">
         <span className="ax-workspace-presentation-eyebrow">AX 확인</span>
         <h3>{presentation.title}</h3>
@@ -118,6 +180,10 @@ function PresentationCard({
               key={request.id}
               request={request}
               busy={locked}
+              value={inputValues[request.id] ?? ''}
+              onChange={(value) => setInputValues((current) => ({ ...current, [request.id]: value }))}
+              onClear={() => setInputValues((current) => ({ ...current, [request.id]: '' }))}
+              showSubmit={!batchInputs}
               onSend={onSend}
             />
           ))}
@@ -130,8 +196,8 @@ function PresentationCard({
               key={action.id}
               type="button"
               className={`ax-workspace-presentation-action ax-workspace-presentation-action--${action.tone}`}
-              disabled={locked}
-              onClick={() => void onSend(action.value)}
+              disabled={locked || (batchInputs && !requiredInputsReady)}
+              onClick={() => submitAction(action)}
             >
               {action.label}
             </button>
@@ -166,6 +232,7 @@ export function WorkspaceAssistantPresentation({
         <PresentationCard
           presentation={{
             title: '추가 정보가 필요합니다',
+            inputMode: 'individual',
             blocks: [],
             inputs: inputRequests,
             actions: [],

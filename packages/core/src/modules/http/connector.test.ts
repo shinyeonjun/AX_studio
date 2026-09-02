@@ -55,6 +55,64 @@ describe('HttpConnector', () => {
     }
   });
 
+  it('preserves bounded response details for HTTP failures', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(
+        JSON.stringify({ error: 'unauthorized', hint: 'configure the documented lab credential' }),
+        {
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: { 'content-type': 'application/json' },
+        },
+      )),
+    );
+
+    const connector = new HttpConnector({ baseUrl: 'https://api.example.com/v1/' });
+    const result = await connector.execute(
+      'request',
+      { method: 'GET', path: 'secure/profile' },
+      { executionId: 'e1', variables: {}, log: vi.fn() },
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: 'http_401',
+      errorCode: 'http_error',
+      errorDetails: {
+        status: 401,
+        statusText: 'Unauthorized',
+        body: '{"error":"unauthorized","hint":"configure the documented lab credential"}',
+        truncated: false,
+      },
+    });
+  });
+
+  it('caps the error body preview and marks it truncated', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('x'.repeat(4_001), { status: 500, statusText: 'Internal Server Error' })),
+    );
+
+    const connector = new HttpConnector({ baseUrl: 'https://api.example.com/v1/' });
+    const result = await connector.execute(
+      'request',
+      { method: 'GET', path: 'broken' },
+      { executionId: 'e1', variables: {}, log: vi.fn() },
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: 'http_500',
+      errorDetails: {
+        status: 500,
+        statusText: 'Internal Server Error',
+        body: 'x'.repeat(4_000),
+        truncated: true,
+      },
+    });
+  });
+
   it('executes the explicit POST action with a JSON body', async () => {
     vi.stubGlobal(
       'fetch',
@@ -145,6 +203,24 @@ describe('HttpConnector', () => {
       'https://api.example.com/v1/tickets',
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+
+  it('requires an explicit connection when multiple endpoints are configured', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const connector = new HttpConnector([
+      { id: 'github', baseUrl: 'https://api.github.com/' },
+      { id: 'test', baseUrl: 'http://127.0.0.1:4820/' },
+    ]);
+
+    const result = await connector.execute(
+      'request',
+      { method: 'GET', path: '/api/v1/orders' },
+      { executionId: 'e1', variables: {}, log: vi.fn() },
+    );
+
+    expect(result).toEqual({ ok: false, error: 'http_connection_required', errorCode: 'invalid_params' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('keeps GET inside the saved connection when connectionId is omitted', async () => {

@@ -29,7 +29,7 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     description: '메일 초안 작성',
     sideEffect: 'REVERSIBLE',
     params: [
-      { name: 'to', label: '수신자', question: '초안을 누구에게 보낼까요?', required: true },
+      { name: 'to', label: '수신자', question: '초안을 누구에게 보낼까요?', required: true, inputType: 'email', placeholder: 'name@example.com' },
       { name: 'subject', label: '제목', question: '메일 제목은요?', required: false },
       { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
     ],
@@ -42,9 +42,10 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     label: '메일 발송',
     description: '메일 발송',
     sideEffect: 'EXTERNAL_HIGH',
+    notification: true,
     params: [
-      { name: 'to', label: '수신자', question: '메일을 누구에게 보낼까요?', required: true },
-      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false },
+      { name: 'to', label: '수신자', question: '메일을 누구에게 보낼까요?', required: true, inputType: 'email', placeholder: 'name@example.com', displayInSummary: true, displayInApproval: true },
+      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false, displayInSummary: true },
       { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
     ],
     io: { inputs: { body: 'TextArtifact' }, outputs: { message: 'EmailMessageRef' } },

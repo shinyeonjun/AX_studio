@@ -1,6 +1,6 @@
 import type { ConnectorCapability } from '../catalog/capability-types.js';
-import { capabilityActionName, resolveCapability } from '../catalog/capability-graph.js';
-import { CAPABILITY_CATALOG } from '../catalog/capabilities.js';
+import { capabilityActionName, designCapabilities, resolveCapability } from '../catalog/capability-graph.js';
+import { getCapability } from '../catalog/capabilities.js';
 
 /** Versioned, serializable action contract referenced by a workflow step. */
 export interface ActionDefinition {
@@ -39,7 +39,7 @@ export function resolveActionDefinition(ref: string): ActionDefinition | undefin
   const id = hasVersion ? normalized.slice(0, at) : normalized;
   const version = hasVersion ? Number(normalized.slice(at + 1)) : 1;
   if (!Number.isInteger(version) || version !== 1) return undefined;
-  const capability = CAPABILITY_CATALOG.find((entry) => entry.id === id);
+  const capability = getCapability(id);
   return capability ? actionDefinitionFromCapability(capability) : undefined;
 }
 
@@ -65,7 +65,7 @@ export function validateActionParams(
 }
 
 export function listActionDefinitions(): ActionDefinition[] {
-  return CAPABILITY_CATALOG
+  return designCapabilities()
     .filter((capability) => capability.kind !== 'trigger')
     .map(actionDefinitionFromCapability);
 }

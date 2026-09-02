@@ -42,7 +42,7 @@ metrics:
     command: rg --files packages apps test -g '*test*' -g '*spec*'
   - name: dependency-and-risk-markers
     type: shell-derived
-    command: rg -n 'TODO|FIXME|HACK|any|eval\(|new Function|dangerouslySetInnerHTML|child_process|shell: true|localStorage|sessionStorage'
+    command: "rg -n 'TODO|FIXME|HACK|any|eval\\(|new Function|dangerouslySetInnerHTML|child_process|shell: true|localStorage|sessionStorage'"
 
 human_review:
   - architecture-and-boundaries
@@ -668,7 +668,7 @@ work_discovery_bounded_retry_task:
       diff-whitespace: "PASS: git diff --check; existing CRLF normalization warnings only"
     notes: "Baseline before adding restart-recovery coverage. The repository already contains the prior Work Discovery contract and replay-persistence slices plus unrelated user WIP."
 
-  final:
+  historical_final:
     recorded_at: 2026-08-30T17:49:04.2949810+09:00
     values:
       targeted-work-discovery-recovery: "PASS: 3 files, 16 tests"
@@ -1646,5 +1646,1399 @@ security_report_manual_webhook_redirect_hardening:
       diff-whitespace: "PASS: git diff --check"
       argument-forwarding: "PASS: npm test -- --help runs the security test then forwards --help to Vitest"
       independent-review: "PASS: no surviving redirect bypass; one confirmed script-order regression fixed"
+      decision: KEEP
+      notes: "Manual redirect handling is the narrow shared boundary for all URL sources, repeats, and authentication modes. Report open questions about public proxy policy, provider-header policy, and HMAC freshness remain product/deployment decisions rather than validated findings."
+
+main_based_connector_lab:
+  name: loopback-connector-lab
+  evaluator_frozen: true
+  checks:
+    - name: connector-lab-regression
+      type: command
+      command: node --test test/connector-lab/*.test.mjs
+      required: true
+    - name: manual-webhook-regression
+      type: command
+      command: node --test test/manual/webhook.test.mjs
+      required: true
+    - name: manual-webhook-check
+      type: command
+      command: node test/manual/webhook.mjs --check
+      required: true
+    - name: root-test-ci-path
+      type: command
+      command: npm test
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - the REST fixture binds only to 127.0.0.1 and exposes a documented partner-service contract independent of AX source code
+    - the REST payloads and Webhook envelope use neutral external-service semantics rather than AX-internal names
+    - the Webhook fixture is clearly a provider simulator and targets only a validated loopback AX listener
+    - logs contain correlation metadata and response outcomes but no secrets, credentials, raw bodies, or absolute paths
+    - duplicate delivery uses one event id while a fresh default event id avoids cross-run confusion
+    - long-running startup is separate from the finite automated regression command
+    - existing manual fixtures and the user-owned .gitignore remain unchanged
+  baseline:
+    recorded: true
+    recorded_at: 2026-08-31T18:27:09.4981491+09:00
+    values:
+      connector-lab-regression: "FAIL: test/connector-lab/connector-lab.test.mjs was not found"
+      manual-webhook-regression: "PASS: 3 tests"
+      manual-webhook-check: "PASS: helper configuration validated without network I/O"
+      root-test-ci-path: "PASS: 125 Core files/651 tests/3 skipped"
+      architecture-check: "PASS: no dependency violations across 505 modules/1771 dependencies"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      diff-whitespace: "PASS: no whitespace errors; existing line-ending warnings only"
+    gap: "There is no one-command long-running REST/Webhook manual lab or safe run log for direct AX Studio QA."
+    decision: BASELINE
+
+one_shot_share_target_and_result:
+  name: one-shot-share-target-and-result
+  evaluator_frozen: true
+  checks:
+    - name: one-shot-command-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/service.test.ts packages/core/src/agent/commands/schema.test.ts
+      required: true
+    - name: ephemeral-chat-result-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/execution-result-message.test.ts packages/core/src/bootstrap.test.ts packages/core/src/store/db-migration.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a one-shot HTTP-to-Slack request shows one selectable target card when targets are ambiguous or missing
+    - selected target ids are passed through the typed command plan and no send occurs before Runtime approval
+    - pending and final one-shot results appear in the originating chat as bounded execution-result messages
+    - repeated completion notifications replace the same chat result instead of duplicating it
+    - recurring job selection and Activity remain unchanged
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T16:13:10.2768443+09:00
+    values:
+      one-shot-target-card: "FAIL: supplied screenshot shows prose-only target request; execution.enqueue_once has no structured presentation path"
+      one-shot-chat-result: "FAIL: ephemeral executions have no workspace session association and are excluded from chat projection"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T16:49:00.2427183+09:00
+    values:
+      one-shot-command-regression: "PASS: 3 files/45 tests"
+      ephemeral-chat-result-regression: "PASS: 3 files/8 tests"
+      runtime-propagation-regression: "PASS: 4 files/38 tests including engine and migration coverage"
+      core-typecheck: "PASS"
+      desktop-typecheck: "PASS"
+      root-test-ci-path: "PASS: manual webhook 3/3 plus Core 130 files/698 tests with 3 skipped"
+      deterministic-product-qa: "PASS: 4 scenarios"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1819 dependencies"
+      production-build: "PASS: Core and Electron main/preload/renderer"
+      diff-whitespace: "PASS: no whitespace errors; existing line-ending warnings only"
     decision: KEEP
-    notes: "Manual redirect handling is the narrow shared boundary for all URL sources, repeats, and authentication modes. Report open questions about public proxy policy, provider-header policy, and HMAC freshness remain product/deployment decisions rather than validated findings."
+
+figma_ui_ux_shape:
+  evaluator: "Manual Figma flow review against the H2/H3/H4 shape brief and immutable-page boundary"
+  checks:
+    - id: flow-continuity
+      type: manual
+      criterion: "The proposal reads as one continuous request → progress → discovered method → approval → execution result flow."
+    - id: current-capability-boundary
+      type: manual
+      criterion: "Every proposed state/action is an understandable recomposition of existing product concepts; no new product capability is introduced."
+    - id: decision-clarity
+      type: manual
+      criterion: "The current step, next action, discovered method, approval target/side effect, and completion result are each identifiable within seconds."
+    - id: state-consistency
+      type: manual
+      criterion: "Progress, stop, approval, cancel, and completion use consistent status hierarchy and action language across the proposed screens."
+    - id: visual-integrity
+      type: manual
+      criterion: "The new proposal frames have no clipped text, unintended overlap, or unreadable hierarchy at overview and close inspection scales."
+    - id: immutable-pages
+      type: manual
+      criterion: "Figma 00 Current UI and 01 UI UX 문제점 remain unchanged; only 02 개선안 is written."
+    - id: implementation-boundary
+      type: manual
+      criterion: "No production source, tests, connector state, or external side effect is changed."
+  human_review:
+    - "A user can say what is happening now, what was found, what approval means, and what happened afterward without interpreting raw IDs first."
+    - "The proposal keeps the existing app shell and controls recognizable while changing ordering/grouping only."
+    - "The flow makes H2/H3/H4 traceable without turning the Figma page into a speculative product redesign."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T20:35:43.3195064+09:00
+    values:
+      flow-continuity: "INCONCLUSIVE: current states are distributed across separate captures"
+      proposal-page: "FAIL: 02 개선안 is absent"
+      immutable-pages: "PASS: 00 Current UI and 01 UI UX 문제점 are available as read-only references"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T20:51:55.4875546+09:00
+    decision: KEEP
+    values:
+      flow-continuity: "PASS: the 5-stage rail and 4-screen storyboard form one request → progress → method review → approval → result flow"
+      current-capability-boundary: "PASS: every shown state/action is an existing concept recomposed for clarity; no new product capability is introduced"
+      decision-clarity: "PASS: each screen exposes the current step or outcome, the next action, and the relevant evidence or side effect"
+      state-consistency: "PASS: status badges, action labels, and recovery/completion language are consistent across the proposal"
+      visual-integrity: "PASS: full-board and representative screen screenshots show legible hierarchy with no unintended overlap"
+      immutable-pages: "PASS: direct metadata checks preserve 00 Current UI page 26:2, 01 UI UX 문제점 page 53:2, and original page 0:1"
+      implementation-boundary: "PASS: no production source, tests, live connectors, credentials, or external sends were touched"
+    notes: "One-shot HTTP-to-Slack target selection is host-owned and typed; no queue occurs before selection, approval remains required for external sends, and pending/final ephemeral results are upserted into the originating chat. No live external side effects were used by the evaluator."
+
+dogfood_gmail_slack_diagnostics:
+  name: dogfood-gmail-slack-diagnostics
+  evaluator_frozen: true
+  checks:
+    - name: gmail-oauth-diagnostics
+      type: command
+      command: npx vitest run apps/desktop/electron/main/env-file.test.ts apps/desktop/electron/main/gmail/oauth.test.ts apps/desktop/electron/main/gmail/connection.test.ts
+      required: true
+    - name: slack-socket-diagnostics
+      type: command
+      command: npm test -w @ax-studio/core -- src/triggers/slack/new-message/socket-mode.test.ts
+      required: true
+    - name: existing-gmail-slack-regression
+      type: command
+      command: npm test -w @ax-studio/core -- src/modules/gmail/oauth.test.ts src/triggers/slack/new-message/socket-mode.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: connector-lab-regression
+      type: command
+      command: node --test test/connector-lab/*.test.mjs
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - Gmail client secret is read only in the Electron main process and is not persisted in connection metadata, renderer state, or logs
+    - Slack diagnostic output includes bounded nested error details but never raw tokens, signed URLs, or provider payloads
+    - Socket Mode state distinguishes an active reconnect from a terminal startup failure and stops cleanly on explicit teardown
+    - no live Gmail, Slack, AI, HTTP, or database calls are made by the evaluator
+    - existing connector-lab changes and the user-owned .gitignore remain untouched
+  baseline:
+    recorded: true
+    recorded_at: 2026-08-31T18:54:32.1129030+09:00
+    values:
+      gmail-oauth-diagnostics: "FAIL: oauth.test.ts does not exist"
+      slack-socket-diagnostics: "PASS: existing socket-mode.test.ts, 2 tests; no nested-cause regression"
+      existing-gmail-slack-regression: "PASS: 2 files, 4 tests"
+    gap: "The user-provided log shows Gmail token exchange without client_secret and repeated Slack SDK WebSocket errors, but no deterministic regression covers either boundary."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T19:15:42.5224288+09:00
+    values:
+      gmail-oauth-diagnostics: "PASS: 3 files, 4 tests; env allowlist, configuration, actionable error, and connection call-site propagation"
+      slack-socket-diagnostics: "PASS: 6 tests; nested cause extraction/redaction, no-detail TypeError handling, non-blocking reconnect startup, and duplicate SDK wrapper-log suppression"
+      existing-gmail-slack-regression: "PASS: 2 Core files, 8 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 506 modules/1772 dependencies cruised"
+      connector-lab-regression: "PASS: 2 tests"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "The Gmail secret remains optional and Main-process-only; Slack retains auto-reconnect while returning control to the desktop handler, preserving bounded redacted diagnostics. No live provider calls were used."
+
+workflow_conversation_results:
+  name: webhook-body-and-conversation-results
+  evaluator_frozen: true
+  checks:
+    - name: webhook-body-regression
+      type: command
+      command: npx vitest run packages/core/src/workflow/webhook-body-mapping.test.ts
+      required: true
+    - name: conversation-result-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/execution-result-message.test.ts packages/core/src/store/workspace-chat-repository.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: connector-lab-regression
+      type: command
+      command: node --test test/connector-lab/*.test.mjs
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - Activity still represents technical execution lifecycle and step logs
+    - the conversation result targets only the workflow-mapped chat session
+    - one execution produces at most one result message, including retries of the observer
+    - result text is bounded and excludes raw Webhook bodies, credentials, and absolute paths
+    - an absent/corrupt chat cannot change the saved execution status
+    - a background result refreshes the currently open mapped chat without overwriting a newer user turn
+  baseline:
+    recorded: true
+    recorded_at: 2026-08-31T19:52:54.5310543+09:00
+    values:
+      webhook-body-regression: "FAIL: target regression test file does not exist"
+      conversation-result-regression: "PASS: existing workspace-chat repository 11 tests; publisher regression is not present"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "NOT RUN: requires implementation build path"
+      connector-lab-regression: "PASS: 2 tests"
+      architecture-check: "PASS: zero dependency violations across 506 modules/1772 dependencies"
+      production-build: "NOT RUN: requires implementation build path"
+      diff-whitespace: "PASS: no whitespace errors; existing line-ending warnings only"
+    gap: "The live Webhook run proves body/path binding is wrong, and no durable execution-result-to-workspace-chat publisher exists."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T20:18:23.0829158+09:00
+    values:
+      webhook-body-regression: "PASS: 1 file, 2 tests"
+      conversation-result-regression: "PASS: 2 files, 15 tests"
+      completion-edge-regression: "PASS: bootstrap/manual completion and corrupted approval observer coverage included in full Core suite"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build and npx tsc --noEmit -p apps/desktop"
+      connector-lab-regression: "PASS: 2 tests"
+      integration-regression: "PASS: 11 files, 72 tests"
+      full-core-regression: "PASS: 129 files, 663 tests, 3 skips; manual Webhook security 3/3"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1797 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "Webhook AI now consumes trigger.body. Saved workflow completion is projected into the mapped chat with idempotent execution metadata, stale-transcript protection, and desktop refresh notifications. No live Gmail/Slack/provider calls were used."
+
+rest_http_error_propagation:
+  name: rest-http-error-propagation
+  evaluator_frozen: true
+  checks:
+    - name: http-error-regression
+      type: command
+      command: npx vitest run packages/core/src/modules/http/connector.test.ts packages/core/src/design-tools/capability-invoke.test.ts packages/core/src/agent/commands/service.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: connector-lab-regression
+      type: command
+      command: node --test test/connector-lab/*.test.mjs
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a 401 from the Acme fixture is shown as 401 and not 404
+    - bounded JSON error details are available to local command chat
+    - error details never include auth values, raw request headers, or unbounded bodies
+    - non-2xx responses remain failures and read capability write restrictions remain enforced
+    - no raw provider error body is added to persisted runtime logs or connection metadata
+  baseline:
+    recorded: true
+    recorded_at: 2026-08-31T21:12:08.4444763+09:00
+    values:
+      http-error-regression: "PASS: 3 files, 30 tests; no error-body or command-boundary propagation assertions"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build and npx tsc --noEmit -p apps/desktop"
+      connector-lab-regression: "PASS: 2 tests"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1797 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    gap: "The live lab returned 401 with a JSON error body, while AX displayed http_404 and the HTTP connector discarded the response body."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-08-31T21:25:47.5020800+09:00
+    values:
+      http-error-regression: "PASS: 3 files, 36 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build and npx tsc --noEmit -p apps/desktop"
+      connector-lab-regression: "PASS: 2 tests"
+      webhook-security-regression: "PASS: 3 tests"
+      live-built-http-boundary: "PASS: connector-lab GET /api/v1/secure/profile returned http_401 with status 401, Unauthorized, and bounded error/hint JSON"
+      full-core-regression: "PASS: 129 files, 669 tests, 3 skips"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1800 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "HTTP non-2xx responses retain exact status and a 4,000-character maximum body preview through local capability.invoke and the AX command issue. Provider details are omitted when untrusted data is denied, response headers are never forwarded, and runtime persistence remains unchanged."
+
+http_connection_discovery:
+  name: http-connection-discovery
+  evaluator_frozen: true
+  checks:
+    - name: http-command-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/service.test.ts packages/core/src/modules/http/connection.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: connector-lab-regression
+      type: command
+      command: node --test test/connector-lab/*.test.mjs
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - "`http.list` exposes both GitHub and the local test endpoint with stable ids and base URLs"
+    - "multiple endpoints advertise that an explicit `connectionId` is required/recommended while preserving current selector behavior"
+    - output is metadata-only and contains no token, password, authorization value, or response body
+    - the 1.1MB manual response remains capped and unprinted; model-input projection is tracked as follow-up, not silently changed here
+    - no live connector side effect or unrelated dirty worktree change is included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T08:18:45.0609990+09:00
+    values:
+      http-command-regression: "PASS: 2 files/31 tests; http.list contract is not present yet"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc --noEmit -p apps/desktop"
+      connector-lab-regression: "PASS: 2 tests"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1800 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+    gap: "resource.list exposes only a reduced HTTP endpoint view and command chat has no dedicated read command for all saved HTTP endpoint metadata or explicit selection guidance."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T08:25:59.2724457+09:00
+    values:
+      http-command-regression: "PASS: 2 files/32 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc --noEmit -p apps/desktop"
+      connector-lab-regression: "PASS: 2 tests"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1800 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+    decision: KEEP
+    notes: "http.list now exposes all persisted REST targets through a metadata-only command seam, marks current selection guidance, and sanitizes URL userinfo/query/fragment values. The large-response body projection remains a separately scoped follow-up."
+
+invalid_provider_command_boundary:
+  name: invalid-provider-command-boundary
+  evaluator_frozen: true
+  checks:
+    - name: command-chat-transport-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/transport.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - internal capability ids remain nested under capability.invoke and are not added to AX_COMMAND_NAMES
+    - unsupported provider output becomes a bounded user-facing protocol error without raw schema options or stack traces
+    - valid command execution and final replies remain unchanged
+    - no live database or external provider call is made by the evaluator
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T09:07:00.5539583+09:00
+    values:
+      command-chat-transport-regression: "PASS: 2 files/13 tests; no unsupported outer command regression exists yet"
+    gap: "A provider output with outer commandName rdb.schema.describe is not covered; the reported raw invalid_enum_value escape remains unhandled."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T09:20:31.2895811+09:00
+    values:
+      command-chat-transport-regression: "PASS: 2 files/20 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1802 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      connector-lab-regression: "PASS: 2 tests"
+      root-test-ci-path: "PASS: Webhook security 3/3 plus Core 129 files/677 tests/3 skips"
+      diff-whitespace: "PASS: no whitespace errors; existing line-ending warnings only"
+    decision: KEEP
+    notes: "The raw invalid_enum_value reproduction is now contained at the provider command boundary. Internal capability ids remain values nested under capability.invoke, and invalid output cannot reach AxCommandService or external connectors."
+
+rdb_date_fidelity:
+  name: rdb-date-fidelity
+  evaluator_frozen: true
+  checks:
+    - name: rdb-regression
+      type: command
+      command: npx vitest run packages/core/src/modules/rdb/client.test.ts packages/core/src/modules/rdb/connector.test.ts packages/core/src/design-tools/capability-invoke.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - PostgreSQL DATE values remain date-only strings and are not shifted by the local timezone
+    - timestamp and timestamptz values retain their existing driver behavior
+    - no credentials, raw rows, or external database side effects enter tests or logs
+    - read-only and allowlist behavior remains unchanged
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T10:36:29.9921047+09:00
+    values:
+      rdb-regression: "PASS: 3 files/8 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1802 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+    gap: "The manual PostgreSQL DATE result is shifted to a UTC timestamp, but the local regression seam and parser contract are not yet covered."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T10:42:52.8654206+09:00
+    values:
+      rdb-regression: "PASS: 3 files/9 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1802 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+      full-core-regression: "PASS: 129 files/678 tests/3 skips"
+    decision: KEEP
+    notes: "PostgreSQL DATE OID 1082 is preserved as the original date-only string at the client parser boundary; timestamp and other parser behavior remains delegated to pg."
+
+http_connection_chooser:
+  name: http-connection-chooser
+  evaluator_frozen: true
+  checks:
+    - name: chooser-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/service.test.ts packages/core/src/modules/http/connector.test.ts packages/core/src/agent/prompt/command-protocol.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - an ambiguous request visibly produces an HTTP connection chooser card rather than only plain text
+    - chooser actions contain only endpoint identity and cause the next request to use the selected endpoint explicitly
+    - a single saved endpoint and an explicitly named endpoint keep their existing behavior
+    - no secret or URL query/fragment value is rendered or sent in a chooser action
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T10:57:19.1852321+09:00
+    values:
+      chooser-regression: "PASS: 4 files/47 tests; no reply-only HTTP chooser regression exists yet"
+    gap: "A reply-only assistant message asking the user to choose between multiple HTTP connections carries no presentations or inputRequests, so the renderer has no card to display."
+    decision: BASELINE
+  final:
+    recorded: true
+    recorded_at: 2026-09-01T11:17:10.7312231+09:00
+    values:
+      chooser-regression: "PASS: 4 files/51 tests; ambiguous reply-only HTTP request produced one validated chooser card and the selected action used an explicit connection id on the next turn"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build and npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1802 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+    decision: KEEP
+    notes: "The deterministic host preflight closes the renderer metadata gap for reply-only connection questions. It is read-only, bounded, secret-safe, preserves single-endpoint behavior, and the connector refuses ambiguous direct execution as a second safety boundary."
+
+dynamic_structured_interactions:
+  name: dynamic-structured-interactions
+  evaluator_frozen: true
+  checks:
+    - name: structured-interaction-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/input-requests.test.ts packages/core/src/runtime/execution-result-message.test.ts packages/core/src/store/workspace-chat-repository.test.ts packages/core/src/agent/prompt/command-protocol.test.ts
+      required: true
+    - name: dynamic-catalog-and-boundary-regression
+      type: command
+      command: npx vitest run packages/core/src/catalog/capability-graph.test.ts packages/core/src/workflow/contract-validator.test.ts apps/desktop/electron/main/ipc/chat-boundary.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: architecture-check
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  evaluator_revision:
+    recorded_at: 2026-09-01T12:09:07.8900152+09:00
+    reason: "The initial baseline was chat-only. The audit's validated scope expansion added dynamic capability resolution, workflow availability validation, and IPC typed execution-status boundary regressions; the original checks were preserved and this required supplemental check was appended."
+  human_review:
+    - ambiguous HTTP requests use the command protocol and do not trigger a
+      user-message regex or host-only chooser preflight
+    - execution result cards classify from typed message metadata, not
+      localized content substrings
+    - missing-input controls are sourced from structured issue metadata
+    - connector/action aliases, security confirmations, and display catalogs
+      remain intentional and are not silently generalized
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T11:30:03.7150441+09:00
+    values:
+      structured-interaction-regression: "PASS: 5 files/35 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: Core build followed by npx tsc --noEmit -p apps/desktop"
+      architecture-check: "PASS: zero dependency violations across 511 modules/1802 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+    gap: "HTTP selection is still synthesized by a user-message regex and host preflight; execution-result and missing-input presentation still contain prose-derived classification/mapping paths."
+    decision: BASELINE
+  final:
+    recorded: true
+    recorded_at: 2026-09-01T12:20:00.1141769+09:00
+    values:
+      structured-interaction-regression: "PASS: 5 files/36 tests"
+      dynamic-catalog-and-boundary-regression: "PASS: 3 files/31 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop; production Core build also passed"
+      architecture-check: "PASS: zero dependency violations across 512 modules/1815 dependencies cruised"
+      production-build: "PASS: Core and Electron main/preload/renderer; existing db dynamic-import warning only"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+      full-regression: "PASS: npm test; manual webhook 3/3 and Core 129 files/688 tests with 3 skips"
+      connector-lab: "PASS: npm run test:connector-lab:check; 2/2"
+    decision: KEEP
+    notes: "The final implementation keeps HTTP selection, missing inputs, execution-result display, action summaries, approvals, notification classification, and dynamic capability resolution on typed/catalog data. A renderer import-boundary crash was recorded and corrected before the final build passed."
+
+target_selection_ux:
+  name: target-selection-ux
+  evaluator_frozen: true
+  checks:
+    - name: target-selection-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/job-registration.test.ts packages/core/src/agent/commands/service.test.ts packages/core/src/agent/commands/schema.test.ts packages/core/src/agent/commands/chat.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run build -w @ax-studio/core && npx tsc --noEmit -p apps/desktop
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - connected Slack channels are rendered as selectable labels, not required ids
+    - HTTP and Slack targets can be selected in one card and submitted once
+    - the review action is aligned to the lower right and stays keyboard reachable
+    - a failed channel lookup does not guess a channel or execute a send
+    - generic input cards and job approval cards retain their behavior
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T12:39:40.9583531+09:00
+    values:
+      target-selection-card: "FAIL: supplied screenshot shows two per-field free-text inputs with separate input actions; Slack channel options are not populated"
+      slack-channel-capability: "PASS: slack.channels.list exists and is read-only, but is not wired into job target selection"
+    decision: BASELINE
+  final:
+    recorded: true
+    recorded_at: 2026-09-01T12:59:04.5387622+09:00
+    values:
+      target-selection-regression: "PASS: 4 files/57 tests; full npm test 130 files/693 tests with 3 skips"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      production-build: "PASS: npm run build; Core, Electron main/preload/renderer"
+      diff-whitespace: "PASS: git diff --check; line-ending warnings only"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1816 dependencies cruised"
+    decision: KEEP
+    notes: "Slack channel options are populated through the guarded read-only slack.channels.list seam; the target card submits one review action, and generic input cards keep their per-input path."
+
+one_shot_action_output_binding:
+  name: one-shot-action-output-binding
+  evaluator_frozen: true
+  checks:
+    - name: action-output-binding-regression
+      type: command
+      command: npx vitest run packages/core/src/workflow/bindings.test.ts packages/core/src/workflow/contract-validator.test.ts packages/core/src/runtime/engine.test.ts
+      required: true
+    - name: command-and-target-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/service.test.ts packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/input-requests.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - a selected one-shot Slack target reaches approval with a derived summary body
+    - pending approval performs no external send and approval resumes exactly one send
+    - structured HTTP text responses forward their body string to text inputs
+    - explicit output bindings and existing target-selection behavior remain unchanged
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: unknown
+    values:
+      action-output-binding-regression: "FAIL: minimized one-shot AI-to-Slack runtime regression returned failed instead of pending_approval before the binding patch"
+      command-and-target-regression: "PASS: existing command/target tests were green before the patch"
+    gap: "The runtime's default AI conclusion was not represented as a bindable text output, and structured HTTP response forwarding did not extract body text."
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T17:14:21.3774206+09:00
+    values:
+      action-output-binding-regression: "PASS: 3 files/62 tests"
+      command-and-target-regression: "PASS: 3 files/47 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      production-build: "PASS: npm run build; Core/Electron main/preload/renderer"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1819 dependencies cruised"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+      full-regression: "PASS: npm test; manual Webhook 3/3 and Core 130 files/701 tests with 3 skips"
+      product-qa-smoke: "PASS: npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build; 4/4 scenarios"
+    decision: KEEP
+    notes: "The default AI conclusion is now a contract-backed text source, and TextArtifact forwarding extracts text/body/summary from structured connector results. Pending approval remains side-effect free; approval sends exactly once in the runtime regression."
+
+one_shot_implicit_conclusion_preference:
+  name: one-shot-implicit-conclusion-preference
+  evaluator_frozen: true
+  checks:
+    - name: exact-runtime-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/engine.test.ts packages/core/src/workflow/bindings.test.ts
+      required: true
+    - name: command-and-target-regression
+      type: command
+      command: npx vitest run packages/core/src/agent/commands/service.test.ts packages/core/src/agent/commands/chat.test.ts packages/core/src/agent/commands/input-requests.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - an HTTP-to-AI-to-Slack one-shot plan waits for approval with a usable conclusion body
+    - pending approval performs no Slack send and approval resumes exactly one send
+    - explicit custom output bindings and scheduled summary bindings remain unchanged
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: unknown
+    values:
+      exact-runtime-regression: "FAIL: implicit Slack text can resolve to an empty optional AI field and returns action_params_missing"
+      command-and-target-regression: "PASS: existing command and target tests were green before this follow-up"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T17:36:16.7871451+09:00
+    values:
+      exact-runtime-regression: "PASS: 2 files/45 tests"
+      command-and-target-regression: "PASS: 3 files/47 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      production-build: "PASS: npm run build; Core/Electron main/preload/renderer"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+      debug-scan: "PASS: no [DEBUG- markers in scoped source directories"
+      full-regression: "PASS: npm test; manual Webhook 3/3 and Core 130 files/703 tests with 3 skips"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1819 dependencies"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      product-qa-smoke: "PASS: deterministic smoke 4/4 scenarios"
+    decision: KEEP
+    notes: "Implicit notification text now resolves to the canonical AI conclusion; explicit custom bindings remain unchanged, and the approval gate remains side-effect free until approval."
+
+one_shot_approval_path_binding:
+  name: one-shot-approval-path-binding
+  evaluator_frozen: true
+  checks:
+    - name: exact-runtime-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/engine.test.ts -t "approval node"
+      required: true
+    - name: binding-regression
+      type: command
+      command: npx vitest run packages/core/src/workflow/bindings.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - the real approval-gated HTTP-to-AI-to-Slack shape reaches pending approval
+    - no Slack send occurs before approval and approval sends exactly once
+    - extra model parameter names do not replace canonical catalog inputs
+    - no unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T17:47:18.5896890+09:00
+    values:
+      exact-runtime-regression: "FAIL: approval-gated Slack action has no inferred text binding and fails with action_params_missing"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T17:51:30.3486003+09:00
+    values:
+      exact-runtime-regression: "PASS: 1 file/2 selected tests; approval-gated HTTP-to-AI-to-Slack chain reaches pending_approval and sends once after approval"
+      binding-regression: "PASS: 1 file/13 tests"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc --noEmit -p apps/desktop"
+      full-regression: "PASS: npm test; manual Webhook 3/3 and Core 130 files/703 tests with 3 skips"
+      production-build: "PASS: npm run build; Core/Electron main/preload/renderer"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1819 dependencies"
+      product-qa-smoke: "PASS: deterministic smoke 4/4 scenarios"
+      diff-whitespace: "PASS: git diff --check"
+      debug-scan: "PASS: no [DEBUG- markers in scoped source directories"
+      desktop-bundle: "PASS: apps/desktop/out/main/index.js uses linearSteps for binding inference"
+    decision: KEEP
+    notes: "The real failure was caused by linearContractSteps excluding actions listed by human_approval.forActionIds. Binding inference now follows the runtime sequence; contract validation remains unchanged."
+
+one_shot_inline_approval:
+  name: one-shot-inline-approval
+  evaluator_frozen: true
+  checks:
+    - name: execution-projection-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/execution-result-message.test.ts packages/core/src/store/workspace-chat-repository.test.ts
+      required: true
+    - name: approval-runtime-regression
+      type: command
+      command: npx vitest run packages/core/src/runtime/engine.test.ts -t "approval"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc -p apps/desktop/tsconfig.json --noEmit
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - one-shot pending execution shows an inline approval card with a clear external-send summary
+    - approve and cancel use direct host actions and never send a natural-language approval message
+    - the pending card disappears after approval or cancellation and the final result remains in chat
+    - recurring workflow approvals remain available in the approval tab
+    - no secrets, raw provider bodies, or unrelated dirty-worktree changes are included
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T18:17:31.8865993+09:00
+    values:
+      execution-projection-regression: "FAIL: pending ephemeral execution result has no inline approval metadata"
+      approval-runtime-regression: "PASS: existing approval execution tests were green before the UX patch"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T18:43:22.2917254+09:00
+    values:
+      execution-projection-regression: "PASS: 2 files/17 tests"
+      approval-runtime-regression: "PASS: 16 selected tests; 16 unrelated tests skipped"
+      core-typecheck: "PASS: npx tsc -p packages/core/tsconfig.json --noEmit"
+      desktop-typecheck: "PASS: npx tsc -p apps/desktop/tsconfig.json --noEmit"
+      test-typecheck: "PASS: npx tsc -p test/tsconfig.json --noEmit"
+      focused-integration: "PASS: 5 files/55 tests across bootstrap, projection, repository, boundary, and runtime"
+      full-regression: "PASS: npm test; manual Webhook 3/3 and Core 130 files/705 tests with 3 skips"
+      production-build: "PASS: npm run build; Core/Electron main/preload/renderer"
+      architecture-check: "PASS: zero dependency violations across 513 modules/1823 dependencies"
+      product-qa-smoke: "PASS: deterministic smoke 6/6 tests, including inline approval and rejection"
+      diff-whitespace: "PASS: git diff --check; existing line-ending warnings only"
+      debug-scan: "PASS: no [DEBUG- markers in scoped source directories"
+    decision: KEEP
+    notes: "One-shot pending approvals are now actionable in the originating chat through the existing approval boundary; recurring approvals remain in the approval tab, and no live connector side effect was used."
+
+figma_current_uiux:
+  evaluator: "Manual Figma structure and screenshot review against the frozen UX criteria"
+  checks:
+    - id: figma-target-inspection
+      type: manual
+      criterion: "The supplied file contains a named AX Studio UX map page and an editable board frame."
+    - id: screen-coverage
+      type: manual
+      criterion: "Workspace/chat, one-shot approval, approval inbox, activity, settings, HTTP, PostgreSQL, and workflow context are represented as distinct screen/state frames."
+    - id: component-reuse
+      type: manual
+      criterion: "Repeated buttons, status chips, user bubble, approval rail, and connection cards are local reusable components or instances."
+    - id: fidelity-and-hierarchy
+      type: manual
+      criterion: "Current product labels, approval distinction, connection selection, and Lavender Control Room hierarchy are represented without secrets."
+    - id: visual-integrity
+      type: manual
+      criterion: "Section screenshots show no clipped text, unintended overlap, broken auto-layout, or unreadable contrast."
+  human_review:
+    - "One-shot pending approval is visually distinct from recurring approval inbox work."
+    - "The map supports side-by-side review of normal, pending, success, failed, and cancelled states."
+    - "No real credential, token, authorization header, URL query, or provider body is present."
+    - "No production code or unrelated dirty-worktree file is changed."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T18:59:19.4893820+09:00
+    values:
+      figma-target: "FAIL: Page 1 / node 0:1 is empty with no top-level children"
+      screen-coverage: "FAIL: no screens or states"
+      component-reuse: "FAIL: no local components"
+    decision: BASELINE
+
+figma_current_ui_recording:
+  evaluator: "Manual Figma metadata and screenshot review against the current runtime capture criteria"
+  checks:
+    - id: page-isolation
+      type: manual
+      criterion: "A separate page named 00 Current UI exists and the existing AX Studio · UX Map page is unchanged."
+    - id: runtime-state-coverage
+      type: manual
+      criterion: "The page includes named runtime captures for empty, loading, completed, input-required, approval-pending, approval-completed, approval-inbox, activity, settings, connection-error, and Work Discovery states."
+    - id: visual-fidelity
+      type: manual
+      criterion: "Each capture preserves current implemented color, spacing, sizing, copy, information structure, button placement, sidebar, composer, and context-panel presentation without redesign."
+    - id: naming-and-inspection
+      type: manual
+      criterion: "Every screen/state frame has a descriptive feature/state name and can be located from Figma metadata."
+    - id: visual-integrity
+      type: manual
+      criterion: "Figma screenshots show no clipped or overlapping capture tiles, and each image remains legible when zoomed."
+    - id: safety-boundary
+      type: manual
+      criterion: "No secrets, live connector payloads, production-file changes, or invented product UI are included."
+  human_review:
+    - "This page is a faithful current-state record, not a visual improvement pass."
+    - "The existing UX Map page is not renamed, deleted, or populated by this task."
+    - "Runtime captures come from the isolated current build and do not imply that a static mapping is the product implementation."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T19:47:21.6979158+09:00
+    values:
+      page-isolation: "FAIL: 00 Current UI is absent"
+      runtime-state-coverage: "FAIL: no current-state capture board in Figma"
+      visual-fidelity: "INCONCLUSIVE: source captures exist locally but are not yet placed in Figma"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T19:57:18.9903215+09:00
+    values:
+      page-isolation: "PASS: dedicated page 26:2 named 00 Current UI exists; original page 0:1 remains unchanged"
+      runtime-state-coverage: "PASS: 15 named screens/states are present in the board"
+      visual-fidelity: "PASS: final board screenshot shows every tile populated with the corresponding runtime capture"
+      naming-and-inspection: "PASS: metadata returns a feature/state name for every tile"
+      visual-integrity: "PASS: board screenshot has no clipped or overlapping tiles"
+      safety-boundary: "PASS: no production code, credentials, or live connector side effects used"
+    decision: KEEP
+
+figma_ui_ux_critique:
+  evaluator: "Dual-agent evidence review of all 15 current-state captures, implementation evidence, and isolated Figma annotations"
+  checks:
+    - id: all-screen-comparison
+      type: manual
+      criterion: "All 15 named current-state screens are explicitly considered; no severity judgment relies on a single screen alone when a cross-screen comparison is relevant."
+    - id: prioritized-findings
+      type: manual
+      criterion: "Findings are classified as 높음/중간/낮음 and each has an exact screen/state location, user impact, evidence, and bounded next-step direction."
+    - id: state-and-recovery-coverage
+      type: manual
+      criterion: "Loading, error, approval pending, execution pending, completed, empty, input-required, and discovery states are compared for clarity and recovery."
+    - id: independent-evidence
+      type: manual
+      criterion: "A design assessment and an implementation/detector assessment are kept independent until synthesis; detector/browser limitations are stated rather than inferred."
+    - id: current-ui-preservation
+      type: manual
+      criterion: "00 Current UI page 26:2, board 27:2, and all 15 original tile nodes are unchanged."
+    - id: annotation-boundary
+      type: manual
+      criterion: "If created, 01 UI UX 문제점 is a copy-based critique artifact containing issue markers/register only; no product UI or new product behavior is added."
+    - id: report-persistence
+      type: manual
+      criterion: "The completed critique is persisted through the Impeccable critique storage helper and the temporary report body is removed."
+  human_review:
+    - "The report distinguishes observed behavior from design inference and does not treat the Figma documentation board itself as product UI."
+    - "The highest-priority issues are few enough to act on and are tied to recovery, state clarity, or cross-screen consistency."
+    - "No production files or external systems are changed."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T20:08:31.3214392+09:00
+    values:
+      all-screen-comparison: "INCONCLUSIVE: the 15 captures exist, but no synthesized critique exists"
+      current-ui-preservation: "PASS: original current-state page is available for read-only comparison"
+      annotation-boundary: "FAIL: no separate critique page exists"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T20:21:38.5384825+09:00
+    values:
+      all-screen-comparison: "PASS: 15 named states were compared across the design assessment, runtime captures, and implementation evidence"
+      prioritized-findings: "PASS: nine findings are grouped as 높음/중간/낮음 with screen locations, impact, evidence, and next review directions"
+      state-and-recovery-coverage: "PASS: empty, loading, complete, input-required, approval pending/completed, activity, connection error, and discovery states are covered"
+      independent-evidence: "PASS: independent design and implementation/detector assessments completed; browser and degraded-parser limits are stated"
+      current-ui-preservation: "PASS: page 26:2, board 27:2, and all 15 original tiles remain unchanged"
+      annotation-boundary: "PASS: page 53:2 is a copy-based critique page with markers/register only"
+      report-persistence: "PASS: critique body persisted through critique-storage helper and temporary body cleanup was completed"
+    decision: KEEP
+
+figma_new_ui:
+  evaluator: "Manual Figma Workspace review against 00/01/02 evidence and the immutable-page boundary"
+  checks:
+    - id: workspace-capability-coverage
+      type: manual
+      criterion: "The new Workspace screen retains the current chat/composer, response, progress, execution result, approval, discovery/method review, sources/context, workflow context, and relevant navigation capabilities."
+    - id: flow-clarity
+      type: manual
+      criterion: "The screen makes current step, next action, found method, approval target/side effect, and completion result easy to scan."
+    - id: h2-h3-h4-resolution
+      type: manual
+      criterion: "Approval context (H2), progress/recovery visibility (H3), and method comprehension (H4) are reflected without inventing product capability."
+    - id: visual-system
+      type: manual
+      criterion: "The new Workspace uses a coherent desktop app shell, existing lavender/neutral visual language, consistent type hierarchy, spacing, borders, and status colors."
+    - id: component-structure
+      type: manual
+      criterion: "Repeated visual primitives are implemented as local components or clearly named reusable groups when no library component exists."
+    - id: visual-integrity
+      type: manual
+      criterion: "Full screen and close-up renders show no clipped text, unintended overlap, blank placeholders, or unreadable dense content."
+    - id: immutable-pages
+      type: manual
+      criterion: "00 Current UI, 01 UI UX 문제점, and 02 개선안 remain unchanged; only 03 새 UI is written."
+    - id: implementation-boundary
+      type: manual
+      criterion: "No production source, tests, connector state, credentials, or external side effect is changed."
+  human_review:
+    - "A user can understand what this workspace is, what is happening now, what they need to decide, and what happened afterward."
+    - "The visual language feels like a finished AX Studio desktop workspace, not a loose wireframe or a speculative new product."
+    - "Existing controls remain recognizable while the information hierarchy is materially clearer."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T06:21:54.6597831+09:00
+    values:
+      workspace-capability-coverage: "INCONCLUSIVE: current capabilities are distributed across the current implementation and 02 proposal"
+      new-ui-page: "FAIL: 03 새 UI is absent"
+      immutable-pages: "PASS: 00 Current UI, 01 UI UX 문제점, and 02 개선안 are available as read-only references"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-02T06:35:30.9917961+09:00
+    decision: KEEP
+    values:
+      workspace-capability-coverage: "PASS: primary Workspace screen plus 5 named state variants and 3 support states cover current capabilities"
+      flow-clarity: "PASS: current step, next action, found method, approval target/side effect, and completion result are visible in one screen story"
+      h2-h3-h4-resolution: "PASS: approval context, progress/recovery visibility, and method comprehension are explicit"
+      visual-system: "PASS: desktop shell, lavender/neutral language, status colors, spacing, borders, and type hierarchy are coherent"
+      component-structure: "PASS: 3 local components are present and used for repeated status/navigation/detail primitives"
+      visual-integrity: "PASS: full board and close-up screenshots show no clipping, unintended overlap, blank primary sections, or unreadable dense content"
+      immutable-pages: "PASS: only 03 새 UI was written; 00 Current UI, 01 UI UX 문제점, and 02 개선안 remain unchanged"
+      implementation-boundary: "PASS: no production source, tests, connector state, credentials, or external side effect was changed"
+
+frontend_context_tabs:
+  evaluator: "Focused Workspace frontend checks, TypeScript/build checks, and manual desktop visual review against Figma 03 새 UI"
+  checks:
+    - id: three-tabs
+      type: automated
+      criterion: "WorkspaceContextPanel exposes 자료, 흐름, 워크플로우 as accessible tabs"
+      command: "npm exec vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: tab-responsibilities
+      type: automated
+      criterion: "Flow-state projection distinguishes current execution state from the reusable workflow graph"
+      command: "npm exec vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: workflow-preservation
+      type: manual
+      criterion: "Existing WorkflowPreviewPanel selection/edit and source attach props remain wired"
+    - id: accessibility
+      type: manual
+      criterion: "Tabs expose role=tab, aria-selected, keyboard focus, and visible selected state"
+    - id: visual-integrity
+      type: manual
+      criterion: "Current panel width renders without clipping or overflow in light and dark themes"
+    - id: typecheck
+      type: automated
+      criterion: "Desktop TypeScript compilation passes"
+      command: "npx tsc --noEmit -p apps/desktop/tsconfig.json"
+    - id: build
+      type: automated
+      criterion: "Desktop production build passes"
+      command: "npm run build -w @ax-studio/desktop"
+    - id: implementation-boundary
+      type: manual
+      criterion: "Only scoped Workspace files and harness records change"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T07:15:01.9456206+09:00
+    decision: BASELINE
+    values:
+      three-tabs: "FAIL: current WorkspaceContextPanel exposes only 자료 and conditional 흐름"
+      tab-responsibilities: "FAIL: 흐름 currently renders the reusable workflow graph; no current-run flow view exists"
+      workflow-preservation: "PASS: existing WorkflowPreviewPanel selection/edit and source attach props are wired"
+      accessibility: "PASS: existing tabs use role=tab and aria-selected"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+
+  final:
+    recorded_at: 2026-09-02T07:31:15.0050274+09:00
+    decision: KEEP
+    values:
+      three-tabs: "PASS: WorkspaceContextPanel exposes 자료, 흐름, 워크플로우 as accessible tabs"
+      tab-responsibilities: "PASS: 흐름 renders current execution lifecycle while 워크플로우 renders the existing reusable graph"
+      workflow-preservation: "PASS: real workflow-created session rendered the existing graph in 워크플로우; source attach and node wiring remain unchanged"
+      accessibility: "PASS: tabs expose role=tab, selected state, keyboard navigation, and active-panel controls without stale inactive references"
+      visual-integrity: "PASS: light and dark approval states rendered at the desktop panel width without clipping"
+      focused-tests: "PASS: 7 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+
+figma_workflow_tabs:
+  evaluator: "Manual Figma context-panel review against current source, 02 개선안, and the immutable-page boundary"
+  checks:
+    - id: three-tab-clarity
+      type: manual
+      criterion: "자료, 흐름, 워크플로우 are visible as distinct context-panel responsibilities, with no ambiguous duplicate label."
+    - id: current-flow-preserved
+      type: manual
+      criterion: "The active 흐름 state still shows the request-to-approval execution lifecycle, method summary, and sources area."
+    - id: workflow-visualization
+      type: manual
+      criterion: "The workflow-tab alternate state shows a registered-workflow title/status, graph nodes/edges, and selected-step detail using existing WorkflowPreviewPanel semantics."
+    - id: source-grounding
+      type: manual
+      criterion: "The visualization uses existing workflow concepts (trigger, HTTP, AI, approval, Slack, node detail/edit) and does not invent new capabilities."
+    - id: visual-integrity
+      type: manual
+      criterion: "Updated tab bar and workflow alternate render without clipping, overlap, placeholder text, or unreadable graph labels."
+    - id: component-structure
+      type: manual
+      criterion: "Repeated workflow graph nodes use a local reusable component or clearly named reusable groups."
+    - id: immutable-pages
+      type: manual
+      criterion: "Only 03 새 UI is modified; 00 Current UI, 01 UI UX 문제점, and 02 개선안 remain unchanged."
+    - id: implementation-boundary
+      type: manual
+      criterion: "No production source, tests, connector state, credentials, or external side effect is changed."
+  human_review:
+    - "A user can distinguish what data supports the conversation, what this run is doing, and how the reusable workflow is structured."
+    - "The workflow graph feels like the existing WorkflowPreviewPanel made easier to discover, not like a new workflow engine."
+    - "The right panel remains scannable at desktop width."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T06:49:46.1963721+09:00
+    values:
+      three-tab-clarity: "FAIL: current primary screen shows only 자료 and 흐름"
+      current-flow-preserved: "PASS: current primary screen already shows the execution flow and approval context"
+      workflow-visualization: "FAIL: no dedicated workflow-tab alternate state exists"
+      immutable-pages: "PASS: existing Figma reference pages are available"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-02T07:02:45.4576847+09:00
+    decision: KEEP
+    values:
+      three-tab-clarity: "PASS: primary and alternate panels clearly expose 자료, 흐름, 워크플로우 with distinct roles"
+      current-flow-preserved: "PASS: active 흐름 state retains execution lifecycle, method summary, and sources area"
+      workflow-visualization: "PASS: alternate state shows 설계 완료, five graph nodes, four edges, and selected 승인 detail"
+      source-grounding: "PASS: workflow concepts match existing WorkflowPreviewPanel/WorkflowGraph/NodeDetailPanel semantics"
+      visual-integrity: "PASS: screenshots of primary panel, alternate state, and full board show no clipping or overlap"
+      component-structure: "PASS: five graph nodes are instances of the hidden local WorkflowNode component"
+      immutable-pages: "PASS: only 03 새 UI was mutated; 00 Current UI, 01 UI UX 문제점, and 02 개선안 remain outside the write boundary"
+      implementation-boundary: "PASS: no production source, tests, connector state, credentials, or external side effect was changed"
+
+demo_release_hardening:
+  evaluator: "Full current-surface test matrix plus deterministic Electron QA and local Windows packaging"
+  checks:
+    - id: core-tests
+      type: automated
+      criterion: "All core unit tests and webhook security tests pass"
+      command: "npm test"
+    - id: integration-tests
+      type: automated
+      criterion: "Core integration and runtime seam tests pass"
+      command: "npm run test:integration"
+    - id: connector-seam
+      type: automated
+      criterion: "Loopback connector lab contracts pass without external side effects"
+      command: "npm run test:connector-lab:check"
+    - id: deterministic-product-qa
+      type: automated
+      criterion: "Deterministic core product surfaces pass strict Electron QA in isolated data"
+      command: "npm run test:product-qa -- --mode deterministic --tier core --strict --isolated-data --skip-build"
+    - id: smoke-product-qa
+      type: automated
+      criterion: "Deterministic smoke flow passes strict Electron QA in isolated data"
+      command: "npm run test:e2e"
+    - id: typecheck-build
+      type: automated
+      criterion: "Core and desktop production builds plus desktop TypeScript checks pass"
+      command: "npm run build"
+    - id: architecture
+      type: automated
+      criterion: "Core dependency boundaries pass"
+      command: "npm run arch:check"
+    - id: package
+      type: automated
+      criterion: "A local Windows demo package is generated with the expected executable/installer output"
+      command: "npm run pack:win -w @ax-studio/desktop"
+    - id: manual-surface-review
+      type: manual
+      criterion: "Safe product flows and state transitions are understandable and recoverable; known limitations are recorded"
+    - id: implementation-boundary
+      type: manual
+      criterion: "No Figma, secret, external side effect, destructive cleanup, or unrelated refactor is included"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T09:03:05.9146847+09:00
+    decision: BASELINE
+    values:
+      core-tests: "PASS: npm test completed with 705 passed and 3 skipped across 130 test files"
+      integration-tests: "PASS: npm run test:integration completed with 72/72 tests"
+      connector-seam: "PASS: npm run test:connector-lab:check completed with 2/2 tests"
+      deterministic-product-qa: "PASS: full tier completed 61/61 scenario runs with 0 defects; coverage 49/57 and 8 side-effect surfaces intentionally excluded"
+      smoke-product-qa: "PASS: deterministic smoke completed 19/19 scenario runs"
+      typecheck-build: "PASS: desktop TypeScript check and npm run build"
+      architecture: "PASS: 513 modules and 1823 dependencies cruised with no violations"
+      package: "PASS: Windows NSIS installer and win-unpacked package generated; packaged first screen launched in isolated data"
+      manual-surface-review: "PARTIAL: automated safe paths and packaged first screen reviewed; live connector/account paths and real external delivery intentionally not run"
+      implementation-boundary: "PASS: no Figma, secret, credential, external side effect, destructive cleanup, or unrelated source change in this follow-up"
+  final:
+    recorded_at: 2026-09-02T09:08:04.1533191+09:00
+    decision: KEEP
+    values:
+      core-tests: "PASS: 130 files; 705 passed and 3 skipped"
+      integration-tests: "PASS: 11 files; 72/72 tests"
+      connector-seam: "PASS: 2/2 loopback connector-lab checks"
+      deterministic-product-qa: "PASS: full 61/61 and core 55/55 scenario runs; 0 defects and 0 critical findings; 49/57 coverage with 8 intentional side-effect exclusions"
+      smoke-product-qa: "PASS: 19/19 scenario runs"
+      typecheck-build: "PASS: desktop tsc and production build"
+      architecture: "PASS: no dependency violations; 513 modules and 1823 dependencies"
+      knip: "PASS: no issues reported"
+      eval: "PASS: 11/11 evaluator checks"
+      package: "PASS: Windows NSIS installer and win-unpacked package generated; isolated packaged-app first-screen smoke passed"
+      package-boundary: "PASS: no sensitive config/credential artifacts found in app.asar; release output remains ignored"
+      manual-surface-review: "PASS WITH LIMITATIONS: safe current-surface flows reviewed; live external accounts and side effects excluded"
+      implementation-boundary: "PASS: no Figma mutation, secret exposure, external mutation, destructive cleanup, or unrelated refactor"
+
+workspace_flow_accuracy:
+  evaluator: "Focused Workspace flow-state regression checks, status-card consistency, TypeScript/build checks, and manual Electron review against Figma 03 새 UI"
+  checks:
+    - id: legacy-completed-flow
+      type: automated
+      criterion: "A known legacy completed execution result without executionStatus is shown as 실행 완료 at the terminal stage"
+      command: "npm exec vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: stage-mapping
+      type: automated
+      criterion: "Approval, success, cancellation, failure, busy, discovery review, and saved-workflow review map to distinct truthful stages"
+      command: "npm exec vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: card-consistency
+      type: manual
+      criterion: "The center execution result card and the 흐름 panel show the same status for current and legacy host result messages"
+    - id: visual-integrity
+      type: manual
+      criterion: "Flow-stage labels and status colors remain readable at the resizable panel width in light and dark themes"
+    - id: typecheck
+      type: automated
+      criterion: "Desktop TypeScript compilation passes"
+      command: "npx tsc --noEmit -p apps/desktop/tsconfig.json"
+    - id: build
+      type: automated
+      criterion: "Desktop production build passes"
+      command: "npm run build -w @ax-studio/desktop"
+    - id: implementation-boundary
+      type: manual
+      criterion: "Only the scoped Workspace presentation/test files and harness records change"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T07:37:59.0745754+09:00
+    decision: BASELINE
+    values:
+      legacy-completed-flow: "FAIL: execution_result without executionStatus falls back to 방법 검토 even when host result content says 실행이 완료되었습니다"
+      structured-terminal-flow: "PASS: success/cancelled/failed messages with executionStatus map to terminal stage"
+      approval-flow: "PASS: pending_approval maps to 승인 대기"
+      review-flow: "PASS: saved workflow/discovery review maps to 방법 검토 when no terminal result exists"
+      focused-test: "FAIL: 1 of 8 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+  final:
+    recorded_at: 2026-09-02T07:48:02.1221980+09:00
+    decision: KEEP
+    values:
+      legacy-completed-flow: "PASS: the legacy completion regression resolves to 실행 완료 at the terminal stage"
+      stage-mapping: "PASS: focused regression suite covers busy, discovery, review, approval, success, cancellation, failure, and legacy completion"
+      card-consistency: "PASS: static card regression confirms legacy completion is labeled 실행 완료, matching 흐름"
+      visual-integrity: "PASS: built Electron screenshots confirm readable approval/completed timeline states"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+      implementation-boundary: "PASS: only scoped Workspace presentation/test and harness records were changed for this follow-up"
+
+workflow_visualization_polish:
+  evaluator: "Built Electron visual review plus workflow graph regression, TypeScript/build, detector, and diff checks"
+  checks:
+    - id: visual-hierarchy
+      type: manual
+      criterion: "Workflow canvas, header, nodes, controls, detail panel, and notes use a coherent light/dark AX Studio hierarchy"
+    - id: label-legibility
+      type: manual
+      criterion: "Long node labels and secondary labels wrap or clamp intentionally without truncating the meaning at normal and narrow panel widths"
+    - id: detail-containment
+      type: manual
+      criterion: "Graph and selected-node detail remain reachable without overlap or accidental clipping"
+    - id: behavior-preservation
+      type: automated
+      criterion: "Existing workflow context tests remain green and the built workflow-created session still exposes the graph"
+      command: "npm exec vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: typecheck
+      type: automated
+      criterion: "Desktop TypeScript compilation passes"
+      command: "npx tsc --noEmit -p apps/desktop/tsconfig.json"
+    - id: build
+      type: automated
+      criterion: "Desktop production build passes"
+      command: "npm run build -w @ax-studio/desktop"
+    - id: detector
+      type: automated
+      criterion: "Impeccable detector findings are reviewed and no new high-confidence defect remains"
+      command: "node C:\\Users\\plosind\\.agents\\skills\\impeccable\\scripts\\detect.mjs --json apps/desktop/src/styles/workflow.css apps/desktop/src/workflow/WorkflowGraph.tsx apps/desktop/src/workflow/types.ts"
+    - id: implementation-boundary
+      type: manual
+      criterion: "Only scoped workflow presentation files and harness records change for this follow-up"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T08:10:05.6461048+09:00
+    decision: BASELINE
+    values:
+      visual-hierarchy: "FAIL: dark gradient workflow canvas conflicts with the shell"
+      label-legibility: "FAIL: long node captions truncate to one line"
+      detail-containment: "FAIL: selected detail is pushed below the visible canvas in the supplied narrow crop"
+      behavior-preservation: "PASS: focused WorkspaceContextPanel test suite and current graph interaction are green"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+  final:
+    recorded_at: 2026-09-02T08:24:36.8057760+09:00
+    decision: KEEP
+    values:
+      visual-hierarchy: "PASS: workflow canvas hierarchy matches the AX Studio shell in light and dark themes"
+      label-legibility: "PASS: long node labels wrap/clamp across two lines and secondary labels remain visible"
+      detail-containment: "PASS: graph max-height and panel overflow keep graph, controls, notes, and detail reachable"
+      behavior-preservation: "PASS: focused WorkspaceContextPanel tests 10/10 and built workflow-created graph rendered"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+      detector: "PASS WITH REVIEW: only the pre-existing splitter width-transition warning at workflow.css:65 was reported; no new workflow finding"
+      implementation-boundary: "PASS: only scoped workflow presentation files and harness records changed for this follow-up"

@@ -7,9 +7,13 @@ import { runAxCommandChat } from './chat.js';
 import { AxCommandService } from './service.js';
 import { JOB_COMMIT_CONFIRM_VALUE } from './job-registration.js';
 
-function scriptedModel(outputs: unknown[], seen: StructuredGenerateInput<unknown>[]): ModelProvider {
+function scriptedModel(
+  outputs: unknown[],
+  seen: StructuredGenerateInput<unknown>[],
+  name = 'test-provider',
+): ModelProvider {
   return {
-    name: 'test-provider',
+    name,
     async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
       seen.push(input as StructuredGenerateInput<unknown>);
       const next = outputs.shift();
@@ -23,6 +27,38 @@ function scriptedModel(outputs: unknown[], seen: StructuredGenerateInput<unknown
 }
 
 describe('runAxCommandChat', () => {
+  it.each([
+    {
+      provider: 'codex-cli',
+      output: { kind: 'command', commandName: 'rdb.schema.describe', argsJson: '{}', message: '' },
+    },
+    {
+      provider: 'claude-cli',
+      output: { kind: 'command', command: { name: 'rdb.schema.describe', args: {} }, message: '' },
+    },
+    {
+      provider: 'ollama-api',
+      output: { kind: 'command', command: { name: 'rdb.schema.describe', args: {} }, message: '' },
+    },
+  ])('turns an unsupported $provider command into a bounded chat result', async ({ provider, output }) => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    const harness = new AgentHarness(scriptedModel([output], [], provider));
+
+    const reply = await runAxCommandChat({
+      harness,
+      commandService: service,
+      messages: [],
+      userMessage: 'PostgreSQL 스키마를 확인해줘',
+    });
+
+    expect(reply).toMatch(/명령|command/i);
+    expect(reply).not.toContain('invalid_enum_value');
+    expect(reply).not.toContain('Expected');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('does not commit a job when the request is already aborted', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
@@ -81,6 +117,8 @@ describe('runAxCommandChat', () => {
     expect(seen[0]?.system).toContain('workflow.create');
     expect(seen[0]?.system).toContain('workflow-1');
     expect(seen[0]?.system).toContain('lifecycle');
+    expect(seen[0]?.system).toContain('capability ID');
+    expect(seen[0]?.system).toContain('rdb.schema.describe');
     expect(seen[1]?.messages?.at(-1)?.content).toContain('AX command result');
   });
 
@@ -177,6 +215,297 @@ describe('runAxCommandChat', () => {
     expect(reply).not.toContain('ui.present');
     expect(presentations).toEqual([{ title: '실행 방식을 선택해 주세요' }]);
     expect(seen[1]?.messages?.at(-1)?.content).toContain('AX command result');
+  });
+
+  it('publishes a structured target card when a job needs HTTP and Slack selections', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+      ],
+    });
+    store.setConnection('slack', true);
+    const chat = store.saveWorkspaceChat({ messages: [] });
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async () => ({
+          tool: 'capabilities.invoke',
+          ok: true,
+          data: { data: { channels: [{ id: 'C_OPERATIONS', name: '운영' }] } },
+        }),
+      },
+    });
+    const presentations: import('./schema.js').AxUiPresentation[] = [];
+    const seen: StructuredGenerateInput<unknown>[] = [];
+
+    const reply = await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([{
+        kind: 'command',
+        command: {
+          name: 'job.propose',
+          args: {
+            name: '결제 주문 공유',
+            goal: '결제 완료 주문을 요약해 공유한다',
+            fetch: { method: 'GET', path: '/api/v1/orders?status=paid' },
+            notify: { connector: 'slack' },
+          },
+        },
+      }], seen)),
+      commandService: service,
+      messages: [],
+      userMessage: '결제 완료 주문을 정리해서 팀에 공유해줘',
+      workspaceSessionId: chat.id,
+      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+
+    expect(reply).toContain('HTTP 연결과 Slack 채널');
+    expect(seen).toHaveLength(1);
+    expect(presentations).toHaveLength(1);
+    expect(presentations[0]).toMatchObject({
+      title: '공유 대상 선택',
+      inputs: [
+        {
+          id: 'job-http-connection',
+          options: [
+            { value: 'test', label: '테스트 HTTP 연결' },
+            { value: 'github', label: '깃허브 연결' },
+          ],
+        },
+        { id: 'job-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
+      ],
+      actions: [{ label: '선택하고 공유안 검토' }],
+    });
+  });
+
+  it('publishes a structured target card when a one-shot share needs HTTP and Slack selections', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+      ],
+    });
+    store.setConnection('slack', true);
+    const chat = store.saveWorkspaceChat({ messages: [] });
+    const service = new AxCommandService(store, {
+      enqueueOnce: () => ({ jobId: 'job-1' }),
+      readGateway: {
+        execute: async () => ({
+          tool: 'capabilities.invoke',
+          ok: true,
+          data: { data: { channels: [{ id: 'C_OPERATIONS', name: '운영' }] } },
+        }),
+      },
+    });
+    const presentations: import('./schema.js').AxUiPresentation[] = [];
+    const seen: StructuredGenerateInput<unknown>[] = [];
+
+    const reply = await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([{
+        kind: 'command',
+        command: {
+          name: 'execution.enqueue_once',
+          args: {
+            name: '결제 주문 공유',
+            goal: '결제 완료 주문을 요약해 Slack으로 공유한다',
+            steps: [
+              {
+                type: 'action',
+                id: 'fetch',
+                connector: 'http',
+                action: 'request',
+                params: { method: 'GET', path: '/api/v1/orders?status=paid' },
+              },
+              {
+                type: 'action',
+                id: 'notify',
+                connector: 'slack',
+                action: 'message.send',
+                params: { text: '결제 완료 주문 요약' },
+              },
+            ],
+          },
+        },
+      }], seen)),
+      commandService: service,
+      messages: [],
+      userMessage: '결제된 주문 중 큰 금액을 팀에 공유해줘',
+      workspaceSessionId: chat.id,
+      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+
+    expect(reply).toContain('연결과 채널');
+    expect(seen).toHaveLength(1);
+    expect(presentations).toHaveLength(1);
+    expect(presentations[0]).toMatchObject({
+      title: '공유 대상 선택',
+      inputMode: 'batch',
+      inputs: [
+        { id: 'execution-http-connection' },
+        { id: 'execution-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
+      ],
+      actions: [{ id: 'review_execution_targets', label: '선택하고 실행안 검토' }],
+    });
+  });
+
+  it('keeps dynamic HTTP selection inside the command and presentation protocol', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'alpha-api', label: 'Alpha API', baseUrl: 'https://alpha.example.com/', authType: 'none' },
+        { id: 'beta-api', label: 'Beta API', baseUrl: 'https://beta.example.com/', authType: 'none' },
+      ],
+    });
+    const service = new AxCommandService(store);
+    const presentations: import('./schema.js').AxUiPresentation[] = [];
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const harness = new AgentHarness(
+      scriptedModel([
+        { kind: 'command', command: { name: 'http.list', args: {} } },
+        {
+          kind: 'command',
+          command: {
+            name: 'ui.present',
+            args: {
+              title: 'HTTP 연결 선택',
+              subtitle: '조회할 연결을 선택해 주세요.',
+              blocks: [{ type: 'steps', items: ['Alpha API (alpha-api)', 'Beta API (beta-api)'] }],
+              actions: [
+                { id: 'alpha', label: 'Alpha API', value: 'HTTP 연결 ID alpha-api를 사용해줘' },
+                { id: 'beta', label: 'Beta API', value: 'HTTP 연결 ID beta-api를 사용해줘' },
+              ],
+            },
+          },
+        },
+        { kind: 'reply', message: '조회할 연결을 선택해 주세요.' },
+      ], seen),
+    );
+
+    const reply = await runAxCommandChat({
+      harness,
+      commandService: service,
+      messages: [],
+      userMessage: 'GET /api/v1/orders?status=paid 를 조회해줘. 외부 데이터 변경은 하지 마.',
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+
+    expect(reply).toContain('연결');
+    expect(seen).toHaveLength(3);
+    expect(seen[1]?.messages?.some((message) => message.content.includes('"http.list"'))).toBe(true);
+    expect(presentations).toHaveLength(1);
+    expect(presentations[0]).toMatchObject({
+      title: 'HTTP 연결 선택',
+      actions: [
+        { label: 'Alpha API', value: 'HTTP 연결 ID alpha-api를 사용해줘' },
+        { label: 'Beta API', value: 'HTTP 연결 ID beta-api를 사용해줘' },
+      ],
+    });
+    expect(JSON.stringify(presentations)).not.toContain('alpha.example.com');
+  });
+
+  it('does not add a chooser card when the user only asks to inspect connections', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+      ],
+    });
+    const presentations: import('./schema.js').AxUiPresentation[] = [];
+    const harness = new AgentHarness(
+      scriptedModel([
+        { kind: 'command', command: { name: 'http.list', args: {} } },
+        { kind: 'reply', message: '저장된 HTTP 연결 2개를 확인했습니다.' },
+      ], []),
+    );
+
+    await runAxCommandChat({
+      harness,
+      commandService: new AxCommandService(store),
+      messages: [],
+      userMessage: '저장된 HTTP 연결을 모두 목록으로 보여줘.',
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+
+    expect(presentations).toEqual([]);
+  });
+
+  it('uses the selected chooser action as an explicit connection on the next turn', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+      ],
+    });
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const readCalls: Array<{ args: Record<string, unknown> }> = [];
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async (request) => {
+          readCalls.push({ args: request.args });
+          return { tool: 'capabilities.invoke', ok: true, data: { status: 200, body: '[]' } };
+        },
+      },
+    });
+    const firstPresentations: import('./schema.js').AxUiPresentation[] = [];
+    await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([
+        { kind: 'command', command: { name: 'http.list', args: {} } },
+        {
+          kind: 'command',
+          command: {
+            name: 'ui.present',
+            args: {
+              title: 'HTTP 연결 선택',
+              actions: [
+                { id: 'github', label: '깃허브 연결', value: 'HTTP 연결 ID github를 사용해줘' },
+                { id: 'test', label: '테스트 HTTP 연결', value: 'HTTP 연결 ID test를 사용해줘' },
+              ],
+            },
+          },
+        },
+        { kind: 'reply', message: '연결을 선택해 주세요.' },
+      ], [])),
+      commandService: service,
+      messages: [],
+      userMessage: 'GET /api/v1/orders?status=paid 를 조회해줘.',
+      onPresentation: (presentation) => firstPresentations.push(presentation),
+    });
+
+    const selected = firstPresentations[0]?.actions.find((action) => action.label === '테스트 HTTP 연결');
+    expect(selected?.value).toBe('HTTP 연결 ID test를 사용해줘');
+
+    await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([
+        { kind: 'command', command: { name: 'capability.invoke', args: {
+          id: 'http.request',
+          params: { method: 'GET', path: '/api/v1/orders?status=paid', connectionId: 'test' },
+        } } },
+        { kind: 'reply', message: '테스트 HTTP 연결로 조회했습니다.' },
+      ], seen)),
+      commandService: service,
+      messages: [
+        { role: 'user', content: 'GET /api/v1/orders?status=paid 를 조회해줘.' },
+        { role: 'assistant', content: '조회할 연결을 선택해 주세요.' },
+      ],
+      userMessage: selected!.value,
+    });
+
+    expect(readCalls).toEqual([{
+      args: {
+        id: 'http.request',
+        params: { method: 'GET', path: '/api/v1/orders?status=paid', connectionId: 'test' },
+      },
+    }]);
   });
 
   it('injects only the current session source manifest into the agent prompt', async () => {

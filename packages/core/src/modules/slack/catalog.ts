@@ -33,7 +33,7 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     description: '채널 최근 메시지 읽기',
     sideEffect: 'NONE',
     params: [
-      { name: 'channel', label: 'Slack 채널', question: '어떤 채널을 읽을까요?', required: true },
+      { name: 'channel', label: 'Slack 채널', question: '어떤 채널을 읽을까요?', required: true, inputType: 'slack_channel', placeholder: '#채널명 또는 채널 ID' },
       { name: 'limit', label: '개수', question: '몇 건까지 볼까요?', required: false },
     ],
     io: { inputs: {}, outputs: { messages: 'TableArtifact' } },
@@ -45,8 +45,9 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     label: 'Slack 메시지',
     description: 'Slack 채널에 메시지 전송',
     sideEffect: 'EXTERNAL',
+    notification: true,
     params: [
-      { name: 'channel', label: 'Slack 채널', question: 'Slack 채널은 어디인가요?', required: true },
+      { name: 'channel', label: 'Slack 채널', question: 'Slack 채널은 어디인가요?', required: true, inputType: 'slack_channel', placeholder: '#채널명 또는 채널 ID', displayInSummary: true, displayInApproval: true },
       { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: true },
     ],
     io: { inputs: { text: 'TextArtifact' }, outputs: { message: 'SlackMessageRef' } },
@@ -57,7 +58,7 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     kind: 'trigger',
     label: 'Slack 새 메시지',
     description: 'Slack 채널 새 메시지 도착 시 업무 시작',
-    params: [{ name: 'channel', label: 'Slack 채널', question: '어떤 Slack 채널을 감시할까요?', required: true }],
+    params: [{ name: 'channel', label: 'Slack 채널', question: '어떤 Slack 채널을 감시할까요?', required: true, inputType: 'slack_channel', placeholder: '#채널명 또는 채널 ID' }],
     io: { inputs: {}, outputs: { message: 'SlackMessageRef' } },
   },
 ];

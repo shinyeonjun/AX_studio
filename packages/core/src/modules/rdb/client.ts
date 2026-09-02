@@ -72,7 +72,15 @@ function quoteTableRef(ref: RdbTableRef, quote: '"' | '`'): string {
 export async function openRdbSqlClient(config: RdbConnectionConfig): Promise<RdbSqlClient> {
   if (config.type === 'postgres' && config.connectionString) {
     const pg = await import('pg');
-    const client = new pg.default.Client({ connectionString: config.connectionString });
+    const types = {
+      getTypeParser(oid: number, format?: 'text' | 'binary') {
+        if (oid === pg.default.types.builtins.DATE && format !== 'binary') {
+          return (value: string) => value;
+        }
+        return pg.default.types.getTypeParser(oid, format);
+      },
+    };
+    const client = new pg.default.Client({ connectionString: config.connectionString, types });
     try {
       await client.connect();
     } catch (error) {

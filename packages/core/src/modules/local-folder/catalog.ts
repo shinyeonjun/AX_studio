@@ -9,7 +9,7 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
     label: '새 파일',
     description: '연결 폴더에 새 파일이 생기면 업무 시작',
     params: [
-      { name: 'folderId', label: '연결 폴더', question: '어떤 폴더를 감시할까요?', required: true },
+      { name: 'folderId', label: '연결 폴더', question: '어떤 폴더를 감시할까요?', required: true, inputType: 'folder', placeholder: '연결된 폴더를 선택하세요' },
       {
         name: 'extensions',
         label: '파일 형식',
@@ -26,7 +26,7 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
     label: '폴더 목록',
     description: '연결 폴더의 파일 목록 조회',
     sideEffect: 'NONE',
-    params: [{ name: 'folderId', label: '폴더', question: '어떤 연결 폴더를 볼까요?', required: false }],
+    params: [{ name: 'folderId', label: '폴더', question: '어떤 연결 폴더를 볼까요?', required: false, inputType: 'folder', placeholder: '연결된 폴더를 선택하세요' }],
   },
   {
     id: 'local_folder.read',
@@ -36,7 +36,7 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
     description: '연결 폴더의 파일 읽기',
     sideEffect: 'NONE',
     params: [
-      { name: 'folderId', label: '폴더', question: '어떤 연결 폴더인가요?', required: false },
+      { name: 'folderId', label: '폴더', question: '어떤 연결 폴더인가요?', required: false, inputType: 'folder', placeholder: '연결된 폴더를 선택하세요' },
       { name: 'path', label: '파일 경로', question: '어떤 파일을 읽을까요?', required: true },
     ],
     io: { inputs: { file: 'FileRef' }, outputs: { file: 'FileRef' } },

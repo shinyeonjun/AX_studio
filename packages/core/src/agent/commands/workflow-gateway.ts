@@ -2,7 +2,9 @@ import {
   capabilityActionName,
   resolveCapability,
 } from '../../catalog/capability-graph.js';
-import { actionRefFor } from '../../workflow/action-definition.js';
+import { httpEndpointsFromConnections } from '../../modules/http/connection.js';
+import { actionDefinitionFromCapability, actionRefFor } from '../../workflow/action-definition.js';
+import { resolveEffectiveSideEffect } from '../../workflow/side-effect-resolve.js';
 import {
   validateWorkflowContracts,
   type ContractValidationIssue,
@@ -23,15 +25,27 @@ import {
   AxWorkflowUpdateArgsSchema,
   type AxCommand,
   type AxCommandIssue,
+  type AxInputRequest,
   type AxCommandName,
   type AxCommandResult,
 } from './schema.js';
+import {
+  httpConnectionInput,
+  slackChannelInput,
+  targetSelectionPresentation,
+  type ListSlackChannels,
+} from './job-registration.js';
 
 export type AxWorkflowCommandResult = [
   AxCommandResult['status'],
   unknown,
   AxCommandIssue[]?,
 ];
+
+export interface AxEnqueueOnceOptions {
+  workspaceSessionId?: string;
+  listSlackChannels?: ListSlackChannels;
+}
 
 export interface AxWorkflowCommandGateway {
   list(): unknown;
@@ -41,14 +55,14 @@ export interface AxWorkflowCommandGateway {
   update(command: AxCommand): AxWorkflowCommandResult;
   delete(command: AxCommand): AxWorkflowCommandResult;
   run(command: AxCommand): Promise<AxWorkflowCommandResult>;
-  enqueueOnce(command: AxCommand): Promise<AxWorkflowCommandResult>;
+  enqueueOnce(command: AxCommand, options?: AxEnqueueOnceOptions): Promise<AxWorkflowCommandResult>;
 }
 
 export function createWorkflowCommandGateway(
   store: WorkflowStore,
   options: {
     runWorkflow?: (workflowId: string) => Promise<unknown>;
-    enqueueOnce?: (workflow: WorkflowIR) => Promise<unknown> | unknown;
+    enqueueOnce?: (workflow: WorkflowIR, options?: { workspaceSessionId?: string }) => Promise<unknown> | unknown;
   } = {},
 ): AxWorkflowCommandGateway {
   return {
@@ -59,7 +73,7 @@ export function createWorkflowCommandGateway(
     update: (command) => updateWorkflow(store, command),
     delete: (command) => deleteWorkflow(store, command),
     run: (command) => runWorkflow(store, options.runWorkflow, command),
-    enqueueOnce: (command) => enqueueOnce(store, options.enqueueOnce, command),
+    enqueueOnce: (command, enqueueOptions) => enqueueOnce(store, options.enqueueOnce, command, enqueueOptions),
   };
 }
 
@@ -87,7 +101,12 @@ async function runWorkflow(
 function inspectWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCommandResult {
   const workflowId = textArg(command, 'workflowId');
   if (!workflowId) {
-    return ['invalid', undefined, [issue('missing_argument', 'workflowId가 필요합니다.', 'args.workflowId')]];
+    return ['invalid', undefined, [issue(
+      'missing_argument',
+      'workflowId가 필요합니다.',
+      'args.workflowId',
+      [requiredTextInput('workflowId', '워크플로우', '확인할 워크플로우 id를 입력해 주세요.')],
+    )]];
   }
   const workflow = store.getWorkflow(workflowId);
   if (!workflow) {
@@ -100,7 +119,12 @@ function inspectWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCo
 function validateWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCommandResult {
   const workflowId = textArg(command, 'workflowId');
   if (!workflowId) {
-    return ['invalid', undefined, [issue('missing_argument', 'workflowId가 필요합니다.', 'args.workflowId')]];
+    return ['invalid', undefined, [issue(
+      'missing_argument',
+      'workflowId가 필요합니다.',
+      'args.workflowId',
+      [requiredTextInput('workflowId', '워크플로우', '검증할 워크플로우 id를 입력해 주세요.')],
+    )]];
   }
   const workflow = store.getWorkflow(workflowId);
   if (!workflow) {
@@ -118,13 +142,32 @@ function createWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCom
 
 async function enqueueOnce(
   store: WorkflowStore,
-  enqueueCallback: ((workflow: WorkflowIR) => Promise<unknown> | unknown) | undefined,
+  enqueueCallback: ((workflow: WorkflowIR, options?: { workspaceSessionId?: string }) => Promise<unknown> | unknown) | undefined,
   command: AxCommand,
+  options: AxEnqueueOnceOptions = {},
 ): Promise<AxWorkflowCommandResult> {
   const candidate = candidateFromCreateCommand(command, AxExecutionEnqueueOnceArgsSchema);
   if (!candidate.ok) return candidate.result;
   if (!enqueueCallback) {
     return ['error', undefined, [issue('ephemeral_runner_unavailable', '일회 실행 큐가 연결되지 않았습니다.')]];
+  }
+
+  const targetInputs = await oneShotTargetInputs(store, candidate.value, options.listSlackChannels);
+  if (targetInputs.length > 0) {
+    return [
+      'needs_input',
+      {
+        queued: false,
+        pending: true,
+        message: '조회와 외부 공유에 사용할 연결과 채널을 선택해 주세요. 선택 후 실행안을 먼저 검토합니다.',
+        presentation: targetSelectionPresentation(targetInputs, {
+          actionId: 'review_execution_targets',
+          actionLabel: '선택하고 실행안 검토',
+          actionValue: '선택한 연결과 채널로 실행안을 검토해줘',
+        }),
+      },
+      [issue('execution_targets_required', '일회 실행에 사용할 연결과 공유 채널을 먼저 선택해야 합니다.')],
+    ];
   }
 
   const validation = validateIR(store, candidate.value);
@@ -133,11 +176,46 @@ async function enqueueOnce(
   }
 
   try {
-    const queued = await enqueueCallback(candidate.value);
+    const queued = await enqueueCallback(candidate.value, {
+      workspaceSessionId: options.workspaceSessionId,
+    });
     return ['queued', { ...asRecord(queued), queued: true, ephemeral: true }];
   } catch (error) {
     return ['error', undefined, [issue('ephemeral_enqueue_failed', error instanceof Error ? error.message : String(error))]];
   }
+}
+
+function hasConfiguredParam(
+  step: Extract<Step, { type: 'action' }>,
+  name: string,
+): boolean {
+  if (step.bindings?.[name]) return true;
+  const value = step.params[name];
+  return value != null && (typeof value !== 'string' || value.trim().length > 0);
+}
+
+async function oneShotTargetInputs(
+  store: WorkflowStore,
+  workflow: WorkflowIR,
+  listSlackChannels?: ListSlackChannels,
+): Promise<AxInputRequest[]> {
+  const actions = workflow.steps.filter(
+    (step): step is Extract<Step, { type: 'action' }> => step.type === 'action',
+  );
+  const endpoints = httpEndpointsFromConnections(store.getConnections());
+  const needsHttpSelection = endpoints.length > 1 && actions.some(
+    (step) => step.connector === 'http' && !hasConfiguredParam(step, 'connectionId'),
+  );
+  const needsSlackSelection = actions.some((step) => {
+    const capability = resolveCapability(step.connector, step.action);
+    const channelParam = capability?.params?.find((param) => param.name === 'channel' && param.inputType === 'slack_channel');
+    return Boolean(capability?.notification && channelParam && !hasConfiguredParam(step, channelParam.name));
+  });
+
+  const inputs: AxInputRequest[] = [];
+  if (needsHttpSelection) inputs.push(httpConnectionInput(endpoints, 'execution-http-connection'));
+  if (needsSlackSelection) inputs.push(await slackChannelInput(listSlackChannels, 'execution-slack-channel'));
+  return inputs;
 }
 
 function candidateFromCreateCommand(
@@ -304,7 +382,7 @@ function normalizeStepInput(input: unknown):
       connector: capability.connector,
       action: capabilityActionName(capability),
       actionRef: actionRefFor(capability.connector, capabilityActionName(capability)),
-      sideEffect: capability.sideEffect ?? 'EXTERNAL',
+      sideEffect: resolveEffectiveSideEffect(actionDefinitionFromCapability(capability), parsed.data.params),
     },
   };
 }
@@ -366,8 +444,17 @@ function textArg(command: AxCommand, name: string): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
-function issue(code: string, message: string, path?: string): AxCommandIssue {
-  return { code, message, ...(path ? { path } : {}) };
+function issue(code: string, message: string, path?: string, inputRequests?: AxInputRequest[]): AxCommandIssue {
+  return {
+    code,
+    message,
+    ...(path ? { path } : {}),
+    ...(inputRequests?.length ? { inputRequests } : {}),
+  };
+}
+
+function requiredTextInput(id: string, label: string, reason: string): AxInputRequest {
+  return { id: `ax-input-${id}`, label, type: 'text', required: true, reason };
 }
 
 function statusForValidation(issues: ContractValidationIssue[]): AxCommandResult['status'] {
@@ -384,6 +471,18 @@ function mapContractIssue(entry: ContractValidationIssue): AxCommandIssue {
     message: entry.message,
     ...(entry.expected ? { expected: entry.expected } : {}),
     ...(entry.available ? { available: entry.available } : {}),
+    ...(entry.missingInputs?.length
+      ? {
+          inputRequests: entry.missingInputs.map((input, index) => ({
+            id: `ax-input-${entry.stepId ?? entry.code}-${input.name}-${index}`,
+            label: input.label,
+            type: input.inputType ?? 'text',
+            required: true,
+            ...(input.placeholder ? { placeholder: input.placeholder } : {}),
+            reason: input.question,
+          })),
+        }
+      : {}),
   };
 }
 

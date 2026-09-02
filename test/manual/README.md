@@ -1,5 +1,10 @@
 # AX Studio 수동 테스트 픽스처
 
+REST와 Webhook을 한 번에 실제 앱으로 확인하려면 새 통합 fixture인
+[`test/connector-lab/README.md`](../connector-lab/README.md)를 먼저 사용하세요.
+기존 문서의 REST/PostgreSQL fixture와 Webhook 단독 발신 도구도 호환성을 위해
+그대로 유지합니다.
+
 실제 앱을 켜 둔 채로 REST API와 PostgreSQL을 매번 새로 만들 필요 없이,
 한 명령으로 로컬 픽스처를 띄우고 끝나면 깨끗하게 정리합니다. Webhook은
 앱의 로컬 수신 리스너로 보내는 전용 발신 도구를 제공합니다.

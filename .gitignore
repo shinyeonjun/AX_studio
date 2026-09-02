@@ -11,7 +11,10 @@ tmp/
 # Local Cursor / editor instructions at repo root (repo에 올리지 않음)
 /AGENTS.md
 .cursor/
-
+CONTEXT.md
+.impeccable/
+.codex/
+test/
 # Local secrets and machine-specific config — never commit
 .env
 .env.*
@@ -54,6 +57,7 @@ Desktop.ini
 .idea/
 .vscode/
 *.swp
+.kiro/
 
 # Local document artifacts (runtime)
 .ax-studio/

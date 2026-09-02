@@ -31,16 +31,16 @@ function triggerSummary(trigger?: WorkflowIR['trigger']): string {
 
 function actionSummary(step: Extract<Step, { type: 'action' }>): string {
   const cap = resolveCapability(step.connector, step.action);
-  if (cap?.id === 'gmail.message.send') {
-    const to = step.params.to ? String(step.params.to) : '';
-    const subject = step.params.subject ? String(step.params.subject) : '';
-    if (to && subject) return `Gmail로 ${to}에 「${subject}」 메일 보내기`;
-    if (to) return `Gmail로 ${to}에 메일 보내기`;
-    return 'Gmail 메일 보내기';
-  }
-  if (cap?.id === 'slack.message.send') {
-    const channel = step.params.channel ? String(step.params.channel) : '';
-    return channel ? `Slack ${channel}에 메시지 보내기` : 'Slack 메시지 보내기';
+  if (cap) {
+    const details = cap.params
+      .filter((param) => param.displayInSummary)
+      .map((param) => {
+        const value = step.params[param.name];
+        return value == null || typeof value === 'object' ? undefined : `${param.label}: ${String(value)}`;
+      })
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 2);
+    return details.length > 0 ? `${cap.label} (${details.join(', ')})` : cap.label;
   }
   const params = Object.entries(step.params)
     .slice(0, 2)

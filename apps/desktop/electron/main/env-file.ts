@@ -6,6 +6,7 @@ import { app } from 'electron';
 /** .env — 개발 전용 (Gmail OAuth client). 릴리즈 빌드에서는 사용하지 않음. */
 export const ENV_FILE_ALLOWED_KEYS = new Set([
   'GOOGLE_OAUTH_CLIENT_ID',
+  'GOOGLE_OAUTH_CLIENT_SECRET',
 ]);
 
 export function getEnvFilePath(): string {

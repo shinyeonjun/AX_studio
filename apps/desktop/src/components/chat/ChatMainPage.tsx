@@ -8,6 +8,7 @@ import { useWorkflowPanelWidth } from '../../hooks/useWorkflowPanelWidth';
 import type { WorkflowVisualNodeData } from '../../workflow/types';
 import { AxWorkspaceChat } from '../workspace/AxWorkspaceChat';
 import { WorkspaceContextPanel } from '../workspace/WorkspaceContextPanel';
+import { WorkspaceFlowPanel } from '../workspace/WorkspaceFlowPanel';
 import '../workspace/ax-workspace.css';
 
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
@@ -45,6 +46,31 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const workflowState = workspaceChat.workspaceWorkflowState;
   const title = workflowState?.title ?? 'AX Workspace';
   const showGraph = Boolean(workflowState);
+  const workflowPreview = showGraph ? (
+    <WorkflowPreviewPanel
+      draft={workflowState?.workflow}
+      baselineDraft={undefined}
+      completeness={workflowState?.completeness}
+      done
+      title={title}
+      selectedNode={selectedNode}
+      panelBusy={workspaceChat.busy}
+      onSelectNode={handleSelectNode}
+      onRequestEdit={workspaceChat.beginEditStep}
+      onCloseDetail={() => handleSelectNode(null)}
+    />
+  ) : undefined;
+  const flowPanel = (
+    <WorkspaceFlowPanel
+      messages={workspaceChat.displayMessages}
+      busy={workspaceChat.busy}
+      discoveryBusy={discovery.busy}
+      progress={discovery.view?.progress || workspaceChat.progress}
+      error={workspaceChat.error || discovery.error}
+      discovery={discovery.view ?? undefined}
+      workflow={workflowState}
+    />
+  );
 
   const chatBlock = (
     <div className="work-conversation-chat">
@@ -70,6 +96,8 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         discoveryView={discovery.view ?? undefined}
         discoveryBusy={discovery.busy}
         onSend={workspaceChat.sendMessage}
+        onApproveApproval={workspaceChat.approveChatApproval}
+        onRejectApproval={workspaceChat.rejectChatApproval}
         onDismissError={() => {
           workspaceChat.dismissError();
           discovery.dismissError();
@@ -106,20 +134,9 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
             sources={workspaceChat.workspaceSources}
             sourceBusy={workspaceChat.sourceBusy}
             onAttachSource={workspaceChat.attachWorkspaceSource}
-            workflow={showGraph ? (
-              <WorkflowPreviewPanel
-                draft={workflowState?.workflow}
-                baselineDraft={undefined}
-                completeness={workflowState?.completeness}
-                done
-                title={title}
-                selectedNode={selectedNode}
-                panelBusy={workspaceChat.busy}
-                onSelectNode={handleSelectNode}
-                onRequestEdit={workspaceChat.beginEditStep}
-                onCloseDetail={() => handleSelectNode(null)}
-              />
-            ) : undefined}
+            flow={flowPanel}
+            workflow={workflowPreview}
+            workflowAvailable={showGraph}
           />
         }
       />

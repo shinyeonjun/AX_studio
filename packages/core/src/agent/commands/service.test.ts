@@ -90,6 +90,7 @@ describe('AxCommandService', () => {
     expect(response.data).toMatchObject({
       commands: expect.arrayContaining([
         expect.objectContaining({ name: 'resource.list', mutates: false }),
+        expect.objectContaining({ name: 'http.list', lifecycle: 'read', mutates: false }),
         expect.objectContaining({ name: 'workflow.validate', mutates: false }),
         expect.objectContaining({ name: 'ui.present', mutates: false }),
       ]),
@@ -99,6 +100,89 @@ describe('AxCommandService', () => {
     expect(commandNames).not.toContain('workflow.create');
     expect(commandNames).not.toContain('workflow.run');
     expect(JSON.stringify(response.data)).not.toContain('powershell');
+  });
+
+  it('lists every saved HTTP endpoint with explicit selection metadata and no credentials', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        {
+          id: 'default',
+          label: 'GitHub',
+          baseUrl: 'https://api.github.com/',
+          authType: 'none',
+        },
+        {
+          id: 'test',
+          label: '테스트 REST',
+          baseUrl: 'http://127.0.0.1:4820/',
+          authType: 'bearer',
+          authStored: true,
+          token: 'bearer-token-must-not-leak',
+          password: 'password-must-not-leak',
+        },
+        {
+          id: 'secure',
+          label: '보호된 API',
+          baseUrl: 'https://api-user:base-password@example.com/v1?api_key=query-secret',
+          authType: 'apiKey',
+          authStored: false,
+          authHeader: 'X-API-Key',
+          token: 'api-key-must-not-leak',
+        },
+      ],
+    });
+    const service = new AxCommandService(store);
+
+    const response = await service.execute({ name: 'http.list' });
+
+    expect(response).toMatchObject({
+      command: 'http.list',
+      status: 'ok',
+      data: {
+        count: 3,
+        requiresExplicitConnectionId: true,
+        connections: [
+          {
+            id: 'default',
+            label: 'GitHub',
+            baseUrl: 'https://api.github.com/',
+            authType: 'none',
+            authStored: false,
+            authReady: true,
+            connected: true,
+            usable: true,
+          },
+          {
+            id: 'test',
+            label: '테스트 REST',
+            baseUrl: 'http://127.0.0.1:4820/',
+            authType: 'bearer',
+            authStored: true,
+            authReady: true,
+            connected: true,
+            usable: true,
+          },
+          {
+            id: 'secure',
+            label: '보호된 API',
+            baseUrl: 'https://example.com/v1',
+            authType: 'apiKey',
+            authStored: false,
+            authReady: false,
+            connected: true,
+            usable: false,
+          },
+        ],
+      },
+    });
+    const serialized = JSON.stringify(response);
+    expect(serialized).not.toContain('bearer-token-must-not-leak');
+    expect(serialized).not.toContain('password-must-not-leak');
+    expect(serialized).not.toContain('api-key-must-not-leak');
+    expect(serialized).not.toContain('base-password');
+    expect(serialized).not.toContain('query-secret');
   });
 
   it('exposes command lifecycle instead of requiring a user-selected execution mode', async () => {
@@ -238,6 +322,81 @@ describe('AxCommandService', () => {
         expect.objectContaining({ connector: 'slack', connection: 'ready' }),
       ]),
     });
+  });
+
+  it('preserves bounded read failure details in command issues', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const readGateway: AxCommandReadGateway = {
+      execute: async () => ({
+        tool: 'capabilities.invoke',
+        ok: false,
+        error: 'http_401',
+        errorDetails: {
+          status: 401,
+          statusText: 'Unauthorized',
+          body: '{"error":"unauthorized","hint":"configure the documented lab credential"}',
+          truncated: false,
+        },
+      }),
+    };
+    const service = new AxCommandService(new WorkflowStore(db), { readGateway });
+
+    const response = await service.execute({
+      name: 'capability.invoke',
+      args: { id: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
+    }, {
+      ...commandChatContext,
+      designToolContext: { connections: [], connectedConnectorIds: [], allowUntrustedData: true },
+    });
+
+    expect(response).toMatchObject({
+      command: 'capability.invoke',
+      status: 'error',
+      issues: [{
+        code: 'http_401',
+        details: {
+          status: 401,
+          statusText: 'Unauthorized',
+          body: '{"error":"unauthorized","hint":"configure the documented lab credential"}',
+          truncated: false,
+        },
+      }],
+    });
+  });
+
+  it('strips response headers and caps provider details at the command boundary', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const readGateway: AxCommandReadGateway = {
+      execute: async () => ({
+        tool: 'capabilities.invoke',
+        ok: false,
+        error: 'http_401',
+        errorDetails: {
+          status: 401,
+          statusText: 'u'.repeat(121),
+          body: 'x'.repeat(4_001),
+          truncated: false,
+          headers: { authorization: 'Bearer should-not-cross-the-boundary' },
+        },
+      }),
+    };
+    const service = new AxCommandService(new WorkflowStore(db), { readGateway });
+
+    const response = await service.execute({
+      name: 'capability.invoke',
+      args: { id: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
+    }, {
+      ...commandChatContext,
+      designToolContext: { connections: [], connectedConnectorIds: [], allowUntrustedData: true },
+    });
+
+    expect(response.issues[0]?.details).toEqual({
+      status: 401,
+      statusText: 'u'.repeat(120),
+      body: 'x'.repeat(4_000),
+      truncated: true,
+    });
+    expect(JSON.stringify(response)).not.toContain('should-not-cross-the-boundary');
   });
 
   it('does not enter the source read gateway for workflow-only commands', async () => {
@@ -466,6 +625,149 @@ describe('AxCommandService', () => {
     });
     expect(queued).toHaveLength(1);
     expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('returns one typed target card before queueing a one-shot external share', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+      ],
+    });
+    store.setConnection('slack', true);
+    const queued: unknown[] = [];
+    const service = new AxCommandService(store, {
+      enqueueOnce: (workflow) => {
+        queued.push(workflow);
+        return { jobId: 'job-1' };
+      },
+      readGateway: {
+        execute: async () => ({
+          tool: 'capabilities.invoke',
+          ok: true,
+          data: { data: { channels: [{ id: 'C_OPERATIONS', name: '운영' }] } },
+        }),
+      },
+    });
+
+    const response = await service.execute({
+      name: 'execution.enqueue_once',
+      args: {
+        name: '결제 주문 공유',
+        goal: '결제 완료 주문을 요약해 Slack으로 공유한다',
+        steps: [
+          {
+            type: 'action',
+            id: 'fetch',
+            connector: 'http',
+            action: 'request',
+            params: { method: 'GET', path: '/api/v1/orders?status=paid' },
+          },
+          {
+            type: 'action',
+            id: 'notify',
+            connector: 'slack',
+            action: 'message.send',
+            params: { text: '결제 완료 주문 요약' },
+          },
+        ],
+      },
+    }, {
+        ...commandChatContext,
+        designToolContext: {
+          connections: store.getConnections(),
+          connectedConnectorIds: ['http', 'slack'],
+          connectors: {},
+        },
+      });
+
+    expect(response).toMatchObject({
+      command: 'execution.enqueue_once',
+      status: 'needs_input',
+      data: {
+        queued: false,
+        pending: true,
+        presentation: {
+          title: '공유 대상 선택',
+          inputs: [
+            {
+              id: 'execution-http-connection',
+              options: [
+                { value: 'test', label: '테스트 HTTP 연결' },
+                { value: 'github', label: '깃허브 연결' },
+              ],
+            },
+            { id: 'execution-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
+          ],
+          actions: [{ id: 'review_execution_targets' }],
+        },
+      },
+    });
+    expect(queued).toHaveLength(0);
+  });
+
+  it('queues the selected one-shot targets with the originating chat session', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
+        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
+      ],
+    });
+    store.setConnection('slack', true);
+    const queued: Array<{ workflow: WorkflowIR; sessionId?: string }> = [];
+    const service = new AxCommandService(store, {
+      enqueueOnce: (workflow, options) => {
+        queued.push({ workflow, sessionId: options?.workspaceSessionId });
+        return { jobId: 'job-2' };
+      },
+    });
+
+    const response = await service.execute({
+      name: 'execution.enqueue_once',
+      args: {
+        name: '선택된 주문 공유',
+        goal: '선택된 연결과 채널로 한 번 공유한다',
+        steps: [
+          {
+            type: 'action',
+            id: 'fetch',
+            connector: 'http',
+            action: 'request',
+            params: {
+              method: 'GET',
+              connectionId: 'test',
+              path: '/api/v1/orders?status=paid',
+            },
+          },
+          {
+            type: 'action',
+            id: 'notify',
+            connector: 'slack',
+            action: 'message.send',
+            params: { channel: 'C_OPERATIONS', text: '결제 완료 주문 요약' },
+          },
+        ],
+      },
+    }, {
+        ...commandChatContext,
+        workspaceSessionId: 'chat-1',
+      });
+
+    expect(response).toMatchObject({
+      command: 'execution.enqueue_once',
+      status: 'queued',
+      data: { queued: true, ephemeral: true, jobId: 'job-2' },
+    });
+    expect(queued).toHaveLength(1);
+    expect(queued[0]?.sessionId).toBe('chat-1');
+    expect(queued[0]?.workflow.steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'fetch', params: expect.objectContaining({ connectionId: 'test' }) }),
+      expect.objectContaining({ id: 'notify', params: expect.objectContaining({ channel: 'C_OPERATIONS' }) }),
+    ]));
   });
 
   it('runs a saved workflow through the command lifecycle', async () => {

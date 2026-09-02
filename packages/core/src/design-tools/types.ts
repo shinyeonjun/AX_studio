@@ -137,6 +137,8 @@ export interface DesignToolResult {
   ok: boolean;
   data?: unknown;
   error?: string;
+  /** Bounded, untrusted provider error details exposed only to opted-in local callers. */
+  errorDetails?: unknown;
 }
 
 export type DesignToolHandler = (

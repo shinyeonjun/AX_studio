@@ -152,6 +152,7 @@ export class WorkflowRuntime {
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
       irJson: JSON.stringify(workflowIr),
+      workspaceSessionId: options.workspaceSessionId,
     });
     this.notifyExecutionStarted(executionId);
 
@@ -243,6 +244,7 @@ export class WorkflowRuntime {
       ephemeral: options.ephemeral ?? false,
       triggerType: options.triggerType,
       irJson,
+      workspaceSessionId: options.workspaceSessionId,
     });
     this.notifyExecutionStarted(executionId);
     const log: ExecutionLogEntry[] = [{
@@ -402,7 +404,11 @@ export class WorkflowRuntime {
     }
   }
 
-  private notifyExecutionFinished(result: ExecutionResult): void {
+  /**
+   * Notifies host observers for completion paths that persist outside the
+   * normal executeWorkflow try/catch (for example manual preflight failures).
+   */
+  notifyExecutionFinished(result: ExecutionResult): void {
     try {
       this.config.onExecutionFinished?.(result);
     } catch {
@@ -479,7 +485,14 @@ export class WorkflowRuntime {
         message: '승인 재개에 필요한 실행 스냅샷이 없습니다.',
       }];
       this.config.store.finishExecution(execution.id, 'failed', 'invalid_execution_snapshot', log);
-      return { executionId: approval.executionId, status: 'failed', errorCode: 'invalid_execution_snapshot', log };
+      const result: ExecutionResult = {
+        executionId: approval.executionId,
+        status: 'failed',
+        errorCode: 'invalid_execution_snapshot',
+        log,
+      };
+      this.notifyExecutionFinished(result);
+      return result;
     }
     try {
       ir = parseWorkflowIR(JSON.parse(execution.irJson));
@@ -493,12 +506,14 @@ export class WorkflowRuntime {
         message: `승인 재개에 필요한 실행 스냅샷이 손상되었습니다: ${message}`,
       }];
       this.config.store.finishExecution(execution.id, 'failed', 'invalid_execution_snapshot', log);
-      return {
+      const result: ExecutionResult = {
         executionId: approval.executionId,
         status: 'failed',
         errorCode: 'invalid_execution_snapshot',
         log,
       };
+      this.notifyExecutionFinished(result);
+      return result;
     }
 
     let log: ExecutionLogEntry[];
@@ -515,12 +530,14 @@ export class WorkflowRuntime {
         message: `승인 재개에 필요한 실행 로그가 손상되었습니다: ${message}`,
       }];
       this.config.store.finishExecution(execution.id, 'failed', 'invalid_execution_log', failureLog);
-      return {
+      const result: ExecutionResult = {
         executionId: approval.executionId,
         status: 'failed',
         errorCode: 'invalid_execution_log',
         log: failureLog,
       };
+      this.notifyExecutionFinished(result);
+      return result;
     }
     const approvedActions = approval.actionIds.map((actionId) =>
       ir.steps.find(
@@ -536,12 +553,14 @@ export class WorkflowRuntime {
         message: '승인 대상 작업이 실행 스냅샷과 일치하지 않습니다.',
       }];
       this.config.store.finishExecution(execution.id, 'failed', 'invalid_approval_actions', failureLog);
-      return {
+      const result: ExecutionResult = {
         executionId: approval.executionId,
         status: 'failed',
         errorCode: 'invalid_approval_actions',
         log: failureLog,
       };
+      this.notifyExecutionFinished(result);
+      return result;
     }
     const resolvedApprovedActions = approvedActions.filter(
       (step): step is Extract<Step, { type: 'action' }> => Boolean(step),

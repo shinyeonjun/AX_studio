@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { AxInputRequest, AxUiPresentation, WorkspaceSourceRecord } from '@ax-studio/core';
+import type {
+  WorkspaceChatChangedEvent,
+  WorkspaceChatMessage,
+  WorkspaceSourceRecord,
+} from '@ax-studio/core';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
@@ -66,12 +70,7 @@ contextBridge.exposeInMainWorld('ax', {
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
   sendCommandChat: (
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>,
+    messages: WorkspaceChatMessage[],
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,
@@ -80,12 +79,7 @@ contextBridge.exposeInMainWorld('ax', {
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (
     id: string | undefined,
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>,
+    messages: WorkspaceChatMessage[],
     workflowId?: string | null,
   ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId),
   loadWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:loadWorkspaceChat', id),
@@ -118,6 +112,11 @@ contextBridge.exposeInMainWorld('ax', {
     ) => listener(payload);
     ipcRenderer.on('ax:workspace-source-changed', wrapped);
     return () => ipcRenderer.removeListener('ax:workspace-source-changed', wrapped);
+  },
+  onWorkspaceChatChanged: (listener: (event: WorkspaceChatChangedEvent) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: WorkspaceChatChangedEvent) => listener(payload);
+    ipcRenderer.on('ax:workspace-chat-changed', wrapped);
+    return () => ipcRenderer.removeListener('ax:workspace-chat-changed', wrapped);
   },
   importArtifact: () => ipcRenderer.invoke('ax:importArtifact'),
   discoveryStart: (payload: {

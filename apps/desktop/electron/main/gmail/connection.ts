@@ -13,7 +13,7 @@ import {
   type WorkflowRuntime,
 } from '@ax-studio/core';
 import { getCredentialStore } from '../credential-store.js';
-import { getGoogleOAuthCredentials } from './oauth.js';
+import { formatGmailOAuthError, getGoogleOAuthCredentials } from './oauth.js';
 
 function gmailConnection(store: WorkflowStore) {
   return store.getConnections().find((c) => c.connector === 'gmail');
@@ -62,10 +62,11 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
     return;
   }
 
-  const { clientId } = getGoogleOAuthCredentials();
+  const { clientId, clientSecret } = getGoogleOAuthCredentials();
   runtime.connectors.gmail = new GmailConnector(
     buildGmailConnectorConfig({
       clientId,
+      clientSecret,
       credential,
       email: record.account || undefined,
     }),
@@ -73,11 +74,17 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
 }
 
 export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowRuntime) {
-  const { clientId } = getGoogleOAuthCredentials();
-  const tokens = await connectGmailViaLoopback({
-    clientId,
-    onAuthUrl: (url) => shell.openExternal(url),
-  });
+  const { clientId, clientSecret } = getGoogleOAuthCredentials();
+  let tokens;
+  try {
+    tokens = await connectGmailViaLoopback({
+      clientId,
+      clientSecret,
+      onAuthUrl: (url) => shell.openExternal(url),
+    });
+  } catch (error) {
+    throw formatGmailOAuthError(error);
+  }
 
   const connectionId = randomUUID();
   const credentialRef = { connector: 'gmail' as const, connectionId };
@@ -85,6 +92,7 @@ export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowR
 
   const runtimeConfig = buildGmailConnectorConfig({
     clientId,
+    clientSecret,
     credential: {
       refreshToken: tokens.refreshToken!,
       accessToken: tokens.accessToken,

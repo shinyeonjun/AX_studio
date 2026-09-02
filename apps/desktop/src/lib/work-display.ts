@@ -1,14 +1,26 @@
+import { CONNECTOR_CATALOG, getCapability } from '@ax-studio/core/catalog-data';
 import type { WorkSummary } from '../types/app-state';
+
+function connectorLabel(connector: string): string {
+  return CONNECTOR_CATALOG[connector as keyof typeof CONNECTOR_CATALOG]?.label ?? connector;
+}
 export function isRecurringTriggerType(triggerType?: string | null): boolean {
-  return Boolean(triggerType && ['schedule', 'gmail.new_message', 'slack.new_message', 'local_folder.new_file'].includes(triggerType));
+  if (!triggerType || triggerType === 'manual' || triggerType === 'once') return false;
+  if (triggerType === 'schedule') return true;
+  return getCapability(triggerType)?.kind === 'trigger';
 }
 
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';
   if (trigger.type === 'schedule') return `반복 · ${trigger.schedule ?? ''}`;
   if (trigger.type === 'once') return '1회성';
-  if (trigger.type === 'gmail.new_message') return 'Gmail 새 메일';
-  if (trigger.type === 'slack.new_message') return 'Slack 새 메시지';
+  const capability = getCapability(trigger.type);
+  if (capability) {
+    const label = connectorLabel(capability.connector);
+    return capability.label.startsWith(label)
+      ? capability.label
+      : `${label} ${capability.label}`;
+  }
   return '수동 실행';
 }
 
@@ -35,8 +47,8 @@ export function executionTriggerLabel(triggerType?: string | null): string {
   if (!triggerType || triggerType === 'manual') return '수동 실행';
   if (triggerType === 'schedule') return '예약 실행';
   if (triggerType === 'once') return '1회성 실행';
-  if (triggerType === 'gmail.new_message') return 'Gmail 트리거';
-  if (triggerType === 'slack.new_message') return 'Slack 트리거';
+  const capability = getCapability(triggerType);
+  if (capability?.kind === 'trigger') return `${connectorLabel(capability.connector)} 트리거`;
   return triggerType;
 }
 

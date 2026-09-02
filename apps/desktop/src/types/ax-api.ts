@@ -1,4 +1,12 @@
-import type { AxInputRequest, AxUiPresentation, WorkspaceSourceRecord, AxCommandResult } from '@ax-studio/core';
+import type {
+  AxInputRequest,
+  AxUiPresentation,
+  WorkspaceChatChangedEvent,
+  WorkspaceSourceRecord,
+  AxCommandResult,
+  WorkspaceChatMessage,
+  WorkspaceChatRecord,
+} from '@ax-studio/core';
 import type { AiProviderState } from './app-state';
 import type {
   AiApiTestResult,
@@ -25,12 +33,7 @@ export interface AxApi {
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   sendCommandChat: (
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>,
+    messages: WorkspaceChatMessage[],
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,
@@ -57,49 +60,11 @@ export interface AxApi {
   >;
   saveWorkspaceChat: (
     id: string | undefined,
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>,
+    messages: WorkspaceChatMessage[],
     workflowId?: string | null,
-  ) => Promise<{
-    id: string;
-    title: string;
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>;
-    workflowId?: string;
-    updatedAt: string;
-  }>;
-  loadWorkspaceChat: (id: string) => Promise<{
-    id: string;
-    title: string;
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>;
-    workflowId?: string;
-    updatedAt: string;
-  }>;
-  loadWorkspaceChatByWorkflowId: (workflowId: string) => Promise<{
-    id: string;
-    title: string;
-    messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      inputRequests?: AxInputRequest[];
-      presentations?: AxUiPresentation[];
-    }>;
-    workflowId?: string;
-    updatedAt: string;
-  } | null>;
+  ) => Promise<WorkspaceChatRecord>;
+  loadWorkspaceChat: (id: string) => Promise<WorkspaceChatRecord>;
+  loadWorkspaceChatByWorkflowId: (workflowId: string) => Promise<WorkspaceChatRecord | null>;
   deleteWorkspaceChat: (id: string) => Promise<{ ok: boolean }>;
   listWorkspaceSources: (sessionId: string) => Promise<{
     ok: boolean;
@@ -177,6 +142,7 @@ export interface AxApi {
     sessionId: string;
     source: WorkspaceSourceRecord;
   }) => void) => () => void;
+  onWorkspaceChatChanged: (listener: (event: WorkspaceChatChangedEvent) => void) => () => void;
   importArtifact: () => Promise<
     | { ok: true; artifact: { id: string; fileName: string; storedPath: string; sha256: string; size: number; createdAt: string } }
     | { ok: false; canceled: true }

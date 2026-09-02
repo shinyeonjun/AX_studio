@@ -1,8 +1,18 @@
 import { CONNECTOR_CATALOG, type ConnectorId } from './connectors.js';
 import { CAPABILITY_CATALOG, type ConnectorCapability } from './capabilities.js';
 import { triggerCapabilityId } from './capability-contracts.js';
+import { listDynamicCapabilities } from './dynamic-catalog.js';
 export { resolveCapability } from './capability-resolver.js';
 import { resolveCapability } from './capability-resolver.js';
+
+function allCapabilities(): ConnectorCapability[] {
+  const seen = new Set<string>();
+  return [...listDynamicCapabilities(), ...CAPABILITY_CATALOG].filter((capability) => {
+    if (seen.has(capability.id)) return false;
+    seen.add(capability.id);
+    return true;
+  });
+}
 
 export function isConnectorAlwaysOn(connector: string): boolean {
   const entry = CONNECTOR_CATALOG[connector as ConnectorId];
@@ -11,17 +21,20 @@ export function isConnectorAlwaysOn(connector: string): boolean {
 }
 
 export function availableCapabilities(connectedConnectors: string[]): ConnectorCapability[] {
-  return CAPABILITY_CATALOG.filter(
+  return allCapabilities().filter(
     (cap) =>
-      CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true &&
+      (CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true ||
+        listDynamicCapabilities().some((dynamic) => dynamic.id === cap.id)) &&
       (isConnectorAlwaysOn(cap.connector) || connectedConnectors.includes(cap.connector)),
   );
 }
 
 /** Design-time catalog: packaged actions are visible before authentication. */
 export function designCapabilities(): ConnectorCapability[] {
-  return CAPABILITY_CATALOG.filter(
-    (cap) => CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true,
+  return allCapabilities().filter(
+    (cap) =>
+      CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true ||
+      listDynamicCapabilities().some((dynamic) => dynamic.id === cap.id),
   );
 }
 
@@ -42,6 +55,7 @@ export function formatCapabilitiesForPrompt(
           ? ', connection=required'
           : ', connection=ready';
       const risk = cap.sideEffect ? `, sideEffect=${cap.sideEffect}` : '';
+      const notification = cap.notification ? ', notification=true' : '';
       const readMethods = cap.readMethods?.length ? `, readMethods=${cap.readMethods.join('|')}` : '';
       const required = (cap.params ?? [])
         .filter((param) => param.required)
@@ -59,7 +73,7 @@ export function formatCapabilitiesForPrompt(
       const inputs = formatPorts(cap.io?.inputs);
       const outputs = formatPorts(cap.io?.outputs);
       const io = inputs || outputs ? `, inputs=[${inputs}], outputs=[${outputs}]` : '';
-      return `- ${cap.id}@1: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}, kind=${cap.kind}${connection}${risk}${readMethods}${req}${paramText}${io})`;
+      return `- ${cap.id}@1: ${cap.description} (connector=${cap.connector}, action=${capabilityActionName(cap)}, kind=${cap.kind}${connection}${risk}${notification}${readMethods}${req}${paramText}${io})`;
     })
     .join('\n');
 }

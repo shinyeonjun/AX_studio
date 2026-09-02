@@ -184,7 +184,7 @@ function WorkflowGraphInner({
         maxZoom={1.4}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={20} size={1} color="rgba(255,255,255,0.04)" />
+        <Background gap={20} size={1} color="var(--wf-grid-color)" />
         {expanded && <MiniMap pannable zoomable nodeStrokeWidth={2} className="wf-minimap" />}
         {expanded && <Controls showInteractive={false} className="wf-controls" />}
       </ReactFlow>

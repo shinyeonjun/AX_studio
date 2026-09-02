@@ -1,15 +1,24 @@
 import { ipcMain } from 'electron';
+import type { ExecutionLogEntry, ExecutionResult } from '@ax-studio/core';
 import { getCore } from '../core-instance.js';
 import { notifyStateChanged } from '../state-broadcast.js';
 
 function executionLogWithRejection(
   logJson: string | null | undefined,
-): unknown[] {
-  let log: unknown[] = [];
+): ExecutionLogEntry[] {
+  let log: ExecutionLogEntry[] = [];
   if (logJson) {
     try {
       const parsed = JSON.parse(logJson) as unknown;
-      if (Array.isArray(parsed)) log = parsed;
+      if (Array.isArray(parsed)) {
+        log = parsed.filter((entry): entry is ExecutionLogEntry => {
+          if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+          const candidate = entry as Record<string, unknown>;
+          return typeof candidate.at === 'string' &&
+            (candidate.level === 'info' || candidate.level === 'warn' || candidate.level === 'error') &&
+            typeof candidate.message === 'string';
+        });
+      }
     } catch {
       // Keep the cancellation auditable even when an older execution has a
       // malformed log. The original malformed payload must not block the
@@ -48,12 +57,20 @@ export function registerRuntimeHandlers() {
       throw new Error('Approval is already being processed or resolved');
     }
     const execution = core.store.getExecution(approval.executionId);
+    const rejectionLog = executionLogWithRejection(execution?.logJson);
     core.store.finishExecution(
       approval.executionId,
       'cancelled',
       'approval_rejected',
-      executionLogWithRejection(execution?.logJson),
+      rejectionLog,
     );
+    const rejectionResult: ExecutionResult = {
+      executionId: approval.executionId,
+      status: 'cancelled',
+      errorCode: 'approval_rejected',
+      log: rejectionLog,
+    };
+    core.runtime.notifyExecutionFinished(rejectionResult);
     notifyStateChanged();
     return { ok: true };
   });

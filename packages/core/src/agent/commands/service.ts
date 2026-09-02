@@ -10,7 +10,10 @@ import {
 } from '../../catalog/connectors.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
 import type { ArtifactStore } from '../../store/artifact-store.js';
-import { httpEndpointsFromConnections } from '../../modules/http/connection.js';
+import {
+  httpEndpointsFromConnections,
+  parseHttpEndpoints,
+} from '../../modules/http/connection.js';
 import {
   WorkspaceSourceError,
   type WorkspaceSourceService,
@@ -54,6 +57,7 @@ import {
   type AxCommand,
   type AxCommandDefinition,
   type AxCommandIssue,
+  type AxInputRequest,
   type AxCommandLifecycle,
   type AxCommandName,
   type AxCommandResult,
@@ -73,6 +77,13 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
     name: 'resource.list',
     lifecycle: 'read',
     description: '연결 상태를 노출하는 안전한 리소스 목록을 조회합니다.',
+    args: {},
+    mutates: false,
+  },
+  {
+    name: 'http.list',
+    lifecycle: 'read',
+    description: '저장된 HTTP REST 연결과 명시적 선택에 필요한 상태를 조회합니다. 인증 비밀은 반환하지 않습니다.',
     args: {},
     mutates: false,
   },
@@ -191,7 +202,7 @@ const COMMAND_DEFINITIONS: readonly AxCommandDefinition[] = [
   {
     name: 'execution.enqueue_once',
     lifecycle: 'ephemeral',
-    description: '검증된 계획을 저장하지 않고 일회 실행 큐에 등록합니다. 실행 결과는 activity와 approval 로그에 남습니다.',
+    description: '검증된 계획을 저장하지 않고 일회 실행 큐에 등록합니다. 원래 대화 세션이 있으면 진행·완료 결과를 대화에도 남기고 Activity와 approval 로그에도 기록합니다.',
     args: { name: '실행 이름', goal: '실행 목적', trigger: '선택적 trigger', steps: 'step input list' },
     mutates: true,
   },
@@ -328,8 +339,20 @@ function textArg(command: AxCommand, name: string): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
-function issue(code: string, message: string, path?: string): AxCommandIssue {
-  return { code, message, ...(path ? { path } : {}) };
+function issue(
+  code: string,
+  message: string,
+  path?: string,
+  details?: unknown,
+  inputRequests?: AxInputRequest[],
+): AxCommandIssue {
+  return {
+    code,
+    message,
+    ...(path ? { path } : {}),
+    ...(details === undefined ? {} : { details }),
+    ...(inputRequests?.length ? { inputRequests } : {}),
+  };
 }
 
 function result(
@@ -354,6 +377,41 @@ function boundedText(value: unknown, maxLength: number): string | undefined {
   if (typeof value !== 'string') return undefined;
   const text = value.trim();
   return text ? text.slice(0, maxLength) : undefined;
+}
+
+/** Keep saved endpoint metadata useful without echoing URL credentials/query secrets. */
+function safeHttpBaseUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return '[invalid base URL]';
+  }
+}
+
+const MAX_READ_ERROR_BODY_CHARS = 4_000;
+
+/** Keep provider failure details structured, bounded, and free of response headers. */
+function boundedReadErrorDetails(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const status = record.status;
+  if (typeof status !== 'number' || !Number.isInteger(status) || status < 100 || status > 599) {
+    return undefined;
+  }
+  const statusText = boundedText(record.statusText, 120);
+  const rawBody = typeof record.body === 'string' ? record.body : undefined;
+  const body = rawBody?.slice(0, MAX_READ_ERROR_BODY_CHARS);
+  return {
+    status,
+    ...(statusText ? { statusText } : {}),
+    ...(body === undefined ? {} : { body }),
+    truncated: record.truncated === true || (rawBody !== undefined && rawBody.length > body!.length),
+  };
 }
 
 function qualityIssuesFromLog(logJson: string, errorCode: string | null): {
@@ -410,6 +468,7 @@ function summarizeCapability(cap: ReturnType<typeof designCapabilities>[number],
     label: cap.label,
     description: cap.description,
     sideEffect: cap.sideEffect ?? 'NONE',
+    notification: cap.notification === true,
     params: cap.params.map((param) => ({
       name: param.name,
       label: param.label,
@@ -435,7 +494,10 @@ export class AxCommandService {
     private readonly store: WorkflowStore,
     private readonly options: {
       runWorkflow?: (workflowId: string) => Promise<unknown>;
-      enqueueOnce?: (workflow: import('../../workflow/schema.js').WorkflowIR) => Promise<unknown> | unknown;
+      enqueueOnce?: (
+        workflow: import('../../workflow/schema.js').WorkflowIR,
+        options?: { workspaceSessionId?: string },
+      ) => Promise<unknown> | unknown;
       readGateway?: AxCommandReadGateway;
       artifactStore?: ArtifactStore;
       workspaceSources?: WorkspaceSourceService;
@@ -515,6 +577,8 @@ export class AxCommandService {
         });
       case 'resource.list':
         return result(command.name, 'ok', this.listResources());
+      case 'http.list':
+        return result(command.name, 'ok', this.listHttpConnections());
       case 'source.list':
         return result(command.name, ...await this.executeReadTool(command, 'sources.list', AxSourceListArgsSchema, options.designToolContext, options.designToolContextFactory));
       case 'source.files.list':
@@ -548,7 +612,17 @@ export class AxCommandService {
       case 'workflow.run':
         return result(command.name, ...await this.workflowGateway.run(command));
       case 'execution.enqueue_once':
-        return result(command.name, ...await this.workflowGateway.enqueueOnce(command));
+        return result(command.name, ...await this.workflowGateway.enqueueOnce(command, {
+          workspaceSessionId: options.workspaceSessionId,
+          listSlackChannels: async () => {
+            const readContext = options.designToolContext ?? options.designToolContextFactory?.();
+            if (!readContext) return { ok: false, error: 'selection_lookup_unavailable' };
+            return this.readGateway.execute(
+              { tool: 'capabilities.invoke', args: { id: 'slack.channels.list', params: {} } },
+              readContext,
+            );
+          },
+        }));
       case 'execution.explain':
         return result(command.name, ...this.explainExecution(command));
       case 'repair.list':
@@ -560,11 +634,19 @@ export class AxCommandService {
       case 'repair.reject':
         return result(command.name, ...this.repairGateway.reject(command));
       case 'job.propose':
-        return result(command.name, ...proposeJob({
+        return result(command.name, ...await proposeJob({
           store: this.store,
           pending: this.pendingJobs,
           workspaceSessionId: options.workspaceSessionId,
           args: command.args,
+          listSlackChannels: async () => {
+            const readContext = options.designToolContext ?? options.designToolContextFactory?.();
+            if (!readContext) return { ok: false, error: 'selection_lookup_unavailable' };
+            return this.readGateway.execute(
+              { tool: 'capabilities.invoke', args: { id: 'slack.channels.list', params: {} } },
+              readContext,
+            );
+          },
         }));
       case 'job.commit':
         return result(command.name, ...await commitJob({
@@ -660,7 +742,11 @@ export class AxCommandService {
     if (execution.ok) return ['ok', execution.data];
     const error = execution.error ?? 'source_command_failed';
     const status = error === 'source_content_requires_local_ai' ? 'forbidden' : 'error';
-    return [status, undefined, [issue(error, `command ${command.name} 실행 실패: ${error}`)]];
+    return [
+      status,
+      undefined,
+      [issue(error, `command ${command.name} 실행 실패: ${error}`, undefined, boundedReadErrorDetails(execution.errorDetails))],
+    ];
   }
 
   private listSessionSources(
@@ -789,6 +875,32 @@ export class AxCommandService {
     };
   }
 
+  private listHttpConnections() {
+    const connection = this.store.getConnections().find((entry) => entry.connector === 'http');
+    const endpoints = parseHttpEndpoints(connection?.config);
+    const connected = connection?.connected === true;
+
+    return {
+      connections: endpoints.map((endpoint) => {
+        const authType = endpoint.auth?.type ?? 'none';
+        const authStored = endpoint.authStored === true;
+        const authReady = authType === 'none' || authStored;
+        return {
+          id: endpoint.id,
+          label: endpoint.label ?? endpoint.id,
+          baseUrl: safeHttpBaseUrl(endpoint.baseUrl),
+          authType,
+          authStored,
+          authReady,
+          connected,
+          usable: connected && authReady,
+        };
+      }),
+      count: endpoints.length,
+      requiresExplicitConnectionId: endpoints.length > 1,
+    };
+  }
+
   private listCapabilities(command: AxCommand) {
     const connector = textArg(command, 'connector');
     const kind = textArg(command, 'kind');
@@ -812,7 +924,13 @@ export class AxCommandService {
   private describeCapability(command: AxCommand): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
     const id = textArg(command, 'id');
     if (!id) {
-      return ['invalid', undefined, [issue('missing_argument', 'capability id가 필요합니다.', 'args.id')]];
+      return ['invalid', undefined, [issue(
+        'missing_argument',
+        'capability id가 필요합니다.',
+        'args.id',
+        undefined,
+        [{ id: 'ax-input-capability-id', label: 'Capability ID', type: 'text', required: true, reason: '확인할 capability id를 입력해 주세요.' }],
+      )]];
     }
     const capability = getCapability(id);
     if (!capability) {

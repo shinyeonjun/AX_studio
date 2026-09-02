@@ -11,6 +11,8 @@ describe('role prompts', () => {
     });
 
     expect(prompt).toContain('AX command protocol');
+    expect(prompt).toContain('기본 연결을 임의로 고르지 않는다');
+    expect(prompt).toContain('그 결과의 id·label만 사용해 `ui.present` 선택 카드를 만들고');
     expect(prompt).not.toContain('# Gmail');
     expect(prompt).not.toContain('# Slack');
     expect(prompt).not.toContain('tools.list');

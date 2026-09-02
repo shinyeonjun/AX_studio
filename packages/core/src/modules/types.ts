@@ -48,6 +48,8 @@ export interface ConnectorResult {
   data?: unknown;
   error?: string;
   errorCode?: string;
+  /** Bounded provider error details that are safe for the owning boundary to inspect. */
+  errorDetails?: unknown;
 }
 
 export interface Connector {

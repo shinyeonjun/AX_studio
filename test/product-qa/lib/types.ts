@@ -34,6 +34,7 @@ export interface ProductScenario {
 export type ScenarioAction =
   | { action: 'newChat'; label?: string }
   | { action: 'sendMessage'; text: string; label?: string; waitForReply?: boolean }
+  | { action: 'clickInlineApproval'; decision: 'approve' | 'reject' }
   | { action: 'waitMs'; ms: number }
   | { action: 'waitForAssistantReply'; timeoutMs?: number; optional?: boolean }
   | { action: 'startDiscoveryFixture'; artifact: string; folder: string; label?: string }
@@ -112,6 +113,10 @@ export type ScenarioCheck =
   | {
       check: 'workflowPresent';
       text: string;
+      severity?: DefectSeverity;
+    }
+  | {
+      check: 'inlineApprovalPresent' | 'inlineApprovalAbsent';
       severity?: DefectSeverity;
     };
 

@@ -39,7 +39,9 @@ function recordManualRunFailure(
     message,
   }];
   deps.store.finishExecution(executionId, 'failed', errorCode, log);
-  return { executionId, status: 'failed', errorCode, log };
+  const result: ExecutionResult = { executionId, status: 'failed', errorCode, log };
+  deps.runtime.notifyExecutionFinished(result);
+  return result;
 }
 
 /** Shared manual-run path for the command service and runtime IPC. */

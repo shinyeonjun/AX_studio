@@ -19,6 +19,10 @@ import {
 import type { DesktopPrintBridge } from './document-write/desktop-print.js';
 import { setDesktopPrintBridge } from './document-write/desktop-print.js';
 import type { ExecutionResult } from './runtime/types.js';
+import {
+  publishExecutionResultToWorkspaceChat,
+  type WorkspaceChatChangedEvent,
+} from './runtime/execution-result-message.js';
 import type { PushTransportState } from './triggers/push-state.js';
 import {
   resolveAxDataPaths,
@@ -40,6 +44,7 @@ export interface AxStudioCoreOptions {
   onExecutionStarted?: (executionId: string) => void;
   onExecutionProgress?: (progress: import('./runtime/types.js').ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
+  onWorkspaceChatChanged?: (event: WorkspaceChatChangedEvent) => void;
   onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
 }
@@ -110,13 +115,35 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     artifactSink: generatedArtifactSink,
     onExecutionStarted: options.onExecutionStarted,
     onExecutionProgress: options.onExecutionProgress,
-    onExecutionFinished: options.onExecutionFinished,
+    onExecutionFinished: (result) => {
+      try {
+        const event = publishExecutionResultToWorkspaceChat(store, result);
+        if (event) {
+          try {
+            options.onWorkspaceChatChanged?.(event);
+          } catch {
+            // Renderer notifications are observers and must not affect a run.
+          }
+        }
+      } catch {
+        // Conversation delivery is an optional projection of the execution;
+        // Activity and the persisted execution remain authoritative.
+      }
+      try {
+        options.onExecutionFinished?.(result);
+      } catch {
+        // Preserve the runtime observer contract for the caller as well.
+      }
+    },
   });
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime, undefined, options.onPushTransportStateChanged);
   const commandService = new AxCommandService(store, {
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
-    enqueueOnce: (workflow) => runtime.enqueueEphemeralWorkflow(workflow, { triggerType: 'manual' }),
+    enqueueOnce: (workflow, enqueueOptions) => runtime.enqueueEphemeralWorkflow(workflow, {
+      triggerType: 'manual',
+      workspaceSessionId: enqueueOptions?.workspaceSessionId,
+    }),
     artifactStore,
     workspaceSources,
     resolveConnectionConfig: options.resolveConnectionConfig,
