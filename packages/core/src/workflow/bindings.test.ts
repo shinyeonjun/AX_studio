@@ -4,7 +4,7 @@ import { parseBindingsRecord } from '../workflow/canvas/draft/schema.js';
 import type { WorkflowIR } from './schema.js';
 
 describe('inferWorkflowBindings', () => {
-  it('uses only declared AI output fields for message bindings', () => {
+  it('prefers the default AI conclusion for implicit notification text', () => {
     const ir: WorkflowIR = {
       id: 'wf-ai-contract',
       name: 'AI output contract',
@@ -42,17 +42,114 @@ describe('inferWorkflowBindings', () => {
     const notify = inferred.steps.find((step) => step.id === 'notify');
     expect(notify?.type === 'action' && notify.bindings?.text).toEqual({
       from: 'classify',
-      output: 'riskLevel',
+      output: 'conclusion',
     });
     expect(
       applyStepBindings(
         notify as Extract<WorkflowIR['steps'][number], { type: 'action' }>,
         ir,
         { channel: '#ax' },
-        { classify: { riskLevel: 'high' } },
+        { classify: { riskLevel: 'high', conclusion: '위험도 높음' } },
+        {},
+      ).text,
+    ).toBe('위험도 높음');
+  });
+
+  it('keeps an explicit custom AI output binding for notification text', () => {
+    const ir: WorkflowIR = {
+      id: 'wf-explicit-ai-output',
+      name: '명시적 AI 결과',
+      goal: '선택한 분류값 전송',
+      version: 1,
+      trigger: { type: 'manual' },
+      inputs: [],
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'classify',
+          goal: '분류',
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ax' },
+          bindings: { text: { from: 'classify', output: 'riskLevel' } },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    const notify = ir.steps[1]!;
+    expect(
+      applyStepBindings(
+        notify as Extract<WorkflowIR['steps'][number], { type: 'action' }>,
+        ir,
+        { channel: '#ax' },
+        { classify: { riskLevel: 'high', conclusion: '전체 결론' } },
         {},
       ).text,
     ).toBe('high');
+  });
+
+  it('uses the default AI conclusion as message text without a custom output schema', () => {
+    const ir: WorkflowIR = {
+      id: 'wf-default-ai-output',
+      name: '기본 AI 결과',
+      goal: '요약 결과 전송',
+      version: 1,
+      trigger: { type: 'manual' },
+      inputs: [],
+      steps: [
+        {
+          type: 'ai_decision',
+          id: 'brief',
+          goal: '주문 요약',
+          investigation: false,
+          maxReads: 1,
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ax' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    const inferred = inferWorkflowBindings(ir);
+    const notify = inferred.steps.find((step) => step.id === 'notify');
+    expect(notify?.type === 'action' && notify.bindings?.text).toEqual({
+      from: 'brief',
+      output: 'conclusion',
+    });
+    expect(
+      applyStepBindings(
+        notify as Extract<WorkflowIR['steps'][number], { type: 'action' }>,
+        inferred,
+        { channel: '#ax' },
+        { brief: { needMore: false, conclusion: '주문 두 건 요약' } },
+        {},
+      ).text,
+    ).toBe('주문 두 건 요약');
   });
 
   it('does not turn an undeclared AI summary into message text', () => {
@@ -256,6 +353,54 @@ describe('inferWorkflowBindings', () => {
     );
 
     expect(params.text).toBe('요약 결과');
+  });
+
+  it('maps a structured HTTP text response to its body before forwarding it', () => {
+    const ir: WorkflowIR = {
+      id: 'wf-http-to-slack',
+      name: 'HTTP 결과 전달',
+      goal: 'HTTP 결과 전송',
+      version: 1,
+      trigger: { type: 'manual' },
+      inputs: [],
+      steps: [
+        {
+          type: 'action',
+          id: 'fetch',
+          connector: 'http',
+          action: 'request',
+          params: { method: 'GET', path: '/status' },
+          sideEffect: 'NONE',
+        },
+        {
+          type: 'action',
+          id: 'notify',
+          connector: 'slack',
+          action: 'message.send',
+          params: { channel: '#ax' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+    const inferred = inferWorkflowBindings(ir);
+    const notify = inferred.steps.find((step) => step.id === 'notify');
+    if (!notify || notify.type !== 'action') throw new Error('missing notify action');
+
+    expect(
+      applyStepBindings(
+        notify,
+        inferred,
+        notify.params,
+        { fetch: { status: 200, body: '{"ok":true}' } },
+        {},
+      ).text,
+    ).toBe('{"ok":true}');
   });
 
   it('groups snapshot bindings into transform tables by source id', () => {

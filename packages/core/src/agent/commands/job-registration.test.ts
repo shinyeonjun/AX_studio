@@ -73,8 +73,125 @@ describe('job.propose / job.commit', () => {
     }, { ...commandChatContext, workspaceSessionId: chat.id });
 
     expect(response.status).toBe('needs_input');
-    expect(response.issues[0]?.code).toBe('missing_argument');
-    expect(response.issues[0]?.message).toContain('channel');
+    expect(response.issues[0]?.code).toBe('job_targets_required');
+    expect(response.data).toMatchObject({
+      presentation: {
+        title: '공유 대상 선택',
+        inputs: [{
+          id: 'job-slack-channel',
+          label: 'Slack 채널',
+          type: 'slack_channel',
+          required: true,
+        }],
+        actions: [{ label: '선택하고 공유안 검토' }],
+      },
+    });
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('populates one target-selection card from HTTP and Slack discovery results', async () => {
+    const { store, chat } = await connectedService();
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'github', baseUrl: 'https://api.github.com/', label: '깃허브 연결' },
+        { id: 'test', baseUrl: 'http://127.0.0.1:4820/', label: '테스트 HTTP 연결' },
+      ],
+    });
+    const readCalls: string[] = [];
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async (request) => {
+          readCalls.push(String(request.args.id));
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: {
+              data: {
+                channels: [
+                  { id: 'C_OPERATIONS', name: '운영', numMembers: 5 },
+                  { id: 'G_PRIVATE', name: '비공개-회의', isPrivate: true },
+                ],
+              },
+            },
+          };
+        },
+      },
+    });
+
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        fetch: { ...dailyBriefArgs.fetch, connectionId: undefined },
+        notify: { connector: 'slack', skipIfEmpty: true },
+      },
+    }, {
+      ...commandChatContext,
+      workspaceSessionId: chat.id,
+      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+    });
+
+    expect(response.status).toBe('needs_input');
+    expect(readCalls).toEqual(['slack.channels.list']);
+    expect(response.data).toMatchObject({
+      presentation: {
+        title: '공유 대상 선택',
+        inputs: [
+          {
+            id: 'job-http-connection',
+            options: [
+              { value: 'github', label: '깃허브 연결' },
+              { value: 'test', label: '테스트 HTTP 연결' },
+            ],
+          },
+          {
+            id: 'job-slack-channel',
+            options: [
+              { value: 'C_OPERATIONS', label: '#운영', description: '5명 참여' },
+              { value: 'G_PRIVATE', label: '비공개 · #비공개-회의' },
+            ],
+          },
+        ],
+        actions: [{ label: '선택하고 공유안 검토', tone: 'primary' }],
+      },
+    });
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('keeps a visible input fallback when Slack channel discovery fails', async () => {
+    const { store, chat } = await connectedService();
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async () => ({
+          tool: 'capabilities.invoke',
+          ok: false,
+          error: 'slack_error',
+        }),
+      },
+    });
+
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        notify: { connector: 'slack', skipIfEmpty: true },
+      },
+    }, {
+      ...commandChatContext,
+      workspaceSessionId: chat.id,
+      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+    });
+
+    expect(response.status).toBe('needs_input');
+    expect(response.data).toMatchObject({
+      presentation: {
+        inputs: [{
+          id: 'job-slack-channel',
+          reason: 'Slack 채널 목록을 불러오지 못했습니다. 채널 이름 또는 ID를 입력해 주세요.',
+        }],
+        actions: [{ label: '선택하고 공유안 검토' }],
+      },
+    });
     expect(store.listWorkflows()).toHaveLength(0);
   });
 

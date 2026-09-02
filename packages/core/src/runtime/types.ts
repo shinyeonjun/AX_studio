@@ -2,6 +2,7 @@ import type { InvestigationRunner } from '../agent/investigation-runner.js';
 import type { WorkflowStore } from '../store/workflow-store.js';
 import type { Connector } from '../modules/types.js';
 import type { ArtifactSink, ExecutionLogEntry } from '../modules/types.js';
+import type { ExecutionResultStatus } from '../contracts/execution-status.js';
 
 export interface RuntimeConfig {
   store: WorkflowStore;
@@ -31,7 +32,7 @@ export interface ExecutionProgress {
 
 export interface ExecutionResult {
   executionId: string;
-  status: 'success' | 'failed' | 'pending_approval' | 'cancelled';
+  status: ExecutionResultStatus;
   errorCode?: string;
   log: ExecutionLogEntry[];
   pendingApprovalId?: string;
@@ -42,6 +43,8 @@ export interface WorkflowExecutionOptions {
   ephemeral?: boolean;
   triggerType?: string;
   input?: Record<string, unknown>;
+  /** Originating workspace chat for an ephemeral execution result projection. */
+  workspaceSessionId?: string;
   /** Explicit manual run from UI — inactive ephemeral workflows may still run once. */
   forceManual?: boolean;
 }

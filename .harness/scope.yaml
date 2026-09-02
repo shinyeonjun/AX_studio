@@ -666,3 +666,911 @@ security_report_manual_webhook_redirect_hardening:
     - Webhook authentication protocol, listener behavior, and receipt persistence
     - live provider accounts and external side effects
   expansions: []
+
+main_based_connector_lab:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - package.json
+    - test/manual/README.md
+    - test/connector-lab/start.mjs
+    - test/connector-lab/rest-server.mjs
+    - test/connector-lab/webhook-provider.mjs
+    - test/connector-lab/run-logger.mjs
+    - test/connector-lab/connector-lab.test.mjs
+    - test/connector-lab/README.md
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA run artifacts
+    - packages/core and apps/desktop production connector behavior
+    - live Webhook tunnels, Gmail/Slack accounts, external HTTP services, and databases
+    - raw request bodies, credentials, secrets, and absolute paths in persisted logs
+  expansions: []
+
+dogfood_gmail_slack_diagnostics:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/electron/main/env-file.ts
+    - apps/desktop/electron/main/gmail/oauth.ts
+    - apps/desktop/electron/main/gmail/oauth-build.ts
+    - apps/desktop/electron/main/gmail/connection.ts
+    - apps/desktop/electron/main/gmail/**/*.test.ts
+    - apps/desktop/electron.vite.config.ts
+    - apps/desktop/src/components/settings/connectors/GmailConnectionForm.tsx
+    - packages/core/src/modules/gmail/oauth.ts
+    - packages/core/src/modules/gmail/oauth.test.ts
+    - packages/core/src/triggers/push-state.ts
+    - packages/core/src/triggers/slack/new-message/socket-mode.ts
+    - packages/core/src/triggers/slack/new-message/socket-mode.test.ts
+    - packages/core/src/modules/packages/slack.ts
+    - packages/core/src/runtime/trigger-engine.ts
+    - packages/core/src/runtime/trigger-engine.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live Gmail, Slack, AI, HTTP, and database calls
+    - persisted raw credentials, raw WebSocket URLs, and raw provider payloads
+    - unrelated connector behavior or broad UI redesign
+  expansions:
+    - date: 2026-08-31
+      reason: "The real Gmail token endpoint returned invalid_request with client_secret is missing, contradicting the earlier assumption that the configured Desktop OAuth client never requires a secret."
+      boundary: "optional development Gmail OAuth client-secret loading and propagation through the Electron Main/Core boundary"
+
+workflow_conversation_results:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/bindings.ts
+    - packages/core/src/workflow/bindings.test.ts
+    - packages/core/src/store/repositories/workspace-chat-repository.ts
+    - packages/core/src/store/workspace-chat-repository.test.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/runtime/execution-result-message.ts
+    - packages/core/src/runtime/execution-result-message.test.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/runtime/manual-workflow-run.ts
+    - packages/core/src/runtime/manual-workflow-run.test.ts
+    - packages/core/src/bootstrap.test.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/bootstrap.ts
+    - packages/core/src/index.ts
+    - apps/desktop/electron/main/index.ts
+    - apps/desktop/electron/main/state-broadcast.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/hooks/useWorkspaceChat.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live Gmail, Slack, AI, HTTP, Webhook, and database calls
+    - raw Webhook bodies, credentials, secrets, absolute paths, and external side effects
+    - broad chat persistence migrations, connector redesign, and renderer redesign
+  expansions:
+    - date: 2026-08-31
+      reason: "Execution tracing showed that saved manual runs which fail during input preflight persist a finished execution without notifying the shared completion observer, so their mapped conversation result would be missing."
+      boundary: "packages/core/src/runtime/engine.ts, packages/core/src/runtime/manual-workflow-run.ts, packages/core/src/runtime/manual-workflow-run.test.ts"
+
+rest_http_error_propagation:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/modules/http/connector.ts
+    - packages/core/src/modules/http/connector.test.ts
+    - packages/core/src/modules/http/request.ts
+    - packages/core/src/design-tools/capability-invoke.ts
+    - packages/core/src/design-tools/capability-invoke.test.ts
+    - packages/core/src/design-tools/execute.ts
+    - packages/core/src/design-tools/types.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/schema.test.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/service.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live Gmail, Slack, AI, HTTP, Webhook, database, and external side effects
+    - raw credentials, authorization headers, absolute paths, and unbounded provider response bodies
+    - renderer redesign, retry policy, and unrelated connector behavior
+  expansions: []
+
+http_connection_discovery:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/embedded.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/modules/http/connection.ts
+    - packages/core/src/modules/http/connection.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live external HTTP, Gmail, Slack, AI, Webhook, and database calls
+    - bearer tokens, API keys, passwords, authorization values, raw response bodies, and absolute paths
+    - renderer redesign, connection-form redesign, transport policy changes, and unrelated connector behavior
+  expansions: []
+
+invalid_provider_command_boundary:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/commands/chat.test.ts
+    - packages/core/src/agent/commands/transport-contract.ts
+    - packages/core/src/agent/commands/transport.ts
+    - packages/core/src/agent/commands/transport.test.ts
+    - packages/core/src/agent/commands/transports/codex.ts
+    - packages/core/src/agent/commands/transports/claude.ts
+    - packages/core/src/agent/commands/transports/direct.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated Product QA artifacts
+    - RDB connector, SQL, table allowlist, workflow, and external provider behavior
+    - live PostgreSQL, Gmail, Slack, HTTP, AI-provider, and external side effects
+    - raw provider payloads, stack traces, credentials, and absolute paths in chat/logs
+  expansions: []
+
+rdb_date_fidelity:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/modules/rdb/client.ts
+    - packages/core/src/modules/rdb/client.test.ts
+    - packages/core/src/modules/rdb/connector.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live PostgreSQL, MySQL, SQLite, Gmail, Slack, HTTP, AI, and external side effects
+    - connection strings, passwords, authorization values, raw database rows, and absolute paths in logs
+    - renderer/UI redesign, command protocol, SQL/write policy, allowlist, and unrelated connector behavior
+  expansions: []
+
+http_connection_chooser:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/commands/chat.test.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/commands/input-requests.ts
+    - packages/core/src/agent/commands/input-requests.test.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - packages/core/src/modules/http/connection.ts
+    - packages/core/src/modules/http/connector.ts
+    - packages/core/src/modules/http/connector.test.ts
+    - apps/desktop/electron/main/ipc/workspace-chat-command-handlers.ts
+    - apps/desktop/src/hooks/useWorkspaceChat.ts
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/WorkspaceAssistantPresentation.tsx
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live external HTTP, Gmail, Slack, AI, Webhook, and database calls
+    - bearer tokens, API keys, passwords, authorization values, raw response bodies, and absolute paths
+    - visual redesign, arbitrary prose parsing, and unrelated connector behavior
+  expansions: []
+
+dynamic_structured_interactions:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/commands/chat.test.ts
+    - packages/core/src/agent/commands/input-requests.ts
+    - packages/core/src/agent/commands/input-requests.test.ts
+    - packages/core/src/agent/commands/job-registration.ts
+    - packages/core/src/agent/commands/job-registration.test.ts
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/workflow-gateway.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/prompt/command-protocol.test.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - packages/core/src/runtime/execution-result-message.ts
+    - packages/core/src/runtime/execution-result-message.test.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/contracts/execution-status.ts
+    - packages/core/src/contracts/index.ts
+    - packages/core/src/catalog/capability-types.ts
+    - packages/core/src/catalog/capability-resolver.ts
+    - packages/core/src/catalog/capability-graph.ts
+    - packages/core/src/catalog/capability-graph.test.ts
+    - packages/core/src/catalog/capability-contracts.ts
+    - packages/core/src/modules/gmail/catalog.ts
+    - packages/core/src/modules/slack/catalog.ts
+    - packages/core/src/modules/local-folder/catalog.ts
+    - packages/core/src/workflow/contract-validator.ts
+    - packages/core/src/workflow/contract-validator.test.ts
+    - packages/core/src/workflow/action-definition.ts
+    - packages/core/src/workflow/action-definition.test.ts
+    - packages/core/src/workflow/canvas/compile/validate-graph.ts
+    - packages/core/src/workflow/canvas/presentation/chat-summary.ts
+    - packages/core/src/workflow/canvas/compile/builder.ts
+    - packages/core/src/runtime/approval-display.ts
+    - packages/core/src/runtime/capability-read.ts
+    - packages/core/src/runtime/capability-read.test.ts
+    - packages/core/src/design-tools/tools/capabilities-list.ts
+    - packages/core/src/index.ts
+    - packages/core/src/store/repositories/workspace-chat-repository.ts
+    - packages/core/src/store/workspace-chat-repository.test.ts
+    - apps/desktop/electron/main/ipc/chat-boundary.ts
+    - apps/desktop/electron/main/ipc/chat-boundary.test.ts
+    - apps/desktop/electron/preload/index.ts
+    - apps/desktop/src/types/ax-api.ts
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/WorkspaceRunResultCard.tsx
+    - apps/desktop/src/hooks/useWorkspaceChat.ts
+    - apps/desktop/src/lib/work-display.ts
+    - apps/desktop/src/workflow/workflow-icons.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes, especially .gitignore
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Gmail, Slack, AI-provider, Webhook, and database calls
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - visual redesign, connector catalog policy, and intentional security or
+      compatibility mappings
+  expansions:
+    - reason: "The audit found the same static assumption in dynamic capability resolution, workflow availability validation, and the IPC execution-result boundary; focused regressions crossed the initial chat-only seam."
+      boundary: "packages/core/src/catalog/capability-resolver.ts, packages/core/src/catalog/capability-graph.ts, packages/core/src/workflow/contract-validator.ts, apps/desktop/electron/main/ipc/chat-boundary.ts"
+
+target_selection_ux:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/schema.test.ts
+    - packages/core/src/agent/commands/job-registration.ts
+    - packages/core/src/agent/commands/job-registration.test.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/commands/chat.test.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - apps/desktop/src/components/workspace/WorkspaceAssistantPresentation.tsx
+    - apps/desktop/src/components/workspace/ax-workspace.css
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live Slack/Gmail/HTTP/AI/database side effects
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - unrelated connector behavior or broad visual redesign
+  expansions:
+    - reason: "The UX request crosses the structured input schema, job proposal read boundary, chat presentation projection, and shared workspace presentation renderer."
+      boundary: "packages/core/src/agent/commands/schema.ts, packages/core/src/agent/commands/job-registration.ts, packages/core/src/agent/commands/service.ts, apps/desktop/src/components/workspace/WorkspaceAssistantPresentation.tsx"
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - connected Slack channels appear as selectable labels rather than required ids
+    - HTTP and Slack targets can be chosen in one card and submitted with one review action
+    - the review action is visually aligned to the lower right and remains keyboard reachable
+    - a failed channel lookup never guesses a channel or executes a send
+    - generic input cards and existing confirmation cards retain their behavior
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T12:39:40.9583531+09:00
+    values:
+      target-selection-card: "FAIL: supplied screenshot shows per-field free-text inputs and separate input actions; Slack channel options are not populated"
+      slack-channel-capability: "PASS: slack.channels.list exists and is read-only, but is not wired into job target selection"
+    decision: BASELINE
+
+one_shot_share_target_and_result:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/agent/commands/schema.ts
+    - packages/core/src/agent/commands/schema.test.ts
+    - packages/core/src/agent/commands/workflow-gateway.ts
+    - packages/core/src/agent/commands/service.ts
+    - packages/core/src/agent/commands/service.test.ts
+    - packages/core/src/agent/commands/chat.ts
+    - packages/core/src/agent/commands/chat.test.ts
+    - packages/core/src/agent/commands/job-registration.ts
+    - packages/core/src/agent/skills/command/SKILL.md
+    - packages/core/src/agent/embedded.ts
+    - packages/core/src/runtime/engine.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/runtime/types.ts
+    - packages/core/src/runtime/execution-result-message.ts
+    - packages/core/src/runtime/execution-result-message.test.ts
+    - packages/core/src/store/db.ts
+    - packages/core/src/store/db-migration.test.ts
+    - packages/core/src/store/rows.ts
+    - packages/core/src/store/workflow-store.ts
+    - packages/core/src/store/repositories/execution-repository.ts
+    - packages/core/src/bootstrap.ts
+    - packages/core/src/bootstrap.test.ts
+    - apps/desktop/electron/main/ipc/workspace-chat-command-handlers.ts
+    - apps/desktop/electron/main/e2e-test-seam.ts
+    - apps/desktop/src/components/workspace/WorkspaceAssistantPresentation.tsx
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Slack, Gmail, AI, webhook, and database side effects
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - user-message regex parsing, broad UI redesign, and saved workflow semantics
+  expansions:
+    - reason: "The runtime propagation regression needed to verify persisted workspace session ids across enqueue and execute."
+      boundary: "packages/core/src/runtime/engine.test.ts"
+      type: test
+      command: "npx vitest run packages/core/src/runtime/engine.test.ts"
+      required: true
+    - reason: "The new typed presentation field is part of the shared desktop contract, so the deterministic Electron presentation seam needed the same explicit mode."
+      boundary: "apps/desktop/electron/main/e2e-test-seam.ts"
+      type: test
+      command: "npx tsc --noEmit -p apps/desktop"
+      required: true
+
+one_shot_action_output_binding:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/bindings.ts
+    - packages/core/src/workflow/bindings.test.ts
+    - packages/core/src/workflow/contract-validator.ts
+    - packages/core/src/runtime/engine.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Slack, Gmail, AI, webhook, and database side effects
+    - credentials, authorization values, raw response bodies, and absolute paths
+    - natural-language parsing, broad UI redesign, and connector policy changes
+  expansions:
+    - reason: "The reported runtime failure crossed the workflow binding contract and the existing runtime approval regression seam; no production connector boundary was needed."
+      boundary: "packages/core/src/workflow/bindings.ts, packages/core/src/workflow/contract-validator.ts"
+      type: runtime
+    - reason: "The user chose inline approval for one-shot runs while retaining the approval tab for recurring workflows; the existing execution projection, workspace transcript schema, Electron approval IPC, and workspace renderer are the smallest required boundary."
+      boundary: "packages/core/src/runtime/execution-result-message.ts, packages/core/src/store/repositories/workspace-chat-repository.ts, apps/desktop/electron/main/ipc/chat-boundary.ts, apps/desktop/electron/main/ipc/runtime-handlers.ts, apps/desktop/electron/preload/index.ts, apps/desktop/src/types/ax-api.ts, apps/desktop/src/hooks/useWorkspaceChat.ts, apps/desktop/src/components/chat/ChatMainPage.tsx, apps/desktop/src/components/workspace/AxWorkspaceChat.tsx, apps/desktop/src/components/workspace/WorkspaceRunResultCard.tsx, apps/desktop/src/components/workspace/ax-workspace.css"
+      type: inline-approval-ux
+
+one_shot_inline_approval:
+  status: completed
+  expansion_reason: "The user-visible gap was in the originating conversation: persisted one-shot approvals existed, but the chat projection and renderer had no actionable approval state."
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/runtime/execution-result-message.ts
+    - packages/core/src/runtime/execution-result-message.test.ts
+    - packages/core/src/store/repositories/workspace-chat-repository.ts
+    - packages/core/src/store/workspace-chat-repository.test.ts
+    - apps/desktop/electron/main/ipc/chat-boundary.ts
+    - apps/desktop/electron/main/ipc/chat-boundary.test.ts
+    - apps/desktop/electron/main/ipc/runtime-handlers.ts
+    - apps/desktop/electron/main/e2e-test-seam.ts
+    - apps/desktop/src/hooks/useWorkspaceChat.ts
+    - apps/desktop/src/components/chat/ChatMainPage.tsx
+    - apps/desktop/src/components/workspace/AxWorkspaceChat.tsx
+    - apps/desktop/src/components/workspace/WorkspaceRunResultCard.tsx
+    - apps/desktop/src/components/workspace/ax-workspace.css
+    - test/product-qa/lib/types.ts
+    - test/product-qa/lib/ui.ts
+    - test/product-qa/lib/step-runner.ts
+    - test/product-qa/scenarios/manifest.json
+    - test/product-qa/scenarios/one-shot-inline-approval.json
+    - test/product-qa/scenarios/one-shot-inline-approval-reject.json
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Slack, Gmail, AI, webhook, and database side effects
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - natural-language approval parsing, approval policy changes, and approval-tab redesign
+  expansions: []
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T18:17:31.8865993+09:00
+    values:
+      inline-approval-projection: "FAIL: pending ephemeral execution result had no approval metadata"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T18:43:22.2917254+09:00
+    decision: KEEP
+    values:
+      inline-approval-projection: "PASS: pending one-shot result projects bounded approval metadata and completed/cancelled results remove it"
+      direct-host-actions: "PASS: renderer approve/cancel calls existing host IPC; no natural-language approval message is sent"
+      recurring-separation: "PASS: recurring pending results remain approval-tab-only"
+      product-qa: "PASS: deterministic smoke 6/6, including inline approve and reject"
+      scope: "PASS: changes remain within execution projection, persistence, IPC, workspace chat UI, and deterministic QA boundaries"
+
+one_shot_implicit_conclusion_preference:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/bindings.ts
+    - packages/core/src/workflow/bindings.test.ts
+    - packages/core/src/runtime/engine.test.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - natural-language parsing, connector policy changes, and broad refactors
+  expansions:
+    - reason: "The live failure pattern requires the runtime chain seam with an HTTP source, AI output schema, and approval-gated Slack action; no command or renderer boundary is needed unless the exact regression proves otherwise."
+      boundary: "packages/core/src/runtime/engine.test.ts"
+      type: test
+      command: "npx vitest run packages/core/src/runtime/engine.test.ts"
+      required: true
+  baseline:
+    recorded: true
+    recorded_at: unknown
+    values:
+      exact-http-ai-slack-chain: "FAIL: optional AI string output can be selected for implicit Slack text, producing action_params_missing before approval"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T17:36:16.7871451+09:00
+    decision: KEEP
+    values:
+      exact-http-ai-slack-chain: "PASS: implicit Slack text prefers the AI conclusion, reaches pending_approval, and approval resumes exactly one send"
+      explicit-binding-preservation: "PASS: explicit custom output binding remains authoritative"
+      scope: "PASS: production change limited to workflow binding inference; runtime seam and harness records added"
+
+one_shot_approval_path_binding:
+  status: completed
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - packages/core/src/workflow/bindings.ts
+    - packages/core/src/workflow/bindings.test.ts
+    - packages/core/src/runtime/engine.test.ts
+    - packages/core/src/workflow/control-flow.ts
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - node_modules, dist, out, coverage, and generated connector-lab artifacts
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and absolute paths
+    - natural-language parsing, broad UI redesign, and connector policy changes
+  expansions:
+    - reason: "The persisted failing execution showed that an explicit approval node causes its following action to be excluded from binding inference; the runtime regression must preserve that approval path."
+      boundary: "packages/core/src/runtime/engine.test.ts, packages/core/src/workflow/control-flow.ts"
+      type: test
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T17:47:18.5896890+09:00
+    values:
+      exact-approval-path: "FAIL: the persisted live shape leaves notify.text unbound and returns action_params_missing"
+    decision: BASELINE
+  final:
+    recorded_at: 2026-09-01T17:51:30.3486003+09:00
+    decision: KEEP
+    values:
+      exact-approval-path: "PASS: the approval-gated action receives the upstream AI conclusion and resumes exactly one send"
+      target-preservation: "PASS: selected HTTP connection and Slack channel remain concrete in the action params"
+      scope: "PASS: production change limited to binding inference; no connector or UI policy changes"
+
+figma_current_uiux:
+  status: active
+  objective: "Create an editable UX map for the current AX Studio product flow in the supplied Figma file."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, page node 0:1"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid_mutation:
+    - existing unrelated dirty worktree changes
+    - production source, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - invented external design-system dependencies
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T18:59:19.4893820+09:00
+    decision: BASELINE
+    values:
+      figma-target: "Page 1 / node 0:1, zero top-level children"
+      reusable-assets: "No Code Connect files and no searchable local design-system assets"
+
+figma_current_ui_recording:
+  status: completed
+  objective: "Record the implemented AX Studio UI and its observed runtime states in a separate Figma page named 00 Current UI."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, create and populate only the page named 00 Current UI"
+    - "Figma image uploads sourced only from the isolated runtime screenshots under test/product-qa/runs/current-ui-capture-2026-09-01/screenshots"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid_mutation:
+    - "existing Figma page AX Studio · UX Map and all of its nodes"
+    - existing unrelated dirty worktree changes
+    - production source, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - invented UI states or redesign changes
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T19:47:21.6979158+09:00
+    decision: BASELINE
+    values:
+      runtime-source: "PASS: direct Electron screenshots captured in an isolated Product QA profile"
+      figma-target: "FAIL: 00 Current UI does not exist; existing AX Studio · UX Map remains empty and out of scope"
+      mutation-boundary: "PASS: no production files or live connector side effects used"
+  final:
+    recorded_at: 2026-09-01T19:57:18.9903215+09:00
+    decision: KEEP
+    values:
+      page-isolation: "PASS: page 26:2 is named 00 Current UI; page 0:1 remains AX Studio · UX Map with zero children"
+      runtime-state-coverage: "PASS: 15 named runtime capture tiles are present"
+      visual-fidelity: "PASS: all 15 runtime PNG captures render in their Figma tiles"
+      mutation-boundary: "PASS: only Figma and harness records changed during this task"
+
+figma_ui_ux_critique:
+  status: completed
+  objective: "Compare all 15 recorded AX Studio current-UI states and document prioritized UX problems without changing the current-state record."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, create or update only the page named 01 UI UX 문제점"
+    - "The 01 UI UX 문제점 page may contain a clone of 00 Current UI plus editable issue markers and a findings register"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - .impeccable/critique
+  avoid_mutation:
+    - "Figma page 00 Current UI (node 26:2), board 27:2, and every source capture tile"
+    - "Figma page AX Studio · UX Map (node 0:1) and its nodes"
+    - production source, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - product redesign, new UI, new states, or speculative implementation changes
+    - existing unrelated dirty worktree changes
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T20:08:31.3214392+09:00
+    decision: BASELINE
+    values:
+      current-ui-integrity: "PASS: 00 Current UI is a populated 15-state record and is read-only for this task"
+      critique-artifact: "FAIL: 01 UI UX 문제점 does not yet exist"
+      production-mutation: "PASS: no product code change is in scope"
+  final:
+    recorded_at: 2026-09-01T20:21:38.5384825+09:00
+    decision: KEEP
+    values:
+      independent-assessments: "PASS: design review and implementation/detector review both completed before synthesis"
+      finding-coverage: "PASS: all 15 screens compared; findings cover orientation, hierarchy, state clarity, recovery, complexity, consistency, and accessibility"
+      annotation-boundary: "PASS: page 53:2 contains only a clone of 00 Current UI, severity markers, and a findings register"
+      current-ui-preservation: "PASS: source page 26:2 and board 27:2 remain unchanged with 15 source tiles"
+      original-map-preservation: "PASS: page 0:1 remains AX Studio · UX Map with zero children"
+      production-mutation: "PASS: no production files or live connector state changed"
+
+figma_ui_ux_shape:
+  status: active
+  objective: "Shape a single understandable request-to-progress-to-method-review-to-approval-to-result flow based on H2, H3, and H4 without changing product behavior."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, create or update only the page named 02 개선안"
+    - "The 02 개선안 page may contain new proposal frames, flow connectors, annotations, and existing-state references copied into that page"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid_mutation:
+    - "Figma page 00 Current UI (node 26:2), board 27:2, and all of its nodes"
+    - "Figma page 01 UI UX 문제점 (node 53:2), its clone, markers, register, and all of its nodes"
+    - "Figma page AX Studio · UX Map (node 0:1) and its nodes"
+    - production source, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - new product features, new workflow capabilities, or implementation changes
+    - existing unrelated dirty worktree changes
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-01T20:35:43.3195064+09:00
+    decision: BASELINE
+    values:
+      current-pages: "PASS: 00 Current UI and 01 UI UX 문제점 exist and are read-only"
+      proposal-page: "FAIL: 02 개선안 does not yet exist"
+      shape-boundary: "PASS: proposal is limited to recomposing existing states/actions"
+  final:
+    recorded_at: 2026-09-01T20:51:55.4875546+09:00
+    decision: KEEP
+    values:
+      flow-continuity: "PASS: 5-stage rail, 4 proposal screens, and 3 directed connectors read as one request-to-result flow"
+      current-capability-boundary: "PASS: proposal reuses existing progress, discovery, approval, cancel, stop, completion, and activity concepts"
+      decision-clarity: "PASS: current step, next action, method summary/evidence, approval target/side effect, and completion receipt are explicit"
+      state-consistency: "PASS: progress, review-needed, approval-pending, and completion use a consistent status hierarchy and action vocabulary"
+      visual-integrity: "PASS: full-board and close-screen renders show no unintended overlap or clipped card content"
+      immutable-pages: "PASS: 00 Current UI page 26:2 and 01 UI UX 문제점 page 53:2 remain unchanged; original page 0:1 remains empty"
+      implementation-boundary: "PASS: no production source, tests, connector state, or external side effect was changed"
+
+figma_new_ui:
+  status: completed
+  objective: "Create a high-fidelity Workspace UI in Figma based on 02 개선안 while preserving current Workspace capabilities and immutable existing pages."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, create or update only the page named 03 새 UI"
+    - "The 03 새 UI page may contain a full Workspace frame, state variants, local components, annotations, and existing-capability references"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid_mutation:
+    - "Figma page 00 Current UI (node 26:2), board 27:2, and all source capture tiles"
+    - "Figma page 01 UI UX 문제점 (node 53:2), its clone, markers, register, and all nodes"
+    - "Figma page 02 개선안 (node 61:2), board 61:3, and all nodes"
+    - "Figma page AX Studio · UX Map (node 0:1) and its nodes"
+    - production source, CSS, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - new product features, new workflow capabilities, or implementation changes
+    - existing unrelated dirty worktree changes
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T06:21:54.6597831+09:00
+    decision: BASELINE
+    values:
+      existing-pages: "PASS: 00 Current UI, 01 UI UX 문제점, and 02 개선안 exist and are read-only references"
+      new-ui-page: "FAIL: 03 새 UI does not yet exist"
+      implementation-boundary: "PASS: product code is out of scope"
+  final:
+    recorded_at: 2026-09-02T06:35:30.9917961+09:00
+    decision: KEEP
+    values:
+      new-ui-page: "PASS: page 70:2 contains board 70:3 and primary Workspace screen 72:11"
+      capability-coverage: "PASS: primary screen plus 5 state variants and 3 support states cover current Workspace capabilities"
+      visual-validation: "PASS: full board, primary screen, approval card, context panel, and all state variants rendered without clipping or overlap"
+      immutable-pages: "PASS: 00 Current UI page 26:2, 01 UI UX 문제점 page 53:2, and 02 개선안 page 61:2 remain read-only references"
+      implementation-boundary: "PASS: no production source, tests, connector state, credentials, or external side effect was changed"
+
+workspace_flow_accuracy:
+  status: completed
+  objective: "Make the Workspace 흐름 tab accurately reflect current execution stages and safely handle legacy host result messages without structured status metadata."
+  allowed_mutation:
+    - "apps/desktop/src/components/workspace/WorkspaceFlowPanel.tsx"
+    - "apps/desktop/src/components/workspace/WorkspaceRunResultCard.tsx"
+    - "apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - "apps/desktop/src/components/workspace/ax-workspace.css"
+    - "apps/desktop/src/components/chat/ChatMainPage.tsx"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "all unrelated existing dirty worktree changes"
+    - "Figma file and all Figma pages"
+    - "production connector behavior, credentials, and external data"
+    - "workflow engine and core packages unless evidence requires a narrowly scoped compatibility change"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T07:37:59.0745754+09:00
+    decision: BASELINE
+    values:
+      legacy-completed-flow: "FAIL: execution_result without executionStatus falls back to 방법 검토 even when host result content says 실행이 완료되었습니다"
+      structured-terminal-flow: "PASS: success/cancelled/failed messages with executionStatus map to terminal stage"
+      approval-flow: "PASS: pending_approval maps to 승인 대기"
+      review-flow: "PASS: saved workflow/discovery review maps to 방법 검토 when no terminal result exists"
+      focused-test: "FAIL: 1 of 8 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+  final:
+    recorded_at: 2026-09-02T07:48:02.1221980+09:00
+    decision: KEEP
+    values:
+      legacy-completed-flow: "PASS: known legacy host-generated completion message resolves to 실행 완료 at stage 5"
+      structured-terminal-flow: "PASS: explicit success/cancelled/failed statuses remain terminal and distinct"
+      approval-flow: "PASS: pending_approval remains 승인 대기 at stage 4 with approval guidance"
+      review-flow: "PASS: discovery/saved workflow without execution result remains 방법 검토"
+      card-consistency: "PASS: WorkspaceRunResultCard and WorkspaceFlowPanel share the same explicit/legacy status resolver"
+      focused-test: "PASS: 10 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+      product-qa: "PASS: deterministic one-shot-inline-approval scenario"
+      visual-integrity: "PASS: built Electron approval and completed screenshots show stage 4/5 labels, status colors, and no clipping"
+      implementation-boundary: "PASS: no Figma, connector, credential, or external data changes"
+
+workflow_visualization_polish:
+  status: completed
+  objective: "Polish the existing Workspace 워크플로우 canvas for hierarchy, legibility, theme consistency, and contained detail without changing workflow behavior."
+  allowed_mutation:
+    - "apps/desktop/src/styles/workflow.css"
+    - "apps/desktop/src/workflow/WorkflowGraph.tsx"
+    - "apps/desktop/src/workflow/types.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "all unrelated existing dirty worktree changes"
+    - "Figma file and all Figma pages"
+    - "workflow semantics, persisted data, connector behavior, credentials, and external data"
+    - "chat, context-tab, approval, and settings surfaces outside the workflow canvas"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T08:10:05.6461048+09:00
+    decision: BASELINE
+    values:
+      visual-hierarchy: "FAIL: completed workflow uses a dark gradient canvas that visually separates it from the AX Studio shell"
+      label-legibility: "FAIL: node captions are single-line and truncate long real workflow labels such as Webhook 요청 본문"
+      detail-containment: "FAIL: graph canvas expands aggressively and pushes selected detail/notes below the visible panel"
+      semantic-appearance: "PASS: node kinds, selection, controls, minimap, and node-detail behavior are present"
+      focused-tests: "PASS: 10 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+  final:
+    recorded_at: 2026-09-02T08:24:36.8057760+09:00
+    decision: KEEP
+    values:
+      visual-hierarchy: "PASS: light/dark workflow canvas now uses AX Studio shell surfaces, scoped grid, semantic node colors, and readable controls"
+      label-legibility: "PASS: nodes use 136px layout width and two-line captions with readable secondary labels"
+      detail-containment: "PASS: graph is capped at 520px; built Electron metrics showed graph height 520px and preview scrollHeight equal to clientHeight"
+      semantic-appearance: "PASS: trigger/action distinctions, selection styles, controls, minimap, detail, and empty states were preserved"
+      behavior-preservation: "PASS: focused WorkspaceContextPanel tests 10/10 and a workflow-created graph rendered in Electron"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+      detector: "PASS WITH REVIEW: one pre-existing width-transition warning at workflow.css:65 in the splitter; no new workflow-canvas finding"
+      visual-integrity: "PASS: final built Electron light/dark screenshots show no clipping or overlap"
+      implementation-boundary: "PASS: no Figma, connector, credential, semantic, or external data changes"
+
+frontend_context_tabs:
+  status: completed
+  objective: "Implement the Figma 03 새 UI three-tab context panel in the existing Workspace frontend without changing unrelated worktree code."
+  allowed_mutation:
+    - "apps/desktop/src/components/workspace/WorkspaceContextPanel.tsx"
+    - "apps/desktop/src/components/workspace/WorkspaceFlowPanel.tsx"
+    - "apps/desktop/src/components/workspace/ax-workspace.css"
+    - "apps/desktop/src/components/chat/ChatMainPage.tsx"
+    - "apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "all unrelated existing dirty worktree changes"
+    - "Figma file and all Figma pages"
+    - "production connector behavior, credentials, and external data"
+    - "workflow engine and core packages unless compiler evidence requires a minimal type-only adjustment"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T07:15:01.9456206+09:00
+    decision: BASELINE
+    values:
+      three-tabs: "FAIL: current WorkspaceContextPanel exposes only 자료 and conditional 흐름"
+      tab-responsibilities: "FAIL: 흐름 currently renders the reusable workflow graph; no current-run flow view exists"
+      workflow-preservation: "PASS: existing WorkflowPreviewPanel selection/edit and source attach props are wired"
+      accessibility: "PASS: existing tabs use role=tab and aria-selected"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+  final:
+    recorded_at: 2026-09-02T07:31:15.0050274+09:00
+    decision: KEEP
+    values:
+      three-tabs: "PASS: WorkspaceContextPanel exposes 자료, 흐름, 워크플로우 as accessible tabs"
+      tab-responsibilities: "PASS: 흐름 renders current execution lifecycle while 워크플로우 renders the existing reusable graph"
+      workflow-preservation: "PASS: real workflow-created session rendered the existing graph in 워크플로우; source attach and node wiring remain unchanged"
+      accessibility: "PASS: tabs expose role=tab, selected state, keyboard navigation, and active-panel controls without stale inactive references"
+      visual-integrity: "PASS: light and dark approval states rendered at the desktop panel width without clipping"
+      focused-tests: "PASS: 7 WorkspaceContextPanel/WorkspaceFlowPanel tests"
+      typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build -w @ax-studio/desktop"
+
+figma_workflow_tabs:
+  status: completed
+  objective: "Add a three-tab context-panel proposal and a workflow visualization alternate state to Figma 03 새 UI without changing existing pages or product code."
+  allowed_mutation:
+    - "Figma file qvnZ6vHQZq1JYL3HMIlKgT, update only page 03 새 UI"
+    - "The 03 새 UI page may contain the three-tab bar, a workflow-tab alternate context panel, a local workflow-node component, and explanatory labels"
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid_mutation:
+    - "Figma page 00 Current UI (node 26:2), board 27:2, and all source capture tiles"
+    - "Figma page 01 UI UX 문제점 (node 53:2), its clone, markers, register, and all nodes"
+    - "Figma page 02 개선안 (node 61:2), board 61:3, and all nodes"
+    - "Figma page AX Studio · UX Map (node 0:1) and its nodes"
+    - "Figma page 03 새 UI nodes outside the right context tab bar and workflow-tab alternate state"
+    - production source, CSS, tests, package files, generated output, and dependencies
+    - live HTTP, Slack, Gmail, AI, and database side effects
+    - credentials, authorization values, raw provider bodies, and real connector data
+    - new product features, new workflow capabilities, or implementation changes
+    - existing unrelated dirty worktree changes
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T06:49:46.1963721+09:00
+    decision: BASELINE
+    values:
+      current-context-tabs: "PASS: primary 03 새 UI screen has 자료 and 흐름 tabs with 흐름 active"
+      workflow-tab: "FAIL: dedicated 워크플로우 tab and alternate visualization state are absent"
+      existing-pages: "PASS: 00 Current UI, 01 UI UX 문제점, and 02 개선안 are available as read-only references"
+      implementation-boundary: "PASS: product code is out of scope"
+  final:
+    recorded_at: 2026-09-02T07:02:45.4576847+09:00
+    decision: KEEP
+    values:
+      context-tabs: "PASS: primary 03 새 UI context panel shows 자료, 흐름, and 워크플로우"
+      workflow-visualization: "PASS: workflow-tab alternate has 5 reusable node instances, 4 connectors, and selected approval detail"
+      source-grounding: "PASS: graph uses existing trigger, HTTP, AI, approval, and Slack workflow concepts"
+      visual-validation: "PASS: primary panel, alternate state, and full board render without clipping or exposed source component"
+      immutable-pages: "PASS: 00 Current UI, 01 UI UX 문제점, and 02 개선안 remain outside the write boundary"
+      implementation-boundary: "PASS: no production source, tests, connector state, credentials, or external side effect was changed"
+
+demo_release_hardening:
+  status: active
+  objective: "Audit and harden the current AX Studio worktree into a reproducible local Windows demo release candidate without adding product scope or causing external side effects."
+  allowed_mutation:
+    - "apps/desktop/**"
+    - "packages/core/**"
+    - "test/**"
+    - "scripts/**"
+    - "package.json"
+    - "package-lock.json"
+    - "README.md"
+    - "apps/desktop/electron-builder.yml"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "all unrelated existing dirty worktree changes"
+    - "Figma file and all Figma pages"
+    - "credentials, secrets, OS credential store, and user data"
+    - "real Gmail/Slack sending or remote API/database mutation"
+    - "new product capabilities, integrations, workflow nodes, or redesign"
+    - "destructive cleanup, git reset, or public upload/release"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-02T09:03:05.9146847+09:00
+    decision: BASELINE
+    values:
+      core-tests: "PASS: npm test completed with 705 passed and 3 skipped across 130 test files"
+      integration-tests: "PASS: npm run test:integration completed with 72/72 tests"
+      connector-seam: "PASS: npm run test:connector-lab:check completed with 2/2 tests"
+      deterministic-product-qa: "PASS: full tier completed 61/61 scenario runs with 0 defects; coverage 49/57 and 8 side-effect surfaces intentionally excluded"
+      smoke-product-qa: "PASS: deterministic smoke completed 19/19 scenario runs"
+      typecheck-build: "PASS: desktop TypeScript check and npm run build"
+      architecture: "PASS: 513 modules and 1823 dependencies cruised with no violations"
+      eval: "PASS: npm run eval completed with 11/11 tests"
+      package: "PASS: Windows NSIS installer and win-unpacked package generated; packaged first screen launched in isolated data"
+      manual-surface-review: "PARTIAL: automated safe paths and packaged first screen reviewed; live connector/account paths and real external delivery intentionally not run"
+      implementation-boundary: "PASS: no Figma, secret, credential, external side effect, destructive cleanup, or unrelated source change in this follow-up"
+  final:
+    recorded_at: null
+    decision: PENDING

@@ -11,12 +11,13 @@ export function createExecution(
     ephemeral: boolean;
     triggerType?: string;
     irJson?: string;
+    workspaceSessionId?: string;
   },
 ): string {
   const id = randomUUID();
   db
     .prepare(
-      'INSERT INTO executions (id, workflow_id, workflow_version, ephemeral, status, started_at, log_json, trigger_type, ir_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO executions (id, workflow_id, workflow_version, ephemeral, status, started_at, log_json, trigger_type, ir_json, workspace_session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(
       id,
@@ -28,6 +29,7 @@ export function createExecution(
       '[]',
       params.triggerType ?? null,
       params.irJson ?? null,
+      params.workspaceSessionId ?? null,
     );
   return id;
 }
@@ -73,6 +75,7 @@ function mapExecution(row: ExecutionRow) {
     logJson: row.log_json,
     triggerType: row.trigger_type,
     irJson: row.ir_json ?? undefined,
+    workspaceSessionId: row.workspace_session_id ?? undefined,
   };
 }
 

@@ -1,3 +1,4 @@
+import { CapabilityInvokeError } from './capability-invoke.js';
 import { getDesignTool } from './registry.js';
 import type { DesignToolCall, DesignToolContext, DesignToolId, DesignToolResult } from './types.js';
 import { DESIGN_TOOL_IDS, MAX_DESIGN_TOOL_CALLS_PER_TURN } from './types.js';
@@ -23,10 +24,16 @@ export async function executeDesignTool(
     const data = await definition.handler(ctx, call.args ?? {});
     return { tool: call.tool, ok: true, data };
   } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    const errorDetails =
+      err instanceof CapabilityInvokeError && ctx.allowUntrustedData === true
+        ? err.errorDetails
+        : undefined;
     return {
       tool: call.tool,
       ok: false,
-      error: err instanceof Error ? err.message : String(err),
+      error,
+      ...(errorDetails === undefined ? {} : { errorDetails }),
     };
   }
 }

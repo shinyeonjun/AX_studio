@@ -7,20 +7,17 @@ import {
   type ThreadMessageLike,
 } from '@assistant-ui/react';
 import { useMemo, useRef } from 'react';
-import type { DiscoveryInspectView } from '@ax-studio/core';
-import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type {
+  DiscoveryInspectView,
+  WorkspaceChatMessage,
+} from '@ax-studio/core';
 import { axStudioLogo } from '../../constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from './WorkspaceRunResultCard';
 import { WorkspaceMarkdown } from './WorkspaceMarkdown';
 import { WorkspaceAssistantPresentation } from './WorkspaceAssistantPresentation';
 import { DiscoveryReviewCard } from './DiscoveryReviewCard';
 
-export interface WorkspaceChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  inputRequests?: AxInputRequest[];
-  presentations?: AxUiPresentation[];
-}
+export type { WorkspaceChatMessage } from '@ax-studio/core';
 
 interface AxWorkspaceChatProps {
   messages: WorkspaceChatMessage[];
@@ -33,6 +30,8 @@ interface AxWorkspaceChatProps {
   discoveryView?: DiscoveryInspectView;
   discoveryBusy?: boolean;
   onSend: (text: string) => Promise<void>;
+  onApproveApproval?: (approvalId: string) => Promise<void>;
+  onRejectApproval?: (approvalId: string) => Promise<void>;
   onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
@@ -76,14 +75,27 @@ function AssistantMessage({
   busy,
   isLatest,
   onSend,
+  onApproveApproval,
+  onRejectApproval,
 }: {
   message: WorkspaceChatMessage;
   busy: boolean;
   isLatest: boolean;
   onSend: (text: string) => Promise<void>;
+  onApproveApproval?: (approvalId: string) => Promise<void>;
+  onRejectApproval?: (approvalId: string) => Promise<void>;
 }) {
-  const content = isRunResultMessage(message.content)
-    ? <WorkspaceRunResultCard content={message.content} />
+  const content = isRunResultMessage(message)
+    ? (
+      <WorkspaceRunResultCard
+        content={message.content}
+        status={message.executionStatus}
+        approval={message.approval}
+        busy={busy}
+        onApprove={onApproveApproval}
+        onReject={onRejectApproval}
+      />
+    )
     : <WorkspaceMarkdown content={message.content} />;
 
   return (
@@ -141,6 +153,8 @@ export function AxWorkspaceChat({
   discoveryView,
   discoveryBusy = false,
   onSend,
+  onApproveApproval,
+  onRejectApproval,
   onDismissError,
   onRegisterWorkflow,
   onAttachExample,
@@ -215,6 +229,8 @@ export function AxWorkspaceChat({
                 busy={busy}
                 isLatest={index === lastAssistantIndex}
                 onSend={onSend}
+                onApproveApproval={onApproveApproval}
+                onRejectApproval={onRejectApproval}
               />
             ))}
             {busy && (

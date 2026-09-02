@@ -21,7 +21,7 @@ import { hydrateOpenApiConnector } from './openapi/connection.js';
 import { hydrateMcpConnector } from './mcp/connection.js';
 import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from './ai/config-file';
 import { migrateDesktopAiProvider } from './ai/provider-migrate.js';
-import { notifyStateChanged, notifyWorkspaceSourceChanged } from './state-broadcast.js';
+import { notifyStateChanged, notifyWorkspaceChatChanged, notifyWorkspaceSourceChanged } from './state-broadcast.js';
 import { applyDesktopAppIdentity, initDesktopAxDataPaths, resolveDesktopDataRoot } from './data-paths.js';
 import { installDesktopFileLog } from './file-log.js';
 import { migrateAxDataIfNeeded } from './data-migrate.js';
@@ -114,6 +114,7 @@ app.whenReady().then(async () => {
       onExecutionStarted: () => notifyStateChanged(),
       onExecutionProgress: () => notifyStateChanged(),
       onExecutionFinished: () => notifyStateChanged(),
+      onWorkspaceChatChanged: notifyWorkspaceChatChanged,
       onPushTransportStateChanged: () => notifyStateChanged(),
       resolveConnectionConfig: async (connector, config) =>
         connector === 'rdb' ? resolveRdbConnectionConfig(config) : config,

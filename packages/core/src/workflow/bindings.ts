@@ -16,7 +16,7 @@ import {
 import { getCapability } from '../catalog/capabilities.js';
 import { resolveCapability } from '../catalog/capability-graph.js';
 import { fileRefFromExecutionVariables, fileRefFromTriggerPayload } from '../contracts/mappers.js';
-import { linearContractSteps, stepsById } from './control-flow.js';
+import { linearSteps, stepsById } from './control-flow.js';
 import type { Step, Trigger, WorkflowIR } from './schema.js';
 
 export { PortBindingSchema, coercePortBinding, type PortBinding } from './port-binding.js';
@@ -71,9 +71,15 @@ export function aiDecisionOutputPorts(step: Extract<Step, { type: 'ai_decision' 
     return [];
   });
 
-  // `result` is the only generic AI output. Message text must use a declared
-  // string field so the workflow contract names the value that will be sent.
-  return [{ from: step.id, port: 'result', type: 'JsonArtifact' as const }, ...declared];
+  // `conclusion` is part of the default investigation output even when a
+  // workflow does not declare a custom output schema. Keep an explicitly
+  // declared field authoritative if a workflow overrides that name.
+  const hasDeclaredConclusion = declared.some((output) => output.port === 'conclusion');
+  return [
+    { from: step.id, port: 'result', type: 'JsonArtifact' as const },
+    ...(hasDeclaredConclusion ? [] : [{ from: step.id, port: 'conclusion', type: 'TextArtifact' as const }]),
+    ...declared,
+  ];
 }
 
 function findCompatibleSource(
@@ -85,6 +91,42 @@ function findCompatibleSource(
     if (contractTypesCompatible(candidate.type, inputType)) return candidate;
   }
   return undefined;
+}
+
+function findPreferredTextSource(
+  available: AvailableOutput[],
+  inputType: ContractTypeName,
+): AvailableOutput | undefined {
+  if (inputType === 'TextArtifact') {
+    const conclusion = [...available].reverse().find(
+      (candidate) => candidate.port === 'conclusion' && contractTypesCompatible(candidate.type, inputType),
+    );
+    if (conclusion) return conclusion;
+  }
+  return findCompatibleSource(available, inputType);
+}
+
+function findAiDecisionSource(
+  available: AvailableOutput[],
+  inputType: ContractTypeName,
+): AvailableOutput | undefined {
+  const candidate = findCompatibleSource(available, inputType);
+  if (
+    candidate?.from === 'trigger' &&
+    candidate.port === 'path' &&
+    inputType === 'TextArtifact'
+  ) {
+    // Webhook routes and bodies are both text artifacts. The route identifies
+    // the workflow, while the body contains the provider data the AI is meant
+    // to analyze. Keep the route available, but never mistake it for content.
+    return available.find(
+      (output) =>
+        output.from === 'trigger' &&
+        output.port === 'body' &&
+        contractTypesCompatible(output.type, inputType),
+    ) ?? candidate;
+  }
+  return candidate;
 }
 
 function isConcreteParamValue(value: unknown): boolean {
@@ -152,7 +194,9 @@ function inferStepBindings(
     }
 
     if (bindings[inputPort] || hasConcreteParamForPort(step, inputPort)) continue;
-    const source = findCompatibleSource(available, inputType as ContractTypeName);
+    const source = cap?.notification === true && (inputPort === 'text' || inputPort === 'body')
+      ? findPreferredTextSource(available, inputType as ContractTypeName)
+      : findCompatibleSource(available, inputType as ContractTypeName);
     if (!source) continue;
     if (source.from !== 'trigger' && !guaranteedSources.has(source.from)) continue;
     bindings[inputPort] = { from: source.from, output: source.port };
@@ -193,7 +237,7 @@ function inferAiDecisionBindings(
   const bindings = { ...(step.bindings ?? {}) };
   for (const [inputPort, inputType] of Object.entries(inputContracts)) {
     if (bindings[inputPort]) continue;
-    const source = findCompatibleSource(available, inputType);
+    const source = findAiDecisionSource(available, inputType);
     if (!source) continue;
     if (source.from !== 'trigger' && !guaranteedSources.has(source.from)) continue;
     bindings[inputPort] = { from: source.from, output: source.port };
@@ -339,7 +383,11 @@ function inferSequenceBindings(
 }
 
 export function inferWorkflowBindings(ir: WorkflowIR): WorkflowIR {
-  const linear = linearContractSteps(ir.steps);
+  // Binding inference follows the runtime sequence, including actions that
+  // execute after an explicit approval node. Contract validation keeps using
+  // linearContractSteps separately because an approval-gated action is not a
+  // source before approval, but it still needs bindings when it resumes.
+  const linear = linearSteps(ir.steps);
   const updated = new Map<string, Step>();
   inferSequenceBindings(
     linear,
@@ -388,6 +436,13 @@ export function extractStepOutput(
   const outputs = cap?.io?.outputs;
   if (!outputs || !(outputPort in outputs)) {
     return data;
+  }
+
+  if (outputs[outputPort] === 'TextArtifact' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    const record = data as Record<string, unknown>;
+    for (const key of ['text', 'body', 'summary']) {
+      if (typeof record[key] === 'string') return record[key];
+    }
   }
 
   if (outputPort === 'text' && typeof data === 'object' && data !== null && 'text' in data) {
@@ -529,20 +584,7 @@ export function bindingOutputType(
   const step = ir.steps.find((candidate) => candidate.id === binding.from);
   if (!step) return undefined;
   if (step.type === 'ai_decision') {
-    if (binding.output === 'result') return 'JsonArtifact';
-    const properties = step.outputSchema?.properties;
-    const definition =
-      properties && typeof properties === 'object' && !Array.isArray(properties)
-        ? (properties as Record<string, unknown>)[binding.output]
-        : undefined;
-    const type = definition && typeof definition === 'object' && !Array.isArray(definition)
-      ? (definition as Record<string, unknown>).type
-      : undefined;
-    if (type === 'string') return 'TextArtifact';
-    if (type === 'number' || type === 'integer' || type === 'boolean' || type === 'array') {
-      return 'JsonArtifact';
-    }
-    return undefined;
+    return aiDecisionOutputPorts(step).find((output) => output.port === binding.output)?.type;
   }
   if (step.type !== 'action') return undefined;
   const cap = resolveCapability(step.connector, step.action);

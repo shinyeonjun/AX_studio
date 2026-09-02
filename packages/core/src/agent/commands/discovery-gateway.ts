@@ -9,7 +9,7 @@ import {
   DiscoveryRetryArgsSchema,
   DiscoveryStartArgsSchema,
 } from '../../work-discovery/schema.js';
-import type { AxCommand, AxCommandIssue, AxCommandResult } from './schema.js';
+import type { AxCommand, AxCommandIssue, AxCommandResult, AxInputRequest } from './schema.js';
 
 export type DiscoveryCommandResult = [AxCommandResult['status'], unknown, AxCommandIssue[]?];
 
@@ -52,8 +52,18 @@ export function createDiscoveryCommandGateway(
   };
 }
 
-function issue(code: string, message: string, path?: string): AxCommandIssue {
-  return { code, message, path };
+function issue(code: string, message: string, path?: string, inputRequests?: AxInputRequest[]): AxCommandIssue {
+  return { code, message, path, ...(inputRequests?.length ? { inputRequests } : {}) };
+}
+
+function sessionInput(): AxInputRequest {
+  return {
+    id: 'ax-input-discovery-session-id',
+    label: 'Discovery 세션',
+    type: 'text',
+    required: true,
+    reason: '확인할 discovery session id를 입력해 주세요.',
+  };
 }
 
 function start(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
@@ -65,7 +75,7 @@ function start(service: WorkDiscoveryService, command: AxCommand): DiscoveryComm
 
 function inspect(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
   const sessionId = typeof command.args.sessionId === 'string' ? command.args.sessionId : '';
-  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId')]];
+  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId', [sessionInput()])]];
   const view = service.inspect(sessionId.trim());
   if (!view) return ['not_found', undefined, [issue('discovery_not_found', `discovery session을 찾을 수 없습니다: ${sessionId}`)]];
   return ['ok', view];
@@ -73,7 +83,7 @@ function inspect(service: WorkDiscoveryService, command: AxCommand): DiscoveryCo
 
 function cancel(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
   const sessionId = typeof command.args.sessionId === 'string' ? command.args.sessionId : '';
-  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId')]];
+  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId', [sessionInput()])]];
   const session = service.cancel(sessionId.trim());
   if (!session) return ['not_found', undefined, [issue('discovery_not_found', `discovery session을 찾을 수 없습니다: ${sessionId}`)]];
   return ['ok', { sessionId: session.id, status: session.status }];

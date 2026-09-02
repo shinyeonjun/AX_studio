@@ -14,14 +14,38 @@ import {
   type AxInputRequest,
   type AxUiPresentation,
 } from '../../agent/commands/schema.js';
+import {
+  ExecutionResultStatusSchema,
+  type ExecutionResultStatus,
+} from '../../contracts/execution-status.js';
 
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Host-generated durable result, distinguishable from a normal reply. */
+  kind?: 'execution_result';
+  /** Execution id used to make background result delivery idempotent. */
+  executionId?: string;
+  /** Structured lifecycle state for host-generated execution results. */
+  executionStatus?: ExecutionResultStatus;
   /** Optional host-rendered controls attached to this assistant message. */
   inputRequests?: AxInputRequest[];
   presentations?: AxUiPresentation[];
+  /** Direct host action for a pending one-shot execution approval. */
+  approval?: WorkspaceChatApproval;
 }
+
+export interface WorkspaceChatApproval {
+  id: string;
+  title: string;
+  reason: string;
+}
+
+export const WorkspaceChatApprovalSchema = z.object({
+  id: z.string().trim().min(1).max(128),
+  title: z.string().trim().min(1).max(240),
+  reason: z.string().trim().min(1).max(1_200),
+});
 
 export interface WorkspaceChatRecord {
   id: string;
@@ -46,14 +70,25 @@ export interface WorkspaceChatListRecord {
   corrupted?: boolean;
 }
 
-const WorkspaceChatMessagesSchema = z.array(
-  z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string(),
-    inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
-    presentations: z.array(AxUiPresentationSchema).max(4).optional(),
-  }),
-);
+const WorkspaceChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  kind: z.literal('execution_result').optional(),
+  executionId: z.string().min(1).max(128).optional(),
+  executionStatus: ExecutionResultStatusSchema.optional(),
+  inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
+  presentations: z.array(AxUiPresentationSchema).max(4).optional(),
+  approval: WorkspaceChatApprovalSchema.optional(),
+}).superRefine((message, context) => {
+  if (message.approval && message.kind !== 'execution_result') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['approval'],
+      message: 'approval은 실행 결과 메시지에만 사용할 수 있습니다.',
+    });
+  }
+});
+const WorkspaceChatMessagesSchema = z.array(WorkspaceChatMessageSchema);
 
 function parseMessages(messagesJson: string, id: string): WorkspaceChatMessage[] {
   let raw: unknown;
@@ -132,12 +167,33 @@ export function saveWorkspaceChat(
     workflowId?: string | null;
   },
 ): WorkspaceChatRecord {
-  const messages = WorkspaceChatMessagesSchema.parse(params.messages);
+  const parsedMessages = WorkspaceChatMessagesSchema.parse(params.messages);
   const now = new Date().toISOString();
   const id = params.id?.trim() || randomUUID();
-  const existing = db.prepare('SELECT id, workflow_id FROM workspace_chats WHERE id = ?').get(id) as
-    | { id: string; workflow_id?: string | null }
+  const existing = db.prepare('SELECT id, workflow_id, messages_json FROM workspace_chats WHERE id = ?').get(id) as
+    | { id: string; workflow_id?: string | null; messages_json?: string }
     | undefined;
+  let messages = parsedMessages;
+  if (existing?.messages_json) {
+    try {
+      const persisted = parseMessages(existing.messages_json, id);
+      const incomingExecutionIds = new Set(
+        parsedMessages
+          .filter((message) => message.kind === 'execution_result' && message.executionId)
+          .map((message) => message.executionId),
+      );
+      const backgroundResults = persisted.filter(
+        (message) =>
+          message.kind === 'execution_result' &&
+          message.executionId &&
+          !incomingExecutionIds.has(message.executionId),
+      );
+      messages = [...parsedMessages, ...backgroundResults];
+    } catch {
+      // An incoming full transcript can still repair an old corrupt row. The
+      // persisted result merge is only a race-preservation aid.
+    }
+  }
   const sources = existing || params.id ? listWorkspaceSources(db, id) : [];
   const title = deriveWorkspaceChatTitle(messages, sources);
   const messagesJson = JSON.stringify(messages);
@@ -167,6 +223,29 @@ export function saveWorkspaceChat(
     ...(workflowId ? { workflowId } : {}),
     updatedAt: now,
   };
+}
+
+/**
+ * Append or replace one host-generated execution result without allowing a
+ * second delivery of the same execution to grow the transcript.
+ */
+export function upsertWorkspaceChatExecutionResult(
+  db: AppDatabase,
+  sessionId: string,
+  message: WorkspaceChatMessage & { kind: 'execution_result'; executionId: string },
+): WorkspaceChatRecord | null {
+  const parsed = WorkspaceChatMessageSchema.parse(message);
+  const existing = getWorkspaceChat(db, sessionId);
+  if (!existing) return null;
+
+  const index = existing.messages.findIndex(
+    (entry) => entry.kind === 'execution_result' && entry.executionId === parsed.executionId,
+  );
+  const messages = [...existing.messages];
+  if (index >= 0) messages[index] = parsed;
+  else messages.push(parsed);
+
+  return saveWorkspaceChat(db, { id: sessionId, messages });
 }
 
 export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatRecord | null {

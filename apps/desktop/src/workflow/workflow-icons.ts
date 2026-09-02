@@ -1,3 +1,4 @@
+import { getCapability } from '@ax-studio/core/catalog-data';
 import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../constants/connectors.js';
 import gmailIcon from '../images/connectors/gmail.png';
 import slackIcon from '../images/connectors/slack.png';
@@ -28,15 +29,10 @@ const TRIGGER_EMOJI: Record<string, string> = {
   schedule: '📅',
 };
 
-const TRIGGER_CONNECTOR: Record<string, string> = {
-  'gmail.new_message': 'gmail',
-  'slack.new_message': 'slack',
-  'local_folder.new_file': 'local_folder',
-};
-
 export function triggerIconConnector(triggerType?: string): string | undefined {
   if (!triggerType) return undefined;
-  return TRIGGER_CONNECTOR[triggerType];
+  const capability = getCapability(triggerType);
+  return capability?.kind === 'trigger' ? capability.connector : undefined;
 }
 
 export function workflowNodeIcon(connector?: string): WorkflowNodeIcon {

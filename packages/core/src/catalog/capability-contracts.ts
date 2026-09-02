@@ -1,13 +1,10 @@
-import { getCapability, CAPABILITY_CATALOG } from './capabilities.js';
+import { getCapability } from './capabilities.js';
 import { resolveCapability } from './capability-resolver.js';
 import type { ContractTypeName } from '../contracts/capability-io.js';
 
-const TRIGGER_CAPABILITY_BY_TYPE: Record<string, string> = Object.fromEntries(
-  CAPABILITY_CATALOG.filter((cap) => cap.kind === 'trigger').map((cap) => [cap.id, cap.id]),
-);
-
 export function triggerCapabilityId(triggerType: string): string | undefined {
-  return TRIGGER_CAPABILITY_BY_TYPE[triggerType];
+  const capability = getCapability(triggerType);
+  return capability?.kind === 'trigger' ? capability.id : undefined;
 }
 
 export function triggerOutputTypes(triggerType: string | undefined): ContractTypeName[] {

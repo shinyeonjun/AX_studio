@@ -1,6 +1,8 @@
 {
   "scenarios": [
     "deterministic-smoke.json",
+    "one-shot-inline-approval.json",
+    "one-shot-inline-approval-reject.json",
     "discovery-desktop-deterministic.json",
     "session-isolation-new-chat-while-sending-deterministic.json",
     "session-isolation-new-chat-while-sending.json",

@@ -1,4 +1,4 @@
-import { CAPABILITY_CATALOG, type ConnectorCapability } from '../../catalog/capabilities.js';
+import { type ConnectorCapability } from '../../catalog/capabilities.js';
 import { designCapabilities, isConnectorAlwaysOn } from '../../catalog/capability-graph.js';
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
 
@@ -21,6 +21,7 @@ function summarizeCapability(cap: ConnectorCapability, connectedConnectorIds: st
     label: cap.label,
     description: cap.description,
     sideEffect: cap.sideEffect ?? 'NONE',
+    notification: cap.notification === true,
     params: cap.params.map((param) => ({
       name: param.name,
       label: param.label,
@@ -37,7 +38,8 @@ export const capabilitiesList: DesignToolHandler = (ctx, args) => {
   const connector = stringArg(args, 'connector');
   const kind = kindArg(args);
 
-  let caps = designCapabilities();
+  const catalog = designCapabilities();
+  let caps = catalog;
   if (connector) {
     caps = caps.filter((cap) => cap.connector === connector);
   }
@@ -47,6 +49,6 @@ export const capabilitiesList: DesignToolHandler = (ctx, args) => {
 
   return {
     capabilities: caps.map((cap) => summarizeCapability(cap, ctx.connectedConnectorIds)),
-    catalogSize: CAPABILITY_CATALOG.length,
+    catalogSize: catalog.length,
   };
 };

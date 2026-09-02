@@ -1,12 +1,14 @@
 import type { Page } from '@playwright/test';
 import {
   attachFixtureViaE2e,
+  clickInlineApproval,
   clickNewChat,
   deleteSessionByTitle,
   errorBannerText,
   hasWorkflow,
   isAppAlive,
   isComposerDisabled,
+  inlineApprovalVisible,
   listSessionTitles,
   openAiSettings,
   openContextTab,
@@ -152,6 +154,10 @@ export class StepRunner {
         await waitForComposerReady(page, defaultReplyTimeoutMs());
         this.replyLatenciesMs.push(Date.now() - sendStarted);
         await this.captureSessionTitle(page, label);
+        return;
+      }
+      case 'clickInlineApproval': {
+        await clickInlineApproval(page, step.decision);
         return;
       }
       case 'waitMs': {
@@ -424,6 +430,18 @@ export class StepRunner {
           expected: `workflow name contains ${step.text}`,
           actual: present ? 'matched' : 'workflow not found',
           passed: present,
+        };
+      }
+      case 'inlineApprovalPresent':
+      case 'inlineApprovalAbsent': {
+        const visible = await inlineApprovalVisible(page);
+        const expectedVisible = step.check === 'inlineApprovalPresent';
+        return {
+          ...base,
+          check: step.check,
+          expected: expectedVisible ? 'inline approval card visible' : 'inline approval card absent',
+          actual: visible ? 'visible' : 'absent',
+          passed: visible === expectedVisible,
         };
       }
       default:

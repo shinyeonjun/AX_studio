@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { actionRefFor, listActionDefinitions, resolveActionDefinition, validateActionParams } from './action-definition.js';
 import { parseWorkflowIR } from './schema.js';
+import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../catalog/dynamic-catalog.js';
 
 describe('action definitions', () => {
   it('creates a version-pinned action reference', () => {
@@ -26,6 +27,30 @@ describe('action definitions', () => {
       sideEffect: 'EXTERNAL',
     });
     expect(resolveActionDefinition('http.delete')).toBeUndefined();
+  });
+
+  it('resolves versioned action definitions from the dynamic catalog', () => {
+    registerDynamicCapabilities([{
+      id: 'openapi.demo.listPets',
+      connector: 'openapi',
+      kind: 'read',
+      label: '반려동물 목록',
+      description: '반려동물 목록 조회',
+      sideEffect: 'NONE',
+      params: [],
+    }]);
+
+    try {
+      expect(actionRefFor('openapi', 'demo.listPets')).toBe('openapi.demo.listPets@1');
+      expect(resolveActionDefinition('openapi.demo.listPets@1')).toMatchObject({
+        id: 'openapi.demo.listPets',
+        connector: 'openapi',
+        action: 'demo.listPets',
+      });
+      expect(listActionDefinitions().some((definition) => definition.id === 'openapi.demo.listPets')).toBe(true);
+    } finally {
+      clearDynamicCatalogForTests();
+    }
   });
 
   it('lists only executable actions, not triggers', () => {

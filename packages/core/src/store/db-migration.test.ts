@@ -48,6 +48,7 @@ describe('legacy database migrations', () => {
       );
       expect(columns).toContain('workflow_id');
       expect(columns).toContain('workflow_version');
+      expect(columns).toContain('workspace_session_id');
       expect(columns).not.toContain('skill_id');
       expect(columns).not.toContain('skill_version');
 

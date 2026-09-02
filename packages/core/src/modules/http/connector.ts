@@ -9,6 +9,18 @@ import { isSupportedHttpMethod } from './connection.js';
 import { performHttpRequest } from './request.js';
 import { resolveHttpRequestUrl } from './url-security.js';
 
+const MAX_HTTP_ERROR_BODY_PREVIEW_CHARS = 4_000;
+
+function httpErrorDetails(result: { status: number; statusText: string; body: string; truncated: boolean }) {
+  const body = result.body.slice(0, MAX_HTTP_ERROR_BODY_PREVIEW_CHARS);
+  return {
+    status: result.status,
+    statusText: result.statusText.slice(0, 120),
+    body,
+    truncated: result.truncated || result.body.length > body.length,
+  };
+}
+
 function asEndpoints(config: HttpConnectionConfig | readonly HttpEndpoint[]): HttpEndpoint[] {
   const list: readonly HttpConnectionConfig[] = Array.isArray(config) ? config : [config];
   return list.map((entry, index) => ({
@@ -50,6 +62,9 @@ export class HttpConnector implements Connector {
 
     const path = typeof params.path === 'string' ? params.path : '';
     const connectionId = typeof params.connectionId === 'string' ? params.connectionId : undefined;
+    if (!connectionId?.trim() && this.endpoints.length > 1) {
+      return { ok: false, error: 'http_connection_required', errorCode: 'invalid_params' };
+    }
     const endpoint = matchHttpEndpoint(this.endpoints, connectionId);
     if (!endpoint) {
       return { ok: false, error: 'http_connection_not_found', errorCode: 'invalid_params' };
@@ -110,6 +125,7 @@ export class HttpConnector implements Connector {
         ok: false,
         error: `http_${result.status}`,
         errorCode: 'http_error',
+        errorDetails: httpErrorDetails(result),
       };
     }
 

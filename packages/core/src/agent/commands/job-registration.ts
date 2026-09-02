@@ -6,7 +6,7 @@ import {
 } from '../../modules/http/connection.js';
 import { resolveHttpRequestUrl } from '../../modules/http/url-security.js';
 import { actionRefFor } from '../../workflow/action-definition.js';
-import { validateWorkflowContracts } from '../../workflow/contract-validator.js';
+import { validateWorkflowContracts, type ContractValidationIssue } from '../../workflow/contract-validator.js';
 import { isValidCronExpression, isValidTimeZone } from '../../workflow/cron.js';
 import {
   parseWorkflowIR,
@@ -14,7 +14,13 @@ import {
   type WorkflowIR,
 } from '../../workflow/schema.js';
 import type { WorkflowStore } from '../../store/workflow-store.js';
-import type { AxCommandIssue, AxCommandResult, AxUiPresentation } from './schema.js';
+import type {
+  AxCommandIssue,
+  AxCommandResult,
+  AxInputRequest,
+  AxInputRequestOption,
+  AxUiPresentation,
+} from './schema.js';
 
 export const JOB_COMMIT_CONFIRM_VALUE = '이 업무를 저장하고 스케줄을 켜줘';
 export const DEFAULT_JOB_CRON = '0 21 * * *';
@@ -127,8 +133,21 @@ export interface PendingJobDraft {
   ir: WorkflowIR;
 }
 
-function issue(code: string, message: string, path?: string): AxCommandIssue {
-  return { code, message, ...(path ? { path } : {}) };
+export interface JobProposeReadResult {
+  ok: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+export type ListSlackChannels = () => Promise<JobProposeReadResult>;
+
+function issue(code: string, message: string, path?: string, inputRequests?: AxInputRequest[]): AxCommandIssue {
+  return {
+    code,
+    message,
+    ...(path ? { path } : {}),
+    ...(inputRequests?.length ? { inputRequests } : {}),
+  };
 }
 
 function connectedIds(store: WorkflowStore): string[] {
@@ -154,6 +173,109 @@ function pickHttpEndpoint(
       : { ok: false, code: 'invalid_path' };
   }
   return { ok: false, code: 'ambiguous' };
+}
+
+export function httpConnectionInput(
+  endpoints: readonly HttpEndpoint[],
+  id = 'job-http-connection',
+): AxInputRequest {
+  return {
+    id,
+    label: 'HTTP 연결',
+    type: 'text',
+    required: true,
+    reason: '조회에 사용할 HTTP 연결을 선택해 주세요.',
+    options: endpoints.map((endpoint): AxInputRequestOption => ({
+      value: endpoint.id,
+      label: endpoint.label || endpoint.id,
+    })),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function slackChannelOptions(value: unknown): AxInputRequestOption[] {
+  const envelope = asRecord(value);
+  const payload = asRecord(envelope?.data) ?? envelope;
+  const channels = Array.isArray(payload?.channels) ? payload.channels : [];
+  const seen = new Set<string>();
+
+  return channels.flatMap((entry): AxInputRequestOption[] => {
+    const channel = asRecord(entry);
+    const id = typeof channel?.id === 'string' ? channel.id.trim() : '';
+    if (!id || seen.has(id)) return [];
+    seen.add(id);
+    const name = typeof channel?.name === 'string' ? channel.name.trim() : '';
+    const label = name ? `${channel?.isPrivate === true ? '비공개 · ' : ''}#${name}` : id;
+    const memberCount = typeof channel?.numMembers === 'number' && Number.isFinite(channel.numMembers)
+      ? `${channel.numMembers}명 참여`
+      : undefined;
+    return [{ value: id, label, ...(memberCount ? { description: memberCount } : {}) }];
+  });
+}
+
+export async function slackChannelInput(
+  listSlackChannels?: ListSlackChannels,
+  id = 'job-slack-channel',
+): Promise<AxInputRequest> {
+  const fallback: AxInputRequest = {
+    id,
+    label: 'Slack 채널',
+    type: 'slack_channel',
+    required: true,
+    placeholder: '#채널명 또는 채널 ID',
+    reason: listSlackChannels
+      ? 'Slack 채널 목록을 불러오지 못했습니다. 채널 이름 또는 ID를 입력해 주세요.'
+      : '공유할 Slack 채널 이름 또는 ID를 입력해 주세요.',
+  };
+  if (!listSlackChannels) return fallback;
+
+  try {
+    const result = await listSlackChannels();
+    if (!result.ok) return fallback;
+    const options = slackChannelOptions(result.data);
+    if (options.length === 0) return fallback;
+    return {
+      ...fallback,
+      placeholder: 'Slack 채널을 선택해 주세요',
+      reason: '공유할 Slack 채널을 선택해 주세요.',
+      options,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function targetSelectionPresentation(
+  inputs: AxInputRequest[],
+  options: {
+    actionId?: string;
+    actionLabel?: string;
+    actionValue?: string;
+    note?: string;
+  } = {},
+): AxUiPresentation {
+  return {
+    title: '공유 대상 선택',
+    subtitle: '조회와 공유에 사용할 대상을 한 번에 선택해 주세요.',
+    inputMode: 'batch',
+    blocks: [{
+      type: 'note',
+      text: options.note ?? '선택 후 조회·요약한 공유안을 먼저 보여드립니다. 실제 외부 발송은 별도 승인 전까지 실행하지 않습니다.',
+    }],
+    inputs,
+    actions: [{
+      id: options.actionId ?? 'review_job_targets',
+      label: options.actionLabel ?? '선택하고 공유안 검토',
+      value: options.actionValue ?? '선택한 연결과 채널로 공유안을 검토해줘',
+      tone: 'primary',
+      purpose: 'reply',
+    }],
+  };
 }
 
 export function compileScheduledHttpSlackJob(spec: NormalizedJobSpec): WorkflowIR {
@@ -239,6 +361,7 @@ function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: string): 
   return {
     title: '이 업무를 저장할까요?',
     subtitle: spec.name,
+    inputMode: 'individual',
     blocks: [
       {
         type: 'steps',
@@ -266,23 +389,46 @@ function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: string): 
 }
 
 function missingInput(
-  names: string[],
+  inputRequests: AxInputRequest[],
   message: string,
   path: string,
 ): [AxCommandResult['status'], unknown, AxCommandIssue[]] {
   return [
     'needs_input',
     { message },
-    [issue('missing_argument', `필요한 값이 없습니다: ${names.join(', ')}`, path)],
+    [issue('missing_argument', message, path, inputRequests)],
   ];
 }
 
-export function proposeJob(options: {
+function mapContractIssue(entry: ContractValidationIssue): AxCommandIssue {
+  return {
+    code: entry.code,
+    ...(entry.stepId ? { path: `steps.${entry.stepId}` } : {}),
+    message: entry.message,
+    ...(entry.expected ? { expected: entry.expected } : {}),
+    ...(entry.available ? { available: entry.available } : {}),
+    ...(entry.missingInputs?.length
+      ? {
+          inputRequests: entry.missingInputs.map((input, index) => ({
+            id: `ax-input-${entry.stepId ?? entry.code}-${input.name}-${index}`,
+            label: input.label,
+            type: input.inputType ?? 'text',
+            required: true,
+            ...(input.placeholder ? { placeholder: input.placeholder } : {}),
+            reason: input.question,
+          })),
+        }
+      : {}),
+  };
+}
+
+export async function proposeJob(options: {
   store: WorkflowStore;
   pending: Map<string, PendingJobDraft>;
   workspaceSessionId?: string;
   args: unknown;
-}): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+  listSlackChannels?: ListSlackChannels;
+}): Promise<[AxCommandResult['status'], unknown, AxCommandIssue[]?]> {
   const parsed = AxJobProposeArgsSchema.safeParse(coerceJobProposeArgs(options.args));
   if (!parsed.success) {
     return [
@@ -301,12 +447,15 @@ export function proposeJob(options: {
   const path = data.fetch?.path?.trim() ?? '';
   const channel = data.notify?.channel?.trim() ?? '';
   if (!path) {
-    return missingInput(['httpPath'], 'HTTP 조회 경로가 필요합니다. 연결한 HTTP의 상대 경로를 보내 주세요.', 'args.fetch.path');
+    return missingInput([{
+      id: 'job-http-path',
+      label: 'HTTP 조회 경로',
+      type: 'text',
+      required: true,
+      placeholder: '/api/v1/…',
+      reason: '연결한 HTTP의 상대 경로를 입력해 주세요.',
+    }], 'HTTP 조회 경로가 필요합니다. 연결한 HTTP의 상대 경로를 보내 주세요.', 'args.fetch.path');
   }
-  if (!channel) {
-    return missingInput(['channel'], 'Slack 채널이 필요합니다.', 'args.notify.channel');
-  }
-
   const cron = data.schedule?.cron?.trim() || DEFAULT_JOB_CRON;
   const timezone = data.schedule?.timezone?.trim() || DEFAULT_JOB_TIMEZONE;
   if (!isValidCronExpression(cron)) {
@@ -339,12 +488,25 @@ export function proposeJob(options: {
       'args.fetch.connectionId',
     )]];
   }
-  if (!picked.ok && picked.code === 'ambiguous') {
-    return missingInput(
-      ['connectionId'],
-      `HTTP 연결이 여러 개입니다. 이 업무에 쓸 연결을 골라 주세요: ${availableConnections}`,
-      'args.fetch.connectionId',
-    );
+
+  const needsHttpSelection = !picked.ok && picked.code === 'ambiguous';
+  if (!channel || needsHttpSelection) {
+    const inputs: AxInputRequest[] = [];
+    if (needsHttpSelection) inputs.push(httpConnectionInput(endpoints));
+    if (!channel) inputs.push(await slackChannelInput(options.listSlackChannels));
+
+    return [
+      'needs_input',
+      {
+        message: 'HTTP 연결과 Slack 채널을 선택해 주세요. 선택하면 조회·요약한 공유안을 먼저 검토합니다.',
+        presentation: targetSelectionPresentation(inputs),
+      },
+      [issue(
+        'job_targets_required',
+        '조회와 공유에 사용할 대상을 선택해 주세요.',
+        needsHttpSelection ? 'args.fetch.connectionId' : 'args.notify.channel',
+      )],
+    ];
   }
   if (!picked.ok) {
     return ['invalid', undefined, [issue(
@@ -383,7 +545,7 @@ export function proposeJob(options: {
   }
   const contractIssues = validateWorkflowContracts(schema.value, { connectedConnectors: connected });
   if (contractIssues.length > 0) {
-    return ['invalid', { saved: false }, contractIssues.map((entry) => issue(entry.code, entry.message, entry.stepId))];
+    return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
   }
 
   options.pending.set(sessionId, { spec, ir });

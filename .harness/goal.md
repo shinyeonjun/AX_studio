@@ -1230,3 +1230,1277 @@ to a different origin.
 - Independent review found no surviving redirect bypass. Its one confirmed
   test-argument forwarding regression was fixed by keeping the existing Core
   test command last in the root script.
+
+## Current task: local connector lab for REST and Webhook manual QA
+
+Add a single long-running, loopback-only test fixture under
+`test/connector-lab` so a developer can use AX Studio directly against a
+realistic local REST API and exercise AX Studio's Webhook receiver through a
+local provider simulator. The lab must preserve the existing manual fixtures,
+record safe request/response observations for review, and remain deterministic
+and easy to stop.
+
+### Success criteria
+
+- `npm run test:connector-lab` starts a local REST API and a Webhook provider
+  control server and prints the actual URLs and manual setup steps.
+- REST supports connection probing, representative GET/POST flows, auth
+  variants, controlled errors, slow/large responses, and safe request logging.
+- Webhook scenarios cover accepted delivery, duplicate event IDs, HMAC,
+  invalid authentication, unknown paths, wrong methods, and oversized payloads
+  without sending outside loopback.
+- Each lab run writes an append-only JSONL event log and a shutdown summary
+  without secrets, credentials, raw request bodies, or absolute paths.
+- Automated tests exercise the public local HTTP seams and pass without Docker,
+  external provider accounts, or a running AX Studio instance.
+- Existing manual fixtures, production connector behavior, and the user's
+  unrelated `.gitignore` change remain untouched.
+
+### Non-goals
+
+- No production REST/Webhook connector changes or protocol redesign.
+- No public tunnel, internet delivery, Gmail/Slack calls, database container,
+  or persistence migration.
+- No attempt to make the test-side provider simulator the product's Webhook
+  receiver; AX Studio remains the receiver under test.
+
+### Objective-contract correction (2026-08-31T18:39:28.3216372+09:00)
+
+The fixture must model an independent partner/internal service rather than
+echoing AX-specific names and payloads. REST responses and sample credentials
+therefore use the Acme Operations API contract, and Webhook bodies use a
+provider-style `id`/`type`/`createdAt`/`data` envelope. Only the final Webhook
+delivery headers remain AX-compatible because those headers are the protocol
+being tested; the fixture does not import production AX modules.
+
+### Connector lab final checkpoint (2026-08-31T18:44:16.3040689+09:00)
+
+- Added `test/connector-lab` with one-command long-running startup for an
+  independent Acme Operations REST API and Acme Billing Events provider
+  simulator.
+- REST covers probe, seeded reads, POST side effect, three auth styles,
+  deterministic 4xx/5xx, slow/large responses, and redirect behavior.
+- Webhook covers accepted, duplicate, HMAC, invalid secret, unknown path,
+  wrong method, oversized payload, and arbitrary event delivery through a
+  loopback-only target.
+- Run logs store only request/response metadata and hashes; secrets, raw bodies,
+  response text, and absolute log paths are excluded. Shutdown summaries are
+  written per run.
+- Connector lab tests passed 2/2, existing Webhook security tests passed 3/3,
+  root Core tests passed 651 with 3 skips, architecture passed with zero
+  violations, and the production build passed.
+
+## Current task: dogfood Gmail OAuth and Slack Socket Mode diagnostics
+
+Use the user's real-runtime log to close the configuration and observability
+gaps found during manual connector QA. Gmail must propagate the configured
+OAuth client secret to the token exchange when one is required. Slack Socket
+Mode must preserve useful nested WebSocket failure details and keep its
+transport lifecycle truthful when the SDK reconnects after an error.
+
+This task supersedes the earlier public-Desktop-client assumption that
+`client_secret` should never be read. The observed Google token response proves
+that at least one configured client requires it; support is therefore optional
+and development-only, without embedding it in packaged builds.
+
+### Success criteria
+
+- `GOOGLE_OAUTH_CLIENT_SECRET` is loaded only as a main-process credential,
+  passed to the Core loopback OAuth client, and never persisted in workflow
+  metadata or exposed in UI/log output.
+- Gmail has a deterministic regression test for the exact missing-secret
+  propagation bug and documents the matching local configuration.
+- Slack errors retain nested `cause`, `original`, and transport error details
+  without logging tokens or raw WebSocket URLs.
+- Slack Socket Mode state and stop behavior remain truthful during SDK
+  reconnect/error transitions; repeated SDK errors do not create an unbounded
+  application-side log loop.
+- Focused tests fail on the pre-fix behavior and pass after the fix; Core,
+  desktop typecheck/build, architecture, and existing connector-lab checks
+  remain green.
+
+### Non-goals
+
+- No live Gmail token exchange, Slack WebSocket, message send, or external API
+  call in automated tests.
+- No token rotation or OAuth consent/scope redesign.
+- No change to the user's existing `.gitignore` or unrelated connector-lab
+  worktree changes.
+
+### Gmail/Slack diagnostics final checkpoint (2026-08-31T19:15:42.5224288+09:00)
+
+- Gmail now accepts an optional development `GOOGLE_OAUTH_CLIENT_SECRET`,
+  forwards it through connect and startup hydration, and converts Google's
+  missing-secret response into an actionable message without exposing values.
+- Slack now walks bounded nested error causes, redacts URLs/tokens, suppresses
+  duplicate SDK wrapper logs, and returns from initial startup while the SDK's
+  auto-reconnect lifecycle continues under the transport owner.
+- Verification: desktop Gmail tests 4/4, Slack tests 6/6, Core 125 files/655
+  tests with 3 skips, integration 72/72, connector-lab 2/2, Core and desktop
+  typechecks, production build, architecture check with 0 violations, and
+  diff check passed.
+
+## Current task: Webhook body mapping and workflow conversation results
+
+Close the two gaps exposed by the first real connector-lab run. A Webhook
+workflow must give its AI step the provider JSON body rather than the route
+path, and a completed saved-workflow run must leave a bounded human-readable
+result in the conversation session mapped to that workflow. Activity remains
+the operational execution record; the conversation is the user-facing result
+surface.
+
+### Success criteria
+
+- Webhook default AI input binds `trigger.body` ahead of `trigger.path` while
+  preserving the route path as a separate trigger value.
+- A Webhook payload containing `invoiceId`, `amount`, and `status` reaches the
+  AI investigation prompt through the normal runtime binding seam.
+- Finished saved-workflow executions append one durable assistant result to the
+  workflow's mapped workspace chat, with success/failure/pending/cancelled
+  status and a bounded execution reference.
+- Result delivery is idempotent for one execution, does not write to another
+  workflow's session, does not include raw request bodies or secrets, and does
+  not change the technical execution outcome when persistence is unavailable.
+- The desktop refreshes the mapped open conversation when a background result
+  arrives, while Activity continues to receive its existing state broadcast.
+- Focused regression tests fail on the pre-fix behavior and pass after the
+  implementation; Core, desktop typecheck/build, connector-lab checks, and
+  architecture checks remain green.
+
+### Non-goals
+
+- No new external Gmail/Slack side-effect capability in this slice.
+- No replacement of Activity with chat messages or removal of execution logs.
+- No raw payload transcript, credential storage, arbitrary session targeting,
+  or broad chat-schema redesign.
+- No UI redesign beyond the event needed to refresh the existing conversation.
+
+## Current task: REST HTTP error propagation
+
+Close the error-observability gap exposed by the live Acme Operations API
+test. A non-2xx HTTP response must preserve its actual status and a bounded,
+safe response-body preview through the local `capability.invoke` command
+boundary so the user can distinguish authentication, not-found, validation,
+and server failures. HTTP read failures must remain failures and must not
+weaken the existing read-only, redirect, size, or credential boundaries.
+
+### Success criteria
+
+- A live `GET /api/v1/secure/profile` without credentials remains an HTTP 401
+  from the independent REST fixture and reaches the command result as 401,
+  never as 404.
+- A 404/401 JSON response exposes bounded error details such as `error`,
+  `resource`, or `hint` to local command chat without exposing credentials,
+  raw request headers, or an unbounded body.
+- `capability.invoke` and the AX command service preserve the structured error
+  details while retaining the existing error status and command failure state.
+- Existing successful GET/POST behavior and read-only/redirect/response-size
+  protections remain unchanged.
+- Focused regression tests fail before the patch and pass after it; Core,
+  desktop typecheck/build, connector-lab, architecture, and whitespace checks
+  remain green.
+
+### Non-goals
+
+- No renderer redesign or error-card visual work.
+- No automatic retry policy, response-schema inference, or provider-specific
+  error taxonomy beyond the bounded HTTP response details.
+- No live external API, Gmail, Slack, database, or credential calls.
+- No persistence of raw HTTP response bodies in execution logs or connection
+  metadata.
+
+### Baseline (2026-08-31T21:08:29.5034009+09:00)
+
+- The connector-lab direct request to `/api/v1/secure/profile` returned HTTP
+  401 with a JSON body containing `error` and `hint`; the lab recorded the
+  request as `authMode: none`.
+- The user-facing AX response reported `capability.invoke` error `http_404`,
+  so the displayed status did not match the observed HTTP response.
+- `HttpConnector` converts non-2xx responses to `{ ok: false, error }` and
+  drops the already-read response body before `capability.invoke` throws the
+  error string.
+- Existing HTTP connector tests cover only a generic 400 failure and do not
+  assert error-body or command-boundary propagation.
+
+### Final (2026-08-31T21:25:47.5020800+09:00)
+
+- `HttpConnector` now preserves the exact non-2xx status and exposes only a
+  bounded response-body preview with status text and truncation metadata.
+- The metadata crosses `capability.invoke` and the AX command issue mapper
+  only for opted-in local untrusted-data contexts; command mapping strips
+  response headers and applies the same body/status bounds.
+- The live built Core request to the running Acme fixture returned
+  `http_401` with HTTP status `401`, `Unauthorized`, and the fixture's
+  `error`/`hint` JSON. No raw response was added to runtime persistence.
+- Focused REST tests passed 36/36; full Core passed 669 tests with 3 skips;
+  connector-lab, Webhook security, typechecks, production build,
+  architecture, and diff checks passed.
+
+## Current task: HTTP connection discovery after REST dogfood
+
+Add a read-only `http.list` command so command chat can inspect every saved
+HTTP endpoint before selecting a REST target. The result must make endpoint
+identity and current readiness explicit without crossing the credential or
+response-data boundaries observed during manual REST testing.
+
+### Success criteria
+
+- `http.list` is available in the bounded AX command catalog and is read-only.
+- The command lists every persisted HTTP endpoint with its id, display label,
+  base URL, authentication mode, connection state, credential readiness, and
+  current default-selection information.
+- The output never contains bearer/API-key tokens, passwords, raw auth headers,
+  or HTTP response bodies; persisted connection errors are bounded if exposed.
+- Multiple endpoints are clearly marked so a later REST request can provide an
+  explicit `connectionId` instead of relying on an ambiguous default.
+- Existing REST selection, read-only/write separation, redirect policy, error
+  status propagation, and response-size cap remain unchanged.
+- Focused command/connection tests, Core/Desktop checks, connector-lab,
+  architecture, production build, and whitespace checks remain green.
+
+### Non-goals
+
+- No renderer/settings redesign or change to the existing connection form.
+- No change to default endpoint selection semantics in `matchHttpEndpoint`.
+- No public timeout/max-bytes tuning or large-response transport redesign in
+  this slice. The manual 1.1MB test result is recorded as a follow-up: the
+  response is capped and not printed, but command-chat projection still merits
+  a separate context-size decision.
+- No live external HTTP, Gmail, Slack, AI, or database calls.
+
+### Final checkpoint (2026-09-01T08:25:59.2724457+09:00)
+
+- Added the read-only `http.list` command to the AX schema and command catalog.
+- It lists every saved HTTP endpoint with id, label, sanitized base URL,
+  authentication mode, persisted credential readiness, connector state,
+  usability, and the current default-selection marker. Multiple endpoints set
+  `explicitConnectionIdRecommended: true` without changing selector behavior.
+- URL userinfo, query, and fragment values are removed at the command boundary;
+  tokens, passwords, auth headers, and response bodies are never returned.
+- Updated the command-agent skill and regenerated the embedded skill so the
+  agent checks `http.list` before choosing among REST targets.
+- Verification: focused command/HTTP tests 32/32, full Core 129 files/670
+  tests with 3 skips, Core and Desktop typechecks, connector-lab 2/2,
+  architecture 0 violations, production build, and diff check passed.
+- The manual 1.1MB REST response remains a successful capped/unprinted read.
+  Reducing the body projected into command-chat history is intentionally a
+  separate follow-up because it changes the response-data contract.
+
+## Current task: invalid provider command boundary during DB QA
+
+Close the command-chat boundary failure exposed by manual PostgreSQL testing.
+An internal capability id such as `rdb.schema.describe` must not be accepted as
+the outer AX command name, but a malformed or unsupported provider command must
+be rejected as a bounded chat result instead of escaping as a raw validation
+exception through `ax:sendCommandChat`.
+
+### Success criteria
+
+- A provider output with outer command name `rdb.schema.describe` is reproduced
+  at the command-chat seam and no longer crashes the chat turn after the fix.
+- The correct nested form remains `capability.invoke` with the capability id in
+  `args.id`; the AX command catalog is not widened with internal capability ids.
+- Codex, Claude, and direct command transport boundaries reject unsupported
+  command names without leaking a raw Zod enum dump or stack trace to the user.
+- Valid command/reply flows and the existing read-only RDB allowlist behavior
+  remain unchanged.
+- Focused regression tests, Core/Desktop checks, production build,
+  architecture, and whitespace checks remain green.
+
+### Non-goals
+
+- No RDB capability, table allowlist, SQL, or connector behavior changes.
+- No live PostgreSQL, HTTP, Gmail, Slack, AI-provider, or external side effect.
+- No broad prompt redesign; only the minimal protocol clarification required by
+  the confirmed boundary issue.
+
+### Baseline (to be recorded before implementation)
+
+- Existing command-chat and transport tests cover valid provider outputs but do
+  not cover an internal capability id in the outer command field.
+- The reported output reaches `AxCommandSchema.parse()` in a transport
+  normalizer and escapes through the desktop IPC catch as a raw
+  `invalid_enum_value` error.
+
+### Final checkpoint (2026-09-01T09:20:31.2895811+09:00)
+
+- Provider wire envelopes now keep command names structurally readable and the
+  host performs the authoritative AX command validation after decoding.
+- Codex, Claude, and direct transports reject internal capability IDs such as
+  `rdb.schema.describe` with one bounded message; the command service is not
+  called and `AX_COMMAND_NAMES` remains unchanged.
+- The command skill explicitly distinguishes capability IDs from outer AX
+  command names and shows the required `capability.invoke.args.id` shape; the
+  embedded skill and packaged Electron main bundle were regenerated.
+- Verification: focused transport/chat tests 20/20, Core 129 files/677 tests
+  with 3 skips, Core and Desktop typechecks, production build, connector-lab
+  2/2, architecture 0 violations, root Webhook security 3/3, and diff check
+  passed. No live database or external provider calls were used.
+
+## Current task: preserve PostgreSQL DATE values in RDB reads
+
+Fix the data-fidelity regression exposed by manual PostgreSQL testing: a
+PostgreSQL `date` column must cross the RDB read and command-result boundary
+as its date-only value, without a timezone-induced `T15:00:00.000Z` conversion.
+
+### Success criteria
+
+- A PostgreSQL `DATE` value such as `2025-11-03` is returned as the exact
+  date-only string at the RDB result boundary and remains unchanged when the
+  result is serialized for command chat.
+- PostgreSQL timestamp types keep their existing driver semantics; only the
+  date-only type is corrected.
+- SQLite/MySQL behavior, table/schema allowlists, row limits, and read-only
+  policy remain unchanged.
+- A focused regression fails before the fix and passes after it at the actual
+  PostgreSQL client boundary; existing RDB and design-tool tests remain green.
+- Core/Desktop checks, production build, architecture, and whitespace checks
+  remain green.
+
+### Non-goals
+
+- No UI/UX redesign, chat persistence change, or command-protocol change.
+- No SQL write capability, allowlist, row-limit, or connector policy change.
+- No live external database/provider call in the evaluator; the manual Docker
+  fixture remains a human validation step.
+- No broad date/time localization or generic object serialization redesign.
+
+### Baseline (to be recorded before implementation)
+
+- Existing RDB tests cover SQLite reads and policy helpers but do not cover the
+  PostgreSQL `DATE` parser configuration.
+- The manual result shows a seeded `DATE` such as `2025-11-03` as
+  `2025-11-02T15:00:00.000Z`, proving date-only fidelity is lost before the
+  assistant's final natural-language rendering.
+
+### Final checkpoint (2026-09-01T10:42:52.8654206+09:00)
+
+- Root cause confirmed at the `pg` client boundary: the default OID 1082
+  parser converts PostgreSQL `DATE` text to a local-midnight JavaScript
+  `Date`, which JSON-serializes with a timezone shift.
+- The PostgreSQL client now overrides only the text DATE parser to return the
+  original `YYYY-MM-DD` string and delegates timestamp and all other types to
+  the driver's existing parsers.
+- Verification: focused RDB/design-tool tests 3 files/9 tests, full Core 129
+  files/678 tests with 3 skips, Core/Desktop typechecks, architecture with
+  zero violations, production build, and diff check passed.
+- Manual PostgreSQL app validation remains: rebuild/restart the desktop app,
+  query `public.customers`, and confirm `signed_up` stays date-only.
+
+## Current task: render an HTTP connection chooser for ambiguous chat requests
+
+Fix the manual chat regression where a request that does not name one of
+multiple saved HTTP connections produces only the assistant's plain-text
+question. The workspace must receive a structured chooser card, and choosing
+an action must preserve the request while making the selected connection
+explicit.
+
+### Success criteria
+
+- A multi-HTTP connection chat request without an explicit connection does not
+  silently use the default endpoint.
+- The command-chat/desktop boundary returns a validated `AxUiPresentation`
+  with one safe action per usable saved HTTP connection; the assistant text
+  may explain the pause but must not be the only interaction.
+- A chooser action sends a bounded user message containing the selected
+  connection identity, so the next turn can execute against that endpoint.
+- Endpoint labels, ids, base URLs, authentication readiness, and action values
+  do not expose tokens, passwords, authorization headers, query secrets, or
+  fragments.
+- Explicit connection requests, single-endpoint default behavior, `http.list`,
+  read-only HTTP policy, and existing renderer card behavior remain green.
+- The original manual-shaped regression fails before the patch and passes after
+  it at the smallest deterministic boundary; focused tests, typechecks, build,
+  architecture, whitespace, and relevant existing regressions pass.
+
+### Non-goals
+
+- No visual redesign of the chooser card or generic input-card redesign.
+- No live HTTP, Gmail, Slack, AI-provider, database, or external side effect in
+  the evaluator.
+- No parsing of arbitrary assistant prose into commands or actions.
+- No changes to HTTP authentication storage, endpoint editing, or unrelated
+  connector behavior.
+
+### Baseline (to be recorded before implementation)
+
+- Existing `ui.present` results reach the renderer as cards, but a reply-only
+  connection question returns no presentation metadata.
+- The HTTP connector currently has a selector fallback for omitted
+  `connectionId`; the chooser regression must establish the intended
+  multi-endpoint boundary without weakening single-endpoint reads.
+
+### Final checkpoint (2026-09-01T11:17:10.7312231+09:00)
+
+- Root cause confirmed: reply-only provider output contains a natural-language
+  connection question but no presentation metadata, so the desktop renderer has
+  no card to display. The existing renderer/IPC card path was already capable of
+  rendering validated presentations.
+- The host now performs a read-only HTTP connection preflight for request-shaped
+  messages. When multiple usable endpoints are present and no endpoint is
+  named, it emits a bounded `HTTP 연결 선택` presentation and pauses before
+  provider execution. Actions contain only the endpoint label/id and the next
+  turn carries the selected id explicitly.
+- The HTTP connector now rejects an omitted connection id when multiple
+  endpoints are configured, while preserving the single-endpoint fallback.
+  `http.list` and the capability descriptions no longer advertise a default
+  endpoint for the ambiguous case.
+- Verification: chooser regression 4 files/51 tests, full Core 129 files/682
+  tests with 3 skips, Core/Desktop typechecks, architecture with zero
+  violations, connector-lab 2/2, production build, and diff check passed.
+- Manual app check remains: restart the desktop app from the fresh build and
+  send `GET /api/v1/orders?status=paid 를 조회해줘. 외부 데이터 변경은 하지 마.`
+  The connection chooser card should appear before the local REST result.
+
+## Current task: remove natural-language hardcoding from dynamic chat interactions
+
+Audit the chat interaction seams for behavior that is inferred from localized
+assistant/user prose or fixed connector/action cases instead of being carried by
+typed command and result metadata. Patch the confirmed extensibility bugs in
+small, reversible steps while preserving intentional compatibility, security,
+and presentation catalogs.
+
+### Success criteria
+
+- An ambiguous HTTP request reaches the command protocol; the host does not
+  inspect the user's prose to preflight `http.list` or synthesize a chooser.
+  A chooser is rendered only from a validated `ui.present` result whose actions
+  carry the dynamic connection identities returned by commands.
+- Execution-result rendering uses its typed message kind/status metadata and
+  does not classify messages by localized content substring.
+- Missing-input presentation uses structured issue metadata at the producer
+  boundary rather than parsing a localized error sentence. Existing typed
+  input controls and security boundaries remain intact.
+- Intentional deterministic mappings (catalog labels, compatibility aliases,
+  explicit approval markers, and bounded status copy) remain explicit and are
+  covered as such; no broad rewrite or UI redesign is introduced.
+- Focused red regressions fail before each confirmed fix and pass afterward;
+  relevant Core/Desktop tests, typechecks, architecture, production build, and
+  diff checks pass.
+
+### Non-goals
+
+- No visual redesign, provider replacement, or new external connector.
+- No arbitrary natural-language parser, heuristic fallback, or live external
+  side effect in the evaluator.
+- No removal of security authorization checks, compatibility normalization, or
+  static display catalogs merely because they contain mappings.
+- No unrelated cleanup of the existing dirty worktree.
+
+### Baseline (to be recorded before implementation)
+
+- `runAxCommandChat` uses a user-message regex and a host-side HTTP preflight,
+  so an ambiguous request can receive a chooser without a provider command
+  round trip.
+- `WorkspaceRunResultCard` and its caller classify execution results from
+  localized content text even though durable messages already have
+  `kind: execution_result`.
+- `inputRequestsForResult` derives missing field names from a localized issue
+  message and maps names to control types/labels; producer-side structured
+  input metadata is not yet present.
+
+### Final checkpoint (2026-09-01T12:20:00.1125043+09:00)
+
+- HTTP chooser behavior is now protocol-owned: the host no longer inspects
+  user prose or invents `http.list`; a provider `http.list` followed by a
+  validated `ui.present` supplies dynamic endpoint actions, and the selected
+  id is carried into the next invocation.
+- Missing-input controls are emitted from catalog/producer metadata, and
+  localized issue text is no longer parsed to manufacture renderer controls.
+- Saved execution results are a typed workspace-chat projection with
+  `kind: execution_result` and `executionStatus`; Activity remains the
+  operational log and the chat displays the durable result.
+- Action summaries, approval details, notification detection, dynamic
+  capability listing/resolution, and workflow availability validation now use
+  capability metadata. Ambiguous dynamic action suffixes no longer resolve by
+  accident.
+- Retained intentional mappings are compatibility aliases, explicit security
+  gates, typed status/error copy, connector secret handling, and the fixed
+  WorkflowIR trigger/presentation schema.
+- Verification passed: focused structured interaction 5 files/36 tests;
+  dynamic catalog/contract/IPC regression 3 files/31 tests; expanded related
+  regression 8 files/74 tests; full Core 129 files/688 tests with 3 skips;
+  manual webhook 3/3; connector-lab 2/2; Core/Desktop typechecks;
+  architecture 0 violations; production build; and diff check.
+
+## Current task: make multi-target job selection discoverable and atomic
+
+Improve the recurring HTTP-to-Slack job target selection shown by the current
+chat card. The normal path must query connected Slack channels through the
+existing read-only `slack.channels.list` capability, expose HTTP connections
+and Slack channels as bounded selectable options, and submit all selected
+targets once through one review action aligned to the card's lower right.
+
+### Success criteria
+
+- Connected Slack channels are read through the existing guarded read gateway;
+  no token, raw response, or guessed channel is rendered.
+- HTTP connections and Slack channels are represented by structured option
+  metadata with stable ids as values and human labels for display.
+- A target-selection card submits all required selections in one follow-up
+  message; it does not require one `입력` action per field.
+- The normal selection card has one review action aligned to the lower right,
+  preserves keyboard accessibility, and keeps the existing read-only/approval
+  boundary intact.
+- If a Slack channel lookup is unavailable, the product gives an explicit,
+  bounded fallback instead of silently selecting a channel or pretending the
+  list is complete.
+- Existing generic input cards, HTTP chooser behavior, job commit approval,
+  and connector/security tests remain passing.
+
+### Non-goals
+
+- No new Slack API capability or external connector.
+- No change to Slack send authorization, workflow approval, or job semantics.
+- No broad visual redesign outside the target-selection card.
+- No live Slack/Gmail/HTTP side effect in tests.
+
+### Baseline
+
+- The supplied target-selection screenshot shows two free-text fields, each
+  with its own `입력` button, while the final review action is left-aligned.
+- The Slack catalog already exposes a read-only `slack.channels.list`
+  capability, but job target selection does not use its result to populate
+  options.
+- The shared input schema has no option list and the renderer cannot submit
+  multiple input values with one presentation action.
+
+### UX checkpoint (2026-09-01T12:39:40.9583531+09:00)
+
+- Keep the current calm AX confirmation-card visual language.
+- Replace ordinary target text fields with accessible selects when options
+  are available; preserve text input only as an explicit lookup failure
+  fallback.
+- Keep one clear primary review action at the lower right of the card.
+
+## Current task: make one-shot sharing use typed target selection and chat results
+
+The latest manual request asks AX to inspect paid orders, summarize the largest
+ones, and share the result after the user chooses the HTTP connection and Slack
+channel. The current command protocol falls back to a prose question because
+target selection is implemented only for `job.propose`, while one-shot plans use
+`execution.enqueue_once`. Ephemeral executions also have no workspace-session
+association, so their result can remain Activity-only.
+
+### Success criteria
+
+- A one-shot plan with an ambiguous HTTP target or missing Slack notification
+  channel returns one host-rendered, validated target card populated from the
+  saved HTTP endpoints and the guarded read-only Slack channel capability.
+- The card submits all selected targets in one follow-up; no external send is
+  queued before the target selection is complete.
+- After selection, `execution.enqueue_once` queues a plan with the selected
+  stable ids and retains the existing Runtime approval gate before any external
+  send.
+- Pending-approval and final one-shot execution results are projected into the
+  originating workspace chat, idempotently, without exposing raw provider
+  payloads or creating a phantom chat.
+- The existing recurring `job.propose` target card, generic input cards,
+  Activity history, approval behavior, and connection/capability safety checks
+  remain passing.
+
+### Non-goals
+
+- No user-message regex or localized prose parsing to infer commands or target
+  ids.
+- No new connector API, live Slack/HTTP/Gmail side effect, or automatic
+  approval.
+- No broad renderer redesign or change to the saved workflow semantics.
+- No cleanup of unrelated dirty-worktree changes.
+
+### Baseline (2026-09-01T16:13:10.2768443+09:00)
+
+- The supplied manual screenshot shows a plain assistant question instead of a
+  structured target card for a one-shot HTTP-to-Slack request.
+- `presentationFromResult` accepts `ui.present` and `job.propose` only;
+  `execution.enqueue_once` cannot publish a target presentation.
+- `WorkflowRuntime` marks one-shot executions ephemeral without a workspace
+  session id, and the chat result projection deliberately excludes ephemeral
+  executions.
+
+### Implementation checkpoint (2026-09-01T16:48:46.6971285+09:00)
+
+- `execution.enqueue_once` now performs host-side target preflight from the
+  actual saved HTTP endpoints and guarded read-only Slack channel listing,
+  returning one typed batch card before any queue operation.
+- The selected connection/channel ids are passed through the same full plan;
+  HTTP GET side effects are resolved from the action method so a selected
+  read-only plan is not incorrectly rejected as external.
+- Ephemeral executions persist their originating workspace session id, and
+  pending/final results are upserted into that chat idempotently while keeping
+  Activity and approval history intact.
+- The command skill, command description, renderer contract, migration path,
+  deterministic E2E seam, and focused regressions were updated together.
+- Verification: command 3 files/45 tests, chat-result 3 files/8 tests, full
+  Core 130 files/698 tests with 3 skips, deterministic Product QA 4 scenarios,
+  Core/Desktop typechecks, architecture 0 violations, production build, and
+  diff check all passed.
+
+## Current follow-up: prevent missing action parameters after one-shot summaries
+
+The latest manual execution reached the HTTP request and AI summary, then
+failed before approval with `action_params_missing`. The plan had a Slack
+channel but no usable message body because the runtime's built-in AI
+`conclusion` output was absent from the workflow binding contract. HTTP text
+artifacts also returned a structured response object when forwarded directly
+to another text input.
+
+### Success criteria
+
+- A one-shot plan with an AI summary and a selected Slack channel binds the
+  runtime conclusion to the Slack message body before the approval gate.
+- Approval remains the first point at which the external Slack connector is
+  called; a pending run sends zero messages and an approved run sends one.
+- A structured HTTP text response forwards its body string to a downstream
+  text input instead of an object that later fails required-parameter checks.
+- Existing explicit AI output bindings, action contracts, target selection,
+  result projection, and connector safety regressions remain passing.
+
+### Non-goals
+
+- No natural-language parsing, user-specific phrase mapping, or automatic
+  approval.
+- No connector API or catalog policy change.
+- No broad workflow refactor or cleanup of unrelated dirty-worktree changes.
+
+### Baseline (before patch; timestamp unavailable)
+
+- The minimized runtime regression failed: a Slack action with a selected
+  channel and no explicit text returned `failed` instead of `pending_approval`.
+- The existing binding contract exposed declared AI fields and generic JSON,
+  but not the default runtime `conclusion` field; HTTP `response` forwarding
+  retained the structured response object.
+
+### Implementation checkpoint (timestamp unavailable)
+
+- Added the default AI `conclusion` output to contract-driven binding
+  inference, while preserving explicit custom output fields as authoritative.
+- Normalized text-artifact forwarding from object-shaped connector results to
+  their `text`, `body`, or `summary` string.
+- Added focused binding and runtime approval regressions; all passed.
+
+### Final verification (2026-09-01T17:13:06.2844515+09:00)
+
+- Focused binding/contract/runtime regression passed: 3 files/62 tests.
+- Command and target regression passed: 3 files/47 tests.
+- Full `npm test` passed: manual Webhook 3/3 and Core 130 files/701 tests,
+  with 3 skipped.
+- Core and desktop typechecks, production build, architecture check, and
+  `git diff --check` passed; no external connector side effect was used.
+- Deterministic Product QA smoke passed 4/4 scenarios.
+- The remaining dirty-worktree files are pre-existing user changes plus the
+  scoped binding regression files and harness records.
+
+## Current follow-up: keep implicit notification text bound to the actual AI conclusion
+
+The latest manual one-shot run still reached the HTTP and AI steps but failed
+with `action_params_missing` before the Slack approval gate. The remaining
+runtime risk is that an AI step with optional custom string outputs can make
+implicit TextArtifact inference choose an empty field instead of the built-in
+conclusion that the investigation runner actually returns.
+
+### Success criteria
+
+- The exact HTTP GET → AI summary → selected Slack channel chain reaches
+  `pending_approval` when Slack text is omitted and the AI returns a
+  conclusion.
+- No Slack send occurs before approval; approval resumes exactly one send with
+  the conclusion text.
+- Explicit AI output bindings and scheduled-job summary bindings remain
+  authoritative and unchanged.
+- The regression is covered at the runtime seam and existing command,
+  connector, build, and type checks remain passing.
+
+### Non-goals
+
+- No natural-language parsing, user-specific mapping, or automatic approval.
+- No connector API/catalog policy change or broad workflow refactor.
+- No cleanup of unrelated dirty-worktree changes.
+
+### Baseline (2026-09-01; exact manual-chain regression)
+
+- The minimized HTTP → AI → Slack plan with an optional custom string output
+  binds Slack text to that optional field, so the runtime fails with
+  `action_params_missing` instead of waiting for approval.
+
+### Decision rule
+
+- Prefer the default `conclusion` only for implicit TextArtifact inference from
+  an AI step; preserve an explicitly declared binding exactly as authored.
+
+### Final verification (2026-09-01T17:36:16.7871451+09:00)
+
+- The exact HTTP → AI → Slack regression passed: the inferred text binding now
+  uses `conclusion`, the run reaches approval, and approval sends once.
+- Explicit custom output binding coverage passed, as did command/target tests,
+  Core and desktop typechecks, production build, full regression, architecture
+  check, deterministic Product QA smoke, and `git diff --check`.
+- The built Electron main bundle contains the binding fix. No live connector or
+  external side effect was used during verification.
+
+## Current follow-up: bind actions placed behind an approval node
+
+The latest real ephemeral execution had a selected Slack channel and a
+successful HTTP/AI chain, but its Slack action was placed after an explicit
+`human_approval` node. Contract binding inference skipped that gated action,
+leaving the canonical `text` input absent while an unrecognized `message`
+parameter remained. The runtime then failed with `action_params_missing`.
+
+### Success criteria
+
+- The exact HTTP → AI → human approval → Slack chain infers the AI conclusion
+  into the Slack `text` input even when the model emitted `message` as an extra
+  natural-language parameter.
+- The run waits for approval, sends nothing before approval, and resumes with
+  exactly one Slack send after approval.
+- Existing branch handling, explicit bindings, target selection, and connector
+  safety behavior remain unchanged.
+
+### Non-goals
+
+- No live connector invocation, credential changes, or UI redesign.
+- No broad natural-language alias system or unrelated workflow refactor.
+
+### Decision rule
+
+- Include approval-gated actions in binding inference when they occur after
+  their upstream sources, while preserving the existing execution and approval
+  semantics.
+
+### Final verification (2026-09-01T17:51:30.3486003+09:00)
+
+- The minimized regression reproduced the stored execution failure before the
+  fix and now reaches approval with the AI conclusion bound to Slack `text`.
+- The approval-gated action sends nothing before approval and exactly one
+  message after approval; the selected HTTP connection and Slack channel stay
+  intact.
+- Full tests, typechecks, production build, architecture check, deterministic
+  Product QA smoke, diff check, and debug-marker scan passed. The rebuilt
+  Electron main bundle uses the corrected inference sequence.
+
+## Current follow-up: inline approval for one-shot execution
+
+The latest one-shot Slack run was correctly held until the user approved it
+from the approval tab, but the chat only displayed the pending result text.
+Make one-shot approvals actionable in the originating conversation while
+keeping recurring workflow approvals in the durable approval tab.
+
+### Success criteria
+
+- A pending ephemeral execution projects a bounded, non-secret approval card
+  into its originating chat with explicit approve and cancel actions.
+- The card calls the host approval boundary directly; approval is never inferred
+  from a natural-language chat message.
+- Approval or cancellation replaces the pending chat result with the final
+  execution status and removes the actionable card.
+- Recurring workflow approvals remain approval-tab-only.
+- Duplicate clicks are safe and pending approval records remain durable.
+- Existing execution, command, connector, typecheck, build, and chat behavior
+  remains green.
+
+### Non-goals
+
+- No automatic approval, natural-language permission parsing, or connector policy
+  change.
+- No redesign of the approval tab or unrelated chat components.
+- No live Slack/Gmail/HTTP/database side effects during verification.
+
+### Decision rule
+
+- Reuse the existing persisted approval and host IPC boundaries. Add only a
+  bounded chat projection and direct renderer actions for ephemeral runs.
+
+### Baseline (2026-09-01T18:17:31.8865993+09:00)
+
+- The new projection regression fails as expected: the pending ephemeral
+  execution result has no `approval` metadata, so the chat has no basis for an
+  inline approval card.
+
+### Final verification (2026-09-01T18:43:22.2917254+09:00)
+
+- Pending one-shot execution results now carry bounded, non-secret approval
+  metadata and render an actionable card in the originating conversation.
+- The card calls the existing host approval/rejection boundary directly;
+  approval and cancellation replace the pending result in place and leave the
+  durable execution/approval record available for recovery and audit.
+- Recurring workflow results do not receive inline approval metadata and remain
+  approval-tab-only.
+- Projection/repository tests passed 2 files/17 tests, approval runtime tests
+  passed 16 selected tests, and the focused bootstrap/boundary/runtime suite
+  passed 5 files/55 tests.
+- Full `npm test`, Core/Desktop/test typechecks, production build, architecture
+  check, deterministic Product QA smoke 6/6, diff check, and debug-marker scan
+  passed. No live connector side effect was used.
+
+## Current follow-up: externalize the current UI/UX in Figma
+
+Build an editable AX Studio UX map in the supplied Figma file so the current
+product flow can be reviewed and iterated visually.
+
+### Success criteria
+
+- The target file contains a named UX map with editable, componentized screens
+  for workspace/chat, inline one-shot approval, approval inbox, activity,
+  settings/connection hub, HTTP/RDB connection detail, and workflow context.
+- Screens reflect current copy, states, hierarchy, and the Lavender Control
+  Room tokens; repeated controls are reusable Figma components.
+- The inline approval decision path and recurring approval-tab path are shown
+  as separate states.
+- Figma output is validated structurally and visually with screenshots, with
+  no clipped or overlapping text and no secret values.
+- Existing project code/worktree remains untouched apart from harness
+  documentation.
+
+### Non-goals
+
+- No production code redesign or connector behavior change.
+- No real credential or connector data in Figma.
+- No invented external design-system dependencies.
+
+### Baseline (2026-09-01T18:59:19.4893820+09:00)
+
+- Target node `0:1` was an empty `Page 1` with zero top-level children; no
+  local variables/components existed.
+- The supplied Figma file had no searchable local design-system assets or
+  Code Connect files, so the design will use a local editable token/component
+  foundation.
+
+## Current follow-up: record the implemented UI in `00 Current UI`
+
+Reproduce the current AX Studio UI in a separate Figma page named `00 Current UI`.
+This is a documentation capture of the running product, not a redesign.
+
+### Success criteria
+
+- The supplied Figma file contains a separate page named `00 Current UI`; the
+  existing `AX Studio · UX Map` page remains unchanged.
+- The page contains runtime captures of the current implemented interface with
+  descriptive feature/state names, including the initial empty workspace,
+  loading, completed response, input required, one-shot approval pending,
+  one-shot approval completed, approval inbox pending, activity pending and
+  completed, settings hub, HTTP connection detail, database connection detail,
+  database connection error, and Work Discovery review/ready-to-publish states.
+- Captured screens preserve the implementation's current colors, copy, spacing,
+  sizing, information hierarchy, control placement, and visible side panels;
+  no product behavior or new UI is invented.
+- Figma metadata and screenshots verify that the page is complete enough to
+  inspect and that screenshots are not clipped, overlapped, or missing labels.
+- No production source, tests, generated output, dependencies, credentials, or
+  live connector data are changed or included.
+
+### Non-goals
+
+- No redesign, visual polish, new workflow, new component behavior, or product
+  code change.
+- No replacement of the earlier UX Map or conversion of every screenshot into
+  speculative editable product components.
+
+### Baseline (2026-09-01T19:47:21.6979158+09:00)
+
+- The current built Electron app was launched in an isolated Product QA profile
+  and direct runtime screenshots were captured for the documented states.
+- The Figma file still had only the existing empty `AX Studio · UX Map` page;
+  `00 Current UI` did not yet exist.
+
+### Final verification (2026-09-01T19:57:18.9903215+09:00)
+
+- Created `00 Current UI` as a separate Figma page with a 2-column board of 15
+  direct runtime captures and descriptive feature/state labels.
+- Verified all 15 capture tiles render in the Figma board, including error,
+  approval, loading, input-required, activity, settings, and discovery states.
+- Verified the original `AX Studio · UX Map` page remains empty and unchanged;
+  no production files were edited by this recording task.
+
+## Current follow-up: critique the recorded current UI without modifying it
+
+Compare the 15 runtime states in the Figma `00 Current UI` page and document
+evidence-backed product UX problems. Preserve `00 Current UI` as the immutable
+current-state record; any visual annotations must live on a separate page named
+`01 UI UX 문제점` and must be a copy-based review artifact only.
+
+### Success criteria
+
+- All 15 recorded screens are compared across orientation, hierarchy,
+  consistency, state clarity, complexity, accessibility, and recovery.
+- Findings are grouped as 높음/중간/낮음 and mapped to exact screen/state
+  locations with a concrete reason and a bounded next design question.
+- Independent design and implementation/detector assessments are reconciled;
+  claims distinguish observed runtime evidence from source-backed inference.
+- If annotations are created, `01 UI UX 문제점` contains only a copy of the
+  current-state board plus issue markers/register; no product redesign is
+  introduced.
+- Figma page `00 Current UI`, its board, and all 15 source capture tiles remain
+  unchanged; production code and connector state remain untouched.
+
+### Non-goals
+
+- No product code, CSS, connector policy, data, workflow, or runtime behavior
+  changes.
+- No visual redesign, new UI, new product state, or replacement of the current
+  state record.
+- No live connector calls, credentials, provider payloads, or external sends.
+
+### Baseline (2026-09-01T20:08:31.3214392+09:00)
+
+- Figma `00 Current UI` page `26:2` contains a 2400x6150 board with 15
+  populated runtime-capture tiles; original `AX Studio · UX Map` page `0:1`
+  remains empty.
+- The current implementation source and isolated runtime captures are
+  available for evidence; no critique page or findings register exists yet.
+
+### Final verification (2026-09-01T20:21:38.5384825+09:00)
+
+- Completed two independent assessments: a design review across all 15 states
+  and an implementation/detector review with source-backed recovery and
+  accessibility findings.
+- Created `01 UI UX 문제점` with a clone of the 15-tile current-state board,
+  nine severity markers, and an editable prioritized findings register.
+- Verified the source board and clone both contain 15 tiles; `00 Current UI`
+  remains page `26:2` with one original board and no source-tile mutation.
+- Verified the original `AX Studio · UX Map` page `0:1` remains empty; no
+  production files or connector side effects were changed.
+
+## Current follow-up: shape one understandable execution flow in Figma
+
+Design a copy-safe Figma improvement proposal for the H2, H3, and H4 findings
+from `01 UI UX 문제점`: after a user requests work, they can see progress,
+understand the discovered method, decide whether to approve it, and confirm
+the execution result. Preserve existing product behavior and the current
+interaction vocabulary where it is already meaningful.
+
+### Success criteria
+
+- A new Figma page named `02 개선안` presents one coherent flow from request
+  through progress, method review, approval, and completion.
+- The proposal makes the current step, next action, method evidence, approval
+  context, and result receipt easier to understand without inventing a new
+  connector, workflow, action, or product surface.
+- Existing controls and concepts are reused/recomposed: progress state,
+  `찾은 방법`, `중단하기`, approval, `취소`, and `실행 완료`.
+- Screens and annotations are named so a reviewer can trace each proposal back
+  to H2/H3/H4 and the corresponding current-state screens.
+- Figma `00 Current UI` and `01 UI UX 문제점` remain unchanged; no production
+  code or live connector state changes.
+
+### Non-goals
+
+- No product code, CSS, connector policy, workflow engine, or data changes.
+- No new functionality beyond clearer ordering, grouping, copy hierarchy, and
+  state continuity using existing capabilities.
+- No modification, rename, deletion, or annotation of `00 Current UI` or
+  `01 UI UX 문제점`.
+
+### Shape brief (2026-09-01T20:35:43.3195064+09:00)
+
+- Job/audience: a person delegating an ambiguous work request who needs to
+  remain confident while the system investigates and pauses before an external
+  side effect.
+- Outcome/proof: one continuous state story—요청 접수 → 진행 중 → 찾은 방법
+  검토 → 승인 대기 → 실행 완료—with a plain-language explanation before
+  technical evidence.
+- Selected interaction thesis: keep the existing chat/workspace shell, but make
+  the run card the single source of truth for current step, method summary,
+  approval context, and completion receipt.
+- Boundaries: desktop Figma proposal only; use existing state/actions and
+  current lavender visual language; 00/01 pages and product implementation are
+  read-only.
+
+### Final verification (2026-09-01T20:51:55.4875546+09:00)
+
+- Created the Figma page `02 개선안` with a five-stage rail and four
+  representative screens: progress, method review, approval pending, and
+  execution complete.
+- Verified the proposal renders without clipped or overlapping card content at
+  full-board and close screen scales.
+- Verified `00 Current UI` and `01 UI UX 문제점` remain read-only references;
+  no product code or live connector state was changed.
+
+## Current follow-up: build the new Workspace UI in Figma
+
+Create a high-fidelity Figma-only proposal page named `03 새 UI`, grounded in
+`02 개선안`, that retains the current Workspace capabilities while resolving
+the H2/H3/H4 issues. Build the core Workspace screen first; do not change
+production code or any existing Figma page.
+
+### Success criteria
+
+- A new Figma page named `03 새 UI` contains a polished, inspectable Workspace screen.
+- The screen retains current Workspace functions: chat request/composer, messages,
+  assistant response, progress/typing, execution result, inline approval actions,
+  discovery/method review, source/context panel, workflow context, and relevant
+  navigation.
+- The layout makes current step, next action, found method, approval target/side
+  effect, and completion result easy to scan.
+- Repeated visual primitives are structured as local components or clearly named
+  reusable groups when no library component exists.
+- `00 Current UI`, `01 UI UX 문제점`, and `02 개선안` remain unchanged.
+- No production source, CSS, tests, connectors, credentials, or external data are changed.
+
+### Non-goals
+
+- No product implementation changes.
+- No new connector, workflow, action, or data capability.
+- No edits, renames, or annotations on existing Figma pages.
+- No invented external results or provider data.
+
+### Final verification (2026-09-02T06:35:30.9917961+09:00)
+
+- Created Figma page `03 새 UI` with board `70:3` and a polished Workspace
+  screen `72:11` centered on the approval-pending state.
+- Retained the current Workspace shell, navigation, chat/composer, request and
+  response, progress rail, discovery/method review, inline approval, result
+  receipt, sources/context panel, workflow context, and recovery states.
+- Added five named state variants and three compact existing-capability states
+  for empty, additional-input, and source-panel coverage.
+- Rendered and inspected the full board, primary screen, approval card, context
+  panel, and all five state variants; no clipped text or unintended overlap was
+  observed.
+- Verified `00 Current UI`, `01 UI UX 문제점`, and `02 개선안` remain unchanged;
+  no production source or connector state was changed.
+
+## Current follow-up: add a three-tab context panel and workflow visualization
+
+Extend only the Figma `03 새 UI` Workspace proposal so the right context panel
+clearly separates 자료, 흐름, and 워크플로우. Keep the existing execution-flow
+screen as the primary state and add a workflow-tab alternate state using the
+existing WorkflowPreviewPanel/WorkflowGraph capability. Do not change product
+code or existing Figma pages.
+
+### Success criteria
+
+- The primary `03 새 UI` Workspace screen shows the three context tabs:
+  자료, 흐름, 워크플로우.
+- The active 흐름 state remains the current execution lifecycle and approval
+  context.
+- A clearly named workflow-tab alternate state shows the registered workflow graph,
+  workflow status, node sequence, and a selected-node detail treatment.
+- The three tabs have distinct, understandable responsibilities: source material,
+  current run state, and reusable workflow structure.
+- `00 Current UI`, `01 UI UX 문제점`, and `02 개선안` remain unchanged.
+- No production source, CSS, tests, connectors, credentials, or external data change.
+
+### Non-goals
+
+- No new product behavior beyond exposing the existing workflow preview capability
+  as a dedicated tab in the Figma proposal.
+- No additional connector, workflow node type, action, or data capability.
+- No edits to existing Figma pages.
+
+### Final verification (2026-09-02T07:02:45.4576847+09:00)
+
+- Extended only `03 새 UI` so the primary Workspace context panel now shows
+  `자료 / 흐름 / 워크플로우`; `흐름` remains the active execution-lifecycle state.
+- Added a clearly named workflow-tab alternate state with `설계 완료`, a five-step
+  workflow graph (`시작 조건 → HTTP 조회 → AI 요약 → 승인 → Slack 공유`),
+  selected approval detail, and a three-role explainer for the context tabs.
+- Added a hidden local `WorkflowNode` component with `Kind`, `Index`, `Title`, and
+  `Subtitle` properties and used five visible instances in the graph.
+- Rendered and inspected the updated primary context panel, workflow alternate, and
+  full `03 새 UI` board; no clipping, overlap, or exposed source component remains.
+- Verified `00 Current UI`, `01 UI UX 문제점`, and `02 개선안` were not written;
+  no production source, tests, connector state, credentials, or external data changed.
+
+## Current follow-up: implement the Figma three-tab Workspace context panel
+
+Implement the latest Figma `03 새 UI` refinement in the existing AX Studio
+frontend. Separate the Workspace context panel into `자료`, `흐름`, and
+`워크플로우` while preserving the existing chat, source attachment, approval,
+workflow-node selection, and workflow editing behavior. Use the current
+frontend as the implementation baseline and keep the change limited to the
+Workspace presentation layer.
+
+### Success criteria
+
+- The real Workspace context panel exposes accessible `자료`, `흐름`, and
+  `워크플로우` tabs.
+- `자료` continues to render the existing session-scoped source panel.
+- `흐름` clearly shows the current request/execution lifecycle using existing
+  busy, progress, discovery, execution-result, approval, and error state data;
+  it does not masquerade as the reusable workflow graph.
+- `워크플로우` renders the existing `WorkflowPreviewPanel`, including graph
+  selection, node detail, edit guidance, and completion behavior.
+- The active tab is deterministic as a session gains or loses a workflow, and
+  switching tabs never drops the current chat or workflow state.
+- The panel remains readable at its resizable desktop width in light and dark
+  themes, with visible focus and selected states.
+- Focused frontend checks, desktop typecheck/build, and relevant regression
+  checks pass.
+- No Figma page, connector, credential, or external data is changed.
+
+### Non-goals
+
+- No redesign of the full chat/workspace shell.
+- No new workflow engine, connector, node type, approval path, or execution
+  capability.
+- No changes to the existing Figma pages `00 Current UI`, `01 UI UX 문제점`,
+  `02 개선안`, or `03 새 UI`.
+- No cleanup or reversal of unrelated dirty worktree changes.
+
+### Final verification (2026-09-02T07:31:15.0050274+09:00)
+
+- Added the real Workspace `자료 / 흐름 / 워크플로우` tab structure while
+  preserving the existing source panel and reusable WorkflowPreviewPanel.
+- Added a data-driven execution-flow panel that reflects busy/progress,
+  discovery review, approval, completion, cancellation, and error states without
+  duplicating approval actions already shown in chat.
+- Verified a real workflow-created session shows the existing workflow graph in
+  the dedicated 워크플로우 tab; verified an approval-pending session shows the
+  flow timeline and approval guidance in the 흐름 tab.
+- Verified light and dark approval states in the built Electron app; no clipping
+  or unreadable status treatment was observed.
+- Focused flow/tab tests (7), desktop typecheck, and production build passed.
+
+## Current follow-up: make the 흐름 tab reflect the real execution stage
+
+Correct the Workspace 흐름 tab so every visible stage is driven by the actual
+request, discovery, approval, and execution state. Preserve the existing
+three-tab presentation and keep saved-workflow review distinct from a completed
+execution. Existing Workspace conversations created before structured execution
+status metadata must remain understandable when their host-generated result
+message has a known status sentence but no status field.
+
+### Success criteria
+
+- A completed execution is shown at `실행 완료` / stage 5 in the 흐름 tab,
+  including legacy host result messages with a missing structured status field
+  when their app-generated status sentence is unambiguous.
+- Approval pending, cancelled, failed, discovery running/review, and saved
+  workflow review remain distinct and map to the correct stage.
+- Each stage displays a concise, truthful label/subtitle based on the current
+  state; the panel does not claim external work happened when it did not.
+- The center execution result card and the 흐름 tab use the same status
+  interpretation for legacy and current messages.
+- The existing 자료 and 워크플로우 tabs, source attachment, graph selection/edit,
+  and approval actions remain unchanged.
+- Focused regression tests, desktop typecheck/build, and an Electron visual
+  check pass without modifying Figma or external connector data.
+
+### Non-goals
+
+- No new execution capability, connector behavior, workflow node type, or
+  automatic approval.
+- No inference from arbitrary user/assistant prose; only the known host-generated
+  execution-result format may provide a legacy compatibility fallback.
+- No redesign of the full shell or changes to Figma pages.
+
+### Verification
+
+- Root cause confirmed: older persisted `execution_result` messages can contain
+  the host-generated completion sentence without the newer `executionStatus`
+  field, so the 흐름 tab previously fell back to the saved-workflow review state.
+- Added a strict compatibility resolver shared by the execution result card and
+  흐름 panel; arbitrary assistant prose is not inferred as an execution state.
+- Focused flow tests (10), desktop typecheck, production build, deterministic
+  inline-approval Product QA, and built Electron visual checks passed.
+- No Figma page, connector configuration, credential, or external data was
+  modified.
+
+## Current follow-up: polish the workflow visualization
+
+Make the existing Workspace 워크플로우 tab feel finished and easy to read while
+preserving its current graph, selection, zoom/pan, minimap, node-detail, edit,
+and system-step behavior. Keep the current AX Studio visual language; this is a
+bounded refinement of the workflow canvas, not a new workflow feature.
+
+### Success criteria
+
+- The workflow canvas has a clear visual hierarchy that belongs to the existing
+  light/dark AX Studio shell instead of appearing as an unrelated dark debug
+  surface.
+- Node names and secondary labels remain readable at the normal right-panel
+  width, including the long labels seen in real workflow results.
+- The graph, controls, selected-node detail, notes, and empty state remain
+  contained and usable without accidental clipping or overlap at desktop and
+  narrow panel sizes.
+- Trigger, AI, condition, approval, system, and action nodes retain their
+  semantic distinction, selection treatment, and existing interaction affordance.
+- Existing workflow data, wording, graph topology, node selection/editing,
+  minimap/controls, and light/dark behavior remain functionally intact.
+- Focused tests, typecheck/build, detector scan, and built Electron screenshots
+  pass for the polished workflow tab.
+
+### Non-goals
+
+- No new workflow capability, node type, connector behavior, persistence, or
+  external side effect.
+- No changes to the three context-tab structure, chat flow, Figma pages, or
+  unrelated shell surfaces.
+
+### Verification
+
+- Polished only the existing workflow canvas presentation: AX Studio light/dark
+  surfaces, scoped grid and edge colors, semantic node styling, readable
+  two-line labels, contained graph height, and clearer detail/note surfaces.
+- Preserved graph topology, node selection/editing, zoom/pan, minimap/controls,
+  node-detail behavior, system steps, empty state, and workflow data wiring.
+- Built Electron light and dark workflow-created screens were inspected; the
+  graph loaded at 520px with no observed clipping or overlap.
+- Focused WorkspaceContextPanel tests (10), desktop typecheck, and production
+  build passed.
+- Impeccable detector reported only the pre-existing splitter
+  `width`-transition warning at `workflow.css:65`; no new workflow-canvas
+  finding was reported.
+- No Figma page, connector configuration, credential, semantic, or external
+  data was modified.
+
+## Current follow-up: harden and freeze a local demo release candidate
+
+Audit the current AX Studio implementation end to end and prepare a
+reproducible local Windows demo release candidate. Treat the existing product
+surface and current worktree as the scope; do not add new capabilities while
+closing release-blocking defects and recording known limitations.
+
+### Success criteria
+
+- The current product surface is inventoried across chat/session, 자료,
+  연결, Work Discovery, workflow, approval, execution, activity, settings,
+  and packaging.
+- Core unit/integration tests, deterministic Electron Product QA, connector
+  seam checks, typecheck, architecture checks, and production build pass.
+- Safe desktop workflows are exercised for new chat/reply, session isolation,
+  source attachment, connector selection, workflow review, approval,
+  cancellation/failure presentation, completed execution, discovery
+  clarification/publication, and light/dark rendering.
+- Any release-blocking failure is reproduced, fixed surgically, and covered by
+  a regression check; non-blocking limitations are recorded explicitly.
+- A Windows demo package is built locally, its expected files are present, and
+  no external connector side effect or public upload is performed.
+- The final scope contains no Figma changes, secret/credential exposure,
+  external data mutation, or unrelated cleanup.
+
+### Non-goals
+
+- No new product capability, connector integration, workflow node, AI
+  provider, or redesign.
+- No real Gmail/Slack sending, remote API mutation, database mutation outside
+  disposable local fixtures, or public release/upload.
+- No destructive cleanup or reset of the existing dirty worktree.
+- No claim that a local demo candidate is production-ready for general users
+  without a separate security, signing, distribution, and support review.
+
+### Verification
+
+### Verification checkpoint (2026-09-02T09:15:00.3194676+09:00)
+
+- The release audit passed across the current safe product surface: Core 130
+  files/705 tests passed with 3 skips, integration 72/72, connector seam 2/2,
+  deterministic Product QA full 61/61 and smoke 19/19, with zero defects.
+- The first GitHub Actions run exposed a release-packaging omission: two new
+  Product QA scenario fixtures were present locally but ignored by the
+  repository's broad `test/` rule. The candidate remains pending until those
+  fixtures are included and CI is green.
+- Core evaluation passed 11/11, desktop TypeScript checking and the production
+  build passed, dependency architecture reported zero violations across 513
+  modules and 1,823 dependencies, and Knip reported no issues.
+- The Windows NSIS installer and unpacked build were generated successfully;
+  the packaged app launched with isolated data and rendered its first screen.
+  The installer is `AX Studio Setup 0.1.0.exe` (106,127,243 bytes) and the
+  unpacked executable is `AX Studio.exe` (190,557,184 bytes).
+- No product-code failure was found; the required follow-up is limited to
+  including the missing test fixtures. The candidate remains without Figma
+  changes, external side effects, secret exposure, destructive cleanup, or
+  public upload.
+- Known limits remain explicit: live AI/account paths and real Gmail/Slack/HTTP
+  delivery or remote/database mutation were not run; eight side-effect
+  scenarios remain intentionally excluded from the deterministic coverage
+  denominator. The demo installer is unsigned and uses Electron's default icon.

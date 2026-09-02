@@ -83,7 +83,7 @@ Windows 런타임 데이터는 실행 방식에 따라 분리됩니다.
 
 - Node.js 22 이상
 - Windows 권장
-- Gmail 연결을 개발할 경우 Google Desktop OAuth Client ID
+- Gmail 연결을 개발할 경우 Google OAuth Client ID (필요하면 Client Secret도)
 
 ```bash
 git clone https://github.com/shinyeonjun/AX_studio.git
@@ -113,12 +113,12 @@ npm run arch:check       # core 의존성 경계 검사
 
 | 위치 | 역할 | Git |
 | --- | --- | --- |
-| `.env` | 개발용 Gmail OAuth Client ID | 커밋 금지 — `.env.example`만 제공 |
+| `.env` | 개발용 Gmail OAuth Client ID/Secret | 커밋 금지 — `.env.example`만 제공 |
 | `ai.toml` | 활성 AI와 모델 설정 | 커밋 금지 — `.ai.toml.example`만 제공, API 키 금지 |
 | `*.db` | 로컬 SQLite 데이터 | 커밋 금지 |
 | OS credential store | AI API 키, Gmail refresh token | PC별 암호화 저장, 공유 대상 아님 |
 
-AI API 키는 `.env`에 넣지 않습니다. 앱 설정에서 등록한 키는 OS credential store에 저장합니다. 개발용 `.env`에는 Gmail OAuth 클라이언트 ID만 두며 사용자 API 키와 분리합니다.
+AI API 키는 `.env`에 넣지 않습니다. 앱 설정에서 등록한 키는 OS credential store에 저장합니다. 개발용 `.env`에는 Gmail OAuth 클라이언트 설정만 두며 사용자 API 키와 분리합니다. Client Secret은 Electron Main 프로세스에서만 읽고 연결 메타데이터·렌더러 상태·로그에는 저장하지 않습니다.
 
 ### Gmail 개발 설정
 
@@ -128,10 +128,12 @@ AI API 키는 `.env`에 넣지 않습니다. 앱 설정에서 등록한 키는 O
 2. Gmail API 사용 설정
 3. OAuth 동의 화면을 Testing으로 설정하고 본인을 Test user로 추가
 4. 사용자 인증 정보에서 데스크톱 앱 OAuth 클라이언트 생성
-5. `.env`에 클라이언트 ID 설정
+5. `.env`에 클라이언트 ID 설정. Google이 해당 클라이언트에 secret을 요구하면 Client Secret도 설정
 
 ```env
 GOOGLE_OAUTH_CLIENT_ID=xxxxx.apps.googleusercontent.com
+# Google 콘솔에서 발급된 경우에만 설정
+GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 ```
 
 앱의 설정 → Gmail → **연결하기**에서 시스템 브라우저 기반 OAuth를 시작합니다. 이 흐름은 PKCE, `state` 검증, `127.0.0.1` 랜덤 포트 loopback을 사용합니다.

@@ -26,6 +26,7 @@ export interface ExecutionRow {
   log_json: string;
   ir_json: string | null;
   trigger_type: string | null;
+  workspace_session_id: string | null;
 }
 
 /** Persisted execution lifecycle. `pending_approval` is resumable, not a failure. */

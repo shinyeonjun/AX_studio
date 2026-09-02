@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { parseJsonObject } from '../../model/cli-json.js';
-import { AxCommandSchema } from '../schema.js';
+import {
+  AxCommandChatProtocolError,
+  normalizeAxCommand,
+} from '../transport-contract.js';
 import type { AxCommandChatOutput, AxCommandChatTransport } from '../transport-contract.js';
 
 /** Codex CLI is given a flat object because its output-schema path is strict. */
@@ -13,7 +16,7 @@ const CodexCommandWireSchema = z.object({
 
 function replyFrom(message: string): AxCommandChatOutput {
   const trimmed = message.trim();
-  if (!trimmed) throw new Error('ax_command_chat_empty_reply');
+  if (!trimmed) throw new AxCommandChatProtocolError();
   return { kind: 'reply', message: trimmed };
 }
 
@@ -25,8 +28,15 @@ export const codexCommandTransport: AxCommandChatTransport = {
     const wire = CodexCommandWireSchema.parse(value);
     if (wire.kind === 'reply') return replyFrom(wire.message);
     const name = wire.commandName.trim();
-    if (!name) throw new Error('ax_command_chat_command_name_missing');
-    const args = wire.argsJson.trim() ? parseJsonObject(wire.argsJson) : {};
-    return { kind: 'command', command: AxCommandSchema.parse({ name, args }) };
+    if (!name) throw new AxCommandChatProtocolError();
+    let args: unknown = {};
+    if (wire.argsJson.trim()) {
+      try {
+        args = parseJsonObject(wire.argsJson);
+      } catch {
+        throw new AxCommandChatProtocolError();
+      }
+    }
+    return { kind: 'command', command: normalizeAxCommand({ name, args }) };
   },
 };

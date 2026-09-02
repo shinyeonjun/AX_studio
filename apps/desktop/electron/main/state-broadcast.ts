@@ -1,5 +1,5 @@
 import { getMainWindow } from './app-window.js';
-import type { WorkspaceSourceRecord } from '@ax-studio/core';
+import type { WorkspaceChatChangedEvent, WorkspaceSourceRecord } from '@ax-studio/core';
 
 export interface WorkspaceSourceChangedPayload {
   sessionId: string;
@@ -20,4 +20,10 @@ export function notifyWorkspaceSourceChanged(source: WorkspaceSourceRecord) {
     source,
   };
   win.webContents.send('ax:workspace-source-changed', payload);
+}
+
+export function notifyWorkspaceChatChanged(event: WorkspaceChatChangedEvent) {
+  const win = getMainWindow();
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send('ax:workspace-chat-changed', event);
 }

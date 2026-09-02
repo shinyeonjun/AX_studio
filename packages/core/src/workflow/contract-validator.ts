@@ -13,6 +13,7 @@ import { aiDecisionOutputPorts, bindingsSatisfyInputs, bindingOutputType, hasCon
 import { actionRefFor, resolveActionDefinition, validateActionParams } from './action-definition.js';
 import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
 import { isValidCronExpression, isValidTimeZone } from './cron.js';
+import type { CapabilityParamInputType } from '../catalog/capability-types.js';
 
 export type BindingSource = string | 'trigger';
 
@@ -28,6 +29,13 @@ export interface ContractValidationIssue {
   message: string;
   expected?: ContractTypeName[];
   available?: ContractTypeName[];
+  missingInputs?: Array<{
+    name: string;
+    label: string;
+    question: string;
+    inputType?: CapabilityParamInputType;
+    placeholder?: string;
+  }>;
 }
 
 export interface WorkflowContractValidationOptions {
@@ -62,16 +70,24 @@ function conditionReferencePaths(condition: unknown): string[] {
   });
 }
 
-function outputFieldExists(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
-  // AI output references are data-contract references. A missing schema cannot
-  // prove that a field exists, so it must be reported before execution.
-  if (!step.outputSchema) return false;
+function hasDeclaredOutputField(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
   const properties = step.outputSchema?.properties;
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return false;
-  return Object.prototype.hasOwnProperty.call(properties, field);
+  return Boolean(
+    properties &&
+      typeof properties === 'object' &&
+      !Array.isArray(properties) &&
+      Object.prototype.hasOwnProperty.call(properties, field),
+  );
+}
+
+function outputFieldExists(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
+  // `conclusion` is part of the default AI result contract. Other custom
+  // fields still require an explicit schema declaration.
+  return field === 'conclusion' || hasDeclaredOutputField(step, field);
 }
 
 function outputFieldIsRequired(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
+  if (field === 'conclusion' && !hasDeclaredOutputField(step, field)) return true;
   return Array.isArray(step.outputSchema?.required) && step.outputSchema.required.includes(field);
 }
 
@@ -97,13 +113,18 @@ function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[]
                 ? [['path', trigger.path]]
                 : [];
 
-  const issues = requiredFields.flatMap(([field, value]) =>
+  const issues: ContractValidationIssue[] = requiredFields.flatMap(([field, value]) =>
     typeof value === 'string' && value.trim().length > 0
       ? []
       : [
           {
             code: 'invalid_workflow_schema' as const,
             message: `${trigger.type} 트리거에 ${field} 값이 필요합니다.`,
+            missingInputs: [{
+              name: field,
+              label: field,
+              question: `${trigger.type} 트리거의 ${field} 값을 입력해 주세요.`,
+            }],
           },
         ],
   );
@@ -167,11 +188,29 @@ function validateActionConfiguration(
   );
   if (missing.length === 0) return [];
 
+  const missingInputs = missing.map((name) => {
+    const parameter = definition.params.find((candidate) => candidate.name === name);
+    return parameter
+      ? {
+          name: parameter.name,
+          label: parameter.label,
+          question: parameter.question,
+          ...(parameter.inputType ? { inputType: parameter.inputType } : {}),
+          ...(parameter.placeholder ? { placeholder: parameter.placeholder } : {}),
+        }
+      : {
+          name,
+          label: name,
+          question: `${name} 값이 필요합니다.`,
+        };
+  });
+
   return [
     {
       code: 'invalid_workflow_schema',
       stepId: step.id,
       message: `${definition.id} 단계에 필요한 값이 없습니다: ${missing.join(', ')}`,
+      missingInputs,
     },
   ];
 }
@@ -199,8 +238,9 @@ function validateWorkflowStructure(
           message: `지원하지 않는 action입니다: ${step.connector}.${step.action}`,
         });
       } else if (
+        options.runtimeConnectors !== undefined &&
         getConnectorCatalogEntry(step.connector)?.runtimeAvailable !== true &&
-        !options.runtimeConnectors?.[step.connector]
+        !options.runtimeConnectors[step.connector]
       ) {
         issues.push({
           code: 'connector_unavailable',
@@ -306,16 +346,14 @@ function validateWorkflowStructure(
 
   const notifyActions = ir.steps.filter(
     (step): step is Extract<Step, { type: 'action' }> =>
-      step.type === 'action' &&
-      ((step.connector === 'slack' && /message\.send|send/.test(step.action)) ||
-        (step.connector === 'gmail' && /message\.send|send/.test(step.action))),
+      step.type === 'action' && resolveCapability(step.connector, step.action)?.notification === true,
   );
   const decisionSteps = ir.steps.filter((step) => step.type === 'ai_decision');
   const branchSteps = ir.steps.filter((step) => step.type === 'if');
   if (notifyActions.length >= 2 && decisionSteps.length > 0 && branchSteps.length === 0) {
     issues.push({
       code: 'invalid_control_flow',
-      message: 'AI 분류 결과를 사용하는 알림은 if 분기로 목적지를 나눠야 합니다.',
+      message: 'AI 분류 결과를 사용하는 알림 목적지는 if 분기로 나눠야 합니다.',
     });
   }
   if (notifyActions.length >= 2 && decisionSteps.length > 0 && branchSteps.length > 0) {

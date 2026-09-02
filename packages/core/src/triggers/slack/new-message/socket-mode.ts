@@ -1,33 +1,154 @@
-import { SocketModeClient } from '@slack/socket-mode';
+import { LogLevel, SocketModeClient, type Logger, type SocketModeOptions } from '@slack/socket-mode';
 import { WebClient } from '@slack/web-api';
 import type { TriggerEvent } from '../../types.js';
 import type { PushTransportState, PushTransportStateHandler } from '../../push-state.js';
 
 export type SlackSocketEventHandler = (event: TriggerEvent) => void;
 
+export interface SlackSocketModeListenerOptions {
+  createClient?: (options: SocketModeOptions) => SocketModeClient;
+}
+
 // The SDK default is 5 seconds. A desktop app can be briefly deprioritized by the OS
 // or delayed by a proxy without the Slack connection actually being dead.
 const SLACK_CLIENT_PING_TIMEOUT_MS = 15_000;
+const MAX_SLACK_ERROR_DETAILS = 8;
+const MAX_SLACK_ERROR_DETAIL_LENGTH = 240;
+const SLACK_URL_PATTERN = /\b(?:https?|wss?):\/\/[^\s"'<>]+/gi;
+const SLACK_TOKEN_PATTERN = /\b(?:xapp|xoxb|xoxp|xoxa|xoxs)-[A-Za-z0-9-]+/gi;
+const NESTED_ERROR_KEYS = ['original', 'cause', 'error', 'reason'] as const;
 
-function nestedError(error: Error): unknown {
-  const record = error as Error & { cause?: unknown; original?: unknown };
-  return record.original ?? record.cause;
+function readProperty(value: object, key: string): unknown {
+  try {
+    return (value as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
 }
 
-/** Preserve the SDK's underlying network error instead of exposing only SMWebsocketError. */
-export function formatSlackSocketError(error: unknown): string {
-  if (!(error instanceof Error)) return String(error);
+function redactSlackErrorText(value: string): string {
+  return value
+    .trim()
+    .replace(SLACK_URL_PATTERN, '[REDACTED_URL]')
+    .replace(SLACK_TOKEN_PATTERN, '[REDACTED_SLACK_TOKEN]')
+    .slice(0, MAX_SLACK_ERROR_DETAIL_LENGTH)
+    .trim();
+}
 
-  const details = [error.message, nestedError(error)]
-    .flatMap((value) => {
-      if (value instanceof Error) return [value.message || value.name];
-      if (typeof value === 'string') return [value];
-      return [];
+function formatSlackSdkLog(values: Parameters<Logger['error']>): string {
+  return values
+    .map((value) => {
+      if (typeof value === 'string') return redactSlackErrorText(value);
+      if (value instanceof Error) return formatSlackSocketError(value);
+      if (value && typeof value === 'object') {
+        const message = readProperty(value, 'message');
+        return typeof message === 'string' ? redactSlackErrorText(message) : '';
+      }
+      return String(value);
     })
-    .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .join(' ');
+}
 
-  return [...new Set(details)].join(' | ') || error.name;
+/** Keep the SDK's duplicate WebSocket wrapper logs behind the app-level diagnostic. */
+class SlackSdkLogger implements Logger {
+  private level = LogLevel.ERROR;
+  private name = 'slack-sdk';
+  private lastError = '';
+
+  debug(..._msg: Parameters<Logger['debug']>): void {}
+
+  info(..._msg: Parameters<Logger['info']>): void {}
+
+  warn(...msg: Parameters<Logger['warn']>): void {
+    if (!this.shouldLog(LogLevel.WARN)) return;
+    const detail = formatSlackSdkLog(msg);
+    if (detail) console.warn(`[${this.name}] ${detail}`);
+  }
+
+  error(...msg: Parameters<Logger['error']>): void {
+    if (!this.shouldLog(LogLevel.ERROR)) return;
+    const detail = formatSlackSdkLog(msg);
+    if (!detail || /^WebSocket error(?: occurred:|!)/.test(detail)) return;
+    if (detail === this.lastError) return;
+    this.lastError = detail;
+    console.error(`[${this.name}] ${detail}`);
+  }
+
+  setLevel(level: LogLevel): void {
+    this.level = level;
+  }
+
+  getLevel(): LogLevel {
+    return this.level;
+  }
+
+  setName(name: string): void {
+    this.name = name;
+  }
+
+  private shouldLog(level: LogLevel): boolean {
+    const severity = {
+      [LogLevel.DEBUG]: 100,
+      [LogLevel.INFO]: 200,
+      [LogLevel.WARN]: 300,
+      [LogLevel.ERROR]: 400,
+    };
+    return severity[level] >= severity[this.level];
+  }
+
+  resetError(): void {
+    this.lastError = '';
+  }
+}
+
+/** Preserve bounded nested transport details instead of exposing only SMWebsocketError. */
+export function formatSlackSocketError(error: unknown): string {
+  const details: string[] = [];
+  const seen = new Set<object>();
+  const queue: unknown[] = [error];
+  let fallbackName = '';
+
+  const addDetail = (value: unknown) => {
+    if (typeof value !== 'string') return;
+    const detail = redactSlackErrorText(value);
+    if (detail && !details.includes(detail) && details.length < MAX_SLACK_ERROR_DETAILS) {
+      details.push(detail);
+    }
+  };
+
+  while (queue.length > 0 && details.length < MAX_SLACK_ERROR_DETAILS) {
+    const current = queue.shift();
+    if (typeof current === 'string') {
+      addDetail(current);
+      continue;
+    }
+    if (!current || typeof current !== 'object') continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    if (current instanceof Error) {
+      if (!current.message) fallbackName = current.name;
+      else fallbackName ||= current.name;
+      addDetail(current.message);
+      const code = readProperty(current, 'code');
+      if (typeof code === 'string' && code !== 'slack_socket_mode_websocket_error') addDetail(code);
+    } else {
+      addDetail(readProperty(current, 'message'));
+      addDetail(readProperty(current, 'code'));
+    }
+
+    for (const key of NESTED_ERROR_KEYS) {
+      const nested = readProperty(current, key);
+      if (nested !== undefined) queue.push(nested);
+    }
+  }
+
+  if (details.length > 0) return details.join(' | ');
+  if (fallbackName === 'TypeError') {
+    return 'TypeError (Slack WebSocket transport returned no diagnostic detail)';
+  }
+  return fallbackName || 'Slack Socket Mode error';
 }
 
 function isUserMessage(event: Record<string, unknown>): boolean {
@@ -44,6 +165,12 @@ export class SlackSocketModeListener {
   private onEvent?: SlackSocketEventHandler;
   private onStateChange?: PushTransportStateHandler;
   private lastSocketError?: string;
+  private lastLoggedSocketError?: string;
+  private lifecycleGeneration = 0;
+
+  constructor(
+    private readonly options: SlackSocketModeListenerOptions = {},
+  ) {}
 
   async start(
     botToken: string,
@@ -52,19 +179,29 @@ export class SlackSocketModeListener {
     onStateChange?: PushTransportStateHandler,
   ): Promise<void> {
     await this.stop();
+    const generation = ++this.lifecycleGeneration;
 
     this.onEvent = onEvent;
     this.onStateChange = onStateChange;
     this.lastSocketError = undefined;
-    this.client = new SocketModeClient({
+    this.lastLoggedSocketError = undefined;
+    const sdkLogger = new SlackSdkLogger();
+    const client = (this.options.createClient ?? ((clientOptions) => new SocketModeClient(clientOptions)))({
       appToken,
       clientPingTimeout: SLACK_CLIENT_PING_TIMEOUT_MS,
+      logger: sdkLogger,
     });
+    this.client = client;
     this.web = new WebClient(botToken);
 
     const notify = (state: PushTransportState) => {
+      if (generation !== this.lifecycleGeneration) return;
       if (state.error) this.lastSocketError = state.error;
-      if (state.phase === 'connected') this.lastSocketError = undefined;
+      if (state.phase === 'connected') {
+        this.lastSocketError = undefined;
+        this.lastLoggedSocketError = undefined;
+        sdkLogger.resetError();
+      }
       this.onStateChange?.({
         ...state,
         ...(state.error || state.phase === 'reconnecting' || state.phase === 'disconnected'
@@ -72,16 +209,20 @@ export class SlackSocketModeListener {
           : {}),
       });
     };
+    const reportError = (error: unknown) => {
+      const detail = formatSlackSocketError(error);
+      if (this.lastLoggedSocketError !== detail) {
+        console.error(`[slack-socket] WebSocket error: ${detail}`);
+        this.lastLoggedSocketError = detail;
+      }
+      notify({ phase: 'error', error: detail });
+    };
     this.client.on('connecting', () => notify({ phase: 'connecting' }));
     this.client.on('connected', () => notify({ phase: 'connected' }));
     this.client.on('reconnecting', () => notify({ phase: 'reconnecting' }));
     this.client.on('close', () => notify({ phase: 'reconnecting' }));
     this.client.on('disconnected', () => notify({ phase: 'disconnected' }));
-    this.client.on('error', (error) => {
-      const detail = formatSlackSocketError(error);
-      console.error(`[slack-socket] WebSocket error: ${detail}`);
-      notify({ phase: 'error', error: detail });
-    });
+    this.client.on('error', reportError);
 
     this.client.on('events_api', async ({ event, ack }) => {
       await ack();
@@ -112,23 +253,33 @@ export class SlackSocketModeListener {
       });
     });
 
+    let startPromise: Promise<unknown>;
     try {
-      await this.client.start();
+      startPromise = client.start();
     } catch (error) {
-      notify({ phase: 'error', error: formatSlackSocketError(error) });
-      throw error;
+      reportError(error);
+      return;
     }
+    // SocketModeClient deliberately keeps its start promise pending while its
+    // built-in reconnect loop is active. Do not make the desktop connection
+    // handler wait forever for a transient or terminal first-connection error.
+    void startPromise.catch((error) => {
+      if (generation === this.lifecycleGeneration) reportError(error);
+    });
   }
 
   async stop(): Promise<void> {
-    if (this.client) {
-      await this.client.disconnect();
+    this.lifecycleGeneration += 1;
+    const client = this.client;
+    if (client) {
+      await client.disconnect();
     }
-    this.client = undefined;
+    if (this.client === client) this.client = undefined;
     this.web = undefined;
     this.onEvent = undefined;
     this.onStateChange = undefined;
     this.lastSocketError = undefined;
+    this.lastLoggedSocketError = undefined;
     this.channelLabels.clear();
   }
 

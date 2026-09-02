@@ -14,13 +14,7 @@ export class UnknownCapabilityError extends Error {
   readonly capability: string;
 
   constructor(capability: string) {
-    const hint =
-      capability.includes('send_message') ?
-        `${capability} → slack/gmail은 message.send 를 사용하세요 (예: slack.message.send)`
-      : capability.includes('slack.') && !capability.includes('message.send') ?
-        `${capability} → catalog id는 slack.message.send 입니다`
-      : '';
-    super(`지원하지 않는 capability입니다: ${capability}${hint ? `. ${hint}` : ''}`);
+    super(`지원하지 않는 capability입니다: ${capability}`);
     this.name = 'UnknownCapabilityError';
     this.capability = capability;
   }

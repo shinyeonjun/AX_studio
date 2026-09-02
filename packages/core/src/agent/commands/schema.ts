@@ -16,6 +16,7 @@ import { AgentScopedContextUpdateArgsSchema } from '../scoped-context.js';
 export const AX_COMMAND_NAMES = [
   'command.list',
   'resource.list',
+  'http.list',
   'source.list',
   'source.files.list',
   'source.file.read',
@@ -92,22 +93,22 @@ export const AxCapabilityInvokeArgsSchema = z.object({
 
 export type AxCommand = z.infer<typeof AxCommandSchema>;
 
-export const AxCommandIssueSchema = z.object({
-  code: z.string(),
-  path: z.string().optional(),
-  message: z.string(),
-  expected: z.array(z.string()).optional(),
-  available: z.array(z.string()).optional(),
-});
-
-export type AxCommandIssue = z.infer<typeof AxCommandIssueSchema>;
-
 export const AxInputRequestTypeSchema = z.enum([
   'text',
   'email',
   'slack_channel',
   'folder',
 ]);
+
+export const AxInputRequestOptionSchema = z.object({
+  /** Stable host-owned value sent back to the command agent after selection. */
+  value: z.string().trim().min(1).max(256),
+  /** Human-readable label; ids and secrets do not need to be shown here. */
+  label: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(240).optional(),
+});
+
+export type AxInputRequestOption = z.infer<typeof AxInputRequestOptionSchema>;
 
 export const AxInputRequestSchema = z.object({
   id: z.string().min(1),
@@ -116,9 +117,22 @@ export const AxInputRequestSchema = z.object({
   required: z.boolean().default(true),
   placeholder: z.string().optional(),
   reason: z.string().optional(),
+  options: z.array(AxInputRequestOptionSchema).max(200).optional(),
 });
 
 export type AxInputRequest = z.infer<typeof AxInputRequestSchema>;
+
+export const AxCommandIssueSchema = z.object({
+  code: z.string(),
+  path: z.string().optional(),
+  message: z.string(),
+  details: z.unknown().optional(),
+  expected: z.array(z.string()).optional(),
+  available: z.array(z.string()).optional(),
+  inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
+});
+
+export type AxCommandIssue = z.infer<typeof AxCommandIssueSchema>;
 
 /**
  * A presentation is a bounded, host-rendered interaction—not executable UI.
@@ -161,6 +175,7 @@ export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [
 export const AxUiPresentationSchema = z.object({
   title: z.string().trim().min(1).max(120),
   subtitle: z.string().trim().max(300).optional(),
+  inputMode: z.enum(['individual', 'batch']).default('individual'),
   blocks: z.array(AxUiPresentationBlockSchema).max(12).default([]),
   inputs: z.array(AxInputRequestSchema).max(8).default([]),
   actions: z.array(AxUiPresentationActionSchema).max(8).default([]),

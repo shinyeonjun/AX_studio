@@ -16,6 +16,14 @@ export interface CapabilityInvokeEnvelope {
   untrusted: boolean;
 }
 
+/** Preserve connector failure metadata while crossing the design-tool boundary. */
+export class CapabilityInvokeError extends Error {
+  constructor(message: string, readonly errorDetails?: unknown) {
+    super(message);
+    this.name = 'CapabilityInvokeError';
+  }
+}
+
 export async function invokeReadCapability(
   ctx: DesignToolContext,
   capabilityId: string,
@@ -50,7 +58,7 @@ export async function invokeReadCapability(
 
   const result = await connector.execute(capabilityActionName(cap), params, connectorCtx);
   if (!result.ok) {
-    throw new Error(result.error ?? 'capability_invoke_failed');
+    throw new CapabilityInvokeError(result.error ?? 'capability_invoke_failed', result.errorDetails);
   }
 
   const data = result.data;

@@ -1,6 +1,7 @@
 import { WorkflowCanvasDraftSchema, type WorkflowCanvasDraft, type WorkflowCanvasDraftInput, type WorkflowNode } from '../draft/schema.js';
 import { getNodeParams, resolveNodeConnectorAction } from '../draft/actions.js';
 import { resolveIfNodeCondition } from '../draft/conditions.js';
+import { resolveCapability } from '../../../catalog/capability-graph.js';
 import type { ConditionExpr } from '../../../runtime/condition-expr.js';
 
 export interface DraftGraphIssue {
@@ -12,11 +13,7 @@ function isNotifyAction(draft: WorkflowCanvasDraft, node: WorkflowNode): boolean
   if (node.type !== 'action') return false;
   const resolved = resolveNodeConnectorAction(draft, node);
   if (!resolved) return false;
-  const action = resolved.action;
-  return (
-    (resolved.connector === 'slack' && /message\.send|send/.test(action)) ||
-    (resolved.connector === 'gmail' && /message\.send|send/.test(action))
-  );
+  return resolveCapability(resolved.connector, resolved.action)?.notification === true;
 }
 
 function hasEnumDecision(nodes: WorkflowNode[]): boolean {
@@ -149,7 +146,7 @@ export function validateCanvasDraftGraph(draft: WorkflowCanvasDraftInput): Draft
   if (notifyCount >= 2 && (!hasDecision || !hasBranch)) {
     issues.push({
       message:
-        '알림 목적지가 여러 개면 ai_decision으로 분류한 뒤 if 분기로 각 Slack/Gmail 노드에 연결해야 합니다.',
+        '알림 목적지가 여러 개면 ai_decision으로 분류한 뒤 if 분기로 연결해야 합니다.',
     });
   }
 

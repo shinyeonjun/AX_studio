@@ -12,6 +12,13 @@ export * from './credentials/index.js';
 export * from './agent/index.js';
 export * from './store/db.js';
 export * from './store/workflow-store.js';
+export type {
+  WorkspaceChatMessage,
+  WorkspaceChatApproval,
+  WorkspaceChatRecord,
+  WorkspaceChatListRecord,
+} from './store/repositories/workspace-chat-repository.js';
+export { WorkspaceChatApprovalSchema } from './store/repositories/workspace-chat-repository.js';
 export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';
 export { importDiscoveryArtifact } from './store/import-discovery-artifact.js';
 export {
@@ -40,6 +47,7 @@ export * from './workflow/canvas/index.js';
 export * from './runtime/types.js';
 export * from './runtime/manual-run-input.js';
 export * from './runtime/engine.js';
+export * from './runtime/execution-result-message.js';
 export * from './runtime/scheduler.js';
 export * from './runtime/manual-workflow-run.js';
 export { setWebhookSecretResolver } from './triggers/webhook/secret-provider.js';

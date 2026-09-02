@@ -8,6 +8,7 @@ import {
 import { validateWorkflowContracts } from './contract-validator.js';
 import { inferWorkflowBindings } from './bindings.js';
 import type { WorkflowIR } from './schema.js';
+import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../catalog/dynamic-catalog.js';
 
 describe('contract compatibility', () => {
   it('allows FileRef to satisfy DocumentIngestInput', () => {
@@ -437,5 +438,50 @@ describe('validateWorkflowContracts', () => {
         expect.objectContaining({ code: 'connector_unavailable', stepId: 'notify' }),
       ]),
     );
+  });
+
+  it('accepts a connected dynamically registered connector during persistence validation', () => {
+    registerDynamicCapabilities([{
+      id: 'openapi.alpha.listPets',
+      connector: 'openapi',
+      kind: 'read',
+      label: 'Alpha 반려동물 목록',
+      description: 'Alpha 반려동물 목록 조회',
+      sideEffect: 'NONE',
+      params: [],
+    }]);
+    const ir: WorkflowIR = {
+      id: 'dynamic-wf',
+      name: '동적 API 조회',
+      goal: '반려동물 목록 조회',
+      version: 1,
+      trigger: { type: 'manual' },
+      steps: [{
+        type: 'action',
+        id: 'list-pets',
+        connector: 'openapi',
+        action: 'alpha.listPets',
+        params: {},
+        sideEffect: 'NONE',
+      }],
+      inputs: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+
+    try {
+      expect(validateWorkflowContracts(ir, { connectedConnectors: ['openapi'] })).toEqual([]);
+      expect(validateWorkflowContracts(ir, { runtimeConnectors: {} })).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'connector_unavailable', stepId: 'list-pets' }),
+        ]),
+      );
+    } finally {
+      clearDynamicCatalogForTests();
+    }
   });
 });

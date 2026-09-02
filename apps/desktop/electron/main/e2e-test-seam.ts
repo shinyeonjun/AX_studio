@@ -130,11 +130,43 @@ export async function runE2EChat(request: E2EChatRequest): Promise<E2EChatReply>
       presentations: [{
         title: 'E2E 확인 카드',
         subtitle: 'host renderer interaction',
+        inputMode: 'individual',
         blocks: [{ type: 'decision', label: '상태', value: '검증 대기', reason: '버튼을 눌러 다음 대화를 이어갑니다.' }],
         inputs: [],
         actions: [{ id: 'continue', label: '진행', value: '__e2e:plain-reply__', tone: 'primary', purpose: 'reply' }],
       }],
     };
+  }
+
+  if (instruction === '__e2e:inline-approval__') {
+    request.core.runtime.setConnector('slack', {
+      name: 'e2e-slack',
+      execute: async () => ({ ok: true, data: { id: 'e2e-message' } }),
+    });
+    request.core.runtime.enqueueEphemeralWorkflow({
+      name: 'E2E 일회 승인',
+      goal: '승인 후에만 테스트 메시지를 전송합니다.',
+      version: 1,
+      inputs: [],
+      steps: [
+        {
+          type: 'action',
+          id: 'send',
+          connector: 'slack',
+          action: 'message.send',
+          actionRef: 'slack.message.send',
+          params: { channel: '#e2e', text: 'E2E approval test' },
+          sideEffect: 'EXTERNAL',
+        },
+      ],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    }, { workspaceSessionId: request.workspaceSessionId });
+    return emptyReply('E2E inline_approval_queued');
   }
 
   if (instruction === '__e2e:input__') {

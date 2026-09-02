@@ -49,7 +49,8 @@ const MIGRATION_SQL = `
     error_code TEXT,
     log_json TEXT NOT NULL DEFAULT '[]',
     trigger_type TEXT,
-    ir_json TEXT
+    ir_json TEXT,
+    workspace_session_id TEXT
   );
 
   CREATE TABLE IF NOT EXISTS approvals (
@@ -212,6 +213,9 @@ function applyMigrations(db: AppDatabase) {
   }
   if (!columnNames(db, 'executions').includes('workflow_version')) {
     db.exec('ALTER TABLE executions ADD COLUMN workflow_version INTEGER');
+  }
+  if (!columnNames(db, 'executions').includes('workspace_session_id')) {
+    db.exec('ALTER TABLE executions ADD COLUMN workspace_session_id TEXT');
   }
   if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
     db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');

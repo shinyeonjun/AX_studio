@@ -1,17 +1,21 @@
 import { z } from 'zod';
-import { AxCommandSchema } from '../schema.js';
+import {
+  AxCommandChatProtocolError,
+  AxCommandWireSchema,
+  normalizeAxCommand,
+} from '../transport-contract.js';
 import type { AxCommandChatOutput, AxCommandChatTransport } from '../transport-contract.js';
 
 /** Claude CLI can return the nested command object directly through json-schema. */
 const ClaudeCommandWireSchema = z.object({
   kind: z.enum(['command', 'reply']),
-  command: AxCommandSchema.optional(),
+  command: AxCommandWireSchema.optional(),
   message: z.string().default(''),
 });
 
 function replyFrom(message: string): AxCommandChatOutput {
   const trimmed = message.trim();
-  if (!trimmed) throw new Error('ax_command_chat_empty_reply');
+  if (!trimmed) throw new AxCommandChatProtocolError();
   return { kind: 'reply', message: trimmed };
 }
 
@@ -22,7 +26,7 @@ export const claudeCommandTransport: AxCommandChatTransport = {
   normalize(value) {
     const wire = ClaudeCommandWireSchema.parse(value);
     if (wire.kind === 'reply') return replyFrom(wire.message);
-    if (!wire.command) throw new Error('ax_command_chat_command_missing');
-    return { kind: 'command', command: wire.command };
+    if (!wire.command) throw new AxCommandChatProtocolError();
+    return { kind: 'command', command: normalizeAxCommand(wire.command) };
   },
 };

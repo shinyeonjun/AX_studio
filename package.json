@@ -16,6 +16,8 @@
     "test:manual:db": "node test/manual/postgres.mjs",
     "test:manual:webhook": "node test/manual/webhook.mjs",
     "test:manual:webhook:security": "node --test test/manual/webhook.test.mjs",
+    "test:connector-lab": "node test/connector-lab/start.mjs",
+    "test:connector-lab:check": "node --test test/connector-lab/connector-lab.test.mjs",
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",

@@ -56,6 +56,16 @@ export class WorkflowStore {
     return workspaceChatRepo.saveWorkspaceChat(this.db, params);
   }
 
+  upsertWorkspaceChatExecutionResult(
+    sessionId: string,
+    message: workspaceChatRepo.WorkspaceChatMessage & {
+      kind: 'execution_result';
+      executionId: string;
+    },
+  ) {
+    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, sessionId, message);
+  }
+
   getWorkspaceChat(id: string) {
     return workspaceChatRepo.getWorkspaceChat(this.db, id);
   }
@@ -113,6 +123,7 @@ export class WorkflowStore {
     ephemeral: boolean;
     triggerType?: string;
     irJson?: string;
+    workspaceSessionId?: string;
   }) {
     return executionRepo.createExecution(this.db, params);
   }

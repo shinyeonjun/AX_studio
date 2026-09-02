@@ -7,7 +7,7 @@ export const HTTP_CAPABILITIES: ConnectorCapability[] = [
     connector: 'http',
     kind: 'read',
     label: 'HTTP 요청',
-    description: '선택한 HTTP 연결(connectionId, 생략 시 기본 연결)의 base URL로 GET/HEAD REST 조회 (외부 변경은 http.post 사용)',
+    description: '선택한 HTTP 연결(connectionId, 여러 연결이면 필수)의 base URL로 GET/HEAD REST 조회 (외부 변경은 http.post 사용)',
     readMethods: ['GET', 'HEAD'],
     params: [
       { name: 'method', label: 'HTTP 메서드', question: '어떤 HTTP 메서드를 사용할까요?', required: false },
@@ -22,7 +22,7 @@ export const HTTP_CAPABILITIES: ConnectorCapability[] = [
     connector: 'http',
     kind: 'write',
     label: 'HTTP POST',
-    description: '선택한 HTTP 연결(connectionId, 생략 시 기본 연결)의 base URL로 JSON 또는 문자열 POST 요청을 보냅니다.',
+    description: '선택한 HTTP 연결(connectionId, 여러 연결이면 필수)의 base URL로 JSON 또는 문자열 POST 요청을 보냅니다.',
     sideEffect: 'EXTERNAL',
     params: [
       { name: 'connectionId', label: 'HTTP 연결', question: '이 요청에 사용할 HTTP 연결은 무엇인가요?', required: false },

@@ -1,0 +1,20 @@
+{
+  "id": "one-shot-inline-approval",
+  "name": "One-shot inline approval — 대화 안에서 승인",
+  "description": "일회 실행의 승인 대기를 대화 카드에서 승인하거나 취소할 수 있는지 확인합니다.",
+  "mode": "deterministic",
+  "tags": ["chat", "approval", "deterministic"],
+  "covers": ["runtime:approvals-activity"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "newChat", "label": "inline-approval" },
+    { "action": "sendMessage", "text": "__e2e:inline-approval__" },
+    { "action": "waitMs", "ms": 1800 },
+    { "check": "inlineApprovalPresent", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "외부 작업 전 확인", "severity": "critical" },
+    { "action": "clickInlineApproval", "decision": "approve" },
+    { "check": "inlineApprovalAbsent", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "실행 완료", "severity": "critical" },
+    { "check": "composerEnabled", "severity": "major" }
+  ]
+}
