@@ -1,92 +1,7 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createServer, type Server } from 'node:http';
-import { randomUUID } from 'node:crypto';
-import type { TriggerEvent } from '../types.js';
-import {
-  WEBHOOK_MAX_PAYLOAD_BYTES,
-  normalizeWebhookPath,
-  verifyWebhookAuth,
-} from './security.js';
-
-export interface WebhookListenerOptions {
-  port: number;
-  secret: string;
-  host?: string;
-}
-
-export type WebhookEventHandler = (event: TriggerEvent) => void;
-
-function readRequestBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let total = 0;
-    let settled = false;
-    req.on('data', (chunk: Buffer) => {
-      if (settled) return;
-      total += chunk.length;
-      if (total > maxBytes) {
-        settled = true;
-        reject(new Error('payload_too_large'));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      if (settled) return;
-      settled = true;
-      resolve(Buffer.concat(chunks));
-    });
-    req.on('error', (error) => {
-      if (settled) return;
-      settled = true;
-      reject(error);
-    });
-  });
-}
-
-function headerRecord(req: IncomingMessage): Record<string, string | string[] | undefined> {
-  return req.headers;
-}
-
-const PROVIDER_EVENT_ID_HEADERS = [
-  'idempotency-key',
-  'x-idempotency-key',
-  'x-event-id',
-  'x-webhook-id',
-  'x-github-delivery',
-] as const;
-
-const SENSITIVE_REQUEST_HEADERS = new Set([
-  'authorization',
-  'proxy-authorization',
-  'cookie',
-  'set-cookie',
-  'x-ax-webhook-secret',
-  'x-ax-signature',
-  'x-api-key',
-  'x-auth-token',
-  'x-access-token',
-]);
-
-function providerEventId(req: IncomingMessage): string | undefined {
-  for (const name of PROVIDER_EVENT_ID_HEADERS) {
-    const value = req.headers[name];
-    const candidate = Array.isArray(value) ? value[0] : value;
-    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-  }
-  return undefined;
-}
-
-function respond(res: ServerResponse, status: number, body: string): void {
-  res.statusCode = status;
-  res.setHeader('content-type', 'text/plain; charset=utf-8');
-  res.end(body);
-}
-
-function rejectRequest(req: IncomingMessage, res: ServerResponse, status: number, body: string): void {
-  req.resume();
-  respond(res, status, body);
-}
+import type { WebhookEventHandler, WebhookListenerOptions } from './listener/contracts.js';
+import { handleWebhookRequest } from './listener/handler.js';
+export type { WebhookEventHandler, WebhookListenerOptions } from './listener/contracts.js';
 
 export class WebhookInboundListener {
   private server?: Server;
@@ -96,7 +11,7 @@ export class WebhookInboundListener {
 
     const host = options.host ?? '127.0.0.1';
     this.server = createServer((req, res) => {
-      void this.handleRequest(req, res, options, onEvent);
+      void handleWebhookRequest(req, res, options, onEvent);
     });
 
     try {
@@ -121,78 +36,5 @@ export class WebhookInboundListener {
 
   isRunning(): boolean {
     return Boolean(this.server?.listening);
-  }
-
-  private async handleRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-    options: WebhookListenerOptions,
-    onEvent: WebhookEventHandler,
-  ): Promise<void> {
-    try {
-      if (req.method !== 'POST') {
-        rejectRequest(req, res, 405, 'method_not_allowed');
-        return;
-      }
-
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-      const prefix = '/hooks/';
-      if (!url.pathname.startsWith(prefix)) {
-        rejectRequest(req, res, 404, 'not_found');
-        return;
-      }
-
-      const pathSegment = url.pathname.slice(prefix.length);
-      let path: string;
-      try {
-        path = normalizeWebhookPath(decodeURIComponent(pathSegment));
-      } catch {
-        rejectRequest(req, res, 400, 'invalid_path');
-        return;
-      }
-
-      const contentLength = Number(req.headers['content-length']);
-      if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_PAYLOAD_BYTES) {
-        rejectRequest(req, res, 413, 'payload_too_large');
-        return;
-      }
-
-      const rawBody = await readRequestBody(req, WEBHOOK_MAX_PAYLOAD_BYTES);
-      if (!verifyWebhookAuth(headerRecord(req), options.secret, rawBody)) {
-        respond(res, 401, 'unauthorized');
-        return;
-      }
-
-      // Prefer a provider's stable event key so retries can be deduplicated.
-      // Keyless callers still receive a unique local request id.
-      const requestId = providerEventId(req) ?? randomUUID();
-      const receivedAt = new Date().toISOString();
-      const body = rawBody.toString('utf8');
-      const headers: Record<string, string> = {};
-      for (const [key, value] of Object.entries(req.headers)) {
-        if (SENSITIVE_REQUEST_HEADERS.has(key.toLowerCase())) continue;
-        if (typeof value === 'string') headers[key] = value;
-        else if (Array.isArray(value)) headers[key] = value.join(',');
-      }
-
-      onEvent({
-        type: 'webhook.inbound',
-        payload: {
-          path,
-          body,
-          headers,
-          requestId,
-          receivedAt,
-        },
-      });
-
-      respond(res, 202, 'accepted');
-    } catch (err) {
-      if ((err as Error).message === 'payload_too_large') {
-        rejectRequest(req, res, 413, 'payload_too_large');
-        return;
-      }
-      rejectRequest(req, res, 500, 'internal_error');
-    }
   }
 }

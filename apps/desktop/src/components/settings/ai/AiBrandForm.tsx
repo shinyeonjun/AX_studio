@@ -1,36 +1,10 @@
 import { AI_PROVIDER_UI_CATALOG } from '../../../constants/ai-providers';
-import type { AiBrand, AiConnectionMode, CliModelOption } from '../../../types/ai-provider';
-import type { DetectedAiCli } from '../../../types/ai-provider';
 import { defaultSetupGuide } from './AiSetupGuide';
 import { AiModeSwitch } from './AiModeSwitch';
-
-interface AiBrandFormProps {
-  brand: AiBrand;
-  embedded?: boolean;
-  mode: AiConnectionMode;
-  model: string;
-  models: CliModelOption[];
-  cliOption?: DetectedAiCli;
-  detecting: boolean;
-  apiKeyDraft: string;
-  apiKeyConfigured: boolean;
-  apiKeyMasked?: string;
-  configFilePath?: string;
-  cliVerified: boolean;
-  apiVerified: boolean;
-  saving: boolean;
-  testing: boolean;
-  testingCli: boolean;
-  message: string;
-  canSave: boolean;
-  isActive: boolean;
-  onModeChange: (mode: AiConnectionMode) => void;
-  onModelChange: (value: string) => void;
-  onApiKeyChange: (value: string) => void;
-  onTestCli: () => void;
-  onTestApiKey: () => void;
-  onSave: () => void;
-}
+import { AiApiPanel } from './brand-form/api-panel';
+import { AiCliPanel } from './brand-form/cli-panel';
+import { AiModelField } from './brand-form/model-field';
+import type { AiBrandFormProps } from './brand-form/contracts';
 
 export function AiBrandForm({
   brand,
@@ -92,77 +66,32 @@ export function AiBrandForm({
         {detecting && <p className="muted">연결 상태를 확인하는 중...</p>}
 
         {mode === 'cli' && (
-          <div className="connection-mode-panel">
-            <div className="provider-option selected" style={{ marginBottom: 16 }}>
-              <div className="provider-option-header">
-                <div className="provider-option-title">{meta.cliLabel}</div>
-                <span className={`connection-badge ${cliConnected ? 'connected' : ''}`}>{cliBadge}</span>
-              </div>
-              <div className="provider-option-desc">
-                {cliOption?.description ?? `${meta.cliLabel}가 PATH에 있어야 합니다.`}
-              </div>
-            </div>
-            <button type="button" className="btn btn-secondary" onClick={onTestCli} disabled={testingCli}>
-              {testingCli ? '확인 중...' : 'CLI 연결 테스트'}
-            </button>
-          </div>
+          <AiCliPanel
+            label={meta.cliLabel}
+            description={cliOption?.description ?? `${meta.cliLabel}가 PATH에 있어야 합니다.`}
+            connected={cliConnected}
+            badge={cliBadge}
+            testing={testingCli}
+            onTest={onTestCli}
+          />
         )}
 
         {mode === 'api' && (
-          <div className="connection-mode-panel">
-            <p className="muted" style={{ marginBottom: 12 }}>
-              {isOllamaApi ? '로컬 Ollama 서버가 실행 중이어야 합니다.' : `${meta.title} API 키를 등록하세요.`}
-            </p>
-            {!isOllamaApi && <div className="provider-option selected" style={{ marginBottom: 16 }}>
-              <div className="provider-option-header">
-                <div className="provider-option-title">API 키</div>
-                <span className={`connection-badge ${apiConnected ? 'connected' : ''}`}>
-                  {apiConnected ? '연결됨' : '미연결'}
-                </span>
-              </div>
-              {apiKeyConfigured && apiKeyMasked && (
-                <div className="provider-option-desc">등록된 키: {apiKeyMasked}</div>
-              )}
-            </div>}
-            {!isOllamaApi && <div className="form-field">
-              <label htmlFor={`${brand}-api-key`}>API 키</label>
-              <input
-                id={`${brand}-api-key`}
-                type="password"
-                placeholder="sk-..."
-                value={apiKeyDraft}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-              />
-            </div>}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={onTestApiKey}
-                disabled={testing || (!isOllamaApi && !apiKeyDraft.trim() && !apiKeyConfigured)}
-              >
-                {testing ? '확인 중...' : 'API 연결 테스트'}
-              </button>
-            </div>
-          </div>
+          <AiApiPanel
+            brand={brand}
+            title={meta.title}
+            isOllamaApi={isOllamaApi}
+            connected={apiConnected}
+            apiKeyDraft={apiKeyDraft}
+            apiKeyConfigured={apiKeyConfigured}
+            apiKeyMasked={apiKeyMasked}
+            testing={testing}
+            onApiKeyChange={onApiKeyChange}
+            onTest={onTestApiKey}
+          />
         )}
 
-        <div className="form-field" style={{ marginTop: 20 }}>
-          <label htmlFor={`${brand}-model`}>모델</label>
-          <select
-            id={`${brand}-model`}
-            className="filter-select"
-            value={model}
-            onChange={(e) => onModelChange(e.target.value)}
-            disabled={models.length === 0}
-          >
-            {models.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <AiModelField brand={brand} model={model} models={models} onChange={onModelChange} />
 
         <div className="connection-form-footer">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={!canSave || saving}>

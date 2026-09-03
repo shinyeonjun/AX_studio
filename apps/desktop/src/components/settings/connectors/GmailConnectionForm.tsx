@@ -1,16 +1,10 @@
-import { useState } from 'react';
 import gmailIcon from '../../../images/connectors/gmail.png';
-import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { maskEmail } from '../../../lib/mask-email';
-import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
-
-interface GmailConnectionFormProps {
-  state: AppState | null;
-  embedded?: boolean;
-  onConnect: () => Promise<void>;
-  onDisconnect: () => Promise<void>;
-}
+import {
+  useGmailConnectionForm,
+  type GmailConnectionFormProps,
+} from './gmail-connection/use-gmail-connection-form';
 
 const GMAIL_CAPABILITY_LABELS = [
   { scope: 'gmail.readonly', label: '메일 읽기 및 검색' },
@@ -23,39 +17,11 @@ function hasScope(scopes: string[] | undefined, token: string): boolean {
 }
 
 export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const { busy, message, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
   const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
   const oauthReady = state?.gmailOAuthConfigured ?? false;
   const email = state?.gmailEmail;
   const scopes = state?.gmailScopes;
-
-  const handleConnect = async () => {
-    setBusy(true);
-    setMessage('');
-    try {
-      await onConnect();
-      setMessage('Gmail 연결이 완료되었습니다.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Gmail 연결에 실패했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!confirmDisconnectConnector('Gmail')) return;
-    setBusy(true);
-    setMessage('');
-    try {
-      await onDisconnect();
-      setMessage('Gmail 연결이 해제되었습니다.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Gmail 연결 해제에 실패했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div className={embedded ? 'settings-panel' : 'connection-detail'}>

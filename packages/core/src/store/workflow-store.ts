@@ -1,120 +1,84 @@
 import type { AppDatabase } from './db.js';
+import type { AgentScopedContextPatch } from '../agent/scoped-context.js';
+import type { TableArtifact } from '../contracts/artifacts/table.js';
+import type { DiscoverySessionState } from '../work-discovery/schema.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import type { ExecutionStatus } from './rows.js';
-import * as workflowRepo from './repositories/workflow-repository.js';
-import * as executionRepo from './repositories/execution-repository.js';
-import * as approvalRepo from './repositories/approval-repository.js';
-import * as settingsRepo from './repositories/settings-repository.js';
-import * as workspaceChatRepo from './repositories/workspace-chat-repository.js';
-import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
-import * as discoveryRepo from './repositories/work-discovery-repository.js';
-import type { DiscoverySessionState } from '../work-discovery/schema.js';
-import * as workspaceSourceRepo from './repositories/workspace-source-repository.js';
-import * as repairRepo from './repositories/workflow-repair-repository.js';
 import type {
   RepairCandidateOperation,
   RepairProposal,
   RepairReplaySummary,
 } from '../workflow/repair.js';
+import type * as discoveryRepo from './repositories/work-discovery-repository.js';
+import type * as workspaceChatRepo from './repositories/workspace-chat-repository.js';
+import type * as workspaceSourceRepo from './repositories/workspace-source-repository.js';
+import * as approvals from './workflow-store/approvals.js';
+import * as discovery from './workflow-store/discovery.js';
+import * as executions from './workflow-store/executions.js';
+import * as repairs from './workflow-store/repairs.js';
+import * as settings from './workflow-store/settings.js';
+import * as triggers from './workflow-store/triggers.js';
+import * as workflows from './workflow-store/workflows.js';
+import * as workspaces from './workflow-store/workspaces.js';
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
 
-  saveWorkflow(ir: WorkflowIR) {
-    return workflowRepo.saveWorkflow(this.db, ir);
+  saveWorkflow(ir: WorkflowIR) { return workflows.saveWorkflow(this.db, ir); }
+  getWorkflow(workflowId: string, version?: number) { return workflows.getWorkflow(this.db, workflowId, version); }
+  getWorkflowPolicy(workflowId: string) { return workflows.getWorkflowPolicy(this.db, workflowId); }
+  updateWorkflowPolicy(workflowId: string, patch: AgentScopedContextPatch) {
+    return workflows.updateWorkflowPolicy(this.db, workflowId, patch);
   }
-
-  getWorkflow(workflowId: string, version?: number) {
-    return workflowRepo.getWorkflow(this.db, workflowId, version);
-  }
-
-  getWorkflowPolicy(workflowId: string) {
-    return workflowRepo.getWorkflowPolicy(this.db, workflowId);
-  }
-
-  updateWorkflowPolicy(workflowId: string, patch: import('../agent/scoped-context.js').AgentScopedContextPatch) {
-    return workflowRepo.updateWorkflowPolicy(this.db, workflowId, patch);
-  }
-
-  listWorkflows() {
-    return workflowRepo.listWorkflows(this.db);
-  }
-
+  listWorkflows() { return workflows.listWorkflows(this.db); }
   setWorkflowActive(workflowId: string, active: boolean) {
-    return workflowRepo.setWorkflowActive(this.db, workflowId, active);
+    return workflows.setWorkflowActive(this.db, workflowId, active);
   }
-
-  deleteWorkflow(workflowId: string) {
-    return workflowRepo.deleteWorkflow(this.db, workflowId);
-  }
+  deleteWorkflow(workflowId: string) { return workflows.deleteWorkflow(this.db, workflowId); }
 
   saveWorkspaceChat(params: {
     id?: string;
     messages: workspaceChatRepo.WorkspaceChatMessage[];
     workflowId?: string | null;
   }) {
-    return workspaceChatRepo.saveWorkspaceChat(this.db, params);
+    return workspaces.saveWorkspaceChat(this.db, params);
   }
-
   upsertWorkspaceChatExecutionResult(
     sessionId: string,
-    message: workspaceChatRepo.WorkspaceChatMessage & {
-      kind: 'execution_result';
-      executionId: string;
-    },
+    message: workspaceChatRepo.WorkspaceChatMessage & { kind: 'execution_result'; executionId: string },
   ) {
-    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, sessionId, message);
+    return workspaces.upsertWorkspaceChatExecutionResult(this.db, sessionId, message);
   }
-
-  getWorkspaceChat(id: string) {
-    return workspaceChatRepo.getWorkspaceChat(this.db, id);
+  getWorkspaceChat(id: string) { return workspaces.getWorkspaceChat(this.db, id); }
+  getWorkspaceChatMemo(sessionId: string) { return workspaces.getWorkspaceChatMemo(this.db, sessionId); }
+  updateWorkspaceChatMemo(sessionId: string, patch: AgentScopedContextPatch) {
+    return workspaces.updateWorkspaceChatMemo(this.db, sessionId, patch);
   }
-
-  getWorkspaceChatMemo(sessionId: string) {
-    return workspaceChatRepo.getWorkspaceChatMemo(this.db, sessionId);
-  }
-
-  updateWorkspaceChatMemo(sessionId: string, patch: import('../agent/scoped-context.js').AgentScopedContextPatch) {
-    return workspaceChatRepo.updateWorkspaceChatMemo(this.db, sessionId, patch);
-  }
-
   getWorkspaceChatByWorkflowId(workflowId: string) {
-    return workspaceChatRepo.getWorkspaceChatByWorkflowId(this.db, workflowId);
+    return workspaces.getWorkspaceChatByWorkflowId(this.db, workflowId);
   }
-
-  listWorkspaceChats(limit = 50) {
-    return workspaceChatRepo.listWorkspaceChats(this.db, limit);
+  listWorkspaceChats(limit = 50) { return workspaces.listWorkspaceChats(this.db, limit); }
+  deleteWorkspaceChat(id: string) { workspaces.deleteWorkspaceChat(this.db, id); }
+  refreshWorkspaceChatTitle(sessionId: string) {
+    return workspaces.refreshWorkspaceChatTitle(this.db, sessionId);
   }
-
-  deleteWorkspaceChat(id: string) {
-    workspaceChatRepo.deleteWorkspaceChat(this.db, id);
-  }
-
   insertWorkspaceSource(record: workspaceSourceRepo.WorkspaceSourceRecord) {
-    return workspaceSourceRepo.insertWorkspaceSource(this.db, record);
+    return workspaces.insertWorkspaceSource(this.db, record);
   }
-
   updateWorkspaceSource(
     id: string,
     patch: Partial<Omit<workspaceSourceRepo.WorkspaceSourceRecord, 'id' | 'sessionId' | 'artifactId' | 'fileName' | 'createdAt'>>,
   ) {
-    return workspaceSourceRepo.updateWorkspaceSource(this.db, id, patch);
+    return workspaces.updateWorkspaceSource(this.db, id, patch);
   }
-
   getWorkspaceSource(sessionId: string, id: string) {
-    return workspaceSourceRepo.getWorkspaceSource(this.db, sessionId, id);
+    return workspaces.getWorkspaceSource(this.db, sessionId, id);
   }
-
   listWorkspaceSources(sessionId: string) {
-    return workspaceSourceRepo.listWorkspaceSources(this.db, sessionId);
+    return workspaces.listWorkspaceSources(this.db, sessionId);
   }
-
   countWorkspaceSourcesForArtifact(artifactId: string, excludeSessionId: string) {
-    return workspaceSourceRepo.countWorkspaceSourcesForArtifact(this.db, artifactId, excludeSessionId);
-  }
-
-  refreshWorkspaceChatTitle(sessionId: string) {
-    return workspaceChatRepo.refreshWorkspaceChatTitle(this.db, sessionId);
+    return workspaces.countWorkspaceSourcesForArtifact(this.db, artifactId, excludeSessionId);
   }
 
   createExecution(params: {
@@ -125,93 +89,45 @@ export class WorkflowStore {
     irJson?: string;
     workspaceSessionId?: string;
   }) {
-    return executionRepo.createExecution(this.db, params);
+    return executions.createExecution(this.db, params);
   }
-
   finishExecution(
     id: string,
     status: Exclude<ExecutionStatus, 'running' | 'pending_approval'>,
     errorCode?: string,
     log?: unknown[],
   ) {
-    executionRepo.finishExecution(this.db, id, status, errorCode, log);
+    executions.finishExecution(this.db, id, status, errorCode, log);
   }
-
   markExecutionPending(id: string, errorCode = 'pending_approval', log?: unknown[]) {
-    executionRepo.markExecutionPending(this.db, id, errorCode, log);
+    executions.markExecutionPending(this.db, id, errorCode, log);
   }
-
-  updateExecutionLog(id: string, log: unknown[]) {
-    executionRepo.updateExecutionLog(this.db, id, log);
-  }
-
-  getExecution(id: string) {
-    return executionRepo.getExecution(this.db, id);
-  }
-
-  listExecutions(limit = 50) {
-    return executionRepo.listExecutions(this.db, limit);
-  }
-
-  deleteExecution(id: string) {
-    return executionRepo.deleteExecution(this.db, id);
-  }
-
-  clearExecutions() {
-    return executionRepo.clearExecutions(this.db);
-  }
+  updateExecutionLog(id: string, log: unknown[]) { executions.updateExecutionLog(this.db, id, log); }
+  getExecution(id: string) { return executions.getExecution(this.db, id); }
+  listExecutions(limit = 50) { return executions.listExecutions(this.db, limit); }
+  deleteExecution(id: string) { return executions.deleteExecution(this.db, id); }
+  clearExecutions() { return executions.clearExecutions(this.db); }
 
   createApproval(params: { executionId: string; actionIds: string[]; reason: string; payload?: unknown }) {
-    return approvalRepo.createApproval(this.db, params);
+    return approvals.createApproval(this.db, params);
   }
-
-  resolveApproval(id: string, approved: boolean) {
-    approvalRepo.resolveApproval(this.db, id, approved);
-  }
-
-  rejectPendingApproval(id: string) {
-    return approvalRepo.rejectPendingApproval(this.db, id);
-  }
-
-  failApproval(id: string) {
-    return approvalRepo.failApproval(this.db, id);
-  }
-
-  claimApproval(id: string) {
-    return approvalRepo.claimApproval(this.db, id);
-  }
-
+  resolveApproval(id: string, approved: boolean) { approvals.resolveApproval(this.db, id, approved); }
+  rejectPendingApproval(id: string) { return approvals.rejectPendingApproval(this.db, id); }
+  failApproval(id: string) { return approvals.failApproval(this.db, id); }
+  claimApproval(id: string) { return approvals.claimApproval(this.db, id); }
   updateApprovalPayload(id: string, extra: Record<string, unknown>) {
-    approvalRepo.updateApprovalPayload(this.db, id, extra);
+    approvals.updateApprovalPayload(this.db, id, extra);
   }
+  getApproval(id: string) { return approvals.getApproval(this.db, id); }
+  getPendingApprovals() { return approvals.getPendingApprovals(this.db); }
 
-  getApproval(id: string) {
-    return approvalRepo.getApproval(this.db, id);
-  }
-
-  getPendingApprovals() {
-    return approvalRepo.getPendingApprovals(this.db);
-  }
-
-  getSetting<T>(key: string, defaultValue: T): T {
-    return settingsRepo.getSetting(this.db, key, defaultValue);
-  }
-
-  getGlobalActive(): boolean {
-    return settingsRepo.getGlobalActive(this.db);
-  }
-
-  setSetting(key: string, value: unknown) {
-    settingsRepo.setSetting(this.db, key, value);
-  }
-
+  getSetting<T>(key: string, defaultValue: T): T { return settings.getSetting(this.db, key, defaultValue); }
+  getGlobalActive(): boolean { return settings.getGlobalActive(this.db); }
+  setSetting(key: string, value: unknown) { settings.setSetting(this.db, key, value); }
   setConnection(connector: string, connected: boolean, config?: Record<string, unknown>) {
-    settingsRepo.setConnection(this.db, connector, connected, config);
+    settings.setConnection(this.db, connector, connected, config);
   }
-
-  getConnections() {
-    return settingsRepo.getConnections(this.db);
-  }
+  getConnections() { return settings.getConnections(this.db); }
 
   claimTriggerReceipt(params: {
     dedupeKey: string;
@@ -219,38 +135,19 @@ export class WorkflowStore {
     triggerType: string;
     processingLeaseMs?: number;
   }) {
-    return triggerReceiptRepo.claimTriggerReceipt(this.db, params);
+    return triggers.claimTriggerReceipt(this.db, params);
   }
-
   completeTriggerReceipt(dedupeKey: string, executionId?: string) {
-    triggerReceiptRepo.completeTriggerReceipt(this.db, dedupeKey, executionId);
+    triggers.completeTriggerReceipt(this.db, dedupeKey, executionId);
   }
-
-  failTriggerReceipt(dedupeKey: string) {
-    triggerReceiptRepo.failTriggerReceipt(this.db, dedupeKey);
-  }
-
+  failTriggerReceipt(dedupeKey: string) { triggers.failTriggerReceipt(this.db, dedupeKey); }
   isTriggerReceiptCompleted(dedupeKey: string) {
-    return triggerReceiptRepo.isTriggerReceiptCompleted(this.db, dedupeKey);
+    return triggers.isTriggerReceiptCompleted(this.db, dedupeKey);
   }
 
-  saveDiscoverySession(state: DiscoverySessionState) {
-    const existing = discoveryRepo.getDiscoverySession(this.db, state.id);
-    if (existing) {
-      discoveryRepo.updateDiscoverySession(this.db, state);
-      return;
-    }
-    discoveryRepo.insertDiscoverySession(this.db, state);
-  }
-
-  getDiscoverySessionState(id: string) {
-    return discoveryRepo.getDiscoverySession(this.db, id);
-  }
-
-  listDiscoverySessions() {
-    return discoveryRepo.listDiscoverySessions(this.db);
-  }
-
+  saveDiscoverySession(state: DiscoverySessionState) { discovery.saveDiscoverySession(this.db, state); }
+  getDiscoverySessionState(id: string) { return discovery.getDiscoverySessionState(this.db, id); }
+  listDiscoverySessions() { return discovery.listDiscoverySessions(this.db); }
   insertDiscoveryExample(params: {
     sessionId: string;
     label?: string;
@@ -258,33 +155,23 @@ export class WorkflowStore {
     inputArtifactIds: string[];
     observationsJson?: string;
   }) {
-    return discoveryRepo.insertDiscoveryExample(this.db, params);
+    return discovery.insertDiscoveryExample(this.db, params);
   }
-
-  listDiscoveryExamples(sessionId: string) {
-    return discoveryRepo.listDiscoveryExamples(this.db, sessionId);
+  listDiscoveryExamples(sessionId: string) { return discovery.listDiscoveryExamples(this.db, sessionId); }
+  insertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: TableArtifact }) {
+    return discovery.insertDiscoverySnapshot(this.db, snapshot);
   }
-
-  insertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: import('../contracts/artifacts/table.js').TableArtifact }) {
-    const { table: _table, ...record } = snapshot;
-    return discoveryRepo.insertDiscoverySnapshot(this.db, record);
+  upsertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: TableArtifact }) {
+    return discovery.upsertDiscoverySnapshot(this.db, snapshot);
   }
-
-  upsertDiscoverySnapshot(snapshot: discoveryRepo.DiscoverySnapshotRecord & { table?: import('../contracts/artifacts/table.js').TableArtifact }) {
-    const { table: _table, ...record } = snapshot;
-    return discoveryRepo.upsertDiscoverySnapshot(this.db, record);
-  }
-
   listDiscoverySnapshots(sessionId: string) {
-    return discoveryRepo.listDiscoverySnapshots(this.db, sessionId);
+    return discovery.listDiscoverySnapshots(this.db, sessionId);
   }
-
   upsertDiscoveryReplayCase(replayCase: discoveryRepo.DiscoveryReplayCaseRecord) {
-    return discoveryRepo.upsertDiscoveryReplayCase(this.db, replayCase);
+    return discovery.upsertDiscoveryReplayCase(this.db, replayCase);
   }
-
   listDiscoveryReplayCases(sessionId: string) {
-    return discoveryRepo.listDiscoveryReplayCases(this.db, sessionId);
+    return discovery.listDiscoveryReplayCases(this.db, sessionId);
   }
 
   createRepairProposal(params: {
@@ -292,25 +179,19 @@ export class WorkflowStore {
     baseVersion: number;
     candidates: RepairCandidateOperation[];
   }) {
-    return repairRepo.createWorkflowRepairProposal(this.db, params);
+    return repairs.createRepairProposal(this.db, params);
   }
-
-  getRepairProposal(id: string) {
-    return repairRepo.getWorkflowRepairProposal(this.db, id);
-  }
-
+  getRepairProposal(id: string) { return repairs.getRepairProposal(this.db, id); }
   listRepairProposals(options: { workflowId?: string; status?: RepairProposal['status'] } = {}) {
-    return repairRepo.listWorkflowRepairProposals(this.db, options);
+    return repairs.listRepairProposals(this.db, options);
   }
-
   updateRepairProposalReplay(id: string, replay: RepairReplaySummary) {
-    return repairRepo.updateWorkflowRepairProposalReplay(this.db, id, replay);
+    return repairs.updateRepairProposalReplay(this.db, id, replay);
   }
-
   updateRepairProposal(
     id: string,
     patch: { status: RepairProposal['status']; appliedVersion?: number; rejectionReason?: string },
   ) {
-    return repairRepo.updateWorkflowRepairProposal(this.db, id, patch);
+    return repairs.updateRepairProposal(this.db, id, patch);
   }
 }
