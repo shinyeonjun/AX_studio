@@ -1,243 +1,27 @@
 import type {
-  DiscoveryInspectView,
-  ExecutionResultStatus,
-  WorkspaceChatMessage,
-} from '@ax-studio/core';
-import type { WorkspaceWorkflowState } from '../../hooks/useWorkspaceChat';
+  WorkspaceFlowPanelProps,
+  WorkspaceFlowPresentation,
+} from './workspace-flow/model';
+import {
+  latestWorkspaceExecutionResult,
+  resolveWorkspaceFlowPresentation,
+} from './workspace-flow/model';
+import {
+  FLOW_STAGES,
+  methodDetail,
+  methodTitle,
+  stageState,
+  stageSubtitle,
+  statusClass,
+} from './workspace-flow/view';
 import { executionStatusLabel } from '../../lib/work-display';
 import { resolveWorkspaceExecutionStatus } from './WorkspaceRunResultCard';
 
-type FlowStatus = 'idle' | 'running' | 'review' | 'approval' | 'success' | 'cancelled' | 'error';
-type FlowStageState = 'done' | 'active' | 'pending';
-
-type DiscoveryFlowState = Pick<DiscoveryInspectView, 'status' | 'progress' | 'replaySummary'>;
-
-export interface WorkspaceFlowPanelProps {
-  messages: WorkspaceChatMessage[];
-  busy: boolean;
-  discoveryBusy?: boolean;
-  progress: string;
-  error?: string;
-  discovery?: DiscoveryFlowState;
-  workflow?: WorkspaceWorkflowState | null;
-}
-
-export interface WorkspaceFlowPresentation {
-  status: FlowStatus;
-  statusLabel: string;
-  activeStage: number;
-  message: string;
-}
-
-const FLOW_STAGES = [
-  { label: '요청 접수', subtitle: '요청 내용 확인' },
-  { label: '진행 중', subtitle: '방법을 찾는 중' },
-  { label: '방법 검토', subtitle: '조회 결과 확인' },
-  { label: '승인 대기', subtitle: '사용자 결정 필요' },
-  { label: '실행 완료', subtitle: '승인 후 결과 표시' },
-] as const;
-
-const DISCOVERY_RUNNING_STATUSES = new Set<DiscoveryInspectView['status']>([
-  'collecting_examples',
-  'observing_output',
-  'inventory_sources',
-  'exploring_sources',
-  'synthesizing',
-  'validating',
-  'publishing',
-]);
-
-function statusLabel(status: FlowStatus): string {
-  switch (status) {
-    case 'running':
-      return '진행 중';
-    case 'review':
-      return '방법 검토';
-    case 'approval':
-      return '승인 대기';
-    case 'success':
-      return '실행 완료';
-    case 'cancelled':
-      return '실행 취소';
-    case 'error':
-      return '확인 필요';
-    default:
-      return '대기 중';
-  }
-}
-
-function executionStage(status: ExecutionResultStatus | undefined): number | undefined {
-  switch (status) {
-    case 'pending_approval':
-      return 3;
-    case 'success':
-    case 'failed':
-    case 'cancelled':
-      return 4;
-    default:
-      return undefined;
-  }
-}
-
-export function latestWorkspaceExecutionResult(
-  messages: WorkspaceChatMessage[],
-): WorkspaceChatMessage | undefined {
-  return [...messages].reverse().find((message) => message.kind === 'execution_result');
-}
-
-function reviewStage(workflow?: WorkspaceWorkflowState | null, discovery?: DiscoveryFlowState): number {
-  if (workflow || discovery) return 2;
-  return 1;
-}
-
-export function resolveWorkspaceFlowPresentation({
-  messages,
-  busy,
-  discoveryBusy = false,
-  progress,
-  error = '',
-  discovery,
-  workflow,
-}: WorkspaceFlowPanelProps): WorkspaceFlowPresentation {
-  const latest = latestWorkspaceExecutionResult(messages);
-  const executionStatus = resolveWorkspaceExecutionStatus(latest?.executionStatus, latest?.content ?? '');
-  const executionStageIndex = executionStage(executionStatus);
-  const isBusy = busy || discoveryBusy;
-  const normalizedError = error.trim();
-
-  if (normalizedError) {
-    return {
-      status: 'error',
-      statusLabel: statusLabel('error'),
-      activeStage: executionStageIndex ?? reviewStage(workflow, discovery),
-      message: normalizedError,
-    };
-  }
-
-  if (DISCOVERY_RUNNING_STATUSES.has(discovery?.status as DiscoveryInspectView['status']) || isBusy) {
-    return {
-      status: 'running',
-      statusLabel: statusLabel('running'),
-      activeStage: 1,
-      message: progress.trim() || discovery?.progress || '방법을 찾는 중입니다.',
-    };
-  }
-
-  if (executionStatus === 'pending_approval') {
-    return {
-      status: 'approval',
-      statusLabel: statusLabel('approval'),
-      activeStage: 3,
-      message: latest?.approval?.title ?? '사용자의 승인이 필요합니다.',
-    };
-  }
-
-  if (executionStatus === 'success') {
-    return {
-      status: 'success',
-      statusLabel: statusLabel('success'),
-      activeStage: 4,
-      message: '최근 실행 결과를 확인하세요.',
-    };
-  }
-
-  if (executionStatus === 'cancelled') {
-    return {
-      status: 'cancelled',
-      statusLabel: statusLabel('cancelled'),
-      activeStage: 4,
-      message: '실행이 취소되었습니다.',
-    };
-  }
-
-  if (executionStatus === 'failed') {
-    return {
-      status: 'error',
-      statusLabel: statusLabel('error'),
-      activeStage: 4,
-      message: '실행 결과에서 오류를 확인하세요.',
-    };
-  }
-
-  if (discovery?.status === 'failed' || discovery?.status === 'needs_attention') {
-    return {
-      status: 'error',
-      statusLabel: statusLabel('error'),
-      activeStage: 2,
-      message: discovery.progress || '업무 방법을 확인하지 못했습니다.',
-    };
-  }
-
-  if (
-    discovery?.status === 'needs_clarification' ||
-    discovery?.status === 'ready_to_publish' ||
-    workflow
-  ) {
-    return {
-      status: 'review',
-      statusLabel: statusLabel('review'),
-      activeStage: 2,
-      message: '찾은 방법을 확인하고 다음 결정을 내려 주세요.',
-    };
-  }
-
-  return {
-    status: 'idle',
-    statusLabel: statusLabel('idle'),
-    activeStage: 0,
-    message: '요청을 보내면 진행 상태가 여기에 표시됩니다.',
-  };
-}
-
-function stageState(index: number, activeStage: number): FlowStageState {
-  if (index < activeStage) return 'done';
-  if (index === activeStage) return 'active';
-  return 'pending';
-}
-
-function stageSubtitle(
-  index: number,
-  presentation: WorkspaceFlowPresentation,
-  progress: string,
-  discovery?: DiscoveryFlowState,
-  latest?: WorkspaceChatMessage,
-): string {
-  if (index === 1 && presentation.status === 'running') {
-    return progress.trim() || discovery?.progress || FLOW_STAGES[index].subtitle;
-  }
-  if (index === 3 && presentation.status === 'approval' && latest?.approval?.title) {
-    return latest.approval.title;
-  }
-  if (index === 4) {
-    if (presentation.status === 'success') return '결과 표시';
-    if (presentation.status === 'cancelled') return '실행이 취소됨';
-    if (presentation.status === 'error') return '오류를 확인하세요';
-  }
-  return FLOW_STAGES[index].subtitle;
-}
-
-function methodTitle(
-  workflow?: WorkspaceWorkflowState | null,
-  discovery?: DiscoveryFlowState,
-): string | undefined {
-  const candidates = [
-    workflow?.summary,
-    workflow?.workflow?.goal,
-    workflow?.title,
-    discovery?.progress,
-  ];
-  return candidates.find((value) => value?.trim())?.trim();
-}
-
-function methodDetail(workflow?: WorkspaceWorkflowState | null): string {
-  const nodeCount = workflow?.workflow?.nodes.length;
-  if (nodeCount) return `${nodeCount}개 단계로 구성된 실행 방법입니다.`;
-  return '대화에서 확인한 실행 방법입니다.';
-}
-
-function statusClass(status: FlowStatus): string {
-  return `workspace-flow-status workspace-flow-status--${status}`;
-}
+export type { WorkspaceFlowPanelProps, WorkspaceFlowPresentation } from './workspace-flow/model';
+export {
+  latestWorkspaceExecutionResult,
+  resolveWorkspaceFlowPresentation,
+} from './workspace-flow/model';
 
 export function WorkspaceFlowPanel({
   messages,

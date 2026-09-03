@@ -1,6 +1,6 @@
 # Document Write Engine
 
-Node-side document **generation** (PDF→HTML template import, HTML→PDF, DOCX fill). Separate from the read pipeline in `document-engine/`.
+Node-side document **generation** (PDF→HTML template import, HTML→PDF, DOCX fill). Source-authoritative PDF form analysis/fill is delegated to the Python document engine. Separate from the read pipeline in `document-engine/`.
 
 ## Layout
 
@@ -37,4 +37,4 @@ The pure write engine returns PDF bytes to its caller; the document connector
 adapter is responsible for persisting them and exposing only a safe artifact
 reference to workflow state. Physical paths remain host-owned.
 
-Read/parse: `packages/document-engine/` (Python) + `packages/core/src/document-engine/` (TS client).
+Read/parse: `packages/document-engine/` (Python) + `packages/core/src/document-engine/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use the Python worker's PyMuPDF path and publish only verified output. PDF→HTML remains an explicit editable preview/export route.

@@ -61,6 +61,7 @@ Desktop.ini
 
 # Local document artifacts (runtime)
 .ax-studio/
+/output/
 
 # Python document-engine
 packages/document-engine/.venv/

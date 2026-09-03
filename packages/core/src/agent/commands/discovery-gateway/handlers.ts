@@ -1,0 +1,90 @@
+import { WorkDiscoveryService } from '../../../work-discovery/service.js';
+import {
+  DiscoveryAnswerArgsSchema,
+  DiscoveryPublishArgsSchema,
+  DiscoveryRetryArgsSchema,
+  DiscoveryStartArgsSchema,
+} from '../../../work-discovery/schema.js';
+import type { AxCommand } from '../schema.js';
+import type { DiscoveryCommandResult } from './contracts.js';
+import { issue, sessionInput } from './shared.js';
+
+export function start(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const parsed = DiscoveryStartArgsSchema.safeParse(command.args);
+  if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+  const started = service.start(parsed.data);
+  return ['ok', { sessionId: started.id, status: started.state }];
+}
+
+export function inspect(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const sessionId = typeof command.args.sessionId === 'string' ? command.args.sessionId : '';
+  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId', [sessionInput()])]];
+  const view = service.inspect(sessionId.trim());
+  if (!view) return ['not_found', undefined, [issue('discovery_not_found', `discovery session을 찾을 수 없습니다: ${sessionId}`)]];
+  return ['ok', view];
+}
+
+export function cancel(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const sessionId = typeof command.args.sessionId === 'string' ? command.args.sessionId : '';
+  if (!sessionId.trim()) return ['invalid', undefined, [issue('missing_argument', 'sessionId가 필요합니다.', 'args.sessionId', [sessionInput()])]];
+  const session = service.cancel(sessionId.trim());
+  if (!session) return ['not_found', undefined, [issue('discovery_not_found', `discovery session을 찾을 수 없습니다: ${sessionId}`)]];
+  return ['ok', { sessionId: session.id, status: session.status }];
+}
+
+export function retry(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const parsed = DiscoveryRetryArgsSchema.safeParse(command.args);
+  if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+  const session = service.retry(parsed.data.sessionId, parsed.data.expectedRevision);
+  if ('error' in session) {
+    if (session.error === 'discovery_revision_conflict' && 'currentRevision' in session) {
+      return [
+        'conflict',
+        { currentRevision: session.currentRevision },
+        [issue(session.error, '최신 discovery session 상태와 일치하지 않습니다.', 'expectedRevision')],
+      ];
+    }
+    if (session.error === 'discovery_not_found') {
+      return ['not_found', undefined, [issue(session.error, 'discovery session을 찾을 수 없습니다.')]];
+    }
+    return ['invalid', undefined, [issue(session.error, 'discovery session을 재시도할 수 없습니다.')]];
+  }
+  return ['ok', { sessionId: session.id, status: session.status, revision: session.revision }];
+}
+
+export function answer(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const parsed = DiscoveryAnswerArgsSchema.safeParse(command.args);
+  if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+  const session = service.answer(
+    parsed.data.sessionId,
+    parsed.data.questionId,
+    parsed.data.optionId,
+    parsed.data.expectedRevision,
+  );
+  if (!session) return ['not_found', undefined, [issue('discovery_not_found', 'discovery session을 찾을 수 없습니다.')]];
+  if ('error' in session) {
+    return [
+      'conflict',
+      { currentRevision: session.currentRevision },
+      [issue(session.error, '최신 discovery session 상태와 일치하지 않습니다.', 'expectedRevision')],
+    ];
+  }
+  return ['ok', { sessionId: session.id, status: session.status, revision: session.revision }];
+}
+
+export function publish(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
+  const parsed = DiscoveryPublishArgsSchema.safeParse(command.args);
+  if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+  const result = service.publish(parsed.data.sessionId, parsed.data.name, parsed.data.expectedRevision);
+  if ('error' in result) {
+    if (result.error === 'discovery_revision_conflict' && 'currentRevision' in result) {
+      return [
+        'conflict',
+        { currentRevision: result.currentRevision },
+        [issue(result.error, '최신 discovery session 상태와 일치하지 않습니다.', 'expectedRevision')],
+      ];
+    }
+    return ['invalid', undefined, [issue(result.error, '업무를 저장할 수 없습니다.')]];
+  }
+  return ['ok', { workflowId: result.workflowId }];
+}

@@ -1,63 +1,25 @@
-import { useState } from 'react';
 import slackIcon from '../../../images/connectors/slack.png';
-import type { AppState } from '../../../types/app-state';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { slackCapabilityStatus } from '../../../lib/slack-status';
-import { confirmDisconnectConnector } from '../../../lib/confirm-delete';
-
-interface SlackConnectionFormProps {
-  state: AppState | null;
-  embedded?: boolean;
-  onConnect: (payload: { token: string; appToken?: string }) => Promise<void>;
-  onDisconnect?: () => Promise<void>;
-}
+import {
+  useSlackConnectionForm,
+  type SlackConnectionFormProps,
+} from './slack-connection/use-slack-connection-form';
 
 export function SlackConnectionForm({ state, embedded = false, onConnect, onDisconnect }: SlackConnectionFormProps) {
-  const [slackToken, setSlackToken] = useState('');
-  const [appToken, setAppToken] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-
   const connected = state?.connections?.find((c) => c.connector === 'slack')?.connected;
   const status = slackCapabilityStatus(state);
+  const {
+    slackToken,
+    setSlackToken,
+    appToken,
+    setAppToken,
+    busy,
+    message,
+    handleConnect,
+    handleDisconnect,
+  } = useSlackConnectionForm({ onConnect, onDisconnect, realtimeTriggers: status.realtimeTriggers });
   const canSubmit = Boolean(slackToken.trim() || (connected && (appToken.trim() || !status.realtimeTriggers)));
-
-  const handleConnect = async () => {
-    setBusy(true);
-    setMessage('');
-    try {
-      await onConnect({
-        token: slackToken,
-        appToken: appToken.trim() || undefined,
-      });
-      setMessage(
-        status.realtimeTriggers
-          ? 'Slack 연결이 완료되었습니다.'
-          : 'Slack 연결을 갱신했습니다. 실시간 트리거 상태를 확인하세요.',
-      );
-      setSlackToken('');
-      setAppToken('');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Slack 연결에 실패했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!onDisconnect) return;
-    if (!confirmDisconnectConnector('Slack')) return;
-    setBusy(true);
-    setMessage('');
-    try {
-      await onDisconnect();
-      setMessage('Slack 연결이 해제되었습니다.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Slack 연결 해제에 실패했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const connectLabel = connected
     ? status.realtimeTriggers

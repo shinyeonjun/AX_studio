@@ -7,8 +7,14 @@ export const htmlRender: DocumentActionHandler = async (
   ctx: ConnectorContext,
 ): Promise<ConnectorResult> => {
   const data = (params.data as Record<string, unknown>) ?? ctx.variables;
+  const template =
+    typeof params.template === 'string'
+      ? params.template
+      : typeof ctx.variables.templateHtml === 'string'
+        ? ctx.variables.templateHtml
+        : undefined;
   const { html } = renderHtml({
-    template: params.template as string | undefined,
+    template,
     title: params.title as string | undefined,
     data,
   });

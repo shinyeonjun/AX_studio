@@ -1,5 +1,9 @@
 # Minimal runtime for document-engine sidecar (dev + fallback parsing).
 pypdf>=4.0,<6
+pypdfium2>=4.30,<5
+PyMuPDF>=1.24,<1.29
+reportlab>=4.0,<5
+Pillow>=10,<13
 
 # Full layout/OCR pipeline - install separately:
 #   pip install -r requirements-docling.txt

@@ -2,167 +2,13 @@ import type { AppState } from '../../types/app-state';
 import type { SettingsScreen, SidebarTab } from '../../types/navigation';
 import type { ChatSessionSummary } from '../../hooks/useChatSessions';
 import type { AiHubController } from '../../hooks/useAiHub';
-import { AI_PROVIDER_UI_CATALOG } from '../../constants/ai-providers';
-import { CONNECTOR_UI_CATALOG } from '../../constants/connectors';
 import { axStudioLogo } from '../../constants/brand';
-import { settingsScreenForBrand } from '../../constants/settings';
-import type { AiBrand } from '../../types/ai-provider';
-import { IconActivity, IconBriefcase, IconCheck, IconSettings, IconPlus, IconTrash } from '../icons';
 import { ThemeToggle } from './ThemeToggle';
-
-const SIDEBAR_AI_BRANDS: AiBrand[] = ['claude', 'gpt'];
-
-interface SidebarSettingsLink {
-  screen: SettingsScreen;
-  label: string;
-  icon?: string;
-  emojiIcon?: string;
-  useSettingsIcon?: boolean;
-}
-
-const SIDEBAR_CONNECTOR_LINKS: SidebarSettingsLink[] = [
-  { screen: 'slack', label: 'Slack', icon: CONNECTOR_UI_CATALOG.slack.icon },
-  { screen: 'gmail', label: 'Gmail', icon: CONNECTOR_UI_CATALOG.gmail.icon },
-  {
-    screen: 'local-folder',
-    label: '로컬 폴더',
-    icon: CONNECTOR_UI_CATALOG.local_folder.icon,
-    emojiIcon: CONNECTOR_UI_CATALOG.local_folder.emoji,
-  },
-  {
-    screen: 'http',
-    label: 'HTTP API',
-    emojiIcon: CONNECTOR_UI_CATALOG.http.emojiIcon,
-  },
-  {
-    screen: 'webhook',
-    label: 'Webhook',
-    emojiIcon: CONNECTOR_UI_CATALOG.webhook.emojiIcon,
-  },
-  {
-    screen: 'rdb',
-    label: '데이터베이스',
-    emojiIcon: CONNECTOR_UI_CATALOG.rdb.emojiIcon,
-  },
-];
-
-function isConnectorConnected(state: AppState | null, screen: SettingsScreen): boolean {
-  if (!state) return false;
-  if (screen === 'slack') {
-    return state.connections?.find((connection) => connection.connector === 'slack')?.connected ?? false;
-  }
-  if (screen === 'gmail') {
-    return state.connections?.find((connection) => connection.connector === 'gmail')?.connected ?? false;
-  }
-  if (screen === 'local-folder') {
-    return (state.localFolders?.length ?? 0) > 0;
-  }
-  if (screen === 'http') {
-    return state.connections?.find((connection) => connection.connector === 'http')?.connected ?? false;
-  }
-  if (screen === 'webhook') {
-    return state.connections?.find((connection) => connection.connector === 'webhook')?.connected ?? false;
-  }
-  if (screen === 'rdb') {
-    return state.connections?.find((connection) => connection.connector === 'rdb')?.connected ?? false;
-  }
-  return false;
-}
-
-function SidebarConnectorStatus({
-  connected,
-  label,
-  count,
-}: {
-  connected: boolean;
-  label: string;
-  count?: number;
-}) {
-  const countLabel = count && count > 0 ? `${count}개 연결` : undefined;
-  const statusLabel = connected ? `${label} 연결됨` : `${label} 미연결`;
-  return (
-    <div className="sidebar-connector-meta">
-      {countLabel && <span className="sidebar-connector-count">{count}개</span>}
-      <span
-        className={`sidebar-connector-status${connected ? ' is-connected' : ''}`}
-        role="img"
-        aria-label={countLabel ? `${statusLabel}, ${countLabel}` : statusLabel}
-        title={countLabel ? `${statusLabel} · ${countLabel}` : connected ? '연결됨' : '미연결'}
-      />
-    </div>
-  );
-}
-
-function SidebarSettingsLinkIcon({ link }: { link: SidebarSettingsLink }) {
-  if (link.useSettingsIcon) {
-    return (
-      <span className="sidebar-settings-link-icon sidebar-settings-link-icon--svg" aria-hidden>
-        <IconSettings />
-      </span>
-    );
-  }
-  if (link.icon) {
-    return <img src={link.icon} alt="" className="sidebar-settings-link-icon" />;
-  }
-  return (
-    <span className="sidebar-settings-link-icon sidebar-settings-link-icon--emoji" aria-hidden>
-      {link.emojiIcon ?? '⚙️'}
-    </span>
-  );
-}
-
-function SidebarAiBrandRow({
-  brand,
-  hub,
-  onOpenSettings,
-}: {
-  brand: AiBrand;
-  hub: AiHubController;
-  onOpenSettings: (screen: SettingsScreen) => void;
-}) {
-  const meta = AI_PROVIDER_UI_CATALOG[brand];
-  const status = hub.brandStatus(brand);
-  const isActive = hub.activeBrand === brand;
-  const selectable = status === 'ready';
-
-  const handleSelect = () => {
-    if (hub.modeSaving || isActive) return;
-    if (selectable) {
-      void hub.selectBrand(brand);
-      return;
-    }
-    onOpenSettings(settingsScreenForBrand(brand));
-  };
-
-  return (
-    <div className={`sidebar-ai-brand-row${isActive ? ' is-active' : ''}`}>
-      <button
-        type="button"
-        className="sidebar-settings-link sidebar-ai-brand-select"
-        onClick={handleSelect}
-        disabled={hub.modeSaving}
-        aria-pressed={isActive}
-        aria-label={isActive ? `${meta.title} 사용 중` : selectable ? `${meta.title} 선택` : `${meta.title} 설정 열기`}
-      >
-        <span className={`sidebar-ai-check${isActive ? ' selected' : ''}`} aria-hidden>
-          {isActive && <span className="sidebar-ai-check-mark" />}
-        </span>
-        <img src={meta.icon} alt="" className="sidebar-settings-link-icon" />
-        <span className="sidebar-settings-link-label">{meta.title}</span>
-        {!isActive && status === 'off' && <span className="sidebar-ai-off-badge">미연결</span>}
-      </button>
-      <button
-        type="button"
-        className="sidebar-ai-settings-btn"
-        onClick={() => onOpenSettings(settingsScreenForBrand(brand))}
-        aria-label={`${meta.title} 설정`}
-        title={`${meta.title} 설정`}
-      >
-        <IconSettings />
-      </button>
-    </div>
-  );
-}
+import { SidebarNavigation } from './workspace-sidebar/navigation';
+import { SidebarSettingsPanel } from './workspace-sidebar/settings-panel';
+import { SidebarSessionList } from './workspace-sidebar/session-list';
+import { SidebarStatusPanel } from './workspace-sidebar/status-panel';
+import { SidebarWorkPanel } from './workspace-sidebar/work-panel';
 
 interface WorkspaceSidebarProps {
   tab: SidebarTab;
@@ -203,8 +49,6 @@ export function WorkspaceSidebar({
   onDeleteWork,
   onOpenSettings,
 }: WorkspaceSidebarProps) {
-  const works = state?.works ?? [];
-
   return (
     <aside className="workspace-sidebar">
       <div className="workspace-sidebar-brand">
@@ -213,195 +57,45 @@ export function WorkspaceSidebar({
         <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
       </div>
 
-      <nav className="workspace-sidebar-tabs" aria-label="주요 메뉴">
-        <button
-          type="button"
-          aria-current={tab === 'work' ? 'page' : undefined}
-          className={`workspace-sidebar-tab ${tab === 'work' ? 'active' : ''}`}
-          onClick={() => onTabChange('work')}
-        >
-          <IconBriefcase />
-          업무
-        </button>
-        <button
-          type="button"
-          aria-current={tab === 'approval' ? 'page' : undefined}
-          className={`workspace-sidebar-tab ${tab === 'approval' ? 'active' : ''}`}
-          onClick={() => onTabChange('approval')}
-        >
-          <IconCheck />
-          승인
-          {pendingApprovals > 0 && <span className="nav-badge">{pendingApprovals}</span>}
-        </button>
-        <button
-          type="button"
-          aria-current={tab === 'activity' ? 'page' : undefined}
-          className={`workspace-sidebar-tab ${tab === 'activity' ? 'active' : ''}`}
-          onClick={() => onTabChange('activity')}
-        >
-          <IconActivity />
-          활동
-        </button>
-        <button
-          type="button"
-          aria-current={tab === 'settings' ? 'page' : undefined}
-          className={`workspace-sidebar-tab ${tab === 'settings' ? 'active' : ''}`}
-          onClick={() => onTabChange('settings')}
-        >
-          <IconSettings />
-          설정
-        </button>
-      </nav>
+      <SidebarNavigation
+        tab={tab}
+        pendingApprovals={pendingApprovals}
+        onTabChange={onTabChange}
+      />
 
       <div className="workspace-sidebar-panel scrollbar-overlay">
         {tab === 'work' && (
-          <div className="sidebar-panel-section">
-            <h2 className="sidebar-section-title">저장된 업무</h2>
-            {works.length === 0 ? (
-              <p className="sidebar-empty">저장된 업무가 없습니다</p>
-            ) : (
-              <ul className="sidebar-work-list">
-                {works.map((work) => (
-                  <li key={work.id} className="sidebar-work-row">
-                    <button type="button" className="sidebar-work-item" onClick={() => onOpenWork(work.id)}>
-                      <span className="sidebar-work-name">{work.name}</span>
-                      <span className={`sidebar-work-status ${work.active ? 'on' : 'off'}`}>
-                        {work.active ? '켜짐' : '꺼짐'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`sidebar-work-toggle ${work.active ? 'on' : 'off'}`}
-                      onClick={() => onToggleWorkActive(work.id, !work.active)}
-                      title={work.active ? '스케줄 끄기' : '스케줄 켜기'}
-                    >
-                      {work.active ? '끄기' : '켜기'}
-                    </button>
-                    <button
-                      type="button"
-                      className="sidebar-session-delete"
-                      onClick={() => onDeleteWork(work.id, work.name)}
-                      aria-label={`${work.name} 업무 삭제`}
-                      title="업무 삭제"
-                    >
-                      <IconTrash />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <SidebarWorkPanel
+            state={state}
+            onOpenWork={onOpenWork}
+            onToggleWorkActive={onToggleWorkActive}
+            onDeleteWork={onDeleteWork}
+          />
         )}
 
         {tab === 'approval' && (
-          <div className="sidebar-panel-section">
-            <p className="sidebar-empty">
-              {pendingApprovals > 0
-                ? `대기 ${pendingApprovals}건 — 중앙 패널에서 승인·거절하세요.`
-                : '대기 중인 승인이 없습니다.'}
-            </p>
-          </div>
+          <SidebarStatusPanel kind="approval" pendingApprovals={pendingApprovals} />
         )}
 
-        {tab === 'activity' && (
-          <div className="sidebar-panel-section">
-            <p className="sidebar-empty">실행 기록은 중앙 패널에서 확인합니다.</p>
-          </div>
-        )}
+        {tab === 'activity' && <SidebarStatusPanel kind="activity" />}
 
         {tab === 'settings' && (
-          <div className="sidebar-panel-section sidebar-settings-links">
-            <div className="sidebar-settings-group">
-              <button
-                type="button"
-                className="sidebar-settings-link"
-                onClick={() => onOpenSettings('hub')}
-              >
-                <SidebarSettingsLinkIcon
-                  link={{ screen: 'hub', label: '설정 홈', useSettingsIcon: true }}
-                />
-                <span className="sidebar-settings-link-label">설정 홈</span>
-              </button>
-            </div>
-
-            <div className="sidebar-settings-group">
-              <hr className="sidebar-settings-divider" />
-              {aiDetecting && <p className="sidebar-ai-hub-note">AI 연결 확인 중…</p>}
-              {aiHub.hubMessage && <p className="sidebar-ai-hub-note">{aiHub.hubMessage}</p>}
-              {SIDEBAR_AI_BRANDS.map((brand) => (
-                <SidebarAiBrandRow
-                  key={brand}
-                  brand={brand}
-                  hub={aiHub}
-                  onOpenSettings={onOpenSettings}
-                />
-              ))}
-            </div>
-
-            <div className="sidebar-settings-group">
-              <hr className="sidebar-settings-divider" />
-              {SIDEBAR_CONNECTOR_LINKS.map((link) => {
-                const connected = isConnectorConnected(state, link.screen);
-                const localFolderCount =
-                  link.screen === 'local-folder' ? state?.localFolders?.length ?? 0 : undefined;
-                const httpEndpointCount =
-                  link.screen === 'http'
-                    ? state?.connections?.find((connection) => connection.connector === 'http')?.endpoints?.length
-                    : undefined;
-                return (
-                  <button
-                    key={link.screen}
-                    type="button"
-                    className="sidebar-settings-link"
-                    onClick={() => onOpenSettings(link.screen)}
-                  >
-                    <SidebarSettingsLinkIcon link={link} />
-                    <span className="sidebar-settings-link-label">{link.label}</span>
-                    <SidebarConnectorStatus
-                      connected={connected}
-                      label={link.label}
-                      count={localFolderCount ?? httpEndpointCount}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <SidebarSettingsPanel
+            state={state}
+            aiHub={aiHub}
+            aiDetecting={aiDetecting}
+            onOpenSettings={onOpenSettings}
+          />
         )}
       </div>
 
-      <div className="workspace-sidebar-sessions">
-        <h2 className="sidebar-section-title">최근 대화</h2>
-        <button type="button" className="sidebar-new-chat" onClick={onNewChat}>
-          <IconPlus />
-          새 대화
-        </button>
-        <ul className="sidebar-session-list scrollbar-overlay">
-          {sessions.map((session) => (
-            <li key={session.id} className="sidebar-session-row">
-              <button
-                type="button"
-                className={`sidebar-session-item ${activeSessionId === session.id ? 'active' : ''}`}
-                onClick={() => onSelectSession(session)}
-              >
-                <span className="sidebar-session-title">{session.title}</span>
-                {session.sourceCount != null && session.sourceCount > 0 && (
-                  <span className="sidebar-session-tag">자료 {session.sourceCount}개</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className="sidebar-session-delete"
-                onClick={() => onDeleteSession(session)}
-                aria-label={`${session.title} 대화 삭제`}
-                title="대화 삭제"
-              >
-                <IconTrash />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <SidebarSessionList
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onNewChat={onNewChat}
+        onSelectSession={onSelectSession}
+        onDeleteSession={onDeleteSession}
+      />
     </aside>
   );
 }

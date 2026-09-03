@@ -1,70 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, join } from 'node:path';
 import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
 import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
-
-export interface StoredArtifact {
-  id: string;
-  sha256: string;
-  fileName: string;
-  storedPath: string;
-  mimeType?: string;
-  size: number;
-  createdAt: string;
-}
-
-function isWithinRoot(rootDir: string, path: string): boolean {
-  const relativePath = relative(resolve(rootDir), resolve(path));
-  return (
-    relativePath !== '' &&
-    relativePath !== '..' &&
-    !relativePath.startsWith(`..${sep}`) &&
-    !isAbsolute(relativePath)
-  );
-}
-
-function parseStoredArtifact(rootDir: string, path: string): StoredArtifact | undefined {
-  const value = readJsonFile<Partial<StoredArtifact> | null>(path);
-  if (
-    !value ||
-    typeof value.id !== 'string' ||
-    typeof value.sha256 !== 'string' ||
-    typeof value.fileName !== 'string' ||
-    typeof value.storedPath !== 'string' ||
-    typeof value.size !== 'number' ||
-    typeof value.createdAt !== 'string' ||
-    (value.mimeType !== undefined && typeof value.mimeType !== 'string') ||
-    !isWithinRoot(rootDir, value.storedPath)
-  ) {
-    return undefined;
-  }
-  return value as StoredArtifact;
-}
-
-function readJsonFile<T>(path: string): T | undefined {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8')) as T;
-  } catch {
-    return undefined;
-  }
-}
-
-function assertArtifactId(id: string): void {
-  if (!id || id === '.' || id === '..' || id.includes('/') || id.includes('\\')) {
-    throw new Error(`Invalid artifact id: ${JSON.stringify(id)}`);
-  }
-}
-
-function safeFileName(fileName: string): string {
-  const leaf = fileName.replace(/^.*[\\/]/, '');
-  const sanitized = leaf
-    .replace(/[\u0000-\u001f\u007f]/g, '_')
-    .replace(/[<>:"|?*]/g, '_')
-    .trim()
-    .replace(/[. ]+$/g, '');
-  return sanitized && sanitized !== '.' && sanitized !== '..' ? sanitized.slice(0, 180) : 'artifact.bin';
-}
+import { assertArtifactId, parseStoredArtifact, readJsonFile, safeFileName } from './artifact/validation.js';
+import type { StoredArtifact } from './artifact/contracts.js';
+export type { StoredArtifact } from './artifact/contracts.js';
 
 export class ArtifactStore {
   constructor(private readonly rootDir: string) {

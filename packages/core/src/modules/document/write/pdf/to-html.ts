@@ -3,7 +3,7 @@ import { documentIngestPhysicalPath, resolveDocumentIngestExecution } from '../.
 import type { ConnectorContext, ConnectorResult } from '../../../types.js';
 import type { DocumentActionHandler } from '../../types.js';
 
-function resolvePdfPath(
+export function resolvePdfPath(
   params: Record<string, unknown>,
   ctx: ConnectorContext,
 ): { ok: true; path: string } | { ok: false; error: string; errorCode: string } {
