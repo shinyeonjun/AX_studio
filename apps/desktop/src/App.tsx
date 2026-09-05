@@ -85,6 +85,15 @@ export default function App() {
         onSelectSession={appActions.selectSession}
         onDeleteSession={appActions.deleteSession}
         onOpenWork={appActions.openWork}
+        onOpenExecution={(execution) => {
+          if (execution.workspaceSessionId) {
+            setSidebarTab('work');
+            setActiveSessionId(execution.workspaceSessionId);
+            void workspaceChat.loadWorkspaceChat(execution.workspaceSessionId);
+            return;
+          }
+          setSidebarTab('activity');
+        }}
         onToggleWorkActive={appActions.toggleWorkActive}
         onDeleteWork={appActions.deleteWork}
         onOpenSettings={openSettings}

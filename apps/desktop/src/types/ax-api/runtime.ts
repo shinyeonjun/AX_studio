@@ -1,4 +1,7 @@
-import type { GeneratedArtifactExportResult } from './contracts.js';
+import type {
+  GeneratedArtifactExportResult,
+  GeneratedArtifactFolderSaveResult,
+} from './contracts.js';
 
 export interface AxRuntimeApi {
   getState: () => Promise<unknown>;
@@ -8,6 +11,7 @@ export interface AxRuntimeApi {
   deleteExecution: (executionId: string) => Promise<unknown>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
   exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  saveGeneratedArtifactToFolder: (artifactId: string) => Promise<GeneratedArtifactFolderSaveResult>;
   setGlobalActive: (active: boolean) => Promise<unknown>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;

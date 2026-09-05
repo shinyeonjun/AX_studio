@@ -67,7 +67,7 @@ export function buildInvestigationUser(
   if (from) lines.push(`From: ${truncateModelInput(String(from), MAX_UNTRUSTED_METADATA_CHARS)}`);
 
   const boundContext = options.ir
-    ? resolveAiDecisionBindings(step, options.ir, stepResults, ctx.variables)
+    ? resolveAiDecisionBindings(step, options.ir, stepResults, ctx.variables, ctx.outputs)
     : undefined;
 
   if (boundContext?.usesExplicitBindings) {

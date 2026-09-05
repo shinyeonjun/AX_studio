@@ -1,4 +1,8 @@
-import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
+import type { TableArtifact } from '../../../contracts/artifacts/table.js';
+import {
+  HttpResponseArtifactSchema,
+  httpResponseToTable,
+} from '../../../contracts/artifacts/http-response.js';
 import { TransformExprSchema } from '../../../workflow/transform-expr/dsl.js';
 import { evaluateTransformExpr } from '../../../workflow/transform-expr/evaluator.js';
 import type { ConnectorContext, ConnectorResult } from '../../types.js';
@@ -29,6 +33,31 @@ export async function executeTransformAction(
       ctx.variables.transformText = text;
       return { ok: true, data: { text, kind: 'TextArtifact' } };
     }
+    case 'http_to_table': {
+      const response = params.response;
+      if (response == null) {
+        return { ok: false, error: 'http_response_required', errorCode: 'http_response_required' };
+      }
+      const parsedResponse = HttpResponseArtifactSchema.safeParse(response);
+      if (!parsedResponse.success) {
+        return { ok: false, error: 'http_response_invalid', errorCode: 'http_response_invalid' };
+      }
+      const sourceId = typeof params.sourceId === 'string' && params.sourceId.trim()
+        ? params.sourceId.trim()
+        : 'http:response';
+      const rowsPath = typeof params.rowsPath === 'string' ? params.rowsPath : undefined;
+      const rowLimit = typeof params.rowLimit === 'number' && Number.isFinite(params.rowLimit)
+        ? params.rowLimit
+        : undefined;
+      const result = httpResponseToTable(parsedResponse.data, {
+        sourceId,
+        rowsPath,
+        rowLimit,
+      });
+      if (!result.ok) return { ok: false, error: result.errorCode, errorCode: result.errorCode };
+      ctx.variables[sourceId] = result.table;
+      return { ok: true, data: result.table };
+    }
     case 'evaluate': {
       const parsedExpr = TransformExprSchema.safeParse(params.expr);
       if (!parsedExpr.success) {
@@ -51,7 +80,19 @@ export async function executeTransformAction(
           if (normalized) snapshots[tableSourceId] = normalized;
         }
       }
-      const value = evaluateTransformExpr(parsedExpr.data, snapshots);
+      let value: unknown;
+      try {
+        value = evaluateTransformExpr(parsedExpr.data, snapshots);
+      } catch (error) {
+        const errorCode = error instanceof Error && error.message === 'incomplete_table_input'
+          ? 'incomplete_table_input'
+          : 'transform_evaluation_failed';
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          errorCode,
+        };
+      }
       const outputPath = typeof params.outputPath === 'string' ? params.outputPath : 'result';
       ctx.variables[outputPath] = value;
       ctx.variables.discoveryFields ??= {};

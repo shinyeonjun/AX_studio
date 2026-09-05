@@ -35,6 +35,7 @@ export const AX_COMMAND_NAMES = [
   'job.commit',
   'context.update',
   'ui.present',
+  'report.generate',
   'discovery.start',
   'discovery.inspect',
   'discovery.cancel',

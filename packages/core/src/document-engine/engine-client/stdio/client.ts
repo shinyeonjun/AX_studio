@@ -12,6 +12,7 @@ import type {
   PdfFormFillOptions,
   PdfFormFillResult,
   PdfFormTemplate,
+  PdfReportPairAnalysis,
   PdfToHtmlOptions,
   PdfToHtmlResult,
   DocumentEngineResponse,
@@ -85,6 +86,18 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_form_fill_failed');
+    }
+    return response.data;
+  }
+
+  async pdfReportAnalyze(templatePath: string, examplePath: string): Promise<PdfReportPairAnalysis> {
+    const response = await this.request<PdfReportPairAnalysis>('pdf_report_analyze', {
+      templatePath,
+      examplePath,
+      artifactRoot: this.artifactRoot,
+    });
+    if (!response.ok || !response.data) {
+      throw new Error(response.error ?? 'pdf_report_analyze_failed');
     }
     return response.data;
   }

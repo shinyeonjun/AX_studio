@@ -3,4 +3,9 @@ export { formatRdbTableRef, parseRdbTableRef } from './client/table-ref.js';
 export { isAllowedRdbTable } from './client/policy.js';
 export { openRdbSqlClient } from './client/drivers.js';
 export { listRdbTables } from './client/catalog.js';
-export { readRdbRows } from './client/rows.js';
+export {
+  MAX_RDB_PROBE_ROWS,
+  MAX_RDB_RESULT_ROWS,
+  normalizeRdbRowLimit,
+  readRdbRows,
+} from './client/rows.js';

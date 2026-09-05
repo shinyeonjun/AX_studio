@@ -72,4 +72,21 @@ describe('WorkspaceSourceService sessions and artifacts', () => {
     expect(existsSync(sharedArtifact.storedPath)).toBe(true);
     expect(artifacts.get(sharedA.artifactId)).toBeDefined();
   });
+
+  it('resolves a ready source only within its owning session', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-workspace-source-resolve-'));
+    const store = new WorkflowStore(await createDatabaseAsync(':memory:'));
+    const artifacts = new ArtifactStore(join(root, 'artifacts'));
+    const service = new WorkspaceSourceService(store, artifacts, join(root, 'sessions'));
+    setDocumentEngineClient(mockEngine());
+    const owner = store.saveWorkspaceChat({ messages: [] });
+    const other = store.saveWorkspaceChat({ messages: [] });
+    const pdfPath = join(root, 'report.pdf');
+    writeFileSync(pdfPath, '%PDF-1.7 report fixture');
+    const source = await service.attachFile(owner.id, pdfPath, 'application/pdf');
+    await service.waitForIdle();
+
+    expect(service.resolveStoredFile(owner.id, source.id).artifact.storedPath).toMatch(/report\.pdf$/);
+    expect(() => service.resolveStoredFile(other.id, source.id)).toThrow('workspace_source_not_found');
+  });
 });

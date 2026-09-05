@@ -116,6 +116,14 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     setError('');
   };
 
+  const downloadGeneratedPdf = async (artifactId: string) => {
+    return window.ax.exportGeneratedArtifact(artifactId);
+  };
+
+  const saveGeneratedPdfToFolder = async (artifactId: string) => {
+    return window.ax.saveGeneratedArtifactToFolder(artifactId);
+  };
+
   return {
     workspaceWorkflowState,
     displayMessages: chatMessages,
@@ -137,6 +145,8 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     sendMessage: messageActions.sendMessage,
     approveChatApproval: workflowActions.approveChatApproval,
     rejectChatApproval: workflowActions.rejectChatApproval,
+    downloadGeneratedPdf,
+    saveGeneratedPdfToFolder,
     workspaceSources,
     sourceBusy,
     attachWorkspaceSource: sourceActions.attachWorkspaceSource,

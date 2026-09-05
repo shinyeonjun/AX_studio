@@ -5,12 +5,18 @@ import { Scheduler } from './runtime/scheduler.js';
 import { TriggerEngine } from './runtime/trigger-engine.js';
 import { runSavedWorkflowById } from './runtime/manual-workflow-run.js';
 import { buildConnectorsFromStore } from './modules/registry.js';
+import { DocumentConnector } from './modules/document/index.js';
 import { registerAllModules } from './modules/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from './agent/harness.js';
 import { AxCommandService } from './agent/commands/service.js';
 import type { ArtifactReference, ArtifactSink } from './modules/types.js';
 import { ArtifactStore } from './store/artifact-store.js';
 import { WorkspaceSourceService } from './store/workspace-source-service.js';
+import { getDocumentEngineClient } from './document-engine/engine-client.js';
+import { ReportPlanner } from './report-generation/planner/planner.js';
+import { ReportGenerationService } from './report-generation/service.js';
+import { ReportCheckpointStore } from './report-generation/checkpoints.js';
+import { join } from 'node:path';
 import {
   DEFAULT_AI_PROVIDER,
   normalizeAiProviderConfig,
@@ -106,7 +112,18 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   }
 
   const connectors = buildConnectorsFromStore(store);
-  const runtime = new WorkflowRuntime({
+  let runtime: WorkflowRuntime | undefined;
+  const reportGeneration = new ReportGenerationService({
+    checkpoints: new ReportCheckpointStore(join(paths.sessions, 'report-checkpoints')),
+    workspaceSources,
+    documentEngine: getDocumentEngineClient(),
+    planner: new ReportPlanner(investigationRunner),
+    getConnector: (name) => runtime?.connectors[name] ?? connectors[name],
+  });
+  connectors.document = new DocumentConnector({
+    'pdf.report.generate': (params, ctx) => reportGeneration.generate(params, ctx),
+  });
+  runtime = new WorkflowRuntime({
     store,
     investigationRunner,
     globalActive,

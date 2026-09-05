@@ -39,9 +39,12 @@ function applyBoundValueToParams(
 
   if (inputPort === 'text' || inputPort === 'body') {
     if (typeof value === 'string') return { ...params, [inputPort]: value };
-    // A structured result is not message text. The binding must name the
-    // declared string field explicitly; otherwise required input validation
-    // fails before an external connector is called.
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const record = value as Record<string, unknown>;
+      for (const key of ['text', 'body', 'summary']) {
+        if (typeof record[key] === 'string') return { ...params, [inputPort]: record[key] };
+      }
+    }
     return params;
   }
 
@@ -66,6 +69,7 @@ export function applyStepBindings(
   params: Record<string, unknown>,
   stepResults: Record<string, unknown>,
   variables: Record<string, unknown>,
+  outputs?: Record<string, Record<string, unknown>>,
 ): Record<string, unknown> {
   if (!step.bindings) return params;
 
@@ -82,7 +86,7 @@ export function applyStepBindings(
     ) {
       continue;
     }
-    const value = resolveBindingValue(binding, ir, stepResults, variables);
+    const value = resolveBindingValue(binding, ir, stepResults, variables, outputs);
     merged = applyBoundValueToParams(inputPort, value, merged);
   }
   return merged;

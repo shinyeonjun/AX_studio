@@ -3,8 +3,16 @@ import type { AxCommandChatOptions } from './contracts.js';
 import type { AxCommandResult } from '../schema.js';
 import type { AxCommandChatTransport } from '../transport-contract.js';
 import { AGENT_COMMAND_CONTEXT } from '../access.js';
-import { commandContext, commandProtocolPrompt, protocolFailureMessage, resultMessage } from './protocol.js';
+import {
+  commandContext,
+  commandProtocolPrompt,
+  protocolFailureMessage,
+  protocolRecoveryMessage,
+  resultMessage,
+} from './protocol.js';
 import { hostFacingMessage, type CommandChatSessionState } from './result.js';
+
+const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
 
 export interface CommandChatLoopContext {
   readonly options: AxCommandChatOptions;
@@ -34,6 +42,17 @@ export async function runCommandChatLoop({
     return hostFacingMessage(publishResult('job.commit', result), '업무를 저장하지 못했습니다.');
   }
 
+  let protocolRecoveryAttempts = 0;
+  const retryProtocolResponse = (): boolean => {
+    if (protocolRecoveryAttempts >= MAX_PROTOCOL_RECOVERY_ATTEMPTS) return false;
+    protocolRecoveryAttempts += 1;
+    messages.push(
+      { role: 'assistant', content: 'AX protocol response was rejected by the host; no command was executed.' },
+      { role: 'user', content: protocolRecoveryMessage() },
+    );
+    return true;
+  };
+
   for (let round = 0; round < maxRounds; round += 1) {
     if (signal.aborted) throw new Error('ax_command_chat_timeout');
     let output: unknown;
@@ -58,7 +77,10 @@ export async function runCommandChatLoop({
       output = result.output;
     } catch (error) {
       const message = protocolFailureMessage(error);
-      if (message) return message;
+      if (message) {
+        if (retryProtocolResponse()) continue;
+        return message;
+      }
       throw error;
     }
 
@@ -67,10 +89,14 @@ export async function runCommandChatLoop({
       parsed = transport.normalize(output);
     } catch (error) {
       const message = protocolFailureMessage(error);
-      if (message) return message;
+      if (message) {
+        if (retryProtocolResponse()) continue;
+        return message;
+      }
       throw error;
     }
     if (parsed.kind === 'reply') return parsed.message;
+    protocolRecoveryAttempts = 0;
 
     const result = await options.commandService.execute(parsed.command, {
       designToolContext: options.designToolContext,

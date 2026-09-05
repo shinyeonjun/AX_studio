@@ -18,8 +18,13 @@ export function ActivityExecutionItem({
   isExporting,
   exported,
   exportError,
+  savingToFolder,
+  isSavingToFolder,
+  savedToFolder,
+  folderSaveError,
   onDelete,
   onExportPdf,
+  onSavePdfToFolder,
 }: {
   execution: ActivityExecution;
   skillName?: string;
@@ -29,8 +34,13 @@ export function ActivityExecutionItem({
   isExporting: boolean;
   exported: boolean;
   exportError?: string;
+  savingToFolder: boolean;
+  isSavingToFolder: boolean;
+  savedToFolder: boolean;
+  folderSaveError?: string;
   onDelete: () => void;
   onExportPdf: (artifactId: string) => void;
+  onSavePdfToFolder: (artifactId: string) => void;
 }) {
   const resultFailed = execution.resultStatus === 'failed';
   const ok = execution.status === 'success' && !resultFailed;
@@ -101,18 +111,29 @@ export function ActivityExecutionItem({
               <div className="generated-pdf-size">{formatFileSize(generatedPdf.size)}</div>
             </div>
             <div className="generated-pdf-action" aria-live="polite">
-              <button
-                type="button"
-                className="btn btn-sm generated-pdf-button"
-                onClick={() => onExportPdf(generatedPdf.artifactId)}
-                disabled={exporting || deleting || clearing}
-                aria-label={`${generatedPdf.fileName} PDF 저장`}
-              >
-                {isExporting ? '저장 중…' : exported ? '저장됨' : 'PDF 저장'}
-              </button>
-              {exportError && (
+              <div className="generated-pdf-buttons">
+                <button
+                  type="button"
+                  className="btn btn-sm generated-pdf-button"
+                  onClick={() => onExportPdf(generatedPdf.artifactId)}
+                  disabled={exporting || savingToFolder || deleting || clearing}
+                  aria-label={`${generatedPdf.fileName} PDF 다운로드`}
+                >
+                  {isExporting ? '다운로드 중…' : exported ? '다운로드됨' : '다운로드'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm generated-pdf-button"
+                  onClick={() => onSavePdfToFolder(generatedPdf.artifactId)}
+                  disabled={exporting || savingToFolder || deleting || clearing}
+                  aria-label={`${generatedPdf.fileName} 지정 폴더에 저장`}
+                >
+                  {isSavingToFolder ? '저장 중…' : savedToFolder ? '폴더에 저장됨' : '지정 폴더에 저장'}
+                </button>
+              </div>
+              {(exportError || folderSaveError) && (
                 <div className="generated-pdf-error" role="alert">
-                  {exportError}
+                  {exportError ?? folderSaveError}
                 </div>
               )}
             </div>

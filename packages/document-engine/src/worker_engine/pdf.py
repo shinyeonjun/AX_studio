@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from artifact_store import sha256_file
-from ax_paths import default_template_root
+from ax_paths import default_document_root, default_template_root
 from protocol import EngineRequest, EngineResponse
 
 
@@ -84,9 +84,27 @@ def _handle_pdf_form_fill(request: EngineRequest) -> EngineResponse:
     return EngineResponse(id=request.id, ok=True, data=result)
 
 
+def _handle_pdf_report_analyze(request: EngineRequest) -> EngineResponse:
+    from write.pdf_report import analyze_pdf_report_pair
+
+    template = request.params.get("templatePath")
+    example = request.params.get("examplePath")
+    if not template or not example:
+        return EngineResponse(id=request.id, ok=False, error="report_pair_paths_required")
+    template_path = Path(str(template))
+    example_path = Path(str(example))
+    if not template_path.is_file() or not example_path.is_file():
+        return EngineResponse(id=request.id, ok=False, error="report_pair_file_not_found")
+    artifact_root = Path(str(request.params.get("artifactRoot") or default_document_root()))
+    result = analyze_pdf_report_pair(template_path, example_path, artifact_root)
+    return EngineResponse(id=request.id, ok=True, data=result)
+
+
 def handle_pdf_command(request: EngineRequest) -> EngineResponse:
     if request.command == "pdf_to_html":
         return _handle_pdf_to_html(request)
     if request.command == "pdf_form_analyze":
         return _handle_pdf_form_analyze(request)
+    if request.command == "pdf_report_analyze":
+        return _handle_pdf_report_analyze(request)
     return _handle_pdf_form_fill(request)

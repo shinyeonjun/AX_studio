@@ -71,4 +71,15 @@ describe('evaluateCondition', () => {
       ),
     ).toBe(true);
   });
+
+  it('resolves condition refs through declared output ports', () => {
+    expect(
+      evaluateCondition(
+        { op: 'eq', left: { ref: 'fetch.response.status' }, right: { lit: 200 } },
+        {},
+        { fetch: { status: 500 } },
+        { fetch: { response: { status: 200 } } },
+      ),
+    ).toBe(true);
+  });
 });

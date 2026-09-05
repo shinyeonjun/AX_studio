@@ -45,6 +45,7 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
     ctx.log({
       at: new Date().toISOString(),
       level: 'info',
+      ...(artifact ? { code: 'pdf_generated' } : {}),
       message: 'document.pdf.form.fill',
       data: {
         outputHash: result.outputHash,
@@ -54,6 +55,9 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
         verified: result.verified,
         interactive: result.interactive,
         artifactId: artifact?.id,
+        fileName: artifact?.fileName,
+        size: artifact?.size,
+        mimeType: artifact?.mimeType,
       },
     });
     return { ok: true, data: artifact ? { ...result, artifact } : result };

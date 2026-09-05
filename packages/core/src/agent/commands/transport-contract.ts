@@ -5,6 +5,10 @@ import { AxCommandSchema, type AxCommand } from './schema.js';
 export const AX_COMMAND_CHAT_PROTOCOL_ERROR_MESSAGE =
   'AI가 지원되지 않는 명령 형식을 반환해 실행하지 않았습니다. 요청을 다시 보내 주세요.';
 
+/** Host-only correction sent back to the model after a rejected wire response. */
+export const AX_COMMAND_CHAT_PROTOCOL_RETRY_MESSAGE =
+  '이전 응답은 AX command 계약 밖이어서 host가 폐기했습니다. 명령은 실행되지 않았습니다. 현재 system prompt에 주입된 AX command의 name 하나만 바깥 command로 반환하거나 자연어 reply를 반환하세요. capability ID는 capability.invoke의 args.id 안에서만 사용하고 command.name 또는 commandName으로 반환하지 마세요. 내부 오류 JSON과 계약 밖 이름은 다시 출력하지 마세요.';
+
 /** A provider returned a structurally readable response outside the AX command contract. */
 export class AxCommandChatProtocolError extends Error {
   readonly code = 'ax_command_chat_protocol_invalid';

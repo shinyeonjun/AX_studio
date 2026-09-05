@@ -20,6 +20,34 @@ describe('observeDocumentArtifact', () => {
     });
     expect(observations.some((entry) => entry.label === '고객수')).toBe(true);
   });
+
+  it('keeps repeated labels as distinct stable semantic locations', () => {
+    const document = {
+      id: 'doc_repeated_rows',
+      pages: [
+        { index: 0, text: '서울 매출: 100\n부산 매출: 200' },
+        { index: 1, text: '서울 매출: 300' },
+      ],
+      tables: [],
+      images: [],
+    };
+
+    const first = observeDocumentArtifact('ex_1', document);
+    const second = observeDocumentArtifact('ex_1', document);
+    const revenuePaths = first
+      .filter((entry) => entry.label === '매출')
+      .map((entry) => entry.path);
+
+    expect(new Set(revenuePaths).size).toBe(revenuePaths.length);
+    expect(revenuePaths).toEqual(
+      second.filter((entry) => entry.label === '매출').map((entry) => entry.path),
+    );
+    expect(revenuePaths).toEqual([
+      'field.매출.page_1.segment_1.value_1',
+      'field.매출.page_1.segment_1.value_2',
+      'field.매출.page_2.segment_2.value_1',
+    ]);
+  });
 });
 
 describe('parseKoreanNumber', () => {

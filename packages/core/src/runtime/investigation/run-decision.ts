@@ -27,7 +27,7 @@ export async function runAiDecision(
   const allowReads = step.investigation === true;
   const maxReads = allowReads ? (step.maxReads ?? 4) : 1;
   const evidence: Array<{ source: string; detail: string }> = [];
-  const boundContext = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables);
+  const boundContext = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables, ctx.outputs);
   const untrustedBody =
     boundContext.usesExplicitBindings
       ? boundContext.emailBody

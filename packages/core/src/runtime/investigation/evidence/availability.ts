@@ -27,7 +27,7 @@ export function hasDecisionEvidenceFromBindings(
   stepResults: Record<string, unknown>,
   evidence: Array<{ source: string; detail: string }>,
 ): boolean {
-  const bound = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables);
+  const bound = resolveAiDecisionBindings(step, ir, stepResults, ctx.variables, ctx.outputs);
   if (bound.usesExplicitBindings) {
     return Boolean(
       evidence.length > 0 ||

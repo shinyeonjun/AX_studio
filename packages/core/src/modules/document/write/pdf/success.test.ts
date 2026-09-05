@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,12 @@ import {
 } from '../../../../document-write/desktop-print.js';
 import type { ArtifactSink, ConnectorContext } from '../../../types.js';
 import { ArtifactStore } from '../../../../store/artifact-store.js';
+import {
+  MockDocumentEngineClient,
+  setDocumentEngineClient,
+} from '../../../../document-engine/engine-client.js';
+import type { PdfFormFillResult } from '../../../../document-engine/types.js';
+import { pdfFormFill } from './form-fill.js';
 import { pdfGenerate } from './generate.js';
 
 function createContext(
@@ -23,6 +29,7 @@ function createContext(
 
 afterEach(() => {
   setDesktopPrintBridge(null);
+  setDocumentEngineClient(null);
 });
 
 describe('document.pdf.generate successful output', () => {
@@ -91,6 +98,73 @@ describe('document.pdf.generate successful output', () => {
         size: data.artifact.size,
         mimeType: 'application/pdf',
       },
+    }));
+  });
+});
+
+describe('document.pdf.form.fill successful output', () => {
+  it('publishes the same bounded generated-PDF contract as HTML PDF generation', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-filled-report-'));
+    const templatePath = join(root, 'template.pdf');
+    const outputPath = join(root, 'filled.pdf');
+    writeFileSync(templatePath, '%PDF-1.7 template');
+
+    const engine = new MockDocumentEngineClient();
+    engine.pdfFormFill = async (): Promise<PdfFormFillResult> => {
+      writeFileSync(outputPath, '%PDF-1.7 filled');
+      return {
+        sourcePath: templatePath,
+        outputPath,
+        sourceHash: 'source-hash',
+        outputHash: 'output-hash',
+        pageCount: 1,
+        fieldCount: 1,
+        writerEngine: 'pymupdf',
+        verified: true,
+        interactive: false,
+        sourceUnchanged: true,
+      };
+    };
+    setDocumentEngineClient(engine);
+    const generatedStore = new ArtifactStore(join(root, 'generated'));
+    const ctx: ConnectorContext = {
+      executionId: 'execution-filled-pdf-test',
+      variables: {},
+      connections: [{
+        connector: 'local_folder',
+        connected: true,
+        config: { folders: [{ id: 'folder-1', label: 'fixture', path: root }] },
+      }],
+      artifactSink: generatedStore,
+      log: vi.fn(),
+    };
+
+    const result = await pdfFormFill({
+      path: templatePath,
+      template: {},
+      values: { field_1: '한글 값' },
+      outputPath,
+    }, ctx);
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        artifact: {
+          id: expect.any(String),
+          fileName: 'filled.pdf',
+          mimeType: 'application/pdf',
+          size: expect.any(Number),
+        },
+      },
+    });
+    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({
+      level: 'info',
+      code: 'pdf_generated',
+      data: expect.objectContaining({
+        artifactId: expect.any(String),
+        fileName: 'filled.pdf',
+        mimeType: 'application/pdf',
+      }),
     }));
   });
 });

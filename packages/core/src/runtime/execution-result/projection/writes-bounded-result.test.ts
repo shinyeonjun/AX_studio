@@ -21,6 +21,20 @@ describe('bounded execution result projection', () => {
         message: 'AI 분석 완료',
         data: { outputPreview: { conclusion: 'inv_acme_1001 결제가 완료되었습니다.', category: 'paid', body: 'raw-provider-secret-body' } },
       },
+      {
+        at: '2026-08-31T00:00:02.000Z',
+        level: 'info',
+        code: 'pdf_generated',
+        message: 'PDF 보고서를 생성하고 저장했습니다.',
+        data: {
+          artifactId: 'art_pdf_1',
+          fileName: '2026-09_customer_report.pdf',
+          size: 12_345,
+          mimeType: 'application/pdf',
+          storedPath: 'C:/private/report.pdf',
+          pdfBytes: '%PDF-raw-should-not-be-forwarded',
+        },
+      },
       { at: '2026-08-31T00:00:01.000Z', level: 'info', code: 'step_completed', message: '단계를 완료했습니다.', data: { stepId: 'send' } },
     ];
     store.finishExecution(executionId, 'success', undefined, log);
@@ -29,6 +43,14 @@ describe('bounded execution result projection', () => {
     const messages = store.getWorkspaceChat(chat.id)?.messages ?? [];
     expect(messages).toHaveLength(2);
     expect(messages[1]).toMatchObject({ role: 'assistant', kind: 'execution_result', executionId, executionStatus: 'success' });
+    expect(messages[1]?.generatedPdf).toEqual({
+      artifactId: 'art_pdf_1',
+      fileName: '2026-09_customer_report.pdf',
+      size: 12_345,
+      mimeType: 'application/pdf',
+    });
+    expect(JSON.stringify(messages[1])).not.toContain('storedPath');
+    expect(JSON.stringify(messages[1])).not.toContain('pdfBytes');
     expect(messages[1]?.content).toContain('실행이 완료되었습니다');
     expect(messages[1]?.content).toContain('inv_acme_1001 결제가 완료되었습니다.');
     expect(messages[1]?.content).toContain('Slack 메시지 완료');

@@ -50,6 +50,10 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
     );
     const temperature = request.temperature ?? definition.temperature;
     const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
+    const measurements = { role: request.role, phase: request.logContext, provider: model.name,
+      promptChars, imageCount: images?.length ?? 0,
+      imageBytes: images?.reduce((sum, image) => sum + image.data.byteLength, 0) ?? 0, timeoutMs };
+    appendAppLog('info', 'Agent invocation started', measurements);
 
     if (request.abortSignal?.aborted) {
       throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
@@ -73,6 +77,7 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
     });
     const output = request.outputSchema.parse(raw);
     const durationMs = Date.now() - started;
+    appendAppLog('info', 'Agent invocation completed', { ...measurements, durationMs });
     logs.push({
       level: 'info',
       message: `provider=${model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
@@ -91,7 +96,7 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
       throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
     }
     if (controller.signal.aborted) {
-      const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout' });
+      const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout', phase: request.logContext });
       appendAppLog('error', timeoutError.message, {
         code: 'agent_timeout',
         role: request.role,

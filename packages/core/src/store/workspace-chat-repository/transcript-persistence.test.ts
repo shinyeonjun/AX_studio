@@ -63,4 +63,31 @@ describe('workspace chat transcript persistence', () => {
       presentations: [{ title: '확인 필요', actions: [{ id: 'continue', value: '진행해줘' }] }],
     });
   });
+
+  it('round-trips safe generated PDF metadata without a physical path', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const saved = store.saveWorkspaceChat({
+      messages: [{
+        role: 'assistant',
+        content: '보고서를 생성했습니다.',
+        kind: 'execution_result',
+        executionId: 'exec-pdf-1',
+        executionStatus: 'success',
+        generatedPdf: {
+          artifactId: 'art_pdf_1',
+          fileName: '2026-09_customer_report.pdf',
+          size: 12_345,
+          mimeType: 'application/pdf',
+        },
+      }],
+    });
+
+    expect(store.getWorkspaceChat(saved.id)?.messages[0]?.generatedPdf).toEqual({
+      artifactId: 'art_pdf_1',
+      fileName: '2026-09_customer_report.pdf',
+      size: 12_345,
+      mimeType: 'application/pdf',
+    });
+  });
 });

@@ -44,10 +44,12 @@ export function observationFromNumber(
   label: string,
   display: string,
   pageIndex?: number,
+  semanticLocation?: string,
 ): OutputObservation | null {
   const value = parseKoreanNumber(display);
   if (value == null) return null;
-  const path = slugifyLabel(label);
+  const basePath = slugifyLabel(label);
+  const path = semanticLocation ? `${basePath}.${semanticLocation}` : basePath;
   const observationValue: ObservationValue = {
     kind: 'number',
     value,
@@ -88,27 +90,37 @@ export function observeDocumentArtifact(exampleId: string, document: DocumentArt
   const observations: OutputObservation[] = [];
   const seen = new Set<string>();
 
-  for (const segment of collectTextSegments(document)) {
+  for (const [segmentIndex, segment] of collectTextSegments(document).entries()) {
     const text = segment.text;
+    const labelOrdinals = new Map<string, number>();
+    const observeMatch = (label: string, display: string): void => {
+      const key = `${label}:${display}`;
+      if (seen.has(key)) return;
+      const ordinal = (labelOrdinals.get(label) ?? 0) + 1;
+      const pagePart = segment.pageIndex == null ? 'document' : `page_${segment.pageIndex + 1}`;
+      const semanticLocation = `${pagePart}.segment_${segmentIndex + 1}.value_${ordinal}`;
+      const observation = observationFromNumber(
+        exampleId,
+        label,
+        display,
+        segment.pageIndex,
+        semanticLocation,
+      );
+      if (!observation) return;
+      labelOrdinals.set(label, ordinal);
+      seen.add(key);
+      observations.push(observation);
+    };
+
     for (const match of text.matchAll(LABEL_VALUE_RE)) {
       const label = match[1]!.trim();
       const display = match[2]!.trim();
-      const key = `${label}:${display}`;
-      if (seen.has(key)) continue;
-      const observation = observationFromNumber(exampleId, label, display, segment.pageIndex);
-      if (!observation) continue;
-      seen.add(key);
-      observations.push(observation);
+      observeMatch(label, display);
     }
     for (const match of text.matchAll(NUMBER_WITH_LABEL_RE)) {
       const label = match[1]!.trim();
       const display = match[2]!.trim();
-      const key = `${label}:${display}`;
-      if (seen.has(key)) continue;
-      const observation = observationFromNumber(exampleId, label, display, segment.pageIndex);
-      if (!observation) continue;
-      seen.add(key);
-      observations.push(observation);
+      observeMatch(label, display);
     }
   }
 

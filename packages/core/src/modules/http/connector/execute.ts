@@ -1,4 +1,5 @@
 import type { ConnectorContext, ConnectorResult } from '../../types.js';
+import { buildHttpResponseArtifact } from '../../../contracts/artifacts/http-response.js';
 import {
   isSupportedHttpMethod,
   matchHttpEndpoint,
@@ -102,15 +103,17 @@ export async function executeHttpAction(
     };
   }
 
+  const response = buildHttpResponseArtifact({
+    executionId: ctx.executionId,
+    url: resolved.value.url,
+    status: result.status,
+    statusText: result.statusText,
+    headers: result.headers,
+    body: result.body,
+    truncated: result.truncated,
+  });
   return {
     ok: true,
-    data: {
-      status: result.status,
-      statusText: result.statusText,
-      headers: result.headers,
-      body: result.body,
-      truncated: result.truncated,
-      url: resolved.value.url,
-    },
+    data: response,
   };
 }

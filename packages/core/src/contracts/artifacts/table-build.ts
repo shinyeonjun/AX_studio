@@ -1,3 +1,7 @@
+import {
+  completeArtifactCompleteness,
+  partialArtifactCompleteness,
+} from './completeness.js';
 import type { ScalarValue, TableArtifact, TableColumn, TableColumnType, TableProfile } from './table.js';
 
 export const DEFAULT_TABLE_ROW_LIMIT = 5_000;
@@ -93,7 +97,10 @@ export function buildTableArtifact(params: {
   rowLimit?: number;
   source?: TableArtifact['source'];
 }): TableArtifact {
-  const rowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
+  const configuredRowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
+  const rowLimit = Number.isFinite(configuredRowLimit)
+    ? Math.max(1, Math.floor(configuredRowLimit))
+    : DEFAULT_TABLE_ROW_LIMIT;
   const headers = uniqueHeaders(params.headers);
   const columnValues = headers.map((_, columnIndex) =>
     params.matrix.map((row) => row[columnIndex]),
@@ -117,8 +124,68 @@ export function buildTableArtifact(params: {
     columns,
     rows,
     truncated,
+    completeness: truncated
+      ? partialArtifactCompleteness('row_limit', {
+        observedCount: limited.length,
+        limit: rowLimit,
+        hasMore: true,
+      })
+      : completeArtifactCompleteness(limited.length),
     source: params.source,
   };
   artifact.profile = profileTable(columns, rows);
   return artifact;
+}
+
+/** Convert the common connector row shape at one shared contract seam. */
+export function tableArtifactFromRows(
+  value: unknown,
+  options: { id: string; name?: string; source?: TableArtifact['source']; rowLimit?: number },
+): TableArtifact | undefined {
+  if (Array.isArray(value)) {
+    const rows = value.filter(
+      (row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+    );
+    if (rows.length !== value.length) return undefined;
+    const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+    return buildTableArtifact({
+      id: options.id,
+      name: options.name,
+      headers,
+      matrix: rows.map((row) => headers.map((header) => row[header])),
+      rowLimit: options.rowLimit,
+      source: options.source,
+    });
+  }
+  return undefined;
+}
+
+/** Convert a legacy worksheet matrix whose first row contains column names. */
+export function tableArtifactFromMatrix(
+  value: unknown,
+  options: { id: string; name?: string; source?: TableArtifact['source']; rowLimit?: number },
+): TableArtifact | undefined {
+  if (!Array.isArray(value) || !value.every(Array.isArray)) return undefined;
+  const [headerRow, ...matrix] = value as unknown[][];
+  if (!headerRow) {
+    return buildTableArtifact({
+      id: options.id,
+      name: options.name,
+      headers: [],
+      matrix: [],
+      rowLimit: options.rowLimit,
+      source: options.source,
+    });
+  }
+  const headers = headerRow.map((header, index) =>
+    header == null || String(header).trim() === '' ? `column_${index + 1}` : String(header),
+  );
+  return buildTableArtifact({
+    id: options.id,
+    name: options.name,
+    headers,
+    matrix,
+    rowLimit: options.rowLimit,
+    source: options.source,
+  });
 }

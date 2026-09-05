@@ -39,4 +39,34 @@ describe('runtime capability read boundary', () => {
       clearDynamicCatalogForTests();
     }
   });
+
+  it('normalizes declared capability outputs at the investigation boundary', async () => {
+    registerDynamicCapabilities([{
+      id: 'openapi.demo.listOrders',
+      connector: 'openapi',
+      kind: 'read',
+      label: '주문 목록',
+      description: '주문 목록 조회',
+      sideEffect: 'NONE',
+      params: [],
+      io: { inputs: {}, outputs: { rows: 'TableArtifact' } },
+    }]);
+    const execute = vi.fn(async () => ({ ok: true as const, data: [{ id: 'order-1', amount: 125000 }] }));
+
+    try {
+      const result = await performCapabilityRead(
+        'openapi.demo.listOrders',
+        { executionId: 'investigation-3', variables: {}, log: vi.fn() },
+        { openapi: { name: 'openapi', execute } },
+      );
+      expect(result).toMatchObject({
+        rows: {
+          kind: 'table',
+          completeness: { status: 'complete', observedCount: 1, hasMore: false },
+        },
+      });
+    } finally {
+      clearDynamicCatalogForTests();
+    }
+  });
 });

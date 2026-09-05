@@ -53,6 +53,10 @@ export interface PdfFormField {
   confidence: number;
   required: boolean;
   multiline: boolean;
+  /** Optional typography hints for geometry-derived overlay fields. */
+  fontSize?: number;
+  textColor?: [number, number, number];
+  align?: 'left' | 'center' | 'right';
   originalValue?: string;
   exportValue?: string;
   options?: string[];
@@ -111,4 +115,46 @@ export interface PdfFormFillResult {
   verified: boolean;
   interactive: boolean;
   sourceUnchanged: boolean;
+}
+
+export interface PdfReportSlot {
+  id: string;
+  pageIndex: number;
+  rect: PdfFormRect;
+  exampleText: string;
+  fontSize: number;
+  font: string;
+  color: number;
+}
+
+export interface PdfReportTableRow {
+  index: number;
+  pageIndex: number;
+  y: number;
+  cells: PdfReportSlot[];
+}
+
+export interface PdfReportTableGroup {
+  id: string;
+  columnCount: number;
+  rowCount: number;
+  rows: PdfReportTableRow[];
+  /** Template-derived horizontal table bounds for each page continuation. */
+  pageBounds?: Array<{ pageIndex: number; x: number; width: number }>;
+}
+
+/** Geometry-first comparison of a completed report and its blank template. */
+export interface PdfReportPairAnalysis {
+  schemaVersion: 1;
+  pairId: string;
+  templateHash: string;
+  exampleHash: string;
+  pageCount: number;
+  pages: PdfFormPage[];
+  scalarSlots: PdfReportSlot[];
+  tableGroups: PdfReportTableGroup[];
+  /** Host-owned paths consumed only to attach actual vision bytes. */
+  templateImages: string[];
+  /** Host-owned paths consumed only to attach actual vision bytes. */
+  exampleImages: string[];
 }

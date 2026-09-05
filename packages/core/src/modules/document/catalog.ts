@@ -121,6 +121,20 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
       { name: 'title', label: '제목', question: 'PDF 제목', required: false },
     ],
   },
+  {
+    id: 'document.pdf.report.generate',
+    connector: 'document',
+    kind: 'write',
+    label: '예시 기반 PDF 보고서 생성',
+    description: '완성 예시의 계산 기준을 연결 데이터로 재현 검증한 뒤 빈 PDF 양식에 다음 기간 결과를 작성',
+    sideEffect: 'REVERSIBLE',
+    params: [
+      { name: 'goal', label: '보고서 요청', question: '어떤 보고서를 만들까요?', required: true },
+      { name: 'templateSourceId', label: '빈 양식', question: '현재 대화의 빈 PDF 양식은 무엇인가요?', required: true },
+        { name: 'exampleSourceId', label: '완성 예시', question: '현재 대화의 완성된 PDF 예시는 무엇인가요?', required: true },
+        { name: 'resumeExecutionId', label: '재시도할 실행', question: '어떤 실패 실행을 이어서 처리할까요?', required: false },
+    ],
+  },
 ];
 
 export const DOCUMENT_CATALOG: ConnectorCatalogEntry = {

@@ -17,7 +17,10 @@ export type { AxCommandChatOptions } from './chat/contracts.js';
  * The model-facing protocol has only two outcomes: request one bounded AX
  * command, or answer the user. Command execution is owned by the host.
  */
-export const AX_COMMAND_CHAT_MAX_ROUNDS = 8;
+// Multi-source requests may need to inspect attached documents, identify
+// connected sources, read each source, and then submit one bounded plan. Keep
+// the budget finite, but leave room for the final reply after those reads.
+export const AX_COMMAND_CHAT_MAX_ROUNDS = 16;
 export const AX_COMMAND_CHAT_TIMEOUT_MS = 120_000;
 
 /**

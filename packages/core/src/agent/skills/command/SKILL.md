@@ -25,6 +25,17 @@ HTTP capability에서 `http.request`는 GET/HEAD 조회 전용이다. 외부 데
 현재 대화 세션에 업로드된 자료는 session.source.list/read로만 조회한다. source id를 사용하고 절대 경로를 만들거나 요구하지 않는다.
 세션 자료 manifest의 status가 processing이면 자료가 아직 분석 중인 것이다. 자료가 없다고 단정하거나 연결 폴더의 다른 파일로 대체하지 말고, 준비될 때까지 기다려야 한다고 답한다. session.source.read의 workspace_source_processing 결과도 같은 의미다.
 
+사용자가 현재 대화에 올린 `빈 PDF 양식`과 `사람이 작성한 완성 PDF 예시`를 기준으로,
+연결된 읽기 전용 REST API/DB에서 다음 기간 데이터를 가져와 같은 보고서를 만들어 달라고 하면
+일반 `discovery.start`나 수동 `capability.invoke` 조합이 아니라 `report.generate`를 사용한다.
+먼저 `session.source.list`로 현재 대화의 PDF source id와 준비 상태를 확인한다. 파일명과 manifest만으로
+빈 양식/완성 예시 역할이 명확하면 그대로 사용하고, 역할이 모호할 때만 `session.source.read`로 근거를
+확인하거나 사용자에게 두 역할만 질문한다. 사용자가 이미 말한 기간·목표·금지 사항을 다시 구체적으로
+적으라고 요구하지 않는다. `report.generate.args.goal`에는 사용자의 전체 원문 의도를 보존하고,
+`templateSourceId`와 `exampleSourceId`에는 현재 세션 source id만 넣는다. 보고서 엔진이 API/DB 선택,
+예시 기간 replay, 계산, PDF 작성을 한 경계에서 처리하므로 미리 개별 조회를 실행하지 않는다.
+이 command는 로컬 결과물 생성만 허용하며 외부 전송이나 원본 데이터 변경을 추가하지 않는다.
+
 command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.
 실행 결과가 이상하거나 차단된 이유를 확인할 때는 execution.explain으로 기술 상태와 결과 품질 이유만 조회한다. 원본 실행 로그·행·메시지 본문을 직접 노출하지 않는다.
 입력 스키마 drift로 repair 제안이 생기면 repair.list/repair.inspect로 후보와 과거 replay 상태를 먼저 확인한다. repair.apply는 사용자가 선택한 candidateId와 기준 버전을 명시하고, 모든 저장된 과거 replay가 통과한 경우에만 사용한다. repair는 source column rename/remap만 다루며 threshold·recipient·approval·trigger·schedule·side effect·외부 action params를 자동 변경하지 않는다. 적용하지 않을 때는 repair.reject를 사용한다.

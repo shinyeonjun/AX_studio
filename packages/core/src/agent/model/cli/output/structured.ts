@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import { ZodError, type ZodType } from 'zod';
 import { parseStructuredOutput } from '../../cli-json.js';
 import { cliFailureMessage, usableCliFailureText } from './failure.js';
 import { pickCliOutput, readableCliError } from './readability.js';
@@ -13,6 +13,7 @@ export async function parseStructuredFromCliResult<T>(
   result: { stdout: string; stderr: string; exitCode: number },
   schema: ZodType<T>,
   fallbackMessage: string,
+  boundedValidationErrors = false,
 ): Promise<T> {
   const failure = cliFailureMessage(result, fallbackMessage);
   if (failure) {
@@ -29,6 +30,14 @@ export async function parseStructuredFromCliResult<T>(
   try {
     return parseStructuredOutput(raw, schema);
   } catch (err) {
+    if (boundedValidationErrors && err instanceof ZodError) {
+      throw Object.assign(new Error('model_output_invalid'), {
+        code: 'model_output_invalid',
+        // Bounded structural diagnostics only; never retain rejected values.
+        issues: err.issues.slice(0, 12).map((issue) => ({ code: issue.code, path: issue.path })),
+      });
+    }
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'model_output_invalid') throw err;
     const detail = err instanceof Error ? err.message : String(err);
     const diagnostic = hasActionableStderr(result.stderr)
       ? readableCliError(result.stderr, '')

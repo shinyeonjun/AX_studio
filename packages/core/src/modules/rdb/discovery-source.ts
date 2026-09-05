@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
-import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
+import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
 import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from '../../contracts/discovery-source.js';
 import { parseRdbConnectionConfig } from './index.js';
 import {
   formatRdbTableRef,
   isAllowedRdbTable,
   listRdbTables,
+  normalizeRdbRowLimit,
   parseRdbTableRef,
   readRdbRows,
 } from './client.js';
@@ -15,6 +16,7 @@ function fingerprintTable(table: { columns: Array<{ name: string }>; rows: unkno
     query,
     columns: table.columns.map((column) => column.name),
     rowCount: table.rows.length,
+    rows: table.rows,
     queryFingerprint: table.source?.queryFingerprint,
   })).digest('hex');
 }
@@ -48,26 +50,28 @@ export const rdbDiscoverySource: DiscoverySourceProvider = {
     if (!config) return null;
     const table = parseRdbTableRef(sourceId.replace(/^rdb:/, ''));
     if (!table || !isAllowedRdbTable(config, table)) return null;
-    const rowLimit = config.rowLimit ?? 200;
+    const rowLimit = normalizeRdbRowLimit(config.rowLimit, 200);
     const rows = await readRdbRows(config, table, rowLimit + 1);
-    const truncated = rows.length > rowLimit;
-    const limited = truncated ? rows.slice(0, rowLimit) : rows;
-    const headers = limited.length > 0 ? Object.keys(limited[0]!) : [];
-    const matrix = limited.map((row) => headers.map((header) => (row as Record<string, unknown>)[header]));
     const query = { table: formatRdbTableRef(table), database: config.type, rowLimit };
-    const artifact = buildTableArtifact({
+    const queryFingerprint = fingerprintTable({
+      columns: [...new Set(rows.flatMap((row) => Object.keys(row)))].map((name) => ({ name })),
+      rows,
+      source: {},
+    }, query);
+    const artifact = tableArtifactFromRows(rows, {
       id: `snap_${createHash('sha256').update(`${sourceId}:${JSON.stringify(query)}`).digest('hex').slice(0, 16)}`,
       name: formatRdbTableRef(table),
-      headers,
-      matrix,
       rowLimit,
       source: {
         schema: table.schema,
         table: table.table,
         database: config.type,
-        queryFingerprint: fingerprintTable({ columns: headers.map((name) => ({ name })), rows: limited, source: {} }, query),
+        queryFingerprint,
+        capturedAt: new Date().toISOString(),
       },
     });
+    if (!artifact) return null;
+    const headers = artifact.columns.map((column) => column.name);
     ctx.budget.sourceReadsUsed += 1;
     return {
       descriptor: {

@@ -25,7 +25,9 @@ describe('cli schema conversion', () => {
     expect(json.required).toEqual(Object.keys(properties));
     expect(properties.needMore).toEqual({ type: 'boolean' });
     const params = properties.nextReadParams;
-    if (params) expect(params.type).toBe('string');
+    expect(params.anyOf).toEqual([
+      expect.objectContaining({ type: 'string' }), { type: 'null' },
+    ]);
   });
 
   it('converts a generic discriminated union for CLI json-schema', () => {

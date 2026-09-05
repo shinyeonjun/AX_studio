@@ -14,8 +14,10 @@ vi.mock('electron', () => electronMocks);
 
 import {
   exportGeneratedArtifact,
+  saveGeneratedArtifactToFolder,
   resolveGeneratedArtifactSourcePath,
   type GeneratedArtifactExportDependencies,
+  type GeneratedArtifactFolderSaveDependencies,
 } from './artifact-handlers.js';
 
 function artifact(overrides: Partial<StoredArtifact> = {}): StoredArtifact {
@@ -131,6 +133,77 @@ describe('generated PDF export boundary', () => {
     expect(result).toEqual({ ok: false, error: 'PDF 저장에 실패했습니다.' });
     expect(JSON.stringify(result)).not.toContain(sourcePath);
     expect(JSON.stringify(result)).not.toContain(destinationPath);
+  });
+
+  it('saves a validated PDF into a user-selected folder without returning the folder path', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-pdf-folder-'));
+    roots.push(root);
+    const sourcePath = join(root, 'stored-report.pdf');
+    const destinationFolder = join(root, 'destination');
+    const destinationPath = join(destinationFolder, 'report.pdf');
+    mkdirSync(destinationFolder);
+    writeFileSync(sourcePath, '%PDF-1.7 fixture');
+    const copy = vi.fn(async (source: string, destination: string) => {
+      copyFileSync(source, destination);
+    });
+    const deps: GeneratedArtifactFolderSaveDependencies = {
+      getArtifact: vi.fn(() => artifact({ storedPath: sourcePath, size: 16 })),
+      resolveSourcePath: vi.fn(async () => sourcePath),
+      showFolderDialog: vi.fn(async () => ({ canceled: false, filePath: destinationFolder })),
+      copyFile: copy,
+    };
+
+    const result = await saveGeneratedArtifactToFolder('art_pdf_1', deps);
+
+    expect(result).toEqual({ ok: true, fileName: 'report.pdf' });
+    expect(result).not.toHaveProperty('path');
+    expect(copy).toHaveBeenCalledWith(sourcePath, destinationPath);
+    expect(readFileSync(destinationPath, 'utf8')).toBe('%PDF-1.7 fixture');
+  });
+
+  it('does not copy into a folder when the user cancels', async () => {
+    const copy = vi.fn(async () => undefined);
+    const deps: GeneratedArtifactFolderSaveDependencies = {
+      getArtifact: vi.fn(() => artifact()),
+      resolveSourcePath: vi.fn(async () => 'C:/data/report.pdf'),
+      showFolderDialog: vi.fn(async () => ({ canceled: true })),
+      copyFile: copy,
+    };
+
+    await expect(saveGeneratedArtifactToFolder('art_pdf_1', deps)).resolves.toEqual({ ok: false, canceled: true });
+    expect(copy).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the selected folder already contains the generated file', async () => {
+    const deps: GeneratedArtifactFolderSaveDependencies = {
+      getArtifact: vi.fn(() => artifact()),
+      resolveSourcePath: vi.fn(async () => 'C:/data/report.pdf'),
+      showFolderDialog: vi.fn(async () => ({ canceled: false, filePath: 'C:/reports' })),
+      copyFile: vi.fn(async () => {
+        throw Object.assign(new Error('destination exists'), { code: 'EEXIST' });
+      }),
+    };
+
+    await expect(saveGeneratedArtifactToFolder('art_pdf_1', deps)).resolves.toEqual({
+      ok: false,
+      error: '같은 이름의 PDF가 이미 있어 덮어쓰지 않았습니다.',
+    });
+  });
+
+  it('does not overwrite an existing Save As destination', async () => {
+    const deps: GeneratedArtifactExportDependencies = {
+      getArtifact: vi.fn(() => artifact()),
+      resolveSourcePath: vi.fn(async () => 'C:/data/report.pdf'),
+      showSaveDialog: vi.fn(async () => ({ canceled: false, filePath: 'C:/reports/report.pdf' })),
+      copyFile: vi.fn(async () => {
+        throw Object.assign(new Error('destination exists'), { code: 'EEXIST' });
+      }),
+    };
+
+    await expect(exportGeneratedArtifact('art_pdf_1', deps)).resolves.toEqual({
+      ok: false,
+      error: '같은 이름의 PDF가 이미 있어 덮어쓰지 않았습니다.',
+    });
   });
 });
 

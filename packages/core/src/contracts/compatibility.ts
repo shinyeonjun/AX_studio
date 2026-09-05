@@ -7,6 +7,7 @@ const COMPATIBLE_OUTPUTS: Record<ContractTypeName, ContractTypeName[]> = {
   DocumentIngestInput: ['DocumentIngestInput', 'FileRef'],
   DocumentArtifact: ['DocumentArtifact'],
   TextArtifact: ['TextArtifact'],
+  HttpResponseArtifact: ['HttpResponseArtifact', 'TextArtifact'],
   TableArtifact: ['TableArtifact'],
   JsonArtifact: ['JsonArtifact'],
   EmailMessageRef: ['EmailMessageRef'],

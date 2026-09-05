@@ -55,4 +55,40 @@ describe('workspace chat boundary', () => {
       { role: 'assistant', content: '일반 답변', approval },
     ])).toThrow();
   });
+
+  it('preserves safe generated PDF metadata and rejects paths or ordinary assistant messages', () => {
+    const generatedPdf = {
+      artifactId: 'art_pdf_1',
+      fileName: '2026-09_customer_report.pdf',
+      size: 12_345,
+      mimeType: 'application/pdf',
+    } as const;
+    expect(normalizeChatMessages([{
+      role: 'assistant',
+      content: '보고서를 생성했습니다.',
+      kind: 'execution_result',
+      executionId: 'exec-1',
+      executionStatus: 'success',
+      generatedPdf,
+    }])).toEqual([{
+      role: 'assistant',
+      content: '보고서를 생성했습니다.',
+      kind: 'execution_result',
+      executionId: 'exec-1',
+      executionStatus: 'success',
+      generatedPdf,
+    }]);
+    expect(() => normalizeChatMessages([{
+      role: 'assistant',
+      content: '일반 답변',
+      generatedPdf,
+    }])).toThrow();
+    expect(() => normalizeChatMessages([{
+      role: 'assistant',
+      content: '보고서',
+      kind: 'execution_result',
+      executionId: 'exec-1',
+      generatedPdf: { ...generatedPdf, fileName: 'C:\\private\\report.pdf' },
+    }])).toThrow();
+  });
 });

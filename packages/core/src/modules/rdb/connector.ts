@@ -1,8 +1,10 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
 import {
   formatRdbTableRef,
   isAllowedRdbTable,
   listRdbTables,
+  normalizeRdbRowLimit,
   parseRdbTableRef,
   readRdbRows,
 } from './client.js';
@@ -22,7 +24,7 @@ export class RdbConnector implements Connector {
   constructor(private config: RdbConnectionConfig) {}
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
-    const rowLimit = this.config.rowLimit ?? 1000;
+    const rowLimit = normalizeRdbRowLimit(this.config.rowLimit, 1000);
 
     if (action === 'schema.describe') {
       try {
@@ -49,9 +51,21 @@ export class RdbConnector implements Connector {
       }
 
       try {
-        const rows = await readRdbRows(this.config, ref, rowLimit);
-        ctx.variables.queryResult = rows;
-        return { ok: true, data: rows };
+        const rows = await readRdbRows(this.config, ref, rowLimit + 1);
+        const table = tableArtifactFromRows(rows, {
+          id: `rdb_${ctx.executionId}_${formatRdbTableRef(ref).replace(/[^A-Za-z0-9_]+/g, '_')}`,
+          name: formatRdbTableRef(ref),
+          rowLimit,
+          source: {
+            database: this.config.type,
+            schema: ref.schema,
+            table: ref.table,
+            capturedAt: new Date().toISOString(),
+          },
+        });
+        if (!table) return { ok: false, error: 'rdb_rows_invalid', errorCode: 'rdb_error' };
+        ctx.variables.queryResult = table;
+        return { ok: true, data: table };
       } catch (error) {
         ctx.log({
           at: new Date().toISOString(),

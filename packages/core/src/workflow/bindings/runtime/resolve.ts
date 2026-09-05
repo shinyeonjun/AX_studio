@@ -27,6 +27,7 @@ export function resolveAiDecisionBindings(
   ir: WorkflowIR,
   stepResults: Record<string, unknown>,
   variables: Record<string, unknown>,
+  outputs?: Record<string, Record<string, unknown>>,
 ): AiDecisionBoundContext {
   const bindings = step.bindings ?? {};
   const inputContracts = step.inputContracts ?? {};
@@ -37,7 +38,7 @@ export function resolveAiDecisionBindings(
   let hasDocumentArtifact = false;
 
   for (const [port, binding] of Object.entries(bindings)) {
-    const value = resolveBindingValue(binding, ir, stepResults, variables);
+    const value = resolveBindingValue(binding, ir, stepResults, variables, outputs);
     bound[port] = value;
     const contract = inputContracts[port];
     if (contract === 'DocumentArtifact') {
@@ -121,12 +122,15 @@ export function resolveBindingValue(
   ir: WorkflowIR,
   stepResults: Record<string, unknown>,
   variables: Record<string, unknown>,
+  outputs?: Record<string, Record<string, unknown>>,
 ): unknown {
   if (binding.from === 'trigger') {
     return resolveTriggerOutput(binding.output, variables);
   }
 
   const step = ir.steps.find((candidate) => candidate.id === binding.from);
+  const typedOutput = outputs?.[binding.from]?.[binding.output];
+  if (typedOutput !== undefined) return typedOutput;
   const data = stepResults[binding.from];
   if (!step) return data;
   if (step.type === 'ai_decision') {

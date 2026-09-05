@@ -1,6 +1,7 @@
 import type { ExecutionLogEntry } from '../../modules/types.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
 import type { ExecutionResult } from '../types.js';
+import { reportFailureMessage } from '../../report-generation/failure-message.js';
 
 const MAX_RESULT_CHARS = 8_000;
 const MAX_FIELD_CHARS = 1_200;
@@ -102,6 +103,7 @@ export function formatExecutionResultMessage(
   }
 
   if (result.status === 'failed' && result.errorCode) {
+    lines.push(...reportFailureMessage(result.log, result.errorCode));
     lines.push(`오류 코드: ${safeText(result.errorCode, 160) ?? 'unknown'}`);
   }
   if (result.status === 'pending_approval' && result.pendingApprovalId) {

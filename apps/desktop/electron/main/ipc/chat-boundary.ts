@@ -3,6 +3,7 @@ import {
   AxInputRequestSchema,
   AxUiPresentationSchema,
   WorkspaceChatApprovalSchema,
+  WorkspaceChatGeneratedPdfSchema,
   type WorkspaceChatMessage,
 } from '@ax-studio/core';
 
@@ -88,6 +89,15 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (approval?.success && record.kind !== 'execution_result') {
       throw new Error(`대화 ${index + 1}번째 승인 정보는 실행 결과 메시지에만 사용할 수 있습니다.`);
     }
+    const generatedPdf = record.generatedPdf === undefined
+      ? undefined
+      : WorkspaceChatGeneratedPdfSchema.safeParse(record.generatedPdf);
+    if (generatedPdf && !generatedPdf.success) {
+      throw new Error(`대화 ${index + 1}번째 생성 PDF 정보 형식이 올바르지 않습니다.`);
+    }
+    if (generatedPdf?.success && record.kind !== 'execution_result') {
+      throw new Error(`대화 ${index + 1}번째 생성 PDF 정보는 실행 결과 메시지에만 사용할 수 있습니다.`);
+    }
     return {
       role: record.role,
       content: record.content,
@@ -97,6 +107,7 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(inputRequests ? { inputRequests: inputRequests.data } : {}),
       ...(presentations ? { presentations: presentations.data } : {}),
       ...(approval ? { approval: approval.data } : {}),
+      ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
     };
   });
 }

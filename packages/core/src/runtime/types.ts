@@ -40,6 +40,8 @@ export interface ExecutionResult {
 
 /** Inputs supplied by a trigger or the desktop manual-run boundary. */
 export interface WorkflowExecutionOptions {
+  /** Host-owned queue correlation; never used as a source or permission grant. */
+  jobId?: string;
   ephemeral?: boolean;
   triggerType?: string;
   input?: Record<string, unknown>;

@@ -4,14 +4,14 @@ import type {
   TransformEvaluation,
   TransformEvaluator,
 } from './contracts.js';
-import { requireTable, toNumber } from './helpers.js';
+import { requireCompleteTable, toNumber } from './helpers.js';
 
 export function evaluateAggregate(
   expr: Extract<TransformExpr, { op: 'aggregate' }>,
   snapshots: SnapshotTables,
   evaluate: TransformEvaluator,
 ): TransformEvaluation {
-  const table = requireTable(evaluate(expr.input, snapshots), 'aggregate_input_not_table');
+  const table = requireCompleteTable(evaluate(expr.input, snapshots), 'aggregate_input_not_table');
   const column = expr.column;
   if (expr.fn === 'count') return table.rows.length;
   if (!column) throw new Error('aggregate_column_required');

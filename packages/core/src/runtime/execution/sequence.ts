@@ -73,6 +73,7 @@ export async function runSequence(
         error.checkpoint = {
           variables: { ...ctx.variables },
           stepResults: { ...stepResults },
+          outputs: ctx.outputs ? { ...ctx.outputs } : undefined,
           remainingStepIds: sequence.slice(index + 1).map((item) => item.id),
           pendingOuterStepIds: afterSequenceStepIds,
         };

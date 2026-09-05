@@ -1,4 +1,18 @@
 version: 2
+report_execution_hardening:
+  reference: report-execution-hardening.md
+  allowed: [packages/core/src/report-generation, packages/core/src/runtime, packages/core/src/bootstrap.ts, packages/core/src/agent, packages/core/src/modules/types.ts, .harness]
+  reason: Report persistence, inference, diagnostics and capture share these interfaces.
+  expansion: Document capability catalog exposes the explicit retry argument; runtime result formatting projects bounded report failure guidance.
+report_wire_patch:
+  allowed: [packages/core/src/agent/model/cli, packages/core/src/agent/model/cli-json, packages/core/src/report-generation/service.ts, packages/core/src/report-generation/service.test.ts, apps/desktop/src/components/workspace/WorkspaceRunResultCard.tsx, apps/desktop/src/components/workspace/ax-workspace.css, .harness]
+  reason: Confirmed generated wire schema changes types without inverse conversion; failure styling shares success class.
+codex_image_followup_scope:
+  reference: codex-image-forwarding.md
+  allowed: [agent/model/cli/adapters/codex-cli.ts, agent/model/cli/codex-vision.test.ts, report-generation/service.ts, report-generation/service.test.ts, .harness]
+work_sidebar_followup_scope:
+  allowed: [apps/desktop/src/components/layout, apps/desktop/src/components/layout/workspace-sidebar, apps/desktop/src/lib/work-display.ts, apps/desktop/src/types/app-state.ts, apps/desktop/electron/main/ipc/state-handlers/execution-state.ts, .harness]
+  avoid: [runtime, core workflow semantics, connector behavior, persisted data migrations]
 status: active
 
 # Smallest plausible implementation boundary for the agent-native command plane.
@@ -12781,3 +12795,574 @@ repository_structure_phase_223:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1013 modules/3382 dependencies, and git diff --check"
       test-preservation: "PASS: All three job target-selection scenarios, service/connection/gateway/context setup, presentation options, issue values, persistence guards, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded job target-selection test split and harness records changed"
+
+work_discovery_benchmark_v1:
+  status: active
+  objective: "Build a deterministic Work Discovery benchmark runner with external test-lab data, holdout evaluation, replay/clarification ablations, and pesticide-paradox-resistant rotating scenarios without changing production behavior."
+  allowed_mutation:
+    - "test/work-discovery-benchmark"
+    - "package.json"
+    - ".gitignore"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+    - "docs/evaluation/work-discovery-benchmark-v1.md"
+  external_data_root:
+    - "D:\\ax\\_test"
+  avoid_mutation:
+    - "packages/core/src/work-discovery production implementation"
+    - "apps/desktop production implementation"
+    - "real Gmail, Slack, HTTP, PostgreSQL, MySQL, AI providers, credentials, or external side effects"
+    - "existing unit, integration, Electron E2E, product QA, and document-engine fixtures unless a regression requires it"
+    - "D:\\ax\\_test\\acceptance\\테스트양식.pdf as an implementation oracle"
+  expansions:
+    - date: 2026-09-04
+      reason: "The user requested a high-fidelity but controlled Test Lab under D:\\ax\\_test and a benchmark-first validation of Work Discovery rather than another product feature."
+      seam: "benchmark contracts/runner in the repository versus generated fixtures, run artifacts, and local test environment outside the repository"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T09:25:35.8055098+09:00
+    decision: BASELINE
+    values:
+      benchmark-contract: "FAIL as intended: test/work-discovery-benchmark/run.mjs does not exist"
+      core-typecheck: "PASS"
+      core-tests: "PASS: 331 files, 717 passed, 3 skipped"
+      core-eval: "PASS: 5 files, 11 passed"
+      architecture: "PASS: no dependency violations; 1092 modules, 3583 dependencies"
+      whitespace: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T09:53:53.7883819+09:00
+    decision: KEEP
+    values:
+      implementation-boundary: "PASS: only benchmark runner/contracts, harness records, package script, and selective test-directory unignore changed; no production Work Discovery/Desktop code changed"
+      external-boundary: "PASS: generated benchmark roots and reports remain under D:\\ax\\_test; acceptance PDF untouched"
+      rotating-scenarios: "PASS: v1 golden 10 cases plus rotating B11-B14 structural mutations"
+
+work_discovery_benchmark_expansion:
+  status: active
+  objective: "Extend the Work Discovery benchmark with independent schema-drift, source-confusion, holdout, and input-variation profiles without changing production behavior."
+  allowed_mutation:
+    - "test/work-discovery-benchmark"
+    - "package.json"
+    - ".gitignore"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+    - "docs/evaluation/work-discovery-benchmark-v1.md"
+  external_data_root:
+    - "D:\\ax\\_test"
+  avoid_mutation:
+    - "packages/core/src/work-discovery production implementation"
+    - "apps/desktop production implementation"
+    - "production candidate enumeration, replay, or transform evaluator as a gold-answer generator"
+    - "real connectors, credentials, network access, and external side effects"
+    - "D:\\ax\\_test\\acceptance\\테스트양식.pdf as an implementation oracle"
+  expansions:
+    - date: 2026-09-04
+      reason: "The user requested pesticide-paradox-resistant benchmark growth with independent schema-drift, source-confusion, holdout, and input-variation profiles plus explicit failure reports."
+      seam: "independent benchmark gold/profile construction versus production Core evaluation and external raw-input fixtures"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T09:54:55.068+09:00
+    decision: BASELINE
+    values:
+      existing-profiles: "PASS: v1=10 and rotating=14; Full correct publish 100%, false publish 0%, safe decision 100%"
+      expansion-profiles: "ABSENT as intended: schema-drift, source-confusion, holdout, input-variation, expanded, and failure-report artifacts did not exist"
+      production-boundary: "PASS: no production implementation changes"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T10:07:21.5999519+09:00
+    decision: KEEP
+    values:
+      profile-contracts: "PASS: schema-drift/source-confusion/holdout/input-variation=14 cases each; expanded=30"
+      independent-gold: "PASS: expansion-cases.mjs imports benchmark case builders only and does not import production dist or Core enumeration/replay/evaluator"
+      input-artifacts: "PASS: CSV, XLSX workbook/sheets, PostgreSQL CREATE/INSERT SQL, and minimal PDF fixtures generated under D:\\ax\\_test"
+      reports: "PASS: every profile writes report.json/report.md and separate failures.json/failures.md artifacts"
+      findings: "PASS: holdout and expanded profiles expose Full B24-B26 holdout-generalization failures without changing gold outcomes"
+      production-boundary: "PASS: no production source or connector behavior changed"
+
+work_discovery_benchmark_seed_sweep:
+  status: active
+  objective: "Repeat adversarial Work Discovery profiles across deterministic seeds and persist seed-level plus aggregate evidence without changing production behavior."
+  allowed_mutation:
+    - "test/work-discovery-benchmark"
+    - "package.json"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+    - "docs/evaluation/work-discovery-benchmark-v1.md"
+  external_data_root:
+    - "D:\\ax\\_test"
+  avoid_mutation:
+    - "packages/core/src/work-discovery production implementation"
+    - "apps/desktop production implementation"
+    - "benchmark case/gold contracts, except additive runner metadata"
+    - "real connectors, credentials, network access, and external side effects"
+    - "D:\\ax\\_test\\acceptance\\테스트양식.pdf as an implementation oracle"
+  expansions:
+    - date: 2026-09-04
+      reason: "The user requested a maximally rigorous pesticide-paradox defense; one seed per profile is insufficient evidence, so the same contract must be replayed over a deterministic seed sweep."
+      seam: "multi-seed orchestration and aggregate reporting over the existing benchmark runner"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T10:13:24.1887183+09:00
+    decision: BASELINE
+    values:
+      sweep-runner: "ABSENT as intended: no multi-seed orchestration or aggregate report exists"
+      existing-evidence: "PASS: single-seed schema-drift/source-confusion/input-variation safety runs; expanded exposes Full B24-B26"
+      production-boundary: "PASS: no production implementation changes"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T10:23:08.4920669+09:00
+    decision: KEEP
+    values:
+      sweep-runner: "PASS: sweep.mjs accepts custom seeds and defaults to 10 deterministic seeds; sweep-report.mjs writes pooled and seed-qualified evidence"
+      contracts: "PASS: expanded contract validated for 10/10 seeds at 30 cases each; v1/rotating contracts remain green"
+      safe-profile-sweeps: "PASS: schema-drift 140/140 and input-variation 140/140 Full cases safe; source-confusion 0 Full unsafe publishes across 140 cases"
+      expanded-findings: "PASS: 300-case aggregate preserves B24/B25/B26 Full failures 10 times each; no expected outcome was rewritten"
+      regression: "PASS: Core 331 files/717 passed/3 skipped, eval 11/11, Desktop typecheck/build, document-engine 39/39, architecture 1092/3583, syntax, boundary, and diff checks"
+      implementation-boundary: "PASS: only benchmark runner/report/docs/package/harness records changed; no production source or connector behavior changed"
+
+work_discovery_replay_completeness:
+  status: active
+  objective: "Make Work Discovery replay fail closed when a required output observation is absent from any training example."
+  allowed_mutation:
+    - "packages/core/src/work-discovery/synthesis/replay-runner.ts"
+    - "packages/core/src/work-discovery/synthesis/replay-runner.test.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "candidate enumeration, scoring thresholds, winner resolution, connectors, publish UX, and runtime"
+    - "benchmark gold answers and the preserved B24-B26 holdout evidence"
+    - "unrelated dirty worktree changes"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T10:39:07.9804024+09:00
+    decision: BASELINE
+    values:
+      focused-replay-suite: "PASS before change: existing replay runner tests pass"
+      missing-required-observation: "FAIL as intended: missing required observation is skipped, so a candidate can still be accepted from another example"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:02:41.8367913+09:00
+    decision: KEEP
+    values:
+      focused-regression: "PASS: replay-runner focused suite 3/3, including missing required observation and optional observation preservation"
+      production-fix: "PASS: required path absent from one training example now creates an explicit failed replay and cannot be accepted"
+      regressions: "PASS: Core 331 files/719 passed/3 skipped, eval 11/11, Desktop typecheck/build, document-engine 39/39, architecture 1092/3583, benchmark contracts, report-boundary, and diff check"
+      boundary: "PASS: no holdout gate or future-data input was added; B24-B26 evidence remains benchmark-only"
+
+work_discovery_holdout_findings:
+  status: active
+  objective: "Classify hidden-holdout benchmark mismatches without exposing holdout data to discovery, and make metric denominators explicit."
+  allowed_mutation:
+    - "test/work-discovery-benchmark"
+    - "docs/evaluation/work-discovery-benchmark-v1.md"
+    - "docs/evaluation/work-discovery-holdout-findings.md"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "packages/core/src/work-discovery production behavior except the already-scoped fail-closed replay patch"
+    - "benchmark fixtures, gold outcomes, and hidden holdout inputs"
+    - "future-data gates, cross-validation product features, live connectors, and UI"
+    - "unrelated dirty worktree changes"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T10:41:17.6860168+09:00
+    decision: BASELINE
+    values:
+      holdout-classification: "ABSENT as intended: reports preserve mismatches but do not label hidden-holdout findings separately"
+      metric-denominators: "PARTIAL: aggregate denominators exist, but metric numerator/eligible-case definitions are not emitted"
+      holdout-boundary: "PASS: holdout is evaluated only after training decision in benchmark code"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:02:41.8367913+09:00
+    decision: KEEP
+    values:
+      report-classification: "PASS: B24/B25/B26 Full failures are hidden_holdout_generalization with evaluation_only scope and explicit classes/reasons"
+      evidence: "PASS: failure JSON preserves training example/source/snapshot/observation evidence, candidate replay, publish decision, and holdout results"
+      metric-contract: "PASS: seven metrics expose definitions plus per-variant numerators and denominators; 300-case pooled Full arithmetic is 196/200 correctPublish, 30/226 falsePublish, 266/300 safeDecision"
+      holdout-boundary: "PASS: training IDs are examples_01..03, holdout IDs are holdout_01..02, overlap is zero, and boundary verifier passes"
+      regression: "PASS: holdout and expanded reports regenerated; schema-drift/input-variation 140/140 Full safety, source-confusion 0 Full unsafe publishes, v1/rotating contracts, Core, Desktop, document-engine, architecture, and diff checks pass"
+      product-boundary: "PASS: no holdout gate, cross-validation feature, future-data input, or gold-answer rewrite"
+
+work_discovery_benchmark_freeze:
+  status: completed
+  objective: "Freeze the measured Work Discovery Benchmark v1 and record the final results without tuning the product against benchmark failures."
+  allowed_mutation:
+    - "docs/evaluation/work-discovery-benchmark-v1-results.md"
+    - "docs/evaluation/work-discovery-benchmark-v1-freeze.md"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  external_data_root:
+    - "D:\\ax\\_test"
+  avoid_mutation:
+    - "test/work-discovery-benchmark case, gold-answer, seed, variant, and holdout contracts"
+    - "packages/core/src production behavior except the already recorded fail-closed replay patch"
+    - "apps/desktop production behavior"
+    - "hidden holdout input and preserved B24-B26 failure evidence"
+    - "live connectors, credentials, network access, and external side effects"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T11:41:24.3393799+09:00
+    decision: BASELINE
+    values:
+      final-rerun: "PASS: all benchmark profiles and reports regenerated from current Core dist"
+      project-regression: "PASS: Core/eval/Desktop/document-engine/architecture/syntax/diff checks"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:41:24.3393799+09:00
+    decision: KEEP
+    values:
+      frozen-results: "PASS: docs/evaluation/work-discovery-benchmark-v1-results.md"
+      freeze-manifest: "PASS: docs/evaluation/work-discovery-benchmark-v1-freeze.md with report and contract SHA-256"
+      aggregate: "PASS: expanded 10-seed sweep, 300 cases, Full 196/200 correct publish, 30/226 false publish, 266/300 safe decisions"
+      boundaries: "PASS: holdout remains evaluation-only; B24-B26 preserved; no new benchmark/product behavior added"
+
+work_discovery_benchmark_ablation:
+  status: completed
+  objective: "Run a fourth comparison-only ablation against the frozen Work Discovery Benchmark v1 without changing its inputs or product behavior."
+  allowed_mutation:
+    - "test/work-discovery-benchmark/ablation.mjs"
+    - "docs/evaluation/work-discovery-benchmark-v1-ablation.md"
+    - "package.json"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  external_data_root:
+    - "D:\\ax\\_test"
+  avoid_mutation:
+    - "frozen v1 benchmark runner, fixture, gold-answer, seed, holdout, metric, and manifest files"
+    - "packages/core/src production behavior"
+    - "apps/desktop production behavior"
+    - "D:\\ax\\_test\\runs and D:\\ax\\_test\\sweeps\\expanded frozen report artifacts"
+    - "live connectors, credentials, network access, and external side effects"
+  expansions:
+    - date: 2026-09-04
+      reason: "The user requested the fourth No Replay + No Clarification comparison while keeping Benchmark v1 frozen."
+      seam: "additive ablation runner over existing frozen fixture roots"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T11:47:48.9506748+09:00
+    decision: BASELINE
+    values:
+      frozen-inputs: "PASS: existing expanded ten-seed roots and v1 manifest are present"
+      existing-conditions: "PASS: Full, without_replay, and without_clarification are already reported"
+      fourth-condition: "ABSENT as intended: no standalone No Replay + No Clarification report"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:54:18.6709957+09:00
+    decision: KEEP
+    values:
+      ablation-run: "PASS: exact expanded 10-seed/300-case input evaluated under four conditions"
+      comparison: "PASS: No Replay + No Clarification independently matched No Replay 300/300 cases and metrics"
+      raw-evidence: "PASS: scenario/seed results and failures written under D:\\ax\\_test\\ablations\\v1-expanded-10-seed"
+      frozen-boundary: "PASS: existing v1 aggregate hash and benchmark input identity preserved; no production behavior changed"
+
+external_realistic_monthly_report_fixture:
+  status: active
+  objective: "Prepare only an independent REST API, PostgreSQL environment, report template, August example, and hidden September gold for a human AX Studio test."
+  allowed_mutation:
+    - "D:\\ax_test\\README.md"
+    - "D:\\ax_test\\rest-api\\server.mjs"
+    - "D:\\ax_test\\rest-api\\orders.json"
+    - "D:\\ax_test\\rest-api\\README.md"
+    - "D:\\ax_test\\db\\docker-compose.yml"
+    - "D:\\ax_test\\db\\schema.sql"
+    - "D:\\ax_test\\db\\seed.sql"
+    - "D:\\ax_test\\db\\README.md"
+    - "D:\\ax_test\\pdf\\monthly_customer_report_template.pdf"
+    - "D:\\ax_test\\pdf\\2026-08_customer_report_example.pdf"
+    - "D:\\ax_test\\gold\\2026-09_customer_report_expected.pdf"
+    - "D:\\ax_test\\gold\\2026-09_expected_metrics.json"
+    - "D:\\ax_test\\tools\\build_fixture.py"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  external_data_root:
+    - "D:\\ax_test"
+  avoid_mutation:
+    - "packages/core/src"
+    - "apps/desktop/src"
+    - "test/work-discovery-benchmark"
+    - "D:\\ax\\_test frozen benchmark artifacts"
+    - "AX Studio user data, connections, sessions, and credentials"
+    - "live external services and non-loopback network destinations"
+  expansions:
+    - date: 2026-09-04
+      reason: "The user clarified that the deliverable is an external realistic virtual-company test environment, with a completed prior-month report used as the style example and a hidden next-month report for manual comparison."
+      seam: "new isolated external root D:\\ax_test; no product or benchmark boundary expansion"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T12:26:20.4937485+09:00
+    decision: BASELINE
+    values:
+      external-fixture: "ABSENT as intended: D:\\ax_test report fixture has not been generated"
+      product-boundary: "PASS: task scope excludes AX Studio, Core, Desktop, and benchmark execution"
+      support-inspection: "PASS: current TransformExpr supports bounded table filters/aggregates/ratio/lookup/select/sort/limit; no product code changed"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T13:15:02.3617891+09:00
+    decision: KEEP
+    values:
+      fixture: "PASS: REST, PostgreSQL, value-free blank template, August example, and hidden September gold generated under D:\\ax_test"
+      validation: "PASS: fixture-only static/live REST, Docker PostgreSQL/FK, independent gold, and 3-page A4 PDF checks; template pages visually inspected"
+      manual-boundary: "PASS: server stopped after validation; AX connection/upload/execution remains for the user and was not performed"
+      production-boundary: "PASS: no AX Studio, Core, Desktop, Work Discovery, TransformExpr, or benchmark files changed by this task"
+
+natural_language_multi_source_command_chat_completion:
+  status: active
+  objective: "Allow a natural multi-source report instruction to complete through bounded command chat without the generic max-round fallback."
+  allowed_mutation:
+    - "packages/core/src/agent/commands/chat.ts"
+    - "packages/core/src/agent/commands/chat/loop.ts"
+    - "packages/core/src/agent/commands/chat/*.test.ts"
+    - "packages/core/src/agent/commands/chat/**/*.test.ts"
+    - "packages/core/src/agent/prompt"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "D:\\ax_test external manual fixture"
+    - "test/work-discovery-benchmark"
+    - "apps/desktop/src"
+    - "live external services, connectors, credentials, and user data"
+  expansions:
+    - recorded_at: 2026-09-05T10:21:22.7558827+09:00
+      reason: "The external manual PostgreSQL fixture could not bind its documented 55432 host port because Windows reserved 55382-55481; the public fixture was moved to an unreserved 15432 host port without changing its database volume or hidden gold."
+      added_scope:
+        - "D:\\ax_test\\db\\docker-compose.yml"
+        - "D:\\ax_test\\db\\README.md"
+        - "D:\\ax_test\\README.md"
+        - "D:\\ax_test\\tools\\build_fixture.py"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T13:43:27.9154994+09:00
+    decision: BASELINE
+    values:
+      existing-behavior: "FAIL-CAPABLE: runAxCommandChat returns the generic max-round message after eight host-command rounds"
+      regression-coverage: "ABSENT: no test asserts completion of a realistic multi-source/report request across the round boundary"
+      product-boundary: "PASS: no AX process, connector registration, upload, live service call, or production behavior was exercised"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T13:54:59.3025004+09:00
+    decision: KEEP
+    values:
+      reproduction: "PASS: deterministic eight-command plus ninth-reply sequence failed 3/3 before the fix; a seven-command minimization passed under the old budget"
+      fix: "PASS: finite command-chat budget increased from 8 to 16 without sentence/source/fixture-specific mapping"
+      chat-regression: "PASS: 11 command-chat files, 18 tests"
+      core-regression: "PASS: Core typecheck; full Core suite 331 files, 720 passed, 3 skipped; evaluation 5 files, 11 tests"
+      boundary: "PASS: only packages/core/src/agent/commands/chat.ts, its command-loop regression test, and harness records changed for this task; no AX run or live service was used"
+
+runtime_data_plane_hardening:
+  status: active
+  objective: "Deepen the existing typed artifact and step-output seams for bounded API/DB read workflows."
+  allowed_mutation:
+    - "packages/core/src/contracts/artifacts"
+    - "packages/core/src/contracts/capability-io.ts"
+    - "packages/core/src/modules/http"
+    - "packages/core/src/modules/rdb"
+    - "packages/core/src/modules/transform"
+    - "packages/core/src/modules/types.ts"
+    - "packages/core/src/runtime"
+    - "packages/core/src/workflow/bindings"
+    - "packages/core/src/workflow/transform-expr"
+    - "packages/core/src/modules/test-connectors.ts"
+    - "packages/core/src/modules/mocks"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "apps/desktop production UI and IPC"
+    - "D:\\ax_test external manual fixture"
+    - "test/work-discovery-benchmark frozen inputs and gold answers"
+    - "live connectors, credentials, and external side effects"
+    - "document-engine implementation and PDF fixtures"
+  expansions: []
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T15:00:54.1348673+09:00
+    decision: BASELINE
+    values:
+      core-tests: "PASS: 331 files, 720 passed, 3 skipped"
+      core-typecheck: "PASS"
+      architecture: "PASS: 1092 modules, 3583 dependencies"
+      data-contract: "FAIL-CAPABLE: RDB query.read declares TableArtifact but returns raw rows; HTTP response is an unvalidated object"
+      explicit-output-seam: "PARTIAL: PortBinding exists, but runtime resolution primarily reads stepResults and ctx.variables"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T15:48:34.2969772+09:00
+    decision: KEEP
+    values:
+      typed-data-contract: "PASS: RDB and HTTP read paths materialize validated artifacts with completeness/provenance metadata"
+      incomplete-input-safety: "PASS: row-limited TableArtifact inputs fail closed at aggregate evaluation"
+      explicit-output-seam: "PASS: action outputs resolve through stepId.port with legacy stepResults fallback and approval checkpoint restore"
+      focused-tests: "PASS: 6 files, 15 tests"
+      core-regression: "PASS: 335 files, 732 passed, 3 skipped; Core evaluation 5 files/11 tests"
+      project-regression: "PASS: Core/Desktop typechecks, Desktop build, architecture 1099/3622, and git diff --check"
+      implementation-boundary: "PASS: only the declared Core runtime data-plane seams and harness records changed; no live connectors or external fixture changes"
+
+generated_pdf_user_delivery:
+  status: active
+  objective: "Project generated PDF metadata into Workspace and provide safe download and user-selected-folder delivery actions."
+  allowed_mutation:
+    - "packages/core/src/store/repositories/workspace-chat"
+    - "packages/core/src/runtime/execution-result"
+    - "packages/core/src/index.ts"
+    - "apps/desktop/electron/main/ipc/artifact-handlers"
+    - "apps/desktop/electron/main/ipc/artifact-handlers.ts"
+    - "apps/desktop/electron/preload/index.ts"
+    - "apps/desktop/src/types/ax-api"
+    - "apps/desktop/src/components/workspace"
+    - "apps/desktop/src/components/activity"
+    - "apps/desktop/src/styles/activity.css"
+    - "apps/desktop/src/components/workspace/ax-workspace.css"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "D:\\ax_test external manual fixture"
+    - "test/work-discovery-benchmark frozen inputs and gold answers"
+    - "packages/core/src/modules/local-folder write capabilities"
+    - "live connectors, credentials, and external side effects"
+  expansions: []
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T16:19:47.3281230+09:00
+    decision: BASELINE
+    values:
+      artifact-export-boundary: "PASS: existing Save As PDF handler suite 5/5"
+      result-projection: "PASS: existing execution result projection suites 3/3; Workspace UI suite 10/10"
+      workspace-delivery: "FAIL-CAPABLE: workspace chat contract has no generated PDF metadata and result card has no artifact actions"
+      folder-delivery: "ABSENT: no native folder-save IPC; local_folder connector remains read-only"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T16:39:15.1972084+09:00
+    decision: KEEP
+    values:
+      safe-projection: "PASS: latest pdf_generated log becomes bounded metadata; storedPath and pdfBytes are not persisted to chat"
+      delivery-actions: "PASS: Workspace and Activity expose Save As download and native selected-folder save"
+      overwrite-safety: "PASS: default host copy uses COPYFILE_EXCL; cancellation and EEXIST are user-visible"
+      verification: "PASS: focused suites, Core regression/eval, Core/Desktop typecheck, Desktop build, architecture, and diff check"
+      boundary: "PASS: no D:\\ax_test, benchmark, PDF engine, connector, credential, or connected-folder write change"
+
+command_chat_protocol_recovery:
+  status: active
+  objective: "Recover once from a provider response that places a capability ID in the outer AX command without weakening command validation."
+  allowed_mutation:
+    - "packages/core/src/agent/commands/chat"
+    - "packages/core/src/agent/commands/transport-contract.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "apps/desktop UI and IPC behavior"
+    - "packages/core/src/modules/* connector permissions and execution"
+    - "D:\\ax_test external manual fixture"
+    - "test/work-discovery-benchmark frozen inputs and gold answers"
+    - "credentials and live external services"
+  expansions: []
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T16:48:11+09:00
+    decision: BASELINE
+    values:
+      exact-request-recovery: "FAIL: invalid rdb.schema.describe response returned the user-facing resend error immediately; follow-up provider response was never requested"
+      transport-safety: "PASS: unsupported capability IDs are rejected for Codex, Claude, and direct/API transports; command service is not called"
+      user-impact: "FAIL: the user must resend the full request, and a second attempt can surface the same protocol failure"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T16:56:28.9220837+09:00
+    decision: KEEP
+    values:
+      exact-request-recovery: "PASS: one rejected capability-ID response is corrected internally and the next valid reply is returned"
+      bounded-failure: "PASS: persistent invalid output makes exactly two provider calls and returns sanitized error without parser details"
+      transport-coverage: "PASS: Codex, Claude, and direct/API recovery tests"
+      regression: "PASS: Core 335 files/736 passed/3 skipped, evaluation 11/11, Core/Desktop typechecks, Desktop build, architecture 1100/3626, diff check"
+      implementation-boundary: "PASS: no capability alias mapping, connector/PDF/DB behavior, benchmark fixture, credential, or external service changed"
+
+monthly_report_discovery_diagnosis:
+  status: diagnostic
+  allowed_mutation:
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  read_only_evidence:
+    - "C:\\Users\\plosind\\AppData\\Local\\AXStudio-dev\\data\\ax-studio.db"
+    - "packages/core/src/work-discovery"
+    - "packages/core/src/modules/* discovery-source registration"
+    - "connected service availability without credential output"
+  avoid_mutation:
+    - "packages/core/src"
+    - "apps/desktop"
+    - "D:\\ax_test and D:\\ax\\_test external fixtures"
+    - "test/work-discovery-benchmark frozen inputs and gold answers"
+    - "AXStudio-dev database, uploaded documents, credentials, and live connectors"
+  expansions: []
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T17:10:08.5503306+09:00
+    decision: DIAGNOSED
+    values:
+      exact-symptom: "RED reproduced from active AXStudio-dev session wd_4050af74de9d4477"
+      input-ingest: "PASS: completed August PDF and blank template PDF are both ready via Docling"
+      source-selection: "FAIL: 5003 sources, zero HTTP entries, 12/12 reads spent on 3 RDB + 9 unrelated local sheets"
+      observation-model: "FAIL: 43 currency observations collide on path krw; zero passing mappings"
+      capability-boundary: "FAIL: no HTTP discovery provider, PDF template source support, filter/join enumeration, or PDF output compilation"
+      safety-gate: "PASS: Work Discovery abstained instead of publishing an unsupported workflow"
+      mutation-boundary: "PASS: only harness records changed; product, fixtures, app data, credentials, and live services remain untouched"
+
+teach_by_example_pdf_report_generation:
+  status: active
+  objective: "Generate and verify a PDF report from completed examples, a blank template, and explicitly selected read-only HTTP/RDB sources through one bounded report request."
+  allowed_mutation:
+    - "packages/core/src/report-generation"
+    - "packages/core/src/agent/commands contract, schema, service, and embedded prompt needed to expose the report seam"
+    - "packages/core/src/modules/http discovery/capture adapter registration"
+    - "packages/core/src/work-discovery observation/source-selection seams only where shared report contracts require it"
+    - "packages/core/src/contracts and index exports needed by the report seam"
+    - "packages/core/src/testing/e2e report-generation coverage"
+    - "apps/desktop command/API contracts only if required to carry the bounded report request/result"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  read_only_evidence:
+    - "C:\\Users\\plosind\\AppData\\Local\\AXStudio-dev\\data\\ax-studio.db"
+    - "D:\\ax_test external manual-test inputs and hidden gold used only after generation"
+    - "connected HTTP/RDB service metadata without credential output"
+  avoid_mutation:
+    - "D:\\ax_test external manual fixture"
+    - "test/work-discovery-benchmark frozen inputs, gold answers, seeds, metrics, and manifests"
+    - "existing scalar Work Discovery replay/publish policy except shared correctness fixes with independent tests"
+    - "connector write permissions, credentials, live source data, and external delivery"
+    - "unrelated Workspace redesign and unrelated dirty worktree changes"
+  expansions: []
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T17:18:50.1258918+09:00
+    decision: BASELINE
+    values:
+      exact-current-failure: "FAIL-CAPABLE: persisted session remains failed/no_matching_candidate with the exact replay-coverage error"
+      existing-focused-regression: "PASS: document observation, inventory, PDF write, and HTTP read suites passed 4 files/5 tests"
+      report-public-seam: "ABSENT: no bounded report request/result module exists"
+      selected-source-capture: "ABSENT: HTTP is not a discovery source and discovery.start accepts no source scope"
+      structured-report-plan: "ABSENT: repeated document values collide and current scalar candidates cannot express report filters/joins/grouping/template bindings"
+      pdf-output-compilation: "ABSENT: discovered workflows do not compile a PDF output step"
