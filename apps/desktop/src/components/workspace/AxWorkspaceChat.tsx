@@ -9,6 +9,7 @@ import type {
   DiscoveryInspectView,
   WorkspaceChatMessage,
 } from '@ax-studio/core';
+import type { GeneratedArtifactExportResult } from '../../types/ax-api/contracts';
 import { AssistantMessage, UserMessage } from './ax-workspace-chat/messages';
 import { appendText, toThreadMessages } from './ax-workspace-chat/model';
 import { WorkspaceComposer } from './ax-workspace-chat/composer';
@@ -34,6 +35,8 @@ interface AxWorkspaceChatProps {
   onSend: (text: string) => Promise<void>;
   onApproveApproval?: (approvalId: string) => Promise<void>;
   onRejectApproval?: (approvalId: string) => Promise<void>;
+  onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
@@ -56,6 +59,8 @@ export function AxWorkspaceChat({
   onSend,
   onApproveApproval,
   onRejectApproval,
+  onDownloadPdf,
+  onSavePdfToFolder,
   onDismissError,
   onRegisterWorkflow,
   onAttachExample,
@@ -106,6 +111,8 @@ export function AxWorkspaceChat({
                 onSend={onSend}
                 onApproveApproval={onApproveApproval}
                 onRejectApproval={onRejectApproval}
+                onDownloadPdf={onDownloadPdf}
+                onSavePdfToFolder={onSavePdfToFolder}
               />
             ))}
             {busy && <WorkspaceTypingState progress={progress} />}

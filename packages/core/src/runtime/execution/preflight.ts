@@ -37,6 +37,11 @@ export function recordPreflightResult(
     ...(data === undefined ? {} : { data }),
   }];
   host.config.store.finishExecution(executionId, status, errorCode, log);
+  if (options.jobId) {
+    log.push({ at: new Date().toISOString(), level: 'info', code: 'execution_dequeued',
+      message: '접수한 작업의 실행 전 검사가 종료되었습니다.', data: { jobId: options.jobId, executionId } });
+    host.config.store.updateExecutionLog(executionId, log);
+  }
   const result: ExecutionResult = { executionId, status, errorCode, log };
   host.notifyExecutionFinished(result);
   return result;

@@ -10,11 +10,14 @@ export function createConnectorContext(
   variables: Record<string, unknown>,
   connections: ReturnType<WorkflowStore['getConnections']>,
   log: (entry: ExecutionLogEntry) => void,
+  workspaceSessionId?: string,
 ): ConnectorContext {
   return {
     executionId,
     workflowId,
+    ...(workspaceSessionId ? { workspaceSessionId } : {}),
     variables,
+    outputs: {},
     connections,
     artifactSink: host.config.artifactSink,
     resolveFileRef: (file) => {

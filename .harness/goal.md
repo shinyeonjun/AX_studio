@@ -1,3 +1,17 @@
+# Current task: report execution hardening
+
+Active goal and evaluator: report-execution-hardening.md.
+
+# Current patch: Codex report structured-output round trip
+
+Repair execution 475c8f75-8a0f-4522-8ae0-0c210e0327dc's provider wire mismatch.
+Success: real Codex adapter tests restore encoded records/unions, preserve absent
+optional values and real nulls, reject invalid values through original Zod,
+and expose bounded diagnostics. Failed cards must use failure styling.
+No fixture/gold changes, live external writes, or validation weakening.
+Evaluator: adapter regression tests, report/core regression, Core/Desktop
+typechecks, Desktop build, and diff check. Live report success is separate.
+
 # Goal: Work Discovery correctness-first completion
 
 Complete Work Discovery so teach-by-example flows are verified end-to-end:
@@ -7992,6 +8006,111 @@ semantics; this is a test-organization-only change.
 - Core typecheck/tests/evaluation, document-engine tests, desktop
   typecheck/build, architecture check, and `git diff --check` all pass.
 
+## Current validation task: Work Discovery Benchmark v1 test lab
+
+Create a reproducible, production-shaped benchmark for the implemented Work
+Discovery synthesis boundary. Keep benchmark code and contracts in the
+repository, while keeping generated fixtures, external-like inputs, run
+artifacts, and logs under `D:\\ax\\_test`. Measure the value of replay and
+clarification without adding real provider side effects or hardcoded answers.
+
+### Success criteria
+
+- A documented benchmark contract defines examples, holdout cases, expected
+  outcomes, accepted equivalent transformations, and metric denominators.
+- A deterministic fixture generator creates varied, inspectable cases under
+  an explicit benchmark root without using real credentials or external APIs.
+- The original 10-case golden set remains stable while a rotating profile adds
+  deterministic seed and structural mutations so the runner is not tuned to
+  fixed values or case IDs.
+- The runner evaluates AX Full, AX without replay, and AX without
+  clarification on the same cases and writes machine-readable plus human-
+  readable reports outside the repository.
+- The benchmark includes correct publish, correct clarification, correct
+  no-match, source ambiguity, holdout-overfit, null/duplicate, and truncated
+  snapshot cases.
+- The runner proves replay never performs external side effects and never
+  treats a failed or ambiguous case as publishable.
+- Existing Core tests, evaluation, desktop typecheck/build, document-engine,
+  architecture, and whitespace checks remain green.
+
+### Non-goals
+
+- Replacing existing unit, integration, Electron E2E, or product QA suites.
+- Calling real Gmail, Slack, HTTP, PostgreSQL, or AI provider services from
+  the benchmark.
+- Using `D:\\ax\\_test\\acceptance\\테스트양식.pdf` as an implementation
+  oracle; it remains a final black-box acceptance input only.
+- Expanding Work Discovery to unsupported text/document synthesis in this
+  validation slice.
+
+### Final verification for this iteration (2026-09-04T09:53:53.7883819+09:00)
+
+- The fixed v1 profile runs 10 cases; the rotating profile runs 14 cases with
+  four explicit structural mutations. Both are generated outside the repo.
+- Full v1 and rotating runs achieved 100% correct publish, 0% false publish,
+  and 100% safe decision; ambiguity remained clarification and no-match cases
+  remained blocked. Ablations exposed replay and clarification regressions.
+- Same-seed regeneration produced zero mismatches across 98 case/expected
+  files; a different seed changed fixture values while preserving outcomes.
+- Core typecheck, 331 Core test files (717 passed, 3 skipped), evaluation 11/11,
+  desktop typecheck/build, document-engine 39/39, architecture, and diff
+  checks passed. No production implementation was changed.
+
+## Current validation task: Work Discovery adversarial profile expansion
+
+Keep the v1 golden and rotating profiles unchanged while adding independent
+benchmark profiles for schema drift, source confusion, holdout overfit, and
+input-format variation. Each profile must use independently declared gold
+outcomes, run the same ablations, preserve the no-side-effect boundary, and
+write explicit failure evidence rather than changing expected results to fit
+the current implementation.
+
+### Success criteria
+
+- `schema-drift`, `source-confusion`, `holdout`, `input-variation`, and
+  combined `expanded` profiles have validated case counts and stable IDs.
+- Gold case construction does not import or call Core candidate enumeration,
+  replay, or transform evaluation; expected values remain independently
+  derived from fixture data.
+- CSV, XLSX, PostgreSQL, and PDF input artifacts are generated under the
+  external test lab without live connector calls or credentials.
+- Full, no-replay, and no-clarification results are reported for every new
+  profile, with seed/profile metadata and a separate failure report.
+- Holdout-only failures are visible as evidence and are not silently reclassified
+  as passing cases.
+- Existing v1/rotating benchmark results and all project regression checks stay
+  green; no production behavior is changed.
+
+### Non-goals
+
+- Patching production Work Discovery behavior in response to a newly exposed
+  benchmark failure during this iteration.
+- Calling real PostgreSQL, XLSX providers, Docling, PDF services, Slack, HTTP,
+  or other external connectors from the benchmark.
+- Using `D:\\ax\\_test\\acceptance\\테스트양식.pdf` as a gold oracle.
+
+### Baseline (2026-09-04T09:54:55.068+09:00)
+
+- v1 and rotating profiles existed and passed their contracts and safety run;
+  expansion profiles and `latest-failures.*` artifacts did not exist.
+- The previous rotating run had 14 cases with Full correct publish 100%, false
+  publish 0%, and safe decision 100%.
+- Core typecheck/tests/evaluation, Desktop build, document-engine, architecture,
+  and whitespace checks were green.
+
+### Final verification (2026-09-04T10:07:21.5999519+09:00)
+
+- All five new profile contracts passed: schema-drift/source-confusion/
+  holdout/input-variation each 14 cases; expanded 30 cases.
+- Schema-drift, source-confusion, and input-variation Full runs had 100%
+  correct publish, 0% false publish, and 100% safe decision.
+- Holdout and expanded runs recorded three Full holdout-generalization
+  failures (B24-B26) in separate failure reports; these were not reclassified
+  or hidden. They are the next production investigation target.
+- Same-seed reproducibility, raw CSV/XLSX/SQL/PDF generation, Core and project
+  regression checks passed. Production code remained unchanged.
+
 ## Current structural task: workflow repair test split (phase 208)
 
 Split `workflow/repair.test.ts` into focused repair-candidate suggestion and
@@ -13718,3 +13837,618 @@ execution-result/chat behavior; this is a test-organization-only change.
   suites pass `5/5`.
 - Core typecheck/tests/evaluation, document-engine tests, desktop
   typecheck/build, architecture check, and `git diff --check` all pass.
+
+## Current validation task: Work Discovery multi-seed adversarial sweep
+
+Keep the existing v1, rotating, and adversarial profile contracts unchanged,
+then execute the same independent benchmark cases across multiple deterministic
+seeds. Store each seed's fixture/report and an aggregate report so a passing
+single seed cannot hide a pesticide-paradox failure. Preserve holdout failures
+as evidence; do not change production Work Discovery code or rewrite gold
+answers to improve the aggregate numbers.
+
+### Success criteria
+
+- A dedicated sweep runner accepts a profile and at least two deterministic
+  seeds, with a documented default ten-seed set.
+- Every seed gets its own external fixture root and report, while the sweep
+  writes one aggregate JSON/Markdown report containing seed-level metrics,
+  pooled metrics, safety counts, and seed-qualified failure rows.
+- The sweep uses the existing production Core adapter only for evaluation and
+  keeps independent case/gold construction in benchmark code.
+- `schema-drift`, `source-confusion`, and `input-variation` sweeps pass the
+  Full safety gate across all default seeds.
+- `expanded` sweep results expose the known B24-B26 holdout-generalization
+  failures for every affected seed without hiding or reclassifying them.
+- The original v1 and rotating single-seed contracts remain green and no
+  production source changes are introduced.
+
+### Non-goals
+
+- Changing production candidate enumeration, replay, evaluator, runtime, or
+  connector behavior.
+- Treating the known holdout failures as fixture errors or weakening the safety
+  gate to make `expanded` pass.
+- Adding live Gmail, Slack, HTTP, PostgreSQL, AI-provider, or network calls.
+- Replacing Product E2E or document-engine acceptance tests with this sweep.
+
+### Baseline (2026-09-04T10:13:24.1887183+09:00)
+
+- Single-seed adversarial profiles exist and produce reports, but no sweep
+  runner, seed-qualified aggregate, or multi-seed evidence exists.
+- `expanded` has 30 cases and already exposes Full B24-B26 as holdout
+  generalization failures; the baseline must preserve these failures across
+  seeds rather than treating them as a regression to hide.
+- Production-boundary check remains clean: no Core or Desktop source changes.
+
+### Final (2026-09-04T10:23:08.4920669+09:00)
+
+- Added a dedicated multi-seed sweep with a documented default of 10
+  deterministic seeds, per-seed fixture/report roots, and pooled aggregate
+  JSON/Markdown plus seed-qualified failure evidence.
+- Contract checks passed for all 10 seeds at 30 cases each. The schema-drift
+  and input-variation sweeps each passed Full safety at 140/140 cases; the
+  source-confusion sweep had 0 Full unsafe publishes across 140 cases while
+  exposing a small conservative-clarification gap.
+- The expanded sweep evaluated 300 cases. Full correct publish was 98.0%,
+  false publish was 13.27%, and safe decision was 88.67%. B24, B25, and B26
+  each produced 10 preserved Full holdout-generalization failures; none were
+  reclassified or removed.
+- v1/rotating regression contracts, Core 331/717/3, eval 11/11, Desktop
+  typecheck/build, document-engine 39/39, architecture 1092/3583, syntax,
+  production-boundary, and diff checks passed. No production source changed.
+
+## Current correctness task: fail closed when a required observation is missing
+
+The replay runner must not accept a candidate merely because it passes the
+examples that happen to contain a required output path. A required path that is
+absent from any training example must produce an explicit failed replay, so the
+session cannot claim that every example was reproduced.
+
+### Success criteria
+
+- A required observation path missing from one example creates a failed replay
+  result for that example and prevents the candidate from being accepted.
+- Existing optional-observation behavior remains unchanged.
+- Existing truncated-snapshot, multi-example replay, Work Discovery benchmark,
+  Core typecheck/tests/evaluation, and project regressions remain green.
+- The patch stays within the replay runner, its focused regression test, and
+  the harness/evidence records.
+
+### Non-goals
+
+- Adding future holdout data to the product session or pretending an unseen
+  future result can be known during discovery.
+- Changing candidate enumeration, scoring thresholds, source connectors,
+  clarification wording, publish UX, or workflow runtime behavior.
+- Rewriting the benchmark's B24-B26 holdout-generalization evidence.
+
+## Current evaluation task: classify hidden-holdout findings and expose metric denominators
+
+Keep hidden holdout examples out of discovery, replay, and publish decisions.
+Document whether each B24-B26 mismatch is a benchmark-only generalization or
+identifiability finding versus an observable product contract violation, and
+make every aggregate metric expose its numerator and denominator.
+
+### Success criteria
+
+- B24-B26 retain their current fixtures and gold outcomes while their failure
+  evidence records the discovery inputs, training replay, ambiguity decision,
+  publish decision, and hidden holdout result.
+- The report exposes numerator, denominator, and eligible-case definitions for
+  correct publish, false publish, safe decision, and holdout accuracy.
+- Hidden holdout data is never passed to the production Core adapter before the
+  discovery decision; it remains an evaluation-only check.
+- The missing-required-observation replay regression remains fixed and all
+  benchmark, Core, and project checks stay green.
+
+### Non-goals
+
+- Adding a holdout gate, cross-validation feature, or future-data input to the
+  product.
+- Rewriting expected outcomes or deleting the preserved B24-B26 failures.
+- Adding live connectors, network calls, or unrelated product/UI changes.
+
+### Final: replay completeness (2026-09-04T11:02:41.8367913+09:00)
+
+- The focused replay suite passes 3/3, including the new missing-required-
+  observation regression and the unchanged optional-observation behavior.
+- The minimal production patch is limited to `replay-runner.ts`: a required
+  path absent from any training example now creates an explicit failed replay,
+  so the candidate cannot be accepted from the remaining examples alone.
+- Core typecheck/tests/evaluation, Desktop typecheck/build, document-engine
+  39/39, architecture 1092/3583, benchmark contracts, report-boundary checks,
+  and `git diff --check` pass. The full Core suite is 331 files with 719 passed
+  and 3 skipped.
+
+### Final: hidden-holdout findings (2026-09-04T11:02:41.8367913+09:00)
+
+- B24, B25, and B26 retain their fixtures and gold outcomes and now preserve
+  training evidence, candidate replay, publish/ambiguity decision, and hidden
+  holdout evidence in the report.
+- The 10-seed expanded run remains 300 cases: Full has 196/200 correct
+  publishes (98.0%), 30/226 unsafe publishes (13.27%), 266/300 safe decisions
+  (88.67%), and 30 hidden-holdout generalization failures. Those failures are
+  explicitly marked evaluation-only; hidden holdout was not passed to product
+  discovery or publish.
+- B24 is classified as `algorithmic_limitation`; B25 and B26 as
+  `missing_product_capability`. No holdout gate, cross-validation feature, or
+  gold-answer rewrite was added.
+- The report boundary verifier also validates pooled metric arithmetic and
+  preserves classified B24~B26 evidence for every seed.
+
+## Current evaluation task: freeze Work Discovery Benchmark v1 and extract results
+
+Freeze the already measured Work Discovery benchmark instead of adding more
+cases or tuning production behavior against the observed failures. Preserve
+the fixture, gold-answer, seed, variant, holdout-boundary, and metric contracts;
+write a durable result summary and representative artifact manifest.
+
+### Success criteria
+
+- The final v1, adversarial profiles, and ten-seed aggregate are regenerated
+  from the current code and their report-boundary checks pass.
+- Core, evaluation, Desktop, document-engine, architecture, syntax, and
+  whitespace regressions remain green.
+- The final report states metric numerators/denominators and distinguishes
+  product bugs from evaluation-only B24~B26 findings.
+- The freeze manifest records the representative report and contract hashes.
+- No new benchmark case, holdout gate, cross-validation feature, or unrelated
+  product behavior is added during the freeze.
+
+### Non-goals
+
+- Improving the frozen benchmark score by changing production behavior.
+- Rewriting fixtures, gold answers, seed lists, or preserved failure evidence.
+- Treating hidden holdout data as product discovery or publish input.
+- Mixing PDF Product E2E or Desktop connector acceptance into Work Discovery
+  metrics.
+
+### Final (2026-09-04T11:41:24.3393799+09:00)
+
+- Regenerated v1, rotating, schema-drift, source-confusion, holdout,
+  input-variation, and expanded reports from the current Core build.
+- Re-ran the three safe ten-seed sweeps and the expanded ten-seed aggregate:
+  300 cases, Full 196/200 correct publish, 30/226 false publish, and
+  266/300 safe decisions; B24~B26 remained 10 failures each.
+- Core 331 files/719 passed/3 skipped, evaluation 11/11, Desktop
+  typecheck/build, document-engine 39/39, architecture 1092/3583,
+  syntax checks, and diff check passed.
+- Added the frozen result summary and representative SHA-256 manifest under
+  `docs/evaluation/`. No benchmark or product behavior was tuned for this
+  checkpoint.
+
+## Current evaluation task: compare the fourth frozen-v1 ablation condition
+
+Use the already frozen Work Discovery Benchmark v1 inputs to add one
+comparison-only condition: `No Replay + No Clarification`. Do not modify the
+v1 fixture, gold-answer, seed, holdout, or metric contracts. The existing
+three conditions and their reports remain the frozen baseline; the new runner
+must write a separate comparison artifact.
+
+### Success criteria
+
+- The same 10 seeds × 30 scenarios are evaluated under Full, No Replay, No
+  Clarification, and No Replay + No Clarification.
+- The fourth condition is executed through its own no-replay/no-clarification
+  path and its outcomes are compared with the existing No Replay path.
+- Scenario/seed raw outcomes and an aggregate comparison table are preserved
+  outside the repository under `D:\ax\_test`.
+- All conditions use the existing metric numerator/denominator definitions.
+- The frozen v1 fixture, gold, seed list, existing reports, and manifest are
+  not rewritten; no production behavior is changed.
+
+### Non-goals
+
+- Changing `v1` benchmark source files, fixtures, gold answers, or existing
+  report artifacts.
+- Adding a holdout gate, cross-validation, new product capability, or tuning
+  production behavior to improve the comparison.
+- Treating the post-decision holdout evaluation as input to any condition.
+
+### Baseline (2026-09-04T11:47:48.9506748+09:00)
+
+- Frozen v1 already has Full, No Replay, and No Clarification over the same
+  expanded 10-seed/300-case input.
+- No separate fourth-condition raw comparison report exists.
+- The existing frozen v1 source/manifest remains unchanged at task start.
+
+### Final (2026-09-04T11:54:18.6709957+09:00)
+
+- Added an additive `ablation.mjs` runner and `test:wd-ablation` script; the
+  frozen benchmark runner, fixtures, gold answers, seeds, and manifest were
+  not modified.
+- Ran the exact expanded 10-seed/300-case input under all four conditions.
+  Full remained 196/200 correct publish, 30/226 false publish, and 266/300
+  safe decisions. No Replay was 10/200, 290/300, and 200/300 respectively;
+  No Clarification was 200/200, 70/270, and 230/300.
+- The independent No Replay + No Clarification path matched No Replay for
+  300/300 scenarios and all decision metrics; the result is preserved under
+  `D:\ax\_test\ablations\v1-expanded-10-seed`.
+- The frozen aggregate identity and SHA-256 remained unchanged. Contract,
+  equivalence, syntax, diff, and previously completed project regression
+  checks pass.
+
+## Current task: external realistic monthly-report fixture
+
+Prepare only an independent, realistic virtual-company environment and
+reference documents for a human to test AX Studio manually. The fixture lives
+outside the repository under `D:\\ax_test`; AX Studio itself must not be
+started, connected, uploaded to, or evaluated by this task.
+
+### Success criteria
+
+- A local REST order/payment API runs independently at `127.0.0.1:43120`,
+  requires the documented API key, supports bounded date/status filtering,
+  pagination, health, and order detail, and contains deterministic August and
+  September 2026 data with realistic status, refund, discount, plan, channel,
+  and boundary-date variation.
+- A Docker Compose PostgreSQL fixture runs independently at port `55432`,
+  exposes customers, contracts, and account managers, and has valid foreign
+  keys plus customer IDs that match the REST orders. The REST payload does not
+  contain customer enrichment or contract fields.
+- A blank A4 Korean report template, a completed August example report, and a
+  hidden completed September expected report are produced with the same
+  stable layout, readable Korean font, and no clipped content.
+- A hidden September metrics JSON is calculated by an independent fixture/gold
+  implementation, not by AX, Work Discovery, TransformExpr, or copied product
+  code. The August example and September expected report agree with their
+  respective source data.
+- `D:\\ax_test\\README.md` gives a non-technical manual flow, the exact
+  connection values, the two files safe to show AX, the two hidden gold files,
+  and one natural-language instruction asking AX to reproduce the August
+  reporting style for September.
+- Fixture-only validation covers API data/pagination, database SQL/FK shape,
+  deterministic independent gold values, source key consistency, and PDF
+  rendering. No AX process, Work Discovery run, connector registration,
+  production source, or benchmark runner is changed or executed.
+
+### Non-goals
+
+- Testing AX Studio or deciding whether AX discovers the workflow correctly.
+- Modifying Core, Desktop, Work Discovery, TransformExpr, or benchmark code.
+- Connecting live Gmail, Slack, external REST services, user credentials, or
+  any non-loopback endpoint.
+- Showing the September expected report or expected metrics to AX during the
+  human test.
+
+### Final record (2026-09-04T13:15:02.3617891+09:00)
+
+- The independent fixture is complete under `D:\\ax_test`.
+- REST static and live checks, PostgreSQL Compose/FK checks, independent gold
+  checks, and rendered PDF checks passed.
+- The AX-facing template contains only the fixed form structure; all variable
+  values and placeholder tokens are blank.
+- The database and REST server were stopped after validation; the user starts
+  them only for the manual AX test.
+- AX Studio, Work Discovery, connector registration, uploads, benchmark
+  execution, and production code were not run or changed by this task.
+
+## Current task: natural-language multi-source command chat completion
+
+Make the user's natural, high-level monthly-report instruction work as a
+single coherent AX request when the necessary connected sources and reference
+documents are already available. The command chat must not fall back to the
+generic "단계가 너무 많아졌습니다" message merely because a valid plan needs
+more bounded host commands than the current loop allows.
+
+### Success criteria
+
+- A regression test reproduces the exact max-round symptom with a realistic
+  multi-source/report request and fails before the fix.
+- The same request completes through a bounded, deterministic command loop
+  after the fix, without an unbounded retry loop or a generic max-round
+  fallback.
+- The command protocol preserves the user's attached reference documents,
+  connected HTTP/RDB context, host command results, and safety constraints
+  across rounds so the model can keep one coherent plan.
+- Existing command access, approval, read-only, session-isolation, protocol,
+  and regression tests remain passing.
+
+### Non-goals
+
+- Changing the external manual-test fixture under `D:\\ax_test`.
+- Running AX Studio, registering connectors, uploading files, or calling live
+  external services as part of the code fix.
+- Removing bounded execution or making the loop unlimited.
+- Hardcoding this one Korean sentence, source names, report values, or a
+  special command sequence.
+
+### Final record (2026-09-04T13:54:59.3025004+09:00)
+
+- The exact natural-language multi-source report request reproduced the generic
+  max-round fallback before the fix and completed after the fix.
+- The command-chat budget is finite at 16 rounds; no sentence, source, fixture,
+  or command-sequence mapping was added.
+- The focused regression passed 3/3, all command-chat tests passed across 11
+  files and 18 tests, Core typecheck passed, the full Core suite passed with
+  331 files and 720 passed tests (3 skipped), and the Core evaluation passed
+  with 5 files and 11 tests.
+- The change stayed within the command-chat boundary. AX Studio, connector
+  registration, uploads, live services, and the external manual-test fixture
+  were not run or changed.
+
+## Current task: deepen the runtime data plane for the realistic report path
+
+Strengthen the existing modular-monolith seams so a realistic read-only
+monthly-report request can preserve typed data contracts, source completeness,
+explicit step outputs, and provenance through API/DB reads and deterministic
+transforms. Keep the current product behavior compatible where possible and
+make the first patch a vertical slice rather than a repository-wide rewrite.
+
+### Success criteria
+
+- Table-producing runtime capabilities return validated `TableArtifact` values
+  with explicit completeness metadata; a row-limited result cannot be treated
+  as a complete aggregate input.
+- HTTP read responses have a validated structured contract that records bounded
+  response metadata and can be converted to a table without heuristic shape
+  guessing.
+- Runtime action outputs are addressable through explicit `stepId.port`
+  bindings while legacy step result compatibility remains intact.
+- Existing RDB, HTTP, transform, workflow-binding, Core typecheck, and Core
+  test suites remain green.
+- The change is covered by focused tests at the new module interface and does
+  not call live external connectors.
+
+### Non-goals
+
+- No microservices, event-sourcing system, or full runtime rewrite.
+- No removal of row, byte, timeout, context, or execution safety limits.
+- No automatic holdout gate or benchmark fixture/gold-answer modification.
+- No PDF engine replacement, connected-folder export implementation, or UI
+  redesign in this first vertical slice.
+
+### Baseline (2026-09-04T15:00:54.1348673+09:00)
+
+- Core tests: PASS, 331 files, 720 passed, 3 skipped.
+- Core typecheck: PASS.
+- Architecture check: PASS, 1,092 modules and 3,583 dependencies cruised.
+- Existing runtime currently mixes connector outputs with `unknown` values and
+  RDB `query.read` exposes raw rows despite declaring `TableArtifact` output.
+
+### Final record (2026-09-04T15:48:34.2969772+09:00)
+
+- Added shared completeness metadata and builders for table artifacts; RDB
+  reads now probe one extra row and preserve `partial/row_limit` instead of
+  presenting a bounded result as complete.
+- Added a validated `HttpResponseArtifact`, explicit JSON row-path conversion
+  to `TableArtifact`, and fail-closed aggregate evaluation for incomplete
+  inputs.
+- Added runtime output-port materialization and explicit `stepId.port` lookup
+  for action bindings, conditions, and approval resume while retaining legacy
+  `stepResults` compatibility.
+- Focused data-contract tests passed 6 files/15 tests. Full Core regression
+  passed 335 files/732 tests with 3 skipped; Core and Desktop typechecks,
+  Desktop production build, evaluation (5 files/11 tests), architecture
+  check (1,099 modules/3,622 dependencies), and whitespace checks passed.
+- No live connector, credential, benchmark, PDF, external fixture, or UI
+  execution was used or modified in this vertical slice.
+
+## Current task: make generated PDF results recoverable and user-deliverable
+
+When a PDF report is generated by a real execution, preserve its safe artifact
+metadata in the workspace execution-result message and provide two explicit
+host-owned delivery actions: Save As download and save to a user-selected
+folder. Keep the internal artifact copy as the recovery source.
+
+### Success criteria
+
+- A valid `pdf_generated` execution log is projected into the mapped workspace
+  chat without exposing stored paths, raw bytes, or credentials.
+- Workspace and Activity result views expose both `다운로드` and
+  `지정 폴더에 저장` for generated PDFs.
+- Both actions validate the artifact source and never allow silent overwrite;
+  cancellation and destination conflicts remain user-visible and recoverable.
+- Folder selection is host-owned through a native dialog; agent input cannot
+  supply an arbitrary filesystem destination.
+- Existing export behavior, chat persistence, approval states, Core tests,
+  Desktop typecheck, and Desktop build remain green.
+
+### Non-goals
+
+- No change to `D:\\ax_test`, benchmark fixtures, PDF generation engines, or
+  external connectors.
+- No connected-folder write capability or automatic background export.
+- No redesign of the report pipeline or arbitrary path support in prompts.
+
+### Final record (2026-09-04T16:39:15.1972084+09:00)
+
+- Added a bounded generated-PDF contract to execution-result workspace chat
+  messages. Only artifact ID, safe filename, size, and PDF MIME type cross into
+  the renderer; host paths and raw bytes stay behind the IPC boundary.
+- Added two explicit delivery actions to Workspace and Activity: `다운로드`
+  opens Save As, and `지정 폴더에 저장` opens a native folder picker.
+- Both host actions validate the stored artifact and use no-overwrite copy
+  semantics. Cancellation and destination conflicts remain recoverable.
+- Focused tests passed 29 tests; full Core regression passed 335 files/733
+  tests with 3 skipped; Core evaluation 11/11; Core/Desktop typechecks,
+  Desktop production build, architecture check (1,100 modules/3,626
+  dependencies), and whitespace checks passed.
+- No external fixture, benchmark, PDF engine, connector, credential, or
+  connected-folder write capability was changed. A plain assistant reply with
+  no execution result still has no generated file/card to deliver.
+
+## Current task: recover command chat after a rejected provider response
+
+When a provider returns a capability ID as the outer AX command, the host must
+reject it without execution but recover internally by asking the provider once
+for a valid AX command or a final reply. The user should not have to resend the
+same natural-language request merely because the provider violated the wire
+contract once.
+
+### Success criteria
+
+- Unsupported outer command names remain fail-closed and are never mapped or
+  executed as capabilities.
+- A single rejected provider response triggers one bounded, host-generated
+  protocol correction; a subsequent valid reply or command continues normally.
+- Repeated invalid provider responses stop after the bounded retry and return a
+  safe user-facing message without parser details.
+- Codex, Claude, and direct/API transport shapes share the same recovery
+  behavior.
+- Existing command chat, workflow, approval, execution, Core tests, Desktop
+  typecheck, and Desktop build remain green.
+
+### Non-goals
+
+- No alias/legacy command mapping for capability IDs.
+- No changes to connector permissions, database/PDF behavior, benchmark inputs,
+  or external fixtures.
+- No exposure of raw provider protocol errors, command contracts, credentials,
+  or internal execution data to the user.
+
+### Final record (2026-09-04T16:56:28.9220837+09:00)
+
+- Confirmed the screenshot symptom with a red-capable exact-request test:
+  `rdb.schema.describe` was rejected and the old loop immediately returned the
+  resend message without a second model call.
+- Added one bounded protocol-correction retry. It tells the provider that no
+  command ran and that capability IDs belong inside `capability.invoke`, while
+  leaving the original invalid command unexecuted.
+- Persistent invalid output still terminates after the bounded retry with the
+  existing sanitized message.
+- Provider compatibility tests passed for Codex, Claude, and direct/API shapes;
+  full Core regression passed 335 files/736 tests with 3 skipped; evaluation
+  11/11; Core/Desktop typechecks, Desktop production build, architecture check
+  (1,100 modules/3,626 dependencies), and whitespace checks passed.
+
+## Current task: actual monthly-report discovery failure diagnosis
+
+Diagnose the real AX Studio Dev session that rejected the Korean request to
+recreate a September customer sales and operational-risk PDF from one completed
+August report, one blank template, a connected order API, and customer/contract
+database sources.
+
+### Success criteria
+
+- Reproduce the exact persisted `failed / no_matching_candidate` symptom with a
+  fast, read-only command against the active Dev data store.
+- Audit the actual session's source inventory, snapshots, observation paths,
+  candidate/replay outcomes, and source-read budget without exposing secrets.
+- Distinguish input/setup issues from parser, discovery, and workflow
+  capability limits using code-backed evidence.
+- Report the root cause and the smallest safe next direction without changing
+  product behavior or external fixtures.
+
+### Non-goals
+
+- Do not patch Work Discovery, PDF generation, connectors, or UI in this task.
+- Do not alter the failed session, connected services, credentials, uploaded
+  documents, benchmark fixtures, or frozen evaluation results.
+
+### Diagnostic record (2026-09-04T17:10:08.5503306+09:00)
+
+- The exact persisted symptom reproduces from the active AXStudio-dev database:
+  session `wd_4050af74de9d4477` is `failed` with
+  `no_matching_candidate` and the required-output replay error.
+- The run had one completed PDF example and one blank PDF template, both ready
+  through Docling, so upload/ingest failure is ruled out.
+- The source inventory contained 5,003 entries: three database tables and 5,000
+  local-sheet files. No HTTP source was present, and all 12 source reads were
+  consumed by the three database tables plus nine unrelated sheets.
+- Document observation collapsed 43 distinct currency values onto the same
+  `krw` path; none of 1,935 candidates for that path passed replay.
+- Static inspection confirmed that HTTP has no Work Discovery provider, PDF
+  input templates are not source materialized, ranking ignores the user goal,
+  synthesis does not enumerate filters or joins, and the compiled workflow has
+  no PDF output step.
+- The fail-closed replay gate behaved correctly. The failure is a compound
+  product-capability boundary plus source-selection/observation-model defects,
+  not a malformed user request or unavailable REST/database service.
+
+## Current task: teach-by-example PDF report generation
+
+Implement a generic, bounded report-generation path for a user request that
+combines one or more completed report examples, a blank PDF template, and
+explicitly selected read-only HTTP/database sources into a verified generated
+PDF artifact.
+
+### Success criteria
+
+- The report path has one cohesive public request/result seam; source capture,
+  report-spec inference, computation, rendering, and verification remain
+  independently testable behind it.
+- Source selection is explicit and bounded. A requested HTTP connection and
+  database tables are captured read-only, while unrelated connected-folder
+  files and unselected connectors are never explored.
+- HTTP capture materializes typed, complete snapshots (including bounded
+  pagination) suitable for deterministic replay; database capture preserves
+  provenance and completeness.
+- Completed examples and blank templates have distinct roles. Structured report
+  observations use stable, unique semantic locations instead of collapsing
+  repeated labels or currency values onto one path.
+- The report plan can express target periods, filters, joins/lookups, grouped
+  rows, derived values, and explicit template field bindings without embedding
+  fixture-specific labels, IDs, paths, dates, or expected values in production
+  code.
+- Rendering reuses the existing PDF form/fill engine, preserves the template as
+  visual authority, verifies the produced PDF, stores it as an artifact, and
+  exposes the existing download and user-selected-folder delivery actions.
+- Unsupported or underdetermined requests fail closed with an actionable
+  clarification/result; no database mutation, HTTP write, external delivery, or
+  silent best-effort PDF is performed.
+- The exact manual September-report request succeeds against the external test
+  environment without exposing hidden gold data to discovery or production
+  logic, and independent post-run validation records any residual mismatch.
+- Focused tests, Core regression/evaluation/typecheck, Desktop typecheck/build,
+  architecture checks, and whitespace checks pass.
+
+### Non-goals
+
+- Do not tune production behavior to `D:\\ax_test` filenames, schema names,
+  report wording, dates, IDs, metric values, or hidden expected outputs.
+- Do not modify frozen Work Discovery benchmark fixtures/gold/manifest or use
+  hidden holdout/gold data as product input.
+- Do not weaken the existing replay/publish safety gate for scalar Work
+  Discovery, add arbitrary filesystem access, or broaden connector write
+  permissions.
+- Do not redesign unrelated Workspace UI or refactor unrelated dirty worktree
+  changes.
+
+### Implementation checkpoint (2026-09-04T18:50:10.7798937+09:00)
+
+- Added a dedicated `report.generate` path instead of forcing this document
+  workflow through broad scalar Work Discovery.
+- The path compares a blank template with a completed example, selects only
+  host-listed HTTP/RDB sources, probes HTTP response shape with GET only,
+  captures complete period snapshots, infers a declarative plan, and refuses
+  to render until the completed example replays exactly.
+- The plan supports joins, filters, grouped/derived tables, runtime period and
+  source metadata, computed/invariant/phase text, and metadata-rendered output
+  filenames. Static prose must come from a bound example slot; numeric/date
+  outputs must remain source- or metadata-derived.
+- PDF geometry is inferred from each template's own rows, headers, neighboring
+  tables, and page continuations. No report coordinates, table dimensions,
+  source schema, dates, values, or prompt phrases from the external fixture are
+  present in production code.
+- Verification passed: report suite 32/32, Core 342 files/772 passed with 3
+  skipped, evaluation 11/11, document engine 43/43, Core/Desktop typechecks,
+  Desktop build, architecture, whitespace, and all 15 frozen benchmark hashes.
+- Example replay may revise an invalid business plan at most twice using only
+  bounded example-period mismatch/error evidence. Target-period rows remain
+  unavailable until a plan reproduces the completed example exactly.
+- The real AX Studio manual run and post-generation hidden-gold comparison are
+  intentionally still pending for the user; hidden gold was not read during
+  implementation.
+
+## Current follow-up: Codex CLI image input
+
+Forward ordered image bytes for text and structured generation, preserve owned
+temporary-file cleanup on success/failure/cancellation, and retain safe image
+error codes at the report boundary. No report-specific rules or gold changes.
+Evaluator and baseline are recorded in codex-image-forwarding.md.
+
+## Current follow-up: 업무 화면 분리
+
+Make the existing 업무 navigation easier to scan by separating recurring
+workflows from one-off execution results. Reuse existing workflow, execution,
+and workspace-chat state; do not add new lifecycle behavior or change runtime
+semantics.
+
+Success criteria: recurring workflows appear in a labeled upper section with
+active/paused and last-run cues; recent ephemeral executions appear in a
+labeled lower section with readable status and a path to the existing result
+conversation/activity view; empty and narrow states remain usable; existing
+workflow toggles, deletion, chat loading, approval, and activity behavior stay
+unchanged.

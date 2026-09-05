@@ -55,6 +55,10 @@ export interface AppState {
   executions: Array<{
     id: string;
     workflowId?: string | null;
+    /** True when this execution came from a one-off request rather than a saved workflow. */
+    ephemeral?: boolean;
+    /** The workspace conversation that owns a one-off result, when available. */
+    workspaceSessionId?: string;
     status: string;
     startedAt: string;
     finishedAt?: string | null;

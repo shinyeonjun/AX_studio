@@ -12,6 +12,7 @@ import { resolveStepParams } from '../../param-resolution.js';
 import type { WorkflowExecutionHost } from '../contracts.js';
 import { isExternalAction } from '../contracts.js';
 import { recordRepairProposal } from '../progress.js';
+import { materializeStepOutputs } from '../../output-ports.js';
 
 export interface ApprovedActionExecutionOptions {
   host: WorkflowExecutionHost;
@@ -41,7 +42,14 @@ export async function executeApprovedActions(
         code: 'connector_missing',
       });
     }
-    let params = applyStepBindings(actionStep, options.ir, actionStep.params, options.stepResults, options.ctx.variables);
+    let params = applyStepBindings(
+      actionStep,
+      options.ir,
+      actionStep.params,
+      options.stepResults,
+      options.ctx.variables,
+      options.ctx.outputs,
+    );
     params = resolveStepParams(params, options.ctx, options.stepResults);
     if (actionDefinition.id === 'document.ingest') {
       const resolved = resolveDocumentIngestExecution(params, options.ctx);
@@ -68,6 +76,10 @@ export async function executeApprovedActions(
     );
     if (!result.ok) {
       throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
+    }
+    if (actionDefinition.io?.outputs) {
+      options.ctx.outputs ??= {};
+      options.ctx.outputs[actionId] = materializeStepOutputs(actionId, actionDefinition.io.outputs, result.data);
     }
     options.stepResults[actionId] = result.data;
     if (options.ir.outputContract) {

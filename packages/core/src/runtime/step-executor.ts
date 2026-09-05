@@ -9,6 +9,7 @@ import { resolveDocumentIngestExecution } from '../contracts/document-ingest-res
 import { applyStepBindings } from '../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
+import { materializeStepOutputs } from './output-ports.js';
 
 export async function executeStep(
   step: Step,
@@ -29,7 +30,7 @@ export async function executeStep(
       if (!actionDefinition) {
         throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
       }
-      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables);
+      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables, ctx.outputs);
       params = resolveStepParams(params, ctx, stepResults);
 
       if (actionDefinition.id === 'document.ingest') {
@@ -71,6 +72,10 @@ export async function executeStep(
 
       const result = await connector.execute(actionDefinition.action, params, ctx);
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
+      if (actionDefinition.io?.outputs) {
+        ctx.outputs ??= {};
+        ctx.outputs[step.id] = materializeStepOutputs(step.id, actionDefinition.io.outputs, result.data);
+      }
       stepResults[step.id] = result.data;
       break;
       }
@@ -80,7 +85,7 @@ export async function executeStep(
       break;
 
     case 'if': {
-      const cond = evaluateCondition(step.condition, ctx.variables, stepResults);
+      const cond = evaluateCondition(step.condition, ctx.variables, stepResults, ctx.outputs);
       const ids = cond ? step.thenStepIds : step.elseStepIds ?? [];
       ctx.log({
         at: new Date().toISOString(),

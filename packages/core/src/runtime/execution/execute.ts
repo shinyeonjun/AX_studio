@@ -81,6 +81,8 @@ export async function executeWorkflow(
     host.config.store.updateExecutionLog(executionId, log);
   };
   const connections = host.config.store.getConnections();
+  if (options.jobId) appendLog({ at: new Date().toISOString(), level: 'info', code: 'execution_dequeued',
+    message: '접수한 작업의 실행을 시작합니다.', data: { jobId: options.jobId, executionId } });
   const ctx: ConnectorContext = createConnectorContext(
     host,
     executionId,
@@ -88,6 +90,7 @@ export async function executeWorkflow(
     { ...options.input },
     connections,
     appendLog,
+    options.workspaceSessionId,
   );
   const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
 

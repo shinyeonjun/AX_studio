@@ -70,6 +70,8 @@ export function buildExecutions(core: AxCore) {
     return {
       id: execution.id,
       workflowId: execution.workflowId,
+      ephemeral: execution.ephemeral,
+      workspaceSessionId: execution.workspaceSessionId,
       status: execution.status,
       startedAt: execution.startedAt,
       finishedAt: execution.finishedAt,

@@ -15,6 +15,11 @@ CONTEXT.md
 .impeccable/
 .codex/
 test/
+!/test/
+/test/*
+!/test/work-discovery-benchmark/
+!/test/work-discovery-benchmark/**
+
 # Local secrets and machine-specific config — never commit
 .env
 .env.*

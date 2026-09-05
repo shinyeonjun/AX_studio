@@ -27,7 +27,11 @@ export interface ArtifactSink {
 export interface ConnectorContext {
   executionId: string;
   workflowId?: string;
+  /** Host-owned chat/session scope used to resolve session artifacts safely. */
+  workspaceSessionId?: string;
   variables: Record<string, unknown>;
+  /** Validated outputs keyed by producing step and declared port. */
+  outputs?: Record<string, Record<string, unknown>>;
   log: (entry: ExecutionLogEntry) => void;
   connections?: Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }>;
   artifactSink?: ArtifactSink;

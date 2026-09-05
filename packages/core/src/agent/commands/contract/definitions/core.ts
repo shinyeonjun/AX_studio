@@ -106,4 +106,16 @@ export const CORE_COMMAND_DEFINITIONS = [
     args: { workflowId: 'workflow id' },
     mutates: false,
   },
+  {
+    name: 'report.generate',
+    lifecycle: 'ephemeral',
+    description: '현재 대화의 빈 PDF 양식과 완성 예시를 연결된 읽기 전용 API/DB 데이터로 재현해 다음 기간 보고서를 생성합니다.',
+    args: {
+      goal: '사용자의 전체 보고서 요청',
+      templateSourceId: '현재 대화에 업로드된 빈 PDF 양식 source id',
+      exampleSourceId: '현재 대화에 업로드된 완성 PDF 예시 source id',
+      resumeExecutionId: '선택: 사용자가 실패한 보고서를 이어서 재시도하도록 요청한 경우 그 실행 ID. 원래 goal과 자료를 유지. 새 보고서 요청에는 사용하지 않음.',
+    },
+    mutates: true,
+  },
 ] as const satisfies readonly (AxCommandDefinition & { lifecycle: AxCommandLifecycle })[];

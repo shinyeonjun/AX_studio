@@ -26,3 +26,10 @@ export function requireTable(input: TransformEvaluation, errorCode: string): Tab
   }
   return input as TableArtifact;
 }
+
+export function requireCompleteTable(input: TransformEvaluation, errorCode: string): TableArtifact {
+  const table = requireTable(input, errorCode);
+  const status = table.completeness?.status ?? (table.truncated ? 'partial' : 'complete');
+  if (table.truncated || status !== 'complete') throw new Error('incomplete_table_input');
+  return table;
+}

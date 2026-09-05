@@ -6,6 +6,7 @@ import type {
   PdfFormFillOptions,
   PdfFormFillResult,
   PdfFormTemplate,
+  PdfReportPairAnalysis,
   PdfToHtmlOptions,
   PdfToHtmlResult,
 } from '../types.js';
@@ -24,6 +25,7 @@ export interface DocumentEngineClient {
   pdfToHtml(path: string, options?: PdfToHtmlOptions): Promise<PdfToHtmlResult>;
   pdfFormAnalyze(path: string, options?: PdfFormAnalyzeOptions): Promise<PdfFormTemplate>;
   pdfFormFill(path: string, options: PdfFormFillOptions): Promise<PdfFormFillResult>;
+  pdfReportAnalyze(templatePath: string, examplePath: string): Promise<PdfReportPairAnalysis>;
   getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }>;
   getPage(documentId: string, pageIndex: number): Promise<{ page: Record<string, unknown>; text: string | null }>;
   search(documentId: string, query: string): Promise<{ hits: DocumentChunkHit[] }>;

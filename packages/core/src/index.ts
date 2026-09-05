@@ -15,10 +15,14 @@ export * from './store/workflow-store.js';
 export type {
   WorkspaceChatMessage,
   WorkspaceChatApproval,
+  WorkspaceChatGeneratedPdf,
   WorkspaceChatRecord,
   WorkspaceChatListRecord,
 } from './store/repositories/workspace-chat-repository.js';
-export { WorkspaceChatApprovalSchema } from './store/repositories/workspace-chat-repository.js';
+export {
+  WorkspaceChatApprovalSchema,
+  WorkspaceChatGeneratedPdfSchema,
+} from './store/repositories/workspace-chat-repository.js';
 export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';
 export { importDiscoveryArtifact } from './store/import-discovery-artifact.js';
 export {

@@ -24,6 +24,8 @@ export interface WorkspaceChatMessage {
   presentations?: AxUiPresentation[];
   /** Direct host action for a pending one-shot execution approval. */
   approval?: WorkspaceChatApproval;
+  /** Safe metadata for a generated PDF; the host keeps the physical artifact path. */
+  generatedPdf?: WorkspaceChatGeneratedPdf;
 }
 
 export interface WorkspaceChatApproval {
@@ -32,10 +34,29 @@ export interface WorkspaceChatApproval {
   reason: string;
 }
 
+/** Safe, renderer-facing metadata for a generated PDF. Physical paths and bytes stay host-owned. */
+export interface WorkspaceChatGeneratedPdf {
+  artifactId: string;
+  fileName: string;
+  size: number;
+  mimeType: 'application/pdf';
+}
+
 export const WorkspaceChatApprovalSchema = z.object({
   id: z.string().trim().min(1).max(128),
   title: z.string().trim().min(1).max(240),
   reason: z.string().trim().min(1).max(1_200),
+});
+
+export const WorkspaceChatGeneratedPdfSchema = z.object({
+  artifactId: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
+  fileName: z.string()
+    .trim()
+    .min(1)
+    .max(180)
+    .refine((value) => !value.includes('/') && !value.includes('\\'), 'fileName은 파일 이름이어야 합니다.'),
+  size: z.number().int().nonnegative(),
+  mimeType: z.literal('application/pdf'),
 });
 
 export interface WorkspaceChatRecord {
@@ -70,12 +91,20 @@ export const workspaceChatMessageSchema = z.object({
   inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
   presentations: z.array(AxUiPresentationSchema).max(4).optional(),
   approval: WorkspaceChatApprovalSchema.optional(),
+  generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
 }).superRefine((message, context) => {
   if (message.approval && message.kind !== 'execution_result') {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['approval'],
       message: 'approval은 실행 결과 메시지에만 사용할 수 있습니다.',
+    });
+  }
+  if (message.generatedPdf && message.kind !== 'execution_result') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['generatedPdf'],
+      message: 'generatedPdf는 실행 결과 메시지에만 사용할 수 있습니다.',
     });
   }
 });

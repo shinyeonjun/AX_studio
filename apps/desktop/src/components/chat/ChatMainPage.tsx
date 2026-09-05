@@ -98,6 +98,8 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         onSend={workspaceChat.sendMessage}
         onApproveApproval={workspaceChat.approveChatApproval}
         onRejectApproval={workspaceChat.rejectChatApproval}
+        onDownloadPdf={workspaceChat.downloadGeneratedPdf}
+        onSavePdfToFolder={workspaceChat.saveGeneratedPdfToFolder}
         onDismissError={() => {
           workspaceChat.dismissError();
           discovery.dismissError();

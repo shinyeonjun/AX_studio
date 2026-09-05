@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ArtifactMetadataSchema } from './base.js';
+import { ArtifactCompletenessSchema } from './completeness.js';
 
 export const ScalarValueSchema = z.union([
   z.string(),
@@ -58,6 +59,8 @@ export const TableArtifactSchema = z.object({
   rows: z.array(TableRowSchema),
   profile: TableProfileSchema.optional(),
   truncated: z.boolean().default(false),
+  /** Explicitly describes whether the rows represent the complete source. */
+  completeness: ArtifactCompletenessSchema.optional(),
   source: z.object({
     artifactId: z.string().optional(),
     filePath: z.string().optional(),
@@ -66,6 +69,7 @@ export const TableArtifactSchema = z.object({
     schema: z.string().optional(),
     table: z.string().optional(),
     queryFingerprint: z.string().optional(),
+    capturedAt: z.string().optional(),
   }).optional(),
   metadata: ArtifactMetadataSchema.optional(),
 });

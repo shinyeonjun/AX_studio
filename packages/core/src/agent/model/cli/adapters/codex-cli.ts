@@ -1,6 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
+import { z } from 'zod';
+import { decodeCodexOutput } from '../../cli-json/schema/decode-codex.js';
+import type { ModelImageInput, ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
 import { zodToCodexJsonSchema } from '../../cli-json.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary, withTempDir } from '../shared.js';
@@ -36,8 +38,30 @@ export function codexExecArgs(
   ];
 }
 
+async function imageArgs(dir: string, images: ModelImageInput[] = []): Promise<string[]> {
+  const extensions = new Map([
+    ['image/png', 'png'], ['image/jpeg', 'jpg'], ['image/webp', 'webp'], ['image/gif', 'gif'],
+  ]);
+  const args: string[] = [];
+  for (const [index, image] of images.entries()) {
+    const extension = extensions.get(image.mimeType);
+    if (!extension) {
+      throw Object.assign(new Error('Unsupported image format'), { code: 'image_format_unsupported' });
+    }
+    if (!image.data.byteLength) {
+      throw Object.assign(new Error('Empty image input'), { code: 'image_input_empty' });
+    }
+    // Never use caller filenames: every attachment stays inside the owned directory.
+    const path = join(dir, `image-${index + 1}.${extension}`);
+    await writeFile(path, image.data);
+    args.push('--image', path);
+  }
+  return args;
+}
+
 export class CodexCliProvider implements ModelProvider {
   readonly name = 'codex-cli';
+  readonly supportsVision = true;
 
   constructor(readonly model: string) {}
 
@@ -48,7 +72,7 @@ export class CodexCliProvider implements ModelProvider {
       const outPath = join(dir, 'last.txt');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, prompt, ['-o', outPath], dir),
+        codexExecArgs(this.model, prompt, [...await imageArgs(dir, input.images), '-o', outPath], dir),
         { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
       );
       try {
@@ -74,6 +98,7 @@ export class CodexCliProvider implements ModelProvider {
       const result = await runCommand(
         command,
         codexExecArgs(this.model, prompt, [
+          ...await imageArgs(dir, input.images),
           '--output-schema',
           schemaPath,
           '-o',
@@ -91,6 +116,9 @@ export class CodexCliProvider implements ModelProvider {
         return result;
       }
     });
-    return parseStructuredFromCliResult(raw, input.schema, 'Codex CLI 호출에 실패했습니다.');
+    const responseSchema = z.preprocess(
+      (value) => decodeCodexOutput(value, input.schema), input.schema,
+    ) as typeof input.schema;
+    return parseStructuredFromCliResult(raw, responseSchema, 'Codex CLI 호출에 실패했습니다.', true);
   }
 }

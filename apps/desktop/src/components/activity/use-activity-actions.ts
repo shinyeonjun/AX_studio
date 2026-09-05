@@ -18,6 +18,9 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [exportedId, setExportedId] = useState<string | null>(null);
   const [exportError, setExportError] = useState<{ executionId: string; message: string } | null>(null);
+  const [savingToFolderId, setSavingToFolderId] = useState<string | null>(null);
+  const [savedToFolderId, setSavedToFolderId] = useState<string | null>(null);
+  const [folderSaveError, setFolderSaveError] = useState<{ executionId: string; message: string } | null>(null);
 
   const executions = state?.executions ?? [];
   const canExplain = executions.length > 0;
@@ -84,6 +87,32 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     }
   };
 
+  const savePdfToFolder = async (executionId: string, artifactId: string) => {
+    setSavingToFolderId(executionId);
+    setSavedToFolderId(null);
+    setFolderSaveError(null);
+    try {
+      const result = await window.ax.saveGeneratedArtifactToFolder(artifactId);
+      if (!result.ok) {
+        if (!result.canceled) {
+          setFolderSaveError({
+            executionId,
+            message: result.error ?? 'PDF를 지정 폴더에 저장하지 못했습니다.',
+          });
+        }
+        return;
+      }
+      setSavedToFolderId(executionId);
+    } catch (err) {
+      setFolderSaveError({
+        executionId,
+        message: ipcErrorMessage(err, 'PDF를 지정 폴더에 저장하지 못했습니다.'),
+      });
+    } finally {
+      setSavingToFolderId(null);
+    }
+  };
+
   return {
     executions,
     canExplain,
@@ -97,9 +126,13 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     exportingId,
     exportedId,
     exportError,
+    savingToFolderId,
+    savedToFolderId,
+    folderSaveError,
     askExplain,
     deleteExecution,
     clearExecutions,
     exportPdf,
+    savePdfToFolder,
   };
 }

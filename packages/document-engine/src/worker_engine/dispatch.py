@@ -16,7 +16,7 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             return EngineResponse(id=request.id, ok=True, data={"engine": "document-engine", "version": 1})
         if request.command == "ingest":
             return handle_ingest(request)
-        if request.command in {"pdf_to_html", "pdf_form_analyze", "pdf_form_fill"}:
+        if request.command in {"pdf_to_html", "pdf_form_analyze", "pdf_form_fill", "pdf_report_analyze"}:
             return handle_pdf_command(request)
         return handle_document_query(request)
     except FileNotFoundError as error:

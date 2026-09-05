@@ -60,6 +60,7 @@ export class WorkflowRuntime {
     const run = this.ephemeralQueueTail.then(() =>
       this.executeWorkflow(ir, {
         ...options,
+        jobId,
         ephemeral: true,
         forceManual: true,
       }),

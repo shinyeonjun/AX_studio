@@ -1,4 +1,15 @@
 version: 2
+report_execution_hardening:
+  reference: report-execution-hardening.md
+  checks: [report_regression, provider_regression, core_regression, core_eval, core_desktop_typecheck, production_build, diff_check]
+report_wire_patch:
+  checks: [real_adapter_record_union_optional_roundtrip, invalid_payload_rejection, report_regression, core_regression, core_desktop_typecheck, desktop_build, diff_check]
+  boundary: No hidden gold or fixture edits; mock only CLI process for deterministic adapter coverage.
+codex_image_followup_evaluator:
+  reference: codex-image-forwarding.md
+  checks: [ordered_image_bytes, owned_paths, cleanup_success_failure_abort, text_only_regression, safe_error_codes, core_desktop_typecheck, desktop_build]
+work_sidebar_followup_evaluator:
+  checks: [work_display_unit_tests, desktop_typecheck, desktop_build, diff_whitespace]
 status: active
 frozen: true
 
@@ -9654,7 +9665,18 @@ repository_structure_phase_143:
       type: manual
       criterion: "Only the bounded settings hub connector-section module structure and harness records changed in this phase"
   baseline:
-    recorded: false
+    recorded: true
+    recorded_at: 2026-09-04T17:18:50.1258918+09:00
+    decision: BASELINE
+    values:
+      exact-current-failure-baseline: "PASS: read-only assertion reproduced failed/no_matching_candidate"
+      existing-focused-regression: "PASS: 4 files/5 tests"
+      bounded-source-capture: "RED/ABSENT"
+      structured-report-spec: "RED/ABSENT"
+      report-plan-execution: "RED/ABSENT"
+      pdf-render-and-verify: "RED/ABSENT at the report public seam; standalone PDF handler is green"
+      exact-manual-e2e: "RED: current persisted request failed"
+      safety-regression: "PASS at baseline; existing fail-closed gate abstained"
   final:
     recorded: true
     recorded_at: 2026-09-03T08:28:58.4535206+09:00
@@ -9688,7 +9710,26 @@ repository_structure_phase_144:
       type: manual
       criterion: "Only the bounded settings detection lifecycle module structure and harness records changed in this phase"
   baseline:
-    recorded: false
+    recorded: true
+    recorded_at: 2026-09-04T17:18:50.1258918+09:00
+    decision: BASELINE
+    values:
+      exact-current-failure-baseline: "PASS: persisted session wd_4050af74de9d4477 failed with no_matching_candidate and the exact replay-coverage error"
+      bounded-source-capture: "ABSENT at baseline"
+      structured-report-spec: "ABSENT at baseline"
+      pdf-render-and-verify: "PARTIAL at baseline: generic PDF form writer existed, report-pair geometry did not"
+  checkpoint:
+    recorded: true
+    recorded_at: 2026-09-04T18:50:10.7798937+09:00
+    decision: KEEP
+    values:
+      bounded-source-capture: "PASS: GET-only HTTP structure probe/refinement plus complete paginated HTTP and allowlisted RDB snapshots"
+      structured-report-spec: "PASS: period/source metadata, joins, filters, aggregation, grouping, derived case columns, invariant/phase/computed text, and complete layout bindings"
+      anti-hardcoding: "PASS: source-derived output guards, period-literal rejection, source-metadata tokens, target filename tokens, static prose evidence binding, and no external fixture literal found in production scan"
+      pdf-render-and-verify: "PASS: generic 3-page pair analysis, multi-table/page geometry, Korean font/glyph verification, and document-engine 43/43"
+      regression: "PASS: report 30/30; Core 342 files/770 passed/3 skipped; eval 11/11; Core/Desktop typechecks; Desktop build; architecture; diff check"
+      frozen-benchmark: "PASS: all 15 frozen v1 contract/result SHA-256 hashes unchanged"
+      exact-manual-e2e: "PENDING: deliberately left to the user's real AX Studio run; hidden September gold was not read"
   final:
     recorded: true
     recorded_at: 2026-09-03T08:33:14.5839660+09:00
@@ -9722,7 +9763,24 @@ repository_structure_phase_145:
       type: manual
       criterion: "Only the bounded Webhook/local-folder form controller modules and harness records changed in this phase"
   baseline:
-    recorded: false
+    recorded: true
+    recorded_at: 2026-09-04T17:18:50.1258918+09:00
+    decision: KEEP
+    values:
+      exact-current-failure-baseline: "PASS: persisted session wd_4050af74de9d4477 failed deterministically with no_matching_candidate and the required-output replay error"
+      adjacent-capabilities: "PASS: existing document observation, source inventory, PDF write, and HTTP read tests passed 4 files/5 tests"
+      missing-capability: "CONFIRMED: no bounded report seam, selected HTTP discovery scope, structured multi-source plan, or compiled PDF output existed"
+  checkpoint:
+    recorded: true
+    recorded_at: 2026-09-04T18:59:35.6257334+09:00
+    decision: KEEP
+    values:
+      bounded-source-capture: "PASS: GET-only HTTP probing and complete explicit HTTP/RDB snapshots are covered by focused tests"
+      structured-report-spec: "PASS: generic geometry, unique locations, source-derived values, derived case expressions, and reusable text roles are covered"
+      report-plan-execution: "PASS: report-generation suite 32/32; bounded example-only revision retries before any target capture"
+      pdf-render-and-verify: "PASS: document engine 43/43 with verified generated-PDF artifact delivery"
+      safety-regression: "PASS: Core 342 files/772 passed/3 skipped, eval 11/11, Core/Desktop typechecks, Desktop build, architecture 1123/3731, diff check, production fixture-literal scan, and frozen hashes 15/15"
+      exact-manual-e2e: "PENDING: intentionally reserved for the user's real AX Studio run; hidden gold has not been read"
   final:
     recorded: true
     recorded_at: 2026-09-03T08:39:51.6330029+09:00
@@ -15267,7 +15325,348 @@ repository_structure_phase_234:
       test-preservation: "PASS: All three command catalog scenarios, command names, lifecycle values, mutation flags, saved endpoints, auth readiness fields, sanitized URLs, credential redaction assertions, context, and response assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded command catalog test split and harness records changed"
   final:
-    recorded: false
+    recorded: true
+    recorded_at: 2026-09-04T10:57:40.0721437+09:00
+    decision: KEEP
+    values:
+      focused-regression: "PASS: replay-runner focused suite 3/3, including missing required observation and optional observation preservation"
+      core-regression: "PASS: Core typecheck, 331 files/719 passed/3 skipped, evaluation 11/11"
+      project-regression: "PASS: Desktop typecheck/build, document-engine 39/39, architecture 1092/3583, benchmark contracts, report-boundary, and diff check"
+      implementation-boundary: "PASS: production change is limited to fail-closed replay behavior; no holdout gate or future-data input"
+
+generated_pdf_user_delivery:
+  status: active
+  evaluator: "A generated PDF remains internally recoverable and can be explicitly delivered from both Workspace and Activity through host-owned, non-overwriting actions."
+  checks:
+    - id: artifact-folder-boundary
+      type: automated
+      criterion: "Existing Save As export and new selected-folder save validation pass, including cancellation, invalid artifacts, source integrity, and destination conflict handling."
+      command: "npx vitest run apps/desktop/electron/main/ipc/artifact-handlers.test.ts"
+    - id: workspace-artifact-projection
+      type: automated
+      criterion: "A pdf_generated execution log is persisted as safe generatedPdf metadata in the workspace chat, and raw path/bytes are excluded."
+      command: "npx vitest run packages/core/src/runtime/execution-result/approval.test.ts packages/core/src/runtime/execution-result/projection/ephemeral-projection.test.ts packages/core/src/runtime/execution-result/projection/writes-bounded-result.test.ts packages/core/src/store/workspace-chat-repository/transcript-persistence.test.ts"
+    - id: workspace-delivery-ui
+      type: automated
+      criterion: "Workspace result card renders both explicit PDF delivery actions and preserves lifecycle/approval rendering."
+      command: "npx vitest run apps/desktop/src/components/workspace/WorkspaceContextPanel.test.tsx"
+    - id: boundary-typecheck
+      type: automated
+      criterion: "Core and Desktop TypeScript contracts remain valid."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npx tsc --noEmit -p apps/desktop/tsconfig.json"
+    - id: desktop-build
+      type: automated
+      criterion: "The desktop production bundle builds with the new preload and renderer contracts."
+      command: "npm run build -w @ax-studio/desktop"
+    - id: regression
+      type: automated
+      criterion: "The full Core test suite remains green and no whitespace errors are introduced."
+      command: "npm test -w @ax-studio/core; git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T16:39:15.1972084+09:00
+    decision: KEEP
+    values:
+      artifact-folder-boundary: "PASS: artifact handler suite 9/9"
+      workspace-artifact-projection: "PASS: chat boundary 4/4, projection 1/1, transcript 4/4; safe metadata only"
+      workspace-delivery-ui: "PASS: Workspace UI suite 11/11; both download and folder-save actions rendered"
+      boundary-typecheck: "PASS: Core and Desktop TypeScript checks"
+      desktop-build: "PASS: Desktop production bundle, main 1,072 modules and renderer 1,325 modules"
+      regression: "PASS: Core 335 files/733 passed/3 skipped, evaluation 5 files/11 tests, architecture 1,100/3,626, diff check"
+      implementation-boundary: "PASS: no external fixture, benchmark, PDF engine, connector, credential, or connected-folder write changed"
+
+command_chat_protocol_recovery:
+  status: active
+  evaluator: "A rejected provider command remains fail-closed while one host-generated correction lets a valid subsequent provider response continue the same request."
+  checks:
+    - id: protocol-recovery
+      type: automated
+      criterion: "Exact natural-language report request recovers from an outer rdb.schema.describe capability ID and returns the subsequent valid provider reply."
+      command: "npx vitest run packages/core/src/agent/commands/chat/provider-compatibility.test.ts"
+    - id: transport-safety
+      type: automated
+      criterion: "Codex, Claude, and direct/API transports reject capability IDs as outer commands without invoking the command service."
+      command: "npx vitest run packages/core/src/agent/commands/transport/protocol-rejection.test.ts packages/core/src/agent/commands/chat/provider-compatibility.test.ts"
+    - id: command-chat-regression
+      type: automated
+      criterion: "Existing command chat, selection, presentation, context, job, and workflow paths remain green."
+      command: "npx vitest run packages/core/src/agent/commands/chat packages/core/src/agent/commands/transport"
+    - id: typecheck-build
+      type: automated
+      criterion: "Core and Desktop typechecks and the Desktop production build remain green."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop"
+    - id: regression
+      type: automated
+      criterion: "Full Core tests, evaluation, architecture, and whitespace checks remain green."
+      command: "npm test -w @ax-studio/core; npm run eval -w @ax-studio/core; npm run arch:check; git diff --check"
+    - id: implementation-boundary
+      type: review
+      criterion: "No alias mapping, connector/PDF/DB behavior, benchmark fixture, credential, or external service is changed, and raw protocol details remain out of the user reply."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T16:48:11+09:00
+    decision: BASELINE
+    values:
+      protocol-recovery: "FAIL: exact-request regression received the resend error after one invalid outer capability command"
+      protocol-safety: "PASS: invalid command was not executed across all three transports"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T16:56:28.9220837+09:00
+    decision: KEEP
+    values:
+      protocol-recovery: "PASS: 3 provider recovery cases; subsequent valid replies returned"
+      bounded-failure: "PASS: repeated invalid responses stop after one correction retry"
+      command-chat-regression: "PASS: 13 files/27 tests"
+      typecheck-build: "PASS: Core/Desktop typechecks and Desktop production build"
+      regression: "PASS: Core 335 files/736 passed/3 skipped, evaluation 5 files/11 tests, architecture 1,100/3,626, diff check"
+      implementation-boundary: "PASS: no capability mapping or external behavior changes; protocol error details remain sanitized"
+
+runtime_data_plane_hardening:
+  status: active
+  frozen: true
+  checks:
+    - name: focused-data-contract-tests
+      type: command
+      command: npx vitest run packages/core/src/contracts/artifacts/table-artifact.test.ts packages/core/src/contracts/artifacts/http-response.test.ts packages/core/src/modules/rdb/connector.test.ts packages/core/src/modules/http/connector/methods/read-responses/success.test.ts packages/core/src/modules/transform/expression-evaluation.test.ts packages/core/src/runtime/explicit-output.test.ts
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npx tsc -p packages/core/tsconfig.json --noEmit
+      required: true
+    - name: core-tests
+      type: command
+      command: npm test -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - "typed connector outputs and explicit step.port locality"
+    - "incomplete data cannot silently feed aggregates"
+    - "legacy compatibility and migration seam"
+    - "no external side effects or benchmark contamination"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T15:48:34.2969772+09:00
+    decision: KEEP
+    values:
+      focused-data-contract-tests: "PASS: 6 files, 15 tests"
+      core-typecheck: "PASS"
+      core-tests: "PASS: 335 files, 732 passed, 3 skipped"
+      core-evaluation: "PASS: 5 files, 11 tests"
+      desktop-typecheck-build: "PASS"
+      architecture: "PASS: 1099 modules, 3622 dependencies cruised"
+      diff-whitespace: "PASS"
+
+external_realistic_monthly_report_fixture:
+  status: active
+  evaluator: "The external fixture is self-contained, deterministic, realistic, and manually usable without running AX Studio."
+  checks:
+    - id: support-boundary
+      type: manual
+      criterion: "The fixture's intended operations stay within the inspected bounded read/transform vocabulary; no unsupported product operation is required as a hidden assumption."
+    - id: artifact-layout
+      type: automated
+      criterion: "D:\\ax_test contains the documented REST, DB, pdf, gold, tools, and top-level README files, while the two September gold files are separate from AX-facing files."
+      command: "powershell -NoProfile -Command \"$required=@('D:\\ax_test\\README.md','D:\\ax_test\\rest-api\\server.mjs','D:\\ax_test\\rest-api\\orders.json','D:\\ax_test\\db\\docker-compose.yml','D:\\ax_test\\db\\schema.sql','D:\\ax_test\\db\\seed.sql','D:\\ax_test\\pdf\\monthly_customer_report_template.pdf','D:\\ax_test\\pdf\\2026-08_customer_report_example.pdf','D:\\ax_test\\gold\\2026-09_customer_report_expected.pdf','D:\\ax_test\\gold\\2026-09_expected_metrics.json','D:\\ax_test\\tools\\build_fixture.py'); foreach($p in $required){if(!(Test-Path -LiteralPath $p)){throw ('missing: '+$p)}}; 'ok'\""
+    - id: rest-fixture
+      type: automated
+      criterion: "The REST source is loopback-only, API-key protected, contains 150-300 orders per month, supports date/status filtering and pagination, and never exposes DB-only enrichment fields."
+      command: "packages\\document-engine\\.venv\\Scripts\\python.exe D:\\ax_test\\tools\\build_fixture.py --verify-rest-static"
+    - id: database-fixture
+      type: automated
+      criterion: "The PostgreSQL schema/seed defines customers, contracts, account managers, valid FK relationships, and REST customer-key coverage without requiring a live AX connection."
+      command: "packages\\document-engine\\.venv\\Scripts\\python.exe D:\\ax_test\\tools\\build_fixture.py --verify-db-static"
+    - id: independent-gold
+      type: automated
+      criterion: "August example and September expected metrics/PDF are generated from independent calculations and the two months differ in ranking, risks, regional mix, and refund pattern."
+      command: "packages\\document-engine\\.venv\\Scripts\\python.exe D:\\ax_test\\tools\\build_fixture.py --verify-gold"
+    - id: pdf-render
+      type: automated
+      criterion: "All three PDFs open as A4 pages, contain extractable Korean text, and render without clipping or missing-glyph defects."
+      command: "packages\\document-engine\\.venv\\Scripts\\python.exe D:\\ax_test\\tools\\build_fixture.py --verify-pdf"
+    - id: no-ax-execution
+      type: manual
+      criterion: "The execution record contains no AX Studio launch, connector registration, PDF upload, Work Discovery run, benchmark run, or production-code modification."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T12:26:20.4937485+09:00
+    decision: BASELINE
+    values:
+      artifact-layout: "ABSENT as intended: external fixture files do not exist yet"
+      rest-fixture: "NOT RUN: no external fixture exists"
+      database-fixture: "NOT RUN: no external fixture exists"
+      independent-gold: "NOT RUN: no external fixture exists"
+      pdf-render: "NOT RUN: no external fixture exists"
+      no-ax-execution: "PASS: AX Studio was not started or modified in this task"
+
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T13:15:02.3617891+09:00
+    decision: KEEP
+    values:
+      artifact-layout: "PASS: all requested artifacts exist under D:\\ax_test; user-provided PDFs were preserved"
+      fixture-only-validation: "PASS: REST static/live behavior, PostgreSQL Compose/FK shape, independent gold, and PDF structural checks"
+      visual-pdf-review: "PASS: value-free blank template, August example, and hidden September expected report rendered as 3 A4 pages with no observed clipping or overlap"
+      no-ax-execution: "PASS: AX Studio, Work Discovery, benchmark runner, connector registration, and uploads were not run"
+
+natural_language_multi_source_command_chat_completion:
+  status: active
+  evaluator: "A realistic natural-language report request completes through a bounded command-chat protocol without losing source/document context or falling back solely because the command plan crosses the old round limit."
+  checks:
+    - id: max-round-reproduction
+      type: automated
+      criterion: "The regression test reproduces the generic max-round fallback with the realistic request before the fix and passes after it."
+      command: "npx vitest run packages/core/src/agent/commands/chat/command-loop.test.ts"
+    - id: chat-regression
+      type: automated
+      criterion: "All command-chat, connection-selection, target-selection, presentation, context, and provider compatibility tests pass."
+      command: "npx vitest run packages/core/src/agent/commands/chat"
+    - id: core-regression
+      type: automated
+      criterion: "Core typecheck and the full Core test/evaluation suites remain passing."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core"
+    - id: boundedness
+      type: manual
+      criterion: "The final loop has an explicit finite budget, does not special-case the user's sentence or fixture identifiers, and preserves approval/read-only boundaries."
+    - id: diff-check
+      type: automated
+      criterion: "The patch has no whitespace errors and stays inside the command-chat/prompt boundary."
+      command: "git diff --check"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T13:43:27.9154994+09:00
+    result: "FAIL-CAPABLE: the current eight-round command loop returns the generic max-round message when a valid scripted plan needs a ninth model response"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T13:54:59.3025004+09:00
+    decision: KEEP
+    values:
+      max-round-reproduction: "PASS: exact natural-language regression green after reproducing the old fallback and confirming the seven-command boundary"
+      chat-regression: "PASS: 11 command-chat files, 18 tests"
+      core-regression: "PASS: typecheck; full Core suite 331 files, 720 passed, 3 skipped; evaluation 5 files, 11 tests"
+      boundedness: "PASS: explicit finite 16-round budget; no sentence/source mapping; existing host command, read-only, and approval boundaries unchanged"
+      diff-check: "PASS: git diff --check exited 0; only LF/CRLF normalization warnings were reported"
+
+work_discovery_holdout_findings:
+  status: active
+  evaluator: "Benchmark reports must distinguish discovery-time decision mismatches from hidden-holdout generalization findings and expose metric arithmetic without changing fixtures or product behavior."
+  checks:
+    - id: report-classification
+      type: automated
+      criterion: "The holdout report classifies B24-B26 Full mismatches as hidden-holdout findings and preserves their raw evidence."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\holdout --profile holdout --seed wd-holdout --report"
+    - id: metric-contract
+      type: automated
+      criterion: "Reports expose metric numerator/denominator definitions and arithmetic for every variant."
+      command: "node test/work-discovery-benchmark/run.mjs --profile expanded --check-contract"
+    - id: holdout-boundary
+      type: automated
+      criterion: "The benchmark keeps hidden holdout out of training and records it only as a post-decision evaluation."
+      command: "node test/work-discovery-benchmark/verify-report.mjs --root D:\\ax\\_test\\profiles\\holdout"
+    - id: aggregate-boundary
+      type: automated
+      criterion: "The multi-seed aggregate preserves classified B24-B26 evidence for every seed without mixing training and holdout evidence."
+      command: "node test/work-discovery-benchmark/verify-report.mjs --root D:\\ax\\_test\\sweeps\\expanded --aggregate"
+    - id: replay-regression
+      type: automated
+      criterion: "The fail-closed required-observation regression remains green."
+      command: "npx vitest run packages/core/src/work-discovery/synthesis/replay-runner.test.ts"
+    - id: diff-check
+      type: automated
+      criterion: "No whitespace errors are introduced."
+      command: "git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:02:41.8367913+09:00
+    decision: KEEP
+    values:
+      report-classification: "PASS: B24/B25/B26 Full failures are hidden_holdout_generalization with evaluation_only scope and explicit classes/reasons"
+      evidence: "PASS: failure JSON preserves training evidence, candidate replay, publish decision, and hidden holdout results"
+      metric-contract: "PASS: seven metrics expose definitions plus per-variant numerators and denominators; pooled Full arithmetic is 196/200 correctPublish, 30/226 falsePublish, 266/300 safeDecision"
+      holdout-boundary: "PASS: boundary verifier confirms disjoint training/holdout IDs and post-decision evidence"
+      aggregate-boundary: "PASS: aggregate boundary verifier confirms classified B24-B26 failures and preserves per-seed evidence"
+      replay-regression: "PASS: focused replay suite 3/3"
+      product-boundary: "PASS: no holdout gate, cross-validation feature, future-data input, or gold-answer rewrite"
+
+work_discovery_benchmark_freeze:
+  status: completed
+  evaluator: "The final Work Discovery Benchmark v1 result and freeze manifest are reproducible, auditable, and do not change benchmark or product behavior."
+  checks:
+    - id: final-reports
+      type: automated
+      criterion: "All frozen profiles and the expanded ten-seed aggregate regenerate from the current Core build."
+      command: "node test/work-discovery-benchmark/run.mjs --profile v1 --root D:\\ax\\_test --seed wd-v1 --report --verify-safety --skip-build; node test/work-discovery-benchmark/sweep.mjs --profile expanded --root D:\\ax\\_test\\sweeps\\expanded --report --skip-build"
+    - id: report-boundary
+      type: automated
+      criterion: "The holdout report and expanded aggregate preserve metric arithmetic, disjoint training/holdout evidence, and classified B24-B26 failures."
+      command: "node test/work-discovery-benchmark/verify-report.mjs --root D:\\ax\\_test\\profiles\\holdout; node test/work-discovery-benchmark/verify-report.mjs --root D:\\ax\\_test\\sweeps\\expanded --aggregate"
+    - id: project-regression
+      type: automated
+      criterion: "Core, evaluation, Desktop typecheck/build, document-engine, architecture, syntax, and whitespace checks remain green."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; packages/document-engine/.venv/Scripts/python.exe -m unittest discover packages/document-engine/src -p '*test.py'; npm run arch:check; git diff --check"
+    - id: freeze-artifacts
+      type: manual
+      criterion: "The result summary states metric denominators, classifies B24-B26 as evaluation findings, and the freeze manifest records representative SHA-256 hashes."
+    - id: scope-boundary
+      type: manual
+      criterion: "The freeze adds only result documentation and harness evidence; no new case, gold outcome, seed, holdout gate, or product tuning is included."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T11:41:24.3393799+09:00
+    decision: BASELINE
+    values:
+      final-rerun: "PASS: v1/adversarial profiles and expanded 10-seed reports regenerated"
+      project-regression: "PASS: all required checks completed before freeze documentation"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:41:24.3393799+09:00
+    decision: KEEP
+    values:
+      final-rerun: "PASS: current-code rerun preserved prior aggregate metrics"
+      report-boundary: "PASS: holdout and expanded aggregate verifiers"
+      project-regression: "PASS: Core 331 files/719 passed/3 skipped, eval 11/11, Desktop typecheck/build, document-engine 39/39, architecture 1092/3583, syntax, and diff check"
+      freeze-artifacts: "PASS: result summary and SHA-256 manifest added"
+      scope-boundary: "PASS: no benchmark/product behavior tuning added"
+
+work_discovery_benchmark_ablation:
+  status: completed
+  evaluator: "The fourth ablation is run on the exact frozen v1 expanded inputs, uses the existing metric contract, preserves raw seed/scenario evidence, and does not rewrite the frozen benchmark artifacts."
+  checks:
+    - id: frozen-inputs
+      type: automated
+      criterion: "The expanded ten-seed fixture roots and frozen aggregate remain present and the v1 report boundary still passes."
+      command: "node test/work-discovery-benchmark/verify-report.mjs --root D:\\ax\\_test\\sweeps\\expanded --aggregate; node test/work-discovery-benchmark/run.mjs --profile expanded --root D:\\ax\\_test\\profiles\\expanded --seed wd-expanded --report --skip-build"
+    - id: ablation-run
+      type: automated
+      criterion: "Full, No Replay, No Clarification, and No Replay + No Clarification run over 10 seeds × 30 scenarios and write raw plus aggregate artifacts outside the repository."
+      command: "node test/work-discovery-benchmark/ablation.mjs --profile expanded --fixtures-root D:\\ax\\_test\\sweeps\\expanded --output-root D:\\ax\\_test\\ablations\\v1-expanded-10-seed --report --verify-equivalence --skip-build"
+    - id: metric-contract
+      type: automated
+      criterion: "All four conditions expose the existing metric numerator/denominator contract and the fourth condition matches the established No Replay path when their semantics are equivalent."
+      command: "node test/work-discovery-benchmark/ablation.mjs --profile expanded --fixtures-root D:\\ax\\_test\\sweeps\\expanded --output-root D:\\ax\\_test\\ablations\\v1-expanded-10-seed --verify-equivalence --skip-build"
+    - id: project-regression
+      type: automated
+      criterion: "The frozen benchmark boundary and project regression checks remain green after adding the comparison runner."
+      command: "node --check test/work-discovery-benchmark/ablation.mjs; npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; packages/document-engine/.venv/Scripts/python.exe -m unittest discover packages/document-engine/src -p '*test.py'; npm run arch:check; git diff --check"
+    - id: frozen-boundary
+      type: manual
+      criterion: "No v1 source, fixture, gold, seed, holdout, metric, or manifest artifact is rewritten; the fourth report is stored under a separate ablation root."
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T11:54:18.6709957+09:00
+    decision: KEEP
+    values:
+      frozen-inputs: "PASS: expanded v1 aggregate identity and SHA-256 preserved"
+      ablation-run: "PASS: four conditions over 10 seeds × 30 scenarios; raw and aggregate artifacts written outside repository"
+      equivalence: "PASS: independent No Replay + No Clarification path matched No Replay 300/300 cases; metricsEqual=true"
+      project-regression: "PASS: ablation syntax, package invocation, report arithmetic, report boundary, and prior Core/eval/Desktop/document-engine/architecture/diff checks"
+      frozen-boundary: "PASS: no v1 fixture/gold/seed/holdout/metric/manifest rewrite and no product tuning"
 repository_structure_phase_233:
   status: completed
   evaluator: "HTTP response-limit coverage remains unchanged while streaming, content-length preflight, default-limit normalization, and truncation safety move to focused modules"
@@ -15860,3 +16259,235 @@ repository_structure_phase_223:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1013 modules/3382 dependencies, and git diff --check"
       test-preservation: "PASS: All three job target-selection scenario blocks, service/connection/gateway/context setup, presentation options, issue values, persistence guards, and data remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded job target-selection test split and harness records changed"
+
+work_discovery_benchmark_v1:
+  status: active
+  evaluator: "Work Discovery Benchmark v1 remains deterministic, holdout-aware, side-effect-free, and resilient to rotating seed/structure variants while distinguishing safe publish from safe clarification/no-match across ablation variants."
+  checks:
+    - id: benchmark-contract
+      type: automated
+      criterion: "Benchmark documentation and case contract define data layout, expected outcomes, equivalent transformations, and metric denominators."
+      command: "node test/work-discovery-benchmark/run.mjs --check-contract"
+    - id: rotating-contract
+      type: automated
+      criterion: "The rotating profile adds deterministic structural mutations and validates the expanded 14-case contract."
+      command: "node test/work-discovery-benchmark/run.mjs --check-contract --profile rotating"
+    - id: fixture-generation
+      type: automated
+      criterion: "A fresh benchmark root is generated outside the repository with deterministic, varied source snapshots and expected outcomes."
+      command: "node test/work-discovery-benchmark/run.mjs --generate --root D:\\ax\\_test"
+    - id: benchmark-run
+      type: automated
+      criterion: "Full, no-replay, and no-clarification variants run on the same cases and produce JSON/Markdown reports under the external root."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test --generate --report"
+    - id: benchmark-safety
+      type: automated
+      criterion: "Ambiguous, no-match, truncated, and holdout-overfit cases are never falsely published by the Full variant, and no network/side-effect adapter is available."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test --verify-safety"
+    - id: rotating-benchmark
+      type: automated
+      criterion: "A separate rotating seed/profile produces a report, preserves the safety boundary, and exposes any mutation-induced capability gaps instead of hiding them."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\rotating --profile rotating --seed wd-rotating --generate --report --verify-safety"
+    - id: core-regression
+      type: automated
+      criterion: "Core typecheck, tests, and existing evaluation remain green."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core"
+    - id: project-regression
+      type: automated
+      criterion: "Desktop typecheck/build, document-engine, architecture, and whitespace checks remain green."
+      command: "npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; packages/document-engine/.venv/Scripts/python.exe -m unittest discover packages/document-engine/src -p '*test.py'; npm run arch:check; git diff --check"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-04T09:25:35.8055098+09:00
+    decision: BASELINE
+    values:
+      benchmark-contract: "FAIL as intended: test/work-discovery-benchmark/run.mjs does not exist"
+      core-typecheck: "PASS"
+      core-tests: "PASS: 331 files, 717 passed, 3 skipped"
+      core-eval: "PASS: 5 files, 11 passed"
+      architecture: "PASS: no dependency violations; 1092 modules, 3583 dependencies"
+      whitespace: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T09:53:53.7883819+09:00
+    decision: KEEP
+    values:
+      benchmark-contract: "PASS: v1=10 cases and rotating=14 cases"
+      fixture-generation: "PASS: v1 generated at D:\\ax\\_test and rotating generated at D:\\ax\\_test\\rotating with owned manifests, snapshots, raw CSVs, and expected outputs"
+      benchmark-run: "PASS: Full/no-replay/no-clarification reports generated for v1 and rotating profiles"
+      benchmark-safety: "PASS: Full unsafe publishes=0, safe-outcome failures=0, network access disabled, side-effect adapters empty"
+      rotating-benchmark: "PASS: wd-rotating and wd-rotating-2 both Full correctPublish=100%, falsePublish=0%, safeDecision=100%"
+      reproducibility: "PASS: same-seed case/expected file comparison 98/98 matched"
+      core-regression: "PASS: Core typecheck, 331 test files with 717 passed and 3 skipped, and evaluation 11/11"
+      project-regression: "PASS: Desktop typecheck/build, document-engine 39/39, architecture 1092 modules/3583 dependencies, and git diff --check"
+
+work_discovery_benchmark_expansion:
+  status: active
+  evaluator: "Independent adversarial Work Discovery profiles expose schema, source, holdout, and input-format weaknesses without rewriting gold answers or mutating production behavior."
+  checks:
+    - id: expansion-contracts
+      type: automated
+      criterion: "All expansion profiles validate their declared case counts and required IDs."
+      command: "powershell -NoProfile -Command \"$profiles=@('schema-drift','source-confusion','holdout','input-variation','expanded'); foreach($profile in $profiles){npm.cmd run test:wd-benchmark -- --profile $profile --check-contract; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}}\""
+    - id: schema-drift-run
+      type: automated
+      criterion: "Schema-drift cases run through all variants and Full preserves safe decisions."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\schema-drift --profile schema-drift --seed wd-schema-drift --generate --report --verify-safety"
+    - id: source-confusion-run
+      type: automated
+      criterion: "Source-confusion cases distinguish identical, near-match, missing, and truncated sources without Full false publish."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\source-confusion --profile source-confusion --seed wd-source-confusion --generate --report --verify-safety"
+    - id: input-variation-run
+      type: automated
+      criterion: "CSV, XLSX, PostgreSQL SQL, and PDF raw fixtures are generated and the structured snapshot variants run safely."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\input-variation --profile input-variation --seed wd-input-variation --generate --report --verify-safety"
+    - id: holdout-run
+      type: automated
+      criterion: "Holdout overfit scenarios produce a report even when Full exposes a generalization failure; expected gold is not rewritten."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\holdout --profile holdout --seed wd-holdout --generate --report"
+    - id: failure-report
+      type: automated
+      criterion: "The holdout failure artifact records Full B24, B25, and B26 as explicit evidence."
+      command: "powershell -NoProfile -Command \"$p='D:\\ax\\_test\\profiles\\holdout\\runs\\latest-failures.json'; if(!(Test-Path -LiteralPath $p)){throw 'failure report missing'}; $rows=@(Get-Content -Raw -LiteralPath $p | ConvertFrom-Json); $ids=@($rows | Where-Object {$_.variant -eq 'full' -and $_.caseId -in @('B24','B25','B26')} | Select-Object -ExpandProperty caseId -Unique); if($ids.Count -ne 3){throw ('expected B24-B26 Full failures, found ' + ($ids -join ','))}; 'ok'\""
+    - id: expanded-run
+      type: automated
+      criterion: "The combined 30-case profile reports aggregate behavior across all mutation families."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\profiles\\expanded --profile expanded --seed wd-expanded --generate --report"
+    - id: benchmark-regression
+      type: automated
+      criterion: "The original v1 and rotating profiles remain safe after expansion."
+      command: "node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test --profile v1 --seed wd-v1 --report --verify-safety; node test/work-discovery-benchmark/run.mjs --root D:\\ax\\_test\\rotating --profile rotating --seed wd-rotating --report --verify-safety"
+    - id: production-boundary
+      type: automated
+      criterion: "No production Core or Desktop source is changed by the benchmark expansion."
+      command: "powershell -NoProfile -Command \"$paths=@(git diff --name-only -- packages/core/src apps/desktop/src); if($paths.Count -ne 0){throw ('production paths changed: ' + ($paths -join ','))}; 'ok'\""
+
+work_discovery_benchmark_seed_sweep:
+  status: active
+  evaluator: "The same independent adversarial Work Discovery contract remains stable across a deterministic multi-seed sweep, with per-seed and pooled evidence and no production mutation."
+  checks:
+    - id: sweep-contract
+      type: automated
+      criterion: "The sweep accepts the expanded profile and validates all default seed contracts before evaluation."
+      command: "node test/work-discovery-benchmark/sweep.mjs --profile expanded --root D:\\ax\\_test\\sweeps\\expanded --check-contract"
+    - id: safe-profile-sweep
+      type: automated
+      criterion: "Schema-drift, source-confusion, and input-variation Full variants preserve safe outcomes across all default seeds."
+      command: "powershell -NoProfile -Command \"$profiles=@('schema-drift','source-confusion','input-variation'); foreach($profile in $profiles){node test/work-discovery-benchmark/sweep.mjs --profile $profile --root ('D:\\ax\\_test\\sweeps\\' + $profile) --generate --report --verify-safety; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}}\""
+    - id: expanded-sweep
+      type: automated
+      criterion: "The expanded ten-seed sweep writes seed-level reports and an aggregate report without hiding the known B24-B26 failures."
+      command: "node test/work-discovery-benchmark/sweep.mjs --profile expanded --root D:\\ax\\_test\\sweeps\\expanded --generate --report"
+    - id: aggregate-evidence
+      type: automated
+      criterion: "The aggregate report has ten seed records and at least ten seed-qualified Full failures for each of B24, B25, and B26."
+      command: "powershell -NoProfile -Command \"$p='D:\\ax\\_test\\sweeps\\expanded\\runs\\latest-aggregate.json'; if(!(Test-Path -LiteralPath $p)){throw 'aggregate report missing'}; $r=Get-Content -Raw -LiteralPath $p | ConvertFrom-Json; if($r.seedCount -ne 10){throw ('expected 10 seeds, found ' + $r.seedCount)}; foreach($id in @('B24','B25','B26')){$n=@($r.failures | Where-Object {$_.variant -eq 'full' -and $_.caseId -eq $id}).Count; if($n -lt 10){throw ($id + ' failures not preserved: ' + $n)}}; 'ok'\""
+    - id: sweep-regression
+      type: automated
+      criterion: "The original v1 and rotating contracts remain valid after adding the sweep layer."
+      command: "node test/work-discovery-benchmark/run.mjs --profile v1 --check-contract; node test/work-discovery-benchmark/run.mjs --profile rotating --check-contract"
+    - id: production-boundary
+      type: automated
+      criterion: "No production Core or Desktop source is changed by the multi-seed sweep."
+      command: "powershell -NoProfile -Command \"$paths=@(git diff --name-only -- packages/core/src apps/desktop/src); if($paths.Count -ne 0){throw ('production paths changed: ' + ($paths -join ','))}; 'ok'\""
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T10:23:08.4920669+09:00
+    decision: KEEP
+    values:
+      sweep-contract: "PASS: default 10 seeds each validated expanded=30"
+      safe-profile-sweep: "PASS: schema-drift/input-variation Full safety 140/140 each; source-confusion Full unsafe publishes 0/140"
+      expanded-sweep: "PASS: seed-level reports and pooled aggregate written for 10 seeds/300 cases"
+      aggregate-evidence: "PASS: aggregate has seedCount=10 and B24/B25/B26 Full failures=10 each"
+      regression: "PASS: v1/rotating contracts, Core tests/eval, Desktop build, document-engine, architecture, syntax, and diff checks"
+      production-boundary: "PASS: no production Core or Desktop source changed"
+
+work_discovery_replay_completeness:
+  status: active
+  evaluator: "Required observations must be present and replayed for every training example before a candidate can be accepted."
+  checks:
+    - id: focused-regression
+      type: automated
+      criterion: "The replay runner focused suite covers a missing required observation and all existing scenarios pass."
+      command: "npx vitest run packages/core/src/work-discovery/synthesis/replay-runner.test.ts"
+    - id: core-regression
+      type: automated
+      criterion: "Core typecheck, tests, and evaluation remain green after the fail-closed replay patch."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core"
+    - id: benchmark-regression
+      type: automated
+      criterion: "The v1, rotating, and adversarial benchmark contracts still run and preserve holdout failures."
+      command: "node test/work-discovery-benchmark/run.mjs --profile v1 --check-contract; node test/work-discovery-benchmark/run.mjs --profile rotating --check-contract; node test/work-discovery-benchmark/run.mjs --profile holdout --root D:\\ax\\_test\\profiles\\holdout --seed wd-holdout --report"
+    - id: diff-check
+      type: automated
+      criterion: "The patch has no whitespace errors and stays within the declared replay boundary."
+      command: "git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T10:57:40.0721437+09:00
+    decision: KEEP
+    values:
+      focused-regression: "PASS: replay-runner focused suite 3/3, including missing required observation and optional observation preservation"
+      core-regression: "PASS: Core typecheck, 331 files/719 passed/3 skipped, evaluation 11/11"
+      project-regression: "PASS: Desktop typecheck/build, document-engine 39/39, architecture 1092/3583, benchmark contracts, report-boundary, and diff check"
+      implementation-boundary: "PASS: production change is limited to fail-closed replay behavior; no holdout gate or future-data input"
+
+monthly_report_discovery_diagnosis:
+  status: active
+  evaluator: "The exact persisted failure is reproducible and every diagnosis claim is supported by session evidence plus the responsible code boundary."
+  checks:
+    - id: exact-persisted-symptom
+      type: automated-read-only
+      criterion: "The latest September-report discovery session is failed with no_matching_candidate and the exact replay-coverage error."
+      command: >-
+        Read the latest matching work_discovery_sessions row from the AXStudio-dev SQLite database in mode=ro and exit nonzero when status=failed, error_code=no_matching_candidate, and error_message='Required output fields could not be replayed across every example.'.
+    - id: session-evidence-audit
+      type: automated-read-only
+      criterion: "Record example/source/snapshot/observation/candidate/replay counts, connector coverage, and source-read budget from the same session."
+      command: >-
+        Query only state_json, work_discovery_examples, work_discovery_snapshots, work_discovery_replay_cases, and workspace_chat_sources for the matching session/chat; redact secret-bearing fields.
+    - id: implementation-boundary-audit
+      type: static-read-only
+      criterion: "Verify HTTP discovery registration, PDF input support, observation path construction, candidate operators, source ranking inputs, and compiled output steps."
+      command: >-
+        Inspect the default discovery registry, module packages, input artifact provider, document observer, source ranker, candidate enumerator, replay runner, and blueprint compiler.
+    - id: no-product-mutation
+      type: scope
+      criterion: "No product, fixture, live-service, credential, or application-state mutation is made during diagnosis."
+  final:
+    recorded: true
+    recorded_at: 2026-09-04T17:10:08.5503306+09:00
+    decision: DIAGNOSED
+    values:
+      exact-persisted-symptom: "RED, deterministic in 0.8 seconds"
+      session-evidence-audit: "PASS: all ten structural assertions passed"
+      implementation-boundary-audit: "PASS: all five static boundary assertions passed"
+      no-product-mutation: "PASS"
+
+teach_by_example_pdf_report_generation:
+  goal: "A natural-language report request can use explicit read-only HTTP/RDB sources plus completed/blank PDF artifacts to produce a verified, deliverable PDF without fixture-specific production logic."
+  frozen_after_baseline: true
+  checks:
+    - id: exact-current-failure-baseline
+      criterion: "The persisted September-report attempt remains a reproducible no_matching_candidate baseline before implementation."
+      method: "Read the matching AXStudio-dev discovery session in SQLite read-only mode and assert its terminal status and error contract."
+    - id: bounded-source-capture
+      criterion: "Only explicitly selected HTTP/RDB source references are captured; unrelated local files and connectors are excluded."
+      method: "Focused integration tests with in-memory adapters assert source IDs, read-only methods, budgets, pagination/completeness, and provenance."
+    - id: structured-report-spec
+      criterion: "Completed examples and blank templates produce distinct roles and stable unique table/field locations; repeated labels and values do not collide."
+      method: "Fixture-independent unit tests use synthetic report observations with duplicate labels/currency values and assert unique semantic paths and validation failures for ambiguity."
+    - id: report-plan-execution
+      criterion: "A validated report plan supports period parameters, filters, lookups/joins, grouping, derived metrics, and deterministic template bindings."
+      method: "Public-seam tests execute independently authored in-memory source snapshots and expected values; invalid, incomplete, or underdetermined plans fail closed."
+    - id: pdf-render-and-verify
+      criterion: "The existing PDF engine fills the original blank template, verifies output, persists a PDF artifact, and returns bounded delivery metadata."
+      method: "Document-engine integration test plus rendered-page inspection; no hidden gold is used by generation."
+    - id: exact-manual-e2e
+      criterion: "The user's September-report request completes against the external read-only test environment and yields a downloadable/savable generated PDF."
+      method: "Run the real request after implementation, inspect source-use evidence, render every output page, and compare metrics/layout independently against hidden gold only after output exists."
+    - id: safety-regression
+      criterion: "No writes, external delivery, arbitrary paths, replay-gate weakening, benchmark mutation, or unrelated behavior regression occurs."
+      method: "Focused safety tests, frozen benchmark integrity check, full Core test/eval/typecheck, Desktop typecheck/build, architecture check, git diff --check, and final scoped-diff review."
+  baseline:
+    recorded: false

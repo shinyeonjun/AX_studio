@@ -15,7 +15,7 @@ export const HTTP_CAPABILITIES: ConnectorCapability[] = [
       { name: 'path', label: '경로', question: 'base URL 기준 경로는 무엇인가요?', required: true },
       { name: 'headers', label: '헤더', question: '추가 헤더가 있나요?', required: false },
     ],
-    io: { inputs: {}, outputs: { response: 'TextArtifact' } },
+    io: { inputs: {}, outputs: { response: 'HttpResponseArtifact', body: 'TextArtifact' } },
   },
   {
     id: 'http.post',
@@ -30,7 +30,7 @@ export const HTTP_CAPABILITIES: ConnectorCapability[] = [
       { name: 'body', label: '본문', question: 'POST로 보낼 JSON 또는 문자열 본문은 무엇인가요?', required: true },
       { name: 'headers', label: '헤더', question: '추가 헤더가 있나요?', required: false },
     ],
-    io: { inputs: {}, outputs: { response: 'TextArtifact' } },
+    io: { inputs: {}, outputs: { response: 'HttpResponseArtifact', body: 'TextArtifact' } },
   },
 ];
 

@@ -68,7 +68,9 @@ export async function continueWorkflowAfterApproval(
       log.push(entry);
       host.config.store.updateExecutionLog(execution.id, log);
     },
+    execution.workspaceSessionId,
   );
+  ctx.outputs = { ...(checkpoint?.outputs ?? {}) };
   const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };
 
   try {

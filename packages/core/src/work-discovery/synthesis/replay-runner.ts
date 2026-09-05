@@ -42,6 +42,10 @@ export function replayCandidates(params: {
   snapshotsByExample: Record<string, Record<string, TableArtifact>>;
 }): CandidateProgram[] {
   const results: CandidateProgram[] = [];
+  const requiredPaths = new Set(
+    params.examples.flatMap((example) =>
+      example.observations.filter((observation) => observation.required).map((observation) => observation.path)),
+  );
 
   for (const candidate of params.candidates) {
     const replayResults: CandidateProgram['replayResults'] = [];
@@ -49,7 +53,19 @@ export function replayCandidates(params: {
 
     for (const example of params.examples) {
       const observation = example.observations.find((entry) => entry.path === candidate.observationPath);
-      if (!observation || !observation.required) continue;
+      if (!observation) {
+        if (requiredPaths.has(candidate.observationPath)) {
+          replayResults.push({
+            exampleId: example.exampleId,
+            expected: null,
+            actual: null,
+            match: 0,
+            pass: false,
+          });
+        }
+        continue;
+      }
+      if (!observation.required) continue;
       const snapshots = snapshotsForCandidate(
         candidate.expr,
         params.snapshotsByExample[example.exampleId] ?? {},

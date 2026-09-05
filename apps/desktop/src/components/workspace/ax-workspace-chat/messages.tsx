@@ -1,4 +1,5 @@
 import type { WorkspaceChatMessage } from '@ax-studio/core';
+import type { GeneratedArtifactExportResult } from '../../../types/ax-api/contracts';
 import { axStudioLogo } from '../../../constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from '../WorkspaceRunResultCard';
 import { WorkspaceMarkdown } from '../WorkspaceMarkdown';
@@ -19,6 +20,8 @@ export interface AssistantMessageProps {
   onSend: (text: string) => Promise<void>;
   onApproveApproval?: (approvalId: string) => Promise<void>;
   onRejectApproval?: (approvalId: string) => Promise<void>;
+  onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
 }
 
 export function AssistantMessage({
@@ -28,6 +31,8 @@ export function AssistantMessage({
   onSend,
   onApproveApproval,
   onRejectApproval,
+  onDownloadPdf,
+  onSavePdfToFolder,
 }: AssistantMessageProps) {
   const content = isRunResultMessage(message)
     ? (
@@ -35,9 +40,12 @@ export function AssistantMessage({
         content={message.content}
         status={message.executionStatus}
         approval={message.approval}
+        generatedPdf={message.generatedPdf}
         busy={busy}
         onApprove={onApproveApproval}
         onReject={onRejectApproval}
+        onDownloadPdf={onDownloadPdf}
+        onSavePdfToFolder={onSavePdfToFolder}
       />
     )
     : <WorkspaceMarkdown content={message.content} />;

@@ -19,6 +19,7 @@ describe('runtime execution contexts', () => {
       })),
     };
     const observedSinks: Array<ArtifactSink | undefined> = [];
+    const observedSessions: Array<string | undefined> = [];
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
@@ -29,6 +30,7 @@ describe('runtime execution contexts', () => {
           name: 'document',
           execute: async (_action, _params, ctx) => {
             observedSinks.push(ctx.artifactSink);
+            observedSessions.push(ctx.workspaceSessionId);
             return { ok: true, data: { observed: true } };
           },
         },
@@ -36,6 +38,7 @@ describe('runtime execution contexts', () => {
           name: 'gmail',
           execute: async (_action, _params, ctx) => {
             observedSinks.push(ctx.artifactSink);
+            observedSessions.push(ctx.workspaceSessionId);
             return { ok: true, data: { observed: true } };
           },
         },
@@ -78,15 +81,17 @@ describe('runtime execution contexts', () => {
       assumptions: [],
       sideEffects: {},
       dataPolicy: {},
-    }, { ephemeral: true });
+    }, { ephemeral: true, workspaceSessionId: 'chat-report-1' });
 
     expect(first.status).toBe('pending_approval');
     expect(observedSinks).toEqual([artifactSink]);
+    expect(observedSessions).toEqual(['chat-report-1']);
 
     const resumed = await runtime.continueAfterApproval(first.pendingApprovalId!);
 
     expect(resumed.status).toBe('success');
     expect(observedSinks).toEqual([artifactSink, artifactSink]);
+    expect(observedSessions).toEqual(['chat-report-1', 'chat-report-1']);
   });
 
   it('replaces and removes live connectors without restarting the runtime', async () => {

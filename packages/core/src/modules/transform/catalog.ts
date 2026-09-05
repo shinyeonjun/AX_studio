@@ -32,12 +32,26 @@ export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
     params: [],
     io: { inputs: { document: 'DocumentArtifact' }, outputs: { text: 'TextArtifact' } },
   },
+  {
+    id: 'transform.http_to_table',
+    connector: 'transform',
+    kind: 'read',
+    label: 'HTTP 응답 → 표',
+    description: '구조화된 JSON HTTP 응답을 명시한 행 경로로 표로 변환',
+    sideEffect: 'NONE',
+    params: [
+      { name: 'rowsPath', label: '행 경로', question: 'JSON에서 행 배열은 어느 경로인가요?', required: false },
+      { name: 'sourceId', label: '자료 이름', question: '변환된 표를 어떤 자료로 기록할까요?', required: false },
+      { name: 'rowLimit', label: '행 제한', question: '몇 행까지 사용할까요?', required: false },
+    ],
+    io: { inputs: { response: 'HttpResponseArtifact' }, outputs: { table: 'TableArtifact' } },
+  },
 ];
 
 export const TRANSFORM_CATALOG: ConnectorCatalogEntry = {
   id: 'transform',
   label: 'Transform',
-  description: '데이터 계약 변환 (테이블·문서 → 텍스트)',
+  description: '데이터 계약 변환 (HTTP·테이블·문서 → 표·텍스트)',
   connectable: false,
   alwaysReal: true,
   runtimeAvailable: true,

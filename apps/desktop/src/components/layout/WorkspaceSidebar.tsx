@@ -25,6 +25,7 @@ interface WorkspaceSidebarProps {
   onSelectSession: (session: ChatSessionSummary) => void;
   onDeleteSession: (session: ChatSessionSummary) => void;
   onOpenWork: (workflowId: string) => void;
+  onOpenExecution: (execution: AppState['executions'][number]) => void;
   onToggleWorkActive: (workflowId: string, active: boolean) => void;
   onDeleteWork: (workflowId: string, name: string) => void;
   onOpenSettings: (screen: SettingsScreen) => void;
@@ -45,6 +46,7 @@ export function WorkspaceSidebar({
   onSelectSession,
   onDeleteSession,
   onOpenWork,
+  onOpenExecution,
   onToggleWorkActive,
   onDeleteWork,
   onOpenSettings,
@@ -67,7 +69,9 @@ export function WorkspaceSidebar({
         {tab === 'work' && (
           <SidebarWorkPanel
             state={state}
+            sessions={sessions}
             onOpenWork={onOpenWork}
+            onOpenExecution={onOpenExecution}
             onToggleWorkActive={onToggleWorkActive}
             onDeleteWork={onDeleteWork}
           />

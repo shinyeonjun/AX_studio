@@ -6,6 +6,7 @@ import type {
   PdfFormFillOptions,
   PdfFormFillResult,
   PdfFormTemplate,
+  PdfReportPairAnalysis,
   PdfToHtmlOptions,
   PdfToHtmlResult,
 } from '../types.js';
@@ -85,6 +86,21 @@ export class MockDocumentEngineClient implements DocumentEngineClient {
       verified: true,
       interactive: false,
       sourceUnchanged: true,
+    };
+  }
+
+  async pdfReportAnalyze(templatePath: string, examplePath: string): Promise<PdfReportPairAnalysis> {
+    return {
+      schemaVersion: 1,
+      pairId: 'mock-report-pair',
+      templateHash: 'mock-template-hash',
+      exampleHash: 'mock-example-hash',
+      pageCount: 1,
+      pages: [{ index: 0, width: 595, height: 842, rotation: 0 }],
+      scalarSlots: [],
+      tableGroups: [],
+      templateImages: [templatePath + '.png'],
+      exampleImages: [examplePath + '.png'],
     };
   }
 

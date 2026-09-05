@@ -101,11 +101,20 @@ def _insert_textbox(
     # Never silently clip a value. Retry with a smaller font, and fail the
     # whole write if the value still cannot fit inside its detected region.
     while font_size >= 5.0:
+        raw_color = field.get("textColor")
+        color = None
+        if isinstance(raw_color, (list, tuple)) and len(raw_color) == 3:
+            color = tuple(min(max(float(component), 0.0), 1.0) for component in raw_color)
+        raw_align = str(field.get("align") or "left").lower()
+        alignment = {"left": 0, "center": 1, "right": 2}.get(raw_align, 0)
         kwargs: dict[str, Any] = {
             "fontname": font_name,
             "fontsize": font_size,
             "overlay": True,
+            "align": alignment,
         }
+        if color is not None:
+            kwargs["color"] = color
         if font_file:
             kwargs["fontfile"] = str(font_file)
         result = page.insert_textbox(rect, text, **kwargs)

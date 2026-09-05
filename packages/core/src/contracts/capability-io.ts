@@ -7,6 +7,7 @@ export const ContractTypeNameSchema = z.enum([
   'DocumentArtifact',
   'DocumentIngestInput',
   'TextArtifact',
+  'HttpResponseArtifact',
   'TableArtifact',
   'JsonArtifact',
   'EmailMessageRef',

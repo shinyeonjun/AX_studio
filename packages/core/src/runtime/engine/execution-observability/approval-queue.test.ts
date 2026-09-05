@@ -83,5 +83,7 @@ describe('runtime approval and queue observability', () => {
     expect(store.listWorkflows()).toHaveLength(0);
     expect(store.listExecutions(10)).toHaveLength(2);
     expect(store.listExecutions(10).every((execution) => execution.ephemeral)).toBe(true);
+    const correlations = store.listExecutions(10).flatMap((execution) => JSON.parse(execution.logJson ?? '[]'));
+    expect(correlations).toContainEqual(expect.objectContaining({ code: 'execution_dequeued', data: expect.objectContaining({ jobId: first.jobId }) }));
   });
 });

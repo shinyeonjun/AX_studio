@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import type { ExecutionResultStatus, WorkspaceChatApproval } from '@ax-studio/core';
+import type {
+  ExecutionResultStatus,
+  WorkspaceChatApproval,
+  WorkspaceChatGeneratedPdf,
+} from '@ax-studio/core';
+import type { GeneratedArtifactExportResult } from '../../types/ax-api/contracts';
+import { formatFileSize } from '../../lib/format-file-size';
 
 interface WorkspaceRunResultCardProps {
   content: string;
   status?: ExecutionResultStatus;
   approval?: WorkspaceChatApproval;
+  generatedPdf?: WorkspaceChatGeneratedPdf;
   busy?: boolean;
   onApprove?: (approvalId: string) => Promise<void>;
   onReject?: (approvalId: string) => Promise<void>;
+  onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
 }
 
 const LEGACY_EXECUTION_STATUS_PATTERNS: Array<[ExecutionResultStatus, RegExp]> = [
@@ -44,7 +53,7 @@ function statusPresentation(status: ExecutionResultStatus | undefined): {
     case 'cancelled':
       return { label: '실행 취소', className: 'ax-workspace-run-card--cancelled' };
     case 'failed':
-      return { label: '실행 실패', className: '' };
+      return { label: '실행 실패', className: 'ax-workspace-run-card--failed' };
     default:
       return { label: '실행 결과', className: '' };
   }
@@ -54,14 +63,20 @@ export function WorkspaceRunResultCard({
   content,
   status,
   approval,
+  generatedPdf,
   busy = false,
   onApprove,
   onReject,
+  onDownloadPdf,
+  onSavePdfToFolder,
 }: WorkspaceRunResultCardProps) {
   const resolvedStatus = resolveWorkspaceExecutionStatus(status, content);
   const presentation = statusPresentation(resolvedStatus);
   const [busyAction, setBusyAction] = useState<'approve' | 'reject' | null>(null);
   const [actionError, setActionError] = useState('');
+  const [artifactAction, setArtifactAction] = useState<'download' | 'folder' | null>(null);
+  const [completedArtifactAction, setCompletedArtifactAction] = useState<'download' | 'folder' | null>(null);
+  const [artifactError, setArtifactError] = useState('');
 
   const runApprovalAction = async (action: 'approve' | 'reject') => {
     if (!approval || !onApprove || !onReject || busy || busyAction) return;
@@ -77,6 +92,27 @@ export function WorkspaceRunResultCard({
     }
   };
 
+  const runArtifactAction = async (action: 'download' | 'folder') => {
+    if (!generatedPdf || busy || artifactAction) return;
+    const handler = action === 'download' ? onDownloadPdf : onSavePdfToFolder;
+    if (!handler) return;
+    setArtifactAction(action);
+    setCompletedArtifactAction(null);
+    setArtifactError('');
+    try {
+      const result = await handler(generatedPdf.artifactId);
+      if (!result.ok) {
+        if (!result.canceled) setArtifactError(result.error ?? 'PDF를 저장하지 못했습니다.');
+        return;
+      }
+      setCompletedArtifactAction(action);
+    } catch (error) {
+      setArtifactError(error instanceof Error ? error.message : 'PDF를 저장하지 못했습니다.');
+    } finally {
+      setArtifactAction(null);
+    }
+  };
+
   return (
     <div
       className={`ax-workspace-run-card ${presentation.className}`.trim()}
@@ -87,6 +123,36 @@ export function WorkspaceRunResultCard({
         {presentation.label}
       </p>
       <p>{content}</p>
+      {generatedPdf && (
+        <section className="ax-workspace-generated-pdf" aria-label="생성된 PDF 결과물">
+          <div className="ax-workspace-generated-pdf-copy">
+            <span className="ax-workspace-generated-pdf-eyebrow">생성된 결과물 · PDF</span>
+            <strong className="ax-workspace-generated-pdf-name" title={generatedPdf.fileName}>
+              {generatedPdf.fileName}
+            </strong>
+            <span className="ax-workspace-generated-pdf-size">{formatFileSize(generatedPdf.size)}</span>
+          </div>
+          <div className="ax-workspace-generated-pdf-actions" aria-live="polite">
+            <button
+              type="button"
+              className="ax-workspace-generated-pdf-button ax-workspace-generated-pdf-button--primary"
+              onClick={() => void runArtifactAction('download')}
+              disabled={busy || artifactAction !== null || !onDownloadPdf}
+            >
+              {artifactAction === 'download' ? '다운로드 중…' : completedArtifactAction === 'download' ? '다운로드됨' : '다운로드'}
+            </button>
+            <button
+              type="button"
+              className="ax-workspace-generated-pdf-button"
+              onClick={() => void runArtifactAction('folder')}
+              disabled={busy || artifactAction !== null || !onSavePdfToFolder}
+            >
+              {artifactAction === 'folder' ? '저장 중…' : completedArtifactAction === 'folder' ? '폴더에 저장됨' : '지정 폴더에 저장'}
+            </button>
+            {artifactError && <p className="ax-workspace-generated-pdf-error" role="alert">{artifactError}</p>}
+          </div>
+        </section>
+      )}
       {approval && (
         <section className="ax-workspace-inline-approval" aria-label="외부 작업 승인">
           <div className="ax-workspace-inline-approval-copy">

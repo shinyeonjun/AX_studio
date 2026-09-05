@@ -159,6 +159,13 @@
   gap: 4px;
 }
 
+.generated-pdf-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .generated-pdf-button {
   border-color: color-mix(in srgb, var(--red) 32%, var(--border));
   color: var(--red);
@@ -189,6 +196,10 @@
 
   .generated-pdf-action {
     align-items: flex-start;
+  }
+
+  .generated-pdf-buttons {
+    justify-content: flex-start;
   }
 
   .generated-pdf-error {

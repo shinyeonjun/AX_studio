@@ -28,10 +28,31 @@ describe('RdbConnector sqlite', () => {
       const query = await connector.execute('query.read', { table: 'customers' }, queryCtx);
       expect(query.ok).toBe(true);
       if (query.ok) {
-        expect(query.data).toHaveLength(2);
-        expect(query.data[0]).toMatchObject({ priority: 'critical' });
+        expect(query.data).toMatchObject({
+          kind: 'table',
+          truncated: false,
+          completeness: { status: 'complete', observedCount: 2, hasMore: false },
+        });
+        expect(query.data.rows).toHaveLength(2);
+        expect(query.data.rows[0]).toMatchObject({ values: { priority: 'critical' } });
         expect(queryCtx.variables.queryResult).toEqual(query.data);
       }
+
+      const limited = new RdbConnector({
+        type: 'sqlite',
+        filePath: fixture.filePath,
+        allowedTables: ['customers'],
+        rowLimit: 1,
+      });
+      const limitedResult = await limited.execute('query.read', { table: 'customers' }, connectorContext());
+      expect(limitedResult).toMatchObject({
+        ok: true,
+        data: {
+          rows: [{ values: { id: 1, name: 'AsterTech', priority: 'critical' } }],
+          truncated: true,
+          completeness: { status: 'partial', reason: 'row_limit', observedCount: 1, limit: 1, hasMore: true },
+        },
+      });
 
       const denied = await connector.execute('query.read', { table: 'secret_table' }, connectorContext());
       expect(denied).toEqual({ ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' });

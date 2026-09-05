@@ -162,6 +162,28 @@ describe('Workspace flow state', () => {
     expect(markup).not.toContain('실행 결과');
   });
 
+  it('renders both explicit delivery actions for a generated PDF', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceRunResultCard
+        content="보고서 생성이 완료되었습니다."
+        status="success"
+        generatedPdf={{
+          artifactId: 'art_pdf_1',
+          fileName: '2026-09_customer_report.pdf',
+          size: 12_345,
+          mimeType: 'application/pdf',
+        }}
+        onDownloadPdf={async () => ({ ok: true, fileName: '2026-09_customer_report.pdf' })}
+        onSavePdfToFolder={async () => ({ ok: true, fileName: '2026-09_customer_report.pdf' })}
+      />,
+    );
+
+    expect(markup).toContain('2026-09_customer_report.pdf');
+    expect(markup).toContain('다운로드');
+    expect(markup).toContain('지정 폴더에 저장');
+    expect(markup).toContain('생성된 PDF 결과물');
+  });
+
   it('prioritizes a surfaced error so recovery remains visible', () => {
     expect(resolveWorkspaceFlowPresentation({
       ...emptyFlow,

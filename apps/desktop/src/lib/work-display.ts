@@ -39,6 +39,15 @@ export function isPersistentWork(trigger?: WorkSummary['trigger']): boolean {
   return !isEphemeralWork(trigger);
 }
 
+export function isSingleExecution(execution: {
+  ephemeral?: boolean;
+  workflowId?: string | null;
+}): boolean {
+  // Older state payloads did not expose `ephemeral`; workflowId is the safe
+  // compatibility fallback because ephemeral runs never reference a workflow.
+  return execution.ephemeral ?? !execution.workflowId;
+}
+
 export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
   return isRecurringTriggerType(trigger?.type);
 }

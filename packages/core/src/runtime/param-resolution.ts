@@ -14,7 +14,33 @@ function lookupTemplatePath(
     if (Object.hasOwn(stepResults, path)) return stepResults[path];
   }
   const [stepId, ...rest] = path.split('.');
-  let current: unknown = Object.hasOwn(stepResults, stepId) ? stepResults[stepId] : undefined;
+  let current: unknown;
+  const [outputPort, ...nestedPath] = rest;
+  const typedOutput = outputPort && ctx.outputs?.[stepId]?.[outputPort];
+  if (typedOutput !== undefined) {
+    current = typedOutput;
+    for (const key of nestedPath) {
+      if (Array.isArray(current)) {
+        if (/^\d+$/.test(key)) {
+          current = current[Number(key)];
+          continue;
+        }
+        const item = current.find(
+          (candidate) => candidate && typeof candidate === 'object'
+            && Object.hasOwn(candidate as Record<string, unknown>, key),
+        );
+        current = item && typeof item === 'object' ? (item as Record<string, unknown>)[key] : undefined;
+        continue;
+      }
+      if (!current || typeof current !== 'object') return undefined;
+      current = Object.hasOwn(current as Record<string, unknown>, key)
+        ? (current as Record<string, unknown>)[key]
+        : undefined;
+    }
+    return current;
+  }
+
+  current = Object.hasOwn(stepResults, stepId) ? stepResults[stepId] : undefined;
   for (const key of rest) {
     if (Array.isArray(current)) {
       if (/^\d+$/.test(key)) {

@@ -4,6 +4,7 @@ import { formatApprovalTitle } from '../approval-display.js';
 import type { ExecutionResult } from '../types.js';
 import { formatExecutionResultMessage, safeText } from './format.js';
 import type { WorkspaceChatChangedEvent } from './contracts.js';
+import { generatedPdfFromExecutionLog } from './generated-pdf.js';
 
 function parseExecutionIr(irJson: string | null | undefined): WorkflowIR | null {
   if (!irJson) return null;
@@ -70,6 +71,7 @@ export function publishExecutionResultToWorkspaceChat(
   const executionIr = parseExecutionIr(execution.irJson);
   const workflowName = executionIr?.name;
   const inlineApproval = inlineApprovalForExecution(store, result, execution, executionIr);
+  const generatedPdf = generatedPdfFromExecutionLog(result.log);
 
   const updated = store.upsertWorkspaceChatExecutionResult(chat.id, {
     role: 'assistant',
@@ -82,6 +84,7 @@ export function publishExecutionResultToWorkspaceChat(
       inlineApproval: Boolean(inlineApproval),
     }),
     ...(inlineApproval ? { approval: inlineApproval } : {}),
+    ...(generatedPdf ? { generatedPdf } : {}),
   });
   if (!updated) return null;
   return {

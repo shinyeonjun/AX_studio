@@ -8,6 +8,46 @@ import { AxCommandService } from '../service.js';
 import { scriptedModel } from './fixtures.js';
 
 describe('runAxCommandChat command loop', () => {
+  it('does not replace a natural multi-source report request with the max-round fallback', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [
+        { id: 'orders', label: '주문 API', baseUrl: 'http://127.0.0.1:43120/', authType: 'apiKey', authHeader: 'X-API-Key' },
+      ],
+    });
+    const service = new AxCommandService(store);
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const readCommands = [
+      'resource.list',
+      'http.list',
+      'command.list',
+      'workflow.list',
+      'resource.list',
+      'http.list',
+      'command.list',
+      'workflow.list',
+    ] as const;
+    const harness = new AgentHarness(
+      scriptedModel([
+        ...readCommands.map((name) => ({ kind: 'command', command: { name, args: {} } })),
+        { kind: 'reply', message: '2026년 9월 보고서 작성을 완료했습니다.' },
+      ], seen),
+    );
+
+    const reply = await runAxCommandChat({
+      harness,
+      commandService: service,
+      messages: [],
+      userMessage: '자료에 2026년 8월에 작성했던 고객 매출 및 운영 리스크 보고서야 연결된 주문 API와 고객/계약 DB를 사용해서 2026년 9월 보고서도 같은 기준과 같은 형식으로 만들어줘, 실제 데이터 변경이나 외부 전송은 하지 마. 양식은 자료에있는 템플릿 이용하면 돼',
+      connectedConnectors: ['http', 'rdb'],
+    });
+
+    expect(reply).toBe('2026년 9월 보고서 작성을 완료했습니다.');
+    expect(reply).not.toContain('단계가 너무 많아졌습니다');
+    expect(seen).toHaveLength(readCommands.length + 1);
+  });
+
   it('executes a model command through AxCommandService and returns only the final reply', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

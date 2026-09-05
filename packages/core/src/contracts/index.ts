@@ -15,6 +15,23 @@ export * from './document-ingest-resolve.js';
 export * from './output-contract.js';
 export { TextArtifactSchema, JsonArtifactSchema } from './artifacts/text.js';
 export {
+  ArtifactCompletenessSchema,
+  completeArtifactCompleteness,
+  partialArtifactCompleteness,
+  type ArtifactCompleteness,
+} from './artifacts/completeness.js';
+export {
+  HttpResponseArtifactSchema,
+  buildHttpResponseArtifact,
+  httpResponseToTable,
+  type HttpResponseArtifact,
+} from './artifacts/http-response.js';
+export {
+  buildTableArtifact,
+  tableArtifactFromMatrix,
+  tableArtifactFromRows,
+} from './artifacts/table-build.js';
+export {
   TableArtifactSchema,
   TableColumnSchema,
   TableRowSchema,

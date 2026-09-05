@@ -189,6 +189,12 @@
   line-height: 1.55;
 }
 
+.ax-workspace-run-card--failed {
+  background: #fff1f2;
+  border-color: #f5b9c1;
+  color: #9f2435;
+}
+
 .ax-workspace-run-card--approval {
   border-color: #efd9a9;
   background: #fffaf1;
@@ -208,6 +214,95 @@
 .ax-workspace-run-card > p + p {
   margin-top: 5px;
   white-space: pre-wrap;
+}
+
+.ax-workspace-generated-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 92, 230, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ax-chat-text);
+}
+
+.ax-workspace-generated-pdf-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ax-workspace-generated-pdf-eyebrow {
+  color: #6c56c4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ax-workspace-generated-pdf-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-workspace-generated-pdf-size {
+  color: var(--ax-chat-text-secondary);
+  font-size: 11px;
+}
+
+.ax-workspace-generated-pdf-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ax-workspace-generated-pdf-button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #d8d0f4;
+  border-radius: 9px;
+  background: #f8f6ff;
+  color: #5e4db0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ax-workspace-generated-pdf-button--primary {
+  border-color: #7c5ce6;
+  background: #7c5ce6;
+  color: #fff;
+}
+
+.ax-workspace-generated-pdf-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.ax-workspace-generated-pdf-button:focus-visible {
+  outline: 3px solid rgba(124, 92, 230, 0.35);
+  outline-offset: 2px;
+}
+
+.ax-workspace-generated-pdf-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.ax-workspace-generated-pdf-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .ax-workspace-run-card-label {
@@ -761,6 +856,12 @@
   color: #9fd8bb;
 }
 
+[data-theme='dark'] .ax-workspace-run-card--failed {
+  background: #351e26;
+  border-color: #80404f;
+  color: #ffbcc6;
+}
+
 [data-theme='dark'] .ax-workspace-run-card--approval {
   background: rgba(146, 103, 32, 0.18);
   border-color: rgba(236, 194, 105, 0.38);
@@ -771,6 +872,31 @@
   background: rgba(95, 102, 119, 0.18);
   border-color: rgba(157, 164, 181, 0.3);
   color: #b7bdca;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf {
+  border-color: rgba(157, 139, 236, 0.38);
+  background: rgba(34, 29, 57, 0.55);
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-eyebrow {
+  color: #c9bfff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-button {
+  border-color: rgba(157, 139, 236, 0.42);
+  background: rgba(116, 96, 210, 0.12);
+  color: #c9bfff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-button--primary {
+  border-color: #8f78ed;
+  background: #7c5ce6;
+  color: #fff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-error {
+  color: #ffb0b0;
 }
 
 [data-theme='dark'] .ax-workspace-inline-approval {
@@ -1719,6 +1845,16 @@
 
   .ax-workspace-bubble--user {
     max-width: 90%;
+  }
+
+  .ax-workspace-generated-pdf {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-workspace-generated-pdf-actions {
+    align-items: stretch;
+    justify-content: flex-start;
   }
 
   .ax-workspace-composer {

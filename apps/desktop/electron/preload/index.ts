@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('ax', {
   deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),
   clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),
   exportGeneratedArtifact: (artifactId: string) => ipcRenderer.invoke('ax:exportGeneratedArtifact', artifactId),
+  saveGeneratedArtifactToFolder: (artifactId: string) => ipcRenderer.invoke('ax:saveGeneratedArtifactToFolder', artifactId),
   setGlobalActive: (active: boolean) => ipcRenderer.invoke('ax:setGlobalActive', active),
   setWorkflowActive: (workflowId: string, active: boolean) => ipcRenderer.invoke('ax:setWorkflowActive', workflowId, active),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),

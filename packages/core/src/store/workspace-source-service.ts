@@ -135,6 +135,17 @@ export class WorkspaceSourceService {
     };
   }
 
+  /** Resolve an uploaded source only inside its owning session. Physical paths never enter agent commands. */
+  resolveStoredFile(sessionId: string, id: string) {
+    const source = this.store.getWorkspaceSource(assertSessionId(sessionId), id.trim());
+    if (!source) throw new WorkspaceSourceError('workspace_source_not_found');
+    if (source.status === 'processing') throw new WorkspaceSourceError('workspace_source_processing');
+    if (source.status === 'failed') throw new WorkspaceSourceError(source.errorCode ?? 'workspace_source_failed');
+    const artifact = this.artifactStore.get(source.artifactId);
+    if (!artifact) throw new WorkspaceSourceError('workspace_source_artifact_missing');
+    return { source, artifact };
+  }
+
   removeSession(sessionId: string): void {
     const safeSessionId = assertSessionId(sessionId);
     // GC artifacts this session imported, unless another session still

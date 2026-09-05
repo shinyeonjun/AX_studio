@@ -5,6 +5,7 @@ import { executeDiscoveryCommand } from './discovery.js';
 import { executeJobCommand } from './jobs.js';
 import { executeReadCommand } from './read.js';
 import { executeRepairCommand } from './repair.js';
+import { executeReportCommand } from './report.js';
 import { executeWorkflowCommand } from './workflow.js';
 
 export async function executeCommand(
@@ -47,6 +48,8 @@ export async function executeCommand(
     case 'context.update':
     case 'ui.present':
       return executeContextCommand(state, command, options);
+    case 'report.generate':
+      return executeReportCommand(state, command, options);
     case 'discovery.start':
     case 'discovery.inspect':
     case 'discovery.cancel':
