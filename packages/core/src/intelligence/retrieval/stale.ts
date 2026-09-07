@@ -1,5 +1,5 @@
 import { statSync } from 'node:fs';
-import { resolveFileWithinFolderRoot } from '../../connectors/local-folder/path-security.js';
+import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
 import type { IndexedChunk } from './types.js';
 import { tombstoneFile } from './store.js';
 

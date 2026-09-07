@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { readWorkbookFromPath } from './read.js';
+import { readWorkbookFromPath } from './read/workbook.js';
 
 describe('readWorkbookFromPath workbook identity', () => {
   it('preserves worksheet visibility metadata', () => {

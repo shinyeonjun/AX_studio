@@ -1,4 +1,4 @@
-import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../../connectors/local-folder/connection.js';
+import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../../platform/local-folder-config.js';
 import { citationsFromSearchHits } from '../../../platform/citations.js';
 import { parseRetrievalIndexConfig } from '../../retrieval/config.js';
 import { applySnippetPolicy } from '../../retrieval/snippet-policy.js';

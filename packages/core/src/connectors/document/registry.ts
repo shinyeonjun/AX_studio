@@ -1,6 +1,9 @@
 import type { DocumentActionHandler } from './types.js';
-import { ingest, getChunk, getPage, search } from './read/index.js';
-import { getDocumentWriteHandler, listDocumentWriteActions } from './write/index.js';
+import { ingest } from './read/actions/ingest.js';
+import { getChunk } from './read/actions/get-chunk.js';
+import { getPage } from './read/actions/get-page.js';
+import { search } from './read/actions/search.js';
+import { getDocumentWriteHandler, listDocumentWriteActions } from './write/registry.js';
 
 const readActions: Record<string, DocumentActionHandler> = {
   ingest,

@@ -8,7 +8,7 @@ export type {
 } from './condition-expr/schema.js';
 export { evaluateCondition } from './condition-expr/evaluate.js';
 export { migrateLegacyCondition } from './condition-expr/legacy.js';
-export { coerceConditionInput } from './condition-expr/coerce.js';
+export { coerceConditionInput } from './condition-expr/coerce/input.js';
 export {
   normalizeCondition,
   preprocessConditionValue,

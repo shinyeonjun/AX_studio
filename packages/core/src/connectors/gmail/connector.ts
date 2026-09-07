@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
 import { extractGmailPlainBody } from './body-extract.js';
-import { pollGmailNewMessages } from './new-message-poll.js';
+import { pollGmailNewMessages } from './new-message-poll/poll.js';
 import { resolveGmailMessageId } from './message-id.js';
 import { searchGmailMessagePage } from './search-page.js';
 

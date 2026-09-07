@@ -1,5 +1,5 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
-import { readSheetFromPath } from './read.js';
+import { readSheetFromPath } from './read/sheet.js';
 
 export class LocalSheetConnector implements Connector {
   name = 'local_sheet';

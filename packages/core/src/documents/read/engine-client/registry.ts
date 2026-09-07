@@ -1,5 +1,5 @@
 import type { DocumentEngineClient } from './contracts.js';
-import { StdioDocumentEngineClient } from './stdio.js';
+import { StdioDocumentEngineClient } from './stdio/client.js';
 
 let configuredClient: DocumentEngineClient | null = null;
 

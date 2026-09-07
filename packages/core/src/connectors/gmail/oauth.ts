@@ -1,5 +1,4 @@
 export {
-  GMAIL_OAUTH_TIMEOUT_MS,
   connectGmailViaLoopback,
   createOAuthState,
   oauthCallbackStateMatches,

@@ -16,7 +16,7 @@ import {
   issue,
   result,
 } from './contract.js';
-import { executeCommand } from './service/dispatch.js';
+import { executeCommand } from './service/dispatch/execute.js';
 import type {
   AxCommandExecuteOptions,
   AxCommandServiceOptions,

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { readSheetFromPath } from './read.js';
+import { readSheetFromPath } from './read/sheet.js';
 
 function writeWorkbook(): string {
   const path = join(mkdtempSync(join(tmpdir(), 'ax-sheet-read-')), 'workbook.xlsx');

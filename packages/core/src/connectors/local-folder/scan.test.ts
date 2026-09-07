@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { normalizeExtensions, scanFolderChecked } from './scan.js';
+import { normalizeExtensions, scanFolderChecked } from '../../platform/local-folder-scan.js';
 
 describe('normalizeExtensions', () => {
   it('treats blank-only entries as no filter', () => {

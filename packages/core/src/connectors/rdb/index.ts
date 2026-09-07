@@ -1,2 +1,3 @@
 export { RdbConnector, type RdbConnectionConfig } from './connector.js';
-export { parseRdbConnectionConfig, probeRdbConnection } from './config.js';
+export { parseRdbConnectionConfig } from './config/parse.js';
+export { probeRdbConnection } from './config/probe.js';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seedIfConditionsFromClassification } from '../../draft/conditions.js';
-import { validateCanvasDraftGraph } from '../../compile/validate-graph.js';
+import { validateCanvasDraftGraph } from '../../compile/validate-graph/graph.js';
 
 describe('seedIfConditionsFromClassification', () => {
   it('infers if_urgent condition from ai_decision enum output', () => {

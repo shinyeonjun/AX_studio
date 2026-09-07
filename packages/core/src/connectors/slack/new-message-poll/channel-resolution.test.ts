@@ -1,6 +1,6 @@
 import type { WebClient } from '@slack/web-api';
 import { describe, expect, it, vi } from 'vitest';
-import { pollSlackNewMessages } from '../new-message-poll.js';
+import { pollSlackNewMessages } from './poll.js';
 
 describe('pollSlackNewMessages', () => {
   it('resolves and baselines a newly configured channel instead of reusing the old channel id', async () => {

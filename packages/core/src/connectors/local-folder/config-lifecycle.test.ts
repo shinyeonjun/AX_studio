@@ -4,7 +4,7 @@ import {
   parseLocalFolderConnectionConfig,
   removeLocalFolder,
   upsertLocalFolder,
-} from './connection.js';
+} from '../../platform/local-folder-config.js';
 
 describe('local-folder connection configuration and lifecycle', () => {
   it('parses folder list config', () => {

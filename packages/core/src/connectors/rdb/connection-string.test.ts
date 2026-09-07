@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateRdbConnectionString } from './config.js';
+import { validateRdbConnectionString } from './config/validate.js';
 
 describe('validateRdbConnectionString', () => {
   it('rejects http URLs for postgres and mysql', () => {

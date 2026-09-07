@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { probeRdbConnection } from './config.js';
+import { probeRdbConnection } from './config/probe.js';
 import { createSqliteCustomersFixture } from './sqlite-test-fixture.js';
 
 describe('probeRdbConnection', () => {

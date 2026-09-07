@@ -14,12 +14,3 @@ export type {
   ListSlackChannels,
 } from './job-registration/contract.js';
 export { compileScheduledHttpSlackJob } from './job-registration/compile.js';
-export {
-  httpConnectionInput,
-  slackChannelInput,
-} from './job-registration/targets.js';
-export { targetSelectionPresentation } from './job-registration/presentation.js';
-export {
-  proposeJob,
-  commitJob,
-} from './job-registration/service.js';

@@ -1,6 +1,6 @@
 import type { gmail_v1 } from 'googleapis';
 import { describe, expect, it, vi } from 'vitest';
-import { pollGmailNewMessages } from '../../new-message-poll.js';
+import { pollGmailNewMessages } from '../poll.js';
 
 describe('pollGmailNewMessages history pagination', () => {
   it('collects every history page and emits each new message once', async () => {

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { basename, extname } from 'node:path';
-import { readWorkbookFromPath } from './read.js';
+import { readWorkbookFromPath } from './read/workbook.js';
 import {
   findLocalFolder,
   parseLocalFolderConnectionConfig,

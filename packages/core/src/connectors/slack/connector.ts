@@ -1,9 +1,9 @@
 import { WebClient } from '@slack/web-api';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
-import { pollSlackNewMessages } from './new-message-poll.js';
+import { pollSlackNewMessages } from './new-message-poll/poll.js';
 import { listSlackChannelPage, readSlackMessagePage, searchSlackMessagePage } from './read-page.js';
-import { composeSlackMessagePayload } from './format-message.js';
+import { composeSlackMessagePayload } from './format-message/payload.js';
 import { slackRequest } from './request.js';
 
 export class SlackConnector implements Connector {

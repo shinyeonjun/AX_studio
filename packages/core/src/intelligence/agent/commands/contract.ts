@@ -1,7 +1,6 @@
 export { COMMAND_DEFINITIONS } from './contract/definitions.js';
 export {
   COMMAND_NAME_SET,
-  boundedText,
   issue,
   result,
   textArg,

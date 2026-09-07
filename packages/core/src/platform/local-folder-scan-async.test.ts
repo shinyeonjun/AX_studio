@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { scanFolderCheckedAsync } from './scan-async.js';
+import { scanFolderCheckedAsync } from './local-folder-scan-async.js';
 
 describe('scanFolderCheckedAsync', () => {
   const tempDirs: string[] = [];

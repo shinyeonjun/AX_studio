@@ -9,7 +9,7 @@ import {
   isConnectorAlwaysOn,
 } from '../../catalog/index.js';
 import { parseHttpEndpoints } from '../../connectors/http/connection.js';
-import { parseLocalFolderConnectionConfig } from '../../connectors/local-folder/connection.js';
+import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { formatRdbTableRef, parseRdbTableRef } from '../../connectors/rdb/client.js';
 import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../connectors/protocols/openapi/index.js';
 import type { ConnectionRecord, DesignToolContext } from './types.js';

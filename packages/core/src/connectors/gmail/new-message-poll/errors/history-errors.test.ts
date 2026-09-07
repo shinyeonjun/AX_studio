@@ -1,6 +1,6 @@
 import type { gmail_v1 } from 'googleapis';
 import { describe, expect, it, vi } from 'vitest';
-import { pollGmailNewMessages } from '../../new-message-poll.js';
+import { pollGmailNewMessages } from '../poll.js';
 describe('Gmail history errors', () => {
   it('does not treat a non-404 history failure mentioning historyId as an expired cursor', async () => {
     const failure = Object.assign(new Error('service unavailable while reading historyId'), { code: 503 });

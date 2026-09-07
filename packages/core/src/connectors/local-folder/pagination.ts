@@ -1,4 +1,4 @@
-import { MAX_FILES_PER_SCAN } from './scan.js';
+import { MAX_FILES_PER_SCAN } from '../../platform/local-folder-scan.js';
 
 export interface FolderPageOptions {
   offset?: number;

@@ -10,8 +10,6 @@ import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/
 import { ArtifactCompletenessSchema } from '../contracts/artifacts/completeness.js';
 import { tableArtifactFromMatrix, tableArtifactFromRows } from '../contracts/artifacts/table-build.js';
 
-export type StepOutputMap = Record<string, Record<string, unknown>>;
-
 function outputCandidate(port: string, data: unknown, outputCount: number): unknown {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
   const record = data as Record<string, unknown>;

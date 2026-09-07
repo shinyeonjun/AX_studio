@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ConnectorContext } from '../types.js';
-import type { LocalFolderConnectionConfig } from './connection.js';
+import type { LocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { newFilePoll, type NewFilePollParams } from './new-file-poll.js';
 
 describe('newFilePoll', () => {

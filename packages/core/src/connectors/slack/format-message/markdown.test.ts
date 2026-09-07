@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markdownToSlackMrkdwn, parseMarkdownSections } from '../format-message.js';
+import { markdownToSlackMrkdwn, parseMarkdownSections } from './markdown.js';
 
 describe('markdownToSlackMrkdwn', () => {
   it('converts markdown bold to Slack bold', () => {

@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { scanFolder, scanFolderChecked } from './scan.js';
+import { scanFolder, scanFolderChecked } from '../../platform/local-folder-scan.js';
 import { buildLocalFolderResources } from './resources.js';
 import { LocalFolderConnector } from './connector.js';
-import type { LocalFolderEntry } from './connection.js';
+import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
 
 const fault = vi.hoisted(() => ({ operation: '', path: '', code: '' }));
 vi.mock('node:fs', async importOriginal => {

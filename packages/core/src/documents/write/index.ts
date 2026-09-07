@@ -10,5 +10,5 @@ export { renderHtml } from './html/render.js';
 export { generatePdf } from './pdf/generate.js';
 export { importPdfTemplate } from './pdf/to-html.js';
 export { isPdfGeneratePending } from './types.js';
-export { defaultTemplateRoot } from './paths.js';
+export { defaultTemplateRoot } from '../read/paths.js';
 export { fillDocx } from './docx/fill.js';

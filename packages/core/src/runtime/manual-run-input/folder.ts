@@ -1,6 +1,6 @@
-import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../connectors/local-folder/connection.js';
-import { scanFolderCheckedAsync } from '../../connectors/local-folder/scan-async.js';
-import type { ScannedFile } from '../../connectors/local-folder/scan.js';
+import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
+import type { ScannedFile } from '../../platform/local-folder-scan.js';
 import { enrichTriggerPayloadWithFileRef } from '../../contracts/mappers.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 

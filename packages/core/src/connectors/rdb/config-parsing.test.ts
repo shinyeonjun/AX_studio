@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseRdbConnectionConfig } from './config.js';
+import { parseRdbConnectionConfig } from './config/parse.js';
 
 describe('rdb connection config parsing', () => {
   it('parses sqlite, postgres, and mysql configs', () => {

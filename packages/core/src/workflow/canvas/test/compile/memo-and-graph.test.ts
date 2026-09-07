@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildIRFromWorkflow } from '../../compile/builder.js';
-import { validateCanvasDraftGraph } from '../../compile/validate-graph.js';
+import { validateCanvasDraftGraph } from '../../compile/validate-graph/graph.js';
 import { assessCompleteness } from '../../slots/requiredness.js';
 
 describe('ai_decision memo', () => {

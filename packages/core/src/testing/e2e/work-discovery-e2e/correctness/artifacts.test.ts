@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { observeWorkbookArtifact } from '../../../../work-discovery/observation/observe-workbook.js';
-import { readWorkbookFromPath } from '../../../../connectors/local-sheet/read.js';
+import { readWorkbookFromPath } from '../../../../connectors/local-sheet/read/workbook.js';
 import { writeSalesXlsx } from '../fixtures.js';
 
 describe('work discovery correctness regressions', () => {

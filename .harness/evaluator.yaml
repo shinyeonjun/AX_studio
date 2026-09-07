@@ -14445,3 +14445,76 @@ analysis_input_integrity:
       exact-calculation-boundary: "PASS: report plan execution and service preserve complete captured rows; presentation and model-context compaction stay outside final calculations"
       project-regression: "PASS: reporting 323 passed/2 skipped; Core 1366 passed/5 skipped; Core build, Desktop typecheck/build, document-engine 50/50, evaluation 11/11, architecture 0 violations, diff check"
       safety-boundary: "PASS: no new project files, fixture/gold changes, source writes, external delivery, credential mutation, or application data changes"
+
+simplification_local_folder:
+  goal: "The local-folder capability has one implementation seam with no duplicate scanner or pass-through files."
+  checks:
+    - id: local-folder-regression
+      type: automated
+      criterion: "Local-folder connector, platform scanner, path security, resource pagination, and cancellation tests remain green."
+      command: "npx vitest run packages/core/src/connectors/local-folder packages/core/src/platform"
+    - id: structure-invariants
+      type: automated
+      criterion: "No connector-local-folder pass-through wrappers or duplicate platform scanner implementation remain."
+      method: "Search the scoped paths and inspect import graph after the change."
+    - id: project-regression
+      type: automated
+      criterion: "Core typecheck/build, architecture check, and whitespace validation pass."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm run build -w @ax-studio/core; npm run arch:check; git diff --check"
+    - id: public-seam
+      type: scope
+      criterion: "The top-level local-folder connector exports used by the app retain their names and behavior."
+      method: "Compare connector index exports and run the local-folder regression suite."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T04:19:56.6376288+09:00
+    decision: BASELINE
+    values:
+      local-folder-regression: "PASS: 54 passed, 3 skipped"
+      structure-invariants: "FAIL-CAPABLE: three pass-through wrappers and one duplicate async scanner exist"
+      project-regression: "PASS: architecture 0 violations; prior Core typecheck/build green"
+      public-seam: "PASS: existing connector index exports are present"
+
+simplification_pass_throughs:
+  checks:
+    - id: focused-regression
+      type: automated
+      criterion: "Changed connector, document, agent, command, runtime, workflow, and test-double paths preserve their existing behavior."
+      command: "npx vitest run packages/core/src/connectors packages/core/src/testing/connectors packages/core/src/documents/read packages/core/src/workflow/contract-validator packages/core/src/intelligence/agent/commands/service"
+    - id: stale-paths
+      type: automated
+      criterion: "No import references remain for deleted internal facades."
+      command: "rg -n \"connectors/(local-folder/(connection|path-security|scan|scan-async)|local-sheet/read|rdb/config|gmail/new-message-poll|slack/(new-message-poll|format-message)|transform/index)|documents/(read/actions|read/index|write/index)|intelligence/agent/model/cli-(json/(parser|schema)|process/runner)|runtime/(condition-expr/coerce|execution/approval|investigation/input/visuals|output-contract/output)|workflow/(contract-validation/(sequence|structure)|repair/rewrite|visual-display/(node-display|trigger-display))|testing/connectors/mocks/index|intelligence/agent/commands/(job-registration/service|service/dispatch))\\.js\" packages apps test"
+    - id: project-regression
+      type: automated
+      criterion: "Core typecheck/build, Desktop typecheck/build, full Core tests, evaluation, document-engine tests, architecture, and whitespace checks pass."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm run build -w @ax-studio/core; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core; packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'; npm run arch:check; git diff --check"
+    - id: public-seam
+      type: scope
+      criterion: "Stable root exports and connector indexes retain the names required by the desktop app; only proven internal facades and definition-only exports are deleted."
+      method: "Review root/index exports, connector indexes, and scoped diff."
+    - id: safety-boundary
+      type: scope
+      criterion: "No new project files, fixture/gold changes, external writes, credential mutations, or app-state mutations occur."
+      method: "Review git status and scoped diff."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T04:19:56.6376288+09:00
+    decision: BASELINE
+    values:
+      focused-regression: "PASS: local-folder/platform 54 passed, 3 skipped"
+      structure: "FAIL-CAPABLE: duplicate and pass-through modules existed across the cleanup slices"
+      knip: "10 unused values, 39 unused types, 1 duplicate export, 3 unlisted dependencies/binaries reported"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T04:51:58.4551292+09:00
+    decision: KEEP
+
+final_verification:
+  recorded_at: 2026-09-08T04:51:58.4551292+09:00
+  decision: KEEP
+  values:
+    focused-regression: "PASS: connector/document/command/workflow paths 120 files, 377 passed, 3 skipped"
+    project-regression: "PASS: Core 398 files/1355 passed/5 skipped; Core build; Desktop typecheck/build; document-engine 50/50; evaluation 11/11; webhook security 3/3; architecture 0 violations; diff check"
+    public-seam: "PASS: root and connector indexes retain existing names used by the desktop app; deleted paths have no remaining imports"
+    safety-boundary: "PASS: no new project files, fixture/gold changes, external writes, credential mutations, or app-state mutations"

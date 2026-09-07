@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { composeSlackMessagePayload } from '../format-message.js';
+import { composeSlackMessagePayload } from './payload.js';
 
 const ctx = {
   executionId: 'run-1',

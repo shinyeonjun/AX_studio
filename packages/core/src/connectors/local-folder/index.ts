@@ -6,7 +6,14 @@ export {
   type LocalFolderConnectionConfig,
   type LocalFolderConnectionStatus,
   type LocalFolderEntry,
-} from './connection.js';
+} from '../../platform/local-folder-config.js';
 export { LocalFolderConnector } from './connector.js';
-export { scanFolder, scanFolderChecked, type ScannedFile, type ScanFolderResult } from './scan.js';
-export { scanFolderAsync, scanFolderCheckedAsync } from './scan-async.js';
+export {
+  scanFolder,
+  scanFolderChecked,
+  type ScannedFile,
+  type ScanFolderResult,
+} from '../../platform/local-folder-scan.js';
+export {
+  scanFolderCheckedAsync,
+} from '../../platform/local-folder-scan-async.js';
