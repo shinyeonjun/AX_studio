@@ -13375,3 +13375,39 @@ teach_by_example_pdf_report_generation:
       source-safety: "PASS: selected HTTP/RDB reads only; no database writes, HTTP writes, external delivery, or benchmark mutation"
       genericity: "PASS: repairs use structural metadata, aliases, identity evidence, and runtime bindings; no fixture filenames, IDs, dates, or gold values"
       verification: "PASS: report suite 306/2 skipped, Core 1337/5 skipped, document-engine 50/50, Desktop typecheck/build, architecture, diff check, and live three-page render"
+
+derived_case_replay_repair:
+  status: active
+  objective: "Repair overconstrained derived case predicates using only their existing clauses and exact completed-example replay."
+  allowed_mutation:
+    - "packages/core/src/documents/reporting/planner/planner.ts"
+    - "packages/core/src/documents/reporting/planner/planner.test.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "PDF fixtures, hidden gold, AXStudio-dev app data, credentials, and external services"
+    - "connector write behavior and unrelated planner repairs"
+    - "new project files"
+  expansions:
+    - reason: "Persisted report replay evidence identifies the planner's derived case predicate as the failing boundary."
+      recorded_at: 2026-09-08T01:16:10.0726649+09:00
+      paths:
+        - "packages/core/src/documents/reporting/planner/planner.ts"
+        - "packages/core/src/documents/reporting/planner/planner.test.ts"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T01:16:10.0726649+09:00
+    decision: RED
+    values:
+      focused-regression: "FAIL: the new synthetic report replay leaves two status mismatches (A/B normal vs expected 성과 검토) while ratios and labels match"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T01:33:41.1166499+09:00
+    decision: KEEP
+    values:
+      implementation-boundary: "PASS: only report planner replay repair, its regression test, and harness evidence changed"
+      persisted-replay: "PASS: checkpoint business_revision_2 with captured example sources replays with zero mismatches"
+      safety: "PASS: no expected label/value injection, hidden gold, external writes, app database mutation, or new project files"
+      verification: "PASS: report 307/2 skipped, Core 1338/5 skipped, Core build, Desktop typecheck/build, document-engine 50/50, architecture, diff check"

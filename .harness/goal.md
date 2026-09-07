@@ -14464,3 +14464,14 @@ labeled lower section with readable status and a path to the existing result
 conversation/activity view; empty and narrow states remain usable; existing
 workflow toggles, deletion, chat loading, approval, and activity behavior stay
 unchanged.
+
+## Current follow-up: derived status replay repair
+The persisted report failure reaches example replay with source captures and PDF artifacts ready, but a model-generated derived case status expression overconstrains an evidenced label rule. The host must repair this generic shape from existing predicate clauses before asking for another model revision.
+Success criteria: a regression reproduces the two mismatched status cells; a bounded host repair drops only the overconstraining derived-case predicate clause when exact replay proves the change; the original report flow reaches zero replay mismatches; full report/Core/Desktop/document checks remain green; no fixture-specific values, files, IDs, or hidden gold enter production code.
+Non-goals: weakening the example replay gate, inserting expected labels or row values into plans, changing connector writes, or creating additional project files.
+Baseline recorded at 2026-09-08T01:16:10.0726649+09:00: focused planner regression is red with 2 status mismatches after all non-status columns replay exactly.
+### Final checkpoint (2026-09-08T01:33:41.1166499+09:00)
+
+- The minimized regression reproduced the exact failure shape: two status cells fell back to 정상 because a derived case required both attainment and refund thresholds, while every other bound value matched.
+- The planner now tries bounded simplifications made only from existing derived-case predicate clauses and accepts a candidate only when complete example replay strictly improves the mismatch count. The persisted failed report plan replays with zero mismatches and the status condition is reduced to the evidenced attainment threshold.
+- Verification: focused planner regression, reporting 307/2 skipped, Core 1,338/5 skipped, Core build, Desktop typecheck/build, evaluation 11/11, document-engine 50/50, architecture with zero violations, and diff check passed.
