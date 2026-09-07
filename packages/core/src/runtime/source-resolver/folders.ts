@@ -2,7 +2,7 @@ import {
   findLocalFolder,
   parseLocalFolderConnectionConfig,
   type LocalFolderConnectionConfig,
-} from '../../modules/local-folder/connection.js';
+} from '../../connectors/local-folder/connection.js';
 import type { FileRef } from '../../contracts/artifacts/file-ref.js';
 import type { SourceConnection } from './contracts.js';
 

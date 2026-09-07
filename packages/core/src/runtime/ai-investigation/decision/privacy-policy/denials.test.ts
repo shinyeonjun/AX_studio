@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAgentHarness, createInvestigationRunner } from '../../../../agent/harness.js';
+import { createAgentHarness, createInvestigationRunner } from '../../../../intelligence/agent/harness.js';
 import { runAiDecision } from '../../../ai-investigation.js';
 import { PrivacyCaptureProvider, decisionWorkflow as ir } from '../fixtures.js';
 

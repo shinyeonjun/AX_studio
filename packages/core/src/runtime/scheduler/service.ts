@@ -1,11 +1,11 @@
-import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { WorkflowRuntime } from '../engine.js';
 import type { ExecutionResult } from '../types.js';
 import { cronMatches } from './cron.js';
 
 function minuteKey(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getMinutes()).padStart(2, '0')}`;
+  return date.toISOString().slice(0, 16);
 }
 
 export class Scheduler {
@@ -43,9 +43,9 @@ export class Scheduler {
     );
   }
 
-  private markFired(workflowId: string) {
+  private markFired(workflowId: string, occurrenceKey: string) {
     const fired = this.lastFired();
-    fired[workflowId] = minuteKey();
+    fired[workflowId] = occurrenceKey;
     this.store.setSetting('scheduler.lastFired', fired);
   }
 
@@ -88,6 +88,7 @@ export class Scheduler {
       if (!s.active) continue;
       const ir = this.store.getWorkflow(s.id);
       if (!ir?.trigger) continue;
+      const occurrenceKey = minuteKey();
 
       if (ir.trigger.type === 'once') {
         const runAt = Date.parse(ir.trigger.runAt);
@@ -103,7 +104,7 @@ export class Scheduler {
           this.store.setWorkflowActive(s.id, false);
         }
         if (result.status === 'success') {
-          this.markFired(s.id);
+          this.markFired(s.id, occurrenceKey);
           this.store.setWorkflowActive(s.id, false);
           this.store.deleteWorkflow(s.id);
           this.runtime.removeWorkflow(s.id);
@@ -119,7 +120,7 @@ export class Scheduler {
       const result = await this.executeScheduledWorkflow(ir, 'schedule');
       if (!result) continue;
       if (generation !== this.lifecycleGeneration) return;
-      if (result.status !== 'failed') this.markFired(s.id);
+      if (result.status !== 'failed') this.markFired(s.id, occurrenceKey);
       this.onScheduledRun?.(s.id, result);
     }
   }

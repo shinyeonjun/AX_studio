@@ -1,5 +1,4 @@
 export { linearContractSteps, linearSteps, skipInLinearScan, stepsById } from '../workflow/control-flow.js';
-import type { Step } from '../workflow/schema.js';
 
 export interface ExecutionCheckpoint {
   variables: Record<string, unknown>;

@@ -55,6 +55,25 @@ def _rect(raw: Any) -> tuple[float, float, float, float]:
     return tuple(round(float(value), 3) for value in raw[:4])  # type: ignore[return-value]
 
 
+def _clip_rect_to_page(
+    rect: tuple[float, float, float, float],
+    *,
+    page_width: float,
+    page_height: float,
+) -> tuple[float, float, float, float] | None:
+    """Keep inferred geometry inside the coordinate space the writer can render."""
+    x0, y0, x1, y1 = rect
+    clipped = (
+        max(x0, 0.0),
+        max(y0, 0.0),
+        min(x1, page_width),
+        min(y1, page_height),
+    )
+    if clipped[2] <= clipped[0] or clipped[3] <= clipped[1]:
+        return None
+    return _rect(clipped)
+
+
 def _page_spans(page: Any, page_index: int) -> list[_Span]:
     spans: list[_Span] = []
     document = page.get_text("dict")
@@ -166,15 +185,23 @@ def _contains(rect: tuple[float, float, float, float], span: _Span) -> bool:
 
 
 def _filled_bands(page: Any, page_index: int) -> list[_Band]:
-    minimum_width = float(page.rect.width) * 0.15
-    maximum_height = float(page.rect.height) * 0.08
+    page_width = float(page.mediabox.width)
+    page_height = float(page.mediabox.height)
+    minimum_width = page_width * 0.15
+    maximum_height = page_height * 0.08
     bands: list[_Band] = []
     for drawing in page.get_drawings():
         fill = drawing.get("fill")
         raw = drawing.get("rect")
         if fill is None or raw is None:
             continue
-        rect = _rect(raw)
+        rect = _clip_rect_to_page(
+            _rect(raw),
+            page_width=page_width,
+            page_height=page_height,
+        )
+        if rect is None:
+            continue
         width = rect[2] - rect[0]
         height = rect[3] - rect[1]
         if width < minimum_width or height < 8.0 or height > maximum_height:
@@ -355,6 +382,7 @@ def _geometry_table_groups(
             rows.append(cells)
         signature = (
             len(anchors),
+            tuple(" ".join(header.text.split()).casefold() for header in region.headers),
             tuple(round(value / 2.0) * 2 for value in anchors),
             round(region.rect[0] / 2.0) * 2,
             round(region.rect[2] / 2.0) * 2,
@@ -526,8 +554,8 @@ def analyze_pdf_report_pair(
             pages.append(
                 {
                     "index": page_index,
-                    "width": round(float(page.rect.width), 3),
-                    "height": round(float(page.rect.height), 3),
+                    "width": round(float(page.mediabox.width), 3),
+                    "height": round(float(page.mediabox.height), 3),
                     "rotation": int(page.rotation),
                 }
             )

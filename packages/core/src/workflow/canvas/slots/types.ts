@@ -1,4 +1,4 @@
-import type { ContractValidationIssue } from '../../../workflow/contract-validator.js';
+import type { ContractValidationIssue } from '../../contract-validator.js';
 
 export type RequirementSlot = string;
 export interface SlotState {

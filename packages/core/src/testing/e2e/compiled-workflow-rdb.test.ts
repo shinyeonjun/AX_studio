@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../store/db.js';
-import { WorkflowStore } from '../../store/workflow-store.js';
-import type { Connector } from '../../modules/types.js';
-import { TransformConnector } from '../../modules/transform/connector.js';
+import { createDatabaseAsync } from '../../persistence/db.js';
+import { WorkflowStore } from '../../persistence/workflow-store.js';
+import type { Connector } from '../../connectors/types.js';
+import { TransformConnector } from '../../connectors/transform/connector.js';
 import { WorkflowRuntime } from '../../runtime/engine.js';
 import { compileBlueprintToWorkflow } from '../../work-discovery/compile/compile-workflow.js';
 import type { DiscoveryBlueprint } from '../../work-discovery/schema.js';

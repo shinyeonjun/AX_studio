@@ -1,4 +1,4 @@
-import { ipcErrorMessage } from '../../lib/ipc-error';
+import { ipcErrorMessage } from '../../ui/lib/ipc-error';
 import type { AppApprovalActionContext } from './contracts';
 
 export function createAppApprovalActions({ refresh, setActionError }: AppApprovalActionContext) {

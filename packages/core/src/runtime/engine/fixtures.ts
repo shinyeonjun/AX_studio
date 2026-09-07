@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../agent/model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../intelligence/agent/model/provider.js';
 
 export class NoReadProvider implements ModelProvider {
   readonly name = 'test-agent';

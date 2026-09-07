@@ -1,4 +1,4 @@
-import type { SideEffectLevel } from '../workflow/schema.js';
+import type { SideEffectLevel } from './schema.js';
 import { defaultSideEffectForHttpMethod } from '../platform/side-effect-policy.js';
 import type { ActionDefinition } from './action-definition.js';
 

@@ -1,5 +1,5 @@
-import type { WorkflowStore } from '../../store/workflow-store.js';
-import { PUSH_TRIGGER_DRIVERS } from '../../modules/packages/catalog.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import { PUSH_TRIGGER_DRIVERS } from '../../connectors/packages/catalog.js';
 import type { TriggerEvent } from '../../triggers/types.js';
 import type { PushTransportState } from '../../triggers/push-state.js';
 import type {

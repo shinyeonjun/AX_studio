@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateWorkflowForPersistence } from '../../../../workflow/contract-validator.js';
+import { validateWorkflowForPersistence } from '../../../contract-validator.js';
 import {
   documentIngestPathSatisfied,
   isDocumentIngestSourceConfigured,
-} from '../../../../workflow/ingest-source.js';
-import type { WorkflowIR } from '../../../../workflow/schema.js';
+} from '../../../ingest-source.js';
+import type { WorkflowIR } from '../../../schema.js';
 
 describe('document ingest source configuration', () => {
   it('accepts file ref params without path', () => {

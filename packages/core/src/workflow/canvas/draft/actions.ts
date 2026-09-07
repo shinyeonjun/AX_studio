@@ -1,6 +1,6 @@
-import { actionRefFor, resolveActionDefinition } from '../../../workflow/action-definition.js';
+import { actionRefFor, resolveActionDefinition } from '../../action-definition.js';
 import { capabilityActionName, resolveCapability } from '../../../catalog/capability-graph.js';
-import type { PortBinding } from '../../../workflow/bindings.js';
+import type { PortBinding } from '../../bindings.js';
 import type { ActionInstance, WorkflowCanvasDraft, WorkflowCanvasDraftInput, WorkflowNode } from './schema.js';
 
 export function getActionInstance(draft: WorkflowCanvasDraftInput, nodeId: string): ActionInstance | undefined {

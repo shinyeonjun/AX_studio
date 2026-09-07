@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { parseWorkflowIR } from './workflow/schema.js';
 import { requiresApproval, validateApprovalPolicy } from './workflow/approval.js';
 import { csMailWorkflowFixture } from './testing/fixtures/workflows.js';
-import { createDatabaseAsync } from './store/db.js';
-import { WorkflowStore } from './store/workflow-store.js';
+import { createDatabaseAsync } from './persistence/db.js';
+import { WorkflowStore } from './persistence/workflow-store.js';
 import packageJson from '../package.json';
 
 describe('core package boundary', () => {

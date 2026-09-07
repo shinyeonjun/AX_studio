@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../agent/model/chat.js';
+import type { ChatMessage } from '../intelligence/agent/model/chat.js';
 import type { CompletenessResult } from './canvas/slots/types.js';
 import { assessCompleteness } from './canvas/slots/requiredness.js';
 import { actionRefFor } from './action-definition.js';

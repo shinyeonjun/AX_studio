@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
-import type { ArtifactSink } from '../../../modules/types.js';
-import { createTestConnectors } from '../../../modules/test-connectors.js';
+import type { ArtifactSink } from '../../../connectors/types.js';
+import { createTestConnectors } from '../../../testing/connectors/test-connectors.js';
 
 describe('runtime execution contexts', () => {
   it('injects the generated-artifact sink into fresh and approval-resumed contexts', async () => {

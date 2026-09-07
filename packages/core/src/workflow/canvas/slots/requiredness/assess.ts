@@ -1,7 +1,7 @@
 import { isConnectorAlwaysOn } from '../../../../catalog/capability-graph.js';
-import type { WorkflowIR } from '../../../../workflow/schema.js';
-import { validateWorkflowContracts, type ContractValidationIssue } from '../../../../workflow/contract-validator.js';
-import { parseWorkflowIR } from '../../../../workflow/schema.js';
+import type { WorkflowIR } from '../../../schema.js';
+import { validateWorkflowContracts, type ContractValidationIssue } from '../../../contract-validator.js';
+import { parseWorkflowIR } from '../../../schema.js';
 import type { CompletenessResult } from '../types.js';
 import { computeRequiredSlots } from './compute.js';
 

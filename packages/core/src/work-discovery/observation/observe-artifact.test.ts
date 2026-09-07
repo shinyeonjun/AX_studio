@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { WorkbookArtifact } from '../../contracts/artifacts/workbook.js';
-import { ArtifactStore } from '../../store/artifact-store.js';
+import { ArtifactStore } from '../../persistence/artifact-store.js';
 import { observeArtifact } from './observe-artifact.js';
 import { describe, expect, it } from 'vitest';
 

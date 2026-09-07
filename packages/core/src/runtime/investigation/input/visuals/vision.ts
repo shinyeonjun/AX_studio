@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
-import type { ModelImageInput } from '../../../../agent/model/provider.js';
+import type { ModelImageInput } from '../../../../intelligence/agent/model/provider.js';
 import { documentVisualReferencesFromRun } from './references.js';
 
 function imageMimeType(path: string): string | undefined {

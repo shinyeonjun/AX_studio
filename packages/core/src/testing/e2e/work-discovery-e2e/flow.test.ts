@@ -2,13 +2,13 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
-import { ArtifactStore } from '../../../store/artifact-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
+import { ArtifactStore } from '../../../persistence/artifact-store.js';
 import { WorkDiscoveryService } from '../../../work-discovery/service.js';
 import { WorkflowRuntime } from '../../../runtime/engine.js';
-import { LocalSheetConnector } from '../../../modules/local-sheet/connector.js';
-import { TransformConnector } from '../../../modules/transform/connector.js';
+import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.js';
+import { TransformConnector } from '../../../connectors/transform/connector.js';
 import { writeSalesXlsx } from './fixtures.js';
 
 function writeReportDocument(artifactStore: ArtifactStore, artifactId: string, fields: {

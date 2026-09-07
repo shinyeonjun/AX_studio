@@ -1,9 +1,7 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeSnapshotTable } from '../snapshot-file.js';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
-import type { OutputObservation } from '../observation/schema.js';
 import type { SourceDescriptor } from '../schema.js';
-import { rankSources, type ExplorationBudget } from '../exploration/adapters.js';
+import { rankSources, type ExplorationBudget } from './adapters.js';
 import type { DiscoverySourceContext } from '../sources/types.js';
 import type { DiscoverySourceRegistry } from '../sources/registry.js';
 
@@ -49,9 +47,7 @@ export async function inventorySources(
     if (!provider) continue;
     const profile = await provider.profileSource({ ...ctx, budget }, source.id);
     if (!profile?.table) continue;
-    mkdirSync(ctx.snapshotDir, { recursive: true });
-    const manifestPath = join(ctx.snapshotDir, `${profile.table.id}.json`);
-    writeFileSync(manifestPath, JSON.stringify(profile.table));
+    const manifestPath = writeSnapshotTable(ctx.snapshotDir, ctx.exampleId, source.id, profile.table, profile.fingerprint);
     snapshots.push({
       id: `snap_${profile.table.id}`,
       exampleId: ctx.exampleId,

@@ -1,4 +1,4 @@
-import type { Connector, ConnectorContext } from '../../modules/types.js';
+import type { Connector, ConnectorContext } from '../../connectors/types.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
 import { performCapabilityRead } from '../capability-read.js';
 import { INVESTIGATION_LIMIT_MESSAGE } from './input.js';

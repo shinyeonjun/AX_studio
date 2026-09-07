@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { branchHintsFromWorkflow } from '../../slots/branch-hints.js';
 import { nodeSlotQuestion } from '../../slots/ids.js';
 import { assessCompleteness } from '../../slots/requiredness.js';
-import type { WorkflowIR } from '../../../../workflow/schema.js';
+import type { WorkflowIR } from '../../../schema.js';
 
 describe('branchHintsFromWorkflow', () => {
   const base: Partial<WorkflowIR> = {

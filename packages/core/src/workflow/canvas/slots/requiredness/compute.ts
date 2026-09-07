@@ -1,6 +1,6 @@
-import type { Step, WorkflowIR } from '../../../../workflow/schema.js';
+import type { Step, WorkflowIR } from '../../../schema.js';
 import { paramSlotId, resolveCapability } from '../../../../catalog/capability-graph.js';
-import { actionRefFor, resolveActionDefinition, validateActionParams } from '../../../../workflow/action-definition.js';
+import { actionRefFor, resolveActionDefinition, validateActionParams } from '../../../action-definition.js';
 import { nodeParamSlotId, nodeSlotLabel, nodeSlotQuestion, nodeTextSlotId } from '../ids.js';
 import { branchHintsFromWorkflow } from '../branch-hints.js';
 import { actionStepParamFilled } from '../filled.js';

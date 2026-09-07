@@ -6,7 +6,8 @@ import {
   HttpResponseArtifactSchema,
 } from '../contracts/artifacts/http-response.js';
 import { JsonArtifactSchema, TextArtifactSchema } from '../contracts/artifacts/text.js';
-import { TableArtifactSchema } from '../contracts/artifacts/table.js';
+import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
+import { ArtifactCompletenessSchema } from '../contracts/artifacts/completeness.js';
 import { tableArtifactFromMatrix, tableArtifactFromRows } from '../contracts/artifacts/table-build.js';
 
 export type StepOutputMap = Record<string, Record<string, unknown>>;
@@ -24,14 +25,15 @@ function normalizeOutput(
   value: unknown,
   stepId: string,
   port: string,
+  source: unknown,
 ): unknown {
   switch (type) {
     case 'TableArtifact': {
       const parsed = TableArtifactSchema.safeParse(value);
-      if (parsed.success) return parsed.data;
+      if (parsed.success) return preserveSourceCompleteness(parsed.data, source);
       const table = tableArtifactFromRows(value, { id: `runtime_${stepId}_${port}` })
         ?? tableArtifactFromMatrix(value, { id: `runtime_${stepId}_${port}` });
-      if (table) return table;
+      if (table) return preserveSourceCompleteness(table, source);
       break;
     }
     case 'TextArtifact': {
@@ -105,6 +107,27 @@ function normalizeOutput(
   });
 }
 
+function preserveSourceCompleteness(table: TableArtifact, source: unknown): TableArtifact {
+  if (!source || typeof source !== 'object' || Array.isArray(source)
+    || table.completeness?.status !== 'complete') return table;
+  const envelope = source as Record<string, unknown>;
+  const parsed = ArtifactCompletenessSchema.safeParse(envelope.completeness);
+  const upstream = parsed.success ? parsed.data : undefined;
+  const hasNext = ['nextCursor', 'nextPageToken', 'nextLatest'].some(key =>
+    typeof envelope[key] === 'string' && envelope[key] !== '')
+    || ['nextPage', 'nextOffset'].some(key => typeof envelope[key] === 'number');
+  if (envelope.truncated !== true && envelope.hasMore !== true && !hasNext
+    && (!upstream || upstream.status === 'complete')) return table;
+  return { ...table, truncated: true, completeness: {
+    status: upstream?.status === 'unknown' ? 'unknown' : 'partial',
+    reason: upstream?.reason ?? 'provider_limit',
+    observedCount: table.rows.length,
+    ...(upstream?.limit ? { limit: upstream.limit } : {}),
+    ...(hasNext || envelope.hasMore === true ? { hasMore: true }
+      : typeof upstream?.hasMore === 'boolean' ? { hasMore: upstream.hasMore } : {}),
+  } };
+}
+
 /** Materialize declared capability outputs once at the runtime seam. */
 export function materializeStepOutputs(
   stepId: string,
@@ -115,6 +138,6 @@ export function materializeStepOutputs(
   const entries = Object.entries(outputContracts);
   return Object.fromEntries(entries.map(([port, type]) => [
     port,
-    normalizeOutput(type, outputCandidate(port, data, entries.length), stepId, port),
+    normalizeOutput(type, outputCandidate(port, data, entries.length), stepId, port, data),
   ]));
 }

@@ -1,5 +1,5 @@
-import { confirmDeleteWork } from '../../lib/confirm-delete';
-import { ipcErrorMessage } from '../../lib/ipc-error';
+import { confirmDeleteWork } from '../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../ui/lib/ipc-error';
 import type { AppWorkActionContext } from './contracts';
 
 export function createAppWorkActions({

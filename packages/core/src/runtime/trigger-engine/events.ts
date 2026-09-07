@@ -1,12 +1,11 @@
-import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowRuntime } from '../engine.js';
-import { PUSH_TRIGGER_DRIVERS } from '../../modules/packages/catalog.js';
+import { PUSH_TRIGGER_DRIVERS } from '../../connectors/packages/catalog.js';
 import type { TriggerEvent } from '../../triggers/types.js';
 import { matchesTriggerFilter } from '../../triggers/filter.js';
 import type { ExecutionResult } from '../types.js';
 import {
   MAX_RECENT_EVENTS,
-  eventDedupeKey,
   triggerInputFromEvent,
   triggerRunWasAccepted,
 } from './helpers.js';

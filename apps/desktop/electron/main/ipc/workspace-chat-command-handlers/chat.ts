@@ -7,7 +7,7 @@ import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { connectedConnectorIds } from '../shared.js';
-import { normalizeChatMessages, requireLastUserMessage } from '../chat-boundary.js';
+import { normalizeChatMessages, requireLastUserMessage, selectChatContext } from '../chat-boundary.js';
 import { buildDesktopDesignToolContext } from '../design-tool-context.js';
 import {
   registerWorkspaceChat,
@@ -46,7 +46,7 @@ export function registerWorkspaceChatMessageHandler() {
     const contextUpdateConfirmed = isContextConfirmation(normalizedMessages, userMessage);
     const jobCommitConfirmed = isJobConfirmation(normalizedMessages, userMessage);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
-    const history = normalizedMessages.slice(0, -1).map(({ role, content }) => ({ role, content }));
+    const history = selectChatContext(normalizedMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const controller = registerWorkspaceChat(chatRequestId);

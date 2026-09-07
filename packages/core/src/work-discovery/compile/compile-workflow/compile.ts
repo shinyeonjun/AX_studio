@@ -23,6 +23,13 @@ export function compileBlueprintToWorkflow(
 
   const sourceById = new Map(blueprint.sources.map((source) => [source.id, source]));
   const readStepBySource = new Map<string, string>();
+  const sourceInputs: Record<string, string> = {};
+  const inputs: string[] = [];
+  const fileSourceIds = [...sourceIds].filter(id => {
+    const connector = sourceById.get(id)?.connector;
+    return connector === 'input_artifact' || connector === 'local_sheet' ||
+      (!connector && !id.startsWith('rdb:'));
+  });
 
   for (const sourceId of sourceIds) {
     const source = sourceById.get(sourceId) ?? {
@@ -30,7 +37,14 @@ export function compileBlueprintToWorkflow(
       connector: sourceId.startsWith('rdb:') ? 'rdb' : 'input_artifact',
       metadata: sourceId.startsWith('sheet:') ? { path: sourceId.replace(/^sheet:/, '') } : {},
     };
-    const readStep = readStepForSource(source);
+    const pathInput = fileSourceIds.length === 1 ? 'sourcePath' : 'sourcePath_' + sanitizeStepId(sourceId);
+    if (fileSourceIds.includes(sourceId)) {
+      inputs.push(pathInput);
+      const path = source.metadata?.storedPath ?? source.metadata?.path ??
+        (fileSourceIds.length === 1 ? options.defaultSourcePath : undefined);
+      if (typeof path === 'string' && path.trim()) sourceInputs[pathInput] = path;
+    }
+    const readStep = readStepForSource(source, pathInput);
     if (!readStep || readStep.type !== 'action') continue;
     steps.push(readStep);
     readStepBySource.set(sourceId, readStep.id);
@@ -96,7 +110,7 @@ export function compileBlueprintToWorkflow(
     name: options.name ?? blueprint.name,
     goal: blueprint.goal,
     trigger,
-    inputs: ['sourcePath'],
+    inputs,
     steps,
     permissions,
     approval: [],
@@ -110,6 +124,7 @@ export function compileBlueprintToWorkflow(
       blueprintId: blueprint.id,
       sessionId: blueprint.sessionId,
       defaultSourcePath: options.defaultSourcePath,
+      sourceInputs,
       fields: blueprint.fields.map((field) => ({
         outputPath: field.outputPath,
         mapping: field.mapping,

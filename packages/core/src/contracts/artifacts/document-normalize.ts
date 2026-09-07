@@ -1,4 +1,4 @@
-import type { IngestDocumentResult } from '../../document-engine/types.js';
+import type { IngestDocumentResult } from '../../documents/read/types.js';
 import type { FileRef } from './file-ref.js';
 import type { DocumentArtifact } from './document.js';
 

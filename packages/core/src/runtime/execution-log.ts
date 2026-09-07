@@ -1,4 +1,4 @@
-import type { ExecutionLogEntry } from '../modules/types.js';
+import type { ExecutionLogEntry } from '../connectors/types.js';
 
 export function validateExecutionLog(value: unknown): ExecutionLogEntry[] {
   if (!Array.isArray(value)) throw new Error('실행 로그가 배열이 아닙니다.');

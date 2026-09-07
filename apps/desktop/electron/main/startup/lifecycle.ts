@@ -1,9 +1,12 @@
 import { app } from 'electron';
+import { shutdownCommandProcesses } from '@ax-studio/core';
+import { drainWithin } from './drain.js';
 import { showMainWindow, setQuiting } from '../app-window';
 import { getCoreIfInitialized } from '../core-instance';
 import { abortAllWorkspaceChats } from '../workspace-chat-registry.js';
 
 let shutdownStarted = false;
+let shutdownCompleted = false;
 let unsubscribeWorkspaceSources: (() => void) | undefined;
 
 export function registerDesktopInstanceGuards(): void {
@@ -37,7 +40,8 @@ export function setWorkspaceSourceUnsubscribe(unsubscribe: () => void): void {
 
 export function registerDesktopShutdown(): void {
   app.on('before-quit', (event) => {
-    if (shutdownStarted) return;
+    if (shutdownCompleted) return;
+    if (shutdownStarted) { event.preventDefault(); return; }
     shutdownStarted = true;
     setQuiting(true);
     const core = getCoreIfInitialized();
@@ -46,22 +50,30 @@ export function registerDesktopShutdown(): void {
     unsubscribeWorkspaceSources = undefined;
     event.preventDefault();
     core.scheduler.stop();
+    core.runtime.stopAccepting();
+    core.workspaceSources.stopAccepting();
     abortAllWorkspaceChats();
     void (async () => {
       try {
-        await core.triggerEngine.stop();
-        await core.runtime.waitForIdle();
-        // Let a running PDF ingest settle so the source is not stranded as
-        // `processing`, but never hold quit longer than a few seconds.
-        await Promise.race([
-          core.workspaceSources.waitForIdle(),
-          new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
-        ]);
+        const drained = await drainWithin([
+          () => core.triggerEngine.stop(),
+          () => core.runtime.waitForIdle(),
+          () => core.workspaceSources.waitForIdle(),
+          () => shutdownCommandProcesses(4_000),
+          () => core.agentHarness.dispose(),
+        ], 5_000);
+        if (!drained) {
+          // Do not close the shared DB underneath still-running callbacks.
+          console.error('[AX Studio] 종료 대기 초과: 미완료 작업은 재시작 시 확인이 필요합니다.');
+          app.exit(1);
+          return;
+        }
+        core.db.close?.();
+        shutdownCompleted = true;
+        app.quit();
       } catch (err) {
         console.error('[AX Studio] 종료 중 정리 실패:', err);
-      } finally {
-        core.db.close?.();
-        app.quit();
+        app.exit(1);
       }
     })();
   });

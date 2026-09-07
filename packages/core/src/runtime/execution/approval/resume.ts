@@ -81,7 +81,10 @@ export async function continueWorkflowAfterApproval(
         data: { issues: contractIssues },
       });
     }
-    const remainingStepIds = new Set(checkpoint?.remainingStepIds ?? []);
+    const remainingStepIds = new Set([
+      ...(checkpoint?.remainingStepIds ?? []),
+      ...(checkpoint?.pendingOuterStepIds ?? []),
+    ]);
     await executeApprovedActions({
       host,
       ir,
@@ -91,7 +94,7 @@ export async function continueWorkflowAfterApproval(
       stepResults,
     });
 
-    if (ir && checkpoint?.remainingStepIds.length) {
+    if (checkpoint) {
       await runSequence(
         host,
         stepsById(ir.steps, checkpoint.remainingStepIds),

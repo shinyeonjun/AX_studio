@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { ConditionExprSchema, preprocessConditionValue } from '../../../runtime/condition-expr.js';
-import { PortBindingSchema, coercePortBinding } from '../../../workflow/port-binding.js';
-import { ActionInstanceSchema, type ActionInstance } from '../../../workflow/action-instance.js';
-import { MAX_WORKFLOW_STEPS } from '../../../workflow/schema.js';
-export { ActionInstanceSchema, type ActionInstance } from '../../../workflow/action-instance.js';
+import { PortBindingSchema, coercePortBinding } from '../../port-binding.js';
+import { ActionInstanceSchema } from '../../action-instance.js';
+import { MAX_WORKFLOW_STEPS } from '../../schema.js';
+export { ActionInstanceSchema, type ActionInstance } from '../../action-instance.js';
 
 export function parseJsonRecordValue(value: unknown): unknown {
   if (typeof value !== 'string') return value;

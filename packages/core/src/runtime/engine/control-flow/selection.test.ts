@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { weeklyReportWorkflowFixture } from '../../../testing/fixtures/workflows.js';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import { linearSteps } from '../../control-flow.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
-import { createAgentHarness, createInvestigationRunner } from '../../../agent/harness.js';
-import { createTestConnectors, mockSlack } from '../../../modules/test-connectors.js';
+import { createAgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
+import { createTestConnectors, mockSlack } from '../../../testing/connectors/test-connectors.js';
 import { NoReadProvider } from '../fixtures.js';
 
 describe('runtime control-flow selection', () => {

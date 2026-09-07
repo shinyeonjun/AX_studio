@@ -57,6 +57,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
     const core = getCore();
     core.workspaceSources.removeSession(id);
     core.store.deleteWorkspaceChat(id);
+    core.commandService.releaseWorkspaceSession(id);
     return { ok: true };
   });
 }

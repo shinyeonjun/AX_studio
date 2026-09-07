@@ -1,4 +1,4 @@
-import type { ConnectorContext } from '../../modules/types.js';
+import type { ConnectorContext } from '../../connectors/types.js';
 import { suggestRepairCandidates } from '../../workflow/repair.js';
 import type { ExecutionProgress } from '../types.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';

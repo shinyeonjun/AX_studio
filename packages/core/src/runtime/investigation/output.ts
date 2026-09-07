@@ -30,13 +30,6 @@ export function previewDecisionOutput(output: Record<string, unknown>): Record<s
   );
 }
 
-export function mapInvestigationOutput(
-  step: Step & { type: 'ai_decision' },
-  output: Record<string, unknown>,
-): Record<string, unknown> {
-  return { ...output };
-}
-
 export function investigationSchemaFor(
   step: Step & { type: 'ai_decision' },
   requireDeclaredFields = true,

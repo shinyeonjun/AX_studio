@@ -1,6 +1,6 @@
-import type { ConnectorContext, ExecutionLogEntry } from '../../modules/types.js';
+import type { ConnectorContext, ExecutionLogEntry } from '../../connectors/types.js';
 import { resolveFileRef } from '../source-resolver.js';
-import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowExecutionHost } from './contracts.js';
 
 export function createConnectorContext(

@@ -1,4 +1,4 @@
-import { PUSH_TRIGGER_DRIVERS } from '../../../modules/packages/catalog.js';
+import { PUSH_TRIGGER_DRIVERS } from '../../../connectors/packages/catalog.js';
 import { getTriggerHandler } from '../../../triggers/registry.js';
 
 export function shouldPollTriggerType(

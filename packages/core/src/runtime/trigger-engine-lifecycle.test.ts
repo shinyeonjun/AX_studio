@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDatabaseAsync } from '../store/db.js';
-import { WorkflowStore } from '../store/workflow-store.js';
+import { createDatabaseAsync } from '../persistence/db.js';
+import { WorkflowStore } from '../persistence/workflow-store.js';
 import type { TriggerEvent } from '../triggers/types.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import type { WorkflowRuntime } from './engine.js';
@@ -9,7 +9,7 @@ const driverState = vi.hoisted(() => ({
   emitters: [] as Array<(event: TriggerEvent) => void>,
 }));
 
-vi.mock('../modules/packages/catalog.js', () => ({
+vi.mock('../connectors/packages/catalog.js', () => ({
   PUSH_TRIGGER_DRIVERS: [{
     triggerType: 'webhook.inbound',
     async refresh(_store: unknown, emit: (event: TriggerEvent) => void) {

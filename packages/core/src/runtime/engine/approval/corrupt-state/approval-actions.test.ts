@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../../store/db.js';
-import { WorkflowStore } from '../../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../../persistence/db.js';
+import { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../../engine.js';
-import { createTestConnectors, mockGmail } from '../../../../modules/test-connectors.js';
+import { createTestConnectors, mockGmail } from '../../../../testing/connectors/test-connectors.js';
 
 describe('approval continuation corrupt state', () => {
   it.each([

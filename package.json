@@ -24,7 +24,7 @@
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",
-    "ax": "node packages/core/dist/agent/commands/cli.js",
+    "ax": "node packages/core/dist/intelligence/agent/commands/cli.js",
     "dev": "npm run dev -w @ax-studio/desktop",
     "dev:poc": "npm run dev:poc -w @ax-studio/desktop",
     "document-engine:setup": "python -m venv packages/document-engine/.venv && npm run document-engine:install",

@@ -1,6 +1,6 @@
-import type { Step } from '../../../workflow/schema.js';
-import type { PortBinding } from '../../../workflow/bindings.js';
-import { documentIngestPathSatisfied } from '../../../workflow/ingest-source.js';
+import type { Step } from '../../schema.js';
+import type { PortBinding } from '../../bindings.js';
+import { documentIngestPathSatisfied } from '../../ingest-source.js';
 
 export function isActionParamFilled(value: unknown): boolean {
   if (value == null) return false;

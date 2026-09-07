@@ -1,5 +1,4 @@
-import type { Connector } from '../modules/types.js';
-import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import { inputFromFolder } from './manual-run-input/folder.js';
 import { enrichManualRunInput } from './manual-run-input/gmail.js';

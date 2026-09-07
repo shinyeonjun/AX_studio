@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../../store/workflow-store.js';
+import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { KO } from '../../../i18n/ko.js';
 
 export function explainExecution(store: WorkflowStore, question: string): string {

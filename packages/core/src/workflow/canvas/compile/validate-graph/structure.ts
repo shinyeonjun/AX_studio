@@ -1,7 +1,6 @@
 import {
   WorkflowCanvasDraftSchema,
   type WorkflowCanvasDraftInput,
-  type WorkflowNode,
 } from '../../draft/schema.js';
 import { resolveIfNodeCondition } from '../../draft/conditions.js';
 import type { DraftGraphIssue } from './types.js';

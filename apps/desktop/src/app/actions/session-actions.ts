@@ -1,7 +1,7 @@
-import { confirmDeleteChat } from '../../lib/confirm-delete';
-import { ipcErrorMessage } from '../../lib/ipc-error';
+import { confirmDeleteChat } from '../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../ui/lib/ipc-error';
 import type { AppSessionActionContext } from './contracts';
-import type { ChatSessionSummary } from '../../hooks/useChatSessions';
+import type { ChatSessionSummary } from '../../features/chat/hooks/useChatSessions';
 
 export function createAppSessionActions({
   activeSessionId,

@@ -1,9 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { Scheduler } from '../../scheduler.js';
 
 describe('Scheduler scheduled jobs', () => {
+  it('deduplicates each minute while preserving hourly, restart and next-day occurrences', async () => {
+    vi.useFakeTimers();
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'hourly', name: '매시간 확인', goal: '매시간 연결 자료 확인', version: 1,
+      trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'Asia/Seoul' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('hourly', true);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    let scheduler = new Scheduler(store, runtime as never);
+    for (const timestamp of ['2026-09-06T00:00:00Z', '2026-09-06T00:00:30Z', '2026-09-06T01:00:00Z']) {
+      vi.setSystemTime(new Date(timestamp));
+      await (scheduler as unknown as { tick(): Promise<void> }).tick();
+    }
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+    scheduler = new Scheduler(store, runtime as never);
+    await (scheduler as unknown as { tick(): Promise<void> }).tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+    vi.setSystemTime(new Date('2026-09-07T01:00:00Z'));
+    await (scheduler as unknown as { tick(): Promise<void> }).tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(3);
+    db.close?.();
+  });
   afterEach(() => {
     vi.useRealTimers();
   });

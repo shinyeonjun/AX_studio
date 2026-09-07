@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { realpathSync, statSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
-import { LocalFolderConnector, getAxDataPaths } from '@ax-studio/core';
+import { LocalFolderConnector } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { notifyStateChanged } from '../../state-broadcast.js';

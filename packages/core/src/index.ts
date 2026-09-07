@@ -5,26 +5,26 @@ export * from './workflow/contract-validator.js';
 export * from './workflow/contract-adapters.js';
 export * from './contracts/index.js';
 export * from './catalog/index.js';
-export * from './modules/index.js';
-export * from './document-engine/index.js';
-export * from './document-write/index.js';
-export * from './credentials/index.js';
-export * from './agent/index.js';
-export * from './store/db.js';
-export * from './store/workflow-store.js';
+export * from './connectors/index.js';
+export * from './documents/read/index.js';
+export * from './documents/write/index.js';
+export * from './persistence/credentials/index.js';
+export * from './intelligence/agent/index.js';
+export * from './persistence/db.js';
+export * from './persistence/workflow-store.js';
 export type {
   WorkspaceChatMessage,
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
   WorkspaceChatRecord,
   WorkspaceChatListRecord,
-} from './store/repositories/workspace-chat-repository.js';
+} from './persistence/repositories/workspace-chat-repository.js';
 export {
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
-} from './store/repositories/workspace-chat-repository.js';
-export { ArtifactStore, type StoredArtifact } from './store/artifact-store.js';
-export { importDiscoveryArtifact } from './store/import-discovery-artifact.js';
+} from './persistence/repositories/workspace-chat-repository.js';
+export { ArtifactStore, type StoredArtifact } from './persistence/artifact-store.js';
+export { importDiscoveryArtifact } from './persistence/import-discovery-artifact.js';
 export {
   WorkspaceSourceError,
   WorkspaceSourceService,
@@ -33,7 +33,7 @@ export {
   type WorkspaceSourceRecord,
   type WorkspaceSourceStatus,
   type WorkspaceSourceSummary,
-} from './store/workspace-source-service.js';
+} from './persistence/workspace-source-service.js';
 export {
   WorkDiscoveryService,
   type WorkDiscoveryExplorationConfig,
@@ -69,12 +69,13 @@ export {
   resolveActionDefinition,
   type ActionDefinition,
 } from './workflow/action-definition.js';
-export * from './design-tools/index.js';
+export * from './intelligence/design-tools/index.js';
 export * from './workflow/visual-display.js';
 export * from './platform/index.js';
 export { summarizeApprovalGates, type ApprovalGateSummary, type ApprovalGateEntry } from './workflow/approval-gates.js';
-export * from './openapi/index.js';
-export * from './mcp/index.js';
+export * from './connectors/protocols/openapi/index.js';
+export * from './connectors/protocols/mcp/index.js';
 
-export * from './paths/index.js';
-export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './bootstrap.js';
+export * from './persistence/paths/index.js';
+export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './application/bootstrap.js';
+export { shutdownCommandProcesses } from './intelligence/agent/model/cli-process/runner/ownership.js';

@@ -1,0 +1,46 @@
+import { describe, expect, it } from 'vitest';
+import { buildCommandProtocolPrompt } from './command-protocol.js';
+import { buildInvestigatePrompt } from './investigate-prompt.js';
+
+describe('role prompts', () => {
+  it('bounds the attached-source manifest and excludes internal and page-level metadata', () => {
+    const prompt = buildCommandProtocolPrompt({ commands: [], outputInstructions: 'reply',
+      workspaceSources: Array.from({ length: 500 }, (_, i) => ({
+        id: `source-${i}`, fileName: `reference-${i}.pdf`, status: 'ready',
+        artifactId: 'internal-artifact', sessionId: 'internal-session',
+        summary: { pageCount: 900, visualPages: Array.from({ length: 900 }, (_, p) => p) },
+      })),
+    });
+    expect(prompt.length).toBeLessThan(22_000);
+    expect(prompt).not.toContain('internal-artifact');
+    expect(prompt).not.toContain('visualPages');
+    expect(prompt).toContain('nextOffset');
+    expect(prompt).toContain('source-0');
+  });
+
+  it('keeps the command protocol independent of connector skills', () => {
+    const prompt = buildCommandProtocolPrompt({
+      connectedConnectors: ['gmail', 'slack', 'unknown'],
+      commands: [{ name: 'workflow.list' }],
+      outputInstructions: 'reply or command',
+    });
+
+    expect(prompt).toContain('AX command protocol');
+    expect(prompt).toContain('기본 연결을 임의로 고르지 않는다');
+    expect(prompt).toContain('그 결과의 id·label만 사용해 `ui.present` 선택 카드를 만들고');
+    expect(prompt).not.toContain('# Gmail');
+    expect(prompt).not.toContain('# Slack');
+    expect(prompt).not.toContain('tools.list');
+  });
+
+  it('uses catalog read capabilities for investigation', () => {
+    const prompt = buildInvestigatePrompt('investigate', {
+      skillGoal: '문서 요약',
+      taskGoal: '문서 evidence를 요약',
+      evidence: [],
+      connectedConnectors: ['document'],
+    });
+
+    expect(prompt).toContain('document.ingest');
+  });
+});

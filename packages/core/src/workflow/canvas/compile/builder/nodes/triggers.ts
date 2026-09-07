@@ -1,4 +1,4 @@
-import type { WorkflowIR, Step } from '../../../../../workflow/schema.js';
+import type { WorkflowIR, Step } from '../../../../schema.js';
 import type { WorkflowCanvasDraft } from '../../../draft/schema.js';
 import { GMAIL_READ_WORKFLOW_NODE_ID } from '../../constants.js';
 

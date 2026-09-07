@@ -1,9 +1,7 @@
 import { CONNECTOR_CATALOG, type ConnectorId } from './connectors.js';
 import { CAPABILITY_CATALOG, type ConnectorCapability } from './capabilities.js';
-import { triggerCapabilityId } from './capability-contracts.js';
 import { listDynamicCapabilities } from './dynamic-catalog.js';
 export { resolveCapability } from './capability-resolver.js';
-import { resolveCapability } from './capability-resolver.js';
 
 function allCapabilities(): ConnectorCapability[] {
   const seen = new Set<string>();

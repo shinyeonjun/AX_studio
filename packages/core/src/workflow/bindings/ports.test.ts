@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { coercePortBinding } from '../bindings.js';
-import { parseBindingsRecord } from '../../workflow/canvas/draft/schema.js';
+import { parseBindingsRecord } from '../canvas/draft/schema.js';
 
 describe('coercePortBinding', () => {
   it('parses step.output shorthand strings', () => {

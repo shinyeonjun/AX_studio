@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import type { RepairCandidateOperation, RepairReplayCase, RepairReplaySummary } from '../workflow/repair.js';
 import { parseExpectedObservations, replayOneCase } from './repair/case.js';

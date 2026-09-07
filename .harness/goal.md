@@ -1,5 +1,4 @@
 # Current task: report execution hardening
-
 Active goal and evaluator: report-execution-hardening.md.
 
 # Current patch: Codex report structured-output round trip
@@ -16,8 +15,6 @@ typechecks, Desktop build, and diff check. Live report success is separate.
 
 Complete Work Discovery so teach-by-example flows are verified end-to-end:
 historical output + optional input → observe → source inventory → synthesize/replay → clarify → compile → publish → runtime execution.
-
-## Success criteria
 - North-star E2E passes (`packages/core/src/work-discovery/e2e/work-discovery-e2e.test.ts`)
 - `compileBlueprintToWorkflow` preserves `fields[].mapping` via `transform.evaluate`
 - ALL-pass multi-example replay; truncated aggregate rejection
@@ -14432,20 +14429,35 @@ PDF artifact.
   intentionally still pending for the user; hidden gold was not read during
   implementation.
 
+### Final checkpoint (2026-09-07T15:32:59.1278083Z)
+
+- The original two-PDF natural-language request now completes against the
+  selected AXStudio-dev HTTP/RDB environment. The completed example replays
+  across 272 verified template slots, ten HTTP pages are captured, and a
+  three-page PDF artifact is persisted in the generated-report store.
+- Planner hardening covers omitted default datasets, legacy period aliases,
+  source-field and nested-join aliases, conservative missing one-to-one joins,
+  dynamic grouped labels, static risk labels, concat punctuation gaps, and
+  runtime metadata text without embedding fixture values.
+- The PDF writer now clips vector/table geometry, retries small text boxes with
+  bounded padding after minimum-font fitting, and keeps overflow verification
+  fail-closed.
+- Verification: report suites 306 passed/2 skipped, document-engine 50/50,
+  Core 398 files with 1,337 passed/5 skipped, Core build, Desktop typecheck
+  and production build, dependency cruise with zero violations, and rendered
+  inspection of all three generated pages.
+
 ## Current follow-up: Codex CLI image input
 
 Forward ordered image bytes for text and structured generation, preserve owned
 temporary-file cleanup on success/failure/cancellation, and retain safe image
 error codes at the report boundary. No report-specific rules or gold changes.
 Evaluator and baseline are recorded in codex-image-forwarding.md.
-
 ## Current follow-up: 업무 화면 분리
-
 Make the existing 업무 navigation easier to scan by separating recurring
 workflows from one-off execution results. Reuse existing workflow, execution,
 and workspace-chat state; do not add new lifecycle behavior or change runtime
 semantics.
-
 Success criteria: recurring workflows appear in a labeled upper section with
 active/paused and last-run cues; recent ephemeral executions appear in a
 labeled lower section with readable status and a path to the existing result

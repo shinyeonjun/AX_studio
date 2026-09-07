@@ -1,7 +1,7 @@
-import type { InvestigationRunner } from '../agent/investigation-runner.js';
-import type { WorkflowStore } from '../store/workflow-store.js';
-import type { Connector } from '../modules/types.js';
-import type { ArtifactSink, ExecutionLogEntry } from '../modules/types.js';
+import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { Connector } from '../connectors/types.js';
+import type { ArtifactSink, ExecutionLogEntry } from '../connectors/types.js';
 import type { ExecutionResultStatus } from '../contracts/execution-status.js';
 
 export interface RuntimeConfig {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { displayForTrigger, displayForWorkflowNode } from './visual-display.js';
-import type { WorkflowCanvasDraft } from '../workflow/canvas/draft/schema.js';
+import type { WorkflowCanvasDraft } from './canvas/draft/schema.js';
 
 const baseDraft = (nodes: WorkflowCanvasDraft['nodes'], actions: WorkflowCanvasDraft['actions'] = {}): WorkflowCanvasDraft => ({
   name: '테스트',

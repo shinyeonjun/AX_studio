@@ -56,6 +56,17 @@ describe('runtime output seam', () => {
     expect(value).toEqual(table);
   });
 
+  it('preserves an upstream page boundary when materializing table rows', () => {
+    const outputs = materializeStepOutputs('search', { messages: 'TableArtifact' }, {
+      messages: [{ id: 'one' }], truncated: true, nextPageToken: 'next',
+    });
+    expect(outputs.messages).toMatchObject({ truncated: true, completeness: { status: 'partial', hasMore: true } });
+    const complete = materializeStepOutputs('search', { messages: 'TableArtifact' }, {
+      messages: [{ id: 'one' }], truncated: false,
+    });
+    expect(complete.messages).toMatchObject({ completeness: { status: 'complete' } });
+  });
+
   it('maps a TextArtifact body to a text input and resolves nested ports', () => {
     const response = buildHttpResponseArtifact({
       executionId: 'exec-typed-output',

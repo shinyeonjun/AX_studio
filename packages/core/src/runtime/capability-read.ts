@@ -1,6 +1,6 @@
 import { getCapability } from '../catalog/capabilities.js';
 import { capabilityActionName, readCapabilityMethodIssue } from '../catalog/capability-graph.js';
-import type { Connector, ConnectorContext } from '../modules/types.js';
+import type { Connector, ConnectorContext } from '../connectors/types.js';
 import { materializeStepOutputs } from './output-ports.js';
 
 export async function performCapabilityRead(

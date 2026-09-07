@@ -1,8 +1,8 @@
-import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../modules/local-folder/connection.js';
-import { scanFolderCheckedAsync } from '../../modules/local-folder/scan-async.js';
-import type { ScannedFile } from '../../modules/local-folder/scan.js';
+import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../connectors/local-folder/connection.js';
+import { scanFolderCheckedAsync } from '../../connectors/local-folder/scan-async.js';
+import type { ScannedFile } from '../../connectors/local-folder/scan.js';
 import { enrichTriggerPayloadWithFileRef } from '../../contracts/mappers.js';
-import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
 
 function pickManualRunFile(files: ScannedFile[], extensions?: string[]): ScannedFile | null {
   if (files.length === 0) return null;

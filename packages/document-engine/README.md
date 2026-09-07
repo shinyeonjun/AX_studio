@@ -2,7 +2,7 @@
 
 Python worker for document ingest, parsing, source-authoritative PDF form analysis, and PDF form export. Node/Electron talks to it via **stdin/stdout JSON** (one request per process spawn).
 
-Document **generation** (HTML/PDF/DOCX write) lives in `packages/core/src/document-write/` — not in this package.
+Document **generation** (HTML/PDF/DOCX write) lives in `packages/core/src/documents/write/` — not in this package.
 
 Write-side PDF→HTML template import also uses this worker (`pdf_to_html` command). PDF form export writes onto a copy of the original PDF, keeping the original as the visual authority.
 

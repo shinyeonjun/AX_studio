@@ -1,6 +1,6 @@
-import type { Connector, ConnectorContext } from '../../modules/types.js';
-import type { InvestigationRunner } from '../../agent/investigation-runner.js';
-import { isCloudProvider } from '../../agent/harness.js';
+import type { Connector, ConnectorContext } from '../../connectors/types.js';
+import type { InvestigationRunner } from '../../intelligence/agent/investigation-runner.js';
+import { isCloudProvider } from '../../intelligence/agent/harness.js';
 import type { WorkflowIR, Step } from '../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../workflow/bindings.js';
 import {

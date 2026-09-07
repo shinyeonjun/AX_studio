@@ -1,6 +1,6 @@
-import type { Step, WorkflowIR } from '../../../../workflow/schema.js';
-import { applyContractCompilation } from '../../../../workflow/contract-adapters.js';
-import { parseWorkflowIR, validateWorkflowIR } from '../../../../workflow/schema.js';
+import type { Step, WorkflowIR } from '../../../schema.js';
+import { applyContractCompilation } from '../../../contract-adapters.js';
+import { parseWorkflowIR, validateWorkflowIR } from '../../../schema.js';
 import { renderWorkflowDocument } from '../../presentation/workflow-document.js';
 import type { WorkflowCanvasDraftInput } from '../../draft/schema.js';
 import { resolveNodeConnectorAction } from '../../draft/actions.js';

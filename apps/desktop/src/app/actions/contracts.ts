@@ -1,5 +1,5 @@
-import type { ChatSessionSummary } from '../../hooks/useChatSessions';
-import type { WorkspaceWorkflowState } from '../../hooks/useWorkspaceChat';
+import type { ChatSessionSummary } from '../../features/chat/hooks/useChatSessions';
+import type { WorkspaceWorkflowState } from '../../features/chat/hooks/useWorkspaceChat';
 import type { SidebarTab } from '../../types/navigation';
 
 export interface WorkspaceChatActions {

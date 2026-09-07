@@ -1,6 +1,6 @@
 import type { AppState } from '../types/app-state';
 import type { SettingsScreen } from '../types/navigation';
-import { SettingsPage } from '../components/settings/SettingsPage';
+import { SettingsPage } from '../features/settings/ui/SettingsPage';
 
 interface AppSettingsPageProps {
   screen: SettingsScreen;

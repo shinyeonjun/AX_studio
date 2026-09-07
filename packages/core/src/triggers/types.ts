@@ -1,4 +1,4 @@
-import type { Connector } from '../modules/types.js';
+import type { Connector } from '../connectors/types.js';
 import type { Trigger } from '../workflow/schema.js';
 
 export interface TriggerEvent {

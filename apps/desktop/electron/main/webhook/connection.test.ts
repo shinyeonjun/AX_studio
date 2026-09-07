@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createDatabaseAsync, WorkflowStore, type WorkflowRuntime } from '@ax-studio/core';
+import { createDatabaseAsync, WorkflowStore } from '@ax-studio/core';
 
 const credentialState = vi.hoisted(() => ({ secret: null as string | null }));
 
@@ -27,7 +27,6 @@ describe('Webhook desktop connection lifecycle', () => {
     await expect(
       validateAndConnectWebhook(
         store,
-        {} as WorkflowRuntime,
         { port: 18_789, secret: 'hook-secret', label: 'Local hooks' },
         refreshTransports,
       ),

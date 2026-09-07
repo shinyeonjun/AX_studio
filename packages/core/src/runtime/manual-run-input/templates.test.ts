@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveStepParams } from '../ai-investigation.js';
-import type { ConnectorContext } from '../../modules/types.js';
+import type { ConnectorContext } from '../../connectors/types.js';
 
 describe('resolveStepParams templates', () => {
   it('resolves bare filePath from execution variables', () => {

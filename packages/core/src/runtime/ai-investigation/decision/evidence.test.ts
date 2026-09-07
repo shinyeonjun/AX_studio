@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAgentHarness, createInvestigationRunner } from '../../../agent/harness.js';
+import { createAgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 import { runAiDecision } from '../../ai-investigation.js';
 import { PrivacyCaptureProvider, VisionCaptureProvider, decisionWorkflow as ir } from './fixtures.js';

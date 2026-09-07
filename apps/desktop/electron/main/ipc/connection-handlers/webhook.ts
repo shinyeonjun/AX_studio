@@ -17,7 +17,6 @@ export function registerWebhookConnectionHandlers() {
     try {
       await validateAndConnectWebhook(
         core.store,
-        core.runtime,
         {
           port,
           secret: typeof record.secret === 'string' ? record.secret : '',

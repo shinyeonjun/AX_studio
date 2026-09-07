@@ -1,5 +1,5 @@
 import type { WorkflowIR } from '../workflow/schema.js';
-import type { WorkflowStore } from '../store/workflow-store.js';
+import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { WorkflowRuntime } from './engine.js';
 import type { ExecutionResult } from './types.js';
 import {

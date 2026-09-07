@@ -225,6 +225,34 @@ class PdfFormPipelineTest(unittest.TestCase):
             self.assertIn("Launch", output_text)
             self.assertNotIn("[[campaign_name]]", output_text)
 
+    def test_empty_placeholder_value_clears_only_the_selected_field(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "digital.pdf"
+            output = root / "blank.pdf"
+            _write_digital_fixture(source)
+            before = _sha256(source)
+            template = analyze_pdf_form(source, {"ocr": "off"})
+            result = fill_pdf_form(source, template, {"campaign_name": ""}, output)
+            text = PdfReader(str(output)).pages[0].extract_text() or ""
+            self.assertTrue(result["verified"])
+            self.assertNotIn("[[campaign_name]]", text)
+            self.assertIn("[[owner_name]]", text)
+            self.assertIn("Campaign:", text)
+            self.assertEqual(_sha256(source), before)
+
+    def test_blank_placeholder_is_verified_before_publishing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "digital.pdf"
+            output = root / "blank.pdf"
+            _write_digital_fixture(source)
+            template = analyze_pdf_form(source, {"ocr": "off"})
+            with patch("write.pdf_form_engine.fill._fill_overlay_fields"):
+                with self.assertRaisesRegex(ValueError, "output_field_verification_failed"):
+                    fill_pdf_form(source, template, {"campaign_name": ""}, output)
+            self.assertFalse(output.exists())
+
     def test_digital_geometry_uses_vector_regions_when_no_placeholders_exist(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "geometry.pdf"
@@ -481,6 +509,62 @@ class PdfFormPipelineTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "field_text_overflow"):
                 fill_pdf_form(source, template, {"tiny": "This value cannot fit"}, output)
             self.assertFalse(output.exists())
+
+    def test_overlay_text_shrink_reaches_the_minimum_for_fractional_font_sizes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "fractional-font.pdf"
+            output = root / "fractional-font-filled.pdf"
+            _write_digital_fixture(source)
+            template = analyze_pdf_form(
+                source,
+                {
+                    "ocr": "off",
+                    "fieldHints": [
+                        {
+                            "id": "summary",
+                            "name": "summary",
+                            "pageIndex": 0,
+                            "rect": {"x": 72, "y": 100, "width": 435.625, "height": 8.3},
+                            "fontSize": 8.3,
+                        },
+                    ],
+                },
+            )
+            next(field for field in template["fields"] if field["id"] == "summary")["fontSize"] = 8.3
+            value = "2026-09 인정 매출은 KRW 79,823,000이며, 인정 주문 193건과 거래 고객 29개사를 기준으로 정리했습니다. 환불률은"
+            result = fill_pdf_form(source, template, {"summary": value}, output)
+            self.assertTrue(result["verified"])
+            self.assertTrue(output.exists())
+            with pymupdf.open(str(output)) as document:
+                self.assertIn(value, document[0].get_text("text"))
+
+    def test_overlay_text_allows_small_vertical_padding_for_extracted_spans(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "span-height.pdf"
+            output = root / "span-height-filled.pdf"
+            _write_digital_fixture(source)
+            template = analyze_pdf_form(
+                source,
+                {
+                    "ocr": "off",
+                    "fieldHints": [
+                        {
+                            "id": "source",
+                            "name": "source",
+                            "pageIndex": 0,
+                            "rect": {"x": 54, "y": 741.891, "width": 86.122, "height": 7.5},
+                            "fontSize": 7.5,
+                        },
+                    ],
+                },
+            )
+            value = "REST  GET /api/v1/orders"
+            result = fill_pdf_form(source, template, {"source": value}, output)
+            self.assertTrue(result["verified"])
+            with pymupdf.open(str(output)) as document:
+                self.assertIn(value, document[0].get_text("text"))
 
     def test_template_schema_hash_and_page_count_are_required_for_fill(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
