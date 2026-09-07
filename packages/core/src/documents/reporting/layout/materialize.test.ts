@@ -98,12 +98,64 @@ describe('report layout materialization', () => {
     });
   });
 
-  it('rejects a target table that exceeds the physical template capacity', () => {
+  it('extends a target table into a safe continuation row instead of dropping data', () => {
     const overflow = structuredClone(result);
     overflow.tables.customers!.rows.push({
       raw: { name: 'Gamma', sales: 1 }, display: { name: 'Gamma', sales: '1원' },
     });
-    expect(() => materializeReportLayout(pair, layout, overflow, { periodLabel: '2026년 9월' }))
+    const rendered = materializeReportLayout(pair, layout, overflow, { periodLabel: '2026년 9월' });
+    expect(Object.values(rendered.values)).toContain('Gamma');
+    expect(Object.values(rendered.values)).toContain('1원');
+    expect(rendered.template.fields).toHaveLength(8);
+    expect(rendered.template.fields.filter((field) => field.id.includes('overflow')).map((field) => field.rect.y))
+      .toEqual([160, 160]);
+  });
+
+  it('fails closed when a continuation row cannot fit the page', () => {
+    const overflow = structuredClone(result);
+    overflow.tables.customers!.rows.push({
+      raw: { name: 'Gamma', sales: 1 }, display: { name: 'Gamma', sales: '1원' },
+    });
+    const shortPair = { ...pair, pages: [{ ...pair.pages[0]!, height: 160 }] };
+    expect(() => materializeReportLayout(shortPair, layout, overflow, { periodLabel: '2026년 9월' }))
+      .toThrow('report_table_capacity_exceeded:customers-group');
+  });
+
+  it('fails closed before a later detected table when no vertical gap remains', () => {
+    const laterGroup = {
+      id: 'later-group',
+      columnCount: 1,
+      rowCount: 1,
+      rows: [{ index: 0, pageIndex: 0, y: 160, cells: [{
+        id: 'later-value', pageIndex: 0,
+        rect: { x: 60, y: 160, width: 40, height: 12 }, exampleText: 'Later',
+        fontSize: 9, font: 'Fixture', color: 0,
+      }] }],
+    };
+    const pairWithLater = { ...pair, tableGroups: [...pair.tableGroups, laterGroup] };
+    const layoutWithLater = {
+      ...layout,
+      tableBindings: [...layout.tableBindings, {
+        groupId: 'later-group', tableId: 'later', columns: [{ columnIndex: 0, columnId: 'value' }],
+      }],
+    };
+    const overflow = {
+      ...result,
+      tables: {
+        ...result.tables,
+        customers: {
+          ...result.tables.customers!,
+          rows: [...result.tables.customers!.rows, {
+            raw: { name: 'Gamma', sales: 1 }, display: { name: 'Gamma', sales: '1원' },
+          }],
+        },
+        later: {
+          columns: ['value'],
+          rows: [{ raw: { value: 'Later' }, display: { value: 'Later' } }],
+        },
+      },
+    };
+    expect(() => materializeReportLayout(pairWithLater, layoutWithLater, overflow, { periodLabel: '2026년 9월' }))
       .toThrow('report_table_capacity_exceeded:customers-group');
   });
 });

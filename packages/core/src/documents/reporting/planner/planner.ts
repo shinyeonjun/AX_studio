@@ -2961,10 +2961,11 @@ export function repairReportLayoutBindings(
 
 /**
  * A completed example can fit a template while a later period contains more
- * groups. Keep every bound result table within the physical row capacity of
- * its template group; preserve a stricter model limit when it already exists.
- * The cap is a presentation constraint, so it is applied only after the host
- * has verified the table-to-group binding and never changes an unbound table.
+ * groups. The example row count is presentation geometry, never a default
+ * business limit. A model limit that exactly matches the bound capacity and
+ * has no aggregate `having` predicate is therefore treated as a copied layout
+ * cap and removed. Smaller limits and limits backed by an aggregate predicate
+ * remain semantic constraints; they must not be widened by the host.
  */
 export function repairReportTableCapacities(
   plan: ReportPlan,
@@ -2985,10 +2986,10 @@ export function repairReportTableCapacities(
   const tables = plan.tables.map((table) => {
     const capacity = capacities.get(table.id);
     if (capacity === undefined) return table;
-    const limit = table.limit === undefined ? capacity : Math.min(table.limit, capacity);
-    if (table.limit === limit) return table;
+    if (table.kind !== 'aggregate' || table.limit !== capacity || table.having !== undefined) return table;
     changed = true;
-    return { ...table, limit };
+    const { limit: _layoutLimit, ...withoutLayoutLimit } = table;
+    return withoutLayoutLimit;
   });
   return changed ? { ...plan, tables } : plan;
 }
@@ -3354,7 +3355,7 @@ Use named datasets with their own baseSource, joins and filter for independent a
   A join left path is evaluated against the joined row and normally begins with a source alias. A join right path is evaluated against the candidate source row and may be either a bare field path or prefixed by that join's source alias. Join predicates use alias-qualified field paths.
   Period filters must reference host metadata fields such as meta.periodStart and meta.periodEndExclusive; never copy example or target dates into literals. Host metadata also provides periodRange, reportDate/reportDateKorean/reportDateDot, reportStatus, source.<http-alias>.path, and source.<rdb-alias>.table/source.<rdb-alias>.tableName. HTTP aliases do not expose table/tableName, and DB aliases do not expose an HTTP path; never reference a metadata key the selected source type cannot provide.
   Mark text as computed when it contains scalar/table/metadata tokens. Computed templates use the exact token grammar {{scalar.<scalarId>}}, {{meta.<metadataKey}} or {{table.<tableId>.rowCount}}; colon forms such as {{scalar:<id>}} and {{metadata:<key>}} are invalid. Mark non-numeric prose as invariant only when it is visibly unchanged report wording copied from an example slot. Use phase text only for a non-numeric example state label whose target value comes from targetMetadataKey; never use invariant or phase text for metrics, dates, identifiers, API paths, or table names.
-  Aggregate table.filter accepts only row-level source predicates. Use having for predicates over materialized aggregate columns (for example, attainment < 0.6); having runs before sort/limit. Aggregate table columns may use a derived case expression over previously declared columns for reusable classifications. When a displayed top-N is ordered or filtered by a metric that is not shown in the template, declare that metric as an extra runtime result column for sort/having and omit it from the layout binding; result tables may contain hidden calculation columns. Never copy an example classification by entity id.
+  Aggregate table.filter accepts only row-level source predicates. Use having for predicates over materialized aggregate columns (for example, attainment < 0.6); having runs before sort/limit. Aggregate table columns may use a derived case expression over previously declared columns for reusable classifications. When a displayed top-N is ordered or filtered by a metric that is not shown in the template, declare that metric as an extra runtime result column for sort/having and omit it from the layout binding; result tables may contain hidden calculation columns. Use limit only for an explicit or evidenced business rule such as top-N; the number of rows visible in the example is template geometry and must not be copied as a limit. Never copy an example classification by entity id.
 Bind every scalar slot and every detected table group. Layout bindings may reference only report scalars, report texts, tables, and metadata; raw literal layout values are unavailable by design.
 Declare one result table for every detected table group before layout binding; a layout must never point at an undeclared table. Preserve the group column order and use result column ids, not template cell ids, in tableBindings.
 Use the completed example's observed dates to choose a period field: compare candidate source date fields against examplePeriod and prefer the field whose coverage reproduces the example rows (for example, paid_at can include orders created before the month). Keep optional dimensions as left joins so they cannot silently remove fact rows; reserve inner joins for an explicitly evidenced exclusion.
@@ -3368,7 +3369,7 @@ Revise a reusable declarative report plan using only completed-example replay ev
 The previous plan and bounded mismatch/error evidence are diagnostic input, not values to copy. Preserve the source capture contract and use the same generic report schema.
 Fix calculation, join, formatting, text-role, or layout bindings so the completed example replays from its captured example-period sources. Never encode expected numbers, dates, entity IDs, table rows, or target values as literals or mappings.
 Target-period source rows are unavailable and must not be inferred. All safety, metadata, layout, and source-derivation rules from the original business planner still apply.
-Treat every replay mismatch as a required correction. The diagnostic kind identifies scalar versus table output; table diagnostics include the exact groupId, result rowIndex and columnIndex, so repair the owning table's formula/filter/order rather than changing an unrelated value. First check period-field coverage and optional join type when many fact rows differ; then check status predicates, repeated-dimension sum_distinct keys, aggregate having predicates, and table filters/sort/limit. Use having for thresholds over grouped columns before sorting and limiting. If a displayed top-N is selected by an undisplayed metric, add that metric as a hidden result column and sort by it while binding only the displayed columns. Preserve every detected table group and make each layout tableBinding columnId equal the revised report table column id, never a template slot id. A plan that only adds a missing table while leaving scalar and row mismatches unresolved is incomplete.
+ Treat every replay mismatch as a required correction. The diagnostic kind identifies scalar versus table output; table diagnostics include the exact groupId, result rowIndex and columnIndex, so repair the owning table's formula/filter/order rather than changing an unrelated value. First check period-field coverage and optional join type when many fact rows differ; then check status predicates, repeated-dimension sum_distinct keys, aggregate having predicates, and table filters/sort/limit. Use having for thresholds over grouped columns before sorting and limiting. If a displayed top-N is selected by an undisplayed metric, add that metric as a hidden result column and sort by it while binding only the displayed columns. Use limit only when the request or report evidence establishes a business limit; never use the completed example row count as a layout cap. Preserve every detected table group and make each layout tableBinding columnId equal the revised report table column id, never a template slot id. A plan that only adds a missing table while leaving scalar and row mismatches unresolved is incomplete.
 `;
 
 export class ReportPlanner {

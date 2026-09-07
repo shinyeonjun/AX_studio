@@ -9,7 +9,7 @@ import { parseOpenApiConnectionConfig } from '../../connectors/protocols/openapi
 import { parseOpenApiSpec, type OpenApiOperation } from '../../connectors/protocols/openapi/parse.js';
 import { assertReportSourceCoverage, ReportSourceRequirementsSchema, ReportSourceReplanRequired,
   type ReportSourceNeed, type ReportUnavailableSource, type ReportBusinessInference, type ReportCaptureInference } from './planner/schema.js';
-import { validateCapturePlan, validateRefinedCapturePlan } from './planner/planner.js';
+import { repairReportTableCapacities, validateCapturePlan, validateRefinedCapturePlan } from './planner/planner.js';
 import { ReportSourceClarificationRequired, type ReportSourceInspection } from './planner/source-discovery.js';
 import { inspectReportCatalog } from './planner/catalog.js';
 import type { ReportHttpConnectionSummary, ReportPlanReplayFailure } from './planner/planner.js';
@@ -642,8 +642,17 @@ export class ReportGenerationService {
         'target',
       );
       phase = 'target_calculation';
-      const targetResult = executeReportPlan(
+      // A resumed checkpoint can contain a plan produced before the host
+      // separated example layout capacity from semantic table limits. Apply
+      // the same structural repair at the target boundary so cached plans
+      // cannot reintroduce the old silent truncation.
+      const targetReportPlan = repairReportTableCapacities(
         business.reportPlan,
+        business.layout,
+        pair,
+      );
+      const targetResult = executeReportPlan(
+        targetReportPlan,
         targetSources,
         targetMetadata,
       );

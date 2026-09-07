@@ -771,4 +771,91 @@ describe('ReportGenerationService', () => {
     expect(reviseReportPlan).toHaveBeenCalledTimes(1);
     expect(events).toEqual(['read-1', 'revise', 'read-2', 'render-target']);
   });
+
+  it('repairs a cached example-capacity limit before target rendering', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-report-target-capacity-'));
+    const templatePath = join(root, 'template.pdf');
+    const examplePath = join(root, 'example.pdf');
+    writeFileSync(templatePath, 'template');
+    writeFileSync(examplePath, 'example');
+    const pair: PdfReportPairAnalysis = {
+      schemaVersion: 1,
+      pairId: 'pair', templateHash: 'template-hash', exampleHash: 'example-hash', pageCount: 1,
+      pages: [{ index: 0, width: 595, height: 842, rotation: 0 }],
+      scalarSlots: [],
+      tableGroups: [{
+        id: 'customers-group', columnCount: 1, rowCount: 2,
+        rows: [0, 1].map((index) => ({ index, pageIndex: 0, y: 120 + index * 20, cells: [{
+          id: `customer-${index}`, pageIndex: 0,
+          rect: { x: 60, y: 120 + index * 20, width: 80, height: 12 },
+          exampleText: ['A', 'B'][index]!, fontSize: 9, font: 'Fixture', color: 0,
+        }] })),
+      }],
+      templateImages: [], exampleImages: [],
+    };
+    const targetValues: Array<Record<string, unknown>> = [];
+    const documentEngine = {
+      pdfReportAnalyze: vi.fn(async () => pair),
+      pdfFormFill: vi.fn(async (path: string, options: { outputPath?: string; values: Record<string, unknown> }) => {
+        targetValues.push(options.values);
+        writeFileSync(options.outputPath!, 'pdf');
+        return {
+          sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'output-hash',
+          pageCount: 1, fieldCount: Object.keys(options.values).length, writerEngine: 'pymupdf' as const,
+          verified: true, interactive: false, sourceUnchanged: true,
+        };
+      }),
+    };
+    let readCount = 0;
+    const service = new ReportGenerationService({
+      workspaceSources: { resolveStoredFile: (_session, id) => ({
+        source: { id, fileName: `${id}.pdf` }, artifact: { storedPath: id === 'template' ? templatePath : examplePath },
+      }) },
+      documentEngine,
+      planner: {
+        inferSourceRequirements: async () => [],
+        inferCapturePlan: async () => ({
+          schemaVersion: 1,
+          examplePeriod: { start: '2037-05-01', endInclusive: '2037-05-31', label: 'example' },
+          targetPeriod: { start: '2037-06-01', endInclusive: '2037-06-30', label: 'target' },
+          capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'orders', table: 'public.orders' }] },
+        }),
+        inferReportPlan: async () => ({
+          schemaVersion: 1,
+          reportPlan: {
+            schemaVersion: 1, baseSource: 'orders', joins: [], scalars: [], texts: [],
+            tables: [{
+              kind: 'aggregate' as const, id: 'customers', limit: 2,
+              groupBy: [{ id: 'customer', value: { kind: 'field' as const, path: 'orders.customer_id' } }],
+              columns: [{ id: 'customer', value: { kind: 'group_key' as const, keyId: 'customer' } }],
+            }],
+          },
+          layout: {
+            schemaVersion: 1, outputFileName: 'report.pdf', scalarBindings: [],
+            tableBindings: [{ groupId: 'customers-group', tableId: 'customers', columns: [{ columnIndex: 0, columnId: 'customer' }] }],
+          },
+        }),
+      },
+      getConnector: () => ({
+        name: 'rdb',
+        execute: async (action: string) => {
+          if (action === 'schema.describe') return { ok: true, data: ['public.orders'] };
+          readCount += 1;
+          const rows = readCount === 1 ? [['A'], ['B']] : [['A'], ['B'], ['C']];
+          return { ok: true, data: buildTableArtifact({ id: 'orders', headers: ['customer_id'], matrix: rows }) };
+        },
+      }),
+      makeTemporaryDirectory: () => join(root, 'output'),
+    });
+
+    const response = await service.generate({ goal: 'customer report', templateSourceId: 'template', exampleSourceId: 'example' }, {
+      executionId: 'exec', workspaceSessionId: 'chat', variables: {}, connections: [],
+      artifactSink: { putBytes: (bytes, options) => ({ id: 'artifact', sha256: 'sha', fileName: options.fileName, mimeType: options.mimeType, size: bytes.length, createdAt: '2037-06-01' }) },
+      log: vi.fn(),
+    });
+
+    expect(response.ok).toBe(true);
+    expect(targetValues).toHaveLength(1);
+    expect(Object.values(targetValues[0]!)).toContain('C');
+  });
 });
