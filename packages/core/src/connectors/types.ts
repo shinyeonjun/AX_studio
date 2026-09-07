@@ -28,6 +28,12 @@ export interface ConnectorContext {
   abortSignal?: AbortSignal;
   executionId: string;
   workflowId?: string;
+  /**
+   * Host-owned report capture mode. This is deliberately carried out of the
+   * request payload so an agent cannot use an internal pagination path to
+   * bypass an interactive connector's configured preview limit.
+   */
+  reportCapture?: boolean;
   /** Host-owned chat/session scope used to resolve session artifacts safely. */
   workspaceSessionId?: string;
   variables: Record<string, unknown>;

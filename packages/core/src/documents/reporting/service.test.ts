@@ -614,6 +614,9 @@ describe('ReportGenerationService', () => {
     expect(response.ok).toBe(true);
     expect(documentEngine.pdfReportAnalyze).toHaveBeenCalledTimes(1);
     expect(vi.mocked(rdb.execute).mock.calls.filter(([action]) => action === 'query.read')).toHaveLength(2);
+    expect(vi.mocked(rdb.execute).mock.calls
+      .filter(([action]) => action === 'query.read')
+      .every(([, , context]) => (context as ConnectorContext).reportCapture === true)).toBe(true);
     if (resume) expect(logs).toContainEqual(expect.objectContaining({ code: 'report_stage_resumed', data: { phase: 'example_capture' } }));
     expect(documentEngine.pdfFormFill).toHaveBeenCalledTimes(1);
     expect(putBytes).toHaveBeenCalledWith(

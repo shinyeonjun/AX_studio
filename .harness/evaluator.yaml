@@ -14402,3 +14402,46 @@ target_table_row_completeness:
       document-engine-regression: "PASS: document-engine 50/50"
       project-regression: "PASS: Core 1352 passed/5 skipped, evaluation 11/11, Core/Desktop typecheck/build, architecture 0 violations, diff check"
       safety-boundary: "PASS: no new project files, fixture-specific production values, source writes, external delivery, or app-state mutation"
+analysis_input_integrity:
+  goal: "No analysis-affecting bound silently changes the report population; every retained bound is explicit, labelled, or fail-closed."
+  checks:
+    - id: evidence-fidelity
+      type: automated
+      criterion: "Preview/profile reductions expose their row, column, value, and grouped-summary completeness; incomplete snapshots are rejected before inference."
+      command: "npx vitest run packages/core/src/documents/reporting/planner/evidence.test.ts"
+    - id: rdb-report-pagination
+      type: automated
+      criterion: "Report source capture reads a table across connector pages despite the connector default row limit and fails closed when the aggregate safety budget is exceeded."
+      command: "npx vitest run packages/core/src/documents/reporting/source/capture.test.ts packages/core/src/connectors/rdb/connector.test.ts packages/core/src/contracts/artifacts/table-artifact.test.ts"
+    - id: exact-calculation-boundary
+      type: automated
+      criterion: "Report execution and layout-capacity regressions preserve every complete snapshot row and retain explicit semantic limits."
+      command: "npx vitest run packages/core/src/documents/reporting/plan packages/core/src/documents/reporting/layout packages/core/src/documents/reporting/service.test.ts"
+    - id: project-regression
+      type: automated
+      criterion: "Reporting/Core/Desktop typecheck and build, document-engine tests, architecture, evaluation, and whitespace checks remain green."
+      command: "npx vitest run packages/core/src/documents/reporting; npm run build -w @ax-studio/core; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'; npm run arch:check; npm run eval -w @ax-studio/core; git diff --check"
+    - id: safety-boundary
+      type: scope
+      criterion: "No new project files, fixture/gold changes, source writes, external delivery, or app-state mutation occur."
+      method: "Review scoped diff and source-write safety tests."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T02:59:01.8031973+09:00
+    decision: BASELINE
+    values:
+      evidence-fidelity: "PASS: existing evidence tests passed before the patch, but reductions were not consistently labelled"
+      rdb-report-pagination: "FAIL-CAPABLE: report RDB capture used the connector default rowLimit (1000 fallback) and did not continue pages"
+      exact-calculation-boundary: "PASS: complete snapshots are required at the executor boundary; presentation row-cap repair already passed"
+      project-regression: "PASS: prior reporting/Core checks were green"
+      safety-boundary: "PASS: no new project files or source writes in the baseline"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T03:41:14.7941550+09:00
+    decision: KEEP
+    values:
+      evidence-fidelity: "PASS: ReportEvidence suite 47/47; reductions expose rowsTruncated, columnsTruncated, valuesTruncated, sampleOnly, contextCompacted, omittedRowCount, profileContextCompacted, omittedDistinctExamples, numericColumnsTruncated, and groupedNumericTruncated; incomplete snapshots are rejected"
+      rdb-report-pagination: "PASS: source capture 40/40 and RDB 29/29; report reads continue with offset/limit until complete, repeated/no-progress pages and aggregate budgets fail closed"
+      exact-calculation-boundary: "PASS: report plan execution and service preserve complete captured rows; presentation and model-context compaction stay outside final calculations"
+      project-regression: "PASS: reporting 323 passed/2 skipped; Core 1366 passed/5 skipped; Core build, Desktop typecheck/build, document-engine 50/50, evaluation 11/11, architecture 0 violations, diff check"
+      safety-boundary: "PASS: no new project files, fixture/gold changes, source writes, external delivery, credential mutation, or application data changes"

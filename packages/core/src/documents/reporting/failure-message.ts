@@ -46,6 +46,10 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
   else if (code === 'agent_aborted') lines.push('AI 요청이 취소되었습니다.');
   else if (code === 'model_output_invalid') lines.push('AI 응답이 필요한 형식을 충족하지 못했습니다.');
   else if (code === 'report_example_replay_failed') lines.push('예시 보고서의 값을 재현하지 못했습니다. 계산 기준과 과거 시점 데이터를 확인해 주세요.');
+  else if (['report_http_response_incomplete', 'report_http_pagination_no_progress',
+    'report_rdb_response_incomplete', 'report_rdb_pagination_no_progress', 'report_rdb_page_limit'].includes(code)) {
+    lines.push('원천 데이터 페이지를 끝까지 안정적으로 읽지 못했습니다. 연결된 API·DB가 페이지 조회를 지원하는지와 데이터 변경 여부를 확인한 뒤 다시 요청해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
+  }
   else if (code === 'report_table_capacity_exceeded') lines.push('결과 행이 양식의 표 용량을 초과했습니다. 행을 잘라내지 않았습니다. 더 큰 양식이나 명시적인 집계 기준이 필요합니다.');
   else if (code === 'report_checkpoint_input_changed') lines.push('자료·연결·요청이 변경되어 이전 결과를 재사용할 수 없습니다. 새 실행으로 요청해 주세요.');
   else if (code === 'report_checkpoint_not_found') lines.push('이 실행에는 저장된 중간 결과가 없습니다. 새 보고서 생성으로 요청해 주세요.');

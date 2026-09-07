@@ -139,6 +139,59 @@ function gateway(options: { truncatedPage?: number } = {}): ReportSourceGateway 
 }
 
 describe('captureReportSources', () => {
+  it('pages a partial RDB response until the complete snapshot is available', async () => {
+    const allRows = Array.from({ length: 5 }, (_, id) => ({ id }));
+    const executeRdb = vi.fn(async (params: Record<string, unknown>) => {
+      const offset = Number(params.offset ?? 0);
+      const pageLimit = 2;
+      const pageRows = allRows.slice(offset, offset + pageLimit + 1);
+      return { ok: true, data: tableArtifactFromRows(pageRows, {
+        id: 'rdb-page', rowLimit: pageLimit,
+      }) };
+    });
+    const result = await captureReportSources({ schemaVersion: 1, http: [], rdb: [
+      { alias: 'facts', table: 'public.facts' },
+    ] }, { start: '2032-02-01', endInclusive: '2032-02-29', label: 'period' }, {
+      executeHttp: vi.fn(), executeRdb,
+    });
+
+    expect(executeRdb.mock.calls.map(([params]) => params)).toEqual([
+      { table: 'public.facts', offset: 0, limit: 10_000 },
+      { table: 'public.facts', offset: 2, limit: 10_000 },
+      { table: 'public.facts', offset: 4, limit: 10_000 },
+    ]);
+    expect(result.facts).toMatchObject({ complete: true, rows: allRows });
+  });
+
+  it('fails closed when an RDB continuation reports more rows but returns none', async () => {
+    const executeRdb = vi.fn(async (params: Record<string, unknown>) => ({
+      ok: true,
+      data: tableArtifactFromRows(Number(params.offset) === 0 ? [{ id: 1 }, { id: 2 }, { id: 3 }] : [], {
+        id: 'rdb-page', rowLimit: 2,
+      }),
+    }));
+    await expect(captureReportSources({ schemaVersion: 1, http: [], rdb: [
+      { alias: 'facts', table: 'public.facts' },
+    ] }, { start: '2032-02-01', endInclusive: '2032-02-29', label: 'period' }, {
+      executeHttp: vi.fn(), executeRdb,
+    })).rejects.toThrow('report_rdb_pagination_no_progress:facts');
+  });
+
+  it('fails closed when an RDB continuation repeats the previous page', async () => {
+    const executeRdb = vi.fn(async () => ({
+      ok: true,
+      data: tableArtifactFromRows([{ id: 1 }, { id: 2 }, { id: 3 }], {
+        id: 'rdb-page', rowLimit: 2,
+      }),
+    }));
+    await expect(captureReportSources({ schemaVersion: 1, http: [], rdb: [
+      { alias: 'facts', table: 'public.facts' },
+    ] }, { start: '2032-02-01', endInclusive: '2032-02-29', label: 'period' }, {
+      executeHttp: vi.fn(), executeRdb,
+    })).rejects.toThrow('report_rdb_pagination_no_progress:facts');
+    expect(executeRdb).toHaveBeenCalledTimes(2);
+  });
+
   it('captures every page when row and pagination paths include the JSON root', async () => {
     const result = await captureReportSources({ schemaVersion: 1, rdb: [], http: [{
       alias: 'orders', path: '/orders', rowsPath: '$.data', pagination: {
@@ -159,6 +212,27 @@ describe('captureReportSources', () => {
     });
     expect(result.orders?.rows).toEqual([{ id: 1 }, { id: 2 }]);
     expect(result.orders?.complete).toBe(true);
+  });
+
+  it('fails closed when an HTTP pagination request returns the same page again', async () => {
+    const executeHttp = vi.fn(async (params: Record<string, unknown>) => {
+      const url = new URL(String(params.path), 'http://example.test');
+      const page = Number(url.searchParams.get('page'));
+      return { ok: true, data: buildHttpResponseArtifact({
+        executionId: `repeat-${page}`, url: url.href, status: 200, statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ data: [{ id: 1 }], meta: { total_pages: 3 } }),
+      }) };
+    });
+    await expect(captureReportSources({ schemaVersion: 1, rdb: [], http: [{
+      alias: 'orders', path: '/orders', rowsPath: '$.data', pagination: {
+        pageParam: 'page', sizeParam: 'size', pageSize: 1, maxPages: 3,
+        totalPagesPath: '$.meta.total_pages',
+      },
+    }] }, { start: '2032-02-01', endInclusive: '2032-02-29', label: 'period' }, {
+      executeRdb: vi.fn(), executeHttp,
+    })).rejects.toThrow('report_http_pagination_no_progress:orders:2');
+    expect(executeHttp).toHaveBeenCalledTimes(2);
   });
   it('rejects impossible calendar dates before contacting a source', async () => {
     const sourceGateway = gateway();

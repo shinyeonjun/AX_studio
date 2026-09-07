@@ -5,6 +5,7 @@ import {
   formatRdbTableRef,
   isAllowedRdbTable,
   listRdbTables,
+  MAX_RDB_RESULT_ROWS,
   normalizeRdbRowLimit,
   parseRdbTableRef,
   readRdbRows,
@@ -65,12 +66,28 @@ export class RdbConnector implements Connector {
           return page.columns.length || page.offset > 0 ? { ok: true, data: { table: formatRdbTableRef(ref), ...page } }
             : { ok: false, error: 'rdb_table_metadata_unavailable', errorCode: 'rdb_error' };
         }
-        const rows = await readRdbRows(this.config, ref, rowLimit + 1, ctx.abortSignal);
+        // Report capture is a host-owned mode. Never trust a model/request
+        // field for this privilege or an interactive read could bypass its
+        // configured row limit.
+        const reportCapture = ctx.reportCapture === true;
+        const requestedLimit = reportCapture
+          ? normalizeRdbRowLimit(params.limit, MAX_RDB_RESULT_ROWS)
+          : params.limit === undefined
+            ? rowLimit
+            : Math.min(rowLimit, normalizeRdbRowLimit(params.limit, rowLimit));
+        const rawOffset = params.offset;
+        const offset = rawOffset === undefined ? 0
+          : typeof rawOffset === 'number' ? rawOffset : Number.NaN;
+        if (!Number.isSafeInteger(offset) || offset < 0) {
+          return { ok: false, error: 'invalid_row_pagination', errorCode: 'invalid_params' };
+        }
+        const rows = await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal,
+          { offset });
         ctx.abortSignal?.throwIfAborted();
         const table = tableArtifactFromRows(rows, {
           id: `rdb_${ctx.executionId}_${formatRdbTableRef(ref).replace(/[^A-Za-z0-9_]+/g, '_')}`,
           name: formatRdbTableRef(ref),
-          rowLimit,
+          rowLimit: requestedLimit,
           source: {
             database: this.config.type,
             schema: ref.schema,
@@ -79,8 +96,16 @@ export class RdbConnector implements Connector {
           },
         });
         if (!table) return { ok: false, error: 'rdb_rows_invalid', errorCode: 'rdb_error' };
-        ctx.variables.queryResult = table;
-        return { ok: true, data: table };
+        // Keep the provider page boundary visible to generic model callers.
+        // The table rows remain bounded by the configured limit, while a
+        // caller can continue from the exact next offset when more rows exist.
+        const data = {
+          ...table,
+          offset,
+          ...(table.truncated ? { nextOffset: offset + table.rows.length } : {}),
+        };
+        ctx.variables.queryResult = data;
+        return { ok: true, data };
       } catch (error) {
         if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
         ctx.log({

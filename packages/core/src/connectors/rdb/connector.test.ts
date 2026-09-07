@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { RdbConnector } from './connector.js';
 import { createSqliteCustomersFixture } from './sqlite-test-fixture.js';
 
-function connectorContext() {
+function connectorContext(options: { reportCapture?: boolean } = {}) {
   return {
     variables: {} as Record<string, unknown>,
     log: vi.fn(),
+    ...options,
   };
 }
 
@@ -59,9 +60,48 @@ describe('RdbConnector sqlite', () => {
         data: {
           rows: [{ values: { id: 1, name: 'AsterTech', priority: 'critical' } }],
           truncated: true,
+          offset: 0,
+          nextOffset: 1,
           completeness: { status: 'partial', reason: 'row_limit', observedCount: 1, limit: 1, hasMore: true },
         },
       });
+
+      const interactivePage = await limited.execute('query.read', {
+        table: 'customers', offset: 1, limit: 100,
+      }, connectorContext());
+      expect(interactivePage).toMatchObject({ ok: true, data: {
+        rows: [{ values: { id: 2 } }], truncated: false, offset: 1,
+        completeness: { status: 'complete', hasMore: false },
+      } });
+
+      const pagedConnector = new RdbConnector({
+        type: 'sqlite',
+        filePath: fixture.filePath,
+        allowedTables: ['customers'],
+        rowLimit: 1,
+      });
+      const firstPage = await pagedConnector.execute('query.read', {
+        table: 'customers', offset: 0, limit: 1,
+      }, connectorContext({ reportCapture: true }));
+      const secondPage = await pagedConnector.execute('query.read', {
+        table: 'customers', offset: 1, limit: 1,
+      }, connectorContext({ reportCapture: true }));
+      expect(firstPage).toMatchObject({ ok: true, data: {
+        rows: [{ values: { id: 1 } }], truncated: true,
+        completeness: { status: 'partial', hasMore: true },
+      } });
+
+      const unprivileged = await limited.execute('query.read', {
+        table: 'customers', offset: 0, limit: 100, reportCapture: true,
+      }, connectorContext());
+      expect(unprivileged).toMatchObject({ ok: true, data: {
+        rows: [{ values: { id: 1 } }], truncated: true,
+        completeness: { status: 'partial', reason: 'row_limit', hasMore: true },
+      } });
+      expect(secondPage).toMatchObject({ ok: true, data: {
+        rows: [{ values: { id: 2 } }], truncated: false,
+        completeness: { status: 'complete', hasMore: false },
+      } });
 
       const denied = await connector.execute('query.read', { table: 'secret_table' }, connectorContext());
       expect(denied).toEqual({ ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' });

@@ -27,6 +27,7 @@ describe('ReportEvidence', () => {
     const { input, seen } = setup([{ schemaVersion: 1, reportPlan: plan }]);
     await expect(inferWithEvidence(input)).resolves.toEqual(plan);
     expect(seen[0]!.context.skillGoal).toContain('reportGeometry already includes all page, slot and table structure');
+    expect(seen[0]!.context.skillGoal).toContain('rowsTruncated, columnsTruncated, valuesTruncated and sampleOnly');
   });
 
   it('advertises the declarative operations before allowing unsupported abstention', async () => {
@@ -46,24 +47,40 @@ describe('ReportEvidence', () => {
     expect(seen[0]!.context.skillGoal).toContain('request rows for the relevant source alias first');
   });
 
-  it('caps row pagination to one request per source before finalizing the reusable plan', async () => {
+  it('allows bounded row pagination while keeping final calculations over every captured row', async () => {
     const { input, seen } = setup([{ schemaVersion: 1, reportPlan: plan }]);
     await expect(inferWithEvidence(input)).resolves.toEqual(plan);
-    expect(seen[0]!.context.skillGoal).toContain('At most one rows request is allowed per source');
+    expect(seen[0]!.context.skillGoal).toContain('multiple distinct bounded row windows from the same source');
     expect(seen[0]!.context.skillGoal).toContain('the host computes the plan over every captured row');
   });
 
-  it('marks a repeated row request as exhausted and forces the next model turn to finalize', async () => {
+  it('allows the model to page through more than two distinct row windows from one source', async () => {
+    const { input, seen } = setup([
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 1 }),
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 1, limit: 1 }),
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 2, limit: 1 }),
+      { schemaVersion: 1, reportPlan: plan },
+    ]);
+    await expect(inferWithEvidence(input)).resolves.toEqual(plan);
+    expect(seen).toHaveLength(4);
+    const thirdPage = JSON.parse(seen[3]!.context.untrustedData!);
+    expect(thirdPage.evidence).toContainEqual(expect.objectContaining({
+      request: { kind: 'rows', source: 'ledger', columns: ['amount'], offset: 2, limit: 1 },
+      rowWindow: 3,
+    }));
+  });
+
+  it('keeps repeated row windows in history without treating the source as exhausted', async () => {
     const { input, seen } = setup([
       request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 1 }),
       request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 1, limit: 1 }),
       { schemaVersion: 1, reportPlan: plan },
     ]);
     await expect(inferWithEvidence(input)).resolves.toEqual(plan);
-    expect(seen[2]!.context.skillGoal).toContain('row evidence budget is exhausted for: ledger');
     const data = JSON.parse(seen[2]!.context.untrustedData!);
-    expect(data.evidence.at(-1)).toMatchObject({ rowBudgetExhausted: true,
+    expect(data.evidence.at(-1)).toMatchObject({ rowWindow: 2,
       request: { source: 'ledger', offset: 1 } });
+    expect(data.evidence.at(-1)?.rowBudgetExhausted).toBeUndefined();
   });
 
   it('does not spend calculation rounds rereading pages already represented by geometry', async () => {
@@ -194,6 +211,23 @@ describe('ReportEvidence', () => {
     expect(data.evidence).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'preview', source: 'ledger' }),
     ]));
+  });
+
+  it('labels direct row evidence compacted for context without changing its source count', async () => {
+    const { input, seen } = setup([
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 25 }),
+      { schemaVersion: 1, reportPlan: plan },
+    ]);
+    input.context.untrustedData = JSON.stringify({ padding: 'x'.repeat(72_000) });
+    input.sources = { ledger: { id: 'ledger', complete: true,
+      rows: Array.from({ length: 10 }, (_, amount) => ({ amount: `${amount}-${'x'.repeat(1_000)}` })) } };
+
+    await expect(inferWithEvidence(input)).resolves.toEqual(plan);
+    const data = JSON.parse(seen[1]!.context.untrustedData!);
+    const rowsEvidence = data.evidence.find((entry: { request?: { kind?: string } }) => entry.request?.kind === 'rows');
+    expect(rowsEvidence.result).toMatchObject({ rowCount: 10, sampleOnly: true,
+      contextCompacted: true, omittedRowCount: 4 });
+    expect(rowsEvidence.result.rows).toHaveLength(6);
   });
 
   it('retries a bounded invalid calculation plan and carries only structural issues forward', async () => {
@@ -359,6 +393,9 @@ describe('ReportEvidence', () => {
       request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 1, limit: 1 }),
       request({ kind: 'page', document: 'example', pageIndex: 0 }),
       request({ kind: 'page', document: 'example', pageIndex: 1 }),
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 2, limit: 1 }),
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 2 }),
+      request({ kind: 'profile', source: 'ledger', columns: ['note'] }),
       { schemaVersion: 1, reportPlan: plan },
       { schemaVersion: 1, reportPlan: plan },
     ]);
@@ -369,8 +406,8 @@ describe('ReportEvidence', () => {
     };
 
     await expect(inferWithEvidence(input)).resolves.toEqual(plan);
-    expect(seen).toHaveLength(7);
-    const correction = JSON.parse(seen[6]!.context.untrustedData!);
+    expect(seen).toHaveLength(10);
+    const correction = JSON.parse(seen[9]!.context.untrustedData!);
     expect(correction.remainingEvidenceRequests).toBe(0);
     expect(correction.validationIssues).toEqual([{ code: 'report_plan_output_not_source_derived',
       path: ['table', 'risk', 'column', 'label'] }]);
@@ -413,6 +450,16 @@ describe('ReportEvidence', () => {
       .toMatchObject({ profiles: [{ nulls: 1, minimum: 12, maximum: 30 }] });
   });
 
+  it('normalizes undefined source fields to explicit null evidence', () => {
+    const evidence = new ReportEvidence({ facts: { id: 'facts', complete: true,
+      rows: [{ amount: undefined }] } });
+    expect(evidence.read({ kind: 'rows', source: 'facts', columns: ['amount'], offset: 0, limit: 1 }))
+      .toMatchObject({ rows: [{ amount: null }] });
+    expect(evidence.read({ kind: 'profile', source: 'facts', columns: ['amount'] }))
+      .toMatchObject({ profiles: [{ nulls: 1, types: {} }] });
+    expect(evidence.preview('facts')).toMatchObject({ rows: [{ amount: null }], valuesTruncated: false });
+  });
+
   it('reports numeric totals and bounded conditional totals for categorical filters', () => {
     const evidence = new ReportEvidence({ orders: { id: 'orders', complete: true, rows: [
       { status: 'PAID', gross_amount: '100.00', net_amount: '100.00', refund_amount: '0.00' },
@@ -434,12 +481,63 @@ describe('ReportEvidence', () => {
     }));
   });
 
+  it('keeps wide profiles usable by compacting optional distinct examples with flags', () => {
+    const rows = Array.from({ length: 30 }, (_, index) => Object.fromEntries(
+      Array.from({ length: 12 }, (_unused, column) => [`field${column}`, `${index}-${'x'.repeat(190)}`]),
+    ));
+    const evidence = new ReportEvidence({ facts: { id: 'facts', complete: true, rows } });
+    const profile = evidence.read({ kind: 'profile', source: 'facts', columns: Array.from({ length: 12 }, (_unused, column) => `field${column}`) }) as {
+      profiles: Array<{ distinctExamples: unknown[]; distinctExamplesComplete: boolean; omittedDistinctExamples?: number }>;
+      profileContextCompacted?: boolean;
+    };
+    expect(profile.profileContextCompacted).toBe(true);
+    expect(profile.profiles.every((item) => item.distinctExamplesComplete === false)).toBe(true);
+    expect(profile.profiles.every((item) => (item.omittedDistinctExamples ?? 0) > 0)).toBe(true);
+    expect(JSON.stringify(profile).length).toBeLessThanOrEqual(16_000);
+  });
+
   it('discovers late fields and marks bounded distinct examples as incomplete', () => {
     const evidence = new ReportEvidence({ unusual: { id: 'unusual', complete: true,
       rows: [...Array.from({ length: 30 }, (_, index) => ({ code: `v${index}` })), { rare: true }] } });
     expect(evidence.summary()[0]?.columns).toEqual(['code', 'rare']);
     expect(evidence.read({ kind: 'profile', source: 'unusual', columns: ['code'] }))
       .toMatchObject({ profiles: [{ missing: 1, distinctExamplesComplete: false }] });
+  });
+
+  it('labels every preview reduction so the model cannot mistake it for the source', () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: index, a_value: 'x'.repeat(600),
+      ...Object.fromEntries(Array.from({ length: 16 }, (_unused, column) => [`c${column}`, column])),
+    }));
+    const evidence = new ReportEvidence({ facts: { id: 'facts', complete: true, rows } });
+    expect(evidence.preview('facts')).toMatchObject({
+      rowCount: 30,
+      nextOffset: 5,
+      rowsTruncated: true,
+      columnsTruncated: true,
+      valuesTruncated: true,
+      sampleOnly: true,
+    });
+  });
+
+  it('rejects an incomplete snapshot before the model can infer a plan from it', () => {
+    expect(() => new ReportEvidence({ facts: { id: 'facts', complete: false, rows: [{ id: 1 }] } }))
+      .toThrow('report_evidence_source_incomplete:facts');
+  });
+
+  it('labels grouped profile reductions when low-cardinality summaries exceed their bounds', () => {
+    const rows = Array.from({ length: 4 }, (_, index) => Object.fromEntries([
+      ...Array.from({ length: 10 }, (_unused, column) => [`amount${column}`, index + column]),
+      ...Array.from({ length: 2 }, (_unused, column) => [`group${column}`, `v${index}`]),
+    ]));
+    const evidence = new ReportEvidence({ facts: { id: 'facts', complete: true, rows } }, { detailedProfiles: true });
+    expect(evidence.read({ kind: 'profile', source: 'facts', columns: [
+      ...Array.from({ length: 10 }, (_unused, column) => `amount${column}`),
+      ...Array.from({ length: 2 }, (_unused, column) => `group${column}`),
+    ].slice(0, 12) })).toMatchObject({
+      numericColumnsTruncated: true,
+      groupedNumericTruncated: true,
+    });
   });
 
   it('rejects unknown sources, inherited keys, unknown columns and invalid offsets', () => {
@@ -510,10 +608,13 @@ describe('ReportEvidence', () => {
       .toHaveLength(1);
   });
 
-  it('bounds rounds and image bytes', async () => {
-    const many = setup(Array.from({ length: 6 }, (_, offset) => request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset, limit: 1 })));
+  it('bounds evidence requests and image bytes', async () => {
+    const many = setup([
+      ...Array.from({ length: 9 }, (_, offset) => request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset, limit: 1 })),
+      { schemaVersion: 1, reportPlan: plan },
+    ]);
     many.input.sources = { ledger: { id: 'ledger', complete: true, rows: Array.from({ length: 10 }, () => ({ amount: 1, note: '' })) } };
-    await expect(inferWithEvidence(many.input)).rejects.toThrow('report_evidence_row_budget_exceeded');
+    await expect(inferWithEvidence(many.input)).rejects.toThrow('report_evidence_round_limit');
     const large = setup([request({ kind: 'page', document: 'example', pageIndex: 0 })]);
     large.input.readPage = () => ({ data: new Uint8Array(9 * 1024 * 1024), mimeType: 'image/png' });
     await expect(inferWithEvidence(large.input)).rejects.toThrow('report_evidence_image_limit');
