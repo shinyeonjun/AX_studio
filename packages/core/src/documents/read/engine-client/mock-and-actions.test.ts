@@ -7,7 +7,10 @@ import {
   setDocumentEngineClient,
 } from '../engine-client.js';
 import { setAxDataPaths } from '../../../persistence/paths/ax-data.js';
-import { getChunk, getPage, ingest, search } from '../../../connectors/document/read/actions.js';
+import { getChunk } from '../../../connectors/document/read/actions/get-chunk.js';
+import { getPage } from '../../../connectors/document/read/actions/get-page.js';
+import { ingest } from '../../../connectors/document/read/actions/ingest.js';
+import { search } from '../../../connectors/document/read/actions/search.js';
 import type { ConnectorContext } from '../../../connectors/types.js';
 
 describe('DocumentEngineClient', () => {

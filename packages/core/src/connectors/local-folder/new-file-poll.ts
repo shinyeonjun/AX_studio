@@ -1,7 +1,7 @@
 import type { ConnectorContext, ConnectorResult } from '../types.js';
-import { findLocalFolder, type LocalFolderConnectionConfig } from './connection.js';
-import { scanFolderCheckedAsync } from './scan-async.js';
-import { MAX_FILES_PER_SCAN, trimSeenFileKeys } from './scan.js';
+import { findLocalFolder, type LocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
+import { MAX_FILES_PER_SCAN, trimSeenFileKeys } from '../../platform/local-folder-scan.js';
 
 export interface NewFilePollParams {
   folderId: string;

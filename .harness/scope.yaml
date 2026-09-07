@@ -13498,3 +13498,95 @@ analysis_input_integrity:
       source-integrity: "PASS: complete HTTP/RDB snapshots are required; RDB report reads page with host-owned context and fail closed on no progress or budget exhaustion"
       context-integrity: "PASS: all model-facing reductions are explicit and final calculations use complete snapshots"
       safety: "PASS: no new project files, fixture/gold changes, source writes, external delivery, credential mutation, or application data changes"
+
+simplification_local_folder:
+  goal: "Remove proven pass-through and duplicate local-folder modules while preserving the public connector seam."
+  allowed_paths:
+    - packages/core/src/connectors/local-folder/**
+    - packages/core/src/connectors/packages/local-folder.ts
+    - packages/core/src/connectors/local-sheet/discovery-source.ts
+    - packages/core/src/platform/local-folder-*.ts
+    - packages/core/src/runtime/manual-run-input/folder.ts
+    - packages/core/src/runtime/source-resolver/*.ts
+    - packages/core/src/intelligence/retrieval/*.ts
+    - packages/core/src/intelligence/design-tools/discovery-catalog.ts
+    - packages/core/src/intelligence/design-tools/tools/sources-*.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_paths:
+    - packages/core/src/documents/reporting/**
+    - packages/core/src/runtime/engine/**
+    - apps/desktop/**
+    - test/fixtures/**
+  expansion_log:
+    - at: 2026-09-08T04:19:56.6376288+09:00
+      reason: "The wrapper deletion must update every internal import and move the async scanner tests to the canonical platform seam."
+      status: planned
+
+simplification_pass_throughs:
+  goal: "Delete proven internal re-export-only modules and definition-only exports while preserving stable public seams."
+  allowed_paths:
+    - packages/core/src/connectors/document/**
+    - packages/core/src/connectors/gmail/**
+    - packages/core/src/connectors/local-folder/**
+    - packages/core/src/connectors/local-sheet/**
+    - packages/core/src/connectors/rdb/**
+    - packages/core/src/connectors/slack/**
+    - packages/core/src/connectors/transform/**
+    - packages/core/src/connectors/packages/**
+    - packages/core/src/documents/read/engine-client/**
+    - packages/core/src/documents/write/**
+    - packages/core/src/intelligence/agent/model/**
+    - packages/core/src/intelligence/agent/commands/**
+    - packages/core/src/intelligence/design-tools/**
+    - packages/core/src/intelligence/retrieval/**
+    - packages/core/src/runtime/condition-expr/**
+    - packages/core/src/runtime/execution/**
+    - packages/core/src/runtime/investigation/**
+    - packages/core/src/runtime/manual-run-input/**
+    - packages/core/src/runtime/output-contract/**
+    - packages/core/src/runtime/source-resolver/**
+    - packages/core/src/testing/connectors/**
+    - packages/core/src/work-discovery/compile/**
+    - packages/core/src/workflow/canvas/**
+    - packages/core/src/workflow/contract-validation/**
+    - packages/core/src/workflow/repair/**
+    - packages/core/src/workflow/visual-display/**
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_paths:
+    - packages/core/src/documents/reporting/**
+    - packages/core/src/runtime/engine/**
+    - packages/core/src/persistence/**
+    - packages/core/src/triggers/**
+    - apps/desktop/**
+    - test/fixtures/**
+    - new project files
+  expansion_log:
+    - at: 2026-09-08T04:47:17.5735221+09:00
+      reason: "Import inspection found internal pass-throughs outside the original local-folder scope; direct imports remove indirection without changing public behavior."
+      status: applied
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T04:19:56.6376288+09:00
+    decision: BASELINE
+    values:
+      local-folder-regression: "PASS: 54 passed, 3 skipped"
+      structure: "FAIL-CAPABLE: duplicate wrappers and internal re-export seams were present"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T04:47:17.5735221+09:00
+    decision: KEEP
+
+final_verification:
+  recorded_at: 2026-09-08T04:51:58.4551292+09:00
+  decision: KEEP
+  values:
+    focused-regression: "PASS: 120 files, 377 passed, 3 skipped"
+    full-regression: "PASS: Core 398 files/1355 passed/5 skipped; document-engine 50/50; evaluation 11/11; webhook security 3/3"
+    build-and-structure: "PASS: Core build; Desktop typecheck/build; architecture 0 violations (1174 modules, 4024 dependencies); diff check"
+    safety-boundary: "PASS: no new project files, fixtures, hidden gold, credentials, external writes, or application data mutations"

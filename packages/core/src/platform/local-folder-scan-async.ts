@@ -1,8 +1,9 @@
 import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
-import { scanFolderChecked, type ScanFolderResult, type ScannedFile } from './local-folder-scan.js';
+import { scanFolderChecked, type ScanFolderResult } from './local-folder-scan.js';
 
 const SCAN_WORKER_TIMEOUT_MS = 30_000;
+const aborted = (): ScanFolderResult => ({ ok: false, error: 'folder_scan_aborted', errorCode: 'aborted' });
 
 function shouldUseSyncScan(): boolean {
   return process.env.VITEST === 'true' || process.env.AX_SCAN_SYNC === '1';
@@ -13,44 +14,53 @@ function workerScriptPath(): string {
   return fileURLToPath(new URL('./local-folder-scan-worker.js', import.meta.url));
 }
 
-export function scanFolderAsync(rootPath: string, extensions?: string[]): Promise<ScannedFile[]> {
-  return scanFolderCheckedAsync(rootPath, extensions).then((result) => (result.ok ? result.files : []));
-}
-
-export function scanFolderCheckedAsync(rootPath: string, extensions?: string[]): Promise<ScanFolderResult> {
+export function scanFolderCheckedAsync(
+  rootPath: string,
+  extensions?: string[],
+  abortSignal?: AbortSignal,
+): Promise<ScanFolderResult> {
+  if (abortSignal?.aborted) return Promise.resolve(aborted());
   if (shouldUseSyncScan()) {
-    return Promise.resolve(scanFolderChecked(rootPath, extensions));
+    const result = scanFolderChecked(rootPath, extensions);
+    return Promise.resolve(abortSignal?.aborted ? aborted() : result);
   }
 
-  return runScanWorker(rootPath, extensions).catch(() => scanFolderChecked(rootPath, extensions));
+  return runScanWorker(rootPath, extensions, abortSignal).catch(() => (
+    abortSignal?.aborted ? aborted() : scanFolderChecked(rootPath, extensions)
+  ));
 }
 
-function runScanWorker(rootPath: string, extensions?: string[]): Promise<ScanFolderResult> {
+function runScanWorker(
+  rootPath: string,
+  extensions?: string[],
+  abortSignal?: AbortSignal,
+): Promise<ScanFolderResult> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(workerScriptPath(), {
       workerData: { rootPath, extensions },
     });
-    const timeout = setTimeout(() => {
-      void worker.terminate();
-      reject(new Error('scan_worker_timeout'));
-    }, SCAN_WORKER_TIMEOUT_MS);
-    worker.once('message', (message: ScanFolderResult) => {
+
+    let settled = false;
+    const finish = (result?: ScanFolderResult, error?: Error) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
-      void worker.terminate();
-      resolve(message);
-    });
-    worker.once('error', (error) => {
-      clearTimeout(timeout);
-      void worker.terminate();
-      reject(error);
-    });
+      abortSignal?.removeEventListener('abort', onAbort);
+      void worker.terminate().then(() => {
+        if (abortSignal?.aborted) resolve(aborted());
+        else if (error) reject(error);
+        else resolve(result!);
+      }, reject);
+    };
+    const onAbort = () => finish(aborted());
+    const timeout = setTimeout(() => finish(undefined, new Error('scan_worker_timeout')), SCAN_WORKER_TIMEOUT_MS);
+    abortSignal?.addEventListener('abort', onAbort, { once: true });
+    worker.once('message', (message: ScanFolderResult) => finish(message));
+    worker.once('error', (error) => finish(undefined, error));
     worker.once('exit', (code) => {
-      clearTimeout(timeout);
-      if (code !== 0) {
-        reject(new Error(`scan_worker_exit_${code}`));
-      } else {
-        reject(new Error('scan_worker_exit_without_result'));
-      }
+      if (code !== 0) finish(undefined, new Error(`scan_worker_exit_${code}`));
+      else finish(undefined, new Error('scan_worker_exit_without_result'));
     });
+    if (abortSignal?.aborted) onAbort();
   });
 }

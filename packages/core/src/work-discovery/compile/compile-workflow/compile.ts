@@ -8,7 +8,8 @@ import {
   sourceIdsInExpr,
   sanitizeStepId,
 } from './helpers.js';
-import { buildInputSchemas, mergeInputSchemas } from './input-schema.js';
+import { buildInputSchemas } from './input-schema/build.js';
+import { mergeInputSchemas } from './input-schema/merge.js';
 import { readStepForSource } from './sources.js';
 
 export function compileBlueprintToWorkflow(

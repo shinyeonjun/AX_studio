@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLocalFolder, upsertLocalFolder } from './connection.js';
+import { findLocalFolder, upsertLocalFolder } from '../../platform/local-folder-config.js';
 
 describe('local-folder path identity and matching', () => {
   it('updates an existing folder when the same Windows path uses different casing and separators', () => {

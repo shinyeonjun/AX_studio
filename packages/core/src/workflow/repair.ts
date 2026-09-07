@@ -11,7 +11,7 @@ export type {
   RepairProposal,
 } from './repair/contract.js';
 export { suggestRepairCandidates } from './repair/suggest.js';
-export { applyRepairCandidate } from './repair/rewrite.js';
+export { applyRepairCandidate } from './repair/rewrite/apply.js';
 export {
   repairProtectedFingerprint,
   repairDedupeKey,

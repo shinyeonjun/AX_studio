@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, writeFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { isPathContainedInRoot, resolveFileWithinFolderRoot } from './path-security.js';
-import { scanFolder, scanFolderChecked, trimSeenFileKeys, MAX_FILES_PER_SCAN } from './scan.js';
+import { isPathContainedInRoot, resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
+import { scanFolder, scanFolderChecked, trimSeenFileKeys, MAX_FILES_PER_SCAN } from '../../platform/local-folder-scan.js';
 
 describe('local folder path security', () => {
   it.skipIf(process.platform === 'win32')('keeps POSIX path comparisons case-sensitive', () => {

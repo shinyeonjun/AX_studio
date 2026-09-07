@@ -2,7 +2,7 @@ import type { ConnectorContext } from '../../../connectors/types.js';
 import { extractGmailPlainBody } from '../../../connectors/gmail/body-extract.js';
 import type { WorkflowIR, Step } from '../../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../../workflow/bindings.js';
-import { documentVisualsFromRun } from './visuals.js';
+import { documentVisualsFromRun } from './visuals/summary.js';
 
 export const INVESTIGATION_LIMIT_MESSAGE = 'Max investigation reads reached';
 const MAX_UNTRUSTED_EMAIL_CHARS = 12_000;

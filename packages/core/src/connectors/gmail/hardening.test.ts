@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GmailConnector } from './connector.js';
 import { parseGmailConnectionConfig } from './connection.js';
-import { pollGmailNewMessages } from './new-message-poll.js';
+import { pollGmailNewMessages } from './new-message-poll/poll.js';
 import { searchGmailMessages } from './search.js';
 
 const context = { executionId: 'test', variables: {}, log: () => undefined };

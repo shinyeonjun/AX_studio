@@ -4,12 +4,12 @@ import {
   getLocalFolderConnectionStatus,
   parseLocalFolderConnectionConfig,
 } from '../local-folder/index.js';
-import { resolveFolderRoot } from '../local-folder/path-security.js';
+import { resolveFolderRoot } from '../../platform/local-folder-path.js';
 import { localFolderNewFileHandler } from '../../triggers/local-folder/new-file/index.js';
 import type { DesignToolContext } from '../../intelligence/design-tools/types.js';
 import { LOCAL_FOLDER_CAPABILITIES, LOCAL_FOLDER_CATALOG } from '../local-folder/catalog.js';
 import { folderPage, parseFolderPage } from '../local-folder/pagination.js';
-import { scanFolderCheckedAsync } from '../local-folder/scan-async.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
 
 function localFolderSources(ctx: DesignToolContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'local_folder');

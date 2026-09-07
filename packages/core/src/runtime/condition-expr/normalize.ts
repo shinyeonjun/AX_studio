@@ -1,5 +1,5 @@
 import { migrateLegacyCondition } from './legacy.js';
-import { coerceConditionInput } from './coerce.js';
+import { coerceConditionInput } from './coerce/input.js';
 import { ConditionExprSchema, type ConditionExpr } from './schema.js';
 
 export function tryNormalizeCondition(input: unknown): ConditionExpr | undefined {

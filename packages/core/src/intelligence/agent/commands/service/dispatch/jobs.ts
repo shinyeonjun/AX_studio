@@ -1,4 +1,5 @@
-import { commitJob, proposeJob } from '../../job-registration/service.js';
+import { commitJob } from '../../job-registration/commit.js';
+import { proposeJob } from '../../job-registration/propose.js';
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { result } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';

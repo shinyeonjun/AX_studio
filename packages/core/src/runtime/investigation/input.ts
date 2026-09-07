@@ -4,7 +4,5 @@ export {
   emailBodyFromRun,
   buildInvestigationUser,
 } from './input/context.js';
-export {
-  documentVisualReferencesFromRun,
-  visionInputsFromRun,
-} from './input/visuals.js';
+export { documentVisualReferencesFromRun } from './input/visuals/references.js';
+export { visionInputsFromRun } from './input/visuals/vision.js';

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
-import type { LocalFolderEntry } from '../../connectors/local-folder/connection.js';
-import { resolveFolderRoot } from '../../connectors/local-folder/path-security.js';
-import { scanFolder } from '../../connectors/local-folder/scan.js';
+import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
+import { resolveFolderRoot } from '../../platform/local-folder-path.js';
+import { scanFolder } from '../../platform/local-folder-scan.js';
 import { localFileSourceRef } from './file-ref.js';
 import type { IndexedChunk } from './types.js';
 

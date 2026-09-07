@@ -14534,3 +14534,68 @@ Non-goals:
   50/50, evaluation 11/11, architecture with zero violations, and diff check
   passed. No project files were created and no fixtures, hidden gold, source
   writes, external delivery, credentials, or application data were changed.
+
+## Current task: delete-first structural simplification
+
+Simplify the existing implementation after the report path reached functional completeness.
+Use evidence to remove pass-through modules, duplicate implementations, and unused public
+surface without changing product behavior or creating project files.
+
+Success criteria:
+- one canonical local-folder scan/config/path implementation remains
+- connector and runtime callers use the canonical seam directly
+- no duplicate async scanner or local-folder re-export wrappers remain
+- focused local-folder behavior, Core typecheck/build, architecture, and whitespace checks pass
+- the package public exports used by the desktop app remain available
+
+Non-goals:
+- no speculative rewrite of reporting, runtime, or workflow semantics
+- no dependency upgrades or generated fixture/gold changes
+- no deletion of public behavior solely because a static tool reports a possible external export
+
+Baseline recorded at 2026-09-08T04:19:56.6376288+09:00: local-folder/platform 54 passed and 3 skipped; architecture
+had 0 violations; Knip reported 10 unused values, 39 unused types, and 1 duplicate export.
+
+Adoption checkpoint (2026-09-08T04:27:18.0125420+09:00): local-folder ownership is consolidated under platform; connector wrappers and duplicate async implementation are removed; focused behavior and Core typecheck pass.
+
+## Current follow-up: delete-first internal seam cleanup
+
+The first local-folder slice exposed the same unnecessary indirection pattern in other
+subsystems. Continue the same evidence-driven cleanup: delete internal re-export-only
+files, duplicate facades, and definition-only exports when every in-repo caller can use
+the owning implementation directly. Keep stable top-level package seams and behavior.
+
+Success criteria:
+- internal callers import the owning implementation directly across the proven cleanup slices
+- no deleted module path remains referenced
+- public top-level exports used by the desktop app remain available
+- Core and Desktop typechecks/builds, focused regression suites, architecture, evaluation,
+  document-engine checks, and whitespace validation pass
+- no new project files, fixture/gold changes, external writes, credentials, or app-state
+  mutations are introduced
+
+Non-goals:
+- no semantic rewrite of reporting, runtime execution, workflow behavior, or connector policy
+- no deletion of intentional package seams or externally meaningful contract types solely
+  because Knip cannot see a consumer
+- no dependency upgrades or unrelated formatting/cleanup
+
+Scope expansion recorded at 2026-09-08T04:47:17.5735221+09:00: dependency/import inspection found
+proven internal pass-throughs in document, connector, agent-model, command, runtime, workflow,
+and test-double paths; direct imports preserve the existing top-level seams and behavior.
+
+### Final checkpoint (2026-09-08T04:51:58.4551292+09:00)
+
+- Removed proven internal pass-throughs and duplicate facades across connector, document,
+  agent-model, command, runtime, workflow, work-discovery, and test-double paths. Internal
+  callers now point at the owning implementation; stable root and connector indexes remain.
+- Local-folder scanning/config/path behavior has one canonical platform implementation. The
+  unused error-swallowing async helper and four definition-only types were removed.
+- Verification: Core 398 files/1,355 passed/5 skipped, Core build, Desktop typecheck/build,
+  document-engine 50/50, evaluation 11/11, manual webhook security 3/3, architecture
+  0 violations (1,174 modules/4,024 dependencies), and diff check passed.
+- Knip is intentionally not zero: 3 test/benchmark dependency notices, 2 host-binary
+  notices, 21 exported contract types that may serve external callers, one deliberate
+  shared-schema alias, and one config hint remain for a separate cleanup decision.
+- No project files, fixtures, generated gold, credentials, external sources, or application
+  data were modified.

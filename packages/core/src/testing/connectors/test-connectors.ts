@@ -1,14 +1,11 @@
 import type { Connector } from '../../connectors/types.js';
 import { CONNECTOR_IDS, type ConnectorId } from '../../catalog/connector-types.js';
 import { instantiateRegisteredConnector } from '../../connectors/module-registry.js';
-import {
-  MockDocumentConnector,
-  MockGmailConnector,
-  MockLocalFolderConnector,
-  MockLocalSheetConnector,
-  MockRdbConnector,
-  MockSlackConnector,
-} from './mocks/index.js';
+import { MockDocumentConnector } from './mocks/document.js';
+import { MockGmailConnector } from './mocks/gmail.js';
+import { MockLocalFolderConnector } from './mocks/local-folder.js';
+import { MockLocalSheetConnector, MockRdbConnector } from './mocks/data.js';
+import { MockSlackConnector } from './mocks/slack.js';
 import { registerAllModules } from '../../connectors/packages/register.js';
 
 /** Builds deterministic connectors for core tests; production bootstrap never calls this. */

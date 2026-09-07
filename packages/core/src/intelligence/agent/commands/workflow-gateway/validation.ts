@@ -13,7 +13,6 @@ import type {
   AxCommandResult,
   AxInputRequest,
 } from '../schema.js';
-import type { AxWorkflowCommandResult } from './contract.js';
 
 export function textArg(command: AxCommand, name: string): string | undefined {
   const value = command.args[name];
@@ -82,5 +81,3 @@ export function asRecord(value: unknown): Record<string, unknown> {
     ? value as Record<string, unknown>
     : {};
 }
-
-export type WorkflowGatewayResult = AxWorkflowCommandResult;

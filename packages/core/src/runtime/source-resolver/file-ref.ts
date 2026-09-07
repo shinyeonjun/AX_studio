@@ -1,6 +1,6 @@
 import type { FileRef } from '../../contracts/artifacts/file-ref.js';
 import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
-import { resolveFileWithinFolderRoot } from '../../connectors/local-folder/path-security.js';
+import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
 import type { ResolveFileRefOutcome, SourceConnection } from './contracts.js';
 import { folderForFileRef, localFolderConfig } from './folders.js';
 

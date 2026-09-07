@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalFolderConnector } from './connector.js';
 import { buildLocalFolderResources } from './resources.js';
-import { MAX_FILES_PER_SCAN } from './scan.js';
-import type { LocalFolderEntry } from './connection.js';
+import { MAX_FILES_PER_SCAN } from '../../platform/local-folder-scan.js';
+import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
 
 describe('bounded folder scans', () => {
   let root: string;

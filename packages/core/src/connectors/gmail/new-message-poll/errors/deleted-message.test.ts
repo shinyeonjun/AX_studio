@@ -1,6 +1,6 @@
 import type { gmail_v1 } from 'googleapis';
 import { describe, expect, it, vi } from 'vitest';
-import { pollGmailNewMessages } from '../../new-message-poll.js';
+import { pollGmailNewMessages } from '../poll.js';
 describe('Gmail deleted message handling', () => {
   it('skips messages deleted after history listing without dropping later events', async () => {
     const messageGet = vi.fn()

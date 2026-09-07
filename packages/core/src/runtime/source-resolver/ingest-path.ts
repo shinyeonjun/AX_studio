@@ -5,7 +5,7 @@ import {
   isPathContainedInRoot,
   resolveFileWithinFolderRoot,
   resolveFolderRoot,
-} from '../../connectors/local-folder/path-security.js';
+} from '../../platform/local-folder-path.js';
 import type { ResolveFileRefError, ResolveFileRefOutcome, SourceConnection } from './contracts.js';
 import { resolveFileRef } from './file-ref.js';
 import { localFolderConfig } from './folders.js';

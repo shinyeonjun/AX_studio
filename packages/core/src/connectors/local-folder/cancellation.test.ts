@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalFolderConnector } from './connector.js';
-import { scanFolderCheckedAsync } from './scan-async.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
 
 afterEach(() => vi.unstubAllEnvs());
 

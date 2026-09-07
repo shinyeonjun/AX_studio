@@ -1,6 +1,6 @@
 import type { WebClient } from '@slack/web-api';
 import { describe, expect, it, vi } from 'vitest';
-import { pollSlackNewMessages } from '../new-message-poll.js';
+import { pollSlackNewMessages } from './poll.js';
 
 describe('pollSlackNewMessages', () => {
   it('collects every history page and emits new user messages in timestamp order', async () => {

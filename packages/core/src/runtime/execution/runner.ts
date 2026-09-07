@@ -3,7 +3,7 @@ import type { ExecutionResult, WorkflowExecutionOptions } from '../types.js';
 import {
   type WorkflowExecutionHost,
 } from './contracts.js';
-import { continueWorkflowAfterApproval } from './approval.js';
+import { continueWorkflowAfterApproval } from './approval/resume.js';
 import { executeWorkflow } from './execute.js';
 
 export type { WorkflowExecutionHost } from './contracts.js';

@@ -4,7 +4,6 @@ export type {
 } from './engine-client/contracts.js';
 export {
   defaultPythonPath,
-  defaultWorkerCwd,
   defaultWorkerScript,
 } from './engine-client/paths.js';
 export {
@@ -12,4 +11,4 @@ export {
   setDocumentEngineClient,
 } from './engine-client/registry.js';
 export { MockDocumentEngineClient } from './engine-client/mock.js';
-export { StdioDocumentEngineClient } from './engine-client/stdio.js';
+export { StdioDocumentEngineClient } from './engine-client/stdio/client.js';

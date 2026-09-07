@@ -1,4 +1,4 @@
-import { displayForTrigger } from '../../../visual-display/trigger-display.js';
+import { displayForTrigger } from '../../../visual-display/trigger-display/display.js';
 import type { WorkflowCanvasDraft } from '../../draft/schema.js';
 import type { CompletenessResult } from '../../slots/types.js';
 import type { PanelField } from './types.js';

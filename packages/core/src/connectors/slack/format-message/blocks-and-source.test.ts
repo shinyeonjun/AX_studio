@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildSlackBlocks,
-  composeSlackMessage,
-  formatSlackSourceLine,
-  resolveSlackMessageSource,
-} from '../format-message.js';
+import { buildSlackBlocks } from './blocks.js';
+import { composeSlackMessage } from './payload.js';
+import { formatSlackSourceLine, resolveSlackMessageSource } from './source.js';
 
 const ctx = {
   executionId: 'run-1',

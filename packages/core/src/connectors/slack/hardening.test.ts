@@ -2,7 +2,7 @@ import type { WebClient } from '@slack/web-api';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveSlackChannelId } from './channel-resolve.js';
 import { listSlackChannels, readSlackChannelMessages, searchSlackMessages } from './read.js';
-import { pollSlackNewMessages } from './new-message-poll.js';
+import { pollSlackNewMessages } from './new-message-poll/poll.js';
 
 describe('Slack bounded execution', () => {
   it('fills search results across pages without changing the page size', async () => {

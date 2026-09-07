@@ -1,10 +1,10 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
-import { findLocalFolder, type LocalFolderConnectionConfig } from './connection.js';
+import { findLocalFolder, type LocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { newFilePoll } from './new-file-poll.js';
-import { resolveFileWithinFolderRoot } from './path-security.js';
-import { scanFolderCheckedAsync } from './scan-async.js';
-import { MAX_FILES_PER_SCAN } from './scan.js';
+import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
+import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
+import { MAX_FILES_PER_SCAN } from '../../platform/local-folder-scan.js';
 import { folderPage, parseFolderPage } from './pagination.js';
 
 export class LocalFolderConnector implements Connector {

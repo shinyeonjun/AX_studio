@@ -1,11 +1,9 @@
 import { linearContractSteps } from './control-flow.js';
 import { triggerAvailableTypes } from './bindings/contracts.js';
 import type { WorkflowIR } from './schema.js';
-import {
-  validateActionConfiguration,
-  validateWorkflowStructure,
-} from './contract-validation/structure.js';
-import { validateSequence } from './contract-validation/sequence.js';
+import { validateActionConfiguration } from './contract-validation/structure/actions.js';
+import { validateWorkflowStructure } from './contract-validation/structure/validate.js';
+import { validateSequence } from './contract-validation/sequence/validate.js';
 import type {
   ContractValidationIssue,
   WorkflowContractValidationOptions,

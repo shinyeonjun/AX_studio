@@ -1,6 +1,6 @@
 import { extname } from 'node:path';
-import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../../connectors/local-folder/connection.js';
-import { resolveFileWithinFolderRoot } from '../../../connectors/local-folder/path-security.js';
+import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../../platform/local-folder-config.js';
+import { resolveFileWithinFolderRoot } from '../../../platform/local-folder-path.js';
 import { citationFromSourceRef } from '../../../platform/citations.js';
 import { localFileSourceRef } from '../../retrieval/file-ref.js';
 import { getDocumentEngineClient } from '../../../documents/read/engine-client.js';

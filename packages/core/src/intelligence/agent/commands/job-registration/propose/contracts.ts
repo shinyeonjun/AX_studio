@@ -4,7 +4,6 @@ import type {
 } from '../../schema.js';
 import type {
   AxJobProposeArgs,
-  NormalizedJobSpec,
 } from '../contract.js';
 
 export type ProposeResponse = [
@@ -20,8 +19,4 @@ export interface ValidatedProposeInput {
   channel: string;
   cron: string;
   timezone: string;
-}
-
-export interface PendingProposeJob {
-  spec: NormalizedJobSpec;
 }

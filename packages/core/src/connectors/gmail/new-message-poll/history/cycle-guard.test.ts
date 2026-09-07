@@ -1,6 +1,6 @@
 import type { gmail_v1 } from 'googleapis';
 import { describe, expect, it, vi } from 'vitest';
-import { pollGmailNewMessages } from '../../new-message-poll.js';
+import { pollGmailNewMessages } from '../poll.js';
 
 describe('pollGmailNewMessages history cycle guard', () => {
   it('rejects cyclic history without hydrating messages or advancing the checkpoint', async () => {

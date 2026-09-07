@@ -4,7 +4,7 @@ import { filterFreshChunks } from './stale.js';
 import { getFolderIndex, replaceFolderIndex } from './store.js';
 import type { IndexedChunk } from './types.js';
 import { buildFolderIndex } from './indexer.js';
-import type { LocalFolderEntry } from '../../connectors/local-folder/connection.js';
+import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
 
 function tokenizeQuery(query: string): string[] {
   return query
