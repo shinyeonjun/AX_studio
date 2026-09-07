@@ -492,6 +492,122 @@ describe('ReportPlanner', () => {
     });
   });
 
+  it('simplifies an evidenced derived case predicate when one clause overconstrains status labels', () => {
+    const casePair: PdfReportPairAnalysis = {
+      ...pair,
+      scalarSlots: [],
+      tableGroups: [{
+        id: 'risk-group', columnCount: 4, rowCount: 5,
+        rows: [
+          ['A', '50.00%', '1.00%', '성과 검토'],
+          ['B', '40.00%', '2.00%', '성과 검토'],
+          ['C', '30.00%', '4.00%', '성과 검토'],
+          ['D', '20.00%', '5.00%', '성과 검토'],
+          ['E', '10.00%', '6.00%', '성과 검토'],
+        ].map((values, index) => ({
+          index, pageIndex: 0, y: 20 + index * 10,
+          cells: values.map((exampleText, columnIndex) => ({
+            id: `risk-${index}-${columnIndex}`,
+            pageIndex: 0,
+            rect: { x: 1 + columnIndex * 21, y: 20 + index * 10, width: 20, height: 8 },
+            exampleText,
+            fontSize: 8,
+            font: 'Fixture',
+            color: 0,
+          })),
+        })),
+      }],
+    };
+    const field = (path: string) => ({ kind: 'field' as const, path });
+    const sum = (path: string) => ({ kind: 'sum' as const, value: field(path) });
+    const ratio = (numerator: string, denominator: string) => ({
+      value: {
+        kind: 'derived' as const,
+        expression: {
+          kind: 'arithmetic' as const,
+          operation: 'divide' as const,
+          left: sum(`ledger.${numerator}`),
+          right: sum(`ledger.${denominator}`),
+        },
+      },
+      format: { style: 'percent' as const, decimals: 2 },
+    });
+    const plan = {
+      schemaVersion: 1 as const,
+      baseSource: 'ledger',
+      joins: [],
+      scalars: [],
+      tables: [{
+        kind: 'aggregate' as const,
+        id: 'risk',
+        groupBy: [{ id: 'name', value: field('ledger.name') }],
+        columns: [
+          { id: 'name', value: { kind: 'group_key' as const, keyId: 'name' } },
+          { id: 'attainment', ...ratio('sales', 'target') },
+          { id: 'refund_rate', ...ratio('refund', 'gross') },
+          {
+            id: 'status',
+            value: {
+              kind: 'derived' as const,
+              expression: {
+                kind: 'case' as const,
+                branches: [{
+                  when: {
+                    kind: 'and' as const,
+                    items: [
+                      { kind: 'compare' as const, operation: 'lt' as const,
+                        left: { kind: 'column' as const, columnId: 'attainment' },
+                        right: { kind: 'literal' as const, value: 0.6 } },
+                      { kind: 'compare' as const, operation: 'gt' as const,
+                        left: { kind: 'column' as const, columnId: 'refund_rate' },
+                        right: { kind: 'literal' as const, value: 0.03 } },
+                    ],
+                  },
+                  value: { kind: 'literal' as const, value: '성과 검토' },
+                }],
+                fallback: { kind: 'literal' as const, value: '정상' },
+              },
+            },
+          },
+        ],
+      }],
+      texts: [],
+    };
+    const repaired = repairExampleReplayInference({
+      plan,
+      layout: {
+        schemaVersion: 1,
+        outputFileName: 'report.pdf',
+        scalarBindings: [],
+        tableBindings: [{
+          groupId: 'risk-group', tableId: 'risk', columns: [
+            { columnIndex: 0, columnId: 'name' },
+            { columnIndex: 1, columnId: 'attainment' },
+            { columnIndex: 2, columnId: 'refund_rate' },
+            { columnIndex: 3, columnId: 'status' },
+          ],
+        }],
+      },
+      pair: casePair,
+      sources: { ledger: { id: 'ledger', complete: true, rows: [
+        { name: 'A', sales: 50, target: 100, refund: 1, gross: 100 },
+        { name: 'B', sales: 40, target: 100, refund: 2, gross: 100 },
+        { name: 'C', sales: 30, target: 100, refund: 4, gross: 100 },
+        { name: 'D', sales: 20, target: 100, refund: 5, gross: 100 },
+        { name: 'E', sales: 10, target: 100, refund: 6, gross: 100 },
+      ] } },
+      metadata: {},
+    });
+
+    expect(repaired.mismatches).toEqual([]);
+    const status = repaired.plan.tables.find((table) => table.id === 'risk')?.kind === 'aggregate'
+      ? repaired.plan.tables.find((table) => table.id === 'risk')?.columns.find((column) => column.id === 'status')
+      : undefined;
+    expect(status).toMatchObject({
+      value: { expression: { branches: [{ when: { kind: 'compare', operation: 'lt' } }] } },
+    });
+  });
+
   it('copies an evidenced sibling row filter to an unfiltered aggregate table', () => {
     const filteredTablePair: PdfReportPairAnalysis = {
       ...pair,
