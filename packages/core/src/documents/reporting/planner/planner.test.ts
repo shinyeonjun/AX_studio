@@ -210,7 +210,7 @@ describe('ReportPlanner', () => {
     });
   });
 
-  it('caps bound result tables to template row capacity for future periods', () => {
+  it('keeps semantic table limits separate from example layout capacity', () => {
     const capacityPair: PdfReportPairAnalysis = {
       ...pair,
       tableGroups: [{
@@ -238,8 +238,38 @@ describe('ReportPlanner', () => {
     };
 
     const repaired = repairReportTableCapacities(plan, layout, capacityPair);
-    expect(repaired.tables.find(table => table.id === 'summary')?.limit).toBe(2);
+    expect(repaired.tables.find(table => table.id === 'summary')?.limit).toBe(10_000);
     expect(repaired.tables.find(table => table.id === 'unbound')?.limit).toBe(1);
+
+    const layoutOnly = repairReportTableCapacities({
+      ...plan,
+      tables: plan.tables.map((table) => table.id === 'summary' ? { ...table, limit: 2 } : table),
+    }, layout, capacityPair);
+    expect(layoutOnly.tables.find(table => table.id === 'summary')).not.toHaveProperty('limit');
+
+    const noLimit = repairReportTableCapacities({
+      ...plan,
+      tables: plan.tables.map((table) => table.id === 'summary' ? (() => {
+        const { limit: _limit, ...withoutLimit } = table;
+        return withoutLimit;
+      })() : table),
+    }, layout, capacityPair);
+    expect(noLimit.tables.find(table => table.id === 'summary')).not.toHaveProperty('limit');
+
+    const semanticFilter = repairReportTableCapacities({
+      ...plan,
+      tables: plan.tables.map((table) => table.id === 'summary' ? {
+        ...table,
+        limit: 2,
+        having: {
+          kind: 'compare' as const,
+          operation: 'gte' as const,
+          left: { kind: 'column' as const, columnId: 'key' },
+          right: { kind: 'literal' as const, value: 'A' },
+        },
+      } : table),
+    }, layout, capacityPair);
+    expect(semanticFilter.tables.find(table => table.id === 'summary')?.limit).toBe(2);
   });
 
   it('repairs replayable ratios and top-N ordering from generic example evidence', () => {

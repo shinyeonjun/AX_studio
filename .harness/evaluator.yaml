@@ -14356,3 +14356,49 @@ derived_case_replay_repair:
       project-regression: "PASS: Core 1338 passed/5 skipped, evaluation 11/11, Core build, Desktop typecheck/build, document-engine 50/50, architecture 0 violations, diff check"
       persisted-replay: "PASS: real failed checkpoint plan and captured example snapshots replayed with zero mismatches"
       safety-boundary: "PASS: scoped diff contains no fixture-specific production constants, external writes, app-state mutation, or new project files"
+
+target_table_row_completeness:
+  goal: "Target-period reports must not silently drop grouped rows when the completed example has fewer rows."
+  checks:
+    - id: persisted-target-replay
+      type: automated
+      criterion: "The persisted September source snapshots produce all 29 customer IDs in the materialized customer table and include C010."
+      command: "node --input-type=module -"
+      method: "Pipe the deterministic persisted-checkpoint replay script recorded in experiments.tsv to Node; no project fixture or script file is created."
+    - id: layout-regression
+      type: automated
+      criterion: "Report layout materialization creates safe continuation slots for target rows beyond example capacity and rejects unsafe overlap."
+      command: "npx vitest run packages/core/src/documents/reporting/layout/materialize.test.ts"
+    - id: report-regression
+      type: automated
+      criterion: "All reporting tests remain green, including service completion and row completeness."
+      command: "npx vitest run packages/core/src/documents/reporting"
+    - id: document-engine-regression
+      type: automated
+      criterion: "PDF overlay filling and output verification remain green with continuation fields."
+      command: "packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'"
+    - id: project-regression
+      type: automated
+      criterion: "Core/Desktop typecheck and build, architecture, evaluation, and whitespace checks remain green."
+      command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm run build -w @ax-studio/core; npx tsc --noEmit -p apps/desktop/tsconfig.json; npm run build -w @ax-studio/desktop; npm run eval -w @ax-studio/core; npm run arch:check; git diff --check"
+    - id: safety-boundary
+      type: scope
+      criterion: "No source writes, external delivery, fixture-specific values, hidden gold, or new project files are introduced."
+      method: "Review the scoped diff and run the source-write safety suites."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T01:45:00+09:00
+    decision: RED
+    values:
+      persisted-target-replay: "FAIL: customerRanking has 28 rows while target source contains 29 active customers; C010 is omitted"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T02:44:11.3413196+09:00
+    decision: KEEP
+    values:
+      persisted-target-replay: "PASS: 29 customer rows render, including C010 with 531,000원 and 20.42%; layout field count 279 and page count 3"
+      layout-regression: "PASS: continuation row materializes in safe space; bottom-edge and later-section overlap cases fail closed"
+      report-regression: "PASS: reporting 308 passed/2 skipped"
+      document-engine-regression: "PASS: document-engine 50/50"
+      project-regression: "PASS: Core 1352 passed/5 skipped, evaluation 11/11, Core/Desktop typecheck/build, architecture 0 violations, diff check"
+      safety-boundary: "PASS: no new project files, fixture-specific production values, source writes, external delivery, or app-state mutation"

@@ -13411,3 +13411,42 @@ derived_case_replay_repair:
       persisted-replay: "PASS: checkpoint business_revision_2 with captured example sources replays with zero mismatches"
       safety: "PASS: no expected label/value injection, hidden gold, external writes, app database mutation, or new project files"
       verification: "PASS: report 307/2 skipped, Core 1338/5 skipped, Core build, Desktop typecheck/build, document-engine 50/50, architecture, diff check"
+
+target_table_row_completeness:
+  status: complete
+  objective: "Keep every target-period grouped row in the generated report when the example's table capacity is only a layout hint."
+  allowed_mutation:
+    - "packages/core/src/documents/reporting/planner/planner.ts"
+    - "packages/core/src/documents/reporting/planner/planner.test.ts"
+    - "packages/core/src/documents/reporting/layout/materialize.ts"
+    - "packages/core/src/documents/reporting/layout/materialize.test.ts"
+    - "packages/core/src/documents/reporting/service.ts"
+    - "packages/core/src/documents/reporting/service.test.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "PDF fixtures, generated artifacts, AXStudio-dev app data, credentials, and external services"
+    - "KPI calculations, source selection/filter semantics, connector write behavior, and unrelated report repairs"
+    - "new project files"
+  expansions:
+    - reason: "Exact target replay proves the missing row is caused by an implicit example-capacity limit; output must support bounded continuation geometry to preserve all rows."
+      recorded_at: 2026-09-08T01:45:00+09:00
+      paths:
+        - "packages/core/src/documents/reporting/planner/planner.ts"
+        - "packages/core/src/documents/reporting/layout/materialize.ts"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T01:45:00+09:00
+    decision: RED
+    values:
+      exact-target-replay: "FAIL: 28 customer rows rendered for 29 expected active customers; C010 is missing"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T02:44:11.3413196+09:00
+    decision: KEEP
+    values:
+      implementation-boundary: "PASS: report planner, target service boundary, layout materialization, tests, and existing harness records only"
+      source-safety: "PASS: no source writes, external delivery, fixture or hidden-gold values, app-state mutation, or new project files"
+      verification: "PASS: persisted target replay and verified three-page PDF include all 29 customer rows, including C010"

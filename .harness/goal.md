@@ -14475,3 +14475,16 @@ Baseline recorded at 2026-09-08T01:16:10.0726649+09:00: focused planner regressi
 - The minimized regression reproduced the exact failure shape: two status cells fell back to 정상 because a derived case required both attainment and refund thresholds, while every other bound value matched.
 - The planner now tries bounded simplifications made only from existing derived-case predicate clauses and accepts a candidate only when complete example replay strictly improves the mismatch count. The persisted failed report plan replays with zero mismatches and the status condition is reduced to the evidenced attainment threshold.
 - Verification: focused planner regression, reporting 307/2 skipped, Core 1,338/5 skipped, Core build, Desktop typecheck/build, evaluation 11/11, document-engine 50/50, architecture with zero violations, and diff check passed.
+
+## Current follow-up: prevent target table row loss
+The completed September report computes 29 active customers correctly, but the customer performance table renders only 28 because the example's physical row capacity was copied into the reusable table limit. The target output must retain every grouped customer row or fail explicitly; it must never silently omit rows.
+Success criteria: a deterministic replay of the persisted successful execution exposes the missing C010 row before the fix; the reusable plan no longer treats an example-capacity limit as an implicit business limit; target materialization and PDF rendering retain all 29 customer rows without overlapping later content; full report/Core/Desktop/document checks remain green; no fixture-specific row values, hidden gold, external writes, or new project files are introduced.
+Non-goals: changing KPI formulas, source filters, connector writes, the completed example, or unrelated report layout behavior.
+Baseline recorded at 2026-09-08T01:45:00+09:00: exact target replay returns 28 customer rows for 29 expected customer IDs and reports C010 as missing.
+### Final checkpoint (2026-09-08T02:44:11.3413196+09:00)
+
+- Root cause: `repairReportTableCapacities` converted the example's 28-row geometry into `customerRanking.limit=28`; the target executor then discarded C010 before PDF materialization.
+- Removed layout-only capacity limits while retaining smaller or aggregate-predicate-backed business limits. The target boundary also repairs cached plans from older checkpoints.
+- Layout materialization now appends deterministic continuation fields only when the verified page gap and horizontal bounds are safe; it fails closed when a later section or page edge would be crossed.
+- Verification: the persisted target replay produces all 29 customers and C010 (`531,000원`, `20.42%`); the real PDF writer verifies a three-page output and extracted text contains the complete C010 row. Reporting 308 passed/2 skipped, Core 1352 passed/5 skipped, document-engine 50/50, Core/Desktop typechecks and builds, evaluation 11/11, architecture, and whitespace checks passed.
+- No project files were created; no fixtures, hidden gold, external sources, or application data were modified.
