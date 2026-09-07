@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Connector } from '../../../modules/types.js';
+import type { Connector } from '../../../connectors/types.js';
 import { localFolderNewFileHandler } from './index.js';
 
 function connectorReturning(cursor: Record<string, unknown>): Connector {

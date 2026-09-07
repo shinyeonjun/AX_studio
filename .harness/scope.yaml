@@ -13366,3 +13366,12 @@ teach_by_example_pdf_report_generation:
       selected-source-capture: "ABSENT: HTTP is not a discovery source and discovery.start accepts no source scope"
       structured-report-plan: "ABSENT: repeated document values collide and current scalar candidates cannot express report filters/joins/grouping/template bindings"
       pdf-output-compilation: "ABSENT: discovered workflows do not compile a PDF output step"
+  final:
+    recorded: true
+    recorded_at: 2026-09-07T15:32:59.1278083Z
+    decision: KEEP
+    values:
+      implementation-boundary: "PASS: report planner/executor, source capture, document-engine rendering, and manual acceptance seam only"
+      source-safety: "PASS: selected HTTP/RDB reads only; no database writes, HTTP writes, external delivery, or benchmark mutation"
+      genericity: "PASS: repairs use structural metadata, aliases, identity evidence, and runtime bindings; no fixture filenames, IDs, dates, or gold values"
+      verification: "PASS: report suite 306/2 skipped, Core 1337/5 skipped, document-engine 50/50, Desktop typecheck/build, architecture, diff check, and live three-page render"

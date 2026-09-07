@@ -10,6 +10,7 @@ export {
   documentIngestPath,
 } from './artifacts/document.js';
 export * from './compatibility.js';
+export * from './discovery-metadata.js';
 export * from './mappers.js';
 export * from './document-ingest-resolve.js';
 export * from './output-contract.js';

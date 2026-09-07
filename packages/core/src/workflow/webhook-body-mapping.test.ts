@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ConnectorContext } from '../modules/types.js';
+import type { ConnectorContext } from '../connectors/types.js';
 import { buildInvestigationUser } from '../runtime/ai-investigation.js';
 import { inferWorkflowBindings } from './bindings.js';
 import type { WorkflowIR } from './schema.js';

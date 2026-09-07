@@ -2,8 +2,8 @@ import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../store/db.js';
-import { WorkflowStore } from '../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../persistence/db.js';
+import { WorkflowStore } from '../../persistence/workflow-store.js';
 import { WorkDiscoveryService } from '../service.js';
 
 describe('WorkDiscoveryService', () => {

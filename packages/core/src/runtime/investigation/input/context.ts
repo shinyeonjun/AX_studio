@@ -1,5 +1,5 @@
-import type { ConnectorContext } from '../../../modules/types.js';
-import { extractGmailPlainBody } from '../../../modules/gmail/body-extract.js';
+import type { ConnectorContext } from '../../../connectors/types.js';
+import { extractGmailPlainBody } from '../../../connectors/gmail/body-extract.js';
 import type { WorkflowIR, Step } from '../../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../../workflow/bindings.js';
 import { documentVisualsFromRun } from './visuals.js';

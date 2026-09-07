@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TableArtifactSchema } from './table.js';
-import { buildTableArtifact } from '../../modules/local-sheet/profile.js';
+import { buildTableArtifact } from '../../connectors/local-sheet/profile.js';
 
 describe('TableArtifact', () => {
   it('validates structured table rows and profile', () => {

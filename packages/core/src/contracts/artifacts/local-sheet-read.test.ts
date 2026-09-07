@@ -17,7 +17,7 @@ describe('local sheet read', () => {
     XLSX.utils.book_append_sheet(workbook, sheet, 'sales');
     XLSX.writeFile(workbook, path);
 
-    const { readWorkbookFromPath } = await import('../../modules/local-sheet/read.js');
+    const { readWorkbookFromPath } = await import('../../connectors/local-sheet/read.js');
     const result = readWorkbookFromPath(path);
     expect(result.workbook.kind).toBe('workbook');
     expect(result.workbook.sheets).toHaveLength(1);

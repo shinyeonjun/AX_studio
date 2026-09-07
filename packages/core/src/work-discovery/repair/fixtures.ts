@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createDatabaseAsync } from '../../store/db.js';
-import { WorkflowStore } from '../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../persistence/db.js';
+import { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { RepairCandidateOperation } from '../../workflow/repair.js';
 

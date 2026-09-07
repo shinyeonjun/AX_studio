@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../../store/workflow-store.js';
+import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import type { ExecutionResult } from '../../types.js';
 import type { WorkflowExecutionHost } from '../contracts.js';
 

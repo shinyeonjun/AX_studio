@@ -1,4 +1,4 @@
-import type { ConnectorContext } from '../../modules/types.js';
+import type { ConnectorContext } from '../../connectors/types.js';
 import type { WorkflowIR, Step } from '../../workflow/schema.js';
 import { buildInvestigationUser } from './input.js';
 

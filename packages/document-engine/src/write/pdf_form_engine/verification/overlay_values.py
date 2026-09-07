@@ -18,12 +18,14 @@ def _verify_overlay_values(
     pdf = _pymupdf()
     fields = [field for field in template.get("fields") or [] if isinstance(field, Mapping)]
     for raw_key, expected in values.items():
-        if expected is None or expected == "":
+        if expected is None:
             continue
         candidates = _fields_for_key(fields, str(raw_key))
         if not candidates:
             continue
         field = candidates[0]
+        if expected == "" and _as_string(field.get("source")) != "digital_placeholder":
+            continue
         page_index = int(_as_float(field.get("pageIndex"), -1))
         raw_rect = field.get("rect")
         if page_index < 0 or page_index >= len(document) or not isinstance(raw_rect, Mapping):
@@ -51,5 +53,7 @@ def _verify_overlay_values(
             continue
         clip = pdf.Rect(rect.x0 - 2.0, rect.y0 - 2.0, rect.x1 + 2.0, rect.y1 + 2.0)
         output_text = page.get_text("text", clip=clip) or ""
+        if expected == "" and _normalized_match(output_text):
+            raise ValueError(f"output_field_verification_failed:{raw_key}")
         if _normalized_match(expected) not in _normalized_match(output_text):
             raise ValueError(f"output_field_verification_failed:{raw_key}")

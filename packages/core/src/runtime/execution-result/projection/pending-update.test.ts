@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import type { ExecutionResult } from '../../types.js';
 import { publishExecutionResultToWorkspaceChat } from '../../execution-result-message.js';
 import { createExecution, result } from '../fixtures.js';

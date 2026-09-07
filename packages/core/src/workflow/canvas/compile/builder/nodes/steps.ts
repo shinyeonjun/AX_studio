@@ -1,5 +1,5 @@
 import { capabilityActionName, resolveCapability } from '../../../../../catalog/capability-graph.js';
-import type { SideEffectLevel, Step } from '../../../../../workflow/schema.js';
+import type { SideEffectLevel, Step } from '../../../../schema.js';
 import type { WorkflowCanvasDraft, WorkflowNode } from '../../../draft/schema.js';
 import { getNodeBindings, getNodeParams, resolveNodeConnectorAction } from '../../../draft/actions.js';
 import { resolveIfNodeCondition } from '../../../draft/conditions.js';

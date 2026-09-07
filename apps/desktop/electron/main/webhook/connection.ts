@@ -1,6 +1,5 @@
 import {
   parseWebhookConnectionConfig,
-  type WorkflowRuntime,
   type WorkflowStore,
 } from '@ax-studio/core';
 import { deleteOsSecret, getOsSecret, setOsSecret } from '../credential-store.js';
@@ -21,7 +20,6 @@ export async function deleteWebhookSecret(): Promise<void> {
 
 export async function validateAndConnectWebhook(
   store: WorkflowStore,
-  runtime: WorkflowRuntime,
   payload: { port: number; secret: string; label?: string; tunnelUrl?: string },
   refreshTransports: () => Promise<void>,
 ): Promise<void> {

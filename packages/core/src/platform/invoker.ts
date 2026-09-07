@@ -1,5 +1,5 @@
-import { executeDesignTool } from '../design-tools/execute.js';
-import type { DesignToolCall, DesignToolContext, DesignToolResult } from '../design-tools/types.js';
+import { executeDesignTool } from '../intelligence/design-tools/execute.js';
+import type { DesignToolCall, DesignToolContext, DesignToolResult } from '../intelligence/design-tools/types.js';
 
 export interface ToolInvokeRequest {
   tool: DesignToolCall['tool'];

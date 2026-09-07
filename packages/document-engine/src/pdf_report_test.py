@@ -4,6 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import pymupdf
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor, white
 from reportlab.pdfgen import canvas
@@ -11,6 +13,7 @@ from reportlab.pdfgen import canvas
 from protocol import EngineRequest
 from worker import handle_request
 from write.pdf_report import analyze_pdf_report_pair
+from write.pdf_form import fill_pdf_form
 
 
 def _write_report(path: Path, *, values: bool, second_page: bool = False) -> None:
@@ -95,6 +98,22 @@ def _write_geometric_report(path: Path, *, values: bool) -> None:
 
 
 class PdfReportPairTest(unittest.TestCase):
+    def test_distinct_headers_do_not_merge_tables_at_same_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name, filled in [("template", False), ("example", True)]:
+                document = canvas.Canvas(str(root / f"{name}.pdf"), pagesize=A4)
+                document.setFont("Helvetica", 9)
+                for top, headers in [(720, ("Customer", "Revenue")), (500, ("Risk", "Count"))]:
+                    _draw_table(document, x=40, top=top, width=400, rows=2,
+                                columns=headers,
+                                values=[("Alpha", "10"), ("Beta", "20")] if filled else [])
+                document.showPage()
+                document.save()
+            pair = analyze_pdf_report_pair(root / "template.pdf", root / "example.pdf", root / "artifacts")
+            self.assertEqual(len(pair["tableGroups"]), 2)
+            self.assertEqual([group["rowCount"] for group in pair["tableGroups"]], [2, 2])
+
     def test_finds_dynamic_slots_and_repeated_table_rows_without_fixture_coordinates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -152,6 +171,67 @@ class PdfReportPairTest(unittest.TestCase):
                 [slot["exampleText"] for slot in result["scalarSlots"]],
                 ["2031-04-02", "2031-03", "API plus DB", "Draft"],
             )
+
+    def test_clips_overflowing_vector_table_regions_to_page_bounds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template = root / "template.pdf"
+            example = root / "example.pdf"
+            for path, values in ((template, False), (example, True)):
+                document = canvas.Canvas(str(path), pagesize=A4)
+                document.setFont("Helvetica", 9)
+                _draw_table(
+                    document,
+                    x=360,
+                    top=720,
+                    width=260,
+                    rows=3,
+                    columns=("Tier", "Count"),
+                    values=[("Gold", "3"), ("Silver", "7")] if values else [],
+                )
+                document.showPage()
+                document.save()
+
+            result = analyze_pdf_report_pair(template, example, root / "artifacts")
+            page_width = result["pages"][0]["width"]
+            self.assertEqual(len(result["tableGroups"]), 1)
+            group = result["tableGroups"][0]
+            for bound in group["pageBounds"]:
+                self.assertLessEqual(bound["x"] + bound["width"], page_width + 0.01)
+            for row in group["rows"]:
+                for cell in row["cells"]:
+                    rect = cell["rect"]
+                    self.assertGreaterEqual(rect["x"], 0.0)
+                    self.assertGreaterEqual(rect["y"], 0.0)
+                    self.assertGreater(rect["width"], 0.0)
+                    self.assertGreater(rect["height"], 0.0)
+                    self.assertLessEqual(rect["x"] + rect["width"], page_width + 0.01)
+                    self.assertLessEqual(rect["y"] + rect["height"], result["pages"][0]["height"] + 0.01)
+
+    def test_rotated_pair_geometry_can_be_used_by_the_pdf_writer(self) -> None:
+        for rotation in (90, 270):
+            with self.subTest(rotation=rotation), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                template = root / "template.pdf"
+                example = root / "example.pdf"
+                for path, values in ((template, False), (example, True)):
+                    _write_report(path, values=values)
+                    with pymupdf.open(path) as document:
+                        document[0].set_rotation(rotation)
+                        document.saveIncr()
+                pair = analyze_pdf_report_pair(template, example, root / "artifacts")
+                slot = pair["scalarSlots"][0]
+                result = fill_pdf_form(template, {
+                    "schemaVersion": 1, "coordinateSpace": "pdf-user-top-left-unrotated",
+                    "sourceHash": pair["templateHash"], "pageCount": pair["pageCount"],
+                    "pages": pair["pages"], "mode": "overlay", "fields": [{
+                        **slot, "name": slot["id"], "type": "text", "source": "layout_hint",
+                    }],
+                }, {slot["id"]: "2026-09"}, root / "filled.pdf")
+                self.assertTrue(result["verified"])
+                with pymupdf.open(result["outputPath"]) as document:
+                    self.assertEqual(document[0].rotation, rotation)
+                    self.assertIn("2026-09", document[0].get_text())
 
     def test_worker_exposes_the_pair_analysis_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

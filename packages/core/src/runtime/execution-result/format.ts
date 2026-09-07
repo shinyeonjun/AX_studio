@@ -1,7 +1,7 @@
-import type { ExecutionLogEntry } from '../../modules/types.js';
+import type { ExecutionLogEntry } from '../../connectors/types.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
 import type { ExecutionResult } from '../types.js';
-import { reportFailureMessage } from '../../report-generation/failure-message.js';
+import { reportFailureMessage } from '../../documents/reporting/failure-message.js';
 
 const MAX_RESULT_CHARS = 8_000;
 const MAX_FIELD_CHARS = 1_200;

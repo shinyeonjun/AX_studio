@@ -23,6 +23,15 @@ export const HttpResponseArtifactSchema = z.object({
 
 export type HttpResponseArtifact = z.infer<typeof HttpResponseArtifactSchema>;
 
+/** An intact provider page may be inspected, but is not a complete dataset. */
+export function isCompleteHttpPage(response: HttpResponseArtifact): boolean {
+  return !response.truncated && response.status !== 206 && (
+    response.completeness.status === 'complete' ||
+    (response.completeness.status === 'partial' &&
+      response.completeness.reason === 'provider_limit' && response.completeness.hasMore === true)
+  );
+}
+
 export function buildHttpResponseArtifact(input: {
   executionId: string;
   url: string;
@@ -119,6 +128,9 @@ export function httpResponseToTable(
       limit: options.rowLimit,
       hasMore: true,
     });
+  } else if (parsed.data.completeness.status !== 'complete') {
+    table.truncated = true;
+    table.completeness = { ...parsed.data.completeness, observedCount: table.rows.length };
   }
   return { ok: true, table: TableArtifactSchema.parse(table) };
 }

@@ -32,16 +32,17 @@ function walkDirectory(
   currentPath: string,
   allowed: Set<string> | null,
   out: ScannedFile[],
-): void {
-  if (out.length >= MAX_FILES_PER_SCAN) return;
+): boolean {
+  if (out.length >= MAX_FILES_PER_SCAN) return true;
 
   let entries: string[];
   try {
     entries = readdirSync(currentPath);
   } catch {
-    return;
+    return false;
   }
 
+  let available = true;
   for (const name of entries) {
     if (out.length >= MAX_FILES_PER_SCAN) break;
     const filePath = join(currentPath, name);
@@ -49,6 +50,7 @@ function walkDirectory(
     try {
       stat = lstatSync(filePath);
     } catch {
+      available = false;
       continue;
     }
 
@@ -56,7 +58,7 @@ function walkDirectory(
 
     if (stat.isDirectory()) {
       if (!isPathContainedInRoot(rootReal, filePath)) continue;
-      walkDirectory(rootReal, filePath, allowed, out);
+      if (!walkDirectory(rootReal, filePath, allowed, out)) available = false;
       continue;
     }
     if (!stat.isFile()) continue;
@@ -74,6 +76,7 @@ function walkDirectory(
       modifiedAt: stat.mtime.toISOString(),
     });
   }
+  return available;
 }
 
 export function scanFolder(rootPath: string, extensions?: string[]): ScannedFile[] {
@@ -86,14 +89,16 @@ export function scanFolder(rootPath: string, extensions?: string[]): ScannedFile
   return files;
 }
 
-/** Runtime callers need to distinguish an empty folder from an inaccessible folder. */
+/** Runtime callers must not mistake unreadable descendants for a complete scan. */
 export function scanFolderChecked(rootPath: string, extensions?: string[]): ScanFolderResult {
   const root = resolveFolderRoot(rootPath);
   if (!root.ok) return root;
 
   const allowed = normalizeExtensions(extensions);
   const files: ScannedFile[] = [];
-  walkDirectory(root.rootReal, root.rootReal, allowed, files);
+  if (!walkDirectory(root.rootReal, root.rootReal, allowed, files)) {
+    return { ok: false, error: 'folder_scan_incomplete', errorCode: 'incomplete_scan' };
+  }
   return { ok: true, files };
 }
 

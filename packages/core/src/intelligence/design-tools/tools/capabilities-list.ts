@@ -1,0 +1,52 @@
+import { type ConnectorCapability } from '../../../catalog/capabilities.js';
+import { designCapabilities, isConnectorAlwaysOn } from '../../../catalog/capability-graph.js';
+import type { DesignToolHandler } from '../types.js';
+import { metadataPage } from '../../../catalog/metadata-page.js';
+
+function stringArg(args: Record<string, unknown>, name: string): string | undefined {
+  const value = args[name];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function kindArg(args: Record<string, unknown>): ConnectorCapability['kind'] | undefined {
+  const value = stringArg(args, 'kind');
+  if (value === 'read' || value === 'write' || value === 'trigger') return value;
+  return undefined;
+}
+
+function summarizeCapability(cap: ConnectorCapability, connectedConnectorIds: string[]) {
+  return {
+    id: cap.id,
+    connector: cap.connector,
+    kind: cap.kind,
+    label: cap.label,
+    description: cap.description.slice(0, 500),
+    sideEffect: cap.sideEffect ?? 'NONE',
+    notification: cap.notification === true,
+    connection: isConnectorAlwaysOn(cap.connector) || connectedConnectorIds.includes(cap.connector)
+      ? 'ready'
+      : 'required',
+  };
+}
+
+export const capabilitiesList: DesignToolHandler = (ctx, args) => {
+  const connector = stringArg(args, 'connector');
+  const kind = kindArg(args);
+
+  const catalog = designCapabilities();
+  let caps = catalog;
+  if (connector) {
+    caps = caps.filter((cap) => cap.connector === connector);
+  }
+  if (kind) {
+    caps = caps.filter((cap) => cap.kind === kind);
+  }
+
+  const { items, total, ...pagination } = metadataPage(caps, args, cap => [cap.id, cap.label, cap.description]);
+  return {
+    capabilities: items.map((cap) => summarizeCapability(cap, ctx.connectedConnectorIds)),
+    catalogSize: catalog.length,
+    totalMatches: total,
+    ...pagination,
+  };
+};

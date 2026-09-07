@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "ax": "./dist/agent/commands/cli.js"
+    "ax": "./dist/intelligence/agent/commands/cli.js"
   },
   "types": "./dist/index.d.ts",
   "exports": {
@@ -16,14 +16,14 @@
       "default": "./dist/index.js"
     },
     "./ai-catalog": {
-      "types": "./dist/agent/settings/ai-catalog.d.ts",
-      "import": "./dist/agent/settings/ai-catalog.js",
-      "default": "./dist/agent/settings/ai-catalog.js"
+      "types": "./dist/intelligence/agent/settings/ai-catalog.d.ts",
+      "import": "./dist/intelligence/agent/settings/ai-catalog.js",
+      "default": "./dist/intelligence/agent/settings/ai-catalog.js"
     },
     "./catalog-data": {
-      "types": "./dist/modules/packages/catalog-data.d.ts",
-      "import": "./dist/modules/packages/catalog-data.js",
-      "default": "./dist/modules/packages/catalog-data.js"
+      "types": "./dist/catalog/data.d.ts",
+      "import": "./dist/catalog/data.js",
+      "default": "./dist/catalog/data.js"
     },
     "./workflow/canvas/compile/constants": {
       "types": "./dist/workflow/canvas/compile/constants.d.ts",

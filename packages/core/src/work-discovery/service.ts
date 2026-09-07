@@ -1,10 +1,9 @@
-import { ArtifactStore } from '../store/artifact-store.js';
-import { getAxDataPaths } from '../paths/ax-data.js';
-import { ALL_MODULE_PACKAGES } from '../modules/packages/catalog.js';
+import { ArtifactStore } from '../persistence/artifact-store.js';
+import { getAxDataPaths } from '../persistence/paths/ax-data.js';
+import { ALL_MODULE_PACKAGES } from '../connectors/packages/catalog.js';
 import { join } from 'node:path';
 import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
 import type { DiscoverySourceRegistry } from './sources/registry.js';
-import type { WorkbookMaterializer } from '../contracts/discovery-source.js';
 import { createWorkDiscoveryRuntime } from './service/lifecycle.js';
 import {
   answerDiscovery,

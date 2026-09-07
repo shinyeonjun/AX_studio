@@ -1,4 +1,4 @@
-import type { Connector } from '../../modules/types.js';
+import type { Connector } from '../../connectors/types.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { workflowNeedsGmailMessageId } from './predicates.js';
 
@@ -16,7 +16,7 @@ export async function enrichManualRunInput(
 
   const result = await gmail.execute(
     'messages.search',
-    { query: 'in:inbox newer_than:7d' },
+    { query: 'in:inbox newer_than:7d', limit: 1 },
     {
       executionId: 'manual-run-enrich',
       workflowId: ir.id,
@@ -24,9 +24,12 @@ export async function enrichManualRunInput(
       log: () => {},
     },
   );
-  if (!result.ok || !Array.isArray(result.data)) return input;
-
-  const latest = (result.data as Array<{ id?: string }>).find((message) => typeof message.id === 'string');
+  if (!result.ok) return input;
+  const messages = Array.isArray(result.data) ? result.data
+    : result.data && typeof result.data === 'object' && 'messages' in result.data
+      && Array.isArray(result.data.messages) ? result.data.messages : [];
+  const latest = messages.find((message): message is { id: string } =>
+    Boolean(message) && typeof message === 'object' && typeof message.id === 'string' && Boolean(message.id.trim()));
   if (!latest?.id) return input;
 
   return {

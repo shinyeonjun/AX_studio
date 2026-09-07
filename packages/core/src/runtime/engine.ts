@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { InvestigationRunner } from '../agent/investigation-runner.js';
-import type { Connector } from '../modules/types.js';
+import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { Connector } from '../connectors/types.js';
 import type {
   EphemeralExecutionQueueItem,
   ExecutionProgress,
@@ -20,6 +20,8 @@ import { WorkflowExecutionRunner } from './execution/runner.js';
 export class WorkflowRuntime {
   connectors: Record<string, Connector>;
   private activeExecutionCount = 0;
+  private queuedExecutionCount = 0;
+  private accepting = true;
   private idleWaiters: Array<() => void> = [];
   private ephemeralQueueTail: Promise<void> = Promise.resolve();
   private readonly executionRunner: WorkflowExecutionRunner;
@@ -39,9 +41,14 @@ export class WorkflowRuntime {
     ir: import('../workflow/schema.js').WorkflowIR,
     options: WorkflowExecutionOptions = {},
   ): Promise<ExecutionResult> {
+    if (!this.accepting) throw new Error('runtime_stopping');
+    return this.trackExecution(() => this.executionRunner.execute(ir, options));
+  }
+
+  private async trackExecution(run: () => Promise<ExecutionResult>): Promise<ExecutionResult> {
     this.activeExecutionCount += 1;
     try {
-      return await this.executionRunner.execute(ir, options);
+      return await run();
     } finally {
       this.activeExecutionCount -= 1;
       if (this.activeExecutionCount === 0) {
@@ -56,16 +63,22 @@ export class WorkflowRuntime {
     ir: import('../workflow/schema.js').WorkflowIR,
     options: Omit<WorkflowExecutionOptions, 'ephemeral'> = {},
   ): EphemeralExecutionQueueItem {
+    if (!this.accepting) throw new Error('runtime_stopping');
+    if (this.queuedExecutionCount >= 128) throw new Error('runtime_queue_full');
+    this.queuedExecutionCount += 1;
     const jobId = randomUUID();
     const run = this.ephemeralQueueTail.then(() =>
-      this.executeWorkflow(ir, {
+      this.trackExecution(() => this.executionRunner.execute(ir, {
         ...options,
         jobId,
         ephemeral: true,
         forceManual: true,
-      }),
+      })),
     );
-    this.ephemeralQueueTail = run.then(() => undefined, () => undefined);
+    this.ephemeralQueueTail = run.then(
+      () => { this.queuedExecutionCount -= 1; },
+      () => { this.queuedExecutionCount -= 1; },
+    );
     void run.catch(() => undefined);
     return { jobId };
   }
@@ -75,6 +88,10 @@ export class WorkflowRuntime {
     await this.ephemeralQueueTail;
     if (this.activeExecutionCount === 0) return;
     await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
+  }
+
+  stopAccepting(): void {
+    this.accepting = false;
   }
 
   private notifyExecutionStarted(executionId: string): void {
@@ -128,6 +145,7 @@ export class WorkflowRuntime {
   }
 
   continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
-    return this.executionRunner.continueAfterApproval(approvalId);
+    if (!this.accepting) return Promise.reject(new Error('runtime_stopping'));
+    return this.trackExecution(() => this.executionRunner.continueAfterApproval(approvalId));
   }
 }

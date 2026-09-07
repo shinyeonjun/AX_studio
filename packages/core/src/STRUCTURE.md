@@ -1,83 +1,51 @@
 # Core package layout
 
-AX Core is organized around **contracts → catalog → modules → runtime → workflow**.
+AX Core is organized by product capability. Each top-level directory is a
+cohesive boundary with a small public seam; implementations stay behind that
+seam and connector adapters do not import one another.
 
 ```text
 packages/core/src/
 
-contracts/          Shared data contracts (Zod schemas, neutral interfaces)
-  artifacts/        FileRef, DocumentArtifact, TableArtifact, table-build helpers
-  discovery-source.ts  Module-owned discovery source provider interface
-  refs/             EmailMessageRef, SlackChannelRef, ...
-  capability-io.ts  CapabilityIO type names
-  compatibility.ts  output → input contract matching rules
-  mappers.ts        FileRef ↔ document.ingest param mapping
+contracts/           Shared neutral contracts and artifact/reference schemas
+catalog/             Capability metadata, resolution, and connector catalog data
+connectors/          External-system adapters and connector package assembly
+  {connector}/       One adapter boundary per connector
+  document/read/     Document connector read actions
+  document/write/    Document connector write actions
+  protocols/mcp/     MCP protocol adapter
+  protocols/openapi/ OpenAPI protocol adapter
+  packages/          Explicit connector package registration
 
-catalog/            Discovery surface (no connector implementations)
-  capabilities.ts   Capability catalog aggregation
-  capability-resolver.ts  Pure connector/action -> packaged capability resolution
-  capability-graph.ts
-  connectors.ts     Connectable connector metadata (CONNECTOR_CATALOG)
+workflow/            Workflow IR, canvas authoring, validation, repair, and display
+work-discovery/      Source observation, exploration, synthesis, and publication
+runtime/             Execution engine, scheduling, approvals, and trigger runtime
+triggers/            Poll/push transport and trigger registration
 
-modules/            Connector implementations (modules do not import each other)
-  {connector}/      Per-module catalog.ts + connector implementation
-  gmail/
-  slack/
-  local-folder/
-  document/         Document connector (read/ + write/ subdirs)
-  rdb/
-  local-sheet/
-  transform/        Contract adapters (table/document → text) + transform.evaluate
-  http/
-  webhook/
-  mocks/            Test-only connector implementations
-  test-connectors.ts Test-only deterministic connector assembly
-  module-registry.ts  registerModule() API
-  packages/         ModulePackage assembly + explicit registerAllModules()
-  registry.ts       Runtime connector instantiation
+documents/read/      TypeScript client for the Python document engine
+documents/write/     HTML, PDF, and DOCX generation contracts and writers
+documents/reporting/ Report planning, source capture, and report assembly
 
-workflow/           Workflow IR, approval policy, visual display, canvas authoring
-  canvas/           Natural-language workflow authoring (canonical)
-    draft/          Canvas schema and action instances
-    compile/        WorkflowCanvasDraft → WorkflowIR
-    presentation/   Summaries and panel fields
-    revision/       Execution explanation summaries
-    test/           Compiler and canvas tests
-  transform-expr/   Reusable TransformExpr DSL + evaluator (workflow-level primitive)
+persistence/         SQLite stores, repositories, credentials, paths, and artifacts
+intelligence/        Agent boundary, design tools, retrieval, and model providers
+platform/             Host/platform integration primitives
+application/         Application composition and bootstrap entry point
 
-work-discovery/     Example-driven workflow discovery pipeline
-  sources/          DiscoverySourceProvider registry (module-owned providers)
-  observation/      Document/Workbook/Table observers
-  exploration/      Source inventory + ranking
-  synthesis/        Candidate enumeration + ALL-pass replay
-  compile/          Blueprint + compileBlueprintToWorkflow (canPublish is sole gate)
-  clarification/    Scoped clarification questions
-  e2e/              North-star integration tests
-
-document-engine/    Document **read** engine TS client → Python sidecar
-document-write/     Document **write** engine (HTML, PDF, DOCX generation)
-paths/              AxDataPaths — unified local data layout (AX_DATA_ROOT)
-
-triggers/           Trigger transport (poll/push) — domain events only
-runtime/            Execution engine, scheduler, trigger engine
-design-tools/       Read-only agent design tools
-agent/              AI harness, skills, model providers
-  embedded.ts       GENERATED — skill markdown embedded at build time
-store/              SQLite persistence
-credentials/
-testing/            Test-only fixtures (not public API)
+testing/             Test-only fixtures, connector doubles, and e2e harnesses
+eval/                Scenario catalog and evaluation suites
+i18n/                Localized product strings
 ```
 
 ## Principles
 
-1. **Modules do not know each other** — only shared `contracts/` types and neutral helpers.
-2. **Module metadata is module-owned** — each `modules/{connector}/catalog.ts` owns capabilities; `packages/catalog-data.ts` only aggregates.
-3. **Explicit bootstrap** — `registerAllModules()` is called from `bootstrap.ts`, not import side effects.
-4. **Work Discovery stays connector-agnostic** — source materialization goes through `DiscoverySourceProvider` on module packages.
-5. **TransformExpr is workflow-level** — `workflow/transform-expr/` is reused by modules/transform and work-discovery synthesis.
-6. **Canvas is canonical NL authoring** — `workflow/canvas/` replaced the legacy `interview/` namespace.
-7. **Triggers are start nodes** — output a contract; transport stays in `triggers/`.
-8. **Read vs write** — `document-engine/` (parse) + `document-write/` (generate).
+1. **Contracts are neutral** — shared schemas never depend on a concrete connector.
+2. **Connectors are isolated** — adapter code, catalogs, and registration live under `connectors/`; connector A does not know connector B.
+3. **Catalog owns aggregation** — `catalog/data.ts` is the single aggregation seam; individual connector metadata remains next to its adapter.
+4. **Persistence is private infrastructure** — database, credentials, paths, and artifact storage are exposed through explicit services rather than directory-level reach-through.
+5. **Read vs write stays explicit** — document ingestion/read and document generation/write have separate seams, with reporting above both.
+6. **Intelligence is a policy boundary** — agent prompts, skills, model providers, retrieval, and design tools stay behind `intelligence/`.
+7. **Application composition is explicit** — `application/bootstrap.ts` wires services; importing a connector does not register global side effects.
+8. **Root domain seams are intentional** — workflow, work-discovery, runtime, triggers, contracts, catalog, and platform remain top-level because they are stable cross-feature boundaries.
 
 ## Architecture checks
 

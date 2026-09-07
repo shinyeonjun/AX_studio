@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
-import { createTestConnectors, mockLocalFolder, mockSlack } from '../../../modules/test-connectors.js';
+import { createTestConnectors, mockLocalFolder, mockSlack } from '../../../testing/connectors/test-connectors.js';
 import { TriggerEngine } from '../../trigger-engine.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 

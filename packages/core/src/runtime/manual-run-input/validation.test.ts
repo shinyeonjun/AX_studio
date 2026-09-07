@@ -5,7 +5,7 @@ import {
   workflowNeedsFilePath,
   workflowNeedsGmailMessageId,
 } from '../manual-run-input.js';
-import type { Connector, ConnectorResult } from '../../modules/types.js';
+import type { Connector, ConnectorResult } from '../../connectors/types.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { folderWorkflow } from './fixtures.js';
 
@@ -49,7 +49,7 @@ describe('validateManualRunInput', () => {
 });
 
 describe('enrichManualRunInput', () => {
-  it('fills latest inbox message id for gmail trigger manual runs', async () => {
+  it.each(['legacy', 'page'] as const)('fills latest inbox message id from the %s Gmail response', async (shape) => {
     const ir: WorkflowIR = {
       id: 'wf-gmail',
       name: '네이버 메일 Slack 요약',
@@ -72,7 +72,8 @@ describe('enrichManualRunInput', () => {
       name: 'gmail',
       async execute(action, _params, _ctx): Promise<ConnectorResult> {
         if (action === 'messages.search') {
-          return { ok: true, data: [{ id: 'latest-msg' }] };
+          const messages = [{ id: 'latest-msg' }];
+          return { ok: true, data: shape === 'legacy' ? messages : { messages, truncated: true, nextPageToken: 'next' } };
         }
         return { ok: false, error: 'unexpected' };
       },

@@ -52,7 +52,7 @@ def _fill_overlay_fields(
         prepared: list[tuple[Mapping[str, Any], Any, Any]] = []
         for field in fields:
             value = _value_for_field(field, values)
-            if value is None or value == "":
+            if value is None or (value == "" and _as_string(field.get("source")) != "digital_placeholder"):
                 continue
             raw_rect = field.get("rect")
             if not isinstance(raw_rect, Mapping):
@@ -78,6 +78,8 @@ def _fill_overlay_fields(
             page = document.reload_page(page)
 
         for field, rect, value in prepared:
+            if value == "":
+                continue
             field_type = _as_string(field.get("type"))
             if field_type in {"checkbox", "radio"}:
                 _draw_checkbox(page, pdf, rect, value, field_type)

@@ -1,7 +1,7 @@
 import { resolveCapability } from '../../../catalog/capability-graph.js';
 import { KO } from '../../../i18n/ko.js';
 import { formatCondition } from '../../../runtime/condition-expr.js';
-import type { WorkflowIR, Step } from '../../../workflow/schema.js';
+import type { WorkflowIR, Step } from '../../schema.js';
 
 function triggerSummary(trigger?: WorkflowIR['trigger']): string {
   if (!trigger || trigger.type === 'manual') return KO.chatSummary.triggerManual;

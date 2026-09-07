@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeChatMessages } from './chat-boundary.js';
+import { normalizeChatMessages, selectChatContext } from './chat-boundary.js';
 
 describe('workspace chat boundary', () => {
+  it('retains a long transcript while bounding model context and preserving the latest instruction', () => {
+    const messages = Array.from({ length: 220 }, (_, index) => ({
+      role: index % 2 ? 'assistant' : 'user', content: `message ${index}`,
+    }));
+    messages.push({ role: 'user', content: '그런데 이번에는 이번 달 기준으로 처리해줘' });
+    const stored = normalizeChatMessages(messages);
+    const context = selectChatContext(stored);
+    expect(stored).toHaveLength(221);
+    expect(context.length).toBeLessThanOrEqual(100);
+    expect(context.at(-1)).toEqual(messages.at(-1));
+    expect(context[0]?.content).toContain('생략');
+    expect(stored[0]).toEqual(messages[0]);
+  });
+
+  it('bounds the model character budget without dropping the current user request', () => {
+    const stored = normalizeChatMessages([
+      ...Array.from({ length: 10 }, () => ({ role: 'assistant', content: 'x'.repeat(50_000) })),
+      { role: 'user', content: '지난번 기준이 기억 안 나면 먼저 물어봐' },
+    ]);
+    const context = selectChatContext(stored);
+    expect(context.reduce((total, message) => total + message.content.length, 0)).toBeLessThanOrEqual(250_000);
+    expect(context.at(-1)).toEqual(stored.at(-1));
+    expect(stored).toHaveLength(11);
+    expect(() => normalizeChatMessages([{ role: 'user', content: 'x'.repeat(50_001) }])).toThrow();
+  });
   it('does not accept execution status on an ordinary assistant message', () => {
     expect(() => normalizeChatMessages([
       { role: 'assistant', content: '일반 답변', executionStatus: 'success' },

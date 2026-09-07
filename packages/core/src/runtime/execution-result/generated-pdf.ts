@@ -1,8 +1,8 @@
-import type { ExecutionLogEntry } from '../../modules/types.js';
+import type { ExecutionLogEntry } from '../../connectors/types.js';
 import {
   WorkspaceChatGeneratedPdfSchema,
   type WorkspaceChatGeneratedPdf,
-} from '../../store/repositories/workspace-chat-repository.js';
+} from '../../persistence/repositories/workspace-chat-repository.js';
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)

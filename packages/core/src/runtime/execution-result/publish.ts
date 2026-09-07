@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../store/workflow-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { formatApprovalTitle } from '../approval-display.js';
 import type { ExecutionResult } from '../types.js';
@@ -20,7 +20,7 @@ function inlineApprovalForExecution(
   result: ExecutionResult,
   execution: { ephemeral: boolean; irJson?: string },
   ir: WorkflowIR | null,
-): import('../../store/repositories/workspace-chat-repository.js').WorkspaceChatApproval | undefined {
+): import('../../persistence/repositories/workspace-chat-repository.js').WorkspaceChatApproval | undefined {
   if (!execution.ephemeral || result.status !== 'pending_approval' || !result.pendingApprovalId) return undefined;
 
   try {

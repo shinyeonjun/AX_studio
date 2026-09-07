@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
-import type { ActionDefinition } from '../workflow/action-definition.js';
+import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
+import type { ActionDefinition } from './action-definition.js';
 
 const httpRequest: ActionDefinition = {
   id: 'http.request',

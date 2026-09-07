@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../../store/db.js';
-import { WorkflowStore } from '../../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../../persistence/db.js';
+import { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../../engine.js';
-import { createTestConnectors } from '../../../../modules/test-connectors.js';
+import { createTestConnectors } from '../../../../testing/connectors/test-connectors.js';
 
 describe('approval continuation execution logs', () => {
   it('fails closed when the persisted approval execution log is malformed', async () => {

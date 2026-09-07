@@ -71,6 +71,14 @@ def _text_font_size(field: Mapping[str, Any], rect: Any) -> float:
     default = min(11.0, max(float(rect.height) - 4.0, 6.0))
     return min(max(_as_float(field.get("fontSize"), default), 5.0), 24.0)
 
+def _expanded_text_rect(page: Any, pdf: Any, rect: Any) -> Any:
+    """Compensate for text bboxes that omit a small amount of line leading."""
+    padding = min(max(float(rect.height) * 0.15, 1.0), 2.0)
+    page_rect = page.rect
+    top = min(padding / 2.0, max(float(rect.y0), 0.0))
+    bottom = min(padding - top, max(float(page_rect.y1 - rect.y1), 0.0))
+    return pdf.Rect(rect.x0, rect.y0 - top, rect.x1, rect.y1 + bottom)
+
 def _insert_textbox(
     page: Any,
     pdf: Any,
@@ -100,7 +108,8 @@ def _insert_textbox(
         font_name = "helv"
     # Never silently clip a value. Retry with a smaller font, and fail the
     # whole write if the value still cannot fit inside its detected region.
-    while font_size >= 5.0:
+    minimum_font_size = 5.0
+    while font_size >= minimum_font_size:
         raw_color = field.get("textColor")
         color = None
         if isinstance(raw_color, (list, tuple)) and len(raw_color) == 3:
@@ -120,5 +129,20 @@ def _insert_textbox(
         result = page.insert_textbox(rect, text, **kwargs)
         if result >= 0:
             return
-        font_size -= 0.5
+        # Always make one final attempt at the exact minimum. Fractional
+        # geometry-derived sizes such as 8.3 would otherwise stop at 5.3 and
+        # report overflow even when the value fits at 5.0.
+        next_font_size = max(font_size - 0.5, minimum_font_size)
+        if next_font_size == font_size:
+            break
+        font_size = next_font_size
+
+    # PDF text extraction commonly reports the glyph bbox without the small
+    # descent/leading required by insert_textbox. Retry once in a minimally
+    # expanded, page-clipped region before declaring a genuine overflow.
+    padded_rect = _expanded_text_rect(page, pdf, rect)
+    if padded_rect != rect:
+        result = page.insert_textbox(padded_rect, text, **kwargs)
+        if result >= 0:
+            return
     raise ValueError(f"field_text_overflow:{_as_string(field.get('name') or field.get('id'))}")

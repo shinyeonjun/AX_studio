@@ -26,11 +26,6 @@ export function boundedText(value: unknown, field: string, max = MAX_CHAT_MESSAG
 /** Validate untrusted renderer input before it reaches a provider or database. */
 export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
   if (!Array.isArray(value)) throw new Error('대화 기록 형식이 올바르지 않습니다.');
-  if (value.length > MAX_CHAT_MESSAGES) {
-    throw new Error(`대화 기록은 ${MAX_CHAT_MESSAGES}개 메시지까지 보낼 수 있습니다.`);
-  }
-
-  let totalChars = 0;
   return value.map((entry, index) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw new Error(`대화 ${index + 1}번째 메시지 형식이 올바르지 않습니다.`);
@@ -63,10 +58,6 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       : ExecutionResultStatusSchema.safeParse(record.executionStatus);
     if (executionStatus && !executionStatus.success) {
       throw new Error(`대화 ${index + 1}번째 실행 결과 상태가 올바르지 않습니다.`);
-    }
-    totalChars += record.content.length;
-    if (totalChars > MAX_CHAT_TOTAL_CHARS) {
-      throw new Error(`대화 기록이 너무 큽니다. ${MAX_CHAT_TOTAL_CHARS.toLocaleString()}자 이내로 줄여 주세요.`);
     }
     const inputRequests = record.inputRequests === undefined
       ? undefined
@@ -110,6 +101,23 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
     };
   });
+}
+
+/** Persist the full transcript; bound only the context sent to a model. */
+export function selectChatContext(messages: DesktopChatMessage[]): DesktopChatMessage[] {
+  const notice: DesktopChatMessage = {
+    role: 'user',
+    content: '[호스트 대화 안내] 오래된 대화 일부는 모델 입력 한도로 생략되었습니다. 전체 기록은 대화에 보존되어 있습니다. 현재 업무·자료·메모와 최근 지시를 기준으로 처리하고, 생략된 기준이 필요하면 추측하지 말고 사용자에게 확인하세요.',
+  };
+  let chars = notice.content.length;
+  let start = messages.length;
+  while (start > 0 && messages.length - start < MAX_CHAT_MESSAGES - 1) {
+    const next = messages[start - 1]!;
+    if (chars + next.content.length > MAX_CHAT_TOTAL_CHARS) break;
+    chars += next.content.length;
+    start -= 1;
+  }
+  return start === 0 ? messages : [notice, ...messages.slice(start)];
 }
 
 export function requireLastUserMessage(messages: DesktopChatMessage[]): string {

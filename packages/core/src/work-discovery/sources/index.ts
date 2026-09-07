@@ -1,7 +1,6 @@
-import type { ArtifactStore } from '../../store/artifact-store.js';
-import type { WorkflowStore } from '../../store/workflow-store.js';
-import type { DiscoverySourceProvider } from '../../contracts/discovery-source.js';
-import { ALL_MODULE_PACKAGES } from '../../modules/packages/catalog.js';
+import type { ArtifactStore } from '../../persistence/artifact-store.js';
+import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import { ALL_MODULE_PACKAGES } from '../../connectors/packages/catalog.js';
 import { DiscoverySourceRegistry } from './registry.js';
 import { InputArtifactDiscoverySourceProvider } from './input-artifact-provider.js';
 

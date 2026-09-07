@@ -1,4 +1,4 @@
-import type { WorkflowIR } from '../../../workflow/schema.js';
+import type { WorkflowIR } from '../../schema.js';
 import { formatCondition } from '../../../runtime/condition-expr.js';
 import { KO } from '../../../i18n/ko.js';
 

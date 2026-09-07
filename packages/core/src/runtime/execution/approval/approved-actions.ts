@@ -1,4 +1,4 @@
-import type { ConnectorContext } from '../../../modules/types.js';
+import type { ConnectorContext } from '../../../connectors/types.js';
 import { resolveDocumentIngestExecution } from '../../../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../../../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../../../workflow/action-definition.js';

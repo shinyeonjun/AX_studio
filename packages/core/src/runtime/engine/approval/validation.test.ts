@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
-import { createTestConnectors, mockGmail, mockSlack } from '../../../modules/test-connectors.js';
+import { createTestConnectors, mockGmail, mockSlack } from '../../../testing/connectors/test-connectors.js';
 
 describe('approval continuation validation', () => {
   it('fails approval continuation when gmail body is missing', async () => {

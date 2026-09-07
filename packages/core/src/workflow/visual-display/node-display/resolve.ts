@@ -3,7 +3,7 @@ import { getConnectorLabel } from '../../../catalog/connectors.js';
 import type { CompletenessResult } from '../../canvas/slots/requiredness.js';
 import type { WorkflowCanvasDraft, WorkflowNode } from '../../canvas/draft/schema.js';
 import type { NodeDisplayResult, WorkflowCardDisplay } from '../types.js';
-import { summaryFromGoalOrCapability, primaryParamValue, truncate } from '../helpers.js';
+import { summaryFromGoalOrCapability, primaryParamValue } from '../helpers.js';
 import { displayActionNode } from './action.js';
 import { displayAiDecisionNode } from './ai.js';
 import { displayApprovalNode, displayIfNode } from './flow.js';

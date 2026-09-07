@@ -1,7 +1,6 @@
 import type { ContractTypeName } from '../../contracts/capability-io.js';
 import type { Step } from '../schema.js';
 import {
-  aiDecisionOutputPorts,
   findAiDecisionSource,
   findCompatibleSource,
   type AvailableOutput,

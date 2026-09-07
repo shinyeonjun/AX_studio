@@ -21,13 +21,25 @@ export async function handleWebhookRequest(
   res: ServerResponse,
   options: WebhookListenerOptions,
   onEvent: WebhookEventHandler,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   try {
+    if (abortSignal?.aborted) return;
     if (req.method !== 'POST') {
       rejectRequest(req, res, 405, 'method_not_allowed');
       return;
     }
 
+    // Validate the original path before WHATWG URL removes dot segments or
+    // normalizes backslashes into separators and changes the selected hook.
+    try {
+      const rawPath = decodeURIComponent((req.url ?? '/').split('?', 1)[0]!);
+      if (rawPath.includes('\\')) throw new Error('invalid_path');
+      normalizeWebhookPath(rawPath);
+    } catch {
+      rejectRequest(req, res, 400, 'invalid_path');
+      return;
+    }
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
     const prefix = '/hooks/';
     if (!url.pathname.startsWith(prefix)) {
@@ -51,6 +63,7 @@ export async function handleWebhookRequest(
     }
 
     const rawBody = await readRequestBody(req, WEBHOOK_MAX_PAYLOAD_BYTES);
+    if (abortSignal?.aborted) return;
     if (!verifyWebhookAuth(requestHeaders(req), options.secret, rawBody)) {
       respond(res, 401, 'unauthorized');
       return;
@@ -75,6 +88,7 @@ export async function handleWebhookRequest(
     onEvent(event);
     respond(res, 202, 'accepted');
   } catch (err) {
+    if (abortSignal?.aborted || res.destroyed) return;
     if ((err as Error).message === 'payload_too_large') {
       rejectRequest(req, res, 413, 'payload_too_large');
       return;

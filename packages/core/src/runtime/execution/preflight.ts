@@ -1,4 +1,4 @@
-import type { ExecutionLogEntry } from '../../modules/types.js';
+import type { ExecutionLogEntry } from '../../connectors/types.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { ExecutionResult, WorkflowExecutionOptions } from '../types.js';
 import type { WorkflowExecutionHost } from './contracts.js';

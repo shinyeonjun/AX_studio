@@ -1,4 +1,4 @@
-import type { ExecutionLogEntry } from '../../../modules/types.js';
+import type { ExecutionLogEntry } from '../../../connectors/types.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../../workflow/schema.js';
 import { validateExecutionLog } from '../../execution-log.js';
 import type { ExecutionResult } from '../../types.js';

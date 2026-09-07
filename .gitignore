@@ -19,6 +19,7 @@ test/
 /test/*
 !/test/work-discovery-benchmark/
 !/test/work-discovery-benchmark/**
+.drawio/
 
 # Local secrets and machine-specific config — never commit
 .env
@@ -52,7 +53,7 @@ coverage/
 /test-results/
 /test/test-results/
 /test/product-qa/runs/
-
+.archify/
 # OS
 .DS_Store
 Thumbs.db

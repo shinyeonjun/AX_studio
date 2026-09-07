@@ -4,20 +4,15 @@ import { sanitizeStepId } from './helpers.js';
 
 export function readStepForSource(
   source: DiscoveryBlueprint['sources'][number],
+  pathInput = 'sourcePath',
 ): WorkflowIR['steps'][number] | undefined {
-  const metadata = source.metadata ?? {};
   if (source.connector === 'input_artifact' || source.connector === 'local_sheet') {
-    const path = typeof metadata.storedPath === 'string'
-      ? metadata.storedPath
-      : typeof metadata.path === 'string'
-        ? metadata.path
-        : source.id.replace(/^(input|sheet):/, '');
     return {
       type: 'action',
       id: 'read_' + sanitizeStepId(source.id),
       connector: 'local_sheet',
       action: 'read',
-      params: { path: '{{sourcePath}}' },
+      params: { path: `{{${pathInput}}}` },
       sideEffect: 'NONE',
     };
   }

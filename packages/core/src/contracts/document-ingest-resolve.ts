@@ -1,4 +1,4 @@
-import type { ConnectorContext } from '../modules/types.js';
+import type { ConnectorContext } from '../connectors/types.js';
 import type { FileRef } from './artifacts/file-ref.js';
 import { fileRefFromExecutionVariables, resolveDocumentIngestParams } from './mappers.js';
 import { resolveIngestPath } from '../runtime/source-resolver.js';

@@ -1,4 +1,4 @@
-const MODULES = [
+const CONNECTOR_IDS = [
   'gmail',
   'slack',
   'local-folder',
@@ -26,17 +26,17 @@ module.exports = {
       to: { path: '^packages/core/src/work-discovery' },
     },
     {
-      name: 'modules-no-work-discovery',
+      name: 'connectors-no-work-discovery',
       severity: 'error',
-      from: { path: '^packages/core/src/modules/(?!packages)' },
+      from: { path: '^packages/core/src/connectors/(?!packages)' },
       to: { path: '^packages/core/src/work-discovery' },
     },
-    ...MODULES.flatMap((fromModule) =>
-      MODULES.filter((toModule) => fromModule !== toModule).map((toModule) => ({
-        name: `no-${fromModule}-to-${toModule}`,
+    ...CONNECTOR_IDS.flatMap((fromConnector) =>
+      CONNECTOR_IDS.filter((toConnector) => fromConnector !== toConnector).map((toConnector) => ({
+        name: `no-${fromConnector}-to-${toConnector}`,
         severity: 'error',
-        from: { path: `^packages/core/src/modules/${fromModule}(/|$)` },
-        to: { path: `^packages/core/src/modules/${toModule}(/|$)` },
+        from: { path: `^packages/core/src/connectors/${fromConnector}(/|$)` },
+        to: { path: `^packages/core/src/connectors/${toConnector}(/|$)` },
       })),
     ),
     {
@@ -44,7 +44,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/core/src/work-discovery' },
       to: {
-        path: `^packages/core/src/modules/(${MODULES.join('|')})(/|$)`,
+        path: `^packages/core/src/connectors/(${CONNECTOR_IDS.join('|')})(/|$)`,
       },
     },
   ],

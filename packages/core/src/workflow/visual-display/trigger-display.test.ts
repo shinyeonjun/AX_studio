@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { displayForTrigger } from './trigger-display.js';
-import type { WorkflowCanvasDraft } from '../../workflow/canvas/draft/schema.js';
+import type { WorkflowCanvasDraft } from '../canvas/draft/schema.js';
 
 function gmailDraft(triggerFilter: unknown): WorkflowCanvasDraft {
   return {

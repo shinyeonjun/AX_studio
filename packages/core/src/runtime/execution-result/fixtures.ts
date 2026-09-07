@@ -1,5 +1,5 @@
 import type { ExecutionResult } from '../types.js';
-import { WorkflowStore } from '../../store/workflow-store.js';
+import { WorkflowStore } from '../../persistence/workflow-store.js';
 
 export function executionIr(name = '결제 요약') {
   return JSON.stringify({

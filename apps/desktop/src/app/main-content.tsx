@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import type { AppState } from '../types/app-state';
 import type { SidebarTab } from '../types/navigation';
-import type { useWorkspaceChat } from '../hooks/useWorkspaceChat';
-import { ActivityPage } from '../components/activity/ActivityPage';
-import { ApprovalsPage } from '../components/approval/ApprovalsPage';
-import { ChatMainPage } from '../components/chat/ChatMainPage';
+import type { useWorkspaceChat } from '../features/chat/hooks/useWorkspaceChat';
+import { ActivityPage } from '../features/activity/ui/ActivityPage';
+import { ApprovalsPage } from '../features/activity/ui/approval/ApprovalsPage';
+import { ChatMainPage } from '../features/chat/ui/ChatMainPage';
 
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 

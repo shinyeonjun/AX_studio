@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDatabaseAsync } from '../../../store/db.js';
-import { WorkflowStore } from '../../../store/workflow-store.js';
+import { createDatabaseAsync } from '../../../persistence/db.js';
+import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 

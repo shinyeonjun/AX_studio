@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../../store/workflow-store.js';
+import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import {
   TRIGGER_CURSOR_SETTING_KEY,
   type TriggerCursorStore,

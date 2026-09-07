@@ -20,5 +20,6 @@ export function buildDesktopDesignToolContext(
   return buildDesignToolContext(connections, connectedConnectorIds, {
     allowUntrustedData: true,
     connectors: core.runtime.connectors,
+    discoveryMetadata: core.store.listDiscoveryMetadata(),
   });
 }

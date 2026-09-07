@@ -1,0 +1,73 @@
+import { z } from 'zod';
+
+export type ReportLayoutValue =
+  | { kind: 'scalar'; id: string }
+  | { kind: 'text'; id: string }
+  | { kind: 'metadata'; key: string };
+
+export interface ReportLayoutPlan {
+  schemaVersion: 1;
+  outputFileName: string;
+  scalarBindings: Array<{ slotId: string; value: ReportLayoutValue }>;
+  tableBindings: Array<{
+    groupId: string;
+    tableId: string;
+    columns: Array<{ columnIndex: number; columnId: string }>;
+  }>;
+}
+
+const ValueSchema: z.ZodType<ReportLayoutValue> = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('scalar'), id: z.string().min(1) }),
+  z.object({ kind: z.literal('text'), id: z.string().min(1) }),
+  z.object({ kind: z.literal('metadata'), key: z.string().min(1) }),
+]);
+
+const REPORT_FILENAME_METADATA_KEYS = new Set([
+  'periodLabel', 'periodStart', 'periodEndInclusive', 'periodEndExclusive',
+  'periodRange',
+  'periodYear', 'periodMonth', 'periodMonthPadded', 'periodYearMonth', 'periodTitleKorean',
+  'periodStartKorean', 'periodEndKorean', 'periodStartDot', 'periodEndDot',
+  'reportDate', 'reportDateKorean', 'reportDateDot',
+]);
+
+function normalizeOutputFileName(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const canonicalToken = (raw: string): string => {
+    const token = raw.trim()
+      .replace(/^field[.:]/iu, '')
+      .replace(/^metadata[.:]/iu, 'meta.')
+      .replace(/^meta:/iu, 'meta.');
+    if (token.startsWith('meta.')) return `{{${token}}}`;
+    if (REPORT_FILENAME_METADATA_KEYS.has(token)) return `{{meta.${token}}}`;
+    return `{{${token}}}`;
+  };
+  const canonicalDouble = value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g,
+    (_match, token: string) => canonicalToken(token));
+  return canonicalDouble.replace(/(?<!\{)\{\s*([^{}]+?)\s*\}(?!\})/g,
+    (_match, token: string) => canonicalToken(token));
+}
+
+const ReportLayoutPlanObjectSchema = z.object({
+  schemaVersion: z.literal(1),
+  outputFileName: z.string().trim().min(1).max(180).refine((value) => value.toLowerCase().endsWith('.pdf')),
+  scalarBindings: z.array(z.object({
+    slotId: z.string().min(1),
+    value: ValueSchema,
+  })).max(300),
+  tableBindings: z.array(z.object({
+    groupId: z.string().min(1),
+    tableId: z.string().min(1),
+    columns: z.array(z.object({
+      columnIndex: z.number().int().nonnegative(),
+      columnId: z.string().min(1),
+    })).min(1).max(50),
+  })).max(50),
+});
+
+export const ReportLayoutPlanSchema: z.ZodType<ReportLayoutPlan> = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  return Object.hasOwn(record, 'outputFileName')
+    ? { ...record, outputFileName: normalizeOutputFileName(record.outputFileName) }
+    : value;
+}, ReportLayoutPlanObjectSchema) as z.ZodType<ReportLayoutPlan>;

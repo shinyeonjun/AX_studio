@@ -1,4 +1,4 @@
-import type { Connector } from '../../modules/types.js';
+import type { Connector } from '../../connectors/types.js';
 import type { ExecutionProgress, ExecutionResult, RuntimeConfig } from '../types.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
 

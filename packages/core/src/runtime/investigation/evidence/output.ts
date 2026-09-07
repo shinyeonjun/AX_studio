@@ -1,7 +1,6 @@
-import type { ConnectorContext } from '../../../modules/types.js';
+import type { ConnectorContext } from '../../../connectors/types.js';
 import type { Step } from '../../../workflow/schema.js';
 import {
-  mapInvestigationOutput,
   previewDecisionOutput,
   requiredOutputFields,
 } from '../output.js';
@@ -45,7 +44,7 @@ export function persistDecisionOutput(
   evidenceRequired: boolean,
 ): void {
   validateDecisionEvidence(step, output, evidenceAvailable, evidenceRequired);
-  stepResults[step.id] = mapInvestigationOutput(step, output);
+  stepResults[step.id] = { ...output };
   const declaredOutputFields =
     step.outputSchema?.properties && typeof step.outputSchema.properties === 'object'
       ? Object.keys(step.outputSchema.properties)

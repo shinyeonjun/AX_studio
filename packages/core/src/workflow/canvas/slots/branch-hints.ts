@@ -1,5 +1,5 @@
 import type { ConditionExpr } from '../../../runtime/condition-expr.js';
-import type { Step, WorkflowIR } from '../../../workflow/schema.js';
+import type { Step, WorkflowIR } from '../../schema.js';
 import { nodeRoleHint } from './ids.js';
 
 function extractEqLiteral(condition: ConditionExpr | undefined): string | undefined {

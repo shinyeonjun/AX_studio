@@ -1,4 +1,4 @@
-import type { ExecutionLogEntry, ConnectorContext } from '../../modules/types.js';
+import type { ExecutionLogEntry, ConnectorContext } from '../../connectors/types.js';
 import { validateWorkflowContracts } from '../../workflow/contract-validator.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { inferWorkflowBindings } from '../../workflow/bindings.js';
@@ -13,6 +13,24 @@ import type { WorkflowExecutionHost, PendingError } from './contracts.js';
 import { createConnectorContext } from './context.js';
 import { recordPreflightResult } from './preflight.js';
 import { runSequence } from './sequence.js';
+
+function discoverySourceInputs(ir: WorkflowIR): Record<string, string> {
+  if (!ir.document) return {};
+  try {
+    const document = JSON.parse(ir.document);
+    if (!document || document.origin !== 'discovery') return {};
+    const defaults: Record<string, string> = {};
+    for (const name of ir.inputs ?? []) {
+      if (name !== 'sourcePath' && !name.startsWith('sourcePath_')) continue;
+      const value = document.sourceInputs?.[name] ??
+        (name === 'sourcePath' ? document.defaultSourcePath : undefined);
+      if (typeof value === 'string' && value.trim()) defaults[name] = value;
+    }
+    return defaults;
+  } catch {
+    return {};
+  }
+}
 
 export async function executeWorkflow(
   host: WorkflowExecutionHost,
@@ -81,18 +99,19 @@ export async function executeWorkflow(
     host.config.store.updateExecutionLog(executionId, log);
   };
   const connections = host.config.store.getConnections();
+  const input = { ...discoverySourceInputs(workflowIr), ...options.input };
   if (options.jobId) appendLog({ at: new Date().toISOString(), level: 'info', code: 'execution_dequeued',
     message: '접수한 작업의 실행을 시작합니다.', data: { jobId: options.jobId, executionId } });
   const ctx: ConnectorContext = createConnectorContext(
     host,
     executionId,
     workflowIr.id,
-    { ...options.input },
+    input,
     connections,
     appendLog,
     options.workspaceSessionId,
   );
-  const stepResults: Record<string, unknown> = { ...(options.input ?? {}) };
+  const stepResults: Record<string, unknown> = { ...input };
 
   try {
     await runSequence(host, linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, [], new Set());

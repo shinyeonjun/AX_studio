@@ -1,8 +1,8 @@
 import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { requiresApproval } from '../workflow/approval.js';
-import type { Connector, ConnectorContext } from '../modules/types.js';
-import type { WorkflowStore } from '../store/workflow-store.js';
-import type { InvestigationRunner } from '../agent/investigation-runner.js';
+import type { Connector, ConnectorContext } from '../connectors/types.js';
+import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
 import { runAiDecision, evaluateCondition } from './ai-investigation.js';
 import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
