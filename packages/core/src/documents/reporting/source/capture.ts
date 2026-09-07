@@ -12,6 +12,11 @@ import {
 } from './schema.js';
 
 const DUMMY_ORIGIN = 'http://report-source.invalid';
+// Report reads are deliberately larger than the ordinary interactive RDB
+// preview. The connector still caps each physical query, while this layer
+// walks every page and applies the aggregate report budget below.
+const REPORT_RDB_PAGE_SIZE = 10_000;
+const MAX_RDB_CAPTURE_PAGES = 1_000;
 
 function valueAtPath(value: unknown, path: string): unknown {
   if (path === '$') return value;
@@ -81,6 +86,7 @@ async function captureHttpSource(
   consume: (rows: Array<Record<string, unknown>>) => void,
 ): Promise<Array<Record<string, unknown>>> {
   const rows: Array<Record<string, unknown>> = [];
+  const pageFingerprints = new Set<string>();
   const startPage = spec.pagination?.startPage ?? 1;
   let totalPages = 1;
   for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
@@ -132,10 +138,59 @@ async function captureHttpSource(
         throw new Error(`report_http_total_pages_inconsistent:${spec.alias}:${page}`);
       }
     }
+    // Validate the provider's page identity before duplicate detection so a
+    // malformed page is reported with the more actionable contract error.
+    const pageFingerprint = fingerprint(pageRows);
+    if (pageIndex > 0 && pageFingerprints.has(pageFingerprint)) {
+      throw new Error(`report_http_pagination_no_progress:${spec.alias}:${page}`);
+    }
+    pageFingerprints.add(pageFingerprint);
     consume(pageRows);
     for (const row of pageRows) rows.push(row);
   }
   return rows;
+}
+
+async function captureRdbSource(
+  spec: { alias: string; table: string },
+  gateway: ReportSourceGateway,
+  consume: (rows: Array<Record<string, unknown>>) => void,
+): Promise<Array<Record<string, unknown>>> {
+  const rows: Array<Record<string, unknown>> = [];
+  const pageFingerprints = new Set<string>();
+  let offset = 0;
+  for (let pageIndex = 0; ; pageIndex += 1) {
+    if (pageIndex >= MAX_RDB_CAPTURE_PAGES) {
+      throw new Error(`report_rdb_page_limit:${spec.alias}`);
+    }
+    const result = await gateway.executeRdb({
+      table: spec.table,
+      offset,
+      limit: REPORT_RDB_PAGE_SIZE,
+    });
+    if (!result.ok) throw new Error(`report_rdb_request_failed:${spec.alias}:${result.errorCode ?? 'unknown'}`);
+    const table = TableArtifactSchema.safeParse(result.data);
+    if (!table.success) throw new Error(`report_rdb_response_invalid:${spec.alias}`);
+    const complete = !table.data.truncated
+      && table.data.completeness?.status === 'complete'
+      && table.data.completeness.hasMore !== true;
+    const pageRows = table.data.rows.map((row) => ({ ...row.values }));
+    if (pageIndex > 0 && pageRows.length === 0) {
+      throw new Error(`report_rdb_pagination_no_progress:${spec.alias}`);
+    }
+    const pageFingerprint = fingerprint(pageRows);
+    if (pageIndex > 0 && pageFingerprints.has(pageFingerprint)) {
+      throw new Error(`report_rdb_pagination_no_progress:${spec.alias}`);
+    }
+    pageFingerprints.add(pageFingerprint);
+    consume(pageRows);
+    rows.push(...pageRows);
+    if (complete) return rows;
+    if (table.data.completeness?.hasMore !== true || pageRows.length === 0) {
+      throw new Error(`report_rdb_response_incomplete:${spec.alias}`);
+    }
+    offset += pageRows.length;
+  }
 }
 
 export interface ReportCaptureLimits {
@@ -176,15 +231,7 @@ export async function captureReportSources(
   }
   for (const spec of plan.rdb) {
     const startedAt = new Date().toISOString();
-    const result = await gateway.executeRdb({ table: spec.table });
-    if (!result.ok) throw new Error(`report_rdb_request_failed:${spec.alias}:${result.errorCode ?? 'unknown'}`);
-    const table = TableArtifactSchema.safeParse(result.data);
-    if (!table.success) throw new Error(`report_rdb_response_invalid:${spec.alias}`);
-    if (table.data.truncated || table.data.completeness?.status !== 'complete') {
-      throw new Error(`report_rdb_response_incomplete:${spec.alias}`);
-    }
-    const rows = table.data.rows.map((row) => ({ ...row.values }));
-    consume(rows);
+    const rows = await captureRdbSource(spec, gateway, consume);
     captured[spec.alias] = { id: spec.alias, rows, complete: true, fingerprint: fingerprint(rows),
       provenance: { source: spec.table, startedAt, completedAt: new Date().toISOString(),
         requestedPeriod: period, consistency: 'unverified' } };

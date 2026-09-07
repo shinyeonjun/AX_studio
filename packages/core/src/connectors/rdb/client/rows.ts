@@ -18,9 +18,12 @@ export async function readRdbRows(
   ref: RdbTableRef,
   rowLimit: number,
   abortSignal?: AbortSignal,
+  options: { offset?: number } = {},
 ): Promise<RdbRow[]> {
   abortSignal?.throwIfAborted();
   const limit = Math.min(Math.max(1, Math.floor(rowLimit)), MAX_RDB_PROBE_ROWS);
+  const offset = options.offset ?? 0;
+  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('invalid_row_pagination');
   const resolved = resolveRdbTableRef(config, ref);
 
   if (config.type === 'sqlite' && config.filePath) {
@@ -28,7 +31,7 @@ export async function readRdbRows(
     const db = await openReadonlySqlite(config.filePath);
     try {
       abortSignal?.throwIfAborted();
-      return db.all(`SELECT * FROM ${quoteTableRef(resolved, '"')} LIMIT ${limit}`) as RdbRow[];
+      return db.all(`SELECT * FROM ${quoteTableRef(resolved, '"')} LIMIT ${limit} OFFSET ${offset}`) as RdbRow[];
     } finally {
       db.close();
     }
@@ -38,9 +41,9 @@ export async function readRdbRows(
   try {
     const table = quoteTableRef(resolved, config.type === 'mysql' ? '`' : '"');
     const sql = config.type === 'mysql'
-      ? `SELECT * FROM ${table} LIMIT ?`
-      : `SELECT * FROM ${table} LIMIT $1`;
-    return await client.query(sql, [limit]);
+      ? `SELECT * FROM ${table} LIMIT ? OFFSET ?`
+      : `SELECT * FROM ${table} LIMIT $1 OFFSET $2`;
+    return await client.query(sql, [limit, offset]);
   } finally {
     await client.close();
   }

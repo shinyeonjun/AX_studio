@@ -59,6 +59,10 @@ export const TableArtifactSchema = z.object({
   rows: z.array(TableRowSchema),
   profile: TableProfileSchema.optional(),
   truncated: z.boolean().default(false),
+  /** Optional provider page origin for bounded reads. */
+  offset: z.number().int().nonnegative().optional(),
+  /** Next provider page origin; absent when this page is complete. */
+  nextOffset: z.number().int().nonnegative().optional(),
   /** Explicitly describes whether the rows represent the complete source. */
   completeness: ArtifactCompletenessSchema.optional(),
   source: z.object({

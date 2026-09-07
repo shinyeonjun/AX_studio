@@ -13450,3 +13450,51 @@ target_table_row_completeness:
       implementation-boundary: "PASS: report planner, target service boundary, layout materialization, tests, and existing harness records only"
       source-safety: "PASS: no source writes, external delivery, fixture or hidden-gold values, app-state mutation, or new project files"
       verification: "PASS: persisted target replay and verified three-page PDF include all 29 customer rows, including C010"
+analysis_input_integrity:
+  status: complete
+  objective: "Ensure report analysis receives complete source snapshots or explicit incompleteness, while context and presentation bounds cannot silently change exact calculations."
+  allowed_mutation:
+    - "packages/core/src/documents/reporting/source/capture.ts"
+    - "packages/core/src/documents/reporting/planner/evidence.ts"
+    - "packages/core/src/documents/reporting/planner/catalog.ts"
+    - "packages/core/src/documents/reporting/plan/execute.ts"
+    - "packages/core/src/documents/reporting/failure-message.ts"
+    - "packages/core/src/connectors/rdb/client/rows.ts"
+    - "packages/core/src/connectors/rdb/connector.ts"
+    - "packages/core/src/connectors/rdb/catalog.ts"
+    - "packages/core/src/connectors/types.ts"
+    - "packages/core/src/contracts/artifacts/table.ts"
+    - "packages/core/src/contracts/artifacts/table-artifact.test.ts"
+    - "packages/core/src/documents/reporting/**/*.test.ts"
+    - "packages/core/src/connectors/rdb/**/*test.ts"
+    - ".harness/goal.md"
+    - ".harness/scope.yaml"
+    - ".harness/evaluator.yaml"
+    - ".harness/experiments.tsv"
+  avoid_mutation:
+    - "new project files"
+    - "PDF fixtures, generated artifacts, hidden gold, AXStudio-dev app data, credentials, and external services"
+    - "connector writes, authorization policy, transport safety caps, and unrelated workflow previews"
+  expansions:
+    - reason: "The RDB continuation metadata was returned by the connector but stripped by the shared TableArtifact schema; preserving it at the contract boundary prevents the AI-facing page cursor from disappearing in downstream validation."
+      recorded_at: 2026-09-08T03:45:23.3431439+09:00
+      paths:
+        - "packages/core/src/contracts/artifacts/table.ts"
+        - "packages/core/src/contracts/artifacts/table-artifact.test.ts"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T02:59:01.8031973+09:00
+    decision: BASELINE
+    values:
+      source-integrity: "PASS: existing report capture rejects incomplete HTTP pages, but RDB reads used a single default-limited page"
+      context-integrity: "FAIL-CAPABLE: preview/profile and per-source evidence bounds could hide relevant values without uniform completeness labels"
+      safety: "PASS: planned scope excludes writes, credentials, fixtures, hidden gold, and new project files"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T03:41:28.9204387+09:00
+    decision: KEEP
+    values:
+      implementation-boundary: "PASS: only existing report evidence/capture, RDB read boundary, failure projection, tests, and harness records changed"
+      source-integrity: "PASS: complete HTTP/RDB snapshots are required; RDB report reads page with host-owned context and fail closed on no progress or budget exhaustion"
+      context-integrity: "PASS: all model-facing reductions are explicit and final calculations use complete snapshots"
+      safety: "PASS: no new project files, fixture/gold changes, source writes, external delivery, credential mutation, or application data changes"

@@ -369,7 +369,7 @@ export class ReportGenerationService {
         executeRdb: async (request: Record<string, unknown>) => {
           const connector = this.dependencies.getConnector('rdb');
           return connector
-            ? connector.execute('query.read', request, ctx)
+            ? connector.execute('query.read', request, { ...ctx, reportCapture: true })
             : { ok: false, error: 'rdb connector missing', errorCode: 'connector_missing' };
         },
       };

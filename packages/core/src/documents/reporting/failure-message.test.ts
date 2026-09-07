@@ -62,3 +62,14 @@ it('projects the actual planning phase and safe recovery instructions into the r
   expect(text).toContain('AI 처리 시간이 초과');
   expect(text).not.toContain('private provider detail');
 });
+
+it.each(['report_http_pagination_no_progress', 'report_rdb_pagination_no_progress'])
+  ('explains incomplete source pagination for %s', (errorCode) => {
+    const text = formatExecutionResultMessage({ executionId: 'execution', status: 'failed', errorCode,
+      log: [{ at: '2032-01-01', level: 'error', code: errorCode, message: 'private source detail',
+        data: { phase: 'example_capture' } }],
+    });
+    expect(text).toContain('원천 데이터 페이지');
+    expect(text).toContain('불완전한 데이터로 보고서를 생성하지 않았습니다');
+    expect(text).not.toContain('private source detail');
+  });

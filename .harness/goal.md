@@ -14488,3 +14488,49 @@ Baseline recorded at 2026-09-08T01:45:00+09:00: exact target replay returns 28 c
 - Layout materialization now appends deterministic continuation fields only when the verified page gap and horizontal bounds are safe; it fails closed when a later section or page edge would be crossed.
 - Verification: the persisted target replay produces all 29 customers and C010 (`531,000원`, `20.42%`); the real PDF writer verifies a three-page output and extracted text contains the complete C010 row. Reporting 308 passed/2 skipped, Core 1352 passed/5 skipped, document-engine 50/50, Core/Desktop typechecks and builds, evaluation 11/11, architecture, and whitespace checks passed.
 - No project files were created; no fixtures, hidden gold, external sources, or application data were modified.
+## Current follow-up: analysis input integrity
+The report pipeline must provide complete, faithfully labelled source information to
+the AI and host calculation boundary. No example layout capacity, preview,
+diagnostic truncation, default connector row limit, or metadata page should
+silently change the analyzed population. Resource and safety limits may remain
+only when they fail closed or expose explicit completeness/continuation metadata.
+
+Success criteria:
+- report evidence marks row/column/value reductions explicitly and never presents
+  a partial view as complete.
+- report source capture can page read-only RDB tables so a connector's default
+  row limit does not silently change report population; hard safety budgets still
+  fail closed with an actionable error.
+- exact report calculations use complete captured snapshots only; presentation
+  and model-context reductions remain outside the calculation boundary.
+- focused regression tests cover fidelity flags, incomplete snapshots, RDB paging,
+  and stale layout limits; reporting/Core/Desktop/document checks stay green.
+- no new project files, fixture/gold changes, external writes, or credential/data
+  mutations are introduced.
+
+Non-goals:
+- removing transport, memory, timeout, credential, or connector authorization
+  boundaries.
+- making arbitrary unbounded network/database reads.
+- changing unrelated non-report workflow result previews or UI behavior.
+
+### Final checkpoint (2026-09-08T03:41:40.0105003+09:00)
+
+- Root cause: the report path mixed calculation authority with bounded model
+  previews and an interactive RDB row limit. That made valid evidence look
+  complete to the AI in some paths and omitted rows from report capture in
+  others.
+- Report evidence now labels every row, column, value, profile, and context
+  reduction. Incomplete snapshots are rejected before inference, while the
+  host still computes the final plan over the complete captured rows.
+- Report RDB capture now uses a host-owned paged read-through (offset/limit)
+  independent of the interactive preview limit. Repeated pages, malformed
+  continuation, and aggregate safety limits fail closed with an actionable
+  error; a request field cannot grant the wider capture privilege. The shared
+  TableArtifact contract preserves optional page metadata so the continuation
+  cannot disappear at a validation boundary.
+- Verification: reporting 323 passed/2 skipped, RDB 29/29, Core 1,366
+  passed/5 skipped, Core build, Desktop typecheck/build, document-engine
+  50/50, evaluation 11/11, architecture with zero violations, and diff check
+  passed. No project files were created and no fixtures, hidden gold, source
+  writes, external delivery, credentials, or application data were changed.

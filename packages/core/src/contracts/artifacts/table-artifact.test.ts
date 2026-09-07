@@ -22,6 +22,21 @@ describe('TableArtifact', () => {
     });
   });
 
+  it('preserves optional page metadata for bounded connector reads', () => {
+    const artifact = {
+      ...buildTableArtifact({
+        id: 'tbl_page',
+        headers: ['id'],
+        matrix: [[1]],
+        rowLimit: 1,
+      }),
+      offset: 1,
+      nextOffset: 2,
+    };
+
+    expect(TableArtifactSchema.parse(artifact)).toMatchObject({ offset: 1, nextOffset: 2 });
+  });
+
   it('profiles extrema using scalar value order', () => {
     const artifact = buildTableArtifact({
       id: 'tbl_extrema',
