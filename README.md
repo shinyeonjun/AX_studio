@@ -1,7 +1,7 @@
 # AX Studio
 
 <p align="center">
-  <img src="apps/desktop/src/images/AX_Studio.png" alt="AX Studio" width="560" />
+  <img src="apps/desktop/src/ui/images/AX_Studio.png" alt="AX Studio" width="560" />
 </p>
 
 <p align="center">
