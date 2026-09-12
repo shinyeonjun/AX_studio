@@ -14427,3 +14427,8 @@ clean_windows_electron_bundle:
   paths:
     - apps/desktop/package.json
   reason: Electron44 downloads its executable lazily, while electron-builder copies electronDist directly. Fresh packaging needs the package-provided install-electron prerequisite; otherwise electron.exe is absent. Apply to both pack commands without changing product behavior.
+
+ci_chat_observation_race:
+  paths:
+    - test/product-qa/lib/ui.ts
+  reason: Message count and per-index locator reads span multiple renderer turns; session transition can remove an indexed node and time out the observer itself. Capture message roles/text in one DOM snapshot without weakening scenario assertions.

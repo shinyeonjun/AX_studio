@@ -60,19 +60,16 @@ export async function switchSessionByTitle(page: Page, titleContains: string): P
 }
 
 export async function readVisibleMessages(page: Page): Promise<Array<{ role: 'user' | 'assistant'; text: string }>> {
-  const userTexts = await page.locator('.ax-workspace-bubble--user').allTextContents();
-  const assistantTexts = await page.locator('.ax-workspace-bubble--assistant').allTextContents();
-  const merged: Array<{ role: 'user' | 'assistant'; text: string }> = [];
-  const count = await page.locator('.ax-workspace-message').count();
-  for (let i = 0; i < count; i += 1) {
-    const node = page.locator('.ax-workspace-message').nth(i);
-    const className = (await node.getAttribute('class')) ?? '';
-    const text = (await node.innerText()).trim();
-    if (!text) continue;
-    if (className.includes('ax-workspace-message--user')) merged.push({ role: 'user', text });
-    if (className.includes('ax-workspace-message--assistant')) merged.push({ role: 'assistant', text });
-  }
-  return merged;
+  return page.locator('.ax-workspace-message').evaluateAll((nodes) => {
+    const messages: Array<{ role: 'user' | 'assistant'; text: string }> = [];
+    for (const node of nodes) {
+      const text = (node as HTMLElement).innerText.trim();
+      if (!text) continue;
+      if (node.classList.contains('ax-workspace-message--user')) messages.push({ role: 'user', text });
+      if (node.classList.contains('ax-workspace-message--assistant')) messages.push({ role: 'assistant', text });
+    }
+    return messages;
+  });
 }
 
 export async function attachFixtureViaE2e(page: Page, fixturePath: string): Promise<void> {
