@@ -15,6 +15,7 @@ export interface AppActions {
   selectSession: (session: ChatSessionSummary) => Promise<void>;
   deleteSession: (session: ChatSessionSummary) => Promise<void>;
   openWork: (workflowId: string) => Promise<void>;
+  runWork: (workflowId: string) => Promise<void>;
   deleteWork: (workflowId: string, name: string) => Promise<void>;
   handleApprove: (id: string) => Promise<void>;
   handleReject: (id: string) => Promise<void>;

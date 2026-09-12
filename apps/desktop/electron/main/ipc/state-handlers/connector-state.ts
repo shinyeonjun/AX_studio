@@ -10,6 +10,7 @@ import { migrateDesktopAiProvider } from '../../ai/provider-migrate.js';
 import { getEnvFilePath } from '../../env-file.js';
 import { getAiConfigPath, readAiToml } from '../../ai/config-file.js';
 import { isGoogleOAuthConfigured } from '../../gmail/oauth.js';
+import { googleDesktopClientState } from '../../gmail/oauth-client.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 import { summarizeConnections } from '../connection-state-summary.js';
 
@@ -31,6 +32,8 @@ export async function buildConnectorState(core: AxCore) {
     localFolderConn?.config,
     Boolean(localFolderConn?.connected),
   );
+  const startupErrors = core.store.getSetting<Record<string, unknown>>('startup.connectorErrors', {});
+  const connected = new Set(core.store.getConnections().filter(entry => entry.connected).map(entry => entry.connector));
   return {
     aiProvider,
     aiProviderLabel: getAiProviderDisplay(aiProvider),
@@ -40,6 +43,11 @@ export async function buildConnectorState(core: AxCore) {
     axDataRoot: getDesktopAxDataPaths().root,
     aiBrandConfigs: aiToml.providers,
     gmailOAuthConfigured: isGoogleOAuthConfigured(),
+    gmailOAuthCustom: Boolean(googleDesktopClientState().client),
+    gmailOAuthError: googleDesktopClientState().error,
+    connectorWarnings: Object.keys(startupErrors && typeof startupErrors === 'object' ? startupErrors : {})
+      .filter(connector => !connected.has(connector))
+      .map(connector => `${connector}: 저장된 연결을 복원하지 못했습니다. 설정에서 다시 연결해 주세요.`),
     gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,
     gmailScopes: gmailConn?.connected ? gmailRecord?.scopes : undefined,
     gmailConnectedAt: gmailConn?.connected ? gmailRecord?.connectedAt : undefined,

@@ -355,6 +355,11 @@
   margin-top: 24px;
 }
 
+.gmail-client-actions {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .connection-inline-status {
   display: flex;
   align-items: center;

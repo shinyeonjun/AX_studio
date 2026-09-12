@@ -38,5 +38,16 @@ export function createAppWorkActions({
     }
   };
 
-  return { openWork, deleteWork };
+  const runWork = async (workflowId: string) => {
+    setActionError('');
+    setSidebarTab('activity');
+    try {
+      await window.ax.runWorkflow(workflowId);
+      await refresh();
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '업무를 실행하지 못했습니다.'));
+    }
+  };
+
+  return { openWork, deleteWork, runWork };
 }

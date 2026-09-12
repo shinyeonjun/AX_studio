@@ -72,6 +72,7 @@ export function SettingsPageContent({
           state={state}
           onConnect={onConnectGmail}
           onDisconnect={onDisconnectGmail}
+          onRefresh={onRefresh}
         />
       )}
       {screen === 'local-folder' && (

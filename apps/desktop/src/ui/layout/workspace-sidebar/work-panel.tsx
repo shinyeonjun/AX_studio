@@ -18,6 +18,7 @@ interface SidebarWorkPanelProps {
   state: AppState | null;
   sessions: ChatSessionSummary[];
   onOpenWork: (workflowId: string) => void;
+  onRunWork: (workflowId: string) => void;
   onOpenExecution: (execution: ExecutionSummary) => void;
   onToggleWorkActive: (workflowId: string, active: boolean) => void;
   onDeleteWork: (workflowId: string, name: string) => void;
@@ -54,6 +55,7 @@ export function SidebarWorkPanel({
   state,
   sessions,
   onOpenWork,
+  onRunWork,
   onOpenExecution,
   onToggleWorkActive,
   onDeleteWork,
@@ -65,6 +67,9 @@ export function SidebarWorkPanel({
     .filter(isSingleExecution)
     .slice(0, 6);
   const oneOffCount = oneOffWorks.length + singleExecutions.length;
+  const runningWorkIds = new Set((state?.executions ?? [])
+    .filter(execution => execution.status === 'running' || execution.status === 'pending_approval')
+    .map(execution => execution.workflowId));
 
   return (
     <div className="sidebar-panel-section sidebar-work-overview">
@@ -111,6 +116,10 @@ export function SidebarWorkPanel({
                   </span>
                 </button>
                 <div className="sidebar-work-actions">
+                  <button type="button" className="sidebar-work-toggle"
+                    aria-label={`${work.name} 지금 실행`}
+                    disabled={!state?.globalActive || runningWorkIds.has(work.id)}
+                    onClick={() => onRunWork(work.id)}>실행</button>
                   <button
                     type="button"
                     className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}
@@ -182,6 +191,10 @@ export function SidebarWorkPanel({
                         </span>
                       </button>
                       <div className="sidebar-work-actions">
+                        <button type="button" className="sidebar-work-toggle"
+                          aria-label={`${work.name} 지금 실행`}
+                          disabled={!state?.globalActive || runningWorkIds.has(work.id)}
+                          onClick={() => onRunWork(work.id)}>실행</button>
                         <button
                           type="button"
                           className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}

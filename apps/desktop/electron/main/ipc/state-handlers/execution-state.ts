@@ -85,6 +85,7 @@ export function buildExecutions(core: AxCore) {
       currentStepMessage: logSummary.currentStepMessage,
       lastLogMessage: logSummary.lastLogMessage,
       aiOutput: logSummary.aiOutput,
+      output: execution.output,
       generatedPdf: logSummary.generatedPdf,
     };
   });

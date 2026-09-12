@@ -1,6 +1,7 @@
 import { AGENT_COMMAND_CONTEXT } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
+import { notifyStateChanged } from '../../state-broadcast.js';
 
 const agentContext = { executionContext: AGENT_COMMAND_CONTEXT };
 
@@ -47,9 +48,11 @@ export function registerDiscoveryCommandHandlers(): void {
   });
 
   ipcHandle('ax:discoveryPublish', async (_event, payload: unknown) => {
-    return getCore().commandService.execute({
+    const result = await getCore().commandService.execute({
       name: 'discovery.publish',
       args: objectArgs(payload),
     }, agentContext);
+    notifyStateChanged();
+    return result;
   });
 }

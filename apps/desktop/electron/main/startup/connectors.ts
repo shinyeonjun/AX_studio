@@ -6,25 +6,35 @@ import { hydrateWebhookConnection } from '../webhook/connection.js';
 import { hydrateRdbConnector } from '../rdb/connection.js';
 import { hydrateOpenApiConnector } from '../openapi/connection.js';
 import { hydrateMcpConnector } from '../mcp/connection.js';
+import { loadGoogleDesktopClient } from '../gmail/oauth-client.js';
 
 type DesktopCore = Awaited<ReturnType<typeof createAxStudioCore>>;
 
 export async function hydrateConnectorsForStartup(
   core: DesktopCore,
 ): Promise<SlackSecret | null> {
-  const tolerateHydrationFailure = process.env.AX_E2E === '1';
+  const errors: Record<string, string> = {};
+  core.store.setSetting('startup.connectorErrors', errors);
 
   async function runStep<T>(label: string, step: () => Promise<T>, fallback: T): Promise<T> {
+    const saved = core.store.getConnections().find(entry => entry.connector === label);
     try {
       return await step();
-    } catch (err) {
-      if (!tolerateHydrationFailure) throw err;
-      console.warn(`[AX Studio] E2E: skipped ${label} hydration:`, err);
+    } catch {
+      // Preserve credentials/config for explicit repair; never continue with a partially hydrated connector.
+      core.runtime.setConnector(label, null);
+      if (saved) core.store.setConnection(label, false, saved.config);
+      errors[label] = '저장된 연결을 복원하지 못했습니다. 설정에서 연결을 다시 확인해 주세요.';
+      core.store.setSetting('startup.connectorErrors', { ...errors });
+      console.warn(`[AX Studio] ${label} connection requires reconfiguration.`);
       return fallback;
     }
   }
 
-  await runStep('gmail', () => hydrateGmailConnector(core.store, core.runtime), undefined);
+  await runStep('gmail', async () => {
+    await loadGoogleDesktopClient();
+    await hydrateGmailConnector(core.store, core.runtime);
+  }, undefined);
   const slackSecret = await runStep(
     'slack',
     () => hydrateSlackConnector(core.store, core.runtime),

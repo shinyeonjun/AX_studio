@@ -87,6 +87,7 @@ export default function App() {
         onSelectSession={appActions.selectSession}
         onDeleteSession={appActions.deleteSession}
         onOpenWork={appActions.openWork}
+        onRunWork={appActions.runWork}
         onOpenExecution={(execution) => {
           if (execution.workspaceSessionId) {
             setSidebarTab('work');
@@ -106,6 +107,14 @@ export default function App() {
       />
 
       <main className="main main--workspace" id="workspace-main-panel">
+        {state?.connectorWarnings?.length ? (
+          <div className="state-banner state-banner--stale" role="alert">
+            <span>{state.connectorWarnings.join(' ')}</span>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={() => openSettings('hub')}>
+              연결 설정 열기
+            </button>
+          </div>
+        ) : null}
         <StateBanner
           loading={isLoading}
           stale={isStale}

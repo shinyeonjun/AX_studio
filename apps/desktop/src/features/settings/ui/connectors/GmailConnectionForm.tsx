@@ -16,8 +16,8 @@ function hasScope(scopes: string[] | undefined, token: string): boolean {
   return scopes?.some((scope) => scope.includes(token)) ?? false;
 }
 
-export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
-  const { busy, message, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
+export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect, onRefresh }: GmailConnectionFormProps) {
+  const { busy, message, handleConnect, handleDisconnect, configureClient } = useGmailConnectionForm({ onConnect, onDisconnect, onRefresh });
   const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
   const oauthReady = state?.gmailOAuthConfigured ?? false;
   const email = state?.gmailEmail;
@@ -73,6 +73,22 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
           </>
         ) : (
           <>
+            {!oauthReady && (
+              <p role="status" className="muted">
+                {state?.gmailOAuthError ?? '이 배포본에는 Google 로그인 설정이 포함되지 않았습니다. 본인의 Google 데스크톱 앱 OAuth 클라이언트 JSON을 가져온 뒤 연결할 수 있습니다.'}
+              </p>
+            )}
+            <div className="connection-form-footer gmail-client-actions">
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void configureClient()}>
+                OAuth 클라이언트 JSON 가져오기
+              </button>
+              {(state?.gmailOAuthCustom || state?.gmailOAuthError) && (
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void configureClient(true)}>
+                  가져온 OAuth 설정 제거
+                </button>
+              )}
+            </div>
+            <p className="muted">Google Cloud에서 Gmail API와 OAuth 동의 화면을 설정하고, 데스크톱 앱 유형의 클라이언트 JSON을 내려받으세요. 설정은 이 PC의 OS 암호화 저장소에 보관됩니다.</p>
             {!oauthReady && import.meta.env.DEV && (
               <p className="muted" style={{ marginBottom: 12 }}>
                 Gmail OAuth Client ID가 없습니다.{' '}

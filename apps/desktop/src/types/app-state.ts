@@ -31,6 +31,9 @@ export interface AppState {
   axDataRoot?: string;
   aiBrandConfigs?: Partial<Record<AiBrand, { mode?: AiConnectionMode; model?: string }>>;
   gmailOAuthConfigured?: boolean;
+  gmailOAuthCustom?: boolean;
+  gmailOAuthError?: string;
+  connectorWarnings?: string[];
   gmailEmail?: string;
   gmailScopes?: string[];
   gmailConnectedAt?: string;
@@ -76,6 +79,7 @@ export interface AppState {
       fields: string[];
       preview: Record<string, string>;
     };
+    output?: import('@ax-studio/core').ExecutionOutput;
     generatedPdf?: {
       artifactId: string;
       fileName: string;

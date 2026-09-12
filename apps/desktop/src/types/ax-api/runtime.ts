@@ -4,10 +4,11 @@ import type {
 } from './contracts.js';
 
 export interface AxRuntimeApi {
-  getState: () => Promise<unknown>;
+  getState: () => Promise<import('../app-state.js').AppState>;
   approve: (id: string) => Promise<unknown>;
   reject: (id: string) => Promise<unknown>;
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
+  runWorkflow: (workflowId: string) => Promise<{ executionId: string; status: string }>;
   deleteExecution: (executionId: string) => Promise<unknown>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
   exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;

@@ -69,6 +69,7 @@
 
 .timeline-body {
   flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -104,6 +105,37 @@
   color: var(--text-dim);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.timeline-calculated-output {
+  margin-top: 12px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.timeline-calculated-output details {
+  margin-top: 8px;
+}
+
+.timeline-calculated-output summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.timeline-calculated-output summary:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+}
+
+.timeline-calculated-output pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .generated-pdf {

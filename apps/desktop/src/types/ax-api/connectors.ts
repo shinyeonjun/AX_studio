@@ -3,6 +3,8 @@ export interface AxConnectorApi {
   disconnectSlack: () => Promise<{ ok: boolean }>;
   connectGmailOAuth: () => Promise<{ ok: boolean; email?: string }>;
   disconnectGmailOAuth: () => Promise<{ ok: boolean }>;
+  importGmailOAuthClient: () => Promise<{ ok: boolean; canceled?: boolean }>;
+  clearGmailOAuthClient: () => Promise<{ ok: boolean }>;
   pickLocalFolder: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
   addLocalFolder: (payload: { path: string; label?: string }) => Promise<unknown>;
   removeLocalFolder: (folderId: string) => Promise<unknown>;
