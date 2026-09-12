@@ -1,7 +1,7 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { ArtifactStore } from '../../../persistence/artifact-store.js';
@@ -11,6 +11,9 @@ import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.j
 import { readWorkbookFromPath } from '../../../connectors/local-sheet/read/workbook.js';
 import { TransformConnector } from '../../../connectors/transform/connector.js';
 import { writeSalesXlsx } from './fixtures.js';
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { for (const dispose of cleanup.splice(0).reverse()) dispose(); });
 
 function writeReportDocument(artifactStore: ArtifactStore, artifactId: string, fields: {
   totalSales: number;
@@ -30,7 +33,10 @@ function writeReportDocument(artifactStore: ArtifactStore, artifactId: string, f
 }
 
 async function setupDiscovery(dir: string) {
-  const db = await createDatabaseAsync(':memory:');
+  const db = await createDatabaseAsync(join(dir, 'workflow.db'));
+  let closed = false;
+  const close = () => { if (!closed) { db.close?.(); closed = true; } };
+  cleanup.push(close);
   const store = new WorkflowStore(db);
   const artifactStore = new ArtifactStore(join(dir, 'artifacts'));
   const snapshotDir = join(dir, 'snapshots');
@@ -41,13 +47,13 @@ async function setupDiscovery(dir: string) {
     snapshotDir,
     materializeWorkbook: readWorkbookFromPath,
   });
-  return { store, artifactStore, service, snapshotDir };
+  return { close, store, artifactStore, service, snapshotDir };
 }
 
 describe('work discovery north-star e2e', () => {
   it('discovers rules from historical output+input, publishes workflow, and runs on new data', async () => {
-    const dir = join(tmpdir(), `ax-wd-e2e-${Date.now()}`);
-    mkdirSync(dir, { recursive: true });
+    const dir = mkdtempSync(join(tmpdir(), 'ax-wd-e2e-'));
+    cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
     const historicalSales = join(dir, 'historical_sales.xlsx');
     const currentSales = join(dir, 'current_sales.xlsx');
     writeSalesXlsx(historicalSales, [
@@ -61,7 +67,7 @@ describe('work discovery north-star e2e', () => {
       { amount: 200, actual: 100, target: 120 },
     ]);
 
-    const { store, artifactStore, service } = await setupDiscovery(dir);
+    const { close, store, artifactStore, service } = await setupDiscovery(dir);
     const inputArtifact = artifactStore.importFile(historicalSales);
     const outputArtifactId = 'art_report_pdf';
     writeReportDocument(artifactStore, outputArtifactId, {
@@ -91,7 +97,7 @@ describe('work discovery north-star e2e', () => {
 
     const workflow = store.getWorkflow(published.workflowId);
     expect(workflow).toBeTruthy();
-    const evalSteps = workflow!.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
+    const evalSteps = workflow!.steps.filter((step) => step.type === 'action').filter((step) => step.action === 'evaluate');
     expect(evalSteps.length).toBeGreaterThanOrEqual(3);
     for (const step of evalSteps) {
       expect(step.params.expr).toBeTruthy();
@@ -111,6 +117,29 @@ describe('work discovery north-star e2e', () => {
       input: { sourcePath: currentSales },
     });
     expect(execution.status).toBe('success');
+    const values = Object.fromEntries(execution.output!.fields.map(field => [field.path, JSON.parse(field.valueJson)]));
+    expect(values).toEqual({
+      'field.총매출.page_1.segment_1.value_1': 600,
+      'field.주문수.page_1.segment_1.value_1': 3,
+      'field.달성률.page_1.segment_1.value_1': 75,
+    });
+    expect(store.getExecution(execution.executionId)?.output).toEqual(execution.output);
+    expect(JSON.stringify(execution.log)).not.toContain('valueJson');
+
+    // A failed subsequent run must not inherit the previous successful result.
+    writeSalesXlsx(currentSales, [{ amount: 100, actual: 20, target: 0 }]);
+    const invalid = await runtime.executeWorkflow(workflow!, { ephemeral: true, input: { sourcePath: currentSales } });
+    expect(invalid.status).toBe('failed');
+    expect(invalid.output).toBeUndefined();
+    expect(store.getExecution(invalid.executionId)?.output).toBeUndefined();
+
+    close();
+    const reopened = await createDatabaseAsync(join(dir, 'workflow.db'));
+    try {
+      const recovered = new WorkflowStore(reopened);
+      expect(recovered.getExecution(execution.executionId)?.output).toEqual(execution.output);
+      expect(recovered.getExecution(invalid.executionId)?.output).toBeUndefined();
+    } finally { reopened.close?.(); }
 
     const document = JSON.parse(workflow!.document ?? '{}') as { fields?: Array<{ outputPath: string }> };
     expect(document.fields?.length).toBeGreaterThanOrEqual(3);

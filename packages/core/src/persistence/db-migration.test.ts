@@ -130,7 +130,7 @@ describe('legacy database migrations', () => {
       prepare: vi.fn(),
     };
     const migrationError = new Error('migration constraint');
-    const fallback = vi.fn(async () => ({ close: vi.fn() }));
+    const fallback = vi.fn(async () => ({ close: vi.fn(), exec: vi.fn(), prepare: vi.fn() }));
 
     await expect(createDatabaseAsync(':memory:', {
       createNativeDatabase: () => native,
@@ -145,7 +145,7 @@ describe('legacy database migrations', () => {
   });
 
   it('falls back only when the native loader is unavailable', async () => {
-    const fallbackDatabase = { close: vi.fn() };
+    const fallbackDatabase = { close: vi.fn(), exec: vi.fn(), prepare: vi.fn() };
     const fallback = vi.fn(async () => fallbackDatabase);
     const nativeError = Object.assign(
       new Error('better-sqlite3 was compiled against a different Node.js version'),
@@ -205,6 +205,7 @@ describe('legacy database migrations', () => {
       expect(columns).toContain('workflow_id');
       expect(columns).toContain('workflow_version');
       expect(columns).toContain('workspace_session_id');
+      expect(columns).toContain('output_json');
       expect(columns).not.toContain('skill_id');
       expect(columns).not.toContain('skill_version');
 
@@ -212,6 +213,10 @@ describe('legacy database migrations', () => {
       expect(store.listExecutions()).toEqual([
         expect.objectContaining({ id: 'exec-legacy', workflowId: 'wf-legacy', workflowVersion: 1 }),
       ]);
+      expect(store.getExecution('exec-legacy')?.output).toBeUndefined();
+      const output = { version: 1 as const, fields: [{ path: 'total', valueJson: '600' }] };
+      store.finishExecution('exec-legacy', 'success', undefined, [], output);
+      expect(store.getExecution('exec-legacy')?.output).toEqual(output);
       expect(store.createExecution({ workflowId: 'wf-new', ephemeral: true })).toBeTruthy();
       db.close?.();
     } finally {
@@ -242,7 +247,7 @@ describe('legacy database migrations', () => {
         readonly.close();
       }
     } finally {
-      db?.close();
+      db?.close?.();
       vi.useRealTimers();
       if (previousBackend === undefined) delete process.env.AX_DB_BACKEND;
       else process.env.AX_DB_BACKEND = previousBackend;

@@ -10,6 +10,7 @@ import { materializeStepOutputs } from '../output-ports.js';
 import { resolveStepParams } from '../param-resolution.js';
 import type { PendingError, WorkflowExecutionHost } from './contracts.js';
 import { recordExternalEffectAttempt } from './external-effect.js';
+import { collectExecutionOutput } from './output.js';
 
 /** Shared action semantics for initial execution and every approval continuation. */
 export async function executeAction(
@@ -39,6 +40,10 @@ export async function executeAction(
   const connector = host.connectors[definition.connector];
   if (!connector) throw Object.assign(new Error(`Connector not found: ${definition.connector}`), { code: 'connector_missing' });
   const sideEffect = resolveEffectiveSideEffect(definition, params, ir.sideEffects?.[step.id] ?? step.sideEffect);
+  if (sideEffect === 'EXTERNAL' || sideEffect === 'EXTERNAL_HIGH') {
+    // Do not deliver a calculation that cannot be preserved as a completed result.
+    collectExecutionOutput(ir, stepResults, ctx.outputs);
+  }
   if (ir.outputContract && (sideEffect === 'EXTERNAL' || sideEffect === 'EXTERNAL_HIGH')) {
     const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
     if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);

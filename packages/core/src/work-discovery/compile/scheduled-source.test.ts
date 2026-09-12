@@ -37,6 +37,7 @@ it.each(['single', 'legacy', 'override', 'multiple'] as const)('runs a saved fil
       ir.document = JSON.stringify(document);
     }
     const store = new WorkflowStore(db);
+    store.setConnection('local_folder', true, { folders: [{ id: 'fixture', label: 'fixture', path: root }] });
     const saved = store.saveWorkflow(ir);
     const connectors = createTestConnectors();
     const localSheet = instantiateRegisteredConnector('local_sheet')!;

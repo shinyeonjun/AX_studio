@@ -77,6 +77,7 @@ export function compileBlueprintToWorkflow(
         expr: field.mapping,
         discoverySourceId: sourceId,
         outputPath: field.outputPath,
+        outputLabel: field.label,
       },
       bindings: Object.keys(bindings).length > 0 ? bindings : undefined,
       sideEffect: 'NONE',

@@ -44,6 +44,9 @@ function recordManualRunFailure(
   return result;
 }
 
+// Includes asynchronous input preparation, before the runtime creates its execution row.
+const preparingSavedRuns = new WeakMap<WorkflowStore, Set<string>>();
+
 /** Shared manual-run path for the command service and runtime IPC. */
 export async function runManualWorkflow(
   deps: ManualWorkflowRunDeps,
@@ -93,5 +96,14 @@ export async function runSavedWorkflowById(
   if (!ir) {
     throw Object.assign(new Error('Workflow not found'), { code: 'workflow_not_found' });
   }
-  return runManualWorkflow(deps, ir, { ephemeral: false, workflowId });
+  let active = preparingSavedRuns.get(deps.store);
+  if (!active) { active = new Set(); preparingSavedRuns.set(deps.store, active); }
+  if (active.has(workflowId) || deps.store.hasUnfinishedWorkflowExecution(workflowId)) {
+    throw Object.assign(new Error('이미 실행 중이거나 승인 대기 중인 업무입니다. 활동 또는 승인 화면을 확인해 주세요.'), {
+      code: 'workflow_already_running',
+    });
+  }
+  active.add(workflowId);
+  try { return await runManualWorkflow(deps, ir, { ephemeral: false, workflowId }); }
+  finally { active.delete(workflowId); }
 }

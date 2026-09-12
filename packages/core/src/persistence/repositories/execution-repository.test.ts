@@ -11,6 +11,35 @@ describe('execution history retention', () => {
   });
   afterEach(() => db.close?.());
 
+  it('detects unfinished work beyond the visible history page and unresolved approvals', () => {
+    const id = store.createExecution({ workflowId: 'saved-work', ephemeral: false });
+    db.prepare('UPDATE executions SET started_at = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', id);
+    for (let index = 0; index < 60; index++) {
+      store.finishExecution(store.createExecution({ ephemeral: true }), 'success');
+    }
+    expect(store.listExecutions().some(execution => execution.id === id)).toBe(false);
+    expect(store.hasUnfinishedWorkflowExecution('saved-work')).toBe(true);
+    expect(store.hasUnfinishedWorkflowExecution('other-work')).toBe(false);
+    store.markExecutionPending(id);
+    expect(store.hasUnfinishedWorkflowExecution('saved-work')).toBe(true);
+    store.finishExecution(id, 'failed');
+    expect(store.hasUnfinishedWorkflowExecution('saved-work')).toBe(false);
+    const approval = store.createApproval({ executionId: id, actionIds: ['send'], reason: 'legacy state' });
+    expect(store.hasUnfinishedWorkflowExecution('saved-work')).toBe(true);
+    store.resolveApproval(approval, false);
+    expect(store.hasUnfinishedWorkflowExecution('saved-work')).toBe(false);
+  });
+
+  it('stores successful results separately from logs and clears results on failure', () => {
+    const id = store.createExecution({ ephemeral: true });
+    const output = { version: 1 as const, fields: [{ path: 'total', label: 'Total', valueJson: '600' }] };
+    store.finishExecution(id, 'success', undefined, [], output);
+    expect(store.getExecution(id)).toMatchObject({ status: 'success', logJson: '[]', output });
+    store.finishExecution(id, 'failed', 'input_schema_drift', [], output);
+    expect(store.getExecution(id)?.output).toBeUndefined();
+    expect(db.prepare('SELECT output_json FROM executions WHERE id = ?').get(id)?.output_json).toBeNull();
+  });
+
   it('clears only terminal executions and keeps pending and claimed approvals', () => {
     const running = store.createExecution({ ephemeral: true });
     const pending = store.createExecution({ ephemeral: true });

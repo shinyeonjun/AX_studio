@@ -13,6 +13,7 @@ import type { WorkflowExecutionHost, PendingError } from './contracts.js';
 import { createConnectorContext } from './context.js';
 import { recordPreflightResult } from './preflight.js';
 import { runSequence } from './sequence.js';
+import { collectExecutionOutput } from './output.js';
 
 function discoverySourceInputs(ir: WorkflowIR): Record<string, string> {
   if (!ir.document) return {};
@@ -119,8 +120,9 @@ export async function executeWorkflow(
       const output = validateOutputContract(workflowIr.outputContract, ctx.variables, stepResults);
       if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
     }
-    host.config.store.finishExecution(executionId, 'success', undefined, log);
-    const result: ExecutionResult = { executionId, status: 'success', log };
+    const output = collectExecutionOutput(workflowIr, stepResults, ctx.outputs);
+    host.config.store.finishExecution(executionId, 'success', undefined, log, output);
+    const result: ExecutionResult = { executionId, status: 'success', log, output };
     host.notifyExecutionFinished(result);
     return result;
   } catch (err) {

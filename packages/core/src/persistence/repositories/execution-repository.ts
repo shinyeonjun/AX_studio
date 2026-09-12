@@ -3,6 +3,7 @@ import type { AppDatabase } from '../db.js';
 import { readRow, readRows } from '../db/types.js';
 import type { ExecutionRow, ExecutionStatus } from '../rows.js';
 import { hasOpenApprovalForExecution } from './approval-repository.js';
+import { parseExecutionOutput, type ExecutionOutput } from '../../contracts/execution-output.js';
 
 export function createExecution(
   db: AppDatabase,
@@ -41,10 +42,13 @@ export function finishExecution(
   status: Exclude<ExecutionStatus, 'running' | 'pending_approval'>,
   errorCode?: string,
   log?: unknown[],
+  output?: ExecutionOutput,
 ) {
+  const outputJson = status === 'success' && output ? JSON.stringify(output) : null;
+  if (outputJson && !parseExecutionOutput(outputJson)) throw new Error('invalid_execution_output');
   db
-    .prepare('UPDATE executions SET status = ?, finished_at = ?, error_code = ?, log_json = ? WHERE id = ?')
-    .run(status, new Date().toISOString(), errorCode ?? null, JSON.stringify(log ?? []), id);
+    .prepare('UPDATE executions SET status = ?, finished_at = ?, error_code = ?, log_json = ?, output_json = ? WHERE id = ?')
+    .run(status, new Date().toISOString(), errorCode ?? null, JSON.stringify(log ?? []), outputJson, id);
 }
 
 /** Leaves the execution open so a pending approval can resume it later. */
@@ -74,6 +78,7 @@ function mapExecution(row: ExecutionRow) {
     finishedAt: row.finished_at,
     errorCode: row.error_code,
     logJson: row.log_json,
+    output: row.status === 'success' ? parseExecutionOutput(row.output_json) : undefined,
     triggerType: row.trigger_type,
     irJson: row.ir_json ?? undefined,
     workspaceSessionId: row.workspace_session_id ?? undefined,
@@ -84,6 +89,13 @@ export function getExecution(db: AppDatabase, id: string) {
   const row = readRow<ExecutionRow>(db.prepare('SELECT * FROM executions WHERE id = ?'), id);
   if (!row) return undefined;
   return mapExecution(row);
+}
+
+export function hasUnfinishedWorkflowExecution(db: AppDatabase, workflowId: string): boolean {
+  return Boolean(db.prepare(`SELECT 1 FROM executions
+    WHERE workflow_id = ? AND (status IN ('running', 'pending_approval') OR EXISTS (
+      SELECT 1 FROM approvals WHERE execution_id = executions.id AND status IN ('pending', 'processing')
+    )) LIMIT 1`).get(workflowId));
 }
 
 export function listExecutions(db: AppDatabase, limit = 50) {

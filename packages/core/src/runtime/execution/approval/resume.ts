@@ -16,6 +16,7 @@ import { runSequence } from '../sequence.js';
 import { executeApprovedActions } from './approved-actions.js';
 import { restoreApprovalSnapshot } from './snapshot.js';
 import { prepareApprovalResume } from './guards.js';
+import { collectExecutionOutput } from '../output.js';
 
 export async function continueWorkflowAfterApproval(
   host: WorkflowExecutionHost,
@@ -121,9 +122,10 @@ export async function continueWorkflowAfterApproval(
       if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
     }
 
+    const output = collectExecutionOutput(ir, stepResults, ctx.outputs);
     host.config.store.resolveApproval(approvalId, true);
-    host.config.store.finishExecution(execution.id, 'success', undefined, log);
-    const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log };
+    host.config.store.finishExecution(execution.id, 'success', undefined, log, output);
+    const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log, output };
     host.notifyExecutionFinished(successResult);
     return successResult;
   } catch (err) {

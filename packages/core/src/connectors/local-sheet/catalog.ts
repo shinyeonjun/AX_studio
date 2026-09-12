@@ -19,7 +19,7 @@ export const LOCAL_SHEET_CATALOG: ConnectorCatalogEntry = {
   label: 'Sheets',
   description: '로컬 CSV/xlsx 읽기',
   connectable: false,
-  alwaysReal: false,
+  alwaysReal: true,
   runtimeAvailable: true,
   connectionKind: 'builtin',
   emoji: '📊',

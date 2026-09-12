@@ -31,6 +31,7 @@ export interface ExecutionProgress {
 }
 
 export interface ExecutionResult {
+  output?: import('../contracts/execution-output.js').ExecutionOutput;
   executionId: string;
   status: ExecutionResultStatus;
   errorCode?: string;

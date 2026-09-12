@@ -30,6 +30,9 @@ export function applyLegacyMigrations(db: AppDatabase): void {
   if (!columnNames(db, 'executions').includes('workspace_session_id')) {
     db.exec('ALTER TABLE executions ADD COLUMN workspace_session_id TEXT');
   }
+  if (!columnNames(db, 'executions').includes('output_json')) {
+    db.exec('ALTER TABLE executions ADD COLUMN output_json TEXT');
+  }
   if (!columnNames(db, 'workspace_chats').includes('workflow_id')) {
     db.exec('ALTER TABLE workspace_chats ADD COLUMN workflow_id TEXT');
   }

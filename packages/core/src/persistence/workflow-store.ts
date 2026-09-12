@@ -105,14 +105,16 @@ export class WorkflowStore {
     status: Exclude<ExecutionStatus, 'running' | 'pending_approval'>,
     errorCode?: string,
     log?: unknown[],
+    output?: import('../contracts/execution-output.js').ExecutionOutput,
   ) {
-    executionRepo.finishExecution(this.db, id, status, errorCode, log);
+    executionRepo.finishExecution(this.db, id, status, errorCode, log, output);
   }
   markExecutionPending(id: string, errorCode = 'pending_approval', log?: unknown[]) {
     executionRepo.markExecutionPending(this.db, id, errorCode, log);
   }
   updateExecutionLog(id: string, log: unknown[]) { executionRepo.updateExecutionLog(this.db, id, log); }
   getExecution(id: string) { return executionRepo.getExecution(this.db, id); }
+  hasUnfinishedWorkflowExecution(workflowId: string) { return executionRepo.hasUnfinishedWorkflowExecution(this.db, workflowId); }
   listExecutions(limit = 50) { return executionRepo.listExecutions(this.db, limit); }
   deleteExecution(id: string) { return executionRepo.deleteExecution(this.db, id); }
   clearExecutions() { return executionRepo.clearExecutions(this.db); }

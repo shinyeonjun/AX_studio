@@ -24,6 +24,7 @@ export const INITIAL_SCHEMA_SQL = [
   "  finished_at TEXT,",
   "  error_code TEXT,",
   "  log_json TEXT NOT NULL DEFAULT '[]',",
+  "  output_json TEXT,",
   "  trigger_type TEXT,",
   "  ir_json TEXT,",
   "  workspace_session_id TEXT",
