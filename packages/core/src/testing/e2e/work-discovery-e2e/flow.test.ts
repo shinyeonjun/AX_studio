@@ -8,6 +8,7 @@ import { ArtifactStore } from '../../../persistence/artifact-store.js';
 import { WorkDiscoveryService } from '../../../work-discovery/service.js';
 import { WorkflowRuntime } from '../../../runtime/engine.js';
 import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.js';
+import { readWorkbookFromPath } from '../../../connectors/local-sheet/read/workbook.js';
 import { TransformConnector } from '../../../connectors/transform/connector.js';
 import { writeSalesXlsx } from './fixtures.js';
 
@@ -34,7 +35,12 @@ async function setupDiscovery(dir: string) {
   const artifactStore = new ArtifactStore(join(dir, 'artifacts'));
   const snapshotDir = join(dir, 'snapshots');
   mkdirSync(snapshotDir, { recursive: true });
-  const service = new WorkDiscoveryService({ store, artifactStore, snapshotDir });
+  const service = new WorkDiscoveryService({
+    store,
+    artifactStore,
+    snapshotDir,
+    materializeWorkbook: readWorkbookFromPath,
+  });
   return { store, artifactStore, service, snapshotDir };
 }
 

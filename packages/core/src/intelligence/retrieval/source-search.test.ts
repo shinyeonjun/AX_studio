@@ -1,14 +1,10 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildDesignToolContext, executeDesignToolCalls } from '../design-tools/index.js';
-import { clearRetrievalStoreForTests } from './index.js';
 
 describe('sources.search retrieval gateway', () => {
-  afterEach(() => {
-    clearRetrievalStoreForTests();
-  });
 
   it('sources.search falls back when index is disabled', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ax-retrieval-off-'));

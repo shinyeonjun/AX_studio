@@ -88,7 +88,7 @@ export function loadScenarios(filters?: LoadScenarioOptions): ProductScenario[] 
   return merged;
 }
 
-export function coverageFor(scenarios: ProductScenario[]): {
+export function coverageFor(scenarios: Array<Pick<ProductScenario, 'covers'>>): {
   total: number;
   covered: number;
   missing: string[];

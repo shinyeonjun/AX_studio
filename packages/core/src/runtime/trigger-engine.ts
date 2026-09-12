@@ -8,7 +8,7 @@ import { TriggerPoller } from './trigger-engine/poll.js';
 import { PushTransportManager } from './trigger-engine/push.js';
 
 export class TriggerEngine {
-  private readonly timers = new Map<string, ReturnType<typeof setInterval>>();
+  private timer?: ReturnType<typeof setInterval>;
   private readonly tickMs = 30_000;
   private lifecycleGeneration = 0;
   private acceptingEvents = false;
@@ -46,13 +46,12 @@ export class TriggerEngine {
   }
 
   start(): void {
-    if (!this.timers.has('main')) {
+    if (!this.timer) {
       this.lifecycleGeneration += 1;
       this.acceptingEvents = true;
-      const interval = setInterval(() => {
+      this.timer = setInterval(() => {
         void this.tick();
       }, this.tickMs);
-      this.timers.set('main', interval);
       void this.tick();
     }
     void this.refreshPushTransports();
@@ -61,9 +60,9 @@ export class TriggerEngine {
   async stop(): Promise<void> {
     this.lifecycleGeneration += 1;
     this.acceptingEvents = false;
-    for (const timer of this.timers.values()) clearInterval(timer);
-    this.timers.clear();
-    await this.refreshPushTransports(null);
+    clearInterval(this.timer);
+    this.timer = undefined;
+    await Promise.all([this.poller.stop(), this.refreshPushTransports(null)]);
   }
 
   pushTransportActive(triggerType: string): boolean {

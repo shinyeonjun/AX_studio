@@ -15,6 +15,20 @@ export function normalizeMaxBytes(value: number | undefined): number {
     : HTTP_DEFAULT_MAX_RESPONSE_BYTES;
 }
 
+/** Keep displayed endpoint metadata free of URL credentials and query secrets. */
+export function safeHttpBaseUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return '[invalid base URL]';
+  }
+}
+
 export function normalizeHttpBaseUrl(raw: string): { ok: true; value: string } | { ok: false; error: string } {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: false, error: 'empty_base_url' };

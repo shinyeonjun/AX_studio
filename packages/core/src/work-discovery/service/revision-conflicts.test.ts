@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
@@ -10,6 +10,26 @@ import { WorkDiscoveryService } from '../service.js';
 import { makeSession } from './fixtures.js';
 
 describe('WorkDiscoveryService', () => {
+  it('does not revive a cancelled session when a delayed clarification answer arrives', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ax-discovery-cancel-answer-'));
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const service = new WorkDiscoveryService({ store, snapshotDir: join(dir, 'snapshots') });
+      const state = makeSession('wd_cancelled_answer');
+      store.saveDiscoverySession(state);
+      const cancelled = service.cancel(state.id);
+      expect(cancelled?.status).toBe('cancelled');
+      expect(service.answer(state.id, 'question_1', 'option_a')).toBeUndefined();
+      expect(service.answer(state.id, 'question_1', 'option_a', cancelled!.revision)).toBeUndefined();
+      expect(store.getDiscoverySessionState(state.id)).toEqual(cancelled);
+      expect(store.listWorkflows()).toHaveLength(0);
+    } finally {
+      db.close?.();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a stale answer without changing the session', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ax-discovery-answer-conflict-'));
     return createDatabaseAsync(':memory:').then((db) => {

@@ -14,7 +14,7 @@ describe('scanFolderCheckedAsync', () => {
     tempDirs.length = 0;
   });
 
-  it('falls back when the scan worker exits without returning a result', async () => {
+  it('reports worker failure instead of rescanning on the host when no result arrives', async () => {
     const folderPath = mkdtempSync(join(tmpdir(), 'ax-scan-folder-'));
     const workerDir = mkdtempSync(join(tmpdir(), 'ax-scan-worker-'));
     tempDirs.push(folderPath, workerDir);
@@ -27,12 +27,12 @@ describe('scanFolderCheckedAsync', () => {
     const result = await scanFolderCheckedAsync(folderPath, ['pdf']);
 
     expect(result).toMatchObject({
-      ok: true,
-      files: [{ fileName: 'report.pdf', extension: '.pdf' }],
+      ok: false,
+      errorCode: 'scan_worker_failed',
     });
   });
 
-  it('falls back when the scan worker stops responding', async () => {
+  it('reports a bounded timeout instead of rescanning on the host', async () => {
     const folderPath = mkdtempSync(join(tmpdir(), 'ax-scan-folder-'));
     const workerDir = mkdtempSync(join(tmpdir(), 'ax-scan-worker-'));
     tempDirs.push(folderPath, workerDir);
@@ -47,8 +47,24 @@ describe('scanFolderCheckedAsync', () => {
     await vi.advanceTimersByTimeAsync(30_000);
 
     await expect(resultPromise).resolves.toMatchObject({
-      ok: true,
-      files: [{ fileName: 'report.pdf', extension: '.pdf' }],
+      ok: false,
+      errorCode: 'scan_timeout',
+    });
+  });
+
+  it('reports a crashing worker without hiding the failure behind a synchronous scan', async () => {
+    const folderPath = mkdtempSync(join(tmpdir(), 'ax-scan-crash-'));
+    tempDirs.push(folderPath);
+    writeFileSync(join(folderPath, 'report.pdf'), 'report');
+    const workerPath = join(folderPath, 'crashing-worker.js');
+    writeFileSync(workerPath, "throw new Error('private diagnostic');");
+    vi.stubEnv('VITEST', 'false');
+    vi.stubEnv('AX_SCAN_WORKER_PATH', workerPath);
+
+    await expect(scanFolderCheckedAsync(folderPath, ['pdf'])).resolves.toEqual({
+      ok: false,
+      error: 'folder_scan_worker_failed',
+      errorCode: 'scan_worker_failed',
     });
   });
 });

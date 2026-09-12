@@ -1,10 +1,11 @@
-import { ipcMain, dialog } from 'electron';
+import { dialog } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { disconnectRdb, validateAndConnectRdb } from '../../rdb/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerRdbConnectionHandlers() {
-  ipcMain.handle('ax:pickSqliteFile', async () => {
+  ipcHandle('ax:pickSqliteFile', async () => {
     const result = await dialog.showOpenDialog({
       title: 'SQLite DB 파일 선택',
       properties: ['openFile'],
@@ -16,7 +17,7 @@ export function registerRdbConnectionHandlers() {
     return { ok: true as const, path: result.filePaths[0] };
   });
 
-  ipcMain.handle('ax:connectRdb', async (_event, payload: unknown) => {
+  ipcHandle('ax:connectRdb', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('DB 연결 정보 형식이 올바르지 않습니다.');
@@ -43,7 +44,7 @@ export function registerRdbConnectionHandlers() {
     return { ok: true };
   });
 
-  ipcMain.handle('ax:disconnectRdb', async () => {
+  ipcHandle('ax:disconnectRdb', async () => {
     const core = getCore();
     await disconnectRdb(core.store, core.runtime);
     notifyStateChanged();

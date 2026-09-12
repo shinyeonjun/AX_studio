@@ -8,7 +8,7 @@ import { emptyConfig, parseAiToml, serializeAiToml } from './toml.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 
 export function getAiConfigPath(): string {
-  if (app.isPackaged) {
+  if (app.isPackaged || process.env.AX_PRODUCT_QA === '1' || process.env.AX_E2E === '1') {
     return join(getDesktopAxDataPaths().config, 'ai.toml');
   }
   return join(app.getAppPath(), '../../ai.toml');

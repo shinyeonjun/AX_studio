@@ -5,13 +5,17 @@ export function createWorkspaceWorkflowActions(ctx: WorkspaceChatMessageContext)
   const registerWorkflow = async () => {
     const workflowId = ctx.workspaceWorkflowState?.workflowId;
     if (!workflowId || ctx.refs.busyRef.current || ctx.workflowRegistered) return;
+    const epoch = ctx.refs.sessionEpochRef.current;
+    const sessionId = ctx.refs.workspaceSessionIdRef.current;
     ctx.setError('');
     try {
       await window.ax.setWorkflowActive(workflowId, true);
-      ctx.setWorkflowRegistered(true);
+      if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(sessionId)) ctx.setWorkflowRegistered(true);
       await ctx.refresh();
     } catch (err) {
-      ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
+      if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(sessionId)) {
+        ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
+      }
     }
   };
 

@@ -32,11 +32,31 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies
         run: npm ci
 
+      - name: Document engine dependencies
+        run: python -m pip install -r packages/document-engine/requirements.txt
+
+      - name: Build Core package for dependent tests
+        run: npm run build -w @ax-studio/core
+
       - name: Core tests
         run: npm test
+
+      - name: Desktop tests
+        run: npm run test:desktop
+
+      - name: Desktop type check
+        run: npm run typecheck:desktop
+
+      - name: Document engine tests
+        run: npm run test:document-engine
 
       - name: Core evaluation
         run: npm run eval
@@ -61,3 +81,38 @@ jobs:
           name: product-qa-runs
           path: test/product-qa/runs/
           if-no-files-found: ignore
+
+  windows-desktop:
+    name: windows desktop
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Python for packaging
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build Core package for dependent tests
+        run: npm run build -w @ax-studio/core
+
+      - name: Desktop tests
+        run: npm run test:desktop
+
+      - name: Desktop type check
+        run: npm run typecheck:desktop
+
+      - name: Windows package smoke
+        run: npm run pack:win -w @ax-studio/desktop

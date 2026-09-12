@@ -24,6 +24,7 @@ export const slackNewMessageHandler: TriggerHandler<{ type: 'slack.new_message';
       {
         executionId: `trigger-poll:${ctx.workflowId}`,
         workflowId: ctx.workflowId,
+        abortSignal: ctx.abortSignal,
         variables: {},
         log: () => {},
       },

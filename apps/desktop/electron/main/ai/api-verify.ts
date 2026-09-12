@@ -1,38 +1,39 @@
-import { fetchWithTimeout } from '../fetch-timeout.js';
+import { fetchTextWithTimeout } from '../fetch-timeout.js';
 
 export async function verifyAnthropicApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
-  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
+  const { response, text } = await fetchTextWithTimeout('https://api.anthropic.com/v1/models', {
+    method: 'GET',
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'claude-3-5-haiku-latest',
-      max_tokens: 1,
-      messages: [{ role: 'user', content: 'ping' }],
-    }),
   });
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     throw new Error('Anthropic API 키가 유효하지 않습니다.');
   }
+  if (response.status === 403) {
+    throw new Error('Anthropic API 키에 모델 조회 권한이 없습니다.');
+  }
+  if (response.status === 429) {
+    throw new Error('Anthropic API 요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.');
+  }
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(text || `Anthropic API 확인 실패 (${response.status})`);
   }
-  return { ok: true, label: 'Anthropic API 연결됨' };
+  return { ok: true, label: 'Anthropic API 키 인증됨' };
 }
 
 export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
-  const response = await fetchWithTimeout('https://api.openai.com/v1/models', {
+  const { response, text } = await fetchTextWithTimeout('https://api.openai.com/v1/models', {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (response.status === 401) {
     throw new Error('OpenAI API 키가 유효하지 않습니다.');
   }
+  if (response.status === 429) {
+    throw new Error('OpenAI API 요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.');
+  }
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(text || `OpenAI API 확인 실패 (${response.status})`);
   }
   return { ok: true, label: 'OpenAI API 연결됨' };
@@ -41,9 +42,8 @@ export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; la
 export async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
   const base = (process.env.OLLAMA_BASE_URL?.trim() || process.env.OLLAMA_HOST?.trim() || 'http://localhost:11434')
     .replace(/\/$/, '');
-  const response = await fetchWithTimeout(`${base}/api/tags`);
+  const { response, text } = await fetchTextWithTimeout(`${base}/api/tags`);
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(text || `Ollama 연결 확인 실패 (${response.status})`);
   }
   return { ok: true, label: 'Ollama 로컬 서버 연결됨' };

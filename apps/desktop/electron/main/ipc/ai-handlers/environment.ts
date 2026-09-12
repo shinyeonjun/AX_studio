@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { type AiBrand } from '@ax-studio/core';
 import { ENV_FILE_ALLOWED_KEYS, getEnvFilePath, maskSecret, readEnvFile, setEnvFileValue } from '../../env-file.js';
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../ai/config-file.js';
 
 export function registerAiEnvironmentHandlers(): void {
-  ipcMain.handle('ax:setEnvSecret', async (_event, key: unknown, value: unknown) => {
+  ipcHandle('ax:setEnvSecret', async (_event, key: unknown, value: unknown) => {
     if (typeof key !== 'string' || !key.trim()) throw new Error('환경 변수 이름이 필요합니다.');
     if (typeof value !== 'string') throw new Error('환경 변수 값 형식이 올바르지 않습니다.');
     const trimmed = value.trim();
@@ -24,7 +24,7 @@ export function registerAiEnvironmentHandlers(): void {
     return { ok: true, masked: maskSecret(trimmed) };
   });
 
-  ipcMain.handle('ax:getEnvSecretStatus', async (_event, key: unknown) => {
+  ipcHandle('ax:getEnvSecretStatus', async (_event, key: unknown) => {
     if (typeof key !== 'string' || !key.trim()) throw new Error('환경 변수 이름이 필요합니다.');
     if (!isAiEnvKey(key) && !ENV_FILE_ALLOWED_KEYS.has(key)) {
       throw new Error('조회할 수 없는 환경 변수입니다.');

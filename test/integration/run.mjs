@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,16 +8,22 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const integrationSpecs = [
   'src/testing/e2e',
-  'src/work-discovery/service.test.ts',
+  'src/work-discovery/service',
   'src/work-discovery/observation/observe-artifact.test.ts',
-  'src/modules/local-sheet/discovery-source.test.ts',
-  'src/store/artifact-store.test.ts',
-  'src/store/discovery-repository.test.ts',
-  'src/modules/http/request.probe.test.ts',
-  'src/triggers/webhook/listener.test.ts',
-  'src/runtime/trigger-engine.test.ts',
-  'src/modules/rdb/connector.test.ts',
+  'src/connectors/local-sheet/discovery-source',
+  'src/persistence/artifact',
+  'src/persistence/discovery-repository',
+  'src/connectors/http/request.probe.test.ts',
+  'src/triggers/webhook/listener',
+  'src/runtime/trigger-engine',
+  'src/connectors/rdb/connector.test.ts',
 ];
+
+const missing = integrationSpecs.filter((path) => !existsSync(join(root, 'packages/core', path)));
+if (missing.length > 0) {
+  console.error(`[integration] test selections no longer exist:\n${missing.join('\n')}`);
+  process.exit(1);
+}
 
 const result = spawnSync(
   npmCommand,

@@ -18,6 +18,8 @@ describe('RDB host cancellation', () => {
   ] as const)('cancels a stalled handshake: %j', async ({ type, allowHalfOpen }) => {
     const controller = new AbortController();
     const sockets = new Set<Socket>();
+    let handshakeStarted!: () => void;
+    const handshake = new Promise<void>(resolve => { handshakeStarted = resolve; });
     let socketClosed!: () => void;
     const closed = new Promise<void>(resolve => { socketClosed = resolve; });
     const server = createServer({ allowHalfOpen }, socket => {
@@ -26,6 +28,7 @@ describe('RDB host cancellation', () => {
       socket.on('data', () => {});
       socket.once('close', () => { sockets.delete(socket); socketClosed(); });
       controller.abort();
+      handshakeStarted();
     });
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
@@ -36,10 +39,12 @@ describe('RDB host cancellation', () => {
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const result = await Promise.race([
-        connector.execute('query.read', { table: 'items' }, {
+      const execution = connector.execute('query.read', { table: 'items' }, {
           executionId: 'cancelled', variables: {}, log: () => {}, abortSignal: controller.signal,
-        }),
+        });
+      await handshake;
+      const result = await Promise.race([
+        execution,
         new Promise(resolve => { timer = setTimeout(() => resolve('did_not_cancel'), 800); }),
       ]);
       expect(result).toMatchObject({ ok: false, errorCode: 'aborted' });

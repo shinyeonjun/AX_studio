@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import {
   SlackConnector,
   validateSlackBotToken,
@@ -32,7 +32,7 @@ function readSlackPayload(payload: unknown): { token: string; appToken?: string 
 }
 
 export function registerSlackConnectionHandlers() {
-  ipcMain.handle(
+  ipcHandle(
     'ax:connectSlack',
     async (_e, payload: unknown) => {
       const core = getCore();
@@ -110,7 +110,7 @@ export function registerSlackConnectionHandlers() {
       };
     },
   );
-  ipcMain.handle('ax:disconnectSlack', async () => {
+  ipcHandle('ax:disconnectSlack', async () => {
     const core = getCore();
     await core.triggerEngine.refreshSlackSocket(null);
     await deleteSlackSecret();

@@ -1,4 +1,5 @@
-import { ipcMain, dialog } from 'electron';
+import { dialog } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { existsSync, statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -13,7 +14,7 @@ import { getCore } from '../../core-instance.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerLocalFolderConnectionHandlers() {
-  ipcMain.handle('ax:pickLocalFolder', async () => {
+  ipcHandle('ax:pickLocalFolder', async () => {
     const result = await dialog.showOpenDialog({
       title: '연결할 폴더 선택',
       properties: ['openDirectory'],
@@ -24,7 +25,7 @@ export function registerLocalFolderConnectionHandlers() {
     return { ok: true as const, path: result.filePaths[0] };
   });
 
-  ipcMain.handle('ax:addLocalFolder', async (_event, payload: unknown) => {
+  ipcHandle('ax:addLocalFolder', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('폴더 연결 정보 형식이 올바르지 않습니다.');
@@ -57,7 +58,7 @@ export function registerLocalFolderConnectionHandlers() {
     return { ok: true, folder: entry, status: getLocalFolderConnectionStatus(nextConfig, true) };
   });
 
-  ipcMain.handle('ax:removeLocalFolder', async (_event, folderId: unknown) => {
+  ipcHandle('ax:removeLocalFolder', async (_event, folderId: unknown) => {
     const core = getCore();
     if (typeof folderId !== 'string' || !folderId.trim()) {
       throw new Error('folderId가 필요합니다.');

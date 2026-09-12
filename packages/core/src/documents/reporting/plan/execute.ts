@@ -24,6 +24,7 @@ import {
   evaluatePredicate,
   evaluateValue,
   evaluateArithmetic,
+  fieldPaths,
   numericValue,
   valueAtPath,
   type ReportRow,
@@ -50,21 +51,6 @@ export interface ReportPlanResult {
 
 function assertUnique(values: string[], code: string): void {
   if (new Set(values).size !== values.length) throw new Error(code);
-}
-
-function fieldPaths(value: unknown, paths = new Set<string>()): Set<string> {
-  if (Array.isArray(value)) {
-    for (const item of value) fieldPaths(item, paths);
-    return paths;
-  }
-  if (!value || typeof value !== 'object') return paths;
-  const record = value as Record<string, unknown>;
-  if (record.kind === 'field' && typeof record.path === 'string') {
-    const path = record.path.trim();
-    if (path) paths.add(path);
-  }
-  for (const child of Object.values(record)) fieldPaths(child, paths);
-  return paths;
 }
 
 function assertDatasetFieldSourcesJoined(plan: ReportPlan, knownSourceAliases: Set<string>): void {
@@ -546,12 +532,13 @@ export function executeReportPlan(
       assertColumnsExist(outputPredicateColumns(table.filter), available, `report_view_filter_column_missing:${table.id}`);
     }
     const selected = source.rows
-      .filter((row) => !table.filter || evaluateOutputPredicate(table.filter, row.raw))
+      .filter((row) => !table.filter || evaluateOutputPredicate(table.filter, row.raw));
+    const materialized = sortRows(selected, table.sort)
+      .slice(0, table.limit ?? selected.length)
       .map((row) => ({
         raw: Object.fromEntries(columns.map((column) => [column, row.raw[column] ?? null])),
         display: Object.fromEntries(columns.map((column) => [column, row.display[column] ?? ''])),
       }));
-    const materialized = sortRows(selected, table.sort).slice(0, table.limit ?? selected.length);
     tables[table.id] = { columns, rows: materialized };
   }
 

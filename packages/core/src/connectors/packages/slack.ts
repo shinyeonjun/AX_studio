@@ -5,10 +5,10 @@ import { slackNewMessageHandler } from '../../triggers/slack/new-message/index.j
 import { slackChannelMatches } from '../../triggers/slack/new-message/channel-match.js';
 import { SlackSocketModeListener } from '../../triggers/slack/new-message/socket-mode.js';
 import { parseSlackConnectionConfig } from '../../triggers/types.js';
-import type { DesignToolContext } from '../../intelligence/design-tools/types.js';
+import type { SourceListingContext } from '../types.js';
 import { SLACK_CAPABILITIES, SLACK_CATALOG } from '../slack/catalog.js';
 
-function slackSources(ctx: DesignToolContext) {
+function slackSources(ctx: SourceListingContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'slack');
   const status = getSlackConnectionStatus(conn?.config, Boolean(conn?.connected), false);
   if (!status.connected) {

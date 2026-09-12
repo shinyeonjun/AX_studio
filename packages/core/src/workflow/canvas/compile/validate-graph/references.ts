@@ -6,7 +6,7 @@ import {
 } from '../../draft/schema.js';
 import { getNodeParams } from '../../draft/actions.js';
 import { resolveIfNodeCondition } from '../../draft/conditions.js';
-import type { ConditionExpr } from '../../../../runtime/condition-expr.js';
+import type { ConditionExpr } from '../../../condition-expr/schema.js';
 import type { DraftGraphIssue } from './types.js';
 
 function conditionRefs(condition: ConditionExpr | undefined): string[] {

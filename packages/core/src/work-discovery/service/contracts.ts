@@ -1,6 +1,9 @@
 import type { ArtifactStore } from '../../persistence/artifact-store.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
-import type { WorkbookMaterializer } from '../../contracts/discovery-source.js';
+import type {
+  DiscoverySourceProvider,
+  WorkbookMaterializer,
+} from '../../contracts/discovery-source.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { DiscoverySessionState } from '../schema.js';
 import type { DiscoverySourceRegistry } from '../sources/registry.js';
@@ -11,6 +14,8 @@ export interface WorkDiscoveryServiceOptions {
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceRegistry?: DiscoverySourceRegistry;
+  sourceProviders?: readonly DiscoverySourceProvider[];
+  materializeWorkbook?: WorkbookMaterializer['readWorkbookFromPath'];
   sourceReadsMax?: number;
   autoResume?: boolean;
 }

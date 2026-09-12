@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import {
   getAiProviderDisplay,
   type AiBrand,
@@ -14,7 +14,7 @@ import {
 import { migrateDesktopAiProvider } from '../../ai/provider-migrate.js';
 
 export function registerAiProviderHandlers(): void {
-  ipcMain.handle('ax:setAiProvider', async (_event, raw: unknown) => {
+  ipcHandle('ax:setAiProvider', async (_event, raw: unknown) => {
     const core = getCore();
     const config = migrateDesktopAiProvider(raw);
     core.store.setSetting('aiProvider', config);
@@ -25,7 +25,7 @@ export function registerAiProviderHandlers(): void {
     return { ok: true, label: getAiProviderDisplay(config) };
   });
 
-  ipcMain.handle(
+  ipcHandle(
     'ax:saveAiBrandConfig',
     async (_event, brand: AiBrand, prefs: { mode?: string; model?: string; apiKey?: string }) => {
       if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {

@@ -8,8 +8,20 @@ function minuteKey(date = new Date()): string {
   return date.toISOString().slice(0, 16);
 }
 
+type PendingOccurrence = {
+  workflowId: string;
+  occurrenceKey: string;
+  triggerType: 'once' | 'schedule';
+  workflowVersion?: number;
+  triggerSnapshot?: string;
+};
+
+const PENDING_OCCURRENCES_SETTING = 'scheduler.pendingOccurrences';
+const LAST_OBSERVED_SETTING = 'scheduler.lastObservedAt';
+const MAX_CATCH_UP_MINUTES = 24 * 60;
+
 export class Scheduler {
-  private timers: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private timer?: ReturnType<typeof setInterval>;
   private tickMs = 30_000;
   private lifecycleGeneration = 0;
   private tickInProgress = false;
@@ -21,17 +33,16 @@ export class Scheduler {
   ) {}
 
   start() {
-    if (this.timers.has('main')) return;
+    if (this.timer) return;
     this.lifecycleGeneration += 1;
-    const interval = setInterval(() => this.tick(), this.tickMs);
-    this.timers.set('main', interval);
+    this.timer = setInterval(() => this.tick(), this.tickMs);
     void this.tick();
   }
 
   stop() {
     this.lifecycleGeneration += 1;
-    for (const t of this.timers.values()) clearInterval(t);
-    this.timers.clear();
+    clearInterval(this.timer);
+    this.timer = undefined;
   }
 
   private lastFired(): Record<string, string> {
@@ -49,8 +60,84 @@ export class Scheduler {
     this.store.setSetting('scheduler.lastFired', fired);
   }
 
-  private alreadyFiredThisMinute(workflowId: string): boolean {
-    return this.lastFired()[workflowId] === minuteKey();
+  private pendingOccurrences(): PendingOccurrence[] {
+    const stored = this.store.getSetting<unknown>(PENDING_OCCURRENCES_SETTING, []);
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((entry): entry is PendingOccurrence => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+      const candidate = entry as Record<string, unknown>;
+      return typeof candidate.workflowId === 'string' &&
+        typeof candidate.occurrenceKey === 'string' &&
+        (candidate.triggerType === 'once' || candidate.triggerType === 'schedule');
+    });
+  }
+
+  private savePendingOccurrences(occurrences: PendingOccurrence[]): void {
+    this.store.setSetting(PENDING_OCCURRENCES_SETTING, occurrences);
+  }
+
+  private lastObservedAt(): Date | undefined {
+    const value = this.store.getSetting<unknown>(LAST_OBSERVED_SETTING, undefined);
+    if (typeof value !== 'string') return undefined;
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) ? new Date(timestamp) : undefined;
+  }
+
+  private removePendingOccurrence(occurrence: PendingOccurrence): void {
+    this.savePendingOccurrences(this.pendingOccurrences().filter((item) =>
+      item.workflowId !== occurrence.workflowId || item.occurrenceKey !== occurrence.occurrenceKey,
+    ));
+  }
+
+  private enqueueDueOccurrences(now: Date): void {
+    const pending = this.pendingOccurrences();
+    const pendingKeys = new Set(pending.map((entry) => `${entry.workflowId}:${entry.occurrenceKey}`));
+    const fired = this.lastFired();
+    const additions: PendingOccurrence[] = [];
+    const currentMinute = new Date(now);
+    currentMinute.setSeconds(0, 0);
+    const observed = this.lastObservedAt();
+    const firstCatchUpMinute = observed && observed.getTime() < currentMinute.getTime()
+      ? new Date(Math.max(observed.getTime() + 60_000, currentMinute.getTime() - MAX_CATCH_UP_MINUTES * 60_000))
+      : currentMinute;
+    firstCatchUpMinute.setSeconds(0, 0);
+
+    for (const summary of this.store.listWorkflows()) {
+      if (!summary.active) continue;
+      const ir = this.store.getWorkflow(summary.id);
+      if (!ir?.trigger) continue;
+
+      let due = false;
+      let triggerType: PendingOccurrence['triggerType'] = 'schedule';
+      let occurrenceKey = minuteKey(now);
+      if (ir.trigger.type === 'once') {
+        const runAt = Date.parse(ir.trigger.runAt);
+        due = Number.isFinite(runAt) && runAt <= now.getTime() && !fired[summary.id];
+        triggerType = 'once';
+      } else if (ir.trigger.type === 'schedule') {
+        // Coalesce missed sleep/restart intervals to the latest due minute.
+        // The current minute is always examined so a failed occurrence can
+        // still be retried without waiting for another matching minute.
+        for (let candidate = new Date(firstCatchUpMinute); candidate <= currentMinute; candidate.setTime(candidate.getTime() + 60_000)) {
+          if (cronMatches(ir.trigger.schedule, candidate, ir.trigger.timezone)) {
+            occurrenceKey = minuteKey(candidate);
+            due = true;
+          }
+        }
+        due = due && fired[summary.id] !== occurrenceKey;
+        triggerType = 'schedule';
+      }
+
+      const key = `${summary.id}:${occurrenceKey}`;
+      if (due && !pendingKeys.has(key)) {
+        additions.push({ workflowId: summary.id, occurrenceKey, triggerType,
+          workflowVersion: ir.version, triggerSnapshot: JSON.stringify(ir.trigger) });
+        pendingKeys.add(key);
+      }
+    }
+
+    if (additions.length > 0) this.savePendingOccurrences([...pending, ...additions]);
+    this.store.setSetting(LAST_OBSERVED_SETTING, currentMinute.toISOString());
   }
 
   private async executeScheduledWorkflow(
@@ -82,46 +169,49 @@ export class Scheduler {
     const globalActive = this.store.getGlobalActive();
     if (!globalActive) return;
 
-    const works = this.store.listWorkflows();
-    for (const s of works) {
-      if (generation !== this.lifecycleGeneration) return;
-      if (!s.active) continue;
-      const ir = this.store.getWorkflow(s.id);
-      if (!ir?.trigger) continue;
-      const occurrenceKey = minuteKey();
-
-      if (ir.trigger.type === 'once') {
-        const runAt = Date.parse(ir.trigger.runAt);
-        if (!Number.isFinite(runAt) || runAt > Date.now()) continue;
-        if (this.alreadyFiredThisMinute(s.id) || this.lastFired()[s.id]) continue;
-        if (generation !== this.lifecycleGeneration) return;
-        const result = await this.executeScheduledWorkflow(ir, 'once');
-        if (!result) continue;
-        if (generation !== this.lifecycleGeneration) return;
-        if (result.status === 'pending_approval') {
-          // Deactivate without marking lastFired so reactivating the job can
-          // fire it again; the paused execution resumes through approval.
-          this.store.setWorkflowActive(s.id, false);
-        }
-        if (result.status === 'success') {
-          this.markFired(s.id, occurrenceKey);
-          this.store.setWorkflowActive(s.id, false);
-          this.store.deleteWorkflow(s.id);
-          this.runtime.removeWorkflow(s.id);
-        }
-        this.onScheduledRun?.(s.id, result);
+    this.enqueueDueOccurrences(new Date());
+    const pending = this.pendingOccurrences();
+    for (const occurrence of pending) {
+      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
+      const active = this.store.isWorkflowActive(occurrence.workflowId);
+      if (!active) {
+        this.removePendingOccurrence(occurrence);
+        continue;
+      }
+      const ir = this.store.getWorkflow(occurrence.workflowId);
+      if (!ir?.trigger || ir.trigger.type !== occurrence.triggerType ||
+        (occurrence.workflowVersion !== undefined && occurrence.workflowVersion !== ir.version) ||
+        (occurrence.triggerSnapshot !== undefined && occurrence.triggerSnapshot !== JSON.stringify(ir.trigger))) {
+        this.removePendingOccurrence(occurrence);
         continue;
       }
 
-      if (ir.trigger.type !== 'schedule') continue;
-      if (!cronMatches(ir.trigger.schedule, new Date(), ir.trigger.timezone)) continue;
-      if (this.alreadyFiredThisMinute(s.id)) continue;
-      if (generation !== this.lifecycleGeneration) return;
-      const result = await this.executeScheduledWorkflow(ir, 'schedule');
-      if (!result) continue;
-      if (generation !== this.lifecycleGeneration) return;
-      if (result.status !== 'failed') this.markFired(s.id, occurrenceKey);
-      this.onScheduledRun?.(s.id, result);
+      const result = await this.executeScheduledWorkflow(ir, occurrence.triggerType);
+      if (!result) {
+        this.removePendingOccurrence(occurrence);
+        continue;
+      }
+      // Stopping prevents new work; it must not erase acknowledgement of work already completed.
+      const current = this.store.getWorkflow(occurrence.workflowId);
+      const unchanged = current?.version === ir.version && JSON.stringify(current.trigger) === JSON.stringify(ir.trigger);
+      if (occurrence.triggerType === 'once') {
+        if (result.status === 'pending_approval' && unchanged) {
+          // Deactivate without marking lastFired so reactivating the job can
+          // fire it again; the paused execution resumes through approval.
+          this.store.setWorkflowActive(occurrence.workflowId, false);
+        }
+        if (result.status === 'success' && unchanged) {
+          this.markFired(occurrence.workflowId, occurrence.occurrenceKey);
+          this.store.setWorkflowActive(occurrence.workflowId, false);
+          this.store.deleteWorkflow(occurrence.workflowId);
+          this.runtime.removeWorkflow(occurrence.workflowId);
+        }
+      } else if (result.status !== 'failed' && unchanged) {
+        this.markFired(occurrence.workflowId, occurrence.occurrenceKey);
+      }
+
+      this.removePendingOccurrence(occurrence);
+      this.onScheduledRun?.(occurrence.workflowId, result);
     }
   }
 

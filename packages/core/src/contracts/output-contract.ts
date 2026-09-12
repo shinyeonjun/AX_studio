@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TableColumnTypeSchema, type TableColumnType } from './artifacts/table.js';
 
 /** Output value kinds observed by Work Discovery and checked at runtime. */
 export const OutputContractValueKindSchema = z.enum([
@@ -10,17 +11,7 @@ export const OutputContractValueKindSchema = z.enum([
   'image',
 ]);
 
-export const InputContractColumnTypeSchema = z.enum([
-  'string',
-  'number',
-  'integer',
-  'boolean',
-  'date',
-  'datetime',
-  'currency',
-  'percentage',
-  'unknown',
-]);
+export const InputContractColumnTypeSchema = TableColumnTypeSchema;
 
 /**
  * Only aggregate metadata is persisted. Raw historical output values are
@@ -61,7 +52,7 @@ export const OutputContractSchema = z.object({
 });
 
 export type OutputContractValueKind = z.infer<typeof OutputContractValueKindSchema>;
-export type InputContractColumnType = z.infer<typeof InputContractColumnTypeSchema>;
+export type InputContractColumnType = TableColumnType;
 export type OutputContractFieldBaseline = z.infer<typeof OutputContractFieldBaselineSchema>;
 export type OutputContractField = z.infer<typeof OutputContractFieldSchema>;
 export type InputContractColumn = z.infer<typeof InputContractColumnSchema>;

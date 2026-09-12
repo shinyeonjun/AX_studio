@@ -82,4 +82,52 @@ describe('draftToFlow', () => {
       'trigger->step:read_trigger_mail',
     ]);
   });
+
+  it('shows the false skip path when a conditional has no else steps', () => {
+    const graph = draftToFlow(draft([{
+      type: 'if', id: 'check',
+      condition: { op: 'eq', left: { ref: 'status' }, right: { lit: 'paid' } },
+      thenStepIds: ['notify'],
+    }, action('notify'), action('after')]));
+
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'step:check', target: 'join:check', label: '아니오' }),
+      expect.objectContaining({ source: 'step:notify', target: 'join:check' }),
+      expect.objectContaining({ source: 'join:check', target: 'step:after' }),
+    ]));
+  });
+
+  it('shows the true skip path when a conditional has no then steps', () => {
+    const graph = draftToFlow(draft([{
+      type: 'if', id: 'check',
+      condition: { op: 'eq', left: { ref: 'status' }, right: { lit: 'paid' } },
+      elseStepIds: ['notify'],
+    }, action('notify')]));
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'step:check', target: 'join:check', label: '예' }),
+      expect.objectContaining({ source: 'step:notify', target: 'join:check' }),
+    ]));
+  });
+
+  it('reports a reachable branch cycle instead of recursively rendering forever', () => {
+    const branch = (id: string, target: string): WorkflowNode => ({
+      type: 'if', id, thenStepIds: [target],
+      condition: { op: 'eq', left: { lit: true }, right: { lit: true } },
+    });
+    const graph = draftToFlow(draft([branch('entry', 'a'), branch('a', 'b'), branch('b', 'a')]));
+    expect(graph).toMatchObject({ nodes: [], edges: [], hasContent: true,
+      error: expect.stringContaining('순환') });
+  });
+
+  it.each([
+    [['a', 'a']],
+    [['a', 'b'], ['b', 'a']],
+  ])('reports cycles even when no top-level branch exists: %j', (...links) => {
+    const nodes: WorkflowNode[] = links.map(([id, target]) => ({
+      type: 'if', id, thenStepIds: [target],
+      condition: { op: 'eq', left: { lit: true }, right: { lit: true } },
+    }));
+    expect(draftToFlow(draft(nodes))).toMatchObject({ nodes: [], edges: [],
+      error: expect.stringContaining('순환') });
+  });
 });

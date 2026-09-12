@@ -1,5 +1,10 @@
 import type { ArtifactStore } from '../../../../persistence/artifact-store.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
+import type {
+  DiscoverySourceProvider,
+  WorkbookMaterializer,
+} from '../../../../contracts/discovery-source.js';
+import type { DiscoverySourceRegistry } from '../../../../work-discovery/sources/registry.js';
 import type { WorkspaceSourceService } from '../../../../persistence/workspace-source-service.js';
 import type { WorkflowIR } from '../../../../workflow/schema.js';
 import type { AxCommandExecutionContext } from '../access.js';
@@ -19,6 +24,9 @@ export interface AxCommandServiceOptions {
   artifactStore?: ArtifactStore;
   workspaceSources?: WorkspaceSourceService;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
+  discoverySourceRegistry?: DiscoverySourceRegistry;
+  discoverySourceProviders?: readonly DiscoverySourceProvider[];
+  discoveryWorkbookMaterializer?: WorkbookMaterializer['readWorkbookFromPath'];
   autoResumeDiscovery?: boolean;
   repairSnapshotRoot?: string;
 }

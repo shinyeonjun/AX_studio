@@ -26,14 +26,15 @@ import {
 import { migrateAxDataIfNeeded } from '../data-migrate.js';
 import { E2EDocumentEngineClient } from '../e2e-test-seam.js';
 import { hydrateConnectorsForStartup } from './connectors.js';
-import { setWorkspaceSourceUnsubscribe } from './lifecycle.js';
+import { drainDesktopCore, isDesktopShuttingDown, setDesktopStartupTask, setWorkspaceSourceUnsubscribe } from './lifecycle.js';
 
 export function registerDesktopReadyHandler(): void {
-  app.whenReady().then(async () => {
+  const startup = app.whenReady().then(async () => {
     try {
+      if (isDesktopShuttingDown()) return;
       const isE2E = process.env.AX_E2E === '1';
       const paths = initDesktopAxDataPaths();
-      if (!isE2E) migrateAxDataIfNeeded(paths);
+      if (!isE2E) await migrateAxDataIfNeeded(paths);
       app.setPath('cache', paths.cache.chromium);
 
       if (process.env.AX_E2E === '1' && process.env.AX_E2E_DOCUMENT_ENGINE === 'mock') {
@@ -48,6 +49,7 @@ export function registerDesktopReadyHandler(): void {
         aiToml = await loadAiTomlIntoEnv();
       }
 
+      if (isDesktopShuttingDown()) return;
       const core = await createAxStudioCore({
         paths,
         desktopPrintBridge: { printHtml: printHtmlToPdf },
@@ -59,6 +61,11 @@ export function registerDesktopReadyHandler(): void {
         resolveConnectionConfig: async (connector, config) =>
           connector === 'rdb' ? resolveRdbConnectionConfig(config) : config,
       });
+
+      if (isDesktopShuttingDown()) {
+        if (!await drainDesktopCore(core)) throw new Error('desktop_late_core_drain_failed');
+        return;
+      }
 
       if (aiToml?.active) {
         const config = migrateDesktopAiProvider({
@@ -88,6 +95,7 @@ export function registerDesktopReadyHandler(): void {
       createTray();
 
       const slackSecret = await hydrateConnectorsForStartup(core);
+      if (isDesktopShuttingDown()) return;
       setWebhookSecretResolver(() => getWebhookSecret());
       notifyStateChanged();
       core.scheduler.start();
@@ -116,4 +124,5 @@ export function registerDesktopReadyHandler(): void {
       app.exit(1);
     }
   });
+  setDesktopStartupTask(startup);
 }

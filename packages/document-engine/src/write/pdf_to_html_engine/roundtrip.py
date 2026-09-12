@@ -60,7 +60,13 @@ def _page_source_images(page: Any) -> list[str]:
 
 
 def _roundtrip_html(source_path: Path, doc: Any, page_count: int) -> str:
-    from docling_core.types.doc import ImageRefMode
+    try:
+        from docling_core.types.doc import ImageRefMode
+    except ImportError:
+        # Basic/fake adapters can still provide an HTML export without the
+        # optional Docling package. Keep the contract's string value stable.
+        class ImageRefMode:
+            EMBEDDED = "embedded"
     from pypdf import PdfReader
 
     export_html = getattr(doc, "export_to_html", None)

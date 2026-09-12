@@ -62,14 +62,19 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       );
       savedSessionId = saved.id;
       ctx.onSessionsChanged?.();
-      if (ctx.isViewingSession(savedSessionId)) {
+      if (!ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
+        ctx.refs.pendingWorkspaceChatRefreshRef.current = savedSessionId;
+      }
+      if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
         ctx.setChatMessages(saved.messages);
         ctx.refs.workspaceSessionIdRef.current = saved.id;
         ctx.setWorkspaceSessionId(saved.id);
         const sourceResult = await window.ax.listWorkspaceSources(saved.id);
+        if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
         ctx.setWorkspaceSources(sourceResult.sources);
         if (changedWorkflowId) {
           const workflow = await window.ax.loadWorkChat(changedWorkflowId);
+          if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
           const state: WorkspaceWorkflowState = {
             ...(workflow.state as WorkspaceWorkflowState),
             summary: workflow.summary,
@@ -102,7 +107,6 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       if (
         pendingSessionId &&
         !ctx.refs.busyRef.current &&
-        ctx.isCurrentSession(epoch) &&
         ctx.isViewingSession(pendingSessionId)
       ) {
         ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;

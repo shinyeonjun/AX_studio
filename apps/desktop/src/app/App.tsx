@@ -20,14 +20,15 @@ export default function App() {
 
   const { state, error: stateError, refresh, isLoading, isStale } = useAppState();
   const detection = useAiDetection();
+  const { refreshDetection } = detection;
   const aiHub = useAiHub(state, refresh, detection);
   const { isDark, toggleTheme } = useTheme();
-  const { sessions, refreshSessions } = useChatSessions();
+  const { sessions, error: sessionsError, refreshSessions } = useChatSessions();
   const workspaceChat = useWorkspaceChat({ refresh, onSessionsChanged: refreshSessions });
 
   useEffect(() => {
-    void detection.refreshDetection();
-  }, []);
+    void refreshDetection().catch(() => {});
+  }, [refreshDetection]);
 
   const appActions = createAppActions({
     activeSessionId,
@@ -57,6 +58,7 @@ export default function App() {
       onScreenChange={setSettingsScreen}
       state={state}
       onRefresh={refresh}
+      detection={detection}
     />
   ) : null;
 
@@ -107,10 +109,12 @@ export default function App() {
         <StateBanner
           loading={isLoading}
           stale={isStale}
-          error={stateError || actionError}
+          error={stateError || actionError || detection.error || sessionsError}
           onRetry={() => {
             setActionError('');
             void refresh();
+            void refreshSessions();
+            void refreshDetection().catch(() => {});
           }}
           onDismiss={actionError ? () => setActionError('') : undefined}
         />

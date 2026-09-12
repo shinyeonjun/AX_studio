@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../../db.js';
+import { readRow } from '../../db/types.js';
 import { listWorkspaceSources } from '../workspace-source-repository.js';
 import {
   parseMessages,
@@ -24,9 +25,10 @@ export function saveWorkspaceChat(
   const parsedMessages = workspaceChatMessagesSchema.parse(params.messages);
   const now = new Date().toISOString();
   const id = params.id?.trim() || randomUUID();
-  const existing = db.prepare('SELECT id, workflow_id, messages_json FROM workspace_chats WHERE id = ?').get(id) as
-    | { id: string; workflow_id?: string | null; messages_json?: string }
-    | undefined;
+  const existing = readRow<{ id: string; workflow_id?: string | null; messages_json?: string }>(
+    db.prepare('SELECT id, workflow_id, messages_json FROM workspace_chats WHERE id = ?'),
+    id,
+  );
   let messages = parsedMessages;
   if (existing?.messages_json) {
     try {

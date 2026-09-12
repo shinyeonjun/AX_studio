@@ -1,6 +1,5 @@
 import { Socket } from 'node:net';
-import type { RdbConnectionConfig } from '../connector.js';
-import type { RdbRow, RdbSqlClient } from './types.js';
+import type { RdbConnectionConfig, RdbRow, RdbSqlClient } from './types.js';
 
 function withAbort<T>(signal: AbortSignal | undefined, run: () => Promise<T>, cancel: () => void): Promise<T> {
   signal?.throwIfAborted();

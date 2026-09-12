@@ -1,10 +1,10 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { disconnectOpenApi, validateAndConnectOpenApi } from '../../openapi/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerOpenApiConnectionHandlers() {
-  ipcMain.handle('ax:connectOpenApi', async (_event, payload: unknown) => {
+  ipcHandle('ax:connectOpenApi', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('OpenAPI 연결 정보 형식이 올바르지 않습니다.');
@@ -20,7 +20,7 @@ export function registerOpenApiConnectionHandlers() {
     return { ok: true };
   });
 
-  ipcMain.handle('ax:disconnectOpenApi', async () => {
+  ipcHandle('ax:disconnectOpenApi', async () => {
     const core = getCore();
     await disconnectOpenApi(core.store, core.runtime);
     notifyStateChanged();

@@ -31,6 +31,12 @@ export function defaultWorkerScript(): string {
   const fromEnv = process.env.AX_DOCUMENT_ENGINE_WORKER;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resourcesPath) {
+    const bundled = join(resourcesPath, 'document-engine', 'src', 'worker.py');
+    if (existsSync(bundled)) return bundled;
+  }
+
   return (
     findUp(moduleDir(), WORKER_REL) ??
     findUp(process.cwd(), WORKER_REL) ??
@@ -43,6 +49,10 @@ export function defaultPythonPath(workerScript = defaultWorkerScript()): string 
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
   const engineRoot = dirname(dirname(workerScript));
+  const bundledPython = process.platform === 'win32'
+    ? join(engineRoot, 'python', 'python.exe')
+    : join(engineRoot, 'python', 'bin', 'python3');
+  if (existsSync(bundledPython)) return bundledPython;
   const venvPython = pythonInVenv(engineRoot);
   if (existsSync(venvPython)) return venvPython;
 

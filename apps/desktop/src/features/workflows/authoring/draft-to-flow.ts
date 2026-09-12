@@ -18,7 +18,7 @@ import type {
   DraftFlowGraph,
   DraftToFlowOptions,
 } from './draft-to-flow/contracts.js';
-import { emitSequence, shouldInjectGmailRead, topLevelNodes } from './draft-to-flow/sequence.js';
+import { emitSequence, hasBranchCycle, shouldInjectGmailRead, topLevelNodes } from './draft-to-flow/sequence.js';
 
 export type { DraftFlowGraph, DraftToFlowOptions } from './draft-to-flow/contracts.js';
 
@@ -90,6 +90,10 @@ export function draftToFlow(
 ): DraftFlowGraph {
   if (!draft) {
     return { nodes: [], edges: [], hasContent: false };
+  }
+  if (hasBranchCycle(draft.nodes ?? [])) {
+    return { nodes: [], edges: [], hasContent: true,
+      error: '조건 분기가 순환하여 업무 흐름을 표시할 수 없습니다. 대화에서 분기 연결을 수정해 주세요.' };
   }
 
   const ctx = createDraftFlowContext(draft, options);

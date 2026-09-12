@@ -21,6 +21,7 @@ export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message';
       {
         executionId: `trigger-poll:${ctx.workflowId}`,
         workflowId: ctx.workflowId,
+        abortSignal: ctx.abortSignal,
         variables: {},
         log: () => {},
       },

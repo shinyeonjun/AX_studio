@@ -18,6 +18,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
     explainError,
     busyId,
     clearing,
+    clearError,
     explaining,
     exportingId,
     exportedId,
@@ -51,6 +52,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
         }
       />
       <div className="page-content">
+        {clearError && <div className="approval-error" role="alert">{clearError}</div>}
         <div className={`ask-bar${canExplain ? '' : ' ask-bar--disabled'}`}>
           <input
             value={explainQ}

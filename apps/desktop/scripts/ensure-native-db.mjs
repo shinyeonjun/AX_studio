@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
@@ -33,28 +33,59 @@ function runPrebuildInstall(pkgDir, version) {
   });
 }
 
+function runNativeBuild(pkgDir, version) {
+  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  return spawnSync(npx, [
+    'node-gyp',
+    'rebuild',
+    '--release',
+    '--runtime=electron',
+    `--target=${version}`,
+    '--dist-url=https://electronjs.org/headers',
+  ], {
+    cwd: pkgDir,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+}
+
 const pkgDir = resolveBetterSqlite3Dir();
 const binary = nativeBinaryPath(pkgDir);
+const version = electronVersion();
+const versionMarker = join(pkgDir, '.ax-electron-version');
 
 if (!existsSync(pkgDir)) {
   console.warn('[native-db] better-sqlite3 package not found; skipping native DB setup');
   process.exit(0);
 }
 
-if (existsSync(binary)) {
+if (existsSync(binary) && existsSync(versionMarker) && readFileSync(versionMarker, 'utf8').trim() === version) {
   console.log('[native-db] better-sqlite3 binary already present');
   process.exit(0);
 }
 
-const version = electronVersion();
+const staleBinary = `${binary}.stale`;
+if (existsSync(binary)) {
+  rmSync(staleBinary, { force: true });
+  renameSync(binary, staleBinary);
+}
 console.log(`[native-db] downloading better-sqlite3 prebuild for Electron ${version}...`);
 const result = runPrebuildInstall(pkgDir, version);
 
-if (result.status !== 0 || !existsSync(binary)) {
-  console.warn(
-    '[native-db] better-sqlite3 prebuild unavailable; desktop will fall back to sql.js until native DB is installed',
-  );
+let ready = result.status === 0 && existsSync(binary);
+if (!ready) {
+  console.warn('[native-db] prebuild unavailable; trying an Electron-targeted local build');
+  const build = runNativeBuild(pkgDir, version);
+  ready = build.status === 0 && existsSync(binary);
+}
+
+if (!ready) {
+  rmSync(binary, { force: true });
+  rmSync(versionMarker, { force: true });
+  console.warn('[native-db] Electron native build unavailable; desktop will fall back to sql.js');
   process.exit(0);
 }
 
+rmSync(staleBinary, { force: true });
+writeFileSync(versionMarker, `${version}\n`, 'utf8');
 console.log(`[native-db] better-sqlite3 ready for Electron ${version}`);

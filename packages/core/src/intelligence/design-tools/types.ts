@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
-import type { Connector } from '../../connectors/types.js';
+import type {
+  Connector,
+  SourceListingConnection,
+  SourceListingContext,
+} from '../../connectors/types.js';
 import type { DiscoveryMetadataRecord } from '../../contracts/discovery-metadata.js';
 
-export interface ConnectionRecord {
-  connector: string;
-  connected: boolean;
-  config?: unknown;
-}
+export type ConnectionRecord = SourceListingConnection;
 
 export const DESIGN_TOOL_IDS = [
   'tools.list',
@@ -121,10 +121,7 @@ export const DesignToolCallSchema = z.preprocess(
 
 export type ParsedDesignToolCall = z.infer<typeof DesignToolCallSchema>;
 
-export interface DesignToolContext {
-  abortSignal?: AbortSignal;
-  connections: ConnectionRecord[];
-  connectedConnectorIds: string[];
+export interface DesignToolContext extends SourceListingContext {
   /**
    * Allows bounded untrusted source content to enter the current model turn.
    * The host sets this true by default because the product policy allows

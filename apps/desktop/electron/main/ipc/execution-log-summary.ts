@@ -27,7 +27,7 @@ export interface ExecutionLogSummary {
   generatedPdf?: GeneratedPdfSummary;
 }
 
-const STEP_PROGRESS_CODES = new Set(['step_started', 'step_completed', 'waiting_approval', 'step_failed']);
+const STEP_PROGRESS_CODES = new Set(['step_started', 'step_completed', 'waiting_approval', 'step_failed', 'approval_rejected']);
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -71,7 +71,7 @@ function generatedPdfSummary(data: unknown): GeneratedPdfSummary | undefined {
   return { artifactId, fileName, size, mimeType };
 }
 
-export function executionLogSummary(logJson: string | null): ExecutionLogSummary {
+export function executionLogSummary(logJson: string | null, executionStatus?: string): ExecutionLogSummary {
   if (!logJson) return {};
   try {
     const parsed = JSON.parse(logJson) as unknown;
@@ -81,7 +81,10 @@ export function executionLogSummary(logJson: string | null): ExecutionLogSummary
     );
     const last = entries.at(-1);
     const errorMessage = entries.filter((entry) => entry.level === 'error').at(-1)?.message;
-    const current = [...entries].reverse().find((entry) => STEP_PROGRESS_CODES.has(entry.code ?? ''));
+    let current = [...entries].reverse().find((entry) => STEP_PROGRESS_CODES.has(entry.code ?? ''));
+    if (current?.code === 'waiting_approval' && ['success', 'failed', 'cancelled'].includes(executionStatus ?? '')) {
+      current = undefined;
+    }
     const aiCompleted = [...entries].reverse().find((entry) => entry.code === 'ai_decision_completed');
     const currentData = record(current?.data);
     const stepId = typeof currentData?.stepId === 'string' ? currentData.stepId : undefined;

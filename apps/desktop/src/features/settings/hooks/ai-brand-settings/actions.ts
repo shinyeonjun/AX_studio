@@ -9,7 +9,6 @@ export function createAiBrandSettingsActions(input: AiBrandSettingsInput) {
   const configuration = createAiBrandConfigurationActions(input);
 
   return {
-    activateBrand: configuration.activateBrand,
     selectMode: selection.selectMode,
     testCli: verification.testCli,
     testApiKey: verification.testApiKey,

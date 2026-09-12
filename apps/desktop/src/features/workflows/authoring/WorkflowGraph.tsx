@@ -64,6 +64,10 @@ function WorkflowGraphInner({
     [onSelectNode],
   );
 
+  if (graph.error) {
+    return <div className="wf-graph-empty" role="alert"><p>{graph.error}</p></div>;
+  }
+
   if (!graph.hasContent) {
     return (
       <div className="wf-graph-empty">

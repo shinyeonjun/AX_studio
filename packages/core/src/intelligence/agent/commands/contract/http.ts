@@ -1,18 +1,5 @@
 import { boundedText } from './values.js';
-
-/** Keep saved endpoint metadata useful without echoing URL credentials/query secrets. */
-export function safeHttpBaseUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    url.username = '';
-    url.password = '';
-    url.search = '';
-    url.hash = '';
-    return url.toString();
-  } catch {
-    return '[invalid base URL]';
-  }
-}
+export { safeHttpBaseUrl } from '../../../../connectors/http/request.js';
 
 const MAX_READ_ERROR_BODY_CHARS = 4_000;
 

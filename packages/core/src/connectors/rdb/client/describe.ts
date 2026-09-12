@@ -1,9 +1,8 @@
 import { openReadonlySqlite } from '../../../persistence/db.js';
-import type { RdbConnectionConfig } from '../connector.js';
 import { openRdbSqlClient } from './drivers.js';
 import { isAllowedRdbTable, resolveRdbTableRef } from './policy.js';
 import { quoteTableRef } from './table-ref.js';
-import type { RdbTableRef } from './types.js';
+import type { RdbConnectionConfig, RdbTableRef } from './types.js';
 
 export function parseRdbMetadataPage(offset: unknown = 0, limit: unknown = 100): { offset: number; limit: number } | null {
   return typeof offset === 'number' && Number.isSafeInteger(offset) && offset >= 0 && offset <= 1_000_000

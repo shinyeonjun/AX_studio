@@ -8,6 +8,6 @@ export type {
   HttpRequestResult,
   PerformHttpRequestResult,
 } from './request/contracts.js';
-export { normalizeHttpBaseUrl } from './request/normalize.js';
+export { normalizeHttpBaseUrl, safeHttpBaseUrl } from './request/normalize.js';
 export { performHttpRequest } from './request/execute.js';
 export { probeHttpBaseUrl } from './request/probe.js';

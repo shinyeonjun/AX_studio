@@ -25,9 +25,17 @@ export function scanFolderCheckedAsync(
     return Promise.resolve(abortSignal?.aborted ? aborted() : result);
   }
 
-  return runScanWorker(rootPath, extensions, abortSignal).catch(() => (
-    abortSignal?.aborted ? aborted() : scanFolderChecked(rootPath, extensions)
-  ));
+  return runScanWorker(rootPath, extensions, abortSignal).catch((error: unknown): ScanFolderResult => {
+    if (abortSignal?.aborted) return aborted();
+    // A failed or timed-out worker must not repeat its unbounded workload on
+    // the host event loop, where cancellation and the deadline cannot run.
+    const timedOut = error instanceof Error && error.message === 'scan_worker_timeout';
+    return {
+      ok: false,
+      error: timedOut ? 'folder_scan_timeout' : 'folder_scan_worker_failed',
+      errorCode: timedOut ? 'scan_timeout' : 'scan_worker_failed',
+    };
+  });
 }
 
 function runScanWorker(

@@ -1,4 +1,4 @@
-import { builtInGoogleOAuthClientId } from './oauth-build.js';
+import { builtInGoogleOAuthClientId, builtInGoogleOAuthClientSecret } from './oauth-build.js';
 
 export function getGoogleOAuthClientId(): string | undefined {
   const fromEnv = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
@@ -6,6 +6,7 @@ export function getGoogleOAuthClientId(): string | undefined {
 }
 
 export function getGoogleOAuthClientSecret(): string | undefined {
+  if (builtInGoogleOAuthClientId()) return builtInGoogleOAuthClientSecret();
   const fromEnv = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
   return fromEnv || undefined;
 }

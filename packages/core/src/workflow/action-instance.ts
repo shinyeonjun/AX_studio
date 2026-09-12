@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { PortBindingSchema, coercePortBinding, type PortBinding } from './port-binding.js';
 
-function parseJsonRecordValue(value: unknown): unknown {
+export function parseJsonRecordValue(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   if (!value.trim()) return undefined;
   try {
@@ -12,7 +12,7 @@ function parseJsonRecordValue(value: unknown): unknown {
   }
 }
 
-function parseBindingsRecord(value: unknown): unknown {
+export function parseBindingsRecord(value: unknown): unknown {
   if (value == null || value === '') return undefined;
   const parsed = parseJsonRecordValue(value);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return parsed;

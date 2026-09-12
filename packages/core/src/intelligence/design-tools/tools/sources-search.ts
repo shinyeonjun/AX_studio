@@ -51,7 +51,6 @@ export const sourcesSearch: DesignToolHandler = async (ctx, args) => {
   const rawHits = searchLocalFolder(folder, query, {
     limit,
     minFileBytes: retrieval.minFileBytes,
-    rebuild: true,
   });
   const hits = applySnippetPolicy(rawHits, { allowFullContent: ctx.allowUntrustedData === true });
   const citations = citationsFromSearchHits(hits);

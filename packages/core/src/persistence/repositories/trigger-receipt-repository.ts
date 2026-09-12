@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../db.js';
+import { readRow } from '../db/types.js';
 
 export type TriggerReceiptStatus = 'processing' | 'completed' | 'failed';
 
@@ -28,9 +29,10 @@ export function claimTriggerReceipt(
     .run(params.dedupeKey, params.workflowId, params.triggerType, now, now);
   if (inserted.changes > 0) return true;
 
-  const existing = db
-    .prepare('SELECT status, updated_at FROM trigger_receipts WHERE dedupe_key = ?')
-    .get(params.dedupeKey) as { status?: string; updated_at?: string | null } | undefined;
+  const existing = readRow<{ status?: string; updated_at?: string | null }>(
+    db.prepare('SELECT status, updated_at FROM trigger_receipts WHERE dedupe_key = ?'),
+    params.dedupeKey,
+  );
   if (!existing) return false;
   if (existing.status === 'completed') return false;
 
@@ -91,8 +93,9 @@ export function failTriggerReceipt(db: AppDatabase, dedupeKey: string): void {
 }
 
 export function isTriggerReceiptCompleted(db: AppDatabase, dedupeKey: string): boolean {
-  const row = db
-    .prepare('SELECT status FROM trigger_receipts WHERE dedupe_key = ?')
-    .get(dedupeKey) as { status?: string } | undefined;
+  const row = readRow<{ status?: string }>(
+    db.prepare('SELECT status FROM trigger_receipts WHERE dedupe_key = ?'),
+    dedupeKey,
+  );
   return row?.status === 'completed';
 }

@@ -1,5 +1,5 @@
 import { getConnectorLabel } from '../../../catalog/connectors.js';
-import { safeFormatCondition } from '../../../runtime/condition-expr.js';
+import { safeFormatCondition } from '../../condition-expr/format.js';
 import type { CompletenessResult } from '../../canvas/slots/requiredness.js';
 import type { WorkflowCanvasDraft } from '../../canvas/draft/schema.js';
 import { primaryParamValue, truncate, triggerLines } from '../helpers.js';

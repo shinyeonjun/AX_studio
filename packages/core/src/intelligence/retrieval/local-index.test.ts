@@ -1,28 +1,51 @@
-import { mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  clearRetrievalStoreForTests,
-  searchLocalFolder,
   applySnippetPolicy,
   MAX_CLOUD_SNIPPET_CHARS,
-} from './index.js';
+} from './snippet-policy.js';
+import { searchLocalFolder } from './search.js';
 
 describe('local retrieval index', () => {
-  afterEach(() => {
-    clearRetrievalStoreForTests();
+  const roots: string[] = [];
+  const temporaryFolder = (prefix: string) => {
+    const path = mkdtempSync(join(tmpdir(), prefix));
+    roots.push(path);
+    return path;
+  };
+  afterEach(() => { for (const path of roots.splice(0)) rmSync(path, { recursive: true, force: true }); });
+
+  it('keeps only the highest-scored hits and handles invalid limits without retaining all rows', () => {
+    const dir = temporaryFolder('ax-retrieval-top-');
+    writeFileSync(join(dir, 'a.txt'), 'needle');
+    writeFileSync(join(dir, 'b.txt'), 'needle match');
+    writeFileSync(join(dir, 'c.txt'), 'needle match');
+    const folder = { id: 'top', label: 'Docs', path: dir, addedAt: '2026-01-01' };
+    expect(searchLocalFolder(folder, 'needle match', { limit: 1 }).map(hit => hit.score)).toEqual([1]);
+    expect(searchLocalFolder(folder, 'needle match', { limit: NaN })).toEqual([]);
+  });
+  it('finds newly added and changed files on the next search', () => {
+    const dir = temporaryFolder('ax-retrieval-refresh-');
+    const folder = { id: 'refresh', label: 'Docs', path: dir, addedAt: '2026-01-01' };
+    writeFileSync(join(dir, 'old.txt'), 'needle old');
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(1);
+    writeFileSync(join(dir, 'new.txt'), 'needle new');
+    writeFileSync(join(dir, 'old.txt'), 'needle updated document');
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(2);
   });
 
+
   it('returns only ACL-contained files and ranks by query', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ax-retrieval-'));
+    const dir = temporaryFolder('ax-retrieval-');
     const inside = join(dir, 'deploy-notes.txt');
     const big = 'x'.repeat(20_000);
     writeFileSync(inside, `${big}\nproduction deploy checklist\n`);
     writeFileSync(join(dir, 'readme.txt'), `${big}\nunrelated content only\n`);
 
     const folder = { id: 'folder-1', label: 'Docs', path: dir, addedAt: '2026-01-01T00:00:00.000Z' };
-    const hits = searchLocalFolder(folder, 'deploy checklist', { minFileBytes: 0, rebuild: true });
+    const hits = searchLocalFolder(folder, 'deploy checklist', { minFileBytes: 0 });
 
     expect(hits).toHaveLength(1);
     expect(hits[0]?.ref.path).toBe(inside);
@@ -30,13 +53,13 @@ describe('local retrieval index', () => {
   });
 
   it('drops deleted files from search results', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ax-retrieval-stale-'));
+    const dir = temporaryFolder('ax-retrieval-stale-');
     const target = join(dir, 'volatile.txt');
     const padding = 'z'.repeat(20_000);
     writeFileSync(target, `${padding}\nunique-token-alpha\n`);
 
     const folder = { id: 'folder-1', label: 'Docs', path: dir, addedAt: '2026-01-01T00:00:00.000Z' };
-    const first = searchLocalFolder(folder, 'unique-token-alpha', { minFileBytes: 0, rebuild: true });
+    const first = searchLocalFolder(folder, 'unique-token-alpha', { minFileBytes: 0 });
     expect(first).toHaveLength(1);
 
     unlinkSync(target);

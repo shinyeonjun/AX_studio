@@ -1,7 +1,7 @@
-import { ipcMain } from 'electron';
 import type { ExecutionLogEntry, ExecutionResult } from '@ax-studio/core';
 import { getCore } from '../../core-instance.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
+import { ipcHandle } from '../ipc-handle.js';
 
 function executionLogWithRejection(
   logJson: string | null | undefined,
@@ -37,7 +37,7 @@ function executionLogWithRejection(
 }
 
 export function registerRuntimeApprovalHandlers(): void {
-  ipcMain.handle('ax:approve', async (_e, approvalId: unknown) => {
+  ipcHandle('ax:approve', async (_e, approvalId: unknown) => {
     const core = getCore();
     if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('approvalId가 필요합니다.');
     const result = await core.runtime.continueAfterApproval(approvalId);
@@ -48,7 +48,7 @@ export function registerRuntimeApprovalHandlers(): void {
     }
     return result;
   });
-  ipcMain.handle('ax:reject', async (_e, approvalId: unknown) => {
+  ipcHandle('ax:reject', async (_e, approvalId: unknown) => {
     const core = getCore();
     if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('approvalId가 필요합니다.');
     const approval = core.store.getApproval(approvalId);

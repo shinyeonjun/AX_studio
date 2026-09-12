@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConditionExprSchema } from '../../runtime/condition-expr.js';
+import { ConditionExprSchema } from '../condition-expr/schema.js';
 import { ScalarValueSchema } from '../../contracts/artifacts/table.js';
 
 const SourceExprSchema = z.object({

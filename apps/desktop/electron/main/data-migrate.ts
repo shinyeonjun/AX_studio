@@ -1,5 +1,17 @@
-import { copyFileSync, cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { backup, DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { AxDataPaths } from '@ax-studio/core';
 import { legacyHomeDataRoot } from '@ax-studio/core';
 import { legacyElectronUserDataDir, legacyHomeArtifactRoot } from './data-paths.js';
@@ -7,6 +19,12 @@ import { legacyElectronUserDataDir, legacyHomeArtifactRoot } from './data-paths.
 interface MigrationRecord {
   storageLayoutVersion: number;
   migratedAt: string;
+}
+
+export type DatabaseBackup = (source: string, destination: string) => Promise<void>;
+
+export interface DataMigrationDependencies {
+  backupDatabase?: DatabaseBackup;
 }
 
 function readMigration(paths: AxDataPaths): MigrationRecord | null {
@@ -32,7 +50,14 @@ function writeMigration(paths: AxDataPaths): void {
     storageLayoutVersion: 1,
     migratedAt: new Date().toISOString(),
   };
-  writeFileSync(paths.migration, JSON.stringify(record, null, 2), 'utf8');
+  mkdirSync(dirname(paths.migration), { recursive: true });
+  const temporaryPath = `${paths.migration}.tmp-${randomUUID()}`;
+  try {
+    writeFileSync(temporaryPath, JSON.stringify(record, null, 2), 'utf8');
+    renameSync(temporaryPath, paths.migration);
+  } finally {
+    if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
+  }
 }
 
 function copyDirIfSourceExists(source: string, dest: string): void {
@@ -42,17 +67,62 @@ function copyDirIfSourceExists(source: string, dest: string): void {
 
 function copyFileIfMissing(source: string, dest: string): void {
   if (!existsSync(source) || existsSync(dest)) return;
+  mkdirSync(dirname(dest), { recursive: true });
   copyFileSync(source, dest);
 }
 
-export function migrateAxDataIfNeeded(paths: AxDataPaths): void {
+async function backupWithNativeSqlite(source: string, destination: string): Promise<void> {
+  const db = new DatabaseSync(source, { readOnly: true });
+  try {
+    await backup(db, destination);
+  } finally {
+    db.close();
+  }
+}
+
+async function backupDatabaseIfMissing(
+  source: string,
+  destination: string,
+  backupDatabase: DatabaseBackup,
+): Promise<void> {
+  if (!existsSync(source) || existsSync(destination)) return;
+  mkdirSync(dirname(destination), { recursive: true });
+  const temporaryPath = `${destination}.migration-${randomUUID()}`;
+  try {
+    await backupDatabase(source, temporaryPath);
+    if (!existsSync(temporaryPath) || !statSync(temporaryPath).isFile()) {
+      throw new Error('SQLite snapshot이 생성되지 않았습니다.');
+    }
+    const snapshot = new DatabaseSync(temporaryPath, { readOnly: true });
+    try {
+      const checks = snapshot.prepare('PRAGMA quick_check').all();
+      if (checks.length !== 1 || checks[0]?.quick_check !== 'ok') {
+        throw new Error('SQLite snapshot 무결성 검사에 실패했습니다.');
+      }
+    } finally {
+      snapshot.close();
+    }
+    renameSync(temporaryPath, destination);
+  } finally {
+    if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
+  }
+}
+
+export async function migrateAxDataIfNeeded(
+  paths: AxDataPaths,
+  dependencies: DataMigrationDependencies = {},
+): Promise<void> {
   if (readMigration(paths)) return;
 
   const legacyUserData = legacyElectronUserDataDir();
   const legacyHome = legacyHomeArtifactRoot();
   const legacyHomeRoot = legacyHomeDataRoot();
 
-  copyFileIfMissing(join(legacyUserData, 'ax-studio.db'), paths.database);
+  await backupDatabaseIfMissing(
+    join(legacyUserData, 'ax-studio.db'),
+    paths.database,
+    dependencies.backupDatabase ?? backupWithNativeSqlite,
+  );
   copyDirIfSourceExists(join(legacyUserData, 'credentials'), paths.credentials);
   copyFileIfMissing(join(legacyUserData, 'ai.toml'), join(paths.config, 'ai.toml'));
   copyDirIfSourceExists(join(legacyHome, 'documents'), paths.documents);

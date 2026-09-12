@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -219,7 +219,7 @@ describe('generated PDF source validation', () => {
     writeFileSync(sourcePath, 'inside');
     const sha256 = createHash('sha256').update('inside').digest('hex');
 
-    await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBe(sourcePath);
+    await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBe(realpathSync.native(sourcePath));
     await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 5, sha256)).resolves.toBeUndefined();
     writeFileSync(sourcePath, 'damage');
     await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBeUndefined();

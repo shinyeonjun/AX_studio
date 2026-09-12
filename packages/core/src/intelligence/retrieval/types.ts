@@ -8,5 +8,4 @@ export interface IndexedChunk {
   modifiedAt: string;
   size: number;
   text: string;
-  tombstone?: boolean;
 }

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { detectAiCliProviders, type AiBrand } from '@ax-studio/core';
 import {
   getAiConfigPath,
@@ -10,12 +10,12 @@ import { maskSecret } from '../../env-file.js';
 const UI_AI_BRANDS: AiBrand[] = ['claude', 'gpt', 'ollama'];
 
 export function registerAiInspectionHandlers(): void {
-  ipcMain.handle('ax:detectAiCli', async () => {
+  ipcHandle('ax:detectAiCli', async () => {
     const detected = await detectAiCliProviders();
     return detected.filter((item) => item.id !== 'cursor-cli');
   });
 
-  ipcMain.handle('ax:getAiConfig', async () => {
+  ipcHandle('ax:getAiConfig', async () => {
     const config = await readAiToml();
     return {
       path: getAiConfigPath(),

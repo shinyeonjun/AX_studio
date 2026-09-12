@@ -1,6 +1,5 @@
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { getAxDataPaths } from '../persistence/paths/ax-data.js';
-import { ALL_MODULE_PACKAGES } from '../connectors/packages/catalog.js';
 import { join } from 'node:path';
 import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
 import type { DiscoverySourceRegistry } from './sources/registry.js';
@@ -30,10 +29,13 @@ export class WorkDiscoveryService {
     const artifactStore = options.artifactStore ?? new ArtifactStore(paths.artifacts);
     const snapshotDir = options.snapshotDir ?? join(paths.root, 'discovery', 'snapshots');
     const sourceRegistry: DiscoverySourceRegistry =
-      options.sourceRegistry ?? createDefaultDiscoverySourceRegistry(options.store, artifactStore);
+      options.sourceRegistry ?? createDefaultDiscoverySourceRegistry({
+        providers: options.sourceProviders,
+        materializeWorkbook: options.materializeWorkbook,
+      });
     const sourceReadsMax = options.sourceReadsMax ?? 12;
-    const materializeWorkbook = ALL_MODULE_PACKAGES.find((pkg) => pkg.id === 'local_sheet')?.materializeWorkbook
-      ?? (() => { throw new Error('local_sheet module must register materializeWorkbook'); });
+    const materializeWorkbook = options.materializeWorkbook
+      ?? (() => { throw new Error('workbook_materializer_unavailable'); });
 
     this.runtime = createWorkDiscoveryRuntime({
       store: options.store,

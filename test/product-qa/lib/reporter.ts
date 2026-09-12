@@ -38,7 +38,8 @@ function renderMarkdown(report: ProductQaReport): string {
     lines.push(
       '## Coverage',
       '',
-      `- Product-ready surfaces: ${report.coverage.covered}/${report.coverage.total}`,
+      `- Passing scenarios' declared surfaces: ${report.coverage.covered}/${report.coverage.total}`,
+      '- This is scenario coverage, not proof of capability correctness. Deterministic mode uses a fake model.',
     );
     if (report.coverage.missing.length > 0) {
       lines.push(`- Missing: ${report.coverage.missing.join(', ')}`);

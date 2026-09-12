@@ -1,23 +1,24 @@
-import type { ArtifactStore } from '../../persistence/artifact-store.js';
-import type { WorkflowStore } from '../../persistence/workflow-store.js';
-import { ALL_MODULE_PACKAGES } from '../../connectors/packages/catalog.js';
+import type {
+  DiscoverySourceProvider,
+  WorkbookMaterializer,
+} from '../../contracts/discovery-source.js';
 import { DiscoverySourceRegistry } from './registry.js';
 import { InputArtifactDiscoverySourceProvider } from './input-artifact-provider.js';
 
+export interface DiscoverySourceAssemblyOptions {
+  providers?: readonly DiscoverySourceProvider[];
+  materializeWorkbook?: WorkbookMaterializer['readWorkbookFromPath'];
+}
+
 export function createDefaultDiscoverySourceRegistry(
-  _store: WorkflowStore,
-  _artifactStore: ArtifactStore,
+  options: DiscoverySourceAssemblyOptions = {},
 ): DiscoverySourceRegistry {
-  const moduleProviders = ALL_MODULE_PACKAGES.flatMap((pkg) =>
-    pkg.discoverySource ? [pkg.discoverySource] : [],
-  );
-  const materializeWorkbook = ALL_MODULE_PACKAGES.find((pkg) => pkg.id === 'local_sheet')?.materializeWorkbook;
-  if (!materializeWorkbook) {
-    throw new Error('local_sheet module must register materializeWorkbook');
-  }
+  const inputProviders = options.materializeWorkbook
+    ? [new InputArtifactDiscoverySourceProvider({ materializeWorkbook: options.materializeWorkbook })]
+    : [];
   return new DiscoverySourceRegistry([
-    new InputArtifactDiscoverySourceProvider({ materializeWorkbook }),
-    ...moduleProviders,
+    ...inputProviders,
+    ...(options.providers ?? []),
   ]);
 }
 

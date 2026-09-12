@@ -2043,7 +2043,7 @@ repository_structure_phase_18:
       desktop: "PASS: typecheck and production build"
       dependency-direction: "PASS: focused modules do not import the public runtime facade"
       diff-whitespace: "PASS: no whitespace errors; CRLF normalization warnings only"
-  final:
+  legacy_final:
     recorded: true
     recorded_at: 2026-09-02T15:18:03.7431425+09:00
     decision: KEEP
@@ -7567,7 +7567,7 @@ repository_structure_phase_147:
       project-regression: "PASS: Core 711 passed with 3 skipped, eval 11/11, document-engine 39/39, desktop typecheck/build, architecture check, and git diff --check"
       dependency-direction: "PASS: Each connector hook owns input state, busy/message state, confirmation, and async callbacks; each renderer owns existing status-derived display and UI"
       implementation-boundary: "PASS: only the bounded Gmail/Slack form controller modules and harness records changed in this phase"
-  final:
+  historical_orphan_final_20260903_1017:
     recorded: true
     recorded_at: 2026-09-03T10:17:58.5921140+09:00
     decision: KEEP
@@ -9967,7 +9967,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 986 modules/3305 dependencies, and git diff --check"
       test-preservation: "PASS: All three workflow repair scenarios, shared fixture data, repair operations, policy assertions, fingerprint assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded workflow repair test split, shared test fixture extraction, schema-default type correction, and harness records changed"
-  final:
+  historical_final_1:
     recorded: true
     recorded_at: 2026-09-03T16:08:33.3703838+09:00
     decision: KEEP
@@ -9978,7 +9978,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 984 modules/3301 dependencies, and git diff --check"
       test-preservation: "PASS: Both Work Discovery repair scenarios, shared fixture data, persisted history shape, assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded Work Discovery repair test split, shared test fixture extraction, and harness records changed"
-  final:
+  historical_final_2:
     recorded: true
     recorded_at: 2026-09-03T16:02:45.6657613+09:00
     decision: KEEP
@@ -9989,7 +9989,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 982 modules/3294 dependencies, and git diff --check"
       test-preservation: "PASS: Both runtime output-binding scenarios, workflow shapes, runtime setup, connector mocks, persisted snapshot assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded runtime output-binding test split and harness records changed"
-  final:
+  historical_final_3:
     recorded: true
     recorded_at: 2026-09-03T15:56:16.4320616+09:00
     decision: KEEP
@@ -10000,7 +10000,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 981 modules/3288 dependencies, and git diff --check"
       test-preservation: "PASS: All seven OpenAPI scenarios, fixtures, mock responses, assertions, catalog cleanup, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded OpenAPI test split and harness records changed"
-  final:
+  historical_final_4:
     recorded: true
     recorded_at: 2026-09-03T15:50:25.1925630+09:00
     decision: KEEP
@@ -10011,7 +10011,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 979 modules/3284 dependencies, and git diff --check"
       test-preservation: "PASS: All four Scheduler one-time scenarios, fixtures, store setup, runtime mocks, assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded Scheduler one-time test split and harness records changed"
-  final:
+  historical_final_5:
     recorded: true
     recorded_at: 2026-09-03T15:44:48.1975876+09:00
     decision: KEEP
@@ -13590,3 +13590,845 @@ final_verification:
     full-regression: "PASS: Core 398 files/1355 passed/5 skipped; document-engine 50/50; evaluation 11/11; webhook security 3/3"
     build-and-structure: "PASS: Core build; Desktop typecheck/build; architecture 0 violations (1174 modules, 4024 dependencies); diff check"
     safety-boundary: "PASS: no new project files, fixtures, hidden gold, credentials, external writes, or application data mutations"
+
+architecture_audit:
+  goal: "Inspect the whole repository before deciding the next structural refactor."
+  read_paths:
+    - packages/**
+    - apps/**
+    - scripts/**
+    - test/**
+    - docs/**
+    - CONTEXT.md
+    - packages/core/src/STRUCTURE.md
+    - package.json
+    - .gitignore
+    - packages/*/package.json
+    - apps/*/package.json
+    - .dependency-cruiser.cjs
+    - tsconfig*.json
+    - .github/workflows/**
+    - .harness/**
+  allowed_mutation:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - packages/**
+    - apps/**
+    - scripts/**
+    - test/**
+    - docs/**
+    - package.json
+    - package-lock.json
+    - new project files
+    - generated artifacts, fixtures, credentials, and application data
+  evaluation_axes:
+    - domain_cohesion
+    - dependency_direction
+    - interface_depth
+    - public_surface
+    - duplication_and_pass_throughs
+    - ownership_and_lifecycle
+    - testability_and_observability
+    - runtime_and_nonfunctional_risk
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T13:39:20.7230704+09:00
+    decision: BASELINE
+    values:
+      working_tree: "PASS: clean main at 17b75f7"
+      inventory: "PASS: 1,554 tracked code files; 1,569 files present on disk including 15 ignored local auxiliary files"
+      production_mutation: "PASS: none"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T14:03:26.9570569+09:00
+    decision: KEEP
+    evidence:
+      - "npm run arch:check passed: 1174 modules and 4024 dependencies, with 0 configured violations"
+      - "npm run knip completed with 3 unlisted dependencies, 2 unlisted binaries, 21 unused exported types, 1 duplicate schema alias, and 1 config hint"
+      - "npm run build passed for core and desktop"
+      - "static graph review found 24 cycle edges across 14 core modules and one orphan candidate; current arch rules do not enforce either check"
+      - "git status contains only the four existing .harness records"
+
+staged_boundary_refactor:
+  goal: "Apply the measured architecture fixes with behavior-preserving TDD slices."
+  allowed_mutation:
+    - packages/core/src/**
+    - packages/core/**/*.test.ts
+    - apps/desktop/**
+    - test/**
+    - .dependency-cruiser.cjs
+    - .gitignore
+    - package.json
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - credentials
+    - application data
+    - external writes or deliveries
+  required_slices:
+    - clean_checkout_test_boundary
+    - workflow_runtime_contract_boundary
+    - connector_intelligence_contract_boundary
+    - work_discovery_registry_injection
+  deferred_until_evidence:
+    - report_planner_split
+    - workflow_store_split
+    - broad_root_export_rewrite
+    - document_engine_test_move
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T15:03:22.3287053+09:00
+    decision: BASELINE
+    values:
+      head: "17b75f7"
+      production_changes: "none"
+      build: "PASS: npm run build"
+      architecture: "PASS: configured rules; detailed audit found 24 static cycle edges and one orphan candidate"
+
+staged_boundary_refactor_completion:
+  recorded_at: 2026-09-08T15:37:42.4335261+09:00
+  decision: KEEP
+  allowed_mutation_additions:
+    - knip.config.ts
+  scope_expansions:
+    - reason: "The static graph still had 24 cycle edges after the required boundary slices; direct type ownership changes were needed to make the new direction enforceable."
+      paths: [packages/core/src/persistence/db-native.ts, packages/core/src/connectors/rdb, packages/core/src/documents/reporting/planner, packages/core/src/intelligence/agent]
+    - reason: "Knip identified workspace-shared test dependencies, host binaries, and intentional public facade types; existing static configuration was updated so real dead exports remain visible."
+      paths: [knip.config.ts, packages/core/src/connectors/rdb/client.ts]
+    - reason: "The new injection seam exposed an existing E2E fixture that did not provide its workbook materializer."
+      paths: [packages/core/src/testing/e2e/work-discovery-e2e/flow.test.ts]
+  final:
+    no_new_project_files: true
+    no_generated_or_external_mutations: true
+    deferred: [report_planner_split, workflow_store_split, broad_root_export_rewrite, document_engine_test_move]
+
+simplicity_pass:
+  recorded_at: 2026-09-08T15:57:05.7681330+09:00
+  goal: "Remove measured accidental complexity while preserving stable product boundaries and creating no project files."
+  allowed_mutation:
+    - packages/core/src/**
+    - packages/core/**/*.test.ts
+    - apps/desktop/**
+    - test/**
+    - package.json
+    - knip.config.ts
+    - .dependency-cruiser.cjs
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - test fixtures/gold files
+    - credentials or application data
+    - external writes or deliveries
+  required_evidence:
+    - inventory of pass-throughs, duplicate code, public exports, high fan-in modules, and complexity signals
+    - a red/green or before/after test for each behavior-changing cleanup slice
+    - final full regression and static-graph verification
+  deferred_until_evidence:
+    - report_planner_split
+    - workflow_store_split
+    - broad_root_export_rewrite
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T15:59:54.0578195+09:00
+  baseline: "PASS: frozen evaluator completed before implementation"
+  final_recorded_at: 2026-09-08T16:29:24.7125486+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    evidence:
+      - "All frozen typecheck, build, test, evaluation, document-engine, Knip, architecture, and diff checks passed."
+      - "Measured duplication and boundary casts were reduced only at existing seams; public facades and large cohesive planner/store modules were retained."
+      - "No untracked files, generated artifacts, fixture/gold changes, credentials, application data, or external writes were introduced."
+      - "evaluator.yaml and scope.yaml parse as valid YAML after preserving orphaned historical records under explicit legacy keys."
+
+workflow_store_pass_through_cleanup:
+  recorded_at: 2026-09-08T17:59:00.4262245+09:00
+  objective: "Remove internal WorkflowStore modules that only forward calls to repositories while preserving the public class seam."
+  allowed_mutation:
+    - packages/core/src/persistence/workflow-store.ts
+    - packages/core/src/persistence/workflow-store/approvals.ts
+    - packages/core/src/persistence/workflow-store/discovery.ts
+    - packages/core/src/persistence/workflow-store/executions.ts
+    - packages/core/src/persistence/workflow-store/repairs.ts
+    - packages/core/src/persistence/workflow-store/settings.ts
+    - packages/core/src/persistence/workflow-store/triggers.ts
+    - packages/core/src/persistence/workflow-store/workflows.ts
+    - packages/core/src/persistence/workflow-store/workspaces.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - user-created untracked docs/research files
+    - credentials, application data, and external writes
+    - unrelated runtime, connector, desktop, and document code
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T18:00:03.6324688+09:00
+  baseline: "PASS: wrapper ownership audit and focused regression evaluator completed before implementation"
+  deferred_until_evidence:
+    - public WorkflowStore interface redesign
+    - report planner split
+    - unrelated repository consolidation
+  final_recorded_at: 2026-09-08T18:07:33.9276472+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "All focused and full frozen checks passed after the wrapper deletion."
+      - "The public WorkflowStore interface and real discovery normalization behavior were preserved."
+      - "Eight internal wrapper modules with one consumer each were removed; no direct imports remain."
+
+automation_market_research:
+  allowed:
+    - docs/research/automation-market-comparison.md
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  avoid:
+    - production source
+    - Figma files
+    - external product accounts or side effects
+  reason: "Evidence-backed market comparison requested; no implementation change is in scope."
+
+large_module_planner_normalization:
+  objective: "Centralize the repeated report-plan normalization pipeline inside the existing planner module without changing behavior or creating files."
+  allowed_mutation:
+    - packages/core/src/documents/reporting/planner/planner.ts
+    - packages/core/src/documents/reporting/planner/planner.test.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - user-created untracked docs/research files
+    - credentials, application data, and external writes
+    - other production modules, prompts, source policy, and replay search behavior
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T18:26:25.8469281+09:00
+  baseline: "PASS: planner/evidence/source/catalog/bounds focused tests (5 files, 154 tests), Core typecheck, architecture, and diff check"
+  deferred_until_evidence:
+    - planner file split
+    - moving repair helpers to another existing module
+    - report semantic or model-contract changes
+  final_recorded_at: 2026-09-08T18:30:02.5111994+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "Four repeated planner normalization call sites now use one existing in-file order-preserving helper."
+      - "Public ReportPlanner and exported repair/validation paths remain unchanged."
+      - "Focused and full regression checks, typechecks, build, Knip, architecture, document-engine, and diff checks passed."
+      - "Large service/schema/execute modules were reviewed and retained because no safe existing seam was demonstrated."
+
+large_module_field_path_traversal:
+  objective: "Reuse one existing report value seam for the three duplicate field-path traversals in planner and executor."
+  allowed_mutation:
+    - packages/core/src/documents/reporting/plan/value.ts
+    - packages/core/src/documents/reporting/plan/execute.ts
+    - packages/core/src/documents/reporting/planner/planner.ts
+    - packages/core/src/documents/reporting/plan/execute.test.ts
+    - packages/core/src/documents/reporting/planner/planner.test.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - user-created untracked docs/research files
+    - credentials, application data, and external writes
+    - report semantics, schemas, service orchestration, and unrelated modules
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T18:40:02.6047960+09:00
+  baseline: "PASS: report execute/join/planner/evidence focused tests (4 files, 149 tests), Core typecheck, architecture, and diff check"
+  deferred_until_evidence:
+    - planner/executor file split
+    - service method extraction
+  final_recorded_at: 2026-09-08T18:43:07.1784985+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "One existing fieldPaths helper now serves executor and both planner traversal sites; duplicate implementations were removed."
+      - "Focused regression 149 tests, full Core 398 files/1356 passed/5 skipped, build/typechecks, evaluation, document-engine, Knip, architecture, and diff checks passed."
+      - "Service orchestration was retained after reviewing checkpoint, cancellation, and phase ownership; no new seam was introduced."
+
+readme_asset_integrity:
+  objective: "Repair the broken root README image reference using the existing AX Studio asset and validate all local README image targets."
+  allowed_mutation:
+    - README.md
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - image creation or asset moves
+    - package-lock.json
+    - generated artifacts
+    - user-created untracked docs/research files
+    - production source, credentials, application data, and external writes
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T21:16:10.1604832+09:00
+  baseline: "FAIL: README scan found one missing local image target (README.md -> apps/desktop/src/images/AX_Studio.png); git diff --check passed"
+  final_recorded_at: 2026-09-08T21:18:20.1981349+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "Root README points to the existing apps/desktop/src/ui/images/AX_Studio.png asset."
+      - "Repository-wide scan passes for 13 README files and 22 local image references with zero missing targets."
+      - "The existing PNG was visually inspected; no image creation, move, runtime edit, or external write occurred."
+  deferred_until_evidence:
+    - README content rewrite
+    - production code cleanup
+
+large_module_predicate_specificity:
+  objective: "Consolidate the two identical report predicate-specificity traversals inside planner.ts without changing ordering or replay behavior."
+  allowed_mutation:
+    - packages/core/src/documents/reporting/planner/planner.ts
+    - packages/core/src/documents/reporting/planner/planner.test.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts
+    - user-created untracked docs/research files
+    - report semantics, prompts, source policy, schemas, and service orchestration
+    - credentials, application data, and external writes
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T21:20:32.3990097+09:00
+  baseline: "PASS: report execute/join/planner/evidence focused tests (4 files, 149 tests), Core typecheck, architecture, and diff check"
+  deferred_until_evidence:
+    - planner file split
+    - moving repair helpers to another module
+  final_recorded_at: 2026-09-08T21:28:33.4183920+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "One existing planner predicateSpecificity helper now serves replay predicate ordering and table repair filter ordering; the 3/1 weights are unchanged."
+      - "Focused regression 149 tests, serial full Core 398 files/1356 passed/5 skipped, build, Core/Desktop typechecks, evaluation, document-engine 50/50, Knip, architecture, and diff checks passed."
+      - "The first parallel full run exposed two unrelated RDB handshake timing failures; the targeted test passed 4/4 and the serial full run passed, so no unrelated connector change was introduced."
+
+repository_wide_simplicity_audit:
+  objective: "Re-audit the repository and keep only evidence-backed simplifications after the earlier cleanup slices."
+  allowed_mutation:
+    - README.md
+    - packages/core/src
+    - apps/desktop/src
+    - apps/desktop/electron
+    - scripts
+    - test
+    - .dependency-cruiser.cjs
+    - knip.config.ts
+    - package.json
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - new project files
+    - package-lock.json
+    - generated artifacts and build output
+    - user-created untracked docs/research files
+    - fixtures, golden outputs, credentials, application data, and external writes
+    - speculative file splits, product semantics, model prompts, connector policy, and persistence migrations
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T21:41:17.4702338+09:00
+  baseline: "PASS: README scan 13/22/0, Core/Desktop typechecks, architecture, Knip, YAML, and diff checks; inventory 1492 source files with largest planner 3721 lines; recent full build/tests/eval/document-engine pass recorded at 21:28"
+  deferred_until_evidence:
+    - splitting cohesive report planner/service/schema modules
+    - replacing existing seams with new framework abstractions
+    - broad formatting or naming-only rewrites
+  final_recorded_at: 2026-09-08T21:56:45.9221219+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "HTTP URL redaction, repair input-type validation, and table/input column schemas now use existing canonical seams; no new module was introduced."
+      - "The duplicate workflow-store wrappers, report field-path traversals, planner normalization, and predicate-specificity traversals remain removed from earlier recorded slices."
+      - "Two empty source directories left by earlier moves were removed; generated product-QA directories were left untouched."
+      - "Core/Desktop typechecks, build, serial full tests, evaluation, document-engine, Knip, architecture, README scan, YAML parsing, and diff checks passed."
+      - "Large planner, report service/schema, persistence, and work-discovery modules were retained where no safe consumer-backed seam was demonstrated."
+
+safe_report_replay_module_split:
+  objective: "Extract the standalone replay-repair search and independent presentation-repair region from planner.ts into cohesive modules while preserving the planner.ts public import path."
+  allowed_mutation:
+    - packages/core/src/documents/reporting/planner/planner.ts
+    - packages/core/src/documents/reporting/planner/replay-repair.ts
+    - packages/core/src/documents/reporting/planner/presentation-repair.ts
+    - packages/core/src/documents/reporting/plan/value.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - test files and fixtures
+    - user-created untracked docs/research files
+    - generated artifacts and build output
+    - package-lock.json
+    - credentials, application data, and external writes
+    - report semantics, replay ordering/budgets, model prompts, persistence, and public import paths
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T22:16:46.0609712+09:00
+  baseline: "PASS: focused report regression 4 files/149 tests; Core typecheck; architecture 1166 modules/4017 dependencies/0 violations; diff check"
+  deferred_until_evidence:
+    - splitting ReportPlanner orchestration
+    - splitting report schema or service
+    - extracting additional helpers from replay-repair.ts
+  final_recorded_at: 2026-09-08T22:33:00.5238720+09:00
+  final:
+    decision: KEEP
+    no_new_project_files: false
+    new_production_files:
+      - packages/core/src/documents/reporting/planner/replay-repair.ts
+      - packages/core/src/documents/reporting/planner/presentation-repair.ts
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "The former 3563-line planner orchestration file is now a 1016-line orchestration module; the extracted replay and presentation modules each own a cohesive repair domain and retain no ReportPlanner state dependency."
+      - "The existing planner.ts public import path remains stable through explicit re-exports and a typed replay facade; the shared isRecordValue guard belongs to the existing plan/value.ts seam."
+      - "Focused report regression 149 tests, Core/Desktop typechecks, production build, serial full tests 398 files with 1356 passed and 5 skipped, evaluation 11/11, document-engine 50/50, Knip, architecture 1168/4032 with 0 violations, YAML parsing, and diff checks passed."
+      - "Only the two production modules were added for this split; no test files, fixtures, user documents, generated artifacts, package locks, credentials, application data, or external writes changed."
+
+report_generation_e2e_benchmark:
+  objective: "Measure the real local report-generation path from template/example PDFs and HTTP/RDB capture to an independently verified PDF artifact."
+  allowed_mutation:
+    - test/report-generation-e2e/**
+    - docs/evaluation/report-generation-e2e-v1.md
+    - package.json
+    - .gitignore
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - existing Work Discovery benchmark files and gold data
+    - packages/core/src production behavior unless a benchmark seam is proven missing
+    - package-lock.json
+    - committed binary fixtures, generated artifacts, credentials, application data, and external writes
+    - user-created untracked docs/research files
+  baseline_pending: false
+  baseline_recorded_at: 2026-09-08T23:04:05.6280779+09:00
+  baseline: "RED: node test/report-generation-e2e/run.mjs --check-contract returned MODULE_NOT_FOUND before implementation"
+  deferred_until_evidence:
+    - live external provider/database profiles
+    - changing ReportGenerationService or planner semantics
+    - committed PDF fixtures or golden output binaries
+  final_recorded_at: 2026-09-08T23:26:16.3093609+09:00
+  final:
+    decision: KEEP
+    no_generated_output_in_repository: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "Three local cases pass: two complete PDFs and one fail-closed overflow case with no artifact."
+      - "Independent PyMuPDF verification finds every literal scalar and expected customer row; output completeness and template fidelity are both 1.0."
+      - "The Core build, full Core tests (398 files/1356 passed/5 skipped), Work Discovery benchmark, document-engine 50/50, Knip, architecture, and diff checks pass."
+      - "Only benchmark scripts, benchmark documentation, package command, gitignore exceptions, and harness records changed; no production report semantics or external state changed."
+
+report_generation_e2e_case_expansion:
+  objective: "Expand the existing local report-generation E2E benchmark from a smoke slice into a behavior matrix without changing production report semantics."
+  allowed_mutation:
+    - test/report-generation-e2e/cases.mjs
+    - test/report-generation-e2e/fixtures.mjs
+    - test/report-generation-e2e/planner.mjs
+    - test/report-generation-e2e/run.mjs
+    - test/report-generation-e2e/verify-report.mjs
+    - docs/evaluation/report-generation-e2e-v1.md
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - packages/core/src production behavior unless a proven benchmark seam is missing
+    - existing Work Discovery benchmark files and gold data
+    - package-lock.json
+    - committed binary fixtures, generated artifacts, credentials, application data, and external writes
+    - user-created untracked docs/research files
+  baseline_pending: false
+  baseline_recorded_at: unknown
+  baseline: "PASS: existing three-case benchmark and independent verifier ran before the expansion; execution timestamp was not captured."
+  deferred_until_evidence:
+    - live external provider/database profiles
+    - measuring LLM semantic discovery or model quality
+    - changing ReportGenerationService or planner semantics
+  final_recorded_at: 2026-09-08T23:50:11.3923945+09:00
+  final:
+    decision: KEEP
+    no_generated_output_in_repository: true
+    preserved_user_untracked_files:
+      - docs/research/automation-market-comparison.md
+      - docs/research/problem-slide-evidence.md
+    evidence:
+      - "The benchmark now covers 15 cases: 6 complete PDFs and 9 expected safe failures across pagination, API shape, natural-language input, ordering, layout, source completeness, outage, and data integrity."
+      - "Literal gold remains in cases.mjs; every positive artifact is independently extracted with PyMuPDF and every negative case is checked for no artifact plus the expected error code."
+      - "The benchmark and independent verifier pass with e2e, replay, completeness, fidelity, and safe-failure rates of 1.0."
+      - "Only existing benchmark scripts, documentation, and harness records changed; no production semantics or external state changed."
+
+qa_high_risk_hardening:
+  objective: "Fix the ten high-risk findings from the 2026-09-10 QA report with red-green regression loops."
+  allowed_mutation:
+    - apps/desktop/electron/main/data-migrate.ts
+    - apps/desktop/electron/main/data-migrate.test.ts
+    - apps/desktop/electron/main/startup/ready.ts
+    - apps/desktop/electron/main/fetch-timeout.ts
+    - apps/desktop/electron/main/fetch-timeout.test.ts
+    - apps/desktop/electron/main/app-window.ts
+    - apps/desktop/electron/main/ipc/**
+    - apps/desktop/electron/main/ai/api-verify.ts
+    - apps/desktop/scripts/ensure-native-db.mjs
+    - apps/desktop/package.json
+    - apps/desktop/electron-builder.yml
+    - packages/core/src/runtime/scheduler/service.ts
+    - packages/core/src/runtime/scheduler/scheduled/retry-state.test.ts
+    - packages/core/src/persistence/db/runtime.ts
+    - packages/core/src/persistence/db-migration.test.ts
+    - packages/core/src/persistence/db-native.ts
+    - packages/core/src/persistence/db/sqljs.ts
+    - packages/core/src/contracts/artifacts/table-build.ts
+    - packages/core/src/connectors/local-sheet/profile.ts
+    - packages/core/src/connectors/local-sheet/read/csv.ts
+    - packages/core/src/connectors/local-sheet/read/shared.ts
+    - packages/core/src/connectors/local-sheet/read/xlsx.ts
+    - packages/core/src/connectors/local-sheet/read/workbook.ts
+    - packages/core/src/connectors/local-sheet/workbook-identity.test.ts
+    - packages/core/src/contracts/artifacts/local-sheet-read.test.ts
+    - packages/core/src/testing/e2e/work-discovery-e2e/fixtures.ts
+    - packages/core/src/intelligence/agent/settings/providers/claude/meta.ts
+    - packages/document-engine/requirements.txt
+    - packages/document-engine/src/write/pdf_to_html_engine/roundtrip.py
+    - packages/core/package.json
+    - package.json
+    - package-lock.json
+    - .github/workflows/ci.yml
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  prohibited_mutation:
+    - external credentials, live API/database writes, and user application data
+    - user-created untracked docs/research files
+    - generated PDFs, benchmark output, and committed binary fixtures
+    - unrelated workflow/report semantics or broad formatting rewrites
+  deferred_until_evidence:
+    - replacing the workbook parser if a safe bounded-input policy and current advisory review are sufficient
+    - upgrading Electron beyond the first supported release that passes native and product regression
+  scope_expansion:
+    - reason: "QA-05 required shared workbook-size enforcement and fixture compatibility after the parser upgrade; QA-06 required provider verification and model metadata; QA-07 required Python test dependencies and optional document-engine behavior; QA-10 required native preparation and package smoke configuration."
+      paths:
+        - packages/core/src/contracts/artifacts/table-build.ts
+        - packages/core/src/connectors/local-sheet/profile.ts
+        - packages/core/src/connectors/local-sheet/read/csv.ts
+        - packages/core/src/connectors/local-sheet/read/shared.ts
+        - packages/core/src/testing/e2e/work-discovery-e2e/fixtures.ts
+        - packages/core/src/intelligence/agent/settings/providers/claude/meta.ts
+        - packages/document-engine/requirements.txt
+        - packages/document-engine/src/write/pdf_to_html_engine/roundtrip.py
+        - apps/desktop/electron/main/ai/api-verify.ts
+        - apps/desktop/scripts/ensure-native-db.mjs
+
+working_tree_product_qa_20260912:
+  base: db1c73653a1821880a87d6c10fe29e4e14201ecf
+  review_scope: all current source domains, inventory distinguished from body review
+  initial_mutation:
+    - packages/core/src/persistence/db/**
+    - packages/core/src/persistence/db-native.ts
+    - packages/core/src/persistence/db-migration.test.ts
+    - packages/core/src/runtime/scheduler/**
+    - apps/desktop/electron/main/data-migrate.ts
+    - apps/desktop/electron/main/data-migrate.test.ts
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  constraints:
+    - preserve prior working-tree edits
+    - no new project files or external effects
+    - reproduce every behavior change before patching
+  confirmed_scope_expansion:
+    - reason: Reproduced cancelled discovery reactivation, hidden-column ranking, and abandoned oversized HTTP stream; inspect document resource packaging identified by review.
+      paths:
+        - packages/core/src/work-discovery/service/commands.ts
+        - packages/core/src/work-discovery/service/revision-conflicts.test.ts
+        - packages/core/src/documents/reporting/plan/execute.ts
+        - packages/core/src/documents/reporting/plan/execute.test.ts
+        - apps/desktop/electron/main/fetch-timeout.ts
+        - apps/desktop/electron/main/fetch-timeout.test.ts
+        - apps/desktop/electron-builder.yml
+        - apps/desktop/scripts/ensure-native-db.mjs
+        - apps/desktop/package.json
+        - packages/core/src/documents/read/engine-client/paths.ts
+        - packages/core/src/documents/read/engine-client/basic-adapter.test.ts
+        - scripts/document-engine-install.mjs
+        - .github/workflows/ci.yml
+        - packages/core/src/runtime/execution/approval/resume.ts
+        - packages/core/src/runtime/engine/approval/continuation/branch-resume.test.ts
+        - packages/core/src/connectors/rdb/client/cancellation.test.ts
+        - apps/desktop/src/features/chat/hooks/workspace-chat/message-actions.ts
+        - apps/desktop/src/features/chat/hooks/useDiscovery.test.ts
+
+resource_refactor_20260912:
+  initial_scope:
+    - packages/core/src/persistence/db/sqljs.ts
+    - packages/core/src/persistence/db-migration.test.ts
+    - packages/core/src/platform/local-folder-scan-async.ts
+    - packages/core/src/platform/local-folder-scan-async.test.ts
+    - packages/core/src/intelligence/agent/model/cli-process/**
+    - packages/core/src/triggers/**
+    - apps/desktop/src/features/chat/hooks/**
+    - knip.config.ts
+    - package.json
+    - package-lock.json
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+  constraints:
+    - preserve public exports and persisted data compatibility
+    - validate deletions with callers, runtime entries and tests
+    - no source edits while packaging reads them
+  scope_expansion:
+    - reason: Production retrieval always rebuilds yet retains whole file bodies globally; baseline 30 folders retains 29,750,112 heap bytes. Stream bounded reads and keep only top hits; remove unreferenced cache facade after repository export/reference check.
+      paths:
+        - packages/core/src/intelligence/retrieval/**
+        - packages/core/src/intelligence/design-tools/tools/sources-search.ts
+    - reason: Reproduced active trigger poll outliving stop and blocking restart.
+      paths:
+        - packages/core/src/runtime/trigger-engine.ts
+        - packages/core/src/runtime/trigger-engine/**
+        - packages/core/src/runtime/trigger-engine-lifecycle.test.ts
+        - packages/core/src/triggers/**
+    - reason: Existing getWorkflow materializes every historical JSON/version then sorts; scheduler scans all workflow summaries for each queued occurrence. Replace with indexed single-row lookups; simplify one-timer maps.
+      paths:
+        - packages/core/src/persistence/repositories/workflow-repository.ts
+        - packages/core/src/persistence/workflow-store.ts
+        - packages/core/src/runtime/scheduler/service.ts
+        - packages/core/src/runtime/scheduler/scheduled/retry-state.test.ts
+
+demo_release_audit_20260912:
+  initial_scope:
+    - test/integration/run.mjs
+    - test/product-qa/**
+    - .harness/*
+  expansion_rule: production paths only after reproduced failure or uncovered ownership defect
+  scope_expansion:
+    - reason: Startup resumes scheduler/transport after connector hydration even if shutdown began; lifecycle review identified reachable race.
+      paths:
+        - apps/desktop/electron/main/startup/**
+    - reason: PDF verifier accepted unassociated bags of expected tokens as complete reports.
+      paths:
+        - test/report-generation-e2e/run.mjs
+        - test/report-generation-e2e/verify-report.mjs
+    - reason: Direct UI test found unpackaged QA profiles would save AI preferences to shared checkout ai.toml.
+      paths:
+        - apps/desktop/electron/main/ai/config-file/storage.ts
+        - apps/desktop/electron/main/env-file.test.ts
+    - reason: Human-style UI interactions showed a failure banner during successful background state refresh and doubled Windows path separators in the DB example.
+      paths:
+        - apps/desktop/src/app/hooks/useAppState.ts
+        - apps/desktop/src/app/hooks/useAppState.test.ts
+        - apps/desktop/src/features/settings/ui/connectors/RdbConnectionForm.tsx
+    - reason: Add actual-model natural-language correction and leap-year boundary cases, distinct from fake UI responses.
+      paths:
+        - packages/core/src/documents/reporting/planner/live-discovery.test.ts
+    - reason: Real Slack approval rejection leaves an obsolete waiting message in sidebar and activity summaries.
+      paths:
+        - apps/desktop/electron/main/ipc/execution-log-summary.ts
+        - apps/desktop/electron/main/ipc/execution-log-summary.test.ts
+        - apps/desktop/electron/main/ipc/state-handlers/execution-state.ts
+    - reason: Returning to an in-flight chat before its response completes leaves the saved answer invisible until reopening again.
+      paths:
+        - apps/desktop/src/features/chat/hooks/workspace-chat/message-actions.ts
+        - apps/desktop/src/features/chat/hooks/useDiscovery.test.ts
+    - reason: A real approved Slack send succeeds but records no resumed step progress, leaving waiting_approval as the final step state.
+      paths:
+        - packages/core/src/runtime/execution/approval/approved-actions.ts
+        - packages/core/src/runtime/engine/approval/continuation/direct-resume.test.ts
+    - reason: Real Gmail conversation could not construct a valid action; published steps contract contains no fields or usable example.
+      paths:
+        - packages/core/src/intelligence/agent/commands/contract/definitions/workflow.ts
+        - packages/core/src/intelligence/agent/commands/service/one-shot/queueing.test.ts
+    - reason: Report retries reject a user-supplied API route when a comma immediately follows it in natural-language instructions.
+      paths:
+        - packages/core/src/documents/reporting/service.ts
+        - packages/core/src/documents/reporting/source/execution-boundaries.test.ts
+    - reason: Real PDF generation fits target status into the historical PASS glyph width instead of available template space, causing field_text_overflow.
+      paths:
+        - packages/document-engine/src/write/pdf_report.py
+        - packages/document-engine/src/pdf_report_test.py
+    - reason: Resuming saved pre-fix geometry must reanalyze scalar writing regions rather than retain the broken cached width.
+      paths:
+        - packages/core/src/documents/reporting/service.test.ts
+    - reason: Real resume f0449b5d failed because model paraphrased the saved goal; host must restore the same-chat failed report snapshot.
+      paths:
+        - packages/core/src/intelligence/agent/commands/service/dispatch/report.ts
+        - packages/core/src/intelligence/agent/commands/service/report-generate.test.ts
+    - reason: User confirms Desktop OAuth client; packaged build currently embeds only client ID and loses required desktop client secret, while env-free regression reproduces omission.
+      paths:
+        - apps/desktop/electron.vite.config.ts
+        - apps/desktop/electron/main/gmail/oauth-build.ts
+        - apps/desktop/electron/main/gmail/oauth.ts
+        - apps/desktop/electron/main/gmail/oauth.test.ts
+    - reason: Independent PDF verifier failed to read actual Korean artifact filename because Python stdin defaulted to Windows console encoding.
+      paths:
+        - test/report-generation-e2e/run.mjs
+
+slack_receive_lifecycle_20260912:
+  paths:
+    - packages/core/src/triggers/slack/new-message/socket-mode/listener.ts
+    - packages/core/src/triggers/slack/new-message/listener-lifecycle.test.ts
+  reason: In-flight SDK event handlers read mutable callbacks and channel state after awaiting asynchronous work across a connection restart.
+
+clean_windows_vm_20260912:
+  paths:
+    - D:/AX-QA-VMs
+  reason: User explicitly approved VirtualBox installation to close clean-machine installation and upgrade evidence gap; keep guest assets outside repository.
+
+clean_windows_vm_rebuild_20260912:
+  paths:
+    - D:/AX-QA-VMs/AX-Studio-QA-Win11-v2
+  reason: Original unattended guest cannot elevate; reconstruct supported provisioning with separate bootstrap and standard QA accounts, preserving original VM.
+  production_changes: none
+
+activity_clear_failure_20260912:
+  paths:
+    - apps/desktop/src/features/activity/ui/use-activity-actions.ts
+    - apps/desktop/src/features/activity/ui/ActivityPage.tsx
+    - test/product-qa/specs/harness.spec.ts
+  reason: Bulk clear action has no error presentation path; verify failure and retry through actual Activity UI.
+
+packaged_navigation_soak_20260912:
+  paths:
+    - C:/Users/plosind/AppData/Local/Temp/ax-auth-soak.cjs
+    - C:/Users/plosind/AppData/Local/Temp/ax-demo-human-lwercr
+  reason: Close part of the long-running real-profile resource evidence gap while Windows installs; no production changes or external writes.
+
+ai_provider_form_isolation_20260912:
+  paths:
+    - apps/desktop/src/features/settings/ui/settings-page/content.tsx
+    - test/product-qa/specs/harness.spec.ts
+  reason: Direct sidebar provider switch reuses the same React detail component and may retain provider-specific draft state.
+
+ai_detection_recovery_20260912:
+  paths:
+    - apps/desktop/src/app/App.tsx
+    - apps/desktop/src/app/settings-page.tsx
+    - apps/desktop/src/features/settings/hooks/ai-settings/useAiDetection.ts
+    - apps/desktop/src/features/settings/ui/SettingsPage.tsx
+    - apps/desktop/src/features/settings/ui/settings-page/contracts.ts
+    - apps/desktop/src/features/settings/ui/settings-page/content.tsx
+    - apps/desktop/src/features/settings/ui/settings-page/use-settings-detection.ts
+    - test/product-qa/specs/harness.spec.ts
+  reason: App and settings instantiate separate detection state and both have uncaught startup refresh paths; recovery must reach both visible surfaces.
+
+chat_list_recovery_20260912:
+  paths:
+    - apps/desktop/src/features/chat/hooks/useChatSessions.ts
+    - apps/desktop/src/app/App.tsx
+    - test/product-qa/specs/harness.spec.ts
+  reason: Initial conversation-list refresh has no visible recovery path; test apparent missing-history behavior at the actual UI boundary.
+
+ai_unused_activation_20260912:
+  paths:
+    - apps/desktop/src/features/settings/hooks/ai-brand-settings/configuration-actions.ts
+    - apps/desktop/src/features/settings/hooks/ai-brand-settings/actions.ts
+    - apps/desktop/src/features/settings/hooks/ai-brand-settings/contracts.ts
+  reason: Whole source/test search finds activateBrand only at its declaration and forwarding; actual UI saves and switches via existing save action.
+
+workflow_empty_branch_display_20260912:
+  paths:
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow/sequence.ts
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow.test.ts
+  reason: The visual graph must represent the valid skip path when only one side of a conditional branch contains steps.
+
+workflow_cycle_preview_20260912:
+  paths:
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow.ts
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow/sequence.ts
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow/contracts.ts
+    - apps/desktop/src/features/workflows/authoring/WorkflowGraph.tsx
+    - apps/desktop/src/features/workflows/authoring/draft-to-flow.test.ts
+    - test/product-qa/specs/harness.spec.ts
+  reason: Preview walks branch references recursively before runtime validation; malformed saved or intermediate drafts must not take down the chat screen.
+
+slow_discovery_refresh_20260912:
+  paths:
+    - apps/desktop/src/features/chat/hooks/useDiscovery.ts
+    - test/product-qa/specs/harness.spec.ts
+  reason: Polling can invalidate each in-flight response when inspection takes longer than the polling interval, hiding eventual terminal state.
+
+slow_app_state_refresh_20260912:
+  paths:
+    - apps/desktop/src/app/hooks/useAppState.ts
+    - test/product-qa/specs/harness.spec.ts
+  reason: Same queued-request invalidation pattern exists in app-state refresh when state notifications arrive faster than storage responses.
+
+refresh_ordering_policy_closure:
+  paths:
+    - apps/desktop/src/app/hooks/useAppState.test.ts
+  reason: Correct the existing test trigger to the public explicit refresh action and cover passive notifications separately, preserving stale-result assertions and the actual slow UI evaluator.
+
+main_integration_ci_compatibility:
+  paths:
+    - .github/workflows/ci.yml
+  reason: Required Linux verification cannot start because the runner npm rejects allow-remote; remove the environment-specific configuration while retaining npm ci and every verification step.
+
+windows_ci_artifact_path:
+  paths:
+    - apps/desktop/electron/main/ipc/artifact-handlers.test.ts
+  reason: CI uses DOS8.3 temp aliases; canonical returned source path is correct, so fix only expected path spelling while retaining all safety assertions.
+
+clean_windows_electron_bundle:
+  paths:
+    - apps/desktop/package.json
+  reason: Electron44 downloads its executable lazily, while electron-builder copies electronDist directly. Fresh packaging needs the package-provided install-electron prerequisite; otherwise electron.exe is absent. Apply to both pack commands without changing product behavior.
+
+ci_chat_observation_race:
+  paths:
+    - test/product-qa/lib/ui.ts
+  reason: Message count and per-index locator reads span multiple renderer turns; session transition can remove an indexed node and time out the observer itself. Capture message roles/text in one DOM snapshot without weakening scenario assertions.

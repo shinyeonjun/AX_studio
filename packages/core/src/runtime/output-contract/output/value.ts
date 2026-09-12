@@ -1,11 +1,6 @@
 import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
 import type { OutputContractValueKind } from '../../../contracts/output-contract.js';
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
+import { asRecord, isDateString } from '../types.js';
 
 function hasOwn(record: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key);
@@ -40,10 +35,6 @@ export function resolveOutputValue(
     if (record?.outputPath === path && hasOwn(record, 'value')) return record.value;
   }
   return undefined;
-}
-
-function isDateString(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}(?:$|[T ])/.test(value);
 }
 
 export function outputValueKind(value: unknown): OutputContractValueKind | undefined {

@@ -130,7 +130,7 @@ export function answerDiscovery(
   if (state && expectedRevision !== undefined && state.revision !== expectedRevision) {
     return { error: 'discovery_revision_conflict', currentRevision: state.revision };
   }
-  if (!state?.pendingQuestion || state.pendingQuestion.id !== questionId) return undefined;
+  if (state?.status !== 'needs_clarification' || !state.pendingQuestion || state.pendingQuestion.id !== questionId) return undefined;
   const next = applyClarificationAnswer(state, state.pendingQuestion, optionId);
   runtime.store.saveDiscoverySession(next);
   return next;

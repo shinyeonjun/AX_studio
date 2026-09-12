@@ -1,4 +1,4 @@
-import type { ConditionExpr, ConditionValue } from '../../../runtime/condition-expr.js';
+import type { ConditionExpr, ConditionValue } from '../../condition-expr/schema.js';
 import type { RepairCandidateOperation } from '../contract.js';
 import type { TransformExpr } from '../../transform-expr/dsl.js';
 

@@ -1,10 +1,10 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { disconnectMcp, validateAndConnectMcp } from '../../mcp/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerMcpConnectionHandlers() {
-  ipcMain.handle('ax:connectMcp', async (_event, payload: unknown) => {
+  ipcHandle('ax:connectMcp', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('MCP 연결 정보 형식이 올바르지 않습니다.');
@@ -19,7 +19,7 @@ export function registerMcpConnectionHandlers() {
     return { ok: true };
   });
 
-  ipcMain.handle('ax:disconnectMcp', async () => {
+  ipcHandle('ax:disconnectMcp', async () => {
     const core = getCore();
     await disconnectMcp(core.store, core.runtime);
     notifyStateChanged();

@@ -1,7 +1,7 @@
 import type { ConnectorCapability } from '../catalog/capability-types.js';
 import type { ConnectorCatalogEntry, ConnectorId } from '../catalog/connector-types.js';
 import type { DiscoverySourceProvider, WorkbookMaterializer } from '../contracts/discovery-source.js';
-import type { DesignToolContext } from '../intelligence/design-tools/types.js';
+import type { SourceListingContext } from './types.js';
 import type { TriggerHandler } from '../triggers/types.js';
 import type { ModuleRegistration } from './module-registry.js';
 import type { PushTransportStateHandler } from '../triggers/push-state.js';
@@ -34,8 +34,8 @@ export interface ModulePackage {
   registration: Omit<ModuleRegistration, 'id'>;
   triggerHandlers?: TriggerHandler[];
   pushTriggerDriver?: PushTriggerDriver;
-  listSources?: (ctx: DesignToolContext) => unknown;
-  listSourceFiles?: (ctx: DesignToolContext, args: Record<string, unknown>) => unknown;
+  listSources?: (ctx: SourceListingContext) => unknown;
+  listSourceFiles?: (ctx: SourceListingContext, args: Record<string, unknown>) => unknown;
   discoverySource?: DiscoverySourceProvider;
   materializeWorkbook?: WorkbookMaterializer['readWorkbookFromPath'];
 }

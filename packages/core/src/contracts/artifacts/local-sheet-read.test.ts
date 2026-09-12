@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
@@ -15,7 +15,7 @@ describe('local sheet read', () => {
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, sheet, 'sales');
-    XLSX.writeFile(workbook, path);
+    writeFileSync(path, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
 
     const { readWorkbookFromPath } = await import('../../connectors/local-sheet/read/workbook.js');
     const result = readWorkbookFromPath(path);

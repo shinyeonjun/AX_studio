@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { desktopAppDisplayName } from './data-paths.js';
 
 const DEV_RENDERER_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
@@ -7,17 +8,26 @@ const DEV_RENDERER_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1
 function hardenWebContents(contents: Electron.WebContents): void {
   contents.setWindowOpenHandler(() => ({ action: 'deny' }));
   contents.on('will-navigate', (event, url) => {
-    if (process.env.ELECTRON_RENDERER_URL) {
-      try {
-        const origin = new URL(url).origin;
-        if (DEV_RENDERER_ORIGINS.has(origin)) return;
-      } catch {
-        // fall through
-      }
-    }
-    if (url.startsWith('file://')) return;
-    event.preventDefault();
+    if (!isTrustedRendererUrl(url)) event.preventDefault();
   });
+  contents.on('will-redirect', (event, url) => {
+    if (!isTrustedRendererUrl(url)) event.preventDefault();
+  });
+}
+
+export function isTrustedRendererUrl(url: string): boolean {
+  if (process.env.ELECTRON_RENDERER_URL) {
+    try {
+      const configured = new URL(process.env.ELECTRON_RENDERER_URL);
+      return DEV_RENDERER_ORIGINS.has(new URL(url).origin) &&
+        new URL(url).origin === configured.origin;
+    } catch {
+      return false;
+    }
+  }
+
+  const rendererUrl = pathToFileURL(join(__dirname, '../renderer/index.html')).toString();
+  return url === rendererUrl || url.startsWith(`${rendererUrl}#`) || url.startsWith(`${rendererUrl}?`);
 }
 
 let mainWindow: BrowserWindow | null = null;

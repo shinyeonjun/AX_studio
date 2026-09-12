@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DiscoveryInspectView } from '@ax-studio/core';
-import { TERMINAL_STATUSES, commandError, unwrap, type RefreshDiscovery } from './use-discovery/result.js';
+import { TERMINAL_STATUSES, commandError, unwrap } from './use-discovery/result.js';
 import { useDiscoveryActions } from './use-discovery/actions.js';
 import { CoalescedRefresh } from '../../../app/hooks/coalesced-refresh.js';
 
@@ -44,8 +44,8 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
     clearState();
   }, [clearState, workspaceContextKey]);
 
-  const refresh: RefreshDiscovery = useCallback((id: string, epoch = operationEpochRef.current) => {
-    const refreshEpoch = ++refreshEpochRef.current;
+  const refresh = useCallback((id: string, epoch = operationEpochRef.current, background = false) => {
+    const refreshEpoch = background ? refreshEpochRef.current : ++refreshEpochRef.current;
     return refreshQueue.current.run(async () => {
     if (epoch !== operationEpochRef.current || activeSessionRef.current !== id) return null;
     const isCurrent = () => (
@@ -82,10 +82,10 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
 
   useEffect(() => {
     if (!activeSessionId) return;
-    void refresh(activeSessionId);
+    void refresh(activeSessionId, undefined, true);
     if (activeView && TERMINAL_STATUSES.has(activeView.status)) return;
     const timer = window.setInterval(() => {
-      void refresh(activeSessionId);
+      void refresh(activeSessionId, undefined, true);
     }, 1500);
     return () => window.clearInterval(timer);
   }, [activeSessionId, activeView?.status, refresh]);

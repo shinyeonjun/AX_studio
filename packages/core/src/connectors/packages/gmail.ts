@@ -6,10 +6,10 @@ import {
   parseGmailConnectionConfig,
 } from '../gmail/index.js';
 import { gmailNewMessageHandler } from '../../triggers/gmail/new-message/index.js';
-import type { DesignToolContext } from '../../intelligence/design-tools/types.js';
+import type { SourceListingContext } from '../types.js';
 import { GMAIL_CAPABILITIES, GMAIL_CATALOG } from '../gmail/catalog.js';
 
-function gmailSources(ctx: DesignToolContext) {
+function gmailSources(ctx: SourceListingContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'gmail');
   const record = parseGmailConnectionConfig(
     conn?.config && typeof conn.config === 'object' && !Array.isArray(conn.config)

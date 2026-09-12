@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../../db.js';
+import { readRow, readRows } from '../../db/types.js';
 import {
   parseMessages,
   type WorkspaceChatListRecord,
@@ -25,18 +26,17 @@ function toWorkspaceChatRecord(row: ChatRow): WorkspaceChatRecord {
 }
 
 export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatRecord | null {
-  const row = db
-    .prepare('SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE id = ?')
-    .get(id) as ChatRow | undefined;
+  const row = readRow<ChatRow>(
+    db.prepare('SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE id = ?'),
+    id,
+  );
   return row ? toWorkspaceChatRecord(row) : null;
 }
 
 export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string): WorkspaceChatRecord | null {
-  const row = db
-    .prepare(
-      'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE workflow_id = ? ORDER BY updated_at DESC LIMIT 1',
-    )
-    .get(workflowId) as ChatRow | undefined;
+  const row = readRow<ChatRow>(db.prepare(
+    'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE workflow_id = ? ORDER BY updated_at DESC LIMIT 1',
+  ), workflowId);
   return row ? toWorkspaceChatRecord(row) : null;
 }
 
@@ -60,11 +60,11 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatLi
     '         LIMIT ?';
   let rows: ListRow[];
   try {
-    rows = db.prepare(query('json_valid(wc.messages_json)')).all(limit) as unknown as ListRow[];
+    rows = readRows<ListRow>(db.prepare(query('json_valid(wc.messages_json)')), limit);
   } catch {
     // JSON1 unavailable: list without a validity probe rather than parsing
     // every stored transcript; a corrupt chat still fails closed on open.
-    rows = db.prepare(query('1')).all(limit) as unknown as ListRow[];
+    rows = readRows<ListRow>(db.prepare(query('1')), limit);
   }
   return rows.map((row) => {
     const corrupted = !row.valid_json;

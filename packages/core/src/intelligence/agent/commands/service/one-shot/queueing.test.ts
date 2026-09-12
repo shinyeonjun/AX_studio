@@ -5,6 +5,27 @@ import { AxCommandService } from '../../service.js';
 import { commandChatContext } from '../fixtures.js';
 
 describe('AxCommandService one-shot queue', () => {
+  it('provides an executable action shape to the agent in the command contract', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('gmail', true);
+    const queued: unknown[] = [];
+    const service = new AxCommandService(store, {
+      enqueueOnce: workflow => { queued.push(workflow); return { jobId: 'contract-example' }; },
+    });
+    const entry = service.listCommands(commandChatContext.executionContext)
+      .find(command => command.name === 'execution.enqueue_once')!;
+    const example = entry.args.steps.match(/\[\{.*\}\]/)?.[0];
+    expect(example).toBeDefined();
+    const response = await service.execute({ name: 'execution.enqueue_once', args: {
+      name: 'Contract example', goal: 'Check input shape without sending', steps: JSON.parse(example!),
+    } }, commandChatContext);
+    expect(response.status).toBe('queued');
+    expect(queued).toHaveLength(1);
+    expect(store.listWorkflows()).toHaveLength(0);
+    db.close();
+  });
+
   it('queues a validated one-shot plan without persisting a workflow', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

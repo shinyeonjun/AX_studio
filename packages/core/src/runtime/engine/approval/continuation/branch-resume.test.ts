@@ -77,3 +77,29 @@ describe('approval continuation branch resume', () => {
     db.close?.();
   });
 });
+
+it.each([true, false])('defers approval-owned descendant action to nested branch selection: %s', async (send) => {
+  const db = await createDatabaseAsync(':memory:');
+  const store = new WorkflowStore(db);
+  const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+  const ir: WorkflowIR = {
+    name: 'Nested conditional approved action', goal: 'Send only once when nested condition is true', version: 1,
+    steps: [
+      { type: 'if', id: 'outer', condition: { op: 'eq', left: { ref: 'enter' }, right: { lit: true } }, thenStepIds: ['approve', 'inner'], elseStepIds: [] },
+      { type: 'human_approval', id: 'approve', reason: 'Approve possible send', forActionIds: ['send'] },
+      { type: 'if', id: 'inner', condition: { op: 'eq', left: { ref: 'shouldSend' }, right: { lit: true } }, thenStepIds: ['send'], elseStepIds: [] },
+      { type: 'action', id: 'send', connector: 'slack', action: 'message.send', params: { channel: '#nested', text: 'once' }, sideEffect: 'EXTERNAL' },
+    ],
+    permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+  };
+  try {
+    const first = await runtime.executeWorkflow(ir, { ephemeral: true, input: { enter: true, shouldSend: send } });
+    expect(first.status).toBe('pending_approval');
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(0);
+    const resumed = await runtime.continueAfterApproval(first.pendingApprovalId!);
+    expect(resumed.status).toBe('success');
+    expect(mockSlack(runtime.connectors).messages).toHaveLength(send ? 1 : 0);
+  } finally {
+    db.close?.();
+  }
+});

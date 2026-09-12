@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../../db.js';
+import { readRows } from '../../db/types.js';
 import type { DiscoveryReplayCaseRecord } from './contracts.js';
 
 export function upsertDiscoveryReplayCase(db: AppDatabase, replayCase: DiscoveryReplayCaseRecord): void {
@@ -24,9 +25,9 @@ export function upsertDiscoveryReplayCase(db: AppDatabase, replayCase: Discovery
 }
 
 export function listDiscoveryReplayCases(db: AppDatabase, sessionId: string): DiscoveryReplayCaseRecord[] {
-  const rows = db.prepare(
+  const rows = readRows<Record<string, unknown>>(db.prepare(
     'SELECT * FROM work_discovery_replay_cases WHERE session_id = ? ORDER BY created_at ASC, id ASC',
-  ).all(sessionId) as Array<Record<string, unknown>>;
+  ), sessionId);
   return rows.map((row) => ({
     id: String(row.id),
     sessionId: String(row.session_id),

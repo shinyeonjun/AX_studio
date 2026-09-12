@@ -1,4 +1,4 @@
-import type { ConditionExpr } from '../../../runtime/condition-expr.js';
+import type { ConditionExpr } from '../../condition-expr/schema.js';
 import type { Step, WorkflowIR } from '../../schema.js';
 import { nodeRoleHint } from './ids.js';
 

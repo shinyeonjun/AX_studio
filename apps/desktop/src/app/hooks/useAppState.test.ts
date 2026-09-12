@@ -28,7 +28,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-async function startOverlappingRefreshes(first: Promise<unknown>, second: Promise<unknown>) {
+async function startOverlappingRefreshes(first: Promise<unknown>, second: Promise<unknown>, notification = false) {
   const getState = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
@@ -43,10 +43,11 @@ async function startOverlappingRefreshes(first: Promise<unknown>, second: Promis
     },
   });
 
-  useAppState();
+  const { refresh } = useAppState();
   effects[0]?.();
   await Promise.resolve();
-  onStateChanged?.();
+  if (notification) onStateChanged?.();
+  else void refresh();
   expect(getState).toHaveBeenCalledOnce();
   return stateSetters;
 }
@@ -64,6 +65,16 @@ describe('useAppState refresh ordering', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });
+  });
+
+  it('keeps a ready snapshot usable while a background refresh is pending', async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    const [, setLoadState] = await startOverlappingRefreshes(first.promise, second.promise);
+    const pendingUpdate = setLoadState.mock.calls[0]![0] as (state: string) => string;
+    expect(pendingUpdate('ready')).toBe('ready');
+    first.resolve({});
+    second.resolve({});
   });
 
   it('serializes refreshes and suppresses success invalidated by a newer request', async () => {
@@ -98,5 +109,19 @@ describe('useAppState refresh ordering', () => {
 
     expect(setLoadState).toHaveBeenLastCalledWith('ready');
     expect(setError).toHaveBeenLastCalledWith('');
+  });
+
+  it('keeps serialized results visible while passive notifications queue another read', async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    const [setState] = await startOverlappingRefreshes(first.promise, second.promise, true);
+    for (let i = 0; i < 100; i++) onStateChanged?.();
+    const initialState = { workflows: [{ id: 'initial' }] };
+    first.resolve(initialState);
+    await vi.waitFor(() => expect(setState).toHaveBeenCalledWith(initialState));
+    const latestState = { workflows: [{ id: 'latest' }] };
+    second.resolve(latestState);
+    await vi.waitFor(() => expect(setState).toHaveBeenLastCalledWith(latestState));
+    expect(setState).toHaveBeenCalledTimes(2);
   });
 });

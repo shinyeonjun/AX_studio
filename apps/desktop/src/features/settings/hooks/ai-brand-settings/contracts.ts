@@ -64,7 +64,6 @@ export type AiBrandConfigurationActionsInput = Pick<
   | 'brandSecrets'
   | 'verifiedCli'
   | 'verifiedApi'
-  | 'isActive'
   | 'canSave'
   | 'onRefresh'
   | 'refreshDetection'

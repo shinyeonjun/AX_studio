@@ -110,13 +110,18 @@ describe('report.generate command', () => {
     expect((queued[0] as { workflow: { steps: Array<{ params: Record<string, unknown> }> } }).workflow.steps[0]?.params)
       .not.toHaveProperty('resumeExecutionId');
 
+    const previousExecutionId = store.createExecution({
+      ephemeral: true, workspaceSessionId: chat.id,
+      irJson: JSON.stringify((queued[0] as { workflow: unknown }).workflow),
+    });
+    store.finishExecution(previousExecutionId, 'failed', 'field_text_overflow');
     await service.execute({
       name: 'report.generate',
       args: {
         goal: '실패한 보고서의 중간 결과를 이어서 재시도해줘',
         templateSourceId: 'template',
         exampleSourceId: 'example',
-        resumeExecutionId: 'explicit-previous-execution',
+        resumeExecutionId: previousExecutionId,
       },
     }, {
       executionContext: AGENT_COMMAND_CONTEXT,
@@ -124,7 +129,7 @@ describe('report.generate command', () => {
       userMessage: '실패한 보고서의 중간 결과를 이어서 재시도해줘',
     });
     expect((queued[1] as { workflow: { steps: Array<{ params: Record<string, unknown> }> } }).workflow.steps[0]?.params)
-      .toMatchObject({ resumeExecutionId: 'explicit-previous-execution' });
+      .toMatchObject({ resumeExecutionId: previousExecutionId, goal: '다음 기간 보고서를 같은 기준으로 만들어줘' });
 
     await service.execute({
       name: 'report.generate',
@@ -148,10 +153,45 @@ describe('report.generate command', () => {
         goal: 'direct host caller retry',
         templateSourceId: 'template',
         exampleSourceId: 'example',
-        resumeExecutionId: 'direct-previous-execution',
+        resumeExecutionId: previousExecutionId,
       },
     }, { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id });
     expect((queued[3] as { workflow: { steps: Array<{ params: Record<string, unknown> }> } }).workflow.steps[0]?.params)
-      .toMatchObject({ resumeExecutionId: 'direct-previous-execution' });
+      .toMatchObject({ resumeExecutionId: previousExecutionId, goal: '다음 기간 보고서를 같은 기준으로 만들어줘' });
+
+    await service.execute({ name: 'report.generate', args: {
+      goal: '복구를 확인해줘', templateSourceId: 'template', exampleSourceId: 'example', resumeExecutionId: previousExecutionId,
+    } }, { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id,
+      userMessage: '새 보고서가 성공한 건 확인했어. 원래 실패했던 실행을 그대로 이어서 재시도해줘.' });
+    expect(queued[4]).toMatchObject({ workflow: { steps: [{ params: {
+      resumeExecutionId: previousExecutionId, goal: '다음 기간 보고서를 같은 기준으로 만들어줘',
+    } }] } });
+    await service.execute({ name: 'report.generate', args: {
+      goal: '처음부터 생성', templateSourceId: 'template', exampleSourceId: 'example', resumeExecutionId: previousExecutionId,
+    } }, { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id,
+      userMessage: '실패한 실행을 재시도하려 했는데, 이번에는 처음부터 새로 만들어줘.' });
+    expect((queued[5] as { workflow: { steps: Array<{ params: Record<string, unknown> }> } }).workflow.steps[0]?.params)
+      .toEqual({ goal: '처음부터 생성', templateSourceId: 'template', exampleSourceId: 'example' });
+
+    const foreignExecution = store.createExecution({ ephemeral: true,
+      workspaceSessionId: store.saveWorkspaceChat({ messages: [] }).id,
+      irJson: JSON.stringify((queued[0] as { workflow: unknown }).workflow) });
+    store.finishExecution(foreignExecution, 'failed');
+    for (const [id, template, expectedCode] of [
+      ['missing-execution', 'template', 'report_resume_not_found'],
+      [foreignExecution, 'template', 'report_resume_not_found'],
+      [previousExecutionId, 'replacement-template', 'report_checkpoint_input_changed'],
+    ]) {
+      const rejected = await service.execute({ name: 'report.generate', args: {
+        goal: 'try again', templateSourceId: template, exampleSourceId: 'example', resumeExecutionId: id,
+      } }, { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id });
+      expect(JSON.stringify(rejected)).toContain(expectedCode);
+    }
+    store.finishExecution(previousExecutionId, 'success');
+    const completed = await service.execute({ name: 'report.generate', args: {
+      resumeExecutionId: previousExecutionId,
+    } }, { executionContext: AGENT_COMMAND_CONTEXT, workspaceSessionId: chat.id });
+    expect(JSON.stringify(completed)).toContain('report_checkpoint_not_failed');
+    expect(queued).toHaveLength(6);
   });
 });

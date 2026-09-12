@@ -1,10 +1,10 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { disconnectHttp, validateAndConnectHttp } from '../../http/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerHttpConnectionHandlers() {
-  ipcMain.handle('ax:connectHttp', async (_event, payload: unknown) => {
+  ipcHandle('ax:connectHttp', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('HTTP 연결 정보 형식이 올바르지 않습니다.');
@@ -28,7 +28,7 @@ export function registerHttpConnectionHandlers() {
     return { ok: true };
   });
 
-  ipcMain.handle('ax:disconnectHttp', async (_event, endpointId?: unknown) => {
+  ipcHandle('ax:disconnectHttp', async (_event, endpointId?: unknown) => {
     const core = getCore();
     // A malformed id must not silently become "disconnect everything".
     if (endpointId != null && (typeof endpointId !== 'string' || !endpointId.trim())) {

@@ -1,7 +1,7 @@
-import type { WorkspaceChatContext } from '../contracts';
-import type { WorkspaceWorkflowState } from '../../workspace-chat-helpers';
-import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
-import { detachActiveRequest, invalidateSession } from './helpers';
+import type { WorkspaceChatContext } from './contracts';
+import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
+import { detachActiveRequest, invalidateSession } from './lifecycle-actions';
 
 export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
   const refreshMappedWorkspaceChat = async (sessionId: string) => {

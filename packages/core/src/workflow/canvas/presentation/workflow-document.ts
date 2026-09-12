@@ -1,5 +1,5 @@
 import type { WorkflowIR } from '../../schema.js';
-import { formatCondition } from '../../../runtime/condition-expr.js';
+import { formatCondition } from '../../condition-expr/format.js';
 import { KO } from '../../../i18n/ko.js';
 
 function triggerLines(ir: Partial<WorkflowIR>): string[] {

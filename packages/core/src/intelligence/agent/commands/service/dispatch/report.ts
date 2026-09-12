@@ -1,11 +1,10 @@
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { issue, result, textArg } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
+import { parseWorkflowIR } from '../../../../../workflow/schema.js';
 
-const REPORT_RESUME_ACTION_MARKER = /(?:재시도|재개|retry|resume|continue)/iu;
-const REPORT_RESUME_CONTEXT_MARKER = /(?:이전|지난|직전|실패|중간|결과|실행\s*(?:id|번호)?|체크포인트|checkpoint)/iu;
-const REPORT_RESUME_SEQUENCE_MARKER = /(?:이어(?:서|가)?)[\s\S]{0,16}(?:재시도|재개|retry|resume|continue)|(?:재시도|재개|retry|resume|continue)[\s\S]{0,16}(?:이어(?:서|가)?)/iu;
-const REPORT_FRESH_MARKER = /(?:새(?:로|로운)?|처음부터|새 실행|새 요청|새 보고서|신규|fresh|new)/iu;
+const REPORT_RESUME_ACTION_MARKER = /재시도|재개|\b(?:retry|resume|continue)\b/giu;
+const REPORT_FRESH_MARKER = /새로|처음부터|새\s*(?:실행|요청|보고서)|신규|\b(?:fresh|new)\b/giu;
 
 /**
  * A resume id can be present in the model's context even when the user starts
@@ -16,9 +15,10 @@ const REPORT_FRESH_MARKER = /(?:새(?:로|로운)?|처음부터|새 실행|새 �
 function isExplicitReportResume(userMessage: string | undefined): boolean {
   if (userMessage === undefined) return true;
   const message = userMessage.trim();
-  if (!message || REPORT_FRESH_MARKER.test(message)) return false;
-  return REPORT_RESUME_ACTION_MARKER.test(message)
-    || (REPORT_RESUME_CONTEXT_MARKER.test(message) && REPORT_RESUME_SEQUENCE_MARKER.test(message));
+  const resume = [...message.matchAll(REPORT_RESUME_ACTION_MARKER)].at(-1)?.index;
+  const fresh = [...message.matchAll(REPORT_FRESH_MARKER)].at(-1)?.index;
+  // A later retry instruction must not be overridden by an earlier report mention.
+  return resume !== undefined && (fresh === undefined || resume > fresh);
 }
 
 export async function executeReportCommand(
@@ -26,15 +26,43 @@ export async function executeReportCommand(
   command: AxCommand,
   options: AxCommandExecuteOptions,
 ): Promise<AxCommandResult> {
-  const goal = textArg(command, 'goal');
-  const templateSourceId = textArg(command, 'templateSourceId');
-  const exampleSourceId = textArg(command, 'exampleSourceId');
+  let goal = textArg(command, 'goal');
+  let templateSourceId = textArg(command, 'templateSourceId');
+  let exampleSourceId = textArg(command, 'exampleSourceId');
   const requestedResumeExecutionId = textArg(command, 'resumeExecutionId');
   const resumeExecutionId = requestedResumeExecutionId && isExplicitReportResume(options.userMessage)
     ? requestedResumeExecutionId
     : undefined;
   if (!options.workspaceSessionId) {
     return result(command.name, 'invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]);
+  }
+  if (resumeExecutionId) {
+    const previous = state.store.getExecution(resumeExecutionId);
+    if (!previous || previous.workspaceSessionId !== options.workspaceSessionId) {
+      return result(command.name, 'not_found', undefined, [issue('report_resume_not_found', '현재 대화에서 이전 실행을 찾을 수 없습니다.')]);
+    }
+    if (previous.status !== 'failed') {
+      return result(command.name, 'invalid', undefined, [issue('report_checkpoint_not_failed', '실패한 보고서만 이어서 재시도할 수 있습니다.')]);
+    }
+    try {
+      const workflow = parseWorkflowIR(JSON.parse(previous.irJson ?? 'null'));
+      const step = workflow.steps.length === 1 ? workflow.steps[0] : undefined;
+      if (step?.type !== 'action' || step.connector !== 'document' || step.action !== 'pdf.report.generate'
+          || typeof step.params.goal !== 'string' || !step.params.goal.trim()
+          || typeof step.params.templateSourceId !== 'string' || typeof step.params.exampleSourceId !== 'string') {
+        throw new Error('report_resume_snapshot_invalid');
+      }
+      if ((templateSourceId && templateSourceId !== step.params.templateSourceId)
+          || (exampleSourceId && exampleSourceId !== step.params.exampleSourceId)) {
+        return result(command.name, 'invalid', undefined, [issue('report_checkpoint_input_changed', '자료를 바꾸려면 새 보고서로 요청해 주세요.')]);
+      }
+      // Resume the saved request, not the model's paraphrase of "try again".
+      goal = step.params.goal;
+      templateSourceId = step.params.templateSourceId;
+      exampleSourceId = step.params.exampleSourceId;
+    } catch {
+      return result(command.name, 'invalid', undefined, [issue('report_resume_snapshot_invalid', '저장된 보고서 실행을 복원할 수 없습니다. 새 실행으로 요청해 주세요.')]);
+    }
   }
   const missing = [
     !goal ? 'goal' : undefined,

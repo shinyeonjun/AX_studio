@@ -3,7 +3,8 @@ import type { WorkspaceWorkflowState } from './workspace-chat-helpers';
 import type { WorkspaceChatMessage, WorkspaceSourceRecord } from '@ax-studio/core';
 import type { WorkspaceChatContext } from './workspace-chat/contracts';
 import { createWorkspaceMessageActions } from './workspace-chat/message-actions';
-import { createWorkspaceSessionActions } from './workspace-chat/session-actions';
+import { createWorkspaceLifecycleActions } from './workspace-chat/lifecycle-actions';
+import { createWorkspaceLoadActions } from './workspace-chat/load-actions';
 import { createWorkspaceSourceActions } from './workspace-chat/source-actions';
 import { createWorkspaceWorkflowActions } from './workspace-chat/workflow-actions';
 
@@ -64,7 +65,8 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     setWorkspaceSources,
     setSourceBusy,
   };
-  const sessionActions = createWorkspaceSessionActions(context);
+  const lifecycleActions = createWorkspaceLifecycleActions(context);
+  const loadActions = createWorkspaceLoadActions(context);
 
   useEffect(() => {
     const off = window.ax.onChatProgress?.(({ message, requestId }) => {
@@ -93,18 +95,18 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
         pendingWorkspaceChatRefreshRef.current = sessionId;
         return;
       }
-      void sessionActions.refreshMappedWorkspaceChat(sessionId);
+      void loadActions.refreshMappedWorkspaceChat(sessionId);
     });
     return () => off?.();
   }, [onSessionsChanged]);
 
   const messageActions = createWorkspaceMessageActions({
     ...context,
-    refreshMappedWorkspaceChat: sessionActions.refreshMappedWorkspaceChat,
+    refreshMappedWorkspaceChat: loadActions.refreshMappedWorkspaceChat,
   });
   const workflowActions = createWorkspaceWorkflowActions({
     ...context,
-    refreshMappedWorkspaceChat: sessionActions.refreshMappedWorkspaceChat,
+    refreshMappedWorkspaceChat: loadActions.refreshMappedWorkspaceChat,
   });
   const sourceActions = createWorkspaceSourceActions(context);
 
@@ -134,12 +136,12 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     error,
     dismissError,
     progress,
-    reset: sessionActions.reset,
-    startNewChat: sessionActions.startNewChat,
-    loadWorkspaceChat: sessionActions.loadWorkspaceChat,
+    reset: lifecycleActions.reset,
+    startNewChat: lifecycleActions.startNewChat,
+    loadWorkspaceChat: loadActions.loadWorkspaceChat,
     workspaceSessionId,
     workspaceContextKey,
-    openWorkChat: sessionActions.openWorkChat,
+    openWorkChat: loadActions.openWorkChat,
     workflowRegistered,
     registerWorkflow: workflowActions.registerWorkflow,
     sendMessage: messageActions.sendMessage,

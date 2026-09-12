@@ -63,7 +63,7 @@ export function RdbConnectionForm({
         <label className="field">
           <span>SQLite 파일</span>
           <div className="field-row">
-            <input value={filePath} onChange={(event) => setFilePath(event.target.value)} placeholder="C:\\data\\app.db" />
+            <input value={filePath} onChange={(event) => setFilePath(event.target.value)} placeholder={'C:\\data\\app.db'} />
             <button type="button" className="btn-secondary" onClick={() => void handlePickFile()} disabled={busy}>
               찾아보기
             </button>

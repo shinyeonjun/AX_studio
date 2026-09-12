@@ -1,8 +1,9 @@
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 import type { SettingRow, ConnectionRow } from '../rows.js';
 
 export function getSetting<T>(db: AppDatabase, key: string, defaultValue: T): T {
-  const row = db.prepare('SELECT value_json FROM settings WHERE key = ?').get(key) as SettingRow | undefined;
+  const row = readRow<SettingRow>(db.prepare('SELECT value_json FROM settings WHERE key = ?'), key);
   if (!row) return defaultValue;
   try {
     return JSON.parse(row.value_json) as T;
@@ -48,7 +49,7 @@ export function setConnection(
 export function getConnections(
   db: AppDatabase,
 ): Array<{ connector: string; connected: boolean; config?: Record<string, unknown>; configCorrupted?: boolean }> {
-  const rows = db.prepare('SELECT connector, connected, config_json FROM connections').all() as unknown as ConnectionRow[];
+  const rows = readRows<ConnectionRow>(db.prepare('SELECT connector, connected, config_json FROM connections'));
   return rows.map((c) => {
     if (!c.config_json) {
       return { connector: c.connector, connected: Boolean(c.connected), config: undefined };

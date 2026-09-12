@@ -1,33 +1,16 @@
 import { z } from 'zod';
-import { ConditionExprSchema, preprocessConditionValue } from '../../../runtime/condition-expr.js';
-import { PortBindingSchema, coercePortBinding } from '../../port-binding.js';
-import { ActionInstanceSchema } from '../../action-instance.js';
+import { ConditionExprSchema } from '../../condition-expr/schema.js';
+import { preprocessConditionValue } from '../../condition-expr/normalize.js';
+import { PortBindingSchema } from '../../port-binding.js';
+import {
+  ActionInstanceSchema,
+  parseBindingsRecord,
+  parseJsonRecordValue,
+} from '../../action-instance.js';
 import { MAX_WORKFLOW_STEPS } from '../../schema.js';
 export { ActionInstanceSchema, type ActionInstance } from '../../action-instance.js';
 
-export function parseJsonRecordValue(value: unknown): unknown {
-  if (typeof value !== 'string') return value;
-  if (!value.trim()) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : value;
-  } catch {
-    return value;
-  }
-}
-
-export function parseBindingsRecord(value: unknown): unknown {
-  if (value == null || value === '') return undefined;
-  const parsed = parseJsonRecordValue(value);
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return parsed;
-
-  const normalized: Record<string, unknown> = {};
-  for (const [port, binding] of Object.entries(parsed as Record<string, unknown>)) {
-    const coerced = coercePortBinding(binding);
-    if (coerced) normalized[port] = coerced;
-  }
-  return Object.keys(normalized).length > 0 ? normalized : undefined;
-}
+export { parseBindingsRecord, parseJsonRecordValue } from '../../action-instance.js';
 
 export const WorkflowNodeSchema = z.object({
   type: z.enum(['action', 'ai_decision', 'if', 'human_approval']),
