@@ -40,7 +40,8 @@ foreach ($path in @($registryKeys) + @($shortcutPaths) + @($installerCache)) {
 }
 if (Get-Process -Name 'AX Studio' -ErrorAction SilentlyContinue) { throw 'AX Studio is already running.' }
 
-$releaseScratch = Join-Path ([IO.Path]::GetTempPath()) ('ax-installer-check-' + [guid]::NewGuid().ToString('N'))
+$installerTempRoot = if ($env:GITHUB_ACTIONS -eq 'true' -and $env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() }
+$releaseScratch = Join-Path $installerTempRoot ('ax-installer-check-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $releaseScratch | Out-Null
 $releaseScratch = (Resolve-Path -LiteralPath $releaseScratch).Path
 $installDir = [IO.Path]::GetFullPath((Join-Path $releaseScratch 'program'))
