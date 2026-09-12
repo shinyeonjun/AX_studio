@@ -43,6 +43,9 @@ jobs:
       - name: Document engine dependencies
         run: python -m pip install -r packages/document-engine/requirements.txt
 
+      - name: Build Core package for dependent tests
+        run: npm run build -w @ax-studio/core
+
       - name: Core tests
         run: npm test
 
@@ -101,6 +104,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+
+      - name: Build Core package for dependent tests
+        run: npm run build -w @ax-studio/core
 
       - name: Desktop tests
         run: npm run test:desktop
