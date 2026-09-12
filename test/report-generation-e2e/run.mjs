@@ -137,7 +137,12 @@ export function verifyPdf(caseDefinition, textResult) {
   const bodyTop = tight ? 225.89 : 160.89;
   const bodyBottom = tight ? 301 : 370;
   const boundaries = [40, 102, 207, 273, 377, 432, 555];
-  const body = lines.filter(line => line.bbox[1] >= bodyTop && line.bbox[1] < bodyBottom);
+  const scalarPositions = [[160, 54.7], [160, 79.7], [400, 79.7], [160, 104.7], [400, 104.7], [160, tight ? 300.5 : 370.5]];
+  const matchesPosition = (line, x, y) => Math.abs(line.bbox[0] - x) <= 2 && Math.abs(line.bbox[1] - y) <= 2;
+  // Known scalar slots are verified separately, including exact value and
+  // uniqueness. An ink-box overshoot must not also classify the footer as a row.
+  const body = lines.filter(line => line.bbox[1] >= bodyTop && line.bbox[1] < bodyBottom
+    && !scalarPositions.some(([x, y]) => matchesPosition(line, x, y)));
   const grouped = [];
   let invalidGeometry = false;
   for (const line of [...body].sort((a, b) => a.bbox[1] - b.bbox[1] || a.bbox[0] - b.bbox[0])) {
@@ -153,9 +158,8 @@ export function verifyPdf(caseDefinition, textResult) {
     const tokens = [row.id, row.name, row.region, row.revenue, row.orders, row.attainment];
     return { id: row.id, complete: tokens.every((token, column) => actualRows[index]?.[column] === normalizeText(token)), tokens };
   });
-  const scalarPositions = [[160, 54.7], [160, 79.7], [400, 79.7], [160, 104.7], [400, 104.7], [160, tight ? 300.5 : 370.5]];
   const atPosition = (value, x, y) => {
-    const matches = lines.filter(line => Math.abs(line.bbox[0] - x) <= 2 && Math.abs(line.bbox[1] - y) <= 2);
+    const matches = lines.filter(line => matchesPosition(line, x, y));
     return matches.length === 1 && normalizeText(matches[0].text) === normalizeText(value);
   };
   const scalarValuesPresent = caseDefinition.targetExpected.scalars.filter((value, index) => atPosition(value, ...scalarPositions[index])).length;
@@ -214,6 +218,12 @@ function checkVerifierContract() {
   };
   const rows = structuredClone(definition.targetExpected.rows);
   if (!verifyPdf(definition, make(rows)).ok) throw new Error('verifier_rejected_valid_rows');
+  const linuxFooter = make(rows);
+  const footerLine = linuxFooter.lines.find(item => item.text === definition.targetExpected.scalars[5]);
+  // Measured PDFium/Linux ink bounds for the same valid PDF read on Windows.
+  // This is the scalar at (160, 370.5), not another row in the table above it.
+  footerLine.bbox = [160.688, 369.986, 180.968, 376.026];
+  if (!verifyPdf(definition, linuxFooter).ok) throw new Error('verifier_misclassified_footer_as_table_row');
   const swapped = structuredClone(rows);
   [swapped[0].revenue, swapped[1].revenue] = [swapped[1].revenue, swapped[0].revenue];
   const bag = make(rows);
@@ -225,6 +235,7 @@ function checkVerifierContract() {
     'duplicate-row': make([...rows, rows[0]]),
     'missing-row': make(rows.slice(1)),
     'extraneous-row': make([...rows, { ...rows[0], id: 'C999' }]),
+    'duplicate-footer-value': { ...linuxFooter, lines: [...linuxFooter.lines, { ...footerLine }] },
   };
   const accepted = Object.entries(negatives).filter(([, value]) => verifyPdf(definition, value).ok).map(([name]) => name);
   if (accepted.length) throw new Error('verifier_accepted_invalid:' + accepted.join(','));
@@ -450,6 +461,10 @@ async function main() {
   };
   writeFileSync(join(root, 'latest.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report.metrics));
+  for (const item of results.filter(item => !item.passed)) {
+    console.error(JSON.stringify({ caseId: item.id, error: item.error, errorCode: item.errorCode,
+      errorDetails: item.errorDetails, verification: item.verification }));
+  }
   if (results.some(item => !item.passed)) process.exitCode = 1;
 }
 

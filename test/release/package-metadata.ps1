@@ -21,10 +21,23 @@ foreach ($path in @($Executable, $Installer)) {
   $file = Get-Item -LiteralPath $path
   $info = $file.VersionInfo
   if ($info.ProductName -ne 'AX Studio') { throw "Incorrect product identity: $($file.Name) / $($info.ProductName)" }
-  # PE resources normalize a stable three-part version to four numeric components.
-  $expectedVersions = @($package.version)
-  if ($package.version -match '^\d+\.\d+\.\d+$') { $expectedVersions += "$($package.version).0" }
-  if ($info.ProductVersion -notin $expectedVersions) { throw "Incorrect product version: $($file.Name) / $($info.ProductVersion)" }
+  # electron-builder gives the app a numeric PE ProductVersion, even for a
+  # prerelease. NSIS retains the full semantic version in ProductVersion.
+  # FileVersion must also retain the prerelease identity on both artifacts.
+  if ($package.version -notmatch '^(\d+\.\d+\.\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') {
+    throw "Unsupported package version: $($package.version)"
+  }
+  $numericVersion = "$($Matches[1]).0"
+  $expectedProductVersions = if ($file.FullName -eq (Get-Item -LiteralPath $Executable).FullName) {
+    @($numericVersion)
+  } else { @($package.version) }
+  $expectedFileVersions = @($package.version)
+  if ($package.version -match '^\d+\.\d+\.\d+$') {
+    $expectedProductVersions += $numericVersion
+    $expectedFileVersions += $numericVersion
+  }
+  if ($info.ProductVersion -notin $expectedProductVersions) { throw "Incorrect product version: $($file.Name) / $($info.ProductVersion)" }
+  if ($info.FileVersion -notin $expectedFileVersions) { throw "Incorrect file version: $($file.Name) / $($info.FileVersion)" }
   $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
   if ($RequireSigned -and $signature.Status -ne 'Valid') { throw "A trusted signature is required: $($file.Name) / $($signature.Status)" }
   Write-Output "[package] PASS: $($file.Name), product=$($info.ProductName), version=$($info.ProductVersion), signature=$($signature.Status)"

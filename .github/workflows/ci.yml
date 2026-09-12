@@ -71,7 +71,18 @@ jobs:
         run: npm run test:document-engine
 
       - name: Real PDF reports and independent output verification
-        run: npm run test:report-e2e
+        run: npm run test:report-e2e -- --check-contract && npm run test:report-e2e
+        env:
+          AX_REPORT_E2E_ROOT: ${{ runner.temp }}/ax-report-generation-e2e
+
+      - name: Upload PDF report failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-report-failure-${{ github.sha }}
+          path: ${{ runner.temp }}/ax-report-generation-e2e/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Core evaluation
         run: npm run eval

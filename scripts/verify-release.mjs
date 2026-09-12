@@ -56,6 +56,7 @@ for (const [label, ...commandArgs] of checks) run(label, 'npm', commandArgs);
 run('Real HTTP, concurrent approvals and process-kill recovery', process.execPath, ['--test', 'test/release/reliability.test.mjs']);
 const reportRoot = mkdtempSync(join(tmpdir(), 'ax-release-report-'));
 console.log(`[release] PDF report artifacts: ${reportRoot}`);
+run('Independent PDF verifier contract', process.execPath, ['test/report-generation-e2e/run.mjs', '--check-contract']);
 run('Real PDF worker and independent output verification', process.execPath, ['test/report-generation-e2e/run.mjs', `--root=${reportRoot}`]);
 run('Full deterministic Electron product QA', 'npm', ['run', 'test:product-qa', '--', '--mode', 'deterministic', '--tier', 'full', '--strict', '--isolated-data', '--skip-build']);
 if (args.includes('--package')) {
