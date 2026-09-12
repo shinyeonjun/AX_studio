@@ -15,8 +15,8 @@
     "test": "vitest run electron src",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "preview": "electron-vite preview",
-    "pack": "node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --dir && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
-    "pack:win": "node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --win && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
+    "pack": "install-electron && node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --dir && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
+    "pack:win": "install-electron && node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --win && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
     "rebuild:native": "node scripts/ensure-native-db.mjs",
     "postinstall": "node scripts/ensure-native-db.mjs"
   },

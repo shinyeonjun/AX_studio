@@ -14422,3 +14422,8 @@ windows_ci_artifact_path:
   paths:
     - apps/desktop/electron/main/ipc/artifact-handlers.test.ts
   reason: CI uses DOS8.3 temp aliases; canonical returned source path is correct, so fix only expected path spelling while retaining all safety assertions.
+
+clean_windows_electron_bundle:
+  paths:
+    - apps/desktop/package.json
+  reason: Electron44 downloads its executable lazily, while electron-builder copies electronDist directly. Fresh packaging needs the package-provided install-electron prerequisite; otherwise electron.exe is absent. Apply to both pack commands without changing product behavior.
