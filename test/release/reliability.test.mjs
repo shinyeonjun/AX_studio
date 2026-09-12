@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { execFile, fork } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -10,10 +10,26 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { openReadonlySqlJs } from '../../packages/core/dist/persistence/db/sqljs.js';
 import { openCore, closeCore, deliveryWorkflow, startHttpFixture, until } from './fixtures.mjs';
+import { searchLocalFolderAsync } from '../../packages/core/dist/intelligence/retrieval/search-async.js';
 
 // This suite deliberately exercises the fallback backend's deferred durability.
 // The packaged application and native document workers have a separate Windows gate.
 process.env.AX_DB_BACKEND = 'sqljs';
+
+test('real search worker returns current contents and never retains deleted files', async () => {
+  const path = mkdtempSync(join(tmpdir(), 'ax-release-search-'));
+  const folder = { id: 'test', label: 'Test', path, addedAt: new Date().toISOString() };
+  try {
+    writeFileSync(join(path, 'report.txt'), 'needle current');
+    const hits = await searchLocalFolderAsync(folder, 'needle');
+    assert.equal(hits.length, 1);
+    assert.match(hits[0].snippet, /needle current/);
+    writeFileSync(join(path, 'report.txt'), 'updated contents');
+    assert.equal((await searchLocalFolderAsync(folder, 'needle')).length, 0);
+    unlinkSync(join(path, 'report.txt'));
+    assert.equal((await searchLocalFolderAsync(folder, 'updated')).length, 0);
+  } finally { rmSync(path, { recursive: true, force: true }); }
+});
 
 test('CLI reads do not recover an execution still owned by the running desktop host', { timeout: 20_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), 'ax-release-cli-observer-'));

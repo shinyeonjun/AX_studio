@@ -6,6 +6,9 @@ import { inventorySources } from './exploration/inventory.js';
 import { DiscoverySourceRegistry } from './sources/registry.js';
 import { loadPersistedSnapshotTables } from './snapshot.js';
 import { tableArtifactFromRows } from '../contracts/artifacts/table-build.js';
+import { createDatabaseAsync } from '../persistence/db.js';
+import { WorkflowStore } from '../persistence/workflow-store.js';
+import { ArtifactStore } from '../persistence/artifact-store.js';
 
 const directories: string[] = [];
 afterEach(() => { for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true }); });
@@ -13,6 +16,8 @@ const source = { id: 'rdb:orders', connector: 'rdb', label: 'orders', kind: 'tab
 
 async function capturePair() {
   const dir = mkdtempSync(join(tmpdir(), 'ax-snapshot-isolation-')); directories.push(dir);
+  const db = await createDatabaseAsync(':memory:');
+  const store = new WorkflowStore(db);
   const registry = new DiscoverySourceRegistry([{ connector: 'rdb', listSources: async () => [source],
     profileSource: async ctx => ({ descriptor: source, fingerprint: ctx.exampleId,
       table: tableArtifactFromRows([{ amount: ctx.exampleId === 'e1' ? 100 : 200 }],
@@ -20,14 +25,17 @@ async function capturePair() {
     }),
   }]);
   const capture = (exampleId: string) => inventorySources(registry, {
+    store, artifactStore: new ArtifactStore(dir),
     exampleId, snapshotDir: dir, observations: [], inputArtifactIds: [],
     budget: { sourceReadsUsed: 0, sourceReadsMax: 10 },
-  } as Parameters<typeof inventorySources>[1]);
-  const a = await capture('e1'), b = await capture('e2');
-  const records = [...a.snapshots, ...b.snapshots];
+  });
+  const [a, b] = await Promise.all([capture('e1'), capture('e2')]).finally(() => db.close?.());
+  const records = [...a.snapshots, ...b.snapshots].map(snapshot => ({
+    ...snapshot, sessionId: 'session', capturedAt: new Date().toISOString(),
+  }));
   const load = () => loadPersistedSnapshotTables(
-    { listDiscoverySnapshots: () => records } as Parameters<typeof loadPersistedSnapshotTables>[0],
-    { id: 'session', sourceInventory: [source] } as Parameters<typeof loadPersistedSnapshotTables>[1], ['e1', 'e2']);
+    { listDiscoverySnapshots: () => records },
+    { id: 'session', sourceInventory: [source] }, ['e1', 'e2']);
   return { a, b, load };
 }
 describe('immutable discovery snapshots', () => {

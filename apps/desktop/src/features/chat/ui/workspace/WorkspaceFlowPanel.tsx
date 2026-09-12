@@ -16,7 +16,7 @@ import {
 import { executionStatusLabel } from '../../../../ui/lib/work-display';
 import { resolveWorkspaceExecutionStatus } from './WorkspaceRunResultCard';
 
-export type { WorkspaceFlowPanelProps, WorkspaceFlowPresentation } from './workspace-flow/model';
+export type { WorkspaceFlowPanelProps } from './workspace-flow/model';
 export {
   latestWorkspaceExecutionResult,
   resolveWorkspaceFlowPresentation,

@@ -90,9 +90,9 @@ finally OCR/layout candidates. Each field includes its detected geometry,
 provenance, confidence, and source hash; uncertain candidates require review
 before they are used for a final export.
 
-Form filling is source-authoritative: the Python worker uses PyMuPDF to update
+Form filling is source-authoritative: the Python worker uses pypdf/ReportLab to update
 native widgets or write an overlay onto a copied source PDF. It returns
-`writerEngine: "pymupdf"` with `verified: true` only after reopening and
+`writerEngine: "pypdf-reportlab"` with `verified: true` only after reopening and
 checking the saved output; it never overwrites the source. This is separate
 from the PDF→HTML editing route, whose final output is produced by Chromium.
 

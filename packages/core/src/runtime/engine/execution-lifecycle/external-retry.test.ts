@@ -8,7 +8,7 @@ import { TriggerEventCoordinator } from '../../trigger-engine/events.js';
 import { PUSH_TRIGGER_DRIVERS } from '../../../connectors/packages/catalog.js';
 
 function workflow(trigger: WorkflowIR['trigger']): WorkflowIR {
-  return {
+  return { inputs: [],
     id: 'partial-execution', name: '부분 실행 실패', goal: '완료된 발송 중복 방지', version: 1, trigger,
     steps: [
       { type: 'action', id: 'send', connector: 'slack', action: 'message.send', params: { channel: '#test', text: 'once' }, sideEffect: 'EXTERNAL' },

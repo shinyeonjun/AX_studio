@@ -22,7 +22,7 @@ describe('RDB discovery read budget and identity', () => {
       ]);
       expect(profiles.filter(Boolean)).toHaveLength(1);
       expect(ctx.budget.sourceReadsUsed).toBe(1);
-    } finally { db.close(); fixture.cleanup(); }
+    } finally { db.close?.(); fixture.cleanup(); }
   });
 
   it('does not profile an unqualified source ID', async () => {
@@ -37,6 +37,6 @@ describe('RDB discovery read budget and identity', () => {
     try {
       expect(await rdbDiscoverySource.profileSource(ctx, 'customers')).toBeNull();
       expect(ctx.budget.sourceReadsUsed).toBe(0);
-    } finally { db.close(); fixture.cleanup(); }
+    } finally { db.close?.(); fixture.cleanup(); }
   });
 });

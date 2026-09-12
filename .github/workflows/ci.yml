@@ -70,6 +70,9 @@ jobs:
       - name: Document engine tests
         run: npm run test:document-engine
 
+      - name: Real PDF reports and independent output verification
+        run: npm run test:report-e2e
+
       - name: Core evaluation
         run: npm run eval
 
@@ -145,13 +148,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip_audit --strict --path apps/desktop/release/win-unpacked/resources/document-engine/python/Lib/site-packages
 
-      - name: Packaged discovery, results, Gmail setup and approval retention
+      - name: Packaged discovery, results, background search, Gmail setup and approval retention
         shell: pwsh
         run: |
           $env:AX_PRODUCT_QA_MODE = 'deterministic'
           $env:AX_PRODUCT_QA_ISOLATED = '1'
           $env:AX_PRODUCT_QA_EXECUTABLE = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/release/win-unpacked/AX Studio.exe'
-          npx playwright test --config test/product-qa/playwright.config.ts release-lifecycle.spec.ts discovery-execution.spec.ts gmail-client-setup.spec.ts
+          npx playwright test --config test/product-qa/playwright.config.ts release-lifecycle.spec.ts discovery-execution.spec.ts gmail-client-setup.spec.ts calculated-output.spec.ts background-search.spec.ts
 
       - name: Windows package identity and metadata
         shell: pwsh

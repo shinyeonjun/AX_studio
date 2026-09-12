@@ -4,7 +4,7 @@ import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete
 import { httpConnectedItemsFor, httpEndpointsFor } from './model';
 import type { HttpAuthType, HttpConnectedItem } from './model';
 
-export type { HttpAuthType, HttpConnectedItem, HttpEndpoint } from './model';
+export type { HttpAuthType } from './model';
 
 export interface HttpConnectionFormProps {
   state: AppState | null;

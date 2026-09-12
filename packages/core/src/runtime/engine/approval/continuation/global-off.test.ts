@@ -7,7 +7,7 @@ import { createTestConnectors, mockSlack } from '../../../../testing/connectors/
 
 describe('approval continuation global execution guard', () => {
   it('does not resume an external approval while global execution is off', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '퇴근 승인 차단',
       goal: '전역 실행 중지 중에는 승인 후 전송하지 않음',
       version: 1,

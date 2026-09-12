@@ -16,7 +16,7 @@ describe('runtime approval and queue observability', () => {
       connectors: { http: { name: 'http', execute } },
     });
 
-    const result = await runtime.executeWorkflow({
+    const result = await runtime.executeWorkflow({ inputs: [],
       name: 'HTTP POST 승인',
       goal: '외부 API에 payload를 보낸다',
       version: 1,
@@ -56,7 +56,7 @@ describe('runtime approval and queue observability', () => {
       onExecutionStarted: (executionId) => events.push(`start:${executionId}`),
       onExecutionFinished: (result) => events.push(`finish:${result.executionId}`),
     });
-    const plan: WorkflowIR = {
+    const plan: WorkflowIR = { inputs: [],
       id: 'queued-draft',
       name: '큐 일회 실행',
       goal: '한 번씩 순서대로 처리한다',

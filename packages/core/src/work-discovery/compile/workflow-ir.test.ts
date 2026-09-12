@@ -12,6 +12,7 @@ describe('compile WorkflowIR', () => {
     expect(ir.trigger).toEqual({ type: 'manual' });
     const evalSteps = ir.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
     expect(evalSteps.length).toBeGreaterThan(0);
+    if (evalSteps[0]?.type !== 'action') throw new Error('Expected evaluate action');
     expect(evalSteps[0]?.params.expr).toBeTruthy();
     expect(ir.outputContract?.inputSchemas).toEqual([{
       sourceId: 'rdb:sales',

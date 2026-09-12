@@ -1,3 +1,4 @@
+import type { Step } from '../../../workflow/schema.js';
 import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
@@ -33,7 +34,7 @@ describe('runtime output binding', () => {
       investigationRunner: createInvestigationRunner(createAgentHarness(new NoReadProvider())),
     });
 
-    const first = await runtime.executeWorkflow({
+    const first = await runtime.executeWorkflow({ inputs: [],
       name: '결제 주문 공유',
       goal: '결제 완료 주문을 금액순으로 정리해 Slack으로 공유',
       version: 1,

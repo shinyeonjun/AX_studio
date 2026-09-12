@@ -15,7 +15,7 @@ runner then:
 4. uses the real `StdioDocumentEngineClient` for PDF pair analysis and PDF filling;
 5. captures the example period, replays the business plan, captures the target period,
    materializes the layout, and stores the generated artifact;
-6. extracts the produced PDF with PyMuPDF in a separate verifier and compares it with
+6. extracts the produced PDF with PDFium in a separate verifier and compares it with
    literal gold values from `cases.mjs`.
 
 The fixture planner is deterministic so a model-provider outage does not make a

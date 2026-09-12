@@ -1,7 +1,7 @@
-import type { WorkspaceChatMessageContext } from './contracts';
+import type { WorkspaceWorkflowContext } from './contracts';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
-export function createWorkspaceWorkflowActions(ctx: WorkspaceChatMessageContext) {
+export function createWorkspaceWorkflowActions(ctx: WorkspaceWorkflowContext) {
   const registerWorkflow = async () => {
     const workflowId = ctx.workspaceWorkflowState?.workflowId;
     if (!workflowId || ctx.refs.busyRef.current || ctx.workflowRegistered) return;

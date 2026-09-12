@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { SettingsScreen, SidebarTab } from '../types/navigation';
 import { useAppState } from './hooks/useAppState';
 import { useWorkspaceChat } from '../features/chat/hooks/useWorkspaceChat';
@@ -10,7 +10,7 @@ import { WorkspaceSidebar } from '../ui/layout/WorkspaceSidebar';
 import { StateBanner } from '../ui/layout/StateBanner';
 import { createAppActions } from './actions';
 import { AppMainContent } from './main-content';
-import { AppSettingsPage } from './settings-page';
+const AppSettingsPage = lazy(() => import('./settings-page').then(module => ({ default: module.AppSettingsPage })));
 
 export default function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('work');
@@ -127,7 +127,9 @@ export default function App() {
           }}
           onDismiss={actionError ? () => setActionError('') : undefined}
         />
-        {mainContent}
+        <Suspense fallback={<div className="page-content" role="status">화면을 불러오는 중…</div>}>
+          {mainContent}
+        </Suspense>
       </main>
     </div>
   );

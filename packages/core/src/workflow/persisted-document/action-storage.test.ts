@@ -4,7 +4,7 @@ import { parseWorkflowIR } from '../schema.js';
 
 describe('persisted workflow document action storage', () => {
   it('splits action params into actions map and keeps graph steps structural', () => {
-    const ir = parseWorkflowIR({
+    const ir = parseWorkflowIR({ inputs: [],
       name: '알림',
       goal: '등급별 알림',
       version: 1,

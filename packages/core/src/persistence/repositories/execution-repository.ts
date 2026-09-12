@@ -4,6 +4,8 @@ import { readRow, readRows } from '../db/types.js';
 import type { ExecutionRow, ExecutionStatus } from '../rows.js';
 import { hasOpenApprovalForExecution } from './approval-repository.js';
 import { parseExecutionOutput, type ExecutionOutput } from '../../contracts/execution-output.js';
+import { readExecutionLog } from './execution-log.js';
+export { appendExecutionLog } from './execution-log.js';
 
 export function createExecution(
   db: AppDatabase,
@@ -67,7 +69,7 @@ export function updateExecutionLog(db: AppDatabase, id: string, log: unknown[]) 
   db.prepare('UPDATE executions SET log_json = ? WHERE id = ?').run(JSON.stringify(log), id);
 }
 
-function mapExecution(row: ExecutionRow) {
+function mapExecution(db: AppDatabase, row: ExecutionRow) {
   return {
     id: row.id,
     workflowId: row.workflow_id,
@@ -77,7 +79,7 @@ function mapExecution(row: ExecutionRow) {
     startedAt: row.started_at,
     finishedAt: row.finished_at,
     errorCode: row.error_code,
-    logJson: row.log_json,
+    logJson: readExecutionLog(db, row.id, row.log_json),
     output: row.status === 'success' ? parseExecutionOutput(row.output_json) : undefined,
     triggerType: row.trigger_type,
     irJson: row.ir_json ?? undefined,
@@ -88,7 +90,7 @@ function mapExecution(row: ExecutionRow) {
 export function getExecution(db: AppDatabase, id: string) {
   const row = readRow<ExecutionRow>(db.prepare('SELECT * FROM executions WHERE id = ?'), id);
   if (!row) return undefined;
-  return mapExecution(row);
+  return mapExecution(db, row);
 }
 
 export function hasUnfinishedWorkflowExecution(db: AppDatabase, workflowId: string): boolean {
@@ -98,12 +100,25 @@ export function hasUnfinishedWorkflowExecution(db: AppDatabase, workflowId: stri
     )) LIMIT 1`).get(workflowId));
 }
 
-export function listExecutions(db: AppDatabase, limit = 50) {
+export function listExecutions(db: AppDatabase, limit = 50, includeOutput = true) {
   const rows = readRows<ExecutionRow>(
-    db.prepare('SELECT * FROM executions ORDER BY started_at DESC LIMIT ?'),
+    db.prepare(`SELECT id, workflow_id, workflow_version, ephemeral, status, started_at, finished_at,
+      error_code, log_json, trigger_type, ir_json, workspace_session_id,
+      ${includeOutput ? 'output_json' : 'NULL AS output_json'},
+      CASE WHEN status = 'success' AND output_json IS NOT NULL THEN 1 ELSE 0 END AS has_output
+      FROM executions ORDER BY started_at DESC, id DESC LIMIT ?`),
     limit,
   );
-  return rows.map(mapExecution);
+  return rows.map(row => ({ ...mapExecution(db, row), hasOutput: Boolean(row.has_output) }));
+}
+
+/** Independent of the activity page limit, with one indexed lookup per saved workflow. */
+export function listLatestWorkflowExecutions(db: AppDatabase) {
+  return readRows<{ workflowId: string; startedAt: string; status: string }>(db.prepare(`
+    SELECT e.workflow_id AS workflowId, e.started_at AS startedAt, e.status
+    FROM workflows w JOIN executions e ON e.id = (
+      SELECT id FROM executions WHERE workflow_id = w.id ORDER BY started_at DESC, id DESC LIMIT 1
+    )`));
 }
 
 export function deleteExecution(db: AppDatabase, id: string): boolean {

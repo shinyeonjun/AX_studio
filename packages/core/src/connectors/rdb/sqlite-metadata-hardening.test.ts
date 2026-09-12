@@ -23,12 +23,12 @@ describe('SQLite physical metadata completeness', () => {
   afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
   it('lists a user table whose name resembles but does not use the reserved prefix', async () => {
-    expect(await connector.execute('schema.describe', {}, { variables: {}, log: () => {} }))
+    expect(await connector.execute('schema.describe', {}, { executionId: 'metadata', variables: {}, log: () => {} }))
       .toMatchObject({ ok: true, data: ['sqlitex', 'wide'] });
   });
 
   it('includes generated columns in physical metadata', async () => {
-    expect(await connector.execute('table.describe', { table: 'sqlitex' }, { variables: {}, log: () => {} }))
+    expect(await connector.execute('table.describe', { table: 'sqlitex' }, { executionId: 'metadata', variables: {}, log: () => {} }))
       .toMatchObject({ ok: true, data: { columns: [{ name: 'amount' }, { name: 'doubled' }] } });
   });
 

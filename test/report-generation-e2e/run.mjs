@@ -17,18 +17,49 @@ const defaultRoot = process.platform === 'win32'
 const PDF_TEXT_SCRIPT = String.raw`
 import json
 import sys
-import pymupdf
+import pypdfium2 as pdfium
+from pypdf import PdfReader
 
 path = json.loads(sys.stdin.read())
-with pymupdf.open(path) as document:
-    print(json.dumps({
-        "pageCount": document.page_count,
-        "text": "\n".join(page.get_text() for page in document),
-        "lines": [{"page": page.number, "bbox": line["bbox"],
-                   "text": "".join(span["text"] for span in line["spans"])}
-                  for page in document for block in page.get_text("dict")["blocks"]
-                  for line in block.get("lines", [])],
-    }, ensure_ascii=False))
+document = pdfium.PdfDocument(path)
+reader = PdfReader(path)
+lines = []
+texts = []
+try:
+    for index in range(len(document)):
+        page = document[index]
+        textpage = page.get_textpage()
+        try:
+            height = float(reader.pages[index].mediabox.height)
+            texts.append(textpage.get_text_bounded())
+            chars, boxes = [], []
+            def flush():
+                if boxes and "".join(chars).strip():
+                    lines.append({"page": index, "text": "".join(chars).strip(),
+                                  "bbox": [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                                           max(b[2] for b in boxes), max(b[3] for b in boxes)]})
+                chars.clear()
+                boxes.clear()
+            for position in range(textpage.count_chars()):
+                character = chr(pdfium.raw.FPDFText_GetUnicode(textpage, position))
+                if character in "\r\n\x00":
+                    flush()
+                    continue
+                if not character.isspace():
+                    left, bottom, right, top = textpage.get_charbox(position)
+                    box = (left, height - top, right, height - bottom)
+                    size = pdfium.raw.FPDFText_GetFontSize(textpage, position)
+                    if boxes and (abs(box[3] - boxes[-1][3]) > size * .5 or box[0] - boxes[-1][2] > size * 1.5):
+                        flush()
+                    boxes.append(box)
+                chars.append(character)
+            flush()
+        finally:
+            textpage.close()
+            page.close()
+    print(json.dumps({"pageCount": len(document), "text": "\n".join(texts), "lines": lines}, ensure_ascii=False))
+finally:
+    document.close()
 `;
 
 function coreDist(relativePath) {

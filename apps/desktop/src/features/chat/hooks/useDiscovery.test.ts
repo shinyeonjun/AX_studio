@@ -18,6 +18,8 @@ import { useDiscovery } from './useDiscovery';
 import { createWorkspaceMessageActions } from './workspace-chat/message-actions';
 import { createWorkspaceSourceActions } from './workspace-chat/source-actions';
 import { createWorkspaceWorkflowActions } from './workspace-chat/workflow-actions';
+import { createWorkspaceLoadActions } from './workspace-chat/load-actions';
+import { createWorkspaceLifecycleActions } from './workspace-chat/lifecycle-actions';
 import type { WorkspaceChatMessageContext } from './workspace-chat/contracts';
 
 function deferred<T>() {
@@ -33,6 +35,7 @@ function workspaceContext(): WorkspaceChatMessageContext {
     sessionEpochRef: { current: 0 }, workspaceSessionIdRef: { current: 'A' },
     activeRequestIdRef: { current: undefined }, busyRef: { current: false },
     sourceBusyRef: { current: false }, pendingWorkspaceChatRefreshRef: { current: undefined },
+    chatRefreshSequenceRef: { current: 0 },
   };
   const ctx: WorkspaceChatMessageContext = {
     refs, chatMessages: [], workspaceWorkflowState: null, workflowRegistered: false,
@@ -57,6 +60,75 @@ describe('workspace asynchronous session ordering', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });
+  });
+
+  it('isolates overlapping loads and blocks sending or attaching while a conversation loads', async () => {
+    const first = deferred<{ id: string; messages: Array<{ role: 'assistant'; content: string }> }>();
+    const save = vi.fn();
+    const attach = vi.fn();
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: {
+      loadWorkspaceChat: vi.fn().mockReturnValueOnce(first.promise)
+        .mockResolvedValueOnce({ id: 'B', messages: [{ role: 'assistant', content: 'new' }] }),
+      listWorkspaceSources: vi.fn().mockResolvedValue({ sources: [] }),
+      saveWorkspaceChat: save, attachWorkspaceSource: attach,
+    } } });
+    const ctx = workspaceContext();
+    const actions = createWorkspaceLoadActions(ctx);
+    const old = actions.loadWorkspaceChat('A');
+    expect(ctx.refs.busyRef.current).toBe(true);
+    expect(ctx.refs.workspaceSessionIdRef.current).toBe('A');
+    await createWorkspaceMessageActions(ctx).sendMessage('must not send');
+    await createWorkspaceSourceActions(ctx).attachWorkspaceSource();
+    expect(save).not.toHaveBeenCalled(); expect(attach).not.toHaveBeenCalled();
+    await actions.loadWorkspaceChat('B');
+    first.resolve({ id: 'A', messages: [{ role: 'assistant', content: 'old' }] });
+    await old;
+    expect(ctx.refs.workspaceSessionIdRef.current).toBe('B');
+    expect(ctx.refs.busyRef.current).toBe(false);
+    expect(ctx.setChatMessages).toHaveBeenLastCalledWith([{ role: 'assistant', content: 'new' }]);
+  });
+
+  it('ignores older refreshes and refreshes from an earlier visit to the same conversation', async () => {
+    const first = deferred<{ messages: Array<{ role: 'assistant'; content: string }> }>();
+    const third = deferred<{ messages: Array<{ role: 'assistant'; content: string }> }>();
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: {
+      loadWorkspaceChat: vi.fn().mockReturnValueOnce(first.promise)
+        .mockResolvedValueOnce({ messages: [{ role: 'assistant', content: 'new' }] })
+        .mockReturnValueOnce(third.promise),
+    } } });
+    const ctx = workspaceContext();
+    const actions = createWorkspaceLoadActions(ctx);
+    const older = actions.refreshMappedWorkspaceChat('A');
+    await actions.refreshMappedWorkspaceChat('A');
+    first.resolve({ messages: [{ role: 'assistant', content: 'old' }] });
+    await older;
+    expect(ctx.setChatMessages).toHaveBeenCalledExactlyOnceWith([{ role: 'assistant', content: 'new' }]);
+    const abandoned = actions.refreshMappedWorkspaceChat('A');
+    createWorkspaceLifecycleActions(ctx).reset();
+    ctx.refs.workspaceSessionIdRef.current = 'A';
+    third.resolve({ messages: [{ role: 'assistant', content: 'previous visit' }] });
+    await abandoned;
+    expect(ctx.setChatMessages).toHaveBeenLastCalledWith([]);
+  });
+
+  it('replays a result notification received before the requested chat snapshot arrives', async () => {
+    const initial = deferred<{ id: string; messages: Array<{ role: 'assistant'; content: string }> }>();
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: {
+      loadWorkspaceChat: vi.fn().mockReturnValueOnce(initial.promise)
+        .mockResolvedValue({ id: 'B', messages: [{ role: 'assistant', content: 'completed result' }] }),
+      listWorkspaceSources: vi.fn().mockResolvedValue({ sources: [] }),
+    } } });
+    const ctx = workspaceContext();
+    const loading = createWorkspaceLoadActions(ctx).loadWorkspaceChat('B');
+    // The subscription uses these same immediate guards, before React has rendered.
+    expect(ctx.isViewingSession('B')).toBe(true);
+    expect(ctx.refs.busyRef.current).toBe(true);
+    ctx.refs.pendingWorkspaceChatRefreshRef.current = 'B';
+    initial.resolve({ id: 'B', messages: [] });
+    await loading;
+    await Promise.resolve();
+    expect(ctx.setChatMessages).toHaveBeenLastCalledWith([{ role: 'assistant', content: 'completed result' }]);
+    expect(ctx.refs.pendingWorkspaceChatRefreshRef.current).toBeUndefined();
   });
 
   it('serializes inspection while ignoring a superseded operation result', async () => {

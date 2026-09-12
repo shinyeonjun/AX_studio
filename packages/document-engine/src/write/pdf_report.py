@@ -6,7 +6,7 @@ from statistics import median
 from pathlib import Path
 from typing import Any
 
-import pymupdf
+from .pdf_read import inspect_pages, open_pdf, render_page
 
 
 _POSITION_TOLERANCE = 1.5
@@ -75,29 +75,11 @@ def _clip_rect_to_page(
 
 
 def _page_spans(page: Any, page_index: int) -> list[_Span]:
-    spans: list[_Span] = []
-    document = page.get_text("dict")
-    for block_index, block in enumerate(document.get("blocks") or []):
-        for line_index, line in enumerate(block.get("lines") or []):
-            for span_index, span in enumerate(line.get("spans") or []):
-                text = str(span.get("text") or "").strip()
-                bbox = span.get("bbox")
-                if not text or not isinstance(bbox, (tuple, list)) or len(bbox) < 4:
-                    continue
-                spans.append(
-                    _Span(
-                        page_index=page_index,
-                        rect=_rect(bbox),
-                        text=text,
-                        font_size=round(float(span.get("size") or 10.0), 3),
-                        font=str(span.get("font") or ""),
-                        color=int(span.get("color") or 0),
-                        block_index=block_index,
-                        line_index=line_index,
-                        span_index=span_index,
-                    )
-                )
-    return spans
+    return [
+        _Span(page_index, _rect(span["bbox"]), span["text"], span["size"],
+              span["font"], span["color"], index, 0, 0)
+        for index, span in enumerate(page.spans)
+    ]
 
 
 def _same_static_span(left: _Span, right: _Span) -> bool:
@@ -159,13 +141,13 @@ def _span_payload(span: _Span) -> dict[str, Any]:
 def _scalar_payload(span: _Span, page: Any, text_spans: list[_Span]) -> dict[str, Any]:
     payload = _span_payload(span)
     x0, y0, x1, y1 = span.rect
-    right = float(page.mediabox.width)
+    right = float(page.width)
     obstacles = [other.rect for other in text_spans if other != span]
-    obstacles.extend(tuple(image["bbox"]) for image in page.get_image_info())
+    obstacles.extend(tuple(image["bbox"]) for image in page.images)
     for left, top, _, bottom in obstacles:
         if top < y1 and bottom > y0 and left >= x1:
             right = min(right, left - 2)
-    for drawing in page.get_drawings():
+    for drawing in page.drawings:
         left, top, edge, bottom = drawing["rect"]
         if top < y1 and bottom > y0:
             if left >= x1:
@@ -207,12 +189,12 @@ def _contains(rect: tuple[float, float, float, float], span: _Span) -> bool:
 
 
 def _filled_bands(page: Any, page_index: int) -> list[_Band]:
-    page_width = float(page.mediabox.width)
-    page_height = float(page.mediabox.height)
+    page_width = float(page.width)
+    page_height = float(page.height)
     minimum_width = page_width * 0.15
     maximum_height = page_height * 0.08
     bands: list[_Band] = []
-    for drawing in page.get_drawings():
+    for drawing in page.drawings:
         fill = drawing.get("fill")
         raw = drawing.get("rect")
         if fill is None or raw is None:
@@ -521,14 +503,22 @@ def _table_groups(rows: list[list[_Span]]) -> tuple[list[dict[str, Any]], set[st
     return groups, table_slot_ids
 
 
-def _render_pages(document: Any, target: Path, prefix: str) -> list[str]:
+def _render_pages(path: Path, target: Path, prefix: str) -> list[str]:
     target.mkdir(parents=True, exist_ok=True)
     paths: list[str] = []
-    matrix = pymupdf.Matrix(2.0, 2.0)
-    for page_index, page in enumerate(document):
-        output = target / f"{prefix}-page-{page_index + 1}.png"
-        page.get_pixmap(matrix=matrix, alpha=False).save(str(output))
-        paths.append(str(output))
+    with open_pdf(path) as document:
+        for page_index in range(len(document)):
+            page = document[page_index]
+            try:
+                image = render_page(page)
+                output = target / f"{prefix}-page-{page_index + 1}.png"
+                try:
+                    image.save(output)
+                finally:
+                    image.close()
+                paths.append(str(output))
+            finally:
+                page.close()
     return paths
 
 
@@ -539,8 +529,8 @@ def _validate_pair(template: Any, example: Any) -> None:
         left = template[page_index]
         right = example[page_index]
         if (
-            abs(float(left.rect.width) - float(right.rect.width)) > 0.5
-            or abs(float(left.rect.height) - float(right.rect.height)) > 0.5
+            abs(float(left.width) - float(right.width)) > 0.5
+            or abs(float(left.height) - float(right.height)) > 0.5
             or int(left.rotation) != int(right.rotation)
         ):
             raise ValueError(f"report_pair_page_geometry_mismatch:{page_index}")
@@ -558,58 +548,59 @@ def analyze_pdf_report_pair(
     pair_id = hashlib.sha256(f"{template_hash}:{example_hash}".encode("ascii")).hexdigest()
     target = artifact_root / "report-pairs" / pair_id[:2] / pair_id
 
-    with pymupdf.open(template_path) as template, pymupdf.open(example_path) as example:
-        _validate_pair(template, example)
-        dynamic: list[_Span] = []
-        template_spans_by_page: list[list[_Span]] = []
-        example_spans_by_page: list[list[_Span]] = []
-        pages: list[dict[str, Any]] = []
-        for page_index in range(len(template)):
-            template_spans = _page_spans(template[page_index], page_index)
-            template_spans_by_page.append(template_spans)
-            example_spans = _page_spans(example[page_index], page_index)
-            example_spans_by_page.append(example_spans)
-            dynamic.extend(
-                _dynamic_spans(
-                    example_spans,
-                    template_spans,
-                )
+    template = inspect_pages(template_path)
+    example = inspect_pages(example_path)
+    _validate_pair(template, example)
+    dynamic: list[_Span] = []
+    template_spans_by_page: list[list[_Span]] = []
+    example_spans_by_page: list[list[_Span]] = []
+    pages: list[dict[str, Any]] = []
+    for page_index in range(len(template)):
+        template_spans = _page_spans(template[page_index], page_index)
+        template_spans_by_page.append(template_spans)
+        example_spans = _page_spans(example[page_index], page_index)
+        example_spans_by_page.append(example_spans)
+        dynamic.extend(
+            _dynamic_spans(
+                example_spans,
+                template_spans,
             )
-            page = template[page_index]
-            pages.append(
-                {
-                    "index": page_index,
-                    "width": round(float(page.mediabox.width), 3),
-                    "height": round(float(page.mediabox.height), 3),
-                    "rotation": int(page.rotation),
-                }
-            )
-
-        geometry_groups, consumed_dynamic_ids = _geometry_table_groups(template, template_spans_by_page, dynamic)
-        remaining = [span for span in dynamic if _slot_id(span) not in consumed_dynamic_ids]
-        fallback_groups, fallback_slot_ids = _table_groups(_rows(remaining))
-        table_groups = sorted(
-            [*geometry_groups, *fallback_groups],
-            key=lambda group: (group["rows"][0]["pageIndex"], group["rows"][0]["y"]),
         )
-        scalar_slots = [
-            _scalar_payload(span, template[span.page_index], [
-                *template_spans_by_page[span.page_index], *example_spans_by_page[span.page_index],
-            ])
-            for span in remaining
-            if _slot_id(span) not in fallback_slot_ids
-        ]
-        scalar_slots.sort(key=lambda slot: (slot["pageIndex"], slot["rect"]["y"], slot["rect"]["x"]))
+        page = template[page_index]
+        pages.append(
+            {
+                "index": page_index,
+                "width": round(float(page.width), 3),
+                "height": round(float(page.height), 3),
+                "rotation": int(page.rotation),
+            }
+        )
 
-        return {
-            "schemaVersion": 1,
-            "pairId": pair_id,
-            "templateHash": template_hash,
-            "exampleHash": example_hash,
-            "pageCount": len(template),
-            "pages": pages,
-            "scalarSlots": scalar_slots,
-            "tableGroups": table_groups,
-            "templateImages": _render_pages(template, target, "template"),
-            "exampleImages": _render_pages(example, target, "example"),
-        }
+    geometry_groups, consumed_dynamic_ids = _geometry_table_groups(template, template_spans_by_page, dynamic)
+    remaining = [span for span in dynamic if _slot_id(span) not in consumed_dynamic_ids]
+    fallback_groups, fallback_slot_ids = _table_groups(_rows(remaining))
+    table_groups = sorted(
+        [*geometry_groups, *fallback_groups],
+        key=lambda group: (group["rows"][0]["pageIndex"], group["rows"][0]["y"]),
+    )
+    scalar_slots = [
+        _scalar_payload(span, template[span.page_index], [
+            *template_spans_by_page[span.page_index], *example_spans_by_page[span.page_index],
+        ])
+        for span in remaining
+        if _slot_id(span) not in fallback_slot_ids
+    ]
+    scalar_slots.sort(key=lambda slot: (slot["pageIndex"], slot["rect"]["y"], slot["rect"]["x"]))
+
+    return {
+        "schemaVersion": 1,
+        "pairId": pair_id,
+        "templateHash": template_hash,
+        "exampleHash": example_hash,
+        "pageCount": len(template),
+        "pages": pages,
+        "scalarSlots": scalar_slots,
+        "tableGroups": table_groups,
+        "templateImages": _render_pages(template_path, target, "template"),
+        "exampleImages": _render_pages(example_path, target, "example"),
+    }

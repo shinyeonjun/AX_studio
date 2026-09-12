@@ -11,7 +11,7 @@ describe('Scheduler', () => {
   it('does not run a one-time job with an invalid run time', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'once-invalid',
       name: '잘못된 일회성 작업',
       goal: '유효한 실행 시각이 필요함',
@@ -43,7 +43,7 @@ describe('Scheduler', () => {
   it('lets a reactivated once job fire again after pending approval', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'once-approval',
       name: '승인 대기 일회성',
       goal: '승인 대기 후 재활성화하면 다시 실행',

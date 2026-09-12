@@ -19,7 +19,7 @@ describe('durable external execution boundary', () => {
     // A directory at the atomic-write destination causes a real, portable I/O failure.
     mkdirSync(`${path}.tmp`);
     try {
-      let result = await runtime.executeWorkflow({
+      let result = await runtime.executeWorkflow({ inputs: [],
         name: '저장 실패 시 전송 금지', goal: '안전하게 실패', version: 1,
         steps: [{ type: 'action', id: 'send', connector: 'slack', action: 'message.send',
           params: { channel: '#test', text: 'must not send' }, sideEffect: 'EXTERNAL' }],
@@ -51,6 +51,10 @@ describe('durable external execution boundary', () => {
       const disk = await openReadonlySqlJs(path);
       try {
         persisted = disk.all('SELECT * FROM executions WHERE id = ?', [ctx.executionId])[0];
+        const tail = disk.all('SELECT entry_json FROM execution_log_entries WHERE execution_id = ? ORDER BY sequence', [ctx.executionId]);
+        if (persisted) persisted.log_json = JSON.stringify([
+          ...JSON.parse(String(persisted.log_json)), ...tail.map(row => JSON.parse(String(row.entry_json))),
+        ]);
         persistedApproval = disk.all('SELECT status FROM approvals WHERE execution_id = ?', [ctx.executionId])[0];
       } finally { disk.close(); }
       return { ok: true, data: { messageId: 'sent' } };
@@ -59,7 +63,7 @@ describe('durable external execution boundary', () => {
       slack: { name: 'controlled-slack', execute: send },
     } });
     try {
-      const first = await runtime.executeWorkflow({
+      const first = await runtime.executeWorkflow({ inputs: [],
         name: '발송 전 저장', goal: '종료 후 중복 발송 방지', version: 1,
         steps: [{ type: 'action', id: 'send', connector: 'slack', action: 'message.send',
           params: { channel: '#test', text: 'once' }, sideEffect: 'EXTERNAL' }],

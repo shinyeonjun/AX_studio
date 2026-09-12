@@ -2,7 +2,7 @@ import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../../plat
 import { citationsFromSearchHits } from '../../../platform/citations.js';
 import { parseRetrievalIndexConfig } from '../../retrieval/config.js';
 import { applySnippetPolicy } from '../../retrieval/snippet-policy.js';
-import { searchLocalFolder } from '../../retrieval/search.js';
+import { searchLocalFolderAsync } from '../../retrieval/search-async.js';
 import type { DesignToolHandler } from '../types.js';
 
 function requiredString(args: Record<string, unknown>, name: string): string {
@@ -48,10 +48,10 @@ export const sourcesSearch: DesignToolHandler = async (ctx, args) => {
   const folder = findLocalFolder(config, folderId);
   if (!folder) throw new Error('folder_not_found');
 
-  const rawHits = searchLocalFolder(folder, query, {
+  const rawHits = await searchLocalFolderAsync(folder, query, {
     limit,
     minFileBytes: retrieval.minFileBytes,
-  });
+  }, ctx.abortSignal);
   const hits = applySnippetPolicy(rawHits, { allowFullContent: ctx.allowUntrustedData === true });
   const citations = citationsFromSearchHits(hits);
 

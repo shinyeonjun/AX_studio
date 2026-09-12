@@ -30,7 +30,7 @@ export default {
     'apps/desktop/electron/main/ai/config-file.ts': ['types'],
     'apps/desktop/electron/main/e2e-test-seam.ts': ['types'],
     'packages/core/src/intelligence/agent/commands/schema/workflow-args.ts': ['duplicates'],
-    'apps/desktop/src/**': ['exports', 'types'],
+    'apps/desktop/src/types/**': ['types'],
     'apps/desktop/electron/**': ['exports'],
   },
   ignoreBinaries: ['where.exe', 'taskkill.exe', 'pdftoppm'],

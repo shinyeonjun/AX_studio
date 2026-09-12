@@ -61,7 +61,7 @@ describe('runAxCommandChat bounded context', () => {
       harness: secondHarness,
       commandService: service,
       messages: [
-        { role: 'assistant', content: '확인해 주세요.', presentations },
+        { role: 'assistant', content: '확인해 주세요.', ...{ presentations } },
       ],
       userMessage: '이 기준을 기억해줘',
       workspaceSessionId: chat.id,

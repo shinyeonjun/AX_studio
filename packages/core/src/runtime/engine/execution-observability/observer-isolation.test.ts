@@ -19,7 +19,7 @@ describe('runtime observer failure isolation', () => {
     });
 
     const result = await runtime.executeWorkflow(
-      {
+      { inputs: [],
         name: '관찰자 실패 격리',
         goal: '실행 결과는 관찰자와 독립적이어야 한다',
         version: 1,

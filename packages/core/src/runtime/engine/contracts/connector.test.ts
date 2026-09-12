@@ -9,7 +9,7 @@ describe('runtime engine connector guards', () => {
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
     const result = await runtime.executeWorkflow(
-      {
+      { inputs: [],
         name: '연결 누락',
         goal: '가짜 전송 금지',
         version: 1,

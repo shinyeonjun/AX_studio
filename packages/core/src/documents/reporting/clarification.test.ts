@@ -21,7 +21,7 @@ it.each(['어느 기간을 이번 달로 볼까요?', '연결 A와 B 중 어떤 
       planner: new ReportPlanner(runner), getConnector: () => undefined,
     });
     const result = await service.generate({ goal: '지난번처럼 해줘', templateSourceId: 't', exampleSourceId: 'e' }, {
-      workspaceSessionId: 'chat', artifactSink: { putBytes: vi.fn() }, log: entry => log.push(entry),
+      executionId: 'run', variables: {}, workspaceSessionId: 'chat', artifactSink: { putBytes: vi.fn() }, log: entry => log.push(entry),
     });
     expect(result.errorCode).toBe('report_source_discovery_needs_input');
     expect(formatExecutionResultMessage({ executionId: 'run', status: 'failed', errorCode: result.errorCode, log })).toContain(question);

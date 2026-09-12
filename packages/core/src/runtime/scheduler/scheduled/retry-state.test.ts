@@ -9,7 +9,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({ id: 'replaced', name: 'replaced', goal: 'run the updated reservation', version: 1,
+    store.saveWorkflow({ inputs: [], id: 'replaced', name: 'replaced', goal: 'run the updated reservation', version: 1,
       trigger: previousType === 'once' ? { type: 'once', runAt: '2026-09-12T00:00:00Z' }
         : { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
       steps: [], permissions: {}, approval: [], allowExternalAuto: false,
@@ -49,7 +49,7 @@ describe('Scheduler scheduled jobs', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     for (const id of ['first', 'peer']) {
-      store.saveWorkflow({ id, name: id, goal: 'preserve scheduled work', version: 1,
+      store.saveWorkflow({ inputs: [], id, name: id, goal: 'preserve scheduled work', version: 1,
         trigger: id === 'peer' ? { type: 'once', runAt: '2026-09-12T00:00:00Z' }
           : { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
         steps: [], permissions: {}, approval: [], allowExternalAuto: false,
@@ -94,7 +94,7 @@ describe('Scheduler scheduled jobs', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     for (const id of ['first', 'peer']) {
-      store.saveWorkflow({ id, name: id, goal: 'pause queued work', version: 1,
+      store.saveWorkflow({ inputs: [], id, name: id, goal: 'pause queued work', version: 1,
         trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
         steps: [], permissions: {}, approval: [], allowExternalAuto: false,
         assumptions: [], sideEffects: {}, dataPolicy: {} });
@@ -132,7 +132,7 @@ describe('Scheduler scheduled jobs', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     for (const id of ['first', 'peer']) {
-      store.saveWorkflow({
+      store.saveWorkflow({ inputs: [],
         id,
         name: id,
         goal: '동일 시각 예약 실행',
@@ -182,7 +182,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.useFakeTimers();
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({ id: 'hourly', name: '매시간 확인', goal: '매시간 연결 자료 확인', version: 1,
+    store.saveWorkflow({ inputs: [], id: 'hourly', name: '매시간 확인', goal: '매시간 연결 자료 확인', version: 1,
       trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'Asia/Seoul' },
       steps: [], permissions: {}, approval: [], allowExternalAuto: false,
       assumptions: [], sideEffects: {}, dataPolicy: {} });
@@ -207,7 +207,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.useFakeTimers();
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({ id: 'sleep-catch-up', name: '절전 복구', goal: '놓친 예약 복구', version: 1,
+    store.saveWorkflow({ inputs: [], id: 'sleep-catch-up', name: '절전 복구', goal: '놓친 예약 복구', version: 1,
       trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'Asia/Seoul' },
       steps: [], permissions: {}, approval: [], allowExternalAuto: false,
       assumptions: [], sideEffects: {}, dataPolicy: {} });
@@ -235,7 +235,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'scheduled-retry',
       name: '예약 재시도',
       goal: '실패한 예약 업무는 같은 예약 분에 재시도',
@@ -251,7 +251,7 @@ describe('Scheduler scheduled jobs', () => {
     });
     store.setWorkflowActive('scheduled-retry', true);
 
-    const statuses = ['failed', 'success'] as const;
+    const statuses = ['failed', 'success'] as Array<'failed' | 'success'>;
     const runtime = {
       executeWorkflow: vi.fn(async () => ({ status: statuses.shift() ?? 'success' })),
     };
@@ -277,7 +277,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'scheduled-after-corruption',
       name: '손상 복구 예약',
       goal: '손상된 예약 상태와 무관하게 실행',

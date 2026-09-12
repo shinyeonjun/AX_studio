@@ -36,7 +36,7 @@ describe('runtime control-flow selection', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '발신자 필터',
       goal: '특정 발신자만 알림',
       version: 1,

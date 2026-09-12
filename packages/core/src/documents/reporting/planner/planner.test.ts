@@ -630,8 +630,9 @@ describe('ReportPlanner', () => {
     });
 
     expect(repaired.mismatches).toEqual([]);
-    const status = repaired.plan.tables.find((table) => table.id === 'risk')?.kind === 'aggregate'
-      ? repaired.plan.tables.find((table) => table.id === 'risk')?.columns.find((column) => column.id === 'status')
+    const risk = repaired.plan.tables.find((table) => table.id === 'risk');
+    const status = risk?.kind === 'aggregate'
+      ? risk.columns.find((column) => column.id === 'status')
       : undefined;
     expect(status).toMatchObject({
       value: { expression: { branches: [{ when: { kind: 'compare', operation: 'lt' } }] } },
@@ -815,7 +816,7 @@ describe('ReportPlanner', () => {
         ? repaired.plan.tables[0].columns.find((candidate) => candidate.id === id)
         : undefined;
       expect(column?.value).toMatchObject({ kind: 'aggregate' });
-      expect(column?.value.kind === 'aggregate' ? column.value.expression.where : undefined).toEqual(eligible);
+      expect(column?.value).toMatchObject({ kind: 'aggregate', expression: { where: eligible } });
     }
   });
 
@@ -1877,7 +1878,7 @@ describe('ReportPlanner', () => {
     let modelCalls = 0;
     const runner: InvestigationRunner = {
       providerName: 'fixture',
-      async run<T>() {
+      async run() {
         modelCalls += 1;
         throw new Error('model_should_not_run');
       },
@@ -2261,7 +2262,7 @@ describe('ReportPlanner', () => {
       scalars: [], tables: [], texts: [],
     };
     const repaired = repairReportMetadataReferences(plan, {
-      capturePlan: { schemaVersion: 1, http: [{ alias: 'orders', path: '/orders' }], rdb: [{ alias: 'contracts', table: 'public.contracts' }] },
+      capturePlan: { schemaVersion: 1, http: [{ alias: 'orders', path: '/orders', rowsPath: '$' }], rdb: [{ alias: 'contracts', table: 'public.contracts' }] },
     });
     expect(repaired.joins[0]?.where).toMatchObject({ right: { path: 'meta.periodEndInclusive' } });
     expect(repaired.filter).toMatchObject({ right: { path: 'meta.periodEndExclusive' } });

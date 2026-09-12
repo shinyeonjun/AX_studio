@@ -20,7 +20,7 @@ describe('runtime output binding', () => {
       investigationRunner: createInvestigationRunner(createAgentHarness(new NoReadProvider())),
     });
 
-    const first = await runtime.executeWorkflow({
+    const first = await runtime.executeWorkflow({ inputs: [],
       name: '결제 결과 공유',
       goal: '결제 주문을 요약해서 Slack으로 공유',
       version: 1,

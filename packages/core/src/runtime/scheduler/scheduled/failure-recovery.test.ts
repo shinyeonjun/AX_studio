@@ -14,7 +14,7 @@ describe('Scheduler scheduled jobs', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     for (const id of ['throws', 'succeeds']) {
-      store.saveWorkflow({
+      store.saveWorkflow({ inputs: [],
         id,
         name: id,
         goal: '예약 실행 오류 격리',
@@ -59,7 +59,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'scheduled-recovery',
       name: '예약 오류 복구',
       goal: '일시적인 스케줄러 오류 후 다음 tick에서 실행',

@@ -65,6 +65,7 @@ export default defineConfig({
         input: {
           index: resolve('electron/main/index.ts'),
           'scan-worker': resolve('../../packages/core/src/platform/local-folder-scan-worker.ts'),
+          'search-worker': resolve('../../packages/core/src/intelligence/retrieval/search-worker.ts'),
         },
         external: mainExternals,
       },

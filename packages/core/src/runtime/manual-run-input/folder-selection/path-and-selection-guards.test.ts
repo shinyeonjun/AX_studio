@@ -20,6 +20,7 @@ describe('buildManualRunInput path and selection guards', () => {
     });
 
     const ir = folderWorkflow({ type: 'manual' });
+    if (ir.steps[0]?.type !== 'action') throw new Error('Expected ingest action');
     ir.steps[0] = {
       ...ir.steps[0]!,
       params: { path: 'D:\\not-connected\\invented.pdf' },

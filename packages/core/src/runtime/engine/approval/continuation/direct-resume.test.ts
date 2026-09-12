@@ -10,7 +10,7 @@ describe('approval continuation direct resume', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
-    const first = await runtime.executeWorkflow({
+    const first = await runtime.executeWorkflow({ inputs: [],
       name: 'Approved Slack send', goal: 'Send once', version: 1,
       steps: [{ type: 'action', id: 'send', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'test' }, sideEffect: 'EXTERNAL' }],
       permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
@@ -20,11 +20,11 @@ describe('approval continuation direct resume', () => {
     expect(resumed.status).toBe('success');
     expect(resumed.log.at(-1)).toMatchObject({ code: 'step_completed', data: { stepId: 'send' } });
     expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
-    db.close();
+    db.close?.();
   });
 
   it('resumes remaining steps after approval', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '승인 후 보고',
       goal: '보내고 알림',
       version: 1,

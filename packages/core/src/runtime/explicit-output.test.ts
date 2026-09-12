@@ -79,14 +79,15 @@ describe('runtime output seam', () => {
     });
     const outputs = { fetch: { response, body: { text: response.body, format: 'plain' } } };
     const notify = ir.steps[1]!;
+    if (notify.type !== 'action') throw new Error('Expected notify action');
 
     expect(
-      applyStepBindings(notify as Extract<WorkflowIR['steps'][number], { type: 'action' }>, ir, notify.params, {}, {}, outputs).text,
+      applyStepBindings(notify, ir, notify.params, {}, {}, outputs).text,
     ).toBe('{"ok":true}');
     expect(
       resolveStepParams(
         { text: '{{fetch.response.body}}' },
-        { variables: {}, outputs, log: () => {} },
+        { executionId: 'binding-test', variables: {}, outputs, log: () => {} },
         { fetch: { response: { body: 'stale' } } },
       ).text,
     ).toBe('{"ok":true}');

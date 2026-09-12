@@ -36,6 +36,7 @@ describe('inputRequestsForResult', () => {
     const requests = inputRequestsForResult({
       command: 'job.propose',
       status: 'needs_input',
+      inputRequests: [],
       issues: [{
         code: 'missing_argument',
         message: '연결을 고르지 못했습니다.',
@@ -58,6 +59,7 @@ describe('inputRequestsForResult', () => {
     expect(inputRequestsForResult({
       command: 'workflow.create',
       status: 'invalid',
+      inputRequests: [],
       issues: [{
         code: 'invalid_workflow_schema',
         path: 'steps.send.params',
@@ -70,6 +72,7 @@ describe('inputRequestsForResult', () => {
     expect(inputRequestsForResult({
       command: 'workflow.create',
       status: 'needs_input',
+      inputRequests: [],
       issues: [{
         code: 'missing_input_contract',
         path: 'steps.send',

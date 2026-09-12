@@ -7,7 +7,7 @@ function context(): ConnectorContext {
   return {
     executionId: 'exec-transform',
     variables: {},
-    connections: {},
+    connections: [],
     log: vi.fn(),
   };
 }

@@ -88,9 +88,6 @@ export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand |
   return coreBrandFromProvider(provider, brand);
 }
 
-export function modeLabel(mode: AiConnectionMode): string {
-  return mode === 'api' ? 'API' : 'CLI';
-}
 
 export function modelsForBrand(
   brand: AiBrand,

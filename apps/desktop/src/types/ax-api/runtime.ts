@@ -10,6 +10,7 @@ export interface AxRuntimeApi {
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
   runWorkflow: (workflowId: string) => Promise<{ executionId: string; status: string }>;
   deleteExecution: (executionId: string) => Promise<unknown>;
+  getExecutionOutput: (executionId: string) => Promise<import('@ax-studio/core').ExecutionOutput>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
   exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   saveGeneratedArtifactToFolder: (artifactId: string) => Promise<GeneratedArtifactFolderSaveResult>;

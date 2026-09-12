@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { executeReportPlan } from './execute.js';
-import type { ReportPlan, ReportSourceSnapshot } from './schema.js';
+import { ReportPlanSchema, type ReportPlan, type ReportSourceSnapshot } from './schema.js';
 
 const sources: Record<string, ReportSourceSnapshot> = {
   orders: {
@@ -52,7 +52,7 @@ it('ranks and limits a view by an undisplayed source column', () => {
       groupBy: [{ id: 'name', value: field('sales.name') }],
       columns: [
         { id: 'name', value: { kind: 'group_key', keyId: 'name' } },
-        { id: 'amount', value: { kind: 'sum', value: field('sales.amount') } },
+        { id: 'amount', value: { kind: 'aggregate', expression: { kind: 'sum', value: field('sales.amount') } } },
       ],
     }, {
       kind: 'view', id: 'top_customer', sourceTable: 'customers', columns: ['name'],
@@ -164,7 +164,7 @@ it('evaluates metadata value scalars and aggregate expressions in derived table 
 });
 
 it('unwraps aggregate wrappers nested inside derived table expressions', () => {
-  const input: ReportPlan = {
+  const input = {
     schemaVersion: 1,
     baseSource: 'orders',
     joins: [],
@@ -198,7 +198,7 @@ it('unwraps aggregate wrappers nested inside derived table expressions', () => {
     texts: [],
   };
 
-  expect(executeReportPlan(input, sources).tables.summary?.rows.map((row) => row.raw.attainment))
+  expect(executeReportPlan(ReportPlanSchema.parse(input), sources).tables.summary?.rows.map((row) => row.raw.attainment))
     .toEqual([1.8, 1, 1]);
 });
 

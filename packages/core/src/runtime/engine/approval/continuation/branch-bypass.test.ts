@@ -7,7 +7,7 @@ import { createTestConnectors, mockGmail } from '../../../../testing/connectors/
 
 describe('approval continuation branch guard', () => {
   it('does not let a high-side-effect action bypass approval when a branch skips its approval node', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '분기 승인 우회 방지',
       goal: '분기에서 메일을 승인 후 발송',
       version: 1,

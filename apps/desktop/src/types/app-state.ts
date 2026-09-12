@@ -79,7 +79,7 @@ export interface AppState {
       fields: string[];
       preview: Record<string, string>;
     };
-    output?: import('@ax-studio/core').ExecutionOutput;
+    hasOutput?: boolean;
     generatedPdf?: {
       artifactId: string;
       fileName: string;

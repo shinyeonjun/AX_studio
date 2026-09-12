@@ -10,7 +10,7 @@ describe('saved workflow completion projection', () => {
   it('publishes a saved manual run through the bootstrap completion boundary', async () => {
     const dataRoot = mkdtempSync(join(tmpdir(), 'ax-bootstrap-result-'));
     const events: Array<{ sessionId: string; workflowId?: string; executionId: string }> = [];
-    const workflow: WorkflowIR = {
+    const workflow: WorkflowIR = { inputs: [],
       id: 'workflow-bootstrap-result',
       name: '부트스트랩 결과',
       goal: '완료 결과를 대화에 남긴다',

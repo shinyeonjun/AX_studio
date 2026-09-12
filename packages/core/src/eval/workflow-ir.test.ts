@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseWorkflowIR, validateWorkflowIR } from '../workflow/schema.js';
+import { parseWorkflowIR } from '../workflow/schema.js';
 import { requiresApproval, validateApprovalPolicy, isDeployable } from '../workflow/approval.js';
 import { csMailWorkflowFixture, weeklyReportWorkflowFixture, dataPolicyFixture } from '../testing/fixtures/workflows.js';
 

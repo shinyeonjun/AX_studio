@@ -1,3 +1,4 @@
+import type { WorkflowIR } from '../schema.js';
 import { describe, expect, it } from 'vitest';
 import { applyStepBindings, inferWorkflowBindings } from '../bindings.js';
 import { folderToSlack } from './fixtures.js';

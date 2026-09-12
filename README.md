@@ -164,6 +164,14 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 | `npm run test:product-qa` | Electron 제품 QA harness 실행 |
 | `npm run knip` | 미사용 코드·의존성 검사 |
 
+## 라이선스
+
+AX Studio 자체 소스 코드는 [MIT 라이선스](LICENSE)로 제공됩니다.
+포함된 외부 라이브러리는 각자의 라이선스를 따르며, 전체 설치본이 모두 MIT라는
+뜻은 아닙니다. PDF 엔진은 pypdf·ReportLab·PDFium을 사용하며, 포함된 나눔고딕
+글꼴은 SIL Open Font License 1.1을 따릅니다. [외부 소프트웨어 고지](THIRD_PARTY_NOTICES.md)와
+[배포 시 확인 사항](docs/RELEASING.md)을 참고하세요.
+
 ## 문서
 
 - [Work Discovery 마스터 플랜](docs/AX_STUDIO_WORK_DISCOVERY_MASTER_PLAN.md)

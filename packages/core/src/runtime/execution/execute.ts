@@ -97,7 +97,7 @@ export async function executeWorkflow(
   const log: ExecutionLogEntry[] = [];
   const appendLog = (entry: ExecutionLogEntry) => {
     log.push(entry);
-    host.config.store.updateExecutionLog(executionId, log);
+    host.config.store.appendExecutionLog(executionId, entry);
   };
   const connections = host.config.store.getConnections();
   const input = { ...discoverySourceInputs(workflowIr), ...options.input };

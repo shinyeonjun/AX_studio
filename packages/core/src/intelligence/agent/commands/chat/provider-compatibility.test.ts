@@ -1,3 +1,4 @@
+import type { StructuredGenerateInput } from '../../model/provider.js';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentHarness } from '../../harness.js';
 import { createDatabaseAsync } from '../../../../persistence/db.js';

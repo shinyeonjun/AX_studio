@@ -226,15 +226,5 @@ export class Scheduler {
     }
   }
 
-  async runWorkflowNow(workflowId: string): Promise<unknown> {
-    const ir = this.store.getWorkflow(workflowId);
-    if (!ir) throw new Error('Workflow not found');
-    return this.runtime.executeWorkflow(ir, { triggerType: 'manual' });
-  }
 
-  persistWorkflowFromEphemeral(ir: WorkflowIR, trigger?: WorkflowIR['trigger']): string {
-    const withTrigger = { ...ir, trigger: trigger ?? ir.trigger };
-    const { workflowId } = this.store.saveWorkflow(withTrigger);
-    return workflowId;
-  }
 }

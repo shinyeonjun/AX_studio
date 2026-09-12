@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import pymupdf
+import pypdfium2 as pdfium
+from pypdf import PageObject
+from pypdf.generic import NameObject
 from PIL import Image, ImageDraw
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.pagesizes import A4
@@ -25,6 +27,22 @@ from write.pdf_form import (
     fill_pdf_form,
     persist_pdf_form_template,
 )
+
+
+def _pdfium_text(path: Path) -> str:
+    document = pdfium.PdfDocument(str(path))
+    try:
+        page = document[0]
+        try:
+            text = page.get_textpage()
+            try:
+                return text.get_text_bounded()
+            finally:
+                text.close()
+        finally:
+            page.close()
+    finally:
+        document.close()
 
 
 def _sha256(path: Path) -> str:
@@ -219,7 +237,7 @@ class PdfFormPipelineTest(unittest.TestCase):
             result = fill_pdf_form(source, template, {template["fields"][0]["id"]: "Launch"}, output)
             self.assertEqual(_sha256(source), before)
             self.assertTrue(output.is_file())
-            self.assertEqual(result["writerEngine"], "pymupdf")
+            self.assertEqual(result["writerEngine"], "pypdf-reportlab")
             self.assertTrue(result["verified"])
             output_text = PdfReader(str(output)).pages[0].extract_text() or ""
             self.assertIn("Launch", output_text)
@@ -274,7 +292,7 @@ class PdfFormPipelineTest(unittest.TestCase):
             self.assertEqual(template["mode"], "acroform")
             self.assertEqual(template["fields"][0]["name"], "campaign_name")
             result = fill_pdf_form(source, template, {template["fields"][0]["id"]: "Launch"}, output)
-            self.assertEqual(result["writerEngine"], "pymupdf")
+            self.assertEqual(result["writerEngine"], "pypdf-reportlab")
             self.assertTrue(result["verified"])
             self.assertTrue(result["interactive"])
             self.assertTrue(result["sourceUnchanged"])
@@ -293,13 +311,14 @@ class PdfFormPipelineTest(unittest.TestCase):
             result = fill_pdf_form(source, template, {template["fields"][0]["id"]: value}, output)
             self.assertTrue(result["verified"])
 
-            document = pymupdf.open(str(output))
-            try:
-                widget = list(document[0].widgets() or [])[0]
-                rendered = document[0].get_text("text", clip=widget.rect) or ""
-                self.assertIn(value, rendered)
-            finally:
-                document.close()
+            reader = PdfReader(output)
+            widget = reader.pages[0]["/Annots"][0].get_object()
+            appearance = widget["/AP"]["/N"].get_object()
+            page = PageObject()
+            page[NameObject("/Contents")] = appearance
+            page[NameObject("/Resources")] = appearance["/Resources"]
+            self.assertIn(value, page.extract_text())
+            self.assertEqual(reader.get_fields()["campaign_name"]["/V"], value)
 
     def test_native_unsupported_glyph_is_not_published_as_success(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -367,11 +386,7 @@ class PdfFormPipelineTest(unittest.TestCase):
                 font_path=str(font_path),
             )
             self.assertTrue(result["verified"])
-            document = pymupdf.open(str(output))
-            try:
-                self.assertIn(value, document[0].get_text("text"))
-            finally:
-                document.close()
+            self.assertIn(value, _pdfium_text(output))
 
     def test_unicode_overlay_uses_embedded_fallback_without_a_system_font(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -389,14 +404,11 @@ class PdfFormPipelineTest(unittest.TestCase):
                     output,
                 )
             self.assertTrue(result["verified"])
-            document = pymupdf.open(str(output))
-            try:
-                self.assertIn(value, document[0].get_text("text"))
-                self.assertTrue(
-                    any(font[3] == "Droid Sans Fallback Regular" for font in document[0].get_fonts(full=True))
-                )
-            finally:
-                document.close()
+            self.assertIn(value, _pdfium_text(output))
+            fonts = PdfReader(output).pages[0]["/Resources"]["/Font"]
+            self.assertTrue(any("NanumGothic" in str(font.get_object().get("/BaseFont"))
+                                and "/FontFile2" in font.get_object().get("/FontDescriptor", {})
+                                for font in fonts.values()))
 
     def test_native_checkbox_radio_and_choice_are_filled_and_verified(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -422,7 +434,7 @@ class PdfFormPipelineTest(unittest.TestCase):
                 {checkbox["id"]: True, low["id"]: True, choice["id"]: "Engineering"},
                 output,
             )
-            self.assertEqual(result["writerEngine"], "pymupdf")
+            self.assertEqual(result["writerEngine"], "pypdf-reportlab")
             self.assertTrue(result["verified"])
             fields = PdfReader(str(output)).get_fields() or {}
             self.assertEqual(str(fields["agree"].get("/V")).lstrip("/"), "Yes")
@@ -536,8 +548,7 @@ class PdfFormPipelineTest(unittest.TestCase):
             result = fill_pdf_form(source, template, {"summary": value}, output)
             self.assertTrue(result["verified"])
             self.assertTrue(output.exists())
-            with pymupdf.open(str(output)) as document:
-                self.assertIn(value, document[0].get_text("text"))
+            self.assertIn(value, _pdfium_text(output))
 
     def test_overlay_text_allows_small_vertical_padding_for_extracted_spans(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -563,8 +574,8 @@ class PdfFormPipelineTest(unittest.TestCase):
             value = "REST  GET /api/v1/orders"
             result = fill_pdf_form(source, template, {"source": value}, output)
             self.assertTrue(result["verified"])
-            with pymupdf.open(str(output)) as document:
-                self.assertIn(value, document[0].get_text("text"))
+            self.assertIn(value, PdfReader(output).pages[0].extract_text())
+            self.assertIn(" ".join(value.split()), " ".join(_pdfium_text(output).split()))
 
     def test_template_schema_hash_and_page_count_are_required_for_fill(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

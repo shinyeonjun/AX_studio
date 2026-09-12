@@ -7,7 +7,7 @@ describe('workflow settings and cleanup persistence', () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     try {
-      const { workflowId } = store.saveWorkflow({ id: 'busy-workflow', name: '진행 중 업무', goal: '보존', version: 1,
+      const { workflowId } = store.saveWorkflow({ inputs: [], id: 'busy-workflow', name: '진행 중 업무', goal: '보존', version: 1,
         steps: [], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {} });
       const executionId = store.createExecution({ workflowId, ephemeral: false });
       if (status === 'pending_approval') {
@@ -61,7 +61,7 @@ describe('workflow settings and cleanup persistence', () => {
   it('prunes scheduler/trigger state and receipts when a workflow is deleted', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const { workflowId } = store.saveWorkflow({
+    const { workflowId } = store.saveWorkflow({ inputs: [],
       id: 'wf-cleanup',
       name: '정리 테스트',
       goal: '삭제 시 부속 상태 정리',

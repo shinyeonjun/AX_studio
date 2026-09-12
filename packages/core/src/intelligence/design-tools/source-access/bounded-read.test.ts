@@ -18,7 +18,10 @@ describe('design-tools bounded source read', () => {
       summary: { pageCount: 1, chunkCount: 1, tableCount: 0, imageCount: 0, visualPageCount: 0, visualPages: [], engine: 'test' },
       text: 'A'.repeat(20_000),
     };
-    setDocumentEngineClient({ ping: async () => true, ingest: async () => result, pdfToHtml: async () => { throw new Error('unused'); }, getChunk: async () => { throw new Error('unused'); }, getPage: async () => { throw new Error('unused'); }, search: async () => { throw new Error('unused'); } });
+    setDocumentEngineClient({
+      pdfFormAnalyze: async () => { throw new Error('unused'); },
+      pdfFormFill: async () => { throw new Error('unused'); },
+      pdfReportAnalyze: async () => { throw new Error('unused'); }, ping: async () => true, ingest: async () => result, pdfToHtml: async () => { throw new Error('unused'); }, getChunk: async () => { throw new Error('unused'); }, getPage: async () => { throw new Error('unused'); }, search: async () => { throw new Error('unused'); } });
     try {
       const localReadContext = buildDesignToolContext([{ connector: 'local_folder', connected: true, config: { folders: [{ id: 'folder-1', label: 'Inbox', path: dir }] } }], ['local_folder', 'document'], { allowUntrustedData: true });
       const [read] = await executeDesignToolCalls([{ tool: 'sources.file.read', args: { folderId: 'folder-1', path: pdfPath, maxChars: 1_000 } }], localReadContext);

@@ -5,7 +5,6 @@ import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import { createTestConnectors } from '../../../testing/connectors/test-connectors.js';
 import { TriggerEngine } from '../../trigger-engine.js';
-import { findFreePort } from './fixtures.js';
 
 describe('TriggerEngine webhook startup failure', () => {
   it('reports a listener startup failure when the configured port is occupied', async () => {

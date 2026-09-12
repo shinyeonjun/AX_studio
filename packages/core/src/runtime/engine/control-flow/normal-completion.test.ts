@@ -7,7 +7,7 @@ import { createTestConnectors, mockSlack } from '../../../testing/connectors/tes
 
 describe('runtime control-flow normal completion', () => {
   it('does not execute outer steps twice after a branch completes normally', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '정상 분기 후속 실행',
       goal: '분기와 바깥 후속 알림을 각각 한 번 실행',
       version: 1,

@@ -28,7 +28,7 @@ describe('HTTP exact selection and completeness', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it.each([
+  it.each<{ status: number; headers: Record<string, string> }>([
     { status: 206, headers: { 'content-range': 'bytes 0-1/10' } },
     { status: 200, headers: { link: '</items?page=2>; rel="next"' } },
     { status: 200, headers: { link: '</items?page=2>; rel="next last"' } },

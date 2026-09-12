@@ -90,12 +90,9 @@ write_pdf(root / "example.pdf", payload["example"])
 
 export function createPdfPair(root, benchmarkCase) {
   mkdirSync(root, { recursive: true });
-  const fontCandidates = [
-    'C:\\Windows\\Fonts\\malgun.ttf',
-    'C:\\Windows\\Fonts\\malgunsl.ttf',
-    '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
-  ];
-  const fontPath = fontCandidates.find((candidate) => existsSync(candidate)) ?? null;
+  // Identical Korean fixture geometry on Windows and Linux; no system-font fallback.
+  const fontPath = join(here, '..', '..', 'packages/document-engine/src/assets/fonts/NanumGothic-Regular.ttf');
+  if (!existsSync(fontPath)) throw new Error('pdf_fixture_font_missing');
   const values = Object.fromEntries([
     ['period', benchmarkCase.exampleExpected.scalars[0]],
     ['revenue', benchmarkCase.exampleExpected.scalars[1]],

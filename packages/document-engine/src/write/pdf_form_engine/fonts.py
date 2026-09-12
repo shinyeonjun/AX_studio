@@ -4,145 +4,113 @@ import os
 from pathlib import Path
 from typing import Any, Mapping
 
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
 from .primitives import _as_float, _as_string, _hash_text
-from .runtime import _pymupdf
 
-def _text_requires_unicode_font(text: str) -> bool:
-    return any(ord(character) > 127 for character in text)
+_BUNDLED_FONT = Path(__file__).resolve().parents[2] / "assets/fonts/NanumGothic-Regular.ttf"
 
-def _font_supports_text(font: Any, text: str) -> bool:
-    for character in text:
-        if character in {"\r", "\n", "\t"}:
-            continue
-        if not font.has_glyph(ord(character)):
-            return False
-    return True
 
-def _builtin_unicode_font(text: str) -> Any:
-    """Return PyMuPDF's embedded CJK fallback after checking its glyphs."""
-    pdf = _pymupdf()
-    try:
-        font = pdf.Font("cjk")
-    except Exception as error:
-        raise ValueError("unicode_font_required") from error
-    if not _font_supports_text(font, text):
-        raise ValueError("font_glyph_missing")
-    return font
-
-def _find_font_path(explicit: str | None = None, text: str = "") -> Path | None:
-    """Resolve a font without silently accepting a missing or partial font."""
-    if explicit:
-        path = Path(explicit)
-        if not path.is_file():
-            raise ValueError("font_not_found")
+def _load_font(path: Path) -> str:
+    if not path.is_file():
+        raise ValueError("font_not_found")
+    stat = path.stat()
+    name = "AxFont" + _hash_text(f"{path}:{stat.st_size}:{stat.st_mtime_ns}")
+    if name not in pdfmetrics.getRegisteredFontNames():
         try:
-            font = _pymupdf().Font(fontfile=str(path))
+            pdfmetrics.registerFont(TTFont(name, str(path)))
         except Exception as error:
             raise ValueError("font_invalid") from error
-        if _text_requires_unicode_font(text) and not _font_supports_text(font, text):
+    return name
+
+
+def _font_supports_text(name: str, text: str) -> bool:
+    glyphs = pdfmetrics.getFont(name).face.charToGlyph
+    return all(character in "\r\n\t" or bool(glyphs.get(ord(character))) for character in text)
+
+
+def _find_font_path(explicit: str | None = None, text: str = "") -> Path | None:
+    if explicit:
+        path = Path(explicit)
+        name = _load_font(path)
+        if not _font_supports_text(name, text):
             raise ValueError("font_glyph_missing")
         return path
-
     windows_root = Path(os.environ.get("WINDIR", "C:/Windows"))
-    candidates = [
-        windows_root / "Fonts" / "malgun.ttf",
-        windows_root / "Fonts" / "NanumGothic.ttf",
-        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
-        Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
-    ]
-    requires_unicode = _text_requires_unicode_font(text)
-    for path in candidates:
-        if not path.is_file():
-            continue
-        try:
-            font = _pymupdf().Font(fontfile=str(path))
-        except Exception:
-            continue
-        if not requires_unicode or _font_supports_text(font, text):
-            return path
-
-    if requires_unicode:
-        # A portable PyMuPDF font is safer than an ASCII-only built-in font.
-        # _insert_textbox installs this font from its in-process buffer.
-        _builtin_unicode_font(text)
+    for path in (_BUNDLED_FONT, windows_root / "Fonts/malgun.ttf",
+                 Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf")):
+        if path.is_file():
+            try:
+                if _font_supports_text(_load_font(path), text):
+                    return path
+            except ValueError:
+                continue
+    if any(ord(character) > 127 for character in text):
+        raise ValueError("font_glyph_missing")
     return None
 
-def _text_font_size(field: Mapping[str, Any], rect: Any) -> float:
-    default = min(11.0, max(float(rect.height) - 4.0, 6.0))
-    return min(max(_as_float(field.get("fontSize"), default), 5.0), 24.0)
 
-def _expanded_text_rect(page: Any, pdf: Any, rect: Any) -> Any:
-    """Compensate for text bboxes that omit a small amount of line leading."""
-    padding = min(max(float(rect.height) * 0.15, 1.0), 2.0)
-    page_rect = page.rect
-    top = min(padding / 2.0, max(float(rect.y0), 0.0))
-    bottom = min(padding - top, max(float(page_rect.y1 - rect.y1), 0.0))
-    return pdf.Rect(rect.x0, rect.y0 - top, rect.x1, rect.y1 + bottom)
+def _font_name(text: str, explicit: str | None = None) -> str:
+    if explicit or any(ord(character) > 127 for character in text):
+        path = _find_font_path(explicit, text)
+        if path is None:
+            raise ValueError("unicode_font_required")
+        return _load_font(path)
+    return "Helvetica"
 
-def _insert_textbox(
-    page: Any,
-    pdf: Any,
-    rect: Any,
-    field: Mapping[str, Any],
-    value: Any,
-    *,
-    font_path: str | None,
-) -> None:
-    text = _as_string(value).replace("\r\n", "\n").replace("\r", "\n")
+
+def _wrap_text(text: str, name: str, size: float, width: float) -> list[str] | None:
+    lines: list[str] = []
+    for paragraph in text.split("\n"):
+        remaining = paragraph
+        if not remaining:
+            lines.append("")
+        while remaining:
+            count = 0
+            while count < len(remaining) and pdfmetrics.stringWidth(remaining[:count + 1], name, size) <= width:
+                count += 1
+            if count == 0:
+                return None
+            if count < len(remaining):
+                space = remaining.rfind(" ", 0, count + 1)
+                if space > 0:
+                    count = space
+            lines.append(remaining[:count])
+            remaining = remaining[count:].lstrip(" ")
+    return lines
+
+
+def _draw_text(canvas: Any, rect: tuple[float, float, float, float], field: Mapping[str, Any],
+               value: Any, *, page_height: float, font_path: str | None) -> None:
+    text = _as_string(value).replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
     if not text:
         return
-
-    requires_unicode = _text_requires_unicode_font(text)
-    font_file = _find_font_path(font_path, text)
-    font_size = _text_font_size(field, rect)
-    fallback_font = None
-    if font_file:
-        font_name = f"AxFormFont{_hash_text(str(font_file))}"
-    elif requires_unicode:
-        font_name = f"AxFormCjk{_hash_text('pymupdf-cjk-fallback')}"
-        fallback_font = _builtin_unicode_font(text)
-        # Page.insert_textbox accepts a font file path, not a font buffer. Add
-        # the portable CJK font to the page once through the lower-level API.
-        page.insert_font(fontname=font_name, fontbuffer=fallback_font.buffer)
-    else:
-        font_name = "helv"
-    # Never silently clip a value. Retry with a smaller font, and fail the
-    # whole write if the value still cannot fit inside its detected region.
-    minimum_font_size = 5.0
-    while font_size >= minimum_font_size:
-        raw_color = field.get("textColor")
-        color = None
-        if isinstance(raw_color, (list, tuple)) and len(raw_color) == 3:
-            color = tuple(min(max(float(component), 0.0), 1.0) for component in raw_color)
-        raw_align = str(field.get("align") or "left").lower()
-        alignment = {"left": 0, "center": 1, "right": 2}.get(raw_align, 0)
-        kwargs: dict[str, Any] = {
-            "fontname": font_name,
-            "fontsize": font_size,
-            "overlay": True,
-            "align": alignment,
-        }
-        if color is not None:
-            kwargs["color"] = color
-        if font_file:
-            kwargs["fontfile"] = str(font_file)
-        result = page.insert_textbox(rect, text, **kwargs)
-        if result >= 0:
-            return
-        # Always make one final attempt at the exact minimum. Fractional
-        # geometry-derived sizes such as 8.3 would otherwise stop at 5.3 and
-        # report overflow even when the value fits at 5.0.
-        next_font_size = max(font_size - 0.5, minimum_font_size)
-        if next_font_size == font_size:
+    name = _font_name(text, font_path)
+    x0, y0, x1, y1 = rect
+    size = min(max(_as_float(field.get("fontSize"), min(11, max(y1 - y0 - 4, 6))), 5), 24)
+    while True:
+        lines = _wrap_text(text, name, size, x1 - x0)
+        ascent, descent = pdfmetrics.getAscentDescent(name, size)
+        leading = size * 1.2
+        needed = ascent - descent + (len(lines) - 1) * leading if lines else float("inf")
+        # Glyph-derived rectangles may omit descent/leading. Keep the existing
+        # <=2pt padding allowance, but never write a clipped or overflowing value.
+        padding = min(max((y1 - y0) * 0.15, 1), 2)
+        if needed <= y1 - y0 + padding and lines is not None:
             break
-        font_size = next_font_size
-
-    # PDF text extraction commonly reports the glyph bbox without the small
-    # descent/leading required by insert_textbox. Retry once in a minimally
-    # expanded, page-clipped region before declaring a genuine overflow.
-    padded_rect = _expanded_text_rect(page, pdf, rect)
-    if padded_rect != rect:
-        result = page.insert_textbox(padded_rect, text, **kwargs)
-        if result >= 0:
-            return
-    raise ValueError(f"field_text_overflow:{_as_string(field.get('name') or field.get('id'))}")
+        if size == 5:
+            raise ValueError(f"field_text_overflow:{_as_string(field.get('name') or field.get('id'))}")
+        size = max(5, size - 0.5)
+    color = field.get("textColor")
+    if not isinstance(color, (list, tuple)) or len(color) != 3:
+        color = (0, 0, 0)
+    canvas.setFillColorRGB(*(min(max(float(c), 0), 1) for c in color))
+    canvas.setFont(name, size)
+    align = str(field.get("align") or "left").lower()
+    baseline = page_height - y0 - ascent
+    for line in lines:
+        advance = pdfmetrics.stringWidth(line, name, size)
+        x = x0 + ((x1 - x0 - advance) / 2 if align == "center" else x1 - x0 - advance if align == "right" else 0)
+        canvas.drawString(x, baseline, line)
+        baseline -= leading

@@ -15,7 +15,7 @@ describe('startup execution recovery', () => {
     try {
       const db = await createDatabaseAsync(paths.database);
       const store = new WorkflowStore(db);
-      const { workflowId } = store.saveWorkflow({
+      const { workflowId } = store.saveWorkflow({ inputs: [],
         id: 'interrupted-schedule', name: '완료 여부 확인 필요', goal: '중복 실행 방지', version: 1,
         trigger: { type: 'schedule', schedule: '* * * * *', timezone: 'UTC' }, steps: [],
         permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},

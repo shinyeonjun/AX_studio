@@ -33,6 +33,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   const [sourceBusy, setSourceBusy] = useState(false);
   const sourceBusyRef = useRef(false);
   const pendingWorkspaceChatRefreshRef = useRef<string | undefined>(undefined);
+  const chatRefreshSequenceRef = useRef(0);
 
   const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
   const isViewingSession = (sessionId: string | undefined) =>
@@ -45,6 +46,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       busyRef,
       sourceBusyRef,
       pendingWorkspaceChatRefreshRef,
+      chatRefreshSequenceRef,
     },
     chatMessages,
     workspaceWorkflowState,

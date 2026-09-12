@@ -20,7 +20,7 @@ describe('importDiscoveryArtifact', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-discovery-import-'));
     const store = new ArtifactStore(root);
     const mock = new MockDocumentEngineClient();
-    mock.ingest = async (path) => {
+    mock.ingest = async () => {
       const documentId = 'doc_mock';
       return {
         documentId,
@@ -47,10 +47,10 @@ describe('importDiscoveryArtifact', () => {
     const stored = await importDiscoveryArtifact(store, pdfPath);
     const json = store.getDocumentArtifact(stored.id);
 
-    expect(json?.id).toBe(stored.id);
-    expect(json?.engine).toBe('docling');
-    expect(json?.text).toContain('매출');
-    expect(json?.pages?.[0]?.text).toContain('매출');
+    expect(json).toMatchObject({
+      id: stored.id, engine: 'docling', text: expect.stringContaining('매출'),
+      pages: [expect.objectContaining({ text: expect.stringContaining('매출') })],
+    });
     expect(store.get(stored.id)?.storedPath).toContain('report.pdf');
   });
 

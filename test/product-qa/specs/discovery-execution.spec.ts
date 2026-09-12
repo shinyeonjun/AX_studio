@@ -43,11 +43,15 @@ if (process.env.AX_PRODUCT_QA_MODE === 'deterministic' && !process.env.AX_PRODUC
       await ctx.page.getByRole('button', { name: `${work.name} 지금 실행`, exact: true }).click();
       await expect.poll(async () => (await ctx!.page.evaluate(() => window.ax.getState())).executions[0]?.status,
         { timeout: 15_000 }).toBe('success');
+      await ctx.page.getByRole('button', { name: '계산 결과 보기', exact: true }).click();
       await expect(ctx.page.getByRole('region', { name: '계산 결과', exact: true })).toContainText('600', { timeout: 15_000 });
       const executed = await ctx.page.evaluate(() => window.ax.getState());
       expect(executed.executions).toHaveLength(1);
       expect(executed.executions[0]).toMatchObject({ workflowId: work.id, status: 'success', triggerType: 'manual' });
-      expect(executed.executions[0]!.output!.fields.map(field => field.valueJson)).toContain('600');
+      expect(executed.executions[0]!.hasOutput).toBe(true);
+      expect(executed.executions[0]).not.toHaveProperty('output');
+      const result = await ctx.page.evaluate(id => window.ax.getExecutionOutput(id), executed.executions[0]!.id);
+      expect(result.fields.map(field => field.valueJson)).toContain('600');
       for (const size of [{ width: 1280, height: 800, dark: false }, { width: 960, height: 720, dark: true }]) {
         await ctx.page.setViewportSize(size);
         if (size.dark) await ctx.page.getByRole('checkbox', { name: '다크 모드로 전환', exact: true }).check();
@@ -77,6 +81,7 @@ if (process.env.AX_PRODUCT_QA_MODE === 'deterministic' && !process.env.AX_PRODUC
 
       ctx = await launchDesktop({ ...options, scenarioId: 'discovery-execution-reopen' });
       await ctx.page.locator('.workspace-sidebar-tab', { hasText: '활동' }).click();
+      await ctx.page.getByRole('button', { name: '계산 결과 보기', exact: true }).click();
       await expect(ctx.page.getByRole('region', { name: '계산 결과', exact: true })).toContainText('600');
       writeFileSync(source, 'renamed_amount\n900\n');
       await ctx.page.locator('.workspace-sidebar-tab', { hasText: '업무' }).click();
@@ -86,7 +91,7 @@ if (process.env.AX_PRODUCT_QA_MODE === 'deterministic' && !process.env.AX_PRODUC
       const final = await ctx.page.evaluate(() => window.ax.getState());
       const failed = final.executions.find(entry => entry.status === 'failed')!;
       expect(failed.errorCode).toBe('input_schema_drift');
-      expect(failed.output).toBeUndefined();
+      expect(failed.hasOutput).toBe(false);
       // Only the previous successful execution has an output section.
       await expect(ctx.page.getByRole('region', { name: '계산 결과', exact: true })).toHaveCount(1);
     } finally {

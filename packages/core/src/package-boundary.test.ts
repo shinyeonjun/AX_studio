@@ -4,13 +4,13 @@ import { requiresApproval, validateApprovalPolicy } from './workflow/approval.js
 import { csMailWorkflowFixture } from './testing/fixtures/workflows.js';
 import { createDatabaseAsync } from './persistence/db.js';
 import { WorkflowStore } from './persistence/workflow-store.js';
-import packageJson from '../package.json';
+import packageJson from '../package.json' with { type: 'json' };
 
 describe('core package boundary', () => {
   it('has no electron or react in dependencies', () => {
     const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    expect(deps.electron).toBeUndefined();
-    expect(deps.react).toBeUndefined();
+    expect(deps).not.toHaveProperty('electron');
+    expect(deps).not.toHaveProperty('react');
   });
 
   it('gmail.send approval is enforced by the action boundary', () => {

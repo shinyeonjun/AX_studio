@@ -46,7 +46,7 @@ it('retains the status from a failed connector probe without disclosing its resp
 it('removes one rejected static query only after a successful bare-path recovery probe', async () => {
   const executeHttp = vi.fn()
     .mockResolvedValueOnce({ ok: false, error: 'http_400', errorCode: 'http_error' })
-    .mockResolvedValueOnce({ ok: true, data: buildHttpResponseArtifact({
+    .mockResolvedValueOnce({ ok: true, data: buildHttpResponseArtifact({ truncated: false,
       executionId: 'bare', url: 'http://example.test/records', status: 200,
       statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
     }) });
@@ -203,7 +203,7 @@ describe('captureReportSources', () => {
       executeHttp: async params => {
         const url = new URL(String(params.path), 'http://example.test');
         const page = Number(url.searchParams.get('page'));
-        return { ok: true, data: buildHttpResponseArtifact({
+        return { ok: true, data: buildHttpResponseArtifact({ truncated: false,
           executionId: `rooted-${page}`, url: url.href, status: 200, statusText: 'OK',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ data: [{ id: page }], meta: { total_pages: 2, page } }),
@@ -218,7 +218,7 @@ describe('captureReportSources', () => {
     const executeHttp = vi.fn(async (params: Record<string, unknown>) => {
       const url = new URL(String(params.path), 'http://example.test');
       const page = Number(url.searchParams.get('page'));
-      return { ok: true, data: buildHttpResponseArtifact({
+      return { ok: true, data: buildHttpResponseArtifact({ truncated: false,
         executionId: `repeat-${page}`, url: url.href, status: 200, statusText: 'OK',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ data: [{ id: 1 }], meta: { total_pages: 3 } }),

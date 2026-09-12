@@ -7,13 +7,6 @@ export function IconBriefcase() {
   );
 }
 
-export function IconChat() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
 
 export function IconPlus() {
   return (
@@ -49,30 +42,8 @@ export function IconSettings() {
   );
 }
 
-export function IconSearch() {
-  return (
-    <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.35-4.35" />
-    </svg>
-  );
-}
 
-export function IconPlay() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
 
-export function IconPause() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-    </svg>
-  );
-}
 
 export function IconTrash() {
   return (

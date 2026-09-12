@@ -45,7 +45,7 @@ describe('runAiDecision evidence and binding', () => {
 
   it('uses explicit bindings instead of scanning stepResults for document text', async () => {
     const model = new PrivacyCaptureProvider();
-    const documentIr = {
+    const documentIr: WorkflowIR = {
       ...ir,
       dataPolicy: { document: { cloudAllowed: true } },
       steps: [

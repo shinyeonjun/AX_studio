@@ -6,6 +6,7 @@ import {
   formatRelativeTime,
 } from '../../../ui/lib/work-display';
 import { formatFileSize, formatTimestamp } from './format.js';
+import { CalculatedOutput } from './calculated-output.js';
 
 type ActivityExecution = AppState['executions'][number];
 
@@ -101,17 +102,7 @@ export function ActivityExecutionItem({
             ))}
           </div>
         )}
-        {ok && execution.output && (
-          <section className="timeline-calculated-output" aria-label="계산 결과">
-            <strong>계산 결과</strong>
-            {execution.output.fields.map((field, index) => (
-              <details key={`${field.path}-${index}`} open>
-                <summary>{field.label ?? field.path}</summary>
-                <pre>{field.valueJson}</pre>
-              </details>
-            ))}
-          </section>
-        )}
+        {ok && execution.hasOutput && <CalculatedOutput key={execution.id} executionId={execution.id} />}
         {generatedPdf && (
           <div className="generated-pdf" data-testid="generated-pdf">
             <div className="generated-pdf-copy">

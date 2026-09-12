@@ -14,6 +14,7 @@ export interface WorkspaceChatRefs {
   busyRef: MutableRefObject<boolean>;
   sourceBusyRef: MutableRefObject<boolean>;
   pendingWorkspaceChatRefreshRef: MutableRefObject<string | undefined>;
+  chatRefreshSequenceRef: MutableRefObject<number>;
 }
 
 export interface WorkspaceChatContext {
@@ -41,6 +42,14 @@ export interface WorkspaceChatContext {
 export interface WorkspaceChatMessageContext extends WorkspaceChatContext {
   refreshMappedWorkspaceChat: (sessionId: string) => Promise<void>;
 }
+
+export type WorkspaceSourceContext = Pick<WorkspaceChatContext,
+  'refs' | 'isCurrentSession' | 'isViewingSession' | 'onSessionsChanged' |
+  'setWorkspaceSessionId' | 'setWorkspaceSources' | 'setSourceBusy' | 'setError'>;
+
+export type WorkspaceWorkflowContext = Pick<WorkspaceChatMessageContext,
+  'refs' | 'workspaceWorkflowState' | 'workflowRegistered' | 'isCurrentSession' | 'isViewingSession' |
+  'setError' | 'setWorkflowRegistered' | 'refresh' | 'refreshMappedWorkspaceChat'>;
 
 export interface WorkspaceSendResponse {
   role: 'assistant';

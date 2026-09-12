@@ -3,7 +3,6 @@ import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import type { ArtifactSink } from '../../../connectors/types.js';
-import { createTestConnectors } from '../../../testing/connectors/test-connectors.js';
 
 describe('runtime execution contexts', () => {
   it('injects the generated-artifact sink into fresh and approval-resumed contexts', async () => {
@@ -45,7 +44,7 @@ describe('runtime execution contexts', () => {
       },
     });
 
-    const first = await runtime.executeWorkflow({
+    const first = await runtime.executeWorkflow({ inputs: [],
       name: 'PDF sink injection',
       goal: 'fresh and resumed contexts share the host-owned artifact sink',
       version: 1,

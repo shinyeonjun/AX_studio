@@ -5,7 +5,9 @@ from typing import Any, Mapping
 
 from ..native import _native_widget_assignments, _radio_selected
 from ..primitives import _TRUTHY, _as_string
-from ..runtime import _pymupdf
+from ...pdf_read import open_pdf, page_text, render_page
+from ..widgets import appearance_pdf
+from ..primitives import _inherited, _object
 
 
 def _widget_value_is_on(widget: Any) -> bool:
@@ -38,6 +40,10 @@ def _verify_native_rendered_text(
     key: str,
 ) -> None:
     expected_values = expected if isinstance(expected, (list, tuple)) else [expected]
+    options = _inherited(widget.raw, "/Opt") or []
+    display_values = {str(option[0]): str(option[1]) for option in options
+                      if isinstance(option, (list, tuple)) and len(option) >= 2}
+    expected_values = [display_values.get(str(value), value) for value in expected_values]
     expected_texts = [
         _normalized_match(value)
         for value in expected_values
@@ -45,18 +51,24 @@ def _verify_native_rendered_text(
     ]
     if not expected_texts:
         return
-    rect = getattr(widget, "rect", None)
-    if rect is None:
-        raise ValueError(f"output_text_render_verification_failed:{key}")
-    pdf = _pymupdf()
-    clip = pdf.Rect(
-        max(0.0, rect.x0 - 2.0),
-        max(0.0, rect.y0 - 2.0),
-        rect.x1 + 2.0,
-        rect.y1 + 2.0,
-    )
-    rendered = _normalized_match(document[page_index].get_text("text", clip=clip) or "")
-    if any(expected_text not in rendered for expected_text in expected_texts):
+    # PDFium reads the saved AP stream, never regenerates it from /V.
+    with open_pdf(appearance_pdf(widget)) as appearance:
+        page = appearance[0]
+        try:
+            rendered = _normalized_match(page_text(page))
+            pixels = render_page(page)
+            try:
+                grayscale = pixels.convert("L")
+                try:
+                    extrema = grayscale.getextrema()
+                    visible = extrema[0] != extrema[1]
+                finally:
+                    grayscale.close()
+            finally:
+                pixels.close()
+        finally:
+            page.close()
+    if not visible or any(expected_text not in rendered for expected_text in expected_texts):
         raise ValueError(f"output_text_render_verification_failed:{key}")
 
 
@@ -88,6 +100,24 @@ def _verify_native_values(
             by_id[field_id] = (page_index, widget, field)
         if field_name:
             by_name.setdefault(field_name, []).append((page_index, widget, field))
+
+    # Canonical /V and each widget's /AS must agree, including off siblings
+    # on other pages. Checking only the requested widget misses stale marks.
+    buttons: dict[int, list[Any]] = {}
+    for _index, _page, widget, field in assignments:
+        if field.get("type") in {"radio", "checkbox"}:
+            buttons.setdefault(id(widget.canonical), []).append(widget)
+    for widgets in buttons.values():
+        selected = [widget for widget in widgets if _widget_value_is_on(widget)]
+        states = {str(widget.field_value) for widget in selected}
+        canonical = str(widgets[0].canonical.get("/V", "/Off"))
+        if len(states) > 1 or canonical != (next(iter(states)) if states else "/Off"):
+            raise ValueError("output_field_verification_failed:" + widgets[0].field_name)
+        for widget in selected:
+            normal = _object((_object(widget.raw.get("/AP")) or {}).get("/N")) or {}
+            on, off = _object(normal.get(widget.field_value)), _object(normal.get("/Off"))
+            if on is None or off is None or not on.get_data() or on.get_data() == off.get_data():
+                raise ValueError("output_appearance_missing:" + widget.field_name)
 
     for raw_key, expected in values.items():
         if expected is None:
@@ -136,10 +166,12 @@ def _verify_native_values(
                 raise ValueError(f"output_field_verification_failed:{key}")
             continue
 
+        canonical_ids = {id(assignment[1].canonical) for assignment in group_assignments
+                         if any(assignment[2] is candidate for candidate in candidates)}
         target_assignments = [
             assignment
             for assignment in group_assignments
-            if any(assignment[2] is candidate for candidate in candidates)
+            if id(assignment[1].canonical) in canonical_ids
         ]
         if not target_assignments:
             raise ValueError(f"output_field_verification_failed:{key}")

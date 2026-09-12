@@ -11,11 +11,13 @@ const httpRequest: ActionDefinition = {
   connector: 'http',
   action: 'request',
   kind: 'read',
+  sideEffect: 'NONE',
   params: [],
 };
 
 function minimalWorkflow(overrides: Partial<WorkflowIR> = {}): WorkflowIR {
   return {
+    inputs: [],
     name: 'gate test',
     goal: 'verify approval matrix',
     version: 1,

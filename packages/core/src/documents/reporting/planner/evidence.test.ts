@@ -5,7 +5,7 @@ import { decodeCodexOutput } from '../../../intelligence/agent/model/cli-json/sc
 import { ReportEvidence, ReportEvidenceRequestSchema, ReportEvidenceDecisionSchema, inferWithEvidence, REPORT_EVIDENCE_TIMEOUT_MS } from './evidence.js';
 import { ReportSourceReplanRequired } from './schema.js';
 
-const sources = { ledger: { id: 'ledger', complete: true,
+const sources: Parameters<typeof inferWithEvidence>[0]['sources'] = { ledger: { id: 'ledger', complete: true,
   rows: [{ amount: 12, note: 'private-a' }, { amount: 30, note: 'private-b' }, { amount: null }] } };
 const plan = { schemaVersion: 1, baseSource: 'ledger', joins: [], scalars: [], tables: [], texts: [] };
 function setup(outputs: unknown[]) {
@@ -15,7 +15,7 @@ function setup(outputs: unknown[]) {
     return { output: request.outputSchema.parse(outputs.shift()) };
   } };
   const readPage = vi.fn(() => ({ data: new Uint8Array([1]), mimeType: 'image/png' }));
-  const input = { runner, context: { skillGoal: 'Infer', taskGoal: 'report',
+  const input: Parameters<typeof inferWithEvidence>[0] = { runner, context: { skillGoal: 'Infer', taskGoal: 'report',
     evidence: [], untrustedData: '{}', connectedConnectors: [] }, user: 'report',
     phase: 'report-business-plan', sources, pageCount: 2, readPage, maxChars: 80_000 };
   return { seen, input, readPage };
@@ -184,7 +184,7 @@ describe('ReportEvidence', () => {
       managers: { id: 'managers', complete: true, rows: wideRows },
     };
     await expect(inferWithEvidence(input)).resolves.toEqual(plan);
-    expect(seen[1]!.context.untrustedData.length).toBeLessThanOrEqual(80_000);
+    expect(seen[1]!.context.untrustedData?.length).toBeLessThanOrEqual(80_000);
   });
 
   it('compacts redundant previews under context pressure while retaining direct evidence', async () => {

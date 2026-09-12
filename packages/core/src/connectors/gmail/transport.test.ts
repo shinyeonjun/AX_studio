@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http';
+import { createServer, type Server, type RequestListener } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { google } from 'googleapis';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,7 +16,7 @@ afterEach(async () => {
   }
 });
 
-async function useLoopback(handler: Parameters<typeof createServer>[0]) {
+async function useLoopback(handler: RequestListener) {
   server = createServer(handler);
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const rootUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
@@ -43,7 +43,7 @@ describe('Gmail SDK transport', () => {
   });
 
   it('returns a provider failure without silently retrying the read', async () => {
-    const request = vi.fn((_req, res) => {
+    const request = vi.fn<RequestListener>((_req, res) => {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: { code: 503, message: 'unavailable' } }));
     });

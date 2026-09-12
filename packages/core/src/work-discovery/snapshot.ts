@@ -6,8 +6,8 @@ import type { DiscoverySessionState } from './schema.js';
 import { unwrapSnapshotTable } from './snapshot-file.js';
 
 export function loadPersistedSnapshotTables(
-  store: WorkflowStore,
-  state: DiscoverySessionState,
+  store: Pick<WorkflowStore, 'listDiscoverySnapshots'>,
+  state: Pick<DiscoverySessionState, 'id' | 'sourceInventory'>,
   exampleIds: string[],
 ): Record<string, Record<string, TableArtifact>> | undefined {
   if (state.sourceInventory.length === 0 || exampleIds.length === 0) return undefined;

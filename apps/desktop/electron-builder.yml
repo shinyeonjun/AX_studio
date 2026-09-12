@@ -19,6 +19,7 @@
   ],
   "asar": true,
   "extraResources": [
+    { "from": "../../LICENSE", "to": "LICENSE.AX-Studio.txt" },
     { "from": "../../THIRD_PARTY_NOTICES.md", "to": "THIRD_PARTY_NOTICES.md" },
     { "from": "../../packages/document-engine/out/document-engine", "to": "document-engine", "filter": ["**/*"] }
   ],

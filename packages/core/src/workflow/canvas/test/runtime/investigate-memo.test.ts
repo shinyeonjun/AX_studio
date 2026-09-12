@@ -12,7 +12,7 @@ describe('investigate prompt includes memo', () => {
         investigation: false,
         maxReads: 1,
       },
-      { variables: {}, executionId: 'exec-1' },
+      { log: () => {}, variables: {}, executionId: 'exec-1' },
       {},
     );
 
@@ -29,7 +29,7 @@ describe('investigate prompt includes memo', () => {
         investigation: false,
         maxReads: 1,
       },
-      { variables: {}, executionId: 'exec-1' },
+      { log: () => {}, variables: {}, executionId: 'exec-1' },
       {
         ingest: {
           images: [{ pageIndex: 2, path: 'C:/artifacts/page-3.png', ocrText: '긴급 조치 필요' }],
@@ -52,7 +52,7 @@ describe('investigate prompt includes memo', () => {
         investigation: false,
         maxReads: 1,
       },
-      { variables: {}, executionId: 'exec-1' },
+      { log: () => {}, variables: {}, executionId: 'exec-1' },
       { ingest: { pages: [{ index: 0, hasVisual: true, imagePath: 'C:/artifacts/page-1.png' }] } },
     );
 

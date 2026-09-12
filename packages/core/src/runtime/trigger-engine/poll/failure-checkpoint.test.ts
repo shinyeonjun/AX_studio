@@ -56,7 +56,7 @@ describe('TriggerEngine failed polling execution checkpoints', () => {
 
     await engine.tick();
     expect(slack.messages).toHaveLength(0);
-    const afterFailure = store.getSetting<{ seenMessageIds?: string[] }>('trigger.cursors', {})[workflowId];
+    const afterFailure = store.getSetting<Record<string, { seenMessageIds?: string[] }>>('trigger.cursors', {})[workflowId];
     if (failure === 'before-send') {
       expect(afterFailure?.seenMessageIds).not.toContain('msg-retry');
       await engine.tick();

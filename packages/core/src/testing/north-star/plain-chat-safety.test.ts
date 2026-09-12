@@ -50,6 +50,9 @@ describe('North Star QA plain-chat safety', () => {
     const pdfPath = join(dir, 'doc.pdf');
     writeFileSync(pdfPath, 'pdf');
     setDocumentEngineClient({
+      pdfFormAnalyze: async () => { throw new Error('unused'); },
+      pdfFormFill: async () => { throw new Error('unused'); },
+      pdfReportAnalyze: async () => { throw new Error('unused'); },
       ping: async () => true,
       ingest: async () => ({
         documentId: 'd1',

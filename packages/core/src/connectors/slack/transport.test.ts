@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http';
+import { createServer, type Server, type RequestListener } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { WebClientOptions } from '@slack/web-api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -25,7 +25,7 @@ afterEach(async () => {
   }
 });
 
-async function useLoopback(handler: Parameters<typeof createServer>[0]) {
+async function useLoopback(handler: RequestListener) {
   server = createServer(handler);
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   transport.url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
@@ -46,7 +46,7 @@ describe('Slack SDK transport', () => {
   });
 
   it('surfaces rate limiting immediately without waiting or retrying', async () => {
-    const request = vi.fn((_req, res) => {
+    const request = vi.fn<RequestListener>((_req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
       res.end(JSON.stringify({ ok: false, error: 'ratelimited' }));
     });

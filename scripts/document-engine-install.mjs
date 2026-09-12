@@ -19,9 +19,11 @@ function verifyBundle(bundle) {
   const options = { cwd: scratch, windowsHide: true, encoding: 'utf8', timeout: 60_000,
     env: { SystemRoot: process.env.SystemRoot, TEMP: scratch, TMP: scratch, PYTHONUTF8: '1' } };
   try {
+    const evidence = execFileSync(executable, [join(root, 'test', 'release', 'document-engine-smoke.py'), scratch], options);
+    console.log('Packaged PDF engine acceptance: ' + evidence.trim());
     const pdf = join(scratch, 'sample.pdf');
     execFileSync(executable, ['-c',
-      'import sys, cv2, pymupdf, pypdfium2; from reportlab.pdfgen import canvas; c=canvas.Canvas(sys.argv[1]); c.drawString(72,720,"AX packaged document smoke"); c.save()', pdf], options);
+      'import sys; from reportlab.pdfgen import canvas; c=canvas.Canvas(sys.argv[1]); c.drawString(72,720,"AX packaged document smoke"); c.save()', pdf], options);
     const response = JSON.parse(execFileSync(executable, [join(bundle, 'src', 'worker.py')], {
       ...options, input: JSON.stringify({ id: 'package-smoke', command: 'ingest', params: {
         path: pdf, artifactRoot: join(scratch, 'artifacts'), options: { engine: 'basic' },
@@ -49,7 +51,7 @@ async function verifyPackage(directory) {
   }
   verifyFiles(asar.getRawHeader(archive).header);
   // Distribution notices must survive packaging, not just exist in the checkout.
-  for (const relative of ['LICENSE.electron.txt', 'LICENSES.chromium.html',
+  for (const relative of ['LICENSE.electron.txt', 'LICENSES.chromium.html', 'resources/LICENSE.AX-Studio.txt',
     'resources/THIRD_PARTY_NOTICES.md', 'resources/document-engine/python/LICENSE.txt']) {
     if (readFileSync(join(directory, relative)).length < 100) {
       throw new Error('Missing or empty packaged license notice: ' + relative);
@@ -60,7 +62,7 @@ async function verifyPackage(directory) {
       throw new Error('Missing or empty archived license notice: ' + relative);
     }
   }
-  console.log('Packaged distribution notices: Electron, Chromium, JavaScript and Python notices retained.');
+  console.log('Packaged distribution notices: AX Studio, Electron, Chromium, JavaScript and Python notices retained.');
   verifyBundle(join(directory, 'resources', 'document-engine'));
   const { _electron } = await import('@playwright/test');
   const scratch = mkdtempSync(join(tmpdir(), 'ax-package-ui-'));

@@ -91,7 +91,7 @@ describe('TriggerEngine in-flight polling stop checkpoints', () => {
     await Promise.all([tick, stop]);
 
     expect(slack.messages).toHaveLength(1);
-    expect(store.getSetting<{ seenMessageIds?: string[] }>('trigger.cursors', {})[workflowId]?.seenMessageIds)
+    expect(store.getSetting<Record<string, { seenMessageIds?: string[] }>>('trigger.cursors', {})[workflowId]?.seenMessageIds)
       .toContain('msg-during-stop');
     expect(db.prepare('SELECT status FROM trigger_receipts').get()).toEqual({ status: 'completed' });
 

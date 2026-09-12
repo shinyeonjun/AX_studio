@@ -1,6 +1,7 @@
 {
   "name": "@ax-studio/core",
-  "version": "0.1.0",
+  "license": "MIT",
+  "version": "0.1.0-preview.1",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -48,7 +49,8 @@
     "eval": "node scripts/embed-skills.mjs && vitest run --config vitest.eval.config.ts",
     "knip": "knip --workspace packages/core",
     "arch:check": "depcruise src --config ../../.dependency-cruiser.cjs --output-type err",
-    "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit"
+    "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^1.0.54",

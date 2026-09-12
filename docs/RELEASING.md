@@ -6,12 +6,12 @@ Do not describe a local package smoke test as a clean-machine installation test.
 
 ## Prepare and verify
 
-1. Review project and bundled dependency licenses before distributing binaries.
-   The document engine currently includes PyMuPDF/MuPDF, which offer AGPL and
-   commercial licenses. A public repository without a project license is not a
-   substitute for choosing an open-source license. See the
-   [PyMuPDF license](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright)
-   and [GitHub licensing guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository).
+1. AX Studio-authored source code is licensed under [MIT](../LICENSE). Keep
+   the full [third-party notices](../THIRD_PARTY_NOTICES.md), Python/native
+   library licenses and the bundled font's SIL OFL notice with the installer.
+   The default PDF engine uses pypdf, ReportLab and PDFium; packaging rejects
+   the removed PyMuPDF/MuPDF engine and verifies the bundled font hash/license.
+   A project license does not relicense third-party dependencies.
 2. Keep the core and desktop versions consistent. Select a new tag; never replace
    the existing `v0.1.0-demo` tag or its assets.
 3. Run `npm ci`, install `packages/document-engine/requirements-test.txt` into the

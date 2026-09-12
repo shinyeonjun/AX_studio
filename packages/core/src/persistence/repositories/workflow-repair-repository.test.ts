@@ -18,7 +18,7 @@ describe('workflow repair proposal persistence', () => {
   it('round-trips a bounded proposal and deduplicates the same drift', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'workflow-repair-store',
       version: 1,
       name: 'repair store fixture',
@@ -59,7 +59,7 @@ describe('workflow repair proposal persistence', () => {
   it('persists rejection and application metadata without storing execution payloads', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'workflow-repair-status',
       version: 1,
       name: 'repair status fixture',

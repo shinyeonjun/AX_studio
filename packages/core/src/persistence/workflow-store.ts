@@ -113,9 +113,11 @@ export class WorkflowStore {
     executionRepo.markExecutionPending(this.db, id, errorCode, log);
   }
   updateExecutionLog(id: string, log: unknown[]) { executionRepo.updateExecutionLog(this.db, id, log); }
+  appendExecutionLog(id: string, entry: unknown) { executionRepo.appendExecutionLog(this.db, id, entry); }
   getExecution(id: string) { return executionRepo.getExecution(this.db, id); }
   hasUnfinishedWorkflowExecution(workflowId: string) { return executionRepo.hasUnfinishedWorkflowExecution(this.db, workflowId); }
-  listExecutions(limit = 50) { return executionRepo.listExecutions(this.db, limit); }
+  listExecutions(limit = 50, includeOutput = true) { return executionRepo.listExecutions(this.db, limit, includeOutput); }
+  listLatestWorkflowExecutions() { return executionRepo.listLatestWorkflowExecutions(this.db); }
   deleteExecution(id: string) { return executionRepo.deleteExecution(this.db, id); }
   clearExecutions() { return executionRepo.clearExecutions(this.db); }
   recoverInterruptedExecutions() { return recoverInterruptedExecutions(this.db); }

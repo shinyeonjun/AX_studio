@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { verifyAnthropicApiKey } from './ai/api-verify.js';
-import { fetchTextWithTimeout, fetchWithTimeout } from './fetch-timeout.js';
+import { fetchTextWithTimeout } from './fetch-timeout.js';
 
-describe('fetchWithTimeout', () => {
+describe('fetchTextWithTimeout', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -18,7 +18,7 @@ describe('fetchWithTimeout', () => {
       return new Response();
     }));
 
-    const request = fetchWithTimeout('https://example.com', { signal: caller.signal });
+    const request = fetchTextWithTimeout('https://example.com', { signal: caller.signal });
     caller.abort(reason);
 
     await expect(request).rejects.toBe(reason);
@@ -37,7 +37,7 @@ describe('fetchWithTimeout', () => {
       return new Response();
     }));
 
-    const request = fetchWithTimeout('https://example.com', { signal: caller.signal }, 500);
+    const request = fetchTextWithTimeout('https://example.com', { signal: caller.signal }, 500);
     const assertion = expect(request).rejects.toBe(reason);
     caller.abort(reason);
     await vi.advanceTimersByTimeAsync(1_000);
@@ -54,7 +54,7 @@ describe('fetchWithTimeout', () => {
       return new Response();
     }));
 
-    const request = fetchWithTimeout('https://example.com', {}, 1_000);
+    const request = fetchTextWithTimeout('https://example.com', {}, 1_000);
     const assertion = expect(request).rejects.toThrow('요청 시간이 초과되었습니다 (1초).');
     await vi.advanceTimersByTimeAsync(1_000);
 

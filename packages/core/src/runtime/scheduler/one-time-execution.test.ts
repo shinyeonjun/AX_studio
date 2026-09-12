@@ -10,7 +10,7 @@ describe('Scheduler', () => {
     vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const { workflowId } = store.saveWorkflow({ id: 'once-receipt', name: '완료 이력 보존', goal: '활동에 결과 남기기', version: 1,
+    const { workflowId } = store.saveWorkflow({ inputs: [], id: 'once-receipt', name: '완료 이력 보존', goal: '활동에 결과 남기기', version: 1,
       trigger: { type: 'once', runAt: '2026-09-11T23:59:59Z' }, steps: [], permissions: {}, approval: [],
       allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} });
     store.setWorkflowActive(workflowId, true);
@@ -31,7 +31,7 @@ describe('Scheduler', () => {
   it('does not consume a one-time job when its execution fails', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'once-workflow',
       name: '일회성 재시도',
       goal: '실패한 일회성 업무는 재시도',
@@ -47,7 +47,7 @@ describe('Scheduler', () => {
     });
     store.setWorkflowActive('once-workflow', true);
 
-    const statuses = ['failed', 'success'] as const;
+    const statuses = ['failed', 'success'] as Array<'failed' | 'success'>;
     const runtime = {
       executeWorkflow: vi.fn(async () => ({ status: statuses.shift() ?? 'failed' })),
       removeWorkflow: vi.fn(),
@@ -73,7 +73,7 @@ describe('Scheduler', () => {
   it('does not start the same one-time job from overlapping ticks', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.saveWorkflow({
+    store.saveWorkflow({ inputs: [],
       id: 'once-slow',
       name: '느린 일회성 작업',
       goal: '실행 중인 작업을 중복 시작하지 않음',

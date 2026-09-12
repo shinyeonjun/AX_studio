@@ -10,6 +10,7 @@ import {
 import { registerDesktopReadyHandler } from './startup/ready.js';
 
 process.env.AX_SCAN_WORKER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'scan-worker.js');
+process.env.AX_SEARCH_WORKER_PATH = join(dirname(fileURLToPath(import.meta.url)), 'search-worker.js');
 
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');

@@ -1,6 +1,7 @@
 import type { AppDatabase } from '../db.js';
 import { readRows } from '../db/types.js';
 import type { ExecutionRow } from '../rows.js';
+import { readExecutionLog } from './execution-log.js';
 
 /** Call once at host startup, before any scheduler, trigger or execution starts. */
 export function recoverInterruptedExecutions(db: AppDatabase): string[] {
@@ -18,6 +19,7 @@ export function recoverInterruptedExecutions(db: AppDatabase): string[] {
     for (const execution of interrupted) {
       let logJson = execution.log_json;
       try {
+        logJson = readExecutionLog(db, execution.id, logJson);
         const log: unknown = JSON.parse(logJson);
         if (Array.isArray(log)) {
           logJson = JSON.stringify([...log, {

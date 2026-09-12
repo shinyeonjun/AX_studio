@@ -11,7 +11,7 @@ describe('AxCommandService execution explanation', () => {
       workflowVersion: 2,
       ephemeral: true,
       triggerType: 'manual',
-      irJson: JSON.stringify({
+      irJson: JSON.stringify({ inputs: [],
         id: 'workflow-explain',
         version: 2,
         name: '결과 설명',

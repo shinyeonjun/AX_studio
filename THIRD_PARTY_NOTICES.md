@@ -1,12 +1,13 @@
 # Third-party software in AX Studio
 
-AX Studio includes third-party software under its respective license terms.
-Those terms are not replaced by AX Studio's project license. This index is not
-a grant of rights to the AX Studio source, and is not a substitute for the full
-notices shipped with the dependencies.
+AX Studio-authored source code is licensed under the [MIT License](LICENSE).
+Third-party software remains under its respective license terms; the project
+license does not replace those terms or relicense bundled dependencies. This
+index is not a substitute for the full notices shipped with the dependencies.
 
 ## Where the full notices are installed
 
+- **AX Studio:** `resources/LICENSE.AX-Studio.txt`.
 - **Electron:** `LICENSE.electron.txt` beside `AX Studio.exe`.
 - **Chromium and its dependencies:** `LICENSES.chromium.html` in the same folder.
 - **JavaScript dependencies:** license, notice, copyright and README files under
@@ -26,20 +27,24 @@ and OpenCV); do not keep only the top-level library license.
 
 ## PDF engine licensing
 
-The current document engine uses **PyMuPDF and MuPDF**, available under AGPL or a
-commercial agreement. Their AGPL text is included in the PyMuPDF distribution's
-`COPYING` file. Source availability and other applicable obligations need to be
-reviewed before distributing AX Studio with these components. Merely publishing
-a GitHub repository or this notice does not by itself establish compliance.
+The default document engine uses pypdf for PDF structure and AcroForm values,
+ReportLab for text and appearance streams, and pypdfium2/PDFium for independent
+rendering and inspection. PyMuPDF/MuPDF is not a dependency of this build; the
+packaging acceptance check rejects their modules or distributions.
 
-Official licensing information:
+- **pypdf:** BSD-3-Clause; see its installed distribution license.
+- **ReportLab:** BSD license; see its installed distribution license.
+- **pypdfium2:** Apache-2.0 OR BSD-3-Clause. PDFium and its bundled components
+  have their own notices, retained inside the installed pypdfium2 packages.
+- **Nanum Gothic:** unmodified font under SIL Open Font License 1.1, including
+  its copyright and reserved font names. The font, upstream revision/hash and
+  full license are at `resources/document-engine/src/assets/fonts/`.
+  Keep `OFL.txt` with the font. The font is not relicensed under MIT.
 
-- [PyMuPDF / MuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright)
-- [GNU AGPL version 3](https://www.gnu.org/licenses/agpl-3.0.html)
-
-The document engine also uses pypdf, pypdfium2, ReportLab, Pillow, OpenCV and their
-dependencies. Their original notices remain in the packaged Python environment.
-Optional Docling/OCR development dependencies are not part of the default bundle.
+Pillow, OpenCV, NumPy and other runtime dependencies retain their original
+notices in the packaged Python environment. Optional Docling/OCR development
+dependencies are not part of the default bundle and require a separate review
+if added to a distribution.
 
 ## External services
 

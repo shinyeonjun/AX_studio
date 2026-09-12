@@ -3,11 +3,11 @@ import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
-import { createTestConnectors, mockGmail, mockSlack } from '../../../testing/connectors/test-connectors.js';
+import { createTestConnectors } from '../../../testing/connectors/test-connectors.js';
 
 describe('approval continuation validation', () => {
   it('fails approval continuation when gmail body is missing', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '본문 없는 메일',
       goal: '메일 보내기',
       version: 1,
@@ -46,7 +46,7 @@ describe('approval continuation validation', () => {
   });
 
   it('resolves approval and reports failure when required params stay missing', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '수신자 없는 메일',
       goal: '메일 보내기',
       version: 1,

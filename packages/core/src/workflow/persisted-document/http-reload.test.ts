@@ -4,7 +4,7 @@ import { parseWorkflowIR } from '../schema.js';
 
 describe('persisted workflow document HTTP reload', () => {
   it('reloads HTTP GET as NONE so scheduled fetch jobs remain runnable', () => {
-    const ir = parseWorkflowIR({
+    const ir = parseWorkflowIR({ inputs: [],
       name: '브리프',
       goal: '커밋 조회',
       version: 1,

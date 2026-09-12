@@ -14,14 +14,15 @@ from .primitives import (
     _as_float,
     _as_string,
 )
-from .runtime import _pymupdf
+from pypdf import PdfWriter
+from .widgets import prepare_form
 from .template import _load_template, _value_for_field
 from .verification import (
     _page_geometry_signature,
     _template_geometry_matches,
     _validate_template_fields,
     _normalized_match,
-    _verify_pymupdf_output,
+    _verify_pdf_output,
 )
 
 def fill_pdf_form(
@@ -72,9 +73,8 @@ def fill_pdf_form(
     if output_path == source_path.resolve():
         raise ValueError("source_overwrite_forbidden")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf = _pymupdf()
-    document = pdf.open(str(source_path))
-    page_count = len(document)
+    document = PdfWriter(clone_from=source_path)
+    page_count = len(document.pages)
     template_page_count = loaded.get("pageCount")
     if template_page_count is None:
         document.close()
@@ -97,7 +97,8 @@ def fill_pdf_form(
     temporary_path: Path | None = None
     try:
         if is_acroform:
-            _fill_native_widgets(document, loaded, values)
+            prepare_form(document)
+            _fill_native_widgets(document, loaded, values, font_path=font_path)
         else:
             _fill_overlay_fields(document, loaded, values, font_path=font_path)
 
@@ -108,7 +109,7 @@ def fill_pdf_form(
             delete=False,
         ) as temporary:
             temporary_path = Path(temporary.name)
-        document.save(str(temporary_path), garbage=4, deflate=True)
+        document.write(temporary_path)
     except Exception:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
@@ -119,7 +120,7 @@ def fill_pdf_form(
     if temporary_path is None:
         raise RuntimeError("pdf_output_temp_missing")
     try:
-        _verify_pymupdf_output(
+        _verify_pdf_output(
             temporary_path,
             loaded,
             values,
@@ -142,7 +143,7 @@ def fill_pdf_form(
         "outputHash": output_hash,
         "pageCount": page_count,
         "fieldCount": len(values),
-        "writerEngine": "pymupdf",
+        "writerEngine": "pypdf-reportlab",
         "verified": True,
         "interactive": is_acroform,
         "sourceUnchanged": sha256_file(source_path) == source_hash,

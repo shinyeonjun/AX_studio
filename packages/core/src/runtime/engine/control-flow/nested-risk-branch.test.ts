@@ -9,7 +9,7 @@ import { RiskProvider } from '../fixtures.js';
 
 describe('runtime control-flow nested risk branch', () => {
   it('executes one destination in a three-level risk branch and binds the declared result', async () => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '위험도 분기 알림',
       goal: '위험도별로 정확히 한 채널에 알림',
       version: 1,

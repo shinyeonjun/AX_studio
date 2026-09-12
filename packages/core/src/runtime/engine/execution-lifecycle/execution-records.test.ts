@@ -21,7 +21,7 @@ describe('runtime execution records', () => {
         return { ok: true, data: { messageId: 'receipt' } };
       } } },
     });
-    const run = runtime.executeWorkflow({
+    const run = runtime.executeWorkflow({ inputs: [],
       name: '진행 중 기록 보존', goal: '완료 결과를 잃지 않는다', version: 1,
       steps: [{ type: 'action', id: 'send', connector: 'slack', action: 'message.send',
         params: { channel: '#test', text: 'retained result' }, sideEffect: 'EXTERNAL' }],
@@ -76,7 +76,7 @@ describe('runtime execution records', () => {
     const runtime = new WorkflowRuntime({ store, globalActive: false, workflowActive: {}, connectors: {} });
 
     const result = await runtime.executeWorkflow(
-      { name: '퇴근 상태', goal: '실행하지 않음', version: 1, steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
+      { inputs: [], name: '퇴근 상태', goal: '실행하지 않음', version: 1, steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
       { ephemeral: true, triggerType: 'manual' },
     );
 
@@ -99,7 +99,7 @@ describe('runtime execution records', () => {
       connectors: createTestConnectors(),
     });
     const result = await runtime.executeWorkflow(
-      {
+      { inputs: [],
         id: 'draft-only-workflow',
         name: '일회 실행',
         goal: '한 번만 알림',

@@ -496,19 +496,24 @@ function repairExampleReplayAndPresentation(input: ReplayRepairInput): ReplayRep
     }
   }
 
-  const repairedFragments = repairExampleTextFragments(plan, layout, input.pair, calculated, input.metadata);
-  plan = repairedFragments.plan;
-  layout = repairedFragments.layout;
-  const repairedTextBindings = repairExampleTextBindings(plan, layout, input.pair, calculated, input.metadata);
-  plan = repairedTextBindings.plan;
-  layout = repairedTextBindings.layout;
-  layout = repairExampleScalarBindings(layout, input.pair, calculated, input.metadata);
-  const repairedPresentation = repairExamplePresentationBindings(plan, layout, input.pair, input.metadata);
-  plan = repairedPresentation.plan;
-  layout = repairedPresentation.layout;
+  ({ plan, layout } = repairCalculatedPresentation(plan, layout, input.pair, calculated, input.metadata));
 
   replay = repairExampleReplayInference({ ...input, plan, layout });
   return replay;
+}
+
+/** Preserve the repair ordering shared by initial inference and replay revision. */
+function repairCalculatedPresentation(
+  plan: ReportPlan,
+  layout: ReportLayoutPlan,
+  pair: PdfReportPairAnalysis,
+  calculated: ReportPlanResult,
+  metadata: Parameters<typeof repairExampleTextFragments>[4],
+): { plan: ReportPlan; layout: ReportLayoutPlan } {
+  ({ plan, layout } = repairExampleTextFragments(plan, layout, pair, calculated, metadata));
+  ({ plan, layout } = repairExampleTextBindings(plan, layout, pair, calculated, metadata));
+  layout = repairExampleScalarBindings(layout, pair, calculated, metadata);
+  return repairExamplePresentationBindings(plan, layout, pair, metadata);
 }
 
 function assertReportPlanSourcesCaptured(plan: ReportPlan, capture: ReportCaptureInference): void {
@@ -921,16 +926,7 @@ export class ReportPlanner {
       : result.output.layout;
     layout = repairReportScalarBindings(layout, input.pair);
     if (calculated) {
-      const repairedFragments = repairExampleTextFragments(finalReportPlan, layout, input.pair, calculated, metadata);
-      finalReportPlan = repairedFragments.plan;
-      layout = repairedFragments.layout;
-      const repairedTextBindings = repairExampleTextBindings(finalReportPlan, layout, input.pair, calculated, metadata);
-      finalReportPlan = repairedTextBindings.plan;
-      layout = repairedTextBindings.layout;
-      layout = repairExampleScalarBindings(layout, input.pair, calculated, metadata);
-      const repairedPresentation = repairExamplePresentationBindings(finalReportPlan, layout, input.pair, metadata);
-      finalReportPlan = repairedPresentation.plan;
-      layout = repairedPresentation.layout;
+      ({ plan: finalReportPlan, layout } = repairCalculatedPresentation(finalReportPlan, layout, input.pair, calculated, metadata));
     }
     return validateBusinessPlan({ schemaVersion: 1, reportPlan: finalReportPlan, layout }, input.capture, input.pair, input.exampleSources);
   }

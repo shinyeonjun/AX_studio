@@ -7,7 +7,7 @@ import { createTestConnectors, mockSlack } from '../../../../testing/connectors/
 
 describe('approval continuation branch resume', () => {
   it.each([true, false])('resumes outer steps after branch approval, inner followup=%s', async (innerFollowup) => {
-    const ir: WorkflowIR = {
+    const ir: WorkflowIR = { inputs: [],
       name: '분기 승인 후 후속',
       goal: '조건 분기 승인 뒤 바깥 단계 실행',
       version: 1,
@@ -82,7 +82,7 @@ it.each([true, false])('defers approval-owned descendant action to nested branch
   const db = await createDatabaseAsync(':memory:');
   const store = new WorkflowStore(db);
   const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
-  const ir: WorkflowIR = {
+  const ir: WorkflowIR = { inputs: [],
     name: 'Nested conditional approved action', goal: 'Send only once when nested condition is true', version: 1,
     steps: [
       { type: 'if', id: 'outer', condition: { op: 'eq', left: { ref: 'enter' }, right: { lit: true } }, thenStepIds: ['approve', 'inner'], elseStepIds: [] },

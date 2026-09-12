@@ -4,7 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-import pymupdf
+from pypdf import PdfReader, PdfWriter
+from pdf_form_test import _pdfium_text
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor, white
@@ -171,10 +172,9 @@ class PdfReportPairTest(unittest.TestCase):
             }, {slot["id"]: "Pending review"}, root / "filled.pdf")
             self.assertTrue(result["verified"])
             self.assertLessEqual(slot["rect"]["x"] + slot["rect"]["width"], 188)
-            with pymupdf.open(result["outputPath"]) as document:
-                text = document[0].get_text()
-                self.assertIn("Pending review", text)
-                self.assertEqual(text.count("Protected label"), 1)
+            text = _pdfium_text(Path(result["outputPath"]))
+            self.assertIn("Pending review", text)
+            self.assertEqual(text.count("Protected label"), 1)
             with self.assertRaisesRegex(ValueError, "field_text_overflow"):
                 fill_pdf_form(root / "template.pdf", {
                     "schemaVersion": 1, "coordinateSpace": "pdf-user-top-left-unrotated",
@@ -249,9 +249,10 @@ class PdfReportPairTest(unittest.TestCase):
                 example = root / "example.pdf"
                 for path, values in ((template, False), (example, True)):
                     _write_report(path, values=values)
-                    with pymupdf.open(path) as document:
-                        document[0].set_rotation(rotation)
-                        document.saveIncr()
+                    writer = PdfWriter(clone_from=path)
+                    writer.pages[0].rotate(rotation)
+                    writer.write(path)
+                    writer.close()
                 pair = analyze_pdf_report_pair(template, example, root / "artifacts")
                 slot = pair["scalarSlots"][0]
                 result = fill_pdf_form(template, {
@@ -262,9 +263,8 @@ class PdfReportPairTest(unittest.TestCase):
                     }],
                 }, {slot["id"]: "2026-09"}, root / "filled.pdf")
                 self.assertTrue(result["verified"])
-                with pymupdf.open(result["outputPath"]) as document:
-                    self.assertEqual(document[0].rotation, rotation)
-                    self.assertIn("2026-09", document[0].get_text())
+                self.assertEqual(PdfReader(result["outputPath"]).pages[0].rotation, rotation)
+                self.assertIn("2026-09", _pdfium_text(Path(result["outputPath"])))
 
     def test_worker_exposes_the_pair_analysis_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

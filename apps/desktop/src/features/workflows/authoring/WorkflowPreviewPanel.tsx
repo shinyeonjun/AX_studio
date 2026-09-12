@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import type { CompletenessResult, WorkflowCanvasDraft } from '@ax-studio/core';
 import type { Node } from '@xyflow/react';
 import type { SettingsScreen } from '../../../types/navigation';
-import { WorkflowGraph } from './WorkflowGraph.js';
+const WorkflowGraph = lazy(() => import('./WorkflowGraph.js').then(module => ({ default: module.WorkflowGraph })));
 import { NodeDetailPanel } from './NodeDetailPanel.js';
 import type { WorkflowVisualNodeData } from './types.js';
 import { computeWorkflowDiff, diffLabel } from './workflow-diff.js';
@@ -68,6 +68,7 @@ export function WorkflowPreviewPanel({
       </div>
 
       <div className="wf-preview-graph-wrap">
+        <Suspense fallback={<div className="muted" role="status">업무 흐름을 불러오는 중…</div>}>
         <WorkflowGraph
           draft={draft}
           baselineDraft={baselineDraft}
@@ -77,6 +78,7 @@ export function WorkflowPreviewPanel({
           autoSelectSourceId={done ? null : autoSelectSourceId ?? null}
           onSelectNode={onSelectNode}
         />
+        </Suspense>
       </div>
 
       {selectedNode && selectedNode.data.kind !== 'system' && (

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabaseAsync, type AppDatabase } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
+import { csMailWorkflowFixture } from '../../testing/fixtures/workflows.js';
 
 describe('execution history retention', () => {
   let db: AppDatabase;
@@ -10,6 +11,13 @@ describe('execution history retention', () => {
     store = new WorkflowStore(db);
   });
   afterEach(() => db.close?.());
+
+  it('indexes approval lookups by execution without scanning the approval history', () => {
+    const plan = db.prepare(`EXPLAIN QUERY PLAN SELECT 1 FROM approvals
+      WHERE execution_id = ? AND status IN ('pending', 'processing')`).all('execution');
+    expect(plan.some(row => String(row.detail).includes('SCAN approvals'))).toBe(false);
+    expect(plan.some(row => String(row.detail).includes('execution_id=?'))).toBe(true);
+  });
 
   it('detects unfinished work beyond the visible history page and unresolved approvals', () => {
     const id = store.createExecution({ workflowId: 'saved-work', ephemeral: false });
@@ -35,9 +43,54 @@ describe('execution history retention', () => {
     const output = { version: 1 as const, fields: [{ path: 'total', label: 'Total', valueJson: '600' }] };
     store.finishExecution(id, 'success', undefined, [], output);
     expect(store.getExecution(id)).toMatchObject({ status: 'success', logJson: '[]', output });
+    expect(store.listExecutions(50, false)[0]).toMatchObject({ hasOutput: true, output: undefined });
     store.finishExecution(id, 'failed', 'input_schema_drift', [], output);
     expect(store.getExecution(id)?.output).toBeUndefined();
     expect(db.prepare('SELECT output_json FROM executions WHERE id = ?').get(id)?.output_json).toBeNull();
+  });
+
+  it('finds each saved workflow latest execution beyond the global history page', () => {
+    const { workflowId } = store.saveWorkflow(csMailWorkflowFixture);
+    const id = store.createExecution({ workflowId, ephemeral: false });
+    store.finishExecution(id, 'success');
+    db.prepare('UPDATE executions SET started_at = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', id);
+    for (let i = 0; i < 60; i++) store.finishExecution(store.createExecution({ ephemeral: true }), 'success');
+    expect(store.listExecutions().some(row => row.id === id)).toBe(false);
+    expect(store.listLatestWorkflowExecutions()).toEqual([
+      { workflowId, startedAt: '2020-01-01T00:00:00.000Z', status: 'success' },
+    ]);
+  });
+
+  it('appends each event once and checkpoints without duplicates across approval and recovery', () => {
+    const id = store.createExecution({ ephemeral: true });
+    const log = Array.from({ length: 1_000 }, (_, index) => ({ code: 'progress', index, data: 'x'.repeat(512) }));
+    for (const entry of log) store.appendExecutionLog(id, entry);
+    expect(db.prepare('SELECT log_json FROM executions WHERE id = ?').get(id)?.log_json).toBe('[]');
+    expect(db.prepare('SELECT COUNT(*) AS count, SUM(LENGTH(entry_json)) AS bytes FROM execution_log_entries').get())
+      .toMatchObject({ count: 1_000, bytes: log.reduce((sum, entry) => sum + JSON.stringify(entry).length, 0) });
+    expect(JSON.parse(store.getExecution(id)!.logJson)).toEqual(log);
+    store.markExecutionPending(id, 'pending_approval', log);
+    expect(db.prepare('SELECT COUNT(*) AS count FROM execution_log_entries').get()?.count).toBe(0);
+    const tail = { code: 'external_effect_started' };
+    store.appendExecutionLog(id, tail);
+    expect(JSON.parse(store.listExecutions()[0]!.logJson)).toEqual([...log, tail]);
+    store.recoverInterruptedExecutions();
+    const recovered = JSON.parse(store.getExecution(id)!.logJson);
+    expect(recovered.slice(0, -1)).toEqual([...log, tail]);
+    expect(recovered.at(-1)).toMatchObject({ code: 'execution_interrupted' });
+    store.deleteExecution(id);
+    expect(db.prepare('SELECT COUNT(*) AS count FROM execution_log_entries').get()?.count).toBe(0);
+  });
+
+  it('retains damaged checkpoint evidence and valid tail entries during recovery', () => {
+    const id = store.createExecution({ ephemeral: true });
+    db.prepare('UPDATE executions SET log_json = ? WHERE id = ?').run('broken history', id);
+    store.appendExecutionLog(id, { code: 'external_effect_started' });
+    store.recoverInterruptedExecutions();
+    expect(JSON.parse(store.getExecution(id)!.logJson)).toEqual([
+      expect.objectContaining({ code: 'invalid_log_checkpoint', data: { checkpoint: 'broken history' } }),
+      { code: 'external_effect_started' }, expect.objectContaining({ code: 'execution_interrupted' }),
+    ]);
   });
 
   it('clears only terminal executions and keeps pending and claimed approvals', () => {

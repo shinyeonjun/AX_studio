@@ -61,7 +61,7 @@ describe('runAxCommandChat recurring job registration', () => {
     const committed = await runAxCommandChat({
       harness: confirmHarness,
       commandService: service,
-      messages: [{ role: 'assistant', content: proposed, presentations }],
+      messages: [{ role: 'assistant', content: proposed, ...{ presentations } }],
       userMessage: JOB_COMMIT_CONFIRM_VALUE,
       workspaceSessionId: chat.id,
       allowJobCommit: true,

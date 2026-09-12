@@ -4,11 +4,6 @@ import type { WorkSummary } from '../../types/app-state';
 function connectorLabel(connector: string): string {
   return CONNECTOR_CATALOG[connector as keyof typeof CONNECTOR_CATALOG]?.label ?? connector;
 }
-export function isRecurringTriggerType(triggerType?: string | null): boolean {
-  if (!triggerType || triggerType === 'manual' || triggerType === 'once') return false;
-  if (triggerType === 'schedule') return true;
-  return getCapability(triggerType)?.kind === 'trigger';
-}
 
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';
@@ -24,9 +19,6 @@ export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   return '수동 실행';
 }
 
-export function isOnceTrigger(trigger?: WorkSummary['trigger']): boolean {
-  return trigger?.type === 'once';
-}
 
 /** 수동·1회 실행 — 일회용 목록 */
 export function isEphemeralWork(trigger?: WorkSummary['trigger']): boolean {
@@ -48,9 +40,6 @@ export function isSingleExecution(execution: {
   return execution.ephemeral ?? !execution.workflowId;
 }
 
-export function isRecurringTrigger(trigger?: WorkSummary['trigger']): boolean {
-  return isRecurringTriggerType(trigger?.type);
-}
 
 export function executionTriggerLabel(triggerType?: string | null): string {
   if (!triggerType || triggerType === 'manual') return '수동 실행';

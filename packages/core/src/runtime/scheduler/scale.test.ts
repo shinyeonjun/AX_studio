@@ -12,7 +12,7 @@ describe('scheduler catch-up work bounds', () => {
     const store = new WorkflowStore(db);
     for (let index = 0; index < 40; index++) {
       const id = `hourly-${index}`;
-      store.saveWorkflow({ id, name: id, goal: '놓친 최신 실행 한 번', version: 1,
+      store.saveWorkflow({ inputs: [], id, name: id, goal: '놓친 최신 실행 한 번', version: 1,
         trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'Asia/Seoul' }, steps: [],
         permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {} });
       store.setWorkflowActive(id, true);

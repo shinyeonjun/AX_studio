@@ -44,6 +44,7 @@ describe('validateWorkflowForPersistence document ingest', () => {
     approval: [],
     allowExternalAuto: true,
     dataPolicy: {},
+    sideEffects: {},
   };
 
   it('allows save when ingest uses file ref from connected folder list', () => {

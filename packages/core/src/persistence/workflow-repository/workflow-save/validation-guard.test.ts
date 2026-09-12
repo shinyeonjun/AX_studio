@@ -5,7 +5,7 @@ describe('workflow save validation guard', () => {
   it('does not persist an executable workflow with missing action parameters', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    expect(() => store.saveWorkflow({
+    expect(() => store.saveWorkflow({ inputs: [],
       id: 'workflow-incomplete',
       name: '미완성 workflow',
       goal: 'Slack에 보내기',

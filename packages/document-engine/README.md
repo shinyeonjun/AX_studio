@@ -106,16 +106,18 @@ The PDF paths deliberately use different engines for different jobs:
   then PDF text/vector geometry, then OCR/layout candidates. This geometry
   path is separate from semantic Docling extraction because a form writer
   must know the exact page and field rectangle.
-- **Canonical form write:** `pdf_form_fill` uses PyMuPDF to update native
-  widgets or draw values on a copy of the source PDF. The response identifies
-  `writerEngine: "pymupdf"` and returns `verified: true` only after reopening
-  the temporary output and checking page geometry plus requested field values.
-  Text overlays validate the selected font's glyph coverage and use an
-  embedded PyMuPDF CJK fallback when no configured system font covers the
-  value; missing or partial explicit fonts fail instead of falling back to an
-  ASCII-only font. Native text and choice fields are verified against the
-  reopened rendered text as well as their logical widget values. A source hash
-  check prevents writing over a changed source or the source file itself.
+- **Canonical form write:** `pdf_form_fill` uses pypdf to preserve the document
+  and canonical AcroForm field tree, with ReportLab-generated text and widget
+  appearance streams. `writerEngine: "pypdf-reportlab"` returns
+  `verified: true` only after reopening the saved PDF and checking geometry,
+  logical values and independently inspected PDFium text/rendering. Widgets
+  remain interactive; repeated widgets share a value and radio groups work
+  across pages. Ambiguous field trees, XFA and signed forms fail explicitly.
+  Text validates glyph coverage and uses the bundled OFL Nanum Gothic font for
+  offline Korean output. Missing/partial explicit fonts and text overflow fail
+  without publishing a partial file. Digital placeholders are removed from the
+  content stream while preserving text advances, labels and vector backgrounds.
+  A source hash check prevents replacing a changed source or the source itself.
 - **PDF → HTML editing:** `pdf_to_html` remains the editable preview route;
   it is not used as the canonical form export. HTML is printed through the
   Chromium path when an HTML workflow is explicitly requested.

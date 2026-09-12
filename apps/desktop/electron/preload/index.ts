@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('ax', {
   deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
   runWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:runWorkflow', workflowId),
   deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),
+  getExecutionOutput: (executionId: string) => ipcRenderer.invoke('ax:getExecutionOutput', executionId),
   clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),
   exportGeneratedArtifact: (artifactId: string) => ipcRenderer.invoke('ax:exportGeneratedArtifact', artifactId),
   saveGeneratedArtifactToFolder: (artifactId: string) => ipcRenderer.invoke('ax:saveGeneratedArtifactToFolder', artifactId),

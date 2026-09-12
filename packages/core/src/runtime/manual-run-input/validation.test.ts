@@ -22,6 +22,8 @@ describe('validateManualRunInput', () => {
 
   it('requires messageId for gmail trigger workflows that read mail', () => {
     const ir: WorkflowIR = {
+      inputs: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {},
       id: 'wf-gmail',
       name: '네이버 메일 Slack 요약',
       goal: '요약',
@@ -51,6 +53,8 @@ describe('validateManualRunInput', () => {
 describe('enrichManualRunInput', () => {
   it.each(['legacy', 'page'] as const)('fills latest inbox message id from the %s Gmail response', async (shape) => {
     const ir: WorkflowIR = {
+      inputs: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {},
       id: 'wf-gmail',
       name: '네이버 메일 Slack 요약',
       goal: '요약',

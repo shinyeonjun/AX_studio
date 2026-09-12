@@ -17,9 +17,10 @@ import { summarizeConnections } from '../connection-state-summary.js';
 export async function buildConnectorState(core: AxCore) {
   const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider', undefined));
   const aiToml = await readAiToml();
-  const gmailConn = core.store.getConnections().find((connection) => connection.connector === 'gmail');
+  const connections = core.store.getConnections();
+  const gmailConn = connections.find((connection) => connection.connector === 'gmail');
   const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
-  const slackConn = core.store.getConnections().find((connection) => connection.connector === 'slack');
+  const slackConn = connections.find((connection) => connection.connector === 'slack');
   const slackSocketStatus = core.triggerEngine.slackSocketStatus();
   const slackStatus = getSlackConnectionStatus(
     slackConn?.config,
@@ -27,13 +28,13 @@ export async function buildConnectorState(core: AxCore) {
     slackSocketStatus.phase === 'connected' && core.triggerEngine.slackSocketActive(),
   );
   const webhookTransport = core.triggerEngine.pushTransportStatus('webhook.inbound');
-  const localFolderConn = core.store.getConnections().find((connection) => connection.connector === 'local_folder');
+  const localFolderConn = connections.find((connection) => connection.connector === 'local_folder');
   const localFolderStatus = getLocalFolderConnectionStatus(
     localFolderConn?.config,
     Boolean(localFolderConn?.connected),
   );
   const startupErrors = core.store.getSetting<Record<string, unknown>>('startup.connectorErrors', {});
-  const connected = new Set(core.store.getConnections().filter(entry => entry.connected).map(entry => entry.connector));
+  const connected = new Set(connections.filter(entry => entry.connected).map(entry => entry.connector));
   return {
     aiProvider,
     aiProviderLabel: getAiProviderDisplay(aiProvider),
@@ -59,6 +60,6 @@ export async function buildConnectorState(core: AxCore) {
     slackConnectionMode: slackStatus.mode,
     slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
     localFolders: localFolderStatus.folders,
-    connections: await summarizeConnections(core.store.getConnections(), { webhookTransport }),
+    connections: await summarizeConnections(connections, { webhookTransport }),
   };
 }

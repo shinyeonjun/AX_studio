@@ -10,7 +10,7 @@ describe('agent result lifecycle', () => {
       let release!: () => void;
       const provider: ModelProvider = { name: 'mock', async generateText() { return ''; },
         async generateStructured<T>(request: { schema: z.ZodType<T> }) {
-          return new Promise(resolve => { release = () => resolve(request.schema.parse({ value: 'late' })); });
+          return new Promise<T>(resolve => { release = () => resolve(request.schema.parse({ value: 'late' })); });
         } };
       const harness = new AgentHarness(provider);
       const abort = new AbortController();

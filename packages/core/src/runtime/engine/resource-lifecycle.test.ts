@@ -4,7 +4,7 @@ import { WorkflowStore } from '../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../engine.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 
-const approvedWorkflow: WorkflowIR = {
+const approvedWorkflow: WorkflowIR = { inputs: [],
   name: 'Approval lifecycle', goal: 'Synthetic delayed connector', version: 1,
   steps: [
     { type: 'human_approval', id: 'approve', reason: 'Review', forActionIds: ['send'] },

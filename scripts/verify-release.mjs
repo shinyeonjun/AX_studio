@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -14,6 +14,12 @@ if (args.some((arg) => arg !== '--package')) throw new Error('Only --package is 
 if (args.includes('--package') && process.platform !== 'win32') throw new Error('--package requires Windows');
 
 const env = { ...process.env };
+// Prefer the repository's document verification environment without changing the user's shell.
+const pythonBin = join(root, 'packages', 'document-engine', '.venv', process.platform === 'win32' ? 'Scripts' : 'bin');
+if (existsSync(join(pythonBin, process.platform === 'win32' ? 'python.exe' : 'python'))) {
+  const pathKey = Object.keys(env).find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
+  env[pathKey] = `${pythonBin}${delimiter}${env[pathKey] ?? ''}`;
+}
 // The release gate must never open a developer/customer profile or copy credentials.
 for (const key of Object.keys(env)) {
   if (key === 'AX_DATA_ROOT' || key === 'AX_DB_BACKEND' || key === 'AX_PRODUCT_QA' || key === 'AX_LIVE_DISCOVERY_MODEL' ||
@@ -70,8 +76,10 @@ if (args.includes('--package')) {
       [...acceptanceArgs, ...(scenario === 'credential-recovery' ? ['--corrupt-credential'] : [])]);
     run(`Real packaged restart: ${scenario}`, process.execPath, [...acceptanceArgs, '--reopen']);
   }
-  run('Packaged discovery, results, Gmail setup and approval retention', process.execPath,
-    ['node_modules/@playwright/test/cli.js', 'test', '--config', 'test/product-qa/playwright.config.ts', 'release-lifecycle.spec.ts', 'discovery-execution.spec.ts', 'gmail-client-setup.spec.ts'],
+  run('Packaged discovery, result recovery, background search, Gmail setup and approval retention', process.execPath,
+    ['node_modules/@playwright/test/cli.js', 'test', '--config', 'test/product-qa/playwright.config.ts',
+      'release-lifecycle.spec.ts', 'discovery-execution.spec.ts', 'gmail-client-setup.spec.ts',
+      'calculated-output.spec.ts', 'background-search.spec.ts'],
     { AX_PRODUCT_QA_MODE: 'deterministic', AX_PRODUCT_QA_ISOLATED: '1',
       AX_PRODUCT_QA_EXECUTABLE: executable });
 }

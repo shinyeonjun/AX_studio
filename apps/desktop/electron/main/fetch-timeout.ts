@@ -19,23 +19,6 @@ function timedSignal(init: RequestInit, timeoutMs: number): {
   return { signal, timeoutError, timer };
 }
 
-export async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init: RequestInit = {},
-  timeoutMs = DEFAULT_VERIFY_TIMEOUT_MS,
-): Promise<Response> {
-  const { signal, timeoutError, timer } = timedSignal(init, timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal });
-  } catch (error) {
-    if (signal.reason === timeoutError) {
-      throw timeoutError;
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /** Fetches and consumes a response under one deadline, including the body. */
 export async function fetchTextWithTimeout(

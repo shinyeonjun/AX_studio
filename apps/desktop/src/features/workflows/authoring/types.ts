@@ -64,5 +64,4 @@ export const WORKFLOW_KIND_BADGE: Partial<Record<WorkflowVisualKind, string>> = 
 };
 export const WORKFLOW_NODE_WIDTH = 136;
 export const WORKFLOW_NODE_HEIGHT = 112;
-export const WORKFLOW_NODE_CIRCLE = 48;
 export const WORKFLOW_JOIN_SIZE = 12;

@@ -11,7 +11,7 @@ describe('branchHintsFromWorkflow', () => {
     trigger: { type: 'manual' },
     steps: [
       {
-        type: 'ai_decision',
+        type: 'ai_decision', investigation: false, maxReads: 1,
         id: 'classify',
         goal: '위험도 분류',
         outputSchema: {

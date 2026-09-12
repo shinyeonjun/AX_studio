@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { AxCommandService } from '../../service.js';
 import { connectedService, commandChatContext, dailyBriefArgs } from '../fixtures.js';
 
 describe('job.propose required target input', () => {

@@ -7,7 +7,7 @@ export async function buildAppState(core: AxCore) {
   const pendingApprovals = buildPendingApprovals(core);
   const executions = buildExecutions(core);
   const connectorState = await buildConnectorState(core);
-  const works = buildWorkflowSummaries(core, executions);
+  const works = buildWorkflowSummaries(core);
 
   return {
     globalActive: core.store.getGlobalActive(),

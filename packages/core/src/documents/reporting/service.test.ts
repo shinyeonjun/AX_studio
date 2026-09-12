@@ -11,6 +11,8 @@ import { ReportCheckpointStore, reportDigest } from './checkpoints.js';
 import { ReportSourceReplanRequired, type ReportSourceNeed, type ReportCaptureInference } from './planner/schema.js';
 import { ReportPlanner } from './planner/planner.js';
 
+type PlanningGateway = ConstructorParameters<typeof ReportGenerationService>[0]['planner'];
+
 describe('ReportGenerationService', () => {
   it.each(['allowed', 'denied'])('routes real planner metadata requests through host policy: %s', async mode => {
     let calls = 0;
@@ -97,7 +99,7 @@ describe('ReportGenerationService', () => {
     let attempts = 0;
     const http: Connector = {
       name: 'http',
-      execute: vi.fn(async (_action, params) => ({ ok: true, data: buildHttpResponseArtifact({
+      execute: vi.fn(async (_action, params) => ({ ok: true, data: buildHttpResponseArtifact({ truncated: false,
         executionId: 'inspection', url: `https://events.test${String(params.path)}`,
         status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
       }) })),
@@ -161,7 +163,7 @@ describe('ReportGenerationService', () => {
       name: 'http',
       execute: vi.fn(async (_action, params) => {
         requests.push(params);
-        return { ok: true, data: buildHttpResponseArtifact({
+        return { ok: true, data: buildHttpResponseArtifact({ truncated: false,
           executionId: 'inspection', url: `http://orders.test${String(params.path)}`,
           status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
         }) };
@@ -257,7 +259,7 @@ describe('ReportGenerationService', () => {
         pdfFormFill: async (sourcePath, options) => {
           writeFileSync(options.outputPath!, 'pdf');
           return { sourcePath, outputPath: options.outputPath!, sourceHash: 'template', outputHash: 'output',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true };
         },
       },
@@ -401,7 +403,7 @@ describe('ReportGenerationService', () => {
         const path = String(params.path);
         return {
           ok: true,
-          data: buildHttpResponseArtifact({
+          data: buildHttpResponseArtifact({ truncated: false,
             executionId: 'http-read', url: `http://example.test${path}`, status: 200, statusText: 'OK',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ data: [{ id: 'o1' }, { id: 'o2' }], meta: { page: 1, total_pages: 1 } }),
@@ -409,8 +411,8 @@ describe('ReportGenerationService', () => {
         };
       }),
     };
-    const refineCapturePlan = vi.fn(async ({ provisional }: { provisional: Record<string, unknown> }) => ({
-      ...(provisional as object),
+    const refineCapturePlan = vi.fn<NonNullable<PlanningGateway['refineCapturePlan']>>(async ({ provisional }) => ({
+      ...provisional,
       capturePlan: {
         schemaVersion: 1,
         http: [{
@@ -433,7 +435,7 @@ describe('ReportGenerationService', () => {
           writeFileSync(options.outputPath!, `generated from ${path}`);
           return {
             sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'out',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true,
           };
         },
@@ -516,7 +518,7 @@ describe('ReportGenerationService', () => {
         writeFileSync(options.outputPath!, `generated from ${path}`);
         return {
           sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'output-hash',
-          pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+          pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
           interactive: false, sourceUnchanged: true,
         };
       }),
@@ -702,7 +704,7 @@ describe('ReportGenerationService', () => {
       scalarBindings: [{ slotId: 'count', value: { kind: 'scalar' as const, id: 'count' } }],
       tableBindings: [],
     };
-    const reviseReportPlan = vi.fn(async function (this: { inferCapturePlan: unknown }, input: { replayFailure: { mismatches: unknown[] } }) {
+    const reviseReportPlan = vi.fn(async function (this: { inferCapturePlan: unknown }, input: Parameters<NonNullable<PlanningGateway['reviseReportPlan']>>[0]) {
       expect(this.inferCapturePlan).toBeTypeOf('function');
       events.push('revise');
       expect(input.replayFailure.mismatches).toEqual([{ slotId: 'count', expected: '2', actual: '0' }]);
@@ -725,7 +727,7 @@ describe('ReportGenerationService', () => {
           writeFileSync(options.outputPath!, 'pdf');
           return {
             sourcePath: path, outputPath: options.outputPath!, sourceHash: 'hash', outputHash: 'out',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true,
           };
         },
@@ -811,7 +813,7 @@ describe('ReportGenerationService', () => {
         writeFileSync(options.outputPath!, 'pdf');
         return {
           sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'output-hash',
-          pageCount: 1, fieldCount: Object.keys(options.values).length, writerEngine: 'pymupdf' as const,
+          pageCount: 1, fieldCount: Object.keys(options.values).length, writerEngine: 'pypdf-reportlab' as const,
           verified: true, interactive: false, sourceUnchanged: true,
         };
       }),

@@ -1,7 +1,7 @@
-import type { WorkspaceChatContext } from './contracts';
+import type { WorkspaceSourceContext } from './contracts';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
-export function createWorkspaceSourceActions(ctx: WorkspaceChatContext) {
+export function createWorkspaceSourceActions(ctx: WorkspaceSourceContext) {
   const refreshWorkspaceSources = async (
     sessionId = ctx.refs.workspaceSessionIdRef.current,
   ) => {

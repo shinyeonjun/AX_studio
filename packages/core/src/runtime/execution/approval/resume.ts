@@ -67,7 +67,7 @@ export async function continueWorkflowAfterApproval(
     connections,
     (entry) => {
       log.push(entry);
-      host.config.store.updateExecutionLog(execution.id, log);
+      host.config.store.appendExecutionLog(execution.id, entry);
     },
     execution.workspaceSessionId,
   );

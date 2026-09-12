@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RdbConnector } from './connector.js';
+import { TableArtifactSchema } from '../../contracts/artifacts/table.js';
 import { createSqliteCustomersFixture } from './sqlite-test-fixture.js';
 
 function connectorContext(options: { reportCapture?: boolean } = {}) {
   return {
+    executionId: 'rdb-test',
     variables: {} as Record<string, unknown>,
     log: vi.fn(),
     ...options,
@@ -43,8 +45,9 @@ describe('RdbConnector sqlite', () => {
           truncated: false,
           completeness: { status: 'complete', observedCount: 2, hasMore: false },
         });
-        expect(query.data.rows).toHaveLength(2);
-        expect(query.data.rows[0]).toMatchObject({ values: { priority: 'critical' } });
+        const table = TableArtifactSchema.parse(query.data);
+        expect(table.rows).toHaveLength(2);
+        expect(table.rows[0]).toMatchObject({ values: { priority: 'critical' } });
         expect(queryCtx.variables.queryResult).toEqual(query.data);
       }
 

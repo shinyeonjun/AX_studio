@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyStepBindings, inferWorkflowBindings } from '../bindings.js';
+import { applyStepBindings } from '../bindings.js';
 import type { WorkflowIR } from '../schema.js';
 
 describe('inferWorkflowBindings explicit AI output', () => {

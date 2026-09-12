@@ -43,6 +43,8 @@ export function applyLegacyMigrations(db: AppDatabase): void {
     'CREATE INDEX IF NOT EXISTS idx_workflow_versions_workflow_id ON workflow_versions(workflow_id);',
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_versions_workflow_version ON workflow_versions(workflow_id, version);',
     'CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);',
+    'CREATE INDEX IF NOT EXISTS idx_executions_workflow_started ON executions(workflow_id, started_at DESC, id DESC);',
+    'CREATE INDEX IF NOT EXISTS idx_approvals_execution_status ON approvals(execution_id, status);',
     'CREATE INDEX IF NOT EXISTS idx_trigger_receipts_workflow_id ON trigger_receipts(workflow_id);',
   ].join('\n'));
   db.exec(

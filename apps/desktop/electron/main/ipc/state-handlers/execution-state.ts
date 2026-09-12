@@ -60,10 +60,29 @@ export function buildPendingApprovals(core: AxCore) {
   });
 }
 
-export function buildExecutions(core: AxCore) {
-  return core.store.listExecutions(50).map((execution) => {
-    const logSummary = executionLogSummary(execution.logJson, execution.status);
-    const quality = executionQualityState(execution);
+type ExecutionDetails = {
+  logJson: string; irJson?: string; status: string; errorCode: string | null;
+  logSummary: ReturnType<typeof executionLogSummary>; quality: ReturnType<typeof executionQualityState>;
+};
+const executionDetails = new WeakMap<AxCore['store'], Map<string, ExecutionDetails>>();
+
+export function buildExecutions(core: Pick<AxCore, 'store'>) {
+  const executions = core.store.listExecutions(50, false);
+  const cache = executionDetails.get(core.store) ?? new Map<string, ExecutionDetails>();
+  executionDetails.set(core.store, cache);
+  const visible = new Set(executions.map(execution => execution.id));
+  for (const id of cache.keys()) if (!visible.has(id)) cache.delete(id);
+  return executions.map((execution) => {
+    let details = cache.get(execution.id);
+    if (!details || details.logJson !== execution.logJson || details.irJson !== execution.irJson
+      || details.status !== execution.status || details.errorCode !== execution.errorCode) {
+      details = { logJson: execution.logJson, irJson: execution.irJson, status: execution.status, errorCode: execution.errorCode,
+        logSummary: executionLogSummary(execution.logJson, execution.status), quality: executionQualityState(execution) };
+      // Bound retained snapshots as well as entry count; large histories remain uncached.
+      if (execution.logJson.length + (execution.irJson?.length ?? 0) <= 128_000) cache.set(execution.id, details);
+      else cache.delete(execution.id);
+    }
+    const { logSummary, quality } = details;
     const errorMessage =
       logSummary.errorMessage ??
       (execution.status === 'failed' && execution.logJson ? '실행 로그를 읽지 못했습니다.' : undefined);
@@ -85,7 +104,7 @@ export function buildExecutions(core: AxCore) {
       currentStepMessage: logSummary.currentStepMessage,
       lastLogMessage: logSummary.lastLogMessage,
       aiOutput: logSummary.aiOutput,
-      output: execution.output,
+      hasOutput: execution.hasOutput,
       generatedPdf: logSummary.generatedPdf,
     };
   });

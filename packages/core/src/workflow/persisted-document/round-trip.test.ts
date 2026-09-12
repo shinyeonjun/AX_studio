@@ -40,11 +40,11 @@ describe('persisted workflow document round-trip', () => {
     const loaded = mergeWorkflowDocument(stored);
     const reparsed = parseStoredWorkflow(stored);
 
-    expect(loaded.steps.find((step) => step.id === 'ingest' && step.type === 'action')?.params).toMatchObject({
-      path: '/tmp/sample.pdf',
+    expect(loaded.steps.find((step) => step.id === 'ingest')).toMatchObject({
+      type: 'action', params: { path: '/tmp/sample.pdf' },
     });
-    expect(reparsed.steps.find((step) => step.id === 'classify' && step.type === 'ai_decision')?.memo).toBe(
-      'critical=긴급',
-    );
+    expect(reparsed.steps.find((step) => step.id === 'classify')).toMatchObject({
+      type: 'ai_decision', memo: 'critical=긴급',
+    });
   });
 });

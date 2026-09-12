@@ -1,8 +1,8 @@
 # Minimal runtime for document-engine sidecar (dev + fallback parsing).
 # 5.x contains known malformed-PDF resource-exhaustion vulnerabilities.
 pypdf==6.16.1
-pypdfium2>=4.30,<5
-PyMuPDF>=1.24,<1.29
+# Pin the renderer/native binary used by the release verification corpus.
+pypdfium2==5.13.0
 reportlab>=4.0,<5
 Pillow>=10,<13
 opencv-python-headless>=4.9,<5

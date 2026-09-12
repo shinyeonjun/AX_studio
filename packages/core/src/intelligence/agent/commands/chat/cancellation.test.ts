@@ -21,13 +21,15 @@ describe('command chat cancellation boundaries', () => {
       await vi.advanceTimersByTimeAsync(11);
       return { role: 'command', output: kind === 'reply'
         ? { kind: 'reply', message: 'late success' }
-        : { kind: 'command', command: { name: 'execution.enqueue_once', args: {} } }, toolTrace: [] };
+        : { kind: 'command', command: { name: 'execution.enqueue_once', args: {} } },
+        provider: 'fixture', durationMs: 11, promptChars: 0,
+        policy: { maxTurns: 1, timeoutMs: 10 }, logs: [] };
     });
     await expect(runAxCommandChat({
       harness, commandService: service, messages: [], userMessage: 'run once', timeoutMs: 10,
     })).rejects.toThrow('제한 시간을 초과');
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('passes cancellation to command execution and never publishes a late result', async () => {
@@ -48,7 +50,7 @@ describe('command chat cancellation boundaries', () => {
     })).rejects.toThrow('요청이 취소되었습니다.');
     expect(onCommandResult).not.toHaveBeenCalled();
     expect(execute.mock.calls[0]?.[1]).toMatchObject({ abortSignal: expect.any(AbortSignal) });
-    db.close();
+    db.close?.();
   });
 
   it.each(['context', 'factory'] as const)('forwards abort through the real service and %s into the connector', async (source) => {
@@ -76,7 +78,7 @@ describe('command chat cancellation boundaries', () => {
       expect(execute).toHaveBeenCalledOnce();
       expect(onCommandResult).not.toHaveBeenCalled();
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 });

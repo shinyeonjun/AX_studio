@@ -63,7 +63,7 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
   const fill = vi.fn(async (path: string, options: { outputPath?: string }) => {
     writeFileSync(options.outputPath!, 'test-pdf');
     return { sourcePath: path, outputPath: options.outputPath!, sourceHash: 't', outputHash: 'out',
-      pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true, interactive: false, sourceUnchanged: true };
+      pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true, interactive: false, sourceUnchanged: true };
   });
   const putBytes = vi.fn((data: Uint8Array, options: { fileName: string; mimeType?: string }) => ({
     id: 'artifact', sha256: 'hash', size: data.length, ...options, createdAt: '2040-03-01T00:00:00Z',

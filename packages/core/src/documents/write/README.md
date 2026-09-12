@@ -37,4 +37,4 @@ The pure write engine returns PDF bytes to its caller; the document connector
 adapter is responsible for persisting them and exposing only a safe artifact
 reference to workflow state. Physical paths remain host-owned.
 
-Read/parse: `packages/document-engine/` (Python) + `packages/core/src/documents/read/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use the Python worker's PyMuPDF path and publish only verified output. PDF→HTML remains an explicit editable preview/export route.
+Read/parse: `packages/document-engine/` (Python) + `packages/core/src/documents/read/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use the Python worker's pypdf/ReportLab path and publish only verified output. PDF→HTML remains an explicit editable preview/export route.

@@ -1,35 +1,39 @@
 import type { WorkspaceChatContext } from './contracts';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
-import { detachActiveRequest, invalidateSession } from './lifecycle-actions';
+import { beginSessionLoad, finishSessionLoad } from './lifecycle-actions';
 
 export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
   const refreshMappedWorkspaceChat = async (sessionId: string) => {
+    const epoch = ctx.refs.sessionEpochRef.current;
+    const sequence = ++ctx.refs.chatRefreshSequenceRef.current;
+    const current = () => ctx.isCurrentSession(epoch) && ctx.isViewingSession(sessionId)
+      && ctx.refs.chatRefreshSequenceRef.current === sequence;
     try {
       const loaded = await window.ax.loadWorkspaceChat(sessionId);
-      if (!ctx.isViewingSession(sessionId)) return;
+      if (!current()) return;
+      if (ctx.refs.busyRef.current) {
+        ctx.refs.pendingWorkspaceChatRefreshRef.current = sessionId;
+        return;
+      }
       ctx.setChatMessages(loaded.messages);
       ctx.setWorkspaceWorkflowState((current) =>
         current ? { ...current, messages: loaded.messages } : current,
       );
       ctx.onSessionsChanged?.();
     } catch (err) {
-      if (ctx.isViewingSession(sessionId)) {
+      if (current()) {
         ctx.setError(ipcErrorMessage(err, '실행 결과를 대화에 불러오지 못했습니다.'));
       }
     }
   };
 
   const loadWorkspaceChat = async (id: string) => {
-    ctx.setWorkspaceContextKey((current) => current + 1);
-    detachActiveRequest(ctx);
-    invalidateSession(ctx);
-    const epoch = ctx.refs.sessionEpochRef.current;
-    ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
-    ctx.setBusy(true);
-    ctx.setError('');
-    ctx.setWorkspaceWorkflowState(null);
-    ctx.setWorkflowRegistered(false);
+    const epoch = beginSessionLoad(ctx);
+    // Keep the intended conversation subscribed while its snapshot is in flight.
+    // Result notifications received during the load are queued by the busy guard.
+    ctx.refs.workspaceSessionIdRef.current = id;
+    ctx.setWorkspaceSessionId(id);
     try {
       const loaded = await window.ax.loadWorkspaceChat(id);
       if (!ctx.isCurrentSession(epoch)) return;
@@ -56,27 +60,20 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
-      if (ctx.isCurrentSession(epoch)) ctx.setBusy(false);
+      finishSessionLoad(ctx, epoch);
+      if (ctx.isCurrentSession(epoch) && ctx.refs.pendingWorkspaceChatRefreshRef.current === id) {
+        ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
+        void refreshMappedWorkspaceChat(id);
+      }
     }
   };
 
   const openWorkChat = async (workflowId: string) => {
-    ctx.setWorkspaceContextKey((current) => current + 1);
-    detachActiveRequest(ctx);
-    invalidateSession(ctx);
-    const epoch = ctx.refs.sessionEpochRef.current;
-    ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
-    ctx.setBusy(true);
-    ctx.setError('');
-    ctx.setChatMessages([]);
-    ctx.setWorkspaceSources([]);
-    ctx.setWorkspaceWorkflowState(null);
-    ctx.setWorkflowRegistered(false);
-    ctx.refs.workspaceSessionIdRef.current = undefined;
-    ctx.setWorkspaceSessionId(undefined);
+    const epoch = beginSessionLoad(ctx);
     try {
-      const mappedChat = await window.ax.loadWorkspaceChatByWorkflowId(workflowId);
-      const loaded = await window.ax.loadWorkChat(workflowId);
+      const [mappedChat, loaded] = await Promise.all([
+        window.ax.loadWorkspaceChatByWorkflowId(workflowId), window.ax.loadWorkChat(workflowId),
+      ]);
       if (!ctx.isCurrentSession(epoch)) return;
       if (mappedChat) {
         ctx.refs.workspaceSessionIdRef.current = mappedChat.id;
@@ -101,7 +98,12 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
-      if (ctx.isCurrentSession(epoch)) ctx.setBusy(false);
+      finishSessionLoad(ctx, epoch);
+      const pending = ctx.refs.pendingWorkspaceChatRefreshRef.current;
+      if (ctx.isCurrentSession(epoch) && pending && ctx.isViewingSession(pending)) {
+        ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
+        void refreshMappedWorkspaceChat(pending);
+      }
     }
   };
 
