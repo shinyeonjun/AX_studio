@@ -14417,3 +14417,8 @@ main_integration_ci_compatibility:
   paths:
     - .github/workflows/ci.yml
   reason: Required Linux verification cannot start because the runner npm rejects allow-remote; remove the environment-specific configuration while retaining npm ci and every verification step.
+
+windows_ci_artifact_path:
+  paths:
+    - apps/desktop/electron/main/ipc/artifact-handlers.test.ts
+  reason: CI uses DOS8.3 temp aliases; canonical returned source path is correct, so fix only expected path spelling while retaining all safety assertions.

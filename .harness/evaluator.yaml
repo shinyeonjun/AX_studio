@@ -15416,3 +15416,6 @@ refresh_ordering_policy_closure:
     - Explicit refresh or discovery action invalidates the previous result.
     - Passive notifications and polling permit serialized progress without invalidating active reads.
     - Context change and unmount invalidate both kinds of refresh.
+
+windows_ci_path_expectation:
+  correction: Artifact source resolver returns a canonical existing path; Windows runner tmpdir uses DOS8.3 RUNNER~1. Compare the expected file canonical path instead of raw tmpdir spelling. This corrects a platform-specific oracle; all content/hash/root confinement checks remain unchanged.
