@@ -21,6 +21,7 @@
     "test:desktop": "npm run test -w @ax-studio/desktop",
     "typecheck:desktop": "npm run typecheck -w @ax-studio/desktop",
     "test:document-engine": "python -m unittest discover -s packages/document-engine/src -p \"*_test.py\"",
+    "audit:document-engine": "python -m pip_audit --strict -r packages/document-engine/requirements.txt",
     "test:wd-benchmark": "node test/work-discovery-benchmark/run.mjs",
     "test:wd-benchmark:sweep": "node test/work-discovery-benchmark/sweep.mjs",
     "test:wd-ablation": "node test/work-discovery-benchmark/ablation.mjs",

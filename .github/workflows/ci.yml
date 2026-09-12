@@ -41,7 +41,10 @@ jobs:
         run: npm ci
 
       - name: Document engine dependencies
-        run: python -m pip install -r packages/document-engine/requirements.txt
+        run: python -m pip install -r packages/document-engine/requirements-test.txt
+
+      - name: Document engine dependency security
+        run: npm run audit:document-engine
 
       - name: Build Core package for dependent tests
         run: npm run build -w @ax-studio/core
@@ -128,6 +131,13 @@ jobs:
 
       - name: Windows package smoke
         run: npm run pack:win -w @ax-studio/desktop
+
+      - name: Exact packaged Python dependency security
+        shell: pwsh
+        run: |
+          python -m pip install pip-audit==2.10.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip_audit --strict --path apps/desktop/release/win-unpacked/resources/document-engine/python/Lib/site-packages
 
       - name: Packaged desktop restart and approval retention
         shell: pwsh

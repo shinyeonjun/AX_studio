@@ -27,6 +27,7 @@ const checks = [
   ['Desktop regression tests', 'run', 'test', '-w', '@ax-studio/desktop', '--', '--reporter=dot', '--silent'],
   ['Desktop type check', 'run', 'typecheck:desktop'],
   ['Document engine tests', 'run', 'test:document-engine'],
+  ['Python document dependency security', 'run', 'audit:document-engine'],
   ['Core evaluation', 'run', 'eval'],
   ['Architecture boundaries', 'run', 'arch:check'],
   ['Unused code and dependencies', 'run', 'knip'],
@@ -53,6 +54,8 @@ run('Full deterministic Electron product QA', 'npm', ['run', 'test:product-qa', 
 if (args.includes('--package')) {
   run('Windows package, archive integrity and isolated document engine', 'npm', ['run', 'pack:win', '-w', '@ax-studio/desktop']);
   const executable = join(root, 'apps/desktop/release/win-unpacked/AX Studio.exe');
+  run('Exact packaged Python dependency security', 'python', ['-m', 'pip_audit', '--strict', '--path',
+    join(root, 'apps/desktop/release/win-unpacked/resources/document-engine/python/Lib/site-packages')]);
   const { version } = JSON.parse(readFileSync(join(root, 'apps/desktop/package.json'), 'utf8'));
   run('Windows product identity and version resources', 'powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
     'test/release/package-metadata.ps1', '-Executable', executable,

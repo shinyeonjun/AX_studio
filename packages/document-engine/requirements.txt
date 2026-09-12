@@ -1,5 +1,6 @@
 # Minimal runtime for document-engine sidecar (dev + fallback parsing).
-pypdf>=4.0,<6
+# 5.x contains known malformed-PDF resource-exhaustion vulnerabilities.
+pypdf==6.16.1
 pypdfium2>=4.30,<5
 PyMuPDF>=1.24,<1.29
 reportlab>=4.0,<5

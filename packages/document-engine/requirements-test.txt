@@ -1,0 +1,3 @@
+-r requirements.txt
+# Verification tooling only; not included in the packaged Python runtime.
+pip-audit==2.10.1

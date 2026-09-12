@@ -14,7 +14,8 @@ Do not describe a local package smoke test as a clean-machine installation test.
    and [GitHub licensing guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository).
 2. Keep the core and desktop versions consistent. Select a new tag; never replace
    the existing `v0.1.0-demo` tag or its assets.
-3. Run `npm ci`, install the Python dependencies, and run
+3. Run `npm ci`, install `packages/document-engine/requirements-test.txt` into the
+   active Python environment (activate the project venv if using it), and run
    `npm run verify:release -- --package` on Windows. Preserve the test evidence.
 4. Run the CI workflow on the exact release commit. Require **both** `verify` and
    `windows desktop` to pass. Windows CI installs the real NSIS artifact on a
