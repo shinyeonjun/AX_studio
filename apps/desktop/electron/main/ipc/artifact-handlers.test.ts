@@ -219,7 +219,7 @@ describe('generated PDF source validation', () => {
     writeFileSync(sourcePath, 'inside');
     const sha256 = createHash('sha256').update('inside').digest('hex');
 
-    await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBe(realpathSync(sourcePath));
+    await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBe(realpathSync.native(sourcePath));
     await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 5, sha256)).resolves.toBeUndefined();
     writeFileSync(sourcePath, 'damage');
     await expect(resolveGeneratedArtifactSourcePath(root, sourcePath, 6, sha256)).resolves.toBeUndefined();
