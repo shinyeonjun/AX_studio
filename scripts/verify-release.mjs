@@ -26,6 +26,7 @@ const checks = [
   ['Webhook fixture security', 'run', 'test:manual:webhook:security'],
   ['Desktop regression tests', 'run', 'test', '-w', '@ax-studio/desktop', '--', '--reporter=dot', '--silent'],
   ['Desktop type check', 'run', 'typecheck:desktop'],
+  ['Product test type check', 'run', 'typecheck:tests'],
   ['Document engine tests', 'run', 'test:document-engine'],
   ['Python document dependency security', 'run', 'audit:document-engine'],
   ['Core evaluation', 'run', 'eval'],
@@ -69,8 +70,8 @@ if (args.includes('--package')) {
       [...acceptanceArgs, ...(scenario === 'credential-recovery' ? ['--corrupt-credential'] : [])]);
     run(`Real packaged restart: ${scenario}`, process.execPath, [...acceptanceArgs, '--reopen']);
   }
-  run('Packaged Electron restart and approval retention', process.execPath,
-    ['node_modules/@playwright/test/cli.js', 'test', '--config', 'test/product-qa/playwright.config.ts', 'release-lifecycle.spec.ts'],
+  run('Packaged discovery, results, Gmail setup and approval retention', process.execPath,
+    ['node_modules/@playwright/test/cli.js', 'test', '--config', 'test/product-qa/playwright.config.ts', 'release-lifecycle.spec.ts', 'discovery-execution.spec.ts', 'gmail-client-setup.spec.ts'],
     { AX_PRODUCT_QA_MODE: 'deterministic', AX_PRODUCT_QA_ISOLATED: '1',
       AX_PRODUCT_QA_EXECUTABLE: executable });
 }

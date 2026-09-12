@@ -17,6 +17,8 @@ export interface LaunchOptions {
   runId: string;
   scenarioId?: string;
   runIndex?: number;
+  /** Disable all E2E replacements, while keeping the isolated test profile. */
+  realEngines?: boolean;
 }
 
 export interface DesktopContext {
@@ -84,6 +86,11 @@ function buildEnv(options: LaunchOptions): Record<string, string> {
     env.AX_E2E_DOCUMENT_ENGINE = 'mock';
     env.AX_E2E_AGENT_DELAY_MS = process.env.AX_E2E_AGENT_DELAY_MS ?? '1200';
   } else {
+    delete env.AX_E2E;
+    delete env.AX_E2E_FAKE_AGENT;
+    delete env.AX_E2E_DOCUMENT_ENGINE;
+  }
+  if (options.realEngines) {
     delete env.AX_E2E;
     delete env.AX_E2E_FAKE_AGENT;
     delete env.AX_E2E_DOCUMENT_ENGINE;

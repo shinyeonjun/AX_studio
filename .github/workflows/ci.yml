@@ -64,6 +64,9 @@ jobs:
       - name: Desktop type check
         run: npm run typecheck:desktop
 
+      - name: Product test type check
+        run: npm run typecheck:tests
+
       - name: Document engine tests
         run: npm run test:document-engine
 
@@ -129,6 +132,9 @@ jobs:
       - name: Desktop type check
         run: npm run typecheck:desktop
 
+      - name: Product test type check
+        run: npm run typecheck:tests
+
       - name: Windows package smoke
         run: npm run pack:win -w @ax-studio/desktop
 
@@ -139,13 +145,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip_audit --strict --path apps/desktop/release/win-unpacked/resources/document-engine/python/Lib/site-packages
 
-      - name: Packaged desktop restart and approval retention
+      - name: Packaged discovery, results, Gmail setup and approval retention
         shell: pwsh
         run: |
           $env:AX_PRODUCT_QA_MODE = 'deterministic'
           $env:AX_PRODUCT_QA_ISOLATED = '1'
           $env:AX_PRODUCT_QA_EXECUTABLE = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/release/win-unpacked/AX Studio.exe'
-          npx playwright test --config test/product-qa/playwright.config.ts release-lifecycle.spec.ts
+          npx playwright test --config test/product-qa/playwright.config.ts release-lifecycle.spec.ts discovery-execution.spec.ts gmail-client-setup.spec.ts
 
       - name: Windows package identity and metadata
         shell: pwsh

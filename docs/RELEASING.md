@@ -45,9 +45,25 @@ trusted code signature does.
   API key; CLI mode needs the selected CLI installed and authenticated. Provider
   usage and service charges are separate from the application.
 - The default CI build has no embedded Google OAuth client. Gmail requires an
-  appropriately configured desktop OAuth client; do not advertise out-of-box
-  Gmail login for that build. Building with one's own OAuth client and accepting
-  Gmail/Slack with approved test accounts are separate from fixture-based tests.
+  appropriately configured desktop OAuth client. In Settings > Gmail, import
+  the Desktop app client JSON downloaded from Google Cloud; no rebuild or
+  environment variable is required. It is stored using OS credential encryption,
+  not in the application state or ordinary logs. Enable the Gmail API and configure
+  consent/test users as described in Google's
+  [credential setup](https://developers.google.com/workspace/guides/create-credentials).
+  Disconnect Gmail before replacing the client. Real consent/login and Gmail/Slack
+  delivery with approved accounts remain separate from synthetic setup tests.
+- Saved work can be run immediately from the sidebar. A manual run does not
+  change its schedule or skip external-action approval. Work with an unfinished
+  execution cannot be started again from that button.
+- Successful calculated fields appear in Activity and survive restart. Failed
+  executions do not expose partial results as completed output. Stored results
+  are bounded to 100 fields, 65,536 JSON characters per field and 262,144 characters
+  in total; oversized output fails explicitly rather than being silently truncated.
+  Sheet execution reads only connected folders or imported artifacts.
+- An unreadable saved connector credential disables that connection, not the whole
+  app. Settings remain available for reconnecting. Damaged credential files are
+  preserved until an explicit replacement/removal; other connections still load.
 - Schedules require AX Studio to remain running, including in the tray. Closing
   the window is not the same as quitting the app. An unavailable/offline service
   can prevent a scheduled action from completing.
@@ -69,6 +85,13 @@ recovery, real SQLite persistence, OS credential encryption/recovery, packaged
 startup and real PDF output. Deterministic product QA does not prove arbitrary
 live-model quality or successful delivery to real Gmail/Slack accounts. A
 same-version reinstall is not a historic-version database migration test.
+
+The release gate also runs the actual discovery/compiler/runtime through the
+Electron UI: connect a CSV, publish work, change the source, execute, inspect the
+calculated result, restart and reject schema drift. A separate Windows test imports
+a synthetic Gmail Desktop OAuth client, checks encrypted persistence and recovers
+from corruption without a Google login. Only native file/folder selection is
+substituted in these two tests; the packaged gate repeats both on the built binary.
 
 Record failures and unverified paths honestly in the release notes. Do not
 publish a stable-release claim solely because a build or unsigned package exists.

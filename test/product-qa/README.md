@@ -61,3 +61,16 @@ npm run test:product-qa -- --mode deterministic --tier soak --max 2000
 ## 시나리오를 직접 추가
 
 `test/product-qa/scenarios/*.json` + `manifest.json`. 생성기는 `covers`로 카탈로그 id를 표시합니다.
+
+## 실제 엔진으로 검증하는 출시 경로
+
+`discovery-execution.spec.ts`는 자료 폴더 연결 → CSV 분석 → 업무 저장 → 원본 갱신 →
+수동 실행 → 계산 값 표시 → 재시작 후 복원 → 입력 열 변경 거부를 검사합니다.
+`gmail-client-setup.spec.ts`는 Windows OS 암호화 저장, 잘못된 OAuth JSON 거부,
+재시작과 손상된 설정 복구를 검사합니다. Google 로그인이나 실제 메일 발송은 하지 않습니다.
+
+두 검사는 `realEngines: true`로 fake agent/document engine 환경 변수를 제거합니다.
+네이티브 파일 선택 대화상자만 테스트 자료를 선택하도록 대체하고, IPC·발견·컴파일·실행·저장·화면은
+실제 구현을 사용합니다. 사용자 프로필과 분리된 임시 데이터만 사용합니다.
+`npm run typecheck:tests`는 제품 검사 코드와 실제 앱 API의 타입 일치도 검사합니다.
+Windows 출시 검사와 CI는 이 경로를 빌드된 설치본 실행 파일에서도 반복합니다.

@@ -43,12 +43,12 @@ AI 인터뷰로 조건과 빈칸 확인
 | 영역 | 현재 저장소에서 확인되는 범위 |
 | --- | --- |
 | 업무 설계 | 대화형 Work Discovery, 구조화된 Workflow IR, 시각적 워크플로우 캔버스 |
-| 실행 | 등록한 워크플로우 활성화, 스케줄 실행, 실행 결과와 활동 이력 |
+| 실행 | 저장된 업무 즉시 실행·활성화·스케줄 실행, 중복 수동 실행 방지, 실행 결과와 활동 이력 |
 | 안전 | Gmail 발송 등 외부 부작용 전 승인, 개발/설치 데이터 격리, OS credential store 사용 |
 | 연결 | Gmail, Slack, 읽기 전용 PostgreSQL/MySQL, 로컬 폴더·문서 |
 | 데이터 | CSV/XLSX 읽기용 `local_sheet`, SQLite 기반 로컬 상태 저장 |
-| 결과물 | HTML/DOCX/PDF 보고서 생성 경로 |
-| 검증 | core 단위 테스트, 정적 빌드, Electron 제품 QA harness |
+| 결과물 | HTML/DOCX/PDF 보고서 생성 경로, 계산 결과 표시·저장·재시작 복원 |
+| 검증 | core·desktop 회귀, 정적 빌드, 실제 PDF·프로세스 종료 복구, 실제 엔진과 설치본 Electron QA |
 
 ## 제품 구조
 
@@ -103,6 +103,7 @@ npm run dev
 ```bash
 npm test                 # core 단위 테스트
 npm run build            # core + desktop 빌드
+npm run typecheck:tests  # 제품 QA와 앱 API의 타입 일치 검사
 npm run test:product-qa -- --mode deterministic --tier smoke
 npm run arch:check       # core 의존성 경계 검사
 npm run test:release     # 실제 HTTP·동시 승인·프로세스 강제 종료 복구
@@ -116,6 +117,8 @@ npm run verify:release -- --package  # Windows 설치본 빌드·내용물 검�
 
 외부 전송 도중 앱이 종료되면 완료 여부를 단정하거나 자동 재전송하지 않습니다. 재시작 시 해당 실행을 실패로 복구하고 연결된 자동 업무를 중지합니다. 활동 기록에서 원인을 확인하고 외부 서비스의 처리 결과를 확인한 뒤 재개해야 합니다. 실행 중·승인 대기 기록은 삭제로 유실되지 않으며, 일회 예약이 완료되어 정의가 정리되어도 실행 결과는 보존됩니다.
 
+저장한 업무는 사이드바의 **실행** 버튼으로 즉시 실행할 수 있습니다. 일정이나 외부 전송 승인 정책은 바뀌지 않습니다. 활동 화면의 계산 결과는 성공한 실행에만 표시되며 재시작해도 유지됩니다. 입력 열 변경·불완전한 자료·저장 한도를 넘는 결과는 성공으로 처리하지 않습니다.
+
 ## 비밀값과 로컬 데이터
 
 | 위치 | 역할 | Git |
@@ -123,19 +126,23 @@ npm run verify:release -- --package  # Windows 설치본 빌드·내용물 검�
 | `.env` | 개발용 Gmail OAuth Client ID/Secret | 커밋 금지 — `.env.example`만 제공 |
 | `ai.toml` | 활성 AI와 모델 설정 | 커밋 금지 — `.ai.toml.example`만 제공, API 키 금지 |
 | `*.db` | 로컬 SQLite 데이터 | 커밋 금지 |
-| OS credential store | AI API 키, Gmail refresh token | PC별 암호화 저장, 공유 대상 아님 |
+| OS credential store | AI API 키, Gmail refresh token, 가져온 OAuth 클라이언트 | PC별 암호화 저장, 공유 대상 아님 |
 
 AI API 키는 `.env`에 넣지 않습니다. 앱 설정에서 등록한 키는 OS credential store에 저장합니다. 개발용 `.env`에는 Gmail OAuth 클라이언트 설정만 두며 사용자 API 키와 분리합니다. Client Secret은 Electron Main 프로세스에서만 읽고 연결 메타데이터·렌더러 상태·로그에는 저장하지 않습니다.
 
-### Gmail 개발 설정
+### Gmail 설정
 
-일반 사용자가 아니라 앱을 빌드하는 개발자가 한 번 준비하는 설정입니다.
+기본 배포본에는 Google OAuth 클라이언트가 내장되어 있지 않습니다. 본인의 데스크톱 앱 클라이언트를 준비해 앱에서 가져올 수 있으며, 재빌드는 필요하지 않습니다.
 
 1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트 생성
 2. Gmail API 사용 설정
 3. OAuth 동의 화면을 Testing으로 설정하고 본인을 Test user로 추가
 4. 사용자 인증 정보에서 데스크톱 앱 OAuth 클라이언트 생성
-5. `.env`에 클라이언트 ID 설정. Google이 해당 클라이언트에 secret을 요구하면 Client Secret도 설정
+5. 클라이언트 JSON을 내려받아 앱의 설정 → Gmail → **OAuth 클라이언트 JSON 가져오기**에서 선택
+
+가져온 설정은 OS 암호화 저장소에 보관합니다. 클라이언트를 교체하려면 Gmail을 먼저 연결 해제하세요. 저장된 설정이 손상되어도 앱은 열리며, 설정에서 다시 가져오거나 명시적으로 제거할 수 있습니다.
+
+개발 환경에서는 다음 `.env` 설정도 사용할 수 있습니다. 앱에서 가져온 클라이언트가 있으면 그 설정을 우선합니다.
 
 ```env
 GOOGLE_OAUTH_CLIENT_ID=xxxxx.apps.googleusercontent.com

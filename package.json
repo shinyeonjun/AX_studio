@@ -20,6 +20,7 @@
     "test:manual:webhook:security": "node --test test/manual/webhook.test.mjs",
     "test:desktop": "npm run test -w @ax-studio/desktop",
     "typecheck:desktop": "npm run typecheck -w @ax-studio/desktop",
+    "typecheck:tests": "npm run typecheck:product-qa -w @ax-studio/desktop",
     "test:document-engine": "python -m unittest discover -s packages/document-engine/src -p \"*_test.py\"",
     "audit:document-engine": "python -m pip_audit --strict -r packages/document-engine/requirements.txt",
     "test:wd-benchmark": "node test/work-discovery-benchmark/run.mjs",
