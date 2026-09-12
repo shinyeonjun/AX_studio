@@ -38,7 +38,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: npm config set allow-remote all; npm ci
+        run: npm ci
 
       - name: Document engine dependencies
         run: python -m pip install -r packages/document-engine/requirements.txt
@@ -95,7 +95,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm config set allow-remote all; npm ci
+        run: npm ci
 
       - name: Set up Python for packaging
         uses: actions/setup-python@v5
