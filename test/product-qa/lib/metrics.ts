@@ -32,6 +32,7 @@ export function buildReport(input: {
     strict: input.strict,
     tier: input.tier,
     scenarios: input.scenarios,
+    replyLatenciesMs: input.replyLatenciesMs,
     coverage: input.coverage,
     summary: {
       scenarioRuns: input.scenarios.length,

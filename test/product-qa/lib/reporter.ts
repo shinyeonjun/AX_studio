@@ -1,11 +1,31 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { buildReport } from './metrics.js';
+import { coverageFor } from './scenario-loader.js';
 import type { ProductQaReport } from './types.js';
 
-export function writeReport(report: ProductQaReport, artifactDir: string): void {
+export function writeReport(report: ProductQaReport, artifactDir: string, workerId = String(process.pid)): void {
+  if (!/^[a-zA-Z0-9_-]+$/.test(workerId)) throw new Error('Invalid QA worker identifier');
   mkdirSync(join(artifactDir, 'screenshots'), { recursive: true });
-  writeFileSync(join(artifactDir, 'report.json'), JSON.stringify(report, null, 2), 'utf8');
-  writeFileSync(join(artifactDir, 'report.md'), renderMarkdown(report), 'utf8');
+  // Playwright replaces a worker after a failure, even with retries disabled.
+  // Keep each worker's cumulative snapshot so its failures cannot be overwritten
+  // by the next worker's initially empty in-memory result list. QA uses workers: 1.
+  const partsDir = join(artifactDir, 'report-parts');
+  mkdirSync(partsDir, { recursive: true });
+  writeFileSync(join(partsDir, `${workerId}.json`), JSON.stringify(report), 'utf8');
+  const parts = readdirSync(partsDir).filter((name) => name.endsWith('.json')).sort()
+    .map((name) => JSON.parse(readFileSync(join(partsDir, name), 'utf8')) as ProductQaReport)
+    .filter((part) => part.runId === report.runId);
+  const scenarios = parts.flatMap((part) => part.scenarios);
+  const aggregate = buildReport({
+    ...report,
+    startedAt: parts.map((part) => part.startedAt).sort()[0] ?? report.startedAt,
+    scenarios,
+    replyLatenciesMs: parts.flatMap((part) => part.replyLatenciesMs ?? []),
+    coverage: coverageFor(scenarios.filter((scenario) => scenario.passed)),
+  });
+  writeFileSync(join(artifactDir, 'report.json'), JSON.stringify(aggregate, null, 2), 'utf8');
+  writeFileSync(join(artifactDir, 'report.md'), renderMarkdown(aggregate), 'utf8');
 }
 
 function renderMarkdown(report: ProductQaReport): string {

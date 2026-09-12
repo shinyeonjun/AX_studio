@@ -52,6 +52,10 @@ npm run test:product-qa -- --mode deterministic --tier soak --max 2000
 - pass/fail, defect 수, critical, reply latency
 - coverage: 완료 후 통과한 시나리오가 선언한 기능 목록의 비율. 아직 실행하지 않았거나 실패한 시나리오는 제외합니다. 실제 기능 정확도나 AI 성공률과 다릅니다.
 
+실패로 Playwright 작업자가 재시작되어도 `report-parts/`의 작업자별 기록을 합쳐 이전 실패를 보존합니다. 현재 설정은 `workers: 1`이며 같은 작업자의 누적 보고서를 갱신해도 중복 집계하지 않습니다. 이 보고서는 JSON/생성 시나리오 집계이고, 별도 `.spec.ts` 검사의 최종 성공 여부는 Playwright 결과와 프로세스 종료 코드로 확인합니다.
+
+승인·취소 클릭은 최대 15초 안에 해당 카드가 실제로 사라져야 완료됩니다. 클릭 이벤트 직후의 순간 상태만으로 판정하지 않으며, 카드가 계속 남으면 여전히 실패합니다.
+
 기본은 결함을 **기록만** 하고 Playwright는 통과합니다. `--strict`면 check 실패가 fail입니다.
 
 ## 시나리오를 직접 추가

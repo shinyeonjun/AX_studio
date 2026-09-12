@@ -16,6 +16,8 @@ export async function clickInlineApproval(page: Page, decision: 'approve' | 'rej
     name: decision === 'approve' ? '승인하고 실행' : '취소',
     exact: true,
   }).click();
+  // A completed click does not mean the IPC response and React render completed.
+  await card.waitFor({ state: 'hidden', timeout: 15_000 });
 }
 
 export async function inlineApprovalVisible(page: Page): Promise<boolean> {

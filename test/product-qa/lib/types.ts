@@ -160,6 +160,7 @@ export interface ScenarioRunResult {
 }
 
 export interface ProductQaReport {
+  replyLatenciesMs?: number[];
   runId: string;
   mode: ProductQaMode;
   startedAt: string;
