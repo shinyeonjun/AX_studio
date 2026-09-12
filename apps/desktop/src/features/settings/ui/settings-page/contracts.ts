@@ -1,7 +1,9 @@
 import type { AppState } from '../../../../types/app-state';
 import type { SettingsScreen } from '../../../../types/navigation';
+import type { useAiDetection } from '../../hooks/ai-settings/useAiDetection';
 
 export interface SettingsPageProps {
+  detection: ReturnType<typeof useAiDetection>;
   screen: SettingsScreen;
   state: AppState | null;
   onScreenChange: (screen: SettingsScreen) => void;

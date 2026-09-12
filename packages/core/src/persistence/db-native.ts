@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { AppDatabase, SqlRunResult, SqlStatement } from './db.js';
+import type { AppDatabase, SqlRunResult, SqlStatement } from './db/types.js';
 
 function bindParams(params: unknown[]): unknown[] {
   return params.map((value) => (value === undefined ? null : value));

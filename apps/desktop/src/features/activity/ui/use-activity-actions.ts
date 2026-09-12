@@ -14,6 +14,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const [explainError, setExplainError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState('');
   const [explaining, setExplaining] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [exportedId, setExportedId] = useState<string | null>(null);
@@ -56,9 +57,12 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     if (count === 0) return;
     if (!window.confirm(`실행 기록 ${count}건을 지울까요?\n승인 대기 중인 실행은 남겨둡니다.`)) return;
     setClearing(true);
+    setClearError('');
     try {
       await window.ax.clearExecutions();
       await onRefresh();
+    } catch (err) {
+      setClearError(ipcErrorMessage(err, '실행 기록을 지우지 못했습니다. 다시 시도해 주세요.'));
     } finally {
       setClearing(false);
     }
@@ -122,6 +126,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     explainError,
     busyId,
     clearing,
+    clearError,
     explaining,
     exportingId,
     exportedId,

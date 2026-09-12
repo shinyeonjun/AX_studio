@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
   disconnectWebhook,
@@ -7,7 +7,7 @@ import {
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 export function registerWebhookConnectionHandlers() {
-  ipcMain.handle('ax:connectWebhook', async (_event, payload: unknown) => {
+  ipcHandle('ax:connectWebhook', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('Webhook 연결 정보 형식이 올바르지 않습니다.');
@@ -39,7 +39,7 @@ export function registerWebhookConnectionHandlers() {
     return { ok: true };
   });
 
-  ipcMain.handle('ax:disconnectWebhook', async () => {
+  ipcHandle('ax:disconnectWebhook', async () => {
     const core = getCore();
     await disconnectWebhook(core.store, () => core.triggerEngine.refreshPushTransports());
     notifyStateChanged();

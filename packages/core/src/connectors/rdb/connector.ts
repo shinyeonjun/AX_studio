@@ -11,15 +11,9 @@ import {
   readRdbRows,
   resolveRdbTableRef,
 } from './client.js';
+import type { RdbConnectionConfig } from './client/types.js';
 
-export interface RdbConnectionConfig {
-  type: 'mysql' | 'postgres' | 'sqlite';
-  connectionString?: string;
-  filePath?: string;
-  allowedSchemas?: string[];
-  allowedTables?: string[];
-  rowLimit?: number;
-}
+export type { RdbConnectionConfig } from './client/types.js';
 
 export class RdbConnector implements Connector {
   name = 'rdb';

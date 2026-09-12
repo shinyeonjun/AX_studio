@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcHandle } from '../ipc-handle.js';
 import { type AiConnectionMode } from '@ax-studio/core';
 import { getSecretForBrand, setBrandSecret } from '../../ai/config-file.js';
 import { verifyAiApiKey } from '../../ai/api-verify.js';
@@ -6,14 +6,14 @@ import { testAiCli } from '../../ai/cli-test.js';
 import { maskSecret } from '../../env-file.js';
 
 export function registerAiTestingHandlers(): void {
-  ipcMain.handle('ax:testAiCli', async (_event, brand: unknown) => {
+  ipcHandle('ax:testAiCli', async (_event, brand: unknown) => {
     if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
     }
     return testAiCli(brand);
   });
 
-  ipcMain.handle('ax:testAiApi', async (_event, brand: unknown, apiKey?: unknown, mode?: unknown) => {
+  ipcHandle('ax:testAiApi', async (_event, brand: unknown, apiKey?: unknown, mode?: unknown) => {
     if (brand !== 'claude' && brand !== 'gpt' && brand !== 'ollama') {
       throw new Error('Grok/Cursor AI는 더 이상 지원되지 않습니다.');
     }

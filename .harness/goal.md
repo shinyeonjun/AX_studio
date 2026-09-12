@@ -14599,3 +14599,533 @@ and test-double paths; direct imports preserve the existing top-level seams and 
   shared-schema alias, and one config hint remain for a separate cleanup decision.
 - No project files, fixtures, generated gold, credentials, external sources, or application
   data were modified.
+
+## Current task: repository-wide architecture audit before refactoring
+
+Before making another structural change, inspect every code file and package boundary,
+then compare the observed design with established modularity and refactoring principles.
+Produce evidence for each proposed keep/move/merge/delete decision without modifying
+production code or creating new project files.
+
+Success criteria:
+- every production and test code file is included in an inventory with owner/domain,
+  entrypoint status, fan-in/fan-out, size, and test coverage signal
+- dependency direction, cycles, cross-domain imports, barrel/public seams, and orphan or
+  pass-through modules are measured rather than inferred from folder names
+- runtime product paths are traced from desktop command/input through source access,
+  AI decision, workflow execution, persistence, and document/report output
+- the existing directory layout is evaluated against cohesion, coupling, information
+  hiding, bounded contexts, deep-module interfaces, and behavior-preserving refactoring
+- findings are ranked by correctness risk, change cost, and confidence; no refactor is
+  proposed solely because a file is short or a folder looks aesthetically inconsistent
+- a staged refactoring plan and explicit keep-list are produced before implementation
+
+Non-goals:
+- no production source edits, file moves, deletions, dependency upgrades, or generated
+  artifacts during the audit
+- no rewrite proposal based only on SOLID slogans or generic framework templates
+- no new project files; existing harness records may be appended
+
+Audit baseline recorded at 2026-09-08T13:39:20.7230704+09:00: main is clean at 17b75f7;
+the first inventory estimate was corrected after an ignored-file-aware scan to 1,554
+tracked code files and 1,569 files present on disk (15 ignored local auxiliary files).
+
+Audit result recorded at 2026-09-08T14:03:26.9570569+09:00:
+- the repository has coherent top-level capability boundaries and explicit Electron IPC,
+  document-engine, connector, persistence, runtime, and report orchestration seams;
+- the configured dependency check passes, but it does not enforce cycle/orphan rules;
+  the detailed graph found 24 static cycle edges across 14 core modules, one orphan
+  candidate (`persistence/sql-js.d.ts`), and two area-level reverse dependencies that
+  deserve staged refactoring (`workflow<->runtime`, `connectors<->intelligence`);
+- Work Discovery reaches into the concrete connector package catalog for source providers
+  and workbook materialization, so composition should eventually inject that registry;
+- the report planner is large but has a meaningful `ReportPlanningGateway` façade and
+  should not be split solely on line count; the WorkflowStore is broad but currently
+  provides a useful transaction seam and should be narrowed only with consumer evidence;
+- root test scripts reference 11 ignored local files under `test/connector-lab`,
+  `test/document-engine`, and `test/review-probes`, making those commands non-reproducible
+  from a clean checkout;
+- no production code, test code, configuration, generated artifact, or project file was
+  modified during the audit.
+
+Decision: KEEP the current layout as the baseline; implement only the ranked boundary
+changes above in separate behavior-preserving, test-first patches.
+
+## Current task: staged boundary refactor after architecture audit
+
+Implement the ranked architecture fixes in small red-green-refactor slices while
+preserving existing product behavior and the no-new-project-files constraint.
+
+Implementation order:
+- establish a clean-checkout test/evaluator boundary for commands currently backed only
+  by ignored local files;
+- remove the pure-contract `workflow`/`runtime` reverse dependency;
+- remove the type-level `connectors`/`intelligence` reverse dependency;
+- inject Work Discovery source providers and workbook materialization through existing
+  composition seams;
+- reassess the report planner and WorkflowStore only after dependency direction is
+  corrected, deleting code only when behavior and public-surface checks prove it unused.
+
+Each slice must have a public-seam test before implementation, use the smallest existing
+file boundary available, run focused tests and frozen regression checks, and leave no new
+files or speculative abstractions.
+
+Implementation baseline recorded at 2026-09-08T15:03:22.3287053+09:00: HEAD 17b75f7,
+working tree contains only the four existing harness records, architecture audit complete,
+Core build green, and no production implementation changes from this task.
+
+## Staged boundary refactor checkpoint
+
+Implementation finished at 2026-09-08T15:35:54.1413776+09:00 after the architecture audit. Existing files were used only; no project files were created.
+
+- Root test scripts no longer expose the ignored connector-lab commands, so remaining test targets resolve from tracked files.
+- Pure condition contracts now live under workflow; runtime keeps evaluation and the compatibility facade.
+- Connector source-listing handlers use a minimal connector-owned context; Intelligence policy types no longer flow into connector packages.
+- Work Discovery receives source providers and workbook materialization from application composition; its production code no longer imports the connector package catalog.
+- Remaining static dependency cycles were removed by moving shared type ownership to the owning modules. Dependency-cruiser now enforces no-circular and reports no actionable orphans; the raw graph still lists the intentional sql-js ambient declaration.
+- Knip now exits zero after removing an unused RDB type facade and recording explicit public-facade/workspace-tool exceptions.
+- Final verification passed: root tests, Core tests, Core/Desktop typecheck and build, evaluation, document-engine tests, architecture, Knip, clean-checkout preflight, and git diff check.
+
+The report planner and WorkflowStore were deliberately left intact because the audit found cohesive public seams and no consumer-scoped evidence that a split would reduce risk or complexity.
+
+Guardrail correction recorded at 2026-09-08T15:37:42.4335261+09:00: the no-orphans exception is limited to the known sql.js ambient declaration, while no-circular remains an enforced error.
+
+## Current task: repository-wide simplicity and maintainability pass
+
+Starting from the completed staged boundary refactor, perform a second repository-wide cleanup focused on measurable simplicity, cohesion, encapsulation, SOLID responsibilities, and runtime efficiency. The user has authorized broad cleanup, but the repository must remain behavior-compatible and no new project files may be created.
+
+Success criteria:
+- measure and review every remaining pass-through, duplicate implementation, dead internal surface, barrel, large responsibility, and avoidable hot-path allocation before deleting or merging it
+- reduce proven complexity or coupling with behavior-preserving patches; keep public package, connector, Electron IPC/preload, document-engine, and persistence seams unless consumer evidence supports a change
+- use existing tests as public-seam regression coverage and add cases only inside existing test files
+- preserve all user-facing report/workflow/discovery behavior and fail closed at integration boundaries
+- final Core/Desktop typechecks and builds, root/Core tests, evaluation, document-engine tests, Knip, architecture, and diff checks pass
+- no new project files, package-lock changes, generated artifacts, fixtures/gold changes, credential/app-state mutations, or external writes
+
+Non-goals:
+- no feature additions or semantic redesign of reporting, workflow execution, or connector policy solely for style
+- no planner/WorkflowStore split without consumer-scoped evidence that it lowers complexity
+- no abstraction added only for hypothetical reuse; a change must remove measured cost or clarify ownership
+
+Baseline recorded at 2026-09-08T15:57:05.7681330+09:00: the previous boundary refactor is present in the working tree; no new files are currently untracked. The next evaluator baseline is recorded separately before implementation.
+
+## Repository simplicity pass checkpoint
+
+Completed at 2026-09-08T16:18:22.3252065+09:00 from the frozen baseline. The review covered 1,526 current source files, 103 export/barrel surfaces, high fan-in modules, the largest planner/store responsibilities, production casts and hot-path serialization signals, Knip results, and the dependency graph. No production any/TODO markers or unused files were found by the available static checks.
+
+Kept changes:
+- workflow action and canvas schemas now share the existing JSON/binding preprocessors;
+- output contract input/output paths share the existing record and date guards;
+- database repositories use one documented readRow/readRows boundary instead of repeated query casts;
+- model evidence bounding caches serialized strings during truncation.
+
+The public root package, connector and Electron IPC/preload seams, document engine client, persistence services, report planner, and WorkflowStore remain intact because consumer and regression evidence did not justify a riskier split. Final verification passed: Core/Desktop typechecks and build, root/Core tests, evaluation, document-engine tests, Knip, architecture, and diff checks. No project files were created.
+
+Harness metadata cleanup recorded at 2026-09-08T16:26:37.5511960+09:00: evaluator.yaml and scope.yaml now parse as valid YAML; orphaned historical mapping keys were disambiguated without deleting append-only evidence, and runtime code was untouched.
+
+Final regression rerun recorded at 2026-09-08T16:29:24.7125486+09:00: Core/Desktop typechecks, build, root/Core tests, evaluation, document-engine tests, Knip, architecture, diff check, and harness YAML parsing all passed.
+
+## Current task: remove proven WorkflowStore pass-through modules
+
+The next cleanup slice targets only the internal `persistence/workflow-store/*` modules. They are imported solely by `WorkflowStore` and mostly forward arguments to repositories, so test whether removing that indirection makes the public persistence seam simpler without changing behavior.
+
+Success criteria:
+- verify every wrapper has no consumer outside `WorkflowStore` and identify any behavior beyond forwarding before deletion;
+- keep the public `WorkflowStore` class and all method behavior stable;
+- remove only wrappers proven to be accidental pass-throughs, keeping any real normalization at the class seam;
+- focused persistence/evaluation tests, Core typecheck, architecture, Knip, and diff checks pass;
+- no new project files, package-lock changes, generated artifacts, user files, or external writes.
+
+Non-goals:
+- no redesign of the public WorkflowStore interface;
+- no report planner split or unrelated persistence refactor;
+- no deletion of user-created untracked files.
+
+Baseline for this slice will be recorded before implementation.
+
+## WorkflowStore pass-through cleanup checkpoint
+
+Completed at 2026-09-08T18:07:33.9276472+09:00. The eight `persistence/workflow-store/*` files were imported only by `WorkflowStore` and contained forwarding adapters. Repository calls now sit directly behind the existing public class seam; the two meaningful discovery transforms (session upsert behavior and snapshot `table` stripping) remain in the class. `WorkflowStore` is 222 lines after the change, and no direct imports of the deleted paths remain.
+
+Focused persistence/evaluation tests (19 files, 47 tests), Core/Desktop typechecks, production build, root/Core tests, evaluation, document-engine tests, Knip, architecture, and diff checks all passed. The two user-created untracked research files were left untouched.
+## Current task: automation-market competitive boundary research
+
+Investigate AX Studio against n8n, Zapier, Claude Cowork, ChatGPT Work, and Grok Bot using first-party product sources and repository Work Discovery evidence. Update `docs/research/automation-market-comparison.md` only; do not modify production code or Figma.
+
+Success criteria:
+- The comparison covers authoring input, execution model, persistence/reuse, validation/replay, provenance/evidence, and approval/side-effect boundaries for all six products.
+- Every product claim has a direct official URL; every AX Studio claim has an exact repository path and line range.
+- The document ends with a concise, defensible capstone differentiation proposal and explicitly labels official-documentation gaps as gaps rather than proving absence.
+
+## Current task: large-module safety pass — report planner normalization
+
+Re-audit the largest cohesive production module before any structural split. Reduce proven accidental complexity inside `packages/core/src/documents/reporting/planner/planner.ts` by centralizing the repeated capture-plan normalization pipeline while preserving all existing planner seams and behavior.
+
+Success criteria:
+- confirm the repeated normalization sequence has the same ordering and inputs at every call site before changing it;
+- keep `ReportPlanner` and every exported planner repair/validation function available at the same path;
+- preserve fail-closed source, field, dataset, metadata, and table validation behavior;
+- focused planner/replay/source/evidence tests, Core/Desktop typechecks, build, root/Core tests, evaluation, document-engine tests, Knip, architecture, and diff checks pass;
+- no new project files, package-lock changes, generated artifacts, user files, or external writes.
+
+Non-goals:
+- no planner file split or new abstraction file;
+- no changes to report semantics, model prompts, source selection policy, or replay repair search;
+- no cleanup of unrelated modules while this slice is active.
+
+## Large-module planner checkpoint
+
+Completed at 2026-09-08T18:30:02.5111994+09:00. The planner audit measured the largest reporting modules (`planner.ts` 3,744 lines, `service.ts` 731 lines, `plan/schema.ts` 1,047 lines, and `plan/execute.ts` 563 lines). The planner's repair functions and orchestration form one existing public seam; no safe file destination or consumer-backed boundary justified a split in this slice. Four call sites did share the same capture-plan normalization order, so that order is now centralized in the existing planner file. Focused and full regression checks passed, and no project files were created.
+
+## Current task: large-module duplicate field-path traversal
+
+Remove the three equivalent field-path traversal implementations spread across the report planner and executor by reusing the existing `documents/reporting/plan/value.ts` seam. Preserve the current path normalization and fail-closed validation behavior.
+
+Success criteria:
+- confirm the three traversals have equivalent semantics for nested expressions, arrays, empty values, and field paths;
+- expose one existing-module helper and remove only the proven duplicates;
+- keep planner/executor exports, error codes, and report calculations unchanged;
+- focused planner/executor/value tests, Core/Desktop typechecks, build, root/Core tests, evaluation, document-engine tests, Knip, architecture, and diff checks pass;
+- no new project files, package-lock changes, generated artifacts, user files, or external writes.
+
+Non-goals:
+- no report calculation or schema behavior changes;
+- no service method extraction in this slice;
+- no planner or executor file split.
+
+## Large-module duplicate traversal checkpoint
+
+Completed at 2026-09-08T18:43:07.1784985+09:00. The same nested `kind: field` traversal existed in the executor, planner join inference, and planner replay table repair. The existing `plan/value.ts` seam now owns that traversal; the service orchestration was reviewed and left intact because its phase, cancellation, and checkpoint state cannot be extracted safely without a wider interface. Focused and full regression checks passed, and no project files were created.
+
+## Current task: README asset integrity
+
+Repair the broken local image reference in the root README by pointing it at the existing desktop UI asset. Verify every local image reference in all README files before and after the change, preserve the existing asset, and avoid creating files or changing production behavior.
+
+Success criteria:
+- the README image scan finds no missing local image targets across all repository README files;
+- the root README continues to display the existing AX Studio asset without adding or moving an image;
+- whitespace/diff validation passes and user-created untracked research files remain untouched;
+- no runtime, package, generated, or external-account changes are made.
+
+Non-goals:
+- no new image files or documentation assets;
+- no README content rewrite beyond the broken local path;
+- no production code refactor in this documentation-only slice.
+
+## README asset integrity checkpoint
+
+Completed at 2026-09-08T21:18:20.1981349+09:00. The root README now points to the existing `apps/desktop/src/ui/images/AX_Studio.png` asset. The repository-wide scan covers 13 README files and 22 local image references with zero missing targets; the PNG was visually inspected, no asset was created or moved, and pre-existing untracked research files were preserved.
+
+## Current task: large-module predicate specificity cleanup
+
+Remove the proven duplicate predicate-specificity traversal inside the existing report planner module. Preserve candidate ordering, tie-breaking, exported planner seams, and all replay/repair behavior; do not split the planner or introduce a new module.
+
+Success criteria:
+- the two identical predicate scoring implementations use one existing planner-module helper;
+- filter specificity weights, stable-order tie-breaking, and candidate budgets remain unchanged;
+- focused report planner/executor tests, Core typecheck, architecture, and diff checks pass;
+- no new files, README assets, user files, generated files, or external writes are introduced.
+
+Non-goals:
+- no planner/service/schema file split;
+- no changes to report semantics, candidate search breadth, prompts, or source policy;
+- no unrelated refactor outside the proven duplicate.
+
+## Large-module predicate specificity checkpoint
+
+Completed at 2026-09-08T21:28:33.4183920+09:00. The identical recursive filter scoring code now lives in one planner helper with the same `in: 3` and `compare: 1` weights; both consumers retain their original stable tie-break behavior. Focused and full regression checks passed. The document-engine suite passed with the repository virtualenv (50/50); the system Python lacks `pymupdf` and is not the project runtime. No new files or user-created files were changed.
+
+## Current task: repository-wide simplicity re-audit
+
+Re-audit the remaining repository after the completed cleanup slices. Inspect directory ownership, public boundaries, large cohesive modules, duplicate logic, dead exports/files, README links, generated artifacts, and test/runtime seams. Apply only evidence-backed deletions or consolidations that reduce accidental complexity without changing product behavior.
+
+Success criteria:
+- every kept cleanup has a concrete consumer or duplicate proof and remains within existing files/modules;
+- no user-created untracked documents, generated artifacts, package locks, credentials, or application state are changed;
+- dead-code, dependency-graph, README-integrity, typecheck, build, test, evaluation, document-engine, and whitespace checks pass after the final changes;
+- modules whose state ownership is cohesive remain intact when no safe consumer-backed seam exists;
+- no new project files are created.
+
+Non-goals:
+- no cosmetic formatting sweep or line-count-driven file split;
+- no speculative framework, abstraction, configurability, or dependency addition;
+- no product semantics, model prompts, connector policy, persistence format, or user-facing flow changes unless a verified defect requires it.
+
+## Repository-wide simplicity audit checkpoint
+
+Completed at 2026-09-08T21:56:45.9221219+09:00. The repository-wide pass kept only changes with direct duplicate, ownership, or dead-boundary evidence: HTTP URL redaction now belongs to the existing HTTP request normalization seam; repair validation reuses the canonical input-column schema; the table/input column type enum is defined once; and two empty source directories left by earlier moves were removed. The report planner, report service, schema, persistence, and work-discovery modules were reviewed and retained where their state ownership and public boundaries had no safe existing seam.
+
+Final verification passed: Core/Desktop typechecks, production build, serial root tests (manual webhook 3/3; Core 398 files passed, 1 skipped; 1,356 passed, 5 skipped), evaluation 11/11, document-engine 50/50, Knip, dependency architecture (1,166 modules, 4,017 dependencies, 0 violations), README local-image scan (13 README files, 1 local target, 0 missing), harness YAML parsing, and diff check. No new project files were created, and the two user-created research documents remain untouched.
+
+## Current task: safe production-module split for report repair domains
+
+Split the standalone replay-repair search and independent presentation-repair regions out of `packages/core/src/documents/reporting/planner/planner.ts` into cohesive planner modules while preserving the existing public planner import path and runtime behavior. Tests are excluded from this split; only production code is eligible.
+
+Success criteria:
+- the replay-repair input/result types and `repairExampleReplayInference` remain available from `planner.ts` at the same import path;
+- the extracted modules have no import cycle, own replay candidate generation/evaluation plus presentation repair responsibilities, and do not depend on `ReportPlanner` orchestration state;
+- report planner, replay, source, layout, and service behavior is unchanged;
+- planner production size is materially reduced without adding speculative abstractions;
+- focused and full regression checks, typechecks, build, evaluation, document-engine, Knip, architecture, harness YAML, and diff checks pass;
+- no test files, fixtures, user documents, generated artifacts, package locks, credentials, or external application state are changed.
+
+Non-goals:
+- no test-file split;
+- no ReportPlanner class redesign;
+- no changes to report semantics, replay search order, retry budget, model prompts, or persistence;
+- no broad formatting or naming rewrite.
+
+Baseline recorded at 2026-09-08T22:16:46.0609712+09:00 is established by the focused planner regression, Core typecheck, architecture check, and diff check before production extraction.
+
+## Safe report planner module split checkpoint
+
+Completed at 2026-09-08T22:33:00.5238720+09:00. The standalone replay repair search now lives in `replay-repair.ts`, and the independent presentation repair helpers live in `presentation-repair.ts`; `planner.ts` retains `ReportPlanner` orchestration and a typed facade/re-exports for the existing public import path. The shared `isRecordValue` guard uses the existing plan value seam. Focused report regression (149 tests), Core/Desktop typechecks, production build, serial full tests (398 files; 1,356 passed, 5 skipped), evaluation (11/11), document-engine (50/50), Knip, architecture (1,168 modules, 4,032 dependencies, 0 violations), YAML parsing, and diff checks passed. No test files, fixtures, user research documents, generated artifacts, package locks, credentials, application data, or external writes were changed.
+
+## Current task: real report-generation E2E benchmark
+
+Add a deterministic, local-only benchmark for the actual report generation service. The benchmark executes the production path from template/example PDFs through local HTTP and RDB capture, example replay verification, target calculation, PDF rendering, artifact storage, and independent PDF content validation. It complements the Work Discovery benchmark, which measures discovery and decision quality rather than the rendered report itself.
+
+Success criteria:
+- use the public `ReportGenerationService.generate` seam and the real Stdio document-engine client for pair analysis and PDF fill;
+- exercise local HTTP and RDB pagination, period parameters, joined report data, and Korean/text output without external side effects;
+- validate every independent gold scalar and expected table row, including the fixed-layout row omission class;
+- report success, replay, completeness, fidelity, safe-failure, and p50/p95 latency metrics without writing output into the repository;
+- negative cases fail closed without an artifact;
+- an npm command runs the benchmark and its documentation states scope and limitations;
+- existing Work Discovery benchmarks and user-created untracked research files remain untouched.
+
+Non-goals:
+- no production planner/service replacement;
+- no external credentials or real Gmail/Slack writes;
+- no committed binary fixtures or generated benchmark output;
+- no change to Work Discovery gold data.
+## Report generation E2E benchmark checkpoint
+
+Completed at 2026-09-08T23:26:16.3093609+09:00. The benchmark now runs the production `ReportGenerationService.generate` seam with the real Stdio document engine, a local paginated HTTP server, a paginated RDB connector fixture, independent PDF text verification, artifact storage, and a fail-closed overflow case. The frozen run passed all 3 cases: 2/2 positive PDFs, example replay 2/2, output completeness 1.0, template fidelity 1.0, safe failure 1/1, p50 1,821 ms, p95 1,965 ms. Core build, desktop build, Core typecheck/tests (398 files; 1,356 passed; 5 skipped), Work Discovery benchmark, document-engine 50/50, Knip, architecture, YAML, and diff checks passed. Generated PDFs and report JSON remain under `D:\ax\_test\report-generation-e2e`; no production report semantics or user-created research files changed.
+Latency observation correction: the repeat run at 2026-09-08T23:29:11.6565547+09:00 kept all correctness metrics at 1.0 and measured p50 1,692 ms / p95 1,862 ms. Latency is an observed sample and is intentionally not a correctness gate.
+
+## Current task: expand report-generation E2E behavior coverage
+
+The initial three-case report benchmark was a vertical smoke slice. Expand the
+same production-path evaluator so it catches realistic source-shape, pagination,
+layout, data-integrity, and safe-failure regressions without adding production
+abstractions or generated fixtures.
+
+Success criteria:
+- at least ten independent cases, including four positive paths and five expected safe failures;
+- positive coverage includes deep HTTP/RDB pagination, nested HTTP envelopes, colloquial user goals, and source-order invariance;
+- negative coverage includes empty periods, pagination contract violations, source outages/shape errors, incomplete/repeated RDB pages, join cardinality, and layout overflow;
+- literal independent gold remains separate from production calculation and every positive PDF is independently extracted and checked;
+- the benchmark report exposes positive/negative counts and covered behavior categories so case-count regression is visible;
+- existing report benchmark, Core build, document-engine, and diff checks remain green; no production semantics, user files, or external side effects are changed.
+
+Non-goals:
+- measuring LLM semantic discovery or provider quality;
+- adding live external API/database profiles, committed binary fixtures, or new production modules;
+- weakening existing success/failure gates to accommodate a new case.
+
+## Report-generation E2E coverage expansion checkpoint
+
+Completed at 2026-09-08T23:57:38.3630613+09:00. The benchmark now has 15 cases (6 positive, 9 safe-failure), including one-row pagination, nested REST envelopes, natural-language goal inputs, source-order invariance, empty periods, malformed/failed HTTP, incomplete/repeated RDB pages, duplicate join identities, and layout capacity. The full benchmark and independent PDF verifier passed with e2e/replay/completeness/fidelity/safe-failure rates all at 1.0. All-case latency was p50 595 ms / p95 1,973 ms; positive artifact latency was p50 1,865 ms / p95 1,973 ms, keeping expected safe failures from masking report-generation cost. The Korean-data experiment was not kept because the document-engine's platform-dependent font extraction made replay non-portable; the suite retains Korean labels and goals while keeping portable literal gold values.
+
+## Current task: harden high-risk data, scheduling, IPC, and runtime paths from QA report
+
+Patch the ten findings in AX_STUDIO_QA_0ea2a8a.md without treating the report as a full audit. Convert the reproduced failure patterns into regression tests first, then fix the production seams for WAL-safe data migration, scheduled-occurrence discovery, trusted IPC, database fallback classification, workbook parsing limits, provider verification, CI coverage, response deadlines, sql.js durability, and Electron lifecycle support.
+
+Success criteria:
+- QA-01 through QA-04 and QA-08 have deterministic regression tests that fail on the pre-patch behavior and pass after the patch.
+- Data migration creates a consistent SQLite snapshot before writing the migration marker and preserves retryability on failure.
+- Scheduler discovers due occurrences from one tick snapshot and persists pending occurrences so a long run does not drop a peer schedule.
+- Every privileged IPC handler uses sender, main-frame, and app-document validation; navigation accepts only the configured renderer document.
+- Database migration/schema errors surface and close the native connection; sql.js fallback is restricted to native-loader/ABI availability errors.
+- Workbook input has a bounded pre-parse policy and the dependency/CI changes are verified without weakening existing report-generation behavior.
+- HTTP response body reads obey the same deadline as headers; sql.js persistence has a maximum flush delay and closes deterministically.
+- Electron is moved to a supported release only after native DB, build, product smoke, and relevant tests pass; no blind major-version upgrade is kept.
+- Existing report E2E (15 cases), core tests/evaluation, desktop tests/typecheck, document-engine, architecture, and diff checks remain green.
+
+Non-goals:
+- no external provider credentials or side effects;
+- no changes to user-created research files or generated artifacts;
+- no blanket rewrite of unrelated modules;
+- no claim of full repository security certification.
+
+Baseline recorded at 2026-09-10T01:02:31.2073154+09:00: the focused pre-patch suite passed 7 files / 16 tests, including the currently missing failure regressions.
+
+## QA hardening checkpoint
+
+Completed at 2026-09-09T16:48:51.2156643Z (UTC). All ten findings from the supplied QA report are patched within the evidence-bound scope. WAL-backed legacy databases now require a SQLite backup snapshot before the migration marker; scheduled work is discovered into a durable occurrence queue; all privileged IPC handlers use sender/frame/document checks; database fallback is limited to native loader/ABI failures; workbook parsing uses the fixed SheetJS release and a pre-parse size cap; provider verification no longer depends on retired Haiku 3.5; CI covers Desktop, Python, and Windows; HTTP body reads share the header deadline; sql.js has a one-second maximum flush delay; and Electron is upgraded to 44.3.0.
+
+Verification: focused QA suite 7 files/35 tests, Desktop 22 files/74 tests, root webhook 3/3, Core 398 files/1,362 passed/5 skipped, eval 11/11, document-engine 50/50, report E2E 15/15 (6 positive/9 safe failures; completeness, fidelity, replay, and safe-failure 1.0), independent report verifier passed, deterministic product smoke 6/6, Desktop typecheck, production build, architecture check, harness YAML, and Windows NSIS packaging passed. npm audit --omit=dev reports no xlsx finding; remaining 11 production advisories are unrelated dependencies. No new repository files were created by this patch, and existing user-created untracked research files remain untouched.
+
+Known environment limitation: this Windows host has no Visual Studio C++ workload, so ensure-native-db.mjs cannot compile better-sqlite3 locally; it removes the incompatible binary and the application uses the tested sql.js fallback. CI's Windows job retains native preparation and packaging coverage.
+## Current task: functional and nonfunctional QA across the working tree
+
+Review the current repository and uncommitted changes against user-visible automation behavior and the QA report, then repair reproduced defects at existing public seams. Prior completion claims are evidence to recheck, not acceptance criteria.
+
+Review scope: inventory all tracked/unignored source paths; inspect high-risk execution/data flows across persistence, scheduling, desktop boundaries, connectors, discovery and documents. Record exact read scope and unresolved areas rather than claiming every file is reviewed from an inventory.
+
+Initial patch scope: existing database open/migration APIs and Scheduler.start/stop, existing regression files, existing harness records. Expand only for reproduced review findings. No new project files, user data mutations, or external side effects. Existing working-tree changes remain intact.
+
+Success: WAL state cannot be silently ignored by any sql.js entrypoint; initialization failures cannot schedule later file writes; queued schedules respect current activation/cancellation; tests exercise actual failure patterns before each fix. Final focused/full tests, evaluation, build/typechecks, document tests, report E2E and architecture checks must pass or show a concrete unresolved failure. Review deployment limitations explicitly.
+
+### Current review outcome (2026-09-12)
+
+This checkpoint supersedes the earlier implication that successful packaging established installed-app functionality. The review found additional defects and added adversarial regressions in existing files:
+- sql.js rejects WAL/journal-backed files, restores foreign keys after export, avoids persistence after failed initialization, and rolls back an open transaction on close while saving prior committed writes.
+- Legacy data migration uses Electron/Node's SQLite backup API (including real committed WAL rows), verifies the snapshot, and preserves failure retryability.
+- The scheduler rechecks global/workflow activation, acknowledges work completed during stop, and checks the queued trigger/version before running or deleting a workflow.
+- Approval resume defers nested actions to their conditional branch, preventing unconditional or duplicate sends.
+- Cancelled discovery cannot be reactivated by answering its old question; report views sort before projecting hidden sort columns; rejected oversized HTTP bodies are cancelled.
+- Delayed source/workflow reads cannot overwrite another chat after the user changes sessions.
+- Windows packaging includes a relocatable Python runtime and document worker. Package verification checks ASAR hashes, creates/reads a real PDF with the bundled Python without PATH, and opens the packaged app in isolated test mode. An initial packaging attempt was invalidated by our concurrent test-file whitespace edit; the verifier rejected the corrupt archive, and the complete pack command passed after inputs were held stable.
+
+Final executed checks: core 1,375 passed / 5 skipped; desktop 78 passed; Python 50 passed; evaluation 11 passed; report E2E 15 passed plus independent PDF verification; product UI 6 Playwright tests passed (including a generated 14-scenario batch); desktop typecheck, production build, architecture (1,168 modules / 4,041 dependencies / zero violations), and diff check passed. Full Windows pack command, bundled engine verification, archive integrity, and isolated packaged startup passed.
+
+Coverage limits: the 1,524-path inventory is not a claim of reading every file. The body review concentrates on the exact paths recorded below. Live model tests remain skipped; deterministic report tests do not measure live AI quality. UI smoke uses an isolated test profile and does not certify a clean-machine installer upgrade or real credential migration. This host still uses sql.js because the better-sqlite3 binary is unavailable; real native-backend crash/restart and multi-process durability are not certified. Windows x64 is the verified packaging target. Unrelated prior user changes and untracked files were preserved; no commit or push was performed.
+
+Body-reviewed production paths during this pass (some planner/schema and service files were read only for the indicated execution path; this is not exhaustive branch coverage):
+- packages/core/src/persistence/db/sqljs.ts
+- packages/core/src/persistence/db/runtime.ts
+- packages/core/src/persistence/db-native.ts
+- packages/core/src/persistence/db/schema.ts
+- packages/core/src/persistence/repositories/approval-repository.ts
+- packages/core/src/runtime/scheduler/service.ts
+- packages/core/src/runtime/execution/approval/resume.ts
+- packages/core/src/runtime/execution/approval/approved-actions.ts
+- packages/core/src/runtime/execution/approval/guards.ts
+- packages/core/src/runtime/execution/approval/snapshot.ts
+- packages/core/src/runtime/execution/sequence.ts
+- packages/core/src/runtime/execution/context.ts
+- packages/core/src/runtime/control-flow.ts
+- packages/core/src/workflow/control-flow.ts
+- packages/core/src/connectors/rdb/client.ts
+- packages/core/src/connectors/rdb/client/drivers.ts
+- packages/core/src/connectors/rdb/connector.ts
+- packages/core/src/connectors/local-sheet/read/xlsx.ts
+- packages/core/src/connectors/local-sheet/read/workbook.ts
+- packages/core/src/connectors/local-sheet/read/shared.ts
+- packages/core/src/documents/reporting/plan/execute.ts
+- packages/core/src/documents/reporting/plan/value.ts
+- packages/core/src/documents/reporting/plan/schema.ts (partial)
+- packages/core/src/documents/reporting/planner/planner.ts (partial)
+- packages/core/src/documents/reporting/planner/replay-repair.ts (partial)
+- packages/core/src/documents/reporting/planner/presentation-repair.ts (partial)
+- packages/core/src/documents/reporting/service.ts (dependency/identity path)
+- packages/core/src/documents/read/engine-client/paths.ts
+- packages/core/src/documents/read/engine-client/stdio/request.ts
+- packages/core/src/work-discovery/service.ts
+- packages/core/src/work-discovery/state-machine.ts
+- packages/core/src/work-discovery/pipeline.ts
+- packages/core/src/work-discovery/service/commands.ts
+- packages/core/src/work-discovery/service/contracts.ts
+- packages/core/src/work-discovery/service/publish.ts
+- packages/core/src/work-discovery/service/lifecycle/runner.ts
+- packages/core/src/work-discovery/service/lifecycle/state.ts
+- packages/core/src/work-discovery/pipeline/run.ts
+- packages/core/src/work-discovery/exploration/inventory.ts
+- packages/core/src/work-discovery/compile/blueprint.ts
+- packages/core/src/work-discovery/sources/index.ts
+- packages/core/src/work-discovery/clarification/answer-apply.ts
+- packages/core/src/work-discovery/clarification/question.ts
+- packages/core/src/intelligence/agent/commands/discovery-gateway/gateway.ts
+- packages/core/src/intelligence/agent/commands/discovery-gateway/handlers.ts
+- packages/core/src/application/bootstrap.ts
+- apps/desktop/electron/main/app-window.ts
+- apps/desktop/electron/main/fetch-timeout.ts
+- apps/desktop/electron/main/document-print.ts
+- apps/desktop/electron/main/data-migrate.ts
+- apps/desktop/electron/main/file-log.ts
+- apps/desktop/electron/main/index.ts
+- apps/desktop/electron/main/ai/api-verify.ts
+- apps/desktop/electron/main/startup/ready.ts
+- apps/desktop/electron/main/startup/lifecycle.ts
+- apps/desktop/electron/main/openapi/connection.ts
+- apps/desktop/electron/main/http/connection.ts
+- apps/desktop/electron/main/ipc/ipc-handle.ts
+- apps/desktop/electron/main/ipc/utility-handlers.ts
+- apps/desktop/electron/main/ipc/runtime-handlers/approval.ts
+- apps/desktop/electron/main/ipc/connection-handlers/mcp.ts
+- apps/desktop/electron/main/ipc/connection-handlers/http.ts
+- apps/desktop/electron/main/ipc/connection-handlers/openapi.ts
+- apps/desktop/electron/main/ipc/ai-handlers/testing.ts
+- apps/desktop/electron/main/ipc/ai-handlers/environment.ts
+- apps/desktop/electron/main/ipc/ai-handlers/inspection.ts
+- apps/desktop/electron/main/ipc/ai-handlers/provider.ts
+- apps/desktop/src/features/chat/hooks/useWorkspaceChat.ts
+- apps/desktop/src/features/chat/hooks/workspace-chat/message-actions.ts
+- apps/desktop/src/features/chat/hooks/workspace-chat/contracts.ts
+- apps/desktop/src/features/chat/hooks/workspace-chat/session-actions/load-actions.ts
+- apps/desktop/src/features/chat/hooks/workspace-chat/session-actions/lifecycle-actions.ts
+- packages/document-engine/src/worker.py
+- packages/document-engine/src/protocol.py
+- packages/document-engine/src/worker_engine/dispatch.py
+- packages/document-engine/src/worker_engine/ingest.py
+- packages/document-engine/src/adapters/basic.py
+- packages/document-engine/src/write/pdf_to_html_engine/roundtrip.py
+- scripts/document-engine-install.mjs
+- apps/desktop/scripts/ensure-native-db.mjs
+
+Supporting review: root instructions/context/ADR, CI/build/package configuration, associated regression tests, and report/product verification scripts. Remaining body-review work includes most renderer/canvas modules, remaining connectors and triggers, agent/planner branches and document-engine modules not named above. Test execution is broader than this manual review list.
+
+## Current task: resource lifecycle, dead code and cohesive structure
+
+User requests aggressive but safe refactoring/optimization. Preserve working-tree changes and persisted workflow compatibility. Remove proven-unused internal code and redundant forwarding layers; consolidate resource ownership and repair reproduced leaks/races. Do not add generic frameworks or weaken tests. Existing files may move when ownership becomes clearer; no extra harness/report files.
+
+Success: repeat operations without accumulating listeners/handles; release SQL statements on exceptions and stop after the requested first row; remove only code with verified reference/public-export checks; keep report and approval behavior unchanged. Measure deterministic resource counts/work counts rather than claiming heap stability from noisy one-off RSS. Baseline knip: one unlisted dependency (@electron/asar) and one unnecessary sql.js ignore. Prior full-suite results are baseline context; rerun final suites after changes.
+
+Resource refactor outcome: removed retained retrieval text cache and unused facade; bounded file reads/top hits; fixed SQL first-row evaluation and guaranteed statement release; flattened chat session actions with stale-completion guards; stopped poll reads without dropping already-started execution receipts; worker failures no longer trigger blocking host scans; indexed workflow reads and single timer ownership; repaired replaced-reservation acknowledgement. Full final core1382 (5 skipped), desktop80, Python50, eval11, report15 with independent verifier, deterministic UI6 (including14 generated scenarios), build/typecheck/knip/architecture and packaged integrity/startup passed. Synthetic retained-heap baseline29750112bytes versus final-286224bytes (GC noise),60hits unchanged;105ms versus115ms, no speedup claim. Manual review remains scoped to named modules; long-duration app leak soak and clean-machine upgrade remain unverified.
+
+## Active demo release completion audit
+Preserve the full user objective: review product code and verify many complex user scenarios until demo release is justified. Prior turn made progress via resource fixes and verified package. Next evidence gaps: integration runner stale paths, UI scenario semantics and breadth, repeated lifecycle behavior, real report/connector boundaries. Public seams already authorized: desktop UI, integration runner CLI and report/runtime interfaces. Do not count non-empty fake replies as capability correctness or mark release complete from smoke alone.
+
+User updated the release objective to include tests closer to actual human use. Keep all release requirements and add persona-driven real Electron UI conversations with ambiguous requests, observed follow-ups, attachments, cancellation and retries. Automated fake-model tests are supporting evidence only; record exact real-model/environment coverage and limitations.
+
+Human persona run current state: real Electron process driven from temporary controller C:/Users/plosind/AppData/Local/Temp/ax-demo-human-ui.cjs; isolated root C:/Users/plosind/AppData/Local/Temp/ax-demo-human-lwercr. User explicitly allows Slack ax테스트/ax테스트2/ax테스트3 and email to sinyeonjun9@gmail.com from sinyeonjun@gmail.com. User is connecting these in this test app; do not manipulate UI until connection handoff is complete. Live report chat602bf776-5c6f-4322-a7ed-c15e643e5193 stopped honestly requesting API GET/date/pagination metadata; source contract must be supplied through follow-up. Real loopback orders fixture at127.0.0.1:63001 and real SQLite customers.db are provisioned, PDFs template/example ready via real Docling. Further unrelated mail-triage chat asked criteria before taking action, zero attached sources. No external sends yet. Logs/session transcript and screenshot in isolated root; no invented full end-to-end success.
+
+Human persona update: both connections completed. Actual Slack marker B sent once to ax테스트2; cancelled marker A absent from all three permitted channels. Gmail marker C sent once from sinyeonjun@gmail.com to sinyeonjun9@gmail.com; cancelled marker D absent from SENT. Real report b83b0483 replayed 30 example slots and fetched all target pages, then failed on status field width. Scalar free-space and old-checkpoint refresh fixes pass focused tests; original real UI/PDF verification remains required. Earlier no-send/handoff state is superseded.
+
+Demo audit current evidence: integration runner selections fixed and41files85tests passed; deterministic UI61 scenarios plus prior repeat44 passed, with fake-model coverage labelled separately. Real Codex UI verified Slack send/cancel, Gmail send/cancel and packaged env-free Gmail lookup (HTTP200). Actual PDF pair + HTTP + SQLite report succeeded fresh(426119ms) and explicit failed-execution resume(247047ms); independently verified4customer rows and6scalar values, including manual review status, and visually inspected rendered PDF. Runtime/public command/pagination/chat/approval/layout/OAuth faults were reproduced and patched. Core1389 plus8skips; affected command/report137; Desktop92; Python51; eval11; report benchmark15; strict UI61; build/typecheck/knip/architecture/diff checks passed at their recorded revisions. Final late resume-intent patch has focused regressions and successful production build. Final Windows installer rebuilt, archive integrity/native document smoke/isolated packaged startup passed; main and PDF analyzer hashes match. Manual body review remains limited to recorded modules; clean-machine installer/upgrade and long-duration authenticated app heap soak are not established. No claim of all-code perfection or broad real-data success rate.
+
+Continuation classification: previous goal turn made progress through real packaged Gmail verification, two verified actual report PDFs, regressions and rebuilt installer. Current bounded continuation reviews trigger receive lifecycle and installer test availability. Success for trigger work: retired Slack connection callbacks cannot reach a newer connection, stale lookups cannot populate its channel labels, and overlapping lifecycle operations preserve the latest start/stop intent. Public seam: SlackSocketModeListener start/stop plus SDK transport events; no actual messages are sent. Clean Windows guest unavailable locally (no Sandbox executable, Get-VM or VBoxManage); continue code/QA work without claiming clean-machine proof.
+
+Slack receive audit: delayed channel-label lookup could deliver retired workspace events to a replacement callback and poison its cache; start could reopen a socket after a concurrent stop. Generation checks and synchronous state release fix both. Public transport lifecycle4 tests and broader Slack/trigger99 tests pass. Installer refresh running. User approved VirtualBox7.2.16 installation for clean Windows validation; host Windows11Home, firmware virtualization enabled, hypervisor present, about31GiB RAM and833GiB D-drive free. Downloaded Oracle-signed installer SHA256 matches official source. Clean guest verification is still not performed.
+
+Activity error feedback audit: while replacement VM installs, verify the public Activity screen handles bulk-delete IPC failure honestly and allows retry without losing displayed history or creating unhandled renderer rejections. This is a bounded user-visible recovery gap, not a redesign. Test seam remains the previously authorized real Electron UI with isolated fixture state and injected IPC failure; no user history is deleted.
+
+Packaged profile soak: verify a bounded 30-minute repeated-navigation session using the existing explicitly authorized Gmail/Slack test profile, with zero configured workflows and zero pending/running executions confirmed before launch. Use the real packaged runtime without fake-model flags, perform no sends or new AI requests, measure main/renderer heaps after GC and window/DOM/resource counts after warm-up. This does not prove every leak or every live connector operation; preserve that distinction.
+
+Post-reboot continuation: host restart terminated the original packaged soak after its warmup baseline; preserved its JSON/JSONL and restarted identical frozen workload into packaged-navigation-soak-after-reboot files. Installer SHA256 B95C7D22D8038202306A65A35782E5F542C1266830455AEFF637D3894CF59DEA unchanged. Replacement Windows setup disk failed EFI boot; preserved snapshot1fc7afe6-0db0-4fcc-8605-7b2937e0032c before recovery. Clean Windows install/upgrade proof remains pending.
+
+Additional body review this continuation: Gmail/Slack/Webhook/local-folder connection form hooks; WebhookConnectionForm; webhook IPC connection handlers and main webhook connection service; useAiBrandSettings; useAiDetection; ai-brand-settings initialization, selection, verification and configuration actions. Webhook port bounds are enforced at the main-process boundary despite the weaker renderer check; do not label that alone a missing validation bug. No new production patch from these reads. Full core regression is being rerun against the consolidated latest source; record actual verdict when complete.
+
+Consolidated post-reboot core regression completed:398 files1392 tests passed,1 file8 tests skipped (171.06s). Normal repository git diff --check exit0. Soak and clean-machine verification remain incomplete; no completion claim.
+
+AI provider form isolation: direct sidebar switches between Claude and GPT must not carry unsaved API key drafts, local success/error text or in-flight form state into the other provider. Verify through isolated real Electron UI, using dummy strings and fixture configuration only; no real provider request or credential write.
+
+Provider isolation defect reproduced in actual UI: Claude dummy key persisted in GPT input after direct sidebar switch. Added provider identity key to reset detail form state; same bidirectional UI regression passes, Activity regression also passes, desktop92/build/typecheck/diff checks pass. Existing installer B95C7 is now behind this one-line UI fix; rebuild and reverify package after ongoing immutable soak completes. No production installer overwrite during soak.
+
+AI detection recovery: unreadable AI configuration must produce one visible retryable error, preserve navigation, and emit no unhandled renderer rejection. Settings and sidebar must read the same recovered detection result. Verify through public Electron UI with rejecting configuration IPC, then restore fixture response and retry. No real connector or provider action.
+
+AI detection recovery completed at source level: single App-owned detection state now feeds sidebar and Settings; latest-request guard protects overlapping refreshes; caught failures display StateBanner and retry refreshes detection. Removed use-settings-detection.ts. Strict fake-model UI61 scenarios plus3 explicit UI regressions, desktop92, build/typecheck/knip/diff pass. Old packaged soak intentionally stopped after50cycles (partial evidence retained) because these changes affect resource ownership; installer rebuild running before starting current-candidate soak. VM recovery spinner state preserved in snapshot4bbd2d7f; blank-disk comparison uses Windows11-clean-retry.vdi with same VM/ISO/config; no clean-machine result yet.
+
+Current immutable candidate: installer EA7E6575BCEADCCFC3C507C8D3CF92047473C28B4F368DF847D321218B263EAA (214826256 bytes). Packaged PDF/native worker/archive/startup verifier passes. Candidate soak session11404 writes packaged-navigation-soak-candidate.json/JSONL; prior run50cycles intentionally superseded and retained. Blank-disk VM comparison now visibly enters Windows11 installation progress, unlike the preserved partial-disk recovery spinner. OS completion and standard-user installation/upgrade still pending.
+
+Upgrade validation baseline located: public v0.1.0-demo asset AX.Studio.Setup.0.1.0.exe downloaded outside repository and SHA256 matches GitHub digest7F61773CBE30ADB774A6B51F9D60873D13A99DDE2AB1DA71EE15E1FD3C7F5B0C. Use separate clean-OS snapshot branches for fresh candidate install and published-baseline-to-candidate upgrade. Verify unchanged data across installer replacement, then actual UI content after candidate startup. Preparation is not a runtime pass.
+
+Chat-list recovery slice: verify actual Electron UI when listing saved conversations fails. The user must see a recoverable error rather than an apparently empty history; retry must load the saved conversation. Use isolated public IPC failure injection and existing UI regression seam, no real profile mutation. VM stays running per latest user instruction; wait for the user to report Windows installation complete.
+
+2026-09-12 conversation-list audit: initial lookup failure previously produced no alert; reproduced and patched with visible recoverable state. A separate controlled overlap reproduced an older empty response replacing a newer list; latest request ownership now prevents it. Existing settings activation action had no source/test caller and was removed. Desktop92/typecheck/knip and five focused UI regressions pass. Full UI report and rebuilt installer evidence are pending. Current running soak intentionally continues on EA7 candidate; do not claim it includes these later edits.
+
+Read-only follow-up review: workflow preview/selection, graph-state lifecycle, draft-to-flow sequence/context/layout and canvas structure validators inspected. Chat selection resets when workflow state changes. Graph animation timers/RAF have cleanup. Candidate issues requiring separate reproduction: cyclic branch references can reach recursive preview emission (runtime contract cycle validation exists but preview validation is separate); a one-sided branch may omit the empty-path edge in its visual diagram. These are not yet validated fixes or completed QA.
+
+Workflow preview follow-up completed: one-sided conditional skip edges were missing and now rendered; reachable cycles reproduced stack overflow and full-app error UI. Iterative preview cycle detection now provides a local Korean error, preserving chat/navigation; rootless/self cycles are also detected. Graph10 cases and actual cyclic saved-workflow UI recovery pass. Full regression and final artifact refresh follow. No runtime compile/approval rules changed.
+
+Latest candidate after conversation and graph fixes: C:/Users/plosind/AppData/Local/Temp/ax-demo-final-candidate/AX Studio Setup 0.1.0.exe, SHA256 C8DD6AB8804C78B398EB3172B33EB2D7F2FC7E522E562DBAF6BCEEFC50D41AE4. Separate output preserves running EA7 soak. Final strict UI run-1789208064975:61 scenarios passed, plus6 focused public-UI regression tests; desktop22files97tests, typecheck, knip, diff, native PDF/import/worker/archive/isolated packaged startup pass. Current candidate not yet long-soaked or clean-Windows installed. User clarified VM issue means black display, not an error dialog; one snapshot-preserved recovery boot is being prepared.
+
+VM black-display recovery: user clarified there was no error dialog. Native screenshot remained black after wake input; VBox reported no bugcheck. Preserved running memory/disk snapshot5b93a1ef-68b7-459e-9601-6b059de5bd8b, performed one VM-only reset, then visually observed Windows installation94percent. Let installation complete; do not claim OS/AX installation passed yet. Existing external verifier still expects old EA7 installer and must be updated to final C8 candidate before guest verification. External soak helper now targets final C8 TEMP candidate and final.json/JSONL for NEXT invocation; current session11404 retains previously loaded EA7 paths and must finish/close first.
+
+User-directed closure (2026-09-12): User explicitly requested stop at the current work, organize it onto main, and finish. Do not expand QA scope or start another long soak/VM provisioning task. Finish running checks and package refresh, preserve evidence and unfinished verification, commit the authorized work, integrate/push main without force, and report exact final state. Full clean-machine installation/upgrade, final-candidate long soak and exhaustive whole-repository proof remain unverified; they are not claimed complete. VM currently installing and retained, with a snapshot before its recovery boot. Preserve unrelated user research files.
+
+Closure verification: EA7 predecessor authenticated installed-app navigation soak completed90cycles with passing fixed bounds (main heap -3,916,880bytes, renderer heap +534,708bytes, DOM nodes/documents/main listeners unchanged). This does not cover later UI changes or prove absence of all leaks. Final installer will be refreshed with corrected explicit-action/passive-refresh ordering; no new long soak or VM provisioning is started. VM clean-install/upgrade verification remains incomplete.
+
+Final retained source verification before main integration: desktop22files98tests, typecheck, knip, strict deterministic UI61of61 scenarios plus8 focused regressions (16 Playwright tests), NSIS build, native document PDF/import/worker check, package archive integrity and isolated startup all passed. UI evidence: test/product-qa/runs/run-1789209605067/report.json. Final installer: C:/Users/plosind/AppData/Local/Temp/ax-demo-final-candidate/AX Studio Setup 0.1.0.exe. SHA25695BCFBAA9F6317AD0FC82CE2230D41BFBCC6B78FDD01FEBBBAA6D96F734A9436; app.asar63B9272E12B94A6B70D2956D1B17363B9B90677B0FEC396EBB8179556356F4B5. Installer remains unsigned. Earlier intermediate C8 and increment-on-execution candidates are superseded. Prior core1392pass/8skips evidence remains scoped to unchanged core behavior; only trailing EOF whitespace was removed afterward. Preserve docs/research/automation-market-comparison.md and docs/research/problem-slide-evidence.md outside this commit. User-directed endpoint is commit/integrate/push current verified work to main, not completion of deferred exhaustive release validation.

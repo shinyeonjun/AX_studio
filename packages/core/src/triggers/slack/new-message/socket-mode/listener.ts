@@ -36,8 +36,10 @@ export class SlackSocketModeListener {
     onEvent: SlackSocketEventHandler,
     onStateChange?: PushTransportStateHandler,
   ): Promise<void> {
-    await this.stop();
-    const generation = ++this.lifecycleGeneration;
+    const stopping = this.stop();
+    const generation = this.lifecycleGeneration;
+    await stopping;
+    if (generation !== this.lifecycleGeneration) return;
 
     this.onEvent = onEvent;
     this.onStateChange = onStateChange;
@@ -87,6 +89,7 @@ export class SlackSocketModeListener {
 
     this.client.on('events_api', async ({ event, ack }) => {
       await ack();
+      if (generation !== this.lifecycleGeneration) return;
       if (!isUserMessage(event as Record<string, unknown>)) return;
 
       const message = event as {
@@ -98,7 +101,8 @@ export class SlackSocketModeListener {
       };
 
       const channelId = message.channel;
-      const channel = await this.resolveChannelLabel(channelId);
+      const channel = await this.resolveChannelLabel(channelId, generation);
+      if (generation !== this.lifecycleGeneration) return;
 
       this.onEvent?.({
         type: 'slack.new_message',
@@ -132,23 +136,21 @@ export class SlackSocketModeListener {
   async stop(): Promise<void> {
     this.lifecycleGeneration += 1;
     const client = this.client;
-    if (client) {
-      await client.disconnect();
-    }
-    if (this.client === client) this.client = undefined;
+    this.client = undefined;
     this.web = undefined;
     this.onEvent = undefined;
     this.onStateChange = undefined;
     this.lastSocketError = undefined;
     this.lastLoggedSocketError = undefined;
     this.channelLabels.clear();
+    if (client) await client.disconnect();
   }
 
   isRunning(): boolean {
     return this.client?.websocket?.isActive() ?? false;
   }
 
-  private async resolveChannelLabel(channelId: string): Promise<string> {
+  private async resolveChannelLabel(channelId: string, generation: number): Promise<string> {
     const cached = this.channelLabels.get(channelId);
     if (cached) return cached;
 
@@ -156,7 +158,7 @@ export class SlackSocketModeListener {
       const response = await this.web?.conversations.info({ channel: channelId });
       const name = response?.channel?.name;
       const label = name ? `#${name}` : channelId;
-      this.channelLabels.set(channelId, label);
+      if (generation === this.lifecycleGeneration) this.channelLabels.set(channelId, label);
       return label;
     } catch {
       return channelId;

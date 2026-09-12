@@ -13,6 +13,9 @@ export function createDiscoveryCommandGateway(
     artifactStore: options.artifactStore,
     resolveConnectionConfig: options.resolveConnectionConfig,
     snapshotDir: options.snapshotDir,
+    sourceRegistry: options.sourceRegistry,
+    sourceProviders: options.sourceProviders,
+    materializeWorkbook: options.materializeWorkbook,
     sourceReadsMax: options.sourceReadsMax,
     autoResume: options.autoResume,
   });

@@ -1,7 +1,8 @@
 {
   "appId": "com.axstudio.desktop",
   "productName": "AX Studio",
-  "electronVersion": "34.5.8",
+  "electronVersion": "44.3.0",
+  "npmRebuild": false,
   "electronDist": "../../node_modules/electron/dist",
   "directories": {
     "output": "release",
@@ -17,6 +18,9 @@
     }
   ],
   "asar": true,
+  "extraResources": [
+    { "from": "../../packages/document-engine/out/document-engine", "to": "document-engine", "filter": ["**/*"] }
+  ],
   "win": {
     "target": [
       {

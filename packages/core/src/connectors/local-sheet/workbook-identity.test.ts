@@ -1,8 +1,9 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, truncateSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
+import { MAX_WORKBOOK_BYTES } from './profile.js';
 import { readWorkbookFromPath } from './read/workbook.js';
 
 describe('readWorkbookFromPath workbook identity', () => {
@@ -50,5 +51,13 @@ describe('readWorkbookFromPath workbook identity', () => {
 
     expect(after.workbook.id).not.toBe(before.workbook.id);
     expect(after.workbook.sheets[0]?.tables[0]?.artifactId).not.toBe(before.workbook.sheets[0]?.tables[0]?.artifactId);
+  });
+
+  it('rejects an oversized workbook before hashing or parsing it', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'ax-sheet-read-')), 'oversized.xlsx');
+    writeFileSync(path, '');
+    truncateSync(path, MAX_WORKBOOK_BYTES + 1);
+
+    expect(() => readWorkbookFromPath(path)).toThrow('스프레드시트 파일이 너무 큽니다');
   });
 });

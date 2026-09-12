@@ -1,23 +1,31 @@
-import { readFileSync } from 'node:fs';
+import { openSync, readSync, closeSync } from 'node:fs';
 import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
 import { resolveFolderRoot } from '../../platform/local-folder-path.js';
 import { scanFolder } from '../../platform/local-folder-scan.js';
 import { localFileSourceRef } from './file-ref.js';
 import type { IndexedChunk } from './types.js';
+import { isChunkFresh } from './stale.js';
 
 const INDEXABLE_EXTENSIONS = new Set(['.txt', '.md', '.markdown', '.json', '.csv', '.log']);
 const MAX_FILE_BYTES_FOR_INDEX = 512_000;
 const MAX_CHUNK_CHARS = 2_000;
 
 function readBoundedText(filePath: string): string | null {
+  let fd: number | undefined;
   try {
-    const raw = readFileSync(filePath);
-    if (raw.byteLength > MAX_FILE_BYTES_FOR_INDEX) {
-      return raw.subarray(0, MAX_FILE_BYTES_FOR_INDEX).toString('utf8');
+    fd = openSync(filePath, 'r');
+    const raw = Buffer.allocUnsafe(MAX_FILE_BYTES_FOR_INDEX);
+    let length = 0;
+    while (length < raw.length) {
+      const count = readSync(fd, raw, length, raw.length - length, length);
+      if (count === 0) break;
+      length += count;
     }
-    return raw.toString('utf8');
+    return raw.subarray(0, length).toString('utf8');
   } catch {
     return null;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 
@@ -38,17 +46,16 @@ export function buildSnippet(text: string, tokens: string[]): string {
   return excerptAroundMatch(text, tokens).slice(0, MAX_CHUNK_CHARS);
 }
 
-export function buildFolderIndex(
+export function* iterateFolderChunks(
   folder: LocalFolderEntry,
   options?: { minFileBytes?: number },
-): IndexedChunk[] {
+): Generator<IndexedChunk> {
   const root = resolveFolderRoot(folder.path);
-  if (!root.ok) return [];
+  if (!root.ok) return;
 
   const minFileBytes = options?.minFileBytes ?? 0;
   const scanned = scanFolder(folder.path);
   const indexedAt = new Date().toISOString();
-  const chunks: IndexedChunk[] = [];
 
   for (const file of scanned) {
     if (!INDEXABLE_EXTENSIONS.has(file.extension)) continue;
@@ -57,7 +64,7 @@ export function buildFolderIndex(
     const text = readBoundedText(file.filePath);
     if (!text?.trim()) continue;
 
-    chunks.push({
+    const chunk: IndexedChunk = {
       folderId: folder.id,
       filePath: file.filePath,
       fileName: file.fileName,
@@ -69,10 +76,8 @@ export function buildFolderIndex(
         indexedAt,
         staleAfter: file.modifiedAt,
       },
-    });
+    };
+    if (isChunkFresh(chunk, folder.path)) yield chunk;
   }
 
-  return chunks;
 }
-
-export { excerptAroundMatch };

@@ -1,5 +1,17 @@
-import type { WorkspaceChatContext } from '../contracts';
-import { detachActiveRequest, invalidateSession } from './helpers';
+import type { WorkspaceChatContext } from './contracts';
+
+export function invalidateSession(ctx: WorkspaceChatContext): void {
+  ctx.refs.sessionEpochRef.current += 1;
+  ctx.refs.sourceBusyRef.current = false;
+  ctx.setSourceBusy(false);
+}
+
+export function detachActiveRequest(ctx: WorkspaceChatContext): void {
+  ctx.refs.activeRequestIdRef.current = undefined;
+  ctx.refs.busyRef.current = false;
+  ctx.setBusy(false);
+  ctx.setProgress('');
+}
 
 export function createWorkspaceLifecycleActions(ctx: WorkspaceChatContext) {
   const reset = () => {
@@ -16,14 +28,8 @@ export function createWorkspaceLifecycleActions(ctx: WorkspaceChatContext) {
     ctx.setEditHint(null);
     ctx.setWorkflowRegistered(false);
     ctx.setWorkspaceSources([]);
-    ctx.setSourceBusy(false);
-    ctx.refs.sourceBusyRef.current = false;
     ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
   };
 
-  const startNewChat = () => {
-    reset();
-  };
-
-  return { reset, startNewChat };
+  return { reset, startNewChat: reset };
 }

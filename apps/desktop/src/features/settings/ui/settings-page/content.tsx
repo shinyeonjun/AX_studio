@@ -1,5 +1,4 @@
 import { brandFromSettingsScreen } from '../../../../ui/constants/settings';
-import type { useAiDetection } from '../../hooks/ai-settings/useAiDetection';
 import { AiBrandDetail } from '../ai/AiBrandDetail';
 import { SlackConnectionForm } from '../connectors/SlackConnectionForm';
 import { GmailConnectionForm } from '../connectors/GmailConnectionForm';
@@ -14,7 +13,6 @@ import type { SettingsPageProps } from './contracts';
 
 type SettingsPageContentProps = SettingsPageProps & {
   detecting: boolean;
-  detection: ReturnType<typeof useAiDetection>;
 };
 
 export function SettingsPageContent({
@@ -58,6 +56,7 @@ export function SettingsPageContent({
       )}
       {detailBrand && (
         <AiBrandDetail
+          key={detailBrand}
           brand={detailBrand}
           state={state}
           detecting={detecting}

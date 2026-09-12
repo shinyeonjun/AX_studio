@@ -10,6 +10,24 @@ import { inventorySources } from './inventory.js';
 import type { OutputObservation } from '../observation/schema.js';
 
 describe('inventorySources', () => {
+  it('builds from an injected provider registry instead of a concrete connector catalog', () => {
+    const provider = {
+      connector: 'fake_source',
+      listSources: async () => [],
+      profileSource: async () => null,
+    };
+
+    const registry = createDefaultDiscoverySourceRegistry({
+      providers: [provider],
+      materializeWorkbook: () => ({
+        workbook: {} as never,
+        tables: {},
+      }),
+    });
+
+    expect(registry.forConnector('fake_source')).toBe(provider);
+  });
+
   it('profiles input artifact sources within budget', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ax-discovery-'));
     const snapshotDir = join(dir, 'snapshots');
@@ -33,7 +51,23 @@ describe('inventorySources', () => {
       required: true,
     }];
 
-    const registry = createDefaultDiscoverySourceRegistry(store, artifactStore);
+    const registry = createDefaultDiscoverySourceRegistry({
+      materializeWorkbook: () => {
+        const table = {
+          id: 'table_input',
+          kind: 'table',
+          columns: [
+            { name: 'amount', type: 'number' },
+            { name: 'product', type: 'string' },
+          ],
+          rows: [{ amount: 100, product: 'A' }, { amount: 100, product: 'B' }],
+        } as never;
+        return {
+          workbook: { sheets: [{ name: 'Sheet1', tables: [{ artifactId: 'table_input' }] }] } as never,
+          tables: { table_input: table },
+        };
+      },
+    });
     const result = await inventorySources(registry, {
       store,
       artifactStore,

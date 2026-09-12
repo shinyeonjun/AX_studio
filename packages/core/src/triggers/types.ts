@@ -22,6 +22,7 @@ export interface TriggerCursor {
 export type TriggerTransport = 'poll' | 'push';
 
 export interface TriggerPollContext {
+  abortSignal?: AbortSignal;
   workflowId: string;
   trigger: Trigger;
   cursor: TriggerCursor;

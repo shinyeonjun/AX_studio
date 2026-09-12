@@ -156,6 +156,28 @@ def _span_payload(span: _Span) -> dict[str, Any]:
     }
 
 
+def _scalar_payload(span: _Span, page: Any, text_spans: list[_Span]) -> dict[str, Any]:
+    payload = _span_payload(span)
+    x0, y0, x1, y1 = span.rect
+    right = float(page.mediabox.width)
+    obstacles = [other.rect for other in text_spans if other != span]
+    obstacles.extend(tuple(image["bbox"]) for image in page.get_image_info())
+    for left, top, _, bottom in obstacles:
+        if top < y1 and bottom > y0 and left >= x1:
+            right = min(right, left - 2)
+    for drawing in page.get_drawings():
+        left, top, edge, bottom = drawing["rect"]
+        if top < y1 and bottom > y0:
+            if left >= x1:
+                right = min(right, left - 2)
+            elif left <= x0 and edge >= x1:
+                right = min(right, edge - 2)
+    # A historical word's glyph bounds are not the field's available width.
+    # Keep its identity and height, expanding only into unobstructed space.
+    payload["rect"]["width"] = round(max(x1, right) - x0, 3)
+    return payload
+
+
 def _rows(spans: list[_Span]) -> list[list[_Span]]:
     rows: list[list[_Span]] = []
     for span in sorted(spans, key=lambda value: (value.page_index, value.rect[1], value.rect[0])):
@@ -540,13 +562,16 @@ def analyze_pdf_report_pair(
         _validate_pair(template, example)
         dynamic: list[_Span] = []
         template_spans_by_page: list[list[_Span]] = []
+        example_spans_by_page: list[list[_Span]] = []
         pages: list[dict[str, Any]] = []
         for page_index in range(len(template)):
             template_spans = _page_spans(template[page_index], page_index)
             template_spans_by_page.append(template_spans)
+            example_spans = _page_spans(example[page_index], page_index)
+            example_spans_by_page.append(example_spans)
             dynamic.extend(
                 _dynamic_spans(
-                    _page_spans(example[page_index], page_index),
+                    example_spans,
                     template_spans,
                 )
             )
@@ -568,7 +593,9 @@ def analyze_pdf_report_pair(
             key=lambda group: (group["rows"][0]["pageIndex"], group["rows"][0]["y"]),
         )
         scalar_slots = [
-            _span_payload(span)
+            _scalar_payload(span, template[span.page_index], [
+                *template_spans_by_page[span.page_index], *example_spans_by_page[span.page_index],
+            ])
             for span in remaining
             if _slot_id(span) not in fallback_slot_ids
         ]

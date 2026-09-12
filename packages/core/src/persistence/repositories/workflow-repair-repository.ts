@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 import type { WorkflowRepairProposalRow } from '../rows.js';
 import {
   emptyRepairReplaySummary,
@@ -37,9 +38,7 @@ function mapRow(row: WorkflowRepairProposalRow): RepairProposal {
 }
 
 function rowFor(db: AppDatabase, id: string): WorkflowRepairProposalRow | undefined {
-  return db.prepare('SELECT * FROM workflow_repair_proposals WHERE id = ?').get(id) as
-    | WorkflowRepairProposalRow
-    | undefined;
+  return readRow<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals WHERE id = ?'), id);
 }
 
 export function getWorkflowRepairProposal(db: AppDatabase, id: string): RepairProposal | undefined {
@@ -52,13 +51,13 @@ export function listWorkflowRepairProposals(
   options: { workflowId?: string; status?: RepairProposal['status'] } = {},
 ): RepairProposal[] {
   const rows = options.workflowId && options.status
-    ? db.prepare('SELECT * FROM workflow_repair_proposals WHERE workflow_id = ? AND status = ? ORDER BY created_at ASC, id ASC').all(options.workflowId, options.status)
+    ? readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals WHERE workflow_id = ? AND status = ? ORDER BY created_at ASC, id ASC'), options.workflowId, options.status)
     : options.workflowId
-      ? db.prepare('SELECT * FROM workflow_repair_proposals WHERE workflow_id = ? ORDER BY created_at ASC, id ASC').all(options.workflowId)
+      ? readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals WHERE workflow_id = ? ORDER BY created_at ASC, id ASC'), options.workflowId)
       : options.status
-        ? db.prepare('SELECT * FROM workflow_repair_proposals WHERE status = ? ORDER BY created_at ASC, id ASC').all(options.status)
-        : db.prepare('SELECT * FROM workflow_repair_proposals ORDER BY created_at ASC, id ASC').all();
-  return (rows as unknown as WorkflowRepairProposalRow[]).map(mapRow);
+        ? readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals WHERE status = ? ORDER BY created_at ASC, id ASC'), options.status)
+        : readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals ORDER BY created_at ASC, id ASC'));
+  return rows.map(mapRow);
 }
 
 export function createWorkflowRepairProposal(
@@ -71,9 +70,10 @@ export function createWorkflowRepairProposal(
 ): RepairProposal {
   const candidates = params.candidates.map((candidate) => RepairProposalSchema.shape.candidates.element.parse(candidate));
   const dedupeKey = repairDedupeKey(params.workflowId, params.baseVersion, candidates);
-  const existing = db.prepare('SELECT * FROM workflow_repair_proposals WHERE dedupe_key = ?').get(dedupeKey) as
-    | WorkflowRepairProposalRow
-    | undefined;
+  const existing = readRow<WorkflowRepairProposalRow>(
+    db.prepare('SELECT * FROM workflow_repair_proposals WHERE dedupe_key = ?'),
+    dedupeKey,
+  );
   if (existing) return mapRow(existing);
 
   const now = new Date().toISOString();

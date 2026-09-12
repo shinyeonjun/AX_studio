@@ -1,6 +1,6 @@
 import { getTriggerHandler } from '../../../triggers/registry.js';
 import { matchesTriggerFilter } from '../../../triggers/filter.js';
-import type { TriggerCursor } from '../../../triggers/types.js';
+import type { TriggerCursor, TriggerPollResult } from '../../../triggers/types.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 import type { ExecutionResult } from '../../types.js';
 import {
@@ -22,6 +22,24 @@ interface PollWorkflowParams {
   trigger: Trigger;
   cursor: TriggerCursor;
   state: TriggerPollState;
+  abortSignal?: AbortSignal;
+}
+
+async function awaitPollRead(
+  read: () => Promise<TriggerPollResult>,
+  signal?: AbortSignal,
+): Promise<TriggerPollResult | undefined> {
+  if (signal?.aborted) return undefined;
+  let onAbort: (() => void) | undefined;
+  try {
+    const cancelled = new Promise<undefined>((resolve) => {
+      onAbort = () => resolve(undefined);
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+    return await Promise.race([read(), cancelled]);
+  } finally {
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
+  }
 }
 
 export async function pollTriggerWorkflow({
@@ -32,18 +50,20 @@ export async function pollTriggerWorkflow({
   trigger,
   cursor,
   state,
+  abortSignal,
 }: PollWorkflowParams): Promise<boolean> {
   const handler = getTriggerHandler(trigger.type);
   if (!handler?.poll) return true;
 
   try {
-    const pollResult = await handler.poll({
+    const pollResult = await awaitPollRead(() => handler.poll!({
       workflowId,
       trigger,
       cursor,
       connectors: options.runtime.connectors,
-    });
-    if (!options.isCurrentGeneration(generation)) return false;
+      abortSignal,
+    }), abortSignal);
+    if (!pollResult || abortSignal?.aborted || !options.isCurrentGeneration(generation)) return false;
 
     let processedCursor: TriggerCursor = {
       ...cursor,

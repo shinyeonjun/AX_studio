@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../../db.js';
+import { readRow, readRows } from '../../db/types.js';
 import type { DiscoverySessionState } from '../../../work-discovery/schema.js';
 import { parseDiscoverySessionState } from './parsing.js';
 
@@ -40,17 +41,18 @@ export function updateDiscoverySession(db: AppDatabase, state: DiscoverySessionS
 }
 
 export function getDiscoverySession(db: AppDatabase, sessionId: string): DiscoverySessionState | undefined {
-  const row = db.prepare('SELECT state_json FROM work_discovery_sessions WHERE id = ?').get(sessionId) as
-    | { state_json?: string }
-    | undefined;
+  const row = readRow<{ state_json?: string }>(
+    db.prepare('SELECT state_json FROM work_discovery_sessions WHERE id = ?'),
+    sessionId,
+  );
   if (!row?.state_json) return undefined;
   return parseDiscoverySessionState(row.state_json, sessionId);
 }
 
 export function listDiscoverySessions(db: AppDatabase): DiscoverySessionState[] {
-  const rows = db.prepare(
+  const rows = readRows<{ id: string; state_json?: string }>(db.prepare(
     'SELECT id, state_json FROM work_discovery_sessions ORDER BY updated_at ASC, id ASC',
-  ).all() as Array<{ id: string; state_json?: string }>;
+  ));
   return rows
     .filter((row): row is { id: string; state_json: string } =>
       typeof row.state_json === 'string' && row.state_json.length > 0)

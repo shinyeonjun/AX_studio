@@ -1,6 +1,5 @@
-import type { RdbConnectionConfig } from '../connector.js';
 import { formatRdbTableRef } from './table-ref.js';
-import type { RdbTableInfo, RdbTableRef } from './types.js';
+import type { RdbConnectionConfig, RdbTableInfo, RdbTableRef } from './types.js';
 
 /**
  * Resolve an unqualified table against the only explicitly allowed schema.

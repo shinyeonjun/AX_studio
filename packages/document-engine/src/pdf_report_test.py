@@ -149,6 +149,39 @@ class PdfReportPairTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "report_pair_page_count_mismatch"):
                 analyze_pdf_report_pair(template, example, root / "artifacts")
 
+    def test_scalar_uses_free_template_space_without_crossing_a_border_or_label(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, filled in (("template", False), ("example", True)):
+                document = canvas.Canvas(str(root / f"{name}.pdf"), pagesize=A4)
+                document.setFont("Helvetica", 8)
+                document.drawString(48, 740, "Status")
+                document.rect(110, 730, 80, 25, stroke=1, fill=0)
+                document.drawString(200, 740, "Protected label")
+                if filled:
+                    document.drawString(120, 740, "PASS")
+                document.showPage()
+                document.save()
+            pair = analyze_pdf_report_pair(root / "template.pdf", root / "example.pdf", root / "artifacts")
+            slot = pair["scalarSlots"][0]
+            result = fill_pdf_form(root / "template.pdf", {
+                "schemaVersion": 1, "coordinateSpace": "pdf-user-top-left-unrotated",
+                "sourceHash": pair["templateHash"], "pageCount": 1, "pages": pair["pages"],
+                "mode": "overlay", "fields": [{**slot, "name": slot["id"], "type": "text", "source": "layout_hint"}],
+            }, {slot["id"]: "Pending review"}, root / "filled.pdf")
+            self.assertTrue(result["verified"])
+            self.assertLessEqual(slot["rect"]["x"] + slot["rect"]["width"], 188)
+            with pymupdf.open(result["outputPath"]) as document:
+                text = document[0].get_text()
+                self.assertIn("Pending review", text)
+                self.assertEqual(text.count("Protected label"), 1)
+            with self.assertRaisesRegex(ValueError, "field_text_overflow"):
+                fill_pdf_form(root / "template.pdf", {
+                    "schemaVersion": 1, "coordinateSpace": "pdf-user-top-left-unrotated",
+                    "sourceHash": pair["templateHash"], "pageCount": 1, "pages": pair["pages"],
+                    "mode": "overlay", "fields": [{**slot, "name": slot["id"], "type": "text", "source": "layout_hint"}],
+                }, {slot["id"]: "This value cannot fit inside the bordered field " * 10}, root / "overflow.pdf")
+
     def test_uses_template_row_geometry_to_split_adjacent_tables_and_keep_capacity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

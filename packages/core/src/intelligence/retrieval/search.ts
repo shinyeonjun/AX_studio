@@ -1,9 +1,6 @@
 import type { SearchHit } from '../../platform/knowledge.js';
-import { buildSnippet } from './indexer.js';
-import { filterFreshChunks } from './stale.js';
-import { getFolderIndex, replaceFolderIndex } from './store.js';
+import { buildSnippet, iterateFolderChunks } from './indexer.js';
 import type { IndexedChunk } from './types.js';
-import { buildFolderIndex } from './indexer.js';
 import type { LocalFolderEntry } from '../../platform/local-folder-config.js';
 
 function tokenizeQuery(query: string): string[] {
@@ -35,7 +32,6 @@ function toSearchHit(chunk: IndexedChunk, tokens: string[], score: number): Sear
 export interface FolderSearchOptions {
   limit?: number;
   minFileBytes?: number;
-  rebuild?: boolean;
 }
 
 export function searchLocalFolder(
@@ -43,26 +39,18 @@ export function searchLocalFolder(
   query: string,
   options?: FolderSearchOptions,
 ): SearchHit[] {
-  const limit = Math.min(Math.max(options?.limit ?? 8, 1), 20);
+  const limit = Math.trunc(Math.min(Math.max(options?.limit ?? 8, 1), 20));
+  if (!Number.isFinite(limit)) return [];
   const tokens = tokenizeQuery(query);
   if (!tokens.length) return [];
 
-  let chunks = getFolderIndex(folder.id);
-  if (!chunks.length || options?.rebuild === true) {
-    chunks = buildFolderIndex(folder, { minFileBytes: options?.minFileBytes });
-    replaceFolderIndex(folder.id, chunks);
+  const ranked: SearchHit[] = [];
+  for (const chunk of iterateFolderChunks(folder, { minFileBytes: options?.minFileBytes })) {
+    const score = scoreChunk(chunk, tokens);
+    if (score <= 0 || (ranked.length === limit && score <= ranked[ranked.length - 1]!.score)) continue;
+    ranked.push(toSearchHit(chunk, tokens, score));
+    ranked.sort((a, b) => b.score - a.score);
+    if (ranked.length > limit) ranked.pop();
   }
-
-  const fresh = filterFreshChunks(chunks, folder.path);
-  if (fresh.length !== chunks.length) {
-    replaceFolderIndex(folder.id, fresh);
-  }
-
-  const ranked = fresh
-    .map((chunk) => ({ chunk, score: scoreChunk(chunk, tokens) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-  return ranked.map((entry) => toSearchHit(entry.chunk, tokens, entry.score));
+  return ranked;
 }

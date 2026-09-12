@@ -7,7 +7,7 @@ import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-respon
 import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
 import type { Connector, ConnectorContext } from '../../connectors/types.js';
 import { ReportGenerationService } from './service.js';
-import { ReportCheckpointStore } from './checkpoints.js';
+import { ReportCheckpointStore, reportDigest } from './checkpoints.js';
 import { ReportSourceReplanRequired, type ReportSourceNeed, type ReportCaptureInference } from './planner/schema.js';
 import { ReportPlanner } from './planner/planner.js';
 
@@ -493,7 +493,8 @@ describe('ReportGenerationService', () => {
     ]);
   });
 
-  it.each([false, true])('replays before PDF storage, explicit resume=%s', async (resume) => {
+  it.each(['fresh', 'resume', 'legacy-layout'])('replays before PDF storage: %s', async (mode) => {
+    const resume = mode !== 'fresh';
     const root = mkdtempSync(join(tmpdir(), 'ax-report-service-'));
     const templatePath = join(root, 'template.pdf');
     const examplePath = join(root, 'example.pdf');
@@ -542,8 +543,9 @@ describe('ReportGenerationService', () => {
       artifactSink: { putBytes }, log: (entry) => logs.push(entry),
     };
     let failPlanning = resume;
+    const checkpoints = new ReportCheckpointStore(join(root, 'checkpoints'));
     const service = new ReportGenerationService({
-      checkpoints: new ReportCheckpointStore(join(root, 'checkpoints')),
+      checkpoints,
       workspaceSources: {
         resolveStoredFile: (_sessionId, sourceId) => ({
           source: { id: sourceId, fileName: sourceId === 'template-source' ? 'template.pdf' : 'example.pdf' },
@@ -602,6 +604,11 @@ describe('ReportGenerationService', () => {
         } }],
       });
       expect(changedConnection.errorCode).toBe('report_checkpoint_input_changed');
+      if (mode === 'legacy-layout') {
+        const saved = checkpoints.read('chat-1', 'exec-1')!;
+        saved.stages.pair_analysis.digest = reportDigest({ template: params.templateSourceId, example: params.exampleSourceId });
+        checkpoints.write('chat-1', 'exec-1', saved);
+      }
     }
     const response = await service.generate({ ...params, ...(resume ? { resumeExecutionId: 'exec-1' } : {}) },
       { ...ctx, executionId: resume ? 'exec-2' : 'exec-1', ...(resume ? {
@@ -612,7 +619,7 @@ describe('ReportGenerationService', () => {
       } : {}) });
 
     expect(response.ok).toBe(true);
-    expect(documentEngine.pdfReportAnalyze).toHaveBeenCalledTimes(1);
+    expect(documentEngine.pdfReportAnalyze).toHaveBeenCalledTimes(mode === 'legacy-layout' ? 2 : 1);
     expect(vi.mocked(rdb.execute).mock.calls.filter(([action]) => action === 'query.read')).toHaveLength(2);
     expect(vi.mocked(rdb.execute).mock.calls
       .filter(([action]) => action === 'query.read')

@@ -68,8 +68,12 @@ export function boundCapabilityEvidence(envelope: CapabilityInvokeEnvelope): Cap
     if (typeof value === 'string') {
       let text = value.slice(0, Math.min(MAX_EVIDENCE_STRING_CHARS, remaining - 2));
       // JSON escaping can expand one source character into six output characters.
-      while (JSON.stringify(text).length > remaining) text = text.slice(0, Math.floor(text.length / 2));
-      remaining -= JSON.stringify(text).length;
+      let serialized = JSON.stringify(text);
+      while (serialized.length > remaining) {
+        text = text.slice(0, Math.floor(text.length / 2));
+        serialized = JSON.stringify(text);
+      }
+      remaining -= serialized.length;
       if (text.length < value.length) omissions += 1;
       return text;
     }

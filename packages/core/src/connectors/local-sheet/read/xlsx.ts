@@ -9,7 +9,7 @@ import {
   MAX_WORKBOOK_SHEETS,
 } from '../profile.js';
 import type { ReadWorkbookResult } from './contracts.js';
-import { sheetToMatrix, sheetVisibility } from './shared.js';
+import { assertWorkbookSize, sheetToMatrix, sheetVisibility } from './shared.js';
 
 export function readXlsxWorkbook(options: {
   path: string;
@@ -18,7 +18,16 @@ export function readXlsxWorkbook(options: {
   file: FileRef;
 }): ReadWorkbookResult {
   const { path, rowLimit, workbookId, file } = options;
-  const xlsx = XLSX.read(readFileSync(path), { type: 'buffer', cellDates: true });
+  assertWorkbookSize(path);
+  const xlsx = XLSX.read(readFileSync(path), {
+    type: 'buffer',
+    cellDates: true,
+    cellFormula: false,
+    cellHTML: false,
+    cellStyles: false,
+    cellNF: false,
+    WTF: false,
+  });
   const sheetNames = xlsx.SheetNames.slice(0, MAX_WORKBOOK_SHEETS);
   const tables: Record<string, TableArtifact> = {};
   const sheets: WorkbookArtifact['sheets'] = [];

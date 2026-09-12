@@ -8,6 +8,30 @@ import { abortAllWorkspaceChats } from '../workspace-chat-registry.js';
 let shutdownStarted = false;
 let shutdownCompleted = false;
 let unsubscribeWorkspaceSources: (() => void) | undefined;
+let startupTask: Promise<void> = Promise.resolve();
+
+export function isDesktopShuttingDown(): boolean { return shutdownStarted; }
+
+export function setDesktopStartupTask(task: Promise<void>): void { startupTask = task; }
+
+export async function drainDesktopCore(
+  core: NonNullable<ReturnType<typeof getCoreIfInitialized>>,
+  pendingStartup?: Promise<void>,
+): Promise<boolean> {
+  core.scheduler.stop();
+  core.runtime.stopAccepting();
+  core.workspaceSources.stopAccepting();
+  const drained = await drainWithin([
+    () => core.triggerEngine.stop(),
+    () => core.runtime.waitForIdle(),
+    () => core.workspaceSources.waitForIdle(),
+    () => shutdownCommandProcesses(4_000),
+    () => core.agentHarness.dispose(),
+    ...(pendingStartup ? [() => pendingStartup] : []),
+  ], 5_000);
+  if (drained) core.db.close?.();
+  return drained;
+}
 
 export function registerDesktopInstanceGuards(): void {
   const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -45,30 +69,21 @@ export function registerDesktopShutdown(): void {
     shutdownStarted = true;
     setQuiting(true);
     const core = getCoreIfInitialized();
-    if (!core) return;
     unsubscribeWorkspaceSources?.();
     unsubscribeWorkspaceSources = undefined;
     event.preventDefault();
-    core.scheduler.stop();
-    core.runtime.stopAccepting();
-    core.workspaceSources.stopAccepting();
     abortAllWorkspaceChats();
     void (async () => {
       try {
-        const drained = await drainWithin([
-          () => core.triggerEngine.stop(),
-          () => core.runtime.waitForIdle(),
-          () => core.workspaceSources.waitForIdle(),
-          () => shutdownCommandProcesses(4_000),
-          () => core.agentHarness.dispose(),
-        ], 5_000);
+        const drained = core
+          ? await drainDesktopCore(core, startupTask)
+          : await drainWithin([() => startupTask], 5_000);
         if (!drained) {
           // Do not close the shared DB underneath still-running callbacks.
           console.error('[AX Studio] 종료 대기 초과: 미완료 작업은 재시작 시 확인이 필요합니다.');
           app.exit(1);
           return;
         }
-        core.db.close?.();
         shutdownCompleted = true;
         app.quit();
       } catch (err) {

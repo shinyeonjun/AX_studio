@@ -1,10 +1,8 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
-import type { ModelImageInput } from './model/provider.js';
+import type { AgentProgressEvent, ModelImageInput } from './model/provider.js';
 
-export interface AgentProgressEvent {
-  message: string;
-}
+export type { AgentProgressEvent } from './model/provider.js';
 
 export type AgentRole = 'command' | 'investigate';
 

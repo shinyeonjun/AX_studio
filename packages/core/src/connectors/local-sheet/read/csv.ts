@@ -9,6 +9,7 @@ import {
   DEFAULT_TABLE_ROW_LIMIT,
 } from '../profile.js';
 import type { ReadWorkbookResult } from './contracts.js';
+import { assertWorkbookSize } from './shared.js';
 
 export function readCsvWorkbook(options: {
   path: string;
@@ -17,6 +18,7 @@ export function readCsvWorkbook(options: {
   file: FileRef;
 }): ReadWorkbookResult {
   const { path, rowLimit, workbookId, file } = options;
+  assertWorkbookSize(path);
   const ext = extname(path).toLowerCase();
   const { headers, matrix } = parseCsvMatrix(readFileSync(path, 'utf8'));
   const sheetName = basename(path, ext);

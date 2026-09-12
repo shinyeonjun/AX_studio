@@ -1,6 +1,6 @@
 import { resolveCapability } from '../../../catalog/capability-graph.js';
 import { KO } from '../../../i18n/ko.js';
-import { formatCondition } from '../../../runtime/condition-expr.js';
+import { formatCondition } from '../../condition-expr/format.js';
 import type { WorkflowIR, Step } from '../../schema.js';
 
 function triggerSummary(trigger?: WorkflowIR['trigger']): string {

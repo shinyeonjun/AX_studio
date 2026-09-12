@@ -13,7 +13,8 @@ work_sidebar_followup_evaluator:
 status: active
 frozen: true
 
-# Audit evaluator: establish this baseline before interpretation is finalized.
+audit_evaluator:
+  # Establish this baseline before interpretation is finalized.
   - name: core-tests
     type: command
     command: npm test -w @ax-studio/core
@@ -4549,7 +4550,8 @@ repository_structure_phase_27:
     - id: module-shape
       type: automated
       criterion: "connection-handlers.ts is <=120 lines and each production module under connection-handlers is <=220 lines"
-      command: "powershell -NoProfile -Command "$facade=(Get-Content -LiteralPath 'apps/desktop/electron/main/ipc/connection-handlers.ts').Count; if($facade -gt 120){throw 'connection-handlers.ts has ' + $facade + ' lines'}; Get-ChildItem -LiteralPath 'apps/desktop/electron/main/ipc/connection-handlers' -Filter '*.ts' | ForEach-Object { $count=(Get-Content -LiteralPath $_.FullName).Count; if($count -gt 220){throw ($_.Name + ' has ' + $count + ' lines')} }; 'ok'""
+      command: >-
+        powershell -NoProfile -Command "$facade=(Get-Content -LiteralPath 'apps/desktop/electron/main/ipc/connection-handlers.ts').Count; if($facade -gt 120){throw 'connection-handlers.ts has ' + $facade + ' lines'}; Get-ChildItem -LiteralPath 'apps/desktop/electron/main/ipc/connection-handlers' -Filter '*.ts' | ForEach-Object { $count=(Get-Content -LiteralPath $_.FullName).Count; if($count -gt 220){throw ($_.Name + ' has ' + $count + ' lines')} }; 'ok'"
     - id: import-contract
       type: automated
       criterion: "Existing registerConnectionHandlers export remains available and the desktop IPC bundle compiles"
@@ -4677,7 +4679,7 @@ repository_structure_phase_29:
       project-regression: "PASS: evaluation 11/11, document-engine 37/37, desktop typecheck/build, and git diff --check"
       dependency-direction: "PASS: focused modules use repositories without importing the public facade"
       implementation-boundary: "PASS: only the bounded WorkflowStore structure and harness records changed in this phase"
-  baseline:
+  historical_baseline_1:
     recorded: true
     recorded_at: 2026-09-02T19:26:22.9314931+09:00
     decision: BASELINE
@@ -5484,7 +5486,7 @@ repository_structure_phase_44:
       project-regression: "PASS: Core 707 passed with 3 skipped, eval 11/11, document-engine 37/37, desktop typecheck/build, and git diff --check"
       dependency-direction: "PASS: AxWorkspaceChat.tsx owns assistant-runtime orchestration and focused modules do not import the facade"
       implementation-boundary: "PASS: only the bounded AxWorkspaceChat rendering structure and harness records changed in this phase"
-  baseline:
+  historical_baseline_1:
     recorded: true
     recorded_at: 2026-09-02T21:25:07.9012282+09:00
     decision: BASELINE
@@ -5492,7 +5494,7 @@ repository_structure_phase_44:
       module-shape: "FAIL as intended: WorkspaceFlowPanel.tsx is 340 lines; focused directory does not exist"
       import-contract: "PASS: desktop typecheck"
       flow-regression: "PASS: 10/10"
-  final:
+  historical_final_1:
     recorded: true
     recorded_at: 2026-09-02T21:28:58.1512359+09:00
     decision: KEEP
@@ -5828,7 +5830,7 @@ repository_structure_phase_90:
       project-regression: "PASS: Core 707 passed with 3 skipped, eval 11/11, document-engine 37/37, desktop typecheck/build, and git diff --check"
       dependency-direction: "PASS: read.ts exposes existing workbook reader exports; focused modules do not import the facade"
       implementation-boundary: "PASS: only the bounded local-sheet reader structure and harness records changed in this phase"
-  final:
+  historical_final_1:
     recorded: true
     recorded_at: 2026-09-03T03:10:22.7294401+09:00
     decision: KEEP
@@ -5839,7 +5841,7 @@ repository_structure_phase_90:
       project-regression: "PASS: Core 707 passed with 3 skipped, eval 11/11, document-engine 37/37, desktop typecheck/build, and git diff --check"
       dependency-direction: "PASS: request.ts exposes existing request constants/types/functions; focused modules do not import the facade"
       implementation-boundary: "PASS: only the bounded HTTP request structure and harness records changed in this phase"
-  baseline:
+  historical_baseline_1:
     recorded: true
     recorded_at: 2026-09-02T23:40:42.8702575+09:00
     decision: BASELINE
@@ -5847,7 +5849,7 @@ repository_structure_phase_90:
       module-shape: "FAIL as intended: request.ts is 223 lines; focused request directory does not exist"
       request-regression: "PASS: HTTP request/probe tests"
       import-contract: "PASS: Core typecheck"
-  final:
+  historical_final_2:
     recorded: true
     recorded_at: 2026-09-02T23:44:49.7752203+09:00
     decision: KEEP
@@ -8014,6 +8016,7 @@ repository_structure_phase_105:
       document-read-regression: "PASS: document engine client tests 7/7"
       import-contract: "PASS: Core typecheck"
       command: "npx tsc --noEmit -p packages/core/tsconfig.json; npm test -w @ax-studio/core; npm run eval -w @ax-studio/core"
+  historical_work_discovery_checks:
     - id: project-regression
       type: automated
       criterion: "Core, evaluation, document-engine, desktop typecheck/build, architecture, and whitespace checks remain green"
@@ -8024,7 +8027,7 @@ repository_structure_phase_105:
     - id: implementation-boundary
       type: manual
       criterion: "Only the bounded WorkDiscoveryService test split and harness records changed in this phase"
-  baseline:
+  historical_baseline_1:
     recorded: true
     recorded_at: 2026-09-03T09:44:35.3767294+09:00
     decision: BASELINE
@@ -10485,7 +10488,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 986 modules/3305 dependencies, and git diff --check"
       test-preservation: "PASS: All three workflow repair scenarios, shared fixture data, repair operations, policy assertions, fingerprint assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded workflow repair test split, shared test fixture extraction, schema-default type correction, and harness records changed"
-  final:
+  historical_final_1:
     recorded: true
     recorded_at: 2026-09-03T16:08:33.3703838+09:00
     decision: KEEP
@@ -10496,7 +10499,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 984 modules/3301 dependencies, and git diff --check"
       test-preservation: "PASS: Both Work Discovery repair scenarios, shared fixture data, persisted history shape, assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded Work Discovery repair test split, shared test fixture extraction, and harness records changed"
-  final:
+  historical_final_2:
     recorded: true
     recorded_at: 2026-09-03T16:02:45.6657613+09:00
     decision: KEEP
@@ -10507,7 +10510,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 982 modules/3294 dependencies, and git diff --check"
       test-preservation: "PASS: Both runtime output-binding scenarios, workflow shapes, runtime setup, connector mocks, persisted snapshot assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded runtime output-binding test split and harness records changed"
-  final:
+  historical_final_3:
     recorded: true
     recorded_at: 2026-09-03T15:56:16.4320616+09:00
     decision: KEEP
@@ -10518,7 +10521,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 981 modules/3288 dependencies, and git diff --check"
       test-preservation: "PASS: All seven OpenAPI scenarios, fixtures, mock responses, assertions, catalog cleanup, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded OpenAPI test split and harness records changed"
-  final:
+  historical_final_4:
     recorded: true
     recorded_at: 2026-09-03T15:50:25.1925630+09:00
     decision: KEEP
@@ -10529,7 +10532,7 @@ repository_structure_phase_208:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 979 modules/3284 dependencies, and git diff --check"
       test-preservation: "PASS: All four Scheduler one-time scenarios, fixtures, store setup, runtime mocks, assertions, and data preserved exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded Scheduler one-time test split and harness records changed"
-  final:
+  historical_final_5:
     recorded: true
     recorded_at: 2026-09-03T15:44:48.1975876+09:00
     decision: KEEP
@@ -13132,7 +13135,7 @@ repository_structure_phase_234:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1033 modules/3444 dependencies, and git diff --check"
       test-preservation: "PASS: All three command catalog scenarios, command names, lifecycle values, mutation flags, saved endpoints, auth readiness fields, sanitized URLs, credential redaction assertions, context, and response assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded command catalog test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: true
     recorded_at: 2026-09-04T10:57:40.0721437+09:00
     decision: KEEP
@@ -13527,7 +13530,7 @@ repository_structure_phase_233:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1031 modules/3438 dependencies, and git diff --check"
       test-preservation: "PASS: All five HTTP response-limit test blocks, all eight generated maxBytes/request cases, fetch stubs, stream chunks, response bodies, truncation flags, cancellation assertion, UTF-8 result, and cleanup remain unchanged and each case is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded HTTP response-limit test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_232:
   status: completed
@@ -13581,7 +13584,7 @@ repository_structure_phase_232:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1028 modules/3435 dependencies, and git diff --check"
       test-preservation: "PASS: All ten capability graph/cron scenarios, connected-state expectations, design capabilities, aliases, dynamic registration cleanup, trigger IDs, dates, timezones, and assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded capability graph/cron test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_231:
   status: completed
@@ -13635,7 +13638,7 @@ repository_structure_phase_231:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1025 modules/3433 dependencies, and git diff --check"
       test-preservation: "PASS: Both control-flow traversal scenarios, branch conditions, step ids, connector actions, AI decision schema, output binding, persisted log assertion, and message-order assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded control-flow traversal test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_230:
   status: completed
@@ -13689,7 +13692,7 @@ repository_structure_phase_230:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1024 modules/3428 dependencies, and git diff --check"
       test-preservation: "PASS: All five corrupt approval continuation scenarios, database mutations, approval rows, execution snapshots, persisted log payloads, error codes, approval/execution statuses, callback results, and cleanup assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded corrupt approval continuation test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_229:
   status: completed
@@ -13743,7 +13746,7 @@ repository_structure_phase_229:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1022 modules/3420 dependencies, and git diff --check"
       test-preservation: "PASS: All eight ArtifactStore scenarios, temporary store fixtures, byte payloads, metadata files, artifact IDs, hashes, filenames, stored paths, JSON values, rejection messages, and filesystem safety assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded ArtifactStore test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_228:
   status: completed
@@ -13797,7 +13800,7 @@ repository_structure_phase_228:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1020 modules/3412 dependencies, and git diff --check"
       test-preservation: "PASS: All five source resolver scenarios, temporary folder/file fixtures, connection shapes, source/folder metadata, resolved paths, error codes, and assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded source resolver test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_227:
   status: completed
@@ -13851,7 +13854,7 @@ repository_structure_phase_227:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1018 modules/3404 dependencies, and git diff --check"
       test-preservation: "PASS: Both approval continuation scenarios, workflow IR steps, approval state, execution persistence checks, connector mocks, concurrency assertion, branch traversal assertion, and side-effect assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded approval continuation test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_226:
   status: completed
@@ -13905,7 +13908,7 @@ repository_structure_phase_226:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1017 modules/3399 dependencies, and git diff --check"
       test-preservation: "PASS: Both Gmail history scenario blocks, all mock responses, request arguments, message fixtures, cursor values, event assertions, and call-count assertions remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded Gmail history test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_225:
   status: completed
@@ -13959,7 +13962,7 @@ repository_structure_phase_225:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1016 modules/3398 dependencies, and git diff --check"
       test-preservation: "PASS: All six webhook rejection test blocks, all eight generated request cases, listener lifecycle cleanup, request bodies, ports, secrets, event assertions, and HTTP response assertions remain unchanged and each case is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded webhook rejection test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_224:
   status: completed
@@ -14013,7 +14016,7 @@ repository_structure_phase_224:
       project-regression: "PASS: Core, document-engine 39/39, desktop typecheck/build, architecture 1015 modules/3396 dependencies, and git diff --check"
       test-preservation: "PASS: All seven manual-run folder-selection scenario blocks, filesystem fixtures, connection setup, workflow inputs, fallback rules, ambiguity guards, extension filters, and data remain unchanged and each scenario is covered exactly once across the focused suites"
       implementation-boundary: "PASS: Only the bounded manual-run folder-selection test split and harness records changed"
-  final:
+  historical_final_1:
     recorded: false
 repository_structure_phase_223:
   status: completed
@@ -14518,3 +14521,898 @@ final_verification:
     project-regression: "PASS: Core 398 files/1355 passed/5 skipped; Core build; Desktop typecheck/build; document-engine 50/50; evaluation 11/11; webhook security 3/3; architecture 0 violations; diff check"
     public-seam: "PASS: root and connector indexes retain existing names used by the desktop app; deleted paths have no remaining imports"
     safety-boundary: "PASS: no new project files, fixture/gold changes, external writes, credential mutations, or app-state mutations"
+
+architecture_audit:
+  objective: "Create a measured, repository-wide refactoring map before changing structure."
+  checks:
+    - id: inventory
+      type: automated
+      criterion: "Every code file has a path, language, line count, owner/domain candidate, imports, exports, and test/entrypoint signal."
+      command: "rg --files packages apps scripts test -g '*.ts' -g '*.tsx' -g '*.mjs' -g '*.py'"
+    - id: dependency-graph
+      type: automated
+      criterion: "Cycles, forbidden cross-boundary edges, fan-in/fan-out, and orphan candidates are measured."
+      command: "npm run arch:check; npm run knip"
+    - id: public-boundaries
+      type: review
+      criterion: "Root package exports, desktop IPC/preload seams, connector registry, runtime composition, and test-only seams are listed explicitly."
+      method: "Read package exports, application bootstrap, registries, IPC handlers, preload bridges, and public barrel files."
+    - id: product-flow
+      type: review
+      criterion: "The main natural-language-to-workflow/report path is traced end to end with ownership and persistence boundaries."
+      method: "Trace desktop input, command service, source access, AI/model boundary, workflow/runtime, persistence, document engine, and report output."
+    - id: design-principles
+      type: review
+      criterion: "Each proposed structural change is tied to cohesion, coupling, information hiding, deep interfaces, bounded context, or behavior-preserving refactoring evidence."
+      method: "Compare repository evidence with cited architecture sources; do not treat file length or naming style as proof."
+    - id: safety-boundary
+      type: scope
+      criterion: "The audit changes only existing harness records and creates no project files or runtime side effects."
+      method: "Review git status and diff."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T13:39:20.7230704+09:00
+    decision: BASELINE
+    values:
+      working_tree: "PASS: clean main at 17b75f7"
+      code_inventory: "PASS: 1,554 tracked code files; 1,569 files present on disk including 15 ignored local auxiliary files"
+      architecture: "PASS: prior architecture check had 0 violations; detailed audit pending"
+      knip: "KNOWN: 3 unlisted dependencies, 2 binaries, 21 exported types, 1 duplicate alias, 1 config hint"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T14:03:26.9570569+09:00
+    decision: KEEP
+    values:
+      inventory: "PASS: 1554 tracked / 1569 on-disk code files; 15 ignored auxiliary files identified"
+      build: "PASS: npm run build"
+      architecture: "PASS: configured check 0 violations; audit additionally identified 24 static cycle edges across 14 core modules and one orphan candidate"
+      knip: "KNOWN: 3 unlisted dependencies, 2 binaries, 21 exported types, 1 duplicate schema alias, 1 config hint"
+      public_boundaries: "PASS: IPC/preload, application bootstrap, connector registry, document-engine client, reporting gateway, persistence facade, and root exports reviewed"
+      product_flow: "PASS: renderer -> preload -> IPC -> agent command loop -> AxCommandService -> runtime -> report service -> document engine -> artifact persistence -> workspace chat traced"
+      ranked_plan: "PASS: keep coherent seams; later break workflow/runtime and connectors/intelligence reverse edges, inject Work Discovery registry, then reassess planner/store breadth"
+      reproducibility: "FINDING: 11 ignored local test files are referenced by root scripts and are absent from a clean checkout"
+      safety_boundary: "PASS: no production or project files changed; only existing harness records were updated"
+
+staged_boundary_refactor:
+  objective: "Reduce measured reverse coupling and restore clean-checkout reproducibility without changing product behavior."
+  frozen_checks:
+    - "npm run arch:check"
+    - "npm run build"
+    - "npm test"
+    - "npm run eval"
+    - "git diff --check"
+  slice_checks:
+    - id: clean-checkout-test-boundary
+      criterion: "Every root test script either resolves to a tracked file or is explicitly removed from the public script surface."
+      method: "Compare package scripts with git ls-files and run the affected command in a clean-checkout-equivalent path."
+    - id: workflow-runtime-boundary
+      criterion: "Pure condition and input-schema contracts have one owner; production graph has no workflow/runtime reverse edge for those contracts."
+      method: "Red public contract tests, focused workflow/runtime tests, dependency graph inspection."
+    - id: connector-intelligence-boundary
+      criterion: "Connector package contracts do not import Intelligence policy types; read-capability behavior remains unchanged."
+      method: "Red connector package contract tests, focused design-tool tests, dependency graph inspection."
+    - id: discovery-injection
+      criterion: "Work Discovery can run with an injected source registry/materializer and no concrete connector catalog import."
+      method: "Red service construction test with a fake registry/materializer, focused Work Discovery suite, dependency graph inspection."
+    - id: behavior-regression
+      criterion: "Existing report, workflow, connector, persistence, document-engine, evaluation, and desktop build behavior remains green."
+      method: "Run frozen checks after each kept slice and final full regression."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T15:03:22.3287053+09:00
+    decision: BASELINE
+    values:
+      head: "17b75f7"
+      production_changes: "none"
+      build: "PASS: npm run build"
+      architecture: "PASS: configured 0 violations; 24 static cycle edges remain outside configured rules"
+      tests: "PASS: prior full regression recorded in final_verification; no implementation changes since"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T15:37:42.4335261+09:00
+    decision: KEEP
+    values:
+      clean-checkout-test-boundary: "PASS: every remaining root test script points to a tracked file"
+      workflow-runtime-boundary: "PASS: pure condition contracts are owned by workflow; runtime retains evaluation and compatibility imports"
+      connector-intelligence-boundary: "PASS: connector packages use SourceListingContext and no connector production file imports intelligence/design-tools/types"
+      discovery-injection: "PASS: Work Discovery accepts injected providers/materializer; no connector package catalog import remains"
+      dependency-graph: "PASS: 1174 modules, 4023 dependencies, 0 cycles; raw orphan metadata contains only intentional persistence/sql-js.d.ts"
+      static-cleanup: "PASS: npm run knip exits 0 after removing the unused RDB type facade and documenting intentional public/tool exceptions"
+      behavior-regression: "PASS: root security 3/3; Core 398 files/1356 passed/5 skipped; evaluation 11/11; document-engine 50/50; Core/Desktop typecheck/build"
+      safety-boundary: "PASS: no new project files, fixtures/gold, credentials, external writes, or application data mutations"
+
+simplicity_pass:
+  objective: "Reduce accidental complexity and coupling from the current working tree without changing product behavior."
+  frozen_checks:
+    - "npm run typecheck -w @ax-studio/core"
+    - "npx tsc --noEmit -p apps/desktop/tsconfig.json"
+    - "npm run build"
+    - "npm test"
+    - "npm run eval"
+    - "packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'"
+    - "npm run knip"
+    - "npm run arch:check"
+    - "git diff --check"
+  review_checks:
+    - "inventory pass-through, duplicate, barrel, export, fan-in/fan-out, size, and complexity signals"
+    - "confirm no new project files or generated/application-state changes"
+    - "confirm root package exports and desktop IPC/preload seams remain stable"
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T15:59:31.6657932+09:00
+    decision: BASELINE
+    values:
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook 3/3; Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1174 modules, 4023 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T16:29:24.7125486+09:00
+    decision: KEEP
+    values:
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook 3/3; Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1174 modules, 4039 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+      cleanup: "KEEP: shared workflow preprocessors, output-contract guards, DB row boundary, and evidence serialization cache"
+      boundaries: "PASS: public facades and Electron/connector/document/persistence seams retained"
+      safety: "PASS: no new project files, package-lock, fixtures/gold, credentials, app-state, or external writes"
+      harness_metadata: "PASS: evaluator.yaml and scope.yaml parse as valid YAML; historical records remain preserved under explicit legacy keys"
+
+workflow_store_pass_through_cleanup:
+  objective: "Validate deletion of internal WorkflowStore pass-through wrappers at the existing public class seam."
+  frozen_checks:
+    - "npx vitest run packages/core/src/eval/workflow-store.test.ts packages/core/src/persistence/workflow-repository packages/core/src/persistence/workspace-chat-repository packages/core/src/persistence/discovery-repository packages/core/src/persistence/repositories"
+    - "npm run typecheck -w @ax-studio/core"
+    - "npm run knip"
+    - "npm run arch:check"
+    - "git diff --check"
+  review_checks:
+    - "Each workflow-store wrapper is imported only by WorkflowStore or has an explicit consumer that justifies retention."
+    - "The public WorkflowStore methods remain the only external seam in this slice."
+    - "No user-created untracked files are changed or deleted."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T18:00:03.6324688+09:00
+    decision: BASELINE
+    values:
+      wrapper-ownership: "PASS: eight workflow-store modules are imported only by WorkflowStore; no direct external consumers found"
+      focused-regression: "PASS: 19 files, 47 tests"
+      core-typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1174 modules, 4039 dependencies, 0 violations"
+      diff-check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T18:07:33.9276472+09:00
+    decision: KEEP
+    values:
+      wrapper-removal: "KEEP: eight internal pass-through modules deleted; real discovery normalization preserved in WorkflowStore"
+      focused-regression: "PASS: 19 files, 47 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook security 3/3; Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+      safety: "PASS: no new files; user-created docs/research files preserved"
+
+automation_market_research_evaluator:
+  checks:
+    - name: document-exists
+      type: command
+      command: Test-Path docs/research/automation-market-comparison.md
+      required: true
+    - name: required-products-and-axes
+      type: command
+      command: "rg -n 'n8n|Zapier|Claude Cowork|ChatGPT Work|Grok Bot|authoring|execution|persistence|replay|provenance|approval' docs/research/automation-market-comparison.md"
+      required: true
+    - name: whitespace
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - first-party URLs support competitor claims
+    - repository paths include exact line ranges for AX Studio claims
+    - differentiation is concise and avoids claims of absolute feature absence
+
+large_module_planner_normalization_evaluator:
+  checks:
+    - name: focused-planner-regression
+      type: command
+      command: "npx vitest run packages/core/src/documents/reporting/planner/planner.test.ts packages/core/src/documents/reporting/planner/evidence.test.ts packages/core/src/documents/reporting/planner/source-discovery.test.ts packages/core/src/documents/reporting/planner/catalog.test.ts packages/core/src/documents/reporting/planner/bounds.test.ts"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - repeated normalization call sites have identical ordering before and after the patch
+    - exported planner paths and public ReportPlanner methods remain unchanged
+    - no user-created untracked files are changed or deleted
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T18:26:25.8469281+09:00
+    decision: BASELINE
+    values:
+      focused_planner_regression: "PASS: 5 files, 154 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T18:30:02.5111994+09:00
+    decision: KEEP
+    values:
+      focused_planner_regression: "PASS: 5 files, 154 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook security 3/3; Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+      safety: "PASS: no new files, package-lock, generated artifacts, user files, credentials, application data, or external writes"
+
+large_module_field_path_traversal_evaluator:
+  checks:
+    - name: focused-report-regression
+      type: command
+      command: "npx vitest run packages/core/src/documents/reporting/plan/execute.test.ts packages/core/src/documents/reporting/plan/join-limits.test.ts packages/core/src/documents/reporting/planner/planner.test.ts packages/core/src/documents/reporting/planner/evidence.test.ts"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - all field-path consumers use the existing plan/value.ts helper
+    - path trimming and empty-path behavior remain equivalent to the baseline
+    - no user-created untracked files are changed or deleted
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T18:40:02.6047960+09:00
+    decision: BASELINE
+    values:
+      focused_report_regression: "PASS: 4 files, 149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T18:43:07.1784985+09:00
+    decision: KEEP
+    values:
+      focused_report_regression: "PASS: 4 files, 149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook security 3/3; Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+      safety: "PASS: no new files, package-lock, generated artifacts, user files, credentials, application data, or external writes"
+
+readme_asset_integrity_evaluator:
+  checks:
+    - name: readme-local-image-integrity
+      type: command
+      command: "node --input-type=module"
+      required: true
+      stdin: "scan every README.md img src and markdown image target, resolve local paths relative to that README, ignore external/data URLs, and exit nonzero for missing files"
+    - name: diff-whitespace
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - root README points to the existing apps/desktop/src/ui/images/AX_Studio.png asset
+    - no new or moved image files exist
+    - no user-created untracked files are changed or deleted
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T21:16:10.1604832+09:00
+    decision: BASELINE
+    values:
+      readme_local_image_integrity: "FAIL: 13 README files, 22 local image references, 1 broken target at README.md:4"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T21:18:20.1981349+09:00
+    decision: KEEP
+    values:
+      readme_local_image_integrity: "PASS: 13 README files, 22 local image references, 0 broken targets"
+      diff_check: "PASS: git diff --check"
+      asset_review: "PASS: existing AX_Studio.png rendered successfully; no new or moved image files"
+
+large_module_predicate_specificity_evaluator:
+  checks:
+    - name: focused-report-regression
+      type: command
+      command: "npx vitest run packages/core/src/documents/reporting/plan/execute.test.ts packages/core/src/documents/reporting/plan/join-limits.test.ts packages/core/src/documents/reporting/planner/planner.test.ts packages/core/src/documents/reporting/planner/evidence.test.ts"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - both predicate-specificity consumers use the same helper and preserve the 3/1 weights
+    - filterOrder remains the stable tie-break after specificity
+    - no user-created untracked files are changed or deleted
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T21:20:32.3990097+09:00
+    decision: BASELINE
+    values:
+      focused_report_regression: "PASS: 4 files, 149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T21:28:33.4183920+09:00
+    decision: KEEP
+    values:
+      focused_report_regression: "PASS: 4 files, 149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      build: "PASS: npm run build"
+      root_tests: "PASS: manual webhook security 3/3; serial Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine: "PASS: repository .venv 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+      readme_local_image_integrity: "PASS: 13 README files, 22 local image references, 0 broken targets"
+      safety: "PASS: no new files, generated artifacts, user files, credentials, application data, or external writes"
+
+repository_wide_simplicity_audit_evaluator:
+  checks:
+    - name: duplicate-and-dead-code-audit
+      type: command
+      command: "inline repository inventory: file counts, large-module list, duplicate-block scan, production TODO/any scan, empty-directory scan, and public export/import audit"
+      required: true
+    - name: readme-local-image-integrity
+      type: command
+      command: "inline README image scan across every README.md"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop/tsconfig.json
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: full-tests
+      type: command
+      command: npm test
+      required: true
+    - name: evaluation
+      type: command
+      command: npm run eval
+      required: true
+    - name: document-engine-tests
+      type: command
+      command: "packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'"
+      required: true
+    - name: knip
+      type: command
+      command: npm run knip
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+    - name: harness-yaml
+      type: command
+      command: "parse .harness/scope.yaml and .harness/evaluator.yaml with the repository yaml dependency"
+      required: true
+  review_checks:
+    - every deletion or consolidation has a consumer/duplicate proof recorded in experiments.tsv
+    - large cohesive modules are retained when no safe existing seam is demonstrated
+    - user-created untracked files remain byte-for-byte untouched
+    - no new project files or generated artifacts are present
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T21:41:17.4702338+09:00
+    decision: BASELINE
+    values:
+      inventory: "PASS: 1492 audited source files; largest cohesive modules identified"
+      duplicate_scan: "PASS: scan complete; 230 normalized candidates require semantic review, no automatic deletion"
+      production_issue_scan: "PASS: no actual production TODO/FIXME or type-any declarations; lexical any matches are comments/prompts"
+      empty_directory_scan: "INCONCLUSIVE: 3676 generated/test-data directories are empty; existing source remnants are expected and not removed"
+      readme_local_image_integrity: "PASS: 13 README files, 22 local image references, 0 broken targets"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      architecture: "PASS: 1166 modules, 4013 dependencies, 0 violations"
+      knip: "PASS: npm run knip"
+      harness_yaml: "PASS: scope.yaml and evaluator.yaml parse"
+      diff_check: "PASS: git diff --check"
+      full_regression_reference: "PASS: serial Core 398 files/1356 passed/5 skipped; build; eval 11/11; document-engine 50/50 at 2026-09-08T21:28:33.4183920+09:00"
+    final:
+      recorded: true
+      recorded_at: 2026-09-08T21:56:45.9221219+09:00
+      decision: KEEP
+      values:
+        duplicate_and_dead_code_audit: "PASS: 1492 audited source files; no actual production TODO/FIXME/type-any declarations; exact duplicates consolidated only at proven HTTP, input-type, table-type, planner, field-path, and workflow-store seams"
+        readme_local_image_integrity: "PASS: 13 README files; 1 local image target; 0 missing targets (external and generated dependency URLs ignored)"
+        core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+        desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+        production_build: "PASS: npm run build"
+        full_tests: "PASS: manual webhook security 3/3; Core 398 files passed, 1 skipped; 1356 passed, 5 skipped"
+        evaluation: "PASS: 5 files/11 tests"
+        document_engine_tests: "PASS: repository .venv 50/50"
+        knip: "PASS: npm run knip"
+        architecture: "PASS: 1166 modules, 4017 dependencies, 0 violations"
+        harness_yaml: "PASS: scope.yaml and evaluator.yaml parse with unique keys"
+        diff_check: "PASS: git diff --check"
+        review: "PASS: cohesive large modules retained; no new project files or generated artifacts; user-created untracked research files preserved"
+
+safe_report_replay_module_split_evaluator:
+  checks:
+    - name: focused-report-regression
+      type: command
+      command: "npx vitest run packages/core/src/documents/reporting/plan/execute.test.ts packages/core/src/documents/reporting/plan/join-limits.test.ts packages/core/src/documents/reporting/planner/planner.test.ts packages/core/src/documents/reporting/planner/evidence.test.ts"
+      required: true
+    - name: core-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/core
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+    - name: public-reexport
+      type: review
+      criterion: "ReplayRepairInput, ReplayRepairResult, and repairExampleReplayInference remain importable from planner.ts without a cycle."
+    - name: module-cohesion
+      type: review
+      criterion: "replay-repair.ts owns replay candidate generation/evaluation and the shared example-format parser; presentation-repair.ts owns presentation/source/metadata repair; ReportPlanner orchestration remains in planner.ts."
+    - name: no-test-or-user-file-change
+      type: review
+      criterion: "No test files, fixtures, generated artifacts, package locks, or user-created untracked documents change."
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T22:16:46.0609712+09:00
+    decision: BASELINE
+    values:
+      focused_report_regression: "PASS: 4 files/149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      architecture: "PASS: 1166 modules, 4017 dependencies, 0 violations"
+      diff_check: "PASS: git diff --check"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T22:33:00.5238720+09:00
+    decision: KEEP
+    values:
+      focused_report_regression: "PASS: 4 files/149 tests"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      desktop_typecheck: "PASS: npx tsc --noEmit -p apps/desktop/tsconfig.json"
+      production_build: "PASS: npm run build"
+      full_tests: "PASS: manual webhook security 3/3; serial Core 398 files/1356 passed/5 skipped"
+      evaluation: "PASS: 5 files/11 tests"
+      document_engine_tests: "PASS: repository .venv 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1168 modules, 4032 dependencies, 0 violations"
+      harness_yaml: "PASS: scope.yaml and evaluator.yaml parse with unique keys"
+      diff_check: "PASS: git diff --check"
+      module_shape: "PASS: planner.ts 1016 lines; replay-repair.ts 1456 lines; presentation-repair.ts 1319 lines; cohesive domains retained"
+      safety: "PASS: no test files, fixtures, user documents, generated artifacts, package locks, credentials, application data, or external writes changed"
+
+report_generation_e2e_benchmark_evaluator:
+  checks:
+    - name: contract-check
+      type: command
+      command: node test/report-generation-e2e/run.mjs --check-contract
+      required: true
+    - name: core-build
+      type: command
+      command: npm run build -w @ax-studio/core
+      required: true
+    - name: report-e2e-benchmark
+      type: command
+      command: npm run test:report-e2e
+      required: true
+    - name: report-e2e-verifier
+      type: command
+      command: node test/report-generation-e2e/verify-report.mjs
+      required: true
+    - name: document-engine-regression
+      type: command
+      command: packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - independent gold values are literal case data and are not computed through executeReportPlan or production layout values
+    - benchmark output defaults outside the repository and contains no credentials or external side effects
+    - existing Work Discovery benchmark files and user-created untracked research files remain unchanged
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-08T23:04:05.6280779+09:00
+    decision: BASELINE
+    values:
+      contract_check: "RED: MODULE_NOT_FOUND before benchmark implementation"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T23:29:11.6565547+09:00
+    decision: KEEP
+    values:
+      contract_check: "PASS: 3 cases with independent literal gold"
+      report_e2e_benchmark: "PASS: 3/3 cases; 2/2 positive; safe failure 1/1; completeness 1.0; fidelity 1.0; replay 1.0; latest sample p50 1692ms; p95 1862ms"
+      report_e2e_verifier: "PASS: independent PDF extraction and arithmetic verification"
+      core_build: "PASS: npm run build -w @ax-studio/core"
+      full_build: "PASS: npm run build"
+      core_typecheck: "PASS: npm run typecheck -w @ax-studio/core"
+      core_tests: "PASS: 398 files, 1356 passed, 5 skipped"
+      work_discovery_benchmark: "PASS: npm run test:wd-benchmark"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      architecture: "PASS: 1168 modules, 4032 dependencies, 0 violations"
+      yaml: "PASS: scope.yaml and evaluator.yaml parse"
+      diff_check: "PASS: git diff --check"
+
+report_generation_e2e_case_expansion_evaluator:
+  checks:
+    - name: expanded-contract
+      type: command
+      command: node test/report-generation-e2e/run.mjs --check-contract
+      required: true
+    - name: report-e2e-expanded
+      type: command
+      command: npm run test:report-e2e
+      required: true
+    - name: report-e2e-independent-verifier
+      type: command
+      command: node test/report-generation-e2e/verify-report.mjs
+      required: true
+    - name: core-build
+      type: command
+      command: npm run build -w @ax-studio/core
+      required: true
+    - name: document-engine-regression
+      type: command
+      command: packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - the contract requires at least ten cases, four positive cases, five safe-failure cases, and categories for pagination, nested API shape, natural-language input, ordering, source completeness, and data integrity
+    - independent gold values remain literal and are not derived from executeReportPlan or materialized PDF values
+    - positive cases require independent scalar/row PDF extraction; negative cases require no artifact and the exact expected error code
+    - benchmark output remains outside the repository and existing user-created research files remain untouched
+  baseline:
+    recorded: true
+    recorded_at: unknown
+    decision: BASELINE
+    values:
+      existing_benchmark: "PASS: prior three-case run and verifier completed before expansion; timestamp not captured"
+  final:
+    recorded: true
+    recorded_at: 2026-09-08T23:57:38.3630613+09:00
+    decision: KEEP
+    values:
+      contract_check: "PASS: 15 cases with independent literal gold"
+      report_e2e_benchmark: "PASS: 15/15 cases; 6/6 positive; 9/9 safe failures; completeness/fidelity/replay/safe-failure 1.0; all-case p50 595ms/p95 1973ms; positive-artifact p50 1865ms/p95 1973ms"
+      report_e2e_verifier: "PASS: independent PDF extraction and failure-contract verification"
+      core_build: "PASS: npm run build -w @ax-studio/core"
+      document_engine: "PASS: 50/50"
+      knip: "PASS: npm run knip"
+      harness_yaml: "PASS: scope.yaml and evaluator.yaml parse with yaml package"
+      diff_check: "PASS: git diff --check"
+
+qa_high_risk_hardening:
+  checks:
+    - name: focused-qa-regressions
+      type: command
+      command: "npx vitest run apps/desktop/electron/main/data-migrate.test.ts apps/desktop/electron/main/fetch-timeout.test.ts apps/desktop/electron/main/ipc/chat-boundary.test.ts packages/core/src/runtime/scheduler/scheduled/retry-state.test.ts packages/core/src/persistence/db-migration.test.ts packages/core/src/connectors/local-sheet/workbook-identity.test.ts packages/core/src/contracts/artifacts/local-sheet-read.test.ts"
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npx tsc --noEmit -p apps/desktop/tsconfig.json
+      required: true
+    - name: core-tests
+      type: command
+      command: npm test
+      required: true
+    - name: core-evaluation
+      type: command
+      command: npm run eval
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: report-e2e
+      type: command
+      command: npm run test:report-e2e
+      required: true
+    - name: report-e2e-verifier
+      type: command
+      command: node test/report-generation-e2e/verify-report.mjs
+      required: true
+    - name: document-engine
+      type: command
+      command: packages/document-engine/.venv/Scripts/python.exe -m unittest discover -s packages/document-engine/src -p '*_test.py'
+      required: true
+    - name: architecture
+      type: command
+      command: npm run arch:check
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  review_checks:
+    - all QA-01 through QA-10 changes have a focused regression or an explicitly documented static-only limitation
+    - no direct privileged IPC handler bypasses the trusted sender wrapper
+    - migration markers are written only after a validated snapshot is committed
+    - user-created untracked research files and generated benchmark outputs remain unchanged
+  baseline:
+    recorded: true
+    recorded_at: 2026-09-10T01:02:31.2073154+09:00
+    decision: BASELINE
+    values:
+      focused_qa_regressions: "PASS: 7 files / 16 tests before hardening"
+      known_gaps: "QA-01, QA-02, QA-03, QA-04, QA-08 regressions not yet encoded"
+  final:
+    recorded: true
+    recorded_at: 2026-09-09T16:48:51.2156643Z
+    decision: KEEP
+    values:
+      focused_qa_regressions: "PASS: 7 files / 35 tests"
+      desktop_tests: "PASS: 22 files / 74 tests"
+      core_tests: "PASS: 398 files / 1362 passed / 5 skipped"
+      core_evaluation: "PASS: 11/11"
+      report_e2e: "PASS: 15/15; 6 positive; 9 safe failures; e2e/replay/completeness/fidelity/safe-failure 1.0"
+      report_e2e_verifier: "PASS: independent PDF extraction and failure-contract verification"
+      document_engine: "PASS: 50/50"
+      product_smoke: "PASS: 6/6"
+      windows_package: "PASS: Electron 44.3.0 NSIS installer generated"
+      production_audit: "PASS: xlsx vulnerability entry null; 11 unrelated production advisories remain"
+      architecture: "PASS: 1168 modules / 4038 dependencies / 0 violations"
+      harness_yaml: "PASS"
+      diff_check: "PASS: no actual whitespace errors"
+
+working_tree_product_qa_20260912:
+  timing_evaluator_correction: RDB abort deadline begins after server handshake triggers cancellation; cold dynamic import is not cancellation latency. Threshold remains 800ms. Prior timing comparisons superseded.
+  focused: npx vitest run packages/core/src/persistence/db-migration.test.ts packages/core/src/runtime/scheduler/scheduled/retry-state.test.ts apps/desktop/electron/main/data-migrate.test.ts
+  final_checks:
+    - npm test
+    - npm run test:desktop
+    - npm run typecheck:desktop
+    - npm run build
+    - npm run eval
+    - npm run test:document-engine
+    - npm run test:report-e2e
+    - node test/report-generation-e2e/verify-report.mjs
+    - npm run arch:check
+    - git diff --check
+  qualitative:
+    - exact body-review paths and inventory counts recorded separately
+    - faults reproduced independently of earlier success claims
+    - limitations of native runtime and installed application stated honestly
+  additional_checks:
+    - node scripts/document-engine-install.mjs --bundle
+    - npx electron-builder --win (desktop cwd, after production build)
+    - node scripts/document-engine-install.mjs --verify-bundle apps/desktop/release/win-unpacked/resources/document-engine
+    - npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
+
+resource_refactor_20260912:
+  baseline: knip reports one unlisted asar dependency and obsolete sql.js ignore; prior core1375 desktop78 Python50 report15 passed
+  checks:
+    - targeted red-green lifecycle/resource regression tests
+    - npm run knip
+    - npm test
+    - npm run test:desktop
+    - npm run typecheck:desktop
+    - npm run build
+    - npm run eval
+    - npm run test:document-engine
+    - npm run test:report-e2e
+    - node test/report-generation-e2e/verify-report.mjs
+    - npm run arch:check
+    - git diff --check
+  deletion_review: inspect references and exports; compatibility is not dead code merely because it is old
+  performance: deterministic listener/statement/row counts, with elapsed or memory data only when actually measured
+
+demo_release_audit_20260912:
+  checks:
+    - every integration runner selection exists and missing selections fail loudly
+    - deterministic full UI with strict checks and isolated data
+    - varied repeat UI sessions with state assertions; separate fake-model coverage from real capability evidence
+    - targeted regression red then green for found faults
+    - final affected suites and immutable packaged integrity/startup
+  completion: verify objective against current code and artifacts; prior smoke does not prove release completion
+
+slack_receive_lifecycle_20260912:
+  baseline: public SDK event after restart must reproduce stale delivery before patch
+  checks:
+    - targeted listener lifecycle tests red then green
+    - Slack connector and trigger/runtime transport regressions
+    - core and desktop typechecks; production build
+    - final package refresh when source changes affect release contents
+  invariants:
+    - superseded connections never dispatch into the current connection
+    - delayed channel lookup cannot seed a newer connection cache
+    - no real external writes in regression tests
+
+clean_windows_vm_20260912:
+  baseline: Windows11Home host has no supported Sandbox or existing VirtualBox installation; clean guest evidence absent.
+  checks:
+    - official VirtualBox installer SHA256 and Oracle Authenticode signature must match
+    - installed VBoxManage must detect hardware virtualization
+    - official Windows ISO SHA256 must match Microsoft download page
+    - guest must boot and expose installed Windows version before any clean-machine claim
+    - AX Studio NSIS installation and startup must succeed without developer tooling in guest
+  invariants:
+    - no automatic host restart or disabling existing host security features
+    - no host account tokens or profile copied to guest
+    - keep clean guest baseline distinct from authenticated human persona tests
+
+clean_windows_vm_rebuild_20260912:
+  reason: Original guest reaches desktop but cannot elevate to install Guest Additions; no AX installation benchmark ran there.
+  comparison: OS provisioning attempts are distinct; original guest preserved, no successful clean-machine result claimed.
+  additional_checks:
+    - Bootstrap Administrator is used only for VM provisioning; actual AX installation verifier must reject administrator execution.
+    - Verify guest account membership and Guest Additions readiness before taking clean baseline snapshot.
+    - Retain original installer hash and native PDF, database, renderer, and startup-log checks.
+
+activity_clear_failure_20260912:
+  checks:
+    - Real Electron Activity UI shows the injected storage failure, retains the execution row, and re-enables bulk clear.
+    - Retrying successfully clears the fixture history and removes the stale error.
+    - No unhandled renderer page error is emitted by either attempt.
+    - Production build and desktop typecheck pass; refreshed installer retains native document and startup checks.
+  boundary: Isolated test profile; fake IPC failure only; no actual user records or connected external systems affected.
+
+packaged_navigation_soak_20260912:
+  duration: 90 cycles with20s spacing after10 warmup cycles; same Settings-Activity-Work route each time.
+  profile: Existing authorized persona profile, no workflows, no pending/running executions; do not send or create work.
+  baseline: First post-warmup GC sample from the same process, followed by periodic and final GC samples.
+  checks:
+    - Every navigation must reach the active requested tab; no renderer error, crash, or app exit.
+    - Final main heap growth <=20MiB and renderer heap growth <=10MiB from warmup baseline.
+    - BrowserWindow count unchanged; DOM documents <=baseline+2 and DOM nodes <=baseline+2000.
+    - Main process listener count <=baseline+10; record actual active resource types and process counts.
+    - Record samples, timestamps and package hash; scope result to this profile/navigation workload.
+
+ai_provider_form_isolation_20260912:
+  checks:
+    - Enter a dummy key in Claude API settings, switch directly to GPT through sidebar, assert GPT key is empty.
+    - Repeat from GPT back to Claude; each newly selected provider starts without the other provider draft.
+    - Capture renderer page errors; run same UI test red then green and relevant desktop typecheck/build/regressions.
+  boundary: Public Electron UI and isolated IPC configuration fixture; no external provider call or real secret.
+
+ai_detection_recovery_20260912:
+  checks:
+    - Reject AI configuration reads through isolated IPC and verify one visible error with retry.
+    - Restore configuration reads then click retry; error clears and settings navigation remains usable.
+    - No renderer pageerror; preserve provider draft isolation and Activity retry UI regressions.
+    - Desktop typecheck/build/tests and relevant deterministic UI scenarios pass.
+  boundary: Public desktop UI; configuration IPC fixture only; no secret persistence or external request.
+
+  # Supplementary telemetry correction before candidate baseline: Electron MemoryInfo uses workingSetSize; prior optional working-set values were absent. GC heap/count thresholds above are unchanged.
+
+clean_windows_upgrade_20260912:
+  baseline: Published v0.1.0-demo asset, GitHub digest7F61773CBE30ADB774A6B51F9D60873D13A99DDE2AB1DA71EE15E1FD3C7F5B0C.
+  checks:
+    - Restore clean OS snapshot; install actual published baseline as standard user and create identifiable test content through app UI.
+    - Close baseline app before replacement; preserve hashes of existing AX data files before candidate installer runs.
+    - Candidate installer must retain every captured data file byte-for-byte before first candidate launch.
+    - Candidate must start and load preserved test content through UI after migrations; verify bundled native PDF runtime separately.
+  limitation: Preparing or parsing verifier scripts is not installation or upgrade evidence.
+
+chat_list_recovery_20260912:
+  seam: Actual Electron UI with isolated public listChatSessions failure injection.
+  checks:
+    - List failure produces a visible alert and retry action without an unhandled renderer rejection.
+    - After transport recovery, retry restores the known saved conversation and clears the alert.
+    - Desktop typecheck and related UI regressions continue to pass.
+  limitation: Injected storage failure validates UI recovery, not a claim of actual database corruption repair.
+
+chat_list_response_order_20260912:
+  checks:
+    - Two user retries overlap; release the older empty response after the newer saved-history response is visible.
+    - The visible latest conversation must remain present after the old response completes.
+  reason: Independent response-order case prevents recovery tests from covering only sequential requests.
+
+ai_unused_activation_20260912:
+  checks:
+    - No activateBrand source/test callers before removal; remove only unused action and its dedicated import/type member.
+    - Desktop typecheck, unused-code analysis and existing provider UI scenarios pass after removal.
+
+workflow_empty_branch_display_20260912:
+  seam: Existing public draftToFlow input/output boundary.
+  checks:
+    - Conditional with only then steps displays the false skip edge to the join.
+    - Conditional with only else steps displays the true skip edge to the join.
+    - Existing linear, two-sided branch and Gmail helper displays remain unchanged.
+  limitation: Diagram correctness does not prove execution semantics; no runtime changes in this slice.
+
+workflow_cycle_preview_20260912:
+  seam: Public draftToFlow plus actual loaded-workflow UI boundary.
+  checks:
+    - Reachable cyclic branch draft yields an explicit preview error instead of recursion failure.
+    - A cycle with no top-level root is also reported instead of shown as an empty draft.
+    - Valid linear and branching graph output remains covered by existing tests.
+    - User can still access chat and navigation when preview cannot render.
+  invariant: Preview rejection does not silently modify workflow or weaken runtime validation.
+
+slow_discovery_refresh_20260912:
+  seam: Actual Electron attachment/start/inspection UI with delayed public IPC response.
+  checks:
+    - Inspection slower than1.5second poll interval still displays its terminal result and releases busy controls.
+    - Context/session invalidation continues to reject old-session responses.
+  invariant: Do not shorten inspection delay or lengthen polling interval to make the test pass.
+
+slow_app_state_refresh_20260912:
+  seam: Actual Electron startup with2.2second getState and500ms state-change events.
+  checks:
+    - App leaves initial loading while notifications continue; finite reads must not starve.
+    - Preserve unmount invalidation and coalescing of queued work.
+  invariant: Keep delay and notification frequency unchanged between RED and GREEN.
+
+refresh_ordering_policy_closure:
+  correction: Existing app-state ordering tests used passive state-change notifications to model an explicit superseding request. That conflates observation hints with user intent and requires starvation under continuous notifications, as reproduced in the unchanged public UI latency evaluator. Use the public refresh action for superseding-request tests; retain every stale-success/failure assertion. Add a notification-only test asserting ordered progressive state. Earlier notification-cancellation expectations are not comparable to the corrected policy.
+  checks:
+    - Explicit refresh or discovery action invalidates the previous result.
+    - Passive notifications and polling permit serialized progress without invalidating active reads.
+    - Context change and unmount invalidate both kinds of refresh.

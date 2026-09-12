@@ -20,7 +20,7 @@ export const CLAUDE_API_MODELS: CliModelOption[] = [
   claudeModel('claude-sonnet-4-6', 'Sonnet 4.6'),
   claudeModel('claude-opus-4-6', 'Opus 4.6'),
   claudeModel('claude-opus-5', 'Opus 5'),
-  claudeModel('claude-3-5-haiku-latest', 'Haiku 3.5'),
+  claudeModel('claude-haiku-4-5-20251001', 'Haiku 4.5'),
 ];
 
 export const CLAUDE_META = {

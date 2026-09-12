@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ContractTypeNameSchema } from '../../contracts/capability-io.js';
-import { ConditionExprSchema, normalizeCondition } from '../../runtime/condition-expr.js';
+import { ConditionExprSchema } from '../condition-expr/schema.js';
+import { normalizeCondition } from '../condition-expr/normalize.js';
 import { PortBindingSchema } from '../port-binding.js';
 import { MAX_WORKFLOW_STEPS } from './limits.js';
 

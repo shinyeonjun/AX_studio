@@ -62,7 +62,7 @@ export function buildPendingApprovals(core: AxCore) {
 
 export function buildExecutions(core: AxCore) {
   return core.store.listExecutions(50).map((execution) => {
-    const logSummary = executionLogSummary(execution.logJson);
+    const logSummary = executionLogSummary(execution.logJson, execution.status);
     const quality = executionQualityState(execution);
     const errorMessage =
       logSummary.errorMessage ??

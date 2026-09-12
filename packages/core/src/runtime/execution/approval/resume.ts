@@ -85,6 +85,16 @@ export async function continueWorkflowAfterApproval(
       ...(checkpoint?.remainingStepIds ?? []),
       ...(checkpoint?.pendingOuterStepIds ?? []),
     ]);
+    // Nested branches own their actions: approval grants permission, not unconditional execution.
+    const stepMap = new Map(ir.steps.map((step) => [step.id, step]));
+    for (const id of remainingStepIds) {
+      const step = stepMap.get(id);
+      if (step?.type === 'if') {
+        for (const child of [...step.thenStepIds, ...(step.elseStepIds ?? [])]) remainingStepIds.add(child);
+      } else if (step?.type === 'human_approval') {
+        for (const child of step.forActionIds) remainingStepIds.add(child);
+      }
+    }
     await executeApprovedActions({
       host,
       ir,

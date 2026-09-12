@@ -45,6 +45,7 @@ export const localFolderNewFileHandler: TriggerHandler<{
       {
         executionId: `trigger-poll:${ctx.workflowId}`,
         workflowId: ctx.workflowId,
+        abortSignal: ctx.abortSignal,
         variables: {},
         log: () => {},
       },

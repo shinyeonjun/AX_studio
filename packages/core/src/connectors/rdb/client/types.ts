@@ -1,3 +1,12 @@
+export interface RdbConnectionConfig {
+  type: 'mysql' | 'postgres' | 'sqlite';
+  connectionString?: string;
+  filePath?: string;
+  allowedSchemas?: string[];
+  allowedTables?: string[];
+  rowLimit?: number;
+}
+
 export interface RdbTableRef {
   schema?: string;
   table: string;

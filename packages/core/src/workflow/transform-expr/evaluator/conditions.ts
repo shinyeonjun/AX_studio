@@ -1,4 +1,4 @@
-import type { ConditionExpr } from '../../../runtime/condition-expr.js';
+import type { ConditionExpr } from '../../condition-expr/schema.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
 import { compareScalar, rowValue } from './helpers.js';
 

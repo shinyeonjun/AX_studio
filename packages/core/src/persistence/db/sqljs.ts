@@ -5,6 +5,16 @@ import { dirname, join } from 'node:path';
 import { applyMigrations } from './schema.js';
 import type { AppDatabase, SqlStatement } from './types.js';
 
+const PERSIST_DEBOUNCE_MS = 250;
+const MAX_PERSIST_DELAY_MS = 1_000;
+
+function assertStandaloneDatabase(filePath: string): void {
+  if (filePath === ':memory:') return;
+  if (['-wal', '-shm', '-journal'].some((suffix) => existsSync(filePath + suffix))) {
+    throw new Error('SQLite WAL 또는 journal이 남아 있어 sql.js로 열 수 없습니다. SQLite 백업 또는 체크포인트 후 다시 시도하세요.');
+  }
+}
+
 function useElectronSqlJsLoader(): boolean {
   return typeof process.versions.electron === 'string';
 }
@@ -26,8 +36,21 @@ async function loadSqlJs(): Promise<SqlJsStatic> {
   return sqlJsModulePromise;
 }
 
+function queryRows(db: SqlJsRawDatabase, sql: string, params: unknown[], limit = Infinity): Record<string, unknown>[] {
+  const stmt = db.prepare(sql);
+  try {
+    if (params.length > 0) stmt.bind(params.map((value) => value === undefined ? null : value) as (string | number | null)[]);
+    const rows: Record<string, unknown>[] = [];
+    while (rows.length < limit && stmt.step()) rows.push(stmt.getAsObject());
+    return rows;
+  } finally {
+    stmt.free();
+  }
+}
+
 class SqlJsDatabaseAdapter implements AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
+  private maxPersistTimer: ReturnType<typeof setTimeout> | undefined;
   private transactionDepth = 0;
 
   constructor(
@@ -61,22 +84,19 @@ class SqlJsDatabaseAdapter implements AppDatabase {
         return { changes: db.getRowsModified() };
       },
       all(...params: unknown[]) {
-        const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
-        const stmt = db.prepare(sql);
-        if (bound.length > 0) stmt.bind(bound);
-        const rows: Record<string, unknown>[] = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows;
+        return queryRows(db, sql, params);
       },
       get(...params: unknown[]) {
-        const rows = this.all(...params);
-        return rows[0];
+        return queryRows(db, sql, params, 1)[0];
       },
     };
   }
 
   close(): void {
+    if (this.transactionDepth > 0) {
+      this.db.run('ROLLBACK');
+      this.transactionDepth = 0;
+    }
     this.flushPersist();
     this.db.close();
   }
@@ -88,8 +108,20 @@ class SqlJsDatabaseAdapter implements AppDatabase {
       clearTimeout(this.persistTimer);
       this.persistTimer = undefined;
     }
+    if (this.maxPersistTimer) {
+      clearTimeout(this.maxPersistTimer);
+      this.maxPersistTimer = undefined;
+    }
+    assertStandaloneDatabase(this.filePath);
     const temporaryPath = this.filePath + '.tmp';
-    writeFileSync(temporaryPath, Buffer.from(this.db.export()));
+    let snapshot: Uint8Array;
+    try {
+      snapshot = this.db.export();
+    } finally {
+      // sql.js export reopens the connection and resets connection pragmas.
+      this.db.run('PRAGMA foreign_keys = ON');
+    }
+    writeFileSync(temporaryPath, Buffer.from(snapshot));
     renameSync(temporaryPath, this.filePath);
   }
 
@@ -97,12 +129,16 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
-    this.persistTimer = setTimeout(() => this.flushPersist(), 250);
+    this.persistTimer = setTimeout(() => this.flushPersist(), PERSIST_DEBOUNCE_MS);
+    if (!this.maxPersistTimer) {
+      this.maxPersistTimer = setTimeout(() => this.flushPersist(), MAX_PERSIST_DELAY_MS);
+    }
   }
 }
 
 export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   const SQL = await loadSqlJs();
+  assertStandaloneDatabase(path);
   let db: SqlJsRawDatabase;
   if (path === ':memory:') {
     db = new SQL.Database();
@@ -111,10 +147,17 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   } else {
     db = new SQL.Database();
   }
-  db.run('PRAGMA foreign_keys = ON');
-  const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
-  applyMigrations(adapter);
-  return adapter;
+  try {
+    db.run('PRAGMA foreign_keys = ON');
+    // Do not attach persistence timers until all initialization has succeeded.
+    applyMigrations(new SqlJsDatabaseAdapter(db));
+    const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
+    adapter.exec('PRAGMA foreign_keys = ON');
+    return adapter;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 export async function openReadonlySqlJs(filePath: string): Promise<{
@@ -122,15 +165,11 @@ export async function openReadonlySqlJs(filePath: string): Promise<{
   close(): void;
 }> {
   const SQL = await loadSqlJs();
+  assertStandaloneDatabase(filePath);
   const db = new SQL.Database(readFileSync(filePath));
   return {
     all(sql: string, params: unknown[] = []) {
-      const stmt = db.prepare(sql);
-      if (params.length > 0) stmt.bind(params as (string | number | null)[]);
-      const rows: Record<string, unknown>[] = [];
-      while (stmt.step()) rows.push(stmt.getAsObject());
-      stmt.free();
-      return rows;
+      return queryRows(db, sql, params);
     },
     close() {
       db.close();

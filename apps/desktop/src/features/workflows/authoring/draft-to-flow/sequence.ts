@@ -18,6 +18,27 @@ export function topLevelNodes(nodes: WorkflowNode[]): WorkflowNode[] {
   return nodes.filter((node) => !childIds.has(node.id));
 }
 
+export function hasBranchCycle(nodes: WorkflowNode[]): boolean {
+  const branches = new Map(nodes.map((node) => [node.id, node.type === 'if'
+    ? [...(node.thenStepIds ?? []), ...(node.elseStepIds ?? [])] : []]));
+  const incoming = new Map([...branches.keys()].map((id) => [id, 0]));
+  for (const targets of branches.values()) {
+    for (const id of targets) {
+      if (incoming.has(id)) incoming.set(id, incoming.get(id)! + 1);
+    }
+  }
+  const ready = [...incoming.keys()].filter((id) => incoming.get(id) === 0);
+  for (let index = 0; index < ready.length; index += 1) {
+    for (const id of branches.get(ready[index]!) ?? []) {
+      if (!incoming.has(id)) continue;
+      const remaining = incoming.get(id)! - 1;
+      incoming.set(id, remaining);
+      if (remaining === 0) ready.push(id);
+    }
+  }
+  return ready.length !== branches.size;
+}
+
 export function emitSequence(
   ctx: DraftFlowBuildContext,
   ids: string[],
@@ -63,6 +84,8 @@ export function emitSequence(
       if (thenLast !== flowId) addEdge(ctx, thenLast, joinId);
       if (elseLast !== flowId && elseLast !== thenLast) addEdge(ctx, elseLast, joinId);
       if (thenLast === flowId && elseLast === flowId) addEdge(ctx, flowId, joinId);
+      else if (thenLast === flowId) addEdge(ctx, flowId, joinId, '예');
+      else if (elseLast === flowId) addEdge(ctx, flowId, joinId, '아니오');
 
       last = joinId;
       previous = joinId;

@@ -1,6 +1,17 @@
 import { normalizeReportHttpPath } from '../source/schema.js';
-import type { ReportHttpConnectionSummary } from './planner.js';
 import type { ReportSourceInspection } from './source-discovery.js';
+import type { OpenApiOperation } from '../../../connectors/protocols/openapi/parse.js';
+
+export interface ReportHttpConnectionSummary {
+  id: string;
+  label: string;
+  /** Server identity only; excludes URL userinfo, query, fragment and auth headers. */
+  origin?: string;
+  /** The configured path prefix; execution still resolves the connection on the host. */
+  basePath: string;
+  /** Bounded configured GET metadata for this exact origin and base prefix. */
+  operations?: OpenApiOperation[];
+}
 
 export function reportSourceCatalogSummary(httpConnections: ReportHttpConnectionSummary[], rdbTables: string[]) {
   return { httpConnections: httpConnections.length,

@@ -1,4 +1,4 @@
-import type { ConditionExpr, ConditionValue } from './schema.js';
+import type { ConditionExpr, ConditionValue } from '../../workflow/condition-expr/schema.js';
 
 function resolveRef(
   ref: string,

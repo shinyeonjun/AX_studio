@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../../db.js';
+import { readRows } from '../../db/types.js';
 import type { DiscoverySnapshotRecord } from './contracts.js';
 
 export function insertDiscoverySnapshot(db: AppDatabase, snapshot: DiscoverySnapshotRecord): void {
@@ -53,9 +54,9 @@ export function upsertDiscoverySnapshot(db: AppDatabase, snapshot: DiscoverySnap
 }
 
 export function listDiscoverySnapshots(db: AppDatabase, sessionId: string): DiscoverySnapshotRecord[] {
-  const rows = db.prepare(
+  const rows = readRows<Record<string, unknown>>(db.prepare(
     'SELECT * FROM work_discovery_snapshots WHERE session_id = ? ORDER BY captured_at ASC',
-  ).all(sessionId) as Array<Record<string, unknown>>;
+  ), sessionId);
   return rows.map((row) => ({
     id: String(row.id),
     sessionId: String(row.session_id),

@@ -1,5 +1,5 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
-import { getMainWindow } from '../app-window.js';
+import { getMainWindow, isTrustedRendererUrl } from '../app-window.js';
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
   const mainWindow = getMainWindow();
@@ -8,6 +8,10 @@ function assertTrustedSender(event: IpcMainInvokeEvent): void {
   }
   if (event.sender.id !== mainWindow.webContents.id) {
     throw new Error('untrusted_ipc_sender');
+  }
+  const frame = event.senderFrame;
+  if (!frame || frame !== event.sender.mainFrame || !isTrustedRendererUrl(frame.url)) {
+    throw new Error('untrusted_ipc_frame');
   }
 }
 

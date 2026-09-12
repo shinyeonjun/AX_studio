@@ -27,7 +27,7 @@ function pageResponse(page: number, options: { truncated?: boolean; status?: num
     body: JSON.stringify({ rows: [{ id: page }], totalPages: options.totalPages ?? 2, page }), truncated: options.truncated ?? false };
 }
 
-it.each(['missing', 'goal', 'configured'] as const)('validates final-plan route provenance before calling the connector, evidence=%s', async evidence => {
+it.each(['missing', 'goal', 'goal-comma', 'goal-period', 'goal-parentheses', 'goal-quoted', 'configured'] as const)('validates final-plan route provenance before calling the connector, evidence=%s', async evidence => {
   const execute = vi.fn(async () => ({ ok: false, errorCode: 'fixture_stop' }));
   const service = new ReportGenerationService({
     workspaceSources: { resolveStoredFile: (_session, id) => ({ source: { id, fileName: `${id}.pdf` }, artifact: { storedPath: `${id}.pdf` } }) },
@@ -39,7 +39,14 @@ it.each(['missing', 'goal', 'configured'] as const)('validates final-plan route 
       refineCapturePlan: vi.fn(), inferReportPlan: vi.fn(),
     }, getConnector: name => name === 'http' ? { name: 'http', execute } : undefined,
   });
-  const result = await service.generate({ goal: evidence === 'goal' ? 'Use /invented-admin-export for the report' : 'Create a monthly report', templateSourceId: 't', exampleSourceId: 'e' }, {
+  const goals: Record<string, string> = {
+    goal: 'Use /invented-admin-export for the report',
+    'goal-comma': '주문 API는 GET /invented-admin-export, 모든 페이지를 조회해.',
+    'goal-period': 'Use /invented-admin-export. Read every page.',
+    'goal-parentheses': '주문 경로(/invented-admin-export)를 사용해.',
+    'goal-quoted': "Use '/invented-admin-export' for the report.",
+  };
+  const result = await service.generate({ goal: goals[evidence] ?? 'Create a monthly report', templateSourceId: 't', exampleSourceId: 'e' }, {
     workspaceSessionId: 'review', connections: [
       { connector: 'http', connected: true, config: { endpoints: [{ id: 'allowed', baseUrl: 'https://fixture.test' }] } },
       ...(evidence === 'configured' ? [{ connector: 'openapi', connected: true, config: {

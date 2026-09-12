@@ -1,7 +1,58 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const ipcMocks = vi.hoisted(() => ({
+  ipcMain: {
+    removeHandler: vi.fn(),
+    handle: vi.fn(),
+  },
+}));
+const windowMocks = vi.hoisted(() => {
+  const mainFrame = { url: 'app://index' };
+  return {
+    mainFrame,
+    mainWindow: {
+      isDestroyed: () => false,
+      webContents: { id: 42, mainFrame },
+    },
+  };
+});
+
+vi.mock('electron', () => ipcMocks);
+vi.mock('../app-window.js', () => ({
+  getMainWindow: () => windowMocks.mainWindow,
+  isTrustedRendererUrl: (url: string) => url === 'app://index',
+}));
+
 import { normalizeChatMessages, selectChatContext } from './chat-boundary.js';
+import { ipcHandle } from './ipc-handle.js';
 
 describe('workspace chat boundary', () => {
+  it('rejects privileged IPC calls from another sender, frame, or renderer URL', () => {
+    ipcMocks.ipcMain.handle.mockClear();
+    const handler = vi.fn(() => 'ok');
+    ipcHandle('test:trusted', handler);
+    const callback = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as (event: unknown) => unknown;
+    const trustedEvent = {
+      sender: { id: 42, mainFrame: windowMocks.mainFrame },
+      senderFrame: windowMocks.mainFrame,
+    };
+
+    expect(callback(trustedEvent)).toBe('ok');
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(() => callback({
+      sender: { id: 41, mainFrame: windowMocks.mainFrame },
+      senderFrame: windowMocks.mainFrame,
+    })).toThrow('untrusted_ipc_sender');
+    expect(() => callback({
+      sender: { id: 42, mainFrame: windowMocks.mainFrame },
+      senderFrame: { url: 'app://index' },
+    })).toThrow('untrusted_ipc_frame');
+    expect(() => callback({
+      sender: { id: 42, mainFrame: { url: 'app://foreign' } },
+      senderFrame: { url: 'app://foreign' },
+    })).toThrow('untrusted_ipc_frame');
+  });
+
   it('retains a long transcript while bounding model context and preserving the latest instruction', () => {
     const messages = Array.from({ length: 220 }, (_, index) => ({
       role: index % 2 ? 'assistant' : 'user', content: `message ${index}`,

@@ -20,6 +20,9 @@ export function createCommandServiceState(
     discoveryGateway: createDiscoveryCommandGateway(store, {
       artifactStore: options.artifactStore,
       resolveConnectionConfig: options.resolveConnectionConfig,
+      sourceRegistry: options.discoverySourceRegistry,
+      sourceProviders: options.discoverySourceProviders,
+      materializeWorkbook: options.discoveryWorkbookMaterializer,
       autoResume: options.autoResumeDiscovery,
     }),
     repairGateway: createRepairCommandGateway(store, {

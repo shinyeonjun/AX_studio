@@ -1,4 +1,3 @@
-import { AI_PROVIDER_UI_CATALOG } from '../../../../ui/constants/ai-providers';
 import { isBrandReady } from '../../lib/ai-settings/brand-readiness';
 import type { AiProviderState, AiBrandConfigurationActionsInput } from './contracts';
 
@@ -11,7 +10,6 @@ export function createAiBrandConfigurationActions({
   brandSecrets,
   verifiedCli,
   verifiedApi,
-  isActive,
   canSave,
   onRefresh,
   refreshDetection,
@@ -21,23 +19,6 @@ export function createAiBrandConfigurationActions({
   setSaving,
   setVerifiedApi,
 }: AiBrandConfigurationActionsInput) {
-  const activateBrand = async () => {
-    if (isActive || !canSave) return;
-    setSaving(true);
-    setMessage('');
-    try {
-      await window.ax.saveAiBrandConfig(brand, { mode, model });
-      await window.ax.setAiProvider({ brand, mode, model });
-      await onRefresh();
-      await refreshDetection();
-      setMessage(`${AI_PROVIDER_UI_CATALOG[brand].title}를 사용 중으로 전환했습니다.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'AI 전환에 실패했습니다.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -70,5 +51,5 @@ export function createAiBrandConfigurationActions({
     }
   };
 
-  return { activateBrand, save };
+  return { save };
 }

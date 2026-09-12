@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 import type { ExecutionRow, ExecutionStatus } from '../rows.js';
 import { hasOpenApprovalForExecution } from './approval-repository.js';
 
@@ -80,15 +81,16 @@ function mapExecution(row: ExecutionRow) {
 }
 
 export function getExecution(db: AppDatabase, id: string) {
-  const row = db.prepare('SELECT * FROM executions WHERE id = ?').get(id) as ExecutionRow | undefined;
+  const row = readRow<ExecutionRow>(db.prepare('SELECT * FROM executions WHERE id = ?'), id);
   if (!row) return undefined;
   return mapExecution(row);
 }
 
 export function listExecutions(db: AppDatabase, limit = 50) {
-  const rows = db
-    .prepare('SELECT * FROM executions ORDER BY started_at DESC LIMIT ?')
-    .all(limit) as unknown as ExecutionRow[];
+  const rows = readRows<ExecutionRow>(
+    db.prepare('SELECT * FROM executions ORDER BY started_at DESC LIMIT ?'),
+    limit,
+  );
   return rows.map(mapExecution);
 }
 
@@ -111,16 +113,14 @@ export function deleteExecution(db: AppDatabase, id: string): boolean {
 }
 
 export function clearExecutions(db: AppDatabase): number {
-  const pendingExecutionIds = (
-    db.prepare("SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing')").all() as Array<{
-      execution_id: string;
-    }>
+  const pendingExecutionIds = readRows<{ execution_id: string }>(
+    db.prepare("SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing')"),
   ).map((row) => row.execution_id);
 
   db.exec('BEGIN');
   try {
     if (pendingExecutionIds.length === 0) {
-      const countRow = db.prepare('SELECT COUNT(*) AS count FROM executions').get() as { count: number };
+      const countRow = readRow<{ count: number }>(db.prepare('SELECT COUNT(*) AS count FROM executions'))!;
       db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions)').run();
       db.prepare('DELETE FROM executions').run();
       db.exec('COMMIT');
@@ -128,9 +128,10 @@ export function clearExecutions(db: AppDatabase): number {
     }
 
     const placeholders = pendingExecutionIds.map(() => '?').join(', ');
-    const countRow = db
-      .prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`)
-      .get(...pendingExecutionIds) as { count: number };
+    const countRow = readRow<{ count: number }>(
+      db.prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`),
+      ...pendingExecutionIds,
+    )!;
 
     db
       .prepare(

@@ -4,7 +4,6 @@ import { isSettingsScreenVisibleInUi, SETTINGS_TITLES } from '../../../ui/consta
 import { PageHeader } from '../../../ui/layout/PageHeader';
 import { SettingsPageContent } from './settings-page/content';
 import type { SettingsPageProps } from './settings-page/contracts';
-import { useSettingsDetection } from './settings-page/use-settings-detection';
 
 function settingsSubtitle(screen: SettingsScreen): string {
   if (screen === 'hub') return '카테고리별로 연결할 항목을 선택하세요';
@@ -17,10 +16,15 @@ function settingsBackTarget(screen: SettingsScreen): SettingsScreen | null {
 }
 
 export function SettingsPage(props: SettingsPageProps) {
-  const { screen, onScreenChange } = props;
-  const detection = useSettingsDetection(screen);
-  const { detecting } = detection;
+  const { screen, onScreenChange, detection } = props;
+  const { detecting, refreshDetection } = detection;
   const backTarget = settingsBackTarget(screen);
+
+  useEffect(() => {
+    if (screen === 'hub' || screen.startsWith('ai-')) {
+      void refreshDetection().catch(() => {});
+    }
+  }, [screen, refreshDetection]);
 
   useEffect(() => {
     if (!isSettingsScreenVisibleInUi(screen)) {

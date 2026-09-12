@@ -8,6 +8,10 @@ import type {
 
 export type ReportRow = Record<string, unknown>;
 
+export function isRecordValue(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export function valueAtPath(row: ReportRow, path: string): unknown {
   let current: unknown = row;
   for (const part of path.split('.')) {
@@ -15,6 +19,22 @@ export function valueAtPath(row: ReportRow, path: string): unknown {
     current = (current as Record<string, unknown>)[part];
   }
   return current;
+}
+
+/** Collect declarative field references from a nested report expression. */
+export function fieldPaths(value: unknown, paths = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const item of value) fieldPaths(item, paths);
+    return paths;
+  }
+  if (!value || typeof value !== 'object') return paths;
+  const record = value as Record<string, unknown>;
+  if (record.kind === 'field' && typeof record.path === 'string') {
+    const path = record.path.trim();
+    if (path) paths.add(path);
+  }
+  for (const child of Object.values(record)) fieldPaths(child, paths);
+  return paths;
 }
 
 export function numericValue(value: unknown, context = 'value'): number {

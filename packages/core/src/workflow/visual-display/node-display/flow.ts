@@ -1,4 +1,5 @@
-import { safeFormatCondition, type ConditionExpr } from '../../../runtime/condition-expr.js';
+import { safeFormatCondition } from '../../condition-expr/format.js';
+import type { ConditionExpr } from '../../condition-expr/schema.js';
 import type { WorkflowNode } from '../../canvas/draft/schema.js';
 import { truncate } from '../helpers.js';
 import type { NodeDisplayResult } from '../types.js';

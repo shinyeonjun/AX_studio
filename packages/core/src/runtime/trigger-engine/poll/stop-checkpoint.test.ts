@@ -5,8 +5,46 @@ import { WorkflowRuntime } from '../../engine.js';
 import { createTestConnectors, mockGmail, mockSlack } from '../../../testing/connectors/test-connectors.js';
 import { TriggerEngine } from '../../trigger-engine.js';
 import { gmailNotifySkill } from './fixtures.js';
+import type { ConnectorResult } from '../../../connectors/types.js';
 
 describe('TriggerEngine in-flight polling stop checkpoints', () => {
+  it('aborts a pending read and permits a fresh tick even when the connector ignores abort', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const { workflowId } = store.saveWorkflow(gmailNotifySkill);
+    store.setWorkflowActive(workflowId, true);
+    let signal: AbortSignal | undefined;
+    let release!: (value: ConnectorResult) => void;
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const pending = new Promise<ConnectorResult>((resolve) => { release = resolve; });
+    let reads = 0;
+    runtime.connectors.gmail = { name: 'gmail', async execute(_action, _params, ctx) {
+      reads += 1;
+      if (reads === 1) { signal = ctx.abortSignal; entered(); return pending; }
+      return { ok: true, data: { events: [], cursor: { initialized: true, historyId: 'fresh' } } };
+    } };
+    const engine = new TriggerEngine(store, runtime);
+    const oldTick = engine.tick();
+    await started;
+    try {
+      await engine.stop();
+      expect(signal?.aborted).toBe(true);
+      await engine.tick();
+      expect(reads).toBe(2);
+      release({ ok: true, data: { events: [], cursor: { initialized: true, historyId: 'stale' } } });
+      await oldTick;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(store.getSetting<Record<string, { historyId?: string }>>('trigger.cursors', {})[workflowId]?.historyId).toBe('fresh');
+    } finally {
+      release({ ok: true, data: { events: [], cursor: {} } });
+      await oldTick;
+      await engine.stop();
+      db.close?.();
+    }
+  });
+
   it('checkpoints a successful poll execution when stopped while it is in flight', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

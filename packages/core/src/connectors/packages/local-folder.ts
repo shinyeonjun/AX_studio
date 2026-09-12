@@ -6,12 +6,12 @@ import {
 } from '../local-folder/index.js';
 import { resolveFolderRoot } from '../../platform/local-folder-path.js';
 import { localFolderNewFileHandler } from '../../triggers/local-folder/new-file/index.js';
-import type { DesignToolContext } from '../../intelligence/design-tools/types.js';
+import type { SourceListingContext } from '../types.js';
 import { LOCAL_FOLDER_CAPABILITIES, LOCAL_FOLDER_CATALOG } from '../local-folder/catalog.js';
 import { folderPage, parseFolderPage } from '../local-folder/pagination.js';
 import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.js';
 
-function localFolderSources(ctx: DesignToolContext) {
+function localFolderSources(ctx: SourceListingContext) {
   const conn = ctx.connections.find((entry) => entry.connector === 'local_folder');
   const status = getLocalFolderConnectionStatus(conn?.config, Boolean(conn?.connected));
   if (!status.connected) {
@@ -31,7 +31,7 @@ function localFolderSources(ctx: DesignToolContext) {
   };
 }
 
-async function localFolderSourceFiles(ctx: DesignToolContext, args: Record<string, unknown>) {
+async function localFolderSourceFiles(ctx: SourceListingContext, args: Record<string, unknown>) {
   ctx.abortSignal?.throwIfAborted();
   const folderId = typeof args.folderId === 'string' ? args.folderId.trim() : '';
   if (!folderId) throw new Error('folderId_required');

@@ -9,6 +9,7 @@ import {
   isConnectorAlwaysOn,
 } from '../../catalog/index.js';
 import { parseHttpEndpoints } from '../../connectors/http/connection.js';
+import { safeHttpBaseUrl } from '../../connectors/http/request.js';
 import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { formatRdbTableRef, parseRdbTableRef } from '../../connectors/rdb/client.js';
 import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../connectors/protocols/openapi/index.js';
@@ -28,19 +29,6 @@ function connectionFor(ctx: DesignToolContext, connector: string): ConnectionRec
 function availabilityForConnector(ctx: DesignToolContext, connector: string): DiscoveryAsset['availability'] {
   if (isConnectorAlwaysOn(connector) || ctx.connectedConnectorIds.includes(connector)) return 'ready';
   return 'requires_connection';
-}
-
-function safeBaseUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    url.username = '';
-    url.password = '';
-    url.search = '';
-    url.hash = '';
-    return url.toString();
-  } catch {
-    return '[invalid base URL]';
-  }
 }
 
 function addUnique(assets: DiscoveryAsset[], seen: Set<string>, asset: DiscoveryAsset): void {
@@ -161,14 +149,14 @@ function httpEndpointAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], se
       kind: 'http_endpoint',
       name: endpoint.id,
       label: endpoint.label ?? endpoint.id,
-      description: `REST API 연결 (${safeBaseUrl(endpoint.baseUrl)})`,
+      description: `REST API 연결 (${safeHttpBaseUrl(endpoint.baseUrl)})`,
       connector: 'http',
-      aliases: [endpoint.id, endpoint.label ?? '', safeBaseUrl(endpoint.baseUrl), 'REST', 'API'],
+      aliases: [endpoint.id, endpoint.label ?? '', safeHttpBaseUrl(endpoint.baseUrl), 'REST', 'API'],
       availability: authReady ? 'ready' : 'blocked',
       access: 'read',
       metadata: {
         endpointId: endpoint.id,
-        baseUrl: safeBaseUrl(endpoint.baseUrl),
+        baseUrl: safeHttpBaseUrl(endpoint.baseUrl),
         authType,
         authReady,
       },
@@ -193,7 +181,7 @@ function openApiAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: S
       kind: 'http_endpoint',
       name: spec.id,
       label: parsed.label ?? spec.title,
-      description: `${spec.title} OpenAPI REST API (${safeBaseUrl(spec.baseUrl)})`,
+      description: `${spec.title} OpenAPI REST API (${safeHttpBaseUrl(spec.baseUrl)})`,
       connector: 'openapi',
       aliases: [spec.id, parsed.label ?? '', spec.title, 'REST', 'API'],
       availability: 'ready',
@@ -201,7 +189,7 @@ function openApiAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: S
       metadata: {
         specId: spec.id,
         title: spec.title,
-        baseUrl: safeBaseUrl(spec.baseUrl),
+        baseUrl: safeHttpBaseUrl(spec.baseUrl),
         operationCount: spec.operations.length,
       },
       provenance: { source: 'openapi', ref: `openapi:${spec.id}` },

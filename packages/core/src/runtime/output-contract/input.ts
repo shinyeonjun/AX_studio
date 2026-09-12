@@ -3,23 +3,15 @@ import type {
   InputContractColumnType,
   OutputContract,
 } from '../../contracts/output-contract.js';
-import type {
-  ContractCheckResult,
-  OutputContractIssue,
+import {
+  asRecord,
+  isDateString,
+  type ContractCheckResult,
+  type OutputContractIssue,
 } from './types.js';
 
 function ok(): ContractCheckResult {
   return { ok: true, issues: [] };
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
-function isDateString(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}(?:$|[T ])/.test(value);
 }
 
 function inferColumnType(values: unknown[]): InputContractColumnType {

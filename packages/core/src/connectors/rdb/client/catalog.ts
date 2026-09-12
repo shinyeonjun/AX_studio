@@ -1,8 +1,7 @@
 import { openReadonlySqlite } from '../../../persistence/db.js';
-import type { RdbConnectionConfig } from '../connector.js';
 import { openRdbSqlClient } from './drivers.js';
 import { filterRdbTables } from './policy.js';
-import type { RdbTableInfo } from './types.js';
+import type { RdbConnectionConfig, RdbTableInfo } from './types.js';
 
 export async function listRdbTables(config: RdbConnectionConfig, abortSignal?: AbortSignal): Promise<RdbTableInfo[]> {
   abortSignal?.throwIfAborted();

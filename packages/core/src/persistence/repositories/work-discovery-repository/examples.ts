@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../../db.js';
+import { readRows } from '../../db/types.js';
 import type { DiscoveryExampleRecord } from './contracts.js';
 import { parseArtifactIds } from './parsing.js';
 
@@ -39,9 +40,9 @@ export function insertDiscoveryExample(
 }
 
 export function listDiscoveryExamples(db: AppDatabase, sessionId: string): DiscoveryExampleRecord[] {
-  const rows = db.prepare(
+  const rows = readRows<Record<string, unknown>>(db.prepare(
     'SELECT * FROM work_discovery_examples WHERE session_id = ? ORDER BY created_at ASC',
-  ).all(sessionId) as Array<Record<string, unknown>>;
+  ), sessionId);
   return rows.map((row) => ({
     id: String(row.id),
     sessionId: String(row.session_id),

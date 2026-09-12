@@ -13,31 +13,33 @@ export function useAppState() {
   const [loadState, setLoadState] = useState<AppLoadState>('loading');
   const [error, setError] = useState('');
 
-  const refresh = useCallback(() => {
-    const refreshId = ++refreshIdRef.current;
+  const requestRefresh = useCallback((invalidate: boolean) => {
+    const refreshId = invalidate ? ++refreshIdRef.current : refreshIdRef.current;
     return refreshQueue.current.run(async () => {
-    if (!mounted.current) return;
-    setLoadState((current) => (current === 'ready' || current === 'stale' ? 'stale' : 'loading'));
-    try {
-      const next = await window.ax.getState();
       if (!mounted.current || refreshId !== refreshIdRef.current) return;
-      setState(next as AppState);
-      setLoadState('ready');
-      setError('');
-    } catch (err) {
-      if (!mounted.current || refreshId !== refreshIdRef.current) return;
-      const message = ipcErrorMessage(err, '앱 상태를 불러오지 못했습니다.');
-      setError(message);
-      setLoadState((current) => (current === 'loading' ? 'error' : 'stale'));
-    }
+      setLoadState((current) => (current === 'error' ? 'loading' : current));
+      try {
+        const next = await window.ax.getState();
+        if (!mounted.current || refreshId !== refreshIdRef.current) return;
+        setState(next as AppState);
+        setLoadState('ready');
+        setError('');
+      } catch (err) {
+        if (!mounted.current || refreshId !== refreshIdRef.current) return;
+        const message = ipcErrorMessage(err, '앱 상태를 불러오지 못했습니다.');
+        setError(message);
+        setLoadState((current) => (current === 'loading' ? 'error' : 'stale'));
+      }
     });
   }, []);
+  const refresh = useCallback(() => requestRefresh(true), [requestRefresh]);
 
   useEffect(() => {
     mounted.current = true;
     void refresh();
     const unsubscribe = window.ax.onStateChanged(() => {
-      void refresh();
+      // Notifications request a follow-up read without starving the active read.
+      void requestRefresh(false);
     });
     return () => {
       mounted.current = false;
@@ -45,7 +47,7 @@ export function useAppState() {
       refreshQueue.current.clearPending();
       unsubscribe();
     };
-  }, [refresh]);
+  }, [refresh, requestRefresh]);
 
   return {
     state,

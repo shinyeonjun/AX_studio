@@ -14,6 +14,27 @@ const CONNECTOR_IDS = [
 module.exports = {
   forbidden: [
     {
+      name: 'no-circular',
+      severity: 'error',
+      comment: 'Keep module dependencies acyclic so ownership stays explicit and refactors remain local.',
+      from: {},
+      to: { circular: true },
+    },
+    {
+      name: 'no-orphans',
+      severity: 'warn',
+      comment: 'Orphan modules need an explicit exception when they are ambient declarations or build entrypoints.',
+      from: {
+        orphan: true,
+        pathNot: [
+          '(^|/)persistence/sql-js[.]d[.]ts$',
+          '(^|/)tsconfig[.]json$',
+          '(^|/)(?:babel|webpack)[.]config[.](?:js|cjs|mjs|ts|cts|mts|json)$',
+        ],
+      },
+      to: {},
+    },
+    {
       name: 'no-interview-namespace',
       severity: 'error',
       from: {},

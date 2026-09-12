@@ -44,6 +44,30 @@ const sources: Record<string, ReportSourceSnapshot> = {
 const field = (path: string) => ({ kind: 'field' as const, path });
 const literal = (value: string | number | boolean | null) => ({ kind: 'literal' as const, value });
 
+it('ranks and limits a view by an undisplayed source column', () => {
+  const plan: ReportPlan = {
+    schemaVersion: 1, baseSource: 'sales', joins: [], scalars: [], texts: [],
+    tables: [{
+      kind: 'aggregate', id: 'customers',
+      groupBy: [{ id: 'name', value: field('sales.name') }],
+      columns: [
+        { id: 'name', value: { kind: 'group_key', keyId: 'name' } },
+        { id: 'amount', value: { kind: 'sum', value: field('sales.amount') } },
+      ],
+    }, {
+      kind: 'view', id: 'top_customer', sourceTable: 'customers', columns: ['name'],
+      sort: [{ columnId: 'amount', direction: 'desc' }], limit: 1,
+    }],
+  };
+  const result = executeReportPlan(plan, {
+    sales: { id: 'sales', complete: true, rows: [{ name: 'A', amount: 1 }, { name: 'Z', amount: 100 }] },
+  });
+  expect(result.tables.top_customer).toEqual({
+    columns: ['name'], rows: [{ raw: { name: 'Z' }, display: { name: 'Z' } }],
+  });
+  expect(result.tables.customers?.rows).toHaveLength(2);
+});
+
 it('computes independent report sections without multiplying contract totals by order count', () => {
   const input = {
     schemaVersion: 1, baseSource: 'orders', joins: [],

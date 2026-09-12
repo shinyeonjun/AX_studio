@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { InputContractColumnType, OutputContract } from '../../contracts/output-contract.js';
+import {
+  InputContractColumnTypeSchema,
+  type InputContractColumnType,
+  type OutputContract,
+} from '../../contracts/output-contract.js';
 import {
   describeInputColumns,
   inputColumnTypesCompatible,
@@ -38,17 +42,7 @@ function columnNameSimilarity(expected: string, actual: string): number {
 }
 
 function compatibleExpectedType(type: string): type is InputContractColumnType {
-  return [
-    'string',
-    'number',
-    'integer',
-    'boolean',
-    'date',
-    'datetime',
-    'currency',
-    'percentage',
-    'unknown',
-  ].includes(type);
+  return InputContractColumnTypeSchema.safeParse(type).success;
 }
 
 function candidateId(

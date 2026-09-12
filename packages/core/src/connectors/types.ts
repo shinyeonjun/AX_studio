@@ -1,3 +1,16 @@
+/** Minimal host context exposed to connector-owned source listing handlers. */
+export interface SourceListingConnection {
+  connector: string;
+  connected: boolean;
+  config?: unknown;
+}
+
+export interface SourceListingContext {
+  abortSignal?: AbortSignal;
+  connections: SourceListingConnection[];
+  connectedConnectorIds: string[];
+}
+
 export interface ResolveFileRefContextResult {
   ok: boolean;
   path?: string;

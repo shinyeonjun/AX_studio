@@ -9,6 +9,7 @@ import type { DiscoveryFieldMetadata } from '../../../contracts/discovery-metada
 import { buildDiscoveryAssetIndex } from '../discovery-catalog.js';
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
 import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../../connectors/protocols/openapi/index.js';
+import { safeHttpBaseUrl } from '../../../connectors/http/request.js';
 
 function requiredString(args: Record<string, unknown>, name: string): string {
   const value = args[name];
@@ -148,7 +149,7 @@ function describeOpenApiEndpoint(ctx: DesignToolContext, asset: DiscoveryAsset, 
       api: {
         id: spec.id,
         title: spec.title,
-        baseUrl: safeBaseUrl(spec.baseUrl),
+        baseUrl: safeHttpBaseUrl(spec.baseUrl),
       },
       operations,
       totalOperations: spec.operations.length,
@@ -157,19 +158,6 @@ function describeOpenApiEndpoint(ctx: DesignToolContext, asset: DiscoveryAsset, 
     };
   } catch {
     return { available: false, reason: 'openapi_spec_invalid' };
-  }
-}
-
-function safeBaseUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    url.username = '';
-    url.password = '';
-    url.search = '';
-    url.hash = '';
-    return url.toString();
-  } catch {
-    return '[invalid base URL]';
   }
 }
 

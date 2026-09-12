@@ -2,6 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { executionLogSummary } from './execution-log-summary.js';
 
 describe('execution log summary', () => {
+  it.each(['success', 'failed', 'cancelled'])('does not describe a terminal %s execution as awaiting approval in older logs', status => {
+    const summary = executionLogSummary(JSON.stringify([
+      { code: 'waiting_approval', message: '승인을 기다리고 있습니다.', data: { stepId: 'send' } },
+      { message: 'slack.send', data: { channel: 'allowed-test-channel' } },
+    ]), status);
+    expect(summary.currentStepStatus).not.toBe('waiting_approval');
+    expect(summary.currentStepMessage).toBeUndefined();
+  });
+
+  it('replaces approval waiting progress when the user rejects the execution', () => {
+    const summary = executionLogSummary(JSON.stringify([
+      { code: 'waiting_approval', message: '승인을 기다리고 있습니다.', data: { stepId: 'send' } },
+      { code: 'approval_rejected', message: '승인이 거절되어 실행을 취소했습니다.' },
+    ]));
+
+    expect(summary.currentStepMessage).toBe('승인이 거절되어 실행을 취소했습니다.');
+    expect(summary.currentStepStatus).not.toBe('waiting_approval');
+  });
+
   it('exposes generated PDF metadata without stored paths or raw bytes', () => {
     const summary = executionLogSummary(JSON.stringify([
       {

@@ -7,6 +7,7 @@ import { pollTriggerWorkflow } from './workflow.js';
 export async function runTriggerPoll(
   options: TriggerPollerOptions,
   generation: number,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   if (!options.store.getGlobalActive()) return;
 
@@ -27,6 +28,7 @@ export async function runTriggerPoll(
     const shouldContinue = await pollTriggerWorkflow({
       options,
       generation,
+      abortSignal,
       workflowId: skill.id,
       workflow,
       trigger,

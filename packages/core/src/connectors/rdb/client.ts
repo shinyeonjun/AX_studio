@@ -1,4 +1,3 @@
-export type { RdbSqlClient, RdbTableInfo, RdbTableRef } from './client/types.js';
 export { formatRdbTableRef, parseRdbTableRef } from './client/table-ref.js';
 export { isAllowedRdbTable, resolveRdbTableRef } from './client/policy.js';
 export { openRdbSqlClient } from './client/drivers.js';

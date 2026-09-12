@@ -239,11 +239,19 @@ function reportHttpEvidencePathnames(goal: string, pair: PdfReportPairAnalysis):
   const pathnames = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(/\/(?!\/)[A-Za-z0-9][A-Za-z0-9._~!$&'()*+,;=:@%\/-]{0,255}/g)) {
-      try {
-        const normalized = normalizeReportHttpPath(match[0]);
-        pathnames.add(new URL(normalized, 'http://report-probe.invalid').pathname);
-      } catch {
-        // A slash in prose is not evidence of a request route.
+      const token = match[0];
+      let prosePath = token.replace(/[.,;:']+$/, '');
+      while (prosePath.endsWith(')') && prosePath.split(')').length > prosePath.split('(').length) {
+        prosePath = prosePath.slice(0, -1);
+      }
+      // Keep the literal route too: punctuation can be a real URL character.
+      for (const candidate of new Set([token, prosePath])) {
+        try {
+          const normalized = normalizeReportHttpPath(candidate);
+          pathnames.add(new URL(normalized, 'http://report-probe.invalid').pathname);
+        } catch {
+          // A slash in prose is not evidence of a request route.
+        }
       }
     }
   }
@@ -316,7 +324,7 @@ export class ReportGenerationService {
 
       ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_pair_analysis_started', message: '보고서 양식과 완성 예시를 비교하고 있습니다.' });
       phase = 'pair_analysis';
-      const pair = await stage('pair_analysis', { template: params.templateSourceId, example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
+      const pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId, example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
         template.artifact.storedPath,
         example.artifact.storedPath,
       ), (saved) => [...saved.templateImages, ...saved.exampleImages].every(existsSync));

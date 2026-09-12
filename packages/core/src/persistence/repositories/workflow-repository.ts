@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { parseWorkflowIR } from '../../workflow/schema.js';
 import { parseStoredWorkflow, serializeWorkflowForStorage } from '../../workflow/persisted-document.js';
@@ -24,10 +25,11 @@ export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: str
     });
   }
   const workflowId = normalized.id ?? randomUUID();
-  const existing = db.prepare('SELECT id FROM workflows WHERE id = ?').get(workflowId) as { id: string } | undefined;
-  const latest = db
-    .prepare('SELECT MAX(version) AS version FROM workflow_versions WHERE workflow_id = ?')
-    .get(workflowId) as { version?: number | null } | undefined;
+  const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
+  const latest = readRow<{ version?: number | null }>(
+    db.prepare('SELECT MAX(version) AS version FROM workflow_versions WHERE workflow_id = ?'),
+    workflowId,
+  );
   const version = existing
     ? Math.max(normalized.version, Number(latest?.version ?? 0) + 1)
     : normalized.version;
@@ -59,14 +61,11 @@ export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: str
 }
 
 export function getWorkflow(db: AppDatabase, workflowId: string, version?: number): WorkflowIR | null {
-  const versions = db
-    .prepare('SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ?')
-    .all(workflowId) as Array<{ version: number; ir_json: string }>;
-
-  if (versions.length === 0) return null;
   const target = version
-    ? versions.find((v) => v.version === version)
-    : versions.sort((a, b) => b.version - a.version)[0];
+    ? readRow<{ version: number; ir_json: string }>(db.prepare(
+      'SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ? AND version = ?'), workflowId, version)
+    : readRow<{ version: number; ir_json: string }>(db.prepare(
+      'SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC LIMIT 1'), workflowId);
   if (!target) return null;
   try {
     return parseStoredWorkflow(JSON.parse(target.ir_json));
@@ -80,9 +79,10 @@ export function getWorkflow(db: AppDatabase, workflowId: string, version?: numbe
 }
 
 export function getWorkflowPolicy(db: AppDatabase, workflowId: string): AgentScopedContextMap {
-  const row = db.prepare('SELECT policy_json FROM workflows WHERE id = ?').get(workflowId) as
-    | { policy_json?: string | null }
-    | undefined;
+  const row = readRow<{ policy_json?: string | null }>(
+    db.prepare('SELECT policy_json FROM workflows WHERE id = ?'),
+    workflowId,
+  );
   return parseStoredAgentScopedContext(row?.policy_json);
 }
 
@@ -91,9 +91,10 @@ export function updateWorkflowPolicy(
   workflowId: string,
   patch: AgentScopedContextPatch,
 ): AgentScopedContextMap | null {
-  const row = db.prepare('SELECT id, policy_json FROM workflows WHERE id = ?').get(workflowId) as
-    | { id: string; policy_json?: string | null }
-    | undefined;
+  const row = readRow<{ id: string; policy_json?: string | null }>(
+    db.prepare('SELECT id, policy_json FROM workflows WHERE id = ?'),
+    workflowId,
+  );
   if (!row) return null;
   const next = mergeAgentScopedContext(parseStoredAgentScopedContext(row.policy_json), patch);
   db.prepare('UPDATE workflows SET policy_json = ?, updated_at = ? WHERE id = ?')
@@ -102,14 +103,12 @@ export function updateWorkflowPolicy(
 }
 
 export function listWorkflows(db: AppDatabase): Array<{ id: string; name: string; active: boolean; latestVersion: number }> {
-  const rows = db
-    .prepare(
-      `SELECT s.id, s.name, s.active, COALESCE(MAX(sv.version), 0) AS latestVersion
-       FROM workflows s
-       LEFT JOIN workflow_versions sv ON sv.workflow_id = s.id
-       GROUP BY s.id, s.name, s.active`,
-    )
-    .all() as Array<{ id: string; name: string; active: number; latestVersion: number }>;
+  const rows = readRows<{ id: string; name: string; active: number; latestVersion: number }>(db.prepare(
+    `SELECT s.id, s.name, s.active, COALESCE(MAX(sv.version), 0) AS latestVersion
+     FROM workflows s
+     LEFT JOIN workflow_versions sv ON sv.workflow_id = s.id
+     GROUP BY s.id, s.name, s.active`,
+  ));
 
   return rows.map((row) => ({
     id: row.id,
@@ -121,8 +120,12 @@ export function listWorkflows(db: AppDatabase): Array<{ id: string; name: string
 
 export function setWorkflowActive(db: AppDatabase, workflowId: string, active: boolean): boolean {
   db.prepare('UPDATE workflows SET active = ?, updated_at = ? WHERE id = ?').run(active ? 1 : 0, new Date().toISOString(), workflowId);
-  const row = db.prepare('SELECT changes() AS count').get() as { count?: number } | undefined;
+  const row = readRow<{ count?: number }>(db.prepare('SELECT changes() AS count'));
   return Number(row?.count ?? 0) === 1;
+}
+
+export function isWorkflowActive(db: AppDatabase, workflowId: string): boolean {
+  return Boolean(readRow<{ active: number }>(db.prepare('SELECT active FROM workflows WHERE id = ?'), workflowId)?.active);
 }
 
 // Settings blobs keyed by workflow id that must not outlive the workflow.
@@ -139,7 +142,7 @@ function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
 }
 
 export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
-  const existing = db.prepare('SELECT id FROM workflows WHERE id = ?').get(workflowId) as { id: string } | undefined;
+  const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
   if (!existing) return false;
   db.exec('BEGIN');
   try {

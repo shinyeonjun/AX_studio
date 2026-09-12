@@ -1,20 +1,20 @@
 export {
   ConditionExprSchema,
   ConditionValueSchema,
-} from './condition-expr/schema.js';
+} from '../workflow/condition-expr/schema.js';
 export type {
   ConditionExpr,
   ConditionValue,
-} from './condition-expr/schema.js';
+} from '../workflow/condition-expr/schema.js';
 export { evaluateCondition } from './condition-expr/evaluate.js';
-export { migrateLegacyCondition } from './condition-expr/legacy.js';
-export { coerceConditionInput } from './condition-expr/coerce/input.js';
+export { migrateLegacyCondition } from '../workflow/condition-expr/legacy.js';
+export { coerceConditionInput } from '../workflow/condition-expr/coerce/input.js';
 export {
   normalizeCondition,
   preprocessConditionValue,
   tryNormalizeCondition,
-} from './condition-expr/normalize.js';
+} from '../workflow/condition-expr/normalize.js';
 export {
   formatCondition,
   safeFormatCondition,
-} from './condition-expr/format.js';
+} from '../workflow/condition-expr/format.js';

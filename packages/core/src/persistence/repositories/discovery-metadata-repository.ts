@@ -7,6 +7,7 @@ import {
   normalizeDiscoveryMetadataInput,
 } from '../../contracts/discovery-metadata.js';
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 
 interface DiscoveryMetadataRow {
   asset_id: string;
@@ -38,16 +39,16 @@ export function getDiscoveryMetadata(
   db: AppDatabase,
   assetId: string,
 ): DiscoveryMetadataRecord | undefined {
-  const row = db.prepare(
+  const row = readRow<DiscoveryMetadataRow>(db.prepare(
     'SELECT asset_id, description, aliases_json, fields_json, updated_at FROM discovery_metadata WHERE asset_id = ?',
-  ).get(assetId.trim()) as DiscoveryMetadataRow | undefined;
+  ), assetId.trim());
   return row ? recordFromRow(row) : undefined;
 }
 
 export function listDiscoveryMetadata(db: AppDatabase): DiscoveryMetadataRecord[] {
-  const rows = db.prepare(
+  const rows = readRows<DiscoveryMetadataRow>(db.prepare(
     'SELECT asset_id, description, aliases_json, fields_json, updated_at FROM discovery_metadata ORDER BY asset_id ASC',
-  ).all() as unknown as DiscoveryMetadataRow[];
+  ));
   return rows
     .map(recordFromRow)
     .filter((record): record is DiscoveryMetadataRecord => Boolean(record));

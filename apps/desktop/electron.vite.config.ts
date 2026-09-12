@@ -20,8 +20,8 @@ const mainExternals = [
   'google-auth-library',
 ];
 
-function readGoogleOAuthClientId(): string {
-  const fromEnv = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+function readGoogleOAuthValue(key: 'GOOGLE_OAUTH_CLIENT_ID' | 'GOOGLE_OAUTH_CLIENT_SECRET'): string {
+  const fromEnv = process.env[key]?.trim();
   if (fromEnv) return fromEnv;
   const envPath = resolve('../../.env');
   if (!existsSync(envPath)) return '';
@@ -30,7 +30,7 @@ function readGoogleOAuthClientId(): string {
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eq = trimmed.indexOf('=');
     if (eq <= 0) continue;
-    if (trimmed.slice(0, eq).trim() !== 'GOOGLE_OAUTH_CLIENT_ID') continue;
+    if (trimmed.slice(0, eq).trim() !== key) continue;
     let value = trimmed.slice(eq + 1).trim();
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
@@ -43,7 +43,10 @@ function readGoogleOAuthClientId(): string {
   return '';
 }
 
-const googleOAuthClientId = readGoogleOAuthClientId();
+const googleOAuthClientId = readGoogleOAuthValue('GOOGLE_OAUTH_CLIENT_ID');
+// Only a Google Desktop application client belongs in a distributed app.
+// Account access/refresh tokens are never build inputs.
+const googleOAuthClientSecret = readGoogleOAuthValue('GOOGLE_OAUTH_CLIENT_SECRET');
 
 export default defineConfig({
   main: {
@@ -54,6 +57,7 @@ export default defineConfig({
     },
     define: {
       __GOOGLE_OAUTH_CLIENT_ID__: JSON.stringify(googleOAuthClientId),
+      __GOOGLE_OAUTH_CLIENT_SECRET__: JSON.stringify(googleOAuthClientSecret),
     },
     plugins: [externalizeDepsPlugin({ exclude: ['@ax-studio/core'] })],
     build: {

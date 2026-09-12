@@ -1,4 +1,5 @@
 import type { AppDatabase } from '../db.js';
+import { readRow } from '../db/types.js';
 
 export type WorkspaceSourceStatus = 'processing' | 'ready' | 'failed';
 
@@ -159,12 +160,14 @@ export function countWorkspaceSourcesForArtifact(
   artifactId: string,
   excludeSessionId: string,
 ): number {
-  const row = db.prepare(
+  const row = readRow<{ n?: number }>(db.prepare(
     'SELECT COUNT(*) AS n FROM workspace_chat_sources WHERE (artifact_id = ? OR document_artifact_id = ?) AND chat_id != ?',
-  ).get(artifactId, artifactId, excludeSessionId) as { n?: number } | undefined;
+  ), artifactId, artifactId, excludeSessionId);
   let count = Number(row?.n) || 0;
-  const snapshots = db.prepare('SELECT COUNT(*) AS n FROM work_discovery_snapshots WHERE artifact_id = ?')
-    .get(artifactId) as { n?: number } | undefined;
+  const snapshots = readRow<{ n?: number }>(
+    db.prepare('SELECT COUNT(*) AS n FROM work_discovery_snapshots WHERE artifact_id = ?'),
+    artifactId,
+  );
   count += Number(snapshots?.n) || 0;
   // Do not depend on a particular SQLite JSON extension. Malformed references
   // fail closed for GC: recovery must not lose evidence because metadata is bad.

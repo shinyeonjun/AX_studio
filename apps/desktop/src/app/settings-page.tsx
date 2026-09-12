@@ -1,21 +1,24 @@
 import type { AppState } from '../types/app-state';
 import type { SettingsScreen } from '../types/navigation';
 import { SettingsPage } from '../features/settings/ui/SettingsPage';
+import type { useAiDetection } from '../features/settings/hooks/ai-settings/useAiDetection';
 
 interface AppSettingsPageProps {
   screen: SettingsScreen;
   state: AppState;
   onScreenChange: (screen: SettingsScreen) => void;
   onRefresh: () => Promise<void>;
+  detection: ReturnType<typeof useAiDetection>;
 }
 
-export function AppSettingsPage({ screen, state, onScreenChange, onRefresh }: AppSettingsPageProps) {
+export function AppSettingsPage({ screen, state, onScreenChange, onRefresh, detection }: AppSettingsPageProps) {
   return (
     <SettingsPage
       screen={screen}
       onScreenChange={onScreenChange}
       state={state}
       onRefresh={onRefresh}
+      detection={detection}
       onConnectSlack={async (payload) => {
         await window.ax.connectSlack(payload);
         await onRefresh();

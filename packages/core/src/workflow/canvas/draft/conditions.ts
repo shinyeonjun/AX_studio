@@ -1,5 +1,5 @@
-import type { ConditionExpr } from '../../../runtime/condition-expr.js';
-import { tryNormalizeCondition } from '../../../runtime/condition-expr.js';
+import type { ConditionExpr } from '../../condition-expr/schema.js';
+import { tryNormalizeCondition } from '../../condition-expr/normalize.js';
 import type { WorkflowCanvasDraft, WorkflowNode } from './schema.js';
 
 const IF_ROLE_ALIASES: Record<string, string[]> = {

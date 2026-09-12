@@ -77,7 +77,14 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const paths = options.paths ?? resolveAxDataPaths({ dataRoot: options.dataRoot });
   setAxDataPaths(paths);
-  registerAllModules();
+  const modulePackages = registerAllModules();
+  const discoverySourceProviders = modulePackages.flatMap((pkg) =>
+    pkg.discoverySource ? [pkg.discoverySource] : [],
+  );
+  const discoveryWorkbookMaterializer = modulePackages.find((pkg) => pkg.id === 'local_sheet')?.materializeWorkbook;
+  if (!discoveryWorkbookMaterializer) {
+    throw new Error('local_sheet module must register materializeWorkbook');
+  }
   const dbPath = options.dbPath ?? paths.database;
 
   const db = await createDatabaseAsync(dbPath);
@@ -164,6 +171,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     artifactStore,
     workspaceSources,
     resolveConnectionConfig: options.resolveConnectionConfig,
+    discoverySourceProviders,
+    discoveryWorkbookMaterializer,
     autoResumeDiscovery: true,
   });
 

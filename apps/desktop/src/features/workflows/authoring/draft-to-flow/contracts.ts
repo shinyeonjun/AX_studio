@@ -13,6 +13,7 @@ export interface DraftFlowGraph {
   nodes: Node<WorkflowVisualNodeData>[];
   edges: Edge[];
   hasContent: boolean;
+  error?: string;
 }
 
 export interface DraftFlowBuildContext extends DraftToFlowOptions {

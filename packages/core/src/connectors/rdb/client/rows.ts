@@ -1,9 +1,8 @@
 import { openReadonlySqlite } from '../../../persistence/db.js';
-import type { RdbConnectionConfig } from '../connector.js';
 import { openRdbSqlClient } from './drivers.js';
 import { quoteTableRef } from './table-ref.js';
 import { resolveRdbTableRef } from './policy.js';
-import type { RdbRow, RdbTableRef } from './types.js';
+import type { RdbConnectionConfig, RdbRow, RdbTableRef } from './types.js';
 
 export const MAX_RDB_RESULT_ROWS = 10_000;
 export const MAX_RDB_PROBE_ROWS = MAX_RDB_RESULT_ROWS + 1;

@@ -16,11 +16,13 @@
     "test:manual:db": "node test/manual/postgres.mjs",
     "test:manual:webhook": "node test/manual/webhook.mjs",
     "test:manual:webhook:security": "node --test test/manual/webhook.test.mjs",
-    "test:connector-lab": "node test/connector-lab/start.mjs",
-    "test:connector-lab:check": "node --test test/connector-lab/connector-lab.test.mjs",
+    "test:desktop": "npm run test -w @ax-studio/desktop",
+    "typecheck:desktop": "npm run typecheck -w @ax-studio/desktop",
+    "test:document-engine": "python -m unittest discover -s packages/document-engine/src -p \"*_test.py\"",
     "test:wd-benchmark": "node test/work-discovery-benchmark/run.mjs",
     "test:wd-benchmark:sweep": "node test/work-discovery-benchmark/sweep.mjs",
     "test:wd-ablation": "node test/work-discovery-benchmark/ablation.mjs",
+    "test:report-e2e": "node test/report-generation-e2e/run.mjs",
     "eval": "npm run eval -w @ax-studio/core",
     "knip": "knip",
     "arch:check": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err",
@@ -36,10 +38,11 @@
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
-    "electron@34.5.8": true,
+    "electron@44.3.0": true,
     "better-sqlite3@11.10.0": true
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "@playwright/test": "^1.62.1",
     "dependency-cruiser": "^18.2.0",
     "knip": "^6.32.2"

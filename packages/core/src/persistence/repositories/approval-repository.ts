@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
+import { readRow, readRows } from '../db/types.js';
 import type { ApprovalRow } from '../rows.js';
 
 function parseApprovalJson<T>(raw: string, field: string, approvalId: string): T {
@@ -94,7 +95,7 @@ export function claimApproval(db: AppDatabase, id: string): boolean {
 }
 
 export function getApproval(db: AppDatabase, id: string) {
-  const row = db.prepare('SELECT * FROM approvals WHERE id = ?').get(id) as ApprovalRow | undefined;
+  const row = readRow<ApprovalRow>(db.prepare('SELECT * FROM approvals WHERE id = ?'), id);
   if (!row) return undefined;
   return {
     id: row.id,
@@ -109,9 +110,10 @@ export function getApproval(db: AppDatabase, id: string) {
 }
 
 export function getPendingApprovals(db: AppDatabase) {
-  const rows = db
-    .prepare('SELECT * FROM approvals WHERE status = ? ORDER BY created_at DESC')
-    .all('pending') as unknown as ApprovalRow[];
+  const rows = readRows<ApprovalRow>(
+    db.prepare('SELECT * FROM approvals WHERE status = ? ORDER BY created_at DESC'),
+    'pending',
+  );
   return rows.map((row) => ({
     id: row.id,
     executionId: row.execution_id,
@@ -129,8 +131,9 @@ export function hasPendingApprovalForExecution(db: AppDatabase, executionId: str
 }
 
 export function hasOpenApprovalForExecution(db: AppDatabase, executionId: string): boolean {
-  const row = db
-    .prepare("SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status IN ('pending', 'processing') LIMIT 1")
-    .get(executionId) as { found: number } | undefined;
+  const row = readRow<{ found: number }>(
+    db.prepare("SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status IN ('pending', 'processing') LIMIT 1"),
+    executionId,
+  );
   return Boolean(row?.found);
 }

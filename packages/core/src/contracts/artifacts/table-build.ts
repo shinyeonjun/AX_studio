@@ -7,6 +7,8 @@ import type { ScalarValue, TableArtifact, TableColumn, TableColumnType, TablePro
 export const DEFAULT_TABLE_ROW_LIMIT = 5_000;
 export const MODEL_PREVIEW_ROW_LIMIT = 50;
 export const MAX_WORKBOOK_SHEETS = 20;
+/** Bound parser work before SheetJS expands an input workbook in memory. */
+export const MAX_WORKBOOK_BYTES = 25 * 1024 * 1024;
 
 function uniqueHeaders(headers: string[]): string[] {
   const normalized = headers.map((header, index) => header?.trim() || `column_${index + 1}`);

@@ -13,3 +13,15 @@ export interface AppDatabase {
   prepare(sql: string): SqlStatement;
   close?(): void;
 }
+
+/**
+ * Database adapters intentionally return untyped rows. Keep the boundary cast
+ * in one place so repositories declare their row shape at the query site.
+ */
+export function readRow<T>(statement: SqlStatement, ...params: unknown[]): T | undefined {
+  return statement.get(...params) as unknown as T | undefined;
+}
+
+export function readRows<T>(statement: SqlStatement, ...params: unknown[]): T[] {
+  return statement.all(...params) as unknown as T[];
+}
