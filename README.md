@@ -164,3 +164,4 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 - [Work Discovery 전환 연구](docs/research/work-discovery-transition.md)
 - [제품 QA harness](test/product-qa/README.md)
 - [수동 커넥터 검증](test/manual/README.md)
+- [Windows 릴리즈 절차와 설치 안내](docs/RELEASING.md)

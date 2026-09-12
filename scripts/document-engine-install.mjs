@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -48,6 +48,19 @@ async function verifyPackage(directory) {
     }
   }
   verifyFiles(asar.getRawHeader(archive).header);
+  // Distribution notices must survive packaging, not just exist in the checkout.
+  for (const relative of ['LICENSE.electron.txt', 'LICENSES.chromium.html',
+    'resources/THIRD_PARTY_NOTICES.md', 'resources/document-engine/python/LICENSE.txt']) {
+    if (readFileSync(join(directory, relative)).length < 100) {
+      throw new Error('Missing or empty packaged license notice: ' + relative);
+    }
+  }
+  for (const relative of ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']) {
+    if (asar.extractFile(archive, join(...relative.split('/'))).length < 100) {
+      throw new Error('Missing or empty archived license notice: ' + relative);
+    }
+  }
+  console.log('Packaged distribution notices: Electron, Chromium, JavaScript and Python notices retained.');
   verifyBundle(join(directory, 'resources', 'document-engine'));
   const { _electron } = await import('@playwright/test');
   const scratch = mkdtempSync(join(tmpdir(), 'ax-package-ui-'));
