@@ -38,7 +38,11 @@ AI 인터뷰로 조건과 빈칸 확인
 
 ## 현재 구현 상태
 
-> **개발 단계:** Windows 우선의 v1을 개발 중입니다. 소스에서 빌드·실행할 수 있지만, 일반 사용자용 공개 릴리스는 아직 제공하지 않습니다.
+> **공개 Preview:** Windows x64용 [v0.1.0-preview.1](https://github.com/shinyeonjun/AX_studio/releases/tag/v0.1.0-preview.1)을 제공합니다. 정식 안정판이 아닌 사전 출시 버전입니다.
+
+릴리즈의 `AX.Studio.Setup.0.1.0-preview.1.exe`로 설치할 수 있습니다. 설치본에는 PDF 처리용 Python과 한글 글꼴이 포함됩니다. AI 제공자 인증은 별도로 설정해야 합니다.
+
+설치 파일은 미서명 상태이며 Windows 경고나 조직 정책으로 설치가 제한될 수 있습니다. 기존 사용자는 앱을 완전히 종료하고 데이터를 백업하세요. 설치·체크섬 확인과 알려진 한계는 [릴리즈 안내](https://github.com/shinyeonjun/AX_studio/releases/tag/v0.1.0-preview.1)를 확인하세요.
 
 | 영역 | 현재 저장소에서 확인되는 범위 |
 | --- | --- |
@@ -62,7 +66,7 @@ docs              Work Discovery 계획과 설계·연구 자료
 Windows 런타임 데이터는 실행 방식에 따라 분리됩니다.
 
 ```text
-%LOCALAPPDATA%\AXStudio\          설치본 (Stable)
+%LOCALAPPDATA%\AXStudio\          설치본 (Preview 포함)
 %LOCALAPPDATA%\AXStudio-dev\      npm run dev (Dev)
 
   data\ax-studio.db
