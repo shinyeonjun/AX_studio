@@ -18,6 +18,7 @@ import type {
 } from '../contracts/discovery-metadata.js';
 import * as approvalRepo from './repositories/approval-repository.js';
 import * as executionRepo from './repositories/execution-repository.js';
+import { recoverInterruptedExecutions } from './repositories/execution-recovery.js';
 import * as repairRepo from './repositories/workflow-repair-repository.js';
 import * as settingsRepo from './repositories/settings-repository.js';
 import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
@@ -26,6 +27,8 @@ import * as discoveryMetadata from './repositories/discovery-metadata-repository
 
 export class WorkflowStore {
   constructor(private db: AppDatabase) {}
+
+  flush() { this.db.flush?.(); }
 
   saveWorkflow(ir: WorkflowIR) { return workflowRepo.saveWorkflow(this.db, ir); }
   getWorkflow(workflowId: string, version?: number) { return workflowRepo.getWorkflow(this.db, workflowId, version); }
@@ -38,7 +41,9 @@ export class WorkflowStore {
   setWorkflowActive(workflowId: string, active: boolean) {
     return workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
-  deleteWorkflow(workflowId: string) { return workflowRepo.deleteWorkflow(this.db, workflowId); }
+  deleteWorkflow(workflowId: string, options?: { preserveExecutions?: boolean }) {
+    return workflowRepo.deleteWorkflow(this.db, workflowId, options);
+  }
 
   saveWorkspaceChat(params: {
     id?: string;
@@ -111,6 +116,7 @@ export class WorkflowStore {
   listExecutions(limit = 50) { return executionRepo.listExecutions(this.db, limit); }
   deleteExecution(id: string) { return executionRepo.deleteExecution(this.db, id); }
   clearExecutions() { return executionRepo.clearExecutions(this.db); }
+  recoverInterruptedExecutions() { return recoverInterruptedExecutions(this.db); }
 
   createApproval(params: { executionId: string; actionIds: string[]; reason: string; payload?: unknown }) {
     return approvalRepo.createApproval(this.db, params);

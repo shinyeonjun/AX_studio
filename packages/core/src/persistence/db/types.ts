@@ -11,6 +11,8 @@ export interface SqlStatement {
 export interface AppDatabase {
   exec(sql: string): void;
   prepare(sql: string): SqlStatement;
+  /** Persist deferred writes before an irreversible external action. Native commits are synchronous. */
+  flush?(): void;
   close?(): void;
 }
 

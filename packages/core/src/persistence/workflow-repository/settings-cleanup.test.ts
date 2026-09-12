@@ -3,6 +3,23 @@ import { createDatabaseAsync } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
 
 describe('workflow settings and cleanup persistence', () => {
+  it.each(['running', 'pending_approval'] as const)('keeps workflow and evidence while an execution is %s', async (status) => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    try {
+      const { workflowId } = store.saveWorkflow({ id: 'busy-workflow', name: '진행 중 업무', goal: '보존', version: 1,
+        steps: [], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {} });
+      const executionId = store.createExecution({ workflowId, ephemeral: false });
+      if (status === 'pending_approval') {
+        store.markExecutionPending(executionId);
+        store.createApproval({ executionId, actionIds: ['send'], reason: '확인' });
+      }
+      expect(() => store.deleteWorkflow(workflowId)).toThrow(/실행 중|승인 대기/);
+      expect(store.getWorkflow(workflowId)).not.toBeNull();
+      expect(store.getExecution(executionId)?.status).toBe(status);
+    } finally { db.close?.(); }
+  });
+
   it('fails closed when the persisted global execution state is not boolean', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

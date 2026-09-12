@@ -105,9 +105,16 @@ npm test                 # core 단위 테스트
 npm run build            # core + desktop 빌드
 npm run test:product-qa -- --mode deterministic --tier smoke
 npm run arch:check       # core 의존성 경계 검사
+npm run test:release     # 실제 HTTP·동시 승인·프로세스 강제 종료 복구
+npm run verify:release   # 전체 회귀 + 실제 PDF + strict full Electron QA
+npm run verify:release -- --package  # Windows 설치본 빌드·내용물 검증까지
 ```
 
 제품 QA harness는 구현된 기능 카탈로그에서 smoke, core, full, soak 시나리오를 생성합니다. 실제 메일·Slack 발송은 기본 테스트에서 제외되며 명시적으로 `--allow-side-effects`를 지정해야 합니다.
+
+릴리즈 검사 명령은 사용자 프로필과 분리된 데이터로 실행하고, 실패한 검사를 건너뛰지 않습니다. Python 문서 엔진 의존성이 필요합니다. 검증 범위와 별도 수동 출시 요건은 [릴리즈 검증 안내](test/release/README.md)를 참고하세요.
+
+외부 전송 도중 앱이 종료되면 완료 여부를 단정하거나 자동 재전송하지 않습니다. 재시작 시 해당 실행을 실패로 복구하고 연결된 자동 업무를 중지합니다. 활동 기록에서 원인을 확인하고 외부 서비스의 처리 결과를 확인한 뒤 재개해야 합니다. 실행 중·승인 대기 기록은 삭제로 유실되지 않으며, 일회 예약이 완료되어 정의가 정리되어도 실행 결과는 보존됩니다.
 
 ## 비밀값과 로컬 데이터
 
@@ -145,6 +152,7 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 | `npm run dev` | 데스크톱 개발 실행 |
 | `npm run build` | core와 desktop 빌드 |
 | `npm run pack:win -w @ax-studio/desktop` | Windows 설치본 빌드 |
+| `npm run pack:win:signed -w @ax-studio/desktop` | 선택 사항: 인증서/서비스가 있을 때 서명 빌드·검증 |
 | `npm run eval` | core eval 실행 |
 | `npm run test:product-qa` | Electron 제품 QA harness 실행 |
 | `npm run knip` | 미사용 코드·의존성 검사 |

@@ -55,7 +55,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const clearExecutions = async () => {
     const count = state?.executions?.length ?? 0;
     if (count === 0) return;
-    if (!window.confirm(`실행 기록 ${count}건을 지울까요?\n승인 대기 중인 실행은 남겨둡니다.`)) return;
+    if (!window.confirm('완료된 실행 기록을 모두 지울까요?\n실행 중이거나 승인 대기 중인 기록은 남겨둡니다.')) return;
     setClearing(true);
     setClearError('');
     try {

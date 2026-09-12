@@ -2,7 +2,8 @@ import { ipcHandle } from '../ipc-handle.js';
 import { detectAiCliProviders, type AiBrand } from '@ax-studio/core';
 import {
   getAiConfigPath,
-  getSecretForBrand,
+  envKeyForBrand,
+  inspectSecretByEnvKey,
   readAiToml,
 } from '../../ai/config-file.js';
 import { maskSecret } from '../../env-file.js';
@@ -24,8 +25,9 @@ export function registerAiInspectionHandlers(): void {
       secrets: Object.fromEntries(
         await Promise.all(
           UI_AI_BRANDS.map(async (brand) => {
-            const val = await getSecretForBrand(brand, config.providers[brand]?.mode);
-            return [brand, { configured: Boolean(val), masked: val ? maskSecret(val) : undefined }];
+            const secret = await inspectSecretByEnvKey(envKeyForBrand(brand, config.providers[brand]?.mode));
+            return [brand, { configured: Boolean(secret.value), masked: secret.value ? maskSecret(secret.value) : undefined,
+              ...(secret.error ? { error: secret.error } : {}) }];
           }),
         ),
       ),

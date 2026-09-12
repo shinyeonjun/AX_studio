@@ -5,7 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-export const pythonPath = join(here, '..', '..', 'packages', 'document-engine', '.venv', 'Scripts', 'python.exe');
+const venv = join(here, '..', '..', 'packages', 'document-engine', '.venv');
+const venvPython = process.platform === 'win32' ? join(venv, 'Scripts', 'python.exe') : join(venv, 'bin', 'python');
+export const pythonPath = process.env.AX_REPORT_E2E_PYTHON?.trim()
+  || (existsSync(venvPython) ? venvPython : process.platform === 'win32' ? 'python' : 'python3');
 
 const PDF_SCRIPT = String.raw`
 import json

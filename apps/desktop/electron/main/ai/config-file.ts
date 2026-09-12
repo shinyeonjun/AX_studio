@@ -12,6 +12,7 @@ export {
   getSecretByEnvKey,
   getSecretForBrand,
   isAiEnvKey,
+  inspectSecretByEnvKey,
   loadAiSecretsIntoEnv,
   loadAiTomlIntoEnv,
   migrateAiSecretsToOsStore,

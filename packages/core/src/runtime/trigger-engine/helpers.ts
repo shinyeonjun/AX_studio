@@ -4,6 +4,7 @@ import type {
   TriggerEvent,
 } from '../../triggers/types.js';
 import type { ExecutionResult } from '../types.js';
+import { hasAttemptedExternalEffect } from '../execution/external-effect.js';
 
 export const TIME_TRIGGER_TYPES = new Set(['manual', 'once', 'schedule']);
 export const MAX_RECENT_EVENTS = 2000;
@@ -59,7 +60,9 @@ export function triggerInputFromEvent(event: TriggerEvent): Record<string, unkno
 
 export function triggerRunWasAccepted(result: unknown): boolean {
   const status = (result as Partial<ExecutionResult> | null)?.status;
-  return status === 'success' || status === 'pending_approval';
+  // A failed tail does not undo an earlier send. Consume that event to prevent replay.
+  return status === 'success' || status === 'pending_approval' ||
+    (status === 'failed' && hasAttemptedExternalEffect(result));
 }
 
 export function eventDedupeKey(workflowId: string, event: TriggerEvent): string | undefined {

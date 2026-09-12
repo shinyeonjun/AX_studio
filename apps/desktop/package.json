@@ -17,6 +17,7 @@
     "preview": "electron-vite preview",
     "pack": "install-electron && node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --dir && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
     "pack:win": "install-electron && node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --win && node ../../scripts/document-engine-install.mjs --verify-package release/win-unpacked",
+    "pack:win:signed": "install-electron && node ../../scripts/document-engine-install.mjs --bundle && npm run build && electron-builder --win --config electron-builder.signed.json && node ../../scripts/document-engine-install.mjs --verify-package release/signed/win-unpacked && powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../../test/release/package-metadata.ps1 -ReleaseDirectory release/signed -RequireSigned",
     "rebuild:native": "node scripts/ensure-native-db.mjs",
     "postinstall": "node scripts/ensure-native-db.mjs"
   },
@@ -31,8 +32,8 @@
     "@slack/web-api": "^7.8.0",
     "@xyflow/react": "^12.11.3",
     "better-sqlite3": "^11.10.0",
-    "google-auth-library": "^9.15.1",
-    "googleapis": "^144.0.0",
+    "google-auth-library": "^10.9.1",
+    "googleapis": "^150.0.1",
     "mysql2": "^3.24.2",
     "pg": "^8.13.3",
     "react": "^19.0.0",
@@ -47,10 +48,10 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "44.3.0",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^3.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }

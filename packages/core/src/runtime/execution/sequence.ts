@@ -1,16 +1,12 @@
 import type { ConnectorContext } from '../../connectors/types.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
-import { executeStep } from '../step-executor.js';
+import { executeStep } from './step.js';
 import { stepsById } from '../control-flow.js';
 import {
   createContractFailure,
   validateInputSchema,
-  validateOutputContract,
 } from '../output-contract.js';
 import type { WorkflowExecutionHost, PendingError } from './contracts.js';
-import {
-  isExternalAction,
-} from './contracts.js';
 import { recordRepairProposal, reportStepProgress } from './progress.js';
 
 export async function runSequence(
@@ -27,18 +23,12 @@ export async function runSequence(
     const step = sequence[index];
     try {
       reportStepProgress(host, ctx, step, 'step_started');
-      if (ir.outputContract && isExternalAction(step, ir)) {
-        const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
-        if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
-      }
       await executeStep(
+        host,
         step,
         ir,
         ctx,
         stepResults,
-        host.config.store,
-        host.connectors,
-        host.config.investigationRunner,
         (ids) =>
           runSequence(
             host,

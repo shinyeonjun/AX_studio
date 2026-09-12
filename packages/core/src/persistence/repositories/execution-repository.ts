@@ -95,11 +95,12 @@ export function listExecutions(db: AppDatabase, limit = 50) {
 }
 
 export function deleteExecution(db: AppDatabase, id: string): boolean {
-  const existing = db.prepare('SELECT id FROM executions WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT id, status FROM executions WHERE id = ?').get(id);
   if (!existing) return false;
-  if (hasOpenApprovalForExecution(db, id)) {
+  if (existing.status === 'pending_approval' || hasOpenApprovalForExecution(db, id)) {
     throw new Error('승인 대기 중인 실행은 삭제할 수 없습니다.');
   }
+  if (existing.status === 'running') throw new Error('실행 중인 기록은 삭제할 수 없습니다.');
   db.exec('BEGIN');
   try {
     db.prepare('DELETE FROM approvals WHERE execution_id = ?').run(id);
@@ -113,34 +114,18 @@ export function deleteExecution(db: AppDatabase, id: string): boolean {
 }
 
 export function clearExecutions(db: AppDatabase): number {
-  const pendingExecutionIds = readRows<{ execution_id: string }>(
-    db.prepare("SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing')"),
-  ).map((row) => row.execution_id);
-
+  const deletable = `SELECT id FROM executions
+    WHERE status IN ('success', 'failed', 'cancelled')
+      AND NOT EXISTS (
+        SELECT 1 FROM approvals
+        WHERE execution_id = executions.id AND status IN ('pending', 'processing')
+      )`;
   db.exec('BEGIN');
   try {
-    if (pendingExecutionIds.length === 0) {
-      const countRow = readRow<{ count: number }>(db.prepare('SELECT COUNT(*) AS count FROM executions'))!;
-      db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions)').run();
-      db.prepare('DELETE FROM executions').run();
-      db.exec('COMMIT');
-      return countRow.count;
-    }
-
-    const placeholders = pendingExecutionIds.map(() => '?').join(', ');
-    const countRow = readRow<{ count: number }>(
-      db.prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`),
-      ...pendingExecutionIds,
-    )!;
-
-    db
-      .prepare(
-        `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE id NOT IN (${placeholders}))`,
-      )
-      .run(...pendingExecutionIds);
-    db.prepare(`DELETE FROM executions WHERE id NOT IN (${placeholders})`).run(...pendingExecutionIds);
+    db.prepare(`DELETE FROM approvals WHERE execution_id IN (${deletable})`).run();
+    const result = db.prepare(`DELETE FROM executions WHERE id IN (${deletable})`).run();
     db.exec('COMMIT');
-    return countRow.count;
+    return result.changes;
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

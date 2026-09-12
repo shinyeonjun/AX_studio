@@ -7,7 +7,7 @@ import { TriggerEngine } from '../../trigger-engine.js';
 import { gmailNotifySkill } from './fixtures.js';
 
 describe('TriggerEngine failed polling execution checkpoints', () => {
-  it('does not advance a poll cursor when workflow execution fails', async () => {
+  it.each(['before-send', 'uncertain-send'] as const)('handles %s failure without losing retry safety', async (failure) => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const runtime = new WorkflowRuntime({
@@ -21,14 +21,28 @@ describe('TriggerEngine failed polling execution checkpoints', () => {
     runtime.connectors.slack = {
       name: slack.name,
       async execute(action, params, ctx) {
-        if (action === 'message.send' && attempts++ === 0) {
+        if (failure === 'uncertain-send' && action === 'message.send' && attempts++ === 0) {
           return { ok: false, error: 'temporary Slack failure', errorCode: 'temporary_failure' };
         }
         return slack.execute(action, params, ctx);
       },
     };
 
-    const { workflowId } = store.saveWorkflow(gmailNotifySkill);
+    if (failure === 'before-send') {
+      runtime.connectors.http = {
+        name: 'controlled-http',
+        async execute() {
+          return attempts++ === 0
+            ? { ok: false, error: 'temporary read failure' }
+            : { ok: true, data: { status: 200, statusText: 'OK', body: 'ready', url: 'https://fixture.invalid/status', headers: {} } };
+        },
+      };
+    }
+    const { workflowId } = store.saveWorkflow({ ...gmailNotifySkill, steps: [
+      ...(failure === 'before-send' ? [{ type: 'action' as const, id: 'read', connector: 'http', action: 'request',
+        params: { method: 'GET', path: '/status' }, sideEffect: 'NONE' as const }] : []),
+      ...gmailNotifySkill.steps,
+    ] });
     store.setWorkflowActive(workflowId, true);
     const engine = new TriggerEngine(store, runtime);
 
@@ -43,10 +57,20 @@ describe('TriggerEngine failed polling execution checkpoints', () => {
     await engine.tick();
     expect(slack.messages).toHaveLength(0);
     const afterFailure = store.getSetting<{ seenMessageIds?: string[] }>('trigger.cursors', {})[workflowId];
-    expect(afterFailure?.seenMessageIds).not.toContain('msg-retry');
-
-    await engine.tick();
-    expect(slack.messages).toHaveLength(1);
-    expect(slack.messages[0]?.channel).toBe('#inbox');
+    if (failure === 'before-send') {
+      expect(afterFailure?.seenMessageIds).not.toContain('msg-retry');
+      await engine.tick();
+      expect(slack.messages).toHaveLength(1);
+      expect(slack.messages[0]?.channel).toBe('#inbox');
+    } else {
+      // A transport failure after a send started does not establish non-delivery.
+      expect(afterFailure?.seenMessageIds).toContain('msg-retry');
+      await engine.tick();
+      expect(attempts).toBe(1);
+      expect(slack.messages).toHaveLength(0);
+      expect(store.listExecutions()[0]?.status).toBe('failed');
+    }
+    await engine.stop();
+    db.close?.();
   });
 });

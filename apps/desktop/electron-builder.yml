@@ -28,11 +28,13 @@
         "arch": ["x64"]
       }
     ],
-    "signAndEditExecutable": false
+    "icon": "src/ui/images/AX_Studio.png",
+    "signExecutable": false
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false
   },
   "mac": {
     "target": ["dmg"],

@@ -51,15 +51,15 @@
     "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^0.2.0",
+    "@ai-sdk/openai-compatible": "^1.0.54",
     "@slack/socket-mode": "^3.0.0",
     "@slack/web-api": "^7.8.0",
     "@types/sql.js": "^1.4.11",
-    "ai": "^4.3.0",
+    "ai": "^5.0.257",
     "better-sqlite3": "^11.10.0",
     "docxtemplater": "^3.55.0",
-    "google-auth-library": "^9.15.1",
-    "googleapis": "^144.0.0",
+    "google-auth-library": "^10.9.1",
+    "googleapis": "^150.0.1",
     "handlebars": "^4.7.8",
     "mysql2": "^3.24.2",
     "pg": "^8.13.3",
@@ -67,13 +67,13 @@
     "sql.js": "^1.14.2",
     "undici": "^7.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.13.4",
     "@types/pg": "^8.11.11",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^4.1.11"
   }
 }

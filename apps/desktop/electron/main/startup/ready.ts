@@ -52,6 +52,7 @@ export function registerDesktopReadyHandler(): void {
       if (isDesktopShuttingDown()) return;
       const core = await createAxStudioCore({
         paths,
+        recoverInterruptedExecutions: true,
         desktopPrintBridge: { printHtml: printHtmlToPdf },
         onExecutionStarted: () => notifyStateChanged(),
         onExecutionProgress: () => notifyStateChanged(),

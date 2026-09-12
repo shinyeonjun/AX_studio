@@ -42,6 +42,9 @@ export interface AxStudioCoreOptions {
   /** Pre-resolved layout; wins over dataRoot. */
   paths?: AxDataPaths;
   dbPath?: string;
+  /** Only the exclusive long-lived execution host may recover abandoned runs.
+   * CLI/read-only adapters must leave executions owned by another host untouched. */
+  recoverInterruptedExecutions?: boolean;
   cloudApiKey?: string;
   cloudBaseURL?: string;
   cloudModel?: string;
@@ -89,6 +92,22 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
+  const recoveredExecutionIds = options.recoverInterruptedExecutions ? store.recoverInterruptedExecutions() : [];
+  for (const executionId of recoveredExecutionIds) {
+    const execution = store.getExecution(executionId)!;
+    try {
+      let log: ExecutionResult['log'] = [];
+      try {
+        const parsed: unknown = JSON.parse(execution.logJson ?? '[]');
+        if (Array.isArray(parsed)) log = parsed;
+      } catch { /* Keep the persisted recovery status even if an old log is damaged. */ }
+      publishExecutionResultToWorkspaceChat(store, {
+        executionId, status: 'failed', errorCode: 'execution_interrupted', log,
+      });
+    } catch {
+      // Activity remains authoritative when a conversation has been removed or damaged.
+    }
+  }
   const artifactStore = new ArtifactStore(paths.artifacts);
   const generatedArtifactStore = new ArtifactStore(paths.generated.reports);
   const generatedArtifactSink: ArtifactSink = {

@@ -11,6 +11,8 @@
     "test:e2e": "node test/e2e/run.mjs",
     "test:product-qa": "node test/product-qa/run.mjs",
     "test:integration": "node test/integration/run.mjs",
+    "test:release": "npm run build -w @ax-studio/core && node --test test/release/reliability.test.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "test:manual": "node test/manual/start.mjs",
     "test:manual:http": "node test/manual/rest-api.mjs",
     "test:manual:db": "node test/manual/postgres.mjs",
@@ -35,6 +37,11 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "overrides": {
+    "@ai-sdk/provider-utils": {
+      "undici": "^6.28.0"
+    }
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

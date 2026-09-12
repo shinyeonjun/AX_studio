@@ -141,13 +141,20 @@ function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
   }
 }
 
-export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
+export function deleteWorkflow(db: AppDatabase, workflowId: string, options: { preserveExecutions?: boolean } = {}): boolean {
   const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
   if (!existing) return false;
+  const openExecution = db.prepare(`SELECT 1 FROM executions
+    WHERE workflow_id = ? AND (status IN ('running', 'pending_approval') OR EXISTS (
+      SELECT 1 FROM approvals WHERE execution_id = executions.id AND status IN ('pending', 'processing')
+    )) LIMIT 1`).get(workflowId);
+  if (openExecution) throw new Error('실행 중이거나 승인 대기 중인 업무는 삭제할 수 없습니다.');
   db.exec('BEGIN');
   try {
-    db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
-    db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
+    if (!options.preserveExecutions) {
+      db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
+      db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
+    }
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);

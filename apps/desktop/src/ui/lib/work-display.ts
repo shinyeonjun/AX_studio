@@ -73,6 +73,7 @@ export function executionStatusLabel(status: string): string {
 export function executionErrorLabel(errorCode?: string | null): string | undefined {
   if (!errorCode) return undefined;
   if (errorCode === 'execution_failed') return '실행 중 오류가 발생했습니다';
+  if (errorCode === 'execution_interrupted') return '앱 종료로 중단되었습니다. 처리 결과를 확인한 뒤 다시 실행해 주세요';
   if (errorCode === 'pending_approval') return '승인을 기다리는 중입니다';
   if (errorCode === 'approval_rejected') return '승인이 거절되었습니다';
   if (errorCode === 'global_off_duty') return '전역 퇴근 상태입니다';

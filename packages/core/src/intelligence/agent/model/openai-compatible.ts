@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateObject, generateText } from 'ai';
-import type { CoreMessage } from 'ai';
+import { generateText } from 'ai';
+import type { ModelMessage } from 'ai';
 import { chatMessagesFromInput } from './chat.js';
 import type { ModelProvider, ModelProviderConfig, StructuredGenerateInput, TextGenerateInput } from './provider.js';
 
@@ -9,13 +9,13 @@ export function toSdkMessages(input: {
   user?: string;
   messages?: import('./chat.js').ChatMessage[];
   images?: import('./provider.js').ModelImageInput[];
-}): CoreMessage[] {
+}): ModelMessage[] {
   const messages = chatMessagesFromInput(input);
   let lastUserIndex = -1;
   messages.forEach((message, index) => {
     if (message.role === 'user') lastUserIndex = index;
   });
-  return messages.map((message, index): CoreMessage => {
+  return messages.map((message, index): ModelMessage => {
     if (index !== lastUserIndex || !input.images?.length) {
       return message.role === 'assistant'
         ? { role: 'assistant', content: message.content }
@@ -28,11 +28,17 @@ export function toSdkMessages(input: {
         ...input.images.map((image) => ({
           type: 'image' as const,
           image: image.data,
-          mimeType: image.mimeType,
+          mediaType: image.mimeType,
         })),
       ],
     };
   });
+}
+
+function requestSignal(input: { timeoutMs?: number; abortSignal?: AbortSignal }): AbortSignal | undefined {
+  if (input.timeoutMs === undefined) return input.abortSignal;
+  const timeout = AbortSignal.timeout(Math.ceil(input.timeoutMs));
+  return input.abortSignal ? AbortSignal.any([input.abortSignal, timeout]) : timeout;
 }
 
 export class OpenAICompatibleProvider implements ModelProvider {
@@ -51,15 +57,20 @@ export class OpenAICompatibleProvider implements ModelProvider {
   }
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    const result = await generateObject({
+    // Preserve the tool-call contract used by compatible APIs, including Ollama.
+    // SDK 5 generateObject uses JSON response_format instead of the old tool mode.
+    const result = await generateText({
       model: this.client(this.config.model),
-      schema: input.schema,
+      tools: { json: { inputSchema: input.schema } },
+      toolChoice: { type: 'tool', toolName: 'json' },
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.2,
-      abortSignal: input.abortSignal,
+      abortSignal: requestSignal(input),
     });
-    return result.object as T;
+    const response = result.toolCalls.find((call) => call.toolName === 'json');
+    if (!response) throw new Error('Model did not return the requested structured response');
+    return input.schema.parse(response.input);
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {
@@ -68,7 +79,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.3,
-      abortSignal: input.abortSignal,
+      abortSignal: requestSignal(input),
     });
     return result.text;
   }

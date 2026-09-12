@@ -16,7 +16,7 @@ describe('model vision message adapters', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'analyze' },
-          { type: 'image', image: image.data, mimeType: 'image/png' },
+          { type: 'image', image: image.data, mediaType: 'image/png' },
         ],
       },
     ]);

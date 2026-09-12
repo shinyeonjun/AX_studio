@@ -66,9 +66,9 @@ export function ActivityExecutionItem({
             type="button"
             className="btn btn-sm btn-ghost btn-danger-text timeline-delete"
             onClick={onDelete}
-            disabled={deleting || clearing}
+            disabled={deleting || clearing || running || pending}
             aria-label="기록 삭제"
-            title="기록 삭제"
+            title={running || pending ? '실행 중이거나 승인 대기 중인 기록은 보존됩니다.' : '기록 삭제'}
           >
             {deleting ? '…' : '삭제'}
           </button>

@@ -2,7 +2,8 @@ import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { WorkflowRuntime } from '../engine.js';
 import type { ExecutionResult } from '../types.js';
-import { cronMatches } from './cron.js';
+import { createCronMatcher } from './cron.js';
+import { hasAttemptedExternalEffect } from '../execution/external-effect.js';
 
 function minuteKey(date = new Date()): string {
   return date.toISOString().slice(0, 16);
@@ -94,6 +95,7 @@ export class Scheduler {
     const pendingKeys = new Set(pending.map((entry) => `${entry.workflowId}:${entry.occurrenceKey}`));
     const fired = this.lastFired();
     const additions: PendingOccurrence[] = [];
+    const latestDueBySchedule = new Map<string, string | undefined>();
     const currentMinute = new Date(now);
     currentMinute.setSeconds(0, 0);
     const observed = this.lastObservedAt();
@@ -118,13 +120,21 @@ export class Scheduler {
         // Coalesce missed sleep/restart intervals to the latest due minute.
         // The current minute is always examined so a failed occurrence can
         // still be retried without waiting for another matching minute.
-        for (let candidate = new Date(firstCatchUpMinute); candidate <= currentMinute; candidate.setTime(candidate.getTime() + 60_000)) {
-          if (cronMatches(ir.trigger.schedule, candidate, ir.trigger.timezone)) {
-            occurrenceKey = minuteKey(candidate);
-            due = true;
+        const scheduleKey = JSON.stringify([ir.trigger.schedule, ir.trigger.timezone]);
+        if (!latestDueBySchedule.has(scheduleKey)) {
+          const matches = createCronMatcher(ir.trigger.schedule, ir.trigger.timezone);
+          let latest: string | undefined;
+          for (const candidate = new Date(currentMinute); candidate >= firstCatchUpMinute; candidate.setTime(candidate.getTime() - 60_000)) {
+            if (matches(candidate)) {
+              latest = minuteKey(candidate);
+              break;
+            }
           }
+          latestDueBySchedule.set(scheduleKey, latest);
         }
-        due = due && fired[summary.id] !== occurrenceKey;
+        const latest = latestDueBySchedule.get(scheduleKey);
+        if (latest) occurrenceKey = latest;
+        due = latest !== undefined && fired[summary.id] !== occurrenceKey;
         triggerType = 'schedule';
       }
 
@@ -194,19 +204,20 @@ export class Scheduler {
       // Stopping prevents new work; it must not erase acknowledgement of work already completed.
       const current = this.store.getWorkflow(occurrence.workflowId);
       const unchanged = current?.version === ir.version && JSON.stringify(current.trigger) === JSON.stringify(ir.trigger);
+      const unsafeToRetry = result.status === 'failed' && hasAttemptedExternalEffect(result);
       if (occurrence.triggerType === 'once') {
-        if (result.status === 'pending_approval' && unchanged) {
-          // Deactivate without marking lastFired so reactivating the job can
-          // fire it again; the paused execution resumes through approval.
+        if ((result.status === 'pending_approval' || unsafeToRetry) && unchanged) {
+          // Pending runs resume through approval. An uncertain failed send needs
+          // user inspection before reactivation; neither may automatically retry.
           this.store.setWorkflowActive(occurrence.workflowId, false);
         }
         if (result.status === 'success' && unchanged) {
           this.markFired(occurrence.workflowId, occurrence.occurrenceKey);
           this.store.setWorkflowActive(occurrence.workflowId, false);
-          this.store.deleteWorkflow(occurrence.workflowId);
+          this.store.deleteWorkflow(occurrence.workflowId, { preserveExecutions: true });
           this.runtime.removeWorkflow(occurrence.workflowId);
         }
-      } else if (result.status !== 'failed' && unchanged) {
+      } else if ((result.status !== 'failed' || unsafeToRetry) && unchanged) {
         this.markFired(occurrence.workflowId, occurrence.occurrenceKey);
       }
 

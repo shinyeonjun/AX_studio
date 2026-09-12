@@ -2,8 +2,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../persistence/db.js';
 import { WorkflowStore } from '../../persistence/workflow-store.js';
 import { Scheduler } from '../scheduler.js';
+import { WorkflowRuntime } from '../engine.js';
 
 describe('Scheduler', () => {
+  it('retains the completed execution after retiring a successful one-time workflow', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const { workflowId } = store.saveWorkflow({ id: 'once-receipt', name: '완료 이력 보존', goal: '활동에 결과 남기기', version: 1,
+      trigger: { type: 'once', runAt: '2026-09-11T23:59:59Z' }, steps: [], permissions: {}, approval: [],
+      allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive(workflowId, true);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: {} });
+    const scheduler = new Scheduler(store, runtime);
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.getWorkflow(workflowId)).toBeNull();
+      expect(store.listExecutions()).toEqual([expect.objectContaining({ workflowId, status: 'success', triggerType: 'once' })]);
+    } finally { scheduler.stop(); await runtime.waitForIdle(); db.close?.(); }
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

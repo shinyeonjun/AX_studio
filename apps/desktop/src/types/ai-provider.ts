@@ -16,6 +16,7 @@ export interface DetectedAiCli {
 export interface AiSecretStatus {
   configured: boolean;
   masked?: string;
+  error?: string;
 }
 
 export interface AiBrandTomlPrefs {

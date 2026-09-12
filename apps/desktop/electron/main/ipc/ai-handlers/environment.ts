@@ -2,7 +2,7 @@ import { ipcHandle } from '../ipc-handle.js';
 import { type AiBrand } from '@ax-studio/core';
 import { ENV_FILE_ALLOWED_KEYS, getEnvFilePath, maskSecret, readEnvFile, setEnvFileValue } from '../../env-file.js';
 import {
-  getSecretByEnvKey,
+  inspectSecretByEnvKey,
   isAiEnvKey,
   envKeyForBrand,
   setBrandSecret,
@@ -30,11 +30,13 @@ export function registerAiEnvironmentHandlers(): void {
       throw new Error('조회할 수 없는 환경 변수입니다.');
     }
     if (isAiEnvKey(key)) {
-      const val = (await getSecretByEnvKey(key)).trim();
+      const secret = await inspectSecretByEnvKey(key);
+      const val = secret.value;
       return {
         configured: Boolean(val),
         masked: val ? maskSecret(val) : undefined,
         storage: val ? 'os-credential-store' as const : undefined,
+        ...(secret.error ? { error: secret.error } : {}),
       };
     }
     const env = await readEnvFile();

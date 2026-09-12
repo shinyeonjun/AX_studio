@@ -49,6 +49,7 @@ describe('runtime progress event persistence', () => {
     }>;
     expect(persistedLog.map((entry) => entry.code).filter((code): code is string => Boolean(code))).toEqual([
       'step_started',
+      'external_effect_started',
       'step_completed',
     ]);
   });

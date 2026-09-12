@@ -1,6 +1,6 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join, dirname } from 'node:path';
+import { join, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
 import { prepareProductQaDataRoot } from './data-root.js';
@@ -101,14 +101,18 @@ export async function launchDesktop(options: LaunchOptions): Promise<DesktopCont
   const dataRoot = env.AX_DATA_ROOT!;
 
   const userDataDir = join(artifactDir, 'electron-user-data');
-  const electronArgs = [mainEntry];
+  const packagedExecutable = process.env.AX_PRODUCT_QA_EXECUTABLE?.trim();
+  if (packagedExecutable && (!isAbsolute(packagedExecutable) || !existsSync(packagedExecutable))) {
+    throw new Error('AX_PRODUCT_QA_EXECUTABLE must point to an existing absolute executable path');
+  }
+  const electronArgs = packagedExecutable ? [] : [mainEntry];
   if (useIsolatedElectronProfile()) {
     mkdirSync(userDataDir, { recursive: true });
     electronArgs.push(`--user-data-dir=${userDataDir}`);
   }
 
   const app = await electron.launch({
-    executablePath: electronExecutable,
+    executablePath: packagedExecutable ?? electronExecutable,
     args: electronArgs,
     cwd: repoRoot,
     env,

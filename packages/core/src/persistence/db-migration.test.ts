@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,24 @@ import { createSqlJsDatabase, openReadonlySqlJs } from './db/sqljs.js';
 import { WorkflowStore } from './workflow-store.js';
 
 describe('legacy database migrations', () => {
+  it('creates missing parent directories for a new sql.js database', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ax-new-database-'));
+    const filePath = join(directory, 'new-profile', 'data', 'database.db');
+    const db = await createSqlJsDatabase(filePath);
+    try {
+      db.prepare('INSERT INTO settings (key, value_json) VALUES (?, ?)').run('fixture', 'true');
+      expect(() => db.flush?.()).not.toThrow();
+      const disk = await openReadonlySqlJs(filePath);
+      try { expect(disk.all('SELECT value_json FROM settings WHERE key = ?', ['fixture'])).toEqual([{ value_json: 'true' }]); }
+      finally { disk.close(); }
+    } finally {
+      // Permit cleanup even when the old implementation did not create the directory.
+      mkdirSync(join(directory, 'new-profile', 'data'), { recursive: true });
+      db.close?.();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('reads only the requested first row instead of evaluating later rows', async () => {
     const db = await createSqlJsDatabase(':memory:');
     try {

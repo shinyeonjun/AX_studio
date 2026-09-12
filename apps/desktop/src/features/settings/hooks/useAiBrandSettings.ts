@@ -115,7 +115,7 @@ export function useAiBrandSettings(
     testingCli,
     cliVerified,
     apiVerified,
-    message,
+    message: message || brandSecrets[brand]?.error || '',
     canSave,
     isActive,
     status,

@@ -49,6 +49,12 @@ jobs:
       - name: Core tests
         run: npm test
 
+      - name: Runtime and build dependency security
+        run: npm audit --audit-level=low
+
+      - name: Crash recovery and real HTTP delivery tests
+        run: node --test test/release/reliability.test.mjs
+
       - name: Desktop tests
         run: npm run test:desktop
 
@@ -66,6 +72,9 @@ jobs:
 
       - name: Architecture check
         run: npm run arch:check
+
+      - name: Unused code and dependencies
+        run: npm run knip
 
       - name: Deterministic product smoke
         run: xvfb-run --auto-servernum npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
@@ -108,6 +117,9 @@ jobs:
       - name: Build Core package for dependent tests
         run: npm run build -w @ax-studio/core
 
+      - name: Crash recovery and real HTTP delivery tests
+        run: node --test test/release/reliability.test.mjs
+
       - name: Desktop tests
         run: npm run test:desktop
 
@@ -116,3 +128,69 @@ jobs:
 
       - name: Windows package smoke
         run: npm run pack:win -w @ax-studio/desktop
+
+      - name: Packaged desktop restart and approval retention
+        shell: pwsh
+        run: |
+          $env:AX_PRODUCT_QA_MODE = 'deterministic'
+          $env:AX_PRODUCT_QA_ISOLATED = '1'
+          $env:AX_PRODUCT_QA_EXECUTABLE = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/release/win-unpacked/AX Studio.exe'
+          npx playwright test --config test/product-qa/playwright.config.ts release-lifecycle.spec.ts
+
+      - name: Windows package identity and metadata
+        shell: pwsh
+        run: |
+          $releaseVersion = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          ./test/release/package-metadata.ps1 -Executable 'apps/desktop/release/win-unpacked/AX Studio.exe' -Installer "apps/desktop/release/AX Studio Setup $releaseVersion.exe"
+
+      - name: Real startup with damaged OS credentials and settings UI recovery
+        shell: pwsh
+        run: |
+          $releaseScratch = Join-Path $env:RUNNER_TEMP ('ax-credential-acceptance-' + [guid]::NewGuid().ToString('N'))
+          $releaseExecutable = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/release/win-unpacked/AX Studio.exe'
+          node test/release/installed-app.mjs --executable $releaseExecutable --workspace $releaseScratch --corrupt-credential
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node test/release/installed-app.mjs --executable $releaseExecutable --workspace $releaseScratch --reopen
+
+      - name: Real NSIS install, reinstall, uninstall and retained-data recovery
+        shell: pwsh
+        run: |
+          $releaseVersion = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          ./test/release/windows-installer.ps1 -Installer "apps/desktop/release/AX Studio Setup $releaseVersion.exe"
+
+      - name: Hash verified distribution assets
+        shell: pwsh
+        run: |
+          $releaseVersion = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $releaseDirectory = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/release'
+          $releaseAssets = @("AX Studio Setup $releaseVersion.exe", "AX Studio Setup $releaseVersion.exe.blockmap")
+          $releaseHashes = foreach ($releaseAsset in $releaseAssets) {
+            $releaseHash = Get-FileHash -LiteralPath (Join-Path $releaseDirectory $releaseAsset) -Algorithm SHA256
+            "$($releaseHash.Hash.ToLowerInvariant())  $releaseAsset"
+          }
+          [IO.File]::WriteAllLines((Join-Path $releaseDirectory 'SHA256SUMS.txt'), $releaseHashes, [Text.UTF8Encoding]::new($false))
+
+      - name: Upload verified Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ github.sha }}
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-acceptance-${{ github.sha }}
+          path: |
+            test/product-qa/runs/
+            ${{ runner.temp }}/ax-credential-acceptance-*/**/acceptance.json
+            ${{ runner.temp }}/ax-credential-acceptance-*/**/*.png
+            ${{ runner.temp }}/ax-installer-check-*/**/acceptance.json
+            ${{ runner.temp }}/ax-installer-check-*/**/*.png
+          if-no-files-found: warn
+          retention-days: 14

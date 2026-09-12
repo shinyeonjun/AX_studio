@@ -7,7 +7,7 @@ import { buildTableArtifact } from '../../../contracts/artifacts/table-build.js'
 import { OutputContractSchema } from '../../../contracts/output-contract.js';
 
 describe('runtime engine output contract guards', () => {
-  it('blocks external delivery when the discovered output falls outside its baseline', async () => {
+  it.each(['EXTERNAL', 'NONE'] as const)('blocks invalid output before delivery even when metadata overrides the effect to %s', async (sideEffect) => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const table = buildTableArtifact({
@@ -85,7 +85,7 @@ describe('runtime engine output contract guards', () => {
       approval: [],
       allowExternalAuto: true,
       assumptions: [],
-      sideEffects: {},
+      sideEffects: { send_customer_count: sideEffect },
       dataPolicy: {},
       outputContract,
     }, { ephemeral: true });

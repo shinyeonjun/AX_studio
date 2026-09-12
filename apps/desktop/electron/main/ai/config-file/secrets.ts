@@ -28,11 +28,24 @@ export async function getSecretByEnvKey(envKey: string): Promise<string> {
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
+/** Startup/inspection must stay usable so the user can replace an unreadable key. */
+export async function inspectSecretByEnvKey(envKey: string): Promise<{ value: string; error?: string }> {
+  try {
+    return { value: await getSecretByEnvKey(envKey) };
+  } catch {
+    // Never expose the crypto exception, file contents or an inherited fallback key.
+    return { value: '', error: '저장된 API 키를 읽을 수 없습니다. 이 PC에서 API 키를 다시 입력해 주세요.' };
+  }
+}
+
 export async function loadAiSecretsIntoEnv(): Promise<void> {
   const keys = [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY];
   for (const envKey of keys) {
-    const stored = (await getOsSecret(envKey))?.trim();
-    if (stored) process.env[envKey] = stored;
+    const stored = await inspectSecretByEnvKey(envKey);
+    if (stored.error) {
+      delete process.env[envKey];
+      console.warn(`[AX Studio] ${envKey}: ${stored.error}`);
+    } else if (stored.value) process.env[envKey] = stored.value;
   }
 }
 
@@ -45,8 +58,9 @@ export async function migrateAiSecretsToOsStore(): Promise<void> {
   const config = await readAiToml();
   const envFile = await readEnvFile();
   for (const envKey of [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY]) {
-    const existing = (await getOsSecret(envKey))?.trim();
-    if (existing) continue;
+    const existing = await inspectSecretByEnvKey(envKey);
+    // Preserve the original encrypted file; replacing it requires an explicit user action.
+    if (existing.error || existing.value) continue;
     const fromToml = (config.secrets[envKey.toLowerCase()] ?? config.secrets[envKey] ?? '').trim();
     const fromEnvFile = (envFile[envKey] ?? '').trim();
     const value = fromToml || fromEnvFile;

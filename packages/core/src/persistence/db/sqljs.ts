@@ -1,5 +1,5 @@
 import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { applyMigrations } from './schema.js';
@@ -101,7 +101,12 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     this.db.close();
   }
 
-  private flushPersist(): void {
+  flush(): void {
+    if (this.transactionDepth > 0) throw new Error('Cannot flush an uncommitted transaction');
+    this.flushPersist(true);
+  }
+
+  private flushPersist(durable = false): void {
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
     if (this.persistTimer) {
@@ -121,7 +126,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
       // sql.js export reopens the connection and resets connection pragmas.
       this.db.run('PRAGMA foreign_keys = ON');
     }
-    writeFileSync(temporaryPath, Buffer.from(snapshot));
+    writeFileSync(temporaryPath, Buffer.from(snapshot), { flush: durable });
     renameSync(temporaryPath, this.filePath);
   }
 
@@ -151,6 +156,7 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
     db.run('PRAGMA foreign_keys = ON');
     // Do not attach persistence timers until all initialization has succeeded.
     applyMigrations(new SqlJsDatabaseAdapter(db));
+    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
     adapter.exec('PRAGMA foreign_keys = ON');
     return adapter;

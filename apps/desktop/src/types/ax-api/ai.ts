@@ -17,5 +17,5 @@ export interface AxAiApi {
   testAiCli: (brand: string) => Promise<AiCliTestResult>;
   testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
   setEnvSecret: (key: string, value: string) => Promise<{ ok: boolean; masked?: string }>;
-  getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string }>;
+  getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string; error?: string }>;
 }

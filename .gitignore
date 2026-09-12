@@ -21,6 +21,10 @@ test/
 !/test/work-discovery-benchmark/**
 !/test/report-generation-e2e/
 !/test/report-generation-e2e/**
+!/test/release/
+!/test/release/**
+!/test/product-qa/
+!/test/product-qa/**
 .drawio/
 
 # Local secrets and machine-specific config — never commit

@@ -7,17 +7,9 @@ export interface ScheduledJob {
   nextRunAt?: string;
 }
 
-function zonedDateParts(date: Date, timeZone: string): { minute: number; hour: number; day: number; month: number; weekday: number } | null {
+function zonedDateParts(date: Date, formatter: Intl.DateTimeFormat): { minute: number; hour: number; day: number; month: number; weekday: number } | null {
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      weekday: 'short',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hourCycle: 'h23',
-    }).formatToParts(date);
+    const parts = formatter.formatToParts(date);
     const values = new Map(parts.map((part) => [part.type, part.value]));
     const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(values.get('weekday') ?? '');
     const minute = Number(values.get('minute'));
@@ -32,28 +24,42 @@ function zonedDateParts(date: Date, timeZone: string): { minute: number; hour: n
 }
 
 export function cronMatches(expr: string, date: Date, timeZone?: string): boolean {
-  const parsed = parseCronExpression(expr);
-  if (!parsed) return false;
-  const current = timeZone
-    ? zonedDateParts(date, timeZone)
-    : {
-        minute: date.getMinutes(),
-        hour: date.getHours(),
-        day: date.getDate(),
-        month: date.getMonth() + 1,
-        weekday: date.getDay(),
-  };
-  if (!current) return false;
+  return createCronMatcher(expr, timeZone)(date);
+}
 
-  const dayMatches = parsed.day.has(current.day);
-  const weekdayMatches = parsed.weekday.has(current.weekday);
-  const calendarDayMatches = parsed.dayIsWildcard || parsed.weekdayIsWildcard
-    ? dayMatches && weekdayMatches
-    : dayMatches || weekdayMatches;
-  return (
-    parsed.minute.has(current.minute) &&
-    parsed.hour.has(current.hour) &&
-    calendarDayMatches &&
-    parsed.month.has(current.month)
-  );
+/** A catch-up scan shares its parsed expression and timezone formatter. No global cache. */
+export function createCronMatcher(expr: string, timeZone?: string): (date: Date) => boolean {
+  const parsed = parseCronExpression(expr);
+  if (!parsed) return () => false;
+  let formatter: Intl.DateTimeFormat | undefined;
+  try {
+    if (timeZone) formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone, weekday: 'short', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+    });
+  } catch { return () => false; }
+  return (date) => {
+    const current = formatter
+      ? zonedDateParts(date, formatter)
+      : {
+          minute: date.getMinutes(),
+          hour: date.getHours(),
+          day: date.getDate(),
+          month: date.getMonth() + 1,
+          weekday: date.getDay(),
+        };
+    if (!current) return false;
+
+    const dayMatches = parsed.day.has(current.day);
+    const weekdayMatches = parsed.weekday.has(current.weekday);
+    const calendarDayMatches = parsed.dayIsWildcard || parsed.weekdayIsWildcard
+      ? dayMatches && weekdayMatches
+      : dayMatches || weekdayMatches;
+    return (
+      parsed.minute.has(current.minute) &&
+      parsed.hour.has(current.hour) &&
+      calendarDayMatches &&
+      parsed.month.has(current.month)
+    );
+  };
 }

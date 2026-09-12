@@ -1,0 +1,10 @@
+{
+  "extends": "./electron-builder.yml",
+  "forceCodeSigning": true,
+  "directories": {
+    "output": "release/signed"
+  },
+  "win": {
+    "signExecutable": true
+  }
+}
