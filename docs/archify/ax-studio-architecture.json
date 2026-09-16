@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AX Studio 로컬 AI 자동화 아키텍처",
+    "output": "ax-studio-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/shinyeonjun/AX_studio.git",
+      "revision": "6a96eca14d126d2bd8adb28e77d35a5119face6c"
+    },
+    "views": [
+      {
+        "id": "run-path",
+        "label": "업무 실행 경로",
+        "focus": ["user", "ui", "main", "core", "state"],
+        "note": "사용자 요청이 Electron IPC를 거쳐 워크플로우 실행과 로컬 상태 저장으로 이어지는 핵심 경로입니다."
+      },
+      {
+        "id": "local-data",
+        "label": "로컬 자료와 결과물",
+        "focus": ["core", "search", "files", "document"],
+        "note": "연결된 폴더와 문서 자료를 검색·처리하고 PDF 등 결과물을 생성하는 경로입니다."
+      },
+      {
+        "id": "external-actions",
+        "label": "외부 서비스와 보안",
+        "focus": ["core", "credentials", "ai", "messaging"],
+        "note": "자격 증명은 운영체제 저장소에 맡기고, 외부 서비스 작업은 승인 경계를 거칩니다."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "사용자",
+      "sublabel": "요청 · 검토 · 승인",
+      "pos": [40, 220],
+      "size": [150, 72],
+      "sources": [{ "path": "README.md", "label": "제품 흐름" }]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "React UI",
+      "sublabel": "업무 · 대화 · 설정",
+      "pos": [250, 220],
+      "size": [190, 72],
+      "sources": [{ "path": "apps/desktop/src/features/chat/ui/ChatMainPage.tsx", "label": "렌더러" }]
+    },
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Electron Main / IPC",
+      "sublabel": "트레이 · 파일 · 프로세스",
+      "pos": [500, 220],
+      "size": [205, 72],
+      "sources": [{ "path": "apps/desktop/electron/main/index.ts", "label": "메인 프로세스" }]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Core Workflow Runtime",
+      "sublabel": "IR · Discovery · 실행",
+      "pos": [765, 220],
+      "size": [220, 72],
+      "tag": "핵심 실행 경계",
+      "sources": [{ "path": "packages/core/src/runtime/trigger-engine.ts", "label": "코어 패키지" }]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "SQLite 로컬 상태",
+      "sublabel": "업무 · 실행 · 활동 이력",
+      "pos": [1045, 220],
+      "size": [205, 72],
+      "sources": [{ "path": "packages/core/src/persistence/workflow-store.ts", "label": "영속 상태" }]
+    },
+    {
+      "id": "credentials",
+      "type": "security",
+      "label": "OS Credential Store",
+      "sublabel": "API 키 · OAuth 자격 증명",
+      "pos": [500, 380],
+      "size": [205, 72],
+      "tag": "OS 계정에 귀속",
+      "sources": [{ "path": "apps/desktop/electron/main/credential-store.ts", "label": "보안 저장" }]
+    },
+    {
+      "id": "ai",
+      "type": "external",
+      "label": "AI Provider / CLI",
+      "sublabel": "사용자 설정 · 별도 인증",
+      "pos": [765, 70],
+      "size": [220, 72],
+      "sources": [{ "path": "packages/core/src/intelligence/agent/model/provider.ts", "label": "모델 연결" }]
+    },
+    {
+      "id": "messaging",
+      "type": "external",
+      "label": "Gmail · Slack",
+      "sublabel": "외부 전송 · 계정 권한",
+      "pos": [1045, 70],
+      "size": [205, 72],
+      "tag": "승인 필요",
+      "sources": [
+        { "path": "packages/core/src/connectors/gmail/connection.ts", "label": "Gmail 커넥터" },
+        { "path": "packages/core/src/connectors/slack/connection.ts", "label": "Slack 커넥터" }
+      ]
+    },
+    {
+      "id": "search",
+      "type": "backend",
+      "label": "Background Search Worker",
+      "sublabel": "로컬 파일 검색 · 중단",
+      "pos": [765, 380],
+      "size": [220, 72],
+      "sources": [{ "path": "packages/core/src/intelligence/retrieval/search-async.ts", "label": "검색 워커" }]
+    },
+    {
+      "id": "files",
+      "type": "external",
+      "label": "연결된 로컬 자료",
+      "sublabel": "폴더 · CSV · XLSX · 문서",
+      "pos": [1045, 380],
+      "size": [205, 72],
+      "sources": [{ "path": "packages/core/src/connectors/local-folder/connector.ts", "label": "자료 연결" }]
+    },
+    {
+      "id": "document",
+      "type": "backend",
+      "label": "Document Engine",
+      "sublabel": "Python · PDF · DOCX",
+      "pos": [250, 380],
+      "size": [205, 72],
+      "tag": "pypdf · ReportLab · PDFium",
+      "sources": [
+        { "path": "packages/core/src/documents/write/pdf/generate.ts", "label": "PDF 호출" },
+        { "path": "packages/document-engine/src/worker.py", "label": "Python 워커" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "사용자 PC · 로컬 실행 영역",
+      "wraps": ["ui", "main", "core", "state", "credentials", "search", "document"]
+    },
+    {
+      "kind": "security-group",
+      "label": "승인·자격 증명 경계",
+      "wraps": ["core", "credentials", "messaging"]
+    }
+  ],
+  "connections": [
+    { "id": "user-to-ui", "from": "user", "to": "ui", "label": "자연어 요청·승인", "variant": "emphasis", "labelDy": 60 },
+    { "id": "ui-to-main", "from": "ui", "to": "main", "label": "IPC 호출", "variant": "emphasis" },
+    { "id": "main-to-core", "from": "main", "to": "core", "label": "Workflow IR 실행", "labelDy": 60 },
+    { "id": "core-to-state", "from": "core", "to": "state", "label": "상태·결과·활동 기록", "labelDy": 67 },
+    { "id": "core-to-credentials", "from": "core", "to": "credentials", "label": "안전한 자격 증명 조회", "variant": "security", "fromSide": "bottom", "toSide": "top", "labelDx": -70, "labelDy": 45 },
+    { "id": "core-to-ai", "from": "core", "to": "ai", "label": "모델 호출", "fromSide": "top", "toSide": "bottom", "labelDx": -70 },
+    { "id": "core-to-messaging", "from": "core", "to": "messaging", "label": "승인 후 외부 전송", "variant": "security", "fromSide": "top", "toSide": "bottom" },
+    { "id": "core-to-search", "from": "core", "to": "search", "label": "백그라운드 검색", "fromSide": "bottom", "toSide": "top", "labelDy": -66, "labelDx": -160 },
+    { "id": "search-to-files", "from": "search", "to": "files", "label": "연결된 자료 탐색", "labelDy": -30 },
+    {
+      "id": "core-to-document",
+      "from": "core",
+      "to": "document",
+      "label": "결과물 생성",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [[875, 330], [450, 330], [450, 360], [352.5, 360], [352.5, 380]]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "실행 중심",
+      "items": ["React UI에서 업무를 설계하고 검토", "Electron IPC가 로컬 실행 경계를 연결", "Core Runtime이 Workflow IR과 실행 상태를 관리"]
+    },
+    {
+      "dot": "emerald",
+      "title": "로컬 데이터",
+      "items": ["SQLite에 업무·실행·활동 이력을 저장", "검색 워커가 연결된 폴더와 자료를 별도 처리", "Document Engine이 PDF·DOCX 결과물을 생성"]
+    },
+    {
+      "dot": "rose",
+      "title": "안전한 외부 연결",
+      "items": ["API 키와 OAuth 자격 증명은 OS 저장소에 보관", "Gmail·Slack 전송은 승인 경계를 통과", "AI Provider와 외부 서비스 사용료·권한은 사용자 책임"]
+    }
+  ]
+}
