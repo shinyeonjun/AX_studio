@@ -35,17 +35,23 @@ function selectedProbability(
   selected: string,
   validOptions: ReadonlySet<string>,
 ): { selected: number; margin: number } | undefined {
-  const probability = probabilities[selected];
-  if (typeof probability !== 'number' || !Number.isFinite(probability) || probability < 0 || probability > 1) {
-    return undefined;
+  const values: Array<{ option: string; probability: number }> = [];
+  for (const option of validOptions) {
+    const probability = probabilities[option];
+    if (typeof probability !== 'number' || !Number.isFinite(probability) || probability < 0 || probability > 1) {
+      return undefined;
+    }
+    values.push({ option, probability });
   }
 
-  const alternatives = Object.entries(probabilities)
-    .filter(([option, value]) => option !== selected && validOptions.has(option) && Number.isFinite(value))
-    .map(([, value]) => value)
+  const selectedEntry = values.find((entry) => entry.option === selected);
+  if (!selectedEntry) return undefined;
+  const alternatives = values
+    .filter((entry) => entry.option !== selected)
+    .map((entry) => entry.probability)
     .sort((left, right) => right - left);
   const second = alternatives[0] ?? 0;
-  return { selected: probability, margin: probability - second };
+  return { selected: selectedEntry.probability, margin: selectedEntry.probability - second };
 }
 
 /**
