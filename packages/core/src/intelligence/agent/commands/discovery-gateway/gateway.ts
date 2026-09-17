@@ -21,6 +21,7 @@ export function createDiscoveryCommandGateway(
     autoResume: options.autoResume,
   });
   return {
+    setDecisionEngine: (decisionEngine) => service.setDecisionEngine(decisionEngine),
     start: (command: AxCommand) => start(service, command),
     inspect: (command: AxCommand) => inspect(service, command),
     cancel: (command: AxCommand) => cancel(service, command),
