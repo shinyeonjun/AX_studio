@@ -1,7 +1,9 @@
 import { writeSnapshotTable } from '../snapshot-file.js';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
+import type { DecisionEngine } from '../../contracts/decision.js';
 import type { SourceDescriptor } from '../schema.js';
-import { rankSources, type ExplorationBudget } from './adapters.js';
+import type { ExplorationBudget } from './adapters.js';
+import { rankSourcesForDiscovery } from './decision-ranking.js';
 import type { DiscoverySourceContext } from '../sources/types.js';
 import type { DiscoverySourceRegistry } from '../sources/registry.js';
 
@@ -28,6 +30,7 @@ export interface InventoryResult {
 export async function inventorySources(
   registry: DiscoverySourceRegistry,
   ctx: DiscoverySourceContext,
+  decisionEngine?: DecisionEngine,
 ): Promise<InventoryResult> {
   const budget = { ...ctx.budget };
   const descriptors: SourceDescriptor[] = [];
@@ -38,7 +41,7 @@ export async function inventorySources(
     descriptors.push(...listed);
   }
 
-  const ranked = rankSources(descriptors, ctx.observations);
+  const ranked = await rankSourcesForDiscovery(descriptors, ctx.observations, decisionEngine);
   for (const source of ranked) {
     if (budget.sourceReadsUsed >= budget.sourceReadsMax) {
       return { sources: ranked, snapshots, budget, stoppedReason: 'budget_exceeded' };

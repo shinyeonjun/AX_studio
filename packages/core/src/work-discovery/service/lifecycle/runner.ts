@@ -19,6 +19,7 @@ export function createDiscoveryLifecycleRunner(
     runDiscoveryPipeline({
       store: options.store,
       artifactStore: options.artifactStore,
+      decisionEngine: options.decisionEngine,
       sourceRegistry: options.sourceRegistry,
       snapshotDir: options.snapshotDir,
       materializeWorkbook: options.materializeWorkbook,

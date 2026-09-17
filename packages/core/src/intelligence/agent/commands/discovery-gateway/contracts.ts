@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '../../../../persistence/artifact-store.js';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type {
   DiscoverySourceProvider,
   WorkbookMaterializer,
@@ -19,6 +20,7 @@ export interface DiscoveryCommandGateway {
 
 export interface DiscoveryGatewayOptions {
   artifactStore?: ArtifactStore;
+  decisionEngine?: DecisionEngine;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceRegistry?: DiscoverySourceRegistry;

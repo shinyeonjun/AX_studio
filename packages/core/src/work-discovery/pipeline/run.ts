@@ -67,7 +67,7 @@ export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionI
           sourceReadsUsed,
           sourceReadsMax: state.budgets.sourceReadsMax,
         },
-      });
+      }, host.decisionEngine);
       sourceReadsUsed = inventory.budget.sourceReadsUsed;
       for (const source of inventory.sources) allSources.set(source.id, source);
       for (const snapshot of inventory.snapshots) {

@@ -40,6 +40,7 @@ export class WorkDiscoveryService {
     this.runtime = createWorkDiscoveryRuntime({
       store: options.store,
       artifactStore,
+      decisionEngine: options.decisionEngine,
       snapshotDir,
       sourceRegistry,
       sourceReadsMax,

@@ -11,6 +11,7 @@ export function createDiscoveryCommandGateway(
   const service = new WorkDiscoveryService({
     store,
     artifactStore: options.artifactStore,
+    decisionEngine: options.decisionEngine,
     resolveConnectionConfig: options.resolveConnectionConfig,
     snapshotDir: options.snapshotDir,
     sourceRegistry: options.sourceRegistry,

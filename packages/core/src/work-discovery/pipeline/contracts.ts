@@ -1,6 +1,7 @@
 import type { ArtifactStore } from '../../persistence/artifact-store.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
+import type { DecisionEngine } from '../../contracts/decision.js';
 import type { WorkbookMaterializer } from '../../contracts/discovery-source.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { DiscoverySessionState } from '../schema.js';
@@ -11,6 +12,7 @@ export type DiscoveryPipelineExample = ReturnType<WorkflowStore['listDiscoveryEx
 export interface DiscoveryPipelineHost {
   readonly store: WorkflowStore;
   readonly artifactStore: ArtifactStore;
+  readonly decisionEngine?: DecisionEngine;
   readonly sourceRegistry: DiscoverySourceRegistry;
   readonly snapshotDir: string;
   readonly materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'];
