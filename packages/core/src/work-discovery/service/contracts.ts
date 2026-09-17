@@ -40,6 +40,7 @@ export interface WorkDiscoveryRuntimeOptions {
 
 export interface WorkDiscoveryRuntime extends WorkDiscoveryRuntimeOptions {
   running: Set<string>;
+  setDecisionEngine: (decisionEngine?: DecisionEngine) => void;
   scheduleRun: (sessionId: string) => void;
   resumePendingSessions: () => void;
   resetForRecovery: (state: DiscoverySessionState) => DiscoverySessionState;
