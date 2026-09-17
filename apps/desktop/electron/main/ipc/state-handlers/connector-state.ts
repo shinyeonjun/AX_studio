@@ -8,7 +8,7 @@ import {
 import type { AxCore } from '../../core-instance.js';
 import { migrateDesktopAiProvider } from '../../ai/provider-migrate.js';
 import { getEnvFilePath } from '../../env-file.js';
-import { getAiConfigPath, readAiToml } from '../../ai/config-file.js';
+import { getAiConfigPath, getJevSecret, readAiToml } from '../../ai/config-file.js';
 import { isGoogleOAuthConfigured } from '../../gmail/oauth.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 import { summarizeConnections } from '../connection-state-summary.js';
@@ -16,6 +16,7 @@ import { summarizeConnections } from '../connection-state-summary.js';
 export async function buildConnectorState(core: AxCore) {
   const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider', undefined));
   const aiToml = await readAiToml();
+  const jevSecret = await getJevSecret();
   const gmailConn = core.store.getConnections().find((connection) => connection.connector === 'gmail');
   const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
   const slackConn = core.store.getConnections().find((connection) => connection.connector === 'slack');
@@ -39,6 +40,9 @@ export async function buildConnectorState(core: AxCore) {
     aiConfigPath: getAiConfigPath(),
     axDataRoot: getDesktopAxDataPaths().root,
     aiBrandConfigs: aiToml.providers,
+    jevDecisionEnabled: aiToml.decision?.jev?.enabled ?? false,
+    jevDecisionConfigured: Boolean(jevSecret),
+    jevDecisionModel: aiToml.decision?.jev?.model?.trim() || 'jev-latest',
     gmailOAuthConfigured: isGoogleOAuthConfigured(),
     gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,
     gmailScopes: gmailConn?.connected ? gmailRecord?.scopes : undefined,
