@@ -9,6 +9,7 @@ import { DocumentConnector } from '../connectors/document/index.js';
 import { registerAllModules } from '../connectors/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from '../intelligence/agent/harness.js';
 import { AxCommandService } from '../intelligence/agent/commands/service.js';
+import type { DecisionEngine } from '../contracts/decision.js';
 import type { ArtifactReference, ArtifactSink } from '../connectors/types.js';
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { WorkspaceSourceService } from '../persistence/workspace-source-service.js';
@@ -45,6 +46,8 @@ export interface AxStudioCoreOptions {
   cloudApiKey?: string;
   cloudBaseURL?: string;
   cloudModel?: string;
+  /** Optional fuzzy decision plane. Deterministic execution remains authoritative. */
+  decisionEngine?: DecisionEngine;
   /** Electron injects Chromium printToPDF; omit in core-only tests. */
   desktopPrintBridge?: DesktopPrintBridge | null;
   onExecutionStarted?: (executionId: string) => void;
@@ -173,6 +176,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     resolveConnectionConfig: options.resolveConnectionConfig,
     discoverySourceProviders,
     discoveryWorkbookMaterializer,
+    decisionEngine: options.decisionEngine,
     autoResumeDiscovery: true,
   });
 
