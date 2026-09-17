@@ -4,6 +4,7 @@ import type { DiscoverySessionState } from '../schema.js';
 import { buildClarificationQuestion } from '../clarification/question.js';
 import { buildDiscoveryBlueprint } from '../compile/blueprint.js';
 import { enumerateCandidates, replayCandidates, resolveReplayWinners } from '../synthesis/index.js';
+import { judgeReplayAmbiguity } from '../synthesis/decision-judge.js';
 import type { DiscoveryPipelineExample, DiscoveryPipelineHost } from './contracts.js';
 
 export interface DiscoveryReplayContext {
@@ -17,7 +18,7 @@ export interface DiscoveryReplayContext {
   readonly startedAt: number;
 }
 
-export function completeDiscoveryReplay(context: DiscoveryReplayContext): void {
+export async function completeDiscoveryReplay(context: DiscoveryReplayContext): Promise<void> {
   const {
     host,
     sessionId,
@@ -42,13 +43,21 @@ export function completeDiscoveryReplay(context: DiscoveryReplayContext): void {
     snapshotsByExample,
   });
   const requiredPaths = [...new Set(observations.filter((entry) => entry.required).map((entry) => entry.path))];
-  const { candidates: replayed, ambiguousPaths } = resolveReplayWinners(replayedRaw, requiredPaths);
+  const replayResolution = resolveReplayWinners(replayedRaw, requiredPaths);
+  const judged = await judgeReplayAmbiguity({
+    decisionEngine: host.decisionEngine,
+    userGoal: state.userGoal,
+    candidates: replayResolution.candidates,
+    ambiguousPaths: replayResolution.ambiguousPaths,
+    sourceInventory,
+  });
+  const replayed = judged.candidates;
 
   persistReplayCases(host, sessionId, examples, observations, replayed);
 
   if (state.status === 'synthesizing') state = host.transition(state, 'validating');
   const accepted = replayed.filter((candidate) => candidate.status === 'accepted');
-  const question = ambiguousPaths.length > 0
+  const question = judged.remainingAmbiguousPaths.length > 0
     ? buildClarificationQuestion({ sessionId, candidates: replayed })
     : undefined;
   const coveredPaths = new Set(accepted.map((candidate) => candidate.observationPath));
