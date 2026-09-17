@@ -1,4 +1,5 @@
 import type { WorkflowStore } from '../../../persistence/workflow-store.js';
+import type { DecisionEngine } from '../../../contracts/decision.js';
 import {
   commandAccess,
   HOST_COMMAND_CONTEXT,
@@ -37,6 +38,10 @@ export class AxCommandService {
 
   constructor(store: WorkflowStore, options: AxCommandServiceOptions = {}) {
     this.state = createCommandServiceState(store, options);
+  }
+
+  setDecisionEngine(decisionEngine?: DecisionEngine): void {
+    this.state.discoveryGateway.setDecisionEngine(decisionEngine);
   }
 
   releaseWorkspaceSession(sessionId: string): void {
