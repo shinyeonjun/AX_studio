@@ -11,7 +11,15 @@ describe('JevDecisionEngine', () => {
       usage: { input_tokens: 123, output_tokens: 0 },
     }), { status: 200, headers: { 'content-type': 'application/json' } }));
 
-    const engine = new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl });
+    const engine = new JevDecisionEngine({
+      apiKey: 'test-key',
+      headers: {
+        Authorization: 'Bearer overridden',
+        'Content-Type': 'text/plain',
+        'X-Test': 'kept',
+      },
+      fetch: fetchImpl,
+    });
     const result = await engine.evaluate({
       state: { candidate: 'sales table' },
       questions: {
@@ -28,7 +36,10 @@ describe('JevDecisionEngine', () => {
 
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe('https://api.typesafe.ai/v1/systemone');
-    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer test-key');
+    const headers = init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer test-key');
+    expect(headers['Content-Type']).toBe('application/json');
+    expect(headers['X-Test']).toBe('kept');
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     expect(body).toMatchObject({ model: 'jev-latest', state: { candidate: 'sales table' } });
     expect(body.questions).toEqual({
