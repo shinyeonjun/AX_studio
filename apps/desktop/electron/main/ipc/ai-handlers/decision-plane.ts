@@ -127,7 +127,10 @@ export function registerDecisionPlaneHandlers(): void {
       },
     });
 
-    if (draft) await setJevSecret(draft);
+    if (draft) {
+      await setJevSecret(draft);
+      if (current.enabled) getCore().refreshDecisionEngine(engine);
+    }
     return {
       ok: true,
       model: result.model ?? prefs.model,
