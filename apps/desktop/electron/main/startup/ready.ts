@@ -1,6 +1,7 @@
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  createExperimentalJevDecisionEngineFromEnvironment,
   setDocumentEngineClient,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
@@ -52,6 +53,7 @@ export function registerDesktopReadyHandler(): void {
       if (isDesktopShuttingDown()) return;
       const core = await createAxStudioCore({
         paths,
+        decisionEngine: isE2E ? undefined : createExperimentalJevDecisionEngineFromEnvironment(),
         desktopPrintBridge: { printHtml: printHtmlToPdf },
         onExecutionStarted: () => notifyStateChanged(),
         onExecutionProgress: () => notifyStateChanged(),
