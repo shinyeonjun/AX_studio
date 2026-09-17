@@ -5,6 +5,12 @@ export interface AiBrandTomlConfig {
   model?: string;
 }
 
+export interface JevDecisionTomlConfig {
+  enabled?: boolean;
+  model?: string;
+  baseURL?: string;
+}
+
 export interface AiTomlConfig {
   active?: {
     brand: AiBrand;
@@ -12,6 +18,9 @@ export interface AiTomlConfig {
     model: string;
   };
   providers: Partial<Record<AiBrand, AiBrandTomlConfig>>;
+  decision?: {
+    jev?: JevDecisionTomlConfig;
+  };
   /** 레거시 [secrets] 파싱용. 저장하지 않음. */
   secrets: Record<string, string>;
 }
@@ -24,3 +33,4 @@ export const BRAND_ENV_KEYS: Record<AiBrand, string> = {
 };
 
 export const GROK_API_ENV_KEY = 'XAI_API_KEY';
+export const JEV_API_ENV_KEY = 'TYPESAFE_API_KEY';
