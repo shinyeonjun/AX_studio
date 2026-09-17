@@ -44,6 +44,8 @@ export async function completeDiscoveryReplay(context: DiscoveryReplayContext): 
   });
   const requiredPaths = [...new Set(observations.filter((entry) => entry.required).map((entry) => entry.path))];
   const replayResolution = resolveReplayWinners(replayedRaw, requiredPaths);
+
+  if (host.isCancelled(sessionId)) return;
   const judged = await judgeReplayAmbiguity({
     decisionEngine: host.decisionEngine,
     userGoal: state.userGoal,
@@ -51,6 +53,7 @@ export async function completeDiscoveryReplay(context: DiscoveryReplayContext): 
     ambiguousPaths: replayResolution.ambiguousPaths,
     sourceInventory,
   });
+  if (host.isCancelled(sessionId)) return;
   const replayed = judged.candidates;
 
   persistReplayCases(host, sessionId, examples, observations, replayed);
