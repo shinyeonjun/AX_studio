@@ -25,6 +25,9 @@ describe('rankSourcesForDiscovery', () => {
     const engine: DecisionEngine = {
       evaluate: async (request) => {
         expect(Object.keys(request.questions)).toEqual(['source_0', 'source_1']);
+        expect(request.state).toMatchObject({
+          userGoal: 'Reproduce the weekly sales report',
+        });
         return {
           answers: {
             source_0: { type: 'boolean', probability: 0.18 },
@@ -34,7 +37,10 @@ describe('rankSourcesForDiscovery', () => {
       },
     };
 
-    const ranked = await rankSourcesForDiscovery(sources, [], engine);
+    const ranked = await rankSourcesForDiscovery(sources, [], {
+      decisionEngine: engine,
+      userGoal: 'Reproduce the weekly sales report',
+    });
 
     expect(ranked.map((source) => source.id)).toEqual(['source-b', 'source-a']);
     expect(ranked.map((source) => source.relevance)).toEqual([0.91, 0.18]);
@@ -47,7 +53,9 @@ describe('rankSourcesForDiscovery', () => {
       },
     };
 
-    const ranked = await rankSourcesForDiscovery(sources, [], engine);
+    const ranked = await rankSourcesForDiscovery(sources, [], {
+      decisionEngine: engine,
+    });
 
     expect(ranked.map((source) => source.id)).toEqual(['source-a', 'source-b']);
     expect(ranked.map((source) => source.relevance)).toEqual([0, 0]);
