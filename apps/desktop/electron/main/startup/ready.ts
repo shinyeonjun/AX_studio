@@ -1,6 +1,7 @@
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  type DecisionEngine,
   createExperimentalJevDecisionEngineFromEnvironment,
   JevDecisionEngine,
   setDocumentEngineClient,
@@ -51,7 +52,7 @@ export function registerDesktopReadyHandler(): void {
         aiToml = await loadAiTomlIntoEnv();
       }
 
-      let decisionEngine;
+      let decisionEngine: DecisionEngine | undefined;
       if (!isE2E) {
         const jev = aiToml?.decision?.jev;
         const apiKey = process.env.TYPESAFE_API_KEY?.trim();
