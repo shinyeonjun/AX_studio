@@ -71,6 +71,7 @@ export interface AxStudioCore {
   /** Session-owned files and document-engine results. */
   workspaceSources: WorkspaceSourceService;
   refreshAgentHarness(config: AiProviderConfig): AgentHarness;
+  refreshDecisionEngine(decisionEngine?: DecisionEngine): void;
 }
 
 export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<AxStudioCore> {
@@ -193,6 +194,9 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
       core.agentHarness.configure(normalizeAiProviderConfig(config));
       runtime.setInvestigationRunner(investigationRunner);
       return core.agentHarness;
+    },
+    refreshDecisionEngine(decisionEngine?: DecisionEngine) {
+      commandService.setDecisionEngine(decisionEngine);
     },
   };
 
