@@ -10,6 +10,7 @@ import type { AxCommand, AxCommandIssue, AxCommandResult } from '../schema.js';
 export type DiscoveryCommandResult = [AxCommandResult['status'], unknown, AxCommandIssue[]?];
 
 export interface DiscoveryCommandGateway {
+  setDecisionEngine(decisionEngine?: DecisionEngine): void;
   start(command: AxCommand): DiscoveryCommandResult;
   inspect(command: AxCommand): DiscoveryCommandResult;
   cancel(command: AxCommand): DiscoveryCommandResult;
