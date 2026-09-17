@@ -19,12 +19,9 @@ export function createExperimentalJevDecisionEngineFromEnvironment(
     throw new Error(`${JEV_EXPERIMENT_FLAG}=1 requires TYPESAFE_API_KEY.`);
   }
 
-  // JevDecisionEngine currently stores the versioned API prefix in baseURL,
-  // while the official TypeSafe SDK exposes TYPESAFE_BASE_URL as the API root.
-  const apiRoot = env.TYPESAFE_BASE_URL?.trim().replace(/\/+$/, '');
   return new JevDecisionEngine({
     apiKey,
     model: env.TYPESAFE_DEFAULT_MODEL?.trim() || undefined,
-    baseURL: apiRoot ? `${apiRoot}/v1` : undefined,
+    baseURL: env.TYPESAFE_BASE_URL?.trim() || undefined,
   });
 }
