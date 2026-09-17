@@ -63,10 +63,8 @@ function validateQuestion(id: string, question: DecisionQuestion): void {
       throw new JevDecisionError(`Choice question ${id} must contain 1-255 criteria.`);
     }
   }
-  if (question.type === 'score') {
-    if (question.criteria.length < 2 || question.criteria.length > 10) {
-      throw new JevDecisionError(`Score question ${id} must contain 2-10 criteria.`);
-    }
+  if (question.type === 'score' && question.criteria.length < 2) {
+    throw new JevDecisionError(`Score question ${id} must contain at least 2 criteria.`);
   }
 }
 
