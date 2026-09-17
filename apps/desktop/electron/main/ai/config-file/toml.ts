@@ -17,20 +17,18 @@ function parseTomlValue(raw: string): string {
 }
 
 function unescapeTomlString(value: string): string {
-  return value.replace(/\n/g, '
-').replace(/\"/g, '"');
+  return value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
 }
 
 export function parseAiToml(content: string): AiTomlConfig {
   const config = emptyConfig();
   let section = '';
 
-  for (const line of content.split(/?
-/)) {
+  for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
 
-    const sectionMatch = trimmed.match(/^[([^]]+)]$/);
+    const sectionMatch = trimmed.match(/^\[([^\]]+)\]$/);
     if (sectionMatch) {
       section = sectionMatch[1];
       continue;
@@ -57,13 +55,12 @@ export function parseAiToml(content: string): AiTomlConfig {
       if (key === 'base_url') config.decision.jev.baseURL = value;
       continue;
     }
-
     if (section === 'secrets') {
       config.secrets[key] = value;
       continue;
     }
 
-    const providerMatch = section.match(/^providers.(.+)$/);
+    const providerMatch = section.match(/^providers\.(.+)$/);
     if (providerMatch) {
       const brand = providerMatch[1] as AiBrand;
       config.providers[brand] ??= {};
@@ -113,6 +110,5 @@ export function serializeAiToml(config: AiTomlConfig): string {
     if (jev.baseURL) lines.push(`base_url = ${escapeTomlString(jev.baseURL)}`);
     lines.push('');
   }
-
   return lines.join('\n');
 }
