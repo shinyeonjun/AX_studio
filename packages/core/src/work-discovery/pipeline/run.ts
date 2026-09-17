@@ -118,7 +118,7 @@ export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionI
 
     state = host.transition(state, 'synthesizing');
   }
-  completeDiscoveryReplay({
+  await completeDiscoveryReplay({
     host,
     sessionId,
     examples,
