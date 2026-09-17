@@ -40,6 +40,7 @@ const JevResponseSchema = z.object({
 export interface JevDecisionEngineOptions {
   apiKey: string;
   model?: string;
+  /** API root, matching TYPESAFE_BASE_URL semantics (for example https://api.typesafe.ai). */
   baseURL?: string;
   headers?: Record<string, string>;
   fetch?: typeof fetch;
@@ -130,8 +131,8 @@ function mapAnswer(id: string, question: DecisionQuestion, raw: z.infer<typeof J
  * Thin adapter around TypeSafe's native System One endpoint.
  *
  * AX intentionally does not upgrade its existing AI SDK dependency just to use
- * Jev. The wire contract mirrors the current official TypeSafe AI SDK provider:
- * POST /v1/systemone and map boolean questions to the `noul` primitive.
+ * Jev. The wire contract mirrors the official TypeSafe SDK: an API-root baseURL,
+ * POST /v1/systemone, and AX boolean questions mapped to the `noul` primitive.
  */
 export class JevDecisionEngine implements DecisionEngine {
   private readonly apiKey: string;
@@ -145,7 +146,7 @@ export class JevDecisionEngine implements DecisionEngine {
     if (!apiKey) throw new JevDecisionError('A TypeSafe API key is required.');
     this.apiKey = apiKey;
     this.model = options.model?.trim() || 'jev-latest';
-    this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai/v1').replace(/\/+$/, '');
+    this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
     this.headers = { ...options.headers };
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
@@ -155,7 +156,7 @@ export class JevDecisionEngine implements DecisionEngine {
     if (!entries.length) return { answers: {}, model: this.model };
     for (const [id, question] of entries) validateQuestion(id, question);
 
-    const response = await this.fetchImpl(`${this.baseURL}/systemone`, {
+    const response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
