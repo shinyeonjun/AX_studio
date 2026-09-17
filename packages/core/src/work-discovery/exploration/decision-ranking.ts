@@ -7,6 +7,11 @@ import type { DiscoveryObservationRef } from '../../contracts/discovery-source.j
 import type { SourceDescriptor } from '../schema.js';
 import { rankSources } from './adapters.js';
 
+export interface DiscoverySourceDecisionContext {
+  decisionEngine?: DecisionEngine;
+  userGoal?: string;
+}
+
 function probabilityOf(answer: unknown): number | undefined {
   if (!answer || typeof answer !== 'object') return undefined;
   const candidate = answer as Partial<BooleanDecisionAnswer>;
@@ -26,10 +31,10 @@ function probabilityOf(answer: unknown): number | undefined {
 export async function rankSourcesForDiscovery(
   sources: SourceDescriptor[],
   observations: DiscoveryObservationRef[],
-  decisionEngine?: DecisionEngine,
+  decision: DiscoverySourceDecisionContext = {},
 ): Promise<SourceDescriptor[]> {
   const baseline = rankSources(sources, observations);
-  if (!decisionEngine || baseline.length < 2) return baseline;
+  if (!decision.decisionEngine || baseline.length < 2) return baseline;
 
   const questions: Record<string, DecisionQuestion> = {};
   for (const [index, source] of baseline.entries()) {
@@ -41,6 +46,7 @@ export async function rankSourcesForDiscovery(
           id: source.id,
           label: source.label,
           connector: source.connector,
+          kind: source.kind,
           profileSummary: source.profileSummary ?? null,
         },
       },
@@ -48,11 +54,13 @@ export async function rankSourcesForDiscovery(
   }
 
   try {
-    const result = await decisionEngine.evaluate({
+    const result = await decision.decisionEngine.evaluate({
       state: {
+        userGoal: decision.userGoal ?? '',
         observations: observations.map((observation) => ({
           label: observation.label,
           path: observation.path,
+          required: observation.required ?? false,
         })),
       },
       questions,
