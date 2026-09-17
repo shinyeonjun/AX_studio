@@ -39,6 +39,26 @@ describe('JevDecisionEngine', () => {
     });
   });
 
+  it('treats baseURL as an API root like the official SDK', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+      model: 'jev-latest',
+      answers: { relevant: { type: 'noul', noul: 0.5 } },
+      usage: { input_tokens: 1, output_tokens: 0 },
+    }), { status: 200 }));
+    const engine = new JevDecisionEngine({
+      apiKey: 'test-key',
+      baseURL: 'https://typesafe.example/',
+      fetch: fetchImpl,
+    });
+
+    await engine.evaluate({
+      state: 'x',
+      questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://typesafe.example/v1/systemone');
+  });
+
   it('rejects malformed successful responses instead of guessing', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
       answers: { relevant: { type: 'noul', noul: 2 } },
