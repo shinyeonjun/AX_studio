@@ -17,18 +17,20 @@ function parseTomlValue(raw: string): string {
 }
 
 function unescapeTomlString(value: string): string {
-  return value.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  return value.replace(/\n/g, '
+').replace(/\"/g, '"');
 }
 
 export function parseAiToml(content: string): AiTomlConfig {
   const config = emptyConfig();
   let section = '';
 
-  for (const line of content.split(/\r?\n/)) {
+  for (const line of content.split(/?
+/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
 
-    const sectionMatch = trimmed.match(/^\[([^\]]+)\]$/);
+    const sectionMatch = trimmed.match(/^[([^]]+)]$/);
     if (sectionMatch) {
       section = sectionMatch[1];
       continue;
@@ -47,12 +49,21 @@ export function parseAiToml(content: string): AiTomlConfig {
       continue;
     }
 
+    if (section === 'decision.jev') {
+      config.decision ??= {};
+      config.decision.jev ??= {};
+      if (key === 'enabled') config.decision.jev.enabled = value === 'true';
+      if (key === 'model') config.decision.jev.model = value;
+      if (key === 'base_url') config.decision.jev.baseURL = value;
+      continue;
+    }
+
     if (section === 'secrets') {
       config.secrets[key] = value;
       continue;
     }
 
-    const providerMatch = section.match(/^providers\.(.+)$/);
+    const providerMatch = section.match(/^providers.(.+)$/);
     if (providerMatch) {
       const brand = providerMatch[1] as AiBrand;
       config.providers[brand] ??= {};
@@ -91,6 +102,15 @@ export function serializeAiToml(config: AiTomlConfig): string {
     lines.push(`[providers.${brand}]`);
     if (provider.mode) lines.push(`mode = ${escapeTomlString(provider.mode)}`);
     if (provider.model) lines.push(`model = ${escapeTomlString(provider.model)}`);
+    lines.push('');
+  }
+
+  const jev = config.decision?.jev;
+  if (jev) {
+    lines.push('[decision.jev]');
+    if (jev.enabled !== undefined) lines.push(`enabled = ${jev.enabled ? 'true' : 'false'}`);
+    if (jev.model) lines.push(`model = ${escapeTomlString(jev.model)}`);
+    if (jev.baseURL) lines.push(`base_url = ${escapeTomlString(jev.baseURL)}`);
     lines.push('');
   }
 
