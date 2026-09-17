@@ -157,9 +157,10 @@ export class JevDecisionEngine implements DecisionEngine {
     const response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
         ...this.headers,
+        Authorization: `Bearer ${this.apiKey}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: this.model,
