@@ -13,6 +13,56 @@ work_sidebar_followup_evaluator:
 status: active
 frozen: true
 
+jev_startup_isolation:
+  evaluator_frozen: true
+  checks:
+    - name: wal-recovery
+      type: command
+      command: npm exec -w @ax-studio/core -- vitest run src/persistence/db-migration.test.ts
+      required: true
+    - name: node22-wal-recovery
+      type: command
+      command: C:\\nvm4w\\nodejs\\npm.cmd exec -w @ax-studio/core -- vitest run src/persistence/db-migration.test.ts
+      required: true
+    - name: desktop-tests
+      type: command
+      command: npm run test -w @ax-studio/desktop
+      required: true
+    - name: desktop-typecheck
+      type: command
+      command: npm run typecheck -w @ax-studio/desktop
+      required: true
+    - name: production-build
+      type: command
+      command: npm run build
+      required: true
+    - name: diff-check
+      type: command
+      command: git diff --check
+      required: true
+  human_review:
+    - npm run dev reaches Electron with another checkout already using port 5173
+    - AX_DATA_ROOT isolates database, Electron userData, credentials, artifacts, cache, and logs
+    - committed WAL rows survive writable sql.js recovery and read-only access still fails closed
+    - native node-gyp is opt-in through AX_NATIVE_DB_BUILD=1
+  baseline:
+    recorded_at: 2026-09-18T08:27:01.4648388+09:00
+    values:
+      dev-startup: "FAIL: Electron uninstall because node_modules/electron had no path.txt/runtime"
+      native-prep: "NOISY FALLBACK: prebuild unavailable, then node-gyp failed on missing Visual Studio C++ workload"
+      wal-startup: "FAIL-CLOSED: writable sql.js rejected committed WAL sidecars"
+      data-isolation: "PARTIAL: AX_DATA_ROOT changed DB paths but Electron userData/lock still used shared AXStudio-dev"
+  final:
+    recorded_at: 2026-09-18T08:41:59.0298467+09:00
+    values:
+      wal-recovery: "PASS: 11 tests under Node 24"
+      node22-wal-recovery: "PASS: 11 tests under Node 22.23.2"
+      desktop-tests: "PASS: 23 files, 100 tests"
+      desktop-typecheck: "PASS"
+      production-build: "PASS"
+      diff-check: "PASS"
+      runtime-startup: "PASS: Electron reached renderer on dynamic port 5174 with bounded sql.js fallback log and no startup error"
+
 audit_evaluator:
   # Establish this baseline before interpretation is finalized.
   - name: core-tests

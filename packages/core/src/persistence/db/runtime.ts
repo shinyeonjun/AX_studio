@@ -27,7 +27,12 @@ function shouldUseSqlJsBackend(): boolean {
 const loggedFallbacks = new Set<string>();
 
 function logDatabaseFallback(message: string, hint: string, error: unknown): void {
-  const detail = error instanceof Error ? error.message : String(error);
+  const rawDetail = error instanceof Error ? error.message : String(error);
+  const detail = /Could not locate the bindings file/.test(rawDetail)
+    ? 'native binding is not installed'
+    : /compiled against a different Node\.js version|Module did not self-register/.test(rawDetail)
+      ? 'native binding ABI is incompatible'
+      : rawDetail;
   const key = `${message}:${detail}`;
   if (loggedFallbacks.has(key)) return;
   loggedFallbacks.add(key);
@@ -69,7 +74,7 @@ export async function createDatabaseAsync(
       if (!isNativeBackendUnavailable(error)) throw error;
       const hint =
         typeof process.versions.electron === 'string'
-          ? ' Run \u0060npm run ensure:native -w @ax-studio/desktop\u0060 (or \u0060npm run dev\u0060, which runs it automatically).'
+          ? ' If native SQLite is required, set AX_NATIVE_DB_BUILD=1 before running npm run ensure:native -w @ax-studio/desktop.'
           : '';
       logDatabaseFallback('better-sqlite3 unavailable; using sql.js', hint, error);
     }
@@ -91,7 +96,7 @@ export async function openReadonlySqlite(
       if (!isNativeBackendUnavailable(error)) throw error;
       const hint =
         typeof process.versions.electron === 'string'
-          ? ' Run \u0060npm run ensure:native -w @ax-studio/desktop\u0060.'
+          ? ' If native SQLite is required, set AX_NATIVE_DB_BUILD=1 before running npm run ensure:native -w @ax-studio/desktop.'
           : '';
       logDatabaseFallback('better-sqlite3 readonly open failed; using sql.js', hint, error);
     }

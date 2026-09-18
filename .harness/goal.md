@@ -1,4 +1,27 @@
-# Current task: report execution hardening
+# Current task: isolated Electron/sqlite startup hardening (D:\\AX_Studio_jev)
+
+Repair the new-structure experiment's startup path and isolate every writable
+desktop store from the other AX Studio checkout. A missing Electron runtime,
+unavailable native better-sqlite3 binding, stale SQLite WAL/journal sidecars,
+and Electron's userData single-instance lock must each have an explicit,
+recoverable behavior.
+
+Success criteria:
+- `npm run dev` prepares Electron, skips unavailable native builds by default,
+  and reaches the renderer even when another checkout owns port 5173.
+- Writable sql.js startup recovers committed WAL rows after validating a
+  temporary SQLite backup; read-only sql.js remains fail-closed.
+- Native fallback logs expose a bounded reason without leaking the binding
+  search-path dump into the desktop console.
+- DB, artifacts, credentials, cache, logs, and Electron userData resolve under
+  one explicit or repository-derived `AX_DATA_ROOT`.
+- Focused WAL/Node 22 checks, Core/Desktop tests, typecheck, build, and a real
+  isolated Electron startup pass.
+
+Non-goals: changing connector behavior, deleting existing user data, or
+silently rebuilding native dependencies without an explicit opt-in.
+
+# Historical task: report execution hardening
 Active goal and evaluator: report-execution-hardening.md.
 
 # Current patch: Codex report structured-output round trip
