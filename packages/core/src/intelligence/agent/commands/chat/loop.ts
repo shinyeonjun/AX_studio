@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../../model/chat.js';
 import type { AxCommandChatOptions } from './contracts.js';
-import type { AxCommandResult } from '../schema.js';
+import type { AxCommand, AxCommandResult } from '../schema.js';
 import type { AxCommandChatTransport } from '../transport-contract.js';
 import { AGENT_COMMAND_CONTEXT } from '../access.js';
 import {
@@ -60,6 +60,40 @@ export async function runCommandChatLoop({
     return true;
   };
 
+  const semanticGateMessage = async (command: AxCommand): Promise<string | undefined> => {
+    const definition = options.commandService
+      .listCommands(AGENT_COMMAND_CONTEXT)
+      .find((entry) => entry.name === command.name);
+    if (!options.decisionEngine || !definition?.mutates) return undefined;
+    if (options.allowContextUpdate && command.name === 'context.update') return undefined;
+
+    const gate = await gateChatCommandWithJev({
+      decisionEngine: options.decisionEngine,
+      userMessage: options.userMessage,
+      command,
+      definition,
+      currentWorkflowId: session.workflowId,
+      abortSignal: signal,
+    });
+    if (gate.allowed) return undefined;
+
+    appendAppLog('warn', 'Jev mutation intent gate blocked a command.', {
+      event: 'jev_command_gate_blocked',
+      command: command.name,
+      reason: gate.reason,
+    });
+    const message = gate.reason === 'service_unavailable'
+      ? '의미 판단 서비스를 확인할 수 없어 변경 작업을 실행하지 않았습니다. 잠시 후 다시 시도해 주세요.'
+      : '사용자 요청과 실행 작업의 의미가 명확히 일치하지 않아 실행하지 않았습니다. 대상과 원하는 작업을 구체적으로 알려 주세요.';
+    const blocked = commandResult(
+      command.name,
+      'needs_input',
+      undefined,
+      [commandIssue('semantic_confirmation_required', message)],
+    );
+    return hostFacingMessage(publishResult(command.name, blocked), message);
+  };
+
   if (options.decisionEngine && !options.allowContextUpdate) {
     const jevRoute = await routeChatWithJev({
       decisionEngine: options.decisionEngine,
@@ -67,6 +101,7 @@ export async function runCommandChatLoop({
       currentWorkflowId: session.workflowId,
       hasWorkspaceSession: Boolean(options.workspaceSessionId),
       connectedConnectors: options.connectedConnectors,
+      workspaceSources: options.workspaceSources,
       abortSignal: signal,
     });
     if (jevRoute.kind === 'fallback') {
@@ -76,6 +111,14 @@ export async function runCommandChatLoop({
       });
     }
     if (jevRoute.kind === 'command') {
+      appendAppLog('info', 'Jev selected a bounded chat route.', {
+        event: 'jev_chat_route_selected',
+        route: jevRoute.route,
+        command: jevRoute.command.name,
+        confidence: jevRoute.confidence,
+      });
+      const blockedMessage = await semanticGateMessage(jevRoute.command);
+      if (blockedMessage) return blockedMessage;
       const result = await options.commandService.execute(jevRoute.command, {
         executionContext: AGENT_COMMAND_CONTEXT,
         userMessage: options.userMessage,
@@ -87,6 +130,12 @@ export async function runCommandChatLoop({
       });
       signal.throwIfAborted();
       const resultForLoop = publishResult(jevRoute.command.name, result);
+      appendAppLog('info', 'Jev-selected chat route completed.', {
+        event: 'jev_chat_route_result',
+        route: jevRoute.route,
+        command: jevRoute.command.name,
+        status: resultForLoop.status,
+      });
       if (jevRoute.command.name === 'workflow.run') {
         return hostFacingMessage(resultForLoop, '워크플로우 실행 요청을 처리하지 못했습니다.');
       }
@@ -144,39 +193,8 @@ export async function runCommandChatLoop({
     if (parsed.kind === 'reply') return parsed.message;
     protocolRecoveryAttempts = 0;
 
-    const definition = options.commandService
-      .listCommands(AGENT_COMMAND_CONTEXT)
-      .find((entry) => entry.name === parsed.command.name);
-    if (options.decisionEngine && definition?.mutates && !options.allowContextUpdate) {
-      const gate = await gateChatCommandWithJev({
-        decisionEngine: options.decisionEngine,
-        userMessage: options.userMessage,
-        command: parsed.command,
-        definition,
-        currentWorkflowId: session.workflowId,
-        abortSignal: signal,
-      });
-      if (!gate.allowed) {
-        appendAppLog('warn', 'Jev mutation intent gate blocked a command.', {
-          event: 'jev_command_gate_blocked',
-          command: parsed.command.name,
-          reason: gate.reason,
-        });
-        const message = gate.reason === 'service_unavailable'
-          ? '의미 판단 서비스를 확인할 수 없어 변경 작업을 실행하지 않았습니다. 잠시 후 다시 시도해 주세요.'
-          : '사용자 요청과 실행 작업의 의미가 명확히 일치하지 않아 실행하지 않았습니다. 대상과 원하는 작업을 구체적으로 알려 주세요.';
-        const blocked = commandResult(
-          parsed.command.name,
-          'needs_input',
-          undefined,
-          [commandIssue(
-            'semantic_confirmation_required',
-            message,
-          )],
-        );
-        return hostFacingMessage(publishResult(parsed.command.name, blocked), message);
-      }
-    }
+    const blockedMessage = await semanticGateMessage(parsed.command);
+    if (blockedMessage) return blockedMessage;
 
     const result = await options.commandService.execute(parsed.command, {
       designToolContext: options.designToolContext,

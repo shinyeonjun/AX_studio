@@ -72,6 +72,84 @@ describe('routeChatWithJev', () => {
     expect(result).toEqual({ kind: 'fallback', reason: 'unsupported' });
   });
 
+  it('fills a bounded report command from two selected ready PDF sources', async () => {
+    const sources = [
+      { id: 'template', sessionId: 'chat-1', artifactId: 'a', fileName: 'blank.pdf', status: 'ready' as const, createdAt: '', updatedAt: '' },
+      { id: 'example', sessionId: 'chat-1', artifactId: 'b', fileName: 'completed.pdf', status: 'ready' as const, createdAt: '', updatedAt: '' },
+    ];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async (request) => {
+        expect(request.questions).toHaveProperty('report_template_source');
+        expect(request.questions).toHaveProperty('report_example_source');
+        return {
+          answers: {
+            route: {
+              type: 'choice', choice: 'report_generate',
+              probabilities: { report_generate: 0.96, answer: 0.04 }, confidence: 0.96,
+            },
+            explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+            report_template_source: {
+              type: 'choice', choice: 'template', probabilities: { template: 0.92, example: 0.08 }, confidence: 0.92,
+            },
+            report_example_source: {
+              type: 'choice', choice: 'example', probabilities: { template: 0.06, example: 0.94 }, confidence: 0.94,
+            },
+          },
+        };
+      },
+    };
+
+    await expect(routeChatWithJev({
+      decisionEngine,
+      userMessage: '업로드한 양식과 완성 예시를 기준으로 이번 달 보고서를 만들어줘',
+      currentWorkflowId: undefined,
+      hasWorkspaceSession: true,
+      workspaceSources: sources,
+    })).resolves.toMatchObject({
+      kind: 'command',
+      route: 'report_generate',
+      command: {
+        name: 'report.generate',
+        args: {
+          goal: '업로드한 양식과 완성 예시를 기준으로 이번 달 보고서를 만들어줘',
+          templateSourceId: 'template',
+          exampleSourceId: 'example',
+        },
+      },
+    });
+  });
+
+  it('does not ask Jev to choose report sources when fewer than two ready PDFs exist', async () => {
+    const decisionEngine: DecisionEngine = {
+      evaluate: async (request) => {
+        expect(request.questions).not.toHaveProperty('report_template_source');
+        expect(request.questions).not.toHaveProperty('report_example_source');
+        return {
+          answers: {
+            route: {
+              type: 'choice', choice: 'workflow_list',
+              probabilities: { workflow_list: 0.95, answer: 0.05 }, confidence: 0.95,
+            },
+            explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+          },
+        };
+      },
+    };
+
+    await expect(routeChatWithJev({
+      decisionEngine,
+      userMessage: '저장된 업무를 보여줘',
+      workspaceSources: [{
+        id: 'only-pdf', sessionId: 'chat-1', artifactId: 'a', fileName: 'only.pdf',
+        status: 'ready', createdAt: '', updatedAt: '',
+      }],
+    })).resolves.toMatchObject({
+      kind: 'command',
+      route: 'workflow_list',
+      command: { name: 'workflow.list', args: {} },
+    });
+  });
+
   it('does not invent a workflow id for inspection', async () => {
     const result = await routeChatWithJev({
       decisionEngine: engineFor('workflow_inspect'),

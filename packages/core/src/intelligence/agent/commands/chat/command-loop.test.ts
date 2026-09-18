@@ -152,6 +152,40 @@ describe('runAxCommandChat command loop', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it('does not let a context confirmation bypass the gate for another mutation', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    const decisionEngine: DecisionEngine = {
+      evaluate: async (request) => request.questions.route
+        ? {
+            answers: {
+              route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
+              explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+            },
+          }
+        : {
+            answers: {
+              intent_match: { type: 'choice', choice: 'reject', probabilities: { allow: 0.01, clarify: 0.03, reject: 0.96 }, confidence: 0.95 },
+              explicit_action: { type: 'boolean', probability: 0.1 },
+            },
+          },
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: { name: 'workflow.create', args: { name: '우회 업무', goal: '확인 턴과 무관한 mutation' } } },
+    ], []));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '이 기준을 기억해줘',
+      allowContextUpdate: true,
+    })).resolves.toContain('명확히 일치하지 않아 실행하지 않았습니다');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('recovers once when the provider reports a bounded structured-output error', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
