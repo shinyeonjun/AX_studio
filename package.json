@@ -17,6 +17,7 @@
     "test:manual:webhook": "node test/manual/webhook.mjs",
     "test:manual:webhook:security": "node --test test/manual/webhook.test.mjs",
     "test:desktop": "npm run test -w @ax-studio/desktop",
+    "typecheck": "npm run typecheck -w @ax-studio/core && npm run typecheck -w @ax-studio/desktop",
     "typecheck:desktop": "npm run typecheck -w @ax-studio/desktop",
     "test:document-engine": "python -m unittest discover -s packages/document-engine/src -p \"*_test.py\"",
     "test:wd-benchmark": "node test/work-discovery-benchmark/run.mjs",

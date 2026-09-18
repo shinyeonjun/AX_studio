@@ -20,7 +20,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       ctx.setChatMessages(nextMessages);
       ctx.setBusy(true);
       ctx.setError('');
-      ctx.setProgress('연결된 리소스를 확인하고 있습니다');
+      ctx.setProgress('답변을 준비하고 있습니다');
     }
     let savedSessionId = originSessionId;
     try {
