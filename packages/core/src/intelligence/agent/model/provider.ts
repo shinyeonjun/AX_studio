@@ -38,6 +38,8 @@ export interface TextGenerateInput {
   messages?: ChatMessage[];
   images?: ModelImageInput[];
   temperature?: number;
+  /** Bound concise host-facing replies; CLI providers may ignore this field. */
+  maxOutputTokens?: number;
   timeoutMs?: number;
   sessionId?: string;
   abortSignal?: AbortSignal;

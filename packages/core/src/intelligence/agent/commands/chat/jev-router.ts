@@ -21,6 +21,9 @@ const WORKFLOW_RUN_MIN_EXPLICIT_PROBABILITY = 0.9;
 const REPORT_ROUTE_MIN_CONFIDENCE = 0.85;
 const REPORT_SOURCE_MIN_CONFIDENCE = 0.8;
 const ROUTE_QUERY_MAX_CHARS = 500;
+// Route selection is a fast classifier; it must not hold the chat UI for the
+// full generic decision-engine timeout before the safe LLM fallback can start.
+const JEV_CHAT_ROUTE_TIMEOUT_MS = 5_000;
 
 const ROUTE_CRITERIA = {
   answer: {
@@ -295,6 +298,10 @@ function commandForRoute(
  */
 export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevChatRouterResult> {
   input.abortSignal?.throwIfAborted();
+  const routeController = new AbortController();
+  const abortExternal = () => routeController.abort(input.abortSignal?.reason);
+  input.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+  const routeTimer = setTimeout(() => routeController.abort(), JEV_CHAT_ROUTE_TIMEOUT_MS);
   const state = {
     request: boundDecisionString(input.userMessage),
     context: {
@@ -317,14 +324,16 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         },
         criteria: ROUTE_CRITERIA,
       },
-      explicit_workflow_run: {
+    };
+    if (explicitRunWasRequested(input.userMessage)) {
+      questions.explicit_workflow_run = {
         type: 'boolean',
         instructions: {
           question: 'Does `request` explicitly ask to start or run an already saved workflow now?',
           focus: 'A request to plan, inspect, validate, create, edit, discuss, or simulate a workflow is not an explicit run request.',
         },
-      },
-    };
+      };
+    }
     if (reportSources(input).length >= 2) {
       questions.report_template_source = {
         type: 'choice',
@@ -347,9 +356,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const evaluation = await input.decisionEngine.evaluate({
       state,
       questions,
-      signal: input.abortSignal,
+      signal: routeController.signal,
     });
-    input.abortSignal?.throwIfAborted();
+    routeController.signal.throwIfAborted();
 
     const routeAnswer = choiceAnswer(evaluation.answers.route);
     if (!routeAnswer || !Object.prototype.hasOwnProperty.call(ROUTE_CRITERIA, routeAnswer.choice)) {
@@ -398,5 +407,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   } catch (error) {
     if (input.abortSignal?.aborted) throw error;
     return fallback('service_error');
+  } finally {
+    clearTimeout(routeTimer);
+    input.abortSignal?.removeEventListener('abort', abortExternal);
   }
 }

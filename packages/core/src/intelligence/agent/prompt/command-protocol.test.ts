@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCommandProtocolPrompt } from './command-protocol.js';
+import { compactModelMessages } from '../commands/chat/protocol.js';
 import { buildInvestigatePrompt } from './investigate-prompt.js';
 
 describe('role prompts', () => {
@@ -42,5 +43,17 @@ describe('role prompts', () => {
     });
 
     expect(prompt).toContain('document.ingest');
+  });
+
+  it('bounds provider history while retaining the newest message', () => {
+    const messages = [
+      { role: 'user' as const, content: 'old'.repeat(30_000) },
+      { role: 'user' as const, content: 'new request' },
+    ];
+    const compacted = compactModelMessages(messages);
+
+    expect(compacted.at(-1)?.content).toBe('new request');
+    expect(compacted.reduce((sum, message) => sum + message.content.length, 0)).toBeLessThanOrEqual(64_000);
+    expect(compacted[0]?.content).toContain('모델 입력 한도');
   });
 });

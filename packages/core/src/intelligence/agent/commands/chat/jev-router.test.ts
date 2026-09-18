@@ -37,6 +37,19 @@ describe('routeChatWithJev', () => {
     })).resolves.toEqual({ kind: 'reply', route: 'answer', confidence: 0.96 });
   });
 
+  it('does not spend a boolean question on requests that cannot run a workflow', async () => {
+    let questionIds: string[] = [];
+    const result = await routeChatWithJev({
+      decisionEngine: engineFor('answer', 0.96, 0.01, (request) => {
+        questionIds = Object.keys(request.questions);
+      }),
+      userMessage: 'workflow가 무엇인지 설명해줘',
+    });
+
+    expect(result.kind).toBe('reply');
+    expect(questionIds).toEqual(['route']);
+  });
+
   it('maps a bounded semantic route to a fixed command', async () => {
     let request: Parameters<DecisionEngine['evaluate']>[0] | undefined;
     const result = await routeChatWithJev({

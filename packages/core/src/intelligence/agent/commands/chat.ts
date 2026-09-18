@@ -23,6 +23,24 @@ export type { AxCommandChatOptions } from './chat/contracts.js';
 export const AX_COMMAND_CHAT_MAX_ROUNDS = 16;
 export const AX_COMMAND_CHAT_TIMEOUT_MS = 120_000;
 
+function quickChatReply(userMessage: string, harness: AxCommandChatOptions['harness']): string | undefined {
+  const text = userMessage.trim().replace(/[!?！？。]+$/gu, '').replace(/\s+/g, ' ');
+  if (text.length > 80) return undefined;
+  if (/^(안녕|안녕하세요|ㅎㅇ|하이|hello|hi)$/iu.test(text)) {
+    return '안녕하세요. AX Studio 업무 후임 에이전트입니다. 조회·실행·반복 업무를 도와드릴게요.';
+  }
+  if (/^(?:너는|넌|당신은)?\s*누구(?:야|냐|지)?$/u.test(text)) {
+    return 'AX Studio의 업무 후임 에이전트입니다. 요청을 이해하고, 필요한 조회와 실행은 host와 Runtime을 통해 처리합니다.';
+  }
+  if (/^(?:너의|네|현재)\s*모델(?:은|이|을)?\s*(?:뭐|무엇)(?:야|냐|지)?$/u.test(text)
+    || /^(?:어떤|무슨)\s*모델(?:을)?\s*(?:써|사용해)(?:요)?$/u.test(text)) {
+    const model = harness.modelName?.trim();
+    const label = model ? `${harness.providerName} / ${model}` : harness.providerName;
+    return `현재 연결된 모델은 ${label}입니다. 답변은 이 모델이 만들고, 실제 조회·실행은 AX Studio host와 Runtime이 담당합니다.`;
+  }
+  return undefined;
+}
+
 /**
  * Runs a bounded command/reply loop. The model never receives a host object
  * or a tool callback; it receives only the command contract and prior results.
@@ -62,6 +80,10 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
 
   try {
     if (controller.signal.aborted) throw new Error('ax_command_chat_timeout');
+    if (!options.allowContextUpdate && !options.allowJobCommit) {
+      const quickReply = quickChatReply(options.userMessage, options.harness);
+      if (quickReply) return quickReply;
+    }
     const loopResult = await runCommandChatLoop({
       options,
       transport,

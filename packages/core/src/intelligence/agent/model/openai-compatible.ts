@@ -68,6 +68,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.3,
+      maxOutputTokens: input.maxOutputTokens,
       abortSignal: input.abortSignal,
     });
     return result.text;

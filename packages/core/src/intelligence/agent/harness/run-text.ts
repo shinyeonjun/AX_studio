@@ -70,6 +70,7 @@ export async function runTextAgent(
       user: request.user,
       images,
       temperature,
+      maxOutputTokens: 768,
       timeoutMs: definition.policy.timeoutMs,
       sessionId: request.sessionId,
       abortSignal: controller.signal,

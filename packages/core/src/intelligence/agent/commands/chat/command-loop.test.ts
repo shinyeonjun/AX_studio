@@ -14,6 +14,27 @@ import { scriptedModel } from './fixtures.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 
 describe('runAxCommandChat command loop', () => {
+  it('answers trivial identity questions without Jev or an LLM round trip', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_should_not_run'); },
+    };
+    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '너의 모델은 뭐냐?',
+    })).resolves.toContain('test-provider');
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(0);
+  });
+
   it('uses Jev to execute a safe read and asks only the text model for prose', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
@@ -114,6 +135,7 @@ describe('runAxCommandChat command loop', () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
     const execute = vi.spyOn(service, 'execute');
+    const seen: StructuredGenerateInput<unknown>[] = [];
     const decisionEngine: DecisionEngine = {
       evaluate: async () => ({
         answers: {
@@ -129,7 +151,7 @@ describe('runAxCommandChat command loop', () => {
     };
     const harness = new AgentHarness(scriptedModel([
       { kind: 'command', command: { name: 'workflow.delete', args: { workflowId: 'workflow-1', baseVersion: 1 } } },
-    ], []));
+    ], seen));
 
     await expect(runAxCommandChat({
       harness,
@@ -139,6 +161,8 @@ describe('runAxCommandChat command loop', () => {
       userMessage: '새 workflow를 저장해줘',
     })).resolves.toContain('다른 명령이 제안되어 실행하지 않았습니다');
     expect(execute).not.toHaveBeenCalled();
+    expect(seen[0]?.system).toContain('workflow.create');
+    expect(seen[0]?.system).not.toContain('workflow.delete');
   });
 
   it('does not execute an LLM mutation when Jev rejects the user intent', async () => {
