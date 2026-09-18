@@ -50,10 +50,35 @@ describe('role prompts', () => {
       { role: 'user' as const, content: 'old'.repeat(30_000) },
       { role: 'user' as const, content: 'new request' },
     ];
-    const compacted = compactModelMessages(messages);
+    const compacted = compactModelMessages(messages, 'new request');
 
     expect(compacted.at(-1)?.content).toBe('new request');
     expect(compacted.reduce((sum, message) => sum + message.content.length, 0)).toBeLessThanOrEqual(64_000);
+    expect(compacted.length - 1).toBeLessThanOrEqual(60);
     expect(compacted[0]?.content).toContain('모델 입력 한도');
+  });
+
+  it('retains the current request after command results are appended', () => {
+    const currentRequest = '이번 분기 매출 보고서를 생성해줘';
+    const messages = [
+      { role: 'user' as const, content: currentRequest },
+      ...Array.from({ length: 70 }, (_, index) => ({
+        role: index % 2 ? 'user' as const : 'assistant' as const,
+        content: `command result ${index} ${'x'.repeat(2_000)}`,
+      })),
+    ];
+
+    const compacted = compactModelMessages(messages, currentRequest);
+
+    expect(compacted.some((message) => message.content === currentRequest)).toBe(true);
+    expect(compacted.reduce((sum, message) => sum + message.content.length, 0)).toBeLessThanOrEqual(64_000);
+    expect(compacted.at(-1)?.content).toContain('command result 69');
+  });
+
+  it('fails closed when the required request is absent', () => {
+    expect(() => compactModelMessages(
+      Array.from({ length: 61 }, () => ({ role: 'assistant' as const, content: '결과' })),
+      '현재 요청',
+    )).toThrow('current user message');
   });
 });

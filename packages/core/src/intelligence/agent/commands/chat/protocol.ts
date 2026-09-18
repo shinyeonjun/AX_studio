@@ -52,30 +52,63 @@ export function resultMessage(result: AxCommandResult): string {
 
 const MAX_MODEL_CONTEXT_CHARS = 64_000;
 const MAX_MODEL_CONTEXT_MESSAGES = 60;
-const MODEL_CONTEXT_NOTICE = '[호스트 대화 안내] 모델 입력 한도를 위해 오래된 대화 일부를 생략했습니다. 현재 요청과 최근 실행 결과만 근거로 사용하고, 생략된 기준은 추측하지 마세요.';
+const MODEL_CONTEXT_NOTICE = '[호스트 대화 안내] 모델 입력 한도를 위해 오래된 대화 일부를 생략했습니다. 현재 요청은 보존했으며, 최근 실행 결과와 함께 사용하세요. 생략된 기준은 추측하지 마세요.';
+const MODEL_CONTEXT_OMISSION_MARKER = '\n...[중간 생략]...\n';
 
-/** Keep provider prompts bounded even when a caller bypasses the desktop IPC boundary. */
-export function compactModelMessages(messages: ChatMessage[]): ChatMessage[] {
+function boundedModelMessageContent(content: string, maxChars: number): string {
+  if (content.length <= maxChars) return content;
+  if (maxChars <= MODEL_CONTEXT_OMISSION_MARKER.length) return content.slice(0, maxChars);
+  const available = maxChars - MODEL_CONTEXT_OMISSION_MARKER.length;
+  const head = Math.ceil(available / 2);
+  return `${content.slice(0, head)}${MODEL_CONTEXT_OMISSION_MARKER}${content.slice(-(available - head))}`;
+}
+
+/** Keep provider prompts bounded and anchor the request after command results are appended. */
+export function compactModelMessages(messages: ChatMessage[], requiredUserMessage: string): ChatMessage[] {
+  if (messages.length === 0) return messages;
+  const fullLength = messages.reduce((total, message) => total + message.content.length, 0);
+  if (messages.length <= MAX_MODEL_CONTEXT_MESSAGES &&
+    fullLength + MODEL_CONTEXT_NOTICE.length <= MAX_MODEL_CONTEXT_CHARS) {
+    return messages;
+  }
+
+  let requiredUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === 'user' && message.content === requiredUserMessage) {
+      requiredUserIndex = index;
+      break;
+    }
+  }
+  if (requiredUserIndex < 0) {
+    throw new Error('Model context is missing the current user message.');
+  }
+
+  const retained = new Map<number, ChatMessage>();
   let chars = MODEL_CONTEXT_NOTICE.length;
-  let start = messages.length;
-  while (
-    start > 0 &&
-    messages.length - start < MAX_MODEL_CONTEXT_MESSAGES &&
-    chars + messages[start - 1]!.content.length <= MAX_MODEL_CONTEXT_CHARS
-  ) {
-    chars += messages[start - 1]!.content.length;
-    start -= 1;
+  const retain = (index: number, maxChars: number): boolean => {
+    const message = messages[index];
+    if (!message || maxChars <= 0) return false;
+    const content = boundedModelMessageContent(message.content, maxChars);
+    retained.set(index, { ...message, content });
+    chars += content.length;
+    return true;
+  };
+
+  retain(requiredUserIndex, MAX_MODEL_CONTEXT_CHARS - chars);
+  for (let index = messages.length - 1;
+    index >= 0 && retained.size < MAX_MODEL_CONTEXT_MESSAGES && chars < MAX_MODEL_CONTEXT_CHARS;
+    index -= 1) {
+    if (index === requiredUserIndex) continue;
+    retain(index, MAX_MODEL_CONTEXT_CHARS - chars);
   }
-  if (start === 0) return messages;
-  if (start === messages.length && messages.at(-1)) {
-    const last = messages.at(-1)!;
-    const maxLastChars = MAX_MODEL_CONTEXT_CHARS - MODEL_CONTEXT_NOTICE.length;
-    return [
-      { role: 'user', content: MODEL_CONTEXT_NOTICE },
-      { ...last, content: last.content.slice(-Math.max(1, maxLastChars)) },
-    ];
+
+  const compacted: ChatMessage[] = [{ role: 'user', content: MODEL_CONTEXT_NOTICE }];
+  for (let index = 0; index < messages.length; index += 1) {
+    const message = retained.get(index);
+    if (message) compacted.push(message);
   }
-  return [{ role: 'user', content: MODEL_CONTEXT_NOTICE }, ...messages.slice(start)];
+  return compacted;
 }
 
 export function chatReplyPrompt(): string {
