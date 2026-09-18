@@ -1,4 +1,8 @@
 import type { DecisionEngine, DecisionQuestion } from '../../contracts/decision.js';
+import {
+  boundDecisionString,
+  DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+} from '../../intelligence/decision/context.js';
 import type { DiscoveryRecoveryCheckpoint, DiscoverySessionState } from '../schema.js';
 
 export type DiscoveryRecoveryAction =
@@ -76,6 +80,7 @@ export async function decideDiscoveryRecovery(
     instructions: {
       task: 'Choose the safest next recovery action for a failed work-discovery run.',
       rule: 'Do not bypass deterministic replay, validation, approval, or publish gates. Prefer human review when evidence is weak.',
+      dataPolicy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
     },
     criteria: {
       retry_checkpoint: {
@@ -100,16 +105,17 @@ export async function decideDiscoveryRecovery(
   try {
     const result = await input.decisionEngine.evaluate({
       state: {
-        userGoal: input.userGoal,
+        userGoal: boundDecisionString(input.userGoal),
         checkpoint: input.checkpoint ?? null,
-        errorCode: input.errorCode,
-        errorMessage: input.errorMessage,
+        purpose: 'work_discovery_recovery',
+        errorCode: boundDecisionString(input.errorCode, 256),
+        errorMessage: boundDecisionString(input.errorMessage),
         autoRecoveryAttempts: input.autoRecoveryAttempts,
         budgets: input.budgets,
         sources: input.sourceInventory.slice(0, 12).map((source) => ({
-          id: source.id,
-          label: source.label,
-          connector: source.connector,
+          id: boundDecisionString(source.id, 256),
+          label: boundDecisionString(source.label),
+          connector: boundDecisionString(source.connector, 256),
           kind: source.kind,
           relevance: source.relevance,
         })),

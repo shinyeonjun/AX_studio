@@ -48,4 +48,27 @@ describe('workspace chat deletion', () => {
     expect(store.getWorkspaceChat(chat.id)).not.toBeNull();
     expect(store.listWorkspaceSources(chat.id)).toHaveLength(1);
   });
+
+  it('does not recreate a deleted chat from a late transcript save', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '늦은 응답' }] });
+
+    store.deleteWorkspaceChat(chat.id);
+
+    expect(() => store.saveWorkspaceChat({
+      id: chat.id,
+      messages: [{ role: 'assistant', content: '지연된 응답' }],
+    })).toThrow('workspace_chat_not_found');
+    expect(store.getWorkspaceChat(chat.id)).toBeNull();
+  });
+
+  it('rejects oversized transcripts before writing them to the database', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+
+    expect(() => store.saveWorkspaceChat({
+      messages: [{ role: 'user', content: 'x'.repeat(1_000_001) }],
+    })).toThrow('workspace_chat_too_large');
+  });
 });

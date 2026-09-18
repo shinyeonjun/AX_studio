@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
 import { claimApproval, createApproval, getApproval } from './approval-repository.js';
-import { createExecution, deleteExecution } from './execution-repository.js';
+import {
+  clearExecutions,
+  createExecution,
+  deleteExecution,
+  finishExecution,
+  getExecution,
+  markExecutionPending,
+} from './execution-repository.js';
 
 describe('approval persistence boundaries', () => {
   it.each([
@@ -54,5 +61,27 @@ describe('approval persistence boundaries', () => {
     expect(claimApproval(db, approvalId)).toBe(true);
     expect(() => deleteExecution(db, executionId)).toThrow('승인 대기 중인 실행은 삭제할 수 없습니다.');
     expect(getApproval(db, approvalId)?.status).toBe('processing');
+  });
+
+  it('rejects deleting a running execution', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const executionId = createExecution(db, { ephemeral: true });
+
+    expect(() => deleteExecution(db, executionId)).toThrow('실행 중인 실행은 삭제할 수 없습니다.');
+    expect(getExecution(db, executionId)?.status).toBe('running');
+  });
+
+  it('clears only terminal executions and preserves active state', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const runningId = createExecution(db, { ephemeral: true });
+    const pendingId = createExecution(db, { ephemeral: true });
+    const finishedId = createExecution(db, { ephemeral: true });
+    markExecutionPending(db, pendingId);
+    finishExecution(db, finishedId, 'success');
+
+    expect(clearExecutions(db)).toBe(1);
+    expect(getExecution(db, runningId)?.status).toBe('running');
+    expect(getExecution(db, pendingId)?.status).toBe('pending_approval');
+    expect(getExecution(db, finishedId)).toBeUndefined();
   });
 });

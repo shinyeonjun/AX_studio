@@ -26,6 +26,7 @@ export async function runSequence(
   for (let index = 0; index < sequence.length; index++) {
     const step = sequence[index];
     try {
+      ctx.abortSignal?.throwIfAborted();
       reportStepProgress(host, ctx, step, 'step_started');
       if (ir.outputContract && isExternalAction(step, ir)) {
         const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);

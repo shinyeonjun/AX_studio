@@ -63,6 +63,16 @@ export function updateExecutionLog(db: AppDatabase, id: string, log: unknown[]) 
   db.prepare('UPDATE executions SET log_json = ? WHERE id = ?').run(JSON.stringify(log), id);
 }
 
+export function hasPendingApprovalForWorkflow(db: AppDatabase, workflowId: string): boolean {
+  const row = readRow<{ found: number }>(db.prepare(
+    `SELECT 1 AS found
+     FROM executions
+     WHERE workflow_id = ? AND status = 'pending_approval'
+     LIMIT 1`,
+  ), workflowId);
+  return Boolean(row?.found);
+}
+
 function mapExecution(row: ExecutionRow) {
   return {
     id: row.id,
@@ -95,10 +105,16 @@ export function listExecutions(db: AppDatabase, limit = 50) {
 }
 
 export function deleteExecution(db: AppDatabase, id: string): boolean {
-  const existing = db.prepare('SELECT id FROM executions WHERE id = ?').get(id);
+  const existing = readRow<{ id: string; status: ExecutionStatus }>(
+    db.prepare('SELECT id, status FROM executions WHERE id = ?'),
+    id,
+  );
   if (!existing) return false;
   if (hasOpenApprovalForExecution(db, id)) {
     throw new Error('승인 대기 중인 실행은 삭제할 수 없습니다.');
+  }
+  if (existing.status === 'running' || existing.status === 'pending_approval') {
+    throw Object.assign(new Error('실행 중인 실행은 삭제할 수 없습니다.'), { code: 'execution_active' });
   }
   db.exec('BEGIN');
   try {
@@ -113,32 +129,16 @@ export function deleteExecution(db: AppDatabase, id: string): boolean {
 }
 
 export function clearExecutions(db: AppDatabase): number {
-  const pendingExecutionIds = readRows<{ execution_id: string }>(
-    db.prepare("SELECT execution_id FROM approvals WHERE status IN ('pending', 'processing')"),
-  ).map((row) => row.execution_id);
-
   db.exec('BEGIN');
   try {
-    if (pendingExecutionIds.length === 0) {
-      const countRow = readRow<{ count: number }>(db.prepare('SELECT COUNT(*) AS count FROM executions'))!;
-      db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions)').run();
-      db.prepare('DELETE FROM executions').run();
-      db.exec('COMMIT');
-      return countRow.count;
-    }
-
-    const placeholders = pendingExecutionIds.map(() => '?').join(', ');
+    const terminalStatuses = "('success', 'failed', 'cancelled')";
     const countRow = readRow<{ count: number }>(
-      db.prepare(`SELECT COUNT(*) AS count FROM executions WHERE id NOT IN (${placeholders})`),
-      ...pendingExecutionIds,
+      db.prepare(`SELECT COUNT(*) AS count FROM executions WHERE status IN ${terminalStatuses}`),
     )!;
-
-    db
-      .prepare(
-        `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE id NOT IN (${placeholders}))`,
-      )
-      .run(...pendingExecutionIds);
-    db.prepare(`DELETE FROM executions WHERE id NOT IN (${placeholders})`).run(...pendingExecutionIds);
+    db.prepare(
+      `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE status IN ${terminalStatuses})`,
+    ).run();
+    db.prepare(`DELETE FROM executions WHERE status IN ${terminalStatuses}`).run();
     db.exec('COMMIT');
     return countRow.count;
   } catch (error) {

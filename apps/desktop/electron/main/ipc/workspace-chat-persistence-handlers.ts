@@ -1,6 +1,7 @@
 import { ipcHandle } from './ipc-handle.js';
 import { getCore } from '../core-instance.js';
 import { normalizeChatMessages } from './chat-boundary.js';
+import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
 
 export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:listChatSessions', async () => {
@@ -55,6 +56,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:deleteWorkspaceChat', async (_event, id: string) => {
     if (typeof id !== 'string' || !id.trim()) throw new Error('대화 id가 필요합니다.');
     const core = getCore();
+    cancelWorkspaceChatSession(id);
     core.workspaceSources.removeSession(id);
     core.store.deleteWorkspaceChat(id);
     core.commandService.releaseWorkspaceSession(id);

@@ -25,6 +25,7 @@ export class Scheduler {
   private tickMs = 30_000;
   private lifecycleGeneration = 0;
   private tickInProgress = false;
+  private activeTick?: Promise<void>;
 
   constructor(
     private store: WorkflowStore,
@@ -35,14 +36,24 @@ export class Scheduler {
   start() {
     if (this.timer) return;
     this.lifecycleGeneration += 1;
-    this.timer = setInterval(() => this.tick(), this.tickMs);
-    void this.tick();
+    this.timer = setInterval(() => this.beginTick(), this.tickMs);
+    this.beginTick();
   }
 
-  stop() {
+  async stop(): Promise<void> {
     this.lifecycleGeneration += 1;
     clearInterval(this.timer);
     this.timer = undefined;
+    await this.activeTick;
+  }
+
+  private beginTick(): void {
+    if (this.tickInProgress) return;
+    const tick = this.tick();
+    this.activeTick = tick;
+    void tick.finally(() => {
+      if (this.activeTick === tick) this.activeTick = undefined;
+    });
   }
 
   private lastFired(): Record<string, string> {
@@ -187,6 +198,7 @@ export class Scheduler {
       }
 
       const result = await this.executeScheduledWorkflow(ir, occurrence.triggerType);
+      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
       if (!result) {
         this.removePendingOccurrence(occurrence);
         continue;
@@ -203,8 +215,8 @@ export class Scheduler {
         if (result.status === 'success' && unchanged) {
           this.markFired(occurrence.workflowId, occurrence.occurrenceKey);
           this.store.setWorkflowActive(occurrence.workflowId, false);
+          await this.runtime.removeWorkflow(occurrence.workflowId);
           this.store.deleteWorkflow(occurrence.workflowId);
-          this.runtime.removeWorkflow(occurrence.workflowId);
         }
       } else if (result.status !== 'failed' && unchanged) {
         this.markFired(occurrence.workflowId, occurrence.occurrenceKey);

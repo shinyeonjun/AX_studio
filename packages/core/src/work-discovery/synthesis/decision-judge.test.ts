@@ -139,4 +139,78 @@ describe('judgeReplayAmbiguity', () => {
     expect(result.remainingAmbiguousPaths).toEqual([outputPath]);
     expect(result.candidates).toEqual(candidates);
   });
+
+  it('bounds remote Jev context and excludes source metadata', async () => {
+    let request: Parameters<DecisionEngine['evaluate']>[0] | undefined;
+    const engine: DecisionEngine = {
+      evaluate: async (next) => {
+        request = next;
+        return {
+          answers: {
+            ambiguity_0: {
+              type: 'choice',
+              choice: 'candidate_1',
+              probabilities: { candidate_0: 0.04, candidate_1: 0.96 },
+            },
+          },
+        };
+      },
+    };
+    const untrustedCandidates = candidates.map((candidate, index) => index === 0
+      ? {
+          ...candidate,
+          expr: {
+            op: 'column' as const,
+            input: candidate.expr,
+            name: 'column-' + 'x'.repeat(10_000),
+          },
+        }
+      : candidate);
+
+    await judgeReplayAmbiguity({
+      decisionEngine: engine,
+      userGoal: '  Build the current sales summary  ',
+      candidates: untrustedCandidates,
+      ambiguousPaths: [outputPath],
+      sourceInventory: [{
+        ...sources[0]!,
+        profileSummary: 'profile-' + 'x'.repeat(10_000),
+        metadata: { storedPath: 'C:\\private\\secret.xlsx' },
+      }, sources[1]!],
+    });
+
+    expect(request?.state).toMatchObject({
+      userGoal: 'Build the current sales summary',
+      purpose: 'work_discovery_replay_ambiguity',
+    });
+    const serialized = JSON.stringify(request);
+    expect(serialized).not.toContain('storedPath');
+    expect(serialized).not.toContain('C:\\private\\secret.xlsx');
+    expect(serialized).not.toContain('x'.repeat(10_000));
+    expect(serialized).toContain('untrusted data');
+  });
+
+  it('keeps human clarification when a path has too many candidates for Jev', async () => {
+    const engine: DecisionEngine = {
+      evaluate: async () => {
+        throw new Error('Jev should not receive an oversized choice set');
+      },
+    };
+    const tooManyCandidates = Array.from({ length: 33 }, (_, index) => ({
+      ...candidates[index % candidates.length]!,
+      id: `candidate-${index}`,
+    }));
+
+    const result = await judgeReplayAmbiguity({
+      decisionEngine: engine,
+      userGoal: 'Build the current sales summary',
+      candidates: tooManyCandidates,
+      ambiguousPaths: [outputPath],
+      sourceInventory: sources,
+    });
+
+    expect(result.remainingAmbiguousPaths).toEqual([outputPath]);
+    expect(result.autoResolvedPaths).toEqual([]);
+    expect(result.candidates).toEqual(tooManyCandidates);
+  });
 });

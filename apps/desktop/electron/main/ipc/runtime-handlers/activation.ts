@@ -5,9 +5,10 @@ export function registerRuntimeActivationHandlers(): void {
   ipcHandle('ax:deleteWorkflow', async (_e, workflowId: unknown) => {
     const core = getCore();
     if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('Workflow id가 필요합니다.');
+    if (!core.store.getWorkflow(workflowId)) throw new Error('Workflow not found');
+    await core.runtime.removeWorkflow(workflowId);
     const deleted = core.store.deleteWorkflow(workflowId);
     if (!deleted) throw new Error('Workflow not found');
-    core.runtime.removeWorkflow(workflowId);
     return { ok: true };
   });
   ipcHandle('ax:setGlobalActive', async (_e, active: unknown) => {

@@ -4,6 +4,8 @@ export function scriptedModel(
   outputs: unknown[],
   seen: StructuredGenerateInput<unknown>[],
   name = 'test-provider',
+  textOutputs: string[] = [],
+  textSeen: TextGenerateInput[] = [],
 ): ModelProvider {
   return {
     name,
@@ -13,8 +15,11 @@ export function scriptedModel(
       if (next === undefined) throw new Error('test_model_script_exhausted');
       return next as T;
     },
-    async generateText(_input: TextGenerateInput): Promise<string> {
-      throw new Error('text_generation_not_used');
+    async generateText(input: TextGenerateInput): Promise<string> {
+      textSeen.push(input);
+      const next = textOutputs.shift();
+      if (next === undefined) throw new Error('text_generation_not_scripted');
+      return next;
     },
   };
 }

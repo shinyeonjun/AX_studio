@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateObject, generateText } from 'ai';
-import type { CoreMessage } from 'ai';
+import type { FlexibleSchema, ModelMessage } from 'ai';
 import { chatMessagesFromInput } from './chat.js';
 import type { ModelProvider, ModelProviderConfig, StructuredGenerateInput, TextGenerateInput } from './provider.js';
 
@@ -9,13 +9,13 @@ export function toSdkMessages(input: {
   user?: string;
   messages?: import('./chat.js').ChatMessage[];
   images?: import('./provider.js').ModelImageInput[];
-}): CoreMessage[] {
+}): ModelMessage[] {
   const messages = chatMessagesFromInput(input);
   let lastUserIndex = -1;
   messages.forEach((message, index) => {
     if (message.role === 'user') lastUserIndex = index;
   });
-  return messages.map((message, index): CoreMessage => {
+  return messages.map((message, index): ModelMessage => {
     if (index !== lastUserIndex || !input.images?.length) {
       return message.role === 'assistant'
         ? { role: 'assistant', content: message.content }
@@ -53,7 +53,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const result = await generateObject({
       model: this.client(this.config.model),
-      schema: input.schema,
+      schema: input.schema as unknown as FlexibleSchema<unknown>,
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.2,

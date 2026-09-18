@@ -49,6 +49,8 @@ export interface WorkflowExecutionOptions {
   workspaceSessionId?: string;
   /** Explicit manual run from UI — inactive ephemeral workflows may still run once. */
   forceManual?: boolean;
+  /** Host-owned cancellation for a running workflow. */
+  abortSignal?: AbortSignal;
 }
 
 /** Host-owned handle returned before an ephemeral run starts. */

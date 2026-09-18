@@ -93,7 +93,11 @@ export function updateWorkflow(store: WorkflowStore, command: AxCommand): AxWork
   return persistCandidate(store, next, 'updated');
 }
 
-export function deleteWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCommandResult {
+export async function deleteWorkflow(
+  store: WorkflowStore,
+  command: AxCommand,
+  removeWorkflow?: (workflowId: string) => Promise<void> | void,
+): Promise<AxWorkflowCommandResult> {
   const parsed = AxWorkflowDeleteArgsSchema.safeParse(command.args);
   if (!parsed.success) {
     return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
@@ -105,10 +109,19 @@ export function deleteWorkflow(store: WorkflowStore, command: AxCommand): AxWork
   if (current.version !== parsed.data.baseVersion) {
     return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '최신 workflow 버전과 일치하지 않습니다.', 'baseVersion')]];
   }
-  const deleted = store.deleteWorkflow(parsed.data.workflowId);
-  return deleted
-    ? ['ok', { workflowId: parsed.data.workflowId, deleted: true }]
-    : ['not_found', undefined, [issue('workflow_not_found', `workflow를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+  try {
+    await removeWorkflow?.(parsed.data.workflowId);
+    const deleted = store.deleteWorkflow(parsed.data.workflowId);
+    return deleted
+      ? ['ok', { workflowId: parsed.data.workflowId, deleted: true }]
+      : ['not_found', undefined, [issue('workflow_not_found', `workflow를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+  } catch (error) {
+    return ['error', undefined, [issue(
+      'workflow_delete_failed',
+      error instanceof Error ? error.message : String(error),
+      'workflowId',
+    )]];
+  }
 }
 
 function persistCandidate(

@@ -2,12 +2,13 @@ import type { AiProviderConfig } from './settings/config.js';
 import { resolveAiProviderConfig } from './settings/config.js';
 import { createModelProvider } from './model/factory.js';
 import type { ModelProvider } from './model/provider.js';
-import type { AgentResult, AgentRun } from './types.js';
+import type { AgentResult, AgentRun, AgentTextResult, AgentTextRun } from './types.js';
 import type {
   InvestigationRunRequest,
   InvestigationRunner,
 } from './investigation-runner.js';
 import { runAgent } from './harness/run.js';
+import { runTextAgent } from './harness/run-text.js';
 
 export { isCloudProvider } from './harness/policy.js';
 
@@ -43,6 +44,13 @@ export class AgentHarness {
   run<T>(request: AgentRun<T>): Promise<AgentResult<T>> {
     if (this.disposed) return Promise.reject(new Error('agent_harness_disposed'));
     const run = runAgent(this.model, request);
+    this.activeRuns.set(run, this.model);
+    return run.finally(() => { this.activeRuns.delete(run); });
+  }
+
+  runText(request: AgentTextRun): Promise<AgentTextResult> {
+    if (this.disposed) return Promise.reject(new Error('agent_harness_disposed'));
+    const run = runTextAgent(this.model, request);
     this.activeRuns.set(run, this.model);
     return run.finally(() => { this.activeRuns.delete(run); });
   }

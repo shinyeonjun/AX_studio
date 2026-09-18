@@ -55,7 +55,9 @@ export class PushTransportManager {
             this.store,
             (event) => {
               if (generation !== this.refreshGeneration || !this.isAcceptingEvents()) return;
-              void this.onEvent(driver, event);
+              void Promise.resolve(this.onEvent(driver, event)).catch((error) => {
+                console.error(`[trigger-engine] push event failed for ${driver.triggerType}:`, error);
+              });
             },
             driver.connector ? configOverrides?.[driver.connector] : undefined,
             (state) => this.updateState(driver.triggerType, state),

@@ -110,11 +110,15 @@ export async function executeWorkflow(
     connections,
     appendLog,
     options.workspaceSessionId,
+    options.abortSignal,
   );
   const stepResults: Record<string, unknown> = { ...input };
 
   try {
     await runSequence(host, linearSteps(workflowIr.steps), workflowIr, ctx, stepResults, [], new Set());
+    // A connector may finish successfully after receiving abort; do not let
+    // that late result turn a removed workflow into a successful execution.
+    options.abortSignal?.throwIfAborted();
     if (workflowIr.outputContract) {
       const output = validateOutputContract(workflowIr.outputContract, ctx.variables, stepResults);
       if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
@@ -125,6 +129,19 @@ export async function executeWorkflow(
     return result;
   } catch (err) {
     const error = err as PendingError;
+    if (options.abortSignal?.aborted) {
+      const code = 'cancelled';
+      log.push({
+        at: new Date().toISOString(),
+        level: 'warn',
+        code,
+        message: '워크플로우 실행이 취소되었습니다.',
+      });
+      host.config.store.finishExecution(executionId, 'cancelled', code, log);
+      const result: ExecutionResult = { executionId, status: 'cancelled', errorCode: code, log };
+      host.notifyExecutionFinished(result);
+      return result;
+    }
     if (error.pending && error.approvalId) {
       if (error.checkpoint) {
         host.config.store.updateApprovalPayload(error.approvalId, {

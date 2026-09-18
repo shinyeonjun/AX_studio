@@ -23,12 +23,13 @@ export interface AxWorkflowCommandGateway {
   validate(command: AxCommand): AxWorkflowCommandResult;
   create(command: AxCommand): AxWorkflowCommandResult;
   update(command: AxCommand): AxWorkflowCommandResult;
-  delete(command: AxCommand): AxWorkflowCommandResult;
+  delete(command: AxCommand): Promise<AxWorkflowCommandResult>;
   run(command: AxCommand): Promise<AxWorkflowCommandResult>;
   enqueueOnce(command: AxCommand, options?: AxEnqueueOnceOptions): Promise<AxWorkflowCommandResult>;
 }
 
 export interface WorkflowGatewayOptions {
+  removeWorkflow?: (workflowId: string) => Promise<void> | void;
   runWorkflow?: (workflowId: string) => Promise<unknown>;
   enqueueOnce?: (
     workflow: WorkflowIR,

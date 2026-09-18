@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { AxCommandService } from '../../service.js';
@@ -51,5 +51,51 @@ describe('AxCommandService versioned workflow commands', () => {
       args: { workflowId: createdData.workflowId, baseVersion: 2 },
     }, commandChatContext);
     expect(deleted).toMatchObject({ status: 'ok', data: { deleted: true } });
+  });
+
+  it('waits for runtime removal before deleting a workflow from the command path', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const removeWorkflow = vi.fn(async () => undefined);
+    const service = new AxCommandService(new WorkflowStore(db), { removeWorkflow });
+    try {
+      const created = await service.execute({
+        name: 'workflow.create',
+        args: { name: '삭제 순서 테스트', goal: 'runtime 정리 후 삭제' },
+      }, commandChatContext);
+      const workflowId = (created.data as { workflowId: string }).workflowId;
+      const deleted = await service.execute({
+        name: 'workflow.delete',
+        args: { workflowId, baseVersion: 1 },
+      }, commandChatContext);
+
+      expect(deleted).toMatchObject({ status: 'ok', data: { deleted: true } });
+      expect(removeWorkflow).toHaveBeenCalledExactlyOnceWith(workflowId);
+    } finally {
+      db.close?.();
+    }
+  });
+
+  it('keeps the workflow when runtime cleanup fails', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const service = new AxCommandService(store, {
+      removeWorkflow: vi.fn(async () => { throw new Error('runtime cleanup failed'); }),
+    });
+    try {
+      const created = await service.execute({
+        name: 'workflow.create',
+        args: { name: '삭제 실패 테스트', goal: '실패 시 보존' },
+      }, commandChatContext);
+      const workflowId = (created.data as { workflowId: string }).workflowId;
+      const deleted = await service.execute({
+        name: 'workflow.delete',
+        args: { workflowId, baseVersion: 1 },
+      }, commandChatContext);
+
+      expect(deleted).toMatchObject({ status: 'error' });
+      expect(store.getWorkflow(workflowId)).toBeDefined();
+    } finally {
+      db.close?.();
+    }
   });
 });

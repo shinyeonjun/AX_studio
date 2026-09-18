@@ -93,4 +93,75 @@ describe('JevDecisionEngine', () => {
       questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
     })).rejects.toMatchObject({ message: 'not allowed', status: 403 });
   });
+
+  it('rejects an oversized provider response before parsing it', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('x'.repeat(1_048_577), { status: 200 }));
+    const engine = new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl });
+
+    await expect(engine.evaluate({
+      state: 'x',
+      questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
+    })).rejects.toThrow('too large');
+  });
+
+  it('rejects an oversized request before making a network call', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const engine = new JevDecisionEngine({
+      apiKey: 'test-key',
+      maxRequestBytes: 128,
+      fetch: fetchImpl,
+    });
+
+    await expect(engine.evaluate({
+      state: 'x'.repeat(256),
+      questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
+    })).rejects.toThrow('too large');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('does not start a request for an already-aborted signal', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const controller = new AbortController();
+    controller.abort();
+    const engine = new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl });
+
+    await expect(engine.evaluate({
+      state: 'x',
+      questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('propagates an external abort to an in-flight request', async () => {
+    const controller = new AbortController();
+    let requestSignal: AbortSignal | undefined;
+    const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
+      requestSignal = init?.signal;
+      return await new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener('abort', () => {
+          reject(requestSignal?.reason ?? new DOMException('The operation was aborted.', 'AbortError'));
+        }, { once: true });
+      });
+    });
+    const engine = new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl });
+    const pending = engine.evaluate({
+      state: 'x',
+      questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
+      signal: controller.signal,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(requestSignal?.aborted).toBe(true);
+  });
+
+  it('allows HTTP only for loopback development endpoints', () => {
+    expect(() => new JevDecisionEngine({ apiKey: 'test-key', baseURL: 'http://typesafe.example' }))
+      .toThrow('HTTPS');
+    expect(() => new JevDecisionEngine({ apiKey: 'test-key', baseURL: 'http://127.0.0.1:8787' }))
+      .not.toThrow();
+  });
 });

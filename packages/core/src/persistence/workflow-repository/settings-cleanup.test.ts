@@ -72,4 +72,29 @@ describe('workflow settings and cleanup persistence', () => {
     const receipts = db.prepare('SELECT COUNT(*) AS count FROM trigger_receipts WHERE workflow_id = ?').get(workflowId) as { count: number };
     expect(receipts.count).toBe(0);
   });
+
+  it('refuses to delete a workflow with an active execution', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const { workflowId } = store.saveWorkflow({
+      id: 'wf-active-delete',
+      name: '실행 중 삭제 보호',
+      goal: '실행 중인 워크플로우 보존',
+      version: 1,
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    });
+    const executionId = store.createExecution({ workflowId, ephemeral: false });
+
+    expect(() => store.deleteWorkflow(workflowId)).toThrow('실행 중인 워크플로우는 삭제할 수 없습니다.');
+    expect(store.getWorkflow(workflowId)).not.toBeNull();
+
+    store.finishExecution(executionId, 'success');
+    expect(store.deleteWorkflow(workflowId)).toBe(true);
+  });
 });

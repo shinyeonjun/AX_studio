@@ -45,7 +45,7 @@ AI 인터뷰로 조건과 빈칸 확인
 | 업무 설계 | 대화형 Work Discovery, 구조화된 Workflow IR, 시각적 워크플로우 캔버스 |
 | 실행 | 등록한 워크플로우 활성화, 스케줄 실행, 실행 결과와 활동 이력 |
 | 안전 | Gmail 발송 등 외부 부작용 전 승인, 개발/설치 데이터 격리, OS credential store 사용 |
-| 연결 | Gmail, Slack, 읽기 전용 PostgreSQL/MySQL, 로컬 폴더·문서 |
+| 연결 | Gmail, Slack, 읽기 전용 PostgreSQL/MySQL, 로컬 폴더·문서, OpenAPI, MCP 도구 |
 | 데이터 | CSV/XLSX 읽기용 `local_sheet`, SQLite 기반 로컬 상태 저장 |
 | 결과물 | HTML/DOCX/PDF 보고서 생성 경로 |
 | 검증 | core 단위 테스트, 정적 빌드, Electron 제품 QA harness |
@@ -84,6 +84,7 @@ Windows 런타임 데이터는 실행 방식에 따라 분리됩니다.
 - Node.js 22 이상
 - Windows 권장
 - Gmail 연결을 개발할 경우 Google OAuth Client ID (필요하면 Client Secret도)
+- 문서/보고서 E2E를 실행할 경우 Python 3와 프로젝트의 document engine 의존성
 
 ```bash
 git clone https://github.com/shinyeonjun/AX_studio.git
@@ -96,6 +97,10 @@ npm test
 npm run dev
 ```
 
+보고서 E2E가 사용할 Python을 명시해야 하는 환경에서는 `AX_DOCUMENT_ENGINE_PYTHON`에
+실행 파일 경로를 지정합니다. 지정하지 않으면 번들된 Windows 가상환경, `python`,
+`python3` 순서로 탐색합니다.
+
 `npm run dev`는 Electron 데스크톱 앱을 실행합니다. macOS와 Linux에서도 Electron 개발 실행은 가능할 수 있지만, 현재 제품 검증과 패키징의 우선 대상은 Windows입니다.
 
 ## 검증
@@ -103,7 +108,9 @@ npm run dev
 ```bash
 npm test                 # core 단위 테스트
 npm run build            # core + desktop 빌드
+npm run typecheck:desktop # Electron/React 타입 검사
 npm run test:product-qa -- --mode deterministic --tier smoke
+npm run test:report-e2e  # 보고서 API/DB 시나리오 E2E
 npm run arch:check       # core 의존성 경계 검사
 ```
 
@@ -147,6 +154,8 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 | `npm run pack:win -w @ax-studio/desktop` | Windows 설치본 빌드 |
 | `npm run eval` | core eval 실행 |
 | `npm run test:product-qa` | Electron 제품 QA harness 실행 |
+| `npm run test:report-e2e` | 보고서 생성 E2E 실행 |
+| `npm run arch:check` | core 모듈 경계 검사 |
 | `npm run knip` | 미사용 코드·의존성 검사 |
 
 ## 문서
@@ -156,3 +165,6 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 - [Work Discovery 전환 연구](docs/research/work-discovery-transition.md)
 - [제품 QA harness](test/product-qa/README.md)
 - [수동 커넥터 검증](test/manual/README.md)
+
+현재 저장소에는 별도 `lint` npm script가 없습니다. 타입체크·빌드·Vitest·의존성 경계·Knip을
+검증 게이트로 사용하며, lint 게이트를 추가할 때는 formatter와 CI 실행 범위를 함께 정해야 합니다.

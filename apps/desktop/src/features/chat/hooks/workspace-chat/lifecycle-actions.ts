@@ -7,6 +7,10 @@ export function invalidateSession(ctx: WorkspaceChatContext): void {
 }
 
 export function detachActiveRequest(ctx: WorkspaceChatContext): void {
+  const requestId = ctx.refs.activeRequestIdRef.current;
+  if (requestId && typeof window !== 'undefined' && typeof window.ax.cancelChat === 'function') {
+    void window.ax.cancelChat(requestId).catch(() => undefined);
+  }
   ctx.refs.activeRequestIdRef.current = undefined;
   ctx.refs.busyRef.current = false;
   ctx.setBusy(false);

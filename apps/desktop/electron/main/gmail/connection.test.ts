@@ -5,7 +5,9 @@ const gmailState = vi.hoisted(() => ({
   connect: vi.fn(),
   build: vi.fn((value: unknown) => value),
   profile: vi.fn(),
+  getCredential: vi.fn(),
   setCredential: vi.fn(),
+  parseConfig: vi.fn((_: unknown): unknown => null),
   GmailConnector: vi.fn(function (config: unknown) {
     return { config };
   }),
@@ -22,11 +24,11 @@ vi.mock('@ax-studio/core', () => ({
   connectGmailViaLoopback: gmailState.connect,
   fetchGmailProfileEmail: gmailState.profile,
   isLegacyGmailTokenConfig: vi.fn(() => false),
-  parseGmailConnectionConfig: vi.fn(() => null),
+  parseGmailConnectionConfig: gmailState.parseConfig,
 }));
 
 vi.mock('../credential-store.js', () => ({
-  getCredentialStore: () => ({ set: gmailState.setCredential }),
+  getCredentialStore: () => ({ get: gmailState.getCredential, set: gmailState.setCredential }),
 }));
 
 vi.mock('./oauth.js', () => ({
@@ -35,6 +37,7 @@ vi.mock('./oauth.js', () => ({
 }));
 
 import { connectGmailOAuth } from './connection.js';
+import { hydrateGmailConnector } from './connection/hydrate.js';
 
 describe('desktop Gmail OAuth connection', () => {
   afterEach(() => {
@@ -72,6 +75,32 @@ describe('desktop Gmail OAuth connection', () => {
         clientId: 'test-client.apps.googleusercontent.com',
         clientSecret: 'test-client-secret',
       }),
+    );
+  });
+
+  it('keeps the newest rotated refresh token across later token events', async () => {
+    gmailState.credentials.mockReturnValue({ clientId: 'client', clientSecret: 'secret' });
+    gmailState.getCredential.mockResolvedValue({ refreshToken: 'initial-refresh' });
+    gmailState.parseConfig.mockReturnValue({
+      credentialRef: { connector: 'gmail', connectionId: 'gmail-1' },
+      account: 'user@example.com',
+    });
+    const store = {
+      getConnections: () => [{ connector: 'gmail', connected: true, config: { connected: true } }],
+      setConnection: vi.fn(),
+    };
+    const runtime = { connectors: {} };
+
+    await hydrateGmailConnector(store as never, runtime as never);
+    const config = gmailState.GmailConnector.mock.calls.at(-1)?.[0] as {
+      onTokens: (tokens: { refreshToken?: string }) => Promise<void>;
+    };
+    await config.onTokens({ refreshToken: 'rotated-refresh' });
+    await config.onTokens({});
+
+    expect(gmailState.setCredential).toHaveBeenLastCalledWith(
+      { connector: 'gmail', connectionId: 'gmail-1' },
+      { refreshToken: 'rotated-refresh' },
     );
   });
 });

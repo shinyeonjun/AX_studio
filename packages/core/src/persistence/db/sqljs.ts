@@ -187,6 +187,10 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     this.db.close();
   }
 
+  persistNow(): void {
+    this.flushPersist();
+  }
+
   private flushPersist(): void {
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
@@ -240,6 +244,7 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
     applyMigrations(new SqlJsDatabaseAdapter(db));
     const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
     adapter.exec('PRAGMA foreign_keys = ON');
+    adapter.persistNow();
     return adapter;
   } catch (error) {
     db.close();

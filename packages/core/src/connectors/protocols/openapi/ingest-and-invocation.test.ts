@@ -101,4 +101,90 @@ describe('openapi ingest', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('serializes object bodies, forwards headers, and passes cancellation to fetch', async () => {
+    const { connector } = ingestOpenApiSpec('petstore', PETSTORE);
+    const originalFetch = globalThis.fetch;
+    let requestInit: RequestInit | undefined;
+    globalThis.fetch = async (_input, init) => {
+      requestInit = init;
+      return new Response('{}', { status: 201 });
+    };
+    const abortController = new AbortController();
+
+    try {
+      const result = await connector.execute(
+        'petstore.createPet',
+        { body: { name: 'cat' }, headers: { Authorization: 'Bearer test' } },
+        { executionId: 'e1', variables: {}, log: () => undefined, abortSignal: abortController.signal },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(requestInit?.method).toBe('POST');
+      expect(requestInit?.headers).toMatchObject({ Authorization: 'Bearer test', 'content-type': 'application/json' });
+      expect(JSON.parse(String(requestInit?.body))).toEqual({ name: 'cat' });
+      expect(requestInit?.signal).toBeDefined();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('does not invoke an operation with declared security before headers are supplied', async () => {
+    const { connector } = ingestOpenApiSpec('secure', {
+      openapi: '3.0.0',
+      info: { title: 'Secure API', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com/v1?token=must-not-leak' }],
+      security: [{ bearerAuth: [] }],
+      paths: { '/pets': { get: { operationId: 'listPets' } } },
+    });
+    const result = await connector.execute(
+      'secure.listPets',
+      {},
+      { executionId: 'e1', variables: {}, log: () => undefined },
+    );
+
+    expect(result).toMatchObject({ ok: false, errorCode: 'invalid_params', error: 'openapi_security_headers_required' });
+  });
+
+  it('enforces declared parameters and maps cookie parameters to the request', async () => {
+    const { connector } = ingestOpenApiSpec('params', {
+      openapi: '3.0.0',
+      info: { title: 'Params', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com/v1' }],
+      paths: {
+        '/pets/{petId}': {
+          get: {
+            operationId: 'getPet',
+            parameters: [
+              { name: 'petId', in: 'path', required: true, schema: { type: 'string' } },
+              { name: 'tenant', in: 'cookie', required: true, schema: { type: 'string' } },
+            ],
+            responses: { '200': { description: 'ok' } },
+          },
+        },
+      },
+    });
+    const originalFetch = globalThis.fetch;
+    let requestedUrl = '';
+    let requestedHeaders: HeadersInit | undefined;
+    globalThis.fetch = async (input, init) => {
+      requestedUrl = String(input);
+      requestedHeaders = init?.headers;
+      return new Response('{}', { status: 200 });
+    };
+
+    try {
+      await expect(connector.execute('params.getPet', {}, { executionId: 'e1', variables: {}, log: () => undefined }))
+        .resolves.toMatchObject({ ok: false, error: 'openapi_required_parameter_missing:path:petId' });
+      await expect(connector.execute(
+        'params.getPet',
+        { pathParams: { petId: 'p-1' }, cookies: { tenant: 'acme' } },
+        { executionId: 'e1', variables: {}, log: () => undefined },
+      )).resolves.toMatchObject({ ok: true });
+      expect(requestedUrl).toBe('https://api.example.com/v1/pets/p-1');
+      expect(requestedHeaders).toMatchObject({ cookie: 'tenant=acme' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

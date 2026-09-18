@@ -8,6 +8,13 @@ import type {
 import { createSlackSdkLogger, formatSlackSocketError } from './diagnostics.js';
 
 const SLACK_CLIENT_PING_TIMEOUT_MS = 15_000;
+const SLACK_CHANNEL_LABEL_CACHE_MAX = 256;
+const SLACK_CHANNEL_LABEL_CACHE_TTL_MS = 10 * 60 * 1_000;
+
+type CachedChannelLabel = {
+  label: string;
+  expiresAt: number;
+};
 
 function isUserMessage(event: Record<string, unknown>): boolean {
   if (event.type !== 'message') return false;
@@ -19,7 +26,7 @@ function isUserMessage(event: Record<string, unknown>): boolean {
 export class SlackSocketModeListener {
   private client?: SocketModeClient;
   private web?: WebClient;
-  private channelLabels = new Map<string, string>();
+  private channelLabels = new Map<string, CachedChannelLabel>();
   private onEvent?: SlackSocketEventHandler;
   private onStateChange?: PushTransportStateHandler;
   private lastSocketError?: string;
@@ -152,13 +159,29 @@ export class SlackSocketModeListener {
 
   private async resolveChannelLabel(channelId: string, generation: number): Promise<string> {
     const cached = this.channelLabels.get(channelId);
-    if (cached) return cached;
+    if (cached && cached.expiresAt > Date.now()) {
+      // Keep frequently used channels at the newest end of the bounded cache.
+      this.channelLabels.delete(channelId);
+      this.channelLabels.set(channelId, cached);
+      return cached.label;
+    }
+    if (cached) this.channelLabels.delete(channelId);
 
     try {
       const response = await this.web?.conversations.info({ channel: channelId });
       const name = response?.channel?.name;
       const label = name ? `#${name}` : channelId;
-      if (generation === this.lifecycleGeneration) this.channelLabels.set(channelId, label);
+      if (generation === this.lifecycleGeneration) {
+        this.channelLabels.set(channelId, {
+          label,
+          expiresAt: Date.now() + SLACK_CHANNEL_LABEL_CACHE_TTL_MS,
+        });
+        while (this.channelLabels.size > SLACK_CHANNEL_LABEL_CACHE_MAX) {
+          const oldest = this.channelLabels.keys().next().value as string | undefined;
+          if (!oldest) break;
+          this.channelLabels.delete(oldest);
+        }
+      }
       return label;
     } catch {
       return channelId;

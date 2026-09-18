@@ -107,6 +107,9 @@ export class WorkflowStore {
     executionRepo.markExecutionPending(this.db, id, errorCode, log);
   }
   updateExecutionLog(id: string, log: unknown[]) { executionRepo.updateExecutionLog(this.db, id, log); }
+  hasPendingApprovalForWorkflow(workflowId: string) {
+    return executionRepo.hasPendingApprovalForWorkflow(this.db, workflowId);
+  }
   getExecution(id: string) { return executionRepo.getExecution(this.db, id); }
   listExecutions(limit = 50) { return executionRepo.listExecutions(this.db, limit); }
   deleteExecution(id: string) { return executionRepo.deleteExecution(this.db, id); }

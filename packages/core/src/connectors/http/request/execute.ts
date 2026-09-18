@@ -5,6 +5,18 @@ import { normalizeMaxBytes, normalizeTimeoutMs } from './normalize.js';
 
 export async function performHttpRequest(input: HttpRequestInput): Promise<PerformHttpRequestResult> {
   if (input.abortSignal?.aborted) return { ok: false, error: 'request_aborted', errorCode: 'aborted' };
+  let requestUrl: URL;
+  try {
+    requestUrl = new URL(input.url);
+  } catch {
+    return { ok: false, error: 'invalid_url', errorCode: 'invalid_params' };
+  }
+  if (requestUrl.protocol !== 'http:' && requestUrl.protocol !== 'https:') {
+    return { ok: false, error: 'unsupported_protocol', errorCode: 'ssrf_blocked' };
+  }
+  if (requestUrl.username || requestUrl.password) {
+    return { ok: false, error: 'url_credentials_not_allowed', errorCode: 'ssrf_blocked' };
+  }
   const method = input.method.trim().toUpperCase() || 'GET';
   const timeoutMs = normalizeTimeoutMs(input.timeoutMs);
   const maxBytes = normalizeMaxBytes(input.maxBytes);
@@ -16,7 +28,7 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(input.url, {
+    const response = await fetch(requestUrl.toString(), {
       method,
       headers,
       body: method === 'GET' || method === 'HEAD' ? undefined : input.body,

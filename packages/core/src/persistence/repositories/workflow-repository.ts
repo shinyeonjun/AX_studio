@@ -146,6 +146,18 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
   if (!existing) return false;
   db.exec('BEGIN');
   try {
+    const activeExecution = readRow<{ id: string }>(
+      db.prepare(
+        "SELECT id FROM executions WHERE workflow_id = ? AND status IN ('running', 'pending_approval') LIMIT 1",
+      ),
+      workflowId,
+    );
+    if (activeExecution) {
+      throw Object.assign(new Error('실행 중인 워크플로우는 삭제할 수 없습니다.'), {
+        code: 'workflow_execution_active',
+        executionId: activeExecution.id,
+      });
+    }
     db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
     db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);

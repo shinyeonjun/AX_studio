@@ -40,6 +40,7 @@ export interface OpenApiOperation {
   path: string;
   summary?: string;
   sideEffect?: SideEffectLevel;
+  securityRequired?: boolean;
   parameters?: OpenApiParameter[];
   requestBody?: OpenApiRequestBody;
   responses?: OpenApiResponse[];
@@ -73,15 +74,40 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function operationSideEffect(method: string, operation: Record<string, unknown>): SideEffectLevel {
   const explicit = operation['x-sideEffect'];
-  if (
-    explicit === 'NONE' ||
-    explicit === 'REVERSIBLE' ||
-    explicit === 'EXTERNAL' ||
-    explicit === 'EXTERNAL_HIGH'
-  ) {
+  const methodDefault = defaultSideEffectForHttpMethod(method);
+  if (methodDefault !== 'NONE') {
+    return explicit === 'EXTERNAL_HIGH' ? explicit : 'EXTERNAL';
+  }
+  if (explicit === 'NONE' || explicit === 'REVERSIBLE' || explicit === 'EXTERNAL' || explicit === 'EXTERNAL_HIGH') {
     return explicit;
   }
-  return defaultSideEffectForHttpMethod(method);
+  return methodDefault;
+}
+
+function operationRequiresSecurity(root: Record<string, unknown>, operation: Record<string, unknown>): boolean {
+  const security = Object.prototype.hasOwnProperty.call(operation, 'security')
+    ? operation.security
+    : root.security;
+  return Array.isArray(security) && security.length > 0;
+}
+
+function normalizeServerUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('openapi_base_url_invalid');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('openapi_base_url_protocol_invalid');
+  }
+  // Server variables and credentials are not implemented by this minimal
+  // adapter. Do not carry query/userinfo secrets into every operation call.
+  url.username = '';
+  url.password = '';
+  url.search = '';
+  url.hash = '';
+  return url.toString().replace(/\/$/, '');
 }
 
 function schemaType(schema: Record<string, unknown> | null): string | undefined {
@@ -203,7 +229,7 @@ export function parseOpenApiSpec(id: string, raw: unknown): OpenApiSpec {
 
   const servers = Array.isArray(root.servers) ? root.servers : [];
   const firstServer = asRecord(servers[0]);
-  const baseUrl = typeof firstServer?.url === 'string' ? firstServer.url.replace(/\/$/, '') : '';
+  const baseUrl = typeof firstServer?.url === 'string' ? normalizeServerUrl(firstServer.url) : '';
   if (!baseUrl) throw new Error('openapi_base_url_required');
 
   const paths = asRecord(root.paths);
@@ -232,6 +258,7 @@ export function parseOpenApiSpec(id: string, raw: unknown): OpenApiSpec {
         path,
         ...(summary ? { summary } : {}),
         sideEffect: operationSideEffect(method, operation),
+        ...(operationRequiresSecurity(root, operation) ? { securityRequired: true } : {}),
         parameters: mergeParameters(pathParameters, parametersFrom(operation.parameters)),
         ...(requestBody ? { requestBody } : {}),
         responses: responsesFrom(operation.responses),
@@ -255,10 +282,13 @@ export function openApiCapabilitiesFromSpec(spec: OpenApiSpec): ConnectorCapabil
     label: operation.summary ?? operation.operationId,
     description: `${operation.method} ${operation.path}`,
     sideEffect: operation.sideEffect ?? defaultSideEffectForHttpMethod(operation.method),
+    ...(operation.securityRequired ? { securityRequired: true } : {}),
     params: [
       { name: 'pathParams', label: 'Path params', question: '경로 변수를 입력하세요.', required: false },
       { name: 'query', label: 'Query', question: '쿼리 파라미터를 입력하세요.', required: false },
       { name: 'body', label: 'Body', question: '요청 본문을 입력하세요.', required: false },
+      { name: 'headers', label: 'Headers', question: '인증/추가 헤더를 입력하세요.', required: false },
+      { name: 'cookies', label: 'Cookies', question: '쿠키 파라미터를 입력하세요.', required: false },
     ],
   }));
 }

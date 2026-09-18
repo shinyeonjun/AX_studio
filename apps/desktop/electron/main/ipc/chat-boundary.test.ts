@@ -78,6 +78,12 @@ describe('workspace chat boundary', () => {
     expect(stored).toHaveLength(11);
     expect(() => normalizeChatMessages([{ role: 'user', content: 'x'.repeat(50_001) }])).toThrow();
   });
+
+  it('bounds transcript message count before mapping untrusted input', () => {
+    expect(() => normalizeChatMessages(
+      Array.from({ length: 1_001 }, () => ({ role: 'user', content: '' })),
+    )).toThrow('1,000');
+  });
   it('does not accept execution status on an ordinary assistant message', () => {
     expect(() => normalizeChatMessages([
       { role: 'assistant', content: '일반 답변', executionStatus: 'success' },

@@ -8,7 +8,6 @@ import {
   hasWorkflow,
   isAppAlive,
   isComposerDisabled,
-  inlineApprovalVisible,
   listSessionTitles,
   openAiSettings,
   openContextTab,
@@ -434,8 +433,18 @@ export class StepRunner {
       }
       case 'inlineApprovalPresent':
       case 'inlineApprovalAbsent': {
-        const visible = await inlineApprovalVisible(page);
         const expectedVisible = step.check === 'inlineApprovalPresent';
+        const card = page.locator('.ax-workspace-inline-approval').last();
+        try {
+          await card.waitFor({
+            state: expectedVisible ? 'visible' : 'hidden',
+            timeout: 30_000,
+          });
+        } catch {
+          // Keep the check result actionable instead of turning a delayed UI
+          // update into an unclassified scenario error.
+        }
+        const visible = await card.isVisible().catch(() => false);
         return {
           ...base,
           check: step.check,

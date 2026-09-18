@@ -85,7 +85,9 @@ export async function handleWebhookRequest(
       },
     };
 
-    onEvent(event);
+    void Promise.resolve(onEvent(event)).catch((error) => {
+      console.error('[webhook] event handler failed:', error);
+    });
     respond(res, 202, 'accepted');
   } catch (err) {
     if (abortSignal?.aborted || res.destroyed) return;
