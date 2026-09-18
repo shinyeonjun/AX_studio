@@ -9,7 +9,7 @@ import type {
 
 export interface AxWorkspaceApi {
   sendCommandChat: (
-    messages: WorkspaceChatMessage[],
+    userMessage: string,
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,

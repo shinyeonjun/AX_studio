@@ -8,7 +8,7 @@ import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import { connectedConnectorIds } from '../shared.js';
-import { normalizeChatMessages, requireLastUserMessage, selectChatContext } from '../chat-boundary.js';
+import { boundedText, selectChatContext, selectMessagesThroughUserMessage } from '../chat-boundary.js';
 import { buildDesktopDesignToolContext } from '../design-tool-context.js';
 import {
   registerWorkspaceChat,
@@ -20,35 +20,32 @@ import { isContextConfirmation, isJobConfirmation, workflowIdsChanged } from './
 export function registerWorkspaceChatMessageHandler() {
   ipcHandle('ax:sendCommandChat', async (
     event,
-    messages: unknown,
+    userMessageInput: unknown,
     requestId?: unknown,
     workflowId?: unknown,
     workspaceSessionId?: unknown,
   ) => {
     const core = getCore();
     const startedAt = performance.now();
-    const normalizedMessages = normalizeChatMessages(messages);
-    if (normalizedMessages.length === 0) throw new Error('대화 기록이 필요합니다.');
-    const userMessage = requireLastUserMessage(normalizedMessages);
     if (workflowId !== undefined && (typeof workflowId !== 'string' || !workflowId.trim())) {
       throw new Error('workflow id 형식이 올바르지 않습니다.');
     }
-    if (workspaceSessionId !== undefined &&
-      (typeof workspaceSessionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceSessionId.trim()))) {
+    if (typeof workspaceSessionId !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceSessionId.trim())) {
       throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
     }
-    const safeWorkspaceSessionId = typeof workspaceSessionId === 'string'
-      ? workspaceSessionId.trim()
-      : undefined;
+    const safeWorkspaceSessionId = workspaceSessionId.trim();
+    const storedChat = core.store.getWorkspaceChat(safeWorkspaceSessionId);
+    if (!storedChat) throw new Error('대화를 찾을 수 없습니다.');
+    const userMessage = boundedText(userMessageInput, '사용자 메시지').trim();
+    const requestMessages = selectMessagesThroughUserMessage(storedChat.messages, userMessage);
     const requestedWorkflowId = typeof workflowId === 'string' ? workflowId.trim() : undefined;
-    const mappedWorkflowId = safeWorkspaceSessionId
-      ? core.store.getWorkspaceChat(safeWorkspaceSessionId)?.workflowId
-      : undefined;
+    const mappedWorkflowId = storedChat.workflowId;
     const effectiveWorkflowId = requestedWorkflowId || mappedWorkflowId;
-    const contextUpdateConfirmed = isContextConfirmation(normalizedMessages, userMessage);
-    const jobCommitConfirmed = isJobConfirmation(normalizedMessages, userMessage);
+    const contextUpdateConfirmed = isContextConfirmation(requestMessages, userMessage);
+    const jobCommitConfirmed = isJobConfirmation(requestMessages, userMessage);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
-    const history = selectChatContext(normalizedMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
+    const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);
@@ -141,7 +138,7 @@ export function registerWorkspaceChatMessageHandler() {
         requestId: chatRequestId,
         outcome,
         durationMs: Math.round(performance.now() - startedAt),
-        messageCount: normalizedMessages.length,
+        messageCount: requestMessages.length,
         historyMessages: history.length,
         historyChars,
         userMessageChars: userMessage.length,

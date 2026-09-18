@@ -131,10 +131,16 @@ export function selectChatContext(messages: DesktopChatMessage[]): DesktopChatMe
   return start === 0 ? messages : [notice, ...messages.slice(start)];
 }
 
-export function requireLastUserMessage(messages: DesktopChatMessage[]): string {
-  const last = messages.at(-1);
-  if (!last || last.role !== 'user' || !last.content.trim()) {
-    throw new Error('사용자 메시지가 필요합니다.');
+/** Select the request that was persisted before any later background result. */
+export function selectMessagesThroughUserMessage(
+  messages: DesktopChatMessage[],
+  userMessage: string,
+): DesktopChatMessage[] {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === 'user' && message.content === userMessage) {
+      return messages.slice(0, index + 1);
+    }
   }
-  return last.content.trim();
+  throw new Error('현재 사용자 메시지를 찾을 수 없습니다.');
 }

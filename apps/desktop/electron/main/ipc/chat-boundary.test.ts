@@ -23,7 +23,11 @@ vi.mock('../app-window.js', () => ({
   isTrustedRendererUrl: (url: string) => url === 'app://index',
 }));
 
-import { normalizeChatMessages, selectChatContext } from './chat-boundary.js';
+import {
+  normalizeChatMessages,
+  selectChatContext,
+  selectMessagesThroughUserMessage,
+} from './chat-boundary.js';
 import { ipcHandle } from './ipc-handle.js';
 
 describe('workspace chat boundary', () => {
@@ -83,6 +87,17 @@ describe('workspace chat boundary', () => {
     expect(() => normalizeChatMessages(
       Array.from({ length: 1_001 }, () => ({ role: 'user', content: '' })),
     )).toThrow('1,000');
+  });
+  it('stops the request transcript before a later background result', () => {
+    const messages = normalizeChatMessages([
+      { role: 'user', content: '같은 요청' },
+      { role: 'assistant', content: '이전 답변' },
+      { role: 'user', content: '같은 요청' },
+      { role: 'assistant', content: '뒤늦은 실행 결과', kind: 'execution_result', executionId: 'exec-1' },
+    ]);
+
+    expect(selectMessagesThroughUserMessage(messages, '같은 요청')).toEqual(messages.slice(0, 3));
+    expect(() => selectMessagesThroughUserMessage(messages, '없는 요청')).toThrow('현재 사용자 메시지');
   });
   it('does not accept execution status on an ordinary assistant message', () => {
     expect(() => normalizeChatMessages([
