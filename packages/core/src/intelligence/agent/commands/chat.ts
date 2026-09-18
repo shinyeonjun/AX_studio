@@ -47,11 +47,6 @@ function quickChatReply(userMessage: string, harness: AxCommandChatOptions['harn
  */
 export async function runAxCommandChat(options: AxCommandChatOptions): Promise<string> {
   const providerName = options.harness.providerName;
-  const transport = createAxCommandChatTransport(providerName);
-  const messages: ChatMessage[] = [
-    ...options.messages,
-    { role: 'user', content: options.userMessage },
-  ];
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? AX_COMMAND_CHAT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -84,6 +79,11 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
       const quickReply = quickChatReply(options.userMessage, options.harness);
       if (quickReply) return quickReply;
     }
+    const transport = createAxCommandChatTransport(providerName);
+    const messages: ChatMessage[] = [
+      ...options.messages,
+      { role: 'user', content: options.userMessage },
+    ];
     const loopResult = await runCommandChatLoop({
       options,
       transport,
