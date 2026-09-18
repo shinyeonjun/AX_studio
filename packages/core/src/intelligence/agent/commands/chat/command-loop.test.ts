@@ -11,8 +11,68 @@ import { WorkspaceSourceService } from '../../../../persistence/workspace-source
 import { runAxCommandChat } from '../chat.js';
 import { AxCommandService } from '../service.js';
 import { scriptedModel } from './fixtures.js';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 
 describe('runAxCommandChat command loop', () => {
+  it('uses Jev to pre-route a safe read before asking the LLM for prose', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const execute = vi.spyOn(service, 'execute');
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'workflow_list',
+            probabilities: { workflow_list: 0.97, answer: 0.03 },
+            confidence: 0.97,
+          },
+          explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+        },
+      }),
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'reply', message: '현재 저장된 workflow를 확인했습니다.' },
+    ], seen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '저장된 workflow 목록을 보여줘',
+    })).resolves.toBe('현재 저장된 workflow를 확인했습니다.');
+
+    expect(execute).toHaveBeenCalledWith(
+      { name: 'workflow.list', args: {} },
+      expect.objectContaining({ userMessage: '저장된 workflow 목록을 보여줘' }),
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.messages?.at(-1)?.content).toContain('AX command result');
+  });
+
+  it('falls back to the existing LLM planner when Jev is unavailable', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_unavailable'); },
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'reply', message: '기존 경로로 답변했습니다.' },
+    ], seen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '상태를 설명해줘',
+    })).resolves.toBe('기존 경로로 답변했습니다.');
+    expect(seen).toHaveLength(1);
+  });
+
   it('recovers once when the provider reports a bounded structured-output error', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

@@ -11,6 +11,8 @@ import {
   resultMessage,
 } from './protocol.js';
 import { hostFacingMessage, type CommandChatSessionState } from './result.js';
+import { routeChatWithJev } from './jev-router.js';
+import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 
 const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
 
@@ -55,6 +57,43 @@ export async function runCommandChatLoop({
     );
     return true;
   };
+
+  if (options.decisionEngine && !options.allowContextUpdate) {
+    const jevRoute = await routeChatWithJev({
+      decisionEngine: options.decisionEngine,
+      userMessage: options.userMessage,
+      currentWorkflowId: session.workflowId,
+      hasWorkspaceSession: Boolean(options.workspaceSessionId),
+      connectedConnectors: options.connectedConnectors,
+      abortSignal: signal,
+    });
+    if (jevRoute.kind === 'fallback') {
+      appendAppLog('info', 'Jev chat route fell back to the LLM command path.', {
+        event: 'jev_chat_route_fallback',
+        reason: jevRoute.reason,
+      });
+    }
+    if (jevRoute.kind === 'command') {
+      const result = await options.commandService.execute(jevRoute.command, {
+        executionContext: AGENT_COMMAND_CONTEXT,
+        userMessage: options.userMessage,
+        workspaceSessionId: options.workspaceSessionId,
+        currentWorkflowId: session.workflowId,
+        abortSignal: signal,
+        designToolContext: options.designToolContext,
+        designToolContextFactory: options.designToolContextFactory,
+      });
+      signal.throwIfAborted();
+      const resultForLoop = publishResult(jevRoute.command.name, result);
+      if (jevRoute.command.name === 'workflow.run') {
+        return hostFacingMessage(resultForLoop, '워크플로우 실행 요청을 처리하지 못했습니다.');
+      }
+      messages.push(
+        { role: 'assistant', content: JSON.stringify({ kind: 'command', command: jevRoute.command }) },
+        { role: 'user', content: resultMessage(resultForLoop) },
+      );
+    }
+  }
 
   for (let round = 0; round < maxRounds; round += 1) {
     if (signal.aborted) throw new Error('ax_command_chat_timeout');

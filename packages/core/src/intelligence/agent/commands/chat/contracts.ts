@@ -6,10 +6,13 @@ import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-so
 import type { AgentScopedContextMap } from '../../scoped-context.js';
 import type { AxCommandResult, AxUiPresentation } from '../schema.js';
 import { inputRequestsForResult } from '../input-requests.js';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 
 export interface AxCommandChatOptions {
   harness: AgentHarness;
   commandService: AxCommandService;
+  /** Optional Jev route selector; command execution remains host-owned. */
+  decisionEngine?: DecisionEngine;
   messages: ChatMessage[];
   userMessage: string;
   connectedConnectors?: string[];

@@ -68,6 +68,8 @@ export interface AxStudioCore {
   agentHarness: AgentHarness;
   /** Single AI-facing workflow/resource command boundary for every host. */
   commandService: AxCommandService;
+  /** Current semantic decision provider used by chat and discovery paths. */
+  readonly decisionEngine?: DecisionEngine;
   /** Session-owned files and document-engine results. */
   workspaceSources: WorkspaceSourceService;
   refreshAgentHarness(config: AiProviderConfig): AgentHarness;
@@ -166,6 +168,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   });
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime, undefined, options.onPushTransportStateChanged);
+  let activeDecisionEngine = options.decisionEngine;
   const commandService = new AxCommandService(store, {
     removeWorkflow: (workflowId) => runtime.removeWorkflow(workflowId),
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
@@ -178,7 +181,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     resolveConnectionConfig: options.resolveConnectionConfig,
     discoverySourceProviders,
     discoveryWorkbookMaterializer,
-    decisionEngine: options.decisionEngine,
+    decisionEngine: activeDecisionEngine,
     autoResumeDiscovery: true,
   });
 
@@ -190,6 +193,9 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     triggerEngine,
     agentHarness,
     commandService,
+    get decisionEngine() {
+      return activeDecisionEngine;
+    },
     workspaceSources,
     refreshAgentHarness(config: AiProviderConfig) {
       core.agentHarness.configure(normalizeAiProviderConfig(config));
@@ -197,6 +203,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
       return core.agentHarness;
     },
     refreshDecisionEngine(decisionEngine?: DecisionEngine) {
+      activeDecisionEngine = decisionEngine;
       commandService.setDecisionEngine(decisionEngine);
     },
   };

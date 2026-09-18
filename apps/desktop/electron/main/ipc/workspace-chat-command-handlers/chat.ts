@@ -74,6 +74,7 @@ export function registerWorkspaceChatMessageHandler() {
       const reply = await runAxCommandChat({
         harness: core.agentHarness,
         commandService: core.commandService,
+        decisionEngine: core.decisionEngine,
         connectedConnectors: connectedConnectorIds(core.store),
         messages: history,
         userMessage,
