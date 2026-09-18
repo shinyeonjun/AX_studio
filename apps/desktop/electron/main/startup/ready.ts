@@ -1,6 +1,9 @@
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  type DecisionEngine,
+  createExperimentalJevDecisionEngineFromEnvironment,
+  JevDecisionEngine,
   setDocumentEngineClient,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
@@ -49,9 +52,25 @@ export function registerDesktopReadyHandler(): void {
         aiToml = await loadAiTomlIntoEnv();
       }
 
+      let decisionEngine: DecisionEngine | undefined;
+      if (!isE2E) {
+        const jev = aiToml?.decision?.jev;
+        const apiKey = process.env.TYPESAFE_API_KEY?.trim();
+        if (jev?.enabled && apiKey) {
+          decisionEngine = new JevDecisionEngine({
+            apiKey,
+            model: jev.model?.trim() || undefined,
+            baseURL: jev.baseURL?.trim() || undefined,
+          });
+        } else {
+          decisionEngine = createExperimentalJevDecisionEngineFromEnvironment();
+        }
+      }
+
       if (isDesktopShuttingDown()) return;
       const core = await createAxStudioCore({
         paths,
+        decisionEngine,
         desktopPrintBridge: { printHtml: printHtmlToPdf },
         onExecutionStarted: () => notifyStateChanged(),
         onExecutionProgress: () => notifyStateChanged(),

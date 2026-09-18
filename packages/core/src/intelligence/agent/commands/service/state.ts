@@ -19,6 +19,7 @@ export function createCommandServiceState(
     workflowGateway: createWorkflowCommandGateway(store, options),
     discoveryGateway: createDiscoveryCommandGateway(store, {
       artifactStore: options.artifactStore,
+      decisionEngine: options.decisionEngine,
       resolveConnectionConfig: options.resolveConnectionConfig,
       sourceRegistry: options.discoverySourceRegistry,
       sourceProviders: options.discoverySourceProviders,

@@ -10,6 +10,7 @@ export * from './documents/read/index.js';
 export * from './documents/write/index.js';
 export * from './persistence/credentials/index.js';
 export * from './intelligence/agent/index.js';
+export * from './intelligence/decision/index.js';
 export * from './persistence/db.js';
 export * from './persistence/workflow-store.js';
 export type {

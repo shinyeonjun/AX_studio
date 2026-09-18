@@ -1,5 +1,6 @@
 import type { ArtifactStore } from '../../../../persistence/artifact-store.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type {
   DiscoverySourceProvider,
   WorkbookMaterializer,
@@ -27,6 +28,7 @@ export interface AxCommandServiceOptions {
   discoverySourceRegistry?: DiscoverySourceRegistry;
   discoverySourceProviders?: readonly DiscoverySourceProvider[];
   discoveryWorkbookMaterializer?: WorkbookMaterializer['readWorkbookFromPath'];
+  decisionEngine?: DecisionEngine;
   autoResumeDiscovery?: boolean;
   repairSnapshotRoot?: string;
 }

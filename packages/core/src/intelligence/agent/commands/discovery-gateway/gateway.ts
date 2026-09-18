@@ -11,6 +11,7 @@ export function createDiscoveryCommandGateway(
   const service = new WorkDiscoveryService({
     store,
     artifactStore: options.artifactStore,
+    decisionEngine: options.decisionEngine,
     resolveConnectionConfig: options.resolveConnectionConfig,
     snapshotDir: options.snapshotDir,
     sourceRegistry: options.sourceRegistry,
@@ -20,6 +21,7 @@ export function createDiscoveryCommandGateway(
     autoResume: options.autoResume,
   });
   return {
+    setDecisionEngine: (decisionEngine) => service.setDecisionEngine(decisionEngine),
     start: (command: AxCommand) => start(service, command),
     inspect: (command: AxCommand) => inspect(service, command),
     cancel: (command: AxCommand) => cancel(service, command),

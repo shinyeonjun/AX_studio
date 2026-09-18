@@ -76,7 +76,7 @@ describe('legacy database migrations', () => {
     }
   });
 
-  it('refuses sql.js reads and writes when committed rows remain in SQLite WAL', async () => {
+  it('recovers committed rows from SQLite WAL before opening writable sql.js', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'ax-wal-guard-'));
     const filePath = join(directory, 'database.db');
     try {
@@ -90,16 +90,19 @@ describe('legacy database migrations', () => {
       `, filePath], { stdio: 'pipe' });
       expect(existsSync(`${filePath}-wal`)).toBe(true);
       const before = readFileSync(filePath);
-      for (const open of [openReadonlySqlJs, createSqlJsDatabase]) {
-        let opened: { close?: () => void } | undefined;
-        try {
-          await expect(open(filePath).then((db) => { opened = db; return db; }))
-            .rejects.toThrow(/WAL/);
-        } finally {
-          opened?.close?.();
-        }
+      await expect(openReadonlySqlJs(filePath)).rejects.toThrow(/WAL/);
+      const db = await createSqlJsDatabase(filePath);
+      try {
+        expect(db.prepare('SELECT value FROM evidence ORDER BY rowid').all()).toEqual([
+          { value: 'checkpointed' },
+          { value: 'committed-in-wal' },
+        ]);
+      } finally {
+        db.close?.();
       }
-      expect(readFileSync(filePath)).toEqual(before);
+      expect(readFileSync(filePath)).not.toEqual(before);
+      expect(existsSync(`${filePath}-wal`)).toBe(false);
+      expect(existsSync(`${filePath}-shm`)).toBe(false);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -124,6 +127,31 @@ describe('legacy database migrations', () => {
 
     expect(native.close).toHaveBeenCalledTimes(1);
     expect(fallback).not.toHaveBeenCalled();
+  });
+
+  it('bounds native fallback diagnostics instead of printing binding search paths', async () => {
+    const fallbackDatabase = { close: vi.fn() };
+    const fallback = vi.fn(async () => fallbackDatabase);
+    const nativeError = Object.assign(
+      new Error('Could not locate the bindings file. Tried: C:\\secret\\node_modules\\better_sqlite3.node'),
+      { code: 'MODULE_NOT_FOUND' },
+    );
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let messages: unknown[][] = [];
+    try {
+      await expect(createDatabaseAsync(':memory:', {
+        createNativeDatabase: () => {
+          throw nativeError;
+        },
+        createSqlJsDatabase: fallback,
+      })).resolves.toBe(fallbackDatabase);
+    } finally {
+      messages = warning.mock.calls;
+      warning.mockRestore();
+    }
+
+    expect(messages.flat().join(' ')).toContain('native binding is not installed');
+    expect(messages.flat().join(' ')).not.toContain('C:\\secret');
   });
 
   it('falls back only when the native loader is unavailable', async () => {

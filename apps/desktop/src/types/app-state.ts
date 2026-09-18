@@ -30,6 +30,9 @@ export interface AppState {
   aiConfigPath?: string;
   axDataRoot?: string;
   aiBrandConfigs?: Partial<Record<AiBrand, { mode?: AiConnectionMode; model?: string }>>;
+  jevDecisionEnabled?: boolean;
+  jevDecisionConfigured?: boolean;
+  jevDecisionModel?: string;
   gmailOAuthConfigured?: boolean;
   gmailEmail?: string;
   gmailScopes?: string[];

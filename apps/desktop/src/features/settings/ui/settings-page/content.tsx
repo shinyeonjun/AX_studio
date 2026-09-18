@@ -1,5 +1,6 @@
 import { brandFromSettingsScreen } from '../../../../ui/constants/settings';
 import { AiBrandDetail } from '../ai/AiBrandDetail';
+import { JevDecisionPlaneForm } from '../ai/JevDecisionPlaneForm';
 import { SlackConnectionForm } from '../connectors/SlackConnectionForm';
 import { GmailConnectionForm } from '../connectors/GmailConnectionForm';
 import { LocalFolderConnectionForm } from '../connectors/LocalFolderConnectionForm';
@@ -64,6 +65,7 @@ export function SettingsPageContent({
           detection={detection}
         />
       )}
+      {screen === 'ai-jev' && <JevDecisionPlaneForm onRefresh={onRefresh} />}
       {screen === 'slack' && (
         <SlackConnectionForm state={state} onConnect={onConnectSlack} onDisconnect={onDisconnectSlack} />
       )}

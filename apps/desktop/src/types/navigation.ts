@@ -8,6 +8,7 @@ export type SettingsScreen =
   | 'hub'
   | 'ai-claude'
   | 'ai-gpt'
+  | 'ai-jev'
   | 'slack'
   | 'gmail'
   | 'local-folder'

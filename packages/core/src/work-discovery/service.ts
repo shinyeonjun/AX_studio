@@ -1,6 +1,7 @@
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { getAxDataPaths } from '../persistence/paths/ax-data.js';
 import { join } from 'node:path';
+import type { DecisionEngine } from '../contracts/decision.js';
 import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
 import type { DiscoverySourceRegistry } from './sources/registry.js';
 import { createWorkDiscoveryRuntime } from './service/lifecycle.js';
@@ -40,6 +41,7 @@ export class WorkDiscoveryService {
     this.runtime = createWorkDiscoveryRuntime({
       store: options.store,
       artifactStore,
+      decisionEngine: options.decisionEngine,
       snapshotDir,
       sourceRegistry,
       sourceReadsMax,
@@ -47,6 +49,10 @@ export class WorkDiscoveryService {
       resolveConnectionConfig: options.resolveConnectionConfig,
     });
     if (options.autoResume) this.runtime.resumePendingSessions();
+  }
+
+  setDecisionEngine(decisionEngine?: DecisionEngine): void {
+    this.runtime.setDecisionEngine(decisionEngine);
   }
 
   start(args: import('./schema.js').DiscoveryStartArgs): { id: string; state: import('./schema.js').DiscoverySessionState['status'] } {

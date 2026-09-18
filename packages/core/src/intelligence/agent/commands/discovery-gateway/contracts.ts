@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '../../../../persistence/artifact-store.js';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type {
   DiscoverySourceProvider,
   WorkbookMaterializer,
@@ -9,6 +10,7 @@ import type { AxCommand, AxCommandIssue, AxCommandResult } from '../schema.js';
 export type DiscoveryCommandResult = [AxCommandResult['status'], unknown, AxCommandIssue[]?];
 
 export interface DiscoveryCommandGateway {
+  setDecisionEngine(decisionEngine?: DecisionEngine): void;
   start(command: AxCommand): DiscoveryCommandResult;
   inspect(command: AxCommand): DiscoveryCommandResult;
   cancel(command: AxCommand): DiscoveryCommandResult;
@@ -19,6 +21,7 @@ export interface DiscoveryCommandGateway {
 
 export interface DiscoveryGatewayOptions {
   artifactStore?: ArtifactStore;
+  decisionEngine?: DecisionEngine;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceRegistry?: DiscoverySourceRegistry;

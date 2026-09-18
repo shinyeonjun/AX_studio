@@ -34,7 +34,7 @@
     "document-engine:install:docling": "node scripts/document-engine-install.mjs --docling"
   },
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

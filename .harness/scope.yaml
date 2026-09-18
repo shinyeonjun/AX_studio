@@ -1,4 +1,27 @@
 version: 2
+jev_startup_isolation:
+  status: active
+  allowed:
+    - .harness/goal.md
+    - .harness/scope.yaml
+    - .harness/evaluator.yaml
+    - .harness/experiments.tsv
+    - apps/desktop/electron/main/app-window.ts
+    - apps/desktop/electron/main/data-paths.ts
+    - apps/desktop/package.json
+    - apps/desktop/scripts/ensure-native-db.mjs
+    - packages/core/src/persistence/db/runtime.ts
+    - packages/core/src/persistence/db/sqljs.ts
+    - packages/core/src/persistence/db-migration.test.ts
+    - scripts/desktop-dev-poc.mjs
+  avoid:
+    - node_modules
+    - out
+    - dist
+    - deleting database sidecars or user data
+    - native builds unless AX_NATIVE_DB_BUILD=1
+    - external connectors and network writes
+  reason: "The reported dev failure and WAL error cross Electron runtime preparation, persistence recovery, and the userData/data-root boundary; the patch keeps those changes bounded to existing files."
 report_execution_hardening:
   reference: report-execution-hardening.md
   allowed: [packages/core/src/report-generation, packages/core/src/runtime, packages/core/src/bootstrap.ts, packages/core/src/agent, packages/core/src/modules/types.ts, .harness]

@@ -7,8 +7,9 @@
   "main": "out/main/index.js",
   "scripts": {
     "ensure:native": "node scripts/ensure-native-db.mjs",
-    "dev": "node scripts/ensure-native-db.mjs && electron-vite dev",
-    "dev:poc": "node ../../scripts/desktop-dev-poc.mjs",
+    "dev": "node ../../scripts/desktop-dev-poc.mjs",
+    "dev:raw": "node scripts/ensure-native-db.mjs && install-electron && electron-vite dev",
+    "dev:poc": "node ../../scripts/desktop-dev-poc.mjs --poc",
     "dev:kill": "taskkill /F /IM electron.exe /T 2>nul & exit 0",
     "dev:restart": "npm run dev:kill && npm run dev",
     "build": "electron-vite build",

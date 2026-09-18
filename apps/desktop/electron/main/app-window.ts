@@ -3,7 +3,15 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { desktopAppDisplayName } from './data-paths.js';
 
-const DEV_RENDERER_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
+function isLocalDevRendererOrigin(origin: string): boolean {
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === 'http:' &&
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1');
+  } catch {
+    return false;
+  }
+}
 
 function hardenWebContents(contents: Electron.WebContents): void {
   contents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -19,8 +27,12 @@ export function isTrustedRendererUrl(url: string): boolean {
   if (process.env.ELECTRON_RENDERER_URL) {
     try {
       const configured = new URL(process.env.ELECTRON_RENDERER_URL);
-      return DEV_RENDERER_ORIGINS.has(new URL(url).origin) &&
-        new URL(url).origin === configured.origin;
+      const requested = new URL(url);
+      // electron-vite moves to the next free port when another checkout is
+      // already running. Keep the origin allowlist local while accepting that
+      // deterministic, runtime-selected port.
+      return isLocalDevRendererOrigin(configured.origin) &&
+        requested.origin === configured.origin;
     } catch {
       return false;
     }

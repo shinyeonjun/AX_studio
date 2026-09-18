@@ -45,7 +45,10 @@ export function applyDesktopAppIdentity(): void {
   }
   if (hasExplicitUserDataDir()) return;
 
-  app.setPath('userData', join(defaultDataRoot(false), 'electron'));
+  // Keep Electron's lock, cookies, and cache under the same explicit root as
+  // the database and artifacts. This lets parallel source checkouts use
+  // AX_DATA_ROOT without sharing a single-instance lock.
+  app.setPath('userData', join(resolveDesktopDataRoot(), 'electron'));
 }
 
 export function initDesktopAxDataPaths(): AxDataPaths {

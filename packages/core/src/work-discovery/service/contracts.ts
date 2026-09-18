@@ -1,5 +1,6 @@
 import type { ArtifactStore } from '../../persistence/artifact-store.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import type { DecisionEngine } from '../../contracts/decision.js';
 import type {
   DiscoverySourceProvider,
   WorkbookMaterializer,
@@ -11,6 +12,7 @@ import type { DiscoverySourceRegistry } from '../sources/registry.js';
 export interface WorkDiscoveryServiceOptions {
   store: WorkflowStore;
   artifactStore?: ArtifactStore;
+  decisionEngine?: DecisionEngine;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
   snapshotDir?: string;
   sourceRegistry?: DiscoverySourceRegistry;
@@ -28,6 +30,7 @@ export interface DiscoveryRevisionConflict {
 export interface WorkDiscoveryRuntimeOptions {
   store: WorkflowStore;
   artifactStore: ArtifactStore;
+  decisionEngine?: DecisionEngine;
   snapshotDir: string;
   sourceRegistry: DiscoverySourceRegistry;
   sourceReadsMax: number;
@@ -37,6 +40,7 @@ export interface WorkDiscoveryRuntimeOptions {
 
 export interface WorkDiscoveryRuntime extends WorkDiscoveryRuntimeOptions {
   running: Set<string>;
+  setDecisionEngine: (decisionEngine?: DecisionEngine) => void;
   scheduleRun: (sessionId: string) => void;
   resumePendingSessions: () => void;
   resetForRecovery: (state: DiscoverySessionState) => DiscoverySessionState;

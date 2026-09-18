@@ -1,17 +1,103 @@
 import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { backup, DatabaseSync } from 'node:sqlite';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { applyMigrations } from './schema.js';
 import type { AppDatabase, SqlStatement } from './types.js';
 
 const PERSIST_DEBOUNCE_MS = 250;
 const MAX_PERSIST_DELAY_MS = 1_000;
+const SQLITE_SIDECARS = ['-wal', '-shm', '-journal'] as const;
+
+function hasSqliteSidecars(filePath: string): boolean {
+  return SQLITE_SIDECARS.some((suffix) => existsSync(filePath + suffix));
+}
 
 function assertStandaloneDatabase(filePath: string): void {
   if (filePath === ':memory:') return;
-  if (['-wal', '-shm', '-journal'].some((suffix) => existsSync(filePath + suffix))) {
+  if (hasSqliteSidecars(filePath)) {
     throw new Error('SQLite WAL 또는 journal이 남아 있어 sql.js로 열 수 없습니다. SQLite 백업 또는 체크포인트 후 다시 시도하세요.');
+  }
+}
+
+function assertQuickCheck(db: DatabaseSync, filePath: string): void {
+  const result = db.prepare('PRAGMA quick_check').all();
+  if (result.length !== 1 || result[0]?.quick_check !== 'ok') {
+    throw new Error(`SQLite 무결성 검사에 실패했습니다: ${filePath}`);
+  }
+}
+
+/**
+ * Native SQLite uses WAL, while sql.js can only safely consume a standalone
+ * database file. Recover an orphaned sidecar once at writable startup instead
+ * of dropping committed WAL rows or asking the user to delete files by hand.
+ * Read-only callers still fail closed in assertStandaloneDatabase().
+ */
+async function recoverSqliteSidecars(filePath: string): Promise<void> {
+  if (filePath === ':memory:' || !hasSqliteSidecars(filePath)) return;
+  if (!existsSync(filePath)) {
+    throw new Error(
+      'SQLite 본체 파일이 없어 WAL 또는 journal을 복구할 수 없습니다. 사이드카를 삭제하지 말고 백업에서 복원하세요.',
+    );
+  }
+
+  const recoveryDirectory = mkdtempSync(join(tmpdir(), 'ax-sqlite-recovery-'));
+  const recoveryPath = join(recoveryDirectory, 'database.db');
+  let db: DatabaseSync | undefined;
+  try {
+    db = new DatabaseSync(filePath);
+    db.exec('PRAGMA busy_timeout = 0');
+
+    // Keep a validated snapshot before touching the original. The temporary
+    // copy is removed after either a successful recovery or a failed attempt.
+    await backup(db, recoveryPath);
+    const snapshot = new DatabaseSync(recoveryPath, { readOnly: true });
+    try {
+      assertQuickCheck(snapshot, recoveryPath);
+    } finally {
+      snapshot.close();
+    }
+
+    const checkpoint = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').all()[0] as
+      { busy?: number } | undefined;
+    if (checkpoint?.busy !== undefined && Number(checkpoint.busy) !== 0) {
+      throw new Error('SQLite WAL 체크포인트가 다른 프로세스에 의해 잠겨 있습니다.');
+    }
+
+    const journalMode = db.prepare('PRAGMA journal_mode = DELETE').all()[0] as
+      { journal_mode?: string } | undefined;
+    if (journalMode?.journal_mode && journalMode.journal_mode.toLowerCase() !== 'delete') {
+      throw new Error(`SQLite journal 모드를 전환하지 못했습니다: ${journalMode.journal_mode}`);
+    }
+    assertQuickCheck(db, filePath);
+    db.close();
+    db = undefined;
+
+    if (hasSqliteSidecars(filePath)) {
+      throw new Error('SQLite WAL 또는 journal이 체크포인트 후에도 남아 있습니다.');
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `SQLite WAL 또는 journal을 자동 복구하지 못했습니다. 다른 AX Studio/Electron 프로세스를 닫고 다시 시작하세요. ${detail}`,
+      { cause: error },
+    );
+  } finally {
+    try {
+      db?.close();
+    } catch {
+      // Preserve the recovery error if closing the failed attempt also fails.
+    }
+    rmSync(recoveryDirectory, { recursive: true, force: true });
   }
 }
 
@@ -137,6 +223,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 }
 
 export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
+  await recoverSqliteSidecars(path);
   const SQL = await loadSqlJs();
   assertStandaloneDatabase(path);
   let db: SqlJsRawDatabase;

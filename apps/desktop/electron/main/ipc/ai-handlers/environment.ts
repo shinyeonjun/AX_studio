@@ -5,7 +5,9 @@ import {
   getSecretByEnvKey,
   isAiEnvKey,
   envKeyForBrand,
+  JEV_API_ENV_KEY,
   setBrandSecret,
+  setJevSecret,
 } from '../../ai/config-file.js';
 
 export function registerAiEnvironmentHandlers(): void {
@@ -15,8 +17,12 @@ export function registerAiEnvironmentHandlers(): void {
     const trimmed = value.trim();
     if (!trimmed) throw new Error('값을 입력하세요.');
     if (isAiEnvKey(key)) {
-      const brand = (['claude', 'gpt', 'ollama'] as AiBrand[]).find((item) => envKeyForBrand(item) === key);
-      if (brand) await setBrandSecret(brand, trimmed);
+      if (key === JEV_API_ENV_KEY) {
+        await setJevSecret(trimmed);
+      } else {
+        const brand = (['claude', 'gpt', 'ollama'] as AiBrand[]).find((item) => envKeyForBrand(item) === key);
+        if (brand) await setBrandSecret(brand, trimmed);
+      }
     } else {
       await setEnvFileValue(key, trimmed);
       process.env[key] = trimmed;

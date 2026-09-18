@@ -12,6 +12,7 @@ export const SETTINGS_TITLES: Record<SettingsScreen, string> = {
   hub: '설정',
   'ai-claude': 'Claude',
   'ai-gpt': 'GPT',
+  'ai-jev': 'Jev Decision Plane',
   slack: 'Slack 연결',
   gmail: 'Gmail 연결',
   'local-folder': '로컬 폴더 연결',

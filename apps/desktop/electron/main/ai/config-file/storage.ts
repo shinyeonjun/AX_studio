@@ -3,7 +3,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import type { AiBrand } from '@ax-studio/core';
-import type { AiBrandTomlConfig, AiTomlConfig } from './contracts.js';
+import type {
+  AiBrandTomlConfig,
+  AiTomlConfig,
+  JevDecisionTomlConfig,
+} from './contracts.js';
 import { emptyConfig, parseAiToml, serializeAiToml } from './toml.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 
@@ -31,6 +35,16 @@ export async function saveBrandPreferences(
 ): Promise<AiTomlConfig> {
   const config = await readAiToml();
   config.providers[brand] = { ...config.providers[brand], ...prefs };
+  await writeAiToml(config);
+  return config;
+}
+
+export async function saveJevDecisionPreferences(
+  prefs: JevDecisionTomlConfig,
+): Promise<AiTomlConfig> {
+  const config = await readAiToml();
+  config.decision ??= {};
+  config.decision.jev = { ...config.decision.jev, ...prefs };
   await writeAiToml(config);
   return config;
 }

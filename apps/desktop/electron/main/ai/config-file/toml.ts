@@ -47,6 +47,14 @@ export function parseAiToml(content: string): AiTomlConfig {
       continue;
     }
 
+    if (section === 'decision.jev') {
+      config.decision ??= {};
+      config.decision.jev ??= {};
+      if (key === 'enabled') config.decision.jev.enabled = value === 'true';
+      if (key === 'model') config.decision.jev.model = value;
+      if (key === 'base_url') config.decision.jev.baseURL = value;
+      continue;
+    }
     if (section === 'secrets') {
       config.secrets[key] = value;
       continue;
@@ -94,5 +102,13 @@ export function serializeAiToml(config: AiTomlConfig): string {
     lines.push('');
   }
 
+  const jev = config.decision?.jev;
+  if (jev) {
+    lines.push('[decision.jev]');
+    if (jev.enabled !== undefined) lines.push(`enabled = ${jev.enabled ? 'true' : 'false'}`);
+    if (jev.model) lines.push(`model = ${escapeTomlString(jev.model)}`);
+    if (jev.baseURL) lines.push(`base_url = ${escapeTomlString(jev.baseURL)}`);
+    lines.push('');
+  }
   return lines.join('\n');
 }
