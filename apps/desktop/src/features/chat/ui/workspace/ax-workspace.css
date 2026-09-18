@@ -145,6 +145,8 @@
   max-width: var(--ax-chat-max-width);
   margin: 0 auto;
   padding: 20px 24px;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 96px;
 }
 
 .ax-workspace-message--user {

@@ -4,7 +4,8 @@ import {
   ThreadPrimitive,
   useExternalStoreRuntime,
 } from '@assistant-ui/react';
-import { useMemo } from 'react';
+import type { ThreadMessageLike } from '@assistant-ui/react';
+import { memo, useCallback, useMemo } from 'react';
 import type {
   DiscoveryInspectView,
   WorkspaceChatMessage,
@@ -46,6 +47,44 @@ interface AxWorkspaceChatProps {
   onDiscoveryRetry?: () => Promise<void> | void;
 }
 
+interface WorkspaceMessageListProps {
+  messages: WorkspaceChatMessage[];
+  busy: boolean;
+  lastAssistantIndex: number;
+  onSend: (text: string) => Promise<void>;
+  onApproveApproval?: (approvalId: string) => Promise<void>;
+  onRejectApproval?: (approvalId: string) => Promise<void>;
+  onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+}
+
+const WorkspaceMessageList = memo(function WorkspaceMessageList({
+  messages,
+  busy,
+  lastAssistantIndex,
+  onSend,
+  onApproveApproval,
+  onRejectApproval,
+  onDownloadPdf,
+  onSavePdfToFolder,
+}: WorkspaceMessageListProps) {
+  return messages.map((message, index) => message.role === 'user' ? (
+    <UserMessage key={'user-' + index} message={message} />
+  ) : (
+    <AssistantMessage
+      key={'assistant-' + index}
+      message={message}
+      busy={busy}
+      isLatest={index === lastAssistantIndex}
+      onSend={onSend}
+      onApproveApproval={onApproveApproval}
+      onRejectApproval={onRejectApproval}
+      onDownloadPdf={onDownloadPdf}
+      onSavePdfToFolder={onSavePdfToFolder}
+    />
+  ));
+});
+
 export function AxWorkspaceChat({
   messages,
   busy,
@@ -73,18 +112,19 @@ export function AxWorkspaceChat({
   // Interactivity follows the newest assistant message, not the newest message:
   // a failed send leaves the optimistic user message last, and the confirm
   // card before it must stay usable for retry.
-  const lastAssistantIndex = messages.reduce(
+  const lastAssistantIndex = useMemo(() => messages.reduce(
     (latest, message, index) => (message.role === 'assistant' ? index : latest),
     -1,
-  );
+  ), [messages]);
+  const convertMessage = useCallback((message: ThreadMessageLike) => message, []);
+  const handleNewMessage = useCallback(async (message: Parameters<typeof appendText>[0]) => {
+    const text = appendText(message);
+    if (text) await onSend(text);
+  }, [onSend]);
   const runtime = useExternalStoreRuntime({
     messages: threadMessages,
-    convertMessage: (message) => message,
-    onNew: async (message) => {
-      const text = appendText(message);
-      if (!text) return;
-      await onSend(text);
-    },
+    convertMessage,
+    onNew: handleNewMessage,
   });
   const composerPlaceholder = placeholder ?? '지난 결과물을 보여주거나, 하고 싶은 일을 적어주세요';
 
@@ -100,21 +140,16 @@ export function AxWorkspaceChat({
             />
           )}
           <ThreadPrimitive.Viewport autoScroll className="ax-workspace-viewport">
-            {messages.map((message, index) => message.role === 'user' ? (
-              <UserMessage key={'user-' + index} message={message} />
-            ) : (
-              <AssistantMessage
-                key={'assistant-' + index}
-                message={message}
-                busy={busy}
-                isLatest={index === lastAssistantIndex}
-                onSend={onSend}
-                onApproveApproval={onApproveApproval}
-                onRejectApproval={onRejectApproval}
-                onDownloadPdf={onDownloadPdf}
-                onSavePdfToFolder={onSavePdfToFolder}
-              />
-            ))}
+            <WorkspaceMessageList
+              messages={messages}
+              busy={busy}
+              lastAssistantIndex={lastAssistantIndex}
+              onSend={onSend}
+              onApproveApproval={onApproveApproval}
+              onRejectApproval={onRejectApproval}
+              onDownloadPdf={onDownloadPdf}
+              onSavePdfToFolder={onSavePdfToFolder}
+            />
             {busy && <WorkspaceTypingState progress={progress} />}
             {error && <WorkspaceErrorState error={error} onDismissError={onDismissError} />}
             {discoveryView && onDiscoveryAnswer && onDiscoveryPublish && (

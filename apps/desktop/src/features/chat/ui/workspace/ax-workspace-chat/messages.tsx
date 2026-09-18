@@ -1,17 +1,18 @@
 import type { WorkspaceChatMessage } from '@ax-studio/core';
+import { memo } from 'react';
 import type { GeneratedArtifactExportResult } from '../../../../../types/ax-api/contracts';
 import { axStudioLogo } from '../../../../../ui/constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from '../WorkspaceRunResultCard';
 import { WorkspaceMarkdown } from '../WorkspaceMarkdown';
 import { WorkspaceAssistantPresentation } from '../WorkspaceAssistantPresentation';
 
-export function UserMessage({ message }: { message: WorkspaceChatMessage }) {
+export const UserMessage = memo(function UserMessage({ message }: { message: WorkspaceChatMessage }) {
   return (
     <div className="ax-workspace-message ax-workspace-message--user">
       <div className="ax-workspace-bubble ax-workspace-bubble--user">{message.content}</div>
     </div>
   );
-}
+});
 
 export interface AssistantMessageProps {
   message: WorkspaceChatMessage;
@@ -24,7 +25,7 @@ export interface AssistantMessageProps {
   onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
 }
 
-export function AssistantMessage({
+export const AssistantMessage = memo(function AssistantMessage({
   message,
   busy,
   isLatest,
@@ -65,4 +66,4 @@ export function AssistantMessage({
       </div>
     </div>
   );
-}
+});
