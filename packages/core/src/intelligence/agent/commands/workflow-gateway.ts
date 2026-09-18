@@ -32,7 +32,7 @@ export function createWorkflowCommandGateway(
     validate: (command) => validateWorkflow(store, command),
     create: (command) => createWorkflow(store, command),
     update: (command) => updateWorkflow(store, command),
-    delete: (command) => deleteWorkflow(store, command),
+    delete: (command) => deleteWorkflow(store, command, options.removeWorkflow),
     run: (command): Promise<AxWorkflowCommandResult> => runWorkflow(store, options.runWorkflow, command),
     enqueueOnce: (command, enqueueOptions) => enqueueOnceCommand(
       store,

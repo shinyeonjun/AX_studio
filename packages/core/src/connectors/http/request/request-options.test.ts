@@ -63,4 +63,20 @@ describe('performHttpRequest request options', () => {
       expect.objectContaining({ headers: { 'X-API-Key': 'stored-secret' } }),
     );
   });
+
+  it.each([
+    ['file:///tmp/spec.json', 'unsupported_protocol', 'ssrf_blocked'],
+    ['https://user:password@example.com/spec.json', 'url_credentials_not_allowed', 'ssrf_blocked'],
+    ['not a URL', 'invalid_url', 'invalid_params'],
+  ])('rejects unsafe request URL %s before fetch', async (url, error, errorCode) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(performHttpRequest({ url, method: 'GET' })).resolves.toMatchObject({
+      ok: false,
+      error,
+      errorCode,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

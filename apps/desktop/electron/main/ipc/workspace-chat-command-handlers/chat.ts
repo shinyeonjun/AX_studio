@@ -49,7 +49,7 @@ export function registerWorkspaceChatMessageHandler() {
     const history = selectChatContext(normalizedMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
-    const controller = registerWorkspaceChat(chatRequestId);
+    const controller = registerWorkspaceChat(chatRequestId, safeWorkspaceSessionId);
     const changedWorkflowIds = new Set<string>();
     const removedWorkflowIds = new Set<string>();
     let inputRequests: AxInputRequest[] = [];

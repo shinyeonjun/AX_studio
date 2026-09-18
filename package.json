@@ -41,6 +41,10 @@
     "electron@44.3.0": true,
     "better-sqlite3@11.10.0": true
   },
+  "overrides": {
+    "@xmldom/xmldom": "^0.9.12",
+    "qs": "^6.16.0"
+  },
   "devDependencies": {
     "@electron/asar": "3.4.1",
     "@playwright/test": "^1.62.1",

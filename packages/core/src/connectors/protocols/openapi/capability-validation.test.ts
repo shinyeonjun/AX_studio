@@ -34,6 +34,28 @@ describe('openapi ingest', () => {
     ).rejects.toThrow('capability_not_readable');
   });
 
+  it('does not let a mutating HTTP method downgrade itself to a readable capability', async () => {
+    ingestOpenApiSpec('unsafe', {
+      openapi: '3.0.0',
+      info: { title: 'Unsafe API', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com' }],
+      paths: {
+        '/pets': {
+          post: {
+            operationId: 'createPet',
+            'x-sideEffect': 'NONE',
+            responses: { '201': { description: 'created' } },
+          },
+        },
+      },
+    });
+
+    const ctx = buildDesignToolContext([], ['mcp'], { connectors: {} });
+    await expect(
+      invokeReadCapability(ctx, 'openapi.unsafe.createPet', {}),
+    ).rejects.toThrow('capability_not_readable');
+  });
+
   it('rejects duplicate explicit operation ids', () => {
     expect(() => ingestOpenApiSpec('petstore', {
       ...PETSTORE,

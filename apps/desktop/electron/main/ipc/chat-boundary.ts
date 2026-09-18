@@ -10,8 +10,10 @@ import {
 export type DesktopChatMessage = WorkspaceChatMessage;
 
 const MAX_CHAT_MESSAGES = 100;
+const MAX_CHAT_TRANSCRIPT_MESSAGES = 1_000;
 const MAX_CHAT_MESSAGE_CHARS = 50_000;
-const MAX_CHAT_TOTAL_CHARS = 250_000;
+const MAX_CHAT_INPUT_BYTES = 1_000_000;
+const MAX_CHAT_CONTEXT_CHARS = 250_000;
 
 export function boundedText(value: unknown, field: string, max = MAX_CHAT_MESSAGE_CHARS): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -26,7 +28,11 @@ export function boundedText(value: unknown, field: string, max = MAX_CHAT_MESSAG
 /** Validate untrusted renderer input before it reaches a provider or database. */
 export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
   if (!Array.isArray(value)) throw new Error('대화 기록 형식이 올바르지 않습니다.');
-  return value.map((entry, index) => {
+  if (value.length > MAX_CHAT_TRANSCRIPT_MESSAGES) {
+    throw new Error(`대화 기록은 ${MAX_CHAT_TRANSCRIPT_MESSAGES.toLocaleString()}개 메시지까지 저장할 수 있습니다.`);
+  }
+  let totalBytes = 0;
+  const messages = value.map<DesktopChatMessage>((entry, index) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw new Error(`대화 ${index + 1}번째 메시지 형식이 올바르지 않습니다.`);
     }
@@ -39,6 +45,10 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     }
     if (record.content.length > MAX_CHAT_MESSAGE_CHARS) {
       throw new Error(`대화 ${index + 1}번째 메시지가 너무 깁니다.`);
+    }
+    totalBytes += Buffer.byteLength(record.content, 'utf8');
+    if (totalBytes > MAX_CHAT_INPUT_BYTES) {
+      throw new Error(`대화 기록은 ${MAX_CHAT_INPUT_BYTES.toLocaleString()}바이트까지 저장할 수 있습니다.`);
     }
     if (record.kind !== undefined && record.kind !== 'execution_result') {
       throw new Error(`대화 ${index + 1}번째 메시지 종류가 올바르지 않습니다.`);
@@ -101,9 +111,10 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
     };
   });
+  return messages;
 }
 
-/** Persist the full transcript; bound only the context sent to a model. */
+/** Persist the bounded transcript; send a smaller recent context to a model. */
 export function selectChatContext(messages: DesktopChatMessage[]): DesktopChatMessage[] {
   const notice: DesktopChatMessage = {
     role: 'user',
@@ -113,7 +124,7 @@ export function selectChatContext(messages: DesktopChatMessage[]): DesktopChatMe
   let start = messages.length;
   while (start > 0 && messages.length - start < MAX_CHAT_MESSAGES - 1) {
     const next = messages[start - 1]!;
-    if (chars + next.content.length > MAX_CHAT_TOTAL_CHARS) break;
+    if (chars + next.content.length > MAX_CHAT_CONTEXT_CHARS) break;
     chars += next.content.length;
     start -= 1;
   }

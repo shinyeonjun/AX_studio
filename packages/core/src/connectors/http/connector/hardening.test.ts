@@ -1,10 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpConnector } from '../connector.js';
+import { serializeHttpBody } from './payload.js';
 
 afterEach(() => vi.unstubAllGlobals());
 const context = () => ({ executionId: 'hardening', variables: {}, log: vi.fn() });
 
 describe('HTTP exact selection and completeness', () => {
+  it('rejects request bodies above the bounded payload size', () => {
+    expect(serializeHttpBody('x'.repeat(1_048_577))).toMatchObject({
+      ok: false,
+      error: 'http_body_too_large',
+      errorCode: 'invalid_params',
+    });
+  });
+
   it('prefers the exact endpoint ID over another endpoint label', async () => {
     const fetchMock = vi.fn(async () => new Response('[]'));
     vi.stubGlobal('fetch', fetchMock);

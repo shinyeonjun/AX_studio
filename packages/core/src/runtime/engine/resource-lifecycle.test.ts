@@ -49,4 +49,120 @@ describe('runtime resource lifecycle', () => {
       expect(idle).toBe(true);
     } finally { release(); await resumed; db.close?.(); }
   });
+
+  it('aborts an in-flight workflow before removing its runtime state', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    let entered!: () => void;
+    const enteredPromise = new Promise<void>((resolve) => { entered = resolve; });
+    let aborted = false;
+    const workflow: WorkflowIR = {
+      id: 'workflow-being-removed',
+      name: 'Removable workflow', goal: 'Abort the connector', version: 1,
+      steps: [
+        { type: 'action', id: 'read', connector: 'gmail', action: 'messages.search',
+          params: { query: 'pending' }, sideEffect: 'NONE' },
+      ], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
+    };
+    const runtime = new WorkflowRuntime({
+      store: new WorkflowStore(db),
+      globalActive: true,
+      workflowActive: { [workflow.id!]: true },
+      connectors: {
+        gmail: {
+          name: 'gmail',
+          execute: async (_action, _params, ctx) => await new Promise((resolve, reject) => {
+            entered();
+            ctx.abortSignal?.addEventListener('abort', () => {
+              aborted = true;
+              reject(ctx.abortSignal?.reason ?? new DOMException('aborted', 'AbortError'));
+            }, { once: true });
+          }),
+        },
+      },
+    });
+
+    try {
+      const run = runtime.executeWorkflow(workflow);
+      await enteredPromise;
+      await runtime.removeWorkflow(workflow.id!);
+
+      expect(aborted).toBe(true);
+      await expect(run).resolves.toMatchObject({ status: 'cancelled', errorCode: 'cancelled' });
+      await expect(runtime.executeWorkflow(workflow)).resolves.toMatchObject({
+        status: 'cancelled',
+        errorCode: 'workflow_paused',
+      });
+      await expect(runtime.executeWorkflow(workflow, { forceManual: true })).rejects.toMatchObject({
+        code: 'workflow_removed',
+      });
+    } finally {
+      db.close?.();
+    }
+  });
+
+  it('does not record success when a non-cooperative connector finishes after removal', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    let release!: () => void;
+    let entered!: () => void;
+    const enteredPromise = new Promise<void>((resolve) => { entered = resolve; });
+    const workflow: WorkflowIR = {
+      id: 'workflow-with-late-result',
+      name: 'Late result workflow', goal: 'Reject a late connector result', version: 1,
+      steps: [
+        { type: 'action', id: 'read', connector: 'gmail', action: 'messages.search',
+          params: { query: 'pending' }, sideEffect: 'NONE' },
+      ], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
+    };
+    const runtime = new WorkflowRuntime({
+      store: new WorkflowStore(db),
+      globalActive: true,
+      workflowActive: { [workflow.id!]: true },
+      connectors: {
+        gmail: {
+          name: 'gmail',
+          execute: async () => await new Promise((resolve) => {
+            entered();
+            release = () => resolve({ ok: true, data: {} });
+          }),
+        },
+      },
+    });
+
+    try {
+      const run = runtime.executeWorkflow(workflow);
+      await enteredPromise;
+      const removal = runtime.removeWorkflow(workflow.id!);
+      release();
+      await removal;
+      await expect(run).resolves.toMatchObject({ status: 'cancelled', errorCode: 'cancelled' });
+    } finally {
+      release?.();
+      db.close?.();
+    }
+  });
+
+  it('does not pause a workflow when a pending approval makes deletion fail', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const workflow = { ...approvedWorkflow, id: 'workflow-with-pending-approval' };
+    const store = new WorkflowStore(db);
+    store.saveWorkflow(workflow);
+    const executionId = store.createExecution({
+      workflowId: workflow.id,
+      workflowVersion: workflow.version,
+      ephemeral: false,
+    });
+    store.markExecutionPending(executionId);
+    const workflowActive = { [workflow.id!]: true };
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive });
+
+    try {
+      await runtime.removeWorkflow(workflow.id!);
+      expect(workflowActive[workflow.id!]).toBe(true);
+      expect(() => store.deleteWorkflow(workflow.id!)).toThrow('실행 중인 워크플로우는 삭제할 수 없습니다.');
+    } finally {
+      store.finishExecution(executionId, 'cancelled', 'test_cleanup');
+      store.deleteWorkflow(workflow.id!);
+      db.close?.();
+    }
+  });
 });

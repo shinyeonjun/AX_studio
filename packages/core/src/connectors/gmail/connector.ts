@@ -14,10 +14,12 @@ export interface GmailConnectorConfig {
   accessToken?: string;
   expiryDate?: number;
   email?: string;
+  onTokens?: (tokens: { refreshToken?: string; accessToken?: string; expiryDate?: number }) => void | Promise<void>;
 }
 
 export class GmailConnector implements Connector {
   name = 'gmail';
+  private tokenWriteQueue: Promise<void> = Promise.resolve();
 
   constructor(private config: GmailConnectorConfig) {}
 
@@ -32,6 +34,18 @@ export class GmailConnector implements Connector {
       if (tokens.access_token) this.config.accessToken = tokens.access_token;
       if (tokens.expiry_date) this.config.expiryDate = tokens.expiry_date;
       if (tokens.refresh_token) this.config.refreshToken = tokens.refresh_token;
+      if (this.config.onTokens) {
+        const next = {
+          refreshToken: this.config.refreshToken,
+          ...(this.config.accessToken ? { accessToken: this.config.accessToken } : {}),
+          ...(this.config.expiryDate ? { expiryDate: this.config.expiryDate } : {}),
+        };
+        this.tokenWriteQueue = this.tokenWriteQueue
+          .then(() => this.config.onTokens!(next))
+          .catch((error) => {
+            console.error('[gmail] failed to persist rotated OAuth tokens:', error);
+          });
+      }
     });
     return google.gmail({ version: 'v1', auth: oauth2, timeout: 30_000, retry: false, signal });
   }

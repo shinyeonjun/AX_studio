@@ -37,7 +37,7 @@ describe('Scheduler scheduled jobs', () => {
       await vi.advanceTimersByTimeAsync(30_000);
       expect(versions).toEqual([1, 2]);
     } finally {
-      release(); scheduler.stop();
+      release(); await scheduler.stop();
       await vi.advanceTimersByTimeAsync(0);
       db.close?.();
     }
@@ -68,7 +68,11 @@ describe('Scheduler scheduled jobs', () => {
     try {
       scheduler.start();
       await vi.advanceTimersByTimeAsync(0);
-      if (scenario === 'restart') scheduler.stop();
+      if (scenario === 'restart') {
+        release();
+        await vi.advanceTimersByTimeAsync(0);
+        await scheduler.stop();
+      }
       else store.saveWorkflow({ ...store.getWorkflow('peer')!, version: 2,
         trigger: { type: 'schedule', schedule: '0 0 1 1 *', timezone: 'UTC' } });
       release();
@@ -82,7 +86,7 @@ describe('Scheduler scheduled jobs', () => {
         expect(store.getWorkflow('peer')?.trigger?.type).toBe('schedule');
       }
     } finally {
-      release(); scheduler.stop();
+      release(); await scheduler.stop();
       await vi.advanceTimersByTimeAsync(0);
       db.close?.();
     }
@@ -120,7 +124,7 @@ describe('Scheduler scheduled jobs', () => {
       expect(calls).toEqual(['first']);
     } finally {
       release();
-      scheduler.stop();
+      await scheduler.stop();
       await vi.advanceTimersByTimeAsync(0);
       db.close?.();
     }

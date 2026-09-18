@@ -27,8 +27,9 @@ function normalizedUrl(value: string | undefined): string {
   } catch {
     throw new Error('Jev Base URL 형식이 올바르지 않습니다.');
   }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('Jev Base URL은 http 또는 https여야 합니다.');
+  const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
+    throw new Error('Jev Base URL은 HTTPS여야 합니다. 개발용 HTTP는 loopback 주소만 허용됩니다.');
   }
   return candidate.replace(/\/+$/, '');
 }

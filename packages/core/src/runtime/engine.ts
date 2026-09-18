@@ -23,6 +23,9 @@ export class WorkflowRuntime {
   private queuedExecutionCount = 0;
   private accepting = true;
   private idleWaiters: Array<() => void> = [];
+  private readonly activeWorkflowRuns = new Map<string, Set<AbortController>>();
+  private readonly workflowIdleWaiters = new Map<string, Array<() => void>>();
+  private readonly removedWorkflowIds = new Map<string, undefined>();
   private ephemeralQueueTail: Promise<void> = Promise.resolve();
   private readonly executionRunner: WorkflowExecutionRunner;
 
@@ -42,7 +45,39 @@ export class WorkflowRuntime {
     options: WorkflowExecutionOptions = {},
   ): Promise<ExecutionResult> {
     if (!this.accepting) throw new Error('runtime_stopping');
-    return this.trackExecution(() => this.executionRunner.execute(ir, options));
+    if (ir.id && options.forceManual && this.removedWorkflowIds.has(ir.id)) {
+      throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
+    }
+    const controller = new AbortController();
+    const abortExternal = () => controller.abort(options.abortSignal?.reason);
+    if (options.abortSignal?.aborted) abortExternal();
+    options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+    const workflowId = ir.id;
+    if (workflowId) {
+      const runs = this.activeWorkflowRuns.get(workflowId) ?? new Set<AbortController>();
+      runs.add(controller);
+      this.activeWorkflowRuns.set(workflowId, runs);
+    }
+    try {
+      return await this.trackExecution(() => this.executionRunner.execute(ir, {
+        ...options,
+        abortSignal: controller.signal,
+      }));
+    } finally {
+      options.abortSignal?.removeEventListener('abort', abortExternal);
+      if (workflowId) {
+        const runs = this.activeWorkflowRuns.get(workflowId);
+        runs?.delete(controller);
+        if (!runs || runs.size === 0) {
+          this.activeWorkflowRuns.delete(workflowId);
+          const waiters = this.workflowIdleWaiters.get(workflowId);
+          if (waiters) {
+            this.workflowIdleWaiters.delete(workflowId);
+            waiters.forEach((resolve) => resolve());
+          }
+        }
+      }
+    }
   }
 
   private async trackExecution(run: () => Promise<ExecutionResult>): Promise<ExecutionResult> {
@@ -124,6 +159,7 @@ export class WorkflowRuntime {
   }
 
   setWorkflowActive(workflowId: string, active: boolean): void {
+    if (active) this.removedWorkflowIds.delete(workflowId);
     this.config.workflowActive[workflowId] = active;
   }
 
@@ -136,8 +172,29 @@ export class WorkflowRuntime {
     delete this.connectors[connectorId];
   }
 
-  removeWorkflow(workflowId: string): void {
-    delete this.config.workflowActive[workflowId];
+  async removeWorkflow(workflowId: string): Promise<void> {
+    // Pending approvals have no live controller to drain; leave deletion to
+    // the repository guard instead of partially pausing a workflow.
+    if (this.config.store.hasPendingApprovalForWorkflow(workflowId)) return;
+    this.removedWorkflowIds.delete(workflowId);
+    this.removedWorkflowIds.set(workflowId, undefined);
+    // ponytail: bound tombstones to 1024 IDs; a persistent deletion journal is unnecessary here.
+    if (this.removedWorkflowIds.size > 1024) {
+      const oldest = this.removedWorkflowIds.keys().next().value;
+      if (oldest) this.removedWorkflowIds.delete(oldest);
+    }
+    this.config.workflowActive[workflowId] = false;
+    for (const controller of this.activeWorkflowRuns.get(workflowId) ?? []) {
+      controller.abort(new Error('workflow_removed'));
+    }
+    const runs = this.activeWorkflowRuns.get(workflowId);
+    if (runs && runs.size > 0) {
+      await new Promise<void>((resolve) => {
+        const waiters = this.workflowIdleWaiters.get(workflowId) ?? [];
+        waiters.push(resolve);
+        this.workflowIdleWaiters.set(workflowId, waiters);
+      });
+    }
   }
 
   setInvestigationRunner(investigationRunner: InvestigationRunner): void {

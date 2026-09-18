@@ -12,6 +12,8 @@ import {
 import { deriveWorkspaceChatTitle } from './title.js';
 import { getWorkspaceChat } from './queries.js';
 
+const MAX_WORKSPACE_CHAT_BYTES = 1_000_000;
+
 export function saveWorkspaceChat(
   db: AppDatabase,
   params: {
@@ -24,11 +26,15 @@ export function saveWorkspaceChat(
 ): WorkspaceChatRecord {
   const parsedMessages = workspaceChatMessagesSchema.parse(params.messages);
   const now = new Date().toISOString();
-  const id = params.id?.trim() || randomUUID();
+  const requestedId = params.id?.trim();
+  const id = requestedId || randomUUID();
   const existing = readRow<{ id: string; workflow_id?: string | null; messages_json?: string }>(
     db.prepare('SELECT id, workflow_id, messages_json FROM workspace_chats WHERE id = ?'),
     id,
   );
+  if (requestedId && !existing) {
+    throw Object.assign(new Error('workspace_chat_not_found'), { code: 'workspace_chat_not_found' });
+  }
   let messages = parsedMessages;
   if (existing?.messages_json) {
     try {
@@ -60,6 +66,9 @@ export function saveWorkspaceChat(
   const sources = existing || params.id ? listWorkspaceSources(db, id) : [];
   const title = deriveWorkspaceChatTitle(messages, sources);
   const messagesJson = JSON.stringify(messages);
+  if (Buffer.byteLength(messagesJson, 'utf8') > MAX_WORKSPACE_CHAT_BYTES) {
+    throw Object.assign(new Error('workspace_chat_too_large'), { code: 'workspace_chat_too_large' });
+  }
 
   if (existing) {
     if (params.workflowId === undefined) {

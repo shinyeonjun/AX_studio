@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import type { AiBrand } from '@ax-studio/core';
@@ -26,7 +27,15 @@ export async function readAiToml(): Promise<AiTomlConfig> {
 }
 
 export async function writeAiToml(config: AiTomlConfig): Promise<void> {
-  await writeFile(getAiConfigPath(), serializeAiToml(config), 'utf8');
+  const path = getAiConfigPath();
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, serializeAiToml(config), { encoding: 'utf8', mode: 0o600 });
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function saveBrandPreferences(

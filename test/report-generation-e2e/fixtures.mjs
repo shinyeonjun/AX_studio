@@ -5,7 +5,15 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-export const pythonPath = join(here, '..', '..', 'packages', 'document-engine', '.venv', 'Scripts', 'python.exe');
+const bundledPython = join(here, '..', '..', 'packages', 'document-engine', '.venv', 'Scripts', 'python.exe');
+const pythonCandidates = process.env.AX_DOCUMENT_ENGINE_PYTHON
+  ? [process.env.AX_DOCUMENT_ENGINE_PYTHON, bundledPython, 'python', 'python3']
+  : [bundledPython, 'python', 'python3'];
+export const pythonPath = pythonCandidates.find((candidate) => {
+  if (existsSync(candidate)) return true;
+  const probe = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
+  return !probe.error && probe.status === 0;
+}) ?? pythonCandidates[0];
 
 const PDF_SCRIPT = String.raw`
 import json
@@ -111,7 +119,7 @@ export function createPdfPair(root, benchmarkCase) {
   });
   const result = spawnSync(pythonPath, ['-c', PDF_SCRIPT], { input: payload, encoding: 'utf8' });
   if (result.status !== 0) {
-    throw new Error('pdf_fixture_failed:' + (result.stderr || result.stdout || 'unknown'));
+    throw new Error('pdf_fixture_failed:' + (result.error?.message || result.stderr || result.stdout || 'unknown'));
   }
   return { templatePath: join(root, 'template.pdf'), examplePath: join(root, 'example.pdf') };
 }

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
 import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
@@ -7,7 +7,12 @@ import { assertArtifactId, parseStoredArtifact, readJsonFile, safeFileName } fro
 import type { StoredArtifact } from './artifact/contracts.js';
 export type { StoredArtifact } from './artifact/contracts.js';
 
+export const MAX_ARTIFACT_BYTES = 50 * 1024 * 1024;
+
 export class ArtifactStore {
+  private readonly shaIndex = new Map<string, StoredArtifact>();
+  private shaIndexReady = false;
+
   constructor(private readonly rootDir: string) {
     mkdirSync(rootDir, { recursive: true });
   }
@@ -18,7 +23,10 @@ export class ArtifactStore {
 
   importFile(sourcePath: string, options: { id?: string; mimeType?: string } = {}): StoredArtifact {
     if (options.id !== undefined) assertArtifactId(options.id);
+    const sourceSize = statSync(sourcePath).size;
+    if (sourceSize > MAX_ARTIFACT_BYTES) throw new Error('artifact_too_large');
     const buffer = readFileSync(sourcePath);
+    if (buffer.byteLength > MAX_ARTIFACT_BYTES) throw new Error('artifact_too_large');
     const sha256 = createHash('sha256').update(buffer).digest('hex');
     const existing = this.findBySha(sha256);
     if (existing) return existing;
@@ -39,6 +47,7 @@ export class ArtifactStore {
       createdAt: new Date().toISOString(),
     };
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(record));
+    this.remember(record);
     return record;
   }
 
@@ -47,6 +56,7 @@ export class ArtifactStore {
     options: { id?: string; fileName: string; mimeType?: string },
   ): StoredArtifact {
     if (options.id !== undefined) assertArtifactId(options.id);
+    if (data.byteLength > MAX_ARTIFACT_BYTES) throw new Error('artifact_too_large');
     const buffer = Buffer.from(data);
     const sha256 = createHash('sha256').update(buffer).digest('hex');
     const existingBySha = this.findBySha(sha256);
@@ -75,11 +85,13 @@ export class ArtifactStore {
       createdAt: new Date().toISOString(),
     };
     writeFileSync(metadataPath, JSON.stringify(record));
+    this.remember(record);
     return record;
   }
 
   putJson(id: string, value: unknown): void {
     assertArtifactId(id);
+    this.forgetById(id);
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(value));
   }
 
@@ -98,6 +110,7 @@ export class ArtifactStore {
     assertArtifactId(id);
     const parsed = TableArtifactSchema.safeParse(value);
     if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid table artifact');
+    this.forgetById(id);
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
   }
 
@@ -106,6 +119,7 @@ export class ArtifactStore {
     assertArtifactId(id);
     const parsed = WorkbookArtifactSchema.safeParse(value);
     if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid workbook artifact');
+    this.forgetById(id);
     writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
   }
 
@@ -151,6 +165,7 @@ export class ArtifactStore {
   remove(id: string): void {
     assertArtifactId(id);
     const record = this.get(id);
+    this.forgetById(id);
     if (record?.storedPath) rmSync(record.storedPath, { force: true });
     for (const suffix of ['.json', '.document.json', '.ingest.json']) {
       rmSync(join(this.rootDir, `${id}${suffix}`), { force: true });
@@ -158,12 +173,30 @@ export class ArtifactStore {
   }
 
   findBySha(sha256: string): StoredArtifact | undefined {
+    this.loadShaIndex();
+    return this.shaIndex.get(sha256);
+  }
+
+  private loadShaIndex(): void {
+    if (this.shaIndexReady) return;
+    // ponytail: one metadata scan per store, then O(1) dedup lookups; a shared
+    // multi-process artifact directory would need an explicit invalidation strategy.
     for (const name of readdirSync(this.rootDir)) {
       if (!name.endsWith('.json')) continue;
       const record = parseStoredArtifact(this.rootDir, join(this.rootDir, name));
       if (!record) continue;
-      if (record.sha256 === sha256) return record;
+      this.shaIndex.set(record.sha256, record);
     }
-    return undefined;
+    this.shaIndexReady = true;
+  }
+
+  private remember(record: StoredArtifact): void {
+    this.shaIndex.set(record.sha256, record);
+  }
+
+  private forgetById(id: string): void {
+    for (const [sha256, record] of this.shaIndex) {
+      if (record.id === id) this.shaIndex.delete(sha256);
+    }
   }
 }

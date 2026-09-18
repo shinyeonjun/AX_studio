@@ -2,17 +2,17 @@
 
 ## Before exploring, read these
 
-- `CONTEXT.md` at the repo root
+- `CONTEXT.md` at the repo root, if present
 - `docs/adr/` for decisions related to the work area
 
 If these files do not exist, proceed without treating their absence as a problem.
 
 ## File structure
 
-This is a single-context repo:
+This repository currently has no root `CONTEXT.md`; use the package structure and the
+domain documents below as the available context:
 
 /
-├── CONTEXT.md
 ├── docs/adr/
 └── packages/
 

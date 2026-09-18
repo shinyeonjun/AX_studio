@@ -167,6 +167,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime, undefined, options.onPushTransportStateChanged);
   const commandService = new AxCommandService(store, {
+    removeWorkflow: (workflowId) => runtime.removeWorkflow(workflowId),
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
     enqueueOnce: (workflow, enqueueOptions) => runtime.enqueueEphemeralWorkflow(workflow, {
       triggerType: 'manual',

@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, truncateSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { ArtifactStore } from '../artifact-store.js';
+import { ArtifactStore, MAX_ARTIFACT_BYTES } from '../artifact-store.js';
 
 describe('ArtifactStore content and deduplication', () => {
   it('deduplicates imports by sha256', () => {
@@ -50,5 +50,19 @@ describe('ArtifactStore content and deduplication', () => {
     expect(() => store.putBytes(Buffer.from('third'), { id: '../escaped', fileName: 'report.pdf' })).toThrow(
       'Invalid artifact id',
     );
+  });
+
+  it('rejects oversized files and byte payloads before reading or writing them', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-artifacts-'));
+    const store = new ArtifactStore(root);
+    const source = join(root, 'too-large.bin');
+    writeFileSync(source, '');
+    truncateSync(source, MAX_ARTIFACT_BYTES + 1);
+
+    expect(() => store.importFile(source)).toThrow('artifact_too_large');
+    expect(() => store.putBytes(
+      { byteLength: MAX_ARTIFACT_BYTES + 1 } as Uint8Array,
+      { fileName: 'too-large.bin' },
+    )).toThrow('artifact_too_large');
   });
 });

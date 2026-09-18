@@ -18,7 +18,7 @@ export async function drainDesktopCore(
   core: NonNullable<ReturnType<typeof getCoreIfInitialized>>,
   pendingStartup?: Promise<void>,
 ): Promise<boolean> {
-  core.scheduler.stop();
+  await core.scheduler.stop();
   core.runtime.stopAccepting();
   core.workspaceSources.stopAccepting();
   const drained = await drainWithin([

@@ -21,7 +21,7 @@ export async function executeWorkflowCommand(
     case 'workflow.update':
       return result(command.name, ...state.workflowGateway.update(command));
     case 'workflow.delete':
-      return result(command.name, ...state.workflowGateway.delete(command));
+      return result(command.name, ...await state.workflowGateway.delete(command));
     case 'workflow.run':
       return result(command.name, ...await state.workflowGateway.run(command));
     case 'execution.enqueue_once':

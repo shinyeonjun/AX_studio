@@ -3,6 +3,10 @@ import type {
   DecisionEngine,
   DecisionQuestion,
 } from '../../contracts/decision.js';
+import {
+  boundDecisionString,
+  DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+} from '../../intelligence/decision/context.js';
 import type { DiscoveryObservationRef } from '../../contracts/discovery-source.js';
 import type { SourceDescriptor } from '../schema.js';
 import { rankSources } from './adapters.js';
@@ -42,12 +46,13 @@ export async function rankSourcesForDiscovery(
       type: 'boolean',
       instructions: {
         task: 'Estimate whether this source is useful for reproducing the observed output from the available inputs.',
+        dataPolicy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
         source: {
-          id: source.id,
-          label: source.label,
-          connector: source.connector,
+          id: boundDecisionString(source.id, 256),
+          label: boundDecisionString(source.label),
+          connector: boundDecisionString(source.connector, 256),
           kind: source.kind,
-          profileSummary: source.profileSummary ?? null,
+          profileSummary: source.profileSummary ? boundDecisionString(source.profileSummary) : null,
         },
       },
     };
@@ -56,10 +61,11 @@ export async function rankSourcesForDiscovery(
   try {
     const result = await decision.decisionEngine.evaluate({
       state: {
-        userGoal: decision.userGoal ?? '',
+        userGoal: boundDecisionString(decision.userGoal ?? ''),
+        purpose: 'work_discovery_source_ranking',
         observations: observations.map((observation) => ({
-          label: observation.label,
-          path: observation.path,
+          label: boundDecisionString(observation.label ?? ''),
+          path: boundDecisionString(observation.path, 512),
           required: observation.required ?? false,
         })),
       },

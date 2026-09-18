@@ -11,10 +11,12 @@ export function createConnectorContext(
   connections: ReturnType<WorkflowStore['getConnections']>,
   log: (entry: ExecutionLogEntry) => void,
   workspaceSessionId?: string,
+  abortSignal?: AbortSignal,
 ): ConnectorContext {
   return {
     executionId,
     workflowId,
+    ...(abortSignal ? { abortSignal } : {}),
     ...(workspaceSessionId ? { workspaceSessionId } : {}),
     variables,
     outputs: {},

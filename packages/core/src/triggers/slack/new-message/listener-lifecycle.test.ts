@@ -87,6 +87,23 @@ describe('SlackSocketModeListener lifecycle', () => {
     } finally { await listener.stop(); }
   });
 
+  it('reuses a fresh channel label instead of calling Slack for every message', async () => {
+    const client = Object.assign(new EventEmitter(), {
+      start: vi.fn(async () => undefined),
+      disconnect: vi.fn(async () => undefined),
+      websocket: { isActive: () => true },
+    }) as unknown as SocketModeClient;
+    const listener = new SlackSocketModeListener({ createClient: () => client });
+    channelInfo.mockReset().mockResolvedValue({ channel: { name: 'general' } });
+    try {
+      await listener.start('bot', 'app', () => undefined);
+      const deliver = client.listeners('events_api')[0]!;
+      await deliver({ event: { type: 'message', channel: 'C1', ts: '1', text: 'one' }, ack: async () => undefined });
+      await deliver({ event: { type: 'message', channel: 'C1', ts: '2', text: 'two' }, ack: async () => undefined });
+      expect(channelInfo).toHaveBeenCalledOnce();
+    } finally { await listener.stop(); }
+  });
+
   it('does not block the desktop connection flow while the SDK keeps reconnecting', async () => {
     const client = new EventEmitter() as EventEmitter & {
       start: () => Promise<never>;

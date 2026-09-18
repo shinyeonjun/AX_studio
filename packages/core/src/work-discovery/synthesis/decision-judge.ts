@@ -1,9 +1,18 @@
 import type { DecisionEngine, DecisionQuestion } from '../../contracts/decision.js';
+import {
+  boundDecisionString,
+  DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+} from '../../intelligence/decision/context.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';
 import type { CandidateProgram, SourceDescriptor } from '../schema.js';
 
 export const DISCOVERY_AUTO_RESOLVE_MIN_PROBABILITY = 0.9;
 export const DISCOVERY_AUTO_RESOLVE_MIN_MARGIN = 0.2;
+export const DISCOVERY_JEV_MAX_AMBIGUOUS_PATHS = 8;
+export const DISCOVERY_JEV_MAX_CANDIDATES_PER_PATH = 32;
+const DISCOVERY_JEV_MAX_VALUE_DEPTH = 8;
+const DISCOVERY_JEV_MAX_ARRAY_ITEMS = 32;
+const DISCOVERY_JEV_MAX_OBJECT_KEYS = 32;
 
 export interface ReplayAmbiguityDecisionInput {
   decisionEngine?: DecisionEngine;
@@ -22,6 +31,32 @@ export interface ReplayAmbiguityDecisionResult {
 interface QuestionBinding {
   outputPath: string;
   optionToCandidateId: Map<string, string>;
+}
+
+function boundedValue(value: unknown, depth = 0): unknown {
+  if (depth >= DISCOVERY_JEV_MAX_VALUE_DEPTH) return '[truncated]';
+  if (typeof value === 'string') return boundDecisionString(value);
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) {
+    return value.slice(0, DISCOVERY_JEV_MAX_ARRAY_ITEMS).map((entry) => boundedValue(entry, depth + 1));
+  }
+  if (typeof value !== 'object') return String(value);
+  return Object.fromEntries(
+    Object.entries(value)
+      .slice(0, DISCOVERY_JEV_MAX_OBJECT_KEYS)
+      .map(([key, entry]) => [boundDecisionString(key, 256), boundedValue(entry, depth + 1)]),
+  );
+}
+
+function sourceContext(source: SourceDescriptor | undefined, sourceId: string | undefined): Record<string, unknown> {
+  if (!source) return { id: boundDecisionString(sourceId ?? 'unknown', 256) };
+  return {
+    id: boundDecisionString(source.id, 256),
+    label: boundDecisionString(source.label),
+    connector: boundDecisionString(source.connector, 256),
+    kind: source.kind,
+    profileSummary: source.profileSummary ? boundDecisionString(source.profileSummary) : null,
+  };
 }
 
 function acceptedCandidatesForPath(candidates: CandidateProgram[], outputPath: string): CandidateProgram[] {
@@ -77,9 +112,11 @@ export async function judgeReplayAmbiguity(
   const questions: Record<string, DecisionQuestion> = {};
   const bindings = new Map<string, QuestionBinding>();
 
-  for (const [pathIndex, outputPath] of input.ambiguousPaths.entries()) {
+  for (const [pathIndex, outputPath] of input.ambiguousPaths
+    .slice(0, DISCOVERY_JEV_MAX_AMBIGUOUS_PATHS)
+    .entries()) {
     const candidates = acceptedCandidatesForPath(input.candidates, outputPath);
-    if (candidates.length < 2 || candidates.length > 255) continue;
+    if (candidates.length < 2 || candidates.length > DISCOVERY_JEV_MAX_CANDIDATES_PER_PATH) continue;
 
     const criteria: Record<string, Record<string, unknown>> = {};
     const optionToCandidateId = new Map<string, string>();
@@ -88,16 +125,8 @@ export async function judgeReplayAmbiguity(
       const sourceId = sourceIdFromExpr(candidate.expr);
       const source = sourceId ? sourceById.get(sourceId) : undefined;
       criteria[option] = {
-        source: source
-          ? {
-              id: source.id,
-              label: source.label,
-              connector: source.connector,
-              kind: source.kind,
-              profileSummary: source.profileSummary ?? null,
-            }
-          : { id: sourceId ?? 'unknown' },
-        expression: candidate.expr,
+        source: sourceContext(source, sourceId),
+        expression: boundedValue(candidate.expr),
         replayScore: candidate.score,
       };
       optionToCandidateId.set(option, candidate.id);
@@ -108,7 +137,8 @@ export async function judgeReplayAmbiguity(
       type: 'choice',
       instructions: {
         task: 'Choose the mapping that most likely reflects the user intended semantics. Every option has already reproduced the observed examples exactly.',
-        outputPath,
+        outputPath: boundDecisionString(outputPath),
+        dataPolicy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
       },
       criteria,
     };
@@ -126,8 +156,9 @@ export async function judgeReplayAmbiguity(
   try {
     const result = await input.decisionEngine.evaluate({
       state: {
-        userGoal: input.userGoal,
+        userGoal: boundDecisionString(input.userGoal),
         rule: 'Only disambiguate intent between mappings that already passed deterministic replay. Prefer human clarification when uncertain.',
+        purpose: 'work_discovery_replay_ambiguity',
       },
       questions,
     });

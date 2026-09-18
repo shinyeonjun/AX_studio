@@ -16,6 +16,7 @@ import type { RepairCommandGateway } from '../repair-gateway.js';
 import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
 
 export interface AxCommandServiceOptions {
+  removeWorkflow?: (workflowId: string) => Promise<void> | void;
   runWorkflow?: (workflowId: string) => Promise<unknown>;
   enqueueOnce?: (
     workflow: WorkflowIR,

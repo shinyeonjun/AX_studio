@@ -37,6 +37,10 @@ const JevResponseSchema = z.object({
   }).nullish(),
 });
 
+export const JEV_DEFAULT_TIMEOUT_MS = 30_000;
+export const JEV_DEFAULT_MAX_REQUEST_BYTES = 262_144;
+export const JEV_DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
+
 export interface JevDecisionEngineOptions {
   apiKey: string;
   model?: string;
@@ -44,6 +48,9 @@ export interface JevDecisionEngineOptions {
   baseURL?: string;
   headers?: Record<string, string>;
   fetch?: typeof fetch;
+  timeoutMs?: number;
+  maxRequestBytes?: number;
+  maxResponseBytes?: number;
 }
 
 export class JevDecisionError extends Error {
@@ -92,8 +99,33 @@ function errorMessageFromBody(body: unknown): string | undefined {
   return undefined;
 }
 
-async function readJson(response: Response): Promise<unknown> {
-  const text = await response.text();
+async function readJson(response: Response, maxBytes: number): Promise<unknown> {
+  const contentLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new JevDecisionError('TypeSafe response is too large.', response.status);
+  }
+  const reader = response.body?.getReader();
+  if (!reader) return undefined;
+  const decoder = new TextDecoder();
+  let text = '';
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        text += decoder.decode();
+        break;
+      }
+      totalBytes += chunk.value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        throw new JevDecisionError('TypeSafe response is too large.', response.status);
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
   if (!text.trim()) return undefined;
   try {
     return JSON.parse(text) as unknown;
@@ -138,6 +170,9 @@ export class JevDecisionEngine implements DecisionEngine {
   private readonly baseURL: string;
   private readonly headers: Record<string, string>;
   private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+  private readonly maxRequestBytes: number;
+  private readonly maxResponseBytes: number;
 
   constructor(options: JevDecisionEngineOptions) {
     const apiKey = options.apiKey.trim();
@@ -145,8 +180,32 @@ export class JevDecisionEngine implements DecisionEngine {
     this.apiKey = apiKey;
     this.model = options.model?.trim() || 'jev-latest';
     this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
+    let parsedBaseURL: URL;
+    try {
+      parsedBaseURL = new URL(this.baseURL);
+    } catch {
+      throw new JevDecisionError('A valid TypeSafe base URL is required.');
+    }
+    const loopback = parsedBaseURL.hostname === 'localhost' ||
+      parsedBaseURL.hostname === '127.0.0.1' ||
+      parsedBaseURL.hostname === '[::1]' ||
+      parsedBaseURL.hostname === '::1';
+    if (parsedBaseURL.protocol !== 'https:' && !(parsedBaseURL.protocol === 'http:' && loopback)) {
+      throw new JevDecisionError('TypeSafe base URL must use HTTPS (HTTP is allowed only for loopback development).');
+    }
     this.headers = { ...options.headers };
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
+    this.timeoutMs = typeof options.timeoutMs === 'number' && Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
+      ? options.timeoutMs
+      : JEV_DEFAULT_TIMEOUT_MS;
+    this.maxRequestBytes = typeof options.maxRequestBytes === 'number'
+      && Number.isFinite(options.maxRequestBytes)
+      && options.maxRequestBytes > 0
+      ? options.maxRequestBytes
+      : JEV_DEFAULT_MAX_REQUEST_BYTES;
+    this.maxResponseBytes = typeof options.maxResponseBytes === 'number' && Number.isFinite(options.maxResponseBytes) && options.maxResponseBytes > 0
+      ? options.maxResponseBytes
+      : JEV_DEFAULT_MAX_RESPONSE_BYTES;
   }
 
   async evaluate(request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> {
@@ -154,23 +213,55 @@ export class JevDecisionEngine implements DecisionEngine {
     if (!entries.length) return { answers: {}, model: this.model };
     for (const [id, question] of entries) validateQuestion(id, question);
 
-    const response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
-      method: 'POST',
-      headers: {
-        ...this.headers,
-        Authorization: `Bearer ${this.apiKey}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    let body: string;
+    try {
+      body = JSON.stringify({
         model: this.model,
         state: request.state,
         questions: Object.fromEntries(entries.map(([id, question]) => [id, toWireQuestion(question)])),
-      }),
-      signal: request.signal,
-    });
+      });
+    } catch {
+      throw new JevDecisionError('TypeSafe request could not be serialized.');
+    }
+    if (new TextEncoder().encode(body).byteLength > this.maxRequestBytes) {
+      throw new JevDecisionError('TypeSafe request is too large.');
+    }
 
-    const rawBody = await readJson(response);
+    if (request.signal?.aborted) {
+      throw request.signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
+    }
+
+    const controller = new AbortController();
+    let timedOut = false;
+    const abortExternal = () => controller.abort(request.signal?.reason);
+    request.signal?.addEventListener('abort', abortExternal, { once: true });
+    if (request.signal?.aborted) abortExternal();
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, this.timeoutMs);
+    let response: Response;
+    let rawBody: unknown;
+    try {
+      response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
+        method: 'POST',
+        headers: {
+          ...this.headers,
+          Authorization: `Bearer ${this.apiKey}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body,
+        signal: controller.signal,
+      });
+      rawBody = await readJson(response, this.maxResponseBytes);
+    } catch (error) {
+      if (timedOut) throw new JevDecisionError('TypeSafe request timed out.');
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      request.signal?.removeEventListener('abort', abortExternal);
+    }
     if (!response.ok) {
       throw new JevDecisionError(
         errorMessageFromBody(rawBody) ?? `TypeSafe request failed with status ${response.status}.`,
