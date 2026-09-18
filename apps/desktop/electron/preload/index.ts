@@ -74,11 +74,11 @@ contextBridge.exposeInMainWorld('ax', {
   printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
   sendCommandChat: (
-    messages: WorkspaceChatMessage[],
+    userMessage: string,
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,
-  ) => ipcRenderer.invoke('ax:sendCommandChat', messages, requestId, workflowId, workspaceSessionId),
+  ) => ipcRenderer.invoke('ax:sendCommandChat', userMessage, requestId, workflowId, workspaceSessionId),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (

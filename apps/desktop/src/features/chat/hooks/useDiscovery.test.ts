@@ -130,6 +130,12 @@ describe('workspace asynchronous session ordering', () => {
     const ctx = workspaceContext();
     const running = createWorkspaceMessageActions(ctx).sendMessage('Send the test after approval');
     await vi.waitFor(() => expect(sendCommandChat).toHaveBeenCalledOnce());
+    expect(sendCommandChat).toHaveBeenCalledWith(
+      'Send the test after approval',
+      expect.any(String),
+      undefined,
+      'A',
+    );
     // Leave A and reopen it while the original request is still running.
     ctx.refs.sessionEpochRef.current += 2;
     ctx.refs.activeRequestIdRef.current = busy ? 'new-request' : undefined;

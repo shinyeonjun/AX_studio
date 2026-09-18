@@ -35,7 +35,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         ctx.setWorkspaceSessionId(initialSaved.id);
       }
       const res = (await window.ax.sendCommandChat(
-        nextMessages,
+        text,
         requestId,
         originWorkflowId,
         initialSaved.id,

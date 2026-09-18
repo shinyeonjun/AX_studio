@@ -33,12 +33,12 @@ export default {
     'apps/desktop/src/**': ['exports', 'types'],
     'apps/desktop/electron/**': ['exports'],
   },
-  ignoreBinaries: ['where.exe', 'taskkill.exe', 'pdftoppm'],
+  ignoreBinaries: ['where.exe', 'taskkill.exe'],
   workspaces: {
     '.': {
       entry: ['test/product-qa/specs/**/*.ts'],
       project: ['test/product-qa/**/*.ts'],
-      ignoreDependencies: ['electron', 'vitest', 'xlsx'],
+      ignoreDependencies: ['electron', 'xlsx'],
     },
     'packages/core': {
       entry: [
