@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceWorkflowState } from './workspace-chat-helpers';
 import type { WorkspaceChatMessage, WorkspaceSourceRecord } from '@ax-studio/core';
 import type { WorkspaceChatContext } from './workspace-chat/contracts';
@@ -34,10 +34,12 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   const sourceBusyRef = useRef(false);
   const pendingWorkspaceChatRefreshRef = useRef<string | undefined>(undefined);
 
-  const isCurrentSession = (epoch: number) => epoch === sessionEpochRef.current;
-  const isViewingSession = (sessionId: string | undefined) =>
-    workspaceSessionIdRef.current === sessionId;
-  const context: WorkspaceChatContext = {
+  const isCurrentSession = useCallback((epoch: number) => epoch === sessionEpochRef.current, []);
+  const isViewingSession = useCallback(
+    (sessionId: string | undefined) => workspaceSessionIdRef.current === sessionId,
+    [],
+  );
+  const context = useMemo<WorkspaceChatContext>(() => ({
     refs: {
       sessionEpochRef,
       workspaceSessionIdRef,
@@ -64,9 +66,18 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     workflowRegistered,
     setWorkspaceSources,
     setSourceBusy,
-  };
-  const lifecycleActions = createWorkspaceLifecycleActions(context);
-  const loadActions = createWorkspaceLoadActions(context);
+  }), [
+    chatMessages,
+    isCurrentSession,
+    isViewingSession,
+    onSessionsChanged,
+    refresh,
+    workflowRegistered,
+    workspaceWorkflowState,
+  ]);
+  const lifecycleActions = useMemo(() => createWorkspaceLifecycleActions(context), [context]);
+  const loadActions = useMemo(() => createWorkspaceLoadActions(context), [context]);
+  const refreshMappedWorkspaceChatRef = useRef(loadActions.refreshMappedWorkspaceChat);
 
   useEffect(() => {
     const off = window.ax.onChatProgress?.(({ message, requestId }) => {
@@ -89,42 +100,46 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   }, []);
 
   useEffect(() => {
+    refreshMappedWorkspaceChatRef.current = loadActions.refreshMappedWorkspaceChat;
+  }, [loadActions.refreshMappedWorkspaceChat]);
+
+  useEffect(() => {
     const off = window.ax.onWorkspaceChatChanged?.(({ sessionId }) => {
       if (!isViewingSession(sessionId)) return;
       if (busyRef.current) {
         pendingWorkspaceChatRefreshRef.current = sessionId;
         return;
       }
-      void loadActions.refreshMappedWorkspaceChat(sessionId);
+      void refreshMappedWorkspaceChatRef.current(sessionId);
     });
     return () => off?.();
-  }, [onSessionsChanged]);
+  }, [isViewingSession]);
 
-  const messageActions = createWorkspaceMessageActions({
+  const messageActions = useMemo(() => createWorkspaceMessageActions({
     ...context,
     refreshMappedWorkspaceChat: loadActions.refreshMappedWorkspaceChat,
-  });
-  const workflowActions = createWorkspaceWorkflowActions({
+  }), [context, loadActions.refreshMappedWorkspaceChat]);
+  const workflowActions = useMemo(() => createWorkspaceWorkflowActions({
     ...context,
     refreshMappedWorkspaceChat: loadActions.refreshMappedWorkspaceChat,
-  });
-  const sourceActions = createWorkspaceSourceActions(context);
+  }), [context, loadActions.refreshMappedWorkspaceChat]);
+  const sourceActions = useMemo(() => createWorkspaceSourceActions(context), [context]);
 
-  const beginEditStep = (prompt: string) => {
+  const beginEditStep = useCallback((prompt: string) => {
     setEditHint(prompt);
-  };
+  }, []);
 
-  const dismissError = () => {
+  const dismissError = useCallback(() => {
     setError('');
-  };
+  }, []);
 
-  const downloadGeneratedPdf = async (artifactId: string) => {
+  const downloadGeneratedPdf = useCallback(async (artifactId: string) => {
     return window.ax.exportGeneratedArtifact(artifactId);
-  };
+  }, []);
 
-  const saveGeneratedPdfToFolder = async (artifactId: string) => {
+  const saveGeneratedPdfToFolder = useCallback(async (artifactId: string) => {
     return window.ax.saveGeneratedArtifactToFolder(artifactId);
-  };
+  }, []);
 
   return {
     workspaceWorkflowState,

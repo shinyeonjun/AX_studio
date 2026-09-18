@@ -3,6 +3,7 @@ import {
   AX_COMMAND_CHAT_TIMEOUT_MS,
   runAxCommandChat,
 } from '@ax-studio/core';
+import { performance } from 'node:perf_hooks';
 import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
@@ -25,6 +26,7 @@ export function registerWorkspaceChatMessageHandler() {
     workspaceSessionId?: unknown,
   ) => {
     const core = getCore();
+    const startedAt = performance.now();
     const normalizedMessages = normalizeChatMessages(messages);
     if (normalizedMessages.length === 0) throw new Error('대화 기록이 필요합니다.');
     const userMessage = requireLastUserMessage(normalizedMessages);
@@ -49,11 +51,13 @@ export function registerWorkspaceChatMessageHandler() {
     const history = selectChatContext(normalizedMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
+    const historyChars = history.reduce((total, message) => total + message.content.length, 0);
     const controller = registerWorkspaceChat(chatRequestId, safeWorkspaceSessionId);
     const changedWorkflowIds = new Set<string>();
     const removedWorkflowIds = new Set<string>();
     let inputRequests: AxInputRequest[] = [];
     const presentations: AxUiPresentation[] = [];
+    let outcome: 'success' | 'failed' = 'failed';
     try {
       if (process.env.AX_E2E === '1' && process.env.AX_E2E_FAKE_AGENT === '1') {
         const reply = await runE2EChat({
@@ -61,6 +65,7 @@ export function registerWorkspaceChatMessageHandler() {
           userMessage,
           workspaceSessionId: safeWorkspaceSessionId,
         });
+        outcome = 'success';
         return {
           role: 'assistant' as const,
           content: reply.content,
@@ -113,6 +118,7 @@ export function registerWorkspaceChatMessageHandler() {
           event.sender.send('ax:chat-progress', { message, requestId: chatRequestId });
         },
       });
+      outcome = 'success';
       return {
         role: 'assistant' as const,
         content: reply,
@@ -130,6 +136,17 @@ export function registerWorkspaceChatMessageHandler() {
       });
       throw new Error(message && message !== '{' ? message : '명령형 채팅 AI 호출에 실패했습니다. AI 연결을 확인하세요.');
     } finally {
+      appendAppLog('info', 'desktop command chat completed', {
+        event: 'desktop_command_chat_completed',
+        requestId: chatRequestId,
+        outcome,
+        durationMs: Math.round(performance.now() - startedAt),
+        messageCount: normalizedMessages.length,
+        historyMessages: history.length,
+        historyChars,
+        userMessageChars: userMessage.length,
+        hasWorkspaceSession: Boolean(safeWorkspaceSessionId),
+      });
       releaseWorkspaceChat(chatRequestId, controller);
     }
   });

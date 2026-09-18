@@ -34,6 +34,7 @@ describe('agent text harness', () => {
     expect(seen?.system).toContain('답변만 작성한다.');
     expect(seen?.user).toBe('결과를 요약해줘');
     expect(seen?.maxTurns).toBe(1);
+    expect(seen?.maxOutputTokens).toBe(768);
     await harness.dispose();
   });
 

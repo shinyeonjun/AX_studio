@@ -12,9 +12,11 @@ export interface AgentSkillFile {
 }
 
 let skillsDirOverride: string | undefined;
+const skillCache = new Map<string, AgentSkillFile>();
 
 export function setAgentSkillsDir(dir: string | undefined) {
   skillsDirOverride = dir;
+  skillCache.clear();
 }
 
 function candidateSkillRoots(): string[] {
@@ -53,8 +55,12 @@ function readSkillFromDisk(id: string): string | undefined {
 }
 
 export function loadAgentSkill(id: string): AgentSkillFile {
+  const cached = skillCache.get(id);
+  if (cached) return cached;
   const raw = readSkillFromDisk(id) ?? EMBEDDED_AGENT_SKILLS[id];
   if (!raw) throw new Error(`Agent skill not found: ${id}`);
   const parsed = parseSkillMarkdown(raw);
-  return { id, raw, ...parsed };
+  const skill = { id, raw, ...parsed };
+  skillCache.set(id, skill);
+  return skill;
 }

@@ -15,7 +15,10 @@ import {
 export function latestWorkspaceExecutionResult(
   messages: WorkspaceChatMessage[],
 ): WorkspaceChatMessage | undefined {
-  return [...messages].reverse().find((message) => message.kind === 'execution_result');
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.kind === 'execution_result') return messages[index];
+  }
+  return undefined;
 }
 
 function resolveDiscoveryRunning(
