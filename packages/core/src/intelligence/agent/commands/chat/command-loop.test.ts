@@ -73,6 +73,85 @@ describe('runAxCommandChat command loop', () => {
     expect(seen).toHaveLength(1);
   });
 
+  it('does not execute an LLM mutation when Jev rejects the user intent', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const service = new AxCommandService(store);
+    const execute = vi.spyOn(service, 'execute');
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'answer',
+            probabilities: { answer: 0.99 },
+            confidence: 0.99,
+          },
+          explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+          intent_match: {
+            type: 'choice',
+            choice: 'reject',
+            probabilities: { allow: 0.01, clarify: 0.03, reject: 0.96 },
+            confidence: 0.95,
+          },
+          explicit_action: { type: 'boolean', probability: 0.1 },
+        },
+      }),
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: { name: 'workflow.create', args: { name: '금지된 업무', goal: '만들지 말아야 한다' } } },
+    ], []));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: 'workflow는 만들지 말고 설명만 해줘',
+    })).resolves.toContain('명확히 일치하지 않아 실행하지 않았습니다');
+    expect(execute).not.toHaveBeenCalled();
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('fails closed before an LLM mutation when the configured Jev service is unavailable', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    let evaluations = 0;
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => {
+        evaluations += 1;
+        if (evaluations === 1) {
+          return {
+            answers: {
+              route: {
+                type: 'choice',
+                choice: 'answer',
+                probabilities: { answer: 0.99 },
+                confidence: 0.99,
+              },
+              explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+            },
+          };
+        }
+        throw new Error('jev_unavailable');
+      },
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: { name: 'workflow.create', args: { name: '차단된 업무', goal: '생성 요청' } } },
+    ], []));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '업무를 만들어줘',
+    })).resolves.toContain('의미 판단 서비스를 확인할 수 없어');
+    expect(evaluations).toBe(2);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('recovers once when the provider reports a bounded structured-output error', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

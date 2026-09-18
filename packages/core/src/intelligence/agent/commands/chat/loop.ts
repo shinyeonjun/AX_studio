@@ -13,6 +13,8 @@ import {
 import { hostFacingMessage, type CommandChatSessionState } from './result.js';
 import { routeChatWithJev } from './jev-router.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
+import { gateChatCommandWithJev } from './jev-command-gate.js';
+import { issue as commandIssue, result as commandResult } from '../contract.js';
 
 const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
 
@@ -141,6 +143,40 @@ export async function runCommandChatLoop({
     }
     if (parsed.kind === 'reply') return parsed.message;
     protocolRecoveryAttempts = 0;
+
+    const definition = options.commandService
+      .listCommands(AGENT_COMMAND_CONTEXT)
+      .find((entry) => entry.name === parsed.command.name);
+    if (options.decisionEngine && definition?.mutates && !options.allowContextUpdate) {
+      const gate = await gateChatCommandWithJev({
+        decisionEngine: options.decisionEngine,
+        userMessage: options.userMessage,
+        command: parsed.command,
+        definition,
+        currentWorkflowId: session.workflowId,
+        abortSignal: signal,
+      });
+      if (!gate.allowed) {
+        appendAppLog('warn', 'Jev mutation intent gate blocked a command.', {
+          event: 'jev_command_gate_blocked',
+          command: parsed.command.name,
+          reason: gate.reason,
+        });
+        const message = gate.reason === 'service_unavailable'
+          ? '의미 판단 서비스를 확인할 수 없어 변경 작업을 실행하지 않았습니다. 잠시 후 다시 시도해 주세요.'
+          : '사용자 요청과 실행 작업의 의미가 명확히 일치하지 않아 실행하지 않았습니다. 대상과 원하는 작업을 구체적으로 알려 주세요.';
+        const blocked = commandResult(
+          parsed.command.name,
+          'needs_input',
+          undefined,
+          [commandIssue(
+            'semantic_confirmation_required',
+            message,
+          )],
+        );
+        return hostFacingMessage(publishResult(parsed.command.name, blocked), message);
+      }
+    }
 
     const result = await options.commandService.execute(parsed.command, {
       designToolContext: options.designToolContext,
