@@ -30,6 +30,13 @@ function engineFor(
 }
 
 describe('routeChatWithJev', () => {
+  it('returns a conversational reply route without selecting a command', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('answer', 0.96),
+      userMessage: 'workflow와 일회 실행의 차이를 설명해줘',
+    })).resolves.toEqual({ kind: 'reply', route: 'answer', confidence: 0.96 });
+  });
+
   it('maps a bounded semantic route to a fixed command', async () => {
     let request: Parameters<DecisionEngine['evaluate']>[0] | undefined;
     const result = await routeChatWithJev({
@@ -157,6 +164,29 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result).toEqual({ kind: 'fallback', reason: 'missing_context' });
+  });
+
+  it('delegates a workflow creation lifecycle while keeping payload generation typed', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: engineFor('workflow_create', 0.95),
+      userMessage: '매일 주문을 확인하는 workflow를 저장해줘',
+    });
+
+    expect(result).toMatchObject({ kind: 'delegate', route: 'workflow_create', confidence: 0.95 });
+    if (result.kind !== 'delegate') throw new Error('expected delegated route');
+    expect(result.allowedCommandNames).toContain('workflow.create');
+    expect(result.allowedCommandNames).not.toContain('workflow.delete');
+  });
+
+  it('requires the current workflow before delegating update or delete', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('workflow_update'),
+      userMessage: '현재 workflow의 이름을 바꿔줘',
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('workflow_delete'),
+      userMessage: '현재 workflow를 삭제해줘',
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
   });
 
   it('requires semantic and deterministic confirmation before a workflow run', async () => {

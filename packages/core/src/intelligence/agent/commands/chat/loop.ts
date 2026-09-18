@@ -1,11 +1,12 @@
 import type { ChatMessage } from '../../model/chat.js';
 import type { AxCommandChatOptions } from './contracts.js';
-import type { AxCommand, AxCommandResult } from '../schema.js';
+import type { AxCommand, AxCommandName, AxCommandResult } from '../schema.js';
 import type { AxCommandChatTransport } from '../transport-contract.js';
 import { AGENT_COMMAND_CONTEXT } from '../access.js';
 import {
   commandContext,
   commandProtocolPrompt,
+  chatReplyPrompt,
   protocolFailureMessage,
   protocolRecoveryMessage,
   resultMessage,
@@ -94,6 +95,36 @@ export async function runCommandChatLoop({
     return hostFacingMessage(publishResult(command.name, blocked), message);
   };
 
+  const textReplyFromJev = async (phase: string): Promise<string | undefined> => {
+    try {
+      const reply = await options.harness.runText({
+        role: 'command',
+        systemPrompt: chatReplyPrompt(),
+        context: commandContext(options),
+        messages,
+        sessionId: options.providerSessionId,
+        onProgress: options.onProgress,
+        logContext: phase,
+        abortSignal: signal,
+      });
+      const output = reply.output.trim();
+      if (!output) return undefined;
+      appendAppLog('info', 'Jev-selected chat route received a text-only reply.', {
+        event: 'jev_chat_reply_generated',
+        provider: reply.provider,
+      });
+      return output;
+    } catch (error) {
+      signal.throwIfAborted();
+      appendAppLog('warn', 'Jev-selected chat route could not generate a text-only reply; falling back to the command model.', {
+        event: 'jev_chat_reply_fallback',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  };
+
+  let delegatedCommandNames: readonly AxCommandName[] | undefined;
   if (options.decisionEngine && !options.allowContextUpdate) {
     const jevRoute = await routeChatWithJev({
       decisionEngine: options.decisionEngine,
@@ -108,6 +139,18 @@ export async function runCommandChatLoop({
       appendAppLog('info', 'Jev chat route fell back to the LLM command path.', {
         event: 'jev_chat_route_fallback',
         reason: jevRoute.reason,
+      });
+    }
+    if (jevRoute.kind === 'reply') {
+      const reply = await textReplyFromJev('ax_command_chat_jev_reply');
+      if (reply) return reply;
+    }
+    if (jevRoute.kind === 'delegate') {
+      delegatedCommandNames = jevRoute.allowedCommandNames;
+      appendAppLog('info', 'Jev fixed the chat command lifecycle before payload generation.', {
+        event: 'jev_chat_route_delegated',
+        route: jevRoute.route,
+        confidence: jevRoute.confidence,
       });
     }
     if (jevRoute.kind === 'command') {
@@ -143,6 +186,8 @@ export async function runCommandChatLoop({
         { role: 'assistant', content: JSON.stringify({ kind: 'command', command: jevRoute.command }) },
         { role: 'user', content: resultMessage(resultForLoop) },
       );
+      const reply = await textReplyFromJev('ax_command_chat_jev_result');
+      if (reply) return reply;
     }
   }
 
@@ -150,6 +195,9 @@ export async function runCommandChatLoop({
     if (signal.aborted) throw new Error('ax_command_chat_timeout');
     let output: unknown;
     try {
+      const lifecycleConstraint = delegatedCommandNames
+        ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.`
+        : '';
       const result = await options.harness.run({
         role: 'command',
         outputSchema: transport.outputSchema,
@@ -158,7 +206,7 @@ export async function runCommandChatLoop({
           currentWorkflowId: session.workflowId,
           sessionMemo: session.sessionMemo,
           workflowPolicy: session.workflowPolicy,
-        }, transport.outputInstructions),
+        }, `${transport.outputInstructions}${lifecycleConstraint}`),
         context: commandContext(options),
         messages,
         sessionId: options.providerSessionId,
@@ -192,6 +240,22 @@ export async function runCommandChatLoop({
     }
     if (parsed.kind === 'reply') return parsed.message;
     protocolRecoveryAttempts = 0;
+
+    if (delegatedCommandNames && !delegatedCommandNames.includes(parsed.command.name)) {
+      const message = '요청한 작업의 수명주기와 다른 명령이 제안되어 실행하지 않았습니다. 원하는 작업 유형을 다시 확인해 주세요.';
+      appendAppLog('warn', 'LLM command did not match the Jev-selected lifecycle.', {
+        event: 'jev_chat_route_command_mismatch',
+        command: parsed.command.name,
+        expected: delegatedCommandNames[0],
+      });
+      const blocked = commandResult(
+        parsed.command.name,
+        'needs_input',
+        undefined,
+        [commandIssue('semantic_route_mismatch', message)],
+      );
+      return hostFacingMessage(publishResult(parsed.command.name, blocked), message);
+    }
 
     const blockedMessage = await semanticGateMessage(parsed.command);
     if (blockedMessage) return blockedMessage;

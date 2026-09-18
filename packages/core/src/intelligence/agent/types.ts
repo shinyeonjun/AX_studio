@@ -61,6 +61,21 @@ export interface AgentRun<T> {
   systemPrompt?: string;
 }
 
+export interface AgentTextRun {
+  role: AgentRole;
+  context: AgentContext;
+  messages?: ChatMessage[];
+  user?: string;
+  images?: ModelImageInput[];
+  temperature?: number;
+  sessionId?: string;
+  cloudAllowed?: boolean;
+  onProgress?: (event: AgentProgressEvent) => void;
+  logContext?: string;
+  abortSignal?: AbortSignal;
+  systemPrompt?: string;
+}
+
 export interface AgentRunLog {
   level: 'info' | 'error';
   message: string;
@@ -68,6 +83,16 @@ export interface AgentRunLog {
 
 export interface AgentResult<T> {
   output: T;
+  role: AgentRole;
+  provider: string;
+  durationMs: number;
+  promptChars: number;
+  policy: AgentExecutionPolicy;
+  logs: AgentRunLog[];
+}
+
+export interface AgentTextResult {
+  output: string;
   role: AgentRole;
   provider: string;
   durationMs: number;

@@ -10,10 +10,12 @@ import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
 } from '../../../decision/context.js';
-import type { AxCommand } from '../schema.js';
+import type { AxCommand, AxCommandName } from '../schema.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
 
 const SAFE_ROUTE_MIN_CONFIDENCE = 0.72;
+const REPLY_ROUTE_MIN_CONFIDENCE = 0.72;
+const ACTION_ROUTE_MIN_CONFIDENCE = 0.85;
 const WORKFLOW_RUN_MIN_CONFIDENCE = 0.9;
 const WORKFLOW_RUN_MIN_EXPLICIT_PROBABILITY = 0.9;
 const REPORT_ROUTE_MIN_CONFIDENCE = 0.85;
@@ -22,8 +24,8 @@ const ROUTE_QUERY_MAX_CHARS = 500;
 
 const ROUTE_CRITERIA = {
   answer: {
-    what: 'Answer, explain, create, update, delete, report, plan, or clarify the request in the normal model flow.',
-    not_for: 'A direct bounded read listed by another option.',
+    what: 'Explain, summarize, plan, or clarify the request in a conversational reply.',
+    not_for: 'Creating, updating, deleting, running, scheduling, or generating a report; choose the matching lifecycle route instead.',
   },
   resource_list: {
     what: 'List connected resources and their safe connection status.',
@@ -66,6 +68,28 @@ const ROUTE_CRITERIA = {
     requires: 'The user explicitly asks to start or run it now, and a current workflow is present.',
     not_for: 'Planning, inspecting, validating, creating, or merely discussing a workflow.',
   },
+  workflow_create: {
+    what: 'Create and save a new persistent workflow from the user request. The model will fill the typed workflow payload after this lifecycle is fixed.',
+    not_for: 'A one-time execution, a recurring job proposal, editing an existing workflow, or merely discussing a workflow.',
+  },
+  workflow_update: {
+    what: 'Update the currently selected saved workflow. The model will fill the typed operations after this lifecycle is fixed.',
+    requires: 'A current workflow is present in the chat context.',
+    not_for: 'Creating a new workflow, deleting it, running it, or changing only temporary chat context.',
+  },
+  workflow_delete: {
+    what: 'Delete the currently selected saved workflow after the host version check.',
+    requires: 'A current workflow is present in the chat context and the user explicitly asks to delete it.',
+    not_for: 'Archiving, pausing, updating, or merely discussing a workflow.',
+  },
+  execution_enqueue_once: {
+    what: 'Queue a one-time execution plan without saving a workflow. The model will fill the typed plan after this lifecycle is fixed.',
+    not_for: 'Saving a reusable workflow, scheduling recurring work, or running an already saved workflow.',
+  },
+  job_propose: {
+    what: 'Prepare a recurring scheduled job proposal for host confirmation. It must not save or activate the job by itself.',
+    not_for: 'A one-time execution, immediate workflow run, or a normal conversational answer.',
+  },
   report_generate: {
     what: 'Generate a new PDF report from the current chat session using one blank PDF template and one completed PDF example.',
     requires: 'The current chat has two different ready PDF sources and the user asks to generate the report.',
@@ -74,6 +98,41 @@ const ROUTE_CRITERIA = {
 } as const;
 
 type RouteName = keyof typeof ROUTE_CRITERIA;
+
+type DelegatedRoute =
+  | 'workflow_create'
+  | 'workflow_update'
+  | 'workflow_delete'
+  | 'execution_enqueue_once'
+  | 'job_propose';
+
+const DELEGATED_READ_COMMANDS: readonly AxCommandName[] = [
+  'command.list',
+  'resource.list',
+  'http.list',
+  'source.list',
+  'source.files.list',
+  'source.file.read',
+  'source.search',
+  'session.source.list',
+  'session.source.read',
+  'capability.list',
+  'capability.describe',
+  'discovery.search',
+  'discovery.describe',
+  'workflow.list',
+  'workflow.inspect',
+  'workflow.validate',
+  'ui.present',
+];
+
+const DELEGATED_ROUTE_COMMANDS: Record<DelegatedRoute, readonly AxCommandName[]> = {
+  workflow_create: ['workflow.create', ...DELEGATED_READ_COMMANDS],
+  workflow_update: ['workflow.update', ...DELEGATED_READ_COMMANDS],
+  workflow_delete: ['workflow.delete', ...DELEGATED_READ_COMMANDS],
+  execution_enqueue_once: ['execution.enqueue_once', ...DELEGATED_READ_COMMANDS],
+  job_propose: ['job.propose', ...DELEGATED_READ_COMMANDS],
+};
 
 export interface JevChatRouterInput {
   decisionEngine: DecisionEngine;
@@ -93,6 +152,8 @@ type JevChatRouterFallbackReason =
 
 export type JevChatRouterResult =
   | { kind: 'command'; command: AxCommand; route: RouteName; confidence: number }
+  | { kind: 'reply'; route: 'answer'; confidence: number }
+  | { kind: 'delegate'; route: DelegatedRoute; allowedCommandNames: readonly AxCommandName[]; confidence: number }
   | {
       kind: 'fallback';
       reason: JevChatRouterFallbackReason;
@@ -100,6 +161,10 @@ export type JevChatRouterResult =
 
 function fallback(reason: JevChatRouterFallbackReason): JevChatRouterResult {
   return { kind: 'fallback', reason };
+}
+
+function isDelegatedRoute(route: RouteName): route is DelegatedRoute {
+  return Object.prototype.hasOwnProperty.call(DELEGATED_ROUTE_COMMANDS, route);
 }
 
 function choiceAnswer(answer: DecisionAnswer | undefined): ChoiceDecisionAnswer | undefined {
@@ -304,8 +369,25 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       }
     } else if (route === 'report_generate' && confidence < REPORT_ROUTE_MIN_CONFIDENCE) {
       return fallback('uncertain');
+    } else if (route === 'answer' && confidence < REPLY_ROUTE_MIN_CONFIDENCE) {
+      return fallback('uncertain');
+    } else if (isDelegatedRoute(route) && confidence < ACTION_ROUTE_MIN_CONFIDENCE) {
+      return fallback('uncertain');
     } else if (confidence < SAFE_ROUTE_MIN_CONFIDENCE) {
       return fallback('uncertain');
+    }
+
+    if (route === 'answer') return { kind: 'reply', route, confidence };
+    if (isDelegatedRoute(route)) {
+      if ((route === 'workflow_update' || route === 'workflow_delete') && !input.currentWorkflowId?.trim()) {
+        return fallback('missing_context');
+      }
+      return {
+        kind: 'delegate',
+        route,
+        allowedCommandNames: DELEGATED_ROUTE_COMMANDS[route],
+        confidence,
+      };
     }
 
     const command = route === 'report_generate'

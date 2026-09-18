@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentHarness } from '../../harness.js';
-import type { StructuredGenerateInput } from '../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../model/provider.js';
 import { ArtifactStore } from '../../../../persistence/artifact-store.js';
 import { createDatabaseAsync } from '../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../persistence/workflow-store.js';
@@ -14,11 +14,12 @@ import { scriptedModel } from './fixtures.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 
 describe('runAxCommandChat command loop', () => {
-  it('uses Jev to pre-route a safe read before asking the LLM for prose', async () => {
+  it('uses Jev to execute a safe read and asks only the text model for prose', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
-    const seen: StructuredGenerateInput<unknown>[] = [];
     const execute = vi.spyOn(service, 'execute');
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
       evaluate: async () => ({
         answers: {
@@ -32,9 +33,9 @@ describe('runAxCommandChat command loop', () => {
         },
       }),
     };
-    const harness = new AgentHarness(scriptedModel([
-      { kind: 'reply', message: '현재 저장된 workflow를 확인했습니다.' },
-    ], seen));
+    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [
+      '현재 저장된 workflow를 확인했습니다.',
+    ], textSeen));
 
     await expect(runAxCommandChat({
       harness,
@@ -48,8 +49,44 @@ describe('runAxCommandChat command loop', () => {
       { name: 'workflow.list', args: {} },
       expect.objectContaining({ userMessage: '저장된 workflow 목록을 보여줘' }),
     );
-    expect(seen).toHaveLength(1);
-    expect(seen[0]?.messages?.at(-1)?.content).toContain('AX command result');
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(1);
+    expect(textSeen[0]?.messages?.at(-1)?.content).toContain('AX command result');
+  });
+
+  it('uses the text model directly when Jev selects a conversational answer', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'answer',
+            probabilities: { answer: 0.97 },
+            confidence: 0.97,
+          },
+          explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+        },
+      }),
+    };
+    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [
+      'workflow는 저장된 업무이고 일회 실행은 저장하지 않는 한 번의 실행입니다.',
+    ], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: 'workflow와 일회 실행의 차이를 설명해줘',
+    })).resolves.toContain('저장된 업무');
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(1);
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('falls back to the existing LLM planner when Jev is unavailable', async () => {
@@ -73,6 +110,37 @@ describe('runAxCommandChat command loop', () => {
     expect(seen).toHaveLength(1);
   });
 
+  it('does not execute a different mutation lifecycle after Jev delegation', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const execute = vi.spyOn(service, 'execute');
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'workflow_create',
+            probabilities: { workflow_create: 0.98, answer: 0.02 },
+            confidence: 0.98,
+          },
+          explicit_workflow_run: { type: 'boolean', probability: 0.01 },
+        },
+      }),
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: { name: 'workflow.delete', args: { workflowId: 'workflow-1', baseVersion: 1 } } },
+    ], []));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '새 workflow를 저장해줘',
+    })).resolves.toContain('다른 명령이 제안되어 실행하지 않았습니다');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('does not execute an LLM mutation when Jev rejects the user intent', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
@@ -83,8 +151,8 @@ describe('runAxCommandChat command loop', () => {
         answers: {
           route: {
             type: 'choice',
-            choice: 'answer',
-            probabilities: { answer: 0.99 },
+            choice: 'workflow_create',
+            probabilities: { workflow_create: 0.99, answer: 0.01 },
             confidence: 0.99,
           },
           explicit_workflow_run: { type: 'boolean', probability: 0.01 },
@@ -126,8 +194,8 @@ describe('runAxCommandChat command loop', () => {
             answers: {
               route: {
                 type: 'choice',
-                choice: 'answer',
-                probabilities: { answer: 0.99 },
+                choice: 'workflow_create',
+                probabilities: { workflow_create: 0.99, answer: 0.01 },
                 confidence: 0.99,
               },
               explicit_workflow_run: { type: 'boolean', probability: 0.01 },
