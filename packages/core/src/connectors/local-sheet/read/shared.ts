@@ -6,7 +6,10 @@ import { fileRefFromLocalScan } from '../../../contracts/artifacts/file-ref.js';
 import { MAX_WORKBOOK_BYTES } from '../profile.js';
 
 export function assertWorkbookSize(path: string): void {
-  const size = statSync(path).size;
+  assertWorkbookByteLength(statSync(path).size);
+}
+
+export function assertWorkbookByteLength(size: number): void {
   if (size > MAX_WORKBOOK_BYTES) {
     throw new Error(`스프레드시트 파일이 너무 큽니다. ${Math.round(MAX_WORKBOOK_BYTES / (1024 * 1024))}MB 이하만 읽을 수 있습니다.`);
   }

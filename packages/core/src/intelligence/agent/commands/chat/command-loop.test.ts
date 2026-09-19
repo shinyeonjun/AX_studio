@@ -333,6 +333,9 @@ describe('runAxCommandChat command loop', () => {
       userMessage: 'DummyJSON에서 상품 2개만 가져와서 표로 보여줘',
     })).resolves.toContain('| title |');
     expect(seen).toHaveLength(1);
+    expect(seen[0]?.system).toContain('AX schema-less HTTP read planner');
+    expect(seen[0]?.system).not.toContain('workflow.create');
+    expect(seen[0]?.system.length).toBeLessThan(5_000);
     expect(textSeen).toHaveLength(0);
   });
 
@@ -569,6 +572,10 @@ describe('runAxCommandChat command loop', () => {
       userMessage: '주문 order-7을 보여줘',
     })).resolves.toContain('order-7');
     expect(seen).toHaveLength(1);
+    expect(seen[0]?.system).toContain('AX Jev-selected read parameter planner');
+    expect(seen[0]?.system).toContain('openapi.orders.getOrder');
+    expect(seen[0]?.system).not.toContain('workflow.create');
+    expect(seen[0]?.system.length).toBeLessThan(5_000);
     expect(textSeen).toHaveLength(0);
   });
 

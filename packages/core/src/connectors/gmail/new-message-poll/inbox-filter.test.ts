@@ -50,4 +50,48 @@ describe('pollGmailNewMessages inbox filtering', () => {
       seenMessageIds: ['sent-message', 'inbox-message'],
     });
   });
+
+  it('overlaps bounded detail reads while preserving history order', async () => {
+    let active = 0;
+    let peak = 0;
+    const messageGet = vi.fn(async ({ id }: { id: string }) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+      return {
+        data: {
+          labelIds: ['INBOX'],
+          snippet: id,
+          payload: { headers: [{ name: 'Subject', value: id }] },
+        },
+      };
+    });
+    const gmail = {
+      users: {
+        history: {
+          list: vi.fn().mockResolvedValue({
+            data: {
+              historyId: '104',
+              history: [{ messagesAdded: [
+                { message: { id: 'first' } },
+                { message: { id: 'second' } },
+                { message: { id: 'third' } },
+              ] }],
+            },
+          }),
+        },
+        messages: { get: messageGet },
+      },
+    } as unknown as gmail_v1.Gmail;
+
+    const result = await pollGmailNewMessages(gmail, {
+      initialized: true,
+      historyId: '100',
+      seenMessageIds: [],
+    });
+
+    expect(peak).toBe(3);
+    expect(result.events.map((event) => event.payload.messageId)).toEqual(['first', 'second', 'third']);
+  });
 });

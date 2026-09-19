@@ -6,6 +6,8 @@ import { AGENT_COMMAND_CONTEXT } from '../access.js';
 import {
   commandContext,
   commandProtocolPrompt,
+  httpReadPlannerPrompt,
+  readParameterPlannerPrompt,
   compactModelMessages,
   chatReplyPrompt,
   protocolFailureMessage,
@@ -439,15 +441,26 @@ export async function runCommandChatLoop({
       const lifecycleConstraint = delegatedCommandNames
         ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.${httpReadPlan ? ` This is a schema-less HTTP read: emit exactly one capability.invoke with id "http.request", method GET or HEAD, connectionId ${JSON.stringify(httpReadPlan.connectionId)}, and one relative path. Do not emit headers, body, or another capability; the host validates the final URL.` : ''}${readParameterPlan ? ` This is a parameter-fill read: emit exactly one capability.invoke with id ${JSON.stringify(readParameterPlan.capabilityId)}. Start from these host-owned fixed params: ${JSON.stringify(readParameterPlan.fixedParams)}. You may fill only these declared parameter paths: ${readParameterPlan.allowedParameterPaths.join(', ')}. Required paths are: ${readParameterPlan.requiredParameterPaths.join(', ')}. Do not invent a different capability, endpoint, operation, or parameter name.` : ''}`
         : '';
+      const systemPrompt = singleHttpReadPlanner && httpReadPlan
+        ? httpReadPlannerPrompt(httpReadPlan.connectionId, transport.outputInstructions)
+        : readParameterPlan
+          ? readParameterPlannerPrompt(
+            readParameterPlan.capabilityId,
+            readParameterPlan.fixedParams,
+            readParameterPlan.allowedParameterPaths,
+            readParameterPlan.requiredParameterPaths,
+            transport.outputInstructions,
+          )
+          : commandProtocolPrompt({
+            ...options,
+            currentWorkflowId: session.workflowId,
+            sessionMemo: session.sessionMemo,
+            workflowPolicy: session.workflowPolicy,
+          }, `${transport.outputInstructions}${lifecycleConstraint}`, delegatedCommandNames);
       const result = await options.harness.run({
         role: 'command',
         outputSchema: transport.outputSchema,
-        systemPrompt: commandProtocolPrompt({
-          ...options,
-          currentWorkflowId: session.workflowId,
-          sessionMemo: session.sessionMemo,
-          workflowPolicy: session.workflowPolicy,
-        }, `${transport.outputInstructions}${lifecycleConstraint}`, delegatedCommandNames),
+        systemPrompt,
         context: commandContext(options),
         messages: compactModelMessages(messages, options.userMessage),
         sessionId: options.providerSessionId,

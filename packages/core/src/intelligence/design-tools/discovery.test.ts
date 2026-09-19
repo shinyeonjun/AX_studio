@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildDesignToolContext, executeDesignTool } from './index.js';
+import { buildDesignToolContext, buildDiscoveryAssetIndex, executeDesignTool } from './index.js';
 import type { Connector } from '../../connectors/types.js';
 
 function context(overrides: Record<string, unknown> = {}) {
@@ -43,6 +43,11 @@ function context(overrides: Record<string, unknown> = {}) {
 }
 
 describe('design-tools discovery', () => {
+  it('reuses the discovery snapshot within a tool turn', () => {
+    const ctx = context();
+    expect(buildDiscoveryAssetIndex(ctx)).toBe(buildDiscoveryAssetIndex(ctx));
+  });
+
   it('pages a large selected business dictionary without losing later fields', async () => {
     const ctx = context({ discoveryMetadata: [{
       assetId: 'rdb:public.customers', aliases: [], updatedAt: '2026-09-06T00:00:00Z',

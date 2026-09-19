@@ -16,11 +16,12 @@ export function readCsvWorkbook(options: {
   rowLimit: number;
   workbookId: string;
   file: FileRef;
+  data?: Uint8Array;
 }): ReadWorkbookResult {
-  const { path, rowLimit, workbookId, file } = options;
-  assertWorkbookSize(path);
+  const { path, rowLimit, workbookId, file, data } = options;
+  if (!data) assertWorkbookSize(path);
   const ext = extname(path).toLowerCase();
-  const { headers, matrix } = parseCsvMatrix(readFileSync(path, 'utf8'));
+  const { headers, matrix } = parseCsvMatrix(data ? new TextDecoder().decode(data) : readFileSync(path, 'utf8'));
   const sheetName = basename(path, ext);
   const tableId = `tbl_${createHash('sha256').update(`${workbookId}:${sheetName}`).digest('hex').slice(0, 16)}`;
   const table = buildTableArtifact({

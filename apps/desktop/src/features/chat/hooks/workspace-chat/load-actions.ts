@@ -36,17 +36,20 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       ctx.refs.workspaceSessionIdRef.current = loaded.id;
       ctx.setWorkspaceSessionId(loaded.id);
       ctx.setChatMessages(loaded.messages);
-      const sourceResult = await window.ax.listWorkspaceSources(loaded.id);
+      const workflowId = loaded.workflowId;
+      const [sourceResult, workflow] = await Promise.all([
+        window.ax.listWorkspaceSources(loaded.id),
+        workflowId ? window.ax.loadWorkChat(workflowId) : Promise.resolve(undefined),
+      ]);
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.setWorkspaceSources(sourceResult.sources);
-      if (loaded.workflowId) {
-        const workflow = await window.ax.loadWorkChat(loaded.workflowId);
+      if (workflowId && workflow) {
         if (!ctx.isCurrentSession(epoch)) return;
         const state: WorkspaceWorkflowState = {
           ...(workflow.state as WorkspaceWorkflowState),
           summary: workflow.summary,
           title: workflow.title,
-          workflowId: loaded.workflowId,
+          workflowId,
           messages: loaded.messages,
         };
         ctx.setWorkspaceWorkflowState(state);
@@ -75,8 +78,10 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
     ctx.refs.workspaceSessionIdRef.current = undefined;
     ctx.setWorkspaceSessionId(undefined);
     try {
-      const mappedChat = await window.ax.loadWorkspaceChatByWorkflowId(workflowId);
-      const loaded = await window.ax.loadWorkChat(workflowId);
+      const [mappedChat, loaded] = await Promise.all([
+        window.ax.loadWorkspaceChatByWorkflowId(workflowId),
+        window.ax.loadWorkChat(workflowId),
+      ]);
       if (!ctx.isCurrentSession(epoch)) return;
       if (mappedChat) {
         ctx.refs.workspaceSessionIdRef.current = mappedChat.id;

@@ -16,10 +16,11 @@ export function readXlsxWorkbook(options: {
   rowLimit: number;
   workbookId: string;
   file: FileRef;
+  data?: Uint8Array;
 }): ReadWorkbookResult {
-  const { path, rowLimit, workbookId, file } = options;
-  assertWorkbookSize(path);
-  const xlsx = XLSX.read(readFileSync(path), {
+  const { path, rowLimit, workbookId, file, data } = options;
+  if (!data) assertWorkbookSize(path);
+  const xlsx = XLSX.read(data ?? readFileSync(path), {
     type: 'buffer',
     cellDates: true,
     cellFormula: false,

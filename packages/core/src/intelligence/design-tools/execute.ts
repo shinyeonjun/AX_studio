@@ -45,11 +45,9 @@ export async function executeDesignToolCalls(
   if (calls.length > MAX_DESIGN_TOOL_CALLS_PER_TURN) {
     throw new Error(`too_many_design_tool_calls:${MAX_DESIGN_TOOL_CALLS_PER_TURN}`);
   }
-  const results: DesignToolResult[] = [];
-  for (const call of calls) {
-    results.push(await executeDesignTool(call, ctx));
-  }
-  return results;
+  // Every registered design tool is read-only. Promise.all overlaps connector I/O
+  // while retaining the model-supplied result order for deterministic consumers.
+  return Promise.all(calls.map((call) => executeDesignTool(call, ctx)));
 }
 
 export function formatDesignToolResults(results: DesignToolResult[]): string {

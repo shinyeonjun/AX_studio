@@ -69,11 +69,14 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         ctx.setChatMessages(saved.messages);
         ctx.refs.workspaceSessionIdRef.current = saved.id;
         ctx.setWorkspaceSessionId(saved.id);
-        const sourceResult = await window.ax.listWorkspaceSources(saved.id);
+        const [sourceResult, workflow] = await Promise.all([
+          window.ax.listWorkspaceSources(saved.id),
+          changedWorkflowId ? window.ax.loadWorkChat(changedWorkflowId) : Promise.resolve(undefined),
+        ]);
         if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
         ctx.setWorkspaceSources(sourceResult.sources);
         if (changedWorkflowId) {
-          const workflow = await window.ax.loadWorkChat(changedWorkflowId);
+          if (!workflow) throw new Error('workflow_missing_after_save');
           if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
           const state: WorkspaceWorkflowState = {
             ...(workflow.state as WorkspaceWorkflowState),
