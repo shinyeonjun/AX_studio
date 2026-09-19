@@ -5,7 +5,10 @@ export * from './transport.js';
 export * from './access.js';
 export * from './input-requests.js';
 export {
+  buildJevReadOperationIndex,
   buildJevReadOperationHints,
+  JevReadOperationIndex,
+  type JevReadOperationSelection,
   type JevReadOperationHint,
 } from './chat/jev-operation-catalog.js';
 export {

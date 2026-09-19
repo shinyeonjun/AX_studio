@@ -360,6 +360,8 @@ describe('routeChatWithJev', () => {
         }),
       },
       userMessage: '상품 5개 부탁해',
+      readOperationCatalogSize: 71,
+      readOperationCatalogMayBeBounded: true,
     });
 
     expect(result).toMatchObject({
@@ -371,6 +373,8 @@ describe('routeChatWithJev', () => {
         questionIds: ['route'],
         routeCandidateCount: 18,
         operationCandidateCount: 0,
+        operationCatalogSize: 71,
+        operationCatalogMayBeBounded: true,
       },
     });
   });

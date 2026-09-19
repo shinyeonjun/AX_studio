@@ -22,6 +22,10 @@ export interface AxCommandChatOptions {
   httpEndpoints?: JevHttpEndpointHint[];
   /** Safe, read-only operation choices derived from persisted connector metadata. */
   readOperationHints?: JevReadOperationHint[];
+  /** Total indexed read operations before the Jev choice budget is applied. */
+  readOperationCatalogSize?: number;
+  /** True when the index selected a bounded relevance slice. */
+  readOperationCatalogMayBeBounded?: boolean;
   providerSessionId?: string;
   workspaceSessionId?: string;
   workspaceSources?: WorkspaceSourceRecord[];

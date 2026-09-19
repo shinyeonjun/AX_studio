@@ -48,6 +48,12 @@ export interface JevReadParameterHint {
   required: boolean;
 }
 
+export interface JevReadOperationSelection {
+  hints: JevReadOperationHint[];
+  totalCount: number;
+  catalogMayBeBounded: boolean;
+}
+
 const OPERATION_QUERY_STOP_WORDS = new Set([
   'api', 'http', 'rest', 'endpoint', 'json', 'database', 'db', 'sql', 'get', 'head',
   '조회', '검색', '읽기', '읽어', '가져', '가져와', '호출', '요청', '실행', '보여', '보여줘',
@@ -59,6 +65,17 @@ function operationQueryTokens(message: string): string[] {
   return [...message.toLocaleLowerCase().matchAll(/[\p{L}\p{N}][\p{L}\p{N}_-]*/gu)]
     .map(([token]) => token.replace(KOREAN_REQUEST_SUFFIX, ''))
     .filter((token) => token.length >= 2 && !/^\d+$/u.test(token) && !OPERATION_QUERY_STOP_WORDS.has(token));
+}
+
+function operationSearchTerms(text: string): string[] {
+  const terms = new Set(operationQueryTokens(text));
+  for (const [rawToken] of text.matchAll(/[A-Za-z][A-Za-z0-9_-]*/gu)) {
+    for (const part of rawToken.split(/(?<=[a-z])(?=[A-Z])/u)) {
+      const normalized = part.toLocaleLowerCase();
+      if (normalized.length >= 2 && !OPERATION_QUERY_STOP_WORDS.has(normalized)) terms.add(normalized);
+    }
+  }
+  return [...terms];
 }
 
 /**
@@ -182,18 +199,34 @@ function openApiParams(
   return { params: groups, parameterHints, missingParameterPaths };
 }
 
-function addHint(
-  hints: JevReadOperationHint[],
-  input: Omit<JevReadOperationHint, 'key'>,
-): void {
-  if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
-  hints.push({ ...input, key: `op_${hints.length}` });
+type HintResolution = Pick<JevReadOperationHint, 'params' | 'parameterHints' | 'missingParameterPaths'>;
+type HintMetadata = Pick<JevReadOperationHint, 'capabilityId' | 'connector' | 'sourceLabel' | 'label' | 'description'>;
+
+interface IndexedReadOperation extends HintMetadata {
+  key: string;
+  searchTerms: readonly string[];
+  resolve: (userMessage: string) => HintResolution | undefined;
 }
 
-function addOpenApiHints(
-  hints: JevReadOperationHint[],
+function addIndexedOperation(
+  operations: IndexedReadOperation[],
+  input: HintMetadata,
+  resolve: (userMessage: string) => HintResolution | undefined,
+): void {
+  const searchText = [input.sourceLabel, input.label, input.description, input.capabilityId]
+    .filter(Boolean)
+    .join(' ');
+  operations.push({
+    ...input,
+    key: `op_${operations.length}`,
+    searchTerms: operationSearchTerms(searchText),
+    resolve,
+  });
+}
+
+function addOpenApiOperations(
+  operations: IndexedReadOperation[],
   connection: SourceListingConnection,
-  userMessage: string,
 ): void {
   const parsed = parseOpenApiConnectionConfig(connection.config);
   if (!parsed) return;
@@ -205,65 +238,67 @@ function addOpenApiHints(
   }
   const sourceLabel = parsed.label ?? spec.title;
   for (const operation of spec.operations) {
-    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
     if (operation.method !== 'GET' && operation.method !== 'HEAD') continue;
     if (operation.sideEffect !== 'NONE' && operation.sideEffect !== 'REVERSIBLE') continue;
-    const resolution = openApiParams(operation, userMessage);
-    if (!resolution) continue;
+    if (!openApiParams(operation, '')) continue;
     const summary = text(operation.summary, 180);
     const operationLabel = summary ?? operation.operationId;
-    addHint(hints, {
+    addIndexedOperation(operations, {
       capabilityId: `openapi.${spec.id}.${operation.operationId}`,
       connector: 'openapi',
       sourceLabel: sourceLabel.slice(0, 160),
       label: text(`${sourceLabel}: ${operationLabel}`, 160) ?? operationLabel,
       description: text(`${sourceLabel}: ${operation.method} ${operation.path} — ${operationLabel}`, MAX_TEXT_CHARS) ?? operation.path,
-      params: resolution.params,
-      parameterHints: resolution.parameterHints,
-      missingParameterPaths: resolution.missingParameterPaths,
+    }, (userMessage) => {
+      const resolution = openApiParams(operation, userMessage);
+      return resolution
+        ? {
+            params: resolution.params,
+            parameterHints: resolution.parameterHints,
+            missingParameterPaths: resolution.missingParameterPaths,
+          }
+        : undefined;
     });
   }
 }
 
-function addRdbHints(
-  hints: JevReadOperationHint[],
+function addRdbOperations(
+  operations: IndexedReadOperation[],
   connection: SourceListingConnection,
-  userMessage: string,
 ): void {
   const config = asRecord(connection.config);
   if (!config) return;
   const connectionLabel = text(config.label, 100);
-  addHint(hints, {
+  addIndexedOperation(operations, {
     capabilityId: 'rdb.schema.describe',
     connector: 'rdb',
     ...(connectionLabel ? { sourceLabel: connectionLabel } : {}),
     label: connectionLabel ? `${connectionLabel} 스키마` : 'DB 스키마',
     description: connectionLabel ? `${connectionLabel}의 허용된 테이블 목록 조회` : '허용된 DB 테이블 목록 조회',
-    params: {},
-  });
+  }, () => ({ params: {} }));
 
-  const limit = requestLimitValue(userMessage);
   const tables = Array.isArray(config.allowedTables)
-    ? config.allowedTables.filter((table): table is string => typeof table === 'string' && Boolean(table.trim())).slice(0, JEV_READ_OPERATION_MAX_HINTS)
+    ? config.allowedTables.filter((table): table is string => typeof table === 'string' && Boolean(table.trim()))
     : [];
   for (const table of tables) {
-    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
-    addHint(hints, {
+    const safeTable = table.slice(0, 160);
+    addIndexedOperation(operations, {
       capabilityId: 'rdb.query.read',
       connector: 'rdb',
       ...(connectionLabel ? { sourceLabel: connectionLabel } : {}),
-      label: `DB 조회: ${table.slice(0, 160)}`,
-      description: `허용된 테이블 ${table.slice(0, 160)} 읽기`,
-      params: { table, ...(limit === undefined ? {} : { limit }) },
+      label: `DB 조회: ${safeTable}`,
+      description: `허용된 테이블 ${safeTable} 읽기`,
+    }, (userMessage) => {
+      const limit = requestLimitValue(userMessage);
+      return { params: { table, ...(limit === undefined ? {} : { limit }) } };
     });
   }
 }
 
-function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingConnection): void {
+function addMcpOperations(operations: IndexedReadOperation[], connection: SourceListingConnection): void {
   const parsed = parseMcpConnectionConfig(connection.config);
   if (!parsed) return;
   for (const tool of parsed.tools) {
-    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
     if (tool.sideEffect !== 'NONE' && tool.sideEffect !== 'REVERSIBLE') continue;
     const schema = asRecord(tool.inputSchema);
     const required = Array.isArray(schema?.required)
@@ -285,23 +320,88 @@ function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingCon
           ? { type: String((properties[name] as Record<string, unknown>).type).slice(0, 40) }
           : {}),
         required: required.includes(name),
-      }));
+    }));
     const description = text(tool.description, MAX_TEXT_CHARS) ?? `MCP 읽기 도구 ${tool.name}`;
-    addHint(hints, {
+    const resolution: HintResolution = {
+      params: {},
+      parameterHints,
+      missingParameterPaths: required,
+    };
+    addIndexedOperation(operations, {
       capabilityId: `mcp.${parsed.serverId}.${tool.name}`,
       connector: 'mcp',
       sourceLabel: parsed.serverId,
       label: text(tool.name, 160) ?? 'MCP 읽기 도구',
       description,
-      params: {},
-      parameterHints,
-      missingParameterPaths: required,
-    });
+    }, () => resolution);
   }
 }
 
+export class JevReadOperationIndex {
+  private readonly operations: readonly IndexedReadOperation[];
+  private readonly termIndex: ReadonlyMap<string, readonly number[]>;
+
+  constructor(connections: readonly SourceListingConnection[]) {
+    const operations: IndexedReadOperation[] = [];
+    for (const connection of connections) {
+      if (!connection.connected) continue;
+      if (connection.connector === 'openapi') addOpenApiOperations(operations, connection);
+      if (connection.connector === 'rdb') addRdbOperations(operations, connection);
+      if (connection.connector === 'mcp') addMcpOperations(operations, connection);
+    }
+    this.operations = operations;
+
+    const termIndex = new Map<string, number[]>();
+    for (const [index, operation] of operations.entries()) {
+      for (const term of operation.searchTerms) {
+        const postings = termIndex.get(term);
+        if (postings) postings.push(index);
+        else termIndex.set(term, [index]);
+      }
+    }
+    this.termIndex = termIndex;
+  }
+
+  select(userMessage: string): JevReadOperationSelection {
+    const catalogMayBeBounded = this.operations.length >= JEV_READ_OPERATION_MAX_HINTS;
+    let selected: readonly IndexedReadOperation[] = this.operations;
+    if (catalogMayBeBounded) {
+      const scores = new Map<number, number>();
+      for (const term of new Set(operationQueryTokens(userMessage))) {
+        for (const index of this.termIndex.get(term) ?? []) {
+          scores.set(index, (scores.get(index) ?? 0) + 1);
+        }
+      }
+      selected = [...scores.entries()]
+        .sort((left, right) => right[1] - left[1] || left[0] - right[0])
+        .slice(0, JEV_READ_OPERATION_MAX_HINTS)
+        .map(([index]) => this.operations[index]);
+    }
+
+    const hints = selected
+      .map((operation) => {
+        const resolution = operation.resolve(userMessage);
+        return resolution ? { ...operation, ...resolution } : undefined;
+      })
+      .filter((hint): hint is IndexedReadOperation & HintResolution => hint !== undefined)
+      .map(({ resolve: _resolve, searchTerms: _searchTerms, ...hint }) => hint);
+
+    return {
+      hints,
+      totalCount: this.operations.length,
+      catalogMayBeBounded,
+    };
+  }
+}
+
+export function buildJevReadOperationIndex(
+  connections: readonly SourceListingConnection[],
+): JevReadOperationIndex {
+  return new JevReadOperationIndex(connections);
+}
+
 /**
- * Builds a bounded local catalog for Jev route selection.
+ * Builds a query-specific local catalog for Jev route selection.
  *
  * This is deliberately metadata-only: it parses persisted schemas and never
  * probes a network, opens a database, or includes credentials in the result.
@@ -310,12 +410,5 @@ export function buildJevReadOperationHints(
   connections: readonly SourceListingConnection[],
   userMessage: string,
 ): JevReadOperationHint[] {
-  const hints: JevReadOperationHint[] = [];
-  for (const connection of connections) {
-    if (!connection.connected || hints.length >= JEV_READ_OPERATION_MAX_HINTS) continue;
-    if (connection.connector === 'openapi') addOpenApiHints(hints, connection, userMessage);
-    if (connection.connector === 'rdb') addRdbHints(hints, connection, userMessage);
-    if (connection.connector === 'mcp') addMcpHints(hints, connection);
-  }
-  return hints;
+  return buildJevReadOperationIndex(connections).select(userMessage).hints;
 }

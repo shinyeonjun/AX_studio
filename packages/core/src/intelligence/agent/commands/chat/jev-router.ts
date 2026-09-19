@@ -172,6 +172,8 @@ export interface JevChatRouterInput {
   httpEndpoints?: readonly JevHttpEndpointHint[];
   /** Safe local mappings from Jev choices to host-owned read commands. */
   readOperationHints?: readonly JevReadOperationHint[];
+  readOperationCatalogSize?: number;
+  readOperationCatalogMayBeBounded?: boolean;
   workspaceSources?: readonly WorkspaceSourceRecord[];
   abortSignal?: AbortSignal;
 }
@@ -189,6 +191,8 @@ export interface JevChatRouterTelemetry {
   questionIds: readonly string[];
   routeCandidateCount: number;
   operationCandidateCount: number;
+  operationCatalogSize: number;
+  operationCatalogMayBeBounded: boolean;
   estimatedRequestBytes: number;
 }
 
@@ -498,7 +502,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           usable: endpoint.usable !== false,
         })),
       read_operation_count: operationHints.length,
-      read_operation_catalog_may_be_bounded: (input.readOperationHints?.length ?? 0) >= JEV_READ_OPERATION_MAX_HINTS,
+      read_operation_catalog_size: input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0,
+      read_operation_catalog_may_be_bounded: input.readOperationCatalogMayBeBounded
+        ?? (input.readOperationHints?.length ?? 0) >= JEV_READ_OPERATION_MAX_HINTS,
     },
     policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
   };
@@ -576,6 +582,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           questionIds: Object.keys(questions),
           routeCandidateCount: Object.keys(routeCriteria).length,
           operationCandidateCount: Object.keys(operationCriteria).length,
+          operationCatalogSize: input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0,
+          operationCatalogMayBeBounded: input.readOperationCatalogMayBeBounded
+            ?? (input.readOperationHints?.length ?? 0) >= JEV_READ_OPERATION_MAX_HINTS,
           estimatedRequestBytes: new TextEncoder().encode(JSON.stringify({ state, questions })).byteLength,
         }
       : undefined;

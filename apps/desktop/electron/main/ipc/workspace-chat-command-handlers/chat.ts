@@ -1,10 +1,12 @@
 import {
   appendAppLog,
   AX_COMMAND_CHAT_TIMEOUT_MS,
-  buildJevReadOperationHints,
+  buildJevReadOperationIndex,
   httpEndpointsFromConnections,
   runAxCommandChat,
+  type JevReadOperationIndex,
 } from '@ax-studio/core';
+import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import type { AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
@@ -18,6 +20,34 @@ import {
 } from '../../workspace-chat-registry.js';
 import { runE2EChat } from '../../e2e-test-seam.js';
 import { isContextConfirmation, isJobConfirmation, workflowIdsChanged } from './helpers.js';
+
+type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
+
+let jevOperationIndexCache: {
+  fingerprint: string;
+  index: JevReadOperationIndex;
+} | undefined;
+
+function jevOperationConnectionFingerprint(connections: JevOperationConnections): string {
+  const snapshot = connections
+    .map((connection) => [connection.connector, connection.connected, connection.config] as const)
+    .sort(([left], [right]) => left.localeCompare(right));
+  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+}
+
+function selectJevReadOperations(
+  connections: JevOperationConnections,
+  userMessage: string,
+) {
+  const fingerprint = jevOperationConnectionFingerprint(connections);
+  if (!jevOperationIndexCache || jevOperationIndexCache.fingerprint !== fingerprint) {
+    jevOperationIndexCache = {
+      fingerprint,
+      index: buildJevReadOperationIndex(connections),
+    };
+  }
+  return jevOperationIndexCache.index.select(userMessage);
+}
 
 export function registerWorkspaceChatMessageHandler() {
   ipcHandle('ax:sendCommandChat', async (
@@ -76,6 +106,7 @@ export function registerWorkspaceChatMessageHandler() {
         };
       }
       const connections = core.store.getConnections();
+      const operationSelection = selectJevReadOperations(connections, userMessage);
       const httpEndpoints = httpEndpointsFromConnections(connections).map((endpoint) => ({
         id: endpoint.id,
         ...(endpoint.label ? { label: endpoint.label } : {}),
@@ -87,7 +118,9 @@ export function registerWorkspaceChatMessageHandler() {
         decisionEngine: core.decisionEngine,
         connectedConnectors: connectedConnectorIds(core.store),
         httpEndpoints,
-        readOperationHints: buildJevReadOperationHints(connections, userMessage),
+        readOperationHints: operationSelection.hints,
+        readOperationCatalogSize: operationSelection.totalCount,
+        readOperationCatalogMayBeBounded: operationSelection.catalogMayBeBounded,
         messages: history,
         userMessage,
         currentWorkflowId: effectiveWorkflowId,

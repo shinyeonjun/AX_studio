@@ -238,6 +238,8 @@ export async function runCommandChatLoop({
         connectedConnectors: options.connectedConnectors,
         httpEndpoints: options.httpEndpoints,
         readOperationHints: options.readOperationHints,
+        readOperationCatalogSize: options.readOperationCatalogSize,
+        readOperationCatalogMayBeBounded: options.readOperationCatalogMayBeBounded,
         workspaceSources: options.workspaceSources,
         abortSignal: signal,
       });
@@ -251,6 +253,8 @@ export async function runCommandChatLoop({
         durationMs: Date.now() - jevStartedAt,
         outcome: jevRouteOutcome,
         readOperationHintCount: options.readOperationHints?.length ?? 0,
+        readOperationCatalogSize: options.readOperationCatalogSize,
+        readOperationCatalogMayBeBounded: options.readOperationCatalogMayBeBounded,
         ...(jevTelemetry ? {
           jevModel: jevTelemetry.model,
           jevInputTokens: jevTelemetry.inputTokens,
@@ -258,6 +262,8 @@ export async function runCommandChatLoop({
           jevQuestionIds: jevTelemetry.questionIds,
           jevRouteCandidateCount: jevTelemetry.routeCandidateCount,
           jevOperationCandidateCount: jevTelemetry.operationCandidateCount,
+          jevOperationCatalogSize: jevTelemetry.operationCatalogSize,
+          jevOperationCatalogMayBeBounded: jevTelemetry.operationCatalogMayBeBounded,
           jevEstimatedRequestBytes: jevTelemetry.estimatedRequestBytes,
         } : {}),
       });

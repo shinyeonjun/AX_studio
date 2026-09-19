@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildJevReadOperationHints } from './jev-operation-catalog.js';
+import {
+  buildJevReadOperationHints,
+  buildJevReadOperationIndex,
+} from './jev-operation-catalog.js';
 
 describe('buildJevReadOperationHints', () => {
   it('builds bounded read choices from OpenAPI metadata and infers a numeric limit', () => {
@@ -169,5 +172,48 @@ describe('buildJevReadOperationHints', () => {
       parameterHints: [{ path: 'pathParams.orderId', type: 'string', required: true }],
       missingParameterPaths: ['pathParams.orderId'],
     });
+  });
+
+  it('indexes the full catalog and selects a relevant operation beyond the old 64-item prefix', () => {
+    const tables = [...Array.from({ length: 69 }, (_, index) => `table_${index}`), '재고'];
+    const index = buildJevReadOperationIndex([{
+      connector: 'rdb',
+      connected: true,
+      config: { type: 'sqlite', allowedTables: tables },
+    }]);
+
+    const selection = index.select('재고 5개 보여줘');
+
+    expect(selection.totalCount).toBe(71);
+    expect(selection.catalogMayBeBounded).toBe(true);
+    expect(selection.hints).toHaveLength(1);
+    expect(selection.hints[0]).toMatchObject({
+      capabilityId: 'rdb.query.read',
+      params: { table: '재고', limit: 5 },
+    });
+  });
+
+  it('does not send an unrelated bounded catalog to Jev', () => {
+    const tables = Array.from({ length: 70 }, (_, index) => `table_${index}`);
+    const hints = buildJevReadOperationHints([{
+      connector: 'rdb',
+      connected: true,
+      config: { type: 'sqlite', allowedTables: tables },
+    }], '재고를 보여줘');
+
+    expect(hints).toEqual([]);
+  });
+
+  it('resolves request-specific limits after selecting from a cached index', () => {
+    const index = buildJevReadOperationIndex([{
+      connector: 'rdb',
+      connected: true,
+      config: { type: 'sqlite', allowedTables: ['products'] },
+    }]);
+
+    expect(index.select('products 5개 보여줘').hints.find((hint) => hint.params.table === 'products')?.params)
+      .toEqual({ table: 'products', limit: 5 });
+    expect(index.select('products 2개 보여줘').hints.find((hint) => hint.params.table === 'products')?.params)
+      .toEqual({ table: 'products', limit: 2 });
   });
 });
