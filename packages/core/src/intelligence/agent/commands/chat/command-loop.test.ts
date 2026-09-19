@@ -132,6 +132,57 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(1);
   });
 
+  it('does not call Jev for a conceptual API question', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_should_not_run'); },
+    };
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', ['API는 외부 서비스와 통신하는 인터페이스입니다.'], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: 'API가 뭐야?',
+    })).resolves.toContain('외부 서비스');
+    expect(textSeen).toHaveLength(1);
+  });
+
+  it('returns a Jev-selected read failure without an LLM paraphrase', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db), {
+      readGateway: {
+        execute: async () => ({ tool: 'sources.list', ok: false, error: 'source_read_failed' }),
+      },
+    });
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'source_list',
+            probabilities: { source_list: 0.98 },
+            confidence: 0.98,
+          },
+        },
+      }),
+    };
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '연결된 자료 목록을 보여줘',
+    })).resolves.toContain('source_read_failed');
+    expect(textSeen).toHaveLength(0);
+  });
+
   it('finishes a Jev-selected simple HTTP table without a second text-model call', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

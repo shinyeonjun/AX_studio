@@ -23,7 +23,10 @@ import { gateChatCommandWithJev } from './jev-command-gate.js';
 import { issue as commandIssue, result as commandResult } from '../contract.js';
 
 const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
-const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|삭제|수정|변경|연결|보여|목록|파일|문서|pdf|보고서|workflow|워크플로우|api|http|데이터|테이블|재고|주문|slack|gmail|database|db|\b(?:run|execute|get|post|delete)\b/iu;
+// Keep nouns out of this fast path. They describe a topic, not an action, and
+// routing questions such as "API가 뭐야?" through Jev adds latency for no
+// safety benefit. Imperative/action wording still reaches the bounded router.
+const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|삭제|수정|변경|연결|보여|목록|확인|정리|추천|분석|\b(?:run|execute|get|post|delete|show|list|call)\b/iu;
 
 function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
   if (options.allowContextUpdate || options.allowJobCommit) return true;
@@ -109,7 +112,7 @@ export async function runCommandChatLoop({
     return hostFacingMessage(publishResult(command.name, blocked), message);
   };
 
-  const textReplyFromJev = async (phase: string): Promise<string | undefined> => {
+  const textReplyFromModel = async (phase: string): Promise<string | undefined> => {
     try {
       const reply = await options.harness.runText({
         role: 'command',
@@ -123,15 +126,17 @@ export async function runCommandChatLoop({
       });
       const output = reply.output.trim();
       if (!output) return undefined;
-    appendAppLog('info', 'Chat received a text-only reply.', {
-      event: 'chat_reply_generated',
+      appendAppLog('info', 'Chat received a text-only reply.', {
+        event: 'chat_reply_generated',
+        phase,
         provider: reply.provider,
       });
       return output;
     } catch (error) {
       signal.throwIfAborted();
-      appendAppLog('warn', 'Jev-selected chat route could not generate a text-only reply; falling back to the command model.', {
-        event: 'jev_chat_reply_fallback',
+      appendAppLog('warn', 'Chat text reply could not be generated; falling back to the command model.', {
+        event: 'chat_text_reply_fallback',
+        phase,
         error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
@@ -140,7 +145,7 @@ export async function runCommandChatLoop({
 
   const useJevRoute = shouldUseJevRoute(options);
   if (!useJevRoute) {
-    const reply = await textReplyFromJev('ax_command_chat_text');
+    const reply = await textReplyFromModel('ax_command_chat_text');
     if (reply) return reply;
   }
 
@@ -177,7 +182,7 @@ export async function runCommandChatLoop({
       });
     }
     if (jevRoute.kind === 'reply') {
-      const reply = await textReplyFromJev('ax_command_chat_jev_reply');
+      const reply = await textReplyFromModel('ax_command_chat_jev_reply');
       if (reply) return reply;
     }
     if (jevRoute.kind === 'delegate') {
@@ -217,6 +222,11 @@ export async function runCommandChatLoop({
       if (jevRoute.command.name === 'workflow.run') {
         return hostFacingMessage(resultForLoop, '워크플로우 실행 요청을 처리하지 못했습니다.');
       }
+      // Execution status and host issues are deterministic facts. Do not pay
+      // for an LLM paraphrase that could obscure the actual failure.
+      if (resultForLoop.status !== 'ok') {
+        return hostFacingMessage(resultForLoop, '요청을 처리하지 못했습니다.');
+      }
       const deterministicReply = deterministicHttpChatReply(
         jevRoute.command,
         resultForLoop,
@@ -227,7 +237,7 @@ export async function runCommandChatLoop({
         { role: 'assistant', content: JSON.stringify({ kind: 'command', command: jevRoute.command }) },
         { role: 'user', content: resultMessage(resultForLoop) },
       );
-      const reply = await textReplyFromJev('ax_command_chat_jev_result');
+      const reply = await textReplyFromModel('ax_command_chat_jev_result');
       if (reply) return reply;
     }
   }
