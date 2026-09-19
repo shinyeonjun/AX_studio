@@ -186,6 +186,9 @@ describe('buildJevReadOperationHints', () => {
 
     expect(selection.totalCount).toBe(71);
     expect(selection.catalogMayBeBounded).toBe(true);
+    expect(selection.mode).toBe('lexical_relevance');
+    expect(selection.lexicalMatchedOperationCount).toBe(1);
+    expect(selection.lexicalTopScore).toBe(1);
     expect(selection.hints).toHaveLength(1);
     expect(selection.hints[0]).toMatchObject({
       capabilityId: 'rdb.query.read',
@@ -195,13 +198,17 @@ describe('buildJevReadOperationHints', () => {
 
   it('does not send an unrelated bounded catalog to Jev', () => {
     const tables = Array.from({ length: 70 }, (_, index) => `table_${index}`);
-    const hints = buildJevReadOperationHints([{
+    const index = buildJevReadOperationIndex([{
       connector: 'rdb',
       connected: true,
       config: { type: 'sqlite', allowedTables: tables },
-    }], '재고를 보여줘');
+    }]);
+    const selection = index.select('재고를 보여줘');
 
-    expect(hints).toEqual([]);
+    expect(selection.hints).toEqual([]);
+    expect(selection.mode).toBe('no_lexical_match');
+    expect(selection.lexicalMatchedOperationCount).toBe(0);
+    expect(selection.lexicalTopScore).toBe(0);
   });
 
   it('resolves request-specific limits after selecting from a cached index', () => {
@@ -211,7 +218,11 @@ describe('buildJevReadOperationHints', () => {
       config: { type: 'sqlite', allowedTables: ['products'] },
     }]);
 
-    expect(index.select('products 5개 보여줘').hints.find((hint) => hint.params.table === 'products')?.params)
+    const selection = index.select('products 5개 보여줘');
+    expect(selection.mode).toBe('full_catalog');
+    expect(selection.lexicalMatchedOperationCount).toBe(1);
+    expect(selection.lexicalTopScore).toBe(1);
+    expect(selection.hints.find((hint) => hint.params.table === 'products')?.params)
       .toEqual({ table: 'products', limit: 5 });
     expect(index.select('products 2개 보여줘').hints.find((hint) => hint.params.table === 'products')?.params)
       .toEqual({ table: 'products', limit: 2 });

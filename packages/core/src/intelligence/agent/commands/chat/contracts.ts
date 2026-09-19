@@ -8,7 +8,10 @@ import type { AxCommandResult, AxUiPresentation } from '../schema.js';
 import { inputRequestsForResult } from '../input-requests.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type { JevHttpEndpointHint } from './jev-router.js';
-import type { JevReadOperationHint } from './jev-operation-catalog.js';
+import type {
+  JevReadOperationHint,
+  JevReadOperationSelection,
+} from './jev-operation-catalog.js';
 
 export interface AxCommandChatOptions {
   harness: AgentHarness;
@@ -26,6 +29,9 @@ export interface AxCommandChatOptions {
   readOperationCatalogSize?: number;
   /** True when the index selected a bounded relevance slice. */
   readOperationCatalogMayBeBounded?: boolean;
+  readOperationSelectionMode?: JevReadOperationSelection['mode'];
+  readOperationLexicalMatchedOperationCount?: number;
+  readOperationLexicalTopScore?: number;
   providerSessionId?: string;
   workspaceSessionId?: string;
   workspaceSources?: WorkspaceSourceRecord[];

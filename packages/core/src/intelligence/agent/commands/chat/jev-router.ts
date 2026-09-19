@@ -16,6 +16,7 @@ import {
   JEV_READ_OPERATION_MAX_HINTS,
   selectJevReadOperationHints,
   type JevReadOperationHint,
+  type JevReadOperationSelection,
 } from './jev-operation-catalog.js';
 import type { ReadParameterPlan } from './read-plan.js';
 import {
@@ -174,6 +175,9 @@ export interface JevChatRouterInput {
   readOperationHints?: readonly JevReadOperationHint[];
   readOperationCatalogSize?: number;
   readOperationCatalogMayBeBounded?: boolean;
+  readOperationSelectionMode?: JevReadOperationSelection['mode'];
+  readOperationLexicalMatchedOperationCount?: number;
+  readOperationLexicalTopScore?: number;
   workspaceSources?: readonly WorkspaceSourceRecord[];
   abortSignal?: AbortSignal;
 }
@@ -193,6 +197,9 @@ export interface JevChatRouterTelemetry {
   operationCandidateCount: number;
   operationCatalogSize: number;
   operationCatalogMayBeBounded: boolean;
+  operationSelectionMode?: JevReadOperationSelection['mode'];
+  operationLexicalMatchedOperationCount?: number;
+  operationLexicalTopScore?: number;
   estimatedRequestBytes: number;
 }
 
@@ -481,6 +488,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   input.abortSignal?.throwIfAborted();
   const requestFeatures = deriveJevRequestFeatures(input.userMessage);
   const operationHints = selectJevReadOperationHints(input.readOperationHints ?? [], input.userMessage);
+  const operationCatalogSize = input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0;
+  const operationSelectionMode = input.readOperationSelectionMode;
   const routeController = new AbortController();
   const abortExternal = () => routeController.abort(input.abortSignal?.reason);
   input.abortSignal?.addEventListener('abort', abortExternal, { once: true });
@@ -502,7 +511,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           usable: endpoint.usable !== false,
         })),
       read_operation_count: operationHints.length,
-      read_operation_catalog_size: input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0,
+      read_operation_catalog_size: operationCatalogSize,
       read_operation_catalog_may_be_bounded: input.readOperationCatalogMayBeBounded
         ?? (input.readOperationHints?.length ?? 0) >= JEV_READ_OPERATION_MAX_HINTS,
     },
@@ -582,9 +591,16 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           questionIds: Object.keys(questions),
           routeCandidateCount: Object.keys(routeCriteria).length,
           operationCandidateCount: Object.keys(operationCriteria).length,
-          operationCatalogSize: input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0,
+          operationCatalogSize,
           operationCatalogMayBeBounded: input.readOperationCatalogMayBeBounded
             ?? (input.readOperationHints?.length ?? 0) >= JEV_READ_OPERATION_MAX_HINTS,
+          ...(operationSelectionMode === undefined ? {} : { operationSelectionMode }),
+          ...(input.readOperationLexicalMatchedOperationCount === undefined ? {} : {
+            operationLexicalMatchedOperationCount: input.readOperationLexicalMatchedOperationCount,
+          }),
+          ...(input.readOperationLexicalTopScore === undefined ? {} : {
+            operationLexicalTopScore: input.readOperationLexicalTopScore,
+          }),
           estimatedRequestBytes: new TextEncoder().encode(JSON.stringify({ state, questions })).byteLength,
         }
       : undefined;

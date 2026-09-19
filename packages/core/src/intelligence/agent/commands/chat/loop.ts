@@ -240,6 +240,9 @@ export async function runCommandChatLoop({
         readOperationHints: options.readOperationHints,
         readOperationCatalogSize: options.readOperationCatalogSize,
         readOperationCatalogMayBeBounded: options.readOperationCatalogMayBeBounded,
+        readOperationSelectionMode: options.readOperationSelectionMode,
+        readOperationLexicalMatchedOperationCount: options.readOperationLexicalMatchedOperationCount,
+        readOperationLexicalTopScore: options.readOperationLexicalTopScore,
         workspaceSources: options.workspaceSources,
         abortSignal: signal,
       });
@@ -255,6 +258,9 @@ export async function runCommandChatLoop({
         readOperationHintCount: options.readOperationHints?.length ?? 0,
         readOperationCatalogSize: options.readOperationCatalogSize,
         readOperationCatalogMayBeBounded: options.readOperationCatalogMayBeBounded,
+        readOperationSelectionMode: options.readOperationSelectionMode,
+        readOperationLexicalMatchedOperationCount: options.readOperationLexicalMatchedOperationCount,
+        readOperationLexicalTopScore: options.readOperationLexicalTopScore,
         ...(jevTelemetry ? {
           jevModel: jevTelemetry.model,
           jevInputTokens: jevTelemetry.inputTokens,
@@ -264,6 +270,9 @@ export async function runCommandChatLoop({
           jevOperationCandidateCount: jevTelemetry.operationCandidateCount,
           jevOperationCatalogSize: jevTelemetry.operationCatalogSize,
           jevOperationCatalogMayBeBounded: jevTelemetry.operationCatalogMayBeBounded,
+          jevOperationSelectionMode: jevTelemetry.operationSelectionMode,
+          jevOperationLexicalMatchedOperationCount: jevTelemetry.operationLexicalMatchedOperationCount,
+          jevOperationLexicalTopScore: jevTelemetry.operationLexicalTopScore,
           jevEstimatedRequestBytes: jevTelemetry.estimatedRequestBytes,
         } : {}),
       });

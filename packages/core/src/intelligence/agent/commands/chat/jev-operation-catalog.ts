@@ -52,6 +52,12 @@ export interface JevReadOperationSelection {
   hints: JevReadOperationHint[];
   totalCount: number;
   catalogMayBeBounded: boolean;
+  /** How the local index decided which candidates to expose to Jev. */
+  mode: 'empty_catalog' | 'full_catalog' | 'lexical_relevance' | 'no_lexical_match';
+  /** Number of indexed operations matching at least one request token. */
+  lexicalMatchedOperationCount: number;
+  /** Highest number of request tokens matched by a single operation. */
+  lexicalTopScore: number;
 }
 
 const OPERATION_QUERY_STOP_WORDS = new Set([
@@ -364,14 +370,21 @@ export class JevReadOperationIndex {
 
   select(userMessage: string): JevReadOperationSelection {
     const catalogMayBeBounded = this.operations.length >= JEV_READ_OPERATION_MAX_HINTS;
+    const scores = new Map<number, number>();
+    for (const term of new Set(operationQueryTokens(userMessage))) {
+      for (const index of this.termIndex.get(term) ?? []) {
+        scores.set(index, (scores.get(index) ?? 0) + 1);
+      }
+    }
+    let lexicalTopScore = 0;
+    for (const score of scores.values()) lexicalTopScore = Math.max(lexicalTopScore, score);
+    const mode = this.operations.length === 0
+      ? 'empty_catalog'
+      : catalogMayBeBounded
+        ? scores.size > 0 ? 'lexical_relevance' : 'no_lexical_match'
+        : 'full_catalog';
     let selected: readonly IndexedReadOperation[] = this.operations;
     if (catalogMayBeBounded) {
-      const scores = new Map<number, number>();
-      for (const term of new Set(operationQueryTokens(userMessage))) {
-        for (const index of this.termIndex.get(term) ?? []) {
-          scores.set(index, (scores.get(index) ?? 0) + 1);
-        }
-      }
       selected = [...scores.entries()]
         .sort((left, right) => right[1] - left[1] || left[0] - right[0])
         .slice(0, JEV_READ_OPERATION_MAX_HINTS)
@@ -390,6 +403,9 @@ export class JevReadOperationIndex {
       hints,
       totalCount: this.operations.length,
       catalogMayBeBounded,
+      mode,
+      lexicalMatchedOperationCount: scores.size,
+      lexicalTopScore,
     };
   }
 }

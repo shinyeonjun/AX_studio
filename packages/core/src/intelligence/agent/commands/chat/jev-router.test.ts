@@ -362,6 +362,9 @@ describe('routeChatWithJev', () => {
       userMessage: '상품 5개 부탁해',
       readOperationCatalogSize: 71,
       readOperationCatalogMayBeBounded: true,
+      readOperationSelectionMode: 'lexical_relevance',
+      readOperationLexicalMatchedOperationCount: 1,
+      readOperationLexicalTopScore: 2,
     });
 
     expect(result).toMatchObject({
@@ -375,6 +378,9 @@ describe('routeChatWithJev', () => {
         operationCandidateCount: 0,
         operationCatalogSize: 71,
         operationCatalogMayBeBounded: true,
+        operationSelectionMode: 'lexical_relevance',
+        operationLexicalMatchedOperationCount: 1,
+        operationLexicalTopScore: 2,
       },
     });
   });
