@@ -21,3 +21,8 @@ model = "gpt-5.4"
 [providers.grok]
 mode = "api"
 model = "grok-4.6"
+
+[decision.jev]
+enabled = false
+model = "jev-latest"
+base_url = "https://api.typesafe.ai"
