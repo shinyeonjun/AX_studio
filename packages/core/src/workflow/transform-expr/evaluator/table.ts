@@ -7,6 +7,14 @@ import type {
 import { evaluateConditionOnRow } from './conditions.js';
 import { requireTable } from './helpers.js';
 
+function compareValues(left: unknown, right: unknown): number {
+  if (left === right) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  if (typeof left === 'number' && typeof right === 'number') return left - right;
+  return String(left) < String(right) ? -1 : 1;
+}
+
 export function evaluateColumn(
   expr: Extract<TransformExpr, { op: 'column' }>,
   snapshots: SnapshotTables,
@@ -53,11 +61,10 @@ export function evaluateSort(
   const table = requireTable(evaluate(expr.input, snapshots), 'sort_input_not_table');
   const sorted = [...table.rows].sort((left, right) => {
     for (const key of expr.by) {
-      const leftValue = left.values[key.column];
-      const rightValue = right.values[key.column];
-      if (leftValue === rightValue) continue;
+      const comparison = compareValues(left.values[key.column], right.values[key.column]);
+      if (comparison === 0) continue;
       const direction = key.direction === 'desc' ? -1 : 1;
-      return String(leftValue) < String(rightValue) ? -direction : direction;
+      return comparison * direction;
     }
     return 0;
   });

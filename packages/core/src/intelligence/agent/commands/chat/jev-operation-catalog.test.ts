@@ -71,7 +71,7 @@ describe('buildJevReadOperationHints', () => {
     expect(JSON.stringify(hints)).not.toContain('app.db');
   });
 
-  it('only exposes MCP tools explicitly marked as read-only and with no required arguments', () => {
+  it('exposes read-only MCP tools and records safe argument contracts', () => {
     const hints = buildJevReadOperationHints([
       {
         connector: 'mcp',
@@ -87,11 +87,16 @@ describe('buildJevReadOperationHints', () => {
       },
     ], '상태를 보여줘');
 
-    expect(hints).toHaveLength(1);
+    expect(hints).toHaveLength(2);
     expect(hints[0]).toMatchObject({
       capabilityId: 'mcp.ops.status',
       connector: 'mcp',
       params: {},
+    });
+    expect(hints[1]).toMatchObject({
+      capabilityId: 'mcp.ops.search',
+      parameterHints: [{ path: 'query', required: true }],
+      missingParameterPaths: ['query'],
     });
   });
 
@@ -125,5 +130,42 @@ describe('buildJevReadOperationHints', () => {
 
     expect(hints).toEqual([]);
     expect(JSON.stringify(hints)).not.toContain('do-not-forward');
+  });
+
+  it('keeps a safe read operation available when a non-secret required value needs filling', () => {
+    const hints = buildJevReadOperationHints([
+      {
+        connector: 'openapi',
+        connected: true,
+        config: {
+          specId: 'orders',
+          baseUrl: 'https://api.example.test',
+          specJson: {
+            openapi: '3.0.0',
+            info: { title: 'Orders' },
+            servers: [{ url: 'https://api.example.test' }],
+            paths: {
+              '/orders/{orderId}': {
+                get: {
+                  operationId: 'getOrder',
+                  parameters: [{
+                    name: 'orderId', in: 'path', required: true,
+                    schema: { type: 'string' },
+                  }],
+                },
+              },
+            },
+          },
+        },
+      },
+    ], '주문 상세를 조회해줘');
+
+    expect(hints).toHaveLength(1);
+    expect(hints[0]).toMatchObject({
+      capabilityId: 'openapi.orders.getOrder',
+      params: {},
+      parameterHints: [{ path: 'pathParams.orderId', type: 'string', required: true }],
+      missingParameterPaths: ['pathParams.orderId'],
+    });
   });
 });

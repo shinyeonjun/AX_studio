@@ -24,6 +24,12 @@ import {
   selectHttpEndpointForRead,
   type JevHttpEndpointHint,
 } from './jev-router.js';
+import {
+  compileHttpReadCommand,
+  compileReadParameterCommand,
+  type HttpReadPlan,
+  type ReadParameterPlan,
+} from './read-plan.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { gateChatCommandWithJev } from './jev-command-gate.js';
 import { issue as commandIssue, result as commandResult } from '../contract.js';
@@ -192,6 +198,8 @@ export async function runCommandChatLoop({
   }
 
   let delegatedCommandNames: readonly AxCommandName[] | undefined;
+  let readParameterPlan: ReadParameterPlan | undefined;
+  let httpReadPlan: HttpReadPlan | undefined;
   let singleHttpReadPlanner = false;
   let singleHttpReadEndpointId: string | undefined;
   let effectiveMaxRounds = maxRounds;
@@ -247,10 +255,21 @@ export async function runCommandChatLoop({
         confidence: jevRoute.confidence,
       });
     }
+    if (jevRoute.kind === 'parameterized') {
+      readParameterPlan = jevRoute.plan;
+      delegatedCommandNames = ['capability.invoke'];
+      effectiveMaxRounds = 1;
+      appendAppLog('info', 'Jev selected a read operation; the LLM may fill only its declared parameters.', {
+        event: 'jev_chat_read_parameter_fill',
+        capabilityId: readParameterPlan.capabilityId,
+        requiredParameterCount: readParameterPlan.requiredParameterPaths.length,
+      });
+    }
     const plannerEndpoint = singleHttpReadPlannerEndpoint(options);
     if (jevRoute.kind === 'fallback' && plannerEndpoint) {
       singleHttpReadPlanner = true;
       singleHttpReadEndpointId = plannerEndpoint.id.slice(0, 128);
+      httpReadPlan = { connectionId: singleHttpReadEndpointId };
       effectiveMaxRounds = 1;
       delegatedCommandNames = ['capability.invoke'];
       appendAppLog('info', 'Jev could not resolve a schema-less HTTP path; using one bounded read planner turn.', {
@@ -326,7 +345,7 @@ export async function runCommandChatLoop({
     let output: unknown;
     try {
       const lifecycleConstraint = delegatedCommandNames
-        ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.${singleHttpReadPlanner ? ` This is a schema-less read fallback: emit exactly one read-only capability.invoke for HTTP connectionId ${JSON.stringify(singleHttpReadEndpointId)} using GET/HEAD and a relative path; the host validates the final URL.` : ''}`
+        ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.${httpReadPlan ? ` This is a schema-less HTTP read: emit exactly one capability.invoke with id "http.request", method GET or HEAD, connectionId ${JSON.stringify(httpReadPlan.connectionId)}, and one relative path. Do not emit headers, body, or another capability; the host validates the final URL.` : ''}${readParameterPlan ? ` This is a parameter-fill read: emit exactly one capability.invoke with id ${JSON.stringify(readParameterPlan.capabilityId)}. Start from these host-owned fixed params: ${JSON.stringify(readParameterPlan.fixedParams)}. You may fill only these declared parameter paths: ${readParameterPlan.allowedParameterPaths.join(', ')}. Required paths are: ${readParameterPlan.requiredParameterPaths.join(', ')}. Do not invent a different capability, endpoint, operation, or parameter name.` : ''}`
         : '';
       const result = await options.harness.run({
         role: 'command',
@@ -368,7 +387,10 @@ export async function runCommandChatLoop({
       }
       throw error;
     }
-    if (parsed.kind === 'reply') return parsed.message;
+    if (parsed.kind === 'reply') {
+      if (readParameterPlan) return '조회에 필요한 값을 command로 전달하지 못했습니다. 필요한 조건을 구체적으로 알려 주세요.';
+      return parsed.message;
+    }
     protocolRecoveryAttempts = 0;
 
     if (delegatedCommandNames && !delegatedCommandNames.includes(parsed.command.name)) {
@@ -387,10 +409,34 @@ export async function runCommandChatLoop({
       return hostFacingMessage(publishResult(parsed.command.name, blocked), message);
     }
 
-    const blockedMessage = await semanticGateMessage(parsed.command);
+    let commandForExecution = parsed.command;
+    if (readParameterPlan || httpReadPlan) {
+      const compiled = readParameterPlan
+        ? compileReadParameterCommand(parsed.command, readParameterPlan)
+        : compileHttpReadCommand(parsed.command, httpReadPlan!);
+      if (!compiled.ok) {
+        const message = compiled.error === 'read_capability_mismatch' || compiled.error === 'http_read_capability_mismatch'
+          ? 'Jev가 선택한 조회 작업과 다른 capability가 제안되어 실행하지 않았습니다.'
+          : compiled.error === 'read_parameters_missing'
+            ? `조회에 필요한 값이 부족합니다: ${compiled.missing?.join(', ') ?? '필수 조건'}.`
+            : httpReadPlan
+              ? 'HTTP 조회 파라미터가 읽기 전용 계약과 일치하지 않아 실행하지 않았습니다.'
+              : '조회 파라미터가 허용된 계약과 일치하지 않아 실행하지 않았습니다.';
+        const blocked = commandResult(
+          'capability.invoke',
+          'needs_input',
+          undefined,
+          [commandIssue(compiled.error, message)],
+        );
+        return hostFacingMessage(publishResult('capability.invoke', blocked), message);
+      }
+      commandForExecution = compiled.command;
+    }
+
+    const blockedMessage = await semanticGateMessage(commandForExecution);
     if (blockedMessage) return blockedMessage;
 
-    const result = await options.commandService.execute(parsed.command, {
+    const result = await options.commandService.execute(commandForExecution, {
       designToolContext: options.designToolContext,
       designToolContextFactory: options.designToolContextFactory,
       executionContext: AGENT_COMMAND_CONTEXT,
@@ -401,36 +447,48 @@ export async function runCommandChatLoop({
       abortSignal: signal,
     });
     signal.throwIfAborted();
-    const resultForLoop = publishResult(parsed.command.name, result);
+    const resultForLoop = publishResult(commandForExecution.name, result);
+    if ((readParameterPlan || httpReadPlan) && resultForLoop.status !== 'ok') {
+      return hostFacingMessage(resultForLoop, '조회에 필요한 값을 확인하지 못했습니다.');
+    }
     const deterministicReply = deterministicHttpChatReply(
-      parsed.command,
+      commandForExecution,
       resultForLoop,
       options.userMessage,
     ) ?? deterministicCapabilityReadChatReply(
-      parsed.command,
+      commandForExecution,
       resultForLoop,
       options.userMessage,
     );
     if (deterministicReply) {
       appendAppLog('info', 'LLM-planned HTTP read used a deterministic chat renderer.', {
-        event: parsed.command.args.id === 'http.request'
+        event: commandForExecution.args.id === 'http.request'
           ? 'chat_http_read_deterministic_reply'
           : 'chat_capability_read_deterministic_reply',
-        command: parsed.command.name,
+        command: commandForExecution.name,
       });
       return deterministicReply;
+    }
+    if (readParameterPlan) {
+      messages.push(
+        { role: 'assistant', content: JSON.stringify({ kind: 'command', command: commandForExecution }) },
+        { role: 'user', content: resultMessage(resultForLoop) },
+      );
+      const reply = await textReplyFromModel('ax_command_chat_parameterized_read_result');
+      if (reply) return reply;
+      return hostFacingMessage(resultForLoop, '조회 결과를 처리하지 못했습니다.');
     }
     if (singleHttpReadPlanner) {
       return hostFacingMessage(resultForLoop, 'HTTP 조회를 처리하지 못했습니다. 경로와 조회 조건을 확인해 주세요.');
     }
-    if (parsed.command.name === 'job.propose') {
+    if (commandForExecution.name === 'job.propose') {
       return hostFacingMessage(resultForLoop, '업무 초안을 처리하지 못했습니다.');
     }
-    if (parsed.command.name === 'execution.enqueue_once' && resultForLoop.status === 'needs_input') {
+    if (commandForExecution.name === 'execution.enqueue_once' && resultForLoop.status === 'needs_input') {
       return hostFacingMessage(resultForLoop, '일회 실행에 필요한 정보를 확인해 주세요.');
     }
     messages.push(
-      { role: 'assistant', content: JSON.stringify({ kind: 'command', command: parsed.command }) },
+      { role: 'assistant', content: JSON.stringify({ kind: 'command', command: commandForExecution }) },
       { role: 'user', content: resultMessage(resultForLoop) },
     );
   }

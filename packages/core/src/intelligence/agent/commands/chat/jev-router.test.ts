@@ -145,6 +145,47 @@ describe('routeChatWithJev', () => {
     });
   });
 
+  it('separates operation selection from safe parameter filling', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: {
+        evaluate: async () => ({
+          answers: {
+            route: {
+              type: 'choice', choice: 'capability_read',
+              probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
+            },
+            operation: {
+              type: 'choice', choice: 'op_0',
+              probabilities: { op_0: 0.96, none: 0.04 }, confidence: 0.96,
+            },
+          },
+        }),
+      },
+      userMessage: '주문 상세를 보여줘',
+      connectedConnectors: ['openapi'],
+      readOperationHints: [{
+        key: 'op_0',
+        capabilityId: 'openapi.orders.getOrder',
+        connector: 'openapi',
+        label: '주문 상세',
+        description: 'GET /orders/{orderId} — 주문 상세',
+        params: {},
+        parameterHints: [{ path: 'pathParams.orderId', type: 'string', required: true }],
+        missingParameterPaths: ['pathParams.orderId'],
+      }],
+    })).resolves.toEqual({
+      kind: 'parameterized',
+      route: 'capability_read',
+      confidence: 0.97,
+      plan: {
+        capabilityId: 'openapi.orders.getOrder',
+        fixedParams: {},
+        allowedParameterPaths: ['pathParams.orderId'],
+        requiredParameterPaths: ['pathParams.orderId'],
+      },
+    });
+  });
+
   it('does not expose the catalog route when no read operation metadata exists', async () => {
     let routeCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({

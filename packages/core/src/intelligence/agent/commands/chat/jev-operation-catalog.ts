@@ -34,6 +34,16 @@ export interface JevReadOperationHint {
   label: string;
   description: string;
   params: Record<string, unknown>;
+  /** Safe parameter paths that a single bounded LLM fill turn may supply. */
+  parameterHints?: readonly JevReadParameterHint[];
+  /** Required paths still absent from the host-resolved params. */
+  missingParameterPaths?: readonly string[];
+}
+
+export interface JevReadParameterHint {
+  path: string;
+  type?: string;
+  required: boolean;
 }
 
 function text(value: unknown, maxChars = MAX_TEXT_CHARS): string | undefined {
@@ -90,10 +100,16 @@ function parameterValue(
   return raw;
 }
 
+interface OpenApiParamResolution {
+  params: Record<string, unknown>;
+  parameterHints: JevReadParameterHint[];
+  missingParameterPaths: string[];
+}
+
 function openApiParams(
   operation: OpenApiOperation,
   userMessage: string,
-): Record<string, unknown> | undefined {
+): OpenApiParamResolution | undefined {
   // Auth headers and request bodies are intentionally not guessed from chat.
   // They need an explicit typed flow so a read route cannot smuggle secrets or
   // an unbounded payload into a provider call.
@@ -101,6 +117,8 @@ function openApiParams(
 
   const naturalLimit = naturalLimitValue(userMessage);
   const groups: Record<string, Record<string, unknown>> = {};
+  const parameterHints: JevReadParameterHint[] = [];
+  const missingParameterPaths: string[] = [];
   const groupFor = {
     path: 'pathParams',
     query: 'query',
@@ -108,14 +126,24 @@ function openApiParams(
     cookie: 'cookies',
   } as const;
   for (const parameter of operation.parameters ?? []) {
+    if (SENSITIVE_PARAMETER_NAME.test(parameter.name)) {
+      if (parameter.required) return undefined;
+      continue;
+    }
+    const group = groupFor[parameter.in];
+    const path = `${group}.${parameter.name}`;
+    parameterHints.push({
+      path,
+      ...(parameter.type ? { type: parameter.type.slice(0, 40) } : {}),
+      required: parameter.required,
+    });
     const value = parameterValue(userMessage, parameter, naturalLimit);
     if (value !== undefined) {
-      const group = groupFor[parameter.in];
       (groups[group] ??= {})[parameter.name] = value;
     }
-    if (parameter.required && value === undefined) return undefined;
+    if (parameter.required && value === undefined) missingParameterPaths.push(path);
   }
-  return groups;
+  return { params: groups, parameterHints, missingParameterPaths };
 }
 
 function addHint(
@@ -141,9 +169,10 @@ function addOpenApiHints(
   }
   for (const operation of spec.operations) {
     if (hints.length >= MAX_HINTS) return;
+    if (operation.method !== 'GET' && operation.method !== 'HEAD') continue;
     if (operation.sideEffect !== 'NONE' && operation.sideEffect !== 'REVERSIBLE') continue;
-    const params = openApiParams(operation, userMessage);
-    if (!params) continue;
+    const resolution = openApiParams(operation, userMessage);
+    if (!resolution) continue;
     const summary = text(operation.summary, 180);
     const label = summary ?? operation.operationId;
     addHint(hints, {
@@ -151,7 +180,9 @@ function addOpenApiHints(
       connector: 'openapi',
       label,
       description: text(`${operation.method} ${operation.path}${summary ? ` — ${summary}` : ''}`, MAX_TEXT_CHARS) ?? operation.path,
-      params,
+      params: resolution.params,
+      parameterHints: resolution.parameterHints,
+      missingParameterPaths: resolution.missingParameterPaths,
     });
   }
 }
@@ -198,7 +229,23 @@ function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingCon
     const required = Array.isArray(schema?.required)
       ? schema.required.filter((entry): entry is string => typeof entry === 'string')
       : [];
-    if (required.length > 0) continue;
+    if (required.some((name) => SENSITIVE_PARAMETER_NAME.test(name))) continue;
+    const properties = asRecord(schema?.properties);
+    const parameterNames = [...new Set([
+      ...Object.keys(properties ?? {}),
+      ...required,
+    ])];
+    const parameterHints = parameterNames
+      .filter((name) => !SENSITIVE_PARAMETER_NAME.test(name))
+      .slice(0, 50)
+      .map((name) => ({
+        path: name,
+        ...(typeof properties?.[name] === 'object' && properties[name] !== null &&
+          typeof (properties[name] as Record<string, unknown>).type === 'string'
+          ? { type: String((properties[name] as Record<string, unknown>).type).slice(0, 40) }
+          : {}),
+        required: required.includes(name),
+      }));
     const description = text(tool.description, MAX_TEXT_CHARS) ?? `MCP 읽기 도구 ${tool.name}`;
     addHint(hints, {
       capabilityId: `mcp.${parsed.serverId}.${tool.name}`,
@@ -206,6 +253,8 @@ function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingCon
       label: text(tool.name, 160) ?? 'MCP 읽기 도구',
       description,
       params: {},
+      parameterHints,
+      missingParameterPaths: required,
     });
   }
 }

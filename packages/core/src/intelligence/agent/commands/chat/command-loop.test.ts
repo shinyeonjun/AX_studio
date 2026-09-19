@@ -449,6 +449,78 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(0);
   });
 
+  it('lets the LLM fill only a Jev-selected read parameter', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db), {
+      readGateway: {
+        execute: async (request) => {
+          expect(request.args).toEqual({
+            id: 'openapi.orders.getOrder',
+            params: { pathParams: { orderId: 'order-7' } },
+          });
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: {
+              capabilityId: 'openapi.orders.getOrder',
+              data: {
+                id: 'order-detail',
+                kind: 'table',
+                columns: [{ name: 'id', type: 'string', nullable: false, inferred: false }],
+                rows: [{ index: 0, values: { id: 'order-7' } }],
+              },
+              citations: [],
+              untrusted: true,
+            },
+          };
+        },
+      },
+    });
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice', choice: 'capability_read',
+            probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
+          },
+          operation: {
+            type: 'choice', choice: 'op_0',
+            probabilities: { op_0: 0.98, none: 0.02 }, confidence: 0.98,
+          },
+        },
+      }),
+    };
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([{
+      kind: 'command',
+      command: {
+        name: 'capability.invoke',
+        args: {
+          id: 'openapi.orders.getOrder',
+          params: { pathParams: { orderId: 'order-7' } },
+        },
+      },
+    }], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['openapi'],
+      readOperationHints: [{
+        key: 'op_0', capabilityId: 'openapi.orders.getOrder', connector: 'openapi',
+        label: '주문 상세', description: 'GET /orders/{orderId}', params: {},
+        parameterHints: [{ path: 'pathParams.orderId', required: true }],
+        missingParameterPaths: ['pathParams.orderId'],
+      }],
+      messages: [],
+      userMessage: '주문 order-7을 보여줘',
+    })).resolves.toContain('order-7');
+    expect(seen).toHaveLength(1);
+    expect(textSeen).toHaveLength(0);
+  });
+
   it('falls back to the existing LLM planner when Jev is unavailable', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

@@ -13,6 +13,7 @@ import {
 import type { AxCommand, AxCommandName } from '../schema.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
 import type { JevReadOperationHint } from './jev-operation-catalog.js';
+import type { ReadParameterPlan } from './read-plan.js';
 
 const SAFE_ROUTE_MIN_CONFIDENCE = 0.72;
 const REPLY_ROUTE_MIN_CONFIDENCE = 0.72;
@@ -49,8 +50,8 @@ const ROUTE_CRITERIA = {
   },
   capability_read: {
     what: 'Perform one read-only operation selected from the connected OpenAPI, database, or MCP operation catalog. Choose the operation question as the source of truth; do not invent an operation, URL, table, tool, or parameter.',
-    requires: 'A cataloged read operation has all required parameters already resolved by the host.',
-    not_for: 'Writes, triggers, operations with missing required parameters, or an unstructured HTTP base URL without an explicit path.',
+    requires: 'A cataloged read operation is selected. The host resolves known parameters; a separate bounded LLM turn may fill only declared non-secret parameter paths that remain missing.',
+    not_for: 'Writes, triggers, unknown operations, or an unstructured HTTP base URL without an explicit path.',
   },
   source_list: {
     what: 'List source records exposed by connected Gmail, Slack, or local-folder connectors.',
@@ -182,6 +183,7 @@ export type JevChatRouterResult =
   | { kind: 'command'; command: AxCommand; route: RouteName; confidence: number }
   | { kind: 'reply'; route: 'answer'; confidence: number }
   | { kind: 'delegate'; route: DelegatedRoute; allowedCommandNames: readonly AxCommandName[]; confidence: number }
+  | { kind: 'parameterized'; route: 'capability_read'; plan: ReadParameterPlan; confidence: number }
   | {
       kind: 'fallback';
       reason: JevChatRouterFallbackReason;
@@ -361,6 +363,7 @@ function readOperationCriteria(input: JevChatRouterInput): Record<string, Decisi
 function capabilityReadCommand(
   input: JevChatRouterInput,
   answers: Record<string, DecisionAnswer>,
+  routeConfidence: number,
 ): AxCommand | JevChatRouterResult {
   const hints = readOperationHints(input);
   if (hints.length === 0) return fallback('missing_context');
@@ -369,6 +372,22 @@ function capabilityReadCommand(
   const hint = hints.find((candidate) => candidate.key === answer.choice);
   if (!hint || answerConfidence(answer, hint.key) < CAPABILITY_READ_MIN_CONFIDENCE) {
     return fallback('uncertain');
+  }
+  const missingParameterPaths = hint.missingParameterPaths ?? [];
+  if (missingParameterPaths.length > 0) {
+    const allowedParameterPaths = (hint.parameterHints ?? []).map((parameter) => parameter.path);
+    if (allowedParameterPaths.length === 0) return fallback('missing_context');
+    return {
+      kind: 'parameterized',
+      route: 'capability_read',
+      confidence: routeConfidence,
+      plan: {
+        capabilityId: hint.capabilityId,
+        fixedParams: { ...hint.params },
+        allowedParameterPaths,
+        requiredParameterPaths: missingParameterPaths,
+      },
+    };
   }
   return {
     name: 'capability.invoke',
@@ -567,7 +586,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const command = route === 'report_generate'
       ? reportCommand(input, evaluation.answers)
       : route === 'capability_read'
-        ? capabilityReadCommand(input, evaluation.answers)
+        ? capabilityReadCommand(input, evaluation.answers, confidence)
         : commandForRoute(route, input);
     if ('kind' in command) return command;
     return { kind: 'command', command, route, confidence };
