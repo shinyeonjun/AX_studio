@@ -69,8 +69,51 @@ function markdownCell(value: unknown): string {
   return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 }
 
-function tableToMarkdown(table: TableArtifact): string {
-  const headers = table.columns.map((column) => column.name);
+const REQUESTED_COLUMN_ALIASES: readonly [RegExp, readonly string[]][] = [
+  [/(?:상품|제품)\s*명|product\s*(?:name|title)/iu, ['title', 'name', 'productName']],
+  [/(?:가격|단가|판매가)|\b(?:price|cost|amount)\b/iu, ['price', 'cost', 'amount']],
+  [/(?:카테고리|분류)|\b(?:category|type)\b/iu, ['category', 'type']],
+  [/(?:재고|재고량)|\b(?:stock|inventory)\b/iu, ['stock', 'inventory']],
+];
+
+function requestedColumnsFromMessage(userMessage: string): string[] | undefined {
+  const columns: string[] = [];
+  const add = (column: string): void => {
+    if (!columns.includes(column)) columns.push(column);
+  };
+  for (const [pattern, candidates] of REQUESTED_COLUMN_ALIASES) {
+    if (pattern.test(userMessage)) candidates.forEach(add);
+  }
+  return columns.length > 0 ? columns : undefined;
+}
+
+function selectedColumnsFromHttpPath(params: unknown): string[] | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+  const record = params as Record<string, unknown>;
+  const path = typeof record.path === 'string' ? record.path.trim() : '';
+  const queryStart = path.indexOf('?');
+  if (queryStart < 0) return undefined;
+  const select = new URLSearchParams(path.slice(queryStart + 1).split('#', 1)[0]).get('select');
+  if (!select) return undefined;
+  const columns = select.split(',')
+    .map((column) => column.trim())
+    .filter((column) => /^[A-Za-z_][A-Za-z0-9_.-]*$/u.test(column));
+  return columns.length > 0 ? [...new Set(columns)] : undefined;
+}
+
+function selectAvailableColumns(
+  headers: readonly string[],
+  requested?: readonly string[],
+): string[] {
+  const selected = [...new Set(requested ?? [])].filter((header) => headers.includes(header));
+  return selected.length > 0 ? selected : [...headers];
+}
+
+function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly string[]): string {
+  const headers = selectAvailableColumns(
+    table.columns.map((column) => column.name),
+    requestedColumns,
+  );
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
   const lines = [
     `| ${headers.map(markdownCell).join(' | ')} |`,
@@ -124,6 +167,7 @@ export function deterministicHttpChatReply(
     const table = httpResponseToTable(response, {
       sourceId: 'http:response',
       rowsPath: uniqueObjectArrayPath(json),
+      columns: selectedColumnsFromHttpPath(params) ?? requestedColumnsFromMessage(userMessage),
     });
     return table.ok ? tableToMarkdown(table.table) : undefined;
   }
@@ -164,8 +208,9 @@ function rowsForCapabilityTable(value: unknown): Record<string, unknown>[] | und
   return candidates.length === 1 ? objectRows(candidates[0]) : undefined;
 }
 
-function rowsToMarkdown(rows: Record<string, unknown>[]): string {
-  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))].slice(0, 50);
+function rowsToMarkdown(rows: Record<string, unknown>[], requestedColumns?: readonly string[]): string {
+  const allHeaders = [...new Set(rows.flatMap((row) => Object.keys(row)))].slice(0, 50);
+  const headers = selectAvailableColumns(allHeaders, requestedColumns);
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
   return [
     `| ${headers.map(markdownCell).join(' | ')} |`,
@@ -194,7 +239,8 @@ export function deterministicCapabilityReadChatReply(
   const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
   if (wantsTable) {
     const table = TableArtifactSchema.safeParse(payload);
-    if (table.success) return tableToMarkdown(table.data);
+    const requestedColumns = requestedColumnsFromMessage(userMessage);
+    if (table.success) return tableToMarkdown(table.data, requestedColumns);
     let decoded = payload;
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
       const body = (payload as Record<string, unknown>).body;
@@ -203,7 +249,7 @@ export function deterministicCapabilityReadChatReply(
       }
     }
     const rows = rowsForCapabilityTable(decoded);
-    return rows ? rowsToMarkdown(rows) : undefined;
+    return rows ? rowsToMarkdown(rows, requestedColumns) : undefined;
   }
 
   let body = payload;

@@ -44,6 +44,36 @@ describe('deterministicHttpChatReply', () => {
     )).toBeUndefined();
   });
 
+  it('projects explicitly requested HTTP fields instead of rendering provider metadata', () => {
+    const reply = deterministicHttpChatReply(
+      httpGetCommand,
+      httpResult(JSON.stringify({ products: [{
+        id: 1,
+        title: 'Essence Mascara Lash Princess',
+        description: 'popular mascara',
+        category: 'beauty',
+        price: 9.99,
+        stock: 99,
+        images: ['https://cdn.example.test/product.jpg'],
+      }] })),
+      'DummyJSON에서 상품 5개만 가져와서 상품명, 가격, 카테고리, 재고를 표로 보여줘.',
+    );
+
+    expect(reply?.split('\n', 1)[0]).toBe('| title | price | category | stock |');
+    expect(reply).not.toContain('description');
+    expect(reply).not.toContain('https://cdn.example.test/product.jpg');
+  });
+
+  it('honors an HTTP select query and preserves its field order', () => {
+    const reply = deterministicHttpChatReply(
+      { ...httpGetCommand, args: { id: 'http.request', params: { method: 'GET', path: 'products?select=stock%2Ctitle' } } },
+      httpResult(JSON.stringify({ products: [{ title: 'First', stock: 3, price: 1.99 }] })),
+      '응답을 표로 보여줘.',
+    );
+
+    expect(reply?.split('\n', 1)[0]).toBe('| stock | title |');
+  });
+
   it('bounds a complete host result only when serializing it for the model', () => {
     const result: AxCommandResult = {
       command: 'capability.invoke',

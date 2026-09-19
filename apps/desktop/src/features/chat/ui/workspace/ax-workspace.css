@@ -411,6 +411,32 @@
   word-break: break-word;
 }
 
+.ax-workspace-markdown-table {
+  max-width: 100%;
+  margin: 0.75em 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  word-break: normal;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ax-workspace-markdown-table table {
+  min-width: max-content;
+  border-collapse: collapse;
+}
+
+.ax-workspace-markdown-table th,
+.ax-workspace-markdown-table td {
+  padding: 0.35em 0.65em;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.ax-workspace-markdown-table th {
+  font-weight: 600;
+}
+
 .ax-workspace-markdown > :first-child {
   margin-top: 0;
 }
