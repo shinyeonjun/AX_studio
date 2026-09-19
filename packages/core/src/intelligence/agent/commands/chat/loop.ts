@@ -30,6 +30,11 @@ import {
   type HttpReadPlan,
   type ReadParameterPlan,
 } from './read-plan.js';
+import {
+  decideReadRecovery,
+  isRecoverableReadStatus,
+  READ_RECOVERY_MAX_REPAIRS,
+} from './read-recovery.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { gateChatCommandWithJev } from './jev-command-gate.js';
 import { issue as commandIssue, result as commandResult } from '../contract.js';
@@ -82,6 +87,18 @@ function httpEndpointSelectionMessage(options: AxCommandChatOptions): string {
   return labels.length > 0
     ? `조회할 HTTP 연결을 하나 선택해 주세요: ${labels.join(', ')}.`
     : '조회할 HTTP 연결을 하나 선택해 주세요.';
+}
+
+function readRecoveryFeedback(result: AxCommandResult): string {
+  return JSON.stringify({
+    command: result.command,
+    status: result.status,
+    issues: result.issues.slice(0, 4).map((issue) => ({
+      code: issue.code.slice(0, 128),
+      message: issue.message.slice(0, 512),
+      ...(issue.path ? { path: issue.path.slice(0, 128) } : {}),
+    })),
+  });
 }
 
 export interface CommandChatLoopContext {
@@ -200,6 +217,7 @@ export async function runCommandChatLoop({
   let delegatedCommandNames: readonly AxCommandName[] | undefined;
   let readParameterPlan: ReadParameterPlan | undefined;
   let httpReadPlan: HttpReadPlan | undefined;
+  let readRepairAttempts = 0;
   let singleHttpReadPlanner = false;
   let singleHttpReadEndpointId: string | undefined;
   let effectiveMaxRounds = maxRounds;
@@ -258,7 +276,7 @@ export async function runCommandChatLoop({
     if (jevRoute.kind === 'parameterized') {
       readParameterPlan = jevRoute.plan;
       delegatedCommandNames = ['capability.invoke'];
-      effectiveMaxRounds = 1;
+      effectiveMaxRounds = MAX_PROTOCOL_RECOVERY_ATTEMPTS + READ_RECOVERY_MAX_REPAIRS + 1;
       appendAppLog('info', 'Jev selected a read operation; the LLM may fill only its declared parameters.', {
         event: 'jev_chat_read_parameter_fill',
         capabilityId: readParameterPlan.capabilityId,
@@ -270,7 +288,7 @@ export async function runCommandChatLoop({
       singleHttpReadPlanner = true;
       singleHttpReadEndpointId = plannerEndpoint.id.slice(0, 128);
       httpReadPlan = { connectionId: singleHttpReadEndpointId };
-      effectiveMaxRounds = 1;
+      effectiveMaxRounds = MAX_PROTOCOL_RECOVERY_ATTEMPTS + READ_RECOVERY_MAX_REPAIRS + 1;
       delegatedCommandNames = ['capability.invoke'];
       appendAppLog('info', 'Jev could not resolve a schema-less HTTP path; using one bounded read planner turn.', {
         event: 'jev_chat_http_read_fallback',
@@ -340,6 +358,51 @@ export async function runCommandChatLoop({
     }
   }
 
+  const requestReadRepair = async (input: {
+    round: number;
+    status: string;
+    errorCode: string;
+    errorMessage: string;
+    command?: AxCommand;
+    result: AxCommandResult;
+  }): Promise<boolean> => {
+    const route = readParameterPlan ? 'parameterized' : httpReadPlan ? 'http' : undefined;
+    if (!route || input.round + 1 >= effectiveMaxRounds || !isRecoverableReadStatus(input.status)) {
+      return false;
+    }
+    const decision = await decideReadRecovery({
+      decisionEngine: options.decisionEngine,
+      userMessage: options.userMessage,
+      route,
+      status: input.status,
+      errorCode: input.errorCode,
+      errorMessage: input.errorMessage,
+      repairAttempts: readRepairAttempts,
+      signal,
+    });
+    appendAppLog('info', 'Jev judged whether the failed read should be repaired.', {
+      event: 'jev_chat_read_recovery_decision',
+      route,
+      status: input.status,
+      errorCode: input.errorCode,
+      action: decision.action,
+      reason: decision.reason,
+      ...(decision.probability === undefined ? {} : { probability: decision.probability }),
+    });
+    if (decision.action !== 'repair') return false;
+    readRepairAttempts += 1;
+    messages.push(
+      input.command
+        ? { role: 'assistant', content: JSON.stringify({ kind: 'command', command: input.command }) }
+        : { role: 'assistant', content: 'AX read command was not executable.' },
+      {
+        role: 'user',
+        content: `Host가 읽기 명령을 실행하지 못했습니다. 같은 Jev-selected read만 유지하고, 아래 근거로 파라미터 또는 경로를 수정해 다시 한 번 시도하세요. 같은 실패 명령을 그대로 반복하거나 다른 capability·connection·write command로 바꾸지 마세요.\n${readRecoveryFeedback(input.result)}`,
+      },
+    );
+    return true;
+  };
+
   for (let round = 0; round < effectiveMaxRounds; round += 1) {
     if (signal.aborted) throw new Error('ax_command_chat_timeout');
     let output: unknown;
@@ -388,7 +451,27 @@ export async function runCommandChatLoop({
       throw error;
     }
     if (parsed.kind === 'reply') {
-      if (readParameterPlan) return '조회에 필요한 값을 command로 전달하지 못했습니다. 필요한 조건을 구체적으로 알려 주세요.';
+      if (readParameterPlan || httpReadPlan) {
+        const message = readParameterPlan
+          ? '조회에 필요한 값을 command로 전달하지 못했습니다.'
+          : 'HTTP 조회 command를 생성하지 못했습니다.';
+        const blocked = commandResult(
+          'capability.invoke',
+          'invalid',
+          undefined,
+          [commandIssue('read_reply_without_command', message)],
+        );
+        if (await requestReadRepair({
+          round,
+          status: blocked.status,
+          errorCode: 'read_reply_without_command',
+          errorMessage: message,
+          result: blocked,
+        })) continue;
+        return readParameterPlan
+          ? `${message} 필요한 조건을 구체적으로 알려 주세요.`
+          : message;
+      }
       return parsed.message;
     }
     protocolRecoveryAttempts = 0;
@@ -406,6 +489,14 @@ export async function runCommandChatLoop({
         undefined,
         [commandIssue('semantic_route_mismatch', message)],
       );
+      if (await requestReadRepair({
+        round,
+        status: blocked.status,
+        errorCode: 'semantic_route_mismatch',
+        errorMessage: message,
+        command: parsed.command,
+        result: blocked,
+      })) continue;
       return hostFacingMessage(publishResult(parsed.command.name, blocked), message);
     }
 
@@ -428,6 +519,14 @@ export async function runCommandChatLoop({
           undefined,
           [commandIssue(compiled.error, message)],
         );
+        if (await requestReadRepair({
+          round,
+          status: blocked.status,
+          errorCode: compiled.error,
+          errorMessage: message,
+          command: parsed.command,
+          result: blocked,
+        })) continue;
         return hostFacingMessage(publishResult('capability.invoke', blocked), message);
       }
       commandForExecution = compiled.command;
@@ -449,6 +548,15 @@ export async function runCommandChatLoop({
     signal.throwIfAborted();
     const resultForLoop = publishResult(commandForExecution.name, result);
     if ((readParameterPlan || httpReadPlan) && resultForLoop.status !== 'ok') {
+      const issue = resultForLoop.issues[0];
+      if (await requestReadRepair({
+        round,
+        status: resultForLoop.status,
+        errorCode: issue?.code ?? resultForLoop.status,
+        errorMessage: issue?.message ?? 'read execution failed',
+        command: commandForExecution,
+        result: resultForLoop,
+      })) continue;
       return hostFacingMessage(resultForLoop, '조회에 필요한 값을 확인하지 못했습니다.');
     }
     const deterministicReply = deterministicHttpChatReply(

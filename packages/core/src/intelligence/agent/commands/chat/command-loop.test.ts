@@ -521,6 +521,101 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(0);
   });
 
+  it('repairs a failed read once when Jev finds actionable evidence', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    let readCalls = 0;
+    const service = new AxCommandService(new WorkflowStore(db), {
+      readGateway: {
+        execute: async (request) => {
+          readCalls += 1;
+          if (readCalls === 1) return { tool: 'capabilities.invoke', ok: false, error: 'order_not_found' };
+          expect(request.args).toEqual({
+            id: 'openapi.orders.getOrder',
+            params: { pathParams: { orderId: 'order-7' } },
+          });
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: {
+              capabilityId: 'openapi.orders.getOrder',
+              data: {
+                id: 'order-detail',
+                kind: 'table',
+                columns: [{ name: 'id', type: 'string', nullable: false, inferred: false }],
+                rows: [{ index: 0, values: { id: 'order-7' } }],
+              },
+              citations: [],
+              untrusted: true,
+            },
+          };
+        },
+      },
+    });
+    let evaluations = 0;
+    const decisionEngine: DecisionEngine = {
+      evaluate: async (request) => {
+        evaluations += 1;
+        if (Object.hasOwn(request.questions, 'recovery_action')) {
+          return {
+            answers: {
+              recovery_action: {
+                type: 'choice', choice: 'repair',
+                probabilities: { repair: 0.94, ask_user: 0.04, stop: 0.02 },
+              },
+            },
+          };
+        }
+        return {
+          answers: {
+            route: {
+              type: 'choice', choice: 'capability_read',
+              probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
+            },
+            operation: {
+              type: 'choice', choice: 'op_0',
+              probabilities: { op_0: 0.98, none: 0.02 }, confidence: 0.98,
+            },
+          },
+        };
+      },
+    };
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const harness = new AgentHarness(scriptedModel([
+      {
+        kind: 'command',
+        command: {
+          name: 'capability.invoke',
+          args: { id: 'openapi.orders.getOrder', params: { pathParams: { orderId: 'bad' } } },
+        },
+      },
+      {
+        kind: 'command',
+        command: {
+          name: 'capability.invoke',
+          args: { id: 'openapi.orders.getOrder', params: { pathParams: { orderId: 'order-7' } } },
+        },
+      },
+    ], seen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['openapi'],
+      readOperationHints: [{
+        key: 'op_0', capabilityId: 'openapi.orders.getOrder', connector: 'openapi',
+        label: '주문 상세', description: 'GET /orders/{orderId}', params: {},
+        parameterHints: [{ path: 'pathParams.orderId', required: true }],
+        missingParameterPaths: ['pathParams.orderId'],
+      }],
+      messages: [],
+      userMessage: '주문 상세를 보여줘',
+    })).resolves.toContain('order-7');
+    expect(readCalls).toBe(2);
+    expect(evaluations).toBe(2);
+    expect(seen).toHaveLength(2);
+  });
+
   it('falls back to the existing LLM planner when Jev is unavailable', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
