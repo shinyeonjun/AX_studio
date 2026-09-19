@@ -259,7 +259,10 @@ describe('runAxCommandChat command loop', () => {
       commandService: service,
       decisionEngine,
       connectedConnectors: ['http'],
-      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+      httpEndpoints: [
+        { id: 'github', label: 'GitHub', usable: true },
+        { id: 'dummyjson', label: 'DummyJSON', usable: true },
+      ],
       messages: [],
       userMessage: 'DummyJSON에서 GET products?limit=2 를 조회하고 표로 정리해줘.',
     })).resolves.toContain('| title | price |');
@@ -321,10 +324,67 @@ describe('runAxCommandChat command loop', () => {
       commandService: service,
       decisionEngine,
       connectedConnectors: ['http'],
-      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+      httpEndpoints: [
+        { id: 'github', label: 'GitHub', usable: true },
+        { id: 'dummyjson', label: 'DummyJSON', usable: true },
+      ],
       messages: [],
       userMessage: 'DummyJSON에서 상품 2개만 가져와서 표로 보여줘',
     })).resolves.toContain('| title |');
+    expect(seen).toHaveLength(1);
+    expect(textSeen).toHaveLength(0);
+  });
+
+  it('asks the user to choose an HTTP connection without calling an LLM when the read target is ambiguous', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_unavailable'); },
+    };
+    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['http'],
+      httpEndpoints: [
+        { id: 'github', label: 'GitHub', usable: true },
+        { id: 'internal', label: '내부 API', usable: true },
+      ],
+      messages: [],
+      userMessage: '상품 2개만 가져와서 표로 보여줘',
+    })).resolves.toContain('조회할 HTTP 연결을 하나 선택해 주세요');
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(0);
+  });
+
+  it('routes a mutation-shaped request through Jev before the structured model path', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    let evaluations = 0;
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => {
+        evaluations += 1;
+        throw new Error('jev_unavailable');
+      },
+    };
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'reply', message: '변경 요청을 확인할 수 없습니다.' },
+    ], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: 'DummyJSON에 상품을 새로 등록해줘.',
+    })).resolves.toBe('변경 요청을 확인할 수 없습니다.');
+    expect(evaluations).toBe(1);
     expect(seen).toHaveLength(1);
     expect(textSeen).toHaveLength(0);
   });

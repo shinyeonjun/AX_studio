@@ -18,7 +18,12 @@ import {
   hostFacingMessage,
   type CommandChatSessionState,
 } from './result.js';
-import { explicitHttpPath, routeChatWithJev } from './jev-router.js';
+import {
+  explicitHttpPath,
+  routeChatWithJev,
+  selectHttpEndpointForRead,
+  type JevHttpEndpointHint,
+} from './jev-router.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { gateChatCommandWithJev } from './jev-command-gate.js';
 import { issue as commandIssue, result as commandResult } from '../contract.js';
@@ -27,9 +32,9 @@ const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
 // Keep nouns out of this fast path. They describe a topic, not an action, and
 // routing questions such as "API가 뭐야?" through Jev adds latency for no
 // safety benefit. Imperative/action wording still reaches the bounded router.
-const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|삭제|수정|변경|연결|보여|목록|확인|정리|추천|분석|\b(?:run|execute|get|post|delete|show|list|call)\b/iu;
+const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|등록|발송|전송|삭제|수정|변경|연결|보여|목록|확인|정리|추천|분석|\b(?:run|execute|get|post|delete|show|list|call)\b/iu;
 const JEV_CONCEPTUAL_HINT = /(?:뭐\s*(?:야|냐)|무엇|차이|뜻|의미|왜\s|어떻게\s)/iu;
-const JEV_DIRECT_ACTION_HINT = /(?:조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|삭제|수정|변경|연결|보여|확인|정리|추천|분석)(?:해|하|할|하고|해서|해줘|해주세요|해봐|해볼|할래|할까)/iu;
+const JEV_DIRECT_ACTION_HINT = /(?:조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|등록|발송|전송|삭제|수정|변경|연결|보여|확인|정리|추천|분석)(?:해|하|할|하고|해서|해줘|해주세요|해봐|해볼|할래|할까)/iu;
 
 function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
   if (options.allowContextUpdate || options.allowJobCommit) return true;
@@ -41,14 +46,36 @@ function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
   );
 }
 
-function shouldUseSingleHttpReadPlanner(options: AxCommandChatOptions): boolean {
+function isSchemaLessHttpReadIntent(options: AxCommandChatOptions): boolean {
   const endpoints = (options.httpEndpoints ?? []).filter((endpoint) => endpoint.usable !== false);
-  if (endpoints.length !== 1 || explicitHttpPath(options.userMessage)) return false;
+  if (endpoints.length === 0 || explicitHttpPath(options.userMessage)) return false;
   if (!JEV_ACTION_HINT.test(options.userMessage)) return false;
   if (/(?:POST|PUT|PATCH|DELETE|수정|삭제|전송|보내|생성|등록|취소|정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명)/iu.test(options.userMessage)) {
     return false;
   }
-  return /(?:API|데이터|상품|제품|목록|가져|조회|검색|읽|보여|확인|호출|요청|table|items?|rows?)/iu.test(options.userMessage);
+  return /(?:API|HTTP|REST|endpoint|DummyJSON|데이터|상품|제품|목록|가져|조회|검색|읽|보여|확인|호출|요청|table|items?|rows?)/iu.test(options.userMessage);
+}
+
+function singleHttpReadPlannerEndpoint(options: AxCommandChatOptions): JevHttpEndpointHint | undefined {
+  if (!isSchemaLessHttpReadIntent(options)) return undefined;
+  return selectHttpEndpointForRead(options.userMessage, options.httpEndpoints ?? []);
+}
+
+function shouldAskForHttpEndpoint(options: AxCommandChatOptions): boolean {
+  if (!isSchemaLessHttpReadIntent(options)) return false;
+  const endpoints = (options.httpEndpoints ?? []).filter((endpoint) => endpoint.usable !== false);
+  return endpoints.length > 1 && !singleHttpReadPlannerEndpoint(options);
+}
+
+function httpEndpointSelectionMessage(options: AxCommandChatOptions): string {
+  const labels = (options.httpEndpoints ?? [])
+    .filter((endpoint) => endpoint.usable !== false)
+    .map((endpoint) => endpoint.label?.trim() || endpoint.id.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+  return labels.length > 0
+    ? `조회할 HTTP 연결을 하나 선택해 주세요: ${labels.join(', ')}.`
+    : '조회할 HTTP 연결을 하나 선택해 주세요.';
 }
 
 export interface CommandChatLoopContext {
@@ -166,6 +193,7 @@ export async function runCommandChatLoop({
 
   let delegatedCommandNames: readonly AxCommandName[] | undefined;
   let singleHttpReadPlanner = false;
+  let singleHttpReadEndpointId: string | undefined;
   let effectiveMaxRounds = maxRounds;
   if (options.decisionEngine && !options.allowContextUpdate && useJevRoute) {
     const jevStartedAt = Date.now();
@@ -199,6 +227,13 @@ export async function runCommandChatLoop({
         event: 'jev_chat_route_fallback',
         reason: jevRoute.reason,
       });
+      if (shouldAskForHttpEndpoint(options)) {
+        appendAppLog('info', 'HTTP chat read stopped before the LLM because endpoint selection was ambiguous.', {
+          event: 'jev_chat_http_endpoint_selection_required',
+          endpointCount: options.httpEndpoints?.filter((endpoint) => endpoint.usable !== false).length ?? 0,
+        });
+        return httpEndpointSelectionMessage(options);
+      }
     }
     if (jevRoute.kind === 'reply') {
       const reply = await textReplyFromModel('ax_command_chat_jev_reply');
@@ -212,13 +247,15 @@ export async function runCommandChatLoop({
         confidence: jevRoute.confidence,
       });
     }
-    if (jevRoute.kind === 'fallback' && shouldUseSingleHttpReadPlanner(options)) {
+    const plannerEndpoint = singleHttpReadPlannerEndpoint(options);
+    if (jevRoute.kind === 'fallback' && plannerEndpoint) {
       singleHttpReadPlanner = true;
+      singleHttpReadEndpointId = plannerEndpoint.id.slice(0, 128);
       effectiveMaxRounds = 1;
       delegatedCommandNames = ['capability.invoke'];
       appendAppLog('info', 'Jev could not resolve a schema-less HTTP path; using one bounded read planner turn.', {
         event: 'jev_chat_http_read_fallback',
-        endpointId: options.httpEndpoints?.find((endpoint) => endpoint.usable !== false)?.id,
+        endpointId: singleHttpReadEndpointId,
       });
     }
     if (jevRoute.kind === 'command') {
@@ -289,7 +326,7 @@ export async function runCommandChatLoop({
     let output: unknown;
     try {
       const lifecycleConstraint = delegatedCommandNames
-        ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.${singleHttpReadPlanner ? ' This is a schema-less read fallback: emit exactly one read-only capability.invoke for the single connected HTTP endpoint, using GET/HEAD and a relative path; the host validates the final URL.' : ''}`
+        ? `\nJev selected the ${delegatedCommandNames[0]} lifecycle for this request. You may emit only one command from this allowlist while gathering evidence or filling its payload: ${delegatedCommandNames.join(', ')}. Do not switch to another mutation lifecycle.${singleHttpReadPlanner ? ` This is a schema-less read fallback: emit exactly one read-only capability.invoke for HTTP connectionId ${JSON.stringify(singleHttpReadEndpointId)} using GET/HEAD and a relative path; the host validates the final URL.` : ''}`
         : '';
       const result = await options.harness.run({
         role: 'command',
@@ -369,10 +406,16 @@ export async function runCommandChatLoop({
       parsed.command,
       resultForLoop,
       options.userMessage,
+    ) ?? deterministicCapabilityReadChatReply(
+      parsed.command,
+      resultForLoop,
+      options.userMessage,
     );
     if (deterministicReply) {
       appendAppLog('info', 'LLM-planned HTTP read used a deterministic chat renderer.', {
-        event: 'chat_http_read_deterministic_reply',
+        event: parsed.command.args.id === 'http.request'
+          ? 'chat_http_read_deterministic_reply'
+          : 'chat_capability_read_deterministic_reply',
         command: parsed.command.name,
       });
       return deterministicReply;

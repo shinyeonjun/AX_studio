@@ -305,17 +305,26 @@ function endpointMatchesMessage(message: string, endpoint: JevHttpEndpointHint):
   return [endpoint.id, endpoint.label].some((value) => endpointMentioned(message, value));
 }
 
+/**
+ * Select an HTTP endpoint only when the host can prove it is unambiguous.
+ * The model never gets to resolve an endpoint id from a vague request.
+ */
+export function selectHttpEndpointForRead(
+  message: string,
+  endpoints: readonly JevHttpEndpointHint[],
+): JevHttpEndpointHint | undefined {
+  const usable = endpoints.filter((endpoint) => endpoint.usable !== false);
+  if (usable.length === 1) return usable[0];
+  const mentioned = usable.filter((endpoint) => endpointMatchesMessage(message, endpoint));
+  return mentioned.length === 1 ? mentioned[0] : undefined;
+}
+
 function httpReadCommand(input: JevChatRouterInput): AxCommand | JevChatRouterResult {
   const path = explicitHttpPath(input.userMessage);
   const endpoints = (input.httpEndpoints ?? []).filter((endpoint) => endpoint.usable !== false);
   if (!path || endpoints.length === 0) return fallback('missing_context');
 
-  const mentioned = endpoints.filter((endpoint) => endpointMatchesMessage(input.userMessage, endpoint));
-  const selected = endpoints.length === 1
-    ? endpoints[0]
-    : mentioned.length === 1
-      ? mentioned[0]
-      : undefined;
+  const selected = selectHttpEndpointForRead(input.userMessage, endpoints);
   if (!selected) return fallback('missing_context');
 
   return {
