@@ -1,6 +1,7 @@
 import {
   appendAppLog,
   AX_COMMAND_CHAT_TIMEOUT_MS,
+  httpEndpointsFromConnections,
   runAxCommandChat,
 } from '@ax-studio/core';
 import { performance } from 'node:perf_hooks';
@@ -73,11 +74,17 @@ export function registerWorkspaceChatMessageHandler() {
           presentations: reply.presentations,
         };
       }
+      const httpEndpoints = httpEndpointsFromConnections(core.store.getConnections()).map((endpoint) => ({
+        id: endpoint.id,
+        ...(endpoint.label ? { label: endpoint.label } : {}),
+        usable: endpoint.auth?.type === undefined || endpoint.auth.type === 'none' || endpoint.authStored === true,
+      }));
       const reply = await runAxCommandChat({
         harness: core.agentHarness,
         commandService: core.commandService,
         decisionEngine: core.decisionEngine,
         connectedConnectors: connectedConnectorIds(core.store),
+        httpEndpoints,
         messages: history,
         userMessage,
         currentWorkflowId: effectiveWorkflowId,

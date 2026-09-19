@@ -12,13 +12,26 @@ import {
   protocolRecoveryMessage,
   resultMessage,
 } from './protocol.js';
-import { hostFacingMessage, type CommandChatSessionState } from './result.js';
+import {
+  deterministicHttpChatReply,
+  hostFacingMessage,
+  type CommandChatSessionState,
+} from './result.js';
 import { routeChatWithJev } from './jev-router.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { gateChatCommandWithJev } from './jev-command-gate.js';
 import { issue as commandIssue, result as commandResult } from '../contract.js';
 
 const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
+const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|삭제|수정|변경|연결|보여|목록|파일|문서|pdf|보고서|workflow|워크플로우|api|http|데이터|테이블|재고|주문|slack|gmail|database|db|\b(?:run|execute|get|post|delete)\b/iu;
+
+function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
+  if (options.allowContextUpdate || options.allowJobCommit) return true;
+  if (JEV_ACTION_HINT.test(options.userMessage)) return true;
+  return options.messages.some((message) =>
+    message.role === 'assistant' && (message.content.includes('AX command result') || message.content.includes('"kind":"command"')),
+  );
+}
 
 export interface CommandChatLoopContext {
   readonly options: AxCommandChatOptions;
@@ -110,8 +123,8 @@ export async function runCommandChatLoop({
       });
       const output = reply.output.trim();
       if (!output) return undefined;
-      appendAppLog('info', 'Jev-selected chat route received a text-only reply.', {
-        event: 'jev_chat_reply_generated',
+    appendAppLog('info', 'Chat received a text-only reply.', {
+      event: 'chat_reply_generated',
         provider: reply.provider,
       });
       return output;
@@ -125,17 +138,38 @@ export async function runCommandChatLoop({
     }
   };
 
+  const useJevRoute = shouldUseJevRoute(options);
+  if (!useJevRoute) {
+    const reply = await textReplyFromJev('ax_command_chat_text');
+    if (reply) return reply;
+  }
+
   let delegatedCommandNames: readonly AxCommandName[] | undefined;
-  if (options.decisionEngine && !options.allowContextUpdate) {
-    const jevRoute = await routeChatWithJev({
-      decisionEngine: options.decisionEngine,
-      userMessage: options.userMessage,
-      currentWorkflowId: session.workflowId,
-      hasWorkspaceSession: Boolean(options.workspaceSessionId),
-      connectedConnectors: options.connectedConnectors,
-      workspaceSources: options.workspaceSources,
-      abortSignal: signal,
-    });
+  if (options.decisionEngine && !options.allowContextUpdate && useJevRoute) {
+    const jevStartedAt = Date.now();
+    let jevRoute: Awaited<ReturnType<typeof routeChatWithJev>>;
+    let jevRouteOutcome = 'error';
+    try {
+      jevRoute = await routeChatWithJev({
+        decisionEngine: options.decisionEngine,
+        userMessage: options.userMessage,
+        currentWorkflowId: session.workflowId,
+        hasWorkspaceSession: Boolean(options.workspaceSessionId),
+        connectedConnectors: options.connectedConnectors,
+        httpEndpoints: options.httpEndpoints,
+        workspaceSources: options.workspaceSources,
+        abortSignal: signal,
+      });
+      jevRouteOutcome = jevRoute.kind === 'fallback'
+        ? `fallback:${jevRoute.reason}`
+        : `${jevRoute.kind}:${jevRoute.route}`;
+    } finally {
+      appendAppLog('info', 'Jev chat route timing recorded.', {
+        event: 'jev_chat_route_timing',
+        durationMs: Date.now() - jevStartedAt,
+        outcome: jevRouteOutcome,
+      });
+    }
     if (jevRoute.kind === 'fallback') {
       appendAppLog('info', 'Jev chat route fell back to the LLM command path.', {
         event: 'jev_chat_route_fallback',
@@ -183,6 +217,12 @@ export async function runCommandChatLoop({
       if (jevRoute.command.name === 'workflow.run') {
         return hostFacingMessage(resultForLoop, '워크플로우 실행 요청을 처리하지 못했습니다.');
       }
+      const deterministicReply = deterministicHttpChatReply(
+        jevRoute.command,
+        resultForLoop,
+        options.userMessage,
+      );
+      if (deterministicReply) return deterministicReply;
       messages.push(
         { role: 'assistant', content: JSON.stringify({ kind: 'command', command: jevRoute.command }) },
         { role: 'user', content: resultMessage(resultForLoop) },

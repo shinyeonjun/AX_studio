@@ -7,6 +7,7 @@ import type { AgentScopedContextMap } from '../../scoped-context.js';
 import type { AxCommandResult, AxUiPresentation } from '../schema.js';
 import { inputRequestsForResult } from '../input-requests.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
+import type { JevHttpEndpointHint } from './jev-router.js';
 
 export interface AxCommandChatOptions {
   harness: AgentHarness;
@@ -16,6 +17,8 @@ export interface AxCommandChatOptions {
   messages: ChatMessage[];
   userMessage: string;
   connectedConnectors?: string[];
+  /** Safe HTTP endpoint ids/labels for Jev routing; never includes URLs or secrets. */
+  httpEndpoints?: JevHttpEndpointHint[];
   providerSessionId?: string;
   workspaceSessionId?: string;
   workspaceSources?: WorkspaceSourceRecord[];

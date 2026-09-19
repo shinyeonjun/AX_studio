@@ -74,6 +74,67 @@ describe('routeChatWithJev', () => {
     expect(request?.questions.route).toMatchObject({ type: 'choice' });
   });
 
+  it('maps an explicit GET path to http.request when one usable endpoint exists', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'DummyJSON 연결을 사용해서 다음 GET 경로를 호출해줘:\nproducts?limit=10&select=title,price',
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+    })).resolves.toEqual({
+      kind: 'command',
+      route: 'http_read',
+      confidence: 0.98,
+      command: {
+        name: 'capability.invoke',
+        args: {
+          id: 'http.request',
+          params: {
+            method: 'GET',
+            path: 'products?limit=10&select=title,price',
+            connectionId: 'dummyjson',
+          },
+        },
+      },
+    });
+  });
+
+  it('does not guess a connection for an explicit GET when multiple endpoints match none', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'GET /api/v1/orders?status=paid 를 조회해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: [
+        { id: 'alpha', label: 'Alpha API', usable: true },
+        { id: 'beta', label: 'Beta API', usable: true },
+      ],
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+  });
+
+  it('fails closed for write verbs, absolute URLs, and substring endpoint matches', async () => {
+    const endpoints = [
+      { id: 'api', label: 'Primary API', usable: true },
+      { id: 'billing', label: 'Billing API', usable: true },
+    ];
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'POST /orders 를 호출해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: endpoints,
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'GET https://example.com/orders 를 조회해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: endpoints,
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'capitalize labels; GET /orders 를 조회해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: endpoints,
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+  });
+
   it('falls back when a safe route is uncertain', async () => {
     const result = await routeChatWithJev({
       decisionEngine: engineFor('workflow_list', 0.6),

@@ -12,6 +12,7 @@ import { runAxCommandChat } from '../chat.js';
 import { AxCommandService } from '../service.js';
 import { scriptedModel } from './fixtures.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
+import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
 
 describe('runAxCommandChat command loop', () => {
   it('answers trivial identity questions without Jev or an LLM round trip', async () => {
@@ -108,6 +109,91 @@ describe('runAxCommandChat command loop', () => {
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(1);
     expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('skips Jev for casual text so the response uses one text-model call', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_should_not_run'); },
+    };
+    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', ['알겠어요.'], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: '바보',
+    })).resolves.toBe('알겠어요.');
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(1);
+  });
+
+  it('finishes a Jev-selected simple HTTP table without a second text-model call', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [{ id: 'dummyjson', label: 'DummyJSON', baseUrl: 'https://dummyjson.com/', authType: 'none' }],
+    });
+    const response = buildHttpResponseArtifact({
+      executionId: 'design-tool',
+      url: 'https://dummyjson.com/products?limit=2',
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ products: [
+        { title: 'First', price: 1.99 },
+        { title: 'Second', price: 2.99 },
+      ], total: 2 }),
+      truncated: false,
+    });
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async (request) => {
+          expect(request.args).toEqual({
+            id: 'http.request',
+            params: {
+              method: 'GET',
+              path: 'products?limit=2',
+              connectionId: 'dummyjson',
+            },
+          });
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: { capabilityId: 'http.request', data: response, citations: [], untrusted: true },
+          };
+        },
+      },
+    });
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice',
+            choice: 'http_read',
+            probabilities: { http_read: 0.98, answer: 0.02 },
+            confidence: 0.98,
+          },
+        },
+      }),
+    };
+    const textSeen: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+      messages: [],
+      userMessage: 'DummyJSON에서 GET products?limit=2 를 조회하고 표로 정리해줘.',
+    })).resolves.toContain('| title | price |');
+    expect(textSeen).toHaveLength(0);
   });
 
   it('falls back to the existing LLM planner when Jev is unavailable', async () => {

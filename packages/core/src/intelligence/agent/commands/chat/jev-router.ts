@@ -20,7 +20,9 @@ const WORKFLOW_RUN_MIN_CONFIDENCE = 0.9;
 const WORKFLOW_RUN_MIN_EXPLICIT_PROBABILITY = 0.9;
 const REPORT_ROUTE_MIN_CONFIDENCE = 0.85;
 const REPORT_SOURCE_MIN_CONFIDENCE = 0.8;
+const HTTP_ROUTE_MIN_CONFIDENCE = 0.85;
 const ROUTE_QUERY_MAX_CHARS = 500;
+const HTTP_PATH_MAX_CHARS = 2_048;
 // Route selection is a fast classifier; it must not hold the chat UI for the
 // full generic decision-engine timeout before the safe LLM fallback can start.
 const JEV_CHAT_ROUTE_TIMEOUT_MS = 5_000;
@@ -37,6 +39,11 @@ const ROUTE_CRITERIA = {
   connection_list: {
     what: 'List saved HTTP REST connections or endpoints without revealing credentials.',
     examples: ['Show the APIs I connected.', 'What HTTP endpoints are available?'],
+  },
+  http_read: {
+    what: 'Perform one explicit, read-only GET request against a uniquely selected connected HTTP endpoint.',
+    examples: ['Use the DummyJSON connection and call GET products?limit=10.', 'GET /api/v1/orders?status=paid'],
+    not_for: 'POST, PUT, PATCH, DELETE, external changes, or a path/connection that is not explicit.',
   },
   source_list: {
     what: 'List source records exposed by connected Gmail, Slack, or local-folder connectors.',
@@ -143,8 +150,16 @@ export interface JevChatRouterInput {
   currentWorkflowId?: string;
   hasWorkspaceSession?: boolean;
   connectedConnectors?: readonly string[];
+  /** Safe endpoint hints only; base URLs and credentials never enter Jev state. */
+  httpEndpoints?: readonly JevHttpEndpointHint[];
   workspaceSources?: readonly WorkspaceSourceRecord[];
   abortSignal?: AbortSignal;
+}
+
+export interface JevHttpEndpointHint {
+  id: string;
+  label?: string;
+  usable?: boolean;
 }
 
 type JevChatRouterFallbackReason =
@@ -246,6 +261,66 @@ function reportCommand(
   };
 }
 
+const HTTP_PATH_TOKEN = /^[A-Za-z0-9._~!$&'()*+,;=:@%/?#-]+$/u;
+
+function normalizeHttpPath(value: string | undefined): string | undefined {
+  const candidate = value?.trim().replace(/[\s,;:!?。！？]+$/u, '');
+  if (!candidate || candidate.length > HTTP_PATH_MAX_CHARS) return undefined;
+  if (candidate.startsWith('//') || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(candidate)) return undefined;
+  if (/[\s"'`<>]/u.test(candidate) || !HTTP_PATH_TOKEN.test(candidate)) return undefined;
+  return candidate;
+}
+
+function explicitHttpPath(message: string): string | undefined {
+  const patterns = [
+    /(?:GET|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
+    /(?:^|[\s(])(?:GET|겟)\s+([^\s"'`<>]+)/iu,
+    /(?:경로|path)\s*[:：]\s*([^\s"'`<>]+)/iu,
+  ];
+  for (const pattern of patterns) {
+    const path = normalizeHttpPath(message.match(pattern)?.[1]);
+    if (path) return path;
+  }
+  return undefined;
+}
+
+function endpointMentioned(message: string, value: string | undefined): boolean {
+  const needle = value?.trim();
+  if (!needle) return false;
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?:$|[^A-Za-z0-9_])`, 'iu').test(message);
+}
+
+function endpointMatchesMessage(message: string, endpoint: JevHttpEndpointHint): boolean {
+  return [endpoint.id, endpoint.label].some((value) => endpointMentioned(message, value));
+}
+
+function httpReadCommand(input: JevChatRouterInput): AxCommand | JevChatRouterResult {
+  const path = explicitHttpPath(input.userMessage);
+  const endpoints = (input.httpEndpoints ?? []).filter((endpoint) => endpoint.usable !== false);
+  if (!path || endpoints.length === 0) return fallback('missing_context');
+
+  const mentioned = endpoints.filter((endpoint) => endpointMatchesMessage(input.userMessage, endpoint));
+  const selected = endpoints.length === 1
+    ? endpoints[0]
+    : mentioned.length === 1
+      ? mentioned[0]
+      : undefined;
+  if (!selected) return fallback('missing_context');
+
+  return {
+    name: 'capability.invoke',
+    args: {
+      id: 'http.request',
+      params: {
+        method: 'GET',
+        path,
+        connectionId: selected.id,
+      },
+    },
+  };
+}
+
 function commandForRoute(
   route: RouteName,
   input: JevChatRouterInput,
@@ -258,6 +333,8 @@ function commandForRoute(
       return { name: 'resource.list', args: {} };
     case 'connection_list':
       return { name: 'http.list', args: {} };
+    case 'http_read':
+      return httpReadCommand(input);
     case 'source_list':
       return { name: 'source.list', args: {} };
     case 'session_source_list':
@@ -310,6 +387,13 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       connected_connectors: (input.connectedConnectors ?? [])
         .slice(0, 20)
         .map((connector) => boundDecisionString(connector, 128)),
+      http_endpoints: (input.httpEndpoints ?? [])
+        .slice(0, 20)
+        .map((endpoint) => ({
+          id: boundDecisionString(endpoint.id, 128),
+          ...(endpoint.label ? { label: boundDecisionString(endpoint.label, 160) } : {}),
+          usable: endpoint.usable !== false,
+        })),
     },
     policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
   };
@@ -377,6 +461,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         return fallback('uncertain');
       }
     } else if (route === 'report_generate' && confidence < REPORT_ROUTE_MIN_CONFIDENCE) {
+      return fallback('uncertain');
+    } else if (route === 'http_read' && confidence < HTTP_ROUTE_MIN_CONFIDENCE) {
       return fallback('uncertain');
     } else if (route === 'answer' && confidence < REPLY_ROUTE_MIN_CONFIDENCE) {
       return fallback('uncertain');
