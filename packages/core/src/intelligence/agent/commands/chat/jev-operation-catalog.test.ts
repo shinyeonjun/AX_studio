@@ -44,6 +44,8 @@ describe('buildJevReadOperationHints', () => {
       key: 'op_0',
       capabilityId: 'openapi.catalog.listProducts',
       connector: 'openapi',
+      sourceLabel: 'Catalog API',
+      label: 'Catalog API: 상품 목록',
       params: { query: { limit: 10 } },
     });
     expect(JSON.stringify(hints)).not.toContain('super-secret');

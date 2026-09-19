@@ -6,8 +6,9 @@ import {
   type OpenApiOperation,
   type OpenApiParameter,
 } from '../../../../connectors/protocols/openapi/index.js';
+import { requestLimitValue } from './request-features.js';
 
-const MAX_HINTS = 64;
+export const JEV_READ_OPERATION_MAX_HINTS = 64;
 const MAX_TEXT_CHARS = 320;
 const MAX_EXPLICIT_PARAMETER_CHARS = 500;
 const NATURAL_LIMIT_PARAMETER_NAMES = new Set([
@@ -31,6 +32,7 @@ export interface JevReadOperationHint {
   key: string;
   capabilityId: string;
   connector: 'openapi' | 'mcp' | 'rdb';
+  sourceLabel?: string;
   label: string;
   description: string;
   params: Record<string, unknown>;
@@ -44,6 +46,47 @@ export interface JevReadParameterHint {
   path: string;
   type?: string;
   required: boolean;
+}
+
+const OPERATION_QUERY_STOP_WORDS = new Set([
+  'api', 'http', 'rest', 'endpoint', 'json', 'database', 'db', 'sql', 'get', 'head',
+  '조회', '검색', '읽기', '읽어', '가져', '가져와', '호출', '요청', '실행', '보여', '보여줘',
+  '목록', '데이터', '자료', '정보', '테이블', '해줘', '해주세요', '부탁', '부탁해',
+]);
+const KOREAN_REQUEST_SUFFIX = /(?:해주세요|해줘|해봐|할래|할까|으로|에서|에게|부터|까지|을|를|이|가|은|는|에|로|와|과|도|만|의|랑|이나|나|해|줘)$/u;
+
+function operationQueryTokens(message: string): string[] {
+  return [...message.toLocaleLowerCase().matchAll(/[\p{L}\p{N}][\p{L}\p{N}_-]*/gu)]
+    .map(([token]) => token.replace(KOREAN_REQUEST_SUFFIX, ''))
+    .filter((token) => token.length >= 2 && !/^\d+$/u.test(token) && !OPERATION_QUERY_STOP_WORDS.has(token));
+}
+
+/**
+ * Keeps bounded catalogs useful when the host has already reached the Jev
+ * choice budget. An unrelated prefix is worse than asking discovery to find
+ * the operation, so an exhausted catalog with no lexical evidence is closed.
+ */
+export function selectJevReadOperationHints(
+  hints: readonly JevReadOperationHint[],
+  userMessage: string,
+): readonly JevReadOperationHint[] {
+  const bounded = hints.slice(0, JEV_READ_OPERATION_MAX_HINTS);
+  if (hints.length < JEV_READ_OPERATION_MAX_HINTS) return bounded;
+
+  const tokens = operationQueryTokens(userMessage);
+  if (tokens.length === 0) return [];
+  return bounded
+    .map((hint, index) => {
+      const text = [hint.sourceLabel, hint.label, hint.description, hint.capabilityId]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase();
+      const score = tokens.reduce((total, token) => total + (text.includes(token) ? 1 : 0), 0);
+      return { hint, index, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.hint);
 }
 
 function text(value: unknown, maxChars = MAX_TEXT_CHARS): string | undefined {
@@ -66,13 +109,6 @@ function explicitParameterValue(message: string, name: string): string | undefin
   const pattern = new RegExp(`(?:^|[?&\\s])${escapeRegExp(name)}\\s*[=:]\\s*([^\\s&"'<>]+)`, 'iu');
   const value = message.match(pattern)?.[1];
   return value && value.length <= MAX_EXPLICIT_PARAMETER_CHARS ? value : undefined;
-}
-
-function naturalLimitValue(message: string): number | undefined {
-  const match = message.match(/(?:^|\s)(\d{1,4})\s*(?:개만|개|건|행|items?|rows?|results?)(?:\s|$)/iu);
-  if (!match) return undefined;
-  const value = Number(match[1]);
-  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
 function parameterValue(
@@ -115,7 +151,7 @@ function openApiParams(
   // an unbounded payload into a provider call.
   if (operation.securityRequired || operation.requestBody?.required) return undefined;
 
-  const naturalLimit = naturalLimitValue(userMessage);
+  const naturalLimit = requestLimitValue(userMessage);
   const groups: Record<string, Record<string, unknown>> = {};
   const parameterHints: JevReadParameterHint[] = [];
   const missingParameterPaths: string[] = [];
@@ -150,7 +186,7 @@ function addHint(
   hints: JevReadOperationHint[],
   input: Omit<JevReadOperationHint, 'key'>,
 ): void {
-  if (hints.length >= MAX_HINTS) return;
+  if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
   hints.push({ ...input, key: `op_${hints.length}` });
 }
 
@@ -167,19 +203,21 @@ function addOpenApiHints(
   } catch {
     return;
   }
+  const sourceLabel = parsed.label ?? spec.title;
   for (const operation of spec.operations) {
-    if (hints.length >= MAX_HINTS) return;
+    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
     if (operation.method !== 'GET' && operation.method !== 'HEAD') continue;
     if (operation.sideEffect !== 'NONE' && operation.sideEffect !== 'REVERSIBLE') continue;
     const resolution = openApiParams(operation, userMessage);
     if (!resolution) continue;
     const summary = text(operation.summary, 180);
-    const label = summary ?? operation.operationId;
+    const operationLabel = summary ?? operation.operationId;
     addHint(hints, {
       capabilityId: `openapi.${spec.id}.${operation.operationId}`,
       connector: 'openapi',
-      label,
-      description: text(`${operation.method} ${operation.path}${summary ? ` — ${summary}` : ''}`, MAX_TEXT_CHARS) ?? operation.path,
+      sourceLabel: sourceLabel.slice(0, 160),
+      label: text(`${sourceLabel}: ${operationLabel}`, 160) ?? operationLabel,
+      description: text(`${sourceLabel}: ${operation.method} ${operation.path} — ${operationLabel}`, MAX_TEXT_CHARS) ?? operation.path,
       params: resolution.params,
       parameterHints: resolution.parameterHints,
       missingParameterPaths: resolution.missingParameterPaths,
@@ -198,20 +236,22 @@ function addRdbHints(
   addHint(hints, {
     capabilityId: 'rdb.schema.describe',
     connector: 'rdb',
+    ...(connectionLabel ? { sourceLabel: connectionLabel } : {}),
     label: connectionLabel ? `${connectionLabel} 스키마` : 'DB 스키마',
     description: connectionLabel ? `${connectionLabel}의 허용된 테이블 목록 조회` : '허용된 DB 테이블 목록 조회',
     params: {},
   });
 
-  const limit = naturalLimitValue(userMessage);
+  const limit = requestLimitValue(userMessage);
   const tables = Array.isArray(config.allowedTables)
-    ? config.allowedTables.filter((table): table is string => typeof table === 'string' && Boolean(table.trim())).slice(0, MAX_HINTS)
+    ? config.allowedTables.filter((table): table is string => typeof table === 'string' && Boolean(table.trim())).slice(0, JEV_READ_OPERATION_MAX_HINTS)
     : [];
   for (const table of tables) {
-    if (hints.length >= MAX_HINTS) return;
+    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
     addHint(hints, {
       capabilityId: 'rdb.query.read',
       connector: 'rdb',
+      ...(connectionLabel ? { sourceLabel: connectionLabel } : {}),
       label: `DB 조회: ${table.slice(0, 160)}`,
       description: `허용된 테이블 ${table.slice(0, 160)} 읽기`,
       params: { table, ...(limit === undefined ? {} : { limit }) },
@@ -223,7 +263,7 @@ function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingCon
   const parsed = parseMcpConnectionConfig(connection.config);
   if (!parsed) return;
   for (const tool of parsed.tools) {
-    if (hints.length >= MAX_HINTS) return;
+    if (hints.length >= JEV_READ_OPERATION_MAX_HINTS) return;
     if (tool.sideEffect !== 'NONE' && tool.sideEffect !== 'REVERSIBLE') continue;
     const schema = asRecord(tool.inputSchema);
     const required = Array.isArray(schema?.required)
@@ -250,6 +290,7 @@ function addMcpHints(hints: JevReadOperationHint[], connection: SourceListingCon
     addHint(hints, {
       capabilityId: `mcp.${parsed.serverId}.${tool.name}`,
       connector: 'mcp',
+      sourceLabel: parsed.serverId,
       label: text(tool.name, 160) ?? 'MCP 읽기 도구',
       description,
       params: {},
@@ -271,7 +312,7 @@ export function buildJevReadOperationHints(
 ): JevReadOperationHint[] {
   const hints: JevReadOperationHint[] = [];
   for (const connection of connections) {
-    if (!connection.connected || hints.length >= MAX_HINTS) continue;
+    if (!connection.connected || hints.length >= JEV_READ_OPERATION_MAX_HINTS) continue;
     if (connection.connector === 'openapi') addOpenApiHints(hints, connection, userMessage);
     if (connection.connector === 'rdb') addRdbHints(hints, connection, userMessage);
     if (connection.connector === 'mcp') addMcpHints(hints, connection);

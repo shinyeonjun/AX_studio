@@ -18,13 +18,13 @@ const JevAnswerSchema = z.discriminatedUnion('type', [
     type: z.literal('choice'),
     choice: z.string(),
     probabilities: z.record(ProbabilitySchema),
-    confidence: z.number().nullish(),
+    confidence: ProbabilitySchema.nullish(),
   }),
   z.object({
     type: z.literal('score'),
     score: z.number(),
     probabilities: z.record(ProbabilitySchema),
-    confidence: z.number().nullish(),
+    confidence: ProbabilitySchema.nullish(),
   }),
 ]);
 
@@ -141,6 +141,9 @@ function mapAnswer(id: string, question: DecisionQuestion, raw: z.infer<typeof J
   }
   if (question.type === 'choice') {
     if (raw.type !== 'choice') throw new JevDecisionError(`Unexpected answer type for ${id}: ${raw.type}`);
+    if (!Object.prototype.hasOwnProperty.call(question.criteria, raw.choice)) {
+      throw new JevDecisionError(`TypeSafe returned an unknown choice ${raw.choice} for ${id}.`);
+    }
     return {
       type: 'choice',
       choice: raw.choice,

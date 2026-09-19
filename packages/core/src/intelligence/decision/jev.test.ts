@@ -82,6 +82,31 @@ describe('JevDecisionEngine', () => {
     })).rejects.toBeInstanceOf(JevDecisionError);
   });
 
+  it('rejects a choice that was not declared by the caller', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+      answers: {
+        route: {
+          type: 'choice',
+          choice: 'not_declared',
+          probabilities: { allowed: 0.9, none: 0.1 },
+          confidence: 0.9,
+        },
+      },
+    }), { status: 200 }));
+    const engine = new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl });
+
+    await expect(engine.evaluate({
+      state: 'x',
+      questions: {
+        route: {
+          type: 'choice',
+          instructions: 'Choose a route.',
+          criteria: { allowed: 'The only allowed route.', none: 'No route.' },
+        },
+      },
+    })).rejects.toThrow('unknown choice');
+  });
+
   it('surfaces provider errors without exposing the API key', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
       message: 'not allowed',
