@@ -266,6 +266,69 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(0);
   });
 
+  it('uses one bounded LLM read plan when a schema-less HTTP request has no explicit path', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const response = buildHttpResponseArtifact({
+      executionId: 'design-tool',
+      url: 'https://dummyjson.com/products?limit=2',
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ products: [{ title: 'First' }, { title: 'Second' }] }),
+      truncated: false,
+    });
+    const service = new AxCommandService(store, {
+      readGateway: {
+        execute: async (request) => {
+          expect(request.args).toEqual({
+            id: 'http.request',
+            params: {
+              method: 'GET',
+              path: 'products?limit=2',
+              connectionId: 'dummyjson',
+            },
+          });
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: { capabilityId: 'http.request', data: response, citations: [], untrusted: true },
+          };
+        },
+      },
+    });
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice', choice: 'http_read',
+            probabilities: { http_read: 0.98, answer: 0.02 }, confidence: 0.98,
+          },
+        },
+      }),
+    };
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: {
+        name: 'capability.invoke',
+        args: { id: 'http.request', params: { method: 'GET', path: 'products?limit=2', connectionId: 'dummyjson' } },
+      } },
+    ], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+      messages: [],
+      userMessage: 'DummyJSON에서 상품 2개만 가져와서 표로 보여줘',
+    })).resolves.toContain('| title |');
+    expect(seen).toHaveLength(1);
+    expect(textSeen).toHaveLength(0);
+  });
+
   it('finishes a Jev-selected catalog read without a second text-model call', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db), {

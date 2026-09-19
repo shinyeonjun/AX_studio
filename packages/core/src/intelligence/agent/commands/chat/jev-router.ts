@@ -281,7 +281,7 @@ function normalizeHttpPath(value: string | undefined): string | undefined {
   return candidate;
 }
 
-function explicitHttpPath(message: string): string | undefined {
+export function explicitHttpPath(message: string): string | undefined {
   const patterns = [
     /(?:GET|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
     /(?:^|[\s(])(?:GET|겟)\s+([^\s"'`<>]+)/iu,
