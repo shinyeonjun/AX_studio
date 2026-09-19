@@ -367,7 +367,7 @@ export async function runCommandChatLoop({
     result: AxCommandResult;
   }): Promise<boolean> => {
     const route = readParameterPlan ? 'parameterized' : httpReadPlan ? 'http' : undefined;
-    if (!route || input.round + 1 >= effectiveMaxRounds || !isRecoverableReadStatus(input.status)) {
+    if (!route || input.round + 1 >= effectiveMaxRounds || !isRecoverableReadStatus(input.status, input.errorCode)) {
       return false;
     }
     const decision = await decideReadRecovery({

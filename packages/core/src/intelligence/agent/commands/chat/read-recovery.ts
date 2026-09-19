@@ -136,7 +136,11 @@ export async function decideReadRecovery(
 }
 
 /** Only failed read states can enter the recovery judge. Mutations never use it. */
-export function isRecoverableReadStatus(status: string): boolean {
+export function isRecoverableReadStatus(status: string, errorCode = ''): boolean {
+  if (/(?:^|[_-])(?:auth|unauthorized|forbidden|permission|credential|secret|rate[_-]?limit|quota|not[_-]?connected|connection[_-]?missing)(?:$|[_-])/iu.test(errorCode)
+    || /^http_(?:401|403|407|429)$/u.test(errorCode)) {
+    return false;
+  }
   return status === 'needs_input'
     || status === 'invalid'
     || status === 'not_found'

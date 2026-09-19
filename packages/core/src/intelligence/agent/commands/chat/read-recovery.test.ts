@@ -67,6 +67,8 @@ describe('decideReadRecovery', () => {
     expect(isRecoverableReadStatus('error')).toBe(true);
     expect(isRecoverableReadStatus('not_found')).toBe(true);
     expect(isRecoverableReadStatus('forbidden')).toBe(false);
+    expect(isRecoverableReadStatus('error', 'http_401')).toBe(false);
+    expect(isRecoverableReadStatus('error', 'rate_limit')).toBe(false);
     expect(isRecoverableReadStatus('ok')).toBe(false);
   });
 });
