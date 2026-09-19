@@ -8,6 +8,7 @@ import type { AxCommandResult, AxUiPresentation } from '../schema.js';
 import { inputRequestsForResult } from '../input-requests.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type { JevHttpEndpointHint } from './jev-router.js';
+import type { JevReadOperationHint } from './jev-operation-catalog.js';
 
 export interface AxCommandChatOptions {
   harness: AgentHarness;
@@ -19,6 +20,8 @@ export interface AxCommandChatOptions {
   connectedConnectors?: string[];
   /** Safe HTTP endpoint ids/labels for Jev routing; never includes URLs or secrets. */
   httpEndpoints?: JevHttpEndpointHint[];
+  /** Safe, read-only operation choices derived from persisted connector metadata. */
+  readOperationHints?: JevReadOperationHint[];
   providerSessionId?: string;
   workspaceSessionId?: string;
   workspaceSources?: WorkspaceSourceRecord[];

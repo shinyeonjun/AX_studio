@@ -14,6 +14,7 @@ import {
 } from './protocol.js';
 import {
   deterministicHttpChatReply,
+  deterministicCapabilityReadChatReply,
   hostFacingMessage,
   type CommandChatSessionState,
 } from './result.js';
@@ -166,6 +167,7 @@ export async function runCommandChatLoop({
         hasWorkspaceSession: Boolean(options.workspaceSessionId),
         connectedConnectors: options.connectedConnectors,
         httpEndpoints: options.httpEndpoints,
+        readOperationHints: options.readOperationHints,
         workspaceSources: options.workspaceSources,
         abortSignal: signal,
       });
@@ -177,6 +179,7 @@ export async function runCommandChatLoop({
         event: 'jev_chat_route_timing',
         durationMs: Date.now() - jevStartedAt,
         outcome: jevRouteOutcome,
+        readOperationHintCount: options.readOperationHints?.length ?? 0,
       });
     }
     if (jevRoute.kind === 'fallback') {
@@ -203,6 +206,9 @@ export async function runCommandChatLoop({
         route: jevRoute.route,
         command: jevRoute.command.name,
         confidence: jevRoute.confidence,
+        ...(jevRoute.command.name === 'capability.invoke' && typeof jevRoute.command.args.id === 'string'
+          ? { capabilityId: jevRoute.command.args.id.slice(0, 256) }
+          : {}),
       });
       const blockedMessage = await semanticGateMessage(jevRoute.command);
       if (blockedMessage) return blockedMessage;
@@ -235,8 +241,19 @@ export async function runCommandChatLoop({
         jevRoute.command,
         resultForLoop,
         options.userMessage,
+      ) ?? deterministicCapabilityReadChatReply(
+        jevRoute.command,
+        resultForLoop,
+        options.userMessage,
       );
-      if (deterministicReply) return deterministicReply;
+      if (deterministicReply) {
+        appendAppLog('info', 'Jev-selected read used a deterministic chat renderer.', {
+          event: 'jev_chat_deterministic_reply',
+          route: jevRoute.route,
+          command: jevRoute.command.name,
+        });
+        return deterministicReply;
+      }
       messages.push(
         { role: 'assistant', content: JSON.stringify({ kind: 'command', command: jevRoute.command }) },
         { role: 'user', content: resultMessage(resultForLoop) },

@@ -9,7 +9,7 @@ import {
   HttpResponseArtifactSchema,
   httpResponseToTable,
 } from '../../../../contracts/artifacts/http-response.js';
-import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import { TableArtifactSchema, type TableArtifact } from '../../../../contracts/artifacts/table.js';
 
 export interface CommandChatSessionState {
   workflowId?: string;
@@ -141,6 +141,93 @@ export function deterministicHttpChatReply(
     }
   }
   return `HTTP ${response.status} 조회 결과:\n\n${fencedBody(body, language)}`;
+}
+
+function capabilityEnvelopeData(result: AxCommandResult): unknown {
+  if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) return result.data;
+  const envelope = result.data as Record<string, unknown>;
+  return Object.hasOwn(envelope, 'data') ? envelope.data : envelope;
+}
+
+function objectRows(value: unknown): Record<string, unknown>[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  return value.every((entry) => Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry))
+    ? value as Record<string, unknown>[]
+    : undefined;
+}
+
+function rowsForCapabilityTable(value: unknown): Record<string, unknown>[] | undefined {
+  const direct = objectRows(value);
+  if (direct) return direct;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const candidates = Object.values(value).filter((entry) => objectRows(entry));
+  return candidates.length === 1 ? objectRows(candidates[0]) : undefined;
+}
+
+function rowsToMarkdown(rows: Record<string, unknown>[]): string {
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))].slice(0, 50);
+  if (headers.length === 0) return '조회 결과가 비어 있습니다.';
+  return [
+    `| ${headers.map(markdownCell).join(' | ')} |`,
+    `| ${headers.map(() => '---').join(' | ')} |`,
+    ...rows.slice(0, 100).map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`),
+    ...(rows.length > 100 ? ['', '응답이 일부만 포함되어 있습니다.'] : []),
+  ].join('\n');
+}
+
+/**
+ * Complete a Jev-selected read without paying for a second LLM turn when the
+ * user only wants bounded data displayed. Semantic transforms still delegate
+ * to the model so sorting, filtering, and summaries keep their existing path.
+ */
+export function deterministicCapabilityReadChatReply(
+  command: AxCommand,
+  result: AxCommandResult,
+  userMessage: string,
+): string | undefined {
+  if (command.name !== 'capability.invoke' || result.status !== 'ok') return undefined;
+  const id = command.args.id;
+  if (typeof id !== 'string' || id === 'http.request') return undefined;
+  if (/정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명/iu.test(userMessage)) return undefined;
+
+  const payload = capabilityEnvelopeData(result);
+  const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
+  if (wantsTable) {
+    const table = TableArtifactSchema.safeParse(payload);
+    if (table.success) return tableToMarkdown(table.data);
+    let decoded = payload;
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      const body = (payload as Record<string, unknown>).body;
+      if (typeof body === 'string') {
+        try { decoded = JSON.parse(body) as unknown; } catch { return undefined; }
+      }
+    }
+    const rows = rowsForCapabilityTable(decoded);
+    return rows ? rowsToMarkdown(rows) : undefined;
+  }
+
+  let body = payload;
+  let language = 'json';
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const record = payload as Record<string, unknown>;
+    if (typeof record.body === 'string') {
+      body = record.body;
+      language = 'text';
+      try {
+        body = JSON.stringify(JSON.parse(record.body) as unknown, null, 2);
+        language = 'json';
+      } catch {
+        // Preserve a non-JSON provider body as text.
+      }
+      const status = typeof record.status === 'number' ? ` (HTTP ${record.status})` : '';
+      return `조회 결과${status}:\n\n${fencedBody(String(body ?? ''), language)}`;
+    }
+    if (Object.hasOwn(record, 'result')) body = record.result;
+  }
+  const serialized = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+  return serialized === undefined
+    ? '조회 결과가 비어 있습니다.'
+    : `조회 결과:\n\n${fencedBody(serialized, typeof body === 'string' ? 'text' : 'json')}`;
 }
 
 export function applyCommandResultToSession(

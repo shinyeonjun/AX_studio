@@ -1,6 +1,7 @@
 import {
   appendAppLog,
   AX_COMMAND_CHAT_TIMEOUT_MS,
+  buildJevReadOperationHints,
   httpEndpointsFromConnections,
   runAxCommandChat,
 } from '@ax-studio/core';
@@ -74,7 +75,8 @@ export function registerWorkspaceChatMessageHandler() {
           presentations: reply.presentations,
         };
       }
-      const httpEndpoints = httpEndpointsFromConnections(core.store.getConnections()).map((endpoint) => ({
+      const connections = core.store.getConnections();
+      const httpEndpoints = httpEndpointsFromConnections(connections).map((endpoint) => ({
         id: endpoint.id,
         ...(endpoint.label ? { label: endpoint.label } : {}),
         usable: endpoint.auth?.type === undefined || endpoint.auth.type === 'none' || endpoint.authStored === true,
@@ -85,6 +87,7 @@ export function registerWorkspaceChatMessageHandler() {
         decisionEngine: core.decisionEngine,
         connectedConnectors: connectedConnectorIds(core.store),
         httpEndpoints,
+        readOperationHints: buildJevReadOperationHints(connections, userMessage),
         messages: history,
         userMessage,
         currentWorkflowId: effectiveWorkflowId,

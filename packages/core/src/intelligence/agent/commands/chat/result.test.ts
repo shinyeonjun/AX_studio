@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
 import type { AxCommand, AxCommandResult } from '../schema.js';
-import { deterministicHttpChatReply } from './result.js';
+import { deterministicCapabilityReadChatReply, deterministicHttpChatReply } from './result.js';
 
 const httpGetCommand: AxCommand = {
   name: 'capability.invoke',
@@ -41,5 +41,46 @@ describe('deterministicHttpChatReply', () => {
       httpResult('{"items":[{"price":2},{"price":1}]}'),
       '방금 조회한 결과를 가격순으로 정렬해줘.',
     )).toBeUndefined();
+  });
+});
+
+describe('deterministicCapabilityReadChatReply', () => {
+  it('renders a bounded table capability result without a second model turn', () => {
+    const reply = deterministicCapabilityReadChatReply({
+      name: 'capability.invoke',
+      args: { id: 'rdb.query.read', params: { table: 'orders' } },
+    }, {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: {
+        capabilityId: 'rdb.query.read',
+        data: {
+          id: 'orders',
+          kind: 'table',
+          columns: [{ name: 'id', type: 'integer', nullable: false, inferred: false }],
+          rows: [{ index: 0, values: { id: 1 } }],
+        },
+        citations: [],
+        untrusted: true,
+      },
+      issues: [],
+      inputRequests: [],
+    }, '주문을 표로 보여줘');
+
+    expect(reply).toContain('| id |');
+    expect(reply).toContain('| 1 |');
+  });
+
+  it('keeps semantic transforms on the model path', () => {
+    expect(deterministicCapabilityReadChatReply({
+      name: 'capability.invoke',
+      args: { id: 'rdb.query.read', params: { table: 'orders' } },
+    }, {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: { data: { kind: 'table', rows: [] } },
+      issues: [],
+      inputRequests: [],
+    }, '가격순으로 정렬해줘')).toBeUndefined();
   });
 });

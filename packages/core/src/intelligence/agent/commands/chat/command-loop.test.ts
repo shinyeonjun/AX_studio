@@ -266,6 +266,66 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(0);
   });
 
+  it('finishes a Jev-selected catalog read without a second text-model call', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db), {
+      readGateway: {
+        execute: async (request) => {
+          expect(request.args).toEqual({
+            id: 'rdb.query.read',
+            params: { table: 'orders', limit: 2 },
+          });
+          return {
+            tool: 'capabilities.invoke',
+            ok: true,
+            data: {
+              capabilityId: 'rdb.query.read',
+              data: {
+                id: 'orders',
+                kind: 'table',
+                columns: [{ name: 'id', type: 'integer', nullable: false, inferred: false }],
+                rows: [{ index: 0, values: { id: 1 } }],
+              },
+              citations: [],
+              untrusted: true,
+            },
+          };
+        },
+      },
+    });
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          route: {
+            type: 'choice', choice: 'capability_read',
+            probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
+          },
+          operation: {
+            type: 'choice', choice: 'op_0',
+            probabilities: { op_0: 0.98, none: 0.02 }, confidence: 0.98,
+          },
+        },
+      }),
+    };
+    const textSeen: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['rdb'],
+      readOperationHints: [{
+        key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb',
+        label: '주문 조회', description: '허용된 테이블 orders 읽기',
+        params: { table: 'orders', limit: 2 },
+      }],
+      messages: [],
+      userMessage: '주문을 표로 보여줘',
+    })).resolves.toContain('| id |');
+    expect(textSeen).toHaveLength(0);
+  });
+
   it('falls back to the existing LLM planner when Jev is unavailable', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

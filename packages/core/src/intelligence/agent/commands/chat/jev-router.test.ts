@@ -98,6 +98,76 @@ describe('routeChatWithJev', () => {
     });
   });
 
+  it('maps a Jev-selected catalog operation to a host-owned capability command', async () => {
+    let questionIds: string[] = [];
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request) => {
+          questionIds = Object.keys(request.questions);
+          return {
+            answers: {
+              route: {
+                type: 'choice', choice: 'capability_read',
+                probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
+              },
+              operation: {
+                type: 'choice', choice: 'op_0',
+                probabilities: { op_0: 0.96, none: 0.04 }, confidence: 0.96,
+              },
+            },
+          };
+        },
+      },
+      userMessage: '상품을 10개만 보여줘',
+      connectedConnectors: ['openapi'],
+      readOperationHints: [{
+        key: 'op_0',
+        capabilityId: 'openapi.catalog.listProducts',
+        connector: 'openapi',
+        label: '상품 목록',
+        description: 'GET /products — 상품 목록',
+        params: { query: { limit: 10 } },
+      }],
+    });
+
+    expect(questionIds).toContain('operation');
+    expect(result).toEqual({
+      kind: 'command',
+      route: 'capability_read',
+      confidence: 0.97,
+      command: {
+        name: 'capability.invoke',
+        args: {
+          id: 'openapi.catalog.listProducts',
+          params: { query: { limit: 10 } },
+        },
+      },
+    });
+  });
+
+  it('does not expose the catalog route when no read operation metadata exists', async () => {
+    let routeCriteria: Record<string, unknown> | undefined;
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request) => {
+          routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
+          return {
+            answers: {
+              route: {
+                type: 'choice', choice: 'answer',
+                probabilities: { answer: 0.96 }, confidence: 0.96,
+              },
+            },
+          };
+        },
+      },
+      userMessage: '연결된 API가 뭐야?',
+    });
+
+    expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
+    expect(routeCriteria).not.toHaveProperty('capability_read');
+  });
+
   it('does not guess a connection for an explicit GET when multiple endpoints match none', async () => {
     await expect(routeChatWithJev({
       decisionEngine: engineFor('http_read', 0.98),
