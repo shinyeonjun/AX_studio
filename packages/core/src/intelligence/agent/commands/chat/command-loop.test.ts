@@ -151,6 +151,25 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(1);
   });
 
+  it('does not call Jev for a conceptual workflow question containing an action noun', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_should_not_run'); },
+    };
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', ['저장 workflow는 반복 업무이고 일회 실행은 한 번만 처리합니다.'], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      userMessage: 'workflow와 일회 실행의 차이를 설명해줘',
+    })).resolves.toContain('일회 실행');
+    expect(textSeen).toHaveLength(1);
+  });
+
   it('returns a Jev-selected read failure without an LLM paraphrase', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db), {

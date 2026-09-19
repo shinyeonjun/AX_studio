@@ -27,10 +27,14 @@ const MAX_PROTOCOL_RECOVERY_ATTEMPTS = 1;
 // routing questions such as "API가 뭐야?" through Jev adds latency for no
 // safety benefit. Imperative/action wording still reaches the bounded router.
 const JEV_ACTION_HINT = /조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|반복|삭제|수정|변경|연결|보여|목록|확인|정리|추천|분석|\b(?:run|execute|get|post|delete|show|list|call)\b/iu;
+const JEV_CONCEPTUAL_HINT = /(?:뭐\s*(?:야|냐)|무엇|차이|뜻|의미|왜\s|어떻게\s)/iu;
+const JEV_DIRECT_ACTION_HINT = /(?:조회|검색|읽|가져|호출|요청|실행|돌려|시작|만들|생성|저장|예약|삭제|수정|변경|연결|보여|확인|정리|추천|분석)(?:해|하|할|하고|해서|해줘|해주세요|해봐|해볼|할래|할까)/iu;
 
 function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
   if (options.allowContextUpdate || options.allowJobCommit) return true;
-  if (JEV_ACTION_HINT.test(options.userMessage)) return true;
+  const userMessage = options.userMessage.trim();
+  if (JEV_ACTION_HINT.test(userMessage)
+    && (!JEV_CONCEPTUAL_HINT.test(userMessage) || JEV_DIRECT_ACTION_HINT.test(userMessage))) return true;
   return options.messages.some((message) =>
     message.role === 'assistant' && (message.content.includes('AX command result') || message.content.includes('"kind":"command"')),
   );
