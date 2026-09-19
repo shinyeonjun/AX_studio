@@ -35,5 +35,6 @@ export const capabilitiesInvoke: DesignToolHandler = async (ctx, args) => {
   if (ctx.allowUntrustedData !== true) {
     return boundCapabilityEvidence(sanitizeCloudReadEnvelope(envelope));
   }
+  if (ctx.capabilityResultMode === 'host_execution') return envelope;
   return boundCapabilityEvidence(envelope);
 };

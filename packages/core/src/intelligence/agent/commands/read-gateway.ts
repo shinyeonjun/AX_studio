@@ -34,10 +34,17 @@ export interface AxCommandReadGateway {
  */
 export function createDesignToolReadGateway(store: WorkflowStore): AxCommandReadGateway {
   return {
-    execute: async (request, context, abortSignal) => executeDesignTool(
-      { tool: request.tool, args: request.args },
-      { ...(context ?? defaultReadContext(store)), ...(abortSignal ? { abortSignal } : {}) },
-    ),
+    execute: async (request, context, abortSignal) => {
+      const readContext = context ?? defaultReadContext(store);
+      return executeDesignTool(
+        { tool: request.tool, args: request.args },
+        {
+          ...readContext,
+          capabilityResultMode: 'host_execution',
+          ...(abortSignal ? { abortSignal } : {}),
+        },
+      );
+    },
   };
 }
 

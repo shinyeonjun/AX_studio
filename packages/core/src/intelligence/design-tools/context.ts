@@ -4,6 +4,7 @@ import type { DiscoveryMetadataRecord } from '../../contracts/discovery-metadata
 
 export interface DesignToolContextOptions {
   allowUntrustedData?: boolean;
+  capabilityResultMode?: DesignToolContext['capabilityResultMode'];
   connectors?: Record<string, Connector>;
   discoveryMetadata?: readonly DiscoveryMetadataRecord[];
 }
@@ -17,6 +18,7 @@ export function buildDesignToolContext(
     connections,
     connectedConnectorIds,
     allowUntrustedData: options.allowUntrustedData === true,
+    capabilityResultMode: options.capabilityResultMode ?? 'model_evidence',
     connectors: options.connectors,
     discoveryMetadata: options.discoveryMetadata,
   };

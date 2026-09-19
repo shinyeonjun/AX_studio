@@ -129,6 +129,8 @@ export interface DesignToolContext extends SourceListingContext {
    * A caller may set it false for an explicit privacy restriction.
    */
   allowUntrustedData?: boolean;
+  /** Selects whether capability reads serve a model preview or a host renderer. */
+  capabilityResultMode?: 'model_evidence' | 'host_execution';
   /** Runtime connector instances for read-only capability invoke. */
   connectors?: Record<string, Connector>;
   /** Persisted, bounded business dictionary entries for discovery assets. */

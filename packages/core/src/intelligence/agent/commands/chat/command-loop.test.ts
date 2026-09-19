@@ -13,6 +13,7 @@ import { AxCommandService } from '../service.js';
 import { scriptedModel } from './fixtures.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
+import { buildDesignToolContext } from '../../../design-tools/context.js';
 
 describe('runAxCommandChat command loop', () => {
   it('answers trivial identity questions without Jev or an LLM round trip', async () => {
@@ -331,6 +332,56 @@ describe('runAxCommandChat command loop', () => {
       messages: [],
       userMessage: 'DummyJSON에서 상품 2개만 가져와서 표로 보여줘',
     })).resolves.toContain('| title |');
+    expect(seen).toHaveLength(1);
+    expect(textSeen).toHaveLength(0);
+  });
+
+  it('keeps the complete host HTTP artifact while bounding only the model result message', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const response = buildHttpResponseArtifact({
+      executionId: 'design-tool',
+      url: 'https://dummyjson.com/products?limit=2',
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        products: [
+          { title: 'First', price: 1.99 },
+          { title: 'Second', price: 2.99 },
+        ],
+        providerMetadata: 'x'.repeat(5_000),
+      }),
+      truncated: false,
+    });
+    const execute = vi.fn(async () => ({ ok: true as const, data: response }));
+    const service = new AxCommandService(new WorkflowStore(db));
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => { throw new Error('jev_unavailable'); },
+    };
+    const harness = new AgentHarness(scriptedModel([
+      { kind: 'command', command: {
+        name: 'capability.invoke',
+        args: { id: 'http.request', params: { method: 'GET', path: 'products?limit=2', connectionId: 'dummyjson' } },
+      } },
+    ], seen, 'test-provider', [], textSeen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+      messages: [],
+      userMessage: 'DummyJSON에서 상품 2개만 가져와서 표로 보여줘',
+      designToolContextFactory: () => buildDesignToolContext([], ['http'], {
+        allowUntrustedData: true,
+        connectors: { http: { name: 'http', execute } },
+      }),
+    })).resolves.toContain('| title | price |');
+
+    expect(execute).toHaveBeenCalledTimes(1);
     expect(seen).toHaveLength(1);
     expect(textSeen).toHaveLength(0);
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
 import type { AxCommand, AxCommandResult } from '../schema.js';
 import { deterministicCapabilityReadChatReply, deterministicHttpChatReply } from './result.js';
+import { resultMessage } from './protocol.js';
 
 const httpGetCommand: AxCommand = {
   name: 'capability.invoke',
@@ -41,6 +42,35 @@ describe('deterministicHttpChatReply', () => {
       httpResult('{"items":[{"price":2},{"price":1}]}'),
       '방금 조회한 결과를 가격순으로 정렬해줘.',
     )).toBeUndefined();
+  });
+
+  it('bounds a complete host result only when serializing it for the model', () => {
+    const result: AxCommandResult = {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: {
+        capabilityId: 'http.request',
+        data: buildHttpResponseArtifact({
+          executionId: 'test',
+          url: 'https://example.test/items',
+          status: 200,
+          statusText: 'OK',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ payload: 'x'.repeat(5_000), marker: 'tail-marker' }),
+          truncated: false,
+        }),
+        citations: [],
+        untrusted: true,
+      },
+      issues: [],
+      inputRequests: [],
+    };
+
+    const message = resultMessage(result);
+
+    expect(message).toContain('"truncated":true');
+    expect(message).not.toContain('tail-marker');
+    expect(result.data).toMatchObject({ data: { truncated: false, completeness: { status: 'complete' } } });
   });
 });
 
