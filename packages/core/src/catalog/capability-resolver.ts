@@ -9,6 +9,7 @@ const ACTION_ALIASES: Record<string, Record<string, string>> = {
   gmail: {
     send: 'message.send',
     send_message: 'message.send',
+    'message.read': 'messages.read',
   },
 };
 
@@ -21,10 +22,10 @@ function normalizeConnectorAction(connector: string, action: string): string | u
     action = trimmed.slice(0, versionAt);
   }
   const versionless = action.trim();
-  if (versionless.startsWith(`${connector}.`)) {
-    return versionless.slice(connector.length + 1);
-  }
-  return ACTION_ALIASES[connector]?.[versionless] ?? versionless;
+  const connectorAction = versionless.startsWith(`${connector}.`)
+    ? versionless.slice(connector.length + 1)
+    : versionless;
+  return ACTION_ALIASES[connector]?.[connectorAction] ?? connectorAction;
 }
 
 /** Resolve a registered capability without depending on graph or canvas models. */

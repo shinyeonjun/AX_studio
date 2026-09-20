@@ -17,6 +17,8 @@ const COLLECTION_HINT = /(?:목록|리스트|전체|여러|상품들|제품들|�
 const SINGLE_HINT = /(?:단건|단일|하나|한\s*(?:개|건|행)|상세|특정|\bone\b|\bsingle\b|\bdetail\b)/iu;
 const REPEAT_HINT = /(?:반복|주기|매일|매주|매월|예약|스케줄|schedule|recurr)/iu;
 const PLAN_HINT = /(?:계획|설계|검토|초안|제안|plan|design|draft)/iu;
+const ONE_SHOT_HINT = /(?:일회성|한\s*번만|이번만|반복\s*(?:업무|작업|workflow)?\s*(?:로\s*)?(?:저장|등록|활성화)하지|저장하지\s*(?:마|말고))/iu;
+const NEGATIVE_EXECUTION_HINT = /(?:실행하지|실행\s*말고|돌리지\s*말고|검토만|계획만|dry\s*run|do\s*not\s*run|don't\s*run)/iu;
 const HTTP_METHOD_HINT = /\b(GET|HEAD|POST|PUT|PATCH|DELETE)\b/iu;
 const LIMIT_HINT = /(?:^|\s)(\d{1,4})\s*(?:개만|개|건|행|items?|rows?|results?)(?:\s|$)/iu;
 
@@ -33,6 +35,10 @@ export function hasRequestActionHint(message: string): boolean {
 
 export function hasDirectActionHint(message: string): boolean {
   return DIRECT_ACTION_HINT.test(message);
+}
+
+export function isExplicitOneShotExecutionRequest(message: string): boolean {
+  return ONE_SHOT_HINT.test(message) && !NEGATIVE_EXECUTION_HINT.test(message) && hasDirectActionHint(message);
 }
 
 export function isConceptualRequest(message: string): boolean {

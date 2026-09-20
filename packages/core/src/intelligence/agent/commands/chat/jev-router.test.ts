@@ -539,6 +539,37 @@ describe('routeChatWithJev', () => {
     expect(result.allowedCommandNames).not.toContain('workflow.delete');
   });
 
+  it('uses Jev one-shot evidence to recover an uncertain route classification', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request) => ({
+          answers: {
+            route: {
+              type: 'choice',
+              choice: 'answer',
+              probabilities: { answer: 0.55, execution_enqueue_once: 0.45 },
+              confidence: 0.55,
+            },
+            explicit_one_shot: {
+              type: 'boolean',
+              probability: 0.95,
+            },
+            ...(request.questions.explicit_workflow_run
+              ? { explicit_workflow_run: { type: 'boolean' as const, probability: 0.01 } }
+              : {}),
+          },
+        }),
+      },
+      userMessage: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
+    });
+
+    expect(result).toMatchObject({
+      kind: 'delegate',
+      route: 'execution_enqueue_once',
+      allowedCommandNames: expect.arrayContaining(['execution.enqueue_once']),
+    });
+  });
+
   it('requires the current workflow before delegating update or delete', async () => {
     await expect(routeChatWithJev({
       decisionEngine: engineFor('workflow_update'),

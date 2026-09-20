@@ -22,6 +22,7 @@ import type { ReadParameterPlan } from './read-plan.js';
 import {
   deriveJevRequestFeatures,
   hasJevPreflightEvidence,
+  isExplicitOneShotExecutionRequest,
   isConceptualRequest,
 } from './request-features.js';
 
@@ -558,6 +559,15 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         },
       };
     }
+    if (isExplicitOneShotExecutionRequest(input.userMessage)) {
+      questions.explicit_one_shot = {
+        type: 'boolean',
+        instructions: {
+          question: 'Does `request` explicitly ask to perform this task once now without saving a reusable workflow?',
+          focus: 'A request to explain, preview, plan, or avoid execution is not an explicit one-shot execution request.',
+        },
+      };
+    }
     if (reportSources(input).length >= 2) {
       questions.report_template_source = {
         type: 'choice',
@@ -614,49 +624,56 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const route = routeAnswer.choice as RouteName;
     const confidence = answerConfidence(routeAnswer, route);
     const explicitRun = booleanAnswer(evaluation.answers.explicit_workflow_run);
+    const explicitOneShot = booleanAnswer(evaluation.answers.explicit_one_shot);
+    const oneShotOverride = isExplicitOneShotExecutionRequest(input.userMessage)
+      && (explicitOneShot?.probability ?? 0) >= ACTION_ROUTE_MIN_CONFIDENCE;
+    const selectedRoute: RouteName = oneShotOverride ? 'execution_enqueue_once' : route;
+    const selectedConfidence = oneShotOverride
+      ? Math.max(confidence, explicitOneShot?.probability ?? 0)
+      : confidence;
 
-    if (route === 'workflow_run') {
+    if (selectedRoute === 'workflow_run') {
       if (
-        confidence < WORKFLOW_RUN_MIN_CONFIDENCE ||
+        selectedConfidence < WORKFLOW_RUN_MIN_CONFIDENCE ||
         (explicitRun?.probability ?? 0) < WORKFLOW_RUN_MIN_EXPLICIT_PROBABILITY ||
         !explicitRunWasRequested(input.userMessage)
       ) {
         return withTelemetry(fallback('uncertain'));
       }
-    } else if (route === 'report_generate' && confidence < REPORT_ROUTE_MIN_CONFIDENCE) {
+    } else if (selectedRoute === 'report_generate' && selectedConfidence < REPORT_ROUTE_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
-    } else if (route === 'http_read' && confidence < HTTP_ROUTE_MIN_CONFIDENCE) {
+    } else if (selectedRoute === 'http_read' && selectedConfidence < HTTP_ROUTE_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
-    } else if (route === 'capability_read' && confidence < CAPABILITY_READ_MIN_CONFIDENCE) {
+    } else if (selectedRoute === 'capability_read' && selectedConfidence < CAPABILITY_READ_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
-    } else if (route === 'answer' && confidence < REPLY_ROUTE_MIN_CONFIDENCE) {
+    } else if (selectedRoute === 'answer' && selectedConfidence < REPLY_ROUTE_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
-    } else if (isDelegatedRoute(route) && confidence < ACTION_ROUTE_MIN_CONFIDENCE) {
+    } else if (isDelegatedRoute(selectedRoute) && selectedConfidence < ACTION_ROUTE_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
-    } else if (confidence < SAFE_ROUTE_MIN_CONFIDENCE) {
+    } else if (selectedConfidence < SAFE_ROUTE_MIN_CONFIDENCE) {
       return withTelemetry(fallback('uncertain'));
     }
 
-    if (route === 'answer') return withTelemetry({ kind: 'reply', route, confidence });
-    if (isDelegatedRoute(route)) {
-      if ((route === 'workflow_update' || route === 'workflow_delete') && !input.currentWorkflowId?.trim()) {
+    if (selectedRoute === 'answer') return withTelemetry({ kind: 'reply', route: selectedRoute, confidence: selectedConfidence });
+    if (isDelegatedRoute(selectedRoute)) {
+      if ((selectedRoute === 'workflow_update' || selectedRoute === 'workflow_delete') && !input.currentWorkflowId?.trim()) {
         return withTelemetry(fallback('missing_context'));
       }
       return withTelemetry({
         kind: 'delegate',
-        route,
-        allowedCommandNames: DELEGATED_ROUTE_COMMANDS[route],
-        confidence,
+        route: selectedRoute,
+        allowedCommandNames: DELEGATED_ROUTE_COMMANDS[selectedRoute],
+        confidence: selectedConfidence,
       });
     }
 
-    const command = route === 'report_generate'
+    const command = selectedRoute === 'report_generate'
       ? reportCommand(input, evaluation.answers)
-      : route === 'capability_read'
-        ? capabilityReadCommand(operationHints, evaluation.answers, confidence)
-        : commandForRoute(route, input);
+      : selectedRoute === 'capability_read'
+        ? capabilityReadCommand(operationHints, evaluation.answers, selectedConfidence)
+        : commandForRoute(selectedRoute, input);
     if ('kind' in command) return withTelemetry(command);
-    return withTelemetry({ kind: 'command', command, route, confidence });
+    return withTelemetry({ kind: 'command', command, route: selectedRoute, confidence: selectedConfidence });
   } catch (error) {
     if (input.abortSignal?.aborted) throw error;
     return fallback('service_error');

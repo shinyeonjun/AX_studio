@@ -22,10 +22,31 @@ export function coerceJobProposeArgs(value: unknown): unknown {
   if (typeof record.notify === 'string') record.notify = { channel: record.notify };
   if (typeof record.fetch === 'string') record.fetch = { path: record.fetch };
   if (typeof record.schedule === 'string') {
-    const fields = record.schedule.trim().split(/\s+/);
-    record.schedule = fields.length >= 6
-      ? { cron: fields.slice(0, 5).join(' '), timezone: fields.slice(5).join(' ') }
-      : { cron: record.schedule };
+    const schedule = record.schedule.trim();
+    const commaTimezone = /^(.+?),\s*([A-Za-z][A-Za-z0-9+._-]*\/[A-Za-z0-9+._-]+)$/u.exec(schedule);
+    const fields = schedule.split(/\s+/u);
+    record.schedule = commaTimezone
+      ? { cron: commaTimezone[1]!.trim(), timezone: commaTimezone[2]!.trim() }
+      : fields.length >= 6
+        ? { cron: fields.slice(0, 5).join(' '), timezone: fields.slice(5).join(' ') }
+        : { cron: schedule };
+  }
+
+  if (typeof record.trigger === 'string') {
+    const type = record.trigger.trim();
+    if (type === 'gmail.new_message') {
+      record.trigger = { type, accountId: asFilledString(record.accountId) ?? '' };
+    } else if (type === 'slack.new_message') {
+      record.trigger = { type, channel: asFilledString(record.channel) ?? '' };
+    } else if (type === 'local_folder.new_file') {
+      record.trigger = { type, folderId: asFilledString(record.folderId) ?? '' };
+    }
+  } else if (record.trigger && typeof record.trigger === 'object' && !Array.isArray(record.trigger)) {
+    const trigger = { ...(record.trigger as Record<string, unknown>) };
+    if (trigger.type === 'gmail.new_message' && typeof trigger.accountId !== 'string') trigger.accountId = '';
+    if (trigger.type === 'slack.new_message' && typeof trigger.channel !== 'string') trigger.channel = '';
+    if (trigger.type === 'local_folder.new_file' && typeof trigger.folderId !== 'string') trigger.folderId = '';
+    record.trigger = trigger;
   }
 
   // Lift the top-level aliases models emit when they answer a needs_input turn.

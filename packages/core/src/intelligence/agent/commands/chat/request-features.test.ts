@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveJevRequestFeatures,
   hasJevPreflightEvidence,
+  isExplicitOneShotExecutionRequest,
   isConceptualRequest,
 } from './request-features.js';
 
@@ -32,5 +33,14 @@ describe('deriveJevRequestFeatures', () => {
       direct_action: true,
       requested_timing: 'now',
     });
+  });
+
+  it('recognizes a direct one-shot execution without treating a preview as execution', () => {
+    expect(isExplicitOneShotExecutionRequest(
+      '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
+    )).toBe(true);
+    expect(isExplicitOneShotExecutionRequest(
+      '일회성 업무를 실행하지 말고 계획만 보여줘.',
+    )).toBe(false);
   });
 });

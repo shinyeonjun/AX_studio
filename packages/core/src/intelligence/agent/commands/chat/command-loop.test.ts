@@ -77,6 +77,68 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen[0]?.messages?.at(-1)?.content).toContain('AX command result');
   });
 
+  it('does not run a duplicate Jev lifecycle gate after one-shot route selection', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('http', true, {
+      endpoints: [{ id: 'dummyjson', label: 'DummyJSON', baseUrl: 'https://dummyjson.com/', authType: 'none' }],
+    });
+    const enqueueOnce = vi.fn(() => ({ jobId: 'one-shot-1' }));
+    const service = new AxCommandService(store, { enqueueOnce });
+    let evaluations = 0;
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => {
+        evaluations += 1;
+        if (evaluations > 1) throw new Error('duplicate_jev_lifecycle_gate');
+        return {
+          answers: {
+            route: {
+              type: 'choice',
+              choice: 'answer',
+              probabilities: { answer: 0.55, execution_enqueue_once: 0.45 },
+              confidence: 0.55,
+            },
+            explicit_one_shot: { type: 'boolean', probability: 0.95 },
+          },
+        };
+      },
+    };
+    const seen: StructuredGenerateInput<unknown>[] = [];
+    const harness = new AgentHarness(scriptedModel([
+      {
+        kind: 'command',
+        command: {
+          name: 'execution.enqueue_once',
+          args: {
+            name: '상품 조회 일회 실행',
+            goal: '상품을 조회한다',
+            steps: [{
+              type: 'action',
+              id: 'fetch',
+              connector: 'http',
+              action: 'request',
+              params: { method: 'GET', path: 'products?limit=1', connectionId: 'dummyjson' },
+            }],
+          },
+        },
+      },
+      { kind: 'reply', message: '일회 실행을 접수했습니다.' },
+    ], seen));
+
+    await expect(runAxCommandChat({
+      harness,
+      commandService: service,
+      decisionEngine,
+      connectedConnectors: ['http'],
+      messages: [],
+      userMessage: '상품 하나를 조회하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
+    })).resolves.toBe('일회 실행을 접수했습니다.');
+
+    expect(evaluations).toBe(1);
+    expect(enqueueOnce).toHaveBeenCalledTimes(1);
+    expect(seen).toHaveLength(2);
+  });
+
   it('uses the text model directly when Jev selects a conversational answer', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

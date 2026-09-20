@@ -149,6 +149,9 @@ export async function runCommandChatLoop({
   };
 
   const semanticGateMessage = async (command: AxCommand): Promise<string | undefined> => {
+    // Jev already confirmed this one-shot lifecycle; keep schema and runtime
+    // approval gates while avoiding a duplicate lifecycle judgment.
+    if (jevSelectedExecutionLifecycle && command.name === 'execution.enqueue_once') return undefined;
     const definition = options.commandService
       .listCommands(AGENT_COMMAND_CONTEXT)
       .find((entry) => entry.name === command.name);
@@ -226,6 +229,7 @@ export async function runCommandChatLoop({
   let singleHttpReadPlanner = false;
   let singleHttpReadEndpointId: string | undefined;
   let effectiveMaxRounds = maxRounds;
+  let jevSelectedExecutionLifecycle = false;
   if (options.decisionEngine && !options.allowContextUpdate && useJevRoute) {
     const jevStartedAt = Date.now();
     let jevRoute: Awaited<ReturnType<typeof routeChatWithJev>>;
@@ -298,6 +302,7 @@ export async function runCommandChatLoop({
     }
     if (jevRoute.kind === 'delegate') {
       delegatedCommandNames = jevRoute.allowedCommandNames;
+      jevSelectedExecutionLifecycle = jevRoute.route === 'execution_enqueue_once';
       appendAppLog('info', 'Jev fixed the chat command lifecycle before payload generation.', {
         event: 'jev_chat_route_delegated',
         route: jevRoute.route,

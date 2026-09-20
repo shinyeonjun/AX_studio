@@ -8,6 +8,11 @@ describe('capability graph alias resolution', () => {
     expect(resolveCapability('gmail', 'send_message')?.id).toBe('gmail.message.send');
   });
 
+  it('resolves the singular Gmail read alias to gmail.messages.read', () => {
+    expect(resolveCapability('gmail', 'message.read')?.id).toBe('gmail.messages.read');
+    expect(resolveCapability('gmail', 'gmail.message.read')?.id).toBe('gmail.messages.read');
+  });
+
   it('resolves slack send aliases to slack.message.send', () => {
     expect(resolveCapability('slack', 'send')?.id).toBe('slack.message.send');
     expect(resolveCapability('slack', 'message.send')?.id).toBe('slack.message.send');

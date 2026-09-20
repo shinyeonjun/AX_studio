@@ -1,13 +1,13 @@
 import type { AxCommandDefinition, AxCommandLifecycle } from '../../schema.js';
 
-const ACTION_STEPS_INPUT = 'Array of step objects, not capability IDs. Action fields: type="action", unique id, connector, action (required even with optional actionRef), params object. Inspect the selected capability for its connector/action and parameter contract. Shape example only; replace recipient and content with the user\'s request: [{"type":"action","id":"send_mail","connector":"gmail","action":"message.send","params":{"to":"recipient@example.com","subject":"Example subject","body":"Example body"}}]. Runtime determines side effects and requires approval before external sends; do not bypass it through capability.invoke.';
+const WORKFLOW_STEPS_INPUT = 'Array of step objects, not capability IDs. Action fields: type="action", unique id, connector, action (required even with optional actionRef), params object. Use type="ai_decision" with a goal between read and notification actions when the user asks to summarize, classify, filter, or transform data; do not put placeholder text in a send action. Inspect the selected capability for its connector/action and parameter contract. Shape example only; replace recipient and content with the user\'s request: [{"type":"action","id":"send_mail","connector":"gmail","action":"message.send","params":{"to":"recipient@example.com","subject":"Example subject","body":"Example body"}}]. Runtime determines side effects and requires approval before external sends; do not bypass it through capability.invoke.';
 
 export const WORKFLOW_COMMAND_DEFINITIONS = [
   {
     name: 'workflow.create',
     lifecycle: 'workflow',
     description: '새 workflow를 즉시 저장합니다. 변경 후 자동으로 새 버전을 만듭니다.',
-    args: { name: 'workflow name', goal: 'workflow goal', trigger: 'trigger object', steps: ACTION_STEPS_INPUT },
+    args: { name: 'workflow name', goal: 'workflow goal', trigger: 'trigger object', steps: WORKFLOW_STEPS_INPUT },
     mutates: true,
   },
   {
@@ -35,7 +35,7 @@ export const WORKFLOW_COMMAND_DEFINITIONS = [
     name: 'execution.enqueue_once',
     lifecycle: 'ephemeral',
     description: '검증된 계획을 저장하지 않고 일회 실행 큐에 등록합니다. 원래 대화 세션이 있으면 진행·완료 결과를 대화에도 남기고 Activity와 approval 로그에도 기록합니다.',
-    args: { name: '실행 이름', goal: '실행 목적', trigger: '선택적 trigger', steps: ACTION_STEPS_INPUT },
+    args: { name: '실행 이름', goal: '실행 목적', trigger: '선택적 trigger', steps: WORKFLOW_STEPS_INPUT },
     mutates: true,
   },
   {
@@ -85,7 +85,7 @@ export const WORKFLOW_COMMAND_DEFINITIONS = [
       interpret: '조회 결과를 요약하는 AI 목표',
       notify: 'Slack channel과 skipIfEmpty',
       trigger: 'HTTP가 아닌 업무의 시작 조건: gmail.new_message, slack.new_message, local_folder.new_file 등',
-      steps: ACTION_STEPS_INPUT,
+      steps: WORKFLOW_STEPS_INPUT,
       runOnceNow: '저장 직후 한 번 실행',
       allowExternalAuto: '확인 후 Slack 자동 발송',
     },

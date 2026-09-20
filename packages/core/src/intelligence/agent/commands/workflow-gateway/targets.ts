@@ -1,4 +1,3 @@
-import { resolveCapability } from '../../../../catalog/capability-graph.js';
 import { httpEndpointsFromConnections } from '../../../../connectors/http/connection.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type {
@@ -8,6 +7,7 @@ import type {
 import type { AxInputRequest } from '../schema.js';
 import {
   httpConnectionInput,
+  needsSlackChannelSelection,
   slackChannelInput,
 } from '../job-registration/targets.js';
 import type { ListSlackChannels } from '../job-registration/contract.js';
@@ -34,9 +34,7 @@ export async function oneShotTargetInputs(
     (step) => step.connector === 'http' && !hasConfiguredParam(step, 'connectionId'),
   );
   const needsSlackSelection = actions.some((step) => {
-    const capability = resolveCapability(step.connector, step.action);
-    const channelParam = capability?.params?.find((param) => param.name === 'channel' && param.inputType === 'slack_channel');
-    return Boolean(capability?.notification && channelParam && !hasConfiguredParam(step, channelParam.name));
+    return needsSlackChannelSelection(step);
   });
 
   const inputs: AxInputRequest[] = [];

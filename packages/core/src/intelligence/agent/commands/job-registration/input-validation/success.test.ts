@@ -63,6 +63,21 @@ describe('job.propose successful input normalization', () => {
     expect(store.listWorkflows()).toHaveLength(0);
   });
 
+  it('accepts the comma-separated timezone form emitted by live models', async () => {
+    const { store, service, chat } = await connectedService();
+    const response = await service.execute({
+      name: 'job.propose',
+      args: {
+        ...dailyBriefArgs,
+        schedule: '0 9 * * *, Asia/Seoul',
+      },
+    }, { ...commandChatContext, workspaceSessionId: chat.id });
+
+    expect(response.status).toBe('ok');
+    expect(response.data).toMatchObject({ summary: { schedule: '0 9 * * *', timezone: 'Asia/Seoul' } });
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
   it('lifts top-level aliases and string booleans a retrying model emits', async () => {
     const { store, service, chat } = await connectedService();
     const response = await service.execute({

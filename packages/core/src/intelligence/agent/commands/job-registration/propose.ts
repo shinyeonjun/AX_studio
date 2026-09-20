@@ -9,7 +9,7 @@ import type {
 } from './contract.js';
 import { createPendingJob } from './propose/draft.js';
 import { validateProposeInput } from './propose/input.js';
-import { resolveJobTargets } from './propose/target-selection.js';
+import { resolveGenericJobTargets, resolveJobTargets } from './propose/target-selection.js';
 import type { ProposeResponse } from './propose/contracts.js';
 
 export async function proposeJob(options: {
@@ -23,10 +23,16 @@ export async function proposeJob(options: {
   if (!input.ok) return input.response as ProposeResponse;
 
   if (input.value.genericWorkflow) {
+    const targets = await resolveGenericJobTargets({
+      store: options.store,
+      input: input.value,
+      listSlackChannels: options.listSlackChannels,
+    });
+    if (!targets.ok) return targets.response as ProposeResponse;
     return createPendingJob({
       store: options.store,
       pending: options.pending,
-      input: input.value,
+      input: targets.input,
     });
   }
 
