@@ -37,9 +37,20 @@ export function validateProposeInput(
   }
 
   const data: AxJobProposeArgs = parsed.data;
+  const genericWorkflow = data.trigger !== undefined || data.steps !== undefined;
+  if (genericWorkflow && (!data.trigger || !data.steps || data.steps.length === 0)) {
+    return {
+      ok: false,
+      response: ['needs_input', undefined, [issue(
+        'workflow_payload_required',
+        'HTTP가 아닌 반복 업무는 trigger와 steps를 함께 보내야 합니다.',
+        'args.steps',
+      )]],
+    };
+  }
   const path = data.fetch?.path?.trim() ?? '';
   const channel = data.notify?.channel?.trim() ?? '';
-  if (!path) {
+  if (!path && !genericWorkflow) {
     return {
       ok: false,
       response: missingInput([{
@@ -70,6 +81,6 @@ export function validateProposeInput(
 
   return {
     ok: true,
-    value: { data, sessionId, path, channel, cron, timezone },
+    value: { data, sessionId, genericWorkflow, path, channel, cron, timezone },
   };
 }

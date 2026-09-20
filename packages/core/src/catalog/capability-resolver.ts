@@ -12,12 +12,19 @@ const ACTION_ALIASES: Record<string, Record<string, string>> = {
   },
 };
 
-function normalizeConnectorAction(connector: string, action: string): string {
+function normalizeConnectorAction(connector: string, action: string): string | undefined {
   const trimmed = action.trim();
-  if (trimmed.startsWith(`${connector}.`)) {
-    return trimmed.slice(connector.length + 1);
+  const versionAt = trimmed.lastIndexOf('@');
+  const hasVersion = versionAt > 0 && /^\d+$/u.test(trimmed.slice(versionAt + 1));
+  if (hasVersion) {
+    if (Number(trimmed.slice(versionAt + 1)) !== 1) return undefined;
+    action = trimmed.slice(0, versionAt);
   }
-  return ACTION_ALIASES[connector]?.[trimmed] ?? trimmed;
+  const versionless = action.trim();
+  if (versionless.startsWith(`${connector}.`)) {
+    return versionless.slice(connector.length + 1);
+  }
+  return ACTION_ALIASES[connector]?.[versionless] ?? versionless;
 }
 
 /** Resolve a registered capability without depending on graph or canvas models. */
@@ -27,10 +34,12 @@ export function resolveCapability(
 ): ConnectorCapability | undefined {
   const trimmed = action.trim();
   const normalized = normalizeConnectorAction(connector, action);
+  if (!normalized) return undefined;
+  const versionless = trimmed.replace(/@1$/u, '');
   const ids = new Set([
     normalized,
     `${connector}.${normalized}`,
-    trimmed,
+    versionless,
   ]);
   return getCapabilitiesForConnector(connector).find((cap) => {
     return ids.has(cap.id) || ids.has(cap.id.slice(connector.length + 1));

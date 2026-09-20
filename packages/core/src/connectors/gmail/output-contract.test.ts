@@ -12,7 +12,8 @@ describe('Gmail public page output contracts', () => {
     const list = vi.fn().mockResolvedValue({ data: {
       messages, ...(page === 'first' ? { nextPageToken: 'next-mail-page', resultSizeEstimate: 23 } : {}),
     } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    const get = vi.fn().mockResolvedValue({ data: { payload: { headers: [] } } });
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       ...(page === 'first' ? {} : { pageToken: 'requested-page' }),
     }, {
@@ -39,11 +40,60 @@ describe('Gmail public page output contracts', () => {
 
   it('materializes a complete initial response with no continuation as complete', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [] } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    const get = vi.fn().mockResolvedValue({ data: { payload: { headers: [] } } });
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {}, {
       executionId: 'outputs', variables: {}, log: () => undefined,
     });
     const outputs = materializeStepOutputs('gmail-search', getCapability('gmail.messages.search')!.io!.outputs, result.data);
     expect(outputs.messages).toMatchObject({ completeness: { status: 'complete', hasMore: false } });
+  });
+
+  it('returns metadata headers without reading message bodies', async () => {
+    const list = vi.fn().mockResolvedValue({ data: { messages: [{ id: 'mail-1', threadId: 'thread-1' }] } });
+    const get = vi.fn().mockResolvedValue({ data: {
+      id: 'mail-1',
+      payload: { headers: [
+        { name: 'From', value: 'sender@example.com' },
+        { name: 'Subject', value: '재고 보고서' },
+        { name: 'Date', value: 'Sat, 20 Sep 2026 09:00:00 +0900' },
+      ] },
+    } });
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+
+    const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
+      limit: 1,
+      includeMetadata: true,
+    }, {
+      executionId: 'metadata', variables: {}, log: () => undefined,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: { messages: [{ id: 'mail-1', from: 'sender@example.com', subject: '재고 보고서', date: 'Sat, 20 Sep 2026 09:00:00 +0900' }] },
+    });
+    expect(get).toHaveBeenCalledWith({
+      userId: 'me',
+      id: 'mail-1',
+      format: 'metadata',
+      metadataHeaders: ['From', 'Subject', 'Date'],
+    });
+    expect(get.mock.calls[0]?.[0]).not.toHaveProperty('format', 'full');
+  });
+
+  it('does not enrich when a model sends includeMetadata=false as a string', async () => {
+    const list = vi.fn().mockResolvedValue({ data: { messages: [{ id: 'mail-1', threadId: 'thread-1' }] } });
+    const get = vi.fn();
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+
+    const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
+      limit: 1,
+      includeMetadata: 'false',
+    }, {
+      executionId: 'metadata-disabled', variables: {}, log: () => undefined,
+    });
+
+    expect(result).toMatchObject({ ok: true, data: { messages: [{ id: 'mail-1' }] } });
+    expect(get).not.toHaveBeenCalled();
   });
 });

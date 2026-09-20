@@ -31,7 +31,7 @@ const SENSITIVE_PARAMETER_NAME = /(?:api[_-]?key|authorization|password|secret|t
 export interface JevReadOperationHint {
   key: string;
   capabilityId: string;
-  connector: 'openapi' | 'mcp' | 'rdb';
+  connector: 'openapi' | 'mcp' | 'rdb' | 'gmail' | 'slack';
   sourceLabel?: string;
   label: string;
   description: string;
@@ -343,6 +343,55 @@ function addMcpOperations(operations: IndexedReadOperation[], connection: Source
   }
 }
 
+function explicitSearchQuery(message: string): string | undefined {
+  const labeled = message.match(/(?:query|q|검색어|검색\s*조건)\s*[:：=]\s*["']?([^"'\n]+)["']?\s*$/iu)?.[1]?.trim();
+  if (labeled) return labeled.slice(0, MAX_EXPLICIT_PARAMETER_CHARS);
+  const word = message.match(/([\p{L}\p{N}_-]{2,}?)(?:라는)?\s*단어/iu)?.[1]?.trim();
+  return word?.slice(0, MAX_EXPLICIT_PARAMETER_CHARS);
+}
+
+function addGmailOperations(operations: IndexedReadOperation[]): void {
+  addIndexedOperation(operations, {
+    capabilityId: 'gmail.messages.search',
+    connector: 'gmail',
+    sourceLabel: 'Gmail',
+    label: 'Gmail 메일 검색',
+    description: 'Gmail의 메일 목록 또는 명시된 조건의 헤더 조회',
+  }, (userMessage) => {
+    const query = explicitSearchQuery(userMessage);
+    const limit = requestLimitValue(userMessage);
+    const includeMetadata = /(?:보낸\s*사람|발신자|제목|날짜|헤더|metadata|subject|from|date)/iu.test(userMessage);
+    return {
+      params: {
+        ...(query ? { query } : {}),
+        ...(limit === undefined ? {} : { limit }),
+        ...(includeMetadata ? { includeMetadata: true } : {}),
+      },
+    };
+  });
+}
+
+function addSlackOperations(operations: IndexedReadOperation[]): void {
+  addIndexedOperation(operations, {
+    capabilityId: 'slack.messages.search',
+    connector: 'slack',
+    sourceLabel: 'Slack',
+    label: 'Slack 메시지 검색',
+    description: 'Slack의 명시된 검색어에 해당하는 메시지 조회',
+  }, (userMessage) => {
+    const query = explicitSearchQuery(userMessage);
+    const limit = requestLimitValue(userMessage);
+    return {
+      params: {
+        ...(query ? { query } : {}),
+        ...(limit === undefined ? {} : { limit }),
+      },
+      parameterHints: [{ path: 'query', type: 'string', required: true }],
+      missingParameterPaths: query ? [] : ['query'],
+    };
+  });
+}
+
 export class JevReadOperationIndex {
   private readonly operations: readonly IndexedReadOperation[];
   private readonly termIndex: ReadonlyMap<string, readonly number[]>;
@@ -354,6 +403,8 @@ export class JevReadOperationIndex {
       if (connection.connector === 'openapi') addOpenApiOperations(operations, connection);
       if (connection.connector === 'rdb') addRdbOperations(operations, connection);
       if (connection.connector === 'mcp') addMcpOperations(operations, connection);
+      if (connection.connector === 'gmail') addGmailOperations(operations);
+      if (connection.connector === 'slack') addSlackOperations(operations);
     }
     this.operations = operations;
 

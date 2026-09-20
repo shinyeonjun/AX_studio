@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { WorkflowIR } from '../../../../workflow/schema.js';
+import {
+  TriggerSchema,
+  type WorkflowIR,
+} from '../../../../workflow/schema.js';
+import { AxWorkflowStepInputSchema } from '../schema/workflow-args.js';
 
 export const JOB_COMMIT_CONFIRM_VALUE = '이 업무를 저장하고 스케줄을 켜줘';
 export const DEFAULT_JOB_CRON = '0 21 * * *';
@@ -83,6 +87,11 @@ export const AxJobProposeArgsSchema = z.object({
     channel: z.string().trim().min(1).max(200).optional(),
     skipIfEmpty: z.boolean().default(true),
   }).optional(),
+  /** Generic event/schedule workflow payload used when the job is not HTTP-backed. */
+  trigger: TriggerSchema.optional(),
+  steps: z.array(AxWorkflowStepInputSchema).max(200).optional(),
+  success: z.string().max(2_000).optional(),
+  assumptions: z.array(z.string().max(2_000)).max(200).optional(),
   runOnceNow: z.boolean().default(true),
   allowExternalAuto: z.boolean().default(true),
 });
@@ -108,7 +117,7 @@ export interface NormalizedJobSpec {
 }
 
 export interface PendingJobDraft {
-  spec: NormalizedJobSpec;
+  spec: Pick<NormalizedJobSpec, 'name' | 'runOnceNow'>;
   ir: WorkflowIR;
 }
 

@@ -10,7 +10,7 @@ afterEach(() => vi.restoreAllMocks());
 describe('Gmail public search continuation', () => {
   it('advertises the public paging parameters and output fields', () => {
     const capability = ConnectorCapabilitySchema.parse(GMAIL_CAPABILITIES.find((entry) => entry.id === 'gmail.messages.search'));
-    expect(capability.params.map((param) => param.name)).toEqual(['query', 'limit', 'pageToken']);
+    expect(capability.params.map((param) => param.name)).toEqual(['query', 'limit', 'pageToken', 'includeMetadata']);
     expect(capability.io?.outputs).toEqual({ messages: 'TableArtifact', hits: 'TableArtifact', limit: 'JsonArtifact', truncated: 'JsonArtifact' });
     expect(capability.description).toContain('nextPageToken');
   });

@@ -15,6 +15,7 @@ export type ProposeResponse = [
 export interface ValidatedProposeInput {
   data: AxJobProposeArgs;
   sessionId: string;
+  genericWorkflow: boolean;
   path: string;
   channel: string;
   cron: string;

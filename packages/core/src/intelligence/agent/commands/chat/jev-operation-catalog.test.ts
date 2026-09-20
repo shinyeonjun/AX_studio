@@ -227,4 +227,19 @@ describe('buildJevReadOperationHints', () => {
     expect(index.select('products 2개 보여줘').hints.find((hint) => hint.params.table === 'products')?.params)
       .toEqual({ table: 'products', limit: 2 });
   });
+
+  it('indexes connected Gmail and Slack reads without exposing connection secrets', () => {
+    const index = buildJevReadOperationIndex([
+      { connector: 'gmail', connected: true, config: { refreshToken: 'gmail-secret' } },
+      { connector: 'slack', connected: true, config: { token: 'slack-secret' } },
+    ]);
+
+    expect(index.select('Gmail 최근 메일 5개 보여줘').hints).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capabilityId: 'gmail.messages.search', params: { limit: 5 } }),
+    ]));
+    expect(index.select('Slack에서 재고라는 단어가 포함된 메시지를 찾아줘').hints).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capabilityId: 'slack.messages.search', params: { query: '재고' } }),
+    ]));
+    expect(JSON.stringify(index.select('Gmail 메일과 Slack 메시지를 조회해줘').hints)).not.toContain('secret');
+  });
 });

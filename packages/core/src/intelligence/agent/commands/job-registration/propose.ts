@@ -22,6 +22,14 @@ export async function proposeJob(options: {
   const input = validateProposeInput(options.args, options.workspaceSessionId);
   if (!input.ok) return input.response as ProposeResponse;
 
+  if (input.value.genericWorkflow) {
+    return createPendingJob({
+      store: options.store,
+      pending: options.pending,
+      input: input.value,
+    });
+  }
+
   const targets = await resolveJobTargets({
     store: options.store,
     input: input.value,

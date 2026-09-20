@@ -6,6 +6,7 @@ import {
   JOB_COMMIT_CONFIRM_VALUE,
   type NormalizedJobSpec,
 } from './contract.js';
+import type { WorkflowIR } from '../../../../workflow/schema.js';
 
 export function targetSelectionPresentation(
   inputs: AxInputRequest[],
@@ -67,5 +68,51 @@ export function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: st
         purpose: 'confirm_job',
       },
     ],
+  };
+}
+
+function triggerSummary(trigger: WorkflowIR['trigger']): string {
+  if (!trigger) return '수동 시작';
+  if (trigger.type === 'schedule') return `스케줄: ${trigger.schedule} (${trigger.timezone})`;
+  if (trigger.type === 'gmail.new_message') return `Gmail 새 메일: ${trigger.accountId}`;
+  if (trigger.type === 'slack.new_message') return `Slack 새 메시지: ${trigger.channel}`;
+  if (trigger.type === 'local_folder.new_file') return `폴더 새 파일: ${trigger.folderId}`;
+  if (trigger.type === 'once') return `일회 실행: ${trigger.runAt}`;
+  if (trigger.type === 'webhook.inbound') return `Webhook: ${trigger.path}`;
+  return '수동 시작';
+}
+
+export function workflowConfirmationPresentation(
+  workflow: WorkflowIR,
+  runOnceNow: boolean,
+  allowExternalAuto: boolean,
+): AxUiPresentation {
+  const autoNote = allowExternalAuto
+    ? '확인하면 이후 외부 발송 단계가 매번 승인 없이 실행될 수 있습니다.'
+    : '확인해도 외부 발송 단계는 실행마다 승인이 필요합니다.';
+  return {
+    title: '이 업무를 저장할까요?',
+    subtitle: workflow.name,
+    inputMode: 'individual',
+    blocks: [
+      {
+        type: 'steps',
+        title: '등록 내용',
+        items: [
+          triggerSummary(workflow.trigger),
+          `단계: ${workflow.steps.map((step) => step.id).join(' → ')}`,
+          runOnceNow ? '저장 직후 한 번 실행합니다.' : '지금은 실행하지 않고 시작 조건만 저장합니다.',
+        ],
+      },
+      { type: 'note', text: autoNote },
+    ],
+    inputs: [],
+    actions: [{
+      id: 'confirm_job',
+      label: '저장하고 켜기',
+      value: JOB_COMMIT_CONFIRM_VALUE,
+      tone: 'primary',
+      purpose: 'confirm_job',
+    }],
   };
 }

@@ -6,23 +6,70 @@ const Params = z.object({
   query: z.string().default(''),
   limit: z.coerce.number().finite().transform((n) => Math.min(50, Math.max(1, Math.trunc(n)))).default(10),
   pageToken: z.string().min(1).max(4096).optional(),
+  includeMetadata: z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    if (value.trim().toLowerCase() === 'true') return true;
+    if (value.trim().toLowerCase() === 'false') return false;
+    return value;
+  }, z.boolean()).default(false),
 });
+const METADATA_HEADERS = ['From', 'Subject', 'Date'] as const;
+
+function metadataHeader(
+  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
+  name: string,
+): string | undefined {
+  const header = headers?.find((entry) => entry.name?.toLowerCase() === name.toLowerCase());
+  const value = header?.value?.trim();
+  return value || undefined;
+}
+
+async function addMessageMetadata(
+  gmail: gmail_v1.Gmail,
+  messages: gmail_v1.Schema$Message[],
+  signal?: AbortSignal,
+): Promise<gmail_v1.Schema$Message[]> {
+  // Keep the page usable with a list-only transport double; the real Gmail
+  // client always exposes messages.get.
+  if (typeof gmail.users.messages.get !== 'function') return messages;
+  return Promise.all(messages.map(async (message) => {
+    if (!message.id) return message;
+    signal?.throwIfAborted();
+    const response = await gmail.users.messages.get({
+      userId: 'me',
+      id: message.id,
+      format: 'metadata',
+      metadataHeaders: [...METADATA_HEADERS],
+    });
+    signal?.throwIfAborted();
+    const headers = response.data.payload?.headers;
+    return {
+      ...message,
+      ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
+      ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
+      ...(metadataHeader(headers, 'Date') ? { date: metadataHeader(headers, 'Date') } : {}),
+    };
+  }));
+}
 
 /** One provider page; callers retain the query and pass nextPageToken to continue. */
 export async function searchGmailMessagePage(gmail: gmail_v1.Gmail, params: Record<string, unknown>, signal?: AbortSignal) {
-  const { query, limit, pageToken } = Params.parse(params);
+  const { query, limit, pageToken, includeMetadata } = Params.parse(params);
   signal?.throwIfAborted();
   const response = await gmail.users.messages.list({ userId: 'me', q: query, maxResults: limit, pageToken });
   signal?.throwIfAborted();
   const messages = response.data.messages ?? [];
   // Slicing an oversized provider page would skip rows when using its next token.
   if (messages.length > limit) throw new Error('page_size_exceeded');
+  const enrichedMessages = includeMetadata
+    ? await addMessageMetadata(gmail, messages, signal)
+    : messages;
   const nextPageToken = response.data.nextPageToken || undefined;
   if (nextPageToken && nextPageToken === pageToken) throw new Error('pagination_cycle');
   const estimate = response.data.resultSizeEstimate;
   return {
-    messages,
-    hits: messages.filter((message) => message.id).map((message) => ({
+    messages: enrichedMessages,
+    hits: enrichedMessages.filter((message) => message.id).map((message) => ({
       ref: { connector: 'gmail', kind: 'email' as const, id: message.id! }, score: 1,
     })),
     limit,
