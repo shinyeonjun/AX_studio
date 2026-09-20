@@ -1,0 +1,41 @@
+{
+  "id": "live-connector-batch",
+  "name": "Gmail·Slack 읽기 배치 테스트",
+  "description": "이 파일의 sendMessage.text만 바꿔 연결된 Gmail·Slack 읽기와 대화 내 결과 재사용을 반복 검증합니다.",
+  "mode": "live",
+  "tags": ["chat", "connector", "gmail", "slack", "read-only", "latency"],
+  "covers": ["chat:new-send-reply", "capability:gmail-read", "capability:slack-read"],
+  "timeoutMs": 900000,
+  "steps": [
+    { "action": "newChat", "label": "connector-batch" },
+    {
+      "action": "sendMessage",
+      "text": "연결된 Gmail에서 최근 메일 5개만 조회해서 제목, 보낸 사람, 날짜만 표로 보여줘. 메일 본문은 읽지 마."
+    },
+    { "check": "assistantNonEmpty", "minChars": 10, "severity": "major" },
+    {
+      "action": "sendMessage",
+      "text": "방금 조회한 Gmail 결과만 사용해서 날짜가 최신인 순서로 다시 정리해줘. Gmail API는 다시 호출하지 마."
+    },
+    { "check": "assistantNonEmpty", "minChars": 10, "severity": "major" },
+    {
+      "action": "sendMessage",
+      "text": "연결된 Slack에서 접근 가능한 채널 5개만 조회해서 이름과 ID를 보여줘. 메시지 본문은 읽지 마."
+    },
+    { "check": "assistantNonEmpty", "minChars": 10, "severity": "major" },
+    {
+      "action": "sendMessage",
+      "text": "방금 조회한 Slack 채널 결과만 사용해서 이름순으로 다시 정리해줘. Slack API는 다시 호출하지 마."
+    },
+    { "check": "assistantNonEmpty", "minChars": 10, "severity": "major" },
+    {
+      "action": "sendMessage",
+      "text": "방금 대화에서 확인한 Gmail과 Slack 결과만 비교해서 공통으로 확인된 키워드나 이름이 있으면 알려줘. 새로운 API 호출은 하지 마."
+    },
+    { "check": "assistantNonEmpty", "minChars": 10, "severity": "major" },
+    { "check": "composerEnabled", "severity": "critical" },
+    { "check": "noErrorBanner", "severity": "major" },
+    { "check": "appAlive", "severity": "critical" },
+    { "action": "screenshot", "name": "final" }
+  ]
+}

@@ -17,6 +17,10 @@ CONTEXT.md
 test/
 !/test/
 /test/*
+!/test/product-qa/
+!/test/product-qa/run-live-chat-batch.mjs
+!/test/product-qa/scenarios/
+!/test/product-qa/scenarios/live-connector-batch.json
 !/test/work-discovery-benchmark/
 !/test/work-discovery-benchmark/**
 !/test/report-generation-e2e/
