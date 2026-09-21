@@ -33,6 +33,8 @@ describe('deriveJevRequestFeatures', () => {
       direct_action: true,
       requested_timing: 'now',
     });
+    expect(deriveJevRequestFeatures('POST path: /orders 를 호출해줘').explicit_http_method).toBe('POST');
+    expect(deriveJevRequestFeatures('OPTIONS /health 조회해줘').explicit_http_method).toBe('OPTIONS');
   });
 
   it('recognizes a direct one-shot execution without treating a preview as execution', () => {

@@ -320,8 +320,8 @@ function normalizeHttpPath(value: string | undefined): string | undefined {
 
 export function explicitHttpPath(message: string): string | undefined {
   const patterns = [
-    /(?:GET|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
-    /(?:^|[\s(])(?:GET|겟)\s+([^\s"'`<>]+)/iu,
+    /(?:GET|HEAD|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
+    /(?:^|[\s(])(?:GET|HEAD|겟)\s+([^\s"'`<>]+)/iu,
     /(?:경로|path)\s*[:：]\s*([^\s"'`<>]+)/iu,
   ];
   for (const pattern of patterns) {
@@ -338,6 +338,19 @@ function endpointMentioned(message: string, value: string | undefined): boolean 
   return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?:$|[^A-Za-z0-9_])`, 'iu').test(message);
 }
 
+function explicitEndpointCue(message: string): boolean {
+  const patterns = [
+    /^\s*([A-Za-z][A-Za-z0-9._-]{1,80})\s+(?:GET|HEAD)\b/iu,
+    /(?:^|\s)([A-Za-z][A-Za-z0-9._-]{1,80})\s*(?:API|endpoint|연결|에서)(?=\s|$|[/?.,!])/iu,
+    /(?:HTTP\s+연결\s+ID|connection\s+id)\s+([A-Za-z0-9][A-Za-z0-9._-]{0,80})/iu,
+  ];
+  const generic = new Set(['api', 'http', 'rest', 'endpoint']);
+  return patterns.some((pattern) => {
+    const candidate = message.match(pattern)?.[1]?.toLowerCase();
+    return Boolean(candidate && !generic.has(candidate));
+  });
+}
+
 function endpointMatchesMessage(message: string, endpoint: JevHttpEndpointHint): boolean {
   return [endpoint.id, endpoint.label].some((value) => endpointMentioned(message, value));
 }
@@ -351,12 +364,17 @@ export function selectHttpEndpointForRead(
   endpoints: readonly JevHttpEndpointHint[],
 ): JevHttpEndpointHint | undefined {
   const usable = endpoints.filter((endpoint) => endpoint.usable !== false);
-  if (usable.length === 1) return usable[0];
   const mentioned = usable.filter((endpoint) => endpointMatchesMessage(message, endpoint));
-  return mentioned.length === 1 ? mentioned[0] : undefined;
+  if (mentioned.length > 0) return mentioned.length === 1 ? mentioned[0] : undefined;
+  if (explicitEndpointCue(message)) return undefined;
+  return usable.length === 1 ? usable[0] : undefined;
 }
 
 function httpReadCommand(input: JevChatRouterInput): AxCommand | JevChatRouterResult {
+  const explicitMethod = deriveJevRequestFeatures(input.userMessage).explicit_http_method;
+  if (explicitMethod && explicitMethod !== 'GET' && explicitMethod !== 'HEAD') {
+    return fallback('unsupported');
+  }
   const path = explicitHttpPath(input.userMessage);
   const endpoints = (input.httpEndpoints ?? []).filter((endpoint) => endpoint.usable !== false);
   if (!path || endpoints.length === 0) return fallback('missing_context');
@@ -369,7 +387,7 @@ function httpReadCommand(input: JevChatRouterInput): AxCommand | JevChatRouterRe
     args: {
       id: 'http.request',
       params: {
-        method: 'GET',
+        method: explicitMethod ?? 'GET',
         path,
         connectionId: selected.id,
       },

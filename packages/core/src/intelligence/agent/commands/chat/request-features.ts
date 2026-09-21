@@ -4,7 +4,7 @@ export type JevRequestTiming = 'now' | 'repeat' | 'plan' | 'unknown';
 export interface JevRequestFeatures {
   data_reference: boolean;
   direct_action: boolean;
-  explicit_http_method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  explicit_http_method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
   requested_limit?: number;
   requested_scope: JevRequestScope;
   requested_timing: JevRequestTiming;
@@ -19,7 +19,7 @@ const REPEAT_HINT = /(?:반복|주기|매일|매주|매월|예약|스케줄|sche
 const PLAN_HINT = /(?:계획|설계|검토|초안|제안|plan|design|draft)/iu;
 const ONE_SHOT_HINT = /(?:일회성|한\s*번만|이번만|반복\s*(?:업무|작업|workflow)?\s*(?:로\s*)?(?:저장|등록|활성화)하지|저장하지\s*(?:마|말고))/iu;
 const NEGATIVE_EXECUTION_HINT = /(?:실행하지|실행\s*말고|돌리지\s*말고|검토만|계획만|dry\s*run|do\s*not\s*run|don't\s*run)/iu;
-const HTTP_METHOD_HINT = /\b(GET|HEAD|POST|PUT|PATCH|DELETE)\b/iu;
+const HTTP_METHOD_HINT = /\b(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)\b/iu;
 const LIMIT_HINT = /(?:^|\s)(\d{1,4})\s*(?:개만|개|건|행|items?|rows?|results?)(?:\s|$)/iu;
 
 export function requestLimitValue(message: string): number | undefined {

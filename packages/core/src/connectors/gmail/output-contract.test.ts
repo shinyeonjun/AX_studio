@@ -96,4 +96,58 @@ describe('Gmail public page output contracts', () => {
     expect(result).toMatchObject({ ok: true, data: { messages: [{ id: 'mail-1' }] } });
     expect(get).not.toHaveBeenCalled();
   });
+
+  it('bounds metadata enrichment concurrency for a full provider page', async () => {
+    let active = 0;
+    let peak = 0;
+    const list = vi.fn().mockResolvedValue({ data: {
+      messages: Array.from({ length: 50 }, (_, index) => ({ id: `mail-${index}` })),
+    } });
+    const get = vi.fn().mockImplementation(async ({ id }: { id: string }) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      active -= 1;
+      return { data: { id, payload: { headers: [] } } };
+    });
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+
+    const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
+      limit: 50,
+      includeMetadata: true,
+    }, {
+      executionId: 'metadata-bounded', variables: {}, log: () => undefined,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(get).toHaveBeenCalledTimes(50);
+    expect(peak).toBeLessThanOrEqual(8);
+  });
+
+  it('keeps a list row when the message disappears during metadata enrichment', async () => {
+    const list = vi.fn().mockResolvedValue({ data: {
+      messages: [{ id: 'mail-missing' }, { id: 'mail-present' }],
+    } });
+    const get = vi.fn()
+      .mockRejectedValueOnce({ code: 404 })
+      .mockResolvedValueOnce({ data: { id: 'mail-present', payload: { headers: [
+        { name: 'Subject', value: '남은 메일' },
+      ] } } });
+    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+
+    const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
+      limit: 2,
+      includeMetadata: true,
+    }, {
+      executionId: 'metadata-race', variables: {}, log: () => undefined,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: { messages: [
+        { id: 'mail-missing' },
+        { id: 'mail-present', subject: '남은 메일' },
+      ] },
+    });
+  });
 });

@@ -10,7 +10,7 @@ import {
   pickHttpEndpoint,
   slackChannelInput,
 } from '../targets.js';
-import type { ListSlackChannels } from '../contract.js';
+import type { JobProposeReadResult, ListSlackChannels } from '../contract.js';
 import { targetSelectionPresentation } from '../presentation.js';
 import { issue } from '../shared.js';
 import type { ProposeResponse, ValidatedProposeInput } from './contracts.js';
@@ -41,15 +41,45 @@ function configuredGmailAccount(config: Record<string, unknown> | undefined): st
   return undefined;
 }
 
-function actionChannel(input: ValidatedProposeInput): string | undefined {
-  for (const step of input.data.steps ?? []) {
-    if (!step || typeof step !== 'object' || Array.isArray(step)) continue;
-    const record = step as { connector?: unknown; params?: unknown };
-    if (record.connector !== 'slack' || !record.params || typeof record.params !== 'object' || Array.isArray(record.params)) continue;
-    const channel = (record.params as Record<string, unknown>).channel;
-    if (typeof channel === 'string' && channel.trim()) return channel.trim();
-  }
-  return undefined;
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function cachedSlackChannelLister(listSlackChannels?: ListSlackChannels): ListSlackChannels | undefined {
+  if (!listSlackChannels) return undefined;
+  let pending: Promise<JobProposeReadResult> | undefined;
+  return () => {
+    pending ??= Promise.resolve()
+      .then(() => listSlackChannels())
+      .catch(() => ({ ok: false, error: 'slack_channel_list_unavailable' }));
+    return pending;
+  };
+}
+
+function slackChannelExists(result: JobProposeReadResult, target: string): boolean | undefined {
+  if (!result.ok) return undefined;
+  const envelope = asRecord(result.data);
+  const payload = asRecord(envelope?.data) ?? envelope;
+  const channels = Array.isArray(payload?.channels) ? payload.channels : undefined;
+  if (!channels) return undefined;
+  const normalizedTarget = target.trim().replace(/^#/u, '');
+  return channels.some((entry) => {
+    const channel = asRecord(entry);
+    const id = typeof channel?.id === 'string' ? channel.id.trim() : '';
+    const name = typeof channel?.name === 'string' ? channel.name.trim() : '';
+    return normalizedTarget === id || normalizedTarget === name;
+  });
+}
+
+async function slackTargetState(
+  listSlackChannels: ListSlackChannels | undefined,
+  target: string,
+): Promise<'valid' | 'invalid' | 'unverified'> {
+  if (!listSlackChannels) return 'unverified';
+  const exists = slackChannelExists(await listSlackChannels(), target);
+  return exists === undefined ? 'unverified' : exists ? 'valid' : 'invalid';
 }
 
 /** Fill an unambiguous connected trigger target; never invents an id when there are choices. */
@@ -59,11 +89,25 @@ export async function resolveGenericJobTargets(options: {
   listSlackChannels?: ListSlackChannels;
 }): Promise<GenericJobTargetSelectionResult> {
   const trigger = options.input.data.trigger;
+  const listSlackChannels = cachedSlackChannelLister(options.listSlackChannels);
+  const connected = connectedIds(options.store);
   let resolved = trigger;
-  if (trigger?.type === 'gmail.new_message' && !trigger.accountId.trim()) {
+  if (trigger?.type === 'gmail.new_message') {
     const connection = options.store.getConnections().find((entry) => entry.connector === 'gmail' && entry.connected);
+    if (!connected.includes('gmail')) {
+      return {
+        ok: false,
+        response: ['invalid', undefined, [issue(
+          'gmail_connection_required',
+          'Gmail 새 메일 트리거를 사용하려면 Gmail 연결이 필요합니다.',
+          'args.trigger.accountId',
+        )]],
+      };
+    }
     const accountId = configuredGmailAccount(connection?.config);
-    if (!accountId) {
+    if (!trigger.accountId.trim() && accountId) {
+      resolved = { ...trigger, accountId };
+    } else if (!trigger.accountId.trim()) {
       return {
         ok: false,
         response: ['needs_input', { message: 'Gmail 새 메일 트리거에 사용할 계정을 입력해 주세요.' }, [issue(
@@ -73,14 +117,30 @@ export async function resolveGenericJobTargets(options: {
         )]],
       };
     }
-    resolved = { ...trigger, accountId };
+    if (trigger.accountId.trim() && accountId && trigger.accountId.trim() !== accountId) {
+      return {
+        ok: false,
+        response: ['needs_input', { message: 'Gmail 새 메일 트리거의 accountId가 연결된 계정과 일치하지 않습니다.' }, [issue(
+          'job_trigger_target_invalid',
+          'Gmail 새 메일 트리거에 연결된 계정의 accountId를 사용해 주세요.',
+          'args.trigger.accountId',
+        )]],
+      };
+    }
   }
-  if (trigger?.type === 'slack.new_message' && !trigger.channel.trim()) {
-    const channel = actionChannel(options.input);
-    if (channel) {
-      resolved = { ...trigger, channel };
-    } else {
-      const request = await slackChannelInput(options.listSlackChannels, 'job-trigger-slack-channel');
+  if (trigger?.type === 'slack.new_message') {
+    if (!connected.includes('slack')) {
+      return {
+        ok: false,
+        response: ['invalid', undefined, [issue(
+          'slack_connection_required',
+          'Slack 새 메시지 트리거를 사용하려면 Slack 연결이 필요합니다.',
+          'args.trigger.channel',
+        )]],
+      };
+    }
+    if (!trigger.channel.trim()) {
+      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel');
       return {
         ok: false,
         response: ['needs_input', { message: 'Slack 새 메시지 트리거에 사용할 채널을 선택해 주세요.' }, [issue(
@@ -91,19 +151,74 @@ export async function resolveGenericJobTargets(options: {
         )]],
       };
     }
+    if (await slackTargetState(listSlackChannels, trigger.channel) === 'invalid') {
+      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel');
+      return {
+        ok: false,
+        response: ['needs_input', { message: 'Slack 새 메시지 트리거에 존재하는 채널을 선택해 주세요.' }, [issue(
+          'job_trigger_target_invalid',
+          'Slack 새 메시지 트리거의 channel을 연결된 채널로 선택해 주세요.',
+          'args.trigger.channel',
+          [request],
+        )]],
+      };
+    }
   }
-  if (trigger?.type === 'local_folder.new_file' && !trigger.folderId.trim()) {
+  if (trigger?.type === 'local_folder.new_file') {
     const connection = options.store.getConnections().find((entry) => entry.connector === 'local_folder' && entry.connected);
     const folders = parseLocalFolderConnectionConfig(connection?.config)?.folders ?? [];
-    if (folders.length === 1) {
+    if (!connected.includes('local_folder')) {
+      return {
+        ok: false,
+        response: ['invalid', undefined, [issue(
+          'local_folder_connection_required',
+          '새 파일 트리거를 사용하려면 연결 폴더가 필요합니다.',
+          'args.trigger.folderId',
+        )]],
+      };
+    }
+    if (!trigger.folderId.trim() && folders.length === 1) {
       resolved = { ...trigger, folderId: folders[0]!.id, folderPath: folders[0]!.path };
-    } else {
+    } else if (!trigger.folderId.trim()) {
       return {
         ok: false,
         response: ['needs_input', { message: '새 파일 트리거에 사용할 연결 폴더를 입력해 주세요.' }, [issue(
           'job_trigger_target_required',
           '폴더 새 파일 트리거에 folderId가 필요합니다.',
           'args.trigger.folderId',
+        )]],
+      };
+    } else if (folders.length === 0 || !folders.some((folder) => folder.id === trigger.folderId.trim())) {
+      return {
+        ok: false,
+        response: ['needs_input', { message: '새 파일 트리거에 존재하는 연결 폴더를 선택해 주세요.' }, [issue(
+          'job_trigger_target_invalid',
+          '폴더 새 파일 트리거의 folderId를 연결된 폴더로 선택해 주세요.',
+          'args.trigger.folderId',
+        )]],
+      };
+    }
+  }
+
+  for (const step of options.input.data.steps ?? []) {
+    if (step.type !== 'action' || step.connector !== 'slack') continue;
+    const channel = typeof step.params.channel === 'string' ? step.params.channel.trim() : '';
+    if (channel && await slackTargetState(listSlackChannels, channel) === 'invalid') {
+      const request = await slackChannelInput(listSlackChannels);
+      return {
+        ok: false,
+        response: ['needs_input', {
+          message: 'Slack 메시지를 보낼 존재하는 채널을 선택해 주세요.',
+          presentation: targetSelectionPresentation([request], {
+            actionLabel: '채널을 선택하고 업무 초안 검토',
+            actionValue: '선택한 Slack 채널로 업무 초안을 검토해줘',
+            note: '채널을 선택하면 업무 초안을 먼저 보여드립니다. 실제 외부 발송은 별도 승인 전까지 실행하지 않습니다.',
+          }),
+        }, [issue(
+          'job_action_target_invalid',
+          'Slack 메시지 단계의 channel을 연결된 채널로 선택해 주세요.',
+          'args.steps',
+          [request],
         )]],
       };
     }
@@ -113,7 +228,7 @@ export async function resolveGenericJobTargets(options: {
     (step) => step.type === 'action' && needsSlackChannelSelection(step),
   );
   if (missingSlackActionTarget) {
-    const request = await slackChannelInput(options.listSlackChannels);
+    const request = await slackChannelInput(listSlackChannels);
     return {
       ok: false,
       response: ['needs_input', {
