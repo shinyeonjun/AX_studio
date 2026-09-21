@@ -1,6 +1,7 @@
 import type { gmail_v1 } from 'googleapis';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
+import { isNotFoundError } from './new-message-poll/shared.js';
 
 const Params = z.object({
   query: z.string().default(''),
@@ -14,6 +15,7 @@ const Params = z.object({
   }, z.boolean()).default(false),
 });
 const METADATA_HEADERS = ['From', 'Subject', 'Date'] as const;
+const METADATA_BATCH_SIZE = 8;
 
 function metadataHeader(
   headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
@@ -32,24 +34,35 @@ async function addMessageMetadata(
   // Keep the page usable with a list-only transport double; the real Gmail
   // client always exposes messages.get.
   if (typeof gmail.users.messages.get !== 'function') return messages;
-  return Promise.all(messages.map(async (message) => {
-    if (!message.id) return message;
+  const enriched: gmail_v1.Schema$Message[] = [];
+  for (let offset = 0; offset < messages.length; offset += METADATA_BATCH_SIZE) {
     signal?.throwIfAborted();
-    const response = await gmail.users.messages.get({
-      userId: 'me',
-      id: message.id,
-      format: 'metadata',
-      metadataHeaders: [...METADATA_HEADERS],
-    });
-    signal?.throwIfAborted();
-    const headers = response.data.payload?.headers;
-    return {
-      ...message,
-      ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
-      ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
-      ...(metadataHeader(headers, 'Date') ? { date: metadataHeader(headers, 'Date') } : {}),
-    };
-  }));
+    const batch = await Promise.all(messages.slice(offset, offset + METADATA_BATCH_SIZE).map(async (message) => {
+      if (!message.id) return message;
+      signal?.throwIfAborted();
+      try {
+        const response = await gmail.users.messages.get({
+          userId: 'me',
+          id: message.id,
+          format: 'metadata',
+          metadataHeaders: [...METADATA_HEADERS],
+        });
+        signal?.throwIfAborted();
+        const headers = response.data.payload?.headers;
+        return {
+          ...message,
+          ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
+          ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
+          ...(metadataHeader(headers, 'Date') ? { date: metadataHeader(headers, 'Date') } : {}),
+        };
+      } catch (error) {
+        if (isNotFoundError(error)) return message;
+        throw error;
+      }
+    }));
+    enriched.push(...batch);
+  }
+  return enriched;
 }
 
 /** One provider page; callers retain the query and pass nextPageToken to continue. */

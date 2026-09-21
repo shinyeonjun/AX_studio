@@ -98,6 +98,41 @@ describe('routeChatWithJev', () => {
     });
   });
 
+  it('preserves an explicit HEAD method for the read-only HTTP command', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'DummyJSON 연결에서 HEAD /health 를 조회해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+    })).resolves.toMatchObject({
+      kind: 'command',
+      route: 'http_read',
+      command: {
+        args: {
+          params: { method: 'HEAD', path: '/health', connectionId: 'dummyjson' },
+        },
+      },
+    });
+  });
+
+  it('does not turn an explicit write method into a GET read command', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'POST path: /orders 를 호출해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+    })).resolves.toEqual({ kind: 'fallback', reason: 'unsupported' });
+  });
+
+  it('does not use the only endpoint when an explicit endpoint name does not match', async () => {
+    await expect(routeChatWithJev({
+      decisionEngine: engineFor('http_read', 0.98),
+      userMessage: 'GitHub에서 GET /users 조회해줘.',
+      connectedConnectors: ['http'],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
+    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+  });
+
   it('maps a Jev-selected catalog operation to a host-owned capability command', async () => {
     let questionIds: string[] = [];
     const result = await routeChatWithJev({
@@ -407,7 +442,7 @@ describe('routeChatWithJev', () => {
       userMessage: 'POST /orders 를 호출해줘.',
       connectedConnectors: ['http'],
       httpEndpoints: endpoints,
-    })).resolves.toEqual({ kind: 'fallback', reason: 'missing_context' });
+    })).resolves.toEqual({ kind: 'fallback', reason: 'unsupported' });
     await expect(routeChatWithJev({
       decisionEngine: engineFor('http_read', 0.98),
       userMessage: 'GET https://example.com/orders 를 조회해줘.',

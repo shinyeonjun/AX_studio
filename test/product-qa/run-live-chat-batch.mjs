@@ -251,7 +251,9 @@ function isAllowedTestAction(actions, scenario) {
 async function settleApprovals(core, scenario, beforeApprovalIds, userMessage) {
   const events = [];
   const seen = new Set(beforeApprovalIds);
-  const mayApprove = Boolean(scenario.autoApproveExternal) && explicitExternalApproval(userMessage);
+  const mayApprove = process.env.AX_ALLOW_LIVE_EXTERNAL_SEND === '1'
+    && Boolean(scenario.autoApproveExternal)
+    && explicitExternalApproval(userMessage);
 
   // The one-shot queue is asynchronous; wait before inspecting approvals so the
   // measurement includes the actual Runtime gate, not only enqueue latency.
@@ -331,6 +333,9 @@ async function main() {
   enableAppFileLog();
 
   const scenario = JSON.parse(readFileSync(scenarioPath, 'utf8'));
+  if (scenario.autoApproveExternal && process.env.AX_ALLOW_LIVE_EXTERNAL_SEND !== '1') {
+    console.log('[live-chat-batch] external sends remain pending; set AX_ALLOW_LIVE_EXTERNAL_SEND=1 for an explicit live-send run.');
+  }
   const promptCount = scenario.steps.filter((step) => step.action === 'sendMessage').length;
   const directOutboundCount = Array.isArray(scenario.directOutboundChecks)
     ? scenario.directOutboundChecks.length
