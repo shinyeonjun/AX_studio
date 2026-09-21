@@ -8,10 +8,24 @@ describe('capability graph alias resolution', () => {
     expect(resolveCapability('gmail', 'send_message')?.id).toBe('gmail.message.send');
   });
 
+  it('resolves the singular Gmail read alias to gmail.messages.read', () => {
+    expect(resolveCapability('gmail', 'message.read')?.id).toBe('gmail.messages.read');
+    expect(resolveCapability('gmail', 'gmail.message.read')?.id).toBe('gmail.messages.read');
+  });
+
   it('resolves slack send aliases to slack.message.send', () => {
     expect(resolveCapability('slack', 'send')?.id).toBe('slack.message.send');
     expect(resolveCapability('slack', 'message.send')?.id).toBe('slack.message.send');
     expect(resolveCapability('slack', 'send_message')?.id).toBe('slack.message.send');
     expect(resolveCapability('slack', 'slack.message.send')?.id).toBe('slack.message.send');
+  });
+
+  it('resolves the versioned action reference emitted by workflow plans', () => {
+    expect(resolveCapability('slack', 'slack.message.send@1')?.id).toBe('slack.message.send');
+    expect(resolveCapability('gmail', 'gmail.message.send@1')?.id).toBe('gmail.message.send');
+  });
+
+  it('rejects versions that the host does not implement', () => {
+    expect(resolveCapability('slack', 'slack.message.send@2')).toBeUndefined();
   });
 });

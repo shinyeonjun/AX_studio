@@ -54,4 +54,19 @@ describe('Slack SDK transport', () => {
     expect(await connector.execute('messages.search', { query: 'test' }, context)).toMatchObject({ ok: false, errorCode: 'slack_error' });
     expect(request).toHaveBeenCalledOnce();
   });
+
+  it('reports the required user-token scope when global search rejects a bot token', async () => {
+    const request = vi.fn((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'not_allowed_token_type' }));
+    });
+    const connector = await useLoopback(request);
+
+    expect(await connector.execute('messages.search', { query: '재고' }, context)).toMatchObject({
+      ok: false,
+      errorCode: 'slack_search_scope_required',
+      errorDetails: { requiredScope: 'search:read', alternativeAction: 'messages.read' },
+    });
+    expect(request).toHaveBeenCalledOnce();
+  });
 });

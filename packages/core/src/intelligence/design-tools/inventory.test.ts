@@ -1,13 +1,45 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildDesignToolContext, executeDesignToolCalls } from './index.js';
 import { createDatabaseAsync } from '../../persistence/db.js';
 import { WorkflowStore } from '../../persistence/workflow-store.js';
 import { AxCommandService } from '../agent/commands/service.js';
 
 describe('design-tools inventory', () => {
+  it('overlaps independent read calls while preserving result order', async () => {
+    let active = 0;
+    let peak = 0;
+    const connector = {
+      name: 'slack',
+      execute: vi.fn(async (action: string) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        active -= 1;
+        return { ok: true, data: { action } };
+      }),
+    };
+    const ctx = buildDesignToolContext(
+      [{ connector: 'slack', connected: true, config: {} }],
+      ['slack'],
+      { connectors: { slack: connector } },
+    );
+
+    const results = await executeDesignToolCalls([
+      { tool: 'capabilities.invoke', args: { id: 'slack.channels.list' } },
+      { tool: 'capabilities.invoke', args: { id: 'slack.channels.list' } },
+    ], ctx);
+
+    expect(peak).toBe(2);
+    expect(results.map((result) => result.tool)).toEqual([
+      'capabilities.invoke',
+      'capabilities.invoke',
+    ]);
+    expect(connector.execute).toHaveBeenCalledTimes(2);
+  });
+
   it('pages connected folders without dumping all folder metadata', async () => {
     const ctx = buildDesignToolContext([{ connector: 'local_folder', connected: true, config: {
       folders: Array.from({ length: 57 }, (_, i) => ({ id: `folder-${i}`, label: `Folder ${i}`, path: tmpdir() })),

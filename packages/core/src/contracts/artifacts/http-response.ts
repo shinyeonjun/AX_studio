@@ -94,7 +94,7 @@ function rowsAtPath(value: unknown, rowsPath?: string):
  */
 export function httpResponseToTable(
   response: HttpResponseArtifact,
-  options: { sourceId: string; rowsPath?: string; rowLimit?: number },
+  options: { sourceId: string; rowsPath?: string; rowLimit?: number; columns?: readonly string[] },
 ): { ok: true; table: TableArtifact } | { ok: false; errorCode: string } {
   const parsed = HttpResponseArtifactSchema.safeParse(response);
   if (!parsed.success) return { ok: false, errorCode: 'http_response_invalid' };
@@ -108,7 +108,11 @@ export function httpResponseToTable(
 
   const rows = rowsAtPath(json, options.rowsPath);
   if (!rows.ok) return rows;
-  const headers = [...new Set(rows.rows.flatMap((row) => Object.keys(row)))];
+  const allHeaders = [...new Set(rows.rows.flatMap((row) => Object.keys(row)))];
+  const requestedHeaders = [...new Set(
+    (options.columns ?? []).map((column) => column.trim()).filter(Boolean),
+  )].filter((column) => allHeaders.includes(column));
+  const headers = requestedHeaders.length > 0 ? requestedHeaders : allHeaders;
   const table = buildTableArtifact({
     id: `table_${parsed.data.id}_${options.sourceId}`,
     name: options.sourceId,

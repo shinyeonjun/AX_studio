@@ -46,7 +46,7 @@
     "test": "node scripts/embed-skills.mjs && vitest run",
     "test:e2e": "node scripts/embed-skills.mjs && vitest run src/testing/e2e",
     "eval": "node scripts/embed-skills.mjs && vitest run --config vitest.eval.config.ts",
-    "knip": "knip --workspace packages/core",
+    "knip": "knip --directory ../.. --workspace packages/core",
     "arch:check": "depcruise src --config ../../.dependency-cruiser.cjs --output-type err",
     "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit"
   },

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { WorkflowIR } from '../../../../workflow/schema.js';
+import {
+  TriggerSchema,
+  type WorkflowIR,
+} from '../../../../workflow/schema.js';
+import { AxWorkflowStepInputSchema } from '../schema/workflow-args.js';
 
 export const JOB_COMMIT_CONFIRM_VALUE = '이 업무를 저장하고 스케줄을 켜줘';
 export const DEFAULT_JOB_CRON = '0 21 * * *';
@@ -18,10 +22,31 @@ export function coerceJobProposeArgs(value: unknown): unknown {
   if (typeof record.notify === 'string') record.notify = { channel: record.notify };
   if (typeof record.fetch === 'string') record.fetch = { path: record.fetch };
   if (typeof record.schedule === 'string') {
-    const fields = record.schedule.trim().split(/\s+/);
-    record.schedule = fields.length >= 6
-      ? { cron: fields.slice(0, 5).join(' '), timezone: fields.slice(5).join(' ') }
-      : { cron: record.schedule };
+    const schedule = record.schedule.trim();
+    const commaTimezone = /^(.+?),\s*([A-Za-z][A-Za-z0-9+._-]*\/[A-Za-z0-9+._-]+)$/u.exec(schedule);
+    const fields = schedule.split(/\s+/u);
+    record.schedule = commaTimezone
+      ? { cron: commaTimezone[1]!.trim(), timezone: commaTimezone[2]!.trim() }
+      : fields.length >= 6
+        ? { cron: fields.slice(0, 5).join(' '), timezone: fields.slice(5).join(' ') }
+        : { cron: schedule };
+  }
+
+  if (typeof record.trigger === 'string') {
+    const type = record.trigger.trim();
+    if (type === 'gmail.new_message') {
+      record.trigger = { type, accountId: asFilledString(record.accountId) ?? '' };
+    } else if (type === 'slack.new_message') {
+      record.trigger = { type, channel: asFilledString(record.channel) ?? '' };
+    } else if (type === 'local_folder.new_file') {
+      record.trigger = { type, folderId: asFilledString(record.folderId) ?? '' };
+    }
+  } else if (record.trigger && typeof record.trigger === 'object' && !Array.isArray(record.trigger)) {
+    const trigger = { ...(record.trigger as Record<string, unknown>) };
+    if (trigger.type === 'gmail.new_message' && typeof trigger.accountId !== 'string') trigger.accountId = '';
+    if (trigger.type === 'slack.new_message' && typeof trigger.channel !== 'string') trigger.channel = '';
+    if (trigger.type === 'local_folder.new_file' && typeof trigger.folderId !== 'string') trigger.folderId = '';
+    record.trigger = trigger;
   }
 
   // Lift the top-level aliases models emit when they answer a needs_input turn.
@@ -83,6 +108,11 @@ export const AxJobProposeArgsSchema = z.object({
     channel: z.string().trim().min(1).max(200).optional(),
     skipIfEmpty: z.boolean().default(true),
   }).optional(),
+  /** Generic event/schedule workflow payload used when the job is not HTTP-backed. */
+  trigger: TriggerSchema.optional(),
+  steps: z.array(AxWorkflowStepInputSchema).max(200).optional(),
+  success: z.string().max(2_000).optional(),
+  assumptions: z.array(z.string().max(2_000)).max(200).optional(),
   runOnceNow: z.boolean().default(true),
   allowExternalAuto: z.boolean().default(true),
 });
@@ -108,7 +138,7 @@ export interface NormalizedJobSpec {
 }
 
 export interface PendingJobDraft {
-  spec: NormalizedJobSpec;
+  spec: Pick<NormalizedJobSpec, 'name' | 'runOnceNow'>;
   ir: WorkflowIR;
 }
 

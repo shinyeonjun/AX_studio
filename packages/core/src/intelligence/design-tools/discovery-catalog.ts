@@ -16,6 +16,10 @@ import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../connectors
 import type { ConnectionRecord, DesignToolContext } from './types.js';
 import type { DiscoveryMetadataRecord } from '../../contracts/discovery-metadata.js';
 
+// A DesignToolContext is a read-only snapshot for one model turn. WeakMap keeps
+// repeated discovery.search/describe calls cheap without retaining dead turns.
+const discoveryIndexCache = new WeakMap<DesignToolContext, DiscoveryAssetIndex>();
+
 function recordOf(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -255,6 +259,9 @@ function applyMetadata(asset: DiscoveryAsset, entries: ReadonlyMap<string, Disco
  * implementation remains neutral and easy to replace or test.
  */
 export function buildDiscoveryAssetIndex(ctx: DesignToolContext): DiscoveryAssetIndex {
+  const cached = discoveryIndexCache.get(ctx);
+  if (cached) return cached;
+
   const assets: DiscoveryAsset[] = [];
   const seen = new Set<string>();
   connectorAssets(ctx, assets, seen);
@@ -264,5 +271,7 @@ export function buildDiscoveryAssetIndex(ctx: DesignToolContext): DiscoveryAsset
   httpEndpointAssets(ctx, assets, seen);
   folderAssets(ctx, assets, seen);
   const metadata = new Map(ctx.discoveryMetadata?.map(entry => [entry.assetId, entry]));
-  return new DiscoveryAssetIndex(assets.map((asset) => applyMetadata(asset, metadata)));
+  const index = new DiscoveryAssetIndex(assets.map((asset) => applyMetadata(asset, metadata)));
+  discoveryIndexCache.set(ctx, index);
+  return index;
 }

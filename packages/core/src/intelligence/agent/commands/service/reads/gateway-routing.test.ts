@@ -4,6 +4,7 @@ import type { AxCommandReadContext, AxCommandReadGateway } from '../../read-gate
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { AxCommandService } from '../../service.js';
 import { AGENT_COMMAND_CONTEXT } from '../../access.js';
+import { buildHttpResponseArtifact } from '../../../../../contracts/artifacts/http-response.js';
 
 describe('AxCommandService read gateway routing', () => {
   it('does not enter the source read gateway for workflow-only commands', async () => {
@@ -95,5 +96,40 @@ describe('AxCommandService read gateway routing', () => {
     } finally {
       db.close?.();
     }
+  });
+
+  it('keeps complete capability data at the host command seam', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const response = buildHttpResponseArtifact({
+      executionId: 'host-read',
+      url: 'https://example.test/items',
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: 1 }], providerMetadata: 'x'.repeat(5_000) }),
+      truncated: false,
+    });
+    const service = new AxCommandService(new WorkflowStore(db));
+    const result = await service.execute({
+      name: 'capability.invoke',
+      args: { id: 'http.request', params: { method: 'GET', path: 'items', connectionId: 'default' } },
+    }, {
+      executionContext: AGENT_COMMAND_CONTEXT,
+      designToolContext: {
+        connections: [],
+        connectedConnectorIds: ['http'],
+        allowUntrustedData: true,
+        connectors: {
+          http: {
+            name: 'http',
+            execute: async () => ({ ok: true, data: response }),
+          },
+        },
+      },
+    });
+
+    expect(result.status).toBe('ok');
+    expect(result.data).toMatchObject({ data: response });
+    expect((result.data as { data?: unknown }).data).toBe(response);
   });
 });

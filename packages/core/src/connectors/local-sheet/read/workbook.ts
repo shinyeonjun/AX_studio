@@ -4,16 +4,19 @@ import { extname } from 'node:path';
 import { DEFAULT_TABLE_ROW_LIMIT } from '../profile.js';
 import type { ReadWorkbookResult } from './contracts.js';
 import { readCsvWorkbook } from './csv.js';
-import { assertWorkbookSize, fileRefForPath } from './shared.js';
+import { assertWorkbookByteLength, assertWorkbookSize, fileRefForPath } from './shared.js';
 import { readXlsxWorkbook } from './xlsx.js';
 
 export function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): ReadWorkbookResult {
+  // Keep the cheap metadata guard before loading an untrusted file into memory.
   assertWorkbookSize(path);
+  const data = readFileSync(path);
+  assertWorkbookByteLength(data.byteLength);
   const rowLimit = options.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
   const ext = extname(path).toLowerCase();
-  const workbookId = `wb_${createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 16)}`;
+  const workbookId = `wb_${createHash('sha256').update(data).digest('hex').slice(0, 16)}`;
   const file = fileRefForPath(path);
-  const input = { path, rowLimit, workbookId, file };
+  const input = { path, rowLimit, workbookId, file, data };
 
   return ext === '.csv' ? readCsvWorkbook(input) : readXlsxWorkbook(input);
 }

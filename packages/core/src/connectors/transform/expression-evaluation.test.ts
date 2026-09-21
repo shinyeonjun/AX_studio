@@ -75,6 +75,36 @@ describe('TransformConnector expression evaluation', () => {
     });
   });
 
+  it('sorts numeric columns numerically instead of lexicographically', async () => {
+    const connector = new TransformConnector();
+
+    const result = await connector.execute(
+      'evaluate',
+      {
+        expr: {
+          op: 'sort',
+          input: { op: 'source', sourceId: 'runtime:source' },
+          by: [{ column: 'price', direction: 'desc' }],
+        },
+        table: [{ price: 2 }, { price: 10 }, { price: 1 }],
+      },
+      context(),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        value: {
+          rows: [
+            { values: { price: 10 } },
+            { values: { price: 2 } },
+            { values: { price: 1 } },
+          ],
+        },
+      },
+    });
+  });
+
   it('fails closed when an aggregate receives a truncated table', async () => {
     const connector = new TransformConnector();
     const table = buildTableArtifact({

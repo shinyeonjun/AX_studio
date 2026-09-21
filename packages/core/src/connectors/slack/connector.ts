@@ -87,6 +87,14 @@ export class SlackConnector implements Connector {
       if (ctx.abortSignal?.aborted) return { ok: false, error: 'cancelled', errorCode: 'cancelled' };
       if (err instanceof ZodError) return { ok: false, error: 'invalid_read_params', errorCode: 'invalid_params' };
       const message = err instanceof Error ? err.message : 'Slack request failed';
+      if (action === 'messages.search' && message.includes('not_allowed_token_type')) {
+        return {
+          ok: false,
+          error: 'Slack 전체 메시지 검색에는 search:read 사용자 토큰이 필요합니다. 채널을 지정하면 messages.read를 사용할 수 있습니다.',
+          errorCode: 'slack_search_scope_required',
+          errorDetails: { requiredScope: 'search:read', alternativeAction: 'messages.read' },
+        };
+      }
       return { ok: false, error: message.slice(0, 1000), errorCode: 'slack_error' };
     }
   }

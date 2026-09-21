@@ -2,6 +2,7 @@ import {
   matchHttpEndpoint,
   type HttpEndpoint,
 } from '../../../../connectors/http/connection.js';
+import { resolveCapability } from '../../../../catalog/capability-graph.js';
 import { resolveHttpRequestUrl } from '../../../../connectors/http/url-security.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type {
@@ -56,6 +57,24 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined;
+}
+
+export function needsSlackChannelSelection(
+  step: {
+    connector: string;
+    action: string;
+    params: Record<string, unknown>;
+    bindings?: Record<string, unknown>;
+  },
+): boolean {
+  const capability = resolveCapability(step.connector, step.action);
+  const channelParam = capability?.params?.find(
+    (param) => param.name === 'channel' && param.inputType === 'slack_channel',
+  );
+  if (!capability?.notification || !channelParam) return false;
+  if (step.bindings?.[channelParam.name]) return false;
+  const value = step.params[channelParam.name];
+  return value == null || (typeof value === 'string' && value.trim().length === 0);
 }
 
 function slackChannelOptions(value: unknown): AxInputRequestOption[] {

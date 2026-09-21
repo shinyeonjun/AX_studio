@@ -8,7 +8,18 @@ interface WorkspaceMarkdownProps {
 export function WorkspaceMarkdown({ content }: WorkspaceMarkdownProps) {
   return (
     <div className="ax-workspace-markdown">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          table: ({ children }) => (
+            <div className="ax-workspace-markdown-table">
+              <table>{children}</table>
+            </div>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }

@@ -64,6 +64,7 @@ export async function executeHttpAction(
   const requestHeaders = serializedBody.json
     ? withJsonContentType(headers)
     : headers;
+  const requestStartedAt = Date.now();
   const result = await performHttpRequest({
     url: resolved.value.url,
     method,
@@ -72,13 +73,14 @@ export async function executeHttpAction(
     auth: endpoint.auth,
     abortSignal: ctx.abortSignal,
   });
+  const durationMs = Date.now() - requestStartedAt;
 
   if (!result.ok) {
     ctx.log({
       at: new Date().toISOString(),
       level: 'error',
       message: 'http.request_failed',
-      data: { method, path, error: result.error, status: result.status },
+      data: { method, path, error: result.error, status: result.status, durationMs },
     });
     return { ok: false, error: result.error, errorCode: result.errorCode };
   }
@@ -87,7 +89,7 @@ export async function executeHttpAction(
     at: new Date().toISOString(),
     level: 'info',
     message: 'http.request',
-    data: { method, path, status: result.status, truncated: result.truncated },
+    data: { method, path, status: result.status, truncated: result.truncated, durationMs },
   });
 
   if (result.status >= 400) {
@@ -95,7 +97,7 @@ export async function executeHttpAction(
       at: new Date().toISOString(),
       level: 'error',
       message: 'http.request_failed',
-      data: { method, path, status: result.status, truncated: result.truncated },
+      data: { method, path, status: result.status, truncated: result.truncated, durationMs },
     });
     return {
       ok: false,

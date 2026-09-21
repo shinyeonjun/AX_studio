@@ -1,0 +1,61 @@
+{
+  "id": "outbound-real-send",
+  "name": "AX Studio 실제 외부 전송 체크",
+  "description": "자연어 모델 계획이 외부 전송 command까지 만들지 못한 경우를 분리해, 승인 Runtime 경로를 통한 실제 Slack/Gmail 전송만 검증합니다.",
+  "mode": "live",
+  "tags": ["live", "external-send", "slack", "gmail", "approval"],
+  "autoApproveExternal": true,
+  "testEmail": {
+    "to": ["plosind@naver.com", "sinyeonjun9@gmail.com"],
+    "subject": "AX Studio 실사용 전송 테스트",
+    "body": "AX Studio 연결 및 실제 Gmail 전송 테스트 메일입니다. 별도 회신은 필요하지 않습니다."
+  },
+  "steps": [
+    { "action": "newChat", "label": "outbound" }
+  ],
+  "directOutboundChecks": [
+    {
+      "id": "slack-test-channel",
+      "approvalMessage": "이 테스트 메시지를 Slack #ax테스트에 실제로 전송해줘. 이 테스트에서는 전송을 승인할게.",
+      "args": {
+        "name": "AX Studio Slack 실제 전송 테스트",
+        "goal": "승인 후 AX Studio 테스트 채널에 검증 메시지를 한 번 전송한다.",
+        "steps": [
+          {
+            "type": "action",
+            "id": "send_slack_test",
+            "connector": "slack",
+            "action": "message.send",
+            "params": {
+              "channel": "#ax테스트",
+              "text": "AX Studio 실제 Slack 전송 테스트입니다. 자동화 검증 메시지입니다."
+            },
+            "sideEffect": "EXTERNAL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gmail-test-recipients",
+      "approvalMessage": "두 테스트 주소에 지정한 제목과 본문으로 Gmail을 실제 발송해줘. 이 테스트에서는 발송을 승인할게.",
+      "args": {
+        "name": "AX Studio Gmail 실제 전송 테스트",
+        "goal": "승인 후 지정한 두 테스트 주소에 검증 메일을 한 번 발송한다.",
+        "steps": [
+          {
+            "type": "action",
+            "id": "send_gmail_test",
+            "connector": "gmail",
+            "action": "message.send",
+            "params": {
+              "to": "plosind@naver.com, sinyeonjun9@gmail.com",
+              "subject": "AX Studio 실사용 전송 테스트",
+              "body": "AX Studio 연결 및 실제 Gmail 전송 테스트 메일입니다. 별도 회신은 필요하지 않습니다."
+            },
+            "sideEffect": "EXTERNAL_HIGH"
+          }
+        ]
+      }
+    }
+  ]
+}

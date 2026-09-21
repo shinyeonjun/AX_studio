@@ -7,6 +7,29 @@ import { collectHistoryMessageIds } from './history.js';
 import { messageEvent } from './message.js';
 import { isNotFoundError, trimSeenIds } from './shared.js';
 
+// Gmail history can surface many message ids. Keep all ids, but overlap detail
+// reads in small batches so provider rate limits do not turn N+1 into a burst.
+const MESSAGE_DETAIL_BATCH_SIZE = 8;
+
+async function collectMessageEvents(
+  gmail: gmail_v1.Gmail,
+  messageIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<NonNullable<Awaited<ReturnType<typeof messageEvent>>>[]> {
+  const events: NonNullable<Awaited<ReturnType<typeof messageEvent>>>[] = [];
+  for (let offset = 0; offset < messageIds.length; offset += MESSAGE_DETAIL_BATCH_SIZE) {
+    signal?.throwIfAborted();
+    const batch = await Promise.all(
+      messageIds.slice(offset, offset + MESSAGE_DETAIL_BATCH_SIZE)
+        .map((messageId) => messageEvent(gmail, messageId, signal)),
+    );
+    for (const event of batch) {
+      if (event) events.push(event);
+    }
+  }
+  return events;
+}
+
 export async function pollGmailNewMessages(
   gmail: gmail_v1.Gmail,
   params: GmailNewMessagePollParams,
@@ -16,9 +39,11 @@ export async function pollGmailNewMessages(
   const seenIds = new Set(params.seenMessageIds);
 
   if (!params.initialized) {
-    const profile = await gmail.users.getProfile({ userId: 'me' });
     signal?.throwIfAborted();
-    const list = await gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 });
+    const [profile, list] = await Promise.all([
+      gmail.users.getProfile({ userId: 'me' }),
+      gmail.users.messages.list({ userId: 'me', labelIds: ['INBOX'], maxResults: 30 }),
+    ]);
     signal?.throwIfAborted();
     const seenMessageIds = trimSeenIds(
       [...new Set([...(list.data.messages ?? []).map((message) => message.id).filter(Boolean) as string[], ...params.seenMessageIds])],
@@ -49,11 +74,7 @@ export async function pollGmailNewMessages(
 
   try {
     const { messageIds, nextHistoryId } = await collectHistoryMessageIds(gmail, params.historyId, seenIds, signal);
-    const events = [] as GmailNewMessagePollResult['events'];
-    for (const messageId of messageIds) {
-      const event = await messageEvent(gmail, messageId, signal);
-      if (event) events.push(event);
-    }
+    const events = await collectMessageEvents(gmail, messageIds, signal);
 
     return {
       events,
