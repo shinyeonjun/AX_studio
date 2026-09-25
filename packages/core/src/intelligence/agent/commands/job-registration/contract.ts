@@ -140,6 +140,8 @@ export interface NormalizedJobSpec {
 export interface PendingJobDraft {
   spec: Pick<NormalizedJobSpec, 'name' | 'runOnceNow'>;
   ir: WorkflowIR;
+  /** Binds the host confirmation action to this exact draft. */
+  confirmationToken: string;
 }
 
 export interface JobProposeReadResult {

@@ -6,6 +6,7 @@ import {
   type AxCommandResult,
   type AxInputRequest,
 } from '../schema.js';
+import type { ConnectorFailureKind } from '../../../../connectors/types.js';
 
 export const COMMAND_NAME_SET = new Set<string>(AX_COMMAND_NAMES);
 
@@ -20,6 +21,7 @@ export function issue(
   path?: string,
   details?: unknown,
   inputRequests?: AxInputRequest[],
+  failureKind?: ConnectorFailureKind,
 ): AxCommandIssue {
   return {
     code,
@@ -27,6 +29,7 @@ export function issue(
     ...(path ? { path } : {}),
     ...(details === undefined ? {} : { details }),
     ...(inputRequests?.length ? { inputRequests } : {}),
+    ...(failureKind ? { failureKind } : {}),
   };
 }
 

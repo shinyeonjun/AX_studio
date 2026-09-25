@@ -40,11 +40,7 @@ export class InvestigationProvider implements ModelProvider {
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     this.calls += 1;
-    return input.schema.parse(
-      this.calls === 1
-        ? { needMore: true, nextRead: 'gmail.messages.read', nextReadParams: { messageId: 'm1' } }
-        : { needMore: false, conclusion: '분류 완료', riskLevel: 'high' },
-    );
+    return input.schema.parse({ conclusion: '분류 완료', riskLevel: 'high' });
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {

@@ -57,7 +57,6 @@ export function toStep(draft: WorkflowCanvasDraft, node: WorkflowNode): Step | n
         memo: node.memo?.trim() || undefined,
         outputSchema: outputSchemaFromFields(node),
         investigation: node.investigation ?? false,
-        maxReads: node.investigation ? 4 : 1,
         bindings: node.bindings,
       };
     case 'if': {

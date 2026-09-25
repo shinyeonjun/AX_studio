@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { SettingsScreen, SidebarTab } from '../types/navigation';
 import { useAppState } from './hooks/useAppState';
 import { useWorkspaceChat } from '../features/chat/hooks/useWorkspaceChat';
@@ -8,9 +8,12 @@ import { useAiHub } from '../features/settings/hooks/useAiHub';
 import { useTheme } from '../ui/hooks/useTheme';
 import { WorkspaceSidebar } from '../ui/layout/WorkspaceSidebar';
 import { StateBanner } from '../ui/layout/StateBanner';
-import { createAppActions } from './actions';
+import { createAppActions, retryFailedAppSources } from './actions';
 import { AppMainContent } from './main-content';
-import { AppSettingsPage } from './settings-page';
+
+const AppSettingsPage = lazy(() =>
+  import('./settings-page').then(({ AppSettingsPage }) => ({ default: AppSettingsPage })),
+);
 
 export default function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('work');
@@ -25,10 +28,6 @@ export default function App() {
   const { isDark, toggleTheme } = useTheme();
   const { sessions, error: sessionsError, refreshSessions } = useChatSessions();
   const workspaceChat = useWorkspaceChat({ refresh, onSessionsChanged: refreshSessions });
-
-  useEffect(() => {
-    void refreshDetection().catch(() => {});
-  }, [refreshDetection]);
 
   const appActions = createAppActions({
     activeSessionId,
@@ -53,13 +52,21 @@ export default function App() {
   };
 
   const settingsPage = state ? (
-    <AppSettingsPage
-      screen={settingsScreen}
-      onScreenChange={setSettingsScreen}
-      state={state}
-      onRefresh={refresh}
-      detection={detection}
-    />
+    <Suspense
+      fallback={
+        <div className="page-content">
+          <p className="muted">설정을 불러오는 중…</p>
+        </div>
+      }
+    >
+      <AppSettingsPage
+        screen={settingsScreen}
+        onScreenChange={setSettingsScreen}
+        state={state}
+        onRefresh={refresh}
+        detection={detection}
+      />
+    </Suspense>
   ) : null;
 
   const mainContent = (
@@ -112,9 +119,15 @@ export default function App() {
           error={stateError || actionError || detection.error || sessionsError}
           onRetry={() => {
             setActionError('');
-            void refresh();
-            void refreshSessions();
-            void refreshDetection().catch(() => {});
+            retryFailedAppSources({
+              stateFailed: Boolean(stateError || isStale),
+              sessionsFailed: Boolean(sessionsError),
+              detectionFailed: Boolean(detection.error),
+              actionFailed: Boolean(actionError),
+              refresh,
+              refreshSessions,
+              refreshDetection,
+            });
           }}
           onDismiss={actionError ? () => setActionError('') : undefined}
         />

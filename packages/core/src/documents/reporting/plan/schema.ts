@@ -20,7 +20,7 @@ export type ReportValueExpression =
  * naturally emits the same concat/coalesce/arithmetic tags used by value
  * expressions, so retain a recursive mixed form at the plan boundary.
  */
-export type ReportScalarCompositeExpression =
+type ReportScalarCompositeExpression =
   | {
     kind: 'arithmetic';
     operation: 'add' | 'subtract' | 'multiply' | 'divide';
@@ -75,7 +75,7 @@ export interface ReportFormat {
   suffix?: string;
 }
 
-export interface ReportJoin {
+interface ReportJoin {
   source: string;
   left: string;
   right: string;
@@ -85,14 +85,14 @@ export interface ReportJoin {
   where?: ReportPredicate;
 }
 
-export interface ReportScalarSpec {
+interface ReportScalarSpec {
   id: string;
   dataset?: string;
   expression: ReportScalarExpression;
   format?: ReportFormat;
 }
 
-export interface ReportGroupKeySpec {
+interface ReportGroupKeySpec {
   id: string;
   value: ReportValueExpression;
 }
@@ -102,7 +102,7 @@ export type ReportAggregateColumnValue =
   | { kind: 'aggregate'; expression: ReportAggregateExpression }
   | { kind: 'derived'; expression: ReportDerivedExpression };
 
-export interface ReportAggregateColumnSpec {
+interface ReportAggregateColumnSpec {
   id: string;
   value: ReportAggregateColumnValue;
   format?: ReportFormat;
@@ -133,7 +133,7 @@ export type ReportOutputValueExpression =
 /** Models sometimes mix aggregate values and already-computed columns in a
  * grouped cell (for example, revenue-column / sum-of-target). Evaluate those
  * expressions against both the current aggregate row and its source rows. */
-export type ReportDerivedCompositeExpression =
+type ReportDerivedCompositeExpression =
   | {
     kind: 'arithmetic';
     operation: 'add' | 'subtract' | 'multiply' | 'divide';
@@ -150,7 +150,7 @@ export type ReportDerivedCompositeExpression =
 
 /** A grouped cell may reuse a scalar that was computed once for the selected
  * dataset (for example, a regional share of the report-wide revenue). */
-export type ReportScalarReferenceExpression = { kind: 'scalar'; scalarId: string };
+type ReportScalarReferenceExpression = { kind: 'scalar'; scalarId: string };
 
 export type ReportDerivedExpression = ReportOutputValueExpression
   | ReportAggregateExpression
@@ -220,7 +220,7 @@ export interface ReportAggregateTableSpec {
   limit?: number;
 }
 
-export interface ReportViewTableSpec {
+interface ReportViewTableSpec {
   kind: 'view';
   id: string;
   sourceTable: string;
@@ -230,9 +230,9 @@ export interface ReportViewTableSpec {
   limit?: number;
 }
 
-export type ReportTableSpec = ReportAggregateTableSpec | ReportViewTableSpec;
+type ReportTableSpec = ReportAggregateTableSpec | ReportViewTableSpec;
 
-export type ReportTextSpec =
+type ReportTextSpec =
   | { id: string; kind: 'computed'; template: string }
   | { id: string; kind: 'invariant'; value: string }
   | { id: string; kind: 'phase'; exampleValue: string; targetMetadataKey: string };
@@ -268,7 +268,7 @@ export interface ReportSourceSnapshot {
 
 const PrimitiveSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
-export const ReportValueExpressionSchema: z.ZodType<ReportValueExpression> = z.lazy(() => z.union([
+const ReportValueExpressionSchema: z.ZodType<ReportValueExpression> = z.lazy(() => z.union([
   z.object({ kind: z.literal('field'), path: z.string().min(1) }),
   z.object({ kind: z.literal('literal'), value: PrimitiveSchema }),
   z.object({
@@ -293,7 +293,7 @@ function normalizeAggregateOperator(value: unknown): unknown {
   return { ...record, kind: 'arithmetic', operation: record.kind };
 }
 
-export const ReportPredicateSchema: z.ZodType<ReportPredicate> = z.lazy(() => z.union([
+const ReportPredicateSchema: z.ZodType<ReportPredicate> = z.lazy(() => z.union([
   z.object({
     kind: z.literal('compare'),
     operation: z.enum(['eq', 'ne', 'gt', 'gte', 'lt', 'lte']),
@@ -310,7 +310,7 @@ export const ReportPredicateSchema: z.ZodType<ReportPredicate> = z.lazy(() => z.
   z.object({ kind: z.literal('is_null'), value: ReportValueExpressionSchema, negate: z.boolean().optional() }),
 ]));
 
-export const ReportAggregateExpressionSchema = z.lazy(() => z.preprocess(
+const ReportAggregateExpressionSchema = z.lazy(() => z.preprocess(
   normalizeAggregateOperator,
   z.union([
   z.object({ kind: z.literal('count'), where: ReportPredicateSchema.optional() }),
@@ -337,7 +337,7 @@ export const ReportAggregateExpressionSchema = z.lazy(() => z.preprocess(
   ]),
 )) as unknown as z.ZodType<ReportAggregateExpression>;
 
-export const ReportScalarExpressionSchema: z.ZodType<ReportScalarExpression> = z.lazy(() => z.union([
+const ReportScalarExpressionSchema: z.ZodType<ReportScalarExpression> = z.lazy(() => z.union([
   ReportAggregateExpressionSchema,
   ReportValueExpressionSchema,
   z.object({
@@ -354,7 +354,7 @@ export const ReportScalarExpressionSchema: z.ZodType<ReportScalarExpression> = z
   }),
 ])) as z.ZodType<ReportScalarExpression>;
 
-export const ReportFormatSchema = z.object({
+const ReportFormatSchema = z.object({
   style: z.enum(['text', 'integer', 'decimal', 'currency', 'percent', 'date']),
   decimals: z.number().int().min(0).max(8).optional(),
   currency: z.string().min(1).max(12).optional(),
@@ -400,7 +400,7 @@ const OutputPredicateSchema: z.ZodType<ReportOutputPredicate> = z.lazy(() => z.u
   z.object({ kind: z.literal('is_null'), value: OutputValueSchema, negate: z.boolean().optional() }),
 ]));
 
-export const ReportDerivedExpressionSchema: z.ZodType<ReportDerivedExpression> = z.lazy(() => z.union([
+const ReportDerivedExpressionSchema: z.ZodType<ReportDerivedExpression> = z.lazy(() => z.union([
   OutputValueSchema,
   ReportAggregateExpressionSchema,
   z.object({ kind: z.literal('scalar'), scalarId: z.string().min(1) }),

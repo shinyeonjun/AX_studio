@@ -34,10 +34,16 @@ export function WorkspaceAssistantPresentation({
         <PresentationCard
           presentation={{
             title: '추가 정보가 필요합니다',
-            inputMode: 'individual',
+            inputMode: 'batch',
             blocks: [],
             inputs: inputRequests,
-            actions: [],
+            actions: [{
+              id: 'continue-with-inputs',
+              label: '입력값으로 계속',
+              value: '입력값을 반영해 계속 진행해줘',
+              tone: 'primary',
+              purpose: 'reply',
+            }],
           }}
           busy={busy}
           interactive={interactive}

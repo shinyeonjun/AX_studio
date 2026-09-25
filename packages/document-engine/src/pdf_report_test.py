@@ -282,6 +282,8 @@ class PdfReportPairTest(unittest.TestCase):
                         "templatePath": str(template),
                         "examplePath": str(example),
                         "artifactRoot": str(root / "artifacts"),
+                        "allowedPaths": [str(template), str(example)],
+                        "allowedRoots": [str(root / "artifacts")],
                     },
                 )
             )

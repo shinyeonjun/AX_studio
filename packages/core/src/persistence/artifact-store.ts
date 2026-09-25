@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
 import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
@@ -33,10 +33,17 @@ export class ArtifactStore {
 
     const id = options.id ?? `art_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
     const fileName = basename(sourcePath);
-    const storedPath = join(this.rootDir, `${id}_${fileName}`);
-    if (!existsSync(storedPath)) {
-      copyFileSync(sourcePath, storedPath);
+    const metadataPath = join(this.rootDir, `${id}.json`);
+    if (existsSync(metadataPath)) {
+      const existingById = this.get(id);
+      if (!existingById || existingById.sha256 !== sha256) {
+        throw new Error(`Artifact id already exists with different content: ${id}`);
+      }
+      return existingById;
     }
+
+    const storedPath = join(this.rootDir, `${id}_${fileName}`);
+    writeFileSync(storedPath, buffer);
     const record: StoredArtifact = {
       id,
       sha256,
@@ -46,7 +53,7 @@ export class ArtifactStore {
       size: buffer.length,
       createdAt: new Date().toISOString(),
     };
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(record));
+    writeFileSync(metadataPath, JSON.stringify(record));
     this.remember(record);
     return record;
   }

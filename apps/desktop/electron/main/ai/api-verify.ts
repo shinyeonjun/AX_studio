@@ -23,7 +23,7 @@ export async function verifyAnthropicApiKey(apiKey: string): Promise<{ ok: true;
   return { ok: true, label: 'Anthropic API 키 인증됨' };
 }
 
-export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
+async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
   const { response, text } = await fetchTextWithTimeout('https://api.openai.com/v1/models', {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
@@ -39,7 +39,7 @@ export async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; la
   return { ok: true, label: 'OpenAI API 연결됨' };
 }
 
-export async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
+async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
   const base = (process.env.OLLAMA_BASE_URL?.trim() || process.env.OLLAMA_HOST?.trim() || 'http://localhost:11434')
     .replace(/\/$/, '');
   const { response, text } = await fetchTextWithTimeout(`${base}/api/tags`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHttpRequestUrl } from './url-security.js';
+import { isPrivateHttpHostname, resolveHttpRequestUrl } from './url-security.js';
 
 describe('resolveHttpRequestUrl', () => {
   const base = 'https://api.example.com/v1/';
@@ -56,5 +56,9 @@ describe('resolveHttpRequestUrl', () => {
   it('rejects unsupported base protocols', () => {
     const result = resolveHttpRequestUrl('file:///tmp', 'x');
     expect(result.ok).toBe(false);
+  });
+
+  it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1', '192.168.1.10'])('recognizes private destinations: %s', (hostname) => {
+    expect(isPrivateHttpHostname(hostname)).toBe(true);
   });
 });

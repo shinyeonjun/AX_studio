@@ -27,5 +27,5 @@ export interface DiscoveryPipelineHost {
   readonly transition: (state: DiscoverySessionState, to: DiscoverySessionState['status']) => DiscoverySessionState;
   readonly patchState: (sessionId: string, patch: Partial<DiscoverySessionState>) => DiscoverySessionState;
   readonly isCancelled: (sessionId: string) => boolean;
-  readonly observeOutputArtifact: (exampleId: string, artifactId: string) => OutputObservation[];
+  readonly observeOutputArtifact: (exampleId: string, artifactId: string) => OutputObservation[] | Promise<OutputObservation[]>;
 }

@@ -2,10 +2,6 @@ import type { WorkflowCanvasDraft } from '@ax-studio/core';
 import { displayForTrigger } from './node-display.js';
 import { layoutWithDagre } from './layout/dagre-layout.js';
 import {
-  WORKFLOW_NODE_HEIGHT,
-  WORKFLOW_NODE_WIDTH,
-} from './types.js';
-import {
   addEdge,
   addNode,
   emitSystemGmailRead,
@@ -107,5 +103,3 @@ export function draftToFlow(
     hasContent: Boolean(draft.goal?.trim() || (draft.nodes?.length ?? 0) > 0),
   };
 }
-
-export { WORKFLOW_NODE_WIDTH, WORKFLOW_NODE_HEIGHT };

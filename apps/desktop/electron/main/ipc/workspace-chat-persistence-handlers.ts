@@ -2,6 +2,7 @@ import { ipcHandle } from './ipc-handle.js';
 import { getCore } from '../core-instance.js';
 import { normalizeChatMessages } from './chat-boundary.js';
 import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
+import { clearPendingCommand } from './workspace-chat-command-handlers/pending-command.js';
 
 export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:listChatSessions', async () => {
@@ -57,8 +58,8 @@ export function registerWorkspaceChatPersistenceHandlers() {
     if (typeof id !== 'string' || !id.trim()) throw new Error('대화 id가 필요합니다.');
     const core = getCore();
     cancelWorkspaceChatSession(id);
-    core.workspaceSources.removeSession(id);
-    core.store.deleteWorkspaceChat(id);
+    clearPendingCommand(id, true);
+    await core.workspaceSources.deleteSession(id);
     core.commandService.releaseWorkspaceSession(id);
     return { ok: true };
   });

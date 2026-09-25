@@ -22,7 +22,10 @@ describe('AxCommandService repair rejection', () => {
 
     const hostResponse = await service.execute({ name: 'repair.reject', args });
     expect(hostResponse.status).toBe('forbidden');
-    const agentResponse = await service.execute({ name: 'repair.reject', args }, commandChatContext);
+    const agentResponse = await service.execute({ name: 'repair.reject', args }, {
+      ...commandChatContext,
+      currentWorkflowId: workflow.id,
+    });
 
     expect(agentResponse).toMatchObject({
       command: 'repair.reject',

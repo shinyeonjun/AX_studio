@@ -4,11 +4,7 @@ import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 import type { AiBrand } from '@ax-studio/core';
-import type {
-  AiBrandTomlConfig,
-  AiTomlConfig,
-  JevDecisionTomlConfig,
-} from './contracts.js';
+import type { AiTomlConfig, JevDecisionTomlConfig } from './contracts.js';
 import { emptyConfig, parseAiToml, serializeAiToml } from './toml.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 
@@ -36,16 +32,6 @@ export async function writeAiToml(config: AiTomlConfig): Promise<void> {
     await unlink(temporaryPath).catch(() => undefined);
     throw error;
   }
-}
-
-export async function saveBrandPreferences(
-  brand: AiBrand,
-  prefs: AiBrandTomlConfig,
-): Promise<AiTomlConfig> {
-  const config = await readAiToml();
-  config.providers[brand] = { ...config.providers[brand], ...prefs };
-  await writeAiToml(config);
-  return config;
 }
 
 export async function saveJevDecisionPreferences(

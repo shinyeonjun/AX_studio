@@ -1,10 +1,15 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import type { AppState } from '../types/app-state';
 import type { SidebarTab } from '../types/navigation';
 import type { useWorkspaceChat } from '../features/chat/hooks/useWorkspaceChat';
-import { ActivityPage } from '../features/activity/ui/ActivityPage';
-import { ApprovalsPage } from '../features/activity/ui/approval/ApprovalsPage';
 import { ChatMainPage } from '../features/chat/ui/ChatMainPage';
+
+const ActivityPage = lazy(() =>
+  import('../features/activity/ui/ActivityPage').then(({ ActivityPage }) => ({ default: ActivityPage })),
+);
+const ApprovalsPage = lazy(() =>
+  import('../features/activity/ui/approval/ApprovalsPage').then(({ ApprovalsPage }) => ({ default: ApprovalsPage })),
+);
 
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
@@ -28,10 +33,30 @@ export function AppMainContent({
   onReject,
 }: AppMainContentProps) {
   if (tab === 'activity') {
-    return <ActivityPage state={state} onRefresh={refresh} />;
+    return (
+      <Suspense
+        fallback={
+          <div className="page-content">
+            <p className="muted">활동을 불러오는 중…</p>
+          </div>
+        }
+      >
+        <ActivityPage state={state} onRefresh={refresh} />
+      </Suspense>
+    );
   }
   if (tab === 'approval') {
-    return <ApprovalsPage state={state} onRefresh={refresh} onApprove={onApprove} onReject={onReject} />;
+    return (
+      <Suspense
+        fallback={
+          <div className="page-content">
+            <p className="muted">승인을 불러오는 중…</p>
+          </div>
+        }
+      >
+        <ApprovalsPage state={state} onRefresh={refresh} onApprove={onApprove} onReject={onReject} />
+      </Suspense>
+    );
   }
   if (tab === 'settings') {
     return (

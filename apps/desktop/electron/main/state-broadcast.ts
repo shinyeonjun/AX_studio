@@ -1,7 +1,7 @@
 import { getMainWindow } from './app-window.js';
 import type { WorkspaceChatChangedEvent, WorkspaceSourceRecord } from '@ax-studio/core';
 
-export interface WorkspaceSourceChangedPayload {
+interface WorkspaceSourceChangedPayload {
   sessionId: string;
   source: WorkspaceSourceRecord;
 }

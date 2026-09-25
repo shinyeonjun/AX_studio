@@ -120,19 +120,19 @@ export const weeklyReportWorkflowFixture: WorkflowIR = {
     {
       type: 'ai_decision',
       id: 'analyze',
-      goal: '전주 대비 변화 분석',
+      goal: '전주 대비 매출이 20% 이상 감소했는지 분류',
       investigation: false,
       maxReads: 4,
       outputSchema: {
         type: 'object',
-        properties: { changeRate: { type: 'number' } },
-        required: ['changeRate'],
+        properties: { salesDeclined: { type: 'boolean' } },
+        required: ['salesDeclined'],
       },
     },
     {
       type: 'if',
       id: 'if_drop',
-      condition: { op: 'lte', left: { ref: 'analyze.changeRate' }, right: { lit: -0.2 } },
+      condition: { op: 'eq', left: { ref: 'analyze.salesDeclined' }, right: { lit: true } },
       thenStepIds: ['slack_alert'],
       elseStepIds: ['slack_report'],
     },

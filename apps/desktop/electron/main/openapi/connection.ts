@@ -17,8 +17,12 @@ export async function hydrateOpenApiConnector(store: WorkflowStore, runtime: Wor
     return;
   }
 
-  const ingested = ingestOpenApiSpec(parsed.specId, parsed.specJson);
-  runtime.setConnector('openapi', ingested.connector);
+  try {
+    const ingested = ingestOpenApiSpec(parsed.specId, parsed.specJson, parsed.baseUrl);
+    runtime.setConnector('openapi', ingested.connector);
+  } catch {
+    store.setConnection('openapi', false);
+  }
 }
 
 export async function validateAndConnectOpenApi(
@@ -48,7 +52,7 @@ export async function validateAndConnectOpenApi(
   }
 
   const validated = validateOpenApiSpecJson(specId, raw);
-  const ingested = ingestOpenApiSpec(validated.specId, raw);
+  const ingested = ingestOpenApiSpec(validated.specId, raw, validated.baseUrl);
 
   store.setConnection('openapi', true, {
     specId: validated.specId,

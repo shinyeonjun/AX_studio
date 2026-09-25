@@ -13,7 +13,7 @@ export function getEnvFilePath(): string {
   return join(app.getAppPath(), '../../.env');
 }
 
-export function isDevEnvFileEnabled(): boolean {
+function isDevEnvFileEnabled(): boolean {
   return !app.isPackaged;
 }
 

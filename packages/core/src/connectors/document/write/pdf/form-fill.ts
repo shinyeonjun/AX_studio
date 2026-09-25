@@ -3,6 +3,7 @@ import { getDocumentEngineClient } from '../../../../documents/read/engine-clien
 import type { PdfFormFillOptions } from '../../../../documents/read/types.js';
 import type { ArtifactReference, ConnectorContext, ConnectorResult } from '../../../types.js';
 import type { DocumentActionHandler } from '../../types.js';
+import { resolveDocumentIngestExecution } from '../../../../contracts/document-ingest-resolve.js';
 import { resolvePdfPath } from './to-html.js';
 
 function valuesFromParams(params: Record<string, unknown>, ctx: ConnectorContext): Record<string, unknown> | null {
@@ -23,12 +24,27 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
   if (!template) return { ok: false, error: 'PDF 양식 템플릿이 필요합니다.', errorCode: 'pdf_form_template_required' };
 
   try {
+    let templatePath: string | undefined;
+    if (typeof template === 'string') {
+      const resolvedTemplate = resolveDocumentIngestExecution({ path: template }, ctx);
+      if (!resolvedTemplate.ok) {
+        return { ok: false, error: resolvedTemplate.error, errorCode: resolvedTemplate.errorCode };
+      }
+      templatePath = resolvedTemplate.params.path as string;
+    }
+    let fontPath: string | undefined;
+    if (typeof params.fontPath === 'string' && params.fontPath.trim()) {
+      const resolvedFont = resolveDocumentIngestExecution({ path: params.fontPath }, ctx);
+      if (!resolvedFont.ok) {
+        return { ok: false, error: resolvedFont.error, errorCode: resolvedFont.errorCode };
+      }
+      fontPath = resolvedFont.params.path as string;
+    }
     const options: PdfFormFillOptions = {
       values,
-      ...(typeof template === 'string' ? { templatePath: template } : {}),
+      ...(templatePath ? { templatePath } : {}),
       ...(template && typeof template === 'object' ? { template: template as PdfFormFillOptions['template'] } : {}),
-      ...(typeof params.outputPath === 'string' ? { outputPath: params.outputPath } : {}),
-      ...(typeof params.fontPath === 'string' ? { fontPath: params.fontPath } : {}),
+      ...(fontPath ? { fontPath } : {}),
     };
     const result = await getDocumentEngineClient().pdfFormFill(resolvedPath.path, options);
     ctx.variables.pdfFormFillResult = result;

@@ -25,6 +25,7 @@ export async function executeJobCommand(
         pending: state.pendingJobs,
         workspaceSessionId: options.workspaceSessionId,
         allowJobCommit: options.allowJobCommit,
+        confirmationToken: options.jobCommitConfirmationToken,
         runWorkflow: state.options.runWorkflow,
       }));
     default:

@@ -5,6 +5,7 @@ import {
 import type { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import {
   connectedIds,
+  actionInputScope,
   httpConnectionInput,
   needsSlackChannelSelection,
   pickHttpEndpoint,
@@ -15,6 +16,43 @@ import { targetSelectionPresentation } from '../presentation.js';
 import { issue } from '../shared.js';
 import type { ProposeResponse, ValidatedProposeInput } from './contracts.js';
 import { parseLocalFolderConnectionConfig } from '../../../../../platform/local-folder-config.js';
+import type { AxInputRequest, AxInputRequestOption } from '../../schema.js';
+
+function gmailAccountInput(account?: string): AxInputRequest {
+  return {
+    id: 'job-trigger-gmail-account',
+    label: 'Gmail 계정',
+    type: 'email',
+    target: 'trigger',
+    parameterName: 'accountId',
+    required: true,
+    reason: account
+      ? '연결된 Gmail 계정을 선택해 주세요.'
+      : '새 메일을 감지할 Gmail 계정을 입력해 주세요.',
+    ...(account ? { options: [{ value: account, label: account }] } : {}),
+  };
+}
+
+function localFolderInput(folders: readonly { id: string; label: string; path: string }[]): AxInputRequest {
+  const options: AxInputRequestOption[] = folders.flatMap((folder) => {
+    if (!folder.id.trim() || folder.id !== folder.id.trim() || folder.id.length > 256) return [];
+    return [{
+      value: folder.id,
+      label: (folder.label.trim() || folder.path.trim() || folder.id).slice(0, 160),
+      description: folder.path.slice(0, 240),
+    }];
+  });
+  return {
+    id: 'job-trigger-local-folder',
+    label: '감시할 폴더',
+    type: 'folder',
+    target: 'trigger',
+    parameterName: 'folderId',
+    required: true,
+    reason: '새 파일을 감지할 연결 폴더를 선택해 주세요.',
+    options,
+  };
+}
 
 export interface SelectedJobTargets {
   endpoint: HttpEndpoint;
@@ -108,22 +146,26 @@ export async function resolveGenericJobTargets(options: {
     if (!trigger.accountId.trim() && accountId) {
       resolved = { ...trigger, accountId };
     } else if (!trigger.accountId.trim()) {
+      const request = gmailAccountInput();
       return {
         ok: false,
         response: ['needs_input', { message: 'Gmail 새 메일 트리거에 사용할 계정을 입력해 주세요.' }, [issue(
           'job_trigger_target_required',
           'Gmail 새 메일 트리거에 accountId가 필요합니다.',
           'args.trigger.accountId',
+          [request],
         )]],
       };
     }
     if (trigger.accountId.trim() && accountId && trigger.accountId.trim() !== accountId) {
+      const request = gmailAccountInput(accountId);
       return {
         ok: false,
         response: ['needs_input', { message: 'Gmail 새 메일 트리거의 accountId가 연결된 계정과 일치하지 않습니다.' }, [issue(
           'job_trigger_target_invalid',
           'Gmail 새 메일 트리거에 연결된 계정의 accountId를 사용해 주세요.',
           'args.trigger.accountId',
+          [request],
         )]],
       };
     }
@@ -140,7 +182,9 @@ export async function resolveGenericJobTargets(options: {
       };
     }
     if (!trigger.channel.trim()) {
-      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel');
+      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel', {
+        target: 'trigger', parameterName: 'channel',
+      });
       return {
         ok: false,
         response: ['needs_input', { message: 'Slack 새 메시지 트리거에 사용할 채널을 선택해 주세요.' }, [issue(
@@ -152,7 +196,9 @@ export async function resolveGenericJobTargets(options: {
       };
     }
     if (await slackTargetState(listSlackChannels, trigger.channel) === 'invalid') {
-      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel');
+      const request = await slackChannelInput(listSlackChannels, 'job-trigger-slack-channel', {
+        target: 'trigger', parameterName: 'channel',
+      });
       return {
         ok: false,
         response: ['needs_input', { message: 'Slack 새 메시지 트리거에 존재하는 채널을 선택해 주세요.' }, [issue(
@@ -166,7 +212,10 @@ export async function resolveGenericJobTargets(options: {
   }
   if (trigger?.type === 'local_folder.new_file') {
     const connection = options.store.getConnections().find((entry) => entry.connector === 'local_folder' && entry.connected);
-    const folders = parseLocalFolderConnectionConfig(connection?.config)?.folders ?? [];
+    const folders = (parseLocalFolderConnectionConfig(connection?.config)?.folders ?? [])
+      .filter((folder) => folder.id.trim().length > 0
+        && folder.id === folder.id.trim()
+        && folder.id.length <= 256);
     if (!connected.includes('local_folder')) {
       return {
         ok: false,
@@ -180,21 +229,45 @@ export async function resolveGenericJobTargets(options: {
     if (!trigger.folderId.trim() && folders.length === 1) {
       resolved = { ...trigger, folderId: folders[0]!.id, folderPath: folders[0]!.path };
     } else if (!trigger.folderId.trim()) {
+      if (folders.length === 0) {
+        return {
+          ok: false,
+          response: ['invalid', undefined, [issue(
+            'local_folder_selection_unavailable',
+            '연결된 폴더가 없습니다. 설정에서 감시할 폴더를 먼저 연결해 주세요.',
+            'args.trigger.folderId',
+          )]],
+        };
+      }
+      const request = localFolderInput(folders);
       return {
         ok: false,
         response: ['needs_input', { message: '새 파일 트리거에 사용할 연결 폴더를 입력해 주세요.' }, [issue(
           'job_trigger_target_required',
           '폴더 새 파일 트리거에 folderId가 필요합니다.',
           'args.trigger.folderId',
+          [request],
         )]],
       };
     } else if (folders.length === 0 || !folders.some((folder) => folder.id === trigger.folderId.trim())) {
+      if (folders.length === 0) {
+        return {
+          ok: false,
+          response: ['invalid', undefined, [issue(
+            'local_folder_selection_unavailable',
+            '연결된 폴더가 없습니다. 설정에서 감시할 폴더를 먼저 연결해 주세요.',
+            'args.trigger.folderId',
+          )]],
+        };
+      }
+      const request = localFolderInput(folders);
       return {
         ok: false,
         response: ['needs_input', { message: '새 파일 트리거에 존재하는 연결 폴더를 선택해 주세요.' }, [issue(
           'job_trigger_target_invalid',
           '폴더 새 파일 트리거의 folderId를 연결된 폴더로 선택해 주세요.',
           'args.trigger.folderId',
+          [request],
         )]],
       };
     }
@@ -202,9 +275,15 @@ export async function resolveGenericJobTargets(options: {
 
   for (const step of options.input.data.steps ?? []) {
     if (step.type !== 'action' || step.connector !== 'slack') continue;
+    const scope = actionInputScope(step, 'channel');
+    if (!scope) continue;
     const channel = typeof step.params.channel === 'string' ? step.params.channel.trim() : '';
     if (channel && await slackTargetState(listSlackChannels, channel) === 'invalid') {
-      const request = await slackChannelInput(listSlackChannels);
+      const request = await slackChannelInput(
+        listSlackChannels,
+        `job-action-${step.id}-slack-channel`,
+        scope,
+      );
       return {
         ok: false,
         response: ['needs_input', {
@@ -224,11 +303,26 @@ export async function resolveGenericJobTargets(options: {
     }
   }
 
-  const missingSlackActionTarget = options.input.data.steps?.some(
+  const missingSlackActionTarget = options.input.data.steps?.find(
     (step) => step.type === 'action' && needsSlackChannelSelection(step),
   );
-  if (missingSlackActionTarget) {
-    const request = await slackChannelInput(listSlackChannels);
+  if (missingSlackActionTarget?.type === 'action') {
+    const scope = actionInputScope(missingSlackActionTarget, 'channel');
+    if (!scope) {
+      return {
+        ok: false,
+        response: ['invalid', undefined, [issue(
+          'job_action_input_scope_unavailable',
+          'Slack 채널 입력을 업무 단계에 연결할 수 없습니다.',
+          `args.steps.${missingSlackActionTarget.id}`,
+        )]],
+      };
+    }
+    const request = await slackChannelInput(
+      listSlackChannels,
+      `job-action-${missingSlackActionTarget.id}-slack-channel`,
+      scope,
+    );
     return {
       ok: false,
       response: ['needs_input', {
@@ -302,8 +396,12 @@ export async function resolveJobTargets(options: {
   const needsHttpSelection = !picked.ok && picked.code === 'ambiguous';
   if (!input.channel || needsHttpSelection) {
     const targetInputs = [];
-    if (needsHttpSelection) targetInputs.push(httpConnectionInput(endpoints));
-    if (!input.channel) targetInputs.push(await slackChannelInput(options.listSlackChannels));
+    if (needsHttpSelection) targetInputs.push(httpConnectionInput(endpoints, 'job-http-connection', {
+      target: 'job', parameterName: 'fetch.connectionId',
+    }));
+    if (!input.channel) targetInputs.push(await slackChannelInput(options.listSlackChannels, 'job-slack-channel', {
+      target: 'job', parameterName: 'notify.channel',
+    }));
 
     return {
       ok: false,
@@ -317,6 +415,7 @@ export async function resolveJobTargets(options: {
           'job_targets_required',
           '조회와 공유에 사용할 대상을 선택해 주세요.',
           needsHttpSelection ? 'args.fetch.connectionId' : 'args.notify.channel',
+          targetInputs,
         )],
       ],
     };

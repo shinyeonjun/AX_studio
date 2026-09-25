@@ -20,11 +20,14 @@ describe('mcp ingest', () => {
   it('registers tools and calls them through the MCP connector adapter', async () => {
     const client = new MockMcpClient([
       { name: 'search_docs', description: 'Search docs', sideEffect: 'NONE' },
+      { name: 'refresh_cache', description: 'Refresh cache', sideEffect: 'REVERSIBLE' },
       { name: 'send_alert', description: 'Send alert', sideEffect: 'EXTERNAL' },
     ]);
     const { connector, capabilityIds } = await ingestMcpServer('demo', client);
     expect(capabilityIds).toContain('mcp.demo.search_docs');
     expect(getCapability('mcp.demo.send_alert')?.sideEffect).toBe('EXTERNAL');
+    expect(getCapability('mcp.demo.refresh_cache')?.kind).toBe('write');
+    expect(getCapability('mcp.demo.refresh_cache')?.sideEffect).toBe('REVERSIBLE');
     expect(requiresApproval('EXTERNAL', false)).toBe(true);
 
     const ctx = buildDesignToolContext([], ['mcp'], {
@@ -36,6 +39,14 @@ describe('mcp ingest', () => {
       { args: { q: 'deploy' } },
     );
     expect((result.data as { result: { tool: string } }).result.tool).toBe('search_docs');
+  });
+
+  it('removes stale capabilities when the singleton MCP connection is replaced', async () => {
+    await ingestMcpServer('old_server', new MockMcpClient([{ name: 'old_tool' }]));
+    await ingestMcpServer('new_server', new MockMcpClient([{ name: 'new_tool' }]));
+
+    expect(getCapability('mcp.old_server.old_tool')).toBeUndefined();
+    expect(getCapability('mcp.new_server.new_tool')).toBeDefined();
   });
 
   it('normalizes tool names from settings input and persisted connections', () => {

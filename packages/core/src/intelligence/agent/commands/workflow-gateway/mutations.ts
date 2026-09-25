@@ -90,7 +90,22 @@ export function updateWorkflow(store: WorkflowStore, command: AxCommand): AxWork
   }
 
   if (operationIssues.length > 0) return ['invalid', undefined, operationIssues];
-  return persistCandidate(store, next, 'updated');
+  const executableChange = parsed.data.operations.some((operation) =>
+    operation.op === 'upsert_step'
+    || operation.op === 'remove_step'
+    || (operation.op === 'set' && operation.path === 'trigger'));
+  const wasActive = store.isWorkflowActive(parsed.data.workflowId);
+  if (wasActive && executableChange) next.allowExternalAuto = false;
+
+  const persisted = persistCandidate(store, next, 'updated');
+  if (wasActive && executableChange && persisted[0] === 'ok') {
+    store.setWorkflowActive(parsed.data.workflowId, false);
+    const data = persisted[1] && typeof persisted[1] === 'object'
+      ? { ...(persisted[1] as Record<string, unknown>), active: false, reauthorizationRequired: true }
+      : { active: false, reauthorizationRequired: true };
+    return [persisted[0], data, persisted[2]];
+  }
+  return persisted;
 }
 
 export async function deleteWorkflow(
@@ -109,6 +124,16 @@ export async function deleteWorkflow(
   if (current.version !== parsed.data.baseVersion) {
     return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '최신 workflow 버전과 일치하지 않습니다.', 'baseVersion')]];
   }
+  if (!store.claimWorkflowDeletion(parsed.data.workflowId, parsed.data.baseVersion)) {
+    const latest = store.getWorkflow(parsed.data.workflowId);
+    if (!latest) {
+      return ['not_found', undefined, [issue('workflow_not_found', `workflow를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+    }
+    if (latest.version !== parsed.data.baseVersion) {
+      return ['conflict', { currentVersion: latest.version }, [issue('stale_workflow_version', '최신 workflow 버전과 일치하지 않습니다.', 'baseVersion')]];
+    }
+    return ['conflict', { currentVersion: latest.version }, [issue('workflow_deletion_in_progress', 'workflow 삭제가 진행 중입니다. 잠시 후 다시 시도해 주세요.', 'workflowId')]];
+  }
   try {
     await removeWorkflow?.(parsed.data.workflowId);
     const deleted = store.deleteWorkflow(parsed.data.workflowId);
@@ -121,6 +146,8 @@ export async function deleteWorkflow(
       error instanceof Error ? error.message : String(error),
       'workflowId',
     )]];
+  } finally {
+    store.releaseWorkflowDeletion(parsed.data.workflowId);
   }
 }
 
@@ -136,10 +163,18 @@ function persistCandidate(
     const workflow = store.getWorkflow(saved.workflowId, saved.version);
     return ['ok', { operation, workflowId: saved.workflowId, version: saved.version, workflow }];
   } catch (error) {
+    if ((error as { code?: unknown })?.code === 'workflow_deletion_in_progress') {
+      return ['conflict', { saved: false }, [issue('workflow_deletion_in_progress', 'workflow 삭제가 진행 중이어서 수정할 수 없습니다. 잠시 후 다시 시도해 주세요.')]];
+    }
     const contractIssues = (error as { issues?: ContractValidationIssue[] }).issues;
     if (Array.isArray(contractIssues)) {
+      const status = statusForValidation(contractIssues);
       const issues = contractIssues.map(mapContractIssue);
-      return [statusForValidation(contractIssues), { saved: false }, issues];
+      if (status === 'needs_input' && issues.some((entry) => entry.inputRequests?.length)) {
+        const inputIssues = issues.filter((entry) => entry.inputRequests?.length);
+        return [status, { saved: false }, [...inputIssues, ...issues.filter((entry) => !entry.inputRequests?.length)]];
+      }
+      return [status, { saved: false }, issues];
     }
     return ['error', undefined, [issue('workflow_persist_failed', error instanceof Error ? error.message : String(error))]];
   }

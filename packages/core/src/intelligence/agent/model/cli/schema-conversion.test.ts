@@ -23,11 +23,9 @@ describe('cli schema conversion', () => {
     const json = zodToCodexJsonSchema(InvestigationOutputSchema);
     const properties = json.properties as Record<string, Record<string, unknown>>;
     expect(json.required).toEqual(Object.keys(properties));
-    expect(properties.needMore).toEqual({ type: 'boolean' });
-    const params = properties.nextReadParams;
-    expect(params.anyOf).toEqual([
-      expect.objectContaining({ type: 'string' }), { type: 'null' },
-    ]);
+    expect(properties).not.toHaveProperty('needMore');
+    expect(properties).not.toHaveProperty('nextRead');
+    expect(properties).not.toHaveProperty('nextReadParams');
   });
 
   it('converts a generic discriminated union for CLI json-schema', () => {

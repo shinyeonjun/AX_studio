@@ -31,6 +31,9 @@ export interface WorkspaceSourceRecord {
   updatedAt: string;
 }
 
+// Two IN lists plus the excluded chat stay below SQLite's default 999 bind-parameter limit.
+const ARTIFACT_REFERENCE_BATCH_SIZE = 400;
+
 function parseSummary(value: unknown): WorkspaceSourceSummary | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   try {
@@ -154,6 +157,12 @@ export function listWorkspaceSources(db: AppDatabase, sessionId: string): Worksp
   ).all(sessionId).map(toRecord);
 }
 
+export function listProcessingWorkspaceSources(db: AppDatabase): WorkspaceSourceRecord[] {
+  return db.prepare(
+    "SELECT * FROM workspace_chat_sources WHERE status = 'processing' ORDER BY created_at ASC",
+  ).all().map(toRecord);
+}
+
 /** References outside this chat, including durable discovery evidence. */
 export function countWorkspaceSourcesForArtifact(
   db: AppDatabase,
@@ -180,4 +189,59 @@ export function countWorkspaceSourcesForArtifact(
     }
   }
   return count;
+}
+
+export function findReferencedWorkspaceSourceArtifacts(
+  db: AppDatabase,
+  artifactIds: readonly string[],
+  excludeSessionId: string,
+): Set<string> {
+  const candidates = new Set(artifactIds);
+  const referenced = new Set<string>();
+  if (candidates.size === 0) return referenced;
+
+  const ids = [...candidates];
+  for (let offset = 0; offset < ids.length; offset += ARTIFACT_REFERENCE_BATCH_SIZE) {
+    const batch = ids.slice(offset, offset + ARTIFACT_REFERENCE_BATCH_SIZE);
+    const placeholders = batch.map(() => '?').join(', ');
+    const sourceRows = db.prepare(
+      `SELECT artifact_id, document_artifact_id FROM workspace_chat_sources
+       WHERE chat_id != ? AND (artifact_id IN (${placeholders}) OR document_artifact_id IN (${placeholders}))`,
+    ).all(excludeSessionId, ...batch, ...batch);
+    for (const row of sourceRows) {
+      for (const id of [row.artifact_id, row.document_artifact_id]) {
+        if (typeof id === 'string' && candidates.has(id)) referenced.add(id);
+      }
+    }
+
+    const snapshotRows = db.prepare(
+      `SELECT artifact_id FROM work_discovery_snapshots WHERE artifact_id IN (${placeholders})`,
+    ).all(...batch);
+    for (const row of snapshotRows) {
+      if (typeof row.artifact_id === 'string') referenced.add(row.artifact_id);
+    }
+  }
+
+  const retainAllCandidates = () => {
+    for (const id of candidates) referenced.add(id);
+  };
+  for (const example of db.prepare(
+    'SELECT input_artifact_ids_json, output_artifact_ids_json FROM work_discovery_examples',
+  ).all()) {
+    for (const field of ['input_artifact_ids_json', 'output_artifact_ids_json']) {
+      try {
+        const ids: unknown = JSON.parse(String(example[field]));
+        if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string')) {
+          retainAllCandidates();
+          continue;
+        }
+        for (const id of ids) {
+          if (candidates.has(id)) referenced.add(id);
+        }
+      } catch {
+        retainAllCandidates();
+      }
+    }
+  }
+  return referenced;
 }

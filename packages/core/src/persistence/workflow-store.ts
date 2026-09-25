@@ -25,17 +25,48 @@ import * as workflowRepo from './repositories/workflow-repository.js';
 import * as discoveryMetadata from './repositories/discovery-metadata-repository.js';
 
 export class WorkflowStore {
+  // Main-process writers share this store; hold the id while async runtime cleanup drains.
+  private readonly deletingWorkflowIds = new Set<string>();
+  // Invalidates derived catalogs without hashing large persisted connector configs.
+  private connectionRevision = 0;
+
   constructor(private db: AppDatabase) {}
 
-  saveWorkflow(ir: WorkflowIR) { return workflowRepo.saveWorkflow(this.db, ir); }
+  saveWorkflow(ir: WorkflowIR) {
+    if (ir.id && this.deletingWorkflowIds.has(ir.id)) {
+      throw Object.assign(new Error(`Workflow deletion is in progress: ${ir.id}`), {
+        code: 'workflow_deletion_in_progress',
+      });
+    }
+    return workflowRepo.saveWorkflow(this.db, ir);
+  }
+
+  claimWorkflowDeletion(workflowId: string, expectedVersion: number): boolean {
+    if (this.deletingWorkflowIds.has(workflowId)) return false;
+    if (workflowRepo.getWorkflow(this.db, workflowId)?.version !== expectedVersion) return false;
+    this.deletingWorkflowIds.add(workflowId);
+    return true;
+  }
+
+  releaseWorkflowDeletion(workflowId: string): void {
+    this.deletingWorkflowIds.delete(workflowId);
+  }
+
   getWorkflow(workflowId: string, version?: number) { return workflowRepo.getWorkflow(this.db, workflowId, version); }
   getWorkflowPolicy(workflowId: string) { return workflowRepo.getWorkflowPolicy(this.db, workflowId); }
   updateWorkflowPolicy(workflowId: string, patch: AgentScopedContextPatch) {
     return workflowRepo.updateWorkflowPolicy(this.db, workflowId, patch);
   }
   listWorkflows() { return workflowRepo.listWorkflows(this.db); }
+  listWorkflowDefinitions() { return workflowRepo.listWorkflowDefinitions(this.db); }
+  listActiveWorkflowDefinitions() { return workflowRepo.listActiveWorkflowDefinitions(this.db); }
   isWorkflowActive(workflowId: string) { return workflowRepo.isWorkflowActive(this.db, workflowId); }
   setWorkflowActive(workflowId: string, active: boolean) {
+    if (active && this.deletingWorkflowIds.has(workflowId)) {
+      throw Object.assign(new Error(`Workflow deletion is in progress: ${workflowId}`), {
+        code: 'workflow_deletion_in_progress',
+      });
+    }
     return workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
   deleteWorkflow(workflowId: string) { return workflowRepo.deleteWorkflow(this.db, workflowId); }
@@ -48,10 +79,10 @@ export class WorkflowStore {
     return workspaceChatRepo.saveWorkspaceChat(this.db, params);
   }
   upsertWorkspaceChatExecutionResult(
-    sessionId: string,
+    target: string | { workflowId: string },
     message: workspaceChatRepo.WorkspaceChatMessage & { kind: 'execution_result'; executionId: string },
   ) {
-    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, sessionId, message);
+    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, target, message);
   }
   getWorkspaceChat(id: string) { return workspaceChatRepo.getWorkspaceChat(this.db, id); }
   getWorkspaceChatMemo(sessionId: string) { return workspaceChatRepo.getWorkspaceChatMemo(this.db, sessionId); }
@@ -81,8 +112,14 @@ export class WorkflowStore {
   listWorkspaceSources(sessionId: string) {
     return workspaceSourceRepo.listWorkspaceSources(this.db, sessionId);
   }
+  listProcessingWorkspaceSources() {
+    return workspaceSourceRepo.listProcessingWorkspaceSources(this.db);
+  }
   countWorkspaceSourcesForArtifact(artifactId: string, excludeSessionId: string) {
     return workspaceSourceRepo.countWorkspaceSourcesForArtifact(this.db, artifactId, excludeSessionId);
+  }
+  findReferencedWorkspaceSourceArtifacts(artifactIds: readonly string[], excludeSessionId: string) {
+    return workspaceSourceRepo.findReferencedWorkspaceSourceArtifacts(this.db, artifactIds, excludeSessionId);
   }
 
   createExecution(params: {
@@ -127,13 +164,20 @@ export class WorkflowStore {
   }
   getApproval(id: string) { return approvalRepo.getApproval(this.db, id); }
   getPendingApprovals() { return approvalRepo.getPendingApprovals(this.db); }
+  getPendingApprovalsWithExecutionSnapshots() {
+    return approvalRepo.getPendingApprovalsWithExecutionSnapshots(this.db);
+  }
 
   getSetting<T>(key: string, defaultValue: T): T { return settingsRepo.getSetting(this.db, key, defaultValue); }
+  listSettingsByPrefix(prefix: string) { return settingsRepo.listSettingsByPrefix(this.db, prefix); }
   getGlobalActive(): boolean { return settingsRepo.getGlobalActive(this.db); }
   setSetting(key: string, value: unknown) { settingsRepo.setSetting(this.db, key, value); }
+  deleteSetting(key: string) { settingsRepo.deleteSetting(this.db, key); }
   setConnection(connector: string, connected: boolean, config?: Record<string, unknown>) {
     settingsRepo.setConnection(this.db, connector, connected, config);
+    this.connectionRevision++;
   }
+  getConnectionRevision() { return this.connectionRevision; }
   getConnections() { return settingsRepo.getConnections(this.db); }
 
   getDiscoveryMetadata(assetId: string): DiscoveryMetadataRecord | undefined {

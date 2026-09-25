@@ -50,7 +50,10 @@ describe('WebhookInboundListener acceptance', () => {
     const events: Array<{ payload: Record<string, unknown> }> = [];
     const port = 38_914;
     const body = '{"attempt":1}';
-    const signature = createHmac('sha256', 'hook-secret').update(body).digest('hex');
+    const eventId = 'evt-retryable-1';
+    const timestamp = String(Math.floor(Date.now() / 1_000));
+    const signaturePayload = ['POST', 'retryable', eventId, timestamp, body].join('\n');
+    const signature = createHmac('sha256', 'hook-secret').update(signaturePayload).digest('hex');
 
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
@@ -61,6 +64,8 @@ describe('WebhookInboundListener acceptance', () => {
       headers: {
         'content-type': 'application/json',
         'x-ax-signature': `sha256=${signature}`,
+        'x-ax-timestamp': timestamp,
+        'idempotency-key': eventId,
         'x-api-key': 'should-not-forward',
       },
       body,
@@ -70,6 +75,20 @@ describe('WebhookInboundListener acceptance', () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.payload.headers).not.toHaveProperty('x-ax-signature');
     expect(events[0]?.payload.headers).not.toHaveProperty('x-api-key');
+
+    const replay = await fetch(`http://127.0.0.1:${port}/hooks/retryable`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-ax-signature': `sha256=${signature}`,
+        'x-ax-timestamp': timestamp,
+        'idempotency-key': eventId,
+      },
+      body,
+    });
+
+    expect(replay.status).toBe(409);
+    expect(events).toHaveLength(1);
   });
 
   it('routes signed requests independently of the client-supplied host header', async () => {

@@ -12,6 +12,17 @@ export function mergeHttpAuthSecret(
   secret: HttpEndpointSecret | null,
 ): HttpConnectionConfig | null {
   if (!secret) return config.auth?.type === 'none' ? config : null;
+  if (secret.origin) {
+    try {
+      if (new URL(config.baseUrl).origin !== secret.origin) return null;
+    } catch {
+      return null;
+    }
+  } else if (config.auth?.type !== 'none') {
+    // Legacy secrets have no origin binding; do not attach them to a possibly
+    // rebased endpoint during hydration.
+    return null;
+  }
   const auth: HttpAuthConfig = { ...config.auth, type: config.auth?.type ?? 'none' };
   if (auth.type === 'bearer' || auth.type === 'apiKey') {
     if (!secret.token?.trim()) return null;
@@ -35,6 +46,7 @@ export function parseHttpEndpointSecrets(value: unknown): HttpEndpointSecrets {
       secrets[id] = {
         token: typeof secret.token === 'string' ? secret.token : undefined,
         password: typeof secret.password === 'string' ? secret.password : undefined,
+        origin: typeof secret.origin === 'string' ? secret.origin : undefined,
       };
     }
     return secrets;

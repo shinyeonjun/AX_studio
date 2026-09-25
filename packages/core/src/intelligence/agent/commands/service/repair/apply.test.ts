@@ -90,7 +90,7 @@ describe('AxCommandService repair apply', () => {
     const applied = await service.execute({
       name: 'repair.apply',
       args: { repairId: proposal.id, candidateId: repairCommandCandidate.id, baseVersion: 1 },
-    }, commandChatContext);
+    }, { ...commandChatContext, currentWorkflowId: workflow.id });
     expect(applied).toMatchObject({
       command: 'repair.apply',
       status: 'ok',

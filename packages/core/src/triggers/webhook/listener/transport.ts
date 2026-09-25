@@ -78,6 +78,10 @@ export function respond(res: ServerResponse, status: number, body: string): void
 }
 
 export function rejectRequest(req: IncomingMessage, res: ServerResponse, status: number, body: string): void {
-  req.resume();
   respond(res, status, body);
+  if (status === 413) {
+    setImmediate(() => req.destroy());
+  } else {
+    req.resume();
+  }
 }

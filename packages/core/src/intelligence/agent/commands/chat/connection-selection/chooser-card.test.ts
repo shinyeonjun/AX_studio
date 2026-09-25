@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { AgentHarness } from '../../../harness.js';
-import type { StructuredGenerateInput } from '../../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
 import { scriptedModel } from '../fixtures.js';
+import type { DecisionEngine } from '../../../../../contracts/decision.js';
 
 describe('runAxCommandChat connection selection', () => {
-  it('keeps dynamic HTTP selection inside the command and presentation protocol', async () => {
+  it('renders a host-owned endpoint choice for an explicit GET without exposing base URLs or calling a model', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     store.setConnection('http', true, {
@@ -19,52 +20,41 @@ describe('runAxCommandChat connection selection', () => {
     });
     const service = new AxCommandService(store);
     const presentations: import('../../schema.js').AxUiPresentation[] = [];
-    const seen: StructuredGenerateInput<unknown>[] = [];
-    const harness = new AgentHarness(
-      scriptedModel([
-        { kind: 'command', command: { name: 'http.list', args: {} } },
-        {
-          kind: 'command',
-          command: {
-            name: 'ui.present',
-            args: {
-              title: 'HTTP 연결 선택',
-              subtitle: '조회할 연결을 선택해 주세요.',
-              blocks: [{ type: 'steps', items: ['Alpha API (alpha-api)', 'Beta API (beta-api)'] }],
-              actions: [
-                { id: 'alpha', label: 'Alpha API', value: 'HTTP 연결 ID alpha-api를 사용해줘' },
-                { id: 'beta', label: 'Beta API', value: 'HTTP 연결 ID beta-api를 사용해줘' },
-              ],
-            },
-          },
-        },
-        { kind: 'reply', message: '조회할 연결을 선택해 주세요.' },
-      ], seen),
-    );
+    const structuredCalls: StructuredGenerateInput<unknown>[] = [];
+    const textCalls: TextGenerateInput[] = [];
 
     const reply = await runAxCommandChat({
-      harness,
+      harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
+      httpEndpoints: [
+        { id: 'alpha-api', label: 'Alpha API', usable: true },
+        { id: 'beta-api', label: 'Beta API', usable: true },
+      ],
       messages: [],
       userMessage: 'GET /api/v1/orders?status=paid 를 조회해줘. 외부 데이터 변경은 하지 마.',
       onPresentation: (presentation) => presentations.push(presentation),
     });
 
     expect(reply).toContain('연결');
-    expect(seen).toHaveLength(3);
-    expect(seen[1]?.messages?.some((message) => message.content.includes('"http.list"'))).toBe(true);
-    expect(presentations).toHaveLength(1);
-    expect(presentations[0]).toMatchObject({
-      title: 'HTTP 연결 선택',
-      actions: [
-        { label: 'Alpha API', value: 'HTTP 연결 ID alpha-api를 사용해줘' },
-        { label: 'Beta API', value: 'HTTP 연결 ID beta-api를 사용해줘' },
-      ],
-    });
+    expect(structuredCalls).toHaveLength(0);
+    expect(textCalls).toHaveLength(0);
+    expect(presentations).toMatchObject([{
+      title: '어떤 연결에서 조회할까요?',
+      inputs: [{
+        id: 'http-endpoint-id',
+        label: 'API 연결',
+        options: [
+          { label: 'Alpha API', value: 'alpha-api' },
+          { label: 'Beta API', value: 'beta-api' },
+        ],
+      }],
+      actions: [],
+    }]);
     expect(JSON.stringify(presentations)).not.toContain('alpha.example.com');
+    db.close();
   });
 
-  it('does not add a chooser card when the user only asks to inspect connections', async () => {
+  it('does not add a chooser card when Jev classifies a connection inventory request', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     store.setConnection('http', true, {
@@ -74,21 +64,28 @@ describe('runAxCommandChat connection selection', () => {
       ],
     });
     const presentations: import('../../schema.js').AxUiPresentation[] = [];
-    const harness = new AgentHarness(
-      scriptedModel([
-        { kind: 'command', command: { name: 'http.list', args: {} } },
-        { kind: 'reply', message: '저장된 HTTP 연결 2개를 확인했습니다.' },
-      ], []),
-    );
+    const decisionEngine: DecisionEngine = {
+      evaluate: async () => ({ answers: {
+        route: { type: 'choice', choice: 'connection_list', probabilities: { connection_list: 0.98 }, confidence: 0.98 },
+      } }),
+    };
+    const textCalls: TextGenerateInput[] = [];
+    const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textCalls));
 
-    await runAxCommandChat({
+    const reply = await runAxCommandChat({
       harness,
       commandService: new AxCommandService(store),
+      decisionEngine,
       messages: [],
       userMessage: '저장된 HTTP 연결을 모두 목록으로 보여줘.',
       onPresentation: (presentation) => presentations.push(presentation),
     });
 
     expect(presentations).toEqual([]);
+    expect(reply).toContain('저장된 HTTP 연결 (2/2개)');
+    expect(reply).toContain('깃허브 연결');
+    expect(reply).toContain('테스트 HTTP 연결');
+    expect(textCalls).toHaveLength(0);
+    db.close();
   });
 });

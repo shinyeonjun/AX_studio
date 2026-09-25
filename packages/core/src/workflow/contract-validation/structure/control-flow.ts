@@ -56,6 +56,57 @@ export function validateStepControlFlow(
   return issues;
 }
 
+function branchMemberships(steps: Step[]): Map<string, Set<string>> {
+  const memberships = new Map<string, Set<string>>();
+  const visit = (stepId: string, path: string, visiting: Set<string>) => {
+    const paths = memberships.get(stepId) ?? new Set<string>();
+    paths.add(path);
+    memberships.set(stepId, paths);
+    if (visiting.has(stepId)) return;
+    const step = steps.find((candidate) => candidate.id === stepId);
+    if (!step) return;
+    if (step.type === 'human_approval') {
+      const nextVisiting = new Set(visiting).add(stepId);
+      for (const child of step.forActionIds) visit(child, path, nextVisiting);
+      return;
+    }
+    if (step.type !== 'if') return;
+    const nextVisiting = new Set(visiting).add(stepId);
+    for (const child of step.thenStepIds) visit(child, `${path}/${step.id}:then`, nextVisiting);
+    for (const child of step.elseStepIds ?? []) visit(child, `${path}/${step.id}:else`, nextVisiting);
+  };
+
+  const branchTargets = new Set(
+    steps.flatMap((step) => step.type === 'if' ? [...step.thenStepIds, ...(step.elseStepIds ?? [])] : []),
+  );
+  for (const step of steps) if (!branchTargets.has(step.id)) visit(step.id, '', new Set());
+  return memberships;
+}
+
+export function validateApprovalBranchOwnership(steps: Step[]): ContractValidationIssue[] {
+  const memberships = branchMemberships(steps);
+  const issues: ContractValidationIssue[] = [];
+  for (const step of steps) {
+    if (step.type !== 'human_approval') continue;
+    const approvalPaths = memberships.get(step.id) ?? new Set(['']);
+    for (const actionId of step.forActionIds) {
+      const actionPaths = memberships.get(actionId) ?? new Set(['']);
+      const actionOwnedByApproval = [...approvalPaths].some((approvalPath) =>
+        [...actionPaths].some((actionPath) =>
+          actionPath === approvalPath || actionPath.startsWith(`${approvalPath}/`)),
+      );
+      if (!actionOwnedByApproval) {
+        issues.push({
+          code: 'invalid_control_flow',
+          stepId: step.id,
+          message: `${step.id} 승인 노드가 다른 branch의 action ${actionId}를 승인할 수 없습니다.`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function validateControlFlowCycles(
   steps: Step[],
   byId: Map<string, Step>,

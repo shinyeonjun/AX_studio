@@ -1,6 +1,6 @@
 import { dialog } from 'electron';
 import { ipcHandle } from '../ipc-handle.js';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
@@ -13,6 +13,21 @@ import {
 import { getCore } from '../../core-instance.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
+let approvedFolderPath: string | undefined;
+
+function pathKey(path: string): string {
+  const real = realpathSync(path);
+  return process.platform === 'win32' ? real.toLowerCase() : real;
+}
+
+function matchesFolderPath(path: string, canonicalPath: string): boolean {
+  try {
+    return pathKey(path) === canonicalPath;
+  } catch {
+    return path === canonicalPath;
+  }
+}
+
 export function registerLocalFolderConnectionHandlers() {
   ipcHandle('ax:pickLocalFolder', async () => {
     const result = await dialog.showOpenDialog({
@@ -22,7 +37,9 @@ export function registerLocalFolderConnectionHandlers() {
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true as const };
     }
-    return { ok: true as const, path: result.filePaths[0] };
+    const selected = pathKey(result.filePaths[0]!);
+    approvedFolderPath = selected;
+    return { ok: true as const, path: selected };
   });
 
   ipcHandle('ax:addLocalFolder', async (_event, payload: unknown) => {
@@ -38,21 +55,26 @@ export function registerLocalFolderConnectionHandlers() {
     if (!existsSync(folderPath) || !statSync(folderPath).isDirectory()) {
       throw new Error('폴더를 찾을 수 없습니다.');
     }
+    const canonicalFolderPath = pathKey(folderPath);
+    if (approvedFolderPath !== canonicalFolderPath) {
+      throw new Error('폴더는 먼저 시스템 선택기로 선택해야 합니다.');
+    }
 
     const existing = core.store.getConnections().find((entry) => entry.connector === 'local_folder');
     const config = parseLocalFolderConnectionConfig(existing?.config) ?? { folders: [] };
-    if (config.folders.some((folder) => folder.path === folderPath)) {
+    if (config.folders.some((folder) => matchesFolderPath(folder.path, canonicalFolderPath))) {
       throw new Error('이미 연결된 폴더입니다.');
     }
 
     const entry = {
       id: randomUUID(),
       label: typeof record.label === 'string' ? record.label.trim() || basename(folderPath) : basename(folderPath),
-      path: folderPath,
+      path: canonicalFolderPath,
       addedAt: new Date().toISOString(),
     };
     const nextConfig = upsertLocalFolder(config, entry);
     core.store.setConnection('local_folder', nextConfig.folders.length > 0, nextConfig as unknown as Record<string, unknown>);
+    approvedFolderPath = undefined;
     core.runtime.setConnector('local_folder', new LocalFolderConnector(nextConfig));
     notifyStateChanged();
     return { ok: true, folder: entry, status: getLocalFolderConnectionStatus(nextConfig, true) };

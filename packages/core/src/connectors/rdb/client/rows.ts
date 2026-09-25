@@ -5,7 +5,8 @@ import { resolveRdbTableRef } from './policy.js';
 import type { RdbConnectionConfig, RdbRow, RdbTableRef } from './types.js';
 
 export const MAX_RDB_RESULT_ROWS = 10_000;
-export const MAX_RDB_PROBE_ROWS = MAX_RDB_RESULT_ROWS + 1;
+const MAX_RDB_PROBE_ROWS = MAX_RDB_RESULT_ROWS + 1;
+export const MAX_RDB_OFFSET = 1_000_000;
 
 export function normalizeRdbRowLimit(value: unknown, fallback: number): number {
   const configured = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : fallback;
@@ -22,7 +23,7 @@ export async function readRdbRows(
   abortSignal?.throwIfAborted();
   const limit = Math.min(Math.max(1, Math.floor(rowLimit)), MAX_RDB_PROBE_ROWS);
   const offset = options.offset ?? 0;
-  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('invalid_row_pagination');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_RDB_OFFSET) throw new Error('invalid_row_pagination');
   const resolved = resolveRdbTableRef(config, ref);
 
   if (config.type === 'sqlite' && config.filePath) {

@@ -3,6 +3,8 @@ import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { connectionEntry } from '../../../../../ui/lib/connection-display';
 
+const DEFAULT_WEBHOOK_PORT = '18789';
+
 export interface WebhookConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
@@ -20,7 +22,7 @@ export function useWebhookConnectionForm({
   const webhookEntry = connectionEntry(state, 'webhook');
   const connected = Boolean(webhookEntry?.connected);
   const formRef = useRef<HTMLDivElement>(null);
-  const [port, setPort] = useState('18789');
+  const [port, setPort] = useState(DEFAULT_WEBHOOK_PORT);
   const [secret, setSecret] = useState('');
   const [label, setLabel] = useState('');
   const [tunnelUrl, setTunnelUrl] = useState('');
@@ -102,7 +104,7 @@ export function useWebhookConnectionForm({
     message,
     lastError: webhookEntry?.lastError,
     connectedItems,
-    localExample: `http://127.0.0.1:${port || '18789'}/hooks/{path}`,
+    localExample: `http://127.0.0.1:${port || DEFAULT_WEBHOOK_PORT}/hooks/{path}`,
     loadFromConnection,
     handleConnect,
     handleDisconnect,

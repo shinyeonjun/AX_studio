@@ -35,7 +35,8 @@ export async function drainDesktopCore(
 
 export function registerDesktopInstanceGuards(): void {
   const gotSingleInstanceLock = app.requestSingleInstanceLock();
-  const allowParallelInstance = process.env.AX_E2E === '1' || process.env.AX_PRODUCT_QA === '1';
+  const allowParallelInstance = !app.isPackaged
+    && (process.env.AX_E2E === '1' || process.env.AX_PRODUCT_QA === '1');
   if (!gotSingleInstanceLock && !allowParallelInstance) {
     const label = app.isPackaged ? 'AX Studio' : 'AX Studio Dev';
     console.error(

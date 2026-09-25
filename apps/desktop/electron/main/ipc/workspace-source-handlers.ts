@@ -42,7 +42,7 @@ function validateE2ePdfPath(filePath: string): string {
 }
 
 async function pickPdfPath(): Promise<string | undefined> {
-  const e2ePath = process.env.AX_E2E === '1'
+  const e2ePath = !app.isPackaged && process.env.AX_E2E === '1'
     ? process.env.AX_E2E_SOURCE_PATH?.trim() || e2eSourcePath
     : undefined;
   e2eSourcePath = undefined;

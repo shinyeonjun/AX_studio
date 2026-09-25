@@ -81,4 +81,11 @@ describe('role prompts', () => {
       '현재 요청',
     )).toThrow('current user message');
   });
+
+  it('never silently truncates a current request that cannot fit in model context', () => {
+    const request = 'x'.repeat(64_001);
+
+    expect(() => compactModelMessages([{ role: 'user', content: request }], request))
+      .toThrow('exceeds model context');
+  });
 });

@@ -1,22 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { AgentHarness } from '../../../harness.js';
-import type { StructuredGenerateInput } from '../../../model/provider.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
 import { scriptedModel } from '../fixtures.js';
+import { gmailToSlackRecurringDecisionEngine } from '../jev-recurring-workflow-fixture.js';
 
-describe('runAxCommandChat target selection', () => {
-  it('publishes a structured target card when a job needs HTTP and Slack selections', async () => {
+describe('runAxCommandChat recurring workflow target selection', () => {
+  it('asks for a Slack channel before saving a Jev-selected recurring workflow', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.setConnection('http', true, {
-      endpoints: [
-        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
-        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
-      ],
-    });
+    store.setConnection('gmail', true, { email: 'primary' });
     store.setConnection('slack', true);
     const chat = store.saveWorkspaceChat({ messages: [] });
     const service = new AxCommandService(store, {
@@ -29,45 +24,41 @@ describe('runAxCommandChat target selection', () => {
       },
     });
     const presentations: import('../../schema.js').AxUiPresentation[] = [];
-    const seen: StructuredGenerateInput<unknown>[] = [];
+    const structuredCalls: unknown[] = [];
+    const textCalls: unknown[] = [];
+    const decisionEngine = gmailToSlackRecurringDecisionEngine();
 
     const reply = await runAxCommandChat({
-      harness: new AgentHarness(scriptedModel([{
-        kind: 'command',
-        command: {
-          name: 'job.propose',
-          args: {
-            name: '결제 주문 공유',
-            goal: '결제 완료 주문을 요약해 공유한다',
-            fetch: { method: 'GET', path: '/api/v1/orders?status=paid' },
-            notify: { connector: 'slack' },
-          },
-        },
-      }], seen)),
+      harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
+      decisionEngine,
+      connectedConnectors: ['gmail', 'slack'],
+      readOperationHints: [{
+        key: 'op_0', capabilityId: 'gmail.messages.read', connector: 'gmail',
+        label: '메일 읽기', description: '메일 본문 읽기', params: {},
+      }],
       messages: [],
-      userMessage: '결제 완료 주문을 정리해서 팀에 공유해줘',
       workspaceSessionId: chat.id,
-      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+      userMessage: '새 Gmail 메일 내용을 요약해서 Slack으로 알려주는 반복 업무를 제안해줘.',
+      designToolContext: { connections: [], connectedConnectorIds: ['gmail', 'slack'], connectors: {} },
       onPresentation: (presentation) => presentations.push(presentation),
     });
 
-    expect(reply).toContain('HTTP 연결과 Slack 채널');
-    expect(seen).toHaveLength(1);
+    expect(reply).toContain('채널을 선택');
     expect(presentations).toHaveLength(1);
     expect(presentations[0]).toMatchObject({
       title: '공유 대상 선택',
-      inputs: [
-        {
-          id: 'job-http-connection',
-          options: [
-            { value: 'test', label: '테스트 HTTP 연결' },
-            { value: 'github', label: '깃허브 연결' },
-          ],
-        },
-        { id: 'job-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
-      ],
-      actions: [{ label: '선택하고 공유안 검토' }],
+      inputs: [{
+        id: 'job-action-jev_step_3-slack-channel',
+        stepId: 'jev_step_3',
+        capabilityId: 'slack.message.send',
+        parameterName: 'channel',
+        options: [{ value: 'C_OPERATIONS', label: '#운영' }],
+      }],
     });
+    expect(store.listWorkflows()).toHaveLength(0);
+    expect(structuredCalls).toHaveLength(0);
+    expect(textCalls).toHaveLength(0);
+    db.close();
   });
 });

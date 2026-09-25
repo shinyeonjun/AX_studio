@@ -5,6 +5,7 @@ import type {
   DocumentEngineRequest,
   DocumentEngineResponse,
 } from '../../types.js';
+import { commandEnv } from '../../../../intelligence/agent/model/cli-process/environment.js';
 
 export interface DocumentEngineTransportOptions {
   pythonPath: string;
@@ -12,6 +13,15 @@ export interface DocumentEngineTransportOptions {
   artifactRoot: string;
   timeoutMs: number;
   workerCwd: string;
+}
+
+function documentEngineEnv(): NodeJS.ProcessEnv {
+  const env = commandEnv();
+  for (const key of ['AX_DATA_ROOT', 'AX_DOCUMENT_ARTIFACT_ROOT', 'AX_TEMPLATE_ROOT']) {
+    const value = process.env[key];
+    if (value !== undefined) env[key] = value;
+  }
+  return { ...env, PYTHONUTF8: '1' };
 }
 
 export async function requestDocumentEngine<T>(
@@ -35,7 +45,7 @@ export async function requestDocumentEngine<T>(
     timeoutMs: options.timeoutMs,
     cwd: options.workerCwd,
     input: JSON.stringify(payload),
-    env: { ...process.env, PYTHONUTF8: '1' },
+    env: documentEngineEnv(),
   });
 
   const stdout = result.stdout.trim();

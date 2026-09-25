@@ -23,6 +23,14 @@ describe('streaming process ownership', () => {
     state.child.emit('close', 0, null);
     expect((await result).stdout).toBe('한글');
   });
+  it('can process stdout lines without retaining the full stdout string', async () => {
+    const onStdoutLine = vi.fn();
+    const result = start({ captureStdout: false, onStdoutLine });
+    state.child.stdout.emit('data', Buffer.from('{"type":"turn.completed"}\n'));
+    state.child.emit('close', 0, null);
+    expect(await result).toMatchObject({ stdout: '', exitCode: 0 });
+    expect(onStdoutLine).toHaveBeenCalledWith('{"type":"turn.completed"}');
+  });
   it('uses close status, never treating signal termination as success', async () => {
     const result = start(); state.child.emit('close', null, 'SIGTERM');
     expect((await result).exitCode).not.toBe(0);

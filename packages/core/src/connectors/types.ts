@@ -11,6 +11,19 @@ export interface SourceListingContext {
   connectedConnectorIds: string[];
 }
 
+export const CONNECTOR_FAILURE_KINDS = [
+  'not_found',
+  'permission_denied',
+  'host_policy',
+  'invalid_request',
+  'transient',
+  'provider_error',
+  'unknown',
+] as const;
+
+/** Safe, provider-independent failure categories for agent recovery decisions. */
+export type ConnectorFailureKind = (typeof CONNECTOR_FAILURE_KINDS)[number];
+
 export interface ResolveFileRefContextResult {
   ok: boolean;
   path?: string;
@@ -54,6 +67,8 @@ export interface ConnectorContext {
   outputs?: Record<string, Record<string, unknown>>;
   log: (entry: ExecutionLogEntry) => void;
   connections?: Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }>;
+  /** Host-approved input paths for discovery-generated, non-folder sources. */
+  allowedFilePaths?: readonly string[];
   artifactSink?: ArtifactSink;
   /** Resolve a FileRef to a validated physical path inside connected sources. */
   resolveFileRef?: (file: import('../contracts/artifacts/file-ref.js').FileRef) => ResolveFileRefContextResult;

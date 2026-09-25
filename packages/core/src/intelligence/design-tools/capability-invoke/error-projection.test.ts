@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDesignToolContext } from '../context.js';
 import { executeDesignTool } from '../execute.js';
+import { connectorFailureKind } from '../capability-invoke.js';
 import { HttpConnector } from '../../../connectors/http/connector.js';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -25,6 +26,7 @@ describe('capability invoke HTTP error projection and privacy', () => {
       tool: 'capabilities.invoke',
       ok: false,
       error: 'http_401',
+      failureKind: 'permission_denied',
       errorDetails: {
         status: 401,
         statusText: 'Unauthorized',
@@ -32,6 +34,17 @@ describe('capability invoke HTTP error projection and privacy', () => {
         truncated: false,
       },
     });
+  });
+
+  it.each([
+    ['http_error_status', { status: 503 }, 'transient'],
+    ['http_error_status', { status: 401 }, 'permission_denied'],
+    ['ssrf_blocked', undefined, 'host_policy'],
+    ['invalid_params', undefined, 'invalid_request'],
+    ['slack_channel_not_found', undefined, 'not_found'],
+    ['rdb_error', undefined, 'provider_error'],
+  ] as const)('classifies %s into a provider-independent category', (code, details, expected) => {
+    expect(connectorFailureKind(code, details)).toBe(expected);
   });
 
   it('blocks raw HTTP reads before fetching when untrusted data is denied', async () => {

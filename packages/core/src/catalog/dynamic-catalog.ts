@@ -8,6 +8,17 @@ export function registerDynamicCapabilities(caps: ConnectorCapability[]): void {
   }
 }
 
+/** OpenAPI and MCP each have one configured connection slot; refresh its catalog atomically. */
+export function replaceDynamicCapabilitiesForConnector(
+  connector: string,
+  caps: ConnectorCapability[],
+): void {
+  for (const [id, capability] of dynamicCapabilities) {
+    if (capability.connector === connector) dynamicCapabilities.delete(id);
+  }
+  registerDynamicCapabilities(caps);
+}
+
 export function clearDynamicCatalogForTests(): void {
   dynamicCapabilities.clear();
 }

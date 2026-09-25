@@ -5,6 +5,7 @@ import {
 import type { ScalarValue, TableArtifact, TableColumn, TableColumnType, TableProfile } from './table.js';
 
 export const DEFAULT_TABLE_ROW_LIMIT = 5_000;
+export const MAX_TABLE_ROW_LIMIT = 50_000;
 export const MODEL_PREVIEW_ROW_LIMIT = 50;
 export const MAX_WORKBOOK_SHEETS = 20;
 /** Bound parser work before SheetJS expands an input workbook in memory. */
@@ -47,41 +48,82 @@ export function normalizeScalar(value: unknown): ScalarValue {
   if (value == null || value === '') return null;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  const text = String(value).trim();
+  let text: string;
+  if (typeof value === 'object') {
+    try {
+      text = JSON.stringify(value) ?? '';
+    } catch {
+      text = Object.prototype.toString.call(value);
+    }
+  } else {
+    text = String(value);
+  }
+  text = text.trim();
   if (!text) return null;
   const numeric = Number(text.replace(/,/g, ''));
   if (!Number.isNaN(numeric) && /^-?\d[\d,]*(\.\d+)?$/.test(text.replace(/,/g, ''))) return numeric;
   return text;
 }
 
-function extrema(values: NonNullable<ScalarValue>[]): { min?: ScalarValue; max?: ScalarValue } {
-  if (values.length === 0) return {};
-  const type = typeof values[0];
-  if (!values.every((value) => typeof value === type)) return {};
-
-  let min = values[0]!;
-  let max = values[0]!;
-  for (const value of values.slice(1)) {
-    if (value < min) min = value;
-    if (value > max) max = value;
-  }
-  return { min, max };
-}
+const NON_FINITE_PROFILE_KEY = Symbol('non-finite-profile-value');
 
 export function profileTable(columns: TableColumn[], rows: TableArtifact['rows']): TableProfile {
   const columnProfiles: TableProfile['columns'] = {};
   for (const column of columns) {
-    const values = rows.map((row) => row.values[column.name]);
-    const nonNull = values.filter((value) => value != null);
-    const numeric = nonNull.filter((value): value is number => typeof value === 'number');
-    const { min, max } = extrema(nonNull);
+    let nullCount = 0;
+    let numericSum = 0;
+    let numericCount = 0;
+    let firstType: string | undefined;
+    let homogeneous = true;
+    let min: ScalarValue | undefined;
+    let max: ScalarValue | undefined;
+    let hasValue = false;
+    const distinctValues = new Set<ScalarValue | symbol>();
+    const sampleValues: ScalarValue[] = [];
+
+    for (const row of rows) {
+      const value = row.values[column.name];
+      if (value == null) {
+        nullCount += 1;
+        continue;
+      }
+
+      // JSON serializes all non-finite numbers as null; preserve that distinct-count behavior.
+      distinctValues.add(typeof value === 'number' && !Number.isFinite(value) ? NON_FINITE_PROFILE_KEY : value);
+      if (sampleValues.length < 12) sampleValues.push(value);
+
+      const type = typeof value;
+      if (!hasValue) {
+        firstType = type;
+        min = value;
+        max = value;
+        hasValue = true;
+      } else if (type !== firstType) {
+        homogeneous = false;
+      } else if (homogeneous && typeof value === 'number' && typeof min === 'number' && typeof max === 'number') {
+        if (value < min) min = value;
+        if (value > max) max = value;
+      } else if (homogeneous && typeof value === 'string' && typeof min === 'string' && typeof max === 'string') {
+        if (value < min) min = value;
+        if (value > max) max = value;
+      } else if (homogeneous && typeof value === 'boolean' && typeof min === 'boolean' && typeof max === 'boolean') {
+        if (value < min) min = value;
+        if (value > max) max = value;
+      }
+
+      if (typeof value === 'number') {
+        numericSum += value;
+        numericCount += 1;
+      }
+    }
+
     columnProfiles[column.name] = {
-      nullCount: values.length - nonNull.length,
-      distinctCount: new Set(nonNull.map((value) => JSON.stringify(value))).size,
-      min,
-      max,
-      mean: numeric.length > 0 ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length : undefined,
-      sampleValues: nonNull.slice(0, 12),
+      nullCount,
+      distinctCount: distinctValues.size,
+      min: homogeneous ? min : undefined,
+      max: homogeneous ? max : undefined,
+      mean: numericCount > 0 ? numericSum / numericCount : undefined,
+      sampleValues,
     };
   }
   return {
@@ -101,7 +143,7 @@ export function buildTableArtifact(params: {
 }): TableArtifact {
   const configuredRowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
   const rowLimit = Number.isFinite(configuredRowLimit)
-    ? Math.max(1, Math.floor(configuredRowLimit))
+    ? Math.min(MAX_TABLE_ROW_LIMIT, Math.max(1, Math.floor(configuredRowLimit)))
     : DEFAULT_TABLE_ROW_LIMIT;
   const headers = uniqueHeaders(params.headers);
   const columnValues = headers.map((_, columnIndex) =>
@@ -145,16 +187,18 @@ export function tableArtifactFromRows(
   options: { id: string; name?: string; source?: TableArtifact['source']; rowLimit?: number },
 ): TableArtifact | undefined {
   if (Array.isArray(value)) {
-    const rows = value.filter(
-      (row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row),
-    );
-    if (rows.length !== value.length) return undefined;
-    const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+    const headerSet = new Set<string>();
+    for (let rowIndex = 0; rowIndex < value.length; rowIndex += 1) {
+      const row = value[rowIndex];
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return undefined;
+      for (const header of Object.keys(row)) headerSet.add(header);
+    }
+    const headers = [...headerSet];
     return buildTableArtifact({
       id: options.id,
       name: options.name,
       headers,
-      matrix: rows.map((row) => headers.map((header) => row[header])),
+      matrix: value.map((row) => headers.map((header) => (row as Record<string, unknown>)[header])),
       rowLimit: options.rowLimit,
       source: options.source,
     });

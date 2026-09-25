@@ -1,7 +1,6 @@
 import type { ChatMessage } from '../model/chat.js';
-import type { AxCommandResult } from './schema.js';
+import type { AxCommand, AxCommandResult } from './schema.js';
 import { inputRequestsForResult } from './input-requests.js';
-import { createAxCommandChatTransport } from './transport.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import type { AxCommandChatOptions } from './chat/contracts.js';
 import {
@@ -14,24 +13,15 @@ import { runCommandChatLoop } from './chat/loop.js';
 export type { AxCommandChatOptions } from './chat/contracts.js';
 
 /**
- * The model-facing protocol has only two outcomes: request one bounded AX
- * command, or answer the user. Command execution is owned by the host.
+ * Desktop chat uses Jev for bounded intent and route decisions. The host
+ * validates and executes selected commands; the text model only writes replies.
  */
-// Multi-source requests may need to inspect attached documents, identify
-// connected sources, read each source, and then submit one bounded plan. Keep
-// the budget finite, but leave room for the final reply after those reads.
-export const AX_COMMAND_CHAT_MAX_ROUNDS = 16;
 export const AX_COMMAND_CHAT_TIMEOUT_MS = 120_000;
 
-function quickChatReply(userMessage: string, harness: AxCommandChatOptions['harness']): string | undefined {
+function configuredModelReply(userMessage: string, harness: AxCommandChatOptions['harness']): string | undefined {
   const text = userMessage.trim().replace(/[!?！？。]+$/gu, '').replace(/\s+/g, ' ');
   if (text.length > 80) return undefined;
-  if (/^(안녕|안녕하세요|ㅎㅇ|하이|hello|hi)$/iu.test(text)) {
-    return '안녕하세요. AX Studio 업무 후임 에이전트입니다. 조회·실행·반복 업무를 도와드릴게요.';
-  }
-  if (/^(?:너는|넌|당신은)?\s*누구(?:야|냐|지)?$/u.test(text)) {
-    return 'AX Studio의 업무 후임 에이전트입니다. 요청을 이해하고, 필요한 조회와 실행은 host와 Runtime을 통해 처리합니다.';
-  }
+  // Model identity is host configuration, not something the LLM should guess.
   if (/^(?:너의|네|현재)\s*모델(?:은|이|을)?\s*(?:뭐|무엇)(?:야|냐|지)?$/u.test(text)
     || /^(?:어떤|무슨)\s*모델(?:을)?\s*(?:써|사용해)(?:요)?$/u.test(text)) {
     const model = harness.modelName?.trim();
@@ -42,11 +32,12 @@ function quickChatReply(userMessage: string, harness: AxCommandChatOptions['harn
 }
 
 /**
- * Runs a bounded command/reply loop. The model never receives a host object
- * or a tool callback; it receives only the command contract and prior results.
+ * Runs the Desktop chat loop. Jev selects from bounded host-generated options;
+ * the text model only writes replies from the conversation and executed results.
  */
 export async function runAxCommandChat(options: AxCommandChatOptions): Promise<string> {
-  const providerName = options.harness.providerName;
+  const startedAt = Date.now();
+  const requestContext = options.requestId ? { requestId: options.requestId } : {};
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? AX_COMMAND_CHAT_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -62,10 +53,10 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
     sessionMemo: options.sessionMemo ?? {},
     workflowPolicy: options.workflowPolicy ?? {},
   };
-  const publishResult = (commandName: string, result: AxCommandResult) => {
+  const publishResult = (commandName: string, result: AxCommandResult, command?: AxCommand) => {
     const inputRequests = inputRequestsForResult(result);
     const resultForLoop: AxCommandResult = { ...result, inputRequests };
-    options.onCommandResult?.(resultForLoop);
+    options.onCommandResult?.(resultForLoop, command);
     options.onInputRequests?.(inputRequests);
     const presentation = presentationFromResult(commandName, resultForLoop);
     if (presentation) options.onPresentation?.(presentation);
@@ -75,28 +66,36 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
 
   try {
     if (controller.signal.aborted) throw new Error('ax_command_chat_timeout');
-    if (!options.allowContextUpdate && !options.allowJobCommit) {
-      const quickReply = quickChatReply(options.userMessage, options.harness);
-      if (quickReply) return quickReply;
+    if (!options.pendingCommand && !options.contextUpdateConfirmation && !options.allowJobCommit) {
+      const modelReply = configuredModelReply(options.userMessage, options.harness);
+      if (modelReply) {
+        appendAppLog('info', 'Chat reported configured model metadata without model generation.', {
+          ...requestContext,
+          event: 'chat_model_metadata_fast_path',
+          durationMs: Date.now() - startedAt,
+          jevCalls: 0,
+          llmCalls: 0,
+          replyChars: modelReply.length,
+        });
+        return modelReply;
+      }
     }
-    const transport = createAxCommandChatTransport(providerName);
     const messages: ChatMessage[] = [
       ...options.messages,
       { role: 'user', content: options.userMessage },
     ];
     const loopResult = await runCommandChatLoop({
       options,
-      transport,
       messages,
       session,
       signal: controller.signal,
-      maxRounds: AX_COMMAND_CHAT_MAX_ROUNDS,
       publishResult,
     });
     controller.signal.throwIfAborted();
     if (loopResult !== undefined) return loopResult;
   } catch (error) {
     appendAppLog('error', error instanceof Error ? error.message : String(error), {
+      ...requestContext,
       event: 'command_chat_failed',
     });
     if (controller.signal.aborted) {
@@ -112,6 +111,6 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
     options.abortSignal?.removeEventListener('abort', abortExternal);
   }
 
-  appendAppLog('warn', 'command chat hit max rounds', { rounds: AX_COMMAND_CHAT_MAX_ROUNDS });
-  return '업무 명령을 처리하는 동안 단계가 너무 많아졌습니다. 마지막 요청을 조금 더 구체적으로 보내 주세요.';
+  appendAppLog('warn', 'Jev chat route returned no result.', { ...requestContext, event: 'jev_chat_empty_result' });
+  return '요청을 안전한 실행 경로로 처리하지 못했습니다. Jev 연결을 확인하고 다시 요청해 주세요.';
 }

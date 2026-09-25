@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateWorkflowContracts } from '../contract-validator.js';
+import { validateWorkflowContracts, validateWorkflowForPersistence } from '../contract-validator.js';
 import type { WorkflowIR } from '../schema.js';
 import { folderToDocument } from './fixtures.js';
 describe('validateWorkflowContracts', () => {
@@ -23,6 +23,37 @@ describe('validateWorkflowContracts', () => {
       const issues = validateWorkflowContracts({ ...folderToDocument, trigger });
       expect(issues.some((issue) => issue.code === 'invalid_workflow_schema')).toBe(true);
     }
+  });
+  it('provides typed host inputs for missing schedule fields', () => {
+    const issues = validateWorkflowContracts({
+      ...folderToDocument,
+      trigger: { type: 'schedule', schedule: '', timezone: '' },
+    });
+    const requests = issues.flatMap((issue) => issue.missingInputs ?? []);
+
+    expect(requests).toMatchObject([
+      { name: 'schedule', target: 'trigger', inputType: 'text', placeholder: '0 9 * * 1-5' },
+      { name: 'timezone', target: 'trigger', inputType: 'text', placeholder: 'Asia/Seoul' },
+    ]);
+  });
+  it('preserves a missing upstream data contract and also exposes the missing action text field', () => {
+    const issues = validateWorkflowForPersistence({
+      ...folderToDocument,
+      trigger: { type: 'manual' },
+      steps: [{
+        type: 'action', id: 'send', connector: 'gmail', action: 'message.send',
+        params: { to: 'person@example.com', subject: '견적서 안내' },
+        sideEffect: 'EXTERNAL_HIGH',
+      }],
+    });
+
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'missing_input_contract', stepId: 'send' }),
+      expect.objectContaining({
+        code: 'invalid_workflow_schema', stepId: 'send',
+        missingInputs: [expect.objectContaining({ name: 'body', label: '본문', capabilityId: 'gmail.message.send' })],
+      }),
+    ]));
   });
   it('rejects an invalid schedule expression instead of saving a never-running workflow', () => {
     const issues = validateWorkflowContracts({ ...folderToDocument, trigger: { type: 'schedule', schedule: 'every Friday', timezone: 'Asia/Seoul' } });

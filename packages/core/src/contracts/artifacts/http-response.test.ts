@@ -63,4 +63,20 @@ describe('HttpResponseArtifact', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.table.rows[0]?.values).toEqual({ id: 'order-1', amount: 1000 });
   });
+
+  it('keeps nested JSON fields readable when an HTTP response becomes a table', () => {
+    const result = httpResponseToTable(
+      response('[{"id":1,"dimensions":{"width":10,"height":20},"tags":["fragile","keep dry"]}]'),
+      { sourceId: 'products' },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.table.rows[0]?.values).toEqual({
+        id: 1,
+        dimensions: '{"width":10,"height":20}',
+        tags: '["fragile","keep dry"]',
+      });
+    }
+  });
 });

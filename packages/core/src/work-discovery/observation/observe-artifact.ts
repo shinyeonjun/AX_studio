@@ -12,7 +12,7 @@ export function observeArtifact(
   artifactId: string,
   artifactStore: ArtifactStore,
   materializeWorkbook: WorkbookMaterializer['readWorkbookFromPath'],
-): OutputObservation[] {
+): OutputObservation[] | Promise<OutputObservation[]> {
   const document = artifactStore.getDocumentArtifact<DocumentArtifact>(artifactId);
   if (document) return observeDocumentArtifact(exampleId, document);
 
@@ -35,8 +35,9 @@ export function observeArtifact(
   if (!stored) return [];
   const ext = extname(stored.fileName).toLowerCase();
   if (['.csv', '.xlsx', '.xls'].includes(ext)) {
-    const { workbook, tables } = materializeWorkbook(stored.storedPath);
-    return observeWorkbookArtifact(exampleId, workbook, tables);
+    return Promise.resolve(materializeWorkbook(stored.storedPath)).then(({ workbook, tables }) =>
+      observeWorkbookArtifact(exampleId, workbook, tables),
+    );
   }
 
   return [];

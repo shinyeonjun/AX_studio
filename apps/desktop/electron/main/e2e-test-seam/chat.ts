@@ -123,5 +123,27 @@ export async function runE2EChat(request: E2EChatRequest): Promise<E2EChatReply>
     };
   }
 
+  if (instruction === '__e2e:input-options__') {
+    return {
+      ...emptyReply('E2E input_options_required'),
+      inputRequests: [{
+        id: 'http-endpoint-id',
+        label: 'HTTP 연결 ID',
+        type: 'text',
+        required: true,
+        placeholder: '연결을 선택해 주세요',
+        reason: '연결 선택 UI가 입력한 ID를 보존하는지 확인합니다.',
+        options: [
+          { value: 'api-1', label: 'Short ID' },
+          { value: 'api-10', label: 'Long ID' },
+        ],
+      }],
+    };
+  }
+
+  if (instruction.includes('HTTP 연결 ID: Long ID (ID: api-10)')) {
+    return emptyReply('E2E selected endpoint api-10');
+  }
+
   return emptyReply(`E2E reply: ${instruction.replaceAll('_', '-')}`);
 }

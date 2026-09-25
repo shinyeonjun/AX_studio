@@ -45,6 +45,7 @@ export function validateActionConfiguration(
           name: parameter.name,
           label: parameter.label,
           question: parameter.question,
+          capabilityId: definition.id,
           ...(parameter.inputType ? { inputType: parameter.inputType } : {}),
           ...(parameter.placeholder ? { placeholder: parameter.placeholder } : {}),
         }

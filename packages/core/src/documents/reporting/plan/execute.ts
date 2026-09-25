@@ -30,12 +30,12 @@ import {
   type ReportRow,
 } from './value.js';
 
-export interface ReportCell {
+interface ReportCell {
   raw: ReportPrimitive;
   display: string;
 }
 
-export interface ReportTableResult {
+interface ReportTableResult {
   columns: string[];
   rows: Array<{
     raw: Record<string, ReportPrimitive>;

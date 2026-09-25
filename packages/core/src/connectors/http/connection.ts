@@ -7,10 +7,12 @@ export type {
   HttpEndpointSummary,
   HttpConnectionStatus,
   HttpConnectionValidation,
+  HttpDiscoveredReadOperation,
   HttpEndpointSecret,
   HttpEndpointSecrets,
 } from './connection/contracts.js';
 export { DEFAULT_HTTP_ENDPOINT_ID } from './connection/contracts.js';
+export { discoverHttpReadOperations, extractHttpReadOperations } from './connection/discovery.js';
 export {
   isSupportedHttpMethod,
   parseHttpEndpoints,

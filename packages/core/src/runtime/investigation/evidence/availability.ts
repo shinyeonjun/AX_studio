@@ -1,4 +1,5 @@
 import type { ConnectorContext } from '../../../connectors/types.js';
+import type { DecisionEngine } from '../../../contracts/decision.js';
 import type { Step, WorkflowIR } from '../../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../../workflow/bindings.js';
 import {
@@ -42,13 +43,37 @@ export function hasDecisionEvidenceFromBindings(
 
 export function cloudDataAllowedForDecision(
   ir: WorkflowIR,
-  requirements: { document: boolean; emailBody: boolean },
+  requirements: {
+    document: boolean;
+    emailBody: boolean;
+    boundInputPorts?: readonly string[];
+    readSources?: readonly string[];
+  },
 ): boolean {
   const requiredPolicies = [
     requirements.document ? ir.dataPolicy?.document?.cloudAllowed !== false : true,
     requirements.emailBody ? ir.dataPolicy?.emailBody?.cloudAllowed !== false : true,
+    ...(requirements.boundInputPorts ?? []).map((port) => ir.dataPolicy?.[port]?.cloudAllowed !== false),
+    ...(requirements.readSources ?? []).map((source) => cloudDataAllowedForReadSource(ir, source)),
   ];
   return requiredPolicies.every(Boolean);
+}
+
+export function cloudDataAllowedForReadSource(ir: WorkflowIR, source: string): boolean {
+  const connector = source.split('.', 1)[0] ?? source;
+  return ir.dataPolicy?.[source]?.cloudAllowed !== false
+    && ir.dataPolicy?.[connector]?.cloudAllowed !== false;
+}
+
+export function decisionEngineCanReceiveEvidence(
+  engine: Pick<DecisionEngine, 'dataHandling'> | undefined,
+  ir: WorkflowIR,
+  cloudAllowed: boolean,
+  source: string,
+): boolean {
+  if (!engine) return false;
+  if (engine.dataHandling === 'local') return true;
+  return cloudAllowed && cloudDataAllowedForReadSource(ir, source);
 }
 
 export function hasDecisionEvidence(

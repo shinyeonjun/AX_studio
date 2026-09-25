@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +12,26 @@ from worker import handle_request
 
 
 class WorkerContractTest(unittest.TestCase):
+    def test_ping_does_not_import_command_handlers(self) -> None:
+        code = (
+            "import sys; from protocol import EngineRequest; from worker import handle_request; "
+            "response = handle_request(EngineRequest(id='ping', command='ping', params={})); "
+            "assert response.ok; "
+            "unneeded = {'artifact_store', 'adapters', 'worker_engine.ingest', "
+            "'worker_engine.pdf', 'worker_engine.queries'}; "
+            "loaded = unneeded.intersection(sys.modules); "
+            "assert not loaded, f'unused command modules imported for ping: {sorted(loaded)}'"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_artifact_id_must_be_a_sha256_hex_identifier(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "artifacts"
@@ -38,6 +60,8 @@ class WorkerContractTest(unittest.TestCase):
                     params={
                         "path": str(source),
                         "artifactRoot": str(Path(directory) / "artifacts"),
+                        "allowedPaths": [str(source)],
+                        "allowedRoots": [str(Path(directory) / "artifacts")],
                         "options": {"engine": "unknown"},
                     },
                 )
@@ -57,6 +81,8 @@ class WorkerContractTest(unittest.TestCase):
                     params={
                         "path": str(source),
                         "artifactRoot": str(Path(directory) / "artifacts"),
+                        "allowedPaths": [str(source)],
+                        "allowedRoots": [str(Path(directory) / "artifacts")],
                         "options": {"engine": "basic", "ocr": "unknown"},
                     },
                 )
@@ -88,6 +114,27 @@ class WorkerContractTest(unittest.TestCase):
 
         self.assertFalse(response.ok)
         self.assertEqual(response.error, "page_index_invalid")
+
+    def test_ingest_rejects_a_path_outside_the_host_allowlist(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "report.txt"
+            source.write_text("report", encoding="utf-8")
+            response = handle_request(
+                EngineRequest(
+                    id="request-disallowed-path",
+                    command="ingest",
+                    params={
+                        "path": str(source),
+                        "artifactRoot": str(Path(directory) / "artifacts"),
+                        "allowedPaths": [str(Path(directory) / "other.txt")],
+                        "allowedRoots": [str(Path(directory) / "artifacts")],
+                        "options": {"engine": "basic"},
+                    },
+                )
+            )
+
+        self.assertFalse(response.ok)
+        self.assertEqual(response.error, "document_path_not_allowed")
 
 
 if __name__ == "__main__":

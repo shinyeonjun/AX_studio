@@ -16,6 +16,8 @@ import { runSequence } from '../sequence.js';
 import { executeApprovedActions } from './approved-actions.js';
 import { restoreApprovalSnapshot } from './snapshot.js';
 import { prepareApprovalResume } from './guards.js';
+import { approvalParamsHash } from '../../approval-snapshot.js';
+import { resolveActionParamsForExecution } from '../../step-executor.js';
 
 export async function continueWorkflowAfterApproval(
   host: WorkflowExecutionHost,
@@ -55,7 +57,10 @@ export async function continueWorkflowAfterApproval(
   const resolvedApprovedActions = approvedActions.filter(
     (step): step is Extract<Step, { type: 'action' }> => Boolean(step),
   );
-  const payload = approval.payload as { checkpoint?: unknown } | undefined;
+  const payload = approval.payload as {
+    checkpoint?: unknown;
+    actionSnapshots?: Array<{ actionId?: unknown; actionRef?: unknown; paramsHash?: unknown }>;
+  } | undefined;
   const checkpoint = isExecutionCheckpoint(payload?.checkpoint) ? payload.checkpoint : undefined;
   const connections = host.config.store.getConnections();
   const ctx = createConnectorContext(
@@ -72,6 +77,17 @@ export async function continueWorkflowAfterApproval(
   );
   ctx.outputs = { ...(checkpoint?.outputs ?? {}) };
   const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };
+  const approvalSnapshots = new Map<string, { actionRef: string; paramsHash: string }>();
+  for (const snapshot of payload?.actionSnapshots ?? []) {
+    if (typeof snapshot.actionId === 'string'
+      && typeof snapshot.actionRef === 'string'
+      && typeof snapshot.paramsHash === 'string') {
+      approvalSnapshots.set(snapshot.actionId, {
+        actionRef: snapshot.actionRef,
+        paramsHash: snapshot.paramsHash,
+      });
+    }
+  }
 
   try {
     const contractIssues = validateWorkflowContracts(ir, { runtimeConnectors: host.connectors });
@@ -80,6 +96,18 @@ export async function continueWorkflowAfterApproval(
         code: 'contract_validation_failed',
         data: { issues: contractIssues },
       });
+    }
+    for (const action of resolvedApprovedActions) {
+      const expected = approvalSnapshots.get(action.id);
+      if (!expected) {
+        throw Object.assign(new Error('승인 snapshot이 없습니다.'), { code: 'approval_snapshot_missing' });
+      }
+      const resolved = resolveActionParamsForExecution(action, ir, ctx, stepResults);
+      if (resolved.actionDefinition.id !== expected.actionRef || approvalParamsHash(resolved.params) !== expected.paramsHash) {
+        throw Object.assign(new Error('승인 당시의 실행 대상과 현재 실행 대상이 다릅니다.'), {
+          code: 'approval_target_changed',
+        });
+      }
     }
     const remainingStepIds = new Set([
       ...(checkpoint?.remainingStepIds ?? []),
@@ -102,6 +130,7 @@ export async function continueWorkflowAfterApproval(
       remainingStepIds,
       ctx,
       stepResults,
+      approvalSnapshots,
     });
 
     if (checkpoint) {
@@ -153,7 +182,11 @@ export async function continueWorkflowAfterApproval(
       message: error.message,
       ...(isContractFailure(error) ? { data: error.data } : {}),
     });
-    host.config.store.resolveApproval(approvalId, true);
+    if (code === 'approval_snapshot_missing' || code === 'approval_target_changed') {
+      host.config.store.failApproval(approvalId);
+    } else {
+      host.config.store.resolveApproval(approvalId, true);
+    }
     host.config.store.finishExecution(execution.id, 'failed', code, log);
     const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };
     host.notifyExecutionFinished(failedResult);

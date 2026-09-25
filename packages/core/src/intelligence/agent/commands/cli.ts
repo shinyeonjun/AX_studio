@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { buildDesignToolContext } from '../../design-tools/context.js';
-import { buildConnectorsFromStore } from '../../../connectors/registry.js';
-import { CONNECTOR_CATALOG, CONNECTOR_IDS, isConnectorAlwaysOn } from '../../../catalog/index.js';
+import { connectedConnectorIds } from '../../../catalog/index.js';
 import { createAxStudioCore } from '../../../application/bootstrap.js';
 import { AxCommandSchema } from './schema.js';
 import { AGENT_COMMAND_CONTEXT } from './access.js';
@@ -24,15 +23,6 @@ type CliEnvelope = {
   status: 'invalid' | 'error';
   issues: Array<{ code: string; message: string }>;
 };
-
-function connectedConnectorIds(store: { getConnections: () => Array<{ connector: string; connected: boolean }> }): string[] {
-  const configured = store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
-  const builtins = CONNECTOR_IDS.filter((id) => {
-    const entry = CONNECTOR_CATALOG[id];
-    return entry.runtimeAvailable && isConnectorAlwaysOn(id);
-  });
-  return [...new Set([...configured, ...builtins])];
-}
 
 function readStdin(): Promise<string> {
   if (process.stdin.isTTY) return Promise.resolve('');
@@ -94,10 +84,10 @@ async function main(): Promise<void> {
       // instances. Keep that host setup out of workflow-only commands.
       designToolContextFactory: () => {
         const connections = core.store.getConnections();
-        const connected = connectedConnectorIds(core.store);
+        const connected = connectedConnectorIds(connections);
         return buildDesignToolContext(connections, connected, {
           allowUntrustedData: true,
-          connectors: buildConnectorsFromStore(core.store),
+          connectors: core.runtime.connectors,
           discoveryMetadata: core.store.listDiscoveryMetadata(),
         });
       },

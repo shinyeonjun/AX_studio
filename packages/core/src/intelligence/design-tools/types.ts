@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type {
   Connector,
+  ConnectorFailureKind,
   SourceListingConnection,
   SourceListingContext,
 } from '../../connectors/types.js';
@@ -142,6 +143,8 @@ export interface DesignToolResult {
   ok: boolean;
   data?: unknown;
   error?: string;
+  /** Sanitized category only; never the provider's raw error code/message. */
+  failureKind?: ConnectorFailureKind;
   /** Bounded, untrusted provider error details exposed only to opted-in local callers. */
   errorDetails?: unknown;
 }

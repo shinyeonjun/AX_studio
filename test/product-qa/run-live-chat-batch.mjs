@@ -13,6 +13,7 @@ import {
 } from '@ax-studio/core';
 import { GmailConnector } from '@ax-studio/core';
 import { SlackConnector } from '@ax-studio/core';
+import { emailAddresses, isAllowedTestChannel, isAllowedTestRecipients } from './live-send-policy.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const dataRoot = process.env.AX_DATA_ROOT?.trim()
@@ -182,15 +183,25 @@ function countedDecisionEngine(decisionEngine, calls) {
 }
 
 const DEFAULT_TEST_EMAIL = {
-  to: ['plosind@naver.com', 'sinyeonjun9@gmail.com'],
+  to: emailAddresses(process.env.AX_LIVE_TEST_EMAILS ?? ''),
   subject: 'AX Studio 실사용 전송 테스트',
   body: 'AX Studio 연결 및 실제 Gmail 전송 테스트 메일입니다. 별도 회신은 필요하지 않습니다.',
 };
 
-function emailAddresses(value) {
-  return typeof value === 'string'
-    ? [...value.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu)].map((match) => match[0].toLowerCase())
-    : [];
+const TEST_SLACK_CHANNEL_IDS = new Set(
+  (process.env.AX_LIVE_TEST_SLACK_CHANNEL_IDS ?? '').split(/[\s,]+/u).filter(Boolean),
+);
+
+function interpolateTestEmailRecipients(value, recipients) {
+  if (typeof value === 'string') return value.replaceAll('{{TEST_EMAIL_TO}}', recipients);
+  if (Array.isArray(value)) return value.map((entry) => interpolateTestEmailRecipients(entry, recipients));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+      key,
+      interpolateTestEmailRecipients(entry, recipients),
+    ]));
+  }
+  return value;
 }
 
 function explicitExternalApproval(userMessage) {
@@ -226,15 +237,13 @@ function isAllowedTestAction(actions, scenario) {
 
   for (const step of actions) {
     if (step.connector === 'slack' && step.action === 'message.send') {
-      const channel = typeof step.params?.channel === 'string' ? step.params.channel.trim() : '';
-      const isTestChannel = /(?:^|[#\s])ax테스트(?:2|3)?(?:$|\s)/iu.test(channel)
-        || new Set(['C0BRC7MDE73', 'C0BRJ3GGPQ13']).has(channel);
-      if (!isTestChannel) return { ok: false, reason: 'slack_channel_not_allowlisted' };
+      if (!isAllowedTestChannel(step.params?.channel, TEST_SLACK_CHANNEL_IDS)) {
+        return { ok: false, reason: 'slack_channel_not_allowlisted' };
+      }
       continue;
     }
     if (step.connector === 'gmail' && step.action === 'message.send') {
-      const recipients = new Set(emailAddresses(step.params?.to));
-      if (recipients.size !== allowedEmails.size || [...allowedEmails].some((value) => !recipients.has(value))) {
+      if (!isAllowedTestRecipients(step.params?.to, allowedEmails)) {
         return { ok: false, reason: 'gmail_recipient_not_allowlisted' };
       }
       if (step.params?.subject !== testEmail.subject) return { ok: false, reason: 'gmail_subject_mismatch' };
@@ -332,7 +341,11 @@ async function main() {
   await app.whenReady();
   enableAppFileLog();
 
-  const scenario = JSON.parse(readFileSync(scenarioPath, 'utf8'));
+  const scenario = interpolateTestEmailRecipients(
+    JSON.parse(readFileSync(scenarioPath, 'utf8')),
+    DEFAULT_TEST_EMAIL.to.join(', '),
+  );
+  scenario.testEmail = { ...DEFAULT_TEST_EMAIL, ...scenario.testEmail, to: DEFAULT_TEST_EMAIL.to };
   if (scenario.autoApproveExternal && process.env.AX_ALLOW_LIVE_EXTERNAL_SEND !== '1') {
     console.log('[live-chat-batch] external sends remain pending; set AX_ALLOW_LIVE_EXTERNAL_SEND=1 for an explicit live-send run.');
   }

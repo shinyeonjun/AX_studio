@@ -1,8 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
 
 describe('workspace chat execution and workflow mapping', () => {
+  it('reads the transcript only once when upserting an execution result', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const chat = store.saveWorkspaceChat({
+      messages: [{ role: 'user', content: '업무를 실행해줘' }],
+    });
+    const prepare = vi.spyOn(db, 'prepare');
+
+    store.upsertWorkspaceChatExecutionResult(chat.id, {
+      role: 'assistant',
+      kind: 'execution_result',
+      executionId: 'run-once',
+      content: '완료',
+    });
+
+    expect(prepare.mock.calls.filter(([sql]) => sql.includes('FROM workspace_chats WHERE id = ?'))).toHaveLength(1);
+    expect(store.getWorkspaceChat(chat.id)?.messages.at(-1)?.executionId).toBe('run-once');
+  });
+
   it('keeps the latest host result for the same execution during stale renderer saves', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

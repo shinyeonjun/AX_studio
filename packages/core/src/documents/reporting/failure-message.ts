@@ -39,6 +39,12 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
   else if (code === 'report_source_discovery_no_progress') lines.push('같은 연결과 경로를 반복 확인해도 진행되지 않았습니다. 실패한 연결을 반복하지 말고 다른 연결·경로를 지정하거나 API 명세를 추가해 새 요청으로 실행해 주세요.');
   else if (code === 'report_source_discovery_needs_input') lines.push('연결된 자료만으로 조회 방법을 확정할 수 없습니다. 필요한 API 명세·조회 경로나 DB 구조 정보를 확인해 주세요. 조회 계획이 확정되지 않아 보고서를 생성하지 않았습니다.');
   else if (code === 'report_source_discovery_unsupported') lines.push('필요한 조회 방식이 현재 지원되는 기능에 포함되지 않습니다. 결과를 임의로 생성하지 않았습니다.');
+  else if (code === 'report_capture_refinement_jev_unavailable' || code === 'report_capture_refinement_jev_failed') {
+    lines.push('API 조회 구조를 안전하게 고르기 위한 Jev 판단을 완료하지 못했습니다. 연결된 API 명세를 확인하고 다시 시도해 주세요. LLM 추측으로 대신 실행하지 않았습니다.');
+  }
+  else if (code === 'report_capture_refinement_jev_answer_invalid') {
+    lines.push('Jev가 허용된 API 조회 후보 중 하나를 유효하게 선택하지 못했습니다. 잘못된 조회 규칙으로 보고서를 만들지 않았습니다.');
+  }
   else if (sourceNeedsNewPlan) lines.push('필요한 원천 데이터를 모두 포함하는 조회 계획을 확정하지 못했습니다. 허용된 연결과 필요한 데이터의 제공 여부를 확인한 뒤 새 요청으로 실행해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
   else if (code === 'report_evidence_deadline_exceeded') lines.push('계산 근거를 확인하는 전체 시간이 초과되었습니다. 저장된 실행 기록에서 이어서 재시도할 수 있는지 확인해 주세요.');
   else if (['report_evidence_no_progress', 'report_evidence_round_limit', 'report_evidence_insufficient_evidence', 'report_evidence_ambiguous_rule', 'report_evidence_unsupported_operation'].includes(code)) lines.push('추가 근거를 확인했지만 계산 계획을 확정하지 못했습니다. 계산 기준·자료 또는 지원 연산의 확인이 필요합니다. 결과를 임의로 생성하지 않았습니다.');

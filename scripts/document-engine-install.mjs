@@ -24,7 +24,8 @@ function verifyBundle(bundle) {
       'import sys, cv2, pymupdf, pypdfium2; from reportlab.pdfgen import canvas; c=canvas.Canvas(sys.argv[1]); c.drawString(72,720,"AX packaged document smoke"); c.save()', pdf], options);
     const response = JSON.parse(execFileSync(executable, [join(bundle, 'src', 'worker.py')], {
       ...options, input: JSON.stringify({ id: 'package-smoke', command: 'ingest', params: {
-        path: pdf, artifactRoot: join(scratch, 'artifacts'), options: { engine: 'basic' },
+        path: pdf, artifactRoot: join(scratch, 'artifacts'), allowedPaths: [pdf],
+        allowedRoots: [join(scratch, 'artifacts')], options: { engine: 'basic' },
       } }),
     }));
     if (!response.ok || !JSON.stringify(response.data).includes('AX packaged document smoke')) {

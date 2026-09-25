@@ -6,6 +6,7 @@ import type {
   DecisionEvaluationResult,
   DecisionQuestion,
 } from '../../contracts/decision.js';
+import { MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
 
 const ProbabilitySchema = z.number().min(0).max(1);
 
@@ -30,16 +31,19 @@ const JevAnswerSchema = z.discriminatedUnion('type', [
 
 const JevResponseSchema = z.object({
   model: z.string().nullish(),
-  answers: z.record(JevAnswerSchema),
+  answers: z.unknown(),
   usage: z.object({
     input_tokens: z.number().nullish(),
     output_tokens: z.number().nullish(),
   }).nullish(),
 });
 
-export const JEV_DEFAULT_TIMEOUT_MS = 30_000;
-export const JEV_DEFAULT_MAX_REQUEST_BYTES = 262_144;
-export const JEV_DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
+const JEV_DEFAULT_TIMEOUT_MS = 30_000;
+// ponytail: a synthetic 194 KiB request hit TypeSafe max_tokens_exceeded; 64 KiB batches preserve all questions without overrunning model input.
+const JEV_DEFAULT_MAX_REQUEST_BYTES = 65_536;
+// ponytail: 13-way synthetic fan-out hit system_overloaded once; keep all batches, but send at most four concurrently.
+const JEV_MAX_CONCURRENT_BATCHES = 4;
+const JEV_DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
 
 export interface JevDecisionEngineOptions {
   apiKey: string;
@@ -55,19 +59,23 @@ export interface JevDecisionEngineOptions {
 
 export class JevDecisionError extends Error {
   readonly status?: number;
+  readonly providerRequestCount?: number;
+  readonly requestBytes?: number;
 
-  constructor(message: string, status?: number) {
-    super(message);
+  constructor(message: string, status?: number, providerRequestCount?: number, cause?: unknown, requestBytes?: number) {
+    super(message, cause === undefined ? undefined : { cause });
     this.name = 'JevDecisionError';
     this.status = status;
+    this.providerRequestCount = providerRequestCount;
+    this.requestBytes = requestBytes;
   }
 }
 
 function validateQuestion(id: string, question: DecisionQuestion): void {
   if (question.type === 'choice') {
     const count = Object.keys(question.criteria).length;
-    if (count < 1 || count > 255) {
-      throw new JevDecisionError(`Choice question ${id} must contain 1-255 criteria.`);
+    if (count < 1 || count > MAX_DECISION_CHOICE_CRITERIA) {
+      throw new JevDecisionError(`Choice question ${id} must contain 1-${MAX_DECISION_CHOICE_CRITERIA} criteria.`);
     }
   }
   if (question.type === 'score' && question.criteria.length < 2) {
@@ -95,6 +103,10 @@ function errorMessageFromBody(body: unknown): string | undefined {
     if (typeof nested.message === 'string') return nested.message;
   }
   if (typeof value.detail === 'string') return value.detail;
+  if (value.detail && typeof value.detail === 'object') {
+    const detail = value.detail as Record<string, unknown>;
+    if (typeof detail.error_type === 'string') return detail.error_type;
+  }
   if (typeof value.error_type === 'string') return value.error_type;
   return undefined;
 }
@@ -160,6 +172,21 @@ function mapAnswer(id: string, question: DecisionQuestion, raw: z.infer<typeof J
   };
 }
 
+function parseAnswers(value: unknown): Map<string, z.infer<typeof JevAnswerSchema>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new JevDecisionError('TypeSafe response did not match the expected Jev schema: answers must be an object.');
+  }
+  const answers = new Map<string, z.infer<typeof JevAnswerSchema>>();
+  for (const [id, raw] of Object.entries(value)) {
+    const parsed = JevAnswerSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new JevDecisionError(`TypeSafe response did not match the expected Jev schema: ${parsed.error.message}`);
+    }
+    answers.set(id, parsed.data);
+  }
+  return answers;
+}
+
 /**
  * Thin adapter around TypeSafe's native System One endpoint.
  *
@@ -168,6 +195,8 @@ function mapAnswer(id: string, question: DecisionQuestion, raw: z.infer<typeof J
  * POST /v1/systemone, and AX boolean questions mapped to the `noul` primitive.
  */
 export class JevDecisionEngine implements DecisionEngine {
+  readonly dataHandling = 'cloud' as const;
+
   private readonly apiKey: string;
   private readonly model: string;
   private readonly baseURL: string;
@@ -212,8 +241,39 @@ export class JevDecisionEngine implements DecisionEngine {
   }
 
   async evaluate(request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> {
+    let providerRequestsStarted = 0;
+    let providerRequestBytesStarted = 0;
+    try {
+      return await this.evaluateRequest(request, (bytes) => {
+        providerRequestsStarted += 1;
+        providerRequestBytesStarted += bytes;
+      });
+    } catch (error) {
+      if (request.signal?.aborted) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      throw new JevDecisionError(
+        message,
+        error instanceof JevDecisionError ? error.status : undefined,
+        providerRequestsStarted,
+        error,
+        providerRequestBytesStarted,
+      );
+    }
+  }
+
+  private async evaluateRequest(
+    request: DecisionEvaluationRequest,
+    onProviderRequest: (bytes: number) => void,
+  ): Promise<DecisionEvaluationResult> {
+    const evaluateBatch = (
+      batchRequest: DecisionEvaluationRequest,
+      entries: Array<[string, DecisionQuestion]>,
+      body: string,
+      requestBytes: number,
+    ) => this.evaluateBatch(batchRequest, entries, body, requestBytes, onProviderRequest);
+
     const entries = Object.entries(request.questions);
-    if (!entries.length) return { answers: {}, model: this.model };
+    if (!entries.length) return { answers: {}, model: this.model, providerRequestCount: 0, requestBytes: 0 };
     for (const [id, question] of entries) validateQuestion(id, question);
 
     let body: string;
@@ -226,9 +286,133 @@ export class JevDecisionEngine implements DecisionEngine {
     } catch {
       throw new JevDecisionError('TypeSafe request could not be serialized.');
     }
-    if (new TextEncoder().encode(body).byteLength > this.maxRequestBytes) {
-      throw new JevDecisionError('TypeSafe request is too large.');
+    const requestBytes = new TextEncoder().encode(body).byteLength;
+    if (requestBytes <= this.maxRequestBytes) {
+      return await evaluateBatch(request, entries, body, requestBytes);
     }
+
+    const batches = this.splitRequest(body, entries);
+    if (batches.length === 1) {
+      const batch = batches[0]!;
+      return await evaluateBatch(request, batch.entries, batch.body, batch.bytes);
+    }
+
+    if (request.signal?.aborted) {
+      throw request.signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
+    }
+    const controller = new AbortController();
+    const abortExternal = () => controller.abort(request.signal?.reason);
+    request.signal?.addEventListener('abort', abortExternal, { once: true });
+    if (request.signal?.aborted) abortExternal();
+    try {
+      const results: DecisionEvaluationResult[] = [];
+      for (let offset = 0; offset < batches.length; offset += JEV_MAX_CONCURRENT_BATCHES) {
+        const wave = await Promise.all(batches.slice(offset, offset + JEV_MAX_CONCURRENT_BATCHES).map(async batch => {
+          try {
+            return await evaluateBatch({ ...request, signal: controller.signal }, batch.entries, batch.body, batch.bytes);
+          } catch (error) {
+            controller.abort(error);
+            throw error;
+          }
+        }));
+        results.push(...wave);
+      }
+      const answers = Object.fromEntries(results.flatMap(result => Object.entries(result.answers)));
+      const sumUsage = (key: 'inputTokens' | 'outputTokens') => {
+        const values = results.map(result => result.usage?.[key]);
+        return values.every((value): value is number => value !== undefined)
+          ? values.reduce((total, value) => total + value, 0)
+          : undefined;
+      };
+      const inputTokens = sumUsage('inputTokens');
+      const outputTokens = sumUsage('outputTokens');
+      const hasUsage = results.some(result => result.usage !== undefined);
+      return {
+        answers,
+        model: results[0]?.model ?? this.model,
+        providerRequestCount: results.reduce((total, result) => total + (result.providerRequestCount ?? 1), 0),
+        requestBytes: results.reduce((total, result) => total + (result.requestBytes ?? 0), 0),
+        ...(hasUsage
+          ? {
+              usage: {
+                ...(inputTokens === undefined ? {} : { inputTokens }),
+                ...(outputTokens === undefined ? {} : { outputTokens }),
+              },
+            }
+          : {}),
+      };
+    } finally {
+      request.signal?.removeEventListener('abort', abortExternal);
+    }
+  }
+
+  private splitRequest(
+    body: string,
+    entries: Array<[string, DecisionQuestion]>,
+  ): Array<{ entries: Array<[string, DecisionQuestion]>; body: string; bytes: number }> {
+    let wireRequest: { model: string; state?: unknown; questions: Record<string, unknown> };
+    let emptyBody: string;
+    try {
+      wireRequest = JSON.parse(body) as typeof wireRequest;
+      emptyBody = JSON.stringify({ model: wireRequest.model, state: wireRequest.state, questions: {} });
+    } catch {
+      throw new JevDecisionError('TypeSafe request could not be serialized.');
+    }
+    const marker = '"questions":{}';
+    const markerIndex = emptyBody.lastIndexOf(marker);
+    if (markerIndex < 0) throw new JevDecisionError('TypeSafe request could not be serialized.');
+    const valueStart = markerIndex + '"questions":'.length;
+    const baseBytes = new TextEncoder().encode(emptyBody).byteLength;
+    if (baseBytes > this.maxRequestBytes) throw new JevDecisionError('TypeSafe request is too large.');
+
+    const wireEntries = Object.entries(wireRequest.questions);
+    const batches: Array<{ entries: Array<[string, DecisionQuestion]>; body: string; bytes: number }> = [];
+    let batchEntries: Array<[string, DecisionQuestion]> = [];
+    let batchWireEntries: string[] = [];
+    let batchBytes = baseBytes;
+    const encoder = new TextEncoder();
+    const finishBatch = () => {
+      const questionsJson = batchWireEntries.join(',');
+      batches.push({
+        entries: batchEntries,
+        body: `${emptyBody.slice(0, valueStart)}{${questionsJson}}${emptyBody.slice(valueStart + 2)}`,
+        bytes: batchBytes,
+      });
+      batchEntries = [];
+      batchWireEntries = [];
+      batchBytes = baseBytes;
+    };
+
+    for (let index = 0; index < entries.length; index++) {
+      const [id, question] = entries[index]!;
+      const wireQuestion = wireEntries[index]?.[1];
+      let wireEntry: string;
+      try {
+        wireEntry = `${JSON.stringify(id)}:${JSON.stringify(wireQuestion)}`;
+      } catch {
+        throw new JevDecisionError('TypeSafe request could not be serialized.');
+      }
+      const entryBytes = encoder.encode(wireEntry).byteLength;
+      if (baseBytes + entryBytes > this.maxRequestBytes) {
+        throw new JevDecisionError('TypeSafe request is too large.');
+      }
+      const separatorBytes = batchEntries.length ? 1 : 0;
+      if (batchBytes + separatorBytes + entryBytes > this.maxRequestBytes) finishBatch();
+      batchEntries.push([id, question]);
+      batchWireEntries.push(wireEntry);
+      batchBytes += (batchEntries.length > 1 ? 1 : 0) + entryBytes;
+    }
+    if (batchEntries.length) finishBatch();
+    return batches;
+  }
+
+  private async evaluateBatch(
+    request: DecisionEvaluationRequest,
+    entries: Array<[string, DecisionQuestion]>,
+    body: string,
+    requestBytes: number,
+    onProviderRequest: (bytes: number) => void,
+  ): Promise<DecisionEvaluationResult> {
 
     if (request.signal?.aborted) {
       throw request.signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
@@ -246,6 +430,7 @@ export class JevDecisionEngine implements DecisionEngine {
     let response: Response;
     let rawBody: unknown;
     try {
+      onProviderRequest(requestBytes);
       response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
         method: 'POST',
         headers: {
@@ -276,17 +461,19 @@ export class JevDecisionEngine implements DecisionEngine {
     if (!parsed.success) {
       throw new JevDecisionError(`TypeSafe response did not match the expected Jev schema: ${parsed.error.message}`);
     }
+    const parsedAnswers = parseAnswers(parsed.data.answers);
 
-    const answers: Record<string, DecisionAnswer> = {};
-    for (const [id, question] of entries) {
-      const rawAnswer = parsed.data.answers[id];
+    const answers = Object.fromEntries(entries.map(([id, question]) => {
+      const rawAnswer = parsedAnswers.get(id);
       if (!rawAnswer) throw new JevDecisionError(`TypeSafe response is missing answer ${id}.`);
-      answers[id] = mapAnswer(id, question, rawAnswer);
-    }
+      return [id, mapAnswer(id, question, rawAnswer)];
+    }));
 
     return {
       answers,
       ...(parsed.data.model ? { model: parsed.data.model } : { model: this.model }),
+      providerRequestCount: 1,
+      requestBytes,
       ...(parsed.data.usage
         ? {
             usage: {

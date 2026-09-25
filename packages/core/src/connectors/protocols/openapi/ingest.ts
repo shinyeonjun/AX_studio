@@ -1,4 +1,4 @@
-import { registerDynamicCapabilities } from '../../../catalog/dynamic-catalog.js';
+import { replaceDynamicCapabilitiesForConnector } from '../../../catalog/dynamic-catalog.js';
 import { OpenApiConnector } from './connector.js';
 import { openApiCapabilitiesFromSpec, parseOpenApiSpec, type OpenApiSpec } from './parse.js';
 
@@ -8,10 +8,10 @@ export interface OpenApiIngestResult {
   capabilityIds: string[];
 }
 
-export function ingestOpenApiSpec(id: string, raw: unknown): OpenApiIngestResult {
-  const spec = parseOpenApiSpec(id, raw);
+export function ingestOpenApiSpec(id: string, raw: unknown, baseUrlOverride?: string): OpenApiIngestResult {
+  const spec = parseOpenApiSpec(id, raw, baseUrlOverride);
   const capabilities = openApiCapabilitiesFromSpec(spec);
-  registerDynamicCapabilities(capabilities);
+  replaceDynamicCapabilitiesForConnector('openapi', capabilities);
   return {
     spec,
     connector: new OpenApiConnector([spec]),

@@ -2,7 +2,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { decodeCodexOutput } from '../../cli-json/schema/decode-codex.js';
-import type { ModelImageInput, ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
+import {
+  reportModelTokenUsage,
+  type ModelImageInput,
+  type ModelProvider,
+  type StructuredGenerateInput,
+  type TextGenerateInput,
+} from '../../provider.js';
 import { zodToCodexJsonSchema } from '../../cli-json.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary, withTempDir } from '../shared.js';
@@ -18,6 +24,7 @@ export function codexExecArgs(
 ): string[] {
   return [
     'exec',
+    '--json',
     '--skip-git-repo-check',
     ...(workDir ? ['-C', workDir] : []),
     '-s',
@@ -36,6 +43,23 @@ export function codexExecArgs(
     // rejects large command lines with ENAMETOOLONG.
     '-',
   ];
+}
+
+function reportCodexUsage(line: string, input: Pick<TextGenerateInput, 'onUsage'>): void {
+  let parsed: unknown;
+  try { parsed = JSON.parse(line); } catch { return; }
+  if (!parsed || typeof parsed !== 'object') return;
+  const event = parsed as { type?: unknown; usage?: unknown };
+  if (event.type !== 'turn.completed' || !event.usage || typeof event.usage !== 'object') return;
+  const usage = event.usage as Record<string, unknown>;
+  const count = (value: unknown) => typeof value === 'number' ? value : undefined;
+  reportModelTokenUsage(input, {
+    inputTokens: count(usage.input_tokens),
+    outputTokens: count(usage.output_tokens),
+    cachedInputTokens: count(usage.cached_input_tokens),
+    cacheWriteInputTokens: count(usage.cache_write_input_tokens),
+    reasoningTokens: count(usage.reasoning_output_tokens),
+  });
 }
 
 async function imageArgs(dir: string, images: ModelImageInput[] = []): Promise<string[]> {
@@ -73,7 +97,14 @@ export class CodexCliProvider implements ModelProvider {
       const result = await runCommand(
         command,
         codexExecArgs(this.model, prompt, [...await imageArgs(dir, input.images), '-o', outPath], dir),
-        { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
+        {
+          input: prompt,
+          timeoutMs: input.timeoutMs ?? 180_000,
+          abortSignal: input.abortSignal,
+          cwd: dir,
+          captureStdout: false,
+          onStdoutLine: line => reportCodexUsage(line, input),
+        },
       );
       try {
         return (await readFile(outPath, 'utf8')).trim();
@@ -104,7 +135,14 @@ export class CodexCliProvider implements ModelProvider {
           '-o',
           outPath,
         ], dir, reasoningEffort),
-        { input: prompt, timeoutMs: input.timeoutMs ?? 180_000, abortSignal: input.abortSignal, cwd: dir },
+        {
+          input: prompt,
+          timeoutMs: input.timeoutMs ?? 180_000,
+          abortSignal: input.abortSignal,
+          cwd: dir,
+          captureStdout: false,
+          onStdoutLine: line => reportCodexUsage(line, input),
+        },
       );
       try {
         return {

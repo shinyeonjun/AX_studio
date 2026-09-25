@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { desktopAppDisplayName } from './data-paths.js';
@@ -24,7 +24,7 @@ function hardenWebContents(contents: Electron.WebContents): void {
 }
 
 export function isTrustedRendererUrl(url: string): boolean {
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     try {
       const configured = new URL(process.env.ELECTRON_RENDERER_URL);
       const requested = new URL(url);
@@ -69,7 +69,7 @@ export function createMainWindow() {
 
   hardenWebContents(mainWindow.webContents);
 
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));

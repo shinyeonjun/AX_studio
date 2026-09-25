@@ -48,6 +48,7 @@ describe('webhook request and listener ownership', () => {
     await listener.start({ port, secret: 'test-secret' }, onEvent);
     let socket: Socket | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let settleWatchdog!: (value: string) => void;
     try {
       socket = connect(port, '127.0.0.1');
       socket.on('error', () => {});
@@ -56,12 +57,16 @@ describe('webhook request and listener ownership', () => {
       const stopped = listener.stop();
       const result = await Promise.race([
         stopped.then(() => 'stopped'),
-        new Promise(resolve => { timer = setTimeout(() => resolve('still_waiting'), 300); }),
+        new Promise<string>(resolve => {
+          settleWatchdog = resolve;
+          timer = setTimeout(() => resolve('still_waiting'), 300);
+        }),
       ]);
       expect(result).toBe('stopped');
       expect(onEvent).not.toHaveBeenCalled();
     } finally {
       clearTimeout(timer);
+      settleWatchdog?.('cancelled');
       socket?.destroy();
       await listener.stop();
     }

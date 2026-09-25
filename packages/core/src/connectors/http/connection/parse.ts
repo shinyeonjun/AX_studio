@@ -3,6 +3,7 @@ import {
   type HttpAuthConfig,
   type HttpConnectionConfig,
   type HttpConnectionRecord,
+  type HttpDiscoveredReadOperation,
   type HttpEndpoint,
 } from './contracts.js';
 
@@ -17,6 +18,27 @@ function parseAuthType(value: unknown): HttpAuthConfig['type'] | null {
     return (value ?? 'none') as HttpAuthConfig['type'];
   }
   return null;
+}
+
+function parseDiscoveredReadOperations(value: unknown): HttpDiscoveredReadOperation[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<string>();
+  const operations: HttpDiscoveredReadOperation[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    const path = typeof record.path === 'string' ? record.path.trim() : '';
+    const label = typeof record.label === 'string' ? record.label.trim() : '';
+    if (!path || path.length > 512 || !label || !/^[A-Za-z0-9._~!$&'()*+,;=:@%/-]+$/u.test(path)
+      || path.startsWith('/') || path.includes('//') || /%(?:2f|5c)/iu.test(path)
+      || /(?:^|\/)(?:\.{1,2})(?:\/|$)/u.test(path) || /[?#]/u.test(path)) continue;
+    const key = path.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    operations.push({ path, label: label.slice(0, 160) });
+    if (operations.length >= 200) break;
+  }
+  return operations;
 }
 
 function parseEndpointRecord(value: unknown, fallbackId: string): HttpEndpoint | null {
@@ -42,6 +64,7 @@ function parseEndpointRecord(value: unknown, fallbackId: string): HttpEndpoint |
     label: typeof record.label === 'string' ? record.label.trim() || undefined : undefined,
     auth,
     authStored: record.authStored === true,
+    discoveredReadOperations: parseDiscoveredReadOperations(record.discoveredReadOperations),
     connectedAt: typeof record.connectedAt === 'string' ? record.connectedAt : undefined,
     lastError: typeof record.lastError === 'string' ? record.lastError : undefined,
   };
@@ -83,6 +106,9 @@ export function serializeHttpEndpoints(endpoints: readonly HttpEndpoint[]): Reco
       authHeader: endpoint.auth?.header,
       username: endpoint.auth?.username,
       authStored: endpoint.authStored === true,
+      ...(endpoint.discoveredReadOperations === undefined
+        ? {}
+        : { discoveredReadOperations: endpoint.discoveredReadOperations }),
       connectedAt: endpoint.connectedAt,
       lastError: endpoint.lastError,
     })),

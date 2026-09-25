@@ -3,16 +3,8 @@ import {
   displayForCapability as coreDisplayForCapability,
   displayForTrigger as coreDisplayForTrigger,
   displayForWorkflowNode as coreDisplayForWorkflowNode,
-  editPromptForNode,
-  editPromptForTrigger,
-  type WorkflowCardBrandStyle,
-  type WorkflowCardDisplay,
-  type WorkflowVisualLine,
 } from '@ax-studio/core/visual-display';
 import { applyWorkflowNodeIcon, triggerIconConnector, triggerNodeIcon, workflowNodeIcon } from './workflow-icons.js';
-
-export type { WorkflowCardBrandStyle, WorkflowCardDisplay, WorkflowVisualLine };
-export { editPromptForNode, editPromptForTrigger };
 
 export function displayForTrigger(draft: WorkflowCanvasDraft, slots?: CompletenessResult['slots']) {
   const base = coreDisplayForTrigger(draft, slots);

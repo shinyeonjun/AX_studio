@@ -31,7 +31,7 @@
     "@slack/socket-mode": "^3.0.0",
     "@slack/web-api": "^7.8.0",
     "@xyflow/react": "^12.11.3",
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^13.0.3",
     "google-auth-library": "^11.0.0",
     "googleapis": "^181.0.0",
     "mysql2": "^3.24.2",
@@ -48,10 +48,10 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "44.3.0",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.16.1",
     "electron-vite": "^3.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.1"
   }
 }

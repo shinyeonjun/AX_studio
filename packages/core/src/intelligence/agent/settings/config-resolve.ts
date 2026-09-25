@@ -1,7 +1,6 @@
-import type { AiBrand, AiConnectionMode, AiProviderId, CliProviderId } from './ai-provider-id.js';
+import type { AiBrand, AiConnectionMode, AiProviderConfig, AiProviderId, CliProviderId } from './ai-provider-id.js';
 import { AI_BRAND_CATALOG, CLI_PROVIDER_META } from './catalog.js';
-import type { AiProviderConfig } from './config-schema.js';
-import { DEFAULT_AI_PROVIDER } from './config-schema.js';
+import { DEFAULT_AI_PROVIDER } from './config-defaults.js';
 
 export const BRAND_CLI_PROVIDER: Record<AiBrand, CliProviderId> = {
   claude: 'claude-cli',

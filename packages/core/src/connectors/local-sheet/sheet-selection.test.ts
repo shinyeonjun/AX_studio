@@ -15,18 +15,18 @@ function writeWorkbook(): string {
 }
 
 describe('readSheetFromPath', () => {
-  it('returns the requested sheet', () => {
-    const table = readSheetFromPath({ path: writeWorkbook(), sheetName: 'Second' });
+  it('returns the requested sheet', async () => {
+    const table = await readSheetFromPath({ path: writeWorkbook(), sheetName: 'Second' });
 
     expect(table.name).toBe('Second');
     expect(table.rows[0]?.values.name).toBe('second');
   });
 
-  it('returns the first sheet when no sheet name is specified', () => {
-    expect(readSheetFromPath({ path: writeWorkbook() }).name).toBe('First');
+  it('returns the first sheet when no sheet name is specified', async () => {
+    expect((await readSheetFromPath({ path: writeWorkbook() })).name).toBe('First');
   });
 
-  it('rejects an explicitly requested sheet that does not exist', () => {
-    expect(() => readSheetFromPath({ path: writeWorkbook(), sheetName: 'Missing' })).toThrow('sheet_not_found');
+  it('rejects an explicitly requested sheet that does not exist', async () => {
+    await expect(readSheetFromPath({ path: writeWorkbook(), sheetName: 'Missing' })).rejects.toThrow('sheet_not_found');
   });
 });

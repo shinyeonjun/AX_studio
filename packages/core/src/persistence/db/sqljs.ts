@@ -179,12 +179,26 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   close(): void {
-    if (this.transactionDepth > 0) {
-      this.db.run('ROLLBACK');
-      this.transactionDepth = 0;
+    this.clearPersistTimers();
+    let failure: unknown;
+    let failed = false;
+    try {
+      if (this.transactionDepth > 0) {
+        this.db.run('ROLLBACK');
+        this.transactionDepth = 0;
+      }
+      this.flushPersist();
+    } catch (error) {
+      failure = error;
+      failed = true;
     }
-    this.flushPersist();
-    this.db.close();
+    try {
+      this.db.close();
+    } catch (error) {
+      if (!failed) failure = error;
+      failed = true;
+    }
+    if (failed) throw failure;
   }
 
   persistNow(): void {
@@ -192,36 +206,52 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   private flushPersist(): void {
+    this.clearPersistTimers();
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
-    if (this.persistTimer) {
-      clearTimeout(this.persistTimer);
-      this.persistTimer = undefined;
-    }
-    if (this.maxPersistTimer) {
-      clearTimeout(this.maxPersistTimer);
-      this.maxPersistTimer = undefined;
-    }
     assertStandaloneDatabase(this.filePath);
     const temporaryPath = this.filePath + '.tmp';
-    let snapshot: Uint8Array;
     try {
-      snapshot = this.db.export();
+      let snapshot: Uint8Array;
+      try {
+        snapshot = this.db.export();
+      } finally {
+        // sql.js export reopens the connection and resets connection pragmas.
+        this.db.run('PRAGMA foreign_keys = ON');
+      }
+      writeFileSync(temporaryPath, snapshot);
+      renameSync(temporaryPath, this.filePath);
     } finally {
-      // sql.js export reopens the connection and resets connection pragmas.
-      this.db.run('PRAGMA foreign_keys = ON');
+      try {
+        rmSync(temporaryPath, { force: true });
+      } catch {
+        // Preserve the persistence error; the next successful flush replaces this snapshot.
+      }
     }
-    writeFileSync(temporaryPath, Buffer.from(snapshot));
-    renameSync(temporaryPath, this.filePath);
+  }
+
+  private clearPersistTimers(): void {
+    clearTimeout(this.persistTimer);
+    clearTimeout(this.maxPersistTimer);
+    this.persistTimer = undefined;
+    this.maxPersistTimer = undefined;
+  }
+
+  private flushPersistFromTimer(): void {
+    try {
+      this.flushPersist();
+    } catch (error) {
+      console.error('[sql.js] deferred database persistence failed:', error);
+    }
   }
 
   private persist(): void {
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
-    this.persistTimer = setTimeout(() => this.flushPersist(), PERSIST_DEBOUNCE_MS);
+    this.persistTimer = setTimeout(() => this.flushPersistFromTimer(), PERSIST_DEBOUNCE_MS);
     if (!this.maxPersistTimer) {
-      this.maxPersistTimer = setTimeout(() => this.flushPersist(), MAX_PERSIST_DELAY_MS);
+      this.maxPersistTimer = setTimeout(() => this.flushPersistFromTimer(), MAX_PERSIST_DELAY_MS);
     }
   }
 }

@@ -4,6 +4,7 @@ import type { DocumentArtifact } from '../contracts/artifacts/document.js';
 import type { WorkflowStore } from './workflow-store.js';
 import { ArtifactStore } from './artifact-store.js';
 import { WorkspaceSourceIngestQueue } from './workspace-source-ingest-queue.js';
+import { appendAppLog } from './paths/app-log.js';
 import {
   WorkspaceSourceError,
   type WorkspaceSourceReadResult,
@@ -148,14 +149,36 @@ export class WorkspaceSourceService {
     return { source, artifact };
   }
 
+  /** @deprecated Use deleteSession when deleting a workspace chat. */
   removeSession(sessionId: string): void {
     const safeSessionId = assertSessionId(sessionId);
-    if (this.store.listWorkspaceSources(safeSessionId).some(source => this.ingestQueue.has(source.id))) {
+    const sources = this.store.listWorkspaceSources(safeSessionId);
+    this.assertNoActiveIngestion(sources);
+    removeSessionArtifacts(this.store, this.artifactStore, this.sessionsRoot, safeSessionId, sources);
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    const safeSessionId = assertSessionId(sessionId);
+    await this.recovery;
+    const sources = this.store.listWorkspaceSources(safeSessionId);
+    this.assertNoActiveIngestion(sources);
+    // Commit the DB deletion before filesystem GC: if the cascade fails,
+    // keep both the source rows and their backing artifacts intact.
+    this.store.deleteWorkspaceChat(safeSessionId);
+    try {
+      removeSessionArtifacts(this.store, this.artifactStore, this.sessionsRoot, safeSessionId, sources);
+    } catch (error) {
+      appendAppLog('warn', 'Workspace chat was deleted but source cleanup failed.', {
+        sessionId: safeSessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private assertNoActiveIngestion(sources: readonly WorkspaceSourceRecord[]): void {
+    if (sources.some(source => this.ingestQueue.has(source.id))) {
       throw new WorkspaceSourceError('workspace_source_processing');
     }
-    // GC artifacts this session imported, unless another session still
-    // references the same content (importFile dedupes by sha).
-    removeSessionArtifacts(this.store, this.artifactStore, this.sessionsRoot, safeSessionId);
   }
 
   private async resumePendingSources(): Promise<void> {

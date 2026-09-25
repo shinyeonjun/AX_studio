@@ -1,6 +1,6 @@
 import type { McpToolDefinition } from './client.js';
 
-export interface McpConnectionRecord {
+interface McpConnectionRecord {
   serverId?: string;
   label?: string;
   tools?: McpToolDefinition[];

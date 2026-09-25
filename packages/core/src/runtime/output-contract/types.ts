@@ -7,7 +7,7 @@ export const OUTPUT_CONTRACT_FAILURE_CODES = [
   'output_volume_anomaly',
 ] as const;
 
-export type OutputContractIssueCode = (typeof OUTPUT_CONTRACT_FAILURE_CODES)[number];
+type OutputContractIssueCode = (typeof OUTPUT_CONTRACT_FAILURE_CODES)[number];
 
 /** A safe, payload-free explanation suitable for persisted execution logs. */
 export interface OutputContractIssue {
@@ -22,7 +22,7 @@ export type ContractCheckResult =
   | { ok: true; issues: [] }
   | { ok: false; issues: OutputContractIssue[] };
 
-export interface ContractFailureData {
+interface ContractFailureData {
   phase: string;
   issues: OutputContractIssue[];
 }

@@ -1,8 +1,8 @@
 import type { ReadSheetOptions } from './contracts.js';
 import { readWorkbookFromPath } from './workbook.js';
 
-export function readSheetFromPath(options: ReadSheetOptions) {
-  const { workbook, tables } = readWorkbookFromPath(options.path, { rowLimit: options.rowLimit });
+export async function readSheetFromPath(options: ReadSheetOptions) {
+  const { workbook, tables } = await readWorkbookFromPath(options.path, { rowLimit: options.rowLimit });
   if (options.sheetName) {
     const sheet = workbook.sheets.find((entry) => entry.name === options.sheetName);
     const tableId = sheet?.tables[0]?.artifactId;

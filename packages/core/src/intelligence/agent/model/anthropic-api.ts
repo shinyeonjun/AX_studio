@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from './provider.js';
+import { reportModelTokenUsage, type ModelProvider, type ModelTokenUsage, type StructuredGenerateInput, type TextGenerateInput } from './provider.js';
 import { chatMessagesFromInput } from './chat.js';
 import { parseStructuredOutput } from './cli-json.js';
 
@@ -47,7 +47,7 @@ async function callAnthropic(
   system: string,
   input: { user?: string; messages?: import('./chat.js').ChatMessage[]; abortSignal?: AbortSignal; maxOutputTokens?: number },
   temperature: number,
-): Promise<string> {
+): Promise<{ text: string; usage: ModelTokenUsage }> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -70,10 +70,25 @@ async function callAnthropic(
   }
   const data = (await response.json()) as {
     content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
   };
   const text = data.content?.find((block) => block.type === 'text')?.text?.trim();
   if (!text) throw new Error('Anthropic API 응답이 비어 있습니다.');
-  return text;
+  const inputTokens = data.usage?.input_tokens;
+  const outputTokens = data.usage?.output_tokens;
+  const cachedInputTokens = data.usage?.cache_read_input_tokens;
+  const cacheCreationInputTokens = data.usage?.cache_creation_input_tokens;
+  return {
+    text,
+    usage: {
+      inputTokens,
+      outputTokens,
+      cachedInputTokens,
+      ...(inputTokens !== undefined && outputTokens !== undefined
+        ? { totalTokens: inputTokens + outputTokens + (cachedInputTokens ?? 0) + (cacheCreationInputTokens ?? 0) }
+        : {}),
+    },
+  };
 }
 
 export class AnthropicApiProvider implements ModelProvider {
@@ -83,13 +98,16 @@ export class AnthropicApiProvider implements ModelProvider {
   constructor(readonly model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    return callAnthropic(this.model, input.system, input, input.temperature ?? 0.3);
+    const result = await callAnthropic(this.model, input.system, input, input.temperature ?? 0.3);
+    reportModelTokenUsage(input, result.usage);
+    return result.text;
   }
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const system = `${input.system}\n\nReturn JSON only that matches the schema. No markdown.`;
-    const text = await callAnthropic(this.model, system, input, input.temperature ?? 0.2);
-    return parseStructuredOutput(text, input.schema);
+    const result = await callAnthropic(this.model, system, input, input.temperature ?? 0.2);
+    reportModelTokenUsage(input, result.usage);
+    return parseStructuredOutput(result.text, input.schema);
   }
 }
 

@@ -226,10 +226,55 @@ describe('Scheduler scheduled jobs', () => {
     await tick();
 
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({
-      'sleep-catch-up': '2026-09-06T03:00',
-    });
+    expect(store.getSetting('scheduler.lastFired:sleep-catch-up', null)).toBe('2026-09-06T03:00');
   });
+
+  it('recovers the latest weekly occurrence missed more than 24 hours ago', async () => {
+    vi.useFakeTimers();
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'weekly-catch-up', name: '주간 복구', goal: '놓친 주간 예약 복구', version: 1,
+      trigger: { type: 'schedule', schedule: '0 9 * * 1', timezone: 'Asia/Seoul' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('weekly-catch-up', true);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    vi.setSystemTime(new Date('2026-09-06T00:00:00Z'));
+    await tick();
+    vi.setSystemTime(new Date('2026-09-09T01:00:00Z'));
+    await tick();
+
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+    expect(store.getSetting('scheduler.lastFired:weekly-catch-up', null)).toBe('2026-09-07T00:00');
+    db.close?.();
+  });
+
+  it('recovers a yearly occurrence without scanning the full outage minute by minute', async () => {
+    vi.useFakeTimers();
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'yearly-catch-up', name: '연간 복구', goal: '연간 예약 복구', version: 1,
+      trigger: { type: 'schedule', schedule: '0 9 1 1 *', timezone: 'Asia/Seoul' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('yearly-catch-up', true);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    vi.setSystemTime(new Date('2025-09-25T00:00:00Z'));
+    await tick();
+    vi.setSystemTime(new Date('2026-09-25T00:00:00Z'));
+    await tick();
+
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+    expect(store.getSetting('scheduler.lastFired:yearly-catch-up', null)).toBe('2026-01-01T00:00');
+    db.close?.();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -264,13 +309,11 @@ describe('Scheduler scheduled jobs', () => {
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
+    expect(store.getSetting('scheduler.lastFired:scheduled-retry', null)).toBeNull();
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({
-      'scheduled-retry': expect.any(String),
-    });
+    expect(store.getSetting('scheduler.lastFired:scheduled-retry', null)).toEqual(expect.any(String));
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
@@ -308,10 +351,9 @@ describe('Scheduler scheduled jobs', () => {
     await expect(tick()).resolves.toBeUndefined();
 
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
-    expect(store.getSetting<Record<string, unknown>>('scheduler.lastFired', {})).toEqual({
-      'scheduled-after-corruption': expect.any(String),
-      valid: '2026-01-01T00:29',
-    });
+    expect(store.getSetting('scheduler.lastFired:scheduled-after-corruption', null)).toEqual(expect.any(String));
+    expect(store.getSetting('scheduler.lastFired:valid', null)).toBe('2026-01-01T00:29');
+    expect(store.getSetting('scheduler.lastFired', null)).toBeNull();
 
     store.setSetting('scheduler.lastFired', null);
     vi.setSystemTime(new Date('2026-01-02T00:30:00.000Z'));

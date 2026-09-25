@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { DecisionEngine } from '../../../contracts/decision.js';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../../intelligence/agent/investigation-runner.js';
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { ReportPlanner } from './planner.js';
@@ -36,14 +37,20 @@ describe('source planning bounds', () => {
     expect(calls).toBe(1);
   });
 
-  it.each([1, 2])('bounds aggregate image bytes during semantic source-requirement inference (%s pages)', async count => {
-    const run = vi.fn(async () => ({ output: { schemaVersion: 1, requirements: [] } }));
-    const planner = new ReportPlanner({ providerName: 'test', run } as InvestigationRunner,
-      { readImage: () => new Uint8Array((count === 1 ? 9 : 5) * 1024 * 1024) });
+  it.each([1, 2])('does not load report images for typed source selection (%s pages)', async count => {
+    const run = vi.fn();
+    const readImage = vi.fn(() => new Uint8Array(1024));
+    const evaluate = vi.fn<DecisionEngine['evaluate']>(async ({ questions }) => ({ answers:
+      Object.fromEntries(Object.keys(questions).map(id => [id, { type: 'choice' as const, choice: 'required',
+        probabilities: { required: 0.4, not_required: 0.35, unclear: 0.25 }, confidence: 0.4 }])) }));
+    const planner = new ReportPlanner({ providerName: 'test', run },
+      { readImage, decisionEngine: { evaluate } });
     await expect(planner.inferSourceRequirements({ ...context, pair: { ...pair,
       templateImages: ['template.png'], exampleImages: count === 2 ? ['example.png'] : [] } }))
-      .rejects.toThrow('report_evidence_image_limit');
+      .resolves.toHaveLength(1);
     expect(run).not.toHaveBeenCalled();
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    expect(readImage).not.toHaveBeenCalled();
   });
 
   it('keeps the semantic requirement count bounded without dropping requirements', () => {

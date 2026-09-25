@@ -57,19 +57,20 @@ describe('decideDiscoveryRecovery', () => {
     });
   });
 
-  it('falls back to human attention when the decision is not decisive', async () => {
+  it('uses an exact recovery choice even when its probability is low', async () => {
     const engine: DecisionEngine = {
       evaluate: async () => ({
         answers: {
           recovery_action: {
             type: 'choice',
-            choice: 'retry_checkpoint',
-            probabilities: {
-              retry_checkpoint: 0.55,
-              expand_source_search: 0.3,
-              ask_human: 0.1,
-              stop: 0.05,
-            },
+              choice: 'retry_checkpoint',
+              probabilities: {
+                retry_checkpoint: 0.4,
+                expand_source_search: 0.5,
+                ask_human: 0.05,
+                stop: 0.05,
+              },
+              confidence: 0.4,
           },
         },
       }),
@@ -80,8 +81,30 @@ describe('decideDiscoveryRecovery', () => {
       decisionEngine: engine,
     });
 
-    expect(result.action).toBe('ask_human');
-    expect(result.reason).toBe('low_confidence');
+    expect(result).toMatchObject({
+      action: 'retry_checkpoint',
+      probability: 0.4,
+      reason: 'decision_engine',
+    });
+    expect(result.margin).toBeCloseTo(-0.1);
+  });
+
+  it('honors Jev selecting human review as the recovery action', async () => {
+    const result = await decideDiscoveryRecovery({
+      ...baseInput,
+      decisionEngine: { evaluate: async () => ({ answers: { recovery_action: {
+        type: 'choice', choice: 'ask_human', probabilities: { ask_human: 0.3 }, confidence: 0.3,
+      } } }) },
+    });
+    expect(result).toEqual({ action: 'ask_human', reason: 'unclear' });
+  });
+
+  it('asks a human when Jev omits a recovery choice', async () => {
+    const result = await decideDiscoveryRecovery({
+      ...baseInput,
+      decisionEngine: { evaluate: async () => ({ answers: {} }) },
+    });
+    expect(result).toEqual({ action: 'ask_human', reason: 'invalid_answer' });
   });
 
   it('preserves the old stop path when the decision engine is unavailable', async () => {

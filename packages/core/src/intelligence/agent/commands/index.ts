@@ -10,7 +10,7 @@ export {
   JevReadOperationIndex,
   type JevReadOperationSelection,
   type JevReadOperationHint,
-} from './chat/jev-operation-catalog.js';
+} from '../../decision/read-operation-catalog.js';
 export {
   JOB_COMMIT_CONFIRM_VALUE,
   DEFAULT_JOB_CRON,

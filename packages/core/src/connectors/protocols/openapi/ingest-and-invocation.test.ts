@@ -51,6 +51,17 @@ describe('openapi ingest', () => {
     }
   });
 
+  it('removes stale capabilities when the singleton OpenAPI connection is replaced', () => {
+    ingestOpenApiSpec('old_api', PETSTORE);
+    ingestOpenApiSpec('new_api', {
+      ...PETSTORE,
+      paths: { '/pets': { get: { operationId: 'searchPets', responses: { '200': { description: 'ok' } } } } },
+    });
+
+    expect(getCapability('openapi.old_api.listPets')).toBeUndefined();
+    expect(getCapability('openapi.new_api.searchPets')).toBeDefined();
+  });
+
   it('invokes HEAD operations without a response body', async () => {
     const { connector } = ingestOpenApiSpec('petstore', PETSTORE);
     const originalFetch = globalThis.fetch;

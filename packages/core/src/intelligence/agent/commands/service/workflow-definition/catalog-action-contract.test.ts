@@ -21,6 +21,8 @@ describe('AxCommandService catalog action contract', () => {
             connector: 'slack',
             action: 'send_message',
             params: { channel: '#ops', text: 'hello' },
+            // Jev-provided risk metadata is untrusted; the capability catalog is authoritative.
+            sideEffect: 'NONE',
           },
         ],
       },

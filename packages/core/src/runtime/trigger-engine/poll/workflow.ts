@@ -31,14 +31,17 @@ async function awaitPollRead(
 ): Promise<TriggerPollResult | undefined> {
   if (signal?.aborted) return undefined;
   let onAbort: (() => void) | undefined;
+  let settleCancelled!: () => void;
   try {
     const cancelled = new Promise<undefined>((resolve) => {
-      onAbort = () => resolve(undefined);
+      settleCancelled = () => resolve(undefined);
+      onAbort = settleCancelled;
       signal?.addEventListener('abort', onAbort, { once: true });
     });
     return await Promise.race([read(), cancelled]);
   } finally {
     if (onAbort) signal?.removeEventListener('abort', onAbort);
+    settleCancelled?.();
   }
 }
 

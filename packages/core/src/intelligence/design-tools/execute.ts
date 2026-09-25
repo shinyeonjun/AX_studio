@@ -33,6 +33,7 @@ export async function executeDesignTool(
       tool: call.tool,
       ok: false,
       error,
+      ...(err instanceof CapabilityInvokeError ? { failureKind: err.failureKind } : {}),
       ...(errorDetails === undefined ? {} : { errorDetails }),
     };
   }

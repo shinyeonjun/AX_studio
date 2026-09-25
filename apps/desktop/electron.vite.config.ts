@@ -61,6 +61,7 @@ export default defineConfig({
     },
     plugins: [externalizeDepsPlugin({ exclude: ['@ax-studio/core'] })],
     build: {
+      minify: 'esbuild',
       rollupOptions: {
         input: {
           index: resolve('electron/main/index.ts'),
@@ -93,6 +94,7 @@ export default defineConfig({
       },
     },
     build: {
+      minify: 'esbuild',
       rollupOptions: {
         input: {
           index: resolve('src/index.html'),

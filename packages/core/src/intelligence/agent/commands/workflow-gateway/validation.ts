@@ -1,5 +1,5 @@
 import {
-  validateWorkflowContracts,
+  validateWorkflowForPersistence,
   type ContractValidationIssue,
 } from '../../../../workflow/contract-validator.js';
 import {
@@ -34,7 +34,9 @@ export function requiredTextInput(id: string, label: string, reason: string): Ax
 
 export function statusForValidation(issues: ContractValidationIssue[]): AxCommandResult['status'] {
   if (issues.length === 0) return 'ok';
-  return issues.every((entry) => entry.code === 'missing_input_contract' || entry.code === 'connector_unavailable')
+  return issues.every((entry) => entry.code === 'missing_input_contract'
+    || entry.code === 'connector_unavailable'
+    || (entry.code === 'invalid_workflow_schema' && Boolean(entry.missingInputs?.length)))
     ? 'needs_input'
     : 'invalid';
 }
@@ -52,7 +54,11 @@ export function mapContractIssue(entry: ContractValidationIssue): AxCommandIssue
             id: `ax-input-${entry.stepId ?? entry.code}-${input.name}-${index}`,
             label: input.label,
             type: input.inputType ?? 'text',
+            ...(input.target ? { target: input.target } : {}),
             required: true,
+            ...(entry.stepId ? { stepId: entry.stepId } : {}),
+            ...(input.capabilityId ? { capabilityId: input.capabilityId } : {}),
+            parameterName: input.name,
             ...(input.placeholder ? { placeholder: input.placeholder } : {}),
             reason: input.question,
           })),
@@ -71,7 +77,7 @@ export function validateIR(store: WorkflowStore, workflow: WorkflowIR) {
     .getConnections()
     .filter((entry) => entry.connected)
     .map((entry) => entry.connector);
-  const contractIssues = validateWorkflowContracts(schema.value, { connectedConnectors });
+  const contractIssues = validateWorkflowForPersistence(schema.value, { connectedConnectors });
   const issues = contractIssues.map(mapContractIssue);
   return { status: statusForValidation(contractIssues), data: { valid: contractIssues.length === 0, issues }, issues };
 }

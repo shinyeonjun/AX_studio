@@ -27,8 +27,16 @@ export function extraBinDirs(): string[] {
 
 export function commandEnv(): NodeJS.ProcessEnv {
   const extra = extraBinDirs().join(delimiter);
+  const allowedKeys = new Set([
+    'APPDATA', 'COMSPEC', 'CODEX_HOME', 'HOME', 'HOMEDRIVE', 'HOMEPATH',
+    'LANG', 'LOCALAPPDATA', 'NO_COLOR', 'PATHEXT', 'PATH', 'SYSTEMDRIVE',
+    'SYSTEMROOT', 'TEMP', 'TERM', 'TMP', 'USERPROFILE', 'WINDIR',
+  ]);
+  const inherited = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => allowedKeys.has(key) || key.startsWith('LC_')),
+  );
   return {
-    ...process.env,
+    ...inherited,
     PATH: extra ? `${extra}${delimiter}${process.env.PATH ?? ''}` : process.env.PATH,
   };
 }

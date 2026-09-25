@@ -6,4 +6,4 @@ export interface WebhookListenerOptions {
   host?: string;
 }
 
-export type WebhookEventHandler = (event: TriggerEvent) => void;
+export type WebhookEventHandler = (event: TriggerEvent) => void | boolean | Promise<void | boolean>;

@@ -1,4 +1,4 @@
-import type { HttpAuthConfig } from '../connection.js';
+import type { HttpAuthConfig } from '../connection/contracts.js';
 
 function buildAuthHeaders(auth: HttpAuthConfig | undefined): Record<string, string> {
   if (!auth || auth.type === 'none') return {};

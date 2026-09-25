@@ -38,54 +38,31 @@ export function isAiCliInstalled(id: CliProviderId): boolean {
 
 export async function detectAiCliProviders(): Promise<DetectedAiCli[]> {
   const ids: CliProviderId[] = ['codex-cli', 'claude-cli', 'cursor-cli'];
-  const detected: DetectedAiCli[] = [];
-  for (const id of ids) {
+  return Promise.all(ids.map(async (id) => {
     const meta = CLI_PROVIDER_META[id];
     const command = resolveBinary(meta.binaries);
     const hasCursorKey = id === 'cursor-cli' && isCursorApiKeyConfigured();
-    if (!command && !hasCursorKey) {
-      detected.push({
-        id,
-        label: meta.label,
-        description: meta.description,
-        installed: false,
-        models: normalizeModelOptions(meta.models),
-        defaultModel: meta.defaultModel,
-      });
-      continue;
-    }
-
-    if (!command && hasCursorKey) {
-      detected.push({
-        id,
-        label: meta.label,
-        description: 'API 키 등록됨 · agent CLI 미설치',
-        installed: false,
-        models: normalizeModelOptions(meta.models),
-        defaultModel: meta.defaultModel,
-      });
-      continue;
-    }
-
     if (!command) {
-      detected.push({
+      return {
         id,
         label: meta.label,
-        description: meta.description,
+        description: hasCursorKey ? 'API 키 등록됨 · agent CLI 미설치' : meta.description,
         installed: false,
         models: normalizeModelOptions(meta.models),
         defaultModel: meta.defaultModel,
-      });
-      continue;
+      };
     }
 
-    const version = await readVersion(command).catch(() => undefined);
+    const [version, codexModels] = await Promise.all([
+      readVersion(command).catch(() => undefined),
+      id === 'codex-cli' ? readCodexModels(command).catch(() => []) : Promise.resolve([]),
+    ]);
     const hasCursorKeyForRuntime = id !== 'cursor-cli' || isCursorApiKeyConfigured();
     const detectedModels =
       id === 'claude-cli'
         ? normalizeModelOptions(meta.models)
         : id === 'codex-cli'
-          ? normalizeModelOptions(await readCodexModels(command!).catch(() => []))
+          ? normalizeModelOptions(codexModels)
           : [];
     const models =
       detectedModels.length > 0 ? detectedModels : normalizeModelOptions(meta.models);
@@ -96,7 +73,7 @@ export async function detectAiCliProviders(): Promise<DetectedAiCli[]> {
         : version
           ? `${meta.description} · ${version}`
           : meta.description;
-    detected.push({
+    return {
       id,
       label: meta.label,
       description,
@@ -105,7 +82,6 @@ export async function detectAiCliProviders(): Promise<DetectedAiCli[]> {
       version,
       models,
       defaultModel,
-    });
-  }
-  return detected;
+    };
+  }));
 }

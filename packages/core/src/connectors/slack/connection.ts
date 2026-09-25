@@ -1,4 +1,3 @@
-import { WebClient } from '@slack/web-api';
 import { parseSlackConnectionConfig } from '../../triggers/types.js';
 
 export interface SlackConnectionRecord {
@@ -31,6 +30,7 @@ export interface SlackConnectionStatus {
 
 export async function validateSlackBotToken(token: string): Promise<SlackConnectionValidation> {
   try {
+    const { WebClient } = await import('@slack/web-api');
     const client = new WebClient(token);
     const result = await client.auth.test();
     if (!result.ok) {

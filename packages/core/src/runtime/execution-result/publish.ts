@@ -31,6 +31,14 @@ function inlineApprovalForExecution(
       reason: approval.reason,
       actionIds: approval.actionIds,
       ir,
+      resolvedParamsByAction: approval.payload && typeof approval.payload === 'object'
+        ? Object.fromEntries(
+          ((approval.payload as { actionSnapshots?: Array<{ actionId?: unknown; params?: unknown }> }).actionSnapshots ?? [])
+            .filter((snapshot): snapshot is { actionId: string; params: Record<string, unknown> } =>
+              typeof snapshot.actionId === 'string' && !!snapshot.params && typeof snapshot.params === 'object' && !Array.isArray(snapshot.params))
+            .map((snapshot) => [snapshot.actionId, snapshot.params]),
+        )
+        : undefined,
     });
     const reason = safeText(approval.reason, 1_200);
     const safeTitle = safeText(title, 240);
@@ -59,21 +67,20 @@ export function publishExecutionResultToWorkspaceChat(
   const execution = store.getExecution(result.executionId);
   const workflowId = execution?.workflowId;
   const workspaceSessionId = execution?.workspaceSessionId;
-  if (!execution || (!workflowId && !workspaceSessionId)) return null;
-
-  const chat = workspaceSessionId
-    ? store.getWorkspaceChat(workspaceSessionId)
+  if (!execution) return null;
+  const target = workspaceSessionId
+    ? workspaceSessionId
     : workflowId
-      ? store.getWorkspaceChatByWorkflowId(workflowId)
-      : undefined;
-  if (!chat) return null;
+      ? { workflowId }
+      : null;
+  if (!target) return null;
 
   const executionIr = parseExecutionIr(execution.irJson);
   const workflowName = executionIr?.name;
   const inlineApproval = inlineApprovalForExecution(store, result, execution, executionIr);
   const generatedPdf = generatedPdfFromExecutionLog(result.log);
 
-  const updated = store.upsertWorkspaceChatExecutionResult(chat.id, {
+  const updated = store.upsertWorkspaceChatExecutionResult(target, {
     role: 'assistant',
     kind: 'execution_result',
     executionId: result.executionId,
@@ -88,7 +95,7 @@ export function publishExecutionResultToWorkspaceChat(
   });
   if (!updated) return null;
   return {
-    sessionId: chat.id,
+    sessionId: updated.id,
     ...(workflowId ? { workflowId } : {}),
     executionId: result.executionId,
   };

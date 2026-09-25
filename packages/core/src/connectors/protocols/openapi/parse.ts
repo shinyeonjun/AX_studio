@@ -1,6 +1,7 @@
 import type { SideEffectLevel } from '../../../workflow/schema.js';
 import { defaultSideEffectForHttpMethod } from '../../../platform/side-effect-policy.js';
 import type { ConnectorCapability } from '../../../catalog/capability-types.js';
+import { isPrivateHttpHostname } from '../../http/url-security.js';
 
 export type OpenApiParameterLocation = 'path' | 'query' | 'header' | 'cookie';
 
@@ -19,6 +20,7 @@ export interface OpenApiParameter {
   type?: string;
   format?: string;
   description?: string;
+  enum?: readonly (string | number | boolean)[];
 }
 
 export interface OpenApiRequestBody {
@@ -59,6 +61,7 @@ const MAX_FIELDS = 100;
 const MAX_RESPONSES = 50;
 const MAX_CONTENT_TYPES = 20;
 const MAX_TEXT_LENGTH = 500;
+const MAX_PARAMETER_ENUM_VALUES = 254;
 
 function boundedText(value: unknown, maxLength = MAX_TEXT_LENGTH): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -78,10 +81,12 @@ function operationSideEffect(method: string, operation: Record<string, unknown>)
   if (methodDefault !== 'NONE') {
     return explicit === 'EXTERNAL_HIGH' ? explicit : 'EXTERNAL';
   }
-  if (explicit === 'NONE' || explicit === 'REVERSIBLE' || explicit === 'EXTERNAL' || explicit === 'EXTERNAL_HIGH') {
-    return explicit;
-  }
-  return methodDefault;
+  // OpenAPI metadata is untrusted input. A GET/HEAD operation is readable
+  // only when it explicitly declares no side effect; REVERSIBLE is still a
+  // mutation and must not enter the read/auto-run catalog.
+  return explicit === 'NONE' || explicit === undefined
+    ? 'NONE'
+    : explicit === 'EXTERNAL_HIGH' ? explicit : 'EXTERNAL';
 }
 
 function operationRequiresSecurity(root: Record<string, unknown>, operation: Record<string, unknown>): boolean {
@@ -101,6 +106,9 @@ function normalizeServerUrl(value: string): string {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('openapi_base_url_protocol_invalid');
   }
+  if (isPrivateHttpHostname(url.hostname)) {
+    throw new Error('openapi_private_base_url');
+  }
   // Server variables and credentials are not implemented by this minimal
   // adapter. Do not carry query/userinfo secrets into every operation call.
   url.username = '';
@@ -116,6 +124,17 @@ function schemaType(schema: Record<string, unknown> | null): string | undefined 
 
 function schemaFormat(schema: Record<string, unknown> | null): string | undefined {
   return boundedText(schema?.format, 80);
+}
+
+function parameterEnum(schema: Record<string, unknown> | null): OpenApiParameter['enum'] {
+  if (!Array.isArray(schema?.enum) || schema.enum.length === 0 || schema.enum.length > MAX_PARAMETER_ENUM_VALUES) {
+    return undefined;
+  }
+  const values = schema.enum;
+  if (!values.every((value) => (typeof value === 'string' && value.length <= MAX_TEXT_LENGTH)
+    || (typeof value === 'number' && Number.isFinite(value))
+    || typeof value === 'boolean')) return undefined;
+  return [...new Set(values)] as NonNullable<OpenApiParameter['enum']>;
 }
 
 function fieldsFromSchema(
@@ -166,6 +185,7 @@ function parameterFrom(value: unknown): OpenApiParameter | undefined {
   const type = schemaType(schema) ?? boundedText(record?.type, 80);
   const format = schemaFormat(schema);
   const description = boundedText(record?.description);
+  const enumValues = parameterEnum(schema);
   return {
     name,
     in: location,
@@ -173,6 +193,7 @@ function parameterFrom(value: unknown): OpenApiParameter | undefined {
     ...(type ? { type } : {}),
     ...(format ? { format } : {}),
     ...(description ? { description } : {}),
+    ...(enumValues ? { enum: enumValues } : {}),
   };
 }
 
@@ -223,13 +244,15 @@ function responsesFrom(value: unknown): OpenApiResponse[] {
 }
 
 /** Minimal OpenAPI 3 parser for fixture specs and settings ingest. */
-export function parseOpenApiSpec(id: string, raw: unknown): OpenApiSpec {
+export function parseOpenApiSpec(id: string, raw: unknown, baseUrlOverride?: string): OpenApiSpec {
   const root = asRecord(raw);
   if (!root) throw new Error('openapi_spec_invalid');
 
   const servers = Array.isArray(root.servers) ? root.servers : [];
   const firstServer = asRecord(servers[0]);
-  const baseUrl = typeof firstServer?.url === 'string' ? normalizeServerUrl(firstServer.url) : '';
+  const baseUrl = baseUrlOverride
+    ? normalizeServerUrl(baseUrlOverride)
+    : typeof firstServer?.url === 'string' ? normalizeServerUrl(firstServer.url) : '';
   if (!baseUrl) throw new Error('openapi_base_url_required');
 
   const paths = asRecord(root.paths);
@@ -278,7 +301,7 @@ export function openApiCapabilitiesFromSpec(spec: OpenApiSpec): ConnectorCapabil
   return spec.operations.map((operation) => ({
     id: `openapi.${spec.id}.${operation.operationId}`,
     connector: 'openapi',
-    kind: operation.sideEffect === 'NONE' || operation.sideEffect === 'REVERSIBLE' ? 'read' : 'write',
+    kind: operation.sideEffect === 'NONE' ? 'read' : 'write',
     label: operation.summary ?? operation.operationId,
     description: `${operation.method} ${operation.path}`,
     sideEffect: operation.sideEffect ?? defaultSideEffectForHttpMethod(operation.method),

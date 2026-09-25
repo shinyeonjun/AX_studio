@@ -43,7 +43,6 @@ export function useAiBrandSettings(
   useAiBrandSettingsInitialization({
     brand,
     state,
-    cliProviders,
     refreshDetection,
     setApiKeyConfigured,
     setApiKeyMasked,

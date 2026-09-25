@@ -95,26 +95,24 @@ describe('workspace asynchronous session ordering', () => {
     expect(stateSetters[2]).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['sources', 'workflow'])('ignores a completed chat after switching sessions during %s loading', async (phase) => {
+  it('ignores a completed chat after switching sessions during workflow loading', async () => {
     const pending = deferred<unknown>();
-    const sources = { sources: [] };
     const workflow = { state: {}, summary: 'A', title: 'A', active: true };
-    const listWorkspaceSources = vi.fn().mockImplementation(() => phase === 'sources' ? pending.promise : Promise.resolve(sources));
-    const loadWorkChat = vi.fn().mockImplementation(() => phase === 'workflow' ? pending.promise : Promise.resolve(workflow));
+    const loadWorkChat = vi.fn().mockReturnValue(pending.promise);
     Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: {
       saveWorkspaceChat: vi.fn().mockImplementation(async (_id, messages) => ({ id: 'A', messages })),
       sendCommandChat: vi.fn().mockResolvedValue({ content: 'done', changedWorkflowIds: ['workflow-A'] }),
-      listWorkspaceSources, loadWorkChat,
+      loadWorkChat,
     } } });
     const ctx = workspaceContext();
     const { refs } = ctx;
     const running = createWorkspaceMessageActions(ctx).sendMessage('Create my report');
-    await vi.waitFor(() => expect(phase === 'sources' ? listWorkspaceSources : loadWorkChat).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(loadWorkChat).toHaveBeenCalledOnce());
     refs.sessionEpochRef.current++;
     refs.workspaceSessionIdRef.current = 'B';
     vi.mocked(ctx.setWorkspaceSources).mockClear();
     vi.mocked(ctx.setWorkspaceWorkflowState).mockClear();
-    pending.resolve(phase === 'sources' ? sources : workflow);
+    pending.resolve(workflow);
     await running;
     expect(ctx.setWorkspaceSources).not.toHaveBeenCalled();
     expect(ctx.setWorkspaceWorkflowState).not.toHaveBeenCalled();

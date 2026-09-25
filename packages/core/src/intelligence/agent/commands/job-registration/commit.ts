@@ -19,6 +19,7 @@ export async function commitJob(options: {
   pending: Map<string, PendingJobDraft>;
   workspaceSessionId?: string;
   allowJobCommit?: boolean;
+  confirmationToken?: string;
   runWorkflow?: (workflowId: string) => Promise<unknown>;
 }): Promise<[AxCommandResult['status'], unknown, AxCommandIssue[]?]> {
   if (!options.allowJobCommit) {
@@ -33,6 +34,10 @@ export async function commitJob(options: {
   const draft = options.pending.get(sessionId);
   if (!draft) {
     return ['not_found', undefined, [issue('pending_job_not_found', '저장할 업무 초안이 없습니다. 먼저 업무를 다시 제안해 주세요.')]];
+  }
+
+  if (!options.confirmationToken || options.confirmationToken !== draft.confirmationToken) {
+    return ['forbidden', undefined, [issue('job_commit_confirmation_mismatch', '현재 확인 카드는 이 업무 초안에 대한 확인이 아닙니다. 업무를 다시 제안한 뒤 확인해 주세요.')]];
   }
 
   const connected = connectedIds(options.store);
@@ -60,7 +65,7 @@ export async function commitJob(options: {
     let runError: string | undefined;
     if (draft.spec.runOnceNow) {
       if (!options.runWorkflow) {
-        runError = '지금 실행기는 연결되지 않았습니다. 스케줄은 켜져 있습니다.';
+        runError = '지금 실행기는 연결되지 않았습니다. 반복 업무는 저장되어 있고 시작 조건은 활성화되어 있습니다.';
       } else {
         try {
           run = await options.runWorkflow(saved.workflowId);
@@ -71,10 +76,10 @@ export async function commitJob(options: {
     }
 
     const message = runError
-      ? draft.spec.name + ' 업무를 저장하고 스케줄을 켰습니다. 지금 실행은 실패했으니 실행 기록에서 원인을 확인해 주세요.'
+      ? draft.spec.name + ' 반복 업무를 저장하고 활성화했습니다. 지금 실행은 실패했으니 실행 기록에서 원인을 확인해 주세요.'
       : draft.spec.runOnceNow
-        ? draft.spec.name + ' 업무를 저장하고 스케줄을 켰습니다. 지금 한 번 실행을 시작했습니다.'
-        : draft.spec.name + ' 업무를 저장하고 스케줄을 켰습니다.';
+        ? draft.spec.name + ' 반복 업무를 저장하고 활성화했습니다. 지금 한 번 실행을 시작했습니다.'
+        : draft.spec.name + ' 반복 업무를 저장하고 활성화했습니다.';
 
     return ['ok', {
       operation: 'created',

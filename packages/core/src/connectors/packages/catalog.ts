@@ -33,7 +33,3 @@ export const ALL_MODULE_PACKAGES: ModulePackage[] = [
 export const PUSH_TRIGGER_DRIVERS: PushTriggerDriver[] = ALL_MODULE_PACKAGES.flatMap((pkg) =>
   pkg.pushTriggerDriver ? [pkg.pushTriggerDriver] : [],
 );
-
-export function getModulePackage(id: string): ModulePackage | undefined {
-  return ALL_MODULE_PACKAGES.find((pkg) => pkg.id === id);
-}

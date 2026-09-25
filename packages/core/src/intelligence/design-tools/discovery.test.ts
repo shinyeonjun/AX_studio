@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildDesignToolContext, buildDiscoveryAssetIndex, executeDesignTool } from './index.js';
+import * as openApiProtocol from '../../connectors/protocols/openapi/index.js';
 import type { Connector } from '../../connectors/types.js';
 
 function context(overrides: Record<string, unknown> = {}) {
@@ -78,6 +79,49 @@ describe('design-tools discovery', () => {
     expect(later.data).toMatchObject({ details: { operations: expect.arrayContaining([
       expect.objectContaining({ operationId: 'record60' }),
     ]) } });
+  });
+
+  it('parses an OpenAPI spec once while indexing and describing the same context', async () => {
+    const parseSpec = vi.spyOn(openApiProtocol, 'parseOpenApiSpec');
+    try {
+      const ctx = buildDesignToolContext([{ connector: 'openapi', connected: true, config: {
+        specId: 'catalog-once', baseUrl: 'https://example.test', specJson: {
+          openapi: '3.0.0', info: { title: 'Catalog', version: '1' },
+          servers: [{ url: 'https://example.test' }],
+          paths: { '/items': { get: { operationId: 'listItems', responses: { '200': {} } } } },
+        },
+      } }], ['openapi']);
+
+      const result = await executeDesignTool(
+        { tool: 'discovery.describe', args: { assetId: 'openapi:catalog-once' } },
+        ctx,
+      );
+
+      expect(result.ok).toBe(true);
+      expect(parseSpec).toHaveBeenCalledTimes(1);
+    } finally {
+      parseSpec.mockRestore();
+    }
+  });
+
+  it('keeps an invalid OpenAPI spec blocked and reuses its failed parse', async () => {
+    const parseSpec = vi.spyOn(openApiProtocol, 'parseOpenApiSpec');
+    try {
+      const ctx = buildDesignToolContext([{ connector: 'openapi', connected: true, config: {
+        specId: 'catalog-invalid', baseUrl: 'https://example.test', specJson: { openapi: '3.0.0' },
+      } }], ['openapi']);
+      const index = buildDiscoveryAssetIndex(ctx);
+      const result = await executeDesignTool(
+        { tool: 'discovery.describe', args: { assetId: 'openapi:catalog-invalid' } },
+        ctx,
+      );
+
+      expect(index.find('openapi:catalog-invalid')).toMatchObject({ availability: 'blocked', access: 'none' });
+      expect(result).toMatchObject({ ok: true, data: { details: { available: false, reason: 'openapi_spec_invalid' } } });
+      expect(parseSpec).toHaveBeenCalledTimes(1);
+    } finally {
+      parseSpec.mockRestore();
+    }
   });
 
   it('indexes configured data and tools without exposing secrets or physical paths', async () => {

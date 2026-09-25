@@ -50,7 +50,7 @@ export function candidateFromCreateCommand(
   };
 }
 
-export function normalizeStepInputs(inputs: unknown[]) {
+function normalizeStepInputs(inputs: unknown[]) {
   const value: Step[] = [];
   const issues: AxCommandIssue[] = [];
   for (const input of inputs) {
@@ -84,7 +84,7 @@ export function normalizeStepInput(input: unknown):
   };
 }
 
-export function sideEffectsFor(steps: Step[]): Record<string, WorkflowIR['sideEffects'][string]> {
+function sideEffectsFor(steps: Step[]): Record<string, WorkflowIR['sideEffects'][string]> {
   return Object.fromEntries(
     steps
       .filter((step): step is Extract<Step, { type: 'action' }> => step.type === 'action')

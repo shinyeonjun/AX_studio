@@ -2,7 +2,7 @@ import { type LocalFolderEntry } from '../../platform/local-folder-config.js';
 import { MAX_FILES_PER_SCAN, scanFolderChecked } from '../../platform/local-folder-scan.js';
 import { folderPage, parseFolderPage, type FolderPageOptions } from './pagination.js';
 
-export interface ListedFile {
+interface ListedFile {
   filePath: string;
   fileName: string;
   extension: string;

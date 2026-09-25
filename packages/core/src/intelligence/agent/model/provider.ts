@@ -5,6 +5,29 @@ export interface AgentProgressEvent {
   message: string;
 }
 
+/** Provider-reported counts; an absent field is unknown, not zero. */
+export interface ModelTokenUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
+  reasoningTokens?: number;
+}
+
+export function reportModelTokenUsage(
+  input: { onUsage?: (usage: ModelTokenUsage) => void },
+  usage: ModelTokenUsage,
+): void {
+  const normalized = Object.fromEntries(
+    Object.entries(usage).filter((entry): entry is [string, number] => (
+      typeof entry[1] === 'number' && Number.isSafeInteger(entry[1]) && entry[1] >= 0
+    )),
+  ) as ModelTokenUsage;
+  if (Object.keys(normalized).length === 0) return;
+  try { input.onUsage?.(normalized); } catch { /* Telemetry must not fail model work. */ }
+}
+
 export interface ModelImageInput {
   data: Uint8Array;
   mimeType: string;
@@ -26,6 +49,7 @@ export interface StructuredGenerateInput<T> {
   sessionId?: string;
   abortSignal?: AbortSignal;
   onProgress?: (event: AgentProgressEvent) => void;
+  onUsage?: (usage: ModelTokenUsage) => void;
   logContext?: string;
   codexReasoningEffort?: 'low' | 'medium' | 'high';
   /** CLI providers: maps to --max-turns when supported. */
@@ -44,6 +68,7 @@ export interface TextGenerateInput {
   sessionId?: string;
   abortSignal?: AbortSignal;
   onProgress?: (event: AgentProgressEvent) => void;
+  onUsage?: (usage: ModelTokenUsage) => void;
   /** CLI providers: maps to --max-turns when supported. */
   maxTurns?: number;
 }

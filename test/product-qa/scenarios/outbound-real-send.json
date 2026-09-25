@@ -6,7 +6,6 @@
   "tags": ["live", "external-send", "slack", "gmail", "approval"],
   "autoApproveExternal": true,
   "testEmail": {
-    "to": ["plosind@naver.com", "sinyeonjun9@gmail.com"],
     "subject": "AX Studio 실사용 전송 테스트",
     "body": "AX Studio 연결 및 실제 Gmail 전송 테스트 메일입니다. 별도 회신은 필요하지 않습니다."
   },
@@ -48,7 +47,7 @@
             "connector": "gmail",
             "action": "message.send",
             "params": {
-              "to": "plosind@naver.com, sinyeonjun9@gmail.com",
+              "to": "{{TEST_EMAIL_TO}}",
               "subject": "AX Studio 실사용 전송 테스트",
               "body": "AX Studio 연결 및 실제 Gmail 전송 테스트 메일입니다. 별도 회신은 필요하지 않습니다."
             },

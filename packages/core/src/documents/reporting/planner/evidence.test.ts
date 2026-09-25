@@ -21,6 +21,7 @@ function setup(outputs: unknown[]) {
   return { seen, input, readPage };
 }
 const request = (evidenceRequest: unknown) => ({ schemaVersion: 1, evidenceRequest });
+const requestBatch = (evidenceRequests: unknown[]) => ({ schemaVersion: 1, evidenceRequests });
 
 describe('ReportEvidence', () => {
   it('makes calculation evidence geometry-first so page images are exceptional', async () => {
@@ -54,6 +55,34 @@ describe('ReportEvidence', () => {
     expect(seen[0]!.context.skillGoal).toContain('the host computes the plan over every captured row');
   });
 
+  it('reads independent evidence requests in one model turn', async () => {
+    const { input, seen } = setup([
+      requestBatch([
+        { kind: 'profile', source: 'ledger', columns: ['amount'] },
+        { kind: 'rows', source: 'contacts', columns: ['name'], offset: 0, limit: 1 },
+      ]),
+      { schemaVersion: 1, reportPlan: plan },
+    ]);
+    input.sources = {
+      ledger: input.sources.ledger!,
+      contacts: { id: 'contacts', complete: true, rows: [{ name: 'Aster' }] },
+      catalog: { id: 'catalog', complete: true, rows: [{ sku: 'P-1' }] },
+    };
+
+    await expect(inferWithEvidence(input)).resolves.toEqual(plan);
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]!.context.skillGoal).toContain('include them together in evidenceRequests');
+    const evidence = JSON.parse(seen[1]!.context.untrustedData!).evidence;
+    expect(evidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ request: { kind: 'profile', source: 'ledger', columns: ['amount'] } }),
+      expect.objectContaining({ request: { kind: 'rows', source: 'contacts', columns: ['name'], offset: 0, limit: 1 } }),
+    ]));
+    expect(evidence.filter((entry: { kind?: string; source?: string }) => (
+      entry.kind === 'preview' && entry.source === 'catalog'
+    ))).toHaveLength(1);
+  });
+
   it('allows the model to page through more than two distinct row windows from one source', async () => {
     const { input, seen } = setup([
       request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 1 }),
@@ -68,6 +97,23 @@ describe('ReportEvidence', () => {
       request: { kind: 'rows', source: 'ledger', columns: ['amount'], offset: 2, limit: 1 },
       rowWindow: 3,
     }));
+  });
+
+  it('parses immutable base context once while paging through evidence', async () => {
+    const { input } = setup([
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 1 }),
+      request({ kind: 'rows', source: 'ledger', columns: ['amount'], offset: 1, limit: 1 }),
+      { schemaVersion: 1, reportPlan: plan },
+    ]);
+    const baseContext = JSON.stringify({ padding: 'x'.repeat(70_000) });
+    input.context.untrustedData = baseContext;
+    const parse = vi.spyOn(JSON, 'parse');
+    try {
+      await expect(inferWithEvidence(input)).resolves.toEqual(plan);
+      expect(parse.mock.calls.filter(([value]) => value === baseContext)).toHaveLength(1);
+    } finally {
+      parse.mockRestore();
+    }
   });
 
   it('keeps repeated row windows in history without treating the source as exhausted', async () => {
@@ -581,7 +627,9 @@ describe('ReportEvidence', () => {
     vi.useFakeTimers();
     try {
       const { input } = setup([]);
-      input.runner.run = () => new Promise(() => {});
+      input.runner.run = ({ abortSignal }) => new Promise((_, reject) => {
+        abortSignal?.addEventListener('abort', () => reject(new Error('runner_aborted')), { once: true });
+      });
       const pending = expect(inferWithEvidence(input)).rejects.toThrow('report_evidence_deadline_exceeded');
       await vi.advanceTimersByTimeAsync(REPORT_EVIDENCE_TIMEOUT_MS + 1);
       await pending;
@@ -615,6 +663,12 @@ describe('ReportEvidence', () => {
     ]);
     many.input.sources = { ledger: { id: 'ledger', complete: true, rows: Array.from({ length: 10 }, () => ({ amount: 1, note: '' })) } };
     await expect(inferWithEvidence(many.input)).rejects.toThrow('report_evidence_round_limit');
+    const oversizedBatch = setup([requestBatch(Array.from({ length: 9 }, (_, pageIndex) => ({
+      kind: 'page', document: 'example', pageIndex,
+    })))]);
+    oversizedBatch.input.pageCount = 9;
+    await expect(inferWithEvidence(oversizedBatch.input)).rejects.toThrow('report_evidence_round_limit');
+    expect(oversizedBatch.readPage).not.toHaveBeenCalled();
     const large = setup([request({ kind: 'page', document: 'example', pageIndex: 0 })]);
     large.input.readPage = () => ({ data: new Uint8Array(9 * 1024 * 1024), mimeType: 'image/png' });
     await expect(inferWithEvidence(large.input)).rejects.toThrow('report_evidence_image_limit');
@@ -623,6 +677,13 @@ describe('ReportEvidence', () => {
   it('produces a supported wire schema', () => {
     const schema = zodToCodexJsonSchema(ReportEvidenceDecisionSchema);
     expect(schema).toMatchObject({ type: 'object' });
+    expect(ReportEvidenceDecisionSchema.safeParse({ schemaVersion: 1, evidenceRequests: [
+      { kind: 'profile', source: 'ledger', columns: ['amount'] },
+      { kind: 'rows', source: 'ledger', columns: ['amount'], offset: 0, limit: 1 },
+    ] }).success).toBe(true);
+    expect(ReportEvidenceDecisionSchema.safeParse({ schemaVersion: 1,
+      evidenceRequests: [{ kind: 'profile', source: 'ledger', columns: ['amount'] }],
+      evidenceRequest: { kind: 'profile', source: 'ledger', columns: ['amount'] } }).success).toBe(false);
     expect(ReportEvidenceDecisionSchema.safeParse({ schemaVersion: 1 }).success).toBe(false);
     expect(ReportEvidenceDecisionSchema.safeParse({ schemaVersion: 1, reportPlan: plan,
       evidenceRequest: { kind: 'profile', source: 'ledger', columns: ['amount'] } }).success).toBe(false);

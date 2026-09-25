@@ -71,13 +71,22 @@ describe('AxCommandService one-shot queue', () => {
           title: '공유 대상 선택',
           inputs: [
             {
-              id: 'execution-http-connection',
+              id: 'execution-fetch-http-connection',
+              stepId: 'fetch',
+              capabilityId: 'http.request',
+              parameterName: 'connectionId',
               options: [
                 { value: 'test', label: '테스트 HTTP 연결' },
                 { value: 'github', label: '깃허브 연결' },
               ],
             },
-            { id: 'execution-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
+            {
+              id: 'execution-notify-slack-channel',
+              stepId: 'notify',
+              capabilityId: 'slack.message.send',
+              parameterName: 'channel',
+              options: [{ value: 'C_OPERATIONS', label: '#운영' }],
+            },
           ],
           actions: [{ id: 'review_execution_targets' }],
         },

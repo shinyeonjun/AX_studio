@@ -91,24 +91,14 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
   },
 };
 
-export const CONNECTOR_UI_IDS = Object.keys(CONNECTOR_UI_CATALOG) as ConnectorUiId[];
-
 export const MESSAGING_CONNECTOR_IDS: ConnectorUiId[] = ['gmail', 'slack'];
 export const STORAGE_CONNECTOR_IDS: ConnectorUiId[] = ['local_folder'];
 export const API_CONNECTOR_IDS: ConnectorUiId[] = ['http', 'webhook'];
 /** Connectors kept in catalog but hidden until product-ready. */
-export const HIDDEN_CONNECTOR_UI_IDS: ConnectorUiId[] = ['openapi', 'mcp'];
+const HIDDEN_CONNECTOR_UI_IDS: ConnectorUiId[] = ['openapi', 'mcp'];
 
 export const DATA_CONNECTOR_IDS: ConnectorUiId[] = ['rdb'];
 
 export function isConnectorVisibleInUi(id: ConnectorUiId): boolean {
   return !HIDDEN_CONNECTOR_UI_IDS.includes(id);
-}
-
-export function connectorLabel(id: string): string {
-  return CONNECTOR_UI_CATALOG[id as ConnectorUiId]?.title ?? id;
-}
-
-export function connectorEmoji(id: string): string {
-  return CONNECTOR_UI_CATALOG[id as ConnectorUiId]?.emoji ?? '⚙️';
 }

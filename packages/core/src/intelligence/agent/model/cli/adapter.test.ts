@@ -5,6 +5,7 @@ import { cliFailureMessage } from './output.js';
 describe('codex cli adapter', () => {
   it('uses current codex exec flags', () => {
     const args = codexExecArgs('gpt-5.4', 'hello', ['-o', '/tmp/out.txt'], '/tmp/ax-cli');
+    expect(args).toContain('--json');
     expect(args).toContain('-s');
     expect(args).toContain('read-only');
     expect(args).toContain('-C');

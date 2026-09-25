@@ -4,8 +4,9 @@ import type {
   Step,
   WorkflowIR,
 } from '../../../../workflow/schema.js';
-import type { AxInputRequest } from '../schema.js';
+import { AX_INPUT_REQUEST_MAX_COUNT, type AxInputRequest } from '../schema.js';
 import {
+  actionInputScope,
   httpConnectionInput,
   needsSlackChannelSelection,
   slackChannelInput,
@@ -30,15 +31,18 @@ export async function oneShotTargetInputs(
     (step): step is Extract<Step, { type: 'action' }> => step.type === 'action',
   );
   const endpoints = httpEndpointsFromConnections(store.getConnections());
-  const needsHttpSelection = endpoints.length > 1 && actions.some(
-    (step) => step.connector === 'http' && !hasConfiguredParam(step, 'connectionId'),
-  );
-  const needsSlackSelection = actions.some((step) => {
-    return needsSlackChannelSelection(step);
-  });
-
   const inputs: AxInputRequest[] = [];
-  if (needsHttpSelection) inputs.push(httpConnectionInput(endpoints, 'execution-http-connection'));
-  if (needsSlackSelection) inputs.push(await slackChannelInput(listSlackChannels, 'execution-slack-channel'));
-  return inputs;
+  for (const step of actions) {
+    if (step.connector === 'http' && endpoints.length > 1
+      && !hasConfiguredParam(step, 'connectionId')) {
+      const scope = actionInputScope(step, 'connectionId');
+      if (scope) inputs.push(httpConnectionInput(endpoints, `execution-${step.id}-http-connection`, scope));
+    }
+    if (needsSlackChannelSelection(step)) {
+      const scope = actionInputScope(step, 'channel');
+      if (scope) inputs.push(await slackChannelInput(listSlackChannels, `execution-${step.id}-slack-channel`, scope));
+    }
+  }
+  // The renderer and command contract accept eight controls; later missing targets are requested on resume.
+  return inputs.slice(0, AX_INPUT_REQUEST_MAX_COUNT);
 }

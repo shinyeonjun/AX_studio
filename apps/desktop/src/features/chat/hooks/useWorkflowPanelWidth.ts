@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const STORAGE_KEY = 'ax-studio.workflow-panel-width';
 export const WORKFLOW_PANEL_MIN_WIDTH = 220;
 export const WORKFLOW_PANEL_MAX_WIDTH = 560;
-export const WORKFLOW_PANEL_DEFAULT_WIDTH = 300;
+const WORKFLOW_PANEL_DEFAULT_WIDTH = 300;
 
 type ResizeSession = {
   pointerId: number;

@@ -12,13 +12,20 @@ import { parseHttpEndpoints } from '../../connectors/http/connection.js';
 import { safeHttpBaseUrl } from '../../connectors/http/request.js';
 import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { formatRdbTableRef, parseRdbTableRef } from '../../connectors/rdb/client.js';
-import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../connectors/protocols/openapi/index.js';
+import {
+  parseOpenApiConnectionConfig,
+  parseOpenApiSpec,
+  type OpenApiConnectionConfig,
+  type OpenApiSpec,
+} from '../../connectors/protocols/openapi/index.js';
 import type { ConnectionRecord, DesignToolContext } from './types.js';
 import type { DiscoveryMetadataRecord } from '../../contracts/discovery-metadata.js';
 
 // A DesignToolContext is a read-only snapshot for one model turn. WeakMap keeps
 // repeated discovery.search/describe calls cheap without retaining dead turns.
 const discoveryIndexCache = new WeakMap<DesignToolContext, DiscoveryAssetIndex>();
+type OpenApiSnapshot = { config: OpenApiConnectionConfig; spec: OpenApiSpec | null };
+const openApiSnapshotCache = new WeakMap<DesignToolContext, OpenApiSnapshot | null>();
 
 function recordOf(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -45,11 +52,24 @@ function lineageForConnector(connector: string) {
   return [{ relationship: 'provided_by' as const, assetId: `connector:${connector}` }];
 }
 
-function openApiSpecIdForCapability(ctx: DesignToolContext, capabilityId: string): string | undefined {
-  const connection = connectionFor(ctx, 'openapi');
-  const parsed = parseOpenApiConnectionConfig(connection?.config);
-  if (!parsed) return undefined;
-  return capabilityId.startsWith(`openapi.${parsed.specId}.`) ? parsed.specId : undefined;
+export function openApiSnapshotFor(ctx: DesignToolContext): OpenApiSnapshot | undefined {
+  if (openApiSnapshotCache.has(ctx)) return openApiSnapshotCache.get(ctx) ?? undefined;
+
+  const config = parseOpenApiConnectionConfig(connectionFor(ctx, 'openapi')?.config);
+  if (!config) {
+    openApiSnapshotCache.set(ctx, null);
+    return undefined;
+  }
+
+  let spec: OpenApiSpec | null;
+  try {
+    spec = parseOpenApiSpec(config.specId, config.specJson, config.baseUrl);
+  } catch {
+    spec = null;
+  }
+  const snapshot = { config, spec };
+  openApiSnapshotCache.set(ctx, snapshot);
+  return snapshot;
 }
 
 function connectorAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: Set<string>): void {
@@ -79,8 +99,11 @@ function connectorAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen:
 }
 
 function capabilityAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: Set<string>): void {
+  const openApiSpecId = openApiSnapshotFor(ctx)?.config.specId;
   for (const capability of designCapabilities()) {
-    const specId = openApiSpecIdForCapability(ctx, capability.id);
+    const specId = openApiSpecId && capability.id.startsWith(`openapi.${openApiSpecId}.`)
+      ? openApiSpecId
+      : undefined;
     addUnique(assets, seen, {
       id: `tool:${capability.id}`,
       kind: 'tool',
@@ -173,12 +196,12 @@ function httpEndpointAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], se
 function openApiAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: Set<string>): void {
   const connection = connectionFor(ctx, 'openapi');
   if (!connection?.connected) return;
-  const parsed = parseOpenApiConnectionConfig(connection.config);
-  if (!parsed) return;
+  const snapshot = openApiSnapshotFor(ctx);
+  if (!snapshot) return;
+  const { config: parsed, spec } = snapshot;
 
-  try {
-    const spec = parseOpenApiSpec(parsed.specId, parsed.specJson);
-    const hasRead = spec.operations.some((operation) => operation.sideEffect === 'NONE' || operation.sideEffect === 'REVERSIBLE');
+  if (spec) {
+    const hasRead = spec.operations.some((operation) => operation.sideEffect === 'NONE');
     const hasWrite = spec.operations.some((operation) => operation.sideEffect === 'EXTERNAL' || operation.sideEffect === 'EXTERNAL_HIGH');
     addUnique(assets, seen, {
       id: `openapi:${spec.id}`,
@@ -199,7 +222,7 @@ function openApiAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: S
       provenance: { source: 'openapi', ref: `openapi:${spec.id}` },
       lineage: lineageForConnector('openapi'),
     });
-  } catch {
+  } else {
     // A persisted connection can outlive a malformed or incompatible spec.
     // Keep the asset discoverable as blocked without leaking parser details.
     const specId = parsed.specId;

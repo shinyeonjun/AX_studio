@@ -62,15 +62,42 @@ describe('WorkspaceSourceService sessions and artifacts', () => {
     expect(existsSync(sharedArtifact.storedPath)).toBe(true);
     expect(existsSync(ownArtifact.storedPath)).toBe(true);
 
-    service.removeSession(chatA.id);
-    store.deleteWorkspaceChat(chatA.id);
+    await service.deleteSession(chatA.id);
 
     // Own artifact is gone with its sidecars; shared artifact survives for chat B.
+    expect(store.getWorkspaceChat(chatA.id)).toBeNull();
     expect(existsSync(ownArtifact.storedPath)).toBe(false);
     expect(artifacts.get(ownA.artifactId)).toBeUndefined();
     expect(artifacts.getDocumentArtifact(ownA.artifactId)).toBeUndefined();
     expect(existsSync(sharedArtifact.storedPath)).toBe(true);
     expect(artifacts.get(sharedA.artifactId)).toBeDefined();
+  });
+
+  it('keeps source artifacts when the chat cascade deletion fails', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-workspace-source-delete-failure-'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const artifacts = new ArtifactStore(join(root, 'artifacts'));
+    const service = new WorkspaceSourceService(store, artifacts, join(root, 'sessions'));
+    const chat = store.saveWorkspaceChat({ messages: [] });
+    const sourcePath = join(root, 'notes.txt');
+    writeFileSync(sourcePath, 'keep this source');
+    const source = await service.attachFile(chat.id, sourcePath, 'text/plain');
+    const artifact = artifacts.get(source.artifactId)!;
+    db.exec(`
+      CREATE TRIGGER reject_workspace_source_delete
+      BEFORE DELETE ON workspace_chat_sources
+      BEGIN
+        SELECT RAISE(ABORT, 'source_delete_rejected');
+      END
+    `);
+
+    await expect(service.deleteSession(chat.id)).rejects.toThrow(/source_delete_rejected/);
+
+    expect(store.getWorkspaceChat(chat.id)).not.toBeNull();
+    expect(store.listWorkspaceSources(chat.id)).toHaveLength(1);
+    expect(existsSync(artifact.storedPath)).toBe(true);
+    expect(artifacts.get(source.artifactId)).toBeDefined();
   });
 
   it('resolves a ready source only within its owning session', async () => {

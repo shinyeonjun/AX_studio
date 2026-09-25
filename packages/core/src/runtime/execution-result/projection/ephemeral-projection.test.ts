@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { publishExecutionResultToWorkspaceChat } from '../../execution-result-message.js';
@@ -11,8 +11,10 @@ describe('ephemeral execution result projection', () => {
     const executionId = store.createExecution({ ephemeral: true, workspaceSessionId: chat.id, triggerType: 'manual', irJson: executionIr('일회 공유') });
     const log = [{ at: '2026-08-31T00:00:00.000Z', level: 'info' as const, code: 'step_completed', message: '단계를 완료했습니다.', data: { stepId: 'send' } }];
     store.finishExecution(executionId, 'success', undefined, log);
+    const prepare = vi.spyOn(db, 'prepare');
     const event = publishExecutionResultToWorkspaceChat(store, result(executionId, 'success', log));
     expect(event).toEqual({ sessionId: chat.id, executionId });
+    expect(prepare.mock.calls.filter(([sql]) => sql.includes('FROM workspace_chats WHERE id = ?'))).toHaveLength(1);
     expect(store.getWorkspaceChat(chat.id)?.messages).toHaveLength(2);
     expect(store.getWorkspaceChat(chat.id)?.messages[1]).toMatchObject({ kind: 'execution_result', executionId, executionStatus: 'success' });
   });

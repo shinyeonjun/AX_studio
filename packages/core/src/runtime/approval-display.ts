@@ -3,16 +3,16 @@ import type { WorkflowIR, Step } from '../workflow/schema.js';
 
 type ActionStep = Extract<Step, { type: 'action' }>;
 
-function actionDetail(step: ActionStep, cap: ReturnType<typeof resolveCapability>): string {
+function actionDetail(step: ActionStep, cap: ReturnType<typeof resolveCapability>, resolvedParams?: Record<string, unknown>): string {
   const param = cap?.params.find((candidate) => candidate.displayInApproval);
-  const value = param ? step.params[param.name] : undefined;
+  const value = param ? (resolvedParams?.[param.name] ?? step.params[param.name]) : undefined;
   return value == null || typeof value === 'object' ? '' : String(value);
 }
 
-export function approvalReasonForAction(workName: string, step: ActionStep): string {
+export function approvalReasonForAction(workName: string, step: ActionStep, resolvedParams?: Record<string, unknown>): string {
   const cap = resolveCapability(step.connector, step.action);
   const actionLabel = cap?.label ?? `${step.connector}.${step.action}`;
-  const detail = actionDetail(step, cap);
+  const detail = actionDetail(step, cap, resolvedParams);
   return detail ? `${workName} — ${actionLabel} (${detail})` : `${workName} — ${actionLabel}`;
 }
 
@@ -21,13 +21,14 @@ export function formatApprovalTitle(params: {
   reason: string;
   actionIds: string[];
   ir?: WorkflowIR | null;
+  resolvedParamsByAction?: Record<string, Record<string, unknown>>;
 }): string {
   const workName = params.workName ?? '업무';
   if (params.ir) {
     for (const actionId of params.actionIds) {
       const step = params.ir.steps.find((candidate) => candidate.type === 'action' && candidate.id === actionId);
       if (step?.type === 'action') {
-        return approvalReasonForAction(workName, step);
+        return approvalReasonForAction(workName, step, params.resolvedParamsByAction?.[actionId]);
       }
     }
   }

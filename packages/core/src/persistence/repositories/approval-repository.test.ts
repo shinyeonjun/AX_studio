@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
-import { claimApproval, createApproval, getApproval } from './approval-repository.js';
+import {
+  claimApproval,
+  createApproval,
+  getApproval,
+  getPendingApprovalsWithExecutionSnapshots,
+} from './approval-repository.js';
 import {
   clearExecutions,
   createExecution,
@@ -11,6 +16,38 @@ import {
 } from './execution-repository.js';
 
 describe('approval persistence boundaries', () => {
+  it('loads pending approvals and execution snapshots in one query', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const irJson = JSON.stringify({ id: 'workflow-1', version: 1 });
+      const executionId = createExecution(db, { ephemeral: true, irJson });
+      const approvalId = createApproval(db, {
+        executionId,
+        actionIds: ['notify'],
+        reason: 'snapshot batch',
+      });
+      const olderExecutionId = createExecution(db, { ephemeral: true, irJson: JSON.stringify({ snapshot: 'older' }) });
+      const olderApprovalId = createApproval(db, {
+        executionId: olderExecutionId,
+        actionIds: ['archive'],
+        reason: 'older approval',
+      });
+      db.prepare('UPDATE approvals SET created_at = ? WHERE id = ?').run('2026-09-25T10:00:00.000Z', approvalId);
+      db.prepare('UPDATE approvals SET created_at = ? WHERE id = ?').run('2026-09-24T10:00:00.000Z', olderApprovalId);
+      const originalPrepare = db.prepare.bind(db);
+      const prepare = vi.spyOn(db, 'prepare').mockImplementation((sql) => originalPrepare(sql));
+
+      expect(getPendingApprovalsWithExecutionSnapshots(db)).toMatchObject([
+        { approval: { id: approvalId, executionId, actionIds: ['notify'] }, executionIrJson: irJson },
+        { approval: { id: olderApprovalId, executionId: olderExecutionId, actionIds: ['archive'] },
+          executionIrJson: JSON.stringify({ snapshot: 'older' }) },
+      ]);
+      expect(prepare.mock.calls.filter(([sql]) => sql.includes('FROM approvals a'))).toHaveLength(1);
+    } finally {
+      db.close?.();
+    }
+  });
+
   it.each([
     ['false', false],
     ['zero', 0],

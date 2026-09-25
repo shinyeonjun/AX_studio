@@ -1,22 +1,27 @@
 import type { DocumentWriteFormatModule } from './types.js';
-import { htmlWriteModule } from './html/index.js';
-import { docxWriteModule } from './docx/index.js';
-import { pdfWriteModule } from './pdf/index.js';
 
-const writeModules: DocumentWriteFormatModule[] = [htmlWriteModule, docxWriteModule, pdfWriteModule];
+const writeModuleLoaders = new Map<string, () => Promise<DocumentWriteFormatModule>>([
+  ['html', async () => (await import('./html/index.js')).htmlWriteModule],
+  ['docx', async () => (await import('./docx/index.js')).docxWriteModule],
+  ['pdf', async () => (await import('./pdf/index.js')).pdfWriteModule],
+]);
 
-const writeHandlers = new Map<string, import('../types.js').DocumentActionHandler>();
+const writeActions = [
+  'html.render',
+  'docx.fill',
+  'pdf.generate',
+  'pdf.form.analyze',
+  'pdf.form.fill',
+  'pdf.toHtml',
+];
 
-for (const mod of writeModules) {
-  for (const [action, handler] of Object.entries(mod.actions)) {
-    writeHandlers.set(`${mod.format}.${action}`, handler);
-  }
-}
-
-export function getDocumentWriteHandler(action: string): import('../types.js').DocumentActionHandler | undefined {
-  return writeHandlers.get(action);
+export async function getDocumentWriteHandler(action: string): Promise<import('../types.js').DocumentActionHandler | undefined> {
+  const separator = action.indexOf('.');
+  if (separator < 1) return undefined;
+  const module = await writeModuleLoaders.get(action.slice(0, separator))?.();
+  return module?.actions[action.slice(separator + 1)];
 }
 
 export function listDocumentWriteActions(): string[] {
-  return [...writeHandlers.keys()];
+  return [...writeActions];
 }

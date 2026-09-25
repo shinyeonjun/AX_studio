@@ -19,6 +19,8 @@ export interface ContractValidationIssue {
     name: string;
     label: string;
     question: string;
+    target?: 'trigger';
+    capabilityId?: string;
     inputType?: CapabilityParamInputType;
     placeholder?: string;
   }>;

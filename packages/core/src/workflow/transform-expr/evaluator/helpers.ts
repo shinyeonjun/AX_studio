@@ -14,7 +14,9 @@ export function compareScalar(left: ScalarValue, right: ScalarValue): boolean {
 export function toNumber(value: ScalarValue): number | null {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
-    const parsed = Number(value.replace(/,/g, ''));
+    const normalized = value.replace(/,/g, '').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;

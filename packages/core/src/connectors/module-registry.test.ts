@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { listRegisteredModules, registerModule } from './module-registry.js';
-import { instantiateConnector } from './registry.js';
+import { createAlwaysRealConnectors, instantiateConnector } from './registry.js';
 import { registerAllModules } from './packages/register.js';
 
 describe('registerModule', () => {
@@ -10,6 +10,12 @@ describe('registerModule', () => {
     expect(ids).toContain('gmail');
     expect(ids).toContain('slack');
     expect(ids).toContain('transform');
+  });
+
+  it('instantiates built-in connectors that are available without a saved connection', () => {
+    registerAllModules();
+
+    expect(createAlwaysRealConnectors()).toHaveProperty('local_sheet');
   });
 
   it('allows additional module registration', () => {

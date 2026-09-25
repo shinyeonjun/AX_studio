@@ -1,5 +1,6 @@
 import {
   DEFAULT_HTTP_ENDPOINT_ID,
+  discoverHttpReadOperations,
   normalizeHttpBaseUrl,
   parseHttpEndpoints,
   probeHttpBaseUrl,
@@ -35,9 +36,15 @@ export async function validateAndConnectHttp(
   const endpointId = matched?.id ?? (existing.length === 0 ? DEFAULT_HTTP_ENDPOINT_ID : randomUUID());
   const auth = buildHttpAuth(payload, secrets[endpointId]);
 
-  const probe = await probeHttpBaseUrl(baseUrl, payload.authType === 'none' ? undefined : auth);
+  const probe = await probeHttpBaseUrl(baseUrl, payload.authType === 'none' ? undefined : auth, 10_000, true);
   if (!probe.ok) {
     throw new Error(httpProbeErrorMessage(probe.error));
+  }
+  let discoveredReadOperations: Awaited<ReturnType<typeof discoverHttpReadOperations>> | undefined;
+  try {
+    discoveredReadOperations = await discoverHttpReadOperations(baseUrl, auth);
+  } catch {
+    // Preserve the unattempted state so startup can retry a transient discovery failure.
   }
 
   const nextSecrets: HttpEndpointSecrets = { ...secrets };
@@ -47,6 +54,7 @@ export async function validateAndConnectHttp(
     nextSecrets[endpointId] = {
       token: payload.authType === 'bearer' || payload.authType === 'apiKey' ? auth.token : undefined,
       password: payload.authType === 'basic' ? auth.password : undefined,
+      origin: new URL(baseUrl).origin,
     };
   }
   await writeHttpSecrets(nextSecrets);
@@ -57,6 +65,8 @@ export async function validateAndConnectHttp(
     label: payload.label?.trim() || undefined,
     auth,
     authStored: payload.authType !== 'none',
+    discoveredReadOperations: discoveredReadOperations
+      ?? (matched?.baseUrl === baseUrl ? matched.discoveredReadOperations : undefined),
     connectedAt: new Date().toISOString(),
   });
   applyHttpConnector(store, runtime, next, nextSecrets);

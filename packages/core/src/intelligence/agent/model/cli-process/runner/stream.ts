@@ -12,6 +12,8 @@ export interface RunCommandStreamingOptions {
   env?: NodeJS.ProcessEnv;
   abortSignal?: AbortSignal;
   onStdoutLine?: (line: string) => void;
+  /** Skip only the returned stdout buffer; line callbacks and byte limits still apply. */
+  captureStdout?: boolean;
 }
 
 export function runCommandStreaming(
@@ -101,7 +103,7 @@ export function runCommandStreaming(
         return;
       }
       const text = stdoutDecoder.write(bytes);
-      stdout += text;
+      if (options.captureStdout !== false) stdout += text;
       if (!options.onStdoutLine) return;
       lineBuf += text;
       const lines = lineBuf.split(/\r?\n/);
@@ -127,7 +129,7 @@ export function runCommandStreaming(
     child.on('close', (code: number | null) => {
       if (settled) return;
       const finalText = stdoutDecoder.end();
-      stdout += finalText;
+      if (options.captureStdout !== false) stdout += finalText;
       stderr += stderrDecoder.end();
       if (options.onStdoutLine) lineBuf += finalText;
       if (!terminationError && lineBuf.trim()) {

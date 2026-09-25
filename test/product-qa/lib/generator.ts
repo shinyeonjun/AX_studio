@@ -56,13 +56,13 @@ function promptScenario(
       : `${surface.prompt} (marker ${marker})`;
   return {
     id: `gen-${surface.id}`,
-    name: surface.title,
-    description: surface.prompt || surface.title,
+    name: `요청 전달·응답 확인 — ${surface.title}`,
+    description: '기능 실행 정확성 대신, 메시지 전달·응답 표시·입력창 복구를 확인합니다.',
     mode,
     generated: true,
     tier,
     tags: ['generated', surface.area, tier, surface.sideEffect === 'write' ? 'side-effect' : 'safe'],
-    covers: [surface.id],
+    covers: ['chat:new-send-reply'],
     timeoutMs: mode === 'live' ? 180_000 : 60_000,
     steps: [
       { action: 'openTab', tab: 'work' },

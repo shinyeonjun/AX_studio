@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
+import { inputRequestsForResult } from '../../input-requests.js';
 import { AxCommandService } from '../../service.js';
 import { commandChatContext } from '../fixtures.js';
 
@@ -49,5 +50,48 @@ describe('AxCommandService one-shot queue', () => {
     });
     expect(queued).toHaveLength(1);
     expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('keeps repeated required fields scoped to their workflow steps before queueing', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.setConnection('gmail', true);
+    const enqueueOnce = vi.fn(() => ({ jobId: 'must-not-queue' }));
+    const service = new AxCommandService(store, { enqueueOnce });
+
+    const result = await service.execute({
+      name: 'execution.enqueue_once',
+      args: {
+        name: '두 메일 보내기',
+        goal: '두 명에게 같은 메일을 보낸다',
+        steps: [1, 2].map((index) => ({
+          type: 'action',
+          id: `jev_step_${index}`,
+          connector: 'gmail',
+          action: 'message.send',
+          params: { body: '같은 안내' },
+        })),
+      },
+    }, commandChatContext);
+
+    expect(result.status).toBe('needs_input');
+    expect(inputRequestsForResult(result)).toMatchObject([
+      {
+        id: 'ax-input-jev_step_1-to-0',
+        label: '1단계 · 수신자 (1)',
+        stepId: 'jev_step_1',
+        capabilityId: 'gmail.message.send',
+        parameterName: 'to',
+      },
+      {
+        id: 'ax-input-jev_step_2-to-0',
+        label: '2단계 · 수신자 (2)',
+        stepId: 'jev_step_2',
+        capabilityId: 'gmail.message.send',
+        parameterName: 'to',
+      },
+    ]);
+    expect(enqueueOnce).not.toHaveBeenCalled();
+    db.close();
   });
 });

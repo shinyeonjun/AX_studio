@@ -34,6 +34,7 @@ describe('HTTP host cancellation', () => {
     if (!address || typeof address === 'string') throw new Error('missing_test_port');
     const connector = new HttpConnector({ baseUrl: `http://127.0.0.1:${address.port}/` });
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let settleWatchdog!: (value: string) => void;
     try {
       const pending = connector.execute('request', { path: '/' }, {
         executionId: 'cancelled', variables: {}, log: vi.fn(), abortSignal: controller.signal,
@@ -42,12 +43,16 @@ describe('HTTP host cancellation', () => {
       controller.abort();
       const result = await Promise.race([
         pending,
-        new Promise(resolve => { timer = setTimeout(() => resolve('did_not_cancel'), 500); }),
+        new Promise<string>(resolve => {
+          settleWatchdog = resolve;
+          timer = setTimeout(() => resolve('did_not_cancel'), 500);
+        }),
       ]);
       expect(result).toMatchObject({ ok: false, errorCode: 'aborted' });
       await closed;
     } finally {
       clearTimeout(timer);
+      settleWatchdog?.('cancelled');
       server.closeAllConnections();
       await new Promise<void>(resolve => server.close(() => resolve()));
     }

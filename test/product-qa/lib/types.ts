@@ -34,6 +34,7 @@ export interface ProductScenario {
 export type ScenarioAction =
   | { action: 'newChat'; label?: string }
   | { action: 'sendMessage'; text: string; label?: string; waitForReply?: boolean }
+  | { action: 'selectInputOption'; requestId: string; value: string }
   | { action: 'clickInlineApproval'; decision: 'approve' | 'reject' }
   | { action: 'waitMs'; ms: number }
   | { action: 'waitForAssistantReply'; timeoutMs?: number; optional?: boolean }

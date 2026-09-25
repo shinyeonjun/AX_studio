@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { weeklyReportWorkflowFixture } from '../../../testing/fixtures/workflows.js';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
@@ -20,16 +20,31 @@ describe('runtime control-flow selection', () => {
   it('runs exactly one slack branch for weekly report', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
+    const modelProvider = new NoReadProvider();
+    const generateStructured = vi.spyOn(modelProvider, 'generateStructured');
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
       workflowActive: {},
       connectors: createTestConnectors(),
-      investigationRunner: createInvestigationRunner(createAgentHarness(new NoReadProvider())),
+      investigationRunner: createInvestigationRunner(createAgentHarness(modelProvider)),
+      decisionEngine: {
+        evaluate: async ({ questions }) => ({
+          answers: Object.fromEntries(Object.keys(questions).map((id) => [id, {
+            type: 'choice' as const,
+            choice: id === 'output_0' ? 'true' : 'false',
+            probabilities: { [id === 'output_0' ? 'true' : 'false']: 0.4 },
+          }])),
+          model: 'jev-test',
+        }),
+      },
     });
     const result = await runtime.executeWorkflow(weeklyReportWorkflowFixture, { ephemeral: true });
     expect(result.status).toBe('success');
-    expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+    expect(mockSlack(runtime.connectors).messages).toEqual([
+      { channel: '#sales', text: '매출 하락 경보' },
+    ]);
+    expect(generateStructured).not.toHaveBeenCalled();
   });
 
   it('evaluates if conditions from trigger input', async () => {

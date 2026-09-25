@@ -24,7 +24,7 @@ describe('AxCommandService saved execution', () => {
 
     const run = await service.execute(
       { name: 'workflow.run', args: { workflowId } },
-      commandChatContext,
+      { ...commandChatContext, currentWorkflowId: workflowId },
     );
 
     expect(run).toMatchObject({
@@ -74,7 +74,7 @@ describe('AxCommandService saved execution', () => {
     const workflowId = (created.data as { workflowId: string }).workflowId;
     const run = await service.execute(
       { name: 'workflow.run', args: { workflowId } },
-      commandChatContext,
+      { ...commandChatContext, currentWorkflowId: workflowId },
     );
 
     expect(run).toMatchObject({ status: 'ok', data: { executionId: 'execution-1' } });

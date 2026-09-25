@@ -1,4 +1,5 @@
 import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { DecisionEngine } from '../contracts/decision.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { Connector } from '../connectors/types.js';
 import type { ArtifactSink, ExecutionLogEntry } from '../connectors/types.js';
@@ -7,6 +8,7 @@ import type { ExecutionResultStatus } from '../contracts/execution-status.js';
 export interface RuntimeConfig {
   store: WorkflowStore;
   investigationRunner?: InvestigationRunner;
+  decisionEngine?: DecisionEngine;
   connectors?: Record<string, Connector>;
   artifactSink?: ArtifactSink;
   globalActive: boolean;

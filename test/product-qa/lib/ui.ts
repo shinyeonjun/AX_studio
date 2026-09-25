@@ -10,6 +10,13 @@ export async function sendMessage(page: Page, text: string): Promise<void> {
   await page.getByRole('button', { name: '메시지 보내기' }).click();
 }
 
+export async function selectInputOption(page: Page, requestId: string, value: string): Promise<void> {
+  const card = page.getByTestId(`input-request-${requestId}`);
+  await card.locator('select').selectOption(value);
+  await page.getByRole('region', { name: '추가 정보가 필요합니다' })
+    .getByRole('button', { name: '입력값으로 계속', exact: true }).click();
+}
+
 export async function clickInlineApproval(page: Page, decision: 'approve' | 'reject'): Promise<void> {
   const card = page.locator('.ax-workspace-inline-approval').last();
   await card.getByRole('button', {

@@ -38,6 +38,7 @@ describe('RDB host cancellation', () => {
       type, connectionString: `${type}://test@127.0.0.1:${address.port}/test`, allowedTables: ['items'],
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let settleWatchdog!: (value: string) => void;
     try {
       const execution = connector.execute('query.read', { table: 'items' }, {
           executionId: 'cancelled', variables: {}, log: () => {}, abortSignal: controller.signal,
@@ -45,12 +46,16 @@ describe('RDB host cancellation', () => {
       await handshake;
       const result = await Promise.race([
         execution,
-        new Promise(resolve => { timer = setTimeout(() => resolve('did_not_cancel'), 800); }),
+        new Promise<string>(resolve => {
+          settleWatchdog = resolve;
+          timer = setTimeout(() => resolve('did_not_cancel'), 800);
+        }),
       ]);
       expect(result).toMatchObject({ ok: false, errorCode: 'aborted' });
       if (!allowHalfOpen) await closed;
     } finally {
       clearTimeout(timer);
+      settleWatchdog?.('cancelled');
       for (const socket of sockets) socket.destroy();
       await new Promise<void>(resolve => server.close(() => resolve()));
     }

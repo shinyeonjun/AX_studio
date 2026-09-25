@@ -4,6 +4,7 @@ import { validateTriggerConfiguration } from './trigger.js';
 import { validateActionContract } from './action-contracts.js';
 import {
   indexWorkflowSteps,
+  validateApprovalBranchOwnership,
   validateControlFlowCycles,
   validateStepControlFlow,
 } from './control-flow.js';
@@ -24,6 +25,7 @@ export function validateWorkflowStructure(
   }
 
   issues.push(...validateControlFlowCycles(ir.steps, byId));
+  issues.push(...validateApprovalBranchOwnership(ir.steps));
   issues.push(...validateNotificationBranching(ir));
   issues.push(...validateWorkflowReferences(ir, byId));
   return issues;
