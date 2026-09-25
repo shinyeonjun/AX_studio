@@ -35,15 +35,23 @@ export class CommandProcessRegistry {
     const closed = [...this.active.values()];
     for (const child of children) terminateOwnedChild(child);
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let settleDeadline!: (drained: boolean) => void;
+    const deadline = new Promise<boolean>(resolve => {
+      settleDeadline = resolve;
+      timer = setTimeout(() => {
+        for (const child of this.active.keys()) terminateOwnedChild(child, true);
+        resolve(false);
+      }, timeoutMs);
+    });
     try {
       return await Promise.race([
         Promise.all(closed).then(() => true),
-        new Promise<boolean>(resolve => { timer = setTimeout(() => {
-          for (const child of this.active.keys()) terminateOwnedChild(child, true);
-          resolve(false);
-        }, timeoutMs); }),
+        deadline,
       ]);
-    } finally { clearTimeout(timer); }
+    } finally {
+      clearTimeout(timer);
+      settleDeadline(true);
+    }
   }
 }
 

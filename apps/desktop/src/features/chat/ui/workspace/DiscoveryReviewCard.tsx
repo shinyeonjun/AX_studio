@@ -1,4 +1,5 @@
 import type { DiscoveryInspectView } from '@ax-studio/core';
+import { DISCOVERY_RUNNING_STATUSES } from './workspace-flow/status.js';
 
 interface DiscoveryReviewCardProps {
   view: DiscoveryInspectView;
@@ -9,18 +10,8 @@ interface DiscoveryReviewCardProps {
   onRetry?: () => Promise<void> | void;
 }
 
-const RUNNING_STATUSES = new Set<DiscoveryInspectView['status']>([
-  'collecting_examples',
-  'observing_output',
-  'inventory_sources',
-  'exploring_sources',
-  'synthesizing',
-  'validating',
-  'publishing',
-]);
-
 const CANCELLABLE_STATUSES = new Set<DiscoveryInspectView['status']>([
-  ...RUNNING_STATUSES,
+  ...DISCOVERY_RUNNING_STATUSES,
   'needs_attention',
   'needs_clarification',
   'ready_to_publish',

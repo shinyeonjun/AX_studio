@@ -31,10 +31,6 @@ export function executionLogCodes(log: ExecutionLogEntry[]): string[] {
   return log.map((entry) => entry.code).filter((code): code is string => Boolean(code));
 }
 
-export function executionLogMessages(log: ExecutionLogEntry[]): string[] {
-  return log.map((entry) => entry.message).filter((message): message is string => Boolean(message));
-}
-
 export function hasExecutionLogCode(log: ExecutionLogEntry[], code: string): boolean {
   return executionLogCodes(log).includes(code);
 }

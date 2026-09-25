@@ -1,4 +1,6 @@
 import {
+  discoverHttpReadOperations,
+  mergeHttpEndpointsWithSecrets,
   parseHttpEndpoints,
   type WorkflowRuntime,
   type WorkflowStore,
@@ -17,5 +19,21 @@ export async function hydrateHttpConnector(
     store.setConnection('http', false);
     return;
   }
-  applyHttpConnector(store, runtime, endpoints, await readHttpSecrets());
+  const secrets = await readHttpSecrets();
+  const authenticated = new Map(mergeHttpEndpointsWithSecrets(endpoints, secrets)
+    .map((endpoint) => [endpoint.id, endpoint]));
+  const hydrated = await Promise.all(endpoints.map(async (endpoint) => {
+    if (endpoint.discoveredReadOperations !== undefined) return endpoint;
+    const usable = authenticated.get(endpoint.id);
+    if (!usable) return endpoint;
+    try {
+      return {
+        ...endpoint,
+        discoveredReadOperations: await discoverHttpReadOperations(endpoint.baseUrl, usable.auth),
+      };
+    } catch {
+      return endpoint;
+    }
+  }));
+  applyHttpConnector(store, runtime, hydrated, secrets);
 }

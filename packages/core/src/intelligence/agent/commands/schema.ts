@@ -12,6 +12,8 @@ export type {
 } from './schema/command.js';
 export {
   AxCommandIssueSchema,
+  AxContextUpdateConfirmationSchema,
+  AX_INPUT_REQUEST_MAX_COUNT,
   AxInputRequestOptionSchema,
   AxInputRequestSchema,
   AxInputRequestTypeSchema,
@@ -20,7 +22,11 @@ export {
   AxUiPresentationSchema,
 } from './schema/interaction.js';
 export type {
+  AxWorkflowStepInput,
+} from './schema/workflow-args.js';
+export type {
   AxCommandIssue,
+  AxContextUpdateConfirmation,
   AxInputRequest,
   AxInputRequestOption,
   AxUiPresentation,
@@ -52,6 +58,7 @@ export {
   AxSourceSearchArgsSchema,
   AxUiPresentArgsSchema,
   AxWorkflowActionStepInputSchema,
+  AX_WORKFLOW_UPDATE_MAX_OPERATIONS,
   AxWorkflowCreateArgsSchema,
   AxWorkflowDeleteArgsSchema,
   AxWorkflowRunArgsSchema,

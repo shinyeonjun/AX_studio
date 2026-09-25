@@ -111,6 +111,7 @@ export async function executeWorkflow(
     appendLog,
     options.workspaceSessionId,
     options.abortSignal,
+    Object.values(input).filter((value): value is string => typeof value === 'string'),
   );
   const stepResults: Record<string, unknown> = { ...input };
 

@@ -18,7 +18,7 @@ function unqualifiedTableName(value: string): string {
 }
 
 /** Stable host-computed period variants keep date formatting out of learned business math. */
-export function reportPeriodMetadata(period: ReportPeriod): Record<string, ReportPrimitive> {
+function reportPeriodMetadata(period: ReportPeriod): Record<string, ReportPrimitive> {
   const start = dateParts(period.start);
   const end = dateParts(period.endInclusive);
   const next = followingDate(period.endInclusive);

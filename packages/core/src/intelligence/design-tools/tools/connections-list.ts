@@ -1,10 +1,9 @@
 import { CONNECTOR_CATALOG, CONNECTOR_IDS, type ConnectorId } from '../../../catalog/connectors.js';
-import type { DesignToolContext, DesignToolHandler } from '../types.js';
+import { isConnectorAlwaysOn } from '../../../catalog/capability-graph.js';
+import type { DesignToolHandler } from '../types.js';
 
 const BUILTIN_CONNECTORS = new Set<ConnectorId>(
-  CONNECTOR_IDS.filter(
-    (id) => CONNECTOR_CATALOG[id].runtimeAvailable && CONNECTOR_CATALOG[id].alwaysReal,
-  ),
+  CONNECTOR_IDS.filter(isConnectorAlwaysOn),
 );
 
 export const connectionsList: DesignToolHandler = (ctx) => {
@@ -23,7 +22,3 @@ export const connectionsList: DesignToolHandler = (ctx) => {
     };
   });
 };
-
-export function filterConnectedConnectorIds(ctx: DesignToolContext): string[] {
-  return ctx.connectedConnectorIds;
-}

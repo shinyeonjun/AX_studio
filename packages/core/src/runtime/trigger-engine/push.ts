@@ -1,6 +1,6 @@
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { PUSH_TRIGGER_DRIVERS } from '../../connectors/packages/catalog.js';
-import type { TriggerEvent } from '../../triggers/types.js';
+import type { PushTriggerEvent } from '../../connectors/module-package.js';
 import type { PushTransportState } from '../../triggers/push-state.js';
 import type {
   ActivePushTransport,
@@ -18,7 +18,7 @@ export class PushTransportManager {
   constructor(
     private readonly store: WorkflowStore,
     private readonly isAcceptingEvents: () => boolean,
-    private readonly onEvent: (driver: PushTriggerDriver, event: TriggerEvent) => void | Promise<void>,
+    private readonly onEvent: (driver: PushTriggerDriver, event: PushTriggerEvent) => void | boolean | Promise<void | boolean>,
     private readonly onStateChanged?: (triggerType: string, state: PushTransportState) => void,
   ) {}
 
@@ -54,9 +54,10 @@ export class PushTransportManager {
           const transport = await driver.refresh(
             this.store,
             (event) => {
-              if (generation !== this.refreshGeneration || !this.isAcceptingEvents()) return;
-              void Promise.resolve(this.onEvent(driver, event)).catch((error) => {
+              if (generation !== this.refreshGeneration || !this.isAcceptingEvents()) return false;
+              return Promise.resolve(this.onEvent(driver, event)).catch((error) => {
                 console.error(`[trigger-engine] push event failed for ${driver.triggerType}:`, error);
+                return false;
               });
             },
             driver.connector ? configOverrides?.[driver.connector] : undefined,

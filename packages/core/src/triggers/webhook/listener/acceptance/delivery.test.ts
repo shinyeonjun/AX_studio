@@ -1,5 +1,7 @@
+import { createHmac } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebhookInboundListener } from '../../listener.js';
+import { webhookSignaturePayload } from '../../security.js';
 
 const listeners: WebhookInboundListener[] = [];
 
@@ -79,5 +81,34 @@ describe('WebhookInboundListener acceptance', () => {
 
     expect(response.status).toBe(202);
     expect(events[0]?.payload.path).toBe('결제 완료');
+  });
+
+  it('returns retryable backpressure and allows a signed delivery to retry', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const onEvent = vi.fn(async () => true).mockResolvedValueOnce(false);
+    const port = 39_106;
+    const body = '{"id":1}';
+    const timestamp = String(Math.floor(Date.now() / 1_000));
+    const context = { method: 'POST', path: 'signed-retry', eventId: 'signed-event-1', timestamp };
+    const signature = createHmac('sha256', 'hook-secret')
+      .update(webhookSignaturePayload(context, Buffer.from(body)))
+      .digest('hex');
+    await listener.start({ port, secret: 'hook-secret' }, onEvent);
+
+    const deliver = () => fetch(`http://127.0.0.1:${port}/hooks/signed-retry`, {
+      method: 'POST',
+      headers: {
+        'x-event-id': context.eventId,
+        'x-ax-timestamp': timestamp,
+        'x-ax-signature': `sha256=${signature}`,
+      },
+      body,
+    });
+
+    expect((await deliver()).status).toBe(503);
+    expect((await deliver()).status).toBe(202);
+    expect((await deliver()).status).toBe(409);
+    expect(onEvent).toHaveBeenCalledTimes(2);
   });
 });

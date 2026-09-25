@@ -25,12 +25,12 @@ export const capabilitiesInvoke: DesignToolHandler = async (ctx, args) => {
     if (!(error instanceof CapabilityInvokeError)) throw error;
     if (ctx.allowUntrustedData !== true) throw new CapabilityInvokeError('capability_invoke_failed');
     const message = error.message.length > 1_000 ? `${error.message.slice(0, 1_000)}...[truncated]` : error.message;
-    if (error.errorDetails === undefined) throw new CapabilityInvokeError(message);
+    if (error.errorDetails === undefined) throw new CapabilityInvokeError(message, undefined, error.failureKind);
     const details = boundCapabilityEvidence({ capabilityId, data: error.errorDetails, citations: [], untrusted: true });
     const errorDetails = details.evidence?.truncated
       ? { preview: details.data, truncated: true }
       : details.data;
-    throw new CapabilityInvokeError(message, errorDetails);
+    throw new CapabilityInvokeError(message, errorDetails, error.failureKind);
   });
   if (ctx.allowUntrustedData !== true) {
     return boundCapabilityEvidence(sanitizeCloudReadEnvelope(envelope));

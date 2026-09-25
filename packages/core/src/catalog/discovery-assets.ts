@@ -187,18 +187,21 @@ function rankAsset(asset: DiscoveryAsset, query: string): { score: number; match
   }
 
   const matched = new Map<string, number>();
+  let coveredTokenCount = 0;
   for (const token of tokens) {
-    const match = fields
-      .filter(([, value]) => value.includes(token))
-      .sort((left, right) => right[2] - left[2])[0];
+    let match: (typeof fields)[number] | undefined;
+    for (const field of fields) {
+      if (field[1].includes(token) && (!match || field[2] > match[2])) match = field;
+    }
     if (match) {
+      coveredTokenCount += 1;
       const [field, , weight] = match;
       matched.set(field, Math.max(matched.get(field) ?? 0, weight));
     }
   }
   if (matched.size === 0) return null;
 
-  const tokenCoverage = tokens.filter((token) => fields.some(([, value]) => value.includes(token))).length / tokens.length;
+  const tokenCoverage = coveredTokenCount / tokens.length;
   const weightedMatch = [...matched.values()].reduce((sum, value) => sum + value, 0) / tokens.length;
   const phraseBoost = fields.some(([, value]) => value.includes(normalizedQuery)) ? 0.12 : 0;
   const score = Math.min(0.99, Math.max(0.01, tokenCoverage * 0.65 + Math.min(1, weightedMatch) * 0.25 + phraseBoost));

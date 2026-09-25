@@ -1,5 +1,6 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../../types.js';
 import { performHttpRequest } from '../../http/request.js';
+import { resolveHttpRequestUrl } from '../../http/url-security.js';
 import {
   normalizeHttpHeaders,
   serializeHttpBody,
@@ -72,8 +73,11 @@ export class OpenApiConnector implements Connector {
         .filter((entry): entry is [string, string] => entry[1] !== undefined),
     );
     const path = substitutePath(operation.path, pathParams);
-    const url = new URL(spec.baseUrl);
-    url.pathname = `${url.pathname.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+    const resolvedUrl = resolveHttpRequestUrl(spec.baseUrl, path);
+    if (!resolvedUrl.ok) {
+      return { ok: false, error: resolvedUrl.error, errorCode: resolvedUrl.errorCode };
+    }
+    const url = new URL(resolvedUrl.value.url);
     if (query) {
       for (const [key, value] of Object.entries(query)) {
         url.searchParams.set(key, value);
@@ -104,6 +108,7 @@ export class OpenApiConnector implements Connector {
       headers,
       body: serializedBody.body,
       abortSignal: ctx.abortSignal,
+      rejectPrivateDestination: true,
     });
 
     if (!result.ok) {

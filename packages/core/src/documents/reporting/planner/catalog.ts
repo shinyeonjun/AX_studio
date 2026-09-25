@@ -89,11 +89,3 @@ function catalogPage(httpConnections: ReportHttpConnectionSummary[], rdbTables: 
   return { entries, total, offset, limit, hasMore, nextOffset: hasMore ? offset + entries.length : null,
     complete: offset === 0 && !hasMore };
 }
-
-export function selectedReportHttpMetadata(httpConnections: ReportHttpConnectionSummary[],
-  selections: Array<{ connectionId?: string; path: string }>) {
-  return httpConnections.filter(connection => selections.some(source => source.connectionId === connection.id))
-    .map(connection => ({ ...connection, operations: connection.operations?.filter(operation => selections.some(source =>
-      source.connectionId === connection.id
-      && new URL(normalizeReportHttpPath(source.path), 'http://report-probe.invalid').pathname === operation.path)) }));
-}

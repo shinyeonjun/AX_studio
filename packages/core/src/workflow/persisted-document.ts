@@ -116,15 +116,41 @@ export function serializeWorkflowForStorage(ir: WorkflowIR): string {
   return JSON.stringify(splitWorkflowIR(ir));
 }
 
+function migrateImplicitInvestigationReadBudget(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+  const envelope = data as Record<string, unknown>;
+  const isDocument = envelope.format === WORKFLOW_DOCUMENT_FORMAT;
+  const workflow = isDocument && envelope.workflow && typeof envelope.workflow === 'object'
+    ? envelope.workflow as Record<string, unknown>
+    : envelope;
+  if (!Array.isArray(workflow.steps)) return data;
+
+  let changed = false;
+  const steps = workflow.steps.map((step) => {
+    if (!step || typeof step !== 'object' || Array.isArray(step)) return step;
+    const record = step as Record<string, unknown>;
+    // Older Canvas compilation silently inserted four reads; no UI exposed it as a user budget.
+    if (record.type !== 'ai_decision' || record.investigation !== true || record.maxReads !== 4) return step;
+    const { maxReads: _legacyDefault, ...migrated } = record;
+    changed = true;
+    return migrated;
+  });
+  if (!changed) return data;
+  return isDocument
+    ? { ...envelope, workflow: { ...workflow, steps } }
+    : { ...envelope, steps };
+}
+
 export function parseStoredWorkflow(data: unknown): WorkflowIR {
+  const migrated = migrateImplicitInvestigationReadBudget(data);
   if (!data || typeof data !== 'object') {
-    return parseWorkflowIR(data);
+    return parseWorkflowIR(migrated);
   }
 
-  const record = data as Record<string, unknown>;
+  const record = migrated as Record<string, unknown>;
   if (record.format === WORKFLOW_DOCUMENT_FORMAT) {
-    return mergeWorkflowDocument(StoredWorkflowDocumentSchema.parse(data));
+    return mergeWorkflowDocument(StoredWorkflowDocumentSchema.parse(migrated));
   }
 
-  return parseWorkflowIR(data);
+  return parseWorkflowIR(migrated);
 }

@@ -1,7 +1,7 @@
 import { performHttpRequest } from '../../http/request.js';
 import { parseOpenApiSpec } from './parse.js';
 
-export interface OpenApiConnectionRecord {
+interface OpenApiConnectionRecord {
   specId?: string;
   label?: string;
   baseUrl?: string;
@@ -36,7 +36,12 @@ export function parseOpenApiConnectionConfig(config: unknown): OpenApiConnection
 export async function loadOpenApiSpecFromUrl(specUrl: string): Promise<unknown> {
   const url = specUrl.trim();
   if (!url) throw new Error('OpenAPI spec URL이 필요합니다.');
-  const result = await performHttpRequest({ url, method: 'GET', maxBytes: 2_000_000 });
+  const result = await performHttpRequest({
+    url,
+    method: 'GET',
+    maxBytes: 2_000_000,
+    rejectPrivateDestination: true,
+  });
   if (!result.ok) {
     throw new Error(result.error === 'connection_timeout' ? 'spec URL 연결 시간 초과' : 'spec URL을 가져올 수 없습니다.');
   }

@@ -41,14 +41,14 @@ function materializeFixtureWorkbook(path: string): {
 }
 
 describe('observeArtifact', () => {
-  it('observes a stored spreadsheet instead of treating its metadata as a document', () => {
+  it('observes a stored spreadsheet instead of treating its metadata as a document', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-observe-artifact-'));
     const sourcePath = join(root, 'report.csv');
     writeFileSync(sourcePath, 'total\n300\n');
 
     const artifactStore = new ArtifactStore(join(root, 'artifacts'));
     const stored = artifactStore.importFile(sourcePath);
-    const observations = observeArtifact(
+    const observations = await observeArtifact(
       'example-1',
       stored.id,
       artifactStore,
@@ -62,7 +62,7 @@ describe('observeArtifact', () => {
     });
   });
 
-  it('observes a persisted workbook and its table artifacts', () => {
+  it('observes a persisted workbook and its table artifacts', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-observe-workbook-'));
     const sourcePath = join(root, 'report.csv');
     writeFileSync(sourcePath, 'total\n300\n');
@@ -74,7 +74,7 @@ describe('observeArtifact', () => {
       artifactStore.putTableArtifact(tableId, table);
     }
 
-    const observations = observeArtifact(
+    const observations = await observeArtifact(
       'example-2',
       materialized.workbook.id,
       artifactStore,

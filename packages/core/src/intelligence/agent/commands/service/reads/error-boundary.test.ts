@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
-import type { AxCommandReadGateway } from '../../read-gateway.js';
+import { createDesignToolReadGateway, type AxCommandReadGateway } from '../../read-gateway.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { AxCommandService } from '../../service.js';
 import { commandChatContext } from '../fixtures.js';
@@ -29,6 +29,7 @@ describe('AxCommandService read error boundary', () => {
     }, {
       ...commandChatContext,
       designToolContext: { connections: [], connectedConnectorIds: [], allowUntrustedData: true },
+      readAuthorization: { capabilityId: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
     });
 
     expect(response).toMatchObject({
@@ -70,6 +71,7 @@ describe('AxCommandService read error boundary', () => {
     }, {
       ...commandChatContext,
       designToolContext: { connections: [], connectedConnectorIds: [], allowUntrustedData: true },
+      readAuthorization: { capabilityId: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
     });
 
     expect(response.issues[0]?.details).toEqual({
@@ -79,5 +81,68 @@ describe('AxCommandService read error boundary', () => {
       truncated: true,
     });
     expect(JSON.stringify(response)).not.toContain('should-not-cross-the-boundary');
+  });
+
+  it('keeps host policy failures non-recoverable and exposes only the safe category', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const readGateway: AxCommandReadGateway = {
+      execute: async () => ({
+        tool: 'capabilities.invoke',
+        ok: false,
+        error: 'ssrf_blocked',
+        failureKind: 'host_policy',
+      }),
+    };
+    const service = new AxCommandService(new WorkflowStore(db), { readGateway });
+
+    const response = await service.execute({
+      name: 'capability.invoke',
+      args: { id: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
+    }, {
+      ...commandChatContext,
+      designToolContext: { connections: [], connectedConnectorIds: [], allowUntrustedData: true },
+      readAuthorization: { capabilityId: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
+    });
+
+    expect(response).toMatchObject({
+      status: 'forbidden',
+      issues: [{ failureKind: 'host_policy' }],
+    });
+    db.close();
+  });
+
+  it('carries connector policy classification through the production read gateway', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const service = new AxCommandService(store, { readGateway: createDesignToolReadGateway(store) });
+
+    const response = await service.execute({
+      name: 'capability.invoke',
+      args: { id: 'http.request', params: { method: 'GET', path: 'secure/profile' } },
+    }, {
+      ...commandChatContext,
+      designToolContext: {
+        connections: [],
+        connectedConnectorIds: ['http'],
+        allowUntrustedData: true,
+        connectors: {
+          http: {
+            name: 'http',
+            execute: async () => ({ ok: false, error: 'blocked', errorCode: 'ssrf_blocked' }),
+          },
+        },
+      },
+      readAuthorization: {
+        capabilityId: 'http.request',
+        params: { method: 'GET', path: 'secure/profile' },
+      },
+    });
+
+    expect(response).toMatchObject({
+      status: 'forbidden',
+      issues: [{ failureKind: 'host_policy' }],
+    });
+    expect(JSON.stringify(response)).not.toContain('ssrf_blocked');
+    db.close();
   });
 });

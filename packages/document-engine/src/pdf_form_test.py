@@ -630,7 +630,13 @@ class PdfFormPipelineTest(unittest.TestCase):
                 EngineRequest(
                     id="analyze-1",
                     command="pdf_form_analyze",
-                    params={"path": str(source), "templateRoot": str(root / "templates"), "options": {"ocr": "off"}},
+                    params={
+                        "path": str(source),
+                        "templateRoot": str(root / "templates"),
+                        "allowedPaths": [str(source)],
+                        "allowedRoots": [str(root / "templates")],
+                        "options": {"ocr": "off"},
+                    },
                 )
             )
             self.assertTrue(analyzed.ok)
@@ -647,6 +653,7 @@ class PdfFormPipelineTest(unittest.TestCase):
                         "templatePath": template_path,
                         "values": {field_id: "Worker value"},
                         "outputPath": str(output),
+                        "allowedPaths": [str(source), template_path, str(output)],
                     },
                 )
             )

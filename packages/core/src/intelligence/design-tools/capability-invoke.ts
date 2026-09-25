@@ -2,9 +2,12 @@ import { getCapability } from '../../catalog/capabilities.js';
 import { capabilityActionName, readCapabilityMethodIssue } from '../../catalog/capability-graph.js';
 import { isPlainChatSideEffectAllowed } from '../../platform/side-effect-policy.js';
 import { citationsFromSearchHits } from '../../platform/citations.js';
-import type { ConnectorContext, ConnectorResult } from '../../connectors/types.js';
+import type { ConnectorContext, ConnectorFailureKind, ConnectorResult } from '../../connectors/types.js';
+import { connectorFailureKind } from '../../connectors/failure-kind.js';
 import { ArtifactCompletenessSchema, type ArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import type { DesignToolContext } from './types.js';
+
+export { connectorFailureKind };
 
 function noopLog(): void {
   // design-tool reads do not persist execution logs
@@ -149,7 +152,11 @@ export function boundCapabilityEvidence(envelope: CapabilityInvokeEnvelope): Cap
 
 /** Preserve connector failure metadata while crossing the design-tool boundary. */
 export class CapabilityInvokeError extends Error {
-  constructor(message: string, readonly errorDetails?: unknown) {
+  constructor(
+    message: string,
+    readonly errorDetails?: unknown,
+    readonly failureKind: ConnectorFailureKind = 'unknown',
+  ) {
     super(message);
     this.name = 'CapabilityInvokeError';
   }
@@ -187,6 +194,13 @@ export async function invokeReadCapability(
     variables: {},
     log: noopLog,
     abortSignal: ctx.abortSignal,
+    connections: ctx.connections.map(({ connector, connected, config }) => ({
+      connector,
+      connected,
+      ...(config && typeof config === 'object' && !Array.isArray(config)
+        ? { config: config as Record<string, unknown> }
+        : {}),
+    })),
   };
 
   let result: ConnectorResult;
@@ -198,7 +212,11 @@ export async function invokeReadCapability(
   }
   ctx.abortSignal?.throwIfAborted();
   if (!result.ok) {
-    throw new CapabilityInvokeError(result.error ?? 'capability_invoke_failed', result.errorDetails);
+    throw new CapabilityInvokeError(
+      result.error ?? 'capability_invoke_failed',
+      result.errorDetails,
+      connectorFailureKind(result.errorCode, result.errorDetails),
+    );
   }
 
   const data = result.data;

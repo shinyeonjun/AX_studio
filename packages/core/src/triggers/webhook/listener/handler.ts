@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { TriggerEvent } from '../../types.js';
 import {
   WEBHOOK_MAX_PAYLOAD_BYTES,
+  WebhookReplayCache,
   normalizeWebhookPath,
   verifyWebhookAuth,
 } from '../security.js';
@@ -22,6 +23,7 @@ export async function handleWebhookRequest(
   options: WebhookListenerOptions,
   onEvent: WebhookEventHandler,
   abortSignal?: AbortSignal,
+  replayCache?: WebhookReplayCache,
 ): Promise<void> {
   try {
     if (abortSignal?.aborted) return;
@@ -64,14 +66,31 @@ export async function handleWebhookRequest(
 
     const rawBody = await readRequestBody(req, WEBHOOK_MAX_PAYLOAD_BYTES);
     if (abortSignal?.aborted) return;
-    if (!verifyWebhookAuth(requestHeaders(req), options.secret, rawBody)) {
+    const requestId = providerEventId(req) ?? randomUUID();
+    const timestamp = typeof req.headers['x-ax-timestamp'] === 'string' ? req.headers['x-ax-timestamp'] : undefined;
+    const signature = typeof req.headers['x-ax-signature'] === 'string' ? req.headers['x-ax-signature'] : undefined;
+    if (signature && (!timestamp || !providerEventId(req))) {
       respond(res, 401, 'unauthorized');
+      return;
+    }
+    if (!verifyWebhookAuth(requestHeaders(req), options.secret, rawBody, signature ? {
+      method: req.method,
+      path,
+      eventId: requestId,
+      timestamp: timestamp!,
+    } : undefined)) {
+      respond(res, 401, 'unauthorized');
+      return;
+    }
+
+    const replayKey = signature && replayCache ? `${requestId}:${signature}` : undefined;
+    if (replayKey && !replayCache!.claim(replayKey)) {
+      respond(res, 409, 'replayed_request');
       return;
     }
 
     // Prefer a provider's stable event key so retries can be deduplicated.
     // Keyless callers still receive a unique local request id.
-    const requestId = providerEventId(req) ?? randomUUID();
     const receivedAt = new Date().toISOString();
     const body = rawBody.toString('utf8');
     const event: TriggerEvent = {
@@ -85,9 +104,20 @@ export async function handleWebhookRequest(
       },
     };
 
-    void Promise.resolve(onEvent(event)).catch((error) => {
+    let accepted: boolean | void;
+    try {
+      accepted = await onEvent(event);
+    } catch (error) {
+      if (replayKey) replayCache!.release(replayKey);
       console.error('[webhook] event handler failed:', error);
-    });
+      rejectRequest(req, res, 503, 'temporarily_unavailable');
+      return;
+    }
+    if (accepted === false) {
+      if (replayKey) replayCache!.release(replayKey);
+      rejectRequest(req, res, 503, 'temporarily_unavailable');
+      return;
+    }
     respond(res, 202, 'accepted');
   } catch (err) {
     if (abortSignal?.aborted || res.destroyed) return;

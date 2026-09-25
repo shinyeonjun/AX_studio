@@ -22,7 +22,7 @@ export function SettingsPage(props: SettingsPageProps) {
   const backTarget = settingsBackTarget(screen);
 
   useEffect(() => {
-    if (screen === 'hub' || screen.startsWith('ai-')) {
+    if (screen === 'hub') {
       void refreshDetection().catch(() => {});
     }
   }, [screen, refreshDetection]);

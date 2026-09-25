@@ -1,6 +1,7 @@
 import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { Connector } from './types.js';
 import { CONNECTOR_CATALOG, type ConnectorId } from '../catalog/connectors.js';
+import { isConnectorAlwaysOn } from '../catalog/capability-graph.js';
 import { instantiateRegisteredConnector } from './module-registry.js';
 
 export { registerModule, type ModuleRegistration } from './module-registry.js';
@@ -8,7 +9,7 @@ export { registerModule, type ModuleRegistration } from './module-registry.js';
 export function createAlwaysRealConnectors(): Record<string, Connector> {
   const connectors: Record<string, Connector> = {};
   for (const id of Object.keys(CONNECTOR_CATALOG) as ConnectorId[]) {
-    if (CONNECTOR_CATALOG[id].alwaysReal) {
+    if (isConnectorAlwaysOn(id)) {
       const instance = instantiateConnector(id);
       if (instance) connectors[id] = instance;
     }

@@ -26,7 +26,11 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
     label: '폴더 목록',
     description: '연결 폴더의 파일 목록 조회',
     sideEffect: 'NONE',
-    params: [{ name: 'folderId', label: '폴더', question: '어떤 연결 폴더를 볼까요?', required: false, inputType: 'folder', placeholder: '연결된 폴더를 선택하세요' }],
+    params: [
+      { name: 'folderId', label: '폴더', question: '어떤 연결 폴더를 볼까요?', required: false, inputType: 'folder', placeholder: '연결된 폴더를 선택하세요' },
+      { name: 'offset', label: '시작 위치', question: '몇 번째 파일부터 볼까요?', required: false },
+      { name: 'limit', label: '파일 개수', question: '파일을 몇 개 볼까요?', required: false },
+    ],
   },
   {
     id: 'local_folder.read',

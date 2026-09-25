@@ -22,7 +22,7 @@ export function storeTheme(theme: ThemeMode) {
   }
 }
 
-export function applyTheme(theme: ThemeMode) {
+function applyTheme(theme: ThemeMode) {
   document.documentElement.dataset.theme = theme;
 }
 

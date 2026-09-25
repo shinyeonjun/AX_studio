@@ -3,8 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from artifact_store import sha256_file
-from ax_paths import default_document_root, default_template_root
+from ax_paths import (
+    default_document_root,
+    default_template_root,
+    managed_request_path,
+    managed_request_root,
+    request_allowed_paths,
+)
 from protocol import EngineRequest, EngineResponse
+
+def _managed_path(path_value: object, label: str, allowed_paths: set[Path]) -> Path | None:
+    return managed_request_path(path_value, label, allowed_paths)
 
 
 def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
@@ -13,11 +22,17 @@ def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
     source = request.params.get("path")
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
-    source_path = Path(str(source))
+    allowed_paths = request_allowed_paths(request.params)
+    source_path = _managed_path(source, "pdf", allowed_paths)
     if not source_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="file_not_found")
 
-    template_root = Path(str(request.params.get("templateRoot") or default_template_root()))
+    template_root = managed_request_root(
+        request.params.get("templateRoot"),
+        default_template_root(),
+        "template",
+        request.params,
+    )
     options = dict(request.params.get("options") or {})
     result = convert_pdf_to_html(source_path, template_root, options)
     return EngineResponse(
@@ -44,10 +59,16 @@ def _handle_pdf_form_analyze(request: EngineRequest) -> EngineResponse:
     source = request.params.get("path")
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
-    source_path = Path(str(source))
+    allowed_paths = request_allowed_paths(request.params)
+    source_path = _managed_path(source, "pdf", allowed_paths)
     if not source_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="file_not_found")
-    template_root = Path(str(request.params.get("templateRoot") or default_template_root()))
+    template_root = managed_request_root(
+        request.params.get("templateRoot"),
+        default_template_root(),
+        "template",
+        request.params,
+    )
     options = dict(request.params.get("options") or {})
     template = persist_pdf_form_template(source_path, template_root, options)
     return EngineResponse(id=request.id, ok=True, data=template)
@@ -59,7 +80,8 @@ def _handle_pdf_form_fill(request: EngineRequest) -> EngineResponse:
     source = request.params.get("path")
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
-    source_path = Path(str(source))
+    allowed_paths = request_allowed_paths(request.params)
+    source_path = _managed_path(source, "pdf", allowed_paths)
     if not source_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="file_not_found")
     values = request.params.get("values")
@@ -68,18 +90,28 @@ def _handle_pdf_form_fill(request: EngineRequest) -> EngineResponse:
     template = request.params.get("template") or request.params.get("templatePath")
     if template is None:
         return EngineResponse(id=request.id, ok=False, error="template_required")
+    if isinstance(template, str):
+        template = _managed_path(template, "template", allowed_paths)
     output = request.params.get("outputPath")
     if output:
-        output_path = Path(str(output))
+        output_path = _managed_path(output, "output", allowed_paths)
     else:
-        template_root = Path(str(request.params.get("templateRoot") or default_template_root()))
+        template_root = managed_request_root(
+            request.params.get("templateRoot"),
+            default_template_root(),
+            "template",
+            request.params,
+        )
         output_path = template_root / sha256_file(source_path)[:2] / sha256_file(source_path) / "filled.pdf"
+    font_path = None
+    if request.params.get("fontPath"):
+        font_path = str(_managed_path(request.params.get("fontPath"), "font", allowed_paths))
     result = fill_pdf_form(
         source_path,
         template,
         values,
         output_path,
-        font_path=str(request.params.get("fontPath")) if request.params.get("fontPath") else None,
+        font_path=font_path,
     )
     return EngineResponse(id=request.id, ok=True, data=result)
 
@@ -91,11 +123,17 @@ def _handle_pdf_report_analyze(request: EngineRequest) -> EngineResponse:
     example = request.params.get("examplePath")
     if not template or not example:
         return EngineResponse(id=request.id, ok=False, error="report_pair_paths_required")
-    template_path = Path(str(template))
-    example_path = Path(str(example))
+    allowed_paths = request_allowed_paths(request.params)
+    template_path = _managed_path(template, "template", allowed_paths)
+    example_path = _managed_path(example, "example", allowed_paths)
     if not template_path.is_file() or not example_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="report_pair_file_not_found")
-    artifact_root = Path(str(request.params.get("artifactRoot") or default_document_root()))
+    artifact_root = managed_request_root(
+        request.params.get("artifactRoot"),
+        default_document_root(),
+        "artifact",
+        request.params,
+    )
     result = analyze_pdf_report_pair(template_path, example_path, artifact_root)
     return EngineResponse(id=request.id, ok=True, data=result)
 

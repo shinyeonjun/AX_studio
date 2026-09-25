@@ -126,6 +126,10 @@ describe('AxCommandService read gateway routing', () => {
           },
         },
       },
+      readAuthorization: {
+        capabilityId: 'http.request',
+        params: { method: 'GET', path: 'items', connectionId: 'default' },
+      },
     });
 
     expect(result.status).toBe('ok');

@@ -92,6 +92,7 @@ contextBridge.exposeInMainWorld('ax', {
   listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
   attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
   ...(process.env.AX_E2E === '1'
+    && (process.defaultApp === true || process.env.AX_PRODUCT_QA === '1')
     ? {
         e2eSetWorkspaceSourcePath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetWorkspaceSourcePath', filePath),
         e2eSetDiscoveryArtifactPath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetDiscoveryArtifactPath', filePath),

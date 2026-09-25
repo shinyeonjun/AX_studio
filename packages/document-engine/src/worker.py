@@ -5,12 +5,6 @@ import sys
 
 from protocol import EngineRequest, EngineResponse
 from worker_engine.dispatch import handle_request
-from worker_engine.projection import (
-    _chunk_by_id,
-    _ingest_response_data,
-    _manifest_text,
-    _page_by_index,
-)
 from worker_engine.stdio import _configure_stdio, _write_json_response
 
 

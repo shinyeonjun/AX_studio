@@ -1,18 +1,17 @@
 import type { ConnectorContext } from '../../../connectors/types.js';
-import { resolveDocumentIngestExecution } from '../../../contracts/document-ingest-resolve.js';
-import { applyStepBindings } from '../../../workflow/bindings.js';
-import { actionRefFor, resolveActionDefinition, validateActionParams } from '../../../workflow/action-definition.js';
+import { validateActionParams } from '../../../workflow/action-definition.js';
 import type { Step, WorkflowIR } from '../../../workflow/schema.js';
 import {
   createContractFailure,
   validateInputSchema,
   validateOutputContract,
 } from '../../output-contract.js';
-import { resolveStepParams } from '../../param-resolution.js';
 import type { WorkflowExecutionHost } from '../contracts.js';
 import { isExternalAction } from '../contracts.js';
 import { recordRepairProposal, reportStepProgress } from '../progress.js';
 import { materializeStepOutputs } from '../../output-ports.js';
+import { approvalParamsHash } from '../../approval-snapshot.js';
+import { resolveActionParamsForExecution } from '../../step-executor.js';
 
 export interface ApprovedActionExecutionOptions {
   host: WorkflowExecutionHost;
@@ -21,6 +20,7 @@ export interface ApprovedActionExecutionOptions {
   remainingStepIds: ReadonlySet<string>;
   ctx: ConnectorContext;
   stepResults: Record<string, unknown>;
+  approvalSnapshots: ReadonlyMap<string, { actionRef: string; paramsHash: string }>;
 }
 
 export async function executeApprovedActions(
@@ -33,32 +33,18 @@ export async function executeApprovedActions(
     if (options.remainingStepIds.has(actionId)) continue;
     reportStepProgress(options.host, options.ctx, actionStep, 'step_started');
     try {
-      const actionRef = actionStep.actionRef ?? actionRefFor(actionStep.connector, actionStep.action);
-      const actionDefinition = resolveActionDefinition(actionRef);
-      if (!actionDefinition) {
-        throw Object.assign(new Error('Unknown action definition: ' + actionRef), { code: 'unknown_action' });
-      }
+      const { actionDefinition, params } = resolveActionParamsForExecution(actionStep, options.ir, options.ctx, options.stepResults);
       const connector = options.host.connectors[actionDefinition.connector];
       if (!connector) {
         throw Object.assign(new Error('Connector not found: ' + actionDefinition.connector), {
           code: 'connector_missing',
         });
       }
-      let params = applyStepBindings(
-        actionStep,
-        options.ir,
-        actionStep.params,
-        options.stepResults,
-        options.ctx.variables,
-        options.ctx.outputs,
-      );
-      params = resolveStepParams(params, options.ctx, options.stepResults);
-      if (actionDefinition.id === 'document.ingest') {
-        const resolved = resolveDocumentIngestExecution(params, options.ctx);
-        if (!resolved.ok) {
-          throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
-        }
-        params = resolved.params;
+      const expected = options.approvalSnapshots.get(actionId);
+      if (!expected || expected.actionRef !== actionDefinition.id || expected.paramsHash !== approvalParamsHash(params)) {
+        throw Object.assign(new Error('승인 당시의 실행 대상과 현재 실행 대상이 다릅니다.'), {
+          code: 'approval_target_changed',
+        });
       }
       const missingParams = validateActionParams(actionDefinition, params);
       if (missingParams.length > 0) {

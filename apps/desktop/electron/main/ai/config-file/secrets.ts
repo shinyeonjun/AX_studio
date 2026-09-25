@@ -43,7 +43,7 @@ export async function getSecretByEnvKey(envKey: string): Promise<string> {
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
-export async function loadAiSecretsIntoEnv(): Promise<void> {
+async function loadAiSecretsIntoEnv(): Promise<void> {
   const keys = [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY, JEV_API_ENV_KEY];
   for (const envKey of keys) {
     const stored = (await getOsSecret(envKey))?.trim();

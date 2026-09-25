@@ -100,6 +100,9 @@ describe('design-tools inventory', () => {
 
     expect(results.every((result) => result.ok)).toBe(true);
     expect(JSON.stringify(results[0]?.data)).toContain('local_folder');
+    expect(results[0]?.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ connector: 'local_sheet', connected: true }),
+    ]));
     expect(JSON.stringify(results[2]?.data)).toContain('report.pdf');
   });
 

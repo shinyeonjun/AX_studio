@@ -36,7 +36,11 @@ export function targetSelectionPresentation(
   };
 }
 
-export function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: string): AxUiPresentation {
+export function confirmationPresentation(
+  spec: NormalizedJobSpec,
+  httpLabel?: string,
+  confirmationToken?: string,
+): AxUiPresentation {
   const autoNote = spec.allowExternalAuto
     ? '확인하면 이후 스케줄 실행에서 Slack 발송을 매번 승인하지 않습니다.'
     : '확인해도 이후 Slack 발송은 실행마다 승인이 필요합니다.';
@@ -61,7 +65,7 @@ export function confirmationPresentation(spec: NormalizedJobSpec, httpLabel?: st
     inputs: [],
     actions: [
       {
-        id: 'confirm_job',
+        id: confirmationToken ? `confirm_job:${confirmationToken}` : 'confirm_job',
         label: '저장하고 켜기',
         value: JOB_COMMIT_CONFIRM_VALUE,
         tone: 'primary',
@@ -86,6 +90,7 @@ export function workflowConfirmationPresentation(
   workflow: WorkflowIR,
   runOnceNow: boolean,
   allowExternalAuto: boolean,
+  confirmationToken?: string,
 ): AxUiPresentation {
   const autoNote = allowExternalAuto
     ? '확인하면 이후 외부 발송 단계가 매번 승인 없이 실행될 수 있습니다.'
@@ -108,7 +113,7 @@ export function workflowConfirmationPresentation(
     ],
     inputs: [],
     actions: [{
-      id: 'confirm_job',
+      id: confirmationToken ? `confirm_job:${confirmationToken}` : 'confirm_job',
       label: '저장하고 켜기',
       value: JOB_COMMIT_CONFIRM_VALUE,
       tone: 'primary',

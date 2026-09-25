@@ -93,6 +93,27 @@ describe('DiscoveryAssetIndex', () => {
     expect(alias.candidates.every((candidate) => candidate.kind !== 'connector')).toBe(true);
   });
 
+  it('keeps highest-weight field ranking when matching several query terms', () => {
+    const index = new DiscoveryAssetIndex([asset({
+      id: 'rdb:customers',
+      name: 'customers',
+      label: 'Customer order table',
+      description: 'Customer profile and revenue details',
+      aliases: ['customer revenue'],
+    })]);
+
+    expect(index.search({ query: 'customer details' }).candidates[0]).toMatchObject({
+      id: 'rdb:customers',
+      score: 0.8562,
+      matchedOn: ['description', 'label'],
+    });
+    expect(index.search({ query: 'customer customer details' }).candidates[0]).toMatchObject({
+      id: 'rdb:customers',
+      score: 0.7875,
+      matchedOn: ['description', 'label'],
+    });
+  });
+
   it('bounds results and reports truncation without losing total match count', () => {
     const index = new DiscoveryAssetIndex([
       asset({ id: 'tool:a', name: 'report-a', label: '보고서 A' }),

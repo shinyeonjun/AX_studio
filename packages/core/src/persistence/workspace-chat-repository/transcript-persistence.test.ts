@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
 
@@ -19,6 +19,24 @@ describe('workspace chat transcript persistence', () => {
       workflowId: 'workflow-1',
       messages: saved.messages,
     });
+  });
+
+  it('does not load attached sources when a user message already determines the title', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const saved = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '질문' }] });
+    const prepare = vi.spyOn(db, 'prepare');
+
+    store.saveWorkspaceChat({
+      id: saved.id,
+      messages: [
+        { role: 'user', content: '질문' },
+        { role: 'assistant', content: '답변' },
+      ],
+    });
+
+    expect(prepare).not.toHaveBeenCalledWith(expect.stringContaining('FROM workspace_chat_sources'));
+    expect(store.getWorkspaceChat(saved.id)?.title).toBe('질문');
   });
 
   it('keeps session memo isolated from another chat and survives a later reload', async () => {
@@ -48,6 +66,7 @@ describe('workspace chat transcript persistence', () => {
       messages: [{
         role: 'assistant',
         content: '처리 전에 확인해 주세요.',
+        inputContinuation: 'command',
         inputRequests: [{ id: 'channel', label: 'Slack 채널', type: 'slack_channel' }],
         presentations: [{
           title: '확인 필요',
@@ -59,6 +78,7 @@ describe('workspace chat transcript persistence', () => {
     });
 
     expect(store.getWorkspaceChat(saved.id)?.messages[0]).toMatchObject({
+      inputContinuation: 'command',
       inputRequests: [{ id: 'channel', type: 'slack_channel' }],
       presentations: [{ title: '확인 필요', actions: [{ id: 'continue', value: '진행해줘' }] }],
     });

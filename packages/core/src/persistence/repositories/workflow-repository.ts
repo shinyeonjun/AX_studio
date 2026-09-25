@@ -60,6 +60,18 @@ export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: str
   return { workflowId, version };
 }
 
+function parseWorkflowVersion(workflowId: string, version: number, irJson: string): WorkflowIR {
+  try {
+    return parseStoredWorkflow(JSON.parse(irJson));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw Object.assign(
+      new Error(`워크플로우 ${workflowId} 버전 ${version}의 JSON이 손상되었거나 계약에 맞지 않습니다: ${detail}`),
+      { code: 'invalid_workflow_json', workflowId, version },
+    );
+  }
+}
+
 export function getWorkflow(db: AppDatabase, workflowId: string, version?: number): WorkflowIR | null {
   const target = version
     ? readRow<{ version: number; ir_json: string }>(db.prepare(
@@ -67,15 +79,7 @@ export function getWorkflow(db: AppDatabase, workflowId: string, version?: numbe
     : readRow<{ version: number; ir_json: string }>(db.prepare(
       'SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC LIMIT 1'), workflowId);
   if (!target) return null;
-  try {
-    return parseStoredWorkflow(JSON.parse(target.ir_json));
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw Object.assign(
-      new Error(`워크플로우 ${workflowId} 버전 ${target.version}의 JSON이 손상되었거나 계약에 맞지 않습니다: ${detail}`),
-      { code: 'invalid_workflow_json', workflowId, version: target.version },
-    );
-  }
+  return parseWorkflowVersion(workflowId, target.version, target.ir_json);
 }
 
 export function getWorkflowPolicy(db: AppDatabase, workflowId: string): AgentScopedContextMap {
@@ -118,6 +122,54 @@ export function listWorkflows(db: AppDatabase): Array<{ id: string; name: string
   }));
 }
 
+export function listWorkflowDefinitions(db: AppDatabase): Array<{
+  id: string;
+  name: string;
+  active: boolean;
+  latestVersion: number;
+  workflow: WorkflowIR | null;
+}> {
+  const rows = readRows<{
+    id: string;
+    name: string;
+    active: number;
+    version: number | null;
+    ir_json: string | null;
+  }>(db.prepare(
+    `SELECT w.id, w.name, w.active, v.version, v.ir_json
+     FROM workflows w
+     LEFT JOIN workflow_versions v
+       ON v.workflow_id = w.id
+       AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)`,
+  ));
+
+  return rows.map(({ id, name, active, version, ir_json }) => ({
+    id,
+    name,
+    active: Boolean(active),
+    latestVersion: version ?? 0,
+    workflow: version === null || ir_json === null
+      ? null
+      : parseWorkflowVersion(id, version, ir_json),
+  }));
+}
+
+// Scheduler and trigger scans share this batch read instead of querying each active workflow separately.
+export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: string; workflow: WorkflowIR }> {
+  const rows = readRows<{ id: string; version: number; ir_json: string }>(db.prepare(
+    `SELECT w.id, v.version, v.ir_json
+     FROM workflows w
+     JOIN workflow_versions v
+       ON v.workflow_id = w.id
+       AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)
+     WHERE w.active = 1`,
+  ));
+  return rows.map(({ id, version, ir_json }) => ({
+    id,
+    workflow: parseWorkflowVersion(id, version, ir_json),
+  }));
+}
+
 export function setWorkflowActive(db: AppDatabase, workflowId: string, active: boolean): boolean {
   db.prepare('UPDATE workflows SET active = ?, updated_at = ? WHERE id = ?').run(active ? 1 : 0, new Date().toISOString(), workflowId);
   const row = readRow<{ count?: number }>(db.prepare('SELECT changes() AS count'));
@@ -142,10 +194,13 @@ function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
 }
 
 export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
-  const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
-  if (!existing) return false;
-  db.exec('BEGIN');
+  db.exec('BEGIN IMMEDIATE');
   try {
+    const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
+    if (!existing) {
+      db.exec('COMMIT');
+      return false;
+    }
     const activeExecution = readRow<{ id: string }>(
       db.prepare(
         "SELECT id FROM executions WHERE workflow_id = ? AND status IN ('running', 'pending_approval') LIMIT 1",
@@ -164,6 +219,7 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
     pruneWorkflowKeyedSettings(db, workflowId);
+    settingsRepo.deleteSetting(db, `scheduler.lastFired:${encodeURIComponent(workflowId)}`);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

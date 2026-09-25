@@ -1,6 +1,6 @@
 import type { ConditionExpr } from '../../condition-expr/schema.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
-import { compareScalar, rowValue } from './helpers.js';
+import { compareScalar, rowValue, toNumber } from './helpers.js';
 
 export function evaluateConditionOnRow(
   expr: ConditionExpr,
@@ -26,9 +26,9 @@ export function evaluateConditionOnRow(
     case 'gte':
     case 'lt':
     case 'lte': {
-      const left = Number('lit' in expr.left ? expr.left.lit : rowValue(row, expr.left.ref));
-      const right = Number('lit' in expr.right ? expr.right.lit : rowValue(row, expr.right.ref));
-      if (Number.isNaN(left) || Number.isNaN(right)) return false;
+      const left = toNumber('lit' in expr.left ? expr.left.lit : rowValue(row, expr.left.ref));
+      const right = toNumber('lit' in expr.right ? expr.right.lit : rowValue(row, expr.right.ref));
+      if (left === null || right === null) return false;
       if (expr.op === 'gt') return left > right;
       if (expr.op === 'gte') return left >= right;
       if (expr.op === 'lt') return left < right;

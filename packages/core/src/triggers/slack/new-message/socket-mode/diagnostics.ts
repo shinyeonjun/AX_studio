@@ -1,4 +1,4 @@
-import { LogLevel, type Logger } from '@slack/socket-mode';
+import type { LogLevel, Logger } from '@slack/socket-mode';
 
 const MAX_SLACK_ERROR_DETAILS = 8;
 const MAX_SLACK_ERROR_DETAIL_LENGTH = 240;
@@ -40,22 +40,26 @@ function formatSlackSdkLog(values: Parameters<Logger['error']>): string {
 
 /** Keep the SDK's duplicate WebSocket wrapper logs behind the app-level diagnostic. */
 class SlackSdkLogger implements Logger {
-  private level = LogLevel.ERROR;
+  private level: LogLevel;
   private name = 'slack-sdk';
   private lastError = '';
+
+  constructor(private readonly levels: typeof import('@slack/socket-mode').LogLevel) {
+    this.level = levels.ERROR;
+  }
 
   debug(..._msg: Parameters<Logger['debug']>): void {}
 
   info(..._msg: Parameters<Logger['info']>): void {}
 
   warn(...msg: Parameters<Logger['warn']>): void {
-    if (!this.shouldLog(LogLevel.WARN)) return;
+    if (!this.shouldLog(this.levels.WARN)) return;
     const detail = formatSlackSdkLog(msg);
     if (detail) console.warn(`[${this.name}] ${detail}`);
   }
 
   error(...msg: Parameters<Logger['error']>): void {
-    if (!this.shouldLog(LogLevel.ERROR)) return;
+    if (!this.shouldLog(this.levels.ERROR)) return;
     const detail = formatSlackSdkLog(msg);
     if (!detail || /^WebSocket error(?: occurred:|!)/.test(detail)) return;
     if (detail === this.lastError) return;
@@ -77,10 +81,10 @@ class SlackSdkLogger implements Logger {
 
   private shouldLog(level: LogLevel): boolean {
     const severity = {
-      [LogLevel.DEBUG]: 100,
-      [LogLevel.INFO]: 200,
-      [LogLevel.WARN]: 300,
-      [LogLevel.ERROR]: 400,
+      [this.levels.DEBUG]: 100,
+      [this.levels.INFO]: 200,
+      [this.levels.WARN]: 300,
+      [this.levels.ERROR]: 400,
     };
     return severity[level] >= severity[this.level];
   }
@@ -139,6 +143,8 @@ export function formatSlackSocketError(error: unknown): string {
   return fallbackName || 'Slack Socket Mode error';
 }
 
-export function createSlackSdkLogger(): Logger & { resetError(): void } {
-  return new SlackSdkLogger();
+export function createSlackSdkLogger(
+  levels: typeof import('@slack/socket-mode').LogLevel,
+): Logger & { resetError(): void } {
+  return new SlackSdkLogger(levels);
 }

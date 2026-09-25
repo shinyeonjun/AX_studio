@@ -51,7 +51,11 @@ export async function executeReadTool<T>(
   );
   if (execution.ok) return ['ok', execution.data];
   const error = execution.error ?? 'source_command_failed';
-  const status = error === 'source_content_requires_local_ai' ? 'forbidden' : 'error';
+  const status = error === 'source_content_requires_local_ai' || execution.failureKind === 'host_policy'
+    ? 'forbidden'
+    : execution.failureKind === 'not_found' || error.endsWith('not_found')
+      ? 'not_found'
+      : 'error';
   return [
     status,
     undefined,
@@ -60,6 +64,8 @@ export async function executeReadTool<T>(
       'command ' + command.name + ' 실행 실패: ' + error,
       undefined,
       boundedReadErrorDetails(execution.errorDetails),
+      undefined,
+      execution.failureKind,
     )],
   ];
 }

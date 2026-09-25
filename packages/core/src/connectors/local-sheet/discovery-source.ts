@@ -99,10 +99,10 @@ export const localSheetDiscoverySource: DiscoverySourceProvider = {
     const ext = extname(resolved.path).toLowerCase();
     if (!SHEET_EXTENSIONS.some((extension) => `.${extension}` === ext)) return null;
 
-    let workbook: ReturnType<typeof readWorkbookFromPath>;
+    let workbook: Awaited<ReturnType<typeof readWorkbookFromPath>>;
     try {
       if ((ext === '.xlsx' || ext === '.xls') && statSync(resolved.path).size === 0) return null;
-      workbook = readWorkbookFromPath(resolved.path);
+      workbook = await readWorkbookFromPath(resolved.path);
     } catch {
       return null;
     }

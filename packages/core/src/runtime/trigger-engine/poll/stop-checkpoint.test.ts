@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
@@ -8,6 +8,26 @@ import { gmailNotifySkill } from './fixtures.js';
 import type { ConnectorResult } from '../../../connectors/types.js';
 
 describe('TriggerEngine in-flight polling stop checkpoints', () => {
+  it('handles rejected background poll ticks without an unhandled rejection', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const engine = new TriggerEngine(store, runtime);
+    const failure = new Error('poll_tick_failed');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(engine, 'tick').mockRejectedValue(failure);
+
+    try {
+      engine.start();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(log).toHaveBeenCalledWith('[trigger-engine] poll tick failed:', failure);
+    } finally {
+      await engine.stop();
+      db.close?.();
+      vi.restoreAllMocks();
+    }
+  });
+
   it('aborts a pending read and permits a fresh tick even when the connector ignores abort', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

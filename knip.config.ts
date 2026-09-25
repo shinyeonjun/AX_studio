@@ -1,6 +1,5 @@
 /** @type {import('knip').KnipConfig} */
 export default {
-  ignoreExportsUsedInFile: true,
   ignoreIssues: {
     'packages/core/src/index.ts': ['exports', 'types'],
     'packages/core/src/**/index.ts': ['exports', 'types'],
@@ -11,6 +10,9 @@ export default {
     'packages/core/src/connectors/module-package.ts': ['exports'],
     'packages/core/src/connectors/local-sheet/**': ['exports'],
     'packages/core/src/contracts/artifacts/table-build.ts': ['exports'],
+    // Contract types are intentionally surfaced through the discovery/source-resolver facades.
+    'packages/core/src/contracts/discovery-source.ts': ['types'],
+    'packages/core/src/runtime/source-resolver/contracts.ts': ['types'],
     'packages/core/src/intelligence/design-tools/**': ['exports', 'types'],
     'packages/core/src/intelligence/agent/commands/schema.ts': ['duplicates'],
     'packages/core/src/documents/write/**': ['exports'],

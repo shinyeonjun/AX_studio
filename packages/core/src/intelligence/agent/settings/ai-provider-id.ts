@@ -13,6 +13,13 @@ export type AiBrand = (typeof AI_BRANDS)[number];
 export const AI_CONNECTION_MODES = ['cli', 'api'] as const;
 export type AiConnectionMode = (typeof AI_CONNECTION_MODES)[number];
 
+export interface AiProviderConfig {
+  provider: AiProviderId;
+  model?: string;
+  brand?: AiBrand;
+  mode?: AiConnectionMode;
+}
+
 export function isCliProviderId(id: AiProviderId): id is CliProviderId {
   return (CLI_PROVIDER_IDS as readonly string[]).includes(id);
 }

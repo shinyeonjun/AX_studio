@@ -35,12 +35,12 @@ export function registerDesktopReadyHandler(): void {
   const startup = app.whenReady().then(async () => {
     try {
       if (isDesktopShuttingDown()) return;
-      const isE2E = process.env.AX_E2E === '1';
+      const isE2E = !app.isPackaged && process.env.AX_E2E === '1';
       const paths = initDesktopAxDataPaths();
       if (!isE2E) await migrateAxDataIfNeeded(paths);
       app.setPath('cache', paths.cache.chromium);
 
-      if (process.env.AX_E2E === '1' && process.env.AX_E2E_DOCUMENT_ENGINE === 'mock') {
+      if (isE2E && process.env.AX_E2E_DOCUMENT_ENGINE === 'mock') {
         setDocumentEngineClient(new E2EDocumentEngineClient());
       }
 

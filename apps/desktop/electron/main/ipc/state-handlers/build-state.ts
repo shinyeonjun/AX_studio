@@ -4,10 +4,11 @@ import { buildExecutions, buildPendingApprovals } from './execution-state.js';
 import { buildWorkflowSummaries } from './workflow-state.js';
 
 export async function buildAppState(core: AxCore) {
+  const connectorStatePromise = buildConnectorState(core);
   const pendingApprovals = buildPendingApprovals(core);
   const executions = buildExecutions(core);
-  const connectorState = await buildConnectorState(core);
   const works = buildWorkflowSummaries(core, executions);
+  const connectorState = await connectorStatePromise;
 
   return {
     globalActive: core.store.getGlobalActive(),

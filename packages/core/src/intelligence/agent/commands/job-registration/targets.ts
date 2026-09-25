@@ -11,6 +11,18 @@ import type {
 } from '../schema.js';
 import type { ListSlackChannels } from './contract.js';
 
+type InputScope = Pick<AxInputRequest, 'target' | 'stepId' | 'capabilityId' | 'parameterName'>;
+
+export function actionInputScope(
+  step: { id: string; connector: string; action: string },
+  parameterName: string,
+): InputScope | undefined {
+  const capability = resolveCapability(step.connector, step.action);
+  return capability?.params.some((param) => param.name === parameterName)
+    ? { stepId: step.id, capabilityId: capability.id, parameterName }
+    : undefined;
+}
+
 export function connectedIds(store: WorkflowStore): string[] {
   return store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
 }
@@ -39,6 +51,7 @@ export function pickHttpEndpoint(
 export function httpConnectionInput(
   endpoints: readonly HttpEndpoint[],
   id = 'job-http-connection',
+  scope?: InputScope,
 ): AxInputRequest {
   return {
     id,
@@ -46,6 +59,7 @@ export function httpConnectionInput(
     type: 'text',
     required: true,
     reason: '조회에 사용할 HTTP 연결을 선택해 주세요.',
+    ...scope,
     options: endpoints.map((endpoint): AxInputRequestOption => ({
       value: endpoint.id,
       label: endpoint.label || endpoint.id,
@@ -100,6 +114,7 @@ function slackChannelOptions(value: unknown): AxInputRequestOption[] {
 export async function slackChannelInput(
   listSlackChannels?: ListSlackChannels,
   id = 'job-slack-channel',
+  scope?: InputScope,
 ): Promise<AxInputRequest> {
   const fallback: AxInputRequest = {
     id,
@@ -110,6 +125,7 @@ export async function slackChannelInput(
     reason: listSlackChannels
       ? 'Slack 채널 목록을 불러오지 못했습니다. 채널 이름 또는 ID를 입력해 주세요.'
       : '공유할 Slack 채널 이름 또는 ID를 입력해 주세요.',
+    ...scope,
   };
   if (!listSlackChannels) return fallback;
 

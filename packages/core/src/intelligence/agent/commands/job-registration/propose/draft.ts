@@ -6,6 +6,7 @@ import {
   validateWorkflowIR,
   type WorkflowIR,
 } from '../../../../../workflow/schema.js';
+import { randomUUID } from 'node:crypto';
 import type { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { AxWorkflowCreateArgsSchema } from '../../schema/workflow-args.js';
 import type { AxCommand } from '../../schema.js';
@@ -71,8 +72,9 @@ export function createPendingJob(options: {
     return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
   }
 
-  pending.set(sessionId, { spec, ir });
-  const presentation = confirmationPresentation(spec, spec.httpLabel);
+  const confirmationToken = randomUUID();
+  pending.set(sessionId, { spec, ir, confirmationToken });
+  const presentation = confirmationPresentation(spec, spec.httpLabel, confirmationToken);
   return ['ok', {
     saved: false,
     pending: true,
@@ -131,14 +133,21 @@ function createPendingGenericJob(
     return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
   }
 
+  const confirmationToken = randomUUID();
   pending.set(sessionId, {
     spec: { name: data.name, runOnceNow: data.runOnceNow },
     ir: parsed.value,
+    confirmationToken,
   });
   return ['ok', {
     saved: false,
     pending: true,
-    presentation: workflowConfirmationPresentation(parsed.value, data.runOnceNow, data.allowExternalAuto),
+    presentation: workflowConfirmationPresentation(
+      parsed.value,
+      data.runOnceNow,
+      data.allowExternalAuto,
+      confirmationToken,
+    ),
     message: data.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',
     summary: {
       name: data.name,

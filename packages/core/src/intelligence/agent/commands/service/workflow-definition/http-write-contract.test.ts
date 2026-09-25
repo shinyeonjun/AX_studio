@@ -23,6 +23,8 @@ describe('AxCommandService HTTP write contract', () => {
             connector: 'http',
             action: 'post',
             params: { path: 'tickets', body: { title: '검증', priority: 'critical' } },
+            // A model cannot downgrade an HTTP write to a read-only action.
+            sideEffect: 'NONE',
           },
         ],
       },

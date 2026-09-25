@@ -15,6 +15,14 @@ import { describeCapability, listCapabilities, listHttpConnections, listResource
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 import { listCommands } from '../catalog.js';
 
+function sameJson(left: unknown, right: unknown): boolean {
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
+}
+
 export async function executeReadCommand(
   state: AxCommandServiceState,
   command: AxCommand,
@@ -103,6 +111,19 @@ export async function executeReadCommand(
     case 'capability.describe':
       return result(command.name, ...describeCapability(state, command));
     case 'capability.invoke':
+      if (options.executionContext?.origin === 'agent') {
+        const args = command.args as { id?: unknown; params?: unknown };
+        const authorization = options.readAuthorization;
+        if (!authorization
+          || args.id !== authorization.capabilityId
+          || !args.params
+          || !sameJson(args.params, authorization.params)) {
+          return result(command.name, 'forbidden', undefined, [issue(
+            'read_authorization_required',
+            '에이전트 조회는 Jev가 선택하고 호스트가 고정한 capability와 파라미터만 실행할 수 있습니다.',
+          )]);
+        }
+      }
       return result(command.name, ...await executeReadTool(
         state,
         command,

@@ -12,6 +12,7 @@ export function createConnectorContext(
   log: (entry: ExecutionLogEntry) => void,
   workspaceSessionId?: string,
   abortSignal?: AbortSignal,
+  allowedFilePaths?: readonly string[],
 ): ConnectorContext {
   return {
     executionId,
@@ -21,6 +22,7 @@ export function createConnectorContext(
     variables,
     outputs: {},
     connections,
+    ...(allowedFilePaths ? { allowedFilePaths } : {}),
     artifactSink: host.config.artifactSink,
     resolveFileRef: (file) => {
       const resolved = resolveFileRef(file, connections);

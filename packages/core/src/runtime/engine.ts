@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { DecisionEngine } from '../contracts/decision.js';
 import type { Connector } from '../connectors/types.js';
 import type {
   EphemeralExecutionQueueItem,
@@ -45,7 +46,7 @@ export class WorkflowRuntime {
     options: WorkflowExecutionOptions = {},
   ): Promise<ExecutionResult> {
     if (!this.accepting) throw new Error('runtime_stopping');
-    if (ir.id && options.forceManual && this.removedWorkflowIds.has(ir.id)) {
+    if (ir.id && this.removedWorkflowIds.has(ir.id)) {
       throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
     }
     const controller = new AbortController();
@@ -199,6 +200,10 @@ export class WorkflowRuntime {
 
   setInvestigationRunner(investigationRunner: InvestigationRunner): void {
     this.config.investigationRunner = investigationRunner;
+  }
+
+  setDecisionEngine(decisionEngine?: DecisionEngine): void {
+    this.config.decisionEngine = decisionEngine;
   }
 
   continueAfterApproval(approvalId: string): Promise<ExecutionResult> {

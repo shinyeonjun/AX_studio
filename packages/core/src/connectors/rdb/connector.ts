@@ -5,6 +5,7 @@ import {
   formatRdbTableRef,
   isAllowedRdbTable,
   listRdbTables,
+  MAX_RDB_OFFSET,
   MAX_RDB_RESULT_ROWS,
   normalizeRdbRowLimit,
   parseRdbTableRef,
@@ -72,7 +73,7 @@ export class RdbConnector implements Connector {
         const rawOffset = params.offset;
         const offset = rawOffset === undefined ? 0
           : typeof rawOffset === 'number' ? rawOffset : Number.NaN;
-        if (!Number.isSafeInteger(offset) || offset < 0) {
+        if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_RDB_OFFSET) {
           return { ok: false, error: 'invalid_row_pagination', errorCode: 'invalid_params' };
         }
         const rows = await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal,

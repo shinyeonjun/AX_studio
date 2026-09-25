@@ -58,6 +58,7 @@ describe('workflow settings and cleanup persistence', () => {
       dataPolicy: {},
     });
     store.setSetting('scheduler.lastFired', { [workflowId]: '2026-08-25T00:00', other: '2026-08-25T00:01' });
+    store.setSetting(`scheduler.lastFired:${encodeURIComponent(workflowId)}`, '2026-08-25T00:00');
     store.setSetting('trigger.cursors', { [workflowId]: { initialized: true }, other: {} });
     const now = new Date().toISOString();
     db.prepare(
@@ -68,6 +69,7 @@ describe('workflow settings and cleanup persistence', () => {
     expect(store.deleteWorkflow(workflowId)).toBe(true);
 
     expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({ other: '2026-08-25T00:01' });
+    expect(store.getSetting(`scheduler.lastFired:${encodeURIComponent(workflowId)}`, null)).toBeNull();
     expect(store.getSetting<Record<string, unknown>>('trigger.cursors', {})).toEqual({ other: {} });
     const receipts = db.prepare('SELECT COUNT(*) AS count FROM trigger_receipts WHERE workflow_id = ?').get(workflowId) as { count: number };
     expect(receipts.count).toBe(0);

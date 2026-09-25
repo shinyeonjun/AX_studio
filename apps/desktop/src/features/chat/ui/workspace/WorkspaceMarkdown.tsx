@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -5,7 +6,7 @@ interface WorkspaceMarkdownProps {
   content: string;
 }
 
-export function WorkspaceMarkdown({ content }: WorkspaceMarkdownProps) {
+export const WorkspaceMarkdown = memo(function WorkspaceMarkdown({ content }: WorkspaceMarkdownProps) {
   return (
     <div className="ax-workspace-markdown">
       <ReactMarkdown
@@ -22,4 +23,4 @@ export function WorkspaceMarkdown({ content }: WorkspaceMarkdownProps) {
       </ReactMarkdown>
     </div>
   );
-}
+});

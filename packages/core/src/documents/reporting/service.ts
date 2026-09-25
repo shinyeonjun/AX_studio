@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { DocumentEngineClient } from '../read/engine-client.js';
 import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
-import type { Connector, ConnectorContext, ConnectorResult } from '../../connectors/types.js';
+import type { Connector, ConnectorContext, ConnectorResult, ExecutionLogEntry } from '../../connectors/types.js';
 import { parseHttpEndpoints } from '../../connectors/http/connection.js';
 import { parseOpenApiConnectionConfig } from '../../connectors/protocols/openapi/connection.js';
 import { parseOpenApiSpec, type OpenApiOperation } from '../../connectors/protocols/openapi/parse.js';
@@ -36,6 +36,8 @@ interface ReportPlanningGateway {
     pair: Awaited<ReturnType<DocumentEngineClient['pdfReportAnalyze']>>;
     connectedConnectors: string[];
     unavailableSources?: ReportUnavailableSource[];
+    signal?: AbortSignal;
+    log?: (entry: ExecutionLogEntry) => void;
   }): Promise<ReportSourceNeed[]>;
   inferCapturePlan(input: {
     goal: string;
@@ -46,6 +48,8 @@ interface ReportPlanningGateway {
     requirements?: ReportSourceNeed[];
     unavailableSources?: ReportUnavailableSource[];
     previousCapture?: ReportCaptureInference;
+    signal?: AbortSignal;
+    log?: (entry: ExecutionLogEntry) => void;
     inspectSource?: (request: ReportSourceInspection, abortSignal?: AbortSignal) => Promise<unknown>;
   }): Promise<ReportCaptureInference>;
   refineCapturePlan?(input: {
@@ -57,6 +61,8 @@ interface ReportPlanningGateway {
     httpConnections: ReportHttpConnectionSummary[];
     rdbTables: string[];
     connectedConnectors: string[];
+    signal?: AbortSignal;
+    log?: (entry: ExecutionLogEntry) => void;
   }): Promise<ReportCaptureInference>;
   inferReportPlan(input: {
     goal: string;
@@ -107,6 +113,12 @@ function reportIdentityValue(value: unknown, key?: string): unknown {
   return normalized;
 }
 
+async function fileDigest(path: string): Promise<string> {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
 /**
  * Report checkpoints depend on source availability and authorization shape,
  * not on connection health timestamps or unrelated connector metadata. Secret
@@ -136,7 +148,7 @@ export interface ReportGenerationDependencies {
   makeTemporaryDirectory?: () => string;
 }
 
-export interface ReportGenerateParams {
+interface ReportGenerateParams {
   goal: string;
   templateSourceId: string;
   exampleSourceId: string;
@@ -170,7 +182,7 @@ function httpConnectionSummaries(ctx: ConnectorContext): ReportHttpConnectionSum
     const openapi = parseOpenApiConnectionConfig(documented?.config);
     if (openapi) {
       const url = new URL(openapi.baseUrl);
-      const spec = parseOpenApiSpec(openapi.specId, openapi.specJson);
+      const spec = parseOpenApiSpec(openapi.specId, openapi.specJson, openapi.baseUrl);
       operationSource = { origin: url.origin, basePath: url.pathname.replace(/\/$/, ''),
         operations: spec.operations.filter(operation => operation.method === 'GET'
           && operation.sideEffect === 'NONE'
@@ -308,9 +320,11 @@ export class ReportGenerationService {
 
       if (params.resumeExecutionId && !this.dependencies.checkpoints) throw new Error('report_resume_unavailable');
       if (this.dependencies.checkpoints) {
-        const fileHash = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
+        const [templateHash, exampleHash] = await Promise.all([
+          fileDigest(template.artifact.storedPath), fileDigest(example.artifact.storedPath),
+        ]);
         const identity = reportDigest({ version: 1, goal: params.goal,
-          template: fileHash(template.artifact.storedPath), example: fileHash(example.artifact.storedPath),
+          template: templateHash, example: exampleHash,
           connections: reportConnectionIdentity(ctx.connections),
         });
         const previous = params.resumeExecutionId
@@ -384,7 +398,8 @@ export class ReportGenerationService {
 
       phase = 'source_requirements';
       const requiredSources = await stage('source_requirements', { version: 2, goal: params.goal, pair, unavailableSources },
-        () => planner.inferSourceRequirements({ goal: params.goal, pair, connectedConnectors, unavailableSources }));
+        () => planner.inferSourceRequirements({ goal: params.goal, pair, connectedConnectors, unavailableSources,
+          signal: ctx.abortSignal, log: ctx.log }));
       const initialRequirements = ReportSourceRequirementsSchema.parse({ schemaVersion: 1, requirements: requiredSources }).requirements;
       const planned = await (async () => {
         let requirements = initialRequirements;
@@ -465,6 +480,8 @@ export class ReportGenerationService {
               connectedConnectors,
               requirements,
               previousCapture,
+              signal: ctx.abortSignal,
+              log: ctx.log,
             }));
             if (unavailableSources.length && proposed.capturePlan.rdb.length) throw new Error('report_rdb_schema_failed');
             const provisionalCapture = validateCapturePlan(proposed, httpConnections, rdbTables);
@@ -529,6 +546,8 @@ export class ReportGenerationService {
                 httpConnections,
                 rdbTables,
                 connectedConnectors,
+                signal: ctx.abortSignal,
+                log: ctx.log,
               }));
             }
             // Shape refinement must not silently erase the validated requirement bindings.

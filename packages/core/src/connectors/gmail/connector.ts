@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import type { gmail_v1 } from 'googleapis';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
@@ -23,7 +23,9 @@ export class GmailConnector implements Connector {
 
   constructor(private config: GmailConnectorConfig) {}
 
-  private getClient(signal?: AbortSignal) {
+  private async getClient(signal?: AbortSignal): Promise<gmail_v1.Gmail> {
+    const { google } = await import('googleapis');
+    signal?.throwIfAborted();
     const oauth2 = new google.auth.OAuth2(this.config.clientId, this.config.clientSecret);
     oauth2.setCredentials({
       access_token: this.config.accessToken,
@@ -53,7 +55,6 @@ export class GmailConnector implements Connector {
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     try {
       ctx.abortSignal?.throwIfAborted();
-      const gmail = this.getClient(ctx.abortSignal);
       switch (action) {
         case 'messages.read':
         case 'message.read': {
@@ -65,6 +66,7 @@ export class GmailConnector implements Connector {
               errorCode: 'gmail_message_id_missing',
             };
           }
+          const gmail = await this.getClient(ctx.abortSignal);
           const res = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
           ctx.abortSignal?.throwIfAborted();
           const body = extractGmailPlainBody(res.data);
@@ -72,6 +74,7 @@ export class GmailConnector implements Connector {
         }
         case 'messages.search':
         case 'message.search': {
+          const gmail = await this.getClient(ctx.abortSignal);
           const page = await searchGmailMessagePage(gmail, params, ctx.abortSignal);
           return { ok: true, data: page };
         }
@@ -91,6 +94,7 @@ export class GmailConnector implements Connector {
             subject: String(params.subject ?? ''),
             body,
           });
+          const gmail = await this.getClient(ctx.abortSignal);
           const res = await gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
           return { ok: true, data: res.data };
         }
@@ -110,10 +114,12 @@ export class GmailConnector implements Connector {
             subject: String(params.subject ?? ''),
             body,
           });
+          const gmail = await this.getClient(ctx.abortSignal);
           const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
           return { ok: true, data: res.data };
         }
         case 'new_message.poll': {
+          const gmail = await this.getClient(ctx.abortSignal);
           const poll = await pollGmailNewMessages(gmail, {
             initialized: Boolean(params.initialized),
             seenMessageIds: (params.seenMessageIds as string[]) ?? [],

@@ -47,6 +47,13 @@ export interface AxCommandExecuteOptions {
   allowContextUpdate?: boolean;
   /** Only a host-rendered confirm_job action may enable this mutation. */
   allowJobCommit?: boolean;
+  /** Opaque token from the exact host-rendered confirm_job action. */
+  jobCommitConfirmationToken?: string;
+  /** Host/Jev-owned snapshot for an agent capability read. */
+  readAuthorization?: {
+    capabilityId: string;
+    params: Record<string, unknown>;
+  };
 }
 
 export interface AxCommandServiceState {

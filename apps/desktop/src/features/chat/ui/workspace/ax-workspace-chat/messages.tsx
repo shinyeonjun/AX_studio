@@ -1,10 +1,13 @@
 import type { WorkspaceChatMessage } from '@ax-studio/core';
-import { memo } from 'react';
+import { lazy, memo, Suspense } from 'react';
 import type { GeneratedArtifactExportResult } from '../../../../../types/ax-api/contracts';
 import { axStudioLogo } from '../../../../../ui/constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from '../WorkspaceRunResultCard';
-import { WorkspaceMarkdown } from '../WorkspaceMarkdown';
 import { WorkspaceAssistantPresentation } from '../WorkspaceAssistantPresentation';
+
+const WorkspaceMarkdown = lazy(() =>
+  import('../WorkspaceMarkdown').then(({ WorkspaceMarkdown }) => ({ default: WorkspaceMarkdown })),
+);
 
 export const UserMessage = memo(function UserMessage({ message }: { message: WorkspaceChatMessage }) {
   return (
@@ -49,7 +52,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         onSavePdfToFolder={onSavePdfToFolder}
       />
     )
-    : <WorkspaceMarkdown content={message.content} />;
+    : (
+      <Suspense fallback={<div className="muted" role="status">응답을 표시하는 중…</div>}>
+        <WorkspaceMarkdown content={message.content} />
+      </Suspense>
+    );
 
   return (
     <div className="ax-workspace-message ax-workspace-message--assistant">

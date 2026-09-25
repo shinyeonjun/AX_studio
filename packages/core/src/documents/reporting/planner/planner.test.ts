@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { MAX_DECISION_CHOICE_CRITERIA, type DecisionEngine } from '../../../contracts/decision.js';
 import type { InvestigationRunRequest, InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
 import { zodToCodexJsonSchema } from '../../../intelligence/agent/model/cli-json.js';
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import type { ReportPlanResult } from '../plan/execute.js';
 import type { ReportSourceSnapshot } from '../plan/schema.js';
 import { assertReportPlanTableCoverage, describeReportReplayMismatches, inferReportFormats, mergeReportBusinessInference, pruneUnboundReportTexts, ReportPlanner, repairExamplePeriodExpressions, repairExamplePresentationBindings, repairExampleReplayInference, repairExampleScalarBindings, repairExampleTextBindings, repairExampleTextFragments, repairReportDatasetReferences, repairReportFieldAliases, repairReportLayoutBindings, repairReportMetadataReferences, repairReportMetadataTextReferences, repairReportMissingJoins, repairReportScalarBindings, repairReportSourceAliases, repairReportTableCapacities, repairStaticDerivedTableLabels, repairStaticTextBindingConflicts } from './planner.js';
-import { ReportBusinessInferenceSchema, ReportSourceRequirementsSchema } from './schema.js';
+import { ReportBusinessInferenceSchema, ReportSourceRequirementsSchema, type ReportCaptureInference } from './schema.js';
+import { ReportSourceClarificationRequired } from './source-discovery.js';
 
 const pair: PdfReportPairAnalysis = {
   schemaVersion: 1,
@@ -23,30 +25,64 @@ const pair: PdfReportPairAnalysis = {
   exampleImages: ['C:\\host-only\\example.png'],
 };
 
-it('does not persist an invalid planning response across retries', async () => {
-  let calls = 0;
+it('asks for source clarification instead of using the LLM when Jev is uncertain', async () => {
+  let llmCalls = 0;
   const runner: InvestigationRunner = {
     providerName: 'fixture',
     async run<T>() {
-      calls += 1;
-      return { output: (calls === 1
-        ? { schemaVersion: 1, requirements: [{ invalid: true }] }
-        : { schemaVersion: 1, requirements: [] }) as T };
+      llmCalls += 1;
+      throw new Error('LLM must not choose report data sources');
     },
   };
-  const saved = new Map<string, unknown>();
-  const stage = async <T>(name: string, input: unknown, run: () => Promise<T>): Promise<T> => {
-    const key = JSON.stringify([name, input]);
-    if (saved.has(key)) return saved.get(key) as T;
-    const value = await run();
-    saved.set(key, value);
-    return value;
+  const decisionEngine: DecisionEngine = {
+    async evaluate({ questions }) {
+      expect(Object.keys(questions)).toEqual(['http_required']);
+      expect(questions.http_required).toMatchObject({
+        type: 'choice',
+        criteria: { required: expect.any(String), not_required: expect.any(String), unclear: expect.any(String) },
+      });
+      return { answers: { http_required: {
+        type: 'choice', choice: 'unclear', probabilities: { unclear: 0.4, required: 0.35, not_required: 0.25 }, confidence: 0.4,
+      } } };
+    },
   };
-  const planner = new ReportPlanner(runner, { readImage: () => new Uint8Array([1]) }).forExecution(stage);
-  const input = { goal: 'report', pair, connectedConnectors: ['http'] };
-  await expect(planner.inferSourceRequirements(input)).rejects.toThrow();
-  await expect(planner.inferSourceRequirements(input)).resolves.toEqual([]);
-  expect(calls).toBe(2);
+  const planner = new ReportPlanner(runner, { decisionEngine });
+  await expect(planner.inferSourceRequirements({ goal: 'report', pair, connectedConnectors: ['http'] }))
+    .rejects.toBeInstanceOf(ReportSourceClarificationRequired);
+  expect(llmCalls).toBe(0);
+});
+
+it('does not fall back to the LLM when Jev is unavailable', async () => {
+  const run = vi.fn();
+  const planner = new ReportPlanner({ providerName: 'fixture', run });
+  await expect(planner.inferSourceRequirements({ goal: 'report', pair, connectedConnectors: ['http'] }))
+    .rejects.toMatchObject({ code: 'report_source_jev_unavailable' });
+  expect(run).not.toHaveBeenCalled();
+});
+
+it('rejects missing Jev answers instead of guessing a source type', async () => {
+  const run = vi.fn();
+  const planner = new ReportPlanner({ providerName: 'fixture', run }, {
+    decisionEngine: { evaluate: async () => ({ answers: {} }) },
+  });
+  await expect(planner.inferSourceRequirements({ goal: 'report', pair, connectedConnectors: ['http'] }))
+    .rejects.toMatchObject({ code: 'report_source_jev_answer_invalid' });
+  expect(run).not.toHaveBeenCalled();
+});
+
+it('preserves cancellation from the Jev source decision', async () => {
+  const controller = new AbortController();
+  const run = vi.fn();
+  const decisionEngine: DecisionEngine = { async evaluate({ signal }) {
+    expect(signal).toBe(controller.signal);
+    controller.abort();
+    throw new Error('provider request aborted');
+  } };
+  const planner = new ReportPlanner({ providerName: 'fixture', run }, { decisionEngine });
+  await expect(planner.inferSourceRequirements({ goal: 'report', pair,
+    connectedConnectors: ['http'], signal: controller.signal }))
+    .rejects.toMatchObject({ code: 'agent_aborted' });
+  expect(run).not.toHaveBeenCalled();
 });
 
 function fakeRunner(seen: Array<InvestigationRunRequest<unknown>>): InvestigationRunner {
@@ -1358,19 +1394,59 @@ describe('ReportPlanner', () => {
     expect(() => assertReportPlanTableCoverage(plan, tablePair)).not.toThrow();
   });
 
-  it('infers requirements before selection without giving the model a candidate plan to rationalize', async () => {
-    const seen: InvestigationRunRequest<unknown>[] = [];
-    const requirements = [{ id: 'agreements', connector: 'rdb', description: 'Agreement dates', reason: 'User requested the agreement database' }];
-    const runner: InvestigationRunner = { providerName: 'fixture', async run<T>(request: InvestigationRunRequest<T>) {
-      seen.push(request);
-      return { output: request.outputSchema.parse({ schemaVersion: 1, requirements }) };
+  it('selects required connector types with one batched Jev decision and no LLM source planner call', async () => {
+    const runner: InvestigationRunner = { providerName: 'fixture', async run<T>() {
+      throw new Error('LLM must not choose report data sources');
     } };
-    const planner = new ReportPlanner(runner, { readImage: () => new Uint8Array([1]) });
-    await expect(planner.inferSourceRequirements({ goal: 'Report using the agreement database', pair,
-      connectedConnectors: ['http', 'rdb'] })).resolves.toEqual(requirements);
-    const context = JSON.parse(seen[0]!.context.untrustedData!);
-    expect(Object.keys(context)).toEqual(['reportGeometry']);
-    expect(seen[0]!.logContext).toBe('report-source-requirements');
+    let request: Parameters<DecisionEngine['evaluate']>[0] | undefined;
+    const logs: Array<{ code?: string; data?: unknown }> = [];
+    const decisionEngine: DecisionEngine = { async evaluate(input) {
+      request = input;
+      return { answers: {
+        http_required: {
+          type: 'choice', choice: 'not_required',
+          probabilities: { not_required: 0.4, required: 0.35, unclear: 0.25 }, confidence: 0.4,
+        },
+        rdb_required: {
+          type: 'choice', choice: 'required',
+          probabilities: { required: 0.4, not_required: 0.35, unclear: 0.25 }, confidence: 0.4,
+        },
+      }, model: 'jev-test', providerRequestCount: 2, usage: { inputTokens: 41, outputTokens: 2 } };
+    } };
+    const planner = new ReportPlanner(runner, { decisionEngine });
+    const requirements = [{ id: 'source-rdb', connector: 'rdb',
+      description: '보고서 요청과 완성 예시에 필요한 데이터베이스 데이터',
+      reason: 'Jev selected this connected source type from the user request and report evidence.' }];
+    const sensitivePair: PdfReportPairAnalysis = {
+      ...pair,
+      scalarSlots: [{ ...pair.scalarSlots[0]!, exampleText: 'Private Manager Name' }],
+      tableGroups: [{
+        id: 'customer-table', columnCount: 2, rowCount: 1,
+        rows: [{ index: 0, pageIndex: 0, y: 20, cells: [
+          { ...pair.scalarSlots[0]!, id: 'customer-name', exampleText: 'Private Customer 42' },
+          { ...pair.scalarSlots[0]!, id: 'customer-total', exampleText: 'KRW 500000' },
+        ] }],
+      }],
+    };
+    const controller = new AbortController();
+    await expect(planner.inferSourceRequirements({ goal: 'Report using the agreement database', pair: sensitivePair,
+      connectedConnectors: ['http', 'rdb'], signal: controller.signal, log: entry => logs.push(entry) })).resolves.toEqual(requirements);
+    expect(logs).toMatchObject([{ code: 'report_source_requirements_jev_completed', data: {
+      candidateCount: 2, selectedCount: 1, providerRequestCount: 2, model: 'jev-test', inputTokens: 41, outputTokens: 2,
+    } }]);
+    expect(Object.keys(request!.questions)).toEqual(['http_required', 'rdb_required']);
+    expect(request!.state).toMatchObject({
+      request: 'Report using the agreement database',
+      availableConnectors: ['http', 'rdb'],
+    });
+    expect(request!.signal).toBe(controller.signal);
+    expect(JSON.stringify(request!.state)).toContain('untrusted data');
+    const jevState = JSON.stringify(request!.state);
+    expect(jevState).not.toContain('Private Manager Name');
+    expect(jevState).not.toContain('Private Customer 42');
+    expect(jevState).not.toContain('KRW 500000');
+    expect(request!.state).toMatchObject({ reportEvidence: JSON.stringify({ scalarSlotCount: 1,
+      tableGroups: [{ columnCount: 2, rowCount: 1 }] }) });
     expect(zodToCodexJsonSchema(ReportSourceRequirementsSchema)).toMatchObject({ type: 'object' });
     expect(ReportSourceRequirementsSchema.safeParse({ schemaVersion: 1, requirements: [...requirements, ...requirements] }).success).toBe(false);
   });
@@ -1806,15 +1882,39 @@ describe('ReportPlanner', () => {
     })).rejects.toThrow('report_plan_source_not_captured:invented');
   });
 
-  it('refines pagination and date parameters from a value-free endpoint probe', async () => {
+  it('uses Jev over host-built capture candidates without another LLM call', async () => {
     const seen: Array<InvestigationRunRequest<unknown>> = [];
-    const planner = new ReportPlanner(fakeRunner(seen), { readImage: () => new Uint8Array([1]) });
+    const decisions: Array<Record<string, unknown>> = [];
+    const planner = new ReportPlanner(fakeRunner(seen), {
+      readImage: () => new Uint8Array([1]),
+      decisionEngine: { async evaluate(request) {
+        decisions.push(request as unknown as Record<string, unknown>);
+        const answers: Record<string, { type: 'choice'; choice: string; confidence: number; probabilities: Record<string, number> }> = {};
+        for (const [id, question] of Object.entries(request.questions)) {
+          if (question.type !== 'choice') throw new Error('Expected a choice question');
+          const choice = Object.keys(question.criteria)[0]!;
+          answers[id] = { type: 'choice', choice, confidence: 0.4, probabilities: { [choice]: 0.4 } };
+        }
+        return { answers };
+      } },
+    });
     const input = {
       goal: '다음 달 보고서를 만들어줘', pair,
-      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/' }],
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/', operations: [{
+        operationId: 'orders', method: 'GET', path: '/api/v1/orders', sideEffect: 'NONE' as const,
+        summary: 'The page parameter uses one-based numbering.',
+        parameters: [
+          { name: 'from', in: 'query' as const, required: false, type: 'string', format: 'date', description: 'Start date' },
+          { name: 'to', in: 'query' as const, required: false, type: 'string', format: 'date', description: 'End date' },
+          { name: 'page', in: 'query' as const, required: false, type: 'integer' },
+          { name: 'size', in: 'query' as const, required: false, type: 'integer' },
+        ],
+      }] }],
       rdbTables: [] as string[], connectedConnectors: ['http'],
     };
-    const provisional = await planner.inferCapturePlan(input);
+    const planned = await planner.inferCapturePlan(input);
+    const provisional = { ...planned, capturePlan: { ...planned.capturePlan,
+      http: planned.capturePlan.http.map(source => ({ ...source, rowsPath: 'missing' })) } };
     const refined = await planner.refineCapturePlan({
       ...input,
       provisional,
@@ -1824,6 +1924,7 @@ describe('ReportPlanner', () => {
           type: 'object',
           fields: {
             data: { type: 'array', length: 50, item: { type: 'object', fields: { id: { type: 'string' } } } },
+            archive: { type: 'array', length: 10, item: { type: 'object', fields: { id: { type: 'string' } } } },
             meta: { type: 'object', fields: { page: { type: 'number' }, total_pages: { type: 'number' } } },
           },
         },
@@ -1833,9 +1934,194 @@ describe('ReportPlanner', () => {
     expect(refined.capturePlan.http[0]).toMatchObject({
       rowsPath: 'data',
       dateQuery: { fromParam: 'from', toParam: 'to' },
-      pagination: { pageParam: 'page', sizeParam: 'size', totalPagesPath: 'meta.total_pages' },
+      pagination: { pageParam: 'page', sizeParam: 'size', pageSize: 50, totalPagesPath: 'meta.total_pages',
+        maxPages: 1_000, startPage: 1, currentPagePath: 'meta.page' },
     });
-    expect(seen.at(-1)?.logContext).toBe('report-source-refinement');
+    expect(decisions).toHaveLength(1);
+    expect(seen.map(request => request.logContext)).toEqual(['report-source-plan']);
+    expect(seen.find((request) => request.logContext === 'report-source-plan')?.images).toHaveLength(2);
+    expect(decisions[0]).not.toHaveProperty('images');
+  });
+
+  it('uses a Jev tournament instead of rejecting capture options beyond the provider choice limit', async () => {
+    const choiceCountsByEvaluation: number[][] = [];
+    const choiceBytesByEvaluation: number[][] = [];
+    const decisionEngine: DecisionEngine = {
+      async evaluate({ questions }) {
+        const entries = Object.entries(questions);
+        const choiceCounts: number[] = [];
+        const choiceBytes: number[] = [];
+        const answers = Object.fromEntries(entries.map(([id, question]) => {
+          if (question.type !== 'choice') throw new Error('Expected a choice question');
+          const candidates = Object.keys(question.criteria);
+          choiceCounts.push(candidates.length);
+          choiceBytes.push(new TextEncoder().encode(JSON.stringify(question.criteria)).byteLength);
+          const choice = candidates.at(-1)!;
+          return [id, { type: 'choice' as const, choice, confidence: 0.99, probabilities: { [choice]: 0.99 } }];
+        }));
+        choiceCountsByEvaluation.push(choiceCounts);
+        choiceBytesByEvaluation.push(choiceBytes);
+        return { answers };
+      },
+    };
+    const planner = new ReportPlanner(fakeRunner([]), { decisionEngine });
+    const provisional: ReportCaptureInference = {
+      schemaVersion: 1,
+      examplePeriod: { start: '2026-08-01', endInclusive: '2026-08-31', label: '2026년 8월' },
+      targetPeriod: { start: '2026-09-01', endInclusive: '2026-09-30', label: '2026년 9월' },
+      capturePlan: {
+        schemaVersion: 1,
+        http: [{ alias: 'orders', connectionId: 'orders-api', path: '/orders', rowsPath: 'data' }],
+        rdb: [],
+      },
+    };
+    const pageNames = ['page', 'p', 'page_number', 'page_index', 'page_no'];
+    const sizeNames = ['size', 'limit', 'per_page', 'page_size', 'page_limit'];
+    const totalPageMetadata = Object.fromEntries(Array.from({ length: 11 }, (_, index) => [
+      `meta${index}`,
+      { type: 'object' as const, fields: { total_pages: { type: 'number' as const } } },
+    ]));
+
+    const refined = await planner.refineCapturePlan({
+      goal: '다음 달 주문 보고서를 만들어줘',
+      pair,
+      provisional,
+      httpProbes: [{
+        alias: 'orders', path: '/orders', status: 200,
+        shape: {
+          type: 'object',
+          fields: {
+            data: { type: 'array', length: 25, item: { type: 'object', fields: { id: { type: 'string' } } } },
+            ...totalPageMetadata,
+          },
+        },
+      }],
+      httpConnections: [{
+        id: 'orders-api', label: 'Orders', basePath: '/', operations: [{
+          operationId: 'orders', method: 'GET', path: '/orders', sideEffect: 'NONE',
+          summary: 'This API uses one-based paging.',
+          parameters: [
+            ...pageNames.map(name => ({ name, in: 'query' as const, required: false, type: 'integer' })),
+            ...sizeNames.map(name => ({ name, in: 'query' as const, required: false, type: 'integer' })),
+          ],
+        }],
+      }],
+      rdbTables: [],
+      connectedConnectors: ['http'],
+    });
+
+    expect(choiceCountsByEvaluation[0]?.reduce((total, count) => total + count, 0)).toBe(275);
+    expect(choiceCountsByEvaluation[0]?.length).toBeGreaterThan(1);
+    expect(choiceCountsByEvaluation.at(-1)).toEqual([choiceCountsByEvaluation[0]?.length]);
+    expect(choiceCountsByEvaluation.flat().every(count => count <= MAX_DECISION_CHOICE_CRITERIA)).toBe(true);
+    expect(choiceBytesByEvaluation.flat().every(bytes => bytes <= 32_770)).toBe(true);
+    expect(refined.capturePlan.http[0]?.pagination).toMatchObject({
+      pageParam: 'page_no', sizeParam: 'page_limit', pageSize: 25,
+      totalPagesPath: 'meta10.total_pages', startPage: 1,
+    });
+  });
+
+  it('does not invent page origin when the API documentation omits it', async () => {
+    const runner = fakeRunner([]);
+    const planner = new ReportPlanner(runner, { readImage: () => new Uint8Array([1]) });
+    const input = { goal: 'report', pair,
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/', operations: [{
+        operationId: 'orders', method: 'GET', path: '/api/v1/orders', sideEffect: 'NONE' as const,
+        parameters: [
+          { name: 'page', in: 'query' as const, required: false, type: 'integer' },
+          { name: 'size', in: 'query' as const, required: false, type: 'integer' },
+        ],
+      }] }], rdbTables: [] as string[], connectedConnectors: ['http'] };
+    const provisional = await planner.inferCapturePlan(input);
+    await expect(planner.refineCapturePlan({ ...input, provisional, httpProbes: [{
+      alias: 'orders', path: '/api/v1/orders', status: 200,
+      shape: { type: 'object', fields: {
+        data: { type: 'array', length: 50, item: { type: 'object', fields: { id: { type: 'string' } } } },
+        total_pages: { type: 'number' },
+      } },
+    }] })).rejects.toBeInstanceOf(ReportSourceClarificationRequired);
+  });
+
+  it('rejects a Jev choice that is not one of the host-generated capture candidates', async () => {
+    const seen: Array<InvestigationRunRequest<unknown>> = [];
+    const logCodes: string[] = [];
+    const planner = new ReportPlanner(fakeRunner(seen), { readImage: () => new Uint8Array([1]), decisionEngine: { async evaluate({ questions }) {
+      const questionId = Object.keys(questions)[0]!;
+      return { answers: { [questionId]: { type: 'choice', choice: 'not_a_candidate', confidence: 0.99,
+        probabilities: { not_a_candidate: 0.99 } } } };
+    } } });
+    const input = { goal: 'report', pair,
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/' }],
+      rdbTables: [] as string[], connectedConnectors: ['http'] };
+    const planned = await planner.inferCapturePlan(input);
+    const provisional = { ...planned, capturePlan: { ...planned.capturePlan,
+      http: planned.capturePlan.http.map(source => ({ ...source, rowsPath: 'unknown' })) } };
+    await expect(planner.refineCapturePlan({ ...input, provisional, httpProbes: [{
+      alias: 'orders', path: '/api/v1/orders', status: 200,
+      shape: { type: 'object', fields: {
+        data: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
+        archive: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
+      } },
+    }], log: entry => logCodes.push(entry.code) })).rejects.toMatchObject({ code: 'report_capture_refinement_jev_answer_invalid' });
+    expect(seen.map(request => request.logContext)).toEqual(['report-source-plan']);
+    expect(logCodes).toContain('report_capture_refinement_jev_answer_invalid');
+    expect(logCodes).not.toContain('report_capture_refinement_jev_completed');
+  });
+
+  it('asks the user when Jev omits a capture choice', async () => {
+    const planner = new ReportPlanner(fakeRunner([]), { readImage: () => new Uint8Array([1]), decisionEngine: { async evaluate({ questions }) {
+      expect(Object.values(questions)[0]?.instructions).toMatchObject({
+        selection: expect.stringContaining('omit the answer'),
+      });
+      return { answers: {} };
+    } } });
+    const input = { goal: 'report', pair,
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/' }],
+      rdbTables: [] as string[], connectedConnectors: ['http'] };
+    const planned = await planner.inferCapturePlan(input);
+    const provisional = { ...planned, capturePlan: { ...planned.capturePlan,
+      http: planned.capturePlan.http.map(source => ({ ...source, rowsPath: 'unknown' })) } };
+    await expect(planner.refineCapturePlan({ ...input, provisional, httpProbes: [{
+      alias: 'orders', path: '/api/v1/orders', status: 200,
+      shape: { type: 'object', fields: {
+        data: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
+        archive: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
+      } },
+    }] })).rejects.toBeInstanceOf(ReportSourceClarificationRequired);
+  });
+
+  it('asks for required API query parameters not represented by the capture contract', async () => {
+    const planner = new ReportPlanner(fakeRunner([]), { readImage: () => new Uint8Array([1]) });
+    const input = { goal: 'report', pair,
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/', operations: [{
+        operationId: 'orders', method: 'GET', path: '/api/v1/orders', sideEffect: 'NONE' as const,
+        parameters: [{ name: 'tenant', in: 'query' as const, required: true, type: 'string' }],
+      }] }], rdbTables: [] as string[], connectedConnectors: ['http'] };
+    const provisional = await planner.inferCapturePlan(input);
+    await expect(planner.refineCapturePlan({ ...input, provisional, httpProbes: [{
+      alias: 'orders', path: '/api/v1/orders', status: 200,
+      shape: { type: 'array', length: 1, item: { type: 'object', fields: { id: { type: 'number' } } } },
+    }] })).rejects.toBeInstanceOf(ReportSourceClarificationRequired);
+  });
+
+  it('does not map date-time or exclusive period parameters to inclusive date controls', async () => {
+    const planner = new ReportPlanner(fakeRunner([]), { readImage: () => new Uint8Array([1]) });
+    const input = { goal: 'report', pair,
+      httpConnections: [{ id: 'orders-api', label: 'Orders', basePath: '/', operations: [{
+        operationId: 'orders', method: 'GET', path: '/api/v1/orders', sideEffect: 'NONE' as const,
+        parameters: [
+          { name: 'from', in: 'query' as const, required: false, type: 'string', format: 'date-time', description: 'Start date' },
+          { name: 'to', in: 'query' as const, required: false, type: 'string', format: 'date', description: 'Exclusive end date' },
+        ],
+      }] }], rdbTables: [] as string[], connectedConnectors: ['http'] };
+    const provisional = await planner.inferCapturePlan(input);
+    const refined = await planner.refineCapturePlan({ ...input, provisional, httpProbes: [{
+      alias: 'orders', path: '/api/v1/orders', status: 200,
+      shape: { type: 'object', fields: {
+        data: { type: 'array', length: 1, item: { type: 'object', fields: { id: { type: 'number' } } } },
+      } },
+    }] });
+    expect(refined.capturePlan.http[0]).not.toHaveProperty('dateQuery');
   });
 
   it('revises a business plan from bounded example replay evidence without target data', async () => {
@@ -1865,12 +2151,97 @@ describe('ReportPlanner', () => {
 
     expect(revised.reportPlan.baseSource).toBe('orders');
     expect(seen.at(-1)?.logContext).toBe('report-layout-plan-revision');
+    expect(seen.find((request) => request.logContext === 'report-layout-plan')?.images).toHaveLength(2);
+    const layoutRevision = seen.at(-1);
+    expect(layoutRevision?.images).toBeUndefined();
+    expect(JSON.parse(String(layoutRevision?.context.untrustedData)).previousLayout).toEqual(previous.layout);
     expect(seen.find((request) => request.logContext === 'report-business-plan-revision')?.context.untrustedData).toContain('historical display');
     expect(seen.at(-1)?.context.untrustedData).not.toContain('exampleSources');
     expect(seen.at(-1)?.context.untrustedData).not.toContain('targetSources');
     const revision = seen.find((request) => request.logContext === 'report-business-plan-revision');
     expect(revision?.context.untrustedData).not.toContain('row-a');
     expect(revision?.images ?? []).toHaveLength(0);
+  });
+
+  it('reuses the prior layout when a revised calculation exactly replays the example', async () => {
+    const calls: string[] = [];
+    const runner: InvestigationRunner = {
+      providerName: 'fixture',
+      async run<T>(request: InvestigationRunRequest<T>) {
+        calls.push(request.logContext ?? '');
+        if (request.logContext !== 'report-business-plan-revision') {
+          throw new Error(`unexpected_model_call:${request.logContext}`);
+        }
+        return { output: request.outputSchema.parse({
+          schemaVersion: 1,
+          reportPlan: {
+            schemaVersion: 1,
+            baseSource: 'orders',
+            joins: [],
+            scalars: [{ id: 'orderCount', expression: { kind: 'count' } }],
+            tables: [],
+            texts: [],
+          },
+        }) };
+      },
+    };
+    const planner = new ReportPlanner(runner);
+    const revisionPair: PdfReportPairAnalysis = {
+      ...pair,
+      scalarSlots: [{ ...pair.scalarSlots[0]!, exampleText: '2' }],
+    };
+    const capture = {
+      schemaVersion: 1 as const,
+      examplePeriod: { start: '2026-08-01', endInclusive: '2026-08-31', label: '2026년 8월' },
+      targetPeriod: { start: '2026-09-01', endInclusive: '2026-09-30', label: '2026년 9월' },
+      capturePlan: {
+        schemaVersion: 1 as const,
+        http: [{ alias: 'orders', connectionId: 'orders-api', path: '/orders', rowsPath: '$' }],
+        rdb: [],
+      },
+    };
+    const previous = {
+      schemaVersion: 1 as const,
+      reportPlan: {
+        schemaVersion: 1 as const,
+        baseSource: 'orders',
+        joins: [],
+        scalars: [{
+          id: 'orderCount',
+          expression: {
+            kind: 'count' as const,
+            where: {
+              kind: 'compare' as const,
+              operation: 'eq' as const,
+              left: { kind: 'field' as const, path: 'orders.id' },
+              right: { kind: 'literal' as const, value: 'missing' },
+            },
+          },
+        }],
+        tables: [],
+        texts: [],
+      },
+      layout: {
+        schemaVersion: 1 as const,
+        outputFileName: 'report-{{meta.periodYear}}.pdf',
+        scalarBindings: [{ slotId: 'period', value: { kind: 'scalar' as const, id: 'orderCount' } }],
+        tableBindings: [],
+      },
+    };
+
+    const revised = await planner.reviseReportPlan({
+      goal: 'next report',
+      pair: revisionPair,
+      capture,
+      exampleSources: { orders: { id: 'orders', complete: true, rows: [{ id: 'a' }, { id: 'b' }] } },
+      previous,
+      replayFailure: { mismatches: [{ slotId: 'period', expected: '2', actual: '0' }] },
+      connectedConnectors: ['http'],
+    });
+
+    expect(revised.reportPlan.scalars[0]).toMatchObject({ id: 'orderCount', expression: { kind: 'count' } });
+    expect(revised.layout).toEqual(previous.layout);
+    expect(calls).toEqual(['report-business-plan-revision']);
   });
 
   it('finishes a replayable revision without another model turn', async () => {

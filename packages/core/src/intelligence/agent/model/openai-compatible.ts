@@ -1,8 +1,19 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateObject, generateText } from 'ai';
-import type { FlexibleSchema, ModelMessage } from 'ai';
+import type { FlexibleSchema, LanguageModelUsage, ModelMessage } from 'ai';
 import { chatMessagesFromInput } from './chat.js';
-import type { ModelProvider, ModelProviderConfig, StructuredGenerateInput, TextGenerateInput } from './provider.js';
+import { reportModelTokenUsage, type ModelProvider, type ModelProviderConfig, type ModelTokenUsage, type StructuredGenerateInput, type TextGenerateInput } from './provider.js';
+
+function reportSdkUsage(
+  input: { onUsage?: (usage: ModelTokenUsage) => void },
+  usage: LanguageModelUsage,
+): void {
+  reportModelTokenUsage(input, {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    totalTokens: usage.totalTokens,
+    cachedInputTokens: usage.inputTokenDetails.cacheReadTokens,
+    reasoningTokens: usage.outputTokenDetails.reasoningTokens,
+  });
+}
 
 export function toSdkMessages(input: {
   system: string;
@@ -35,42 +46,62 @@ export function toSdkMessages(input: {
   });
 }
 
+type OpenAICompatibleRuntime = {
+  client: ReturnType<typeof import('@ai-sdk/openai-compatible')['createOpenAICompatible']>;
+  generateObject: typeof import('ai')['generateObject'];
+  generateText: typeof import('ai')['generateText'];
+};
+
 export class OpenAICompatibleProvider implements ModelProvider {
   readonly name = 'openai-compatible';
   readonly supportsVision = true;
   readonly model: string;
-  private client: ReturnType<typeof createOpenAICompatible>;
+  private runtimePromise?: Promise<OpenAICompatibleRuntime>;
 
   constructor(private config: ModelProviderConfig) {
     this.model = config.model;
-    this.client = createOpenAICompatible({
-      name: 'ax-studio',
-      baseURL: config.baseURL,
-      apiKey: config.apiKey ?? 'ollama',
-    });
+  }
+
+  private getRuntime(): Promise<OpenAICompatibleRuntime> {
+    return this.runtimePromise ??= Promise.all([
+      import('@ai-sdk/openai-compatible'),
+      import('ai'),
+    ]).then(([{ createOpenAICompatible }, { generateObject, generateText }]) => ({
+      client: createOpenAICompatible({
+        name: 'ax-studio',
+        baseURL: this.config.baseURL,
+        apiKey: this.config.apiKey ?? 'ollama',
+      }),
+      generateObject,
+      generateText,
+    }));
   }
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    const result = await generateObject({
-      model: this.client(this.config.model),
+    const runtime = await this.getRuntime();
+    const result = await runtime.generateObject({
+      model: runtime.client(this.config.model),
       schema: input.schema as unknown as FlexibleSchema<unknown>,
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.2,
       abortSignal: input.abortSignal,
     });
+    reportSdkUsage(input, result.usage);
     return result.object as T;
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    const result = await generateText({
-      model: this.client(this.config.model),
+    const runtime = await this.getRuntime();
+    const result = await runtime.generateText({
+      model: runtime.client(this.config.model),
       system: input.system,
       messages: toSdkMessages(input),
       temperature: input.temperature ?? 0.3,
       maxOutputTokens: input.maxOutputTokens,
       abortSignal: input.abortSignal,
     });
+    reportSdkUsage(input, result.usage);
     return result.text;
   }
 }

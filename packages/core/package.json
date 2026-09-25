@@ -15,6 +15,11 @@
       "require": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./documents/write": {
+      "types": "./dist/documents/write/index.d.ts",
+      "import": "./dist/documents/write/index.js",
+      "default": "./dist/documents/write/index.js"
+    },
     "./ai-catalog": {
       "types": "./dist/intelligence/agent/settings/ai-catalog.d.ts",
       "import": "./dist/intelligence/agent/settings/ai-catalog.js",
@@ -56,7 +61,7 @@
     "@slack/web-api": "^7.8.0",
     "@types/sql.js": "^1.4.11",
     "ai": "^7.0.106",
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^13.0.3",
     "docxtemplater": "^3.55.0",
     "google-auth-library": "^11.0.0",
     "googleapis": "^181.0.0",
@@ -74,6 +79,6 @@
     "@types/node": "^22.13.4",
     "@types/pg": "^8.11.11",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^5.0.1"
   }
 }

@@ -1,11 +1,10 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
-import { google } from 'googleapis';
-import { CodeChallengeMethod } from 'google-auth-library';
+import type { OAuth2Client } from 'google-auth-library';
 import { GMAIL_OAUTH_SCOPES } from '../connection.js';
 import type { GmailOAuthOptions, GmailOAuthResult } from './contracts.js';
 
-export const GMAIL_OAUTH_TIMEOUT_MS = 5 * 60_000;
+const GMAIL_OAUTH_TIMEOUT_MS = 5 * 60_000;
 
 function generatePkcePair() {
   const codeVerifier = randomBytes(32).toString('base64url');
@@ -26,10 +25,14 @@ export function oauthCallbackStateMatches(expected: string, received: string | n
 }
 
 export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promise<GmailOAuthResult> {
+  const [{ google }, { CodeChallengeMethod }] = await Promise.all([
+    import('googleapis'),
+    import('google-auth-library'),
+  ]);
   const scopes = [...(options.scopes ?? GMAIL_OAUTH_SCOPES)];
   const { codeVerifier, codeChallenge } = generatePkcePair();
   const expectedState = createOAuthState();
-  const session: { client?: InstanceType<typeof google.auth.OAuth2> } = {};
+  const session: { client?: OAuth2Client } = {};
 
   const code = await new Promise<string>((resolve, reject) => {
     let settled = false;
@@ -54,17 +57,17 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
         res.end('Not found');
         return;
       }
-      const err = url.searchParams.get('error');
-      if (err) {
-        res.writeHead(400);
-        res.end(`OAuth error: ${err}`);
-        settle({ error: new Error(err) });
-        return;
-      }
       if (!oauthCallbackStateMatches(expectedState, url.searchParams.get('state'))) {
         res.writeHead(400);
         res.end('Invalid OAuth state');
         settle({ error: new Error('Invalid OAuth state') });
+        return;
+      }
+      const err = url.searchParams.get('error');
+      if (err) {
+        res.writeHead(400);
+        res.end('OAuth provider returned an error.');
+        settle({ error: new Error(err) });
         return;
       }
       const authCode = url.searchParams.get('code');

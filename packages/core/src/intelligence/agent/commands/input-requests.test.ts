@@ -54,6 +54,52 @@ describe('inputRequestsForResult', () => {
     ]);
   });
 
+  it('disambiguates duplicate one-shot fields by their planned step', () => {
+    const requests = inputRequestsForResult({
+      command: 'execution.enqueue_once',
+      status: 'needs_input',
+      issues: [],
+      inputRequests: [
+        {
+          id: 'ax-input-jev_step_1-to-0', label: '수신자', type: 'email', required: true,
+          stepId: 'jev_step_1', capabilityId: 'gmail.message.send', parameterName: 'to',
+        },
+        {
+          id: 'ax-input-jev_step_2-to-0', label: '수신자', type: 'email', required: true,
+          stepId: 'jev_step_2', capabilityId: 'gmail.message.send', parameterName: 'to',
+        },
+      ],
+    });
+
+    expect(requests).toMatchObject([
+      { label: '1단계 · 수신자 (1)', stepId: 'jev_step_1', capabilityId: 'gmail.message.send', parameterName: 'to' },
+      { label: '2단계 · 수신자 (2)', stepId: 'jev_step_2', capabilityId: 'gmail.message.send', parameterName: 'to' },
+    ]);
+  });
+
+  it('disambiguates duplicate fields for a recurring workflow too', () => {
+    const requests = inputRequestsForResult({
+      command: 'job.propose',
+      status: 'needs_input',
+      issues: [],
+      inputRequests: [
+        {
+          id: 'ax-input-jev_step_1-to-0', label: '수신자', type: 'email', required: true,
+          stepId: 'jev_step_1', capabilityId: 'gmail.message.send', parameterName: 'to',
+        },
+        {
+          id: 'ax-input-jev_step_2-to-0', label: '수신자', type: 'email', required: true,
+          stepId: 'jev_step_2', capabilityId: 'gmail.message.send', parameterName: 'to',
+        },
+      ],
+    });
+
+    expect(requests).toMatchObject([
+      { label: '1단계 · 수신자 (1)', stepId: 'jev_step_1' },
+      { label: '2단계 · 수신자 (2)', stepId: 'jev_step_2' },
+    ]);
+  });
+
   it('does not manufacture controls from localized issue text', () => {
     expect(inputRequestsForResult({
       command: 'workflow.create',

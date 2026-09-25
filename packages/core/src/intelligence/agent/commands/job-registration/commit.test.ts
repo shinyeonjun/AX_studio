@@ -41,15 +41,20 @@ describe('job commit and fail-closed execution', () => {
       return { status: 'queued' };
     });
 
-    await service.execute({
+    const proposed = await service.execute({
       name: 'job.propose',
       args: dailyBriefArgs,
     }, { ...commandChatContext, workspaceSessionId: chat.id });
+
+    const confirmationToken = (((proposed.data as {
+      presentation?: { actions?: Array<{ id?: string; purpose?: string }> } } ).presentation?.actions ?? [])
+      .find((action) => action.purpose === 'confirm_job')?.id ?? '').split(':')[1];
 
     const committed = await service.execute({ name: 'job.commit', args: {} }, {
       ...commandChatContext,
       workspaceSessionId: chat.id,
       allowJobCommit: true,
+      jobCommitConfirmationToken: confirmationToken,
     });
 
     expect(committed.status).toBe('ok');

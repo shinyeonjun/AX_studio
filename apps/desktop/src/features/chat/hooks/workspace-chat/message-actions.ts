@@ -23,6 +23,9 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       ctx.setProgress('답변을 준비하고 있습니다');
     }
     let savedSessionId = originSessionId;
+    let responseReceived = false;
+    let finalMessages: WorkspaceChatMessage[] | undefined;
+    let finalTranscriptSaved = false;
     try {
       const initialSaved = await window.ax.saveWorkspaceChat(
         originSessionId,
@@ -40,15 +43,21 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         originWorkflowId,
         initialSaved.id,
       )) as WorkspaceSendResponse;
-      const finalMessages: WorkspaceChatMessage[] = [
+      responseReceived = true;
+      finalMessages = [
         ...nextMessages,
         {
           role: 'assistant',
           content: res.content,
+          ...(res.inputContinuation ? { inputContinuation: res.inputContinuation } : {}),
           ...(res.inputRequests?.length ? { inputRequests: res.inputRequests } : {}),
           ...(res.presentations?.length ? { presentations: res.presentations } : {}),
+          ...(res.readResult ? { readResult: res.readResult } : {}),
         },
       ];
+      if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
+        ctx.setChatMessages(finalMessages);
+      }
       const changedWorkflowId = res.changedWorkflowIds?.[0];
       const removedWorkflowId = originWorkflowId &&
         res.removedWorkflowIds?.includes(originWorkflowId)
@@ -60,6 +69,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         finalMessages,
         workflowId,
       );
+      finalTranscriptSaved = true;
       savedSessionId = saved.id;
       ctx.onSessionsChanged?.();
       if (!ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
@@ -69,15 +79,10 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         ctx.setChatMessages(saved.messages);
         ctx.refs.workspaceSessionIdRef.current = saved.id;
         ctx.setWorkspaceSessionId(saved.id);
-        const [sourceResult, workflow] = await Promise.all([
-          window.ax.listWorkspaceSources(saved.id),
-          changedWorkflowId ? window.ax.loadWorkChat(changedWorkflowId) : Promise.resolve(undefined),
-        ]);
-        if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
-        ctx.setWorkspaceSources(sourceResult.sources);
         if (changedWorkflowId) {
-          if (!workflow) throw new Error('workflow_missing_after_save');
+          const workflow = await window.ax.loadWorkChat(changedWorkflowId);
           if (!ctx.isCurrentSession(epoch) || !ctx.isViewingSession(savedSessionId)) return;
+          if (!workflow) throw new Error('workflow_missing_after_save');
           const state: WorkspaceWorkflowState = {
             ...(workflow.state as WorkspaceWorkflowState),
             summary: workflow.summary,
@@ -95,7 +100,10 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       }
     } catch (err) {
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
-        ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
+        const errorMessage = ipcErrorMessage(err, '대화 처리에 실패했습니다.');
+        ctx.setError(responseReceived && !finalTranscriptSaved
+          ? `${errorMessage} 응답은 받았지만 대화 저장에 실패했습니다. 외부 작업 요청이었다면 이미 실행됐을 수 있으니, 중복 실행 전에 연결된 서비스 상태를 확인해 주세요.`
+          : errorMessage);
       }
     } finally {
       if (ctx.refs.activeRequestIdRef.current === requestId) {

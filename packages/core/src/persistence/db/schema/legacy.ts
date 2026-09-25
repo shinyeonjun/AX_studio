@@ -37,6 +37,8 @@ export function applyLegacyMigrations(db: AppDatabase): void {
     db.exec("ALTER TABLE workspace_chats ADD COLUMN session_memo_json TEXT NOT NULL DEFAULT '{}'");
   }
   db.exec([
+    // Keep existing stores aligned with the fresh-schema state-query index.
+    'CREATE INDEX IF NOT EXISTS idx_approvals_status_created_at ON approvals(status, created_at DESC);',
     'CREATE INDEX IF NOT EXISTS idx_workflow_versions_workflow_id ON workflow_versions(workflow_id);',
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_versions_workflow_version ON workflow_versions(workflow_id, version);',
     'CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);',

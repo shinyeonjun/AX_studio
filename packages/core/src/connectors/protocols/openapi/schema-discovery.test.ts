@@ -13,6 +13,7 @@ const SPEC = {
         summary: '주문 목록 조회',
         parameters: [
           { name: 'month', in: 'query', required: true, description: '조회 월', schema: { type: 'string' } },
+          { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['paid', 'pending'] } },
         ],
         responses: {
           '200': {
@@ -65,7 +66,10 @@ describe('OpenAPI schema discovery', () => {
     expect(spec.operations).toMatchObject([
       {
         operationId: 'listOrders',
-        parameters: [{ name: 'month', in: 'query', required: true, type: 'string' }],
+        parameters: [
+          { name: 'month', in: 'query', required: true, type: 'string' },
+          { name: 'status', in: 'query', required: false, type: 'string', enum: ['paid', 'pending'] },
+        ],
         responses: [{ status: '200', fields: [
           { name: 'orders', type: 'array', required: true },
           { name: 'total', type: 'number', required: false },
@@ -129,7 +133,10 @@ describe('OpenAPI schema discovery', () => {
         path: '/orders',
         summary: '주문 목록 조회',
         sideEffect: 'NONE',
-        parameters: [{ name: 'month', description: '조회 월', in: 'query', required: true, type: 'string' }],
+        parameters: [
+          { name: 'month', description: '조회 월', in: 'query', required: true, type: 'string' },
+          { name: 'status', in: 'query', required: false, type: 'string', enum: ['paid', 'pending'] },
+        ],
       })]));
       const serialized = JSON.stringify(result.data);
       expect(serialized).not.toContain('user:password');

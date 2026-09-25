@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../intelligence/agent/investigation-runner.js';
+import type { DecisionEngine } from '../../contracts/decision.js';
 import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-response.js';
 import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import type { ConnectorContext } from '../../connectors/types.js';
@@ -12,8 +13,22 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
   const seen: InvestigationRunRequest<unknown>[] = [];
   const healthySchema = ['db-only', 'db-schema-page', 'db-read-failed'].includes(mode);
   const dbSelected = ['db-only', 'db-schema-page', 'required-db', 'selected-db', 'db-read-failed'].includes(mode);
-  const needs = mode === 'selected-db' ? [] : [{ id: 'facts', connector: dbSelected ? 'rdb' : 'http',
-    description: 'Required measurements', reason: 'Explicitly selected by the user' }];
+  const needs = [{ id: `source-${dbSelected ? 'rdb' : 'http'}`, connector: dbSelected ? 'rdb' : 'http',
+    description: 'Required measurements', reason: 'Selected from the report request and evidence.' }];
+  let decisionRequest: Parameters<DecisionEngine['evaluate']>[0] | undefined;
+  const decisionEngine: DecisionEngine = { async evaluate(request) {
+    if ('http_required' in request.questions || 'rdb_required' in request.questions) decisionRequest = request;
+    return { answers: Object.fromEntries(Object.keys(request.questions).map(id => {
+      const choice = id === 'http_required' ? (dbSelected ? 'not_required' : 'required')
+        : id === 'rdb_required' ? (dbSelected ? 'required' : 'not_required')
+          : id.startsWith('source_') ? 'use_source' : 'unclear';
+      const probabilities = id.startsWith('source_')
+        ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
+        : { required: 0.4, not_required: 0.35, unclear: 0.25 };
+      return [id, { type: 'choice' as const, choice,
+        probabilities, confidence: 0.4 }];
+    })) };
+  } };
   const executeRdb = vi.fn(async (action: string, _params: Record<string, unknown>) => {
     if (action === 'schema.describe') {
       if (healthySchema) return { ok: true, data: ['measurements'] };
@@ -40,7 +55,6 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
     seen.push(request);
     let output: unknown;
     switch (request.logContext) {
-      case 'report-source-requirements': output = { schemaVersion: 1, requirements: needs }; break;
       case 'report-source-plan': output = mode === 'db-schema-page'
         ? { schemaVersion: 1, status: 'need_evidence', request: { kind: 'rdb_table', table: 'measurements', offset: 200, limit: 2 } }
         : { schemaVersion: 1, status: 'planned', plan: capture }; break;
@@ -75,7 +89,7 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
       pageCount: 1, pages: [{ index: 0, width: 595, height: 842, rotation: 0 }], templateImages: [], exampleImages: [],
       scalarSlots: [{ id: 'count', pageIndex: 0, rect: { x: 10, y: 10, width: 30, height: 15 },
         exampleText: '1', fontSize: 10, font: 'Helvetica', color: 0 }], tableGroups: [] }), pdfFormFill: fill },
-    planner: new ReportPlanner(runner), getConnector: name => name === 'rdb' ? { name, execute: executeRdb }
+    planner: new ReportPlanner(runner, { decisionEngine }), getConnector: name => name === 'rdb' ? { name, execute: executeRdb }
       : name === 'http' ? { name, execute: executeHttp } : undefined,
   });
   const ctx: ConnectorContext = { executionId: 'preflight', workspaceSessionId: 'session', variables: {}, log,
@@ -83,20 +97,23 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
       config: { endpoints: [{ id: 'selected-api', baseUrl: 'https://api.test' }, { id: 'other-api', baseUrl: 'https://other.test' }] } }] };
   const result = await service.generate({ goal: dbSelected ? 'Use the measurements database for this report.'
     : 'Use only /measurements on the selected API for this report.', templateSourceId: 'template', exampleSourceId: 'example' }, ctx);
-  return { result, seen, executeHttp, executeRdb, fill, putBytes, log };
+  return { result, seen, decisionRequest, executeHttp, executeRdb, fill, putBytes, log };
 }
 
 describe('report source preflight availability', () => {
   it.each(['returned', 'thrown', 'invalid'] as const)('lets HTTP-only reporting finish despite an unrelated %s DB failure', async failure => {
     const run = await runReport('http-only', failure);
     expect(run.result).toMatchObject({ ok: true });
-    for (const phase of ['report-source-requirements', 'report-source-plan']) {
+    for (const phase of ['report-source-plan']) {
       const request = run.seen.find(item => item.logContext === phase)!;
       expect(JSON.parse(request.context.untrustedData!).unavailableSources).toEqual([
         expect.objectContaining({ connector: 'rdb', operation: 'schema.describe', available: false,
           reason: failure === 'invalid' ? 'schema_response_invalid' : 'schema_request_failed' }),
       ]);
     }
+    expect(run.decisionRequest?.state).toMatchObject({ unavailableSources: [
+      expect.objectContaining({ connector: 'rdb', operation: 'schema.describe', available: false }),
+    ] });
     expect(JSON.stringify([run.seen, run.log.mock.calls])).not.toContain('private-database');
     expect(run.executeRdb.mock.calls.map(([action]) => action)).toEqual(['schema.describe']);
     expect(run.executeHttp).toHaveBeenCalledTimes(3);
@@ -108,7 +125,9 @@ describe('report source preflight availability', () => {
   it('preserves a working DB-only selection and never falls back to HTTP', async () => {
     const run = await runReport('db-only');
     expect(run.result).toMatchObject({ ok: true });
-    expect(run.executeRdb.mock.calls.map(([action]) => action)).toEqual(['schema.describe', 'query.read', 'query.read']);
+    expect(run.executeRdb.mock.calls.map(([action]) => action)).toEqual([
+      'schema.describe', 'table.describe', 'query.read', 'query.read',
+    ]);
     expect(run.executeHttp).not.toHaveBeenCalled();
     expect(run.fill).toHaveBeenCalledTimes(1);
   });
@@ -118,15 +137,16 @@ describe('report source preflight availability', () => {
     expect(run.result).toMatchObject({ ok: true });
     expect(run.executeRdb).toHaveBeenCalledWith('table.describe', { table: 'measurements', offset: 200, limit: 2 }, expect.anything());
     expect(JSON.parse(run.seen.find(request => request.logContext === 'report-source-plan-inspect-1')!.context.untrustedData!)
-      .inspectedEvidence[0].result).toMatchObject({ offset: 200, limit: 2, columns: [{ name: 'id' }] });
+      .inspectedEvidence.find((item: { request: { offset?: number } }) => item.request.offset === 200)?.result)
+      .toMatchObject({ offset: 200, limit: 2, columns: [{ name: 'id' }] });
     expect(run.executeHttp).not.toHaveBeenCalled();
   });
 
   it.each(['required-db', 'selected-db', 'late-db'] as const)('fails closed after semantic analysis identifies %s', async mode => {
     const run = await runReport(mode);
     expect(run.result).toMatchObject({ ok: false, errorCode: 'report_rdb_schema_failed' });
-    expect(run.seen[0]?.logContext).toBe('report-source-requirements');
-    expect(run.seen.filter(item => item.logContext === 'report-source-plan')).toHaveLength(mode === 'required-db' ? 0 : 1);
+    expect(run.seen.filter(item => item.logContext === 'report-source-plan'))
+      .toHaveLength(['required-db', 'selected-db'].includes(mode) ? 0 : 1);
     expect(run.executeRdb.mock.calls.map(([action]) => action)).toEqual(['schema.describe']);
     expect(run.executeHttp).toHaveBeenCalledTimes(mode === 'late-db' ? 2 : 0);
     expect(run.fill).not.toHaveBeenCalled();

@@ -88,6 +88,7 @@ export const AxWorkflowStepInputSchema = z.union([
   IfStepSchema,
   HumanApprovalStepSchema,
 ]);
+export type AxWorkflowStepInput = z.infer<typeof AxWorkflowStepInputSchema>;
 
 export const AxWorkflowCreateArgsSchema = z.object({
   name: z.string().trim().min(1),
@@ -114,10 +115,12 @@ export const AxWorkflowUpdateOperationSchema = z.discriminatedUnion('op', [
   }),
 ]);
 
+export const AX_WORKFLOW_UPDATE_MAX_OPERATIONS = 50;
+
 export const AxWorkflowUpdateArgsSchema = z.object({
   workflowId: z.string().min(1),
   baseVersion: z.number().int().min(1),
-  operations: z.array(AxWorkflowUpdateOperationSchema).min(1).max(50),
+  operations: z.array(AxWorkflowUpdateOperationSchema).min(1).max(AX_WORKFLOW_UPDATE_MAX_OPERATIONS),
 });
 
 export const AxWorkflowDeleteArgsSchema = z.object({

@@ -27,14 +27,13 @@ import type { AxCommandServiceState } from './contracts.js';
 import { metadataPage } from '../../../../catalog/metadata-page.js';
 
 export function listResources(state: AxCommandServiceState) {
-  const connections = new Map(
-    state.store.getConnections().map((connection) => [connection.connector, connection]),
-  );
+  const connectionList = state.store.getConnections();
+  const connections = new Map(connectionList.map((connection) => [connection.connector, connection]));
   return {
     resources: CONNECTOR_IDS.map((id) => {
       const catalog = CONNECTOR_CATALOG[id];
       const connection = connections.get(id);
-      const httpEndpoints = id === 'http' ? httpEndpointsFromConnections(state.store.getConnections()) : undefined;
+      const httpEndpoints = id === 'http' ? httpEndpointsFromConnections(connectionList) : undefined;
       const endpoints = httpEndpoints
         ? httpEndpoints.slice(0, 20).map((endpoint) => ({
           id: endpoint.id,

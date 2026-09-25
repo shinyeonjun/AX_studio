@@ -1,4 +1,5 @@
 export * from './workflow/schema.js';
+export { triggerOutputPorts, stepOutputPorts, aiDecisionOutputPorts } from './workflow/bindings/ports/outputs.js';
 export * from './workflow/workflow-view.js';
 export * from './workflow/approval.js';
 export * from './workflow/contract-validator.js';
@@ -7,7 +8,15 @@ export * from './contracts/index.js';
 export * from './catalog/index.js';
 export * from './connectors/index.js';
 export * from './documents/read/index.js';
-export * from './documents/write/index.js';
+export type * from './documents/write/types.js';
+export { isPdfGeneratePending } from './documents/write/types.js';
+export {
+  setDesktopPrintBridge,
+  getDesktopPrintBridge,
+  MockDesktopPrintBridge,
+  type DesktopPrintBridge,
+  type DesktopPrintOptions,
+} from './documents/write/desktop-print.js';
 export * from './persistence/credentials/index.js';
 export * from './intelligence/agent/index.js';
 export * from './intelligence/decision/index.js';
@@ -17,12 +26,14 @@ export type {
   WorkspaceChatMessage,
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
+  WorkspaceChatReadResult,
   WorkspaceChatRecord,
   WorkspaceChatListRecord,
 } from './persistence/repositories/workspace-chat-repository.js';
 export {
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
+  WorkspaceChatReadResultSchema,
 } from './persistence/repositories/workspace-chat-repository.js';
 export { ArtifactStore, type StoredArtifact } from './persistence/artifact-store.js';
 export { importDiscoveryArtifact } from './persistence/import-discovery-artifact.js';

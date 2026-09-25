@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = join(scriptDir, '..');
+const repositoryRoot = join(desktopRoot, '..', '..');
 
 function resolveBetterSqlite3Dir() {
   try {
@@ -24,22 +25,25 @@ function nativeBinaryPath(pkgDir) {
   return join(pkgDir, 'build', 'Release', 'better_sqlite3.node');
 }
 
-function runPrebuildInstall(pkgDir, version) {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  return spawnSync(npx, ['prebuild-install', '--runtime', 'electron', '--target', version], {
-    cwd: pkgDir,
-    // A missing Electron prebuild is the normal fallback path. Keep npm's
-    // download/deprecation noise out of the dev-server output; an explicit
-    // native build request still gets full diagnostics below.
-    stdio: process.env.AX_NATIVE_DB_BUILD === '1' ? 'inherit' : 'ignore',
-    shell: process.platform === 'win32',
-  });
+function hasUsableNativeBinding(pkgDir) {
+  try {
+    const Database = require(pkgDir);
+    const database = new Database(':memory:');
+    try {
+      database.prepare('SELECT 1').get();
+      return true;
+    } finally {
+      database.close();
+    }
+  } catch {
+    return false;
+  }
 }
 
 function runNativeBuild(pkgDir, version) {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  return spawnSync(npx, [
-    'node-gyp',
+  const nodeGyp = require.resolve('node-gyp/bin/node-gyp.js', { paths: [repositoryRoot] });
+  return spawnSync(process.execPath, [
+    nodeGyp,
     'rebuild',
     '--release',
     '--runtime=electron',
@@ -55,7 +59,6 @@ function runNativeBuild(pkgDir, version) {
 const pkgDir = resolveBetterSqlite3Dir();
 const binary = nativeBinaryPath(pkgDir);
 const version = electronVersion();
-const versionMarker = join(pkgDir, '.ax-electron-version');
 const unavailableMarker = join(pkgDir, '.ax-native-db-unavailable');
 const nativeFingerprint = `${version}:${betterSqliteVersion(pkgDir)}:${process.platform}:${process.arch}`;
 const nativeBuildOptIn = process.env.AX_NATIVE_DB_BUILD === '1';
@@ -85,9 +88,9 @@ if (!existsSync(pkgDir)) {
   process.exit(0);
 }
 
-if (existsSync(binary) && existsSync(versionMarker) && readFileSync(versionMarker, 'utf8').trim() === version) {
+if (hasUsableNativeBinding(pkgDir)) {
   rmSync(unavailableMarker, { force: true });
-  console.log('[native-db] better-sqlite3 binary already present');
+  console.log('[native-db] compatible better-sqlite3 binding already available');
   process.exit(0);
 }
 
@@ -101,30 +104,27 @@ if (existsSync(binary)) {
   rmSync(staleBinary, { force: true });
   renameSync(binary, staleBinary);
 }
-console.log(`[native-db] downloading better-sqlite3 prebuild for Electron ${version}...`);
-const result = runPrebuildInstall(pkgDir, version);
+if (!nativeBuildOptIn) {
+  recordUnavailable();
+  console.warn('[native-db] compatible better-sqlite3 prebuild unavailable; desktop will use sql.js. Set AX_NATIVE_DB_BUILD=1 to try a local build.');
+  process.exit(0);
+}
 
-let ready = result.status === 0 && existsSync(binary);
-if (!ready && nativeBuildOptIn) {
-  console.warn('[native-db] prebuild unavailable; trying an Electron-targeted local build');
-  const build = runNativeBuild(pkgDir, version);
-  ready = build.status === 0 && existsSync(binary);
+console.log(`[native-db] building better-sqlite3 for Electron ${version}...`);
+const result = runNativeBuild(pkgDir, version);
+const ready = result.status === 0 && existsSync(binary) && hasUsableNativeBinding(pkgDir);
+if (!ready) {
+  console.warn('[native-db] local Electron-targeted native build failed');
 }
 
 if (!ready) {
   rmSync(binary, { force: true });
   rmSync(staleBinary, { force: true });
-  rmSync(versionMarker, { force: true });
   recordUnavailable();
-  if (nativeBuildOptIn) {
-    console.warn('[native-db] Electron native build unavailable; desktop will fall back to sql.js');
-  } else {
-    console.warn(`[native-db] no prebuilt better-sqlite3 binding for Electron ${version}; desktop will use sql.js. Set AX_NATIVE_DB_BUILD=1 to try a local native build.`);
-  }
+  console.warn('[native-db] Electron native build unavailable; desktop will fall back to sql.js');
   process.exit(0);
 }
 
 rmSync(staleBinary, { force: true });
 rmSync(unavailableMarker, { force: true });
-writeFileSync(versionMarker, `${version}\n`, 'utf8');
 console.log(`[native-db] better-sqlite3 ready for Electron ${version}`);

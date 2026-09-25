@@ -10,6 +10,7 @@ import {
   httpResponseToTable,
 } from '../../../../contracts/artifacts/http-response.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../../contracts/artifacts/table.js';
+import { tableArtifactFromRows } from '../../../../contracts/artifacts/table-build.js';
 
 export interface CommandChatSessionState {
   workflowId?: string;
@@ -69,25 +70,13 @@ function markdownCell(value: unknown): string {
   return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 }
 
-const REQUESTED_COLUMN_ALIASES: readonly [RegExp, readonly string[]][] = [
-  [/(?:상품|제품)\s*명|product\s*(?:name|title)/iu, ['title', 'name', 'productName']],
-  [/(?:가격|단가|판매가)|\b(?:price|cost|amount)\b/iu, ['price', 'cost', 'amount']],
-  [/(?:카테고리|분류)|\b(?:category|type)\b/iu, ['category', 'type']],
-  [/(?:재고|재고량)|\b(?:stock|inventory)\b/iu, ['stock', 'inventory']],
-];
+const SEMANTIC_TRANSFORM_INTENT = /(?:정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명|계산|합산|그룹|묶어|추려|골라|선택|미만|이하|초과|이상|이내|사이|범위|상위|하위|보다\s*(?:크|작|높|낮|많|적)|가장\s*(?:크|작|높|낮|많|적|비싸|저렴)|제외|포함|조건에\s*맞)/iu;
 
-function requestedColumnsFromMessage(userMessage: string): string[] | undefined {
-  const columns: string[] = [];
-  const add = (column: string): void => {
-    if (!columns.includes(column)) columns.push(column);
-  };
-  for (const [pattern, candidates] of REQUESTED_COLUMN_ALIASES) {
-    if (pattern.test(userMessage)) candidates.forEach(add);
-  }
-  return columns.length > 0 ? columns : undefined;
+function needsModelTransform(userMessage: string): boolean {
+  return SEMANTIC_TRANSFORM_INTENT.test(userMessage);
 }
 
-function selectedColumnsFromHttpPath(params: unknown): string[] | undefined {
+export function selectedColumnsFromHttpPath(params: unknown): string[] | undefined {
   if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
   const record = params as Record<string, unknown>;
   const path = typeof record.path === 'string' ? record.path.trim() : '';
@@ -95,10 +84,11 @@ function selectedColumnsFromHttpPath(params: unknown): string[] | undefined {
   if (queryStart < 0) return undefined;
   const select = new URLSearchParams(path.slice(queryStart + 1).split('#', 1)[0]).get('select');
   if (!select) return undefined;
-  const columns = select.split(',')
-    .map((column) => column.trim())
-    .filter((column) => /^[A-Za-z_][A-Za-z0-9_.-]*$/u.test(column));
-  return columns.length > 0 ? [...new Set(columns)] : undefined;
+  const columns = select.split(',').map((column) => column.trim());
+  if (columns.length === 0 || columns.some((column) => !/^[A-Za-z_][A-Za-z0-9_.-]*$/u.test(column))) {
+    return undefined;
+  }
+  return [...new Set(columns)];
 }
 
 function selectAvailableColumns(
@@ -109,21 +99,93 @@ function selectAvailableColumns(
   return selected.length > 0 ? selected : [...headers];
 }
 
+const MAX_CHAT_TABLE_ROWS = 100;
+const MAX_CHAT_TABLE_COLUMNS = 50;
+
 function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly string[]): string {
-  const headers = selectAvailableColumns(
+  const allHeaders = selectAvailableColumns(
     table.columns.map((column) => column.name),
     requestedColumns,
   );
+  const headers = allHeaders.slice(0, MAX_CHAT_TABLE_COLUMNS);
+  const rows = table.rows.slice(0, MAX_CHAT_TABLE_ROWS);
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
   const lines = [
     `| ${headers.map(markdownCell).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
-    ...table.rows.map((row) => `| ${headers.map((header) => markdownCell(row.values[header])).join(' | ')} |`),
+    ...rows.map((row) => `| ${headers.map((header) => markdownCell(row.values[header])).join(' | ')} |`),
   ];
+  if (headers.length < allHeaders.length) {
+    lines.push('', `화면에는 전체 ${allHeaders.length}열 중 처음 ${headers.length}열만 표시했습니다.`);
+  }
+  if (rows.length < table.rows.length) {
+    lines.push('', `화면에는 전체 ${table.rows.length}행 중 처음 ${rows.length}행만 표시했습니다.`);
+  }
   if (table.truncated || table.completeness?.status !== 'complete') {
     lines.push('', '응답이 일부만 포함되어 있습니다.');
   }
   return lines.join('\n');
+}
+
+export function formatTableArtifact(table: TableArtifact): string {
+  return tableToMarkdown(table);
+}
+
+/** Keep only the bounded, visible table needed for an immediate follow-up. */
+export function boundedChatReadResult(table: TableArtifact): TableArtifact | undefined {
+  const columns = table.columns.slice(0, MAX_CHAT_TABLE_COLUMNS);
+  const names = columns.map(({ name }) => name);
+  const rows = table.rows.slice(0, MAX_CHAT_TABLE_ROWS).map((row) => ({
+    ...row,
+    values: Object.fromEntries(names.flatMap((name) =>
+      Object.hasOwn(row.values, name) ? [[name, row.values[name]]] : [],
+    )),
+  }));
+  const bounded: TableArtifact = {
+    id: table.id,
+    kind: 'table',
+    ...(table.name ? { name: table.name } : {}),
+    columns,
+    rows,
+    truncated: table.truncated || columns.length < table.columns.length || rows.length < table.rows.length,
+    ...(table.completeness ? { completeness: table.completeness } : {}),
+  };
+  return new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 64_000 ? bounded : undefined;
+}
+
+function httpTableForTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {
+  const parsed = httpResponseFromResult(result);
+  if (!parsed.success) return undefined;
+  let json: unknown;
+  try {
+    json = JSON.parse(parsed.data.body) as unknown;
+  } catch {
+    return undefined;
+  }
+  const params = command.args.params;
+  const converted = httpResponseToTable(parsed.data, {
+    sourceId: 'http:response',
+    rowsPath: uniqueObjectArrayPath(json),
+    columns: selectedColumnsFromHttpPath(params),
+  });
+  return converted.ok ? converted.table : undefined;
+}
+
+export function tableForJevTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {
+  if (command.name !== 'capability.invoke' || result.status !== 'ok') return undefined;
+  if (command.args.id === 'http.request') return httpTableForTransform(command, result);
+
+  let payload = capabilityEnvelopeData(result);
+  const table = TableArtifactSchema.safeParse(payload);
+  if (table.success) return table.data;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const body = (payload as Record<string, unknown>).body;
+    if (typeof body === 'string') {
+      try { payload = JSON.parse(body) as unknown; } catch { return undefined; }
+    }
+  }
+  const rows = rowsForCapabilityTable(payload);
+  return rows ? tableArtifactFromRows(rows, { id: 'chat:capability-result' }) : undefined;
 }
 
 function fencedBody(body: string, language = 'json'): string {
@@ -140,6 +202,7 @@ export function deterministicHttpChatReply(
   command: AxCommand,
   result: AxCommandResult,
   userMessage: string,
+  jevConfirmedNoTransform = false,
 ): string | undefined {
   if (command.name !== 'capability.invoke' || command.args.id !== 'http.request') return undefined;
   const params = command.args.params;
@@ -156,7 +219,8 @@ export function deterministicHttpChatReply(
   if (!parsed.success) return undefined;
   const response = parsed.data;
   const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
-  const needsModelTransform = /정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명/iu.test(userMessage);
+  const requiresModelTransform = !jevConfirmedNoTransform && needsModelTransform(userMessage);
+  if (requiresModelTransform) return undefined;
   if (wantsTable) {
     let json: unknown;
     try {
@@ -167,11 +231,10 @@ export function deterministicHttpChatReply(
     const table = httpResponseToTable(response, {
       sourceId: 'http:response',
       rowsPath: uniqueObjectArrayPath(json),
-      columns: selectedColumnsFromHttpPath(params) ?? requestedColumnsFromMessage(userMessage),
+      columns: selectedColumnsFromHttpPath(params),
     });
     return table.ok ? tableToMarkdown(table.table) : undefined;
   }
-  if (needsModelTransform) return undefined;
 
   if (!response.body.trim()) return `HTTP ${response.status} 응답이 비어 있습니다.`;
   let body = response.body;
@@ -208,16 +271,31 @@ function rowsForCapabilityTable(value: unknown): Record<string, unknown>[] | und
   return candidates.length === 1 ? objectRows(candidates[0]) : undefined;
 }
 
-function rowsToMarkdown(rows: Record<string, unknown>[], requestedColumns?: readonly string[]): string {
-  const allHeaders = [...new Set(rows.flatMap((row) => Object.keys(row)))].slice(0, 50);
-  const headers = selectAvailableColumns(allHeaders, requestedColumns);
+function rowsToMarkdown(rows: Record<string, unknown>[]): string {
+  const headerSet = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      headerSet.add(key);
+      if (headerSet.size > MAX_CHAT_TABLE_COLUMNS) break;
+    }
+    if (headerSet.size > MAX_CHAT_TABLE_COLUMNS) break;
+  }
+  const allHeaders = [...headerSet];
+  const headers = allHeaders.slice(0, MAX_CHAT_TABLE_COLUMNS);
+  const displayedRows = rows.slice(0, MAX_CHAT_TABLE_ROWS);
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
-  return [
+  const lines = [
     `| ${headers.map(markdownCell).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
-    ...rows.slice(0, 100).map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`),
-    ...(rows.length > 100 ? ['', '응답이 일부만 포함되어 있습니다.'] : []),
-  ].join('\n');
+    ...displayedRows.map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`),
+  ];
+  if (allHeaders.length > headers.length) {
+    lines.push('', `열이 많아 화면에는 처음 ${headers.length}열만 표시했습니다.`);
+  }
+  if (rows.length > displayedRows.length) {
+    lines.push('', `화면에는 전체 ${rows.length}행 중 처음 ${displayedRows.length}행만 표시했습니다.`);
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -229,18 +307,18 @@ export function deterministicCapabilityReadChatReply(
   command: AxCommand,
   result: AxCommandResult,
   userMessage: string,
+  jevConfirmedNoTransform = false,
 ): string | undefined {
   if (command.name !== 'capability.invoke' || result.status !== 'ok') return undefined;
   const id = command.args.id;
   if (typeof id !== 'string' || id === 'http.request') return undefined;
-  if (/정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명/iu.test(userMessage)) return undefined;
+  if (!jevConfirmedNoTransform && needsModelTransform(userMessage)) return undefined;
 
   const payload = capabilityEnvelopeData(result);
   const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
   if (wantsTable) {
     const table = TableArtifactSchema.safeParse(payload);
-    const requestedColumns = requestedColumnsFromMessage(userMessage);
-    if (table.success) return tableToMarkdown(table.data, requestedColumns);
+    if (table.success) return tableToMarkdown(table.data);
     let decoded = payload;
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
       const body = (payload as Record<string, unknown>).body;
@@ -249,7 +327,7 @@ export function deterministicCapabilityReadChatReply(
       }
     }
     const rows = rowsForCapabilityTable(decoded);
-    return rows ? rowsToMarkdown(rows, requestedColumns) : undefined;
+    return rows ? rowsToMarkdown(rows) : undefined;
   }
 
   let body = payload;
@@ -274,6 +352,105 @@ export function deterministicCapabilityReadChatReply(
   return serialized === undefined
     ? '조회 결과가 비어 있습니다.'
     : `조회 결과:\n\n${fencedBody(serialized, typeof body === 'string' ? 'text' : 'json')}`;
+}
+
+export function deterministicWorkflowListChatReply(
+  command: AxCommand,
+  result: AxCommandResult,
+  userMessage: string,
+): string | undefined {
+  if (command.name !== 'workflow.list' || result.command !== 'workflow.list' || result.status !== 'ok') return undefined;
+  if (needsModelTransform(userMessage)) return undefined;
+  if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) return undefined;
+  const workflows = (result.data as { workflows?: unknown }).workflows;
+  if (!Array.isArray(workflows)) return undefined;
+  if (workflows.length === 0) return '저장된 workflow가 없습니다.';
+  if (!workflows.every((workflow) => workflow && typeof workflow === 'object' && !Array.isArray(workflow)
+    && typeof workflow.id === 'string'
+    && typeof workflow.name === 'string'
+    && typeof workflow.active === 'boolean'
+    && Number.isSafeInteger(workflow.latestVersion))) return undefined;
+
+  return [
+    `저장된 workflow (${workflows.length}개):`,
+    ...workflows.map((workflow) => {
+      const entry = workflow as { id: string; name: string; active: boolean; latestVersion: number };
+      return `- ${JSON.stringify(entry.name)} — ${entry.active ? '활성' : '비활성'}, v${entry.latestVersion} (ID: ${JSON.stringify(entry.id)})`;
+    }),
+  ].join('\n');
+}
+
+// Skip prose generation only for explicit catalog display; interpretation stays on the model path.
+const DETERMINISTIC_METADATA_COMMANDS: ReadonlySet<AxCommand['name']> = new Set([
+  'resource.list',
+  'source.list',
+  'source.files.list',
+  'session.source.list',
+  'capability.list',
+  'capability.describe',
+  'discovery.search',
+  'discovery.describe',
+]);
+const METADATA_DISPLAY_INTENT = /(?:목록|리스트|보여|나열|그대로|원본|조회해|확인해|알려줘|찾아줘|검색해|\b(?:list|show|display|find|search|lookup)\b)/iu;
+
+export function deterministicHttpConnectionListChatReply(
+  command: AxCommand,
+  result: AxCommandResult,
+  userMessage: string,
+): string | undefined {
+  if (command.name !== 'http.list'
+    || result.command !== command.name
+    || result.status !== 'ok'
+    || !METADATA_DISPLAY_INTENT.test(userMessage)
+    || needsModelTransform(userMessage)
+    || !result.data
+    || typeof result.data !== 'object'
+    || Array.isArray(result.data)) return undefined;
+
+  const data = result.data as { connections?: unknown; count?: unknown; totalMatches?: unknown; truncated?: unknown };
+  if (!Array.isArray(data.connections)
+    || !data.connections.every((connection) => connection && typeof connection === 'object'
+      && !Array.isArray(connection)
+      && typeof connection.id === 'string'
+      && typeof connection.label === 'string'
+      && typeof connection.connected === 'boolean'
+      && typeof connection.usable === 'boolean')) return undefined;
+  if (data.connections.length === 0) {
+    return typeof data.count === 'number' && data.count > 0
+      ? '조건에 맞는 HTTP 연결이 없습니다.'
+      : '저장된 HTTP 연결이 없습니다.';
+  }
+
+  const connections = data.connections as { id: string; label: string; connected: boolean; usable: boolean }[];
+  const total = Number.isSafeInteger(data.totalMatches) ? data.totalMatches as number : connections.length;
+  return [
+    `저장된 HTTP 연결 (${connections.length}/${total}개):`,
+    ...connections.map((connection) =>
+      `- ${JSON.stringify(connection.label)} (ID: ${JSON.stringify(connection.id)}) — ${connection.usable ? '사용 가능' : connection.connected ? '인증 설정 필요' : '연결 끊김'}`),
+    ...(data.truncated === true ? ['', '목록이 일부만 표시되었습니다.'] : []),
+  ].join('\n');
+}
+
+export function deterministicMetadataChatReply(
+  command: AxCommand,
+  result: AxCommandResult,
+  userMessage: string,
+): string | undefined {
+  if (!DETERMINISTIC_METADATA_COMMANDS.has(command.name)
+    || result.command !== command.name
+    || result.status !== 'ok'
+    || result.data === undefined
+    || needsModelTransform(userMessage)
+    || !METADATA_DISPLAY_INTENT.test(userMessage)) return undefined;
+
+  try {
+    const serialized = JSON.stringify(result.data, null, 2);
+    return serialized === undefined
+      ? undefined
+      : `조회 결과:\n\n${fencedBody(serialized)}`;
+  } catch {
+    return undefined;
+  }
 }
 
 export function applyCommandResultToSession(

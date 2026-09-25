@@ -6,6 +6,7 @@ import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-response.js';
 import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
 import type { Connector, ConnectorContext } from '../../connectors/types.js';
+import type { DecisionEngine } from '../../contracts/decision.js';
 import { ReportGenerationService } from './service.js';
 import { ReportCheckpointStore, reportDigest } from './checkpoints.js';
 import { ReportSourceReplanRequired, type ReportSourceNeed, type ReportCaptureInference } from './planner/schema.js';
@@ -15,6 +16,16 @@ describe('ReportGenerationService', () => {
   it.each(['allowed', 'denied'])('routes real planner metadata requests through host policy: %s', async mode => {
     let calls = 0;
     const seen: string[] = [];
+    const log = vi.fn();
+    const decisionEngine: DecisionEngine = { async evaluate({ questions }) {
+      return { answers: Object.fromEntries(Object.keys(questions).map(id => {
+        const sourceCandidate = id.startsWith('source_');
+        const choice = id === 'rdb_required' ? 'required' : id === 'http_required' ? 'not_required' : 'use_source';
+        return [id, { type: 'choice' as const, choice,
+          probabilities: sourceCandidate ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
+            : { required: 0.4, not_required: 0.35, unclear: 0.25 }, confidence: 0.4 }];
+      })) };
+    } };
     const planner = new ReportPlanner({ providerName: 'fixture', async run(request) {
       seen.push(request.context.untrustedData ?? '');
       if (request.logContext === 'report-source-requirements') {
@@ -24,7 +35,7 @@ describe('ReportGenerationService', () => {
       return { output: request.outputSchema.parse(calls === 1
         ? { schemaVersion: 1, status: 'need_evidence', request: { kind: 'rdb_table', table: mode === 'allowed' ? 'measurements' : 'secret' } }
         : { schemaVersion: 1, status: 'needs_input', reason: 'The metric definition is ambiguous' }) };
-    } });
+    } }, { decisionEngine });
     const execute = vi.fn(async (action: string) => action === 'schema.describe'
       ? { ok: true, data: ['measurements'] }
       : { ok: true, data: { table: 'measurements', columns: [{ name: 'amount', type: 'numeric' }] } });
@@ -37,13 +48,14 @@ describe('ReportGenerationService', () => {
       getConnector: name => name === 'rdb' ? { name: 'rdb', execute } : undefined,
     });
     const result = await service.generate({ goal: 'Create a report', templateSourceId: 't', exampleSourceId: 'e' }, {
-      workspaceSessionId: 'session', artifactSink: { putBytes: sink }, log: vi.fn(),
+      workspaceSessionId: 'session', artifactSink: { putBytes: sink }, log,
     } as unknown as ConnectorContext);
     expect(result).toMatchObject({ ok: false, errorCode: mode === 'allowed'
       ? 'report_source_discovery_needs_input' : 'report_source_inspection_denied' });
-    expect(execute.mock.calls.map(call => call[0])).toEqual(mode === 'allowed'
-      ? ['schema.describe', 'table.describe'] : ['schema.describe']);
-    expect(seen.some(value => value.includes('numeric'))).toBe(mode === 'allowed');
+    expect(execute.mock.calls.map(call => call[0])).toEqual(['schema.describe', 'table.describe']);
+    expect(seen.some(value => value.includes('numeric'))).toBe(true);
+    expect(log.mock.calls.map(([entry]) => entry.code)).toContain('report_source_requirements_jev_completed');
+    expect(log.mock.calls.map(([entry]) => entry.code)).toContain('report_source_candidates_jev_completed');
     expect(fill).not.toHaveBeenCalled();
     expect(sink).not.toHaveBeenCalled();
   });
@@ -593,6 +605,14 @@ describe('ReportGenerationService', () => {
       const failed = await service.generate(params, ctx);
       expect(failed).toMatchObject({ ok: false, errorCode: 'agent_timeout' });
       expect(putBytes).not.toHaveBeenCalled();
+      for (const [name, path] of [['template', templatePath], ['example', examplePath]] as const) {
+        writeFileSync(path, `changed ${name}`);
+        const changedFile = await service.generate({ ...params, resumeExecutionId: 'exec-1' }, {
+          ...ctx, executionId: `changed-${name}`,
+        });
+        expect(changedFile.errorCode).toBe('report_checkpoint_input_changed');
+        writeFileSync(path, name);
+      }
       const changed = await service.generate({ ...params, goal: 'different', resumeExecutionId: 'exec-1' }, { ...ctx, executionId: 'changed' });
       expect(changed.errorCode).toBe('report_checkpoint_input_changed');
       const changedConnection = await service.generate({ ...params, resumeExecutionId: 'exec-1' }, {

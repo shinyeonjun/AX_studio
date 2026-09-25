@@ -1,11 +1,11 @@
-import { CONNECTOR_CATALOG, type ConnectorId } from './connectors.js';
+import { CONNECTOR_CATALOG, CONNECTOR_IDS, type ConnectorId } from './connectors.js';
 import { CAPABILITY_CATALOG, type ConnectorCapability } from './capabilities.js';
 import { listDynamicCapabilities } from './dynamic-catalog.js';
 export { resolveCapability } from './capability-resolver.js';
 
-function allCapabilities(): ConnectorCapability[] {
+function allCapabilities(dynamicCapabilities = listDynamicCapabilities()): ConnectorCapability[] {
   const seen = new Set<string>();
-  return [...listDynamicCapabilities(), ...CAPABILITY_CATALOG].filter((capability) => {
+  return [...dynamicCapabilities, ...CAPABILITY_CATALOG].filter((capability) => {
     if (seen.has(capability.id)) return false;
     seen.add(capability.id);
     return true;
@@ -18,21 +18,32 @@ export function isConnectorAlwaysOn(connector: string): boolean {
   return entry.runtimeAvailable && (entry.alwaysReal || entry.connectionKind === 'builtin');
 }
 
+export function connectedConnectorIds(
+  connections: readonly { connector: string; connected: boolean }[],
+): string[] {
+  const configured = connections.filter((connection) => connection.connected).map((connection) => connection.connector);
+  return [...new Set([...configured, ...CONNECTOR_IDS.filter(isConnectorAlwaysOn)])];
+}
+
 export function availableCapabilities(connectedConnectors: string[]): ConnectorCapability[] {
-  return allCapabilities().filter(
+  const dynamicCapabilities = listDynamicCapabilities();
+  const dynamicCapabilityIds = new Set(dynamicCapabilities.map((capability) => capability.id));
+  return allCapabilities(dynamicCapabilities).filter(
     (cap) =>
       (CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true ||
-        listDynamicCapabilities().some((dynamic) => dynamic.id === cap.id)) &&
+        dynamicCapabilityIds.has(cap.id)) &&
       (isConnectorAlwaysOn(cap.connector) || connectedConnectors.includes(cap.connector)),
   );
 }
 
 /** Design-time catalog: packaged actions are visible before authentication. */
 export function designCapabilities(): ConnectorCapability[] {
-  return allCapabilities().filter(
+  const dynamicCapabilities = listDynamicCapabilities();
+  const dynamicCapabilityIds = new Set(dynamicCapabilities.map((capability) => capability.id));
+  return allCapabilities(dynamicCapabilities).filter(
     (cap) =>
       CONNECTOR_CATALOG[cap.connector as ConnectorId]?.runtimeAvailable === true ||
-      listDynamicCapabilities().some((dynamic) => dynamic.id === cap.id),
+      dynamicCapabilityIds.has(cap.id),
   );
 }
 

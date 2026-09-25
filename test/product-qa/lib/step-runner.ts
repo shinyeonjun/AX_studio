@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import {
   attachFixtureViaE2e,
   clickInlineApproval,
@@ -18,6 +18,7 @@ import {
   readVisibleMessages,
   startDiscoveryFixture,
   sendMessage,
+  selectInputOption,
   switchSessionByTitle,
   toggleTheme,
   waitForDiscoveryStatus,
@@ -44,6 +45,7 @@ export class StepRunner {
   private sessions = new Map<string, SessionState>();
   private activeLabel?: string;
   private replyLatenciesMs: number[] = [];
+  private pendingAssistantCount?: number;
 
   constructor(
     private readonly ctx: DesktopContext,
@@ -142,17 +144,31 @@ export class StepRunner {
         const label = step.label ?? this.activeLabel;
         const waitForReply = step.waitForReply !== false;
         const sendStarted = Date.now();
+        const assistantCount = await page.locator('.ax-workspace-message--assistant').count();
         await sendMessage(page, step.text);
         if (label) this.sessions.set(label, { label, titleHint: step.text.slice(0, 40) });
-        if (!waitForReply) return;
+        if (!waitForReply) {
+          this.pendingAssistantCount = assistantCount;
+          return;
+        }
         try {
           await waitForComposerBusy(page, 5_000);
         } catch {
           // fast deterministic replies may skip visible busy state
         }
         await waitForComposerReady(page, defaultReplyTimeoutMs());
+        await page.waitForFunction(
+          (previousCount) => document.querySelectorAll('.ax-workspace-message--assistant').length > previousCount,
+          assistantCount,
+          { timeout: defaultReplyTimeoutMs() },
+        );
+        this.pendingAssistantCount = undefined;
         this.replyLatenciesMs.push(Date.now() - sendStarted);
         await this.captureSessionTitle(page, label);
+        return;
+      }
+      case 'selectInputOption': {
+        await selectInputOption(page, step.requestId, step.value);
         return;
       }
       case 'clickInlineApproval': {
@@ -167,6 +183,14 @@ export class StepRunner {
         const timeoutMs = step.timeoutMs ?? defaultReplyTimeoutMs();
         try {
           await waitForComposerReady(page, timeoutMs);
+          if (this.pendingAssistantCount !== undefined) {
+            await page.waitForFunction(
+              (previousCount) => document.querySelectorAll('.ax-workspace-message--assistant').length > previousCount,
+              this.pendingAssistantCount,
+              { timeout: timeoutMs },
+            );
+            this.pendingAssistantCount = undefined;
+          }
         } catch (err) {
           if (step.optional) return;
           throw err;
@@ -276,6 +300,8 @@ export class StepRunner {
 
     switch (step.check) {
       case 'assistantMessageContains': {
+        await expect(page.locator('.ax-workspace-message--assistant').filter({ hasText: step.text }).last())
+          .toBeVisible({ timeout: 10_000 });
         const messages = await readVisibleMessages(page);
         const assistants = messages.filter((m) => m.role === 'assistant').map((m) => m.text).join('\n');
         const passed = assistants.includes(step.text);
@@ -379,6 +405,7 @@ export class StepRunner {
         };
       }
       case 'pageTitleIs': {
+        await expect(page.locator('h1.page-title').first()).toHaveText(step.text, { timeout: 10_000 });
         const title = await pageTitleText(page);
         const passed = title === step.text;
         return {

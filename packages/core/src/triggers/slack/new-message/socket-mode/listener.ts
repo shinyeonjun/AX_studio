@@ -1,5 +1,5 @@
-import { SocketModeClient, type SocketModeOptions } from '@slack/socket-mode';
-import { WebClient } from '@slack/web-api';
+import type { SocketModeClient, SocketModeOptions } from '@slack/socket-mode';
+import type { WebClient } from '@slack/web-api';
 import type { PushTransportState, PushTransportStateHandler } from '../../../push-state.js';
 import type {
   SlackSocketEventHandler,
@@ -27,6 +27,7 @@ export class SlackSocketModeListener {
   private client?: SocketModeClient;
   private web?: WebClient;
   private channelLabels = new Map<string, CachedChannelLabel>();
+  private readonly channelLabelLookups = new Map<string, Promise<string>>();
   private onEvent?: SlackSocketEventHandler;
   private onStateChange?: PushTransportStateHandler;
   private lastSocketError?: string;
@@ -52,7 +53,12 @@ export class SlackSocketModeListener {
     this.onStateChange = onStateChange;
     this.lastSocketError = undefined;
     this.lastLoggedSocketError = undefined;
-    const sdkLogger = createSlackSdkLogger();
+    const [{ SocketModeClient, LogLevel }, { WebClient }] = await Promise.all([
+      import('@slack/socket-mode'),
+      import('@slack/web-api'),
+    ]);
+    if (generation !== this.lifecycleGeneration) return;
+    const sdkLogger = createSlackSdkLogger(LogLevel);
     const client = (
       this.options.createClient ??
       ((clientOptions: SocketModeOptions) => new SocketModeClient(clientOptions))
@@ -95,34 +101,39 @@ export class SlackSocketModeListener {
     this.client.on('error', reportError);
 
     this.client.on('events_api', async ({ event, ack }) => {
-      await ack();
-      if (generation !== this.lifecycleGeneration) return;
-      if (!isUserMessage(event as Record<string, unknown>)) return;
+      try {
+        if (generation !== this.lifecycleGeneration) return;
+        if (!isUserMessage(event as Record<string, unknown>)) {
+          await ack();
+          return;
+        }
 
-      const message = event as {
-        type: 'message';
-        channel: string;
-        ts: string;
-        text?: string;
-        user?: string;
-      };
+        const message = event as {
+          type: 'message';
+          channel: string;
+          ts: string;
+          text?: string;
+          user?: string;
+        };
 
-      const channelId = message.channel;
-      const channel = await this.resolveChannelLabel(channelId, generation);
-      if (generation !== this.lifecycleGeneration) return;
-
-      this.onEvent?.({
-        type: 'slack.new_message',
-        payload: {
-          messageId: message.ts,
-          ts: message.ts,
-          channel,
-          channelId,
-          text: message.text ?? '',
-          user: message.user,
-          sender: message.user,
-        },
-      });
+        const channelId = message.channel;
+        const web = this.web;
+        const accepted = await this.onEvent?.(async () => ({
+          type: 'slack.new_message',
+          payload: {
+            messageId: message.ts,
+            ts: message.ts,
+            channel: await this.resolveChannelLabel(channelId, generation, web),
+            channelId,
+            text: message.text ?? '',
+            user: message.user,
+            sender: message.user,
+          },
+        }));
+        if (accepted !== false) await ack();
+      } catch (error) {
+        reportError(error);
+      }
     });
 
     let startPromise: Promise<unknown>;
@@ -150,6 +161,7 @@ export class SlackSocketModeListener {
     this.lastSocketError = undefined;
     this.lastLoggedSocketError = undefined;
     this.channelLabels.clear();
+    this.channelLabelLookups.clear();
     if (client) await client.disconnect();
   }
 
@@ -157,7 +169,11 @@ export class SlackSocketModeListener {
     return this.client?.websocket?.isActive() ?? false;
   }
 
-  private async resolveChannelLabel(channelId: string, generation: number): Promise<string> {
+  private async resolveChannelLabel(
+    channelId: string,
+    generation: number,
+    web: WebClient | undefined,
+  ): Promise<string> {
     const cached = this.channelLabels.get(channelId);
     if (cached && cached.expiresAt > Date.now()) {
       // Keep frequently used channels at the newest end of the bounded cache.
@@ -167,24 +183,37 @@ export class SlackSocketModeListener {
     }
     if (cached) this.channelLabels.delete(channelId);
 
-    try {
-      const response = await this.web?.conversations.info({ channel: channelId });
-      const name = response?.channel?.name;
-      const label = name ? `#${name}` : channelId;
-      if (generation === this.lifecycleGeneration) {
-        this.channelLabels.set(channelId, {
-          label,
-          expiresAt: Date.now() + SLACK_CHANNEL_LABEL_CACHE_TTL_MS,
-        });
-        while (this.channelLabels.size > SLACK_CHANNEL_LABEL_CACHE_MAX) {
-          const oldest = this.channelLabels.keys().next().value as string | undefined;
-          if (!oldest) break;
-          this.channelLabels.delete(oldest);
+    const pending = this.channelLabelLookups.get(channelId);
+    if (pending) return pending;
+
+    const lookup = (async () => {
+      try {
+        const response = await web?.conversations.info({ channel: channelId });
+        const name = response?.channel?.name;
+        const label = name ? `#${name}` : channelId;
+        if (generation === this.lifecycleGeneration) {
+          this.channelLabels.set(channelId, {
+            label,
+            expiresAt: Date.now() + SLACK_CHANNEL_LABEL_CACHE_TTL_MS,
+          });
+          while (this.channelLabels.size > SLACK_CHANNEL_LABEL_CACHE_MAX) {
+            const oldest = this.channelLabels.keys().next().value as string | undefined;
+            if (!oldest) break;
+            this.channelLabels.delete(oldest);
+          }
         }
+        return label;
+      } catch {
+        return channelId;
       }
-      return label;
-    } catch {
-      return channelId;
+    })();
+    this.channelLabelLookups.set(channelId, lookup);
+    try {
+      return await lookup;
+    } finally {
+      if (this.channelLabelLookups.get(channelId) === lookup) {
+        this.channelLabelLookups.delete(channelId);
+      }
     }
   }
 }

@@ -13,6 +13,14 @@ export async function runTextAgent(
   const logs: AgentTextResult['logs'] = [];
   const started = Date.now();
   const controller = new AbortController();
+  let usage: AgentTextResult['usage'];
+  let measurements: Record<string, unknown> = {
+    requestId: request.requestId,
+    role: request.role,
+    phase: request.logContext,
+    provider: model.name,
+    timeoutMs: definition.policy.timeoutMs,
+  };
   const timer = setTimeout(() => controller.abort(), definition.policy.timeoutMs);
   const abortExternal = () => controller.abort();
   if (request.abortSignal?.aborted) {
@@ -29,7 +37,7 @@ export async function runTextAgent(
   const allowCloud = request.cloudAllowed ?? true;
   let context = request.context;
   let images = request.images;
-  if (!allowCloud && isCloudProvider(model.name)) {
+  if (!allowCloud && isCloudProvider(model.name) && context) {
     context = redactUntrustedContext(context);
     images = undefined;
     logs.push({ level: 'info', message: 'dataPolicy: redacted untrusted data for cloud backend' });
@@ -44,13 +52,14 @@ export async function runTextAgent(
 
     const rolePrompt = request.systemPrompt ?? (
       request.role === 'investigate'
-        ? buildInvestigatePrompt(request.role, context)
+        ? buildInvestigatePrompt(request.role, context ?? request.context)
         : 'Return a concise plain-text response. Do not emit JSON, commands, tool calls, or internal protocol details.'
     );
     const system = composeAgentSystemPrompt(rolePrompt);
     const temperature = request.temperature ?? definition.temperature;
     const promptChars = system.length + (request.messages?.reduce((sum, message) => sum + message.content.length, 0) ?? request.user?.length ?? 0);
-    const measurements = {
+    measurements = {
+      requestId: request.requestId,
       role: request.role,
       phase: request.logContext,
       provider: model.name,
@@ -75,12 +84,15 @@ export async function runTextAgent(
       sessionId: request.sessionId,
       abortSignal: controller.signal,
       onProgress: request.onProgress,
+      onUsage: reported => { usage = reported; },
       maxTurns: 1,
     });
     if (controller.signal.aborted) throw new Error('agent_result_after_abort');
     const output = String(raw ?? '').trim();
     const durationMs = Date.now() - started;
-    appendAppLog('info', 'Agent text invocation completed', { ...measurements, durationMs });
+    appendAppLog('info', 'Agent text invocation completed', {
+      ...measurements, durationMs, providerUsageAvailable: Boolean(usage), ...(usage ? { usage } : {}),
+    });
     logs.push({
       level: 'info',
       message: `provider=${model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
@@ -91,11 +103,22 @@ export async function runTextAgent(
       provider: model.name,
       durationMs,
       promptChars,
+      ...(usage ? { usage } : {}),
       policy: definition.policy,
       logs,
     };
   } catch (error) {
+    const errorCode = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : undefined;
+    const failureTelemetry = {
+      ...measurements,
+      durationMs: Date.now() - started,
+      providerUsageAvailable: Boolean(usage),
+      ...(usage ? { usage } : {}),
+    };
     if (request.abortSignal?.aborted) {
+      appendAppLog('info', 'Agent text invocation cancelled', failureTelemetry);
       throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
     }
     if (controller.signal.aborted) {
@@ -104,12 +127,18 @@ export async function runTextAgent(
         { code: 'agent_timeout', phase: request.logContext },
       );
       appendAppLog('error', timeoutError.message, {
+        ...failureTelemetry,
         code: 'agent_timeout',
         role: request.role,
         phase: request.logContext,
       });
       throw timeoutError;
     }
+    appendAppLog('error', 'Agent text invocation failed', {
+      ...failureTelemetry,
+      errorName: error instanceof Error ? error.name : 'unknown',
+      ...(errorCode ? { errorCode } : {}),
+    });
     logs.push({ level: 'error', message: error instanceof Error ? error.message : String(error) });
     if (error instanceof Error && !(error as Error & { code?: string }).code) {
       throw Object.assign(error, { code: 'agent_invoke_failed' });

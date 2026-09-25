@@ -10,7 +10,6 @@ type AiDetection = ReturnType<typeof useAiDetection>;
 interface AiBrandSettingsInitializationInput {
   brand: AiBrand;
   state: AppState | null;
-  cliProviders: AiDetection['cliProviders'];
   refreshDetection: AiDetection['refreshDetection'];
   setApiKeyConfigured: Dispatch<SetStateAction<boolean>>;
   setApiKeyMasked: Dispatch<SetStateAction<string | undefined>>;
@@ -22,7 +21,6 @@ interface AiBrandSettingsInitializationInput {
 export function useAiBrandSettingsInitialization({
   brand,
   state,
-  cliProviders,
   refreshDetection,
   setApiKeyConfigured,
   setApiKeyMasked,
@@ -34,7 +32,7 @@ export function useAiBrandSettingsInitialization({
     let cancelled = false;
     (async () => {
       try {
-        const { aiConfig } = await refreshDetection();
+        const { detected, aiConfig } = await refreshDetection();
         if (cancelled) return;
 
         const secret = aiConfig.secrets[brand];
@@ -49,7 +47,7 @@ export function useAiBrandSettingsInitialization({
         const nextModel = resolveBrandModel(
           brand,
           nextMode,
-          cliProviders,
+          detected,
           brandPrefs,
           active ? saved?.model : undefined,
         );

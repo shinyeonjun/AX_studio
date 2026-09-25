@@ -24,12 +24,16 @@ describe('source discovery response contract', () => {
       let failure: unknown;
       let settled = false;
       const runner: InvestigationRunner = { providerName: 'test', async run<T>(request: InvestigationRunRequest<T>) {
-        if (mode === 'runner') return new Promise(() => {});
+        if (mode === 'runner') return new Promise((_, reject) => {
+          request.abortSignal?.addEventListener('abort', () => reject(new Error('runner_aborted')), { once: true });
+        });
         return { output: request.outputSchema.parse({ schemaVersion: 1, status: 'need_evidence',
           request: { kind: 'rdb_table', table: 'records' } }) };
       } };
       const result = discoverReportSources({ runner, context, user: 'Report', images: [], requirements: [],
-        inspect: () => new Promise(() => {}), validate: value => value }).then(
+        inspect: (_inspection, signal) => new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('inspection_aborted')), { once: true });
+        }), validate: value => value }).then(
           () => { settled = true; }, error => { failure = error; settled = true; });
       await vi.advanceTimersByTimeAsync(180_001);
       expect(settled).toBe(false);
@@ -58,13 +62,109 @@ describe('source discovery response contract', () => {
     const result = await discoverReportSources({ runner: runnerFor([
       { schemaVersion: 1, status: 'need_evidence', request: { kind: 'rdb_table', table: 'archive.records' } },
       { schemaVersion: 1, status: 'planned', plan: complete },
-    ], seen), context, user: 'Report', images: [], inspect, validate: value => value,
+    ], seen), context, user: 'Report', images: [{
+      data: new Uint8Array([1]), mimeType: 'image/png', pageIndex: 0, filename: 'example.png',
+    }], inspect, validate: value => value,
       requirements: [{ id: 'history', connector: 'rdb', description: 'History', reason: 'User requested history' }] });
     expect(result).toEqual(complete);
     expect(inspect).toHaveBeenCalledTimes(1);
     expect(seen[1]!.context.untrustedData).toContain('numeric');
     expect(seen[0]!.context.untrustedData).not.toContain('numeric');
+    expect(seen[0]!.images).toHaveLength(1);
+    expect(seen[1]!.images).toBeUndefined();
     expect(zodToCodexJsonSchema(ReportSourceDecisionSchema)).toMatchObject({ type: 'object' });
+  });
+  it('parses the immutable base context once across multiple decision turns', async () => {
+    const baseContext = JSON.stringify({ padding: 'x'.repeat(78_000) });
+    const complete = { ...plan,
+      capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'records', table: 'warehouse.orders' }] },
+      requirementBindings: [],
+    };
+    const parse = vi.spyOn(JSON, 'parse');
+    try {
+      await discoverReportSources({ runner: runnerFor([
+        { schemaVersion: 1, status: 'need_evidence', request: { kind: 'rdb_table', table: 'warehouse.orders' } },
+        { schemaVersion: 1, status: 'planned', plan: complete },
+      ], []), context: { ...context, untrustedData: baseContext }, user: 'Report', images: [],
+        requirements: [], inspect: async () => ({ columns: [{ name: 'amount', type: 'numeric' }] }),
+        validate: value => value });
+      expect(parse.mock.calls.filter(([value]) => value === baseContext)).toHaveLength(1);
+    } finally {
+      parse.mockRestore();
+    }
+  });
+  it('revalidates the same plan when Jev authorizes and adds its missing source evidence', async () => {
+    const seen: InvestigationRunRequest<unknown>[] = [];
+    const complete = { ...plan,
+      capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'orders', table: 'warehouse.orders' }] },
+      requirementBindings: [],
+    };
+    const decision = { schemaVersion: 1, status: 'planned', plan: complete };
+    const validate = vi.fn(async (value: typeof complete,
+      evidence: Array<{ request: ReportSourceInspection; result: unknown }>) => {
+      if (!evidence.some(item => item.request.kind === 'rdb_table' && item.request.table === 'warehouse.orders')) {
+        evidence.push({ request: { kind: 'rdb_table', table: 'warehouse.orders' },
+          result: { columns: [{ name: 'created_at', type: 'date' }] } });
+        throw new Error('report_source_candidates_added');
+      }
+      return value;
+    });
+
+    await expect(discoverReportSources({ runner: runnerFor([decision, decision], seen), context,
+      user: 'Report', images: [], requirements: [], validate })).resolves.toEqual(complete);
+
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(seen[1]!.context.untrustedData!).inspectedEvidence).toEqual([
+      { request: { kind: 'rdb_table', table: 'warehouse.orders' },
+        result: { columns: [{ name: 'created_at', type: 'date' }] } },
+    ]);
+    expect(JSON.parse(seen[1]!.context.untrustedData!).planFeedback)
+      .toEqual([{ validationError: 'report_source_candidates_added' }]);
+  });
+  it('recognizes preloaded DB evidence when a later request supplies the default page explicitly', async () => {
+    const seen: InvestigationRunRequest<unknown>[] = [];
+    const complete = { ...plan, capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'records', table: 'archive.records' }] },
+      requirementBindings: [] };
+    const inspect = vi.fn();
+    const result = await discoverReportSources({ runner: runnerFor([
+      { schemaVersion: 1, status: 'need_evidence', request: { kind: 'rdb_table', table: 'archive.records', limit: 20 } },
+      { schemaVersion: 1, status: 'planned', plan: complete },
+    ], seen), context, user: 'Report', images: [], inspect, validate: value => value, requirements: [],
+      initialEvidence: [{ request: { kind: 'rdb_table', table: 'archive.records' },
+        result: { columns: [{ name: 'amount', type: 'numeric' }] } }] });
+
+    expect(result).toEqual(complete);
+    expect(inspect).not.toHaveBeenCalled();
+    expect(JSON.parse(seen[1]!.context.untrustedData!).planFeedback)
+      .toEqual([{ validationError: 'report_source_inspection_already_completed' }]);
+  });
+  it('keeps the on-demand discovery budget available after Jev prefetches many candidates', async () => {
+    const seen: InvestigationRunRequest<unknown>[] = [];
+    const complete = { ...plan, capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'records', table: 'warehouse.table_0' }] },
+      requirementBindings: [] };
+    const initialEvidence = Array.from({ length: 30 }, (_, index) => ({
+      request: { kind: 'rdb_table' as const, table: `warehouse.table_${index}` }, result: { available: true },
+    }));
+    const inspect = vi.fn(async () => ({ entries: [{ table: 'warehouse.table_30' }] }));
+    const result = await discoverReportSources({ runner: runnerFor([
+      { schemaVersion: 1, status: 'need_evidence', request: { kind: 'catalog', connector: 'rdb', limit: 1 } },
+      { schemaVersion: 1, status: 'planned', plan: complete },
+    ], seen), context, user: 'Report', images: [], inspect, validate: value => value,
+      requirements: [], initialEvidence });
+
+    expect(result).toEqual(complete);
+    expect(JSON.parse(seen[0]!.context.untrustedData!).discoveryBudget.remainingInspections).toBe(24);
+    expect(inspect).toHaveBeenCalledTimes(1);
+  });
+  it('stops after the caller cancels even if a runner returns a late plan', async () => {
+    const controller = new AbortController();
+    const runner: InvestigationRunner = { providerName: 'test', async run<T>(request: InvestigationRunRequest<T>) {
+      controller.abort();
+      return { output: request.outputSchema.parse({ schemaVersion: 1, status: 'planned', plan }) };
+    } };
+
+    await expect(discoverReportSources({ runner, context, user: 'Report', images: [], requirements: [],
+      signal: controller.signal, validate: value => value })).rejects.toMatchObject({ code: 'agent_aborted' });
   });
   it('retries a semantically invalid wire decision before inspecting or executing a source', async () => {
     const complete = { ...plan,
@@ -87,6 +187,24 @@ describe('source discovery response contract', () => {
     expect(JSON.parse(seen[1]!.context.untrustedData!).decisionFeedback).toMatchObject([
       { status: 'need_evidence', providedFields: ['reason'] },
     ]);
+  });
+  it('keeps visual evidence available until the first valid source decision', async () => {
+    const complete = { ...plan,
+      capturePlan: { schemaVersion: 1, http: [], rdb: [{ alias: 'records', table: 'archive.records' }] },
+      requirementBindings: [],
+    };
+    const seen: InvestigationRunRequest<unknown>[] = [];
+    const invalid = { schemaVersion: 1, status: 'need_evidence', reason: 'The source shape needs confirmation.' };
+    const images = [{ data: new Uint8Array([1]), mimeType: 'image/png', pageIndex: 0, filename: 'example.png' }];
+
+    await expect(discoverReportSources({ runner: runnerFor([invalid,
+      { schemaVersion: 1, status: 'planned', plan: complete }], seen), context,
+      user: 'Report', images, inspect: vi.fn(), requirements: [], validate: value => value }))
+      .resolves.toEqual(complete);
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]!.images).toHaveLength(1);
+    expect(seen[1]!.images).toHaveLength(1);
   });
   it('retries one transient agent timeout without repeating source inspection', async () => {
     const complete = { ...plan,

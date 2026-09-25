@@ -19,7 +19,9 @@ describe('HTTP endpoint secrets and status', () => {
       { id: 'default', baseUrl: 'https://api.github.com/', authType: 'none' },
       { id: 'secure', baseUrl: 'https://api.example.com/', authType: 'bearer', authStored: true },
     ] });
-    const merged = mergeHttpEndpointsWithSecrets(endpoints, { secure: { token: 'secret' } });
+    const merged = mergeHttpEndpointsWithSecrets(endpoints, {
+      secure: { token: 'secret', origin: 'https://api.example.com' },
+    });
     expect(merged.map((entry) => entry.id)).toEqual(['default', 'secure']);
     expect(merged[1]?.auth?.token).toBe('secret');
     const status = getHttpConnectionStatus(serializeHttpEndpoints(endpoints), true);

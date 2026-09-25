@@ -88,10 +88,7 @@ describe('runtime resource lifecycle', () => {
 
       expect(aborted).toBe(true);
       await expect(run).resolves.toMatchObject({ status: 'cancelled', errorCode: 'cancelled' });
-      await expect(runtime.executeWorkflow(workflow)).resolves.toMatchObject({
-        status: 'cancelled',
-        errorCode: 'workflow_paused',
-      });
+      await expect(runtime.executeWorkflow(workflow)).rejects.toMatchObject({ code: 'workflow_removed' });
       await expect(runtime.executeWorkflow(workflow, { forceManual: true })).rejects.toMatchObject({
         code: 'workflow_removed',
       });

@@ -32,7 +32,7 @@ function candidateSkillRoots(): string[] {
   ].filter((path): path is string => Boolean(path));
 }
 
-export function parseSkillMarkdown(raw: string): Pick<AgentSkillFile, 'name' | 'description' | 'body'> {
+function parseSkillMarkdown(raw: string): Pick<AgentSkillFile, 'name' | 'description' | 'body'> {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!match) return { name: '', description: '', body: raw.trim() };
   const frontmatter = match[1];

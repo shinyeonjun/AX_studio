@@ -4,10 +4,30 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDatabaseAsync } from './db.js';
+import { applyLegacyMigrations } from './db/schema/legacy.js';
 import { createSqlJsDatabase, openReadonlySqlJs } from './db/sqljs.js';
 import { WorkflowStore } from './workflow-store.js';
 
 describe('legacy database migrations', () => {
+  it('adds the pending-approval ordering index to existing databases', async () => {
+    const db = await createSqlJsDatabase(':memory:');
+    try {
+      db.exec('DROP INDEX idx_approvals_status_created_at');
+      applyLegacyMigrations(db);
+
+      expect(db.prepare("PRAGMA index_list('approvals')").all()).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'idx_approvals_status_created_at' }),
+      ]));
+      const plan = db.prepare(`EXPLAIN QUERY PLAN
+        SELECT a.*, e.ir_json AS execution_ir_json
+        FROM approvals a LEFT JOIN executions e ON e.id = a.execution_id
+        WHERE a.status = ? ORDER BY a.created_at DESC`).all('pending');
+      expect(plan.some((row) => String(row.detail).includes('idx_approvals_status_created_at'))).toBe(true);
+    } finally {
+      db.close?.();
+    }
+  });
+
   it('reads only the requested first row instead of evaluating later rows', async () => {
     const db = await createSqlJsDatabase(':memory:');
     try {

@@ -38,6 +38,8 @@ export const INITIAL_SCHEMA_SQL = [
   "  resolved_at TEXT,",
   "  payload_json TEXT",
   ");",
+  // State refresh filters pending approvals and displays newest first.
+  "CREATE INDEX IF NOT EXISTS idx_approvals_status_created_at ON approvals(status, created_at DESC);",
   "CREATE TABLE IF NOT EXISTS settings (",
   "  key TEXT PRIMARY KEY,",
   "  value_json TEXT NOT NULL",
@@ -89,6 +91,10 @@ export const INITIAL_SCHEMA_SQL = [
   ");",
   "CREATE INDEX IF NOT EXISTS idx_executions_started_at ON executions(started_at);",
   "CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_chat_id ON workspace_chat_sources(chat_id, created_at);",
+  "CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_artifact_id ON workspace_chat_sources(artifact_id);",
+  "CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_document_artifact_id ON workspace_chat_sources(document_artifact_id) WHERE document_artifact_id IS NOT NULL;",
+  // Startup recovery scans only pending rows; completed sources do not need this index.
+  "CREATE INDEX IF NOT EXISTS idx_workspace_chat_sources_processing_created ON workspace_chat_sources(created_at) WHERE status = 'processing';",
   "CREATE TABLE IF NOT EXISTS work_discovery_sessions (",
   "  id TEXT PRIMARY KEY,",
   "  status TEXT NOT NULL,",
@@ -127,6 +133,7 @@ export const INITIAL_SCHEMA_SQL = [
   "  FOREIGN KEY(session_id) REFERENCES work_discovery_sessions(id) ON DELETE CASCADE,",
   "  FOREIGN KEY(example_id) REFERENCES work_discovery_examples(id) ON DELETE CASCADE",
   ");",
+  "CREATE INDEX IF NOT EXISTS idx_work_discovery_snapshots_artifact_id ON work_discovery_snapshots(artifact_id) WHERE artifact_id IS NOT NULL;",
   "CREATE TABLE IF NOT EXISTS work_discovery_replay_cases (",
   "  id TEXT PRIMARY KEY,",
   "  session_id TEXT NOT NULL,",

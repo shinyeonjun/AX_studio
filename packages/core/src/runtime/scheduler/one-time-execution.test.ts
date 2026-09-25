@@ -40,13 +40,13 @@ describe('Scheduler', () => {
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
+    expect(store.getSetting('scheduler.lastFired:once-workflow', null)).toBeNull();
     expect(store.listWorkflows()[0]?.active).toBe(true);
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
     // deleteWorkflow prunes the workflow-keyed scheduler/trigger settings.
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
+    expect(store.getSetting('scheduler.lastFired:once-workflow', null)).toBeNull();
     expect(store.getWorkflow('once-workflow')).toBeNull();
   });
 
@@ -89,5 +89,55 @@ describe('Scheduler', () => {
     await firstTick;
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks workflow writes while removing a completed one-time workflow', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const workflow = {
+      id: 'once-delete-race',
+      name: '일회성 삭제 경쟁',
+      goal: '완료된 일회성 작업을 정리한다',
+      version: 1,
+      trigger: { type: 'once' as const, runAt: new Date(Date.now() - 1_000).toISOString() },
+      steps: [],
+      permissions: {},
+      approval: [],
+      allowExternalAuto: true,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
+    };
+    store.saveWorkflow(workflow);
+    store.setWorkflowActive(workflow.id, true);
+
+    let finishRemoval!: () => void;
+    let markRemovalStarted!: () => void;
+    const removalStarted = new Promise<void>((resolve) => { markRemovalStarted = resolve; });
+    const removalGate = new Promise<void>((resolve) => { finishRemoval = resolve; });
+    const runtime = {
+      executeWorkflow: vi.fn(async () => ({ status: 'success' })),
+      removeWorkflow: vi.fn(async () => {
+        markRemovalStarted();
+        await removalGate;
+      }),
+    };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    try {
+      const runningTick = tick();
+      await removalStarted;
+      expect(() => store.saveWorkflow({ ...workflow, name: '삭제 중 수정', version: 1 }))
+        .toThrow(expect.objectContaining({ code: 'workflow_deletion_in_progress' }));
+      expect(() => store.setWorkflowActive(workflow.id, true))
+        .toThrow(expect.objectContaining({ code: 'workflow_deletion_in_progress' }));
+      finishRemoval();
+      await runningTick;
+      expect(store.getWorkflow(workflow.id)).toBeNull();
+    } finally {
+      finishRemoval();
+      db.close?.();
+    }
   });
 });

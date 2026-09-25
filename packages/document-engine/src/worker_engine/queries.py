@@ -3,14 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 
 from artifact_store import artifact_dir, load_manifest
-from ax_paths import default_document_root
+from ax_paths import default_document_root, managed_request_root
 from protocol import EngineRequest, EngineResponse
 
 from .projection import _chunk_by_id, _page_by_index
 
 
 def handle_document_query(request: EngineRequest) -> EngineResponse:
-    artifact_root = Path(str(request.params.get("artifactRoot") or default_document_root()))
+    artifact_root = managed_request_root(
+        request.params.get("artifactRoot"),
+        default_document_root(),
+        "artifact",
+        request.params,
+    )
     document_id = str(request.params.get("documentId") or "")
     if not document_id:
         return EngineResponse(id=request.id, ok=False, error="document_id_required")

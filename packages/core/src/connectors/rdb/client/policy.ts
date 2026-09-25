@@ -42,7 +42,7 @@ export function isAllowedRdbTable(config: RdbConnectionConfig, ref: RdbTableRef)
 export function filterRdbTables(config: RdbConnectionConfig, tables: RdbTableInfo[]): RdbTableInfo[] {
   return tables.filter((table) => {
     if (!isAllowedSchema(config, table)) return false;
-    if (!config.allowedTables?.length) return true;
+    if (!config.allowedTables?.length) return false;
     return isAllowedRdbTable(config, table);
   });
 }

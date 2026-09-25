@@ -69,7 +69,7 @@ describe('Scheduler', () => {
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
     expect(store.listWorkflows()[0]?.active).toBe(false);
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({});
+    expect(store.getSetting('scheduler.lastFired:once-approval', null)).toBeNull();
 
     store.setWorkflowActive('once-approval', true);
     await tick();

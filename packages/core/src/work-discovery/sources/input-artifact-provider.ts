@@ -33,7 +33,7 @@ export class InputArtifactDiscoverySourceProvider implements DiscoverySourceProv
     const artifactId = sourceId.replace(/^input:/, '');
     const stored = ctx.artifactStore.get(artifactId);
     if (!stored) return null;
-    const { workbook, tables } = this.options.materializeWorkbook(stored.storedPath);
+    const { workbook, tables } = await this.options.materializeWorkbook(stored.storedPath);
     const firstTableId = workbook.sheets[0]?.tables[0]?.artifactId;
     const table = firstTableId ? tables[firstTableId] : undefined;
     if (!table) return null;

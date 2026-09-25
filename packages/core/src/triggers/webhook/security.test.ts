@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { buildWebhookLocalUrl, normalizeWebhookPath, verifyWebhookAuth } from './security.js';
+import {
+  buildWebhookLocalUrl,
+  normalizeWebhookPath,
+  verifyWebhookAuth,
+  webhookSignaturePayload,
+} from './security.js';
 
 describe('webhook security', () => {
   const secret = 'shared-secret';
@@ -11,8 +16,21 @@ describe('webhook security', () => {
   });
 
   it('accepts valid HMAC signature', () => {
-    const digest = createHmac('sha256', secret).update(body).digest('hex');
-    expect(verifyWebhookAuth({ 'x-ax-signature': `sha256=${digest}` }, secret, body)).toBe(true);
+    const signatureContext = {
+      method: 'POST',
+      path: 'invoice-paid',
+      eventId: 'evt-1',
+      timestamp: String(Math.floor(Date.now() / 1_000)),
+    };
+    const digest = createHmac('sha256', secret)
+      .update(webhookSignaturePayload(signatureContext, body))
+      .digest('hex');
+    expect(verifyWebhookAuth(
+      { 'x-ax-signature': `sha256=${digest}` },
+      secret,
+      body,
+      signatureContext,
+    )).toBe(true);
   });
 
   it('rejects invalid auth', () => {

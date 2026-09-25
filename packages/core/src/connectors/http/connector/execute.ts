@@ -15,6 +15,14 @@ import {
   withJsonContentType,
 } from './payload.js';
 
+const SENSITIVE_RESPONSE_HEADER = /(?:authorization|proxy-auth|cookie|set-cookie|api[-_]key|token|secret|password|credential|signature)/iu;
+
+function safeResponseHeaders(headers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([name]) => !SENSITIVE_RESPONSE_HEADER.test(name)),
+  );
+}
+
 export async function executeHttpAction(
   endpoints: readonly HttpEndpoint[],
   action: string,
@@ -112,7 +120,7 @@ export async function executeHttpAction(
     url: resolved.value.url,
     status: result.status,
     statusText: result.statusText,
-    headers: result.headers,
+    headers: safeResponseHeaders(result.headers),
     body: result.body,
     truncated: result.truncated,
   });

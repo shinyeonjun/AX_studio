@@ -37,7 +37,7 @@ export const AiDecisionStepSchema = z.object({
   memo: z.string().optional(),
   outputSchema: z.record(z.unknown()).optional(),
   investigation: z.boolean().default(false),
-  maxReads: z.number().int().min(1).max(4).default(4),
+  maxReads: z.number().int().min(1).optional(),
   /** Declared input ports and their contract types for explicit AI context binding. */
   inputContracts: z.record(ContractTypeNameSchema).optional(),
   bindings: z.record(PortBindingSchema).optional(),

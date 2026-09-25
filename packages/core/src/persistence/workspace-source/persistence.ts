@@ -13,17 +13,22 @@ export function removeSessionArtifacts(
   artifactStore: ArtifactStore,
   sessionsRoot: string,
   sessionId: string,
+  sources?: readonly WorkspaceSourceRecord[],
 ): void {
   sessionId = assertSessionId(sessionId);
+  const sessionSources = sources ?? store.listWorkspaceSources(sessionId);
   // GC artifacts this session imported, unless another session still
   // references the same content (importFile dedupes by sha).
   const artifactIds = new Set<string>();
-  for (const source of store.listWorkspaceSources(sessionId)) {
+  for (const source of sessionSources) {
     artifactIds.add(source.artifactId);
     if (source.documentArtifactId) artifactIds.add(source.documentArtifactId);
   }
+  const referencedArtifactIds = artifactIds.size
+    ? store.findReferencedWorkspaceSourceArtifacts([...artifactIds], sessionId)
+    : new Set<string>();
   for (const artifactId of artifactIds) {
-    if (store.countWorkspaceSourcesForArtifact(artifactId, sessionId) > 0) continue;
+    if (referencedArtifactIds.has(artifactId)) continue;
     try {
       artifactStore.remove(artifactId);
     } catch {

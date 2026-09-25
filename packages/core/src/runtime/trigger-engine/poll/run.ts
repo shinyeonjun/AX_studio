@@ -16,11 +16,8 @@ export async function runTriggerPoll(
     cursorsChanged: false,
   };
 
-  for (const skill of options.store.listWorkflows()) {
+  for (const { id: workflowId, workflow } of options.store.listActiveWorkflowDefinitions()) {
     if (!options.isCurrentGeneration(generation)) return;
-    if (!skill.active) continue;
-
-    const workflow = options.store.getWorkflow(skill.id);
     const trigger = workflow?.trigger;
     if (!workflow || !trigger || TIME_TRIGGER_TYPES.has(trigger.type)) continue;
     if (!shouldPollTriggerType(trigger.type, options.pushTransportActive)) continue;
@@ -29,10 +26,10 @@ export async function runTriggerPoll(
       options,
       generation,
       abortSignal,
-      workflowId: skill.id,
+      workflowId,
       workflow,
       trigger,
-      cursor: state.cursors[skill.id] ?? {},
+      cursor: state.cursors[workflowId] ?? {},
       state,
     });
     if (!shouldContinue) return;

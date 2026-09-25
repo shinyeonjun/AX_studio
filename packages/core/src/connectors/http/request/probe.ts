@@ -6,6 +6,7 @@ export async function probeHttpBaseUrl(
   baseUrl: string,
   auth?: HttpAuthConfig,
   timeoutMs = 10_000,
+  rejectPrivateDestination = false,
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
   const normalized = normalizeHttpBaseUrl(baseUrl);
   if (!normalized.ok) return { ok: false, error: normalized.error };
@@ -17,6 +18,7 @@ export async function probeHttpBaseUrl(
       auth,
       timeoutMs,
       maxBytes: method === 'HEAD' ? 0 : 1024,
+      rejectPrivateDestination,
     });
     if (!result.ok) {
       if (result.errorCode === 'timeout') return { ok: false, error: 'connection_timeout' };

@@ -1,19 +1,19 @@
 import { realpathSync, statSync } from 'node:fs';
 import { isAbsolute, normalize, relative, resolve } from 'node:path';
 
-export interface ResolvedFolderPath {
+interface ResolvedFolderPath {
   ok: true;
   path: string;
   rootReal: string;
 }
 
-export interface ResolvedFolderPathError {
+interface ResolvedFolderPathError {
   ok: false;
   error: string;
   errorCode: string;
 }
 
-export type ResolveFolderPathResult = ResolvedFolderPath | ResolvedFolderPathError;
+type ResolveFolderPathResult = ResolvedFolderPath | ResolvedFolderPathError;
 
 function normalizeForCompare(path: string): string {
   const normalized = normalize(path);

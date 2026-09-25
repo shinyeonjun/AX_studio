@@ -77,32 +77,29 @@ async function ingestPdf(
 }
 
 export async function resumePendingSources(context: WorkspaceSourceIngestionContext): Promise<void> {
-  for (const chat of context.store.listWorkspaceChats()) {
-    for (const source of context.store.listWorkspaceSources(chat.id)) {
-      if (context.ingestQueue.stopped) return;
-      if (source.status !== 'processing') continue;
-      if (context.ingestQueue.full) await context.ingestQueue.waitForIdle();
-      if (context.ingestQueue.stopped) return;
-      const artifact = context.artifactStore.get(source.artifactId);
-      if (!artifact || !existsSync(artifact.storedPath)) {
-        const failed = context.store.updateWorkspaceSource(source.id, {
-          status: 'failed',
-          errorCode: 'workspace_source_artifact_missing',
-          errorMessage: errorMessage('workspace_source_artifact_missing'),
-          updatedAt: new Date().toISOString(),
-        });
-        if (failed) {
-          context.writeManifest(failed);
-          context.notify(failed);
-        }
-        continue;
-      }
-      enqueuePdfIngestion(context, {
-        id: source.id,
-        sessionId: source.sessionId,
-        artifactId: source.artifactId,
-        storedPath: artifact.storedPath,
+  for (const source of context.store.listProcessingWorkspaceSources()) {
+    if (context.ingestQueue.stopped) return;
+    if (context.ingestQueue.full) await context.ingestQueue.waitForIdle();
+    if (context.ingestQueue.stopped) return;
+    const artifact = context.artifactStore.get(source.artifactId);
+    if (!artifact || !existsSync(artifact.storedPath)) {
+      const failed = context.store.updateWorkspaceSource(source.id, {
+        status: 'failed',
+        errorCode: 'workspace_source_artifact_missing',
+        errorMessage: errorMessage('workspace_source_artifact_missing'),
+        updatedAt: new Date().toISOString(),
       });
+      if (failed) {
+        context.writeManifest(failed);
+        context.notify(failed);
+      }
+      continue;
     }
+    enqueuePdfIngestion(context, {
+      id: source.id,
+      sessionId: source.sessionId,
+      artifactId: source.artifactId,
+      storedPath: artifact.storedPath,
+    });
   }
 }

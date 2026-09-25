@@ -4,6 +4,7 @@ import type {
   AxUiPresentation,
   WorkspaceChatMessage,
   WorkspaceSourceRecord,
+  TableArtifact,
 } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 
@@ -47,6 +48,8 @@ export interface WorkspaceSendResponse {
   content: string;
   changedWorkflowIds?: string[];
   removedWorkflowIds?: string[];
+  inputContinuation?: 'command';
   inputRequests?: AxInputRequest[];
   presentations?: AxUiPresentation[];
+  readResult?: TableArtifact;
 }

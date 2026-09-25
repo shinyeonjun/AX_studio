@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +18,58 @@ function respond(output: unknown) {
 }
 
 describe('Codex provider wire round trip', () => {
+  it('reports provider token usage from completed JSONL events without changing text output', async () => {
+    const onUsage = vi.fn();
+    vi.mocked(runCommand).mockImplementation(async (_command, args, options) => {
+      expect(args).toContain('--json');
+      expect(options?.captureStdout).toBe(false);
+      options?.onStdoutLine?.(JSON.stringify({
+        type: 'turn.completed',
+        usage: {
+          input_tokens: 100,
+          cached_input_tokens: 40,
+          cache_write_input_tokens: 5,
+          output_tokens: 20,
+          reasoning_output_tokens: 7,
+        },
+      }));
+      await writeFile(args[args.indexOf('-o') + 1]!, 'answer', 'utf8');
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    await expect(new CodexCliProvider('test').generateText({ system: 's', user: 'u', onUsage }))
+      .resolves.toBe('answer');
+    expect(onUsage).toHaveBeenCalledWith({
+      inputTokens: 100,
+      cachedInputTokens: 40,
+      cacheWriteInputTokens: 5,
+      outputTokens: 20,
+      reasoningTokens: 7,
+    });
+  });
+  it('reports usage on structured calls while returning the output-file payload', async () => {
+    const onUsage = vi.fn();
+    vi.mocked(runCommand).mockImplementation(async (_command, args, options) => {
+      options?.onStdoutLine?.(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 12, output_tokens: 3 } }));
+      await writeFile(args[args.indexOf('-o') + 1]!, JSON.stringify({ value: 'ok' }), 'utf8');
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    await expect(new CodexCliProvider('test').generateStructured({
+      schema: z.object({ value: z.string() }), system: 's', user: 'u', onUsage,
+    })).resolves.toEqual({ value: 'ok' });
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 12, outputTokens: 3 });
+  });
+  it('ignores malformed and non-terminal JSONL events without failing the text result', async () => {
+    const onUsage = vi.fn();
+    vi.mocked(runCommand).mockImplementation(async (_command, args, options) => {
+      options?.onStdoutLine?.('not-json');
+      options?.onStdoutLine?.(JSON.stringify({ type: 'item.completed', usage: { input_tokens: 99 } }));
+      await writeFile(args[args.indexOf('-o') + 1]!, 'answer', 'utf8');
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    await expect(new CodexCliProvider('test').generateText({ system: 's', user: 'u', onUsage }))
+      .resolves.toBe('answer');
+    expect(onUsage).not.toHaveBeenCalled();
+  });
   it('creates the optional raw debug directory instead of failing the model call', async () => {
     const debugRoot = await mkdtemp(join(tmpdir(), 'ax-codex-debug-'));
     const debugDir = join(debugRoot, 'nested');

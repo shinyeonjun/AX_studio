@@ -8,7 +8,7 @@ export class DocumentConnector implements Connector {
   constructor(private readonly overrides: Record<string, DocumentActionHandler> = {}) {}
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
-    const handler = this.overrides[action] ?? getDocumentHandler(action);
+    const handler = this.overrides[action] ?? await getDocumentHandler(action);
     if (!handler) {
       return { ok: false, error: `Unknown document action: ${action}` };
     }

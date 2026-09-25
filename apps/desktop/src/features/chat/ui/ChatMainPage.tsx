@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { useWorkspaceChat } from '../hooks/useWorkspaceChat';
 import { useDiscovery } from '../hooks/useDiscovery';
-import { WorkflowPreviewPanel } from '../../workflows/authoring/WorkflowPreviewPanel';
 import { WorkConversationSplit } from './workspace/WorkConversationSplit';
 import { useWorkflowPanelWidth } from '../hooks/useWorkflowPanelWidth';
 import type { WorkflowVisualNodeData } from '../../workflows/authoring/types';
@@ -10,6 +9,12 @@ import { AxWorkspaceChat } from './workspace/AxWorkspaceChat';
 import { WorkspaceContextPanel } from './workspace/WorkspaceContextPanel';
 import { WorkspaceFlowPanel } from './workspace/WorkspaceFlowPanel';
 import './workspace/ax-workspace.css';
+
+const WorkflowPreviewPanel = lazy(() =>
+  import('../../workflows/authoring/WorkflowPreviewPanel').then(({ WorkflowPreviewPanel }) => ({
+    default: WorkflowPreviewPanel,
+  })),
+);
 
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
@@ -47,18 +52,20 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const title = workflowState?.title ?? 'AX Workspace';
   const showGraph = Boolean(workflowState);
   const workflowPreview = showGraph ? (
-    <WorkflowPreviewPanel
-      draft={workflowState?.workflow}
-      baselineDraft={undefined}
-      completeness={workflowState?.completeness}
-      done
-      title={title}
-      selectedNode={selectedNode}
-      panelBusy={workspaceChat.busy}
-      onSelectNode={handleSelectNode}
-      onRequestEdit={workspaceChat.beginEditStep}
-      onCloseDetail={() => handleSelectNode(null)}
-    />
+    <Suspense fallback={<div className="muted">워크플로 그래프를 불러오는 중…</div>}>
+      <WorkflowPreviewPanel
+        draft={workflowState?.workflow}
+        baselineDraft={undefined}
+        completeness={workflowState?.completeness}
+        done
+        title={title}
+        selectedNode={selectedNode}
+        panelBusy={workspaceChat.busy}
+        onSelectNode={handleSelectNode}
+        onRequestEdit={workspaceChat.beginEditStep}
+        onCloseDetail={() => handleSelectNode(null)}
+      />
+    </Suspense>
   ) : undefined;
   const flowPanel = (
     <WorkspaceFlowPanel

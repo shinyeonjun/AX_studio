@@ -12,6 +12,8 @@ export interface HttpRequestInput {
   timeoutMs?: number;
   maxBytes?: number;
   auth?: HttpAuthConfig;
+  /** Used by imported specs and other untrusted metadata paths. */
+  rejectPrivateDestination?: boolean;
 }
 
 export interface HttpRequestResult {

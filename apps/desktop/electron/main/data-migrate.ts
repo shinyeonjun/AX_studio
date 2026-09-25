@@ -1,4 +1,3 @@
-import { backup, DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import {
   copyFileSync,
@@ -21,7 +20,7 @@ interface MigrationRecord {
   migratedAt: string;
 }
 
-export type DatabaseBackup = (source: string, destination: string) => Promise<void>;
+type DatabaseBackup = (source: string, destination: string) => Promise<void>;
 
 export interface DataMigrationDependencies {
   backupDatabase?: DatabaseBackup;
@@ -72,6 +71,7 @@ function copyFileIfMissing(source: string, dest: string): void {
 }
 
 async function backupWithNativeSqlite(source: string, destination: string): Promise<void> {
+  const { backup, DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(source, { readOnly: true });
   try {
     await backup(db, destination);
@@ -93,6 +93,7 @@ async function backupDatabaseIfMissing(
     if (!existsSync(temporaryPath) || !statSync(temporaryPath).isFile()) {
       throw new Error('SQLite snapshot이 생성되지 않았습니다.');
     }
+    const { DatabaseSync } = await import('node:sqlite');
     const snapshot = new DatabaseSync(temporaryPath, { readOnly: true });
     try {
       const checks = snapshot.prepare('PRAGMA quick_check').all();

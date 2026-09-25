@@ -2,7 +2,7 @@ import type { SettingsScreen } from '../../types/navigation';
 import type { AiBrand } from '../../types/ai-provider';
 
 /** Settings detail screens hidden until the connector is product-ready. */
-export const HIDDEN_SETTINGS_SCREENS: SettingsScreen[] = ['openapi', 'mcp'];
+const HIDDEN_SETTINGS_SCREENS: SettingsScreen[] = ['openapi', 'mcp'];
 
 export function isSettingsScreenVisibleInUi(screen: SettingsScreen): boolean {
   return !HIDDEN_SETTINGS_SCREENS.includes(screen);

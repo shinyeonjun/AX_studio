@@ -50,8 +50,9 @@ export async function runSequence(
             sequence.slice(index + 1).map((item) => item.id),
             approvedActionIds,
             false,
-          ),
+        ),
         approvedActionIds,
+        host.config.decisionEngine,
       );
       if (ir.outputContract && step.type === 'action') {
         const input = validateInputSchema(ir.outputContract, step.id, stepResults[step.id]);

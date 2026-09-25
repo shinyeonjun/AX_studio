@@ -44,7 +44,7 @@ export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionI
     for (const example of examples) {
       if (host.isCancelled(sessionId)) return;
       for (const artifactId of example.outputArtifactIds) {
-        observations.push(...host.observeOutputArtifact(example.id, artifactId));
+        observations.push(...await host.observeOutputArtifact(example.id, artifactId));
       }
     }
     state = host.patchState(sessionId, { observations });

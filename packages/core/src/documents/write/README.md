@@ -37,4 +37,13 @@ The pure write engine returns PDF bytes to its caller; the document connector
 adapter is responsible for persisting them and exposing only a safe artifact
 reference to workflow state. Physical paths remain host-owned.
 
+## Import boundary
+
+The core root entry keeps document-write types and the print bridge, but does
+not re-export the writer implementations so applications that do not generate
+documents do not load Handlebars or DOCX dependencies at startup. Import writer
+functions from `@ax-studio/core/documents/write` (for example,
+`import { renderHtml } from '@ax-studio/core/documents/write'`). The connector
+loads the HTML, DOCX, or PDF implementation when that action is executed.
+
 Read/parse: `packages/document-engine/` (Python) + `packages/core/src/documents/read/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use the Python worker's PyMuPDF path and publish only verified output. PDF→HTML remains an explicit editable preview/export route.

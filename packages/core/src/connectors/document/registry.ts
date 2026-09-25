@@ -12,7 +12,7 @@ const readActions: Record<string, DocumentActionHandler> = {
   search,
 };
 
-export function getDocumentHandler(action: string): DocumentActionHandler | undefined {
+export async function getDocumentHandler(action: string): Promise<DocumentActionHandler | undefined> {
   return readActions[action] ?? getDocumentWriteHandler(action);
 }
 

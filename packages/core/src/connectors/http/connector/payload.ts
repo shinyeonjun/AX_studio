@@ -2,7 +2,7 @@ export type SerializedHttpBody =
   | { ok: true; body?: string; json: boolean }
   | { ok: false; error: string; errorCode: 'invalid_params' };
 
-export const HTTP_DEFAULT_MAX_REQUEST_BYTES = 1_048_576;
+const HTTP_DEFAULT_MAX_REQUEST_BYTES = 1_048_576;
 
 function isSafeHeaderName(name: string): boolean {
   return /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name) && name.length <= 256;

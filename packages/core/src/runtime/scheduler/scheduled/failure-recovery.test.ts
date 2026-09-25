@@ -49,9 +49,7 @@ describe('Scheduler scheduled jobs', () => {
       '[scheduler] execution failed for workflow throws:',
       failure,
     );
-    expect(store.getSetting<Record<string, string>>('scheduler.lastFired', {})).toEqual({
-      succeeds: expect.any(String),
-    });
+    expect(store.getSetting('scheduler.lastFired:succeeds', null)).toEqual(expect.any(String));
   });
 
   it('recovers on the next tick after an unexpected scheduler failure', async () => {
@@ -76,7 +74,7 @@ describe('Scheduler scheduled jobs', () => {
     store.setWorkflowActive('scheduled-recovery', true);
 
     const failure = new Error('temporary store failure');
-    vi.spyOn(store, 'listWorkflows').mockImplementationOnce(() => {
+    vi.spyOn(store, 'listActiveWorkflowDefinitions').mockImplementationOnce(() => {
       throw failure;
     });
     const runtime = {

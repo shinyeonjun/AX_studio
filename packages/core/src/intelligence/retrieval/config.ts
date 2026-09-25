@@ -4,7 +4,7 @@ export interface RetrievalIndexConfig {
   minFileBytes: number;
 }
 
-export const DEFAULT_RETRIEVAL_INDEX_CONFIG: RetrievalIndexConfig = {
+const DEFAULT_RETRIEVAL_INDEX_CONFIG: RetrievalIndexConfig = {
   enabled: false,
   minFileBytes: 16_384,
 };

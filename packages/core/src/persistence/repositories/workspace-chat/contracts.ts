@@ -9,6 +9,7 @@ import {
   ExecutionResultStatusSchema,
   type ExecutionResultStatus,
 } from '../../../contracts/execution-status.js';
+import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
 
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
@@ -19,6 +20,8 @@ export interface WorkspaceChatMessage {
   executionId?: string;
   /** Structured lifecycle state for host-generated execution results. */
   executionStatus?: ExecutionResultStatus;
+  /** UI hint only; main still requires the matching host-held command and request IDs. */
+  inputContinuation?: 'command';
   /** Optional host-rendered controls attached to this assistant message. */
   inputRequests?: AxInputRequest[];
   presentations?: AxUiPresentation[];
@@ -26,6 +29,8 @@ export interface WorkspaceChatMessage {
   approval?: WorkspaceChatApproval;
   /** Safe metadata for a generated PDF; the host keeps the physical artifact path. */
   generatedPdf?: WorkspaceChatGeneratedPdf;
+  /** Bounded table shown in this reply, for immediate follow-up operations. */
+  readResult?: TableArtifact;
 }
 
 export interface WorkspaceChatApproval {
@@ -59,6 +64,25 @@ export const WorkspaceChatGeneratedPdfSchema = z.object({
   mimeType: z.literal('application/pdf'),
 });
 
+export const WorkspaceChatReadResultSchema = TableArtifactSchema.pick({
+  id: true,
+  kind: true,
+  name: true,
+  columns: true,
+  rows: true,
+  truncated: true,
+  completeness: true,
+}).superRefine((table, context) => {
+  if (table.columns.length > 50 || table.rows.length > 100) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: '이전 표 결과는 100행·50열 이내여야 합니다.' });
+  }
+  if (new TextEncoder().encode(JSON.stringify(table)).byteLength > 64_000) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: '이전 표 결과는 64KB 이내여야 합니다.' });
+  }
+});
+
+export type WorkspaceChatReadResult = z.infer<typeof WorkspaceChatReadResultSchema>;
+
 export interface WorkspaceChatRecord {
   id: string;
   title: string;
@@ -88,10 +112,12 @@ export const workspaceChatMessageSchema = z.object({
   kind: z.literal('execution_result').optional(),
   executionId: z.string().min(1).max(128).optional(),
   executionStatus: ExecutionResultStatusSchema.optional(),
+  inputContinuation: z.literal('command').optional(),
   inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
   presentations: z.array(AxUiPresentationSchema).max(4).optional(),
   approval: WorkspaceChatApprovalSchema.optional(),
   generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
+  readResult: WorkspaceChatReadResultSchema.optional(),
 }).superRefine((message, context) => {
   if (message.approval && message.kind !== 'execution_result') {
     context.addIssue({
@@ -105,6 +131,13 @@ export const workspaceChatMessageSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['generatedPdf'],
       message: 'generatedPdf는 실행 결과 메시지에만 사용할 수 있습니다.',
+    });
+  }
+  if (message.readResult && message.role !== 'assistant') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['readResult'],
+      message: 'readResult는 assistant 메시지에만 사용할 수 있습니다.',
     });
   }
 });

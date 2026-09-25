@@ -1,4 +1,3 @@
-import { google } from 'googleapis';
 import type { GmailConnectorConfig } from '../connector.js';
 import type { OAuthCredential } from '../../../persistence/credentials/types.js';
 
@@ -21,6 +20,7 @@ export function buildGmailConnectorConfig(params: {
 }
 
 export async function fetchGmailProfileEmail(config: GmailConnectorConfig): Promise<string | undefined> {
+  const { google } = await import('googleapis');
   const oauth2 = new google.auth.OAuth2(config.clientId, config.clientSecret);
   oauth2.setCredentials({
     access_token: config.accessToken,

@@ -7,6 +7,24 @@ import { runSavedWorkflowById } from '../../runtime/manual-workflow-run.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 
 describe('saved workflow completion projection', () => {
+  it('loads the report action on first use and shares concurrent initialization', async () => {
+    const dataRoot = mkdtempSync(join(tmpdir(), 'ax-bootstrap-report-'));
+    let core: Awaited<ReturnType<typeof createAxStudioCore>> | undefined;
+    try {
+      core = await createAxStudioCore({ dataRoot });
+      const connector = core.runtime.connectors.document!;
+      const ctx = { executionId: 'report-init-test', variables: {}, log: () => {} };
+      const results = await Promise.all(Array.from({ length: 4 }, () =>
+        connector.execute('pdf.report.generate', {}, ctx),
+      ));
+
+      expect(results.map((result) => result.errorCode)).toEqual(Array(4).fill('report_goal_required'));
+    } finally {
+      core?.db.close?.();
+      rmSync(dataRoot, { recursive: true, force: true });
+    }
+  });
+
   it('publishes a saved manual run through the bootstrap completion boundary', async () => {
     const dataRoot = mkdtempSync(join(tmpdir(), 'ax-bootstrap-result-'));
     const events: Array<{ sessionId: string; workflowId?: string; executionId: string }> = [];

@@ -6,8 +6,6 @@ import {
 import { sourceIdFromExpr } from '../compile/blueprint.js';
 import type { CandidateProgram, SourceDescriptor } from '../schema.js';
 
-export const DISCOVERY_AUTO_RESOLVE_MIN_PROBABILITY = 0.9;
-export const DISCOVERY_AUTO_RESOLVE_MIN_MARGIN = 0.2;
 export const DISCOVERY_JEV_MAX_AMBIGUOUS_PATHS = 8;
 export const DISCOVERY_JEV_MAX_CANDIDATES_PER_PATH = 32;
 const DISCOVERY_JEV_MAX_VALUE_DEPTH = 8;
@@ -65,37 +63,12 @@ function acceptedCandidatesForPath(candidates: CandidateProgram[], outputPath: s
   );
 }
 
-function selectedProbability(
-  probabilities: Record<string, number>,
-  selected: string,
-  validOptions: ReadonlySet<string>,
-): { selected: number; margin: number } | undefined {
-  const values: Array<{ option: string; probability: number }> = [];
-  for (const option of validOptions) {
-    const probability = probabilities[option];
-    if (typeof probability !== 'number' || !Number.isFinite(probability) || probability < 0 || probability > 1) {
-      return undefined;
-    }
-    values.push({ option, probability });
-  }
-
-  const selectedEntry = values.find((entry) => entry.option === selected);
-  if (!selectedEntry) return undefined;
-  const alternatives = values
-    .filter((entry) => entry.option !== selected)
-    .map((entry) => entry.probability)
-    .sort((left, right) => right - left);
-  const second = alternatives[0] ?? 0;
-  return { selected: selectedEntry.probability, margin: selectedEntry.probability - second };
-}
-
 /**
  * Uses the decision plane only after deterministic replay has produced multiple
  * passing mappings for the same required output path.
  *
- * Auto-resolution is deliberately conservative. If the provider fails, returns
- * an invalid option, or does not clear both probability thresholds, the existing
- * human clarification path remains unchanged.
+ * Jev selects among bounded host-generated options. Missing, unclear, invalid,
+ * or unavailable decisions leave the path for human clarification.
  */
 export async function judgeReplayAmbiguity(
   input: ReplayAmbiguityDecisionInput,
@@ -131,12 +104,13 @@ export async function judgeReplayAmbiguity(
       };
       optionToCandidateId.set(option, candidate.id);
     }
+    criteria.unclear = { meaning: 'No single mapping is supported; leave this path for human clarification.' };
 
     const questionId = `ambiguity_${pathIndex}`;
     questions[questionId] = {
       type: 'choice',
       instructions: {
-        task: 'Choose the mapping that most likely reflects the user intended semantics. Every option has already reproduced the observed examples exactly.',
+        task: 'Choose the mapping that best reflects the user intended semantics. Every candidate has already reproduced the observed examples exactly; choose unclear if none is sufficiently supported.',
         outputPath: boundDecisionString(outputPath),
         dataPolicy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
       },
@@ -167,16 +141,9 @@ export async function judgeReplayAmbiguity(
     for (const [questionId, binding] of bindings) {
       const answer = result.answers[questionId];
       if (!answer || answer.type !== 'choice') continue;
+      if (answer.choice === 'unclear') continue;
       const candidateId = binding.optionToCandidateId.get(answer.choice);
       if (!candidateId) continue;
-      const confidence = selectedProbability(
-        answer.probabilities,
-        answer.choice,
-        new Set(binding.optionToCandidateId.keys()),
-      );
-      if (!confidence) continue;
-      if (confidence.selected < DISCOVERY_AUTO_RESOLVE_MIN_PROBABILITY) continue;
-      if (confidence.margin < DISCOVERY_AUTO_RESOLVE_MIN_MARGIN) continue;
       selectedByPath.set(binding.outputPath, candidateId);
     }
 

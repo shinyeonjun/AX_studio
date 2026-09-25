@@ -48,8 +48,12 @@ export interface DiscoverySourceProvider {
 }
 
 export interface WorkbookMaterializer {
+  /** Sync adapters remain valid; production XLSX loading is async to defer the parser until use. */
   readWorkbookFromPath(path: string): {
     workbook: import('./artifacts/workbook.js').WorkbookArtifact;
     tables: Record<string, TableArtifact>;
-  };
+  } | Promise<{
+    workbook: import('./artifacts/workbook.js').WorkbookArtifact;
+    tables: Record<string, TableArtifact>;
+  }>;
 }

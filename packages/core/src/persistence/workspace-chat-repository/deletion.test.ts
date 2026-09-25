@@ -63,6 +63,23 @@ describe('workspace chat deletion', () => {
     expect(store.getWorkspaceChat(chat.id)).toBeNull();
   });
 
+  it('drops a delayed execution result after the chat has been deleted', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '늦은 실행 결과' }] });
+
+    store.deleteWorkspaceChat(chat.id);
+
+    expect(store.upsertWorkspaceChatExecutionResult(chat.id, {
+      kind: 'execution_result',
+      role: 'assistant',
+      content: '지연된 실행 결과',
+      executionId: 'execution-after-delete',
+      executionStatus: 'success',
+    })).toBeNull();
+    expect(store.getWorkspaceChat(chat.id)).toBeNull();
+  });
+
   it('rejects oversized transcripts before writing them to the database', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);

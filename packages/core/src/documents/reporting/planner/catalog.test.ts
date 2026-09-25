@@ -118,20 +118,41 @@ describe('report source catalog disclosure', () => {
     expect(ids).toEqual(connections.map(connection => connection.id));
   });
 
-  it('keeps refinement scoped to the selected connection and operation', async () => {
+  it('does not send unrelated connection and operation metadata into Jev refinement', async () => {
     const capture = { schemaVersion: 1 as const, examplePeriod: { start: '2040-01-01', endInclusive: '2040-01-31', label: 'example' },
       targetPeriod: { start: '2040-02-01', endInclusive: '2040-02-29', label: 'target' },
       capturePlan: { schemaVersion: 1 as const, http: [{ alias: 'facts', connectionId: 'selected', path: '/facts?active=true', rowsPath: '$' }], rdb: [] } };
     const { planner, seen } = plannerFor([capture]);
-    const operation = { operationId: 'selected', method: 'GET', path: '/facts', summary: 'Selected schema' };
-    await expect(planner.refineCapturePlan({ ...input, rdbTables: [], provisional: capture, httpProbes: [], httpConnections: [
+    const decisionStates: unknown[] = [];
+    planner.setDecisionEngine({ async evaluate(request) {
+      decisionStates.push(request.state);
+      const answers: Record<string, { type: 'choice'; choice: string; confidence: number; probabilities: Record<string, number> }> = {};
+      for (const [id, question] of Object.entries(request.questions)) {
+        if (question.type !== 'choice') throw new Error('Expected a choice question');
+        const choice = Object.keys(question.criteria)[0]!;
+        answers[id] = { type: 'choice', choice, confidence: 0.99, probabilities: { [choice]: 0.99 } };
+      }
+      return { answers };
+    } });
+    const operation = { operationId: 'selected', method: 'GET', path: '/facts', sideEffect: 'NONE' as const, summary: 'Selected schema' };
+    await expect(planner.refineCapturePlan({ ...input, rdbTables: [], provisional: capture, httpProbes: [{
+      alias: 'facts', path: '/facts?active=true', status: 200,
+      shape: { type: 'object', fields: {
+        records: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
+        archive: { type: 'array', length: 1, item: { type: 'object', fields: { id: { type: 'number' } } } },
+      } },
+    }], httpConnections: [
       { id: 'selected', label: 'Selected', basePath: '/', operations: [operation,
         { operationId: 'not-selected', method: 'GET', path: '/other', summary: 'Unselected schema' }] },
       { id: 'unrelated', label: 'Unrelated', basePath: '/', operations: [operation] },
-    ] })).resolves.toEqual(capture);
-    expect(JSON.parse(seen[0]!.context.untrustedData!).httpConnections).toEqual([
-      { id: 'selected', label: 'Selected', basePath: '/', operations: [operation] },
-    ]);
+    ] })).resolves.toMatchObject({ capturePlan: { http: [{ alias: 'facts', rowsPath: 'records' }] } });
+    expect(decisionStates).toHaveLength(1);
+    const state = JSON.stringify(decisionStates[0]);
+    expect(state).not.toContain('selected');
+    expect(state).not.toContain('Unselected schema');
+    expect(state).not.toContain('unrelated');
+    expect(state).not.toContain('/other');
+    expect(seen).toEqual([]);
   });
 
   it.each([

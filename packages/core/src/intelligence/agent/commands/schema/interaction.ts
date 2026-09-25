@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CONNECTOR_FAILURE_KINDS } from '../../../../connectors/types.js';
 
 export const AxInputRequestTypeSchema = z.enum([
   'text',
@@ -15,28 +16,63 @@ export const AxInputRequestOptionSchema = z.object({
   description: z.string().trim().max(240).optional(),
 });
 
+export const AX_INPUT_REQUEST_MAX_OPTIONS = 200;
+export const AX_INPUT_REQUEST_MAX_COUNT = 8;
+
 export type AxInputRequestOption = z.infer<typeof AxInputRequestOptionSchema>;
 
 export const AxInputRequestSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   type: AxInputRequestTypeSchema,
+  /** Identifies the exact command-owned field group; action inputs use stepId/capabilityId. */
+  target: z.enum(['trigger', 'job']).optional(),
   required: z.boolean().default(true),
+  /** Host scope for a missing parameter in an executable workflow step. */
+  stepId: z.string().min(1).max(128).optional(),
+  capabilityId: z.string().min(1).max(256).optional(),
+  parameterName: z.string().min(1).max(128).optional(),
   placeholder: z.string().optional(),
   reason: z.string().optional(),
-  options: z.array(AxInputRequestOptionSchema).max(200).optional(),
+  options: z.array(AxInputRequestOptionSchema).max(AX_INPUT_REQUEST_MAX_OPTIONS).optional(),
 });
 
 export type AxInputRequest = z.infer<typeof AxInputRequestSchema>;
 
+export const AxContextUpdateConfirmationSchema = z.object({
+  scope: z.enum(['session', 'workflow']),
+  key: z.string().regex(/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/),
+  value: z.string().trim().min(1).max(1_200),
+  workflowId: z.string().trim().min(1).max(128).optional(),
+}).superRefine((confirmation, context) => {
+  if (confirmation.scope === 'workflow' && !confirmation.workflowId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['workflowId'],
+      message: 'workflow 컨텍스트 확인에는 workflow id가 필요합니다.',
+    });
+  }
+  if (confirmation.scope === 'session' && confirmation.workflowId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['workflowId'],
+      message: 'session 컨텍스트 확인에는 workflow id를 사용할 수 없습니다.',
+    });
+  }
+});
+
+export type AxContextUpdateConfirmation = z.infer<typeof AxContextUpdateConfirmationSchema>;
+
 export const AxCommandIssueSchema = z.object({
   code: z.string(),
+  /** Sanitized failure class used for safe agent recovery, never provider text. */
+  failureKind: z.enum(CONNECTOR_FAILURE_KINDS).optional(),
   path: z.string().optional(),
   message: z.string(),
   details: z.unknown().optional(),
   expected: z.array(z.string()).optional(),
   available: z.array(z.string()).optional(),
-  inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
+  inputRequests: z.array(AxInputRequestSchema).max(AX_INPUT_REQUEST_MAX_COUNT).optional(),
 });
 
 export type AxCommandIssue = z.infer<typeof AxCommandIssueSchema>;
@@ -53,6 +89,16 @@ export const AxUiPresentationActionSchema = z.object({
   tone: z.enum(['primary', 'secondary', 'danger']).default('secondary'),
   /** A typed host confirmation marker; it is not a command or permission. */
   purpose: z.enum(['reply', 'confirm_context', 'confirm_job']).default('reply'),
+  /** Exact host-executed memory proposal bound to this confirmation action. */
+  contextUpdate: AxContextUpdateConfirmationSchema.optional(),
+}).superRefine((action, context) => {
+  if (action.contextUpdate && action.purpose !== 'confirm_context') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['contextUpdate'],
+      message: '컨텍스트 저장 데이터는 confirm_context action에만 연결할 수 있습니다.',
+    });
+  }
 });
 
 export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [
@@ -84,7 +130,7 @@ export const AxUiPresentationSchema = z.object({
   subtitle: z.string().trim().max(300).optional(),
   inputMode: z.enum(['individual', 'batch']).default('individual'),
   blocks: z.array(AxUiPresentationBlockSchema).max(12).default([]),
-  inputs: z.array(AxInputRequestSchema).max(8).default([]),
+  inputs: z.array(AxInputRequestSchema).max(AX_INPUT_REQUEST_MAX_COUNT).default([]),
   actions: z.array(AxUiPresentationActionSchema).max(8).default([]),
 });
 

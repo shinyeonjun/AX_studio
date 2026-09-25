@@ -1,4 +1,5 @@
 import { defaultArtifactRoot, defaultTemplateRoot } from '../../paths.js';
+import { statSync } from 'node:fs';
 import {
   defaultPythonPath,
   defaultWorkerCwd,
@@ -23,6 +24,8 @@ import type {
 } from '../contracts.js';
 import { requestDocumentEngine, type DocumentEngineTransportOptions } from './request.js';
 
+const MAX_DOCUMENT_SOURCE_BYTES = 100 * 1024 * 1024;
+
 export class StdioDocumentEngineClient implements DocumentEngineClient {
   private readonly pythonPath: string;
   private readonly workerScript: string;
@@ -44,9 +47,14 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
   }
 
   async ingest(path: string, options: IngestDocumentOptions = {}): Promise<IngestDocumentResult> {
+    if (statSync(path).size > MAX_DOCUMENT_SOURCE_BYTES) {
+      throw new Error('document_source_too_large');
+    }
     const response = await this.request<IngestDocumentResult>('ingest', {
       path,
       artifactRoot: this.artifactRoot,
+      allowedPaths: [path],
+      allowedRoots: [this.artifactRoot],
       options,
     });
     if (!response.ok || !response.data) {
@@ -59,6 +67,8 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     const response = await this.request<PdfToHtmlResult>('pdf_to_html', {
       path,
       templateRoot: defaultTemplateRoot(),
+      allowedPaths: [path],
+      allowedRoots: [defaultTemplateRoot()],
       options,
     });
     if (!response.ok || !response.data) {
@@ -71,6 +81,8 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     const response = await this.request<PdfFormTemplate>('pdf_form_analyze', {
       path,
       templateRoot: defaultTemplateRoot(),
+      allowedPaths: [path],
+      allowedRoots: [defaultTemplateRoot()],
       options,
     });
     if (!response.ok || !response.data) {
@@ -82,6 +94,10 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
   async pdfFormFill(path: string, options: PdfFormFillOptions): Promise<PdfFormFillResult> {
     const response = await this.request<PdfFormFillResult>('pdf_form_fill', {
       path,
+      templateRoot: defaultTemplateRoot(),
+      allowedPaths: [path, options.templatePath, options.outputPath, options.fontPath]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+      allowedRoots: [this.artifactRoot, defaultTemplateRoot()],
       ...options,
     });
     if (!response.ok || !response.data) {
@@ -95,6 +111,8 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       templatePath,
       examplePath,
       artifactRoot: this.artifactRoot,
+      allowedPaths: [templatePath, examplePath],
+      allowedRoots: [this.artifactRoot],
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_report_analyze_failed');
@@ -107,6 +125,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       documentId,
       chunkId,
       artifactRoot: this.artifactRoot,
+      allowedRoots: [this.artifactRoot],
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_get_chunk_failed');
@@ -122,6 +141,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       documentId,
       pageIndex,
       artifactRoot: this.artifactRoot,
+      allowedRoots: [this.artifactRoot],
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_get_page_failed');
@@ -134,6 +154,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       documentId,
       query,
       artifactRoot: this.artifactRoot,
+      allowedRoots: [this.artifactRoot],
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_search_failed');

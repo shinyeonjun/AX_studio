@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AgentScopedContextMapSchema,
   AgentScopedContextUpdateArgsSchema,
+  boundedAgentScopedContext,
   mergeAgentScopedContext,
   parseStoredAgentScopedContext,
   renderAgentScopedContextBlock,
@@ -42,5 +43,22 @@ describe('agent scoped context boundary', () => {
     expect(block).toContain('컨텍스트 데이터');
     expect(block).toContain('예산 초과');
     expect(block).not.toContain('D:/');
+  });
+
+  it('shares only a bounded, scope-labeled preference snapshot with model decisions', () => {
+    expect(boundedAgentScopedContext({ tone: '간결하게' }, { priority: '긴급 우선' })).toEqual({
+      values: [
+        { scope: 'session', key: 'tone', value: '간결하게' },
+        { scope: 'workflow', key: 'priority', value: '긴급 우선' },
+      ],
+      omittedEntryCount: 0,
+    });
+
+    const largeMemo = Object.fromEntries(
+      Array.from({ length: 5 }, (_, index) => [`preference_${index}`, 'x'.repeat(2_000)]),
+    );
+    const bounded = boundedAgentScopedContext(largeMemo);
+    expect(bounded?.omittedEntryCount).toBeGreaterThan(0);
+    expect(bounded?.values.reduce((total, entry) => total + JSON.stringify(entry).length + 1, 0)).toBeLessThanOrEqual(8_000);
   });
 });

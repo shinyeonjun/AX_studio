@@ -18,7 +18,7 @@ describe('local sheet read', () => {
     writeFileSync(path, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
 
     const { readWorkbookFromPath } = await import('../../connectors/local-sheet/read/workbook.js');
-    const result = readWorkbookFromPath(path);
+    const result = await readWorkbookFromPath(path);
     expect(result.workbook.kind).toBe('workbook');
     expect(result.workbook.sheets).toHaveLength(1);
     const table = Object.values(result.tables)[0]!;

@@ -1,0 +1,20 @@
+{
+  "id": "input-option-selection",
+  "name": "Desktop 선택 입력값이 채팅 후속 턴에 보존됨",
+  "description": "실제 Electron UI에서 드롭다운 값을 선택하고 제출한 값이 다음 채팅 턴에 전달되는지 확인합니다.",
+  "mode": "deterministic",
+  "tier": "core",
+  "tags": ["chat", "input", "selection", "deterministic"],
+  "covers": ["chat:new-send-reply"],
+  "timeoutMs": 60000,
+  "steps": [
+    { "action": "newChat", "label": "input-option" },
+    { "action": "sendMessage", "text": "__e2e:input-options__" },
+    { "check": "visibleTextContains", "text": "HTTP 연결 ID", "severity": "critical" },
+    { "action": "selectInputOption", "requestId": "http-endpoint-id", "value": "api-10" },
+    { "action": "waitForAssistantReply", "timeoutMs": 20000 },
+    { "check": "userMessagePresent", "text": "HTTP 연결 ID: Long ID (ID: api-10)", "severity": "critical" },
+    { "check": "assistantMessageContains", "text": "E2E selected endpoint api-10", "severity": "critical" },
+    { "check": "composerEnabled", "severity": "major" }
+  ]
+}

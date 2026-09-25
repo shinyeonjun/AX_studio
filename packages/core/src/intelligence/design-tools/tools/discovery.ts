@@ -6,9 +6,8 @@ import {
   type DiscoveryAssetKind,
 } from '../../../catalog/index.js';
 import type { DiscoveryFieldMetadata } from '../../../contracts/discovery-metadata.js';
-import { buildDiscoveryAssetIndex } from '../discovery-catalog.js';
+import { buildDiscoveryAssetIndex, openApiSnapshotFor } from '../discovery-catalog.js';
 import type { DesignToolContext, DesignToolHandler } from '../types.js';
-import { parseOpenApiConnectionConfig, parseOpenApiSpec } from '../../../connectors/protocols/openapi/index.js';
 import { safeHttpBaseUrl } from '../../../connectors/http/request.js';
 
 function requiredString(args: Record<string, unknown>, name: string): string {
@@ -119,14 +118,14 @@ function describeGenericHttpEndpoint() {
 }
 
 function describeOpenApiEndpoint(ctx: DesignToolContext, asset: DiscoveryAsset, depth: 'summary' | 'schema', page: { offset: number; limit: number }) {
-  const connection = ctx.connections.find((entry) => entry.connector === 'openapi');
-  const parsed = parseOpenApiConnectionConfig(connection?.config);
+  const snapshot = openApiSnapshotFor(ctx);
   const specId = asset.metadata.specId;
-  if (!parsed || typeof specId !== 'string' || parsed.specId !== specId) {
+  if (!snapshot || typeof specId !== 'string' || snapshot.config.specId !== specId) {
     return { available: false, reason: 'openapi_spec_not_registered' };
   }
   try {
-    const spec = parseOpenApiSpec(parsed.specId, parsed.specJson);
+    const spec = snapshot.spec;
+    if (!spec) return { available: false, reason: 'openapi_spec_invalid' };
     // Deep operation schemas are fetched one operation per page, rather than
     // multiplying field-heavy schemas by the whole API's operation count.
     const limit = depth === 'schema' ? 1 : page.limit;

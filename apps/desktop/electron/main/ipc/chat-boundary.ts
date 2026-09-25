@@ -4,6 +4,7 @@ import {
   AxUiPresentationSchema,
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
+  WorkspaceChatReadResultSchema,
   type WorkspaceChatMessage,
 } from '@ax-studio/core';
 
@@ -63,6 +64,9 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (record.executionStatus !== undefined && record.kind !== 'execution_result') {
       throw new Error(`대화 ${index + 1}번째 실행 상태는 실행 결과 메시지에만 사용할 수 있습니다.`);
     }
+    if (record.inputContinuation !== undefined && record.inputContinuation !== 'command') {
+      throw new Error(`대화 ${index + 1}번째 입력 이어가기 형식이 올바르지 않습니다.`);
+    }
     const executionStatus = record.executionStatus === undefined
       ? undefined
       : ExecutionResultStatusSchema.safeParse(record.executionStatus);
@@ -99,16 +103,33 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (generatedPdf?.success && record.kind !== 'execution_result') {
       throw new Error(`대화 ${index + 1}번째 생성 PDF 정보는 실행 결과 메시지에만 사용할 수 있습니다.`);
     }
+    const readResult = record.readResult === undefined
+      ? undefined
+      : WorkspaceChatReadResultSchema.safeParse(record.readResult);
+    if (readResult && !readResult.success) {
+      throw new Error(`대화 ${index + 1}번째 이전 표 결과 형식이 올바르지 않거나 너무 큽니다.`);
+    }
+    if (readResult?.success && record.role !== 'assistant') {
+      throw new Error(`대화 ${index + 1}번째 이전 표 결과는 assistant 메시지에만 사용할 수 있습니다.`);
+    }
+    if (readResult?.success) {
+      totalBytes += Buffer.byteLength(JSON.stringify(readResult.data), 'utf8');
+      if (totalBytes > MAX_CHAT_INPUT_BYTES) {
+        throw new Error(`대화 기록은 ${MAX_CHAT_INPUT_BYTES.toLocaleString()}바이트까지 저장할 수 있습니다.`);
+      }
+    }
     return {
       role: record.role,
       content: record.content,
       ...(record.kind === 'execution_result' ? { kind: record.kind } : {}),
       ...(typeof record.executionId === 'string' ? { executionId: record.executionId } : {}),
       ...(executionStatus ? { executionStatus: executionStatus.data } : {}),
+      ...(record.inputContinuation === 'command' ? { inputContinuation: record.inputContinuation } : {}),
       ...(inputRequests ? { inputRequests: inputRequests.data } : {}),
       ...(presentations ? { presentations: presentations.data } : {}),
       ...(approval ? { approval: approval.data } : {}),
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
+      ...(readResult ? { readResult: readResult.data } : {}),
     };
   });
   return messages;
@@ -143,4 +164,66 @@ export function selectMessagesThroughUserMessage(
     }
   }
   throw new Error('현재 사용자 메시지를 찾을 수 없습니다.');
+}
+
+export function commandInputContinuation(
+  messages: DesktopChatMessage[],
+): {
+  request: string;
+  requestIds: string[];
+  values: { requestId: string; value: string }[];
+} | undefined {
+  const currentIndex = messages.length - 1;
+  const current = messages[currentIndex];
+  const prompt = messages[currentIndex - 1];
+  if (current?.role !== 'user' || prompt?.role !== 'assistant'
+    || prompt.inputContinuation !== 'command') return undefined;
+
+  const requestsFor = (message: DesktopChatMessage) => [...new Map([
+    ...(message.inputRequests ?? []),
+    ...(message.presentations ?? []).flatMap((presentation) => presentation.inputs),
+  ].map((request) => [request.id, request])).values()];
+  const promptRequests = requestsFor(prompt);
+  if (promptRequests.length === 0) return undefined;
+  const submittedValues = (
+    content: string,
+    requests: NonNullable<DesktopChatMessage['inputRequests']>,
+  ): { requestId: string; value: string }[] | undefined => {
+    const lines = content.split(/\r?\n/u);
+    const values: { requestId: string; value: string }[] = [];
+    for (const request of requests) {
+      const matchingLines = lines.filter((line) => line.startsWith(`${request.label}:`));
+      if (matchingLines.length === 0) continue;
+      if (matchingLines.length !== 1) return undefined;
+      const line = matchingLines[0]!;
+      if (request.options?.length) {
+        const option = request.options.find((entry) =>
+          line === `${request.label}: ${entry.label} (ID: ${entry.value})`);
+        if (!option) return undefined;
+        values.push({ requestId: request.id, value: option.value });
+        continue;
+      }
+      const value = line.slice(request.label.length + 1).trim();
+      if (value) values.push({ requestId: request.id, value: value.slice(0, 2_000) });
+    }
+    return values;
+  };
+
+  const currentValues = submittedValues(current.content, promptRequests);
+  if (!currentValues?.length) return undefined;
+  let request: string | undefined;
+  for (let index = currentIndex - 2; index >= 0; index -= 1) {
+    const message = messages[index]!;
+    if (message.role !== 'user') continue;
+    const previousPrompt = messages[index - 1];
+    if (previousPrompt?.role === 'assistant' && previousPrompt.inputContinuation === 'command') continue;
+    request = message.content;
+    break;
+  }
+  if (!request) return undefined;
+  return {
+    request,
+    requestIds: [...new Set(promptRequests.map((entry) => entry.id))].sort(),
+    values: currentValues,
+  };
 }

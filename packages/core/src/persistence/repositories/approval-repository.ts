@@ -33,6 +33,19 @@ function parsePayload(raw: string | null, approvalId: string): unknown {
   return parseApprovalJson(raw, 'payload', approvalId);
 }
 
+function mapApproval(row: ApprovalRow) {
+  return {
+    id: row.id,
+    executionId: row.execution_id,
+    actionIds: parseActionIds(row.action_ids_json, row.id),
+    reason: row.reason,
+    status: row.status,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at,
+    payload: parsePayload(row.payload_json, row.id),
+  };
+}
+
 export function createApproval(
   db: AppDatabase,
   params: { executionId: string; actionIds: string[]; reason: string; payload?: unknown },
@@ -97,16 +110,7 @@ export function claimApproval(db: AppDatabase, id: string): boolean {
 export function getApproval(db: AppDatabase, id: string) {
   const row = readRow<ApprovalRow>(db.prepare('SELECT * FROM approvals WHERE id = ?'), id);
   if (!row) return undefined;
-  return {
-    id: row.id,
-    executionId: row.execution_id,
-    actionIds: parseActionIds(row.action_ids_json, row.id),
-    reason: row.reason,
-    status: row.status,
-    createdAt: row.created_at,
-    resolvedAt: row.resolved_at,
-    payload: parsePayload(row.payload_json, row.id),
-  };
+  return mapApproval(row);
 }
 
 export function getPendingApprovals(db: AppDatabase) {
@@ -114,15 +118,20 @@ export function getPendingApprovals(db: AppDatabase) {
     db.prepare('SELECT * FROM approvals WHERE status = ? ORDER BY created_at DESC'),
     'pending',
   );
+  return rows.map(mapApproval);
+}
+
+export function getPendingApprovalsWithExecutionSnapshots(db: AppDatabase) {
+  const rows = readRows<ApprovalRow & { execution_ir_json: string | null }>(db.prepare(
+    `SELECT a.*, e.ir_json AS execution_ir_json
+     FROM approvals a
+     LEFT JOIN executions e ON e.id = a.execution_id
+     WHERE a.status = ?
+     ORDER BY a.created_at DESC`,
+  ), 'pending');
   return rows.map((row) => ({
-    id: row.id,
-    executionId: row.execution_id,
-    actionIds: parseActionIds(row.action_ids_json, row.id),
-    reason: row.reason,
-    status: row.status,
-    createdAt: row.created_at,
-    resolvedAt: row.resolved_at,
-    payload: parsePayload(row.payload_json, row.id),
+    approval: mapApproval(row),
+    executionIrJson: row.execution_ir_json ?? undefined,
   }));
 }
 

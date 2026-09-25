@@ -1,7 +1,7 @@
 import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { WorkflowRuntime } from './engine.js';
 import type { PushTransportState } from '../triggers/push-state.js';
-import type { TriggerEvent } from '../triggers/types.js';
+import type { PushTriggerEvent } from '../connectors/module-package.js';
 import type { PushTriggerConfigOverrides } from './trigger-engine/helpers.js';
 import { TriggerEventCoordinator } from './trigger-engine/events.js';
 import { TriggerPoller } from './trigger-engine/poll.js';
@@ -31,7 +31,7 @@ export class TriggerEngine {
     this.pushTransports = new PushTransportManager(
       store,
       () => this.acceptingEvents,
-      (driver, event: TriggerEvent) => this.events.handlePushEvent(driver, event),
+      (driver, event: PushTriggerEvent) => this.events.handlePushEvent(driver, event),
       onPushTransportStateChanged,
     );
     this.poller = new TriggerPoller({
@@ -50,11 +50,17 @@ export class TriggerEngine {
       this.lifecycleGeneration += 1;
       this.acceptingEvents = true;
       this.timer = setInterval(() => {
-        void this.tick();
+        this.startPollTick();
       }, this.tickMs);
-      void this.tick();
+      this.startPollTick();
     }
     void this.refreshPushTransports();
+  }
+
+  private startPollTick(): void {
+    void this.tick().catch((error) => {
+      console.error('[trigger-engine] poll tick failed:', error);
+    });
   }
 
   async stop(): Promise<void> {
@@ -62,7 +68,7 @@ export class TriggerEngine {
     this.acceptingEvents = false;
     clearInterval(this.timer);
     this.timer = undefined;
-    await Promise.all([this.poller.stop(), this.refreshPushTransports(null)]);
+    await Promise.all([this.poller.stop(), this.pushTransports.refresh(null), this.events.drain()]);
   }
 
   pushTransportActive(triggerType: string): boolean {

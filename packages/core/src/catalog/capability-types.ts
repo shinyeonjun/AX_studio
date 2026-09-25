@@ -3,7 +3,7 @@ import { CapabilityIOSchema } from '../contracts/capability-io.js';
 
 export const CapabilityRiskSchema = z.enum(['read', 'write', 'trigger']);
 
-export const CapabilityParamInputTypeSchema = z.enum([
+const CapabilityParamInputTypeSchema = z.enum([
   'text',
   'email',
   'slack_channel',

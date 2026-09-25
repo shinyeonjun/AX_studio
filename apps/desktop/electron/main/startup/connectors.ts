@@ -1,3 +1,4 @@
+import { app } from 'electron';
 import type { createAxStudioCore } from '@ax-studio/core';
 import { hydrateGmailConnector } from '../gmail/connection.js';
 import { hydrateSlackConnector, type SlackSecret } from '../slack/connection.js';
@@ -12,7 +13,7 @@ type DesktopCore = Awaited<ReturnType<typeof createAxStudioCore>>;
 export async function hydrateConnectorsForStartup(
   core: DesktopCore,
 ): Promise<SlackSecret | null> {
-  const tolerateHydrationFailure = process.env.AX_E2E === '1';
+  const tolerateHydrationFailure = !app.isPackaged && process.env.AX_E2E === '1';
 
   async function runStep<T>(label: string, step: () => Promise<T>, fallback: T): Promise<T> {
     try {

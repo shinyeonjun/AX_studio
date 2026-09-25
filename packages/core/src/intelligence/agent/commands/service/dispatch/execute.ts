@@ -43,7 +43,7 @@ export async function executeCommand(
     case 'repair.inspect':
     case 'repair.apply':
     case 'repair.reject':
-      return executeRepairCommand(state, command);
+      return executeRepairCommand(state, command, options);
     case 'job.propose':
     case 'job.commit':
       return executeJobCommand(state, command, options);

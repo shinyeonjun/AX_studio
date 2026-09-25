@@ -10,12 +10,19 @@ export interface HttpAuthConfig {
   password?: string;
 }
 
+export interface HttpDiscoveredReadOperation {
+  path: string;
+  label: string;
+}
+
 export interface HttpConnectionConfig {
   id?: string;
   baseUrl: string;
   label?: string;
   auth?: HttpAuthConfig;
   authStored?: boolean;
+  /** Undefined means discovery is pending/retryable; an empty list means it completed without advertised read links. */
+  discoveredReadOperations?: HttpDiscoveredReadOperation[];
   connectedAt?: string;
   lastError?: string;
 }
@@ -31,6 +38,7 @@ export interface HttpConnectionRecord {
   authType?: HttpAuthType;
   authHeader?: string;
   authStored?: boolean;
+  discoveredReadOperations?: unknown;
   username?: string;
   connectedAt?: string;
   lastError?: string;
@@ -61,5 +69,5 @@ export interface HttpConnectionValidation {
   error?: string;
 }
 
-export type HttpEndpointSecret = { token?: string; password?: string };
+export type HttpEndpointSecret = { token?: string; password?: string; origin?: string };
 export type HttpEndpointSecrets = Record<string, HttpEndpointSecret>;

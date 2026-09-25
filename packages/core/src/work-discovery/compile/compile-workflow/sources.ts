@@ -7,12 +7,16 @@ export function readStepForSource(
   pathInput = 'sourcePath',
 ): WorkflowIR['steps'][number] | undefined {
   if (source.connector === 'input_artifact' || source.connector === 'local_sheet') {
+    const folderId = source.metadata?.folderId;
     return {
       type: 'action',
       id: 'read_' + sanitizeStepId(source.id),
       connector: 'local_sheet',
       action: 'read',
-      params: { path: `{{${pathInput}}}` },
+      params: {
+        path: `{{${pathInput}}}`,
+        ...(typeof folderId === 'string' && folderId.trim() ? { folderId: folderId.trim() } : {}),
+      },
       sideEffect: 'NONE',
     };
   }

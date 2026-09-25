@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
-import type { AgentProgressEvent, ModelImageInput } from './model/provider.js';
+import type { AgentProgressEvent, ModelImageInput, ModelTokenUsage } from './model/provider.js';
 
 export type { AgentProgressEvent } from './model/provider.js';
 
@@ -41,6 +41,7 @@ export type AgentContext =
 
 export interface AgentRun<T> {
   role: AgentRole;
+  requestId?: string;
   outputSchema: ZodType<T>;
   context: AgentContext;
   messages?: ChatMessage[];
@@ -61,9 +62,8 @@ export interface AgentRun<T> {
   systemPrompt?: string;
 }
 
-export interface AgentTextRun {
-  role: AgentRole;
-  context: AgentContext;
+interface AgentTextRunFields {
+  requestId?: string;
   messages?: ChatMessage[];
   user?: string;
   images?: ModelImageInput[];
@@ -76,6 +76,11 @@ export interface AgentTextRun {
   systemPrompt?: string;
 }
 
+export type AgentTextRun = AgentTextRunFields & (
+  | { role: 'command'; context?: CommandAgentContext }
+  | { role: 'investigate'; context: InvestigateAgentContext }
+);
+
 export interface AgentRunLog {
   level: 'info' | 'error';
   message: string;
@@ -87,6 +92,7 @@ export interface AgentResult<T> {
   provider: string;
   durationMs: number;
   promptChars: number;
+  usage?: ModelTokenUsage;
   policy: AgentExecutionPolicy;
   logs: AgentRunLog[];
 }
@@ -97,6 +103,7 @@ export interface AgentTextResult {
   provider: string;
   durationMs: number;
   promptChars: number;
+  usage?: ModelTokenUsage;
   policy: AgentExecutionPolicy;
   logs: AgentRunLog[];
 }

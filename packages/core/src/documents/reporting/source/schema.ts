@@ -29,7 +29,7 @@ export interface ReportHttpSourceSpec {
   };
 }
 
-export interface ReportRdbSourceSpec {
+interface ReportRdbSourceSpec {
   alias: string;
   table: string;
 }
@@ -53,6 +53,7 @@ const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => 
 }, 'report_date_invalid');
 const IdentifierSchema = z.string().trim().min(1).max(160);
 const REPORT_PROBE_ORIGIN = 'http://report-probe.invalid';
+export const MAX_REPORT_HTTP_PAGES = 1_000;
 
 /**
  * Report plans may address only a relative path on the selected connection.
@@ -108,7 +109,7 @@ const ReportHttpSourceSchema: z.ZodType<ReportHttpSourceSpec> = z.object({
     sizeParam: IdentifierSchema,
     pageSize: z.number().int().min(1).max(10_000),
     totalPagesPath: IdentifierSchema,
-    maxPages: z.number().int().min(1).max(1_000),
+    maxPages: z.number().int().min(1).max(MAX_REPORT_HTTP_PAGES),
     startPage: z.union([z.literal(0), z.literal(1)]).optional(),
     currentPagePath: IdentifierSchema.optional(),
   }).optional(),

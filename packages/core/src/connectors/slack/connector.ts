@@ -1,4 +1,3 @@
-import { WebClient } from '@slack/web-api';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { pollSlackNewMessages } from './new-message-poll/poll.js';
@@ -14,6 +13,7 @@ export class SlackConnector implements Connector {
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     try {
       ctx.abortSignal?.throwIfAborted();
+      const { WebClient } = await import('@slack/web-api');
       const client = new WebClient(this.token, {
         timeout: 30_000,
         retryConfig: { retries: 0 },

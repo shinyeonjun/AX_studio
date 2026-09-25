@@ -1,6 +1,6 @@
 import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
 
-export interface AiBrandTomlConfig {
+interface AiBrandTomlConfig {
   mode?: AiConnectionMode;
   model?: string;
 }

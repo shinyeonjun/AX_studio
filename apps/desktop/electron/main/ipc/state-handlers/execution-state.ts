@@ -34,19 +34,27 @@ export function executionQualityState(execution: {
 }
 
 export function buildPendingApprovals(core: AxCore) {
-  return core.store.getPendingApprovals().map((approval) => {
-    const execution = core.store.getExecution(approval.executionId);
+  return core.store.getPendingApprovalsWithExecutionSnapshots().map(({ approval, executionIrJson }) => {
     let ir = null;
     let snapshotError: string | undefined;
-    if (!execution?.irJson) {
+    if (!executionIrJson) {
       snapshotError = '승인 재개에 필요한 실행 스냅샷이 없습니다.';
     } else {
       try {
-        ir = parseWorkflowIR(JSON.parse(execution.irJson));
+        ir = parseWorkflowIR(JSON.parse(executionIrJson));
       } catch (error) {
         snapshotError = error instanceof Error ? error.message : String(error);
       }
     }
+    const payload = approval.payload && typeof approval.payload === 'object'
+      ? approval.payload as { actionSnapshots?: Array<{ actionId?: unknown; params?: unknown }> }
+      : undefined;
+    const resolvedParamsByAction = Object.fromEntries(
+      (payload?.actionSnapshots ?? [])
+        .filter((snapshot): snapshot is { actionId: string; params: Record<string, unknown> } =>
+          typeof snapshot.actionId === 'string' && !!snapshot.params && typeof snapshot.params === 'object' && !Array.isArray(snapshot.params))
+        .map((snapshot) => [snapshot.actionId, snapshot.params]),
+    );
     return {
       ...approval,
       ...(snapshotError ? { errorCode: 'invalid_execution_snapshot', errorMessage: snapshotError } : {}),
@@ -55,6 +63,7 @@ export function buildPendingApprovals(core: AxCore) {
         reason: approval.reason,
         actionIds: approval.actionIds,
         ir,
+        resolvedParamsByAction,
       }),
     };
   });

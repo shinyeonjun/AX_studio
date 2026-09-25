@@ -5,8 +5,12 @@ import type { SettingRow, ConnectionRow } from '../rows.js';
 export function getSetting<T>(db: AppDatabase, key: string, defaultValue: T): T {
   const row = readRow<SettingRow>(db.prepare('SELECT value_json FROM settings WHERE key = ?'), key);
   if (!row) return defaultValue;
+  return parseSetting<T>(key, row.value_json);
+}
+
+function parseSetting<T>(key: string, valueJson: string): T {
   try {
-    return JSON.parse(row.value_json) as T;
+    return JSON.parse(valueJson) as T;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw Object.assign(new Error(`설정 ${key}의 JSON이 손상되었습니다: ${message}`), {
@@ -14,6 +18,14 @@ export function getSetting<T>(db: AppDatabase, key: string, defaultValue: T): T 
       settingKey: key,
     });
   }
+}
+
+export function listSettingsByPrefix(db: AppDatabase, prefix: string): Array<{ key: string; value: unknown }> {
+  const upperBound = `${prefix}\uffff`;
+  const rows = readRows<{ key: string; value_json: string }>(db.prepare(
+    'SELECT key, value_json FROM settings WHERE key >= ? AND key < ? ORDER BY key',
+  ), prefix, upperBound);
+  return rows.map(({ key, value_json }) => ({ key, value: parseSetting(key, value_json) }));
 }
 
 export function getGlobalActive(db: AppDatabase): boolean {
@@ -29,6 +41,10 @@ export function setSetting(db: AppDatabase, key: string, value: unknown) {
        ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json`,
     )
     .run(key, valueJson);
+}
+
+export function deleteSetting(db: AppDatabase, key: string): void {
+  db.prepare('DELETE FROM settings WHERE key = ?').run(key);
 }
 
 export function setConnection(

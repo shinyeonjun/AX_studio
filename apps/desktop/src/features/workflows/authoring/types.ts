@@ -10,15 +10,15 @@ export type WorkflowVisualKind =
 
 export type WorkflowNodeChange = 'unchanged' | 'added' | 'modified';
 
-export interface WorkflowVisualLine {
+interface WorkflowVisualLine {
   text: string;
   complete: boolean;
 }
 
 /** Minimal card copy for graph nodes (mockup-style). */
-export type WorkflowCardBrandStyle = 'bracket' | 'plain' | 'ai';
+type WorkflowCardBrandStyle = 'bracket' | 'plain' | 'ai';
 
-export interface WorkflowCardDisplay {
+interface WorkflowCardDisplay {
   header: string;
   brand: string;
   brandStyle: WorkflowCardBrandStyle;
@@ -64,5 +64,4 @@ export const WORKFLOW_KIND_BADGE: Partial<Record<WorkflowVisualKind, string>> = 
 };
 export const WORKFLOW_NODE_WIDTH = 136;
 export const WORKFLOW_NODE_HEIGHT = 112;
-export const WORKFLOW_NODE_CIRCLE = 48;
 export const WORKFLOW_JOIN_SIZE = 12;

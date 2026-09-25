@@ -1,3 +1,28 @@
+export function assertCsvShape(text: string, maxRows = 100_000, maxColumns = 1_024): void {
+  let rows = 1;
+  let columns = 1;
+  let inQuotes = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!;
+    const next = text[index + 1];
+    if (inQuotes) {
+      if (char === '"' && next === '"') index += 1;
+      else if (char === '"') inQuotes = false;
+      continue;
+    }
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      columns += 1;
+      if (columns > maxColumns) throw new Error('workbook_sheet_too_wide');
+    } else if (char === '\n') {
+      rows += 1;
+      columns = 1;
+      if (rows > maxRows) throw new Error('workbook_sheet_too_large');
+    }
+  }
+}
+
 export function parseCsvMatrix(text: string): { headers: string[]; matrix: unknown[][] } {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
 

@@ -13,9 +13,6 @@ import type { DecisionEngine } from '../contracts/decision.js';
 import type { ArtifactReference, ArtifactSink } from '../connectors/types.js';
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { WorkspaceSourceService } from '../persistence/workspace-source-service.js';
-import { getDocumentEngineClient } from '../documents/read/engine-client.js';
-import { ReportPlanner } from '../documents/reporting/planner/planner.js';
-import { ReportGenerationService } from '../documents/reporting/service.js';
 import { ReportCheckpointStore } from '../documents/reporting/checkpoints.js';
 import { join } from 'node:path';
 import {
@@ -126,19 +123,36 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const connectors = buildConnectorsFromStore(store);
   let runtime: WorkflowRuntime | undefined;
-  const reportGeneration = new ReportGenerationService({
-    checkpoints: new ReportCheckpointStore(join(paths.sessions, 'report-checkpoints')),
-    workspaceSources,
-    documentEngine: getDocumentEngineClient(),
-    planner: new ReportPlanner(investigationRunner),
-    getConnector: (name) => runtime?.connectors[name] ?? connectors[name],
-  });
+  let activeDecisionEngine = options.decisionEngine;
+  let reportPlanner: import('../documents/reporting/planner/planner.js').ReportPlanner | undefined;
+  let reportGenerationPromise: Promise<import('../documents/reporting/service.js').ReportGenerationService> | undefined;
+  const getReportGeneration = () => {
+    reportGenerationPromise ??= Promise.all([
+      import('../documents/read/engine-client.js'),
+      import('../documents/reporting/planner/planner.js'),
+      import('../documents/reporting/service.js'),
+    ]).then(([{ getDocumentEngineClient }, { ReportPlanner }, { ReportGenerationService }]) => {
+      reportPlanner = new ReportPlanner(investigationRunner, { decisionEngine: activeDecisionEngine });
+      return new ReportGenerationService({
+        checkpoints: new ReportCheckpointStore(join(paths.sessions, 'report-checkpoints')),
+        workspaceSources,
+        documentEngine: getDocumentEngineClient(),
+        planner: reportPlanner,
+        getConnector: (name) => runtime?.connectors[name] ?? connectors[name],
+      });
+    }).catch((error: unknown) => {
+      reportGenerationPromise = undefined;
+      throw error;
+    });
+    return reportGenerationPromise;
+  };
   connectors.document = new DocumentConnector({
-    'pdf.report.generate': (params, ctx) => reportGeneration.generate(params, ctx),
+    'pdf.report.generate': async (params, ctx) => (await getReportGeneration()).generate(params, ctx),
   });
   runtime = new WorkflowRuntime({
     store,
     investigationRunner,
+    decisionEngine: options.decisionEngine,
     globalActive,
     workflowActive,
     connectors,
@@ -168,7 +182,6 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   });
   const scheduler = new Scheduler(store, runtime);
   const triggerEngine = new TriggerEngine(store, runtime, undefined, options.onPushTransportStateChanged);
-  let activeDecisionEngine = options.decisionEngine;
   const commandService = new AxCommandService(store, {
     removeWorkflow: (workflowId) => runtime.removeWorkflow(workflowId),
     runWorkflow: (workflowId) => runSavedWorkflowById({ store, runtime }, workflowId),
@@ -205,6 +218,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     refreshDecisionEngine(decisionEngine?: DecisionEngine) {
       activeDecisionEngine = decisionEngine;
       commandService.setDecisionEngine(decisionEngine);
+      reportPlanner?.setDecisionEngine(decisionEngine);
+      runtime.setDecisionEngine(decisionEngine);
     },
   };
 

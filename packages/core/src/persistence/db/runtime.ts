@@ -1,9 +1,4 @@
-import { createNativeDatabase, openReadonlyNativeSqlite } from '../db-native.js';
 import { applyMigrations } from './schema.js';
-import {
-  createSqlJsDatabase,
-  openReadonlySqlJs,
-} from './sqljs.js';
 import type { AppDatabase } from './types.js';
 
 export interface DatabaseRuntimeDependencies {
@@ -39,7 +34,7 @@ function logDatabaseFallback(message: string, hint: string, error: unknown): voi
   console.warn('[db] ' + message + '.' + hint + ' ' + detail);
 }
 
-export function isNativeBackendUnavailable(error: unknown): boolean {
+function isNativeBackendUnavailable(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const candidate = error as { code?: unknown; message?: unknown };
   if (candidate.code === 'MODULE_NOT_FOUND' ||
@@ -62,7 +57,9 @@ export async function createDatabaseAsync(
   if (!shouldUseSqlJsBackend()) {
     let adapter: AppDatabase | undefined;
     try {
-      adapter = (dependencies.createNativeDatabase ?? createNativeDatabase)(path);
+      const createNativeDatabase = dependencies.createNativeDatabase
+        ?? (await import('../db-native.js')).createNativeDatabase;
+      adapter = createNativeDatabase(path);
       (dependencies.applyMigrations ?? applyMigrations)(adapter);
       return adapter;
     } catch (error) {
@@ -79,7 +76,9 @@ export async function createDatabaseAsync(
       logDatabaseFallback('better-sqlite3 unavailable; using sql.js', hint, error);
     }
   }
-  return (dependencies.createSqlJsDatabase ?? createSqlJsDatabase)(path);
+  const createSqlJsDatabase = dependencies.createSqlJsDatabase
+    ?? (await import('./sqljs.js')).createSqlJsDatabase;
+  return createSqlJsDatabase(path);
 }
 
 export async function openReadonlySqlite(
@@ -91,7 +90,9 @@ export async function openReadonlySqlite(
 }> {
   if (!shouldUseSqlJsBackend()) {
     try {
-      return (dependencies.openReadonlyNativeSqlite ?? openReadonlyNativeSqlite)(filePath);
+      const openReadonlyNativeSqlite = dependencies.openReadonlyNativeSqlite
+        ?? (await import('../db-native.js')).openReadonlyNativeSqlite;
+      return openReadonlyNativeSqlite(filePath);
     } catch (error) {
       if (!isNativeBackendUnavailable(error)) throw error;
       const hint =
@@ -102,5 +103,7 @@ export async function openReadonlySqlite(
     }
   }
 
-  return (dependencies.openReadonlySqlJs ?? openReadonlySqlJs)(filePath);
+  const openReadonlySqlJs = dependencies.openReadonlySqlJs
+    ?? (await import('./sqljs.js')).openReadonlySqlJs;
+  return openReadonlySqlJs(filePath);
 }

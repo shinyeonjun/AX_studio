@@ -11,8 +11,6 @@ export type DiscoveryRecoveryAction =
   | 'ask_human'
   | 'stop';
 
-export const DISCOVERY_RECOVERY_MIN_PROBABILITY = 0.8;
-export const DISCOVERY_RECOVERY_MIN_MARGIN = 0.15;
 export const DISCOVERY_RECOVERY_MAX_ATTEMPTS = 2;
 export const DISCOVERY_RECOVERY_SOURCE_READ_CAP = 24;
 
@@ -31,7 +29,7 @@ export interface DiscoveryRecoveryDecision {
   action: DiscoveryRecoveryAction;
   probability?: number;
   margin?: number;
-  reason: 'decision_engine' | 'low_confidence' | 'unavailable' | 'attempt_limit' | 'budget_cap';
+  reason: 'decision_engine' | 'unclear' | 'invalid_answer' | 'unavailable' | 'attempt_limit' | 'budget_cap';
 }
 
 const ACTIONS: readonly DiscoveryRecoveryAction[] = [
@@ -124,34 +122,18 @@ export async function decideDiscoveryRecovery(
     });
     const answer = result.answers.recovery_action;
     if (!answer || answer.type !== 'choice' || !ACTIONS.includes(answer.choice as DiscoveryRecoveryAction)) {
-      return { action: 'ask_human', reason: 'low_confidence' };
-    }
-    const summary = probabilitySummary(answer.probabilities, answer.choice);
-    if (!summary
-      || summary.probability < DISCOVERY_RECOVERY_MIN_PROBABILITY
-      || summary.margin < DISCOVERY_RECOVERY_MIN_MARGIN) {
-      return {
-        action: 'ask_human',
-        reason: 'low_confidence',
-        ...(summary ? { probability: summary.probability, margin: summary.margin } : {}),
-      };
+      return { action: 'ask_human', reason: 'invalid_answer' };
     }
 
     const action = answer.choice as DiscoveryRecoveryAction;
+    // Jev scores remain diagnostic only; the categorical choice drives the action.
+    const summary = probabilitySummary(answer.probabilities, action);
+    const telemetry = summary ? { probability: summary.probability, margin: summary.margin } : {};
+    if (action === 'ask_human') return { action, ...telemetry, reason: 'unclear' };
     if (action === 'expand_source_search' && input.budgets.sourceReadsMax >= DISCOVERY_RECOVERY_SOURCE_READ_CAP) {
-      return {
-        action: 'ask_human',
-        probability: summary.probability,
-        margin: summary.margin,
-        reason: 'budget_cap',
-      };
+      return { action: 'ask_human', ...telemetry, reason: 'budget_cap' };
     }
-    return {
-      action,
-      probability: summary.probability,
-      margin: summary.margin,
-      reason: 'decision_engine',
-    };
+    return { action, ...telemetry, reason: 'decision_engine' };
   } catch {
     return { action: 'stop', reason: 'unavailable' };
   }

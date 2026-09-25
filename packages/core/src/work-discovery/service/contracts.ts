@@ -53,5 +53,5 @@ export interface WorkDiscoveryRuntime extends WorkDiscoveryRuntimeOptions {
     patch: Partial<DiscoverySessionState>,
   ) => DiscoverySessionState;
   isCancelled: (sessionId: string) => boolean;
-  observeOutputArtifact: (exampleId: string, artifactId: string) => OutputObservation[];
+  observeOutputArtifact: (exampleId: string, artifactId: string) => OutputObservation[] | Promise<OutputObservation[]>;
 }

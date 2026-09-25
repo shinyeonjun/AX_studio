@@ -3,6 +3,7 @@ import { requiresApproval } from '../workflow/approval.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { DecisionEngine } from '../contracts/decision.js';
 import { runAiDecision, evaluateCondition } from './ai-investigation.js';
 import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
@@ -10,6 +11,30 @@ import { applyStepBindings } from '../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
+import { approvalParamsHash, redactedApprovalParams } from './approval-snapshot.js';
+
+export function resolveActionParamsForExecution(
+  step: Extract<Step, { type: 'action' }>,
+  ir: WorkflowIR,
+  ctx: ConnectorContext,
+  stepResults: Record<string, unknown>,
+): { actionRef: string; actionDefinition: NonNullable<ReturnType<typeof resolveActionDefinition>>; params: Record<string, unknown> } {
+  const actionRef = step.actionRef ?? actionRefFor(step.connector, step.action);
+  const actionDefinition = resolveActionDefinition(actionRef);
+  if (!actionDefinition) {
+    throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
+  }
+  let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables, ctx.outputs);
+  params = resolveStepParams(params, ctx, stepResults);
+  if (actionDefinition.id === 'document.ingest') {
+    const resolved = resolveDocumentIngestExecution(params, ctx);
+    if (!resolved.ok) {
+      throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
+    }
+    params = resolved.params;
+  }
+  return { actionRef, actionDefinition, params };
+}
 
 export async function executeStep(
   step: Step,
@@ -21,25 +46,12 @@ export async function executeStep(
   investigationRunner: InvestigationRunner | undefined,
   runSteps: (stepIds: string[]) => Promise<void>,
   approvedActionIds: ReadonlySet<string> = new Set(),
+  decisionEngine?: DecisionEngine,
 ): Promise<void> {
   switch (step.type) {
     case 'action':
       {
-      const actionRef = step.actionRef ?? actionRefFor(step.connector, step.action);
-      const actionDefinition = resolveActionDefinition(actionRef);
-      if (!actionDefinition) {
-        throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
-      }
-      let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables, ctx.outputs);
-      params = resolveStepParams(params, ctx, stepResults);
-
-      if (actionDefinition.id === 'document.ingest') {
-        const resolved = resolveDocumentIngestExecution(params, ctx);
-        if (!resolved.ok) {
-          throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
-        }
-        params = resolved.params;
-      }
+      const { actionDefinition, params } = resolveActionParamsForExecution(step, ir, ctx, stepResults);
 
       const missingParams = validateActionParams(actionDefinition, params);
       if (missingParams.length > 0) {
@@ -61,7 +73,14 @@ export async function executeStep(
           executionId: ctx.executionId,
           actionIds: [step.id],
           reason: `외부 작업 승인 필요: ${actionDefinition.id}`,
-          payload: step.params,
+          payload: {
+            actionSnapshots: [{
+              actionId: step.id,
+              actionRef: actionDefinition.id,
+              params: redactedApprovalParams(params),
+              paramsHash: approvalParamsHash(params),
+            }],
+          },
         });
         const err = new Error('Approval required') as Error & { code?: string; approvalId?: string; pending?: boolean };
         err.code = 'pending_approval';
@@ -81,7 +100,7 @@ export async function executeStep(
       }
 
     case 'ai_decision':
-      await runAiDecision(step, ir, ctx, stepResults, investigationRunner, connectors);
+      await runAiDecision(step, ir, ctx, stepResults, investigationRunner, connectors, decisionEngine);
       break;
 
     case 'if': {
@@ -110,7 +129,21 @@ export async function executeStep(
         executionId: ctx.executionId,
         actionIds: pendingActionIds.length > 0 ? pendingActionIds : step.forActionIds,
         reason: step.reason,
-        payload: { stepId: step.id, type: 'human_approval' },
+        payload: {
+          stepId: step.id,
+          type: 'human_approval',
+          actionSnapshots: (pendingActionIds.length > 0 ? pendingActionIds : step.forActionIds).map((actionId) => {
+            const action = ir.steps.find((candidate): candidate is Extract<Step, { type: 'action' }> => candidate.type === 'action' && candidate.id === actionId);
+            if (!action) return { actionId };
+            const resolved = resolveActionParamsForExecution(action, ir, ctx, stepResults);
+            return {
+              actionId,
+              actionRef: resolved.actionDefinition.id,
+              params: redactedApprovalParams(resolved.params),
+              paramsHash: approvalParamsHash(resolved.params),
+            };
+          }),
+        },
       });
       const humanErr = new Error('Human approval required') as Error & {
         code?: string;

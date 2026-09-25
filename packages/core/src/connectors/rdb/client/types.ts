@@ -14,7 +14,7 @@ export interface RdbTableRef {
 
 export interface RdbTableInfo extends RdbTableRef {}
 
-export type QueryValue = string | number | boolean | null;
+type QueryValue = string | number | boolean | null;
 export type RdbRow = Record<string, unknown>;
 
 export interface RdbSqlClient {

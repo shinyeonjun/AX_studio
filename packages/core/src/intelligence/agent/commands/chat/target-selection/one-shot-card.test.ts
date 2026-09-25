@@ -1,26 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { AgentHarness } from '../../../harness.js';
-import type { StructuredGenerateInput } from '../../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
 import { scriptedModel } from '../fixtures.js';
+import type { DecisionEngine } from '../../../../../contracts/decision.js';
 
 describe('runAxCommandChat target selection', () => {
-  it('publishes a structured target card when a one-shot share needs HTTP and Slack selections', async () => {
+  it('publishes a Slack target card without asking the LLM to build the one-shot action', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    store.setConnection('http', true, {
-      endpoints: [
-        { id: 'test', label: '테스트 HTTP 연결', baseUrl: 'http://127.0.0.1:4820/', authType: 'none' },
-        { id: 'github', label: '깃허브 연결', baseUrl: 'https://api.github.com/', authType: 'none' },
-      ],
-    });
     store.setConnection('slack', true);
     const chat = store.saveWorkspaceChat({ messages: [] });
+    let enqueueCalls = 0;
     const service = new AxCommandService(store, {
-      enqueueOnce: () => ({ jobId: 'job-1' }),
+      enqueueOnce: () => { enqueueCalls += 1; return { jobId: 'job-1' }; },
       readGateway: {
         execute: async () => ({
           tool: 'capabilities.invoke',
@@ -31,53 +27,64 @@ describe('runAxCommandChat target selection', () => {
     });
     const presentations: import('../../schema.js').AxUiPresentation[] = [];
     const seen: StructuredGenerateInput<unknown>[] = [];
+    const textSeen: TextGenerateInput[] = [];
+    const decisionEngine: DecisionEngine = {
+      evaluate: async (request) => {
+        const action = request.questions.action;
+        const selectedAction = action?.type === 'choice'
+          ? Object.entries(action.criteria).find(([, criterion]) =>
+            typeof criterion === 'string' && criterion.startsWith('slack.message.send —'))
+          : undefined;
+        return {
+          answers: {
+            route: {
+              type: 'choice', choice: 'execution_enqueue_once',
+              probabilities: { execution_enqueue_once: 0.98, answer: 0.02 }, confidence: 0.98,
+            },
+            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
+            action_scope: {
+              type: 'choice', choice: 'single_action',
+              probabilities: { single_action: 0.98, multi_step: 0.01, unclear: 0.01 }, confidence: 0.98,
+            },
+            action: {
+              type: 'choice', choice: selectedAction?.[0] ?? 'none',
+              probabilities: { [selectedAction?.[0] ?? 'none']: 0.99, none: selectedAction ? 0.01 : 0.99 },
+              confidence: 0.99,
+            },
+          },
+        };
+      },
+    };
 
     const reply = await runAxCommandChat({
-      harness: new AgentHarness(scriptedModel([{
-        kind: 'command',
-        command: {
-          name: 'execution.enqueue_once',
-          args: {
-            name: '결제 주문 공유',
-            goal: '결제 완료 주문을 요약해 Slack으로 공유한다',
-            steps: [
-              {
-                type: 'action',
-                id: 'fetch',
-                connector: 'http',
-                action: 'request',
-                params: { method: 'GET', path: '/api/v1/orders?status=paid' },
-              },
-              {
-                type: 'action',
-                id: 'notify',
-                connector: 'slack',
-                action: 'message.send',
-                params: { text: '결제 완료 주문 요약' },
-              },
-            ],
-          },
-        },
-      }], seen)),
+      harness: new AgentHarness(scriptedModel([], seen, 'test-provider', [], textSeen)),
       commandService: service,
+      decisionEngine,
       messages: [],
-      userMessage: '결제된 주문 중 큰 금액을 팀에 공유해줘',
+      userMessage: '이번만 Slack에 "테스트 메시지"를 보내줘. 반복 업무로 저장하지 마.',
+      connectedConnectors: ['slack'],
       workspaceSessionId: chat.id,
-      designToolContext: { connections: [], connectedConnectorIds: ['http', 'slack'], connectors: {} },
+      designToolContext: { connections: [], connectedConnectorIds: ['slack'], connectors: {} },
       onPresentation: (presentation) => presentations.push(presentation),
     });
 
     expect(reply).toContain('연결과 채널');
-    expect(seen).toHaveLength(1);
+    expect(enqueueCalls).toBe(0);
+    expect(seen).toHaveLength(0);
+    expect(textSeen).toHaveLength(0);
     expect(presentations).toHaveLength(1);
     expect(presentations[0]).toMatchObject({
       title: '공유 대상 선택',
       inputMode: 'batch',
       inputs: [
-        { id: 'execution-http-connection' },
-        { id: 'execution-slack-channel', options: [{ value: 'C_OPERATIONS', label: '#운영' }] },
+        {
+          id: 'execution-action_1-slack-channel',
+          stepId: 'action_1', capabilityId: 'slack.message.send', parameterName: 'channel',
+          options: [{ value: 'C_OPERATIONS', label: '#운영' }],
+        },
       ],
       actions: [{ id: 'review_execution_targets', label: '선택하고 실행안 검토' }],
     });
+    db.close();
   });
 });

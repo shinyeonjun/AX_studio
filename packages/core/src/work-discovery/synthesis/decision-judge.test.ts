@@ -54,7 +54,7 @@ const sources: SourceDescriptor[] = [
 ];
 
 describe('judgeReplayAmbiguity', () => {
-  it('auto-resolves only a high-probability choice with a clear margin', async () => {
+  it('uses the exact candidate choice regardless of its probability', async () => {
     const engine: DecisionEngine = {
       evaluate: async (request) => {
         expect(request.state).toMatchObject({ userGoal: 'Build the current sales summary' });
@@ -65,10 +65,10 @@ describe('judgeReplayAmbiguity', () => {
               type: 'choice',
               choice: 'candidate_1',
               probabilities: {
-                candidate_0: 0.04,
-                candidate_1: 0.96,
-              },
-              confidence: 0.95,
+              candidate_0: 0.6,
+              candidate_1: 0.4,
+            },
+            confidence: 0.4,
             },
           },
         };
@@ -91,21 +91,28 @@ describe('judgeReplayAmbiguity', () => {
     ]);
   });
 
-  it('keeps the existing clarification path when confidence is not decisive', async () => {
+  it('keeps clarification when Jev explicitly selects unclear', async () => {
     const engine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => {
+        expect(request.questions.ambiguity_0).toMatchObject({
+          type: 'choice',
+          criteria: { unclear: expect.any(Object) },
+        });
+        return ({
         answers: {
           ambiguity_0: {
             type: 'choice',
-            choice: 'candidate_1',
+            choice: 'unclear',
             probabilities: {
-              candidate_0: 0.35,
-              candidate_1: 0.65,
+              candidate_0: 0.3,
+              candidate_1: 0.3,
+              unclear: 0.4,
             },
             confidence: 0.4,
           },
         },
-      }),
+        });
+      },
     };
 
     const result = await judgeReplayAmbiguity({
@@ -119,6 +126,25 @@ describe('judgeReplayAmbiguity', () => {
     expect(result.remainingAmbiguousPaths).toEqual([outputPath]);
     expect(result.autoResolvedPaths).toEqual([]);
     expect(result.candidates.map((candidate) => candidate.status)).toEqual(['accepted', 'accepted']);
+  });
+
+  it('keeps clarification when Jev omits or returns an unmapped candidate', async () => {
+    for (const answer of [undefined, {
+      type: 'choice' as const,
+      choice: 'not_a_candidate',
+      probabilities: { not_a_candidate: 1 },
+    }]) {
+      const result = await judgeReplayAmbiguity({
+        decisionEngine: { evaluate: async () => ({ answers: answer ? { ambiguity_0: answer } : {} }) },
+        userGoal: 'Build the current sales summary',
+        candidates,
+        ambiguousPaths: [outputPath],
+        sourceInventory: sources,
+      });
+      expect(result.remainingAmbiguousPaths).toEqual([outputPath]);
+      expect(result.autoResolvedPaths).toEqual([]);
+      expect(result.candidates.map((candidate) => candidate.status)).toEqual(['accepted', 'accepted']);
+    }
   });
 
   it('fails open to human clarification when the decision engine errors', async () => {

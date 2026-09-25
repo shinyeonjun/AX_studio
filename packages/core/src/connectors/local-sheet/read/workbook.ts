@@ -5,9 +5,8 @@ import { DEFAULT_TABLE_ROW_LIMIT } from '../profile.js';
 import type { ReadWorkbookResult } from './contracts.js';
 import { readCsvWorkbook } from './csv.js';
 import { assertWorkbookByteLength, assertWorkbookSize, fileRefForPath } from './shared.js';
-import { readXlsxWorkbook } from './xlsx.js';
 
-export function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): ReadWorkbookResult {
+export async function readWorkbookFromPath(path: string, options: { rowLimit?: number } = {}): Promise<ReadWorkbookResult> {
   // Keep the cheap metadata guard before loading an untrusted file into memory.
   assertWorkbookSize(path);
   const data = readFileSync(path);
@@ -18,5 +17,7 @@ export function readWorkbookFromPath(path: string, options: { rowLimit?: number 
   const file = fileRefForPath(path);
   const input = { path, rowLimit, workbookId, file, data };
 
-  return ext === '.csv' ? readCsvWorkbook(input) : readXlsxWorkbook(input);
+  if (ext === '.csv') return readCsvWorkbook(input);
+  const { readXlsxWorkbook } = await import('./xlsx.js');
+  return readXlsxWorkbook(input);
 }

@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { availableCapabilities, designCapabilities } from '../capability-graph.js';
+import { availableCapabilities, connectedConnectorIds, designCapabilities } from '../capability-graph.js';
 
 describe('capability graph availability', () => {
+  it('merges configured and built-in connectors using the shared runtime rule', () => {
+    const connected = connectedConnectorIds([
+      { connector: 'gmail', connected: true },
+      { connector: 'gmail', connected: true },
+      { connector: 'slack', connected: false },
+    ]);
+
+    expect(connected.filter((connector) => connector === 'gmail')).toHaveLength(1);
+    expect(connected).not.toContain('slack');
+    expect(connected).toContain('local_sheet');
+    expect(new Set(connected).size).toBe(connected.length);
+  });
+
   it('hides gmail nodes until connected, keeps builtin tools', () => {
     const none = availableCapabilities([]);
     expect(none.some((cap) => cap.connector === 'gmail')).toBe(false);

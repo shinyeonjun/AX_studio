@@ -105,19 +105,22 @@ export function listExecutions(db: AppDatabase, limit = 50) {
 }
 
 export function deleteExecution(db: AppDatabase, id: string): boolean {
-  const existing = readRow<{ id: string; status: ExecutionStatus }>(
-    db.prepare('SELECT id, status FROM executions WHERE id = ?'),
-    id,
-  );
-  if (!existing) return false;
-  if (hasOpenApprovalForExecution(db, id)) {
-    throw new Error('승인 대기 중인 실행은 삭제할 수 없습니다.');
-  }
-  if (existing.status === 'running' || existing.status === 'pending_approval') {
-    throw Object.assign(new Error('실행 중인 실행은 삭제할 수 없습니다.'), { code: 'execution_active' });
-  }
-  db.exec('BEGIN');
+  db.exec('BEGIN IMMEDIATE');
   try {
+    const existing = readRow<{ id: string; status: ExecutionStatus }>(
+      db.prepare('SELECT id, status FROM executions WHERE id = ?'),
+      id,
+    );
+    if (!existing) {
+      db.exec('COMMIT');
+      return false;
+    }
+    if (hasOpenApprovalForExecution(db, id)) {
+      throw new Error('승인 대기 중인 실행은 삭제할 수 없습니다.');
+    }
+    if (existing.status === 'running' || existing.status === 'pending_approval') {
+      throw Object.assign(new Error('실행 중인 실행은 삭제할 수 없습니다.'), { code: 'execution_active' });
+    }
     db.prepare('DELETE FROM approvals WHERE execution_id = ?').run(id);
     db.prepare('DELETE FROM executions WHERE id = ?').run(id);
     db.exec('COMMIT');

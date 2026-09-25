@@ -14,6 +14,10 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
   const started = Date.now();
   const controller = new AbortController();
   const timeoutMs = definition.policy.timeoutMs;
+  let usage: AgentResult<T>['usage'];
+  let measurements: Record<string, unknown> = {
+    role: request.role, requestId: request.requestId, phase: request.logContext, provider: model.name, timeoutMs,
+  };
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const abortExternal = () => controller.abort();
   if (request.abortSignal?.aborted) {
@@ -48,7 +52,7 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
     );
     const temperature = request.temperature ?? definition.temperature;
     const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
-    const measurements = { role: request.role, phase: request.logContext, provider: model.name,
+    measurements = { role: request.role, requestId: request.requestId, phase: request.logContext, provider: model.name,
       promptChars, imageCount: images?.length ?? 0,
       imageBytes: images?.reduce((sum, image) => sum + image.data.byteLength, 0) ?? 0, timeoutMs };
     appendAppLog('info', 'Agent invocation started', measurements);
@@ -67,6 +71,7 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
       sessionId: request.sessionId,
       abortSignal: controller.signal,
       onProgress: request.onProgress,
+      onUsage: reported => { usage = reported; },
       logContext: request.logContext,
       codexReasoningEffort:
         request.codexReasoningEffort ??
@@ -77,7 +82,9 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
     if (controller.signal.aborted) throw new Error('agent_result_after_abort');
     const output = request.outputSchema.parse(raw);
     const durationMs = Date.now() - started;
-    appendAppLog('info', 'Agent invocation completed', { ...measurements, durationMs });
+    appendAppLog('info', 'Agent invocation completed', {
+      ...measurements, durationMs, providerUsageAvailable: Boolean(usage), ...(usage ? { usage } : {}),
+    });
     logs.push({
       level: 'info',
       message: `provider=${model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
@@ -88,22 +95,39 @@ export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): P
       provider: model.name,
       durationMs,
       promptChars,
+      ...(usage ? { usage } : {}),
       policy: definition.policy,
       logs,
     };
   } catch (err) {
+    const errorCode = err && typeof err === 'object' && 'code' in err && typeof err.code === 'string'
+      ? err.code
+      : undefined;
+    const failureTelemetry = {
+      ...measurements,
+      durationMs: Date.now() - started,
+      providerUsageAvailable: Boolean(usage),
+      ...(usage ? { usage } : {}),
+    };
     if (request.abortSignal?.aborted) {
+      appendAppLog('info', 'Agent invocation cancelled', failureTelemetry);
       throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
     }
     if (controller.signal.aborted) {
       const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout', phase: request.logContext });
       appendAppLog('error', timeoutError.message, {
+        ...failureTelemetry,
         code: 'agent_timeout',
         role: request.role,
         phase: request.logContext,
       });
       throw timeoutError;
     }
+    appendAppLog('error', 'Agent invocation failed', {
+      ...failureTelemetry,
+      errorName: err instanceof Error ? err.name : 'unknown',
+      ...(errorCode ? { errorCode } : {}),
+    });
     logs.push({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),

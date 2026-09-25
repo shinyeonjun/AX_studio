@@ -58,10 +58,16 @@ describe('job.propose generic workflow payloads', () => {
     }, { ...commandChatContext, workspaceSessionId: chat.id });
     expect(proposed.status).toBe('ok');
 
+    const confirmationToken = (((proposed.data as {
+      presentation?: { actions?: Array<{ id?: string; purpose?: string }> };
+    }).presentation?.actions ?? []).find((action) => action.purpose === 'confirm_job')?.id ?? '')
+      .split(':')[1];
+
     const committed = await service.execute({ name: 'job.commit', args: {} }, {
       ...commandChatContext,
       workspaceSessionId: chat.id,
       allowJobCommit: true,
+      jobCommitConfirmationToken: confirmationToken,
     });
 
     expect(committed.status).toBe('ok');
@@ -145,7 +151,14 @@ describe('job.propose generic workflow payloads', () => {
     }));
     expect(response.data).toMatchObject({
       presentation: {
-        inputs: [{ id: 'job-slack-channel', type: 'slack_channel', required: true }],
+        inputs: [{
+          id: 'job-action-notify-slack-channel',
+          type: 'slack_channel',
+          required: true,
+          stepId: 'notify',
+          capabilityId: 'slack.message.send',
+          parameterName: 'channel',
+        }],
       },
     });
     expect(store.listWorkflows()).toHaveLength(0);
