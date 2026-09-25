@@ -1,4 +1,4 @@
-import type { HttpAuthConfig } from '../connection.js';
+import type { HttpAuthConfig } from '../connection/contracts.js';
 import { performHttpRequest } from './execute.js';
 import { normalizeHttpBaseUrl } from './normalize.js';
 

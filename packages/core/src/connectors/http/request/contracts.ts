@@ -1,4 +1,4 @@
-import type { HttpAuthConfig } from '../connection.js';
+import type { HttpAuthConfig } from '../connection/contracts.js';
 
 export const HTTP_DEFAULT_TIMEOUT_MS = 30_000;
 export const HTTP_DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;

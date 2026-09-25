@@ -1,5 +1,5 @@
 import type { HttpAuthConfig, HttpDiscoveredReadOperation } from './contracts.js';
-import { performHttpRequest } from '../request.js';
+import { performHttpRequest } from '../request/execute.js';
 
 const MAX_DISCOVERED_OPERATIONS = 200;
 const MAX_DISCOVERY_RESPONSE_BYTES = 256 * 1024;
