@@ -63,6 +63,16 @@ function engineFor(
   return {
     evaluate: async (request): Promise<DecisionEvaluationResult> => {
       onRequest?.(request);
+      const toolQuestions = Object.entries(request.questions)
+        .filter(([questionId]) => questionId.startsWith('tool_'));
+      const preferredToolKind = route === 'answer'
+        ? undefined
+        : route === 'capability_read' ? 'read' : 'write';
+      const selectedToolQuestion = toolQuestions.find(([, question]) =>
+        preferredToolKind !== undefined
+          && question.type === 'boolean'
+          && question.instructions.candidate?.kind === preferredToolKind,
+      )?.[0];
       return {
         answers: {
           route: {
@@ -79,6 +89,24 @@ function engineFor(
               confidence: 0.99,
             },
           } : {}),
+          ...(request.questions.request_mode ? {
+            request_mode: {
+              type: 'choice' as const,
+              choice: route === 'answer' ? 'answer_only' : 'single_action',
+              probabilities: { [route === 'answer' ? 'answer_only' : 'single_action']: confidence },
+              confidence,
+            },
+          } : {}),
+          ...(request.questions.needs_natural_language_answer ? {
+            needs_natural_language_answer: {
+              type: 'boolean' as const,
+              probability: route === 'answer' ? 0.99 : 0.01,
+            },
+          } : {}),
+          ...Object.fromEntries(toolQuestions.map(([questionId]) => [questionId, {
+            type: 'boolean' as const,
+            probability: questionId === selectedToolQuestion ? 0.99 : 0.01,
+          }])),
           ...(request.questions.table_transform ? {
             table_transform: {
               type: 'choice' as const, choice: 'none',

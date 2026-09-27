@@ -8,7 +8,7 @@ import {
   workflowStepRemovalQuestions,
   type JevWorkflowStepCandidate,
 } from './jev-workflow-update.js';
-import { planJevWorkflow, type JevWorkflowPlanResult } from './jev-workflow-plan.js';
+import { planJevSelectedTools, type JevWorkflowPlanResult } from './jev-workflow-plan.js';
 import type { JevWorkflowTriggerHint } from './jev-workflow-proposal.js';
 import { choiceAnswer, fallback, selectedWorkflowStepFinalists } from './jev-router-command.js';
 import type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
@@ -19,8 +19,8 @@ export interface JevWorkflowRouteContext {
   route: JevChatRouteName;
   confidence: number;
   answers: Record<string, DecisionAnswer>;
-  operationHints: readonly JevReadOperationHint[];
-  actionHints: readonly JevActionHint[];
+  selectedReadHints: readonly JevReadOperationHint[];
+  selectedActionHints: readonly JevActionHint[];
   workflowTriggerHints: readonly JevWorkflowTriggerHint[];
   withTelemetry: (result: JevChatRouterResult) => JevChatRouterResult;
   evaluateFollowup: (
@@ -39,8 +39,6 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
     route: selectedRoute,
     confidence: selectedConfidence,
     answers,
-    operationHints,
-    actionHints,
     workflowTriggerHints,
     withTelemetry,
     evaluateFollowup,
@@ -57,15 +55,15 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         confidence: selectedConfidence,
       });
     }
-    const plan = await planJevWorkflow({
+    const plan = await planJevSelectedTools({
       decisionEngine: input.decisionEngine,
       request: input.userMessage,
       mode: 'manual_workflow',
       connectedConnectors: input.connectedConnectors ?? [],
       sessionMemo: input.sessionMemo,
       workflowPolicy: input.workflowPolicy,
-      readOperationHints: operationHints,
-      actionHints: actionHints,
+      readOperationHints: context.selectedReadHints,
+      actionHints: context.selectedActionHints,
       actionInputValues: input.actionInputValues,
       signal: input.abortSignal,
     });
@@ -153,7 +151,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       const removedChoice = choiceAnswer(updateAnswers.workflow_step_to_remove)?.choice.match(/^step_(0|[1-9]\d*)$/u);
       const removedIndex = removedChoice ? Number(removedChoice[1]) : -1;
       const removedStepId = Number.isSafeInteger(removedIndex) ? workflowSteps[removedIndex]?.id : undefined;
-      const plan = await planJevWorkflow({
+      const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
         mode: 'workflow_update',
@@ -165,8 +163,8 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         connectedConnectors: input.connectedConnectors ?? [],
         sessionMemo: input.sessionMemo,
         workflowPolicy: input.workflowPolicy,
-        readOperationHints: operationHints,
-        actionHints: actionHints,
+        readOperationHints: context.selectedReadHints,
+        actionHints: context.selectedActionHints,
         actionInputValues: input.actionInputValues,
         signal: input.abortSignal,
       });
@@ -238,7 +236,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         confidence: selectedConfidence,
       });
     }
-    const plan = await planJevWorkflow({
+    const plan = await planJevSelectedTools({
       decisionEngine: input.decisionEngine,
       request: input.userMessage,
       mode: 'recurring_workflow',
@@ -246,8 +244,8 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       connectedConnectors: input.connectedConnectors ?? [],
       sessionMemo: input.sessionMemo,
       workflowPolicy: input.workflowPolicy,
-      readOperationHints: operationHints,
-      actionHints: actionHints,
+      readOperationHints: context.selectedReadHints,
+      actionHints: context.selectedActionHints,
       actionInputValues: input.actionInputValues,
       signal: input.abortSignal,
     });

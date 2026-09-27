@@ -58,15 +58,8 @@ export async function resolveJevReadOperationParameters(
     questions: Record<string, DecisionQuestion>,
   ) => Promise<{ answers: Record<string, DecisionAnswer> }>,
 ): Promise<JevReadOperationHint> {
-  const parameters = (hint.parameterHints ?? []).filter((parameter) =>
-    (parameter.choices?.length ?? 0) > 0 && !parameterIsBound(hint.params, parameter.path),
-  );
-  if (parameters.length === 0) return hint;
-
-  const questions = Object.fromEntries(parameters.map((parameter, index) => [
-    `read_parameter_${index}`,
-    parameterQuestion(parameter),
-  ]));
+  const selection = jevReadOperationParameterQuestions(hint);
+  if (selection.fields.length === 0) return hint;
   const evaluation = await evaluate({
     request: boundDecisionString(request),
     selected_operation: {
@@ -74,11 +67,37 @@ export async function resolveJevReadOperationParameters(
       label: boundDecisionString(hint.label, 160),
     },
     policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
-  }, questions);
+  }, selection.questions);
 
+  return applyJevReadOperationParameterAnswers(hint, selection.fields, evaluation.answers);
+}
+
+export interface JevReadOperationParameterField {
+  questionId: string;
+  parameter: JevReadParameterHint;
+}
+
+export function jevReadOperationParameterQuestions(
+  hint: JevReadOperationHint,
+  prefix = 'read_parameter',
+): { questions: Record<string, DecisionQuestion>; fields: JevReadOperationParameterField[] } {
+  const fields = (hint.parameterHints ?? [])
+    .filter((parameter) => (parameter.choices?.length ?? 0) > 0 && !parameterIsBound(hint.params, parameter.path))
+    .map((parameter, index) => ({ questionId: `${prefix}_${index}`, parameter }));
+  return {
+    fields,
+    questions: Object.fromEntries(fields.map(({ questionId, parameter }) => [questionId, parameterQuestion(parameter)])),
+  };
+}
+
+export function applyJevReadOperationParameterAnswers(
+  hint: JevReadOperationHint,
+  fields: readonly JevReadOperationParameterField[],
+  answers: Record<string, DecisionAnswer>,
+): JevReadOperationHint {
   let params = { ...hint.params };
-  for (const [index, parameter] of parameters.entries()) {
-    const answer = evaluation.answers[`read_parameter_${index}`];
+  for (const { questionId, parameter } of fields) {
+    const answer = answers[questionId];
     if (answer?.type !== 'choice' || answer.choice === 'none') continue;
     const match = /^value_(\d+)$/u.exec(answer.choice);
     const value = match ? parameter.choices?.[Number(match[1])] : undefined;

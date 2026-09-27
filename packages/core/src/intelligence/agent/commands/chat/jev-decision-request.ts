@@ -17,6 +17,10 @@ import {
   type JevActionHint,
   type JevActionQuestionGroup,
 } from './jev-action-catalog.js';
+import {
+  parallelToolSelectionQuestions,
+  type JevParallelToolCandidate,
+} from './jev-parallel-tool-selection.js';
 import type { JevWorkflowStepHint } from './jev-workflow-update.js';
 import { jevHttpEndpointChoices, type JevHttpEndpointHint } from './jev-http-endpoint.js';
 import type { JevRequestFeatures } from './request-features.js';
@@ -39,11 +43,6 @@ export interface JevReadRecoveryContext {
   failureKind?: ConnectorFailureKind;
 }
 
-const JEV_READ_RESULT_STYLE_CRITERIA = {
-  data: 'Return the retrieved values as data without prose interpretation.',
-  summary: 'Explain or summarize the retrieved result in natural language.',
-} satisfies Record<string, DecisionInstruction>;
-
 interface BuildJevDecisionRequestInput {
   userMessage: string;
   requestFeatures: JevRequestFeatures;
@@ -61,6 +60,7 @@ interface BuildJevDecisionRequestInput {
   readOperationCatalogMayBeBounded?: boolean;
   deferReadOperationChoices?: boolean;
   actionSelection: JevActionSelection;
+  parallelToolCandidates?: readonly JevParallelToolCandidate[];
   readRecoveryContext?: JevReadRecoveryContext;
   previousReadResult?: TableArtifact;
 }
@@ -298,28 +298,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
       },
     };
   }
-  if (input.actionSelection.hints.length > 0 && Object.hasOwn(routeCriteria, 'execution_enqueue_once')) {
-    Object.assign(questions, oneShotExecutionIntentQuestions());
-  }
-  const operationQuestions: Record<string, DecisionQuestion> = {};
-  if (hasReadOperationCatalog) {
-    if (operationGroups.length > 0) {
-      for (const group of operationGroups) {
-        operationQuestions[group.questionId] = jevReadOperationQuestion(
-          group.hints,
-          Boolean(input.readRecoveryContext),
-          group.criteria,
-        );
-      }
-    } else {
-      operationQuestions.operation = jevReadOperationQuestion(
-        operationChoiceHints,
-        Boolean(input.readRecoveryContext),
-        operationCriteria,
-      );
-    }
-  }
-  if (!input.deferReadOperationChoices) Object.assign(questions, operationQuestions);
+  Object.assign(questions, parallelToolSelectionQuestions(input.parallelToolCandidates ?? []));
   const readResultQuestions: Record<string, DecisionQuestion> = {};
   if (Object.keys(operationCriteria).length > 0 || httpEndpointChoices.length > 0) {
     readResultQuestions.table_transform = {
@@ -337,14 +316,6 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
         focus: 'Choose requested_columns only when the user names or clearly asks for a subset of fields. Choose all_columns for a full/raw result or when no subset is requested. This affects presentation only; it does not change the read request or authorize access.',
       },
       criteria: JEV_TABLE_PROJECTION_CRITERIA,
-    };
-    readResultQuestions.read_result_style = {
-      type: 'choice',
-      instructions: {
-        question: 'Does the user want raw structured values or a natural-language explanation of the read result?',
-        focus: 'Choose summary only when the user asks for explanation, interpretation, or a concise narrative. Choose data for display, formatting, filtering, sorting, or field selection. This choice never changes the connector operation or authorizes an external action.',
-      },
-      criteria: JEV_READ_RESULT_STYLE_CRITERIA,
     };
     if (!deferReadResultQuestions) {
       Object.assign(questions, readResultQuestions);
@@ -473,9 +444,8 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
       };
     }
   }
-  const deferredReadQuestions = deferReadResultQuestions
-    ? { ...operationQuestions, ...readResultQuestions }
-    : operationQuestions;
+  const operationQuestions: Record<string, DecisionQuestion> = {};
+  const deferredReadQuestions = deferReadResultQuestions ? readResultQuestions : {};
   return {
     state,
     questions,
