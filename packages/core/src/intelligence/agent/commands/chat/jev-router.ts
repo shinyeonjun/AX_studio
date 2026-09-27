@@ -66,7 +66,6 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   const operationCatalogMayBeBounded = input.readOperationCatalogMayBeBounded
     ?? operationCatalogSize > operationHints.length;
   const operationSelectionMode = input.readOperationSelectionMode;
-  const deferReadOperationChoices = false;
   const readRecovery = input.readRecoveryContext !== undefined;
   // Recovery is intentionally limited to reads; do not expose write or workflow choices.
   const connectedConnectors = input.connectedConnectors ?? [];
@@ -83,6 +82,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       id: `read:${hint.key}`,
       kind: 'read' as const,
       connector: hint.connector,
+      capabilityId: hint.capabilityId,
       label: hint.label,
       description: hint.description,
     })),
@@ -90,6 +90,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       id: `write:${key}`,
       kind: 'write' as const,
       connector: capability.connector,
+      capabilityId: capability.id,
       label: capability.label,
       description: capability.description,
     })),
@@ -105,7 +106,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       state,
       questions,
       routeCriteria,
-      operationCriteria,
+      operationCandidateCount,
     } = buildJevDecisionRequest({
       userMessage: input.userMessage,
       requestFeatures,
@@ -121,9 +122,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       readOperationHints: operationHints,
       readOperationCatalogSize: operationCatalogSize,
       readOperationCatalogMayBeBounded: operationCatalogMayBeBounded,
-      deferReadOperationChoices,
       actionSelection,
-      parallelToolCandidates,
       readRecoveryContext: input.readRecoveryContext,
       previousReadResult: input.previousReadResult,
     });
@@ -142,7 +141,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           ...(evaluation.usage?.outputTokens === undefined ? {} : { outputTokens: evaluation.usage.outputTokens }),
           questionIds: Object.keys(questions),
           routeCandidateCount: Object.keys(routeCriteria).length,
-          operationCandidateCount: deferReadOperationChoices ? 0 : Object.keys(operationCriteria).length,
+          operationCandidateCount,
           operationCatalogSize,
           operationCatalogMayBeBounded,
           actionCandidateCount: actionSelection.hints.length,
@@ -173,7 +172,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       const previous = telemetry ?? {
         questionIds: Object.keys(questions),
         routeCandidateCount: Object.keys(routeCriteria).length,
-        operationCandidateCount: Object.keys(operationCriteria).length,
+        operationCandidateCount,
         operationCatalogSize,
         operationCatalogMayBeBounded,
         actionCandidateCount: 0,
@@ -187,16 +186,6 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       telemetry = {
         ...previous,
         ...(followup.model ? { model: followup.model } : {}),
-        ...(Object.keys(followupQuestions).some((questionId) =>
-          questionId === 'action' || questionId.startsWith('action_group_') || questionId.startsWith('action_tournament_'),
-        )
-          ? { actionCandidateCount: actionSelection.hints.length }
-          : {}),
-        ...(Object.keys(followupQuestions).some((questionId) =>
-          questionId === 'operation' || questionId.startsWith('operation_group_') || questionId.startsWith('operation_tournament_'),
-        )
-          ? { operationCandidateCount: Object.keys(operationCriteria).length }
-          : {}),
         ...((previous.inputTokens !== undefined || followup.usage?.inputTokens !== undefined)
           ? { inputTokens: (previous.inputTokens ?? 0) + (followup.usage?.inputTokens ?? 0) }
           : {}),
@@ -240,6 +229,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const confidence = choiceAnswerConfidence(routeAnswer, route);
     if (telemetry) telemetry = { ...telemetry, selectedRoute: route, routeConfidence: confidence };
     const explicitRun = choiceAnswer(evaluation.answers.explicit_workflow_run);
+    const explicitAction = choiceAnswer(evaluation.answers.explicit_execution_now);
     const explicitWorkflowCreate = choiceAnswer(evaluation.answers.explicit_workflow_create);
     const explicitWorkflowDelete = choiceAnswer(evaluation.answers.explicit_workflow_delete);
     const explicitWorkflowUpdate = choiceAnswer(evaluation.answers.explicit_workflow_update);
@@ -266,6 +256,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         },
       });
       if (toolSelection.kind === 'clarify') {
+        if (selectedRoute === 'capability_read' && toolSelection.reason === 'no_tool_selected') {
+          return withTelemetry(fallback('missing_context'));
+        }
         const message = toolSelection.reason === 'tool_count_mismatch'
           ? '선택한 실행 유형과 필요한 도구 수가 맞지 않습니다. 한 개 실행인지, 여러 도구 실행인지 요청을 분명히 해 주세요.'
           : '요청에 필요한 도구를 확실히 고르지 못했습니다. 사용할 서비스와 원하는 결과를 더 구체적으로 알려 주세요.';
@@ -275,6 +268,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         return withTelemetry({ kind: 'clarify', route: selectedRoute, message, confidence: selectedConfidence });
       }
       if ((selectedRoute === 'answer') !== (toolSelection.kind === 'reply')) {
+        if (selectedRoute === 'capability_read' && toolSelection.kind === 'reply') {
+          return withTelemetry(fallback('missing_context'));
+        }
         return withTelemetry(fallback('uncertain'));
       }
       if (selectedRoute === 'capability_read' && toolSelection.kind === 'selected'
@@ -377,7 +373,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       const baseTelemetry = telemetry ?? {
         questionIds: Object.keys(questions),
         routeCandidateCount: Object.keys(routeCriteria).length,
-        operationCandidateCount: Object.keys(operationCriteria).length,
+        operationCandidateCount,
         operationCatalogSize,
         operationCatalogMayBeBounded,
         actionCandidateCount: actionSelection.hints.length,
@@ -428,6 +424,14 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     if (workflowRouteResult) return workflowRouteResult;
     if (selectedRoute === 'execution_enqueue_once') {
       if (toolSelection?.kind !== 'selected') return withTelemetry(fallback('uncertain'));
+      if (selectedActionHints.length > 0 && explicitAction?.choice !== 'execute_now') {
+        return withTelemetry({
+          kind: 'clarify',
+          route: selectedRoute,
+          message: '연결된 작업을 지금 실행하라는 요청인지 확실하지 않아 실행하지 않았습니다. 실행할 작업을 명시해 주세요.',
+          confidence: selectedConfidence,
+        });
+      }
       const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
@@ -479,8 +483,13 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const projectionRequest = isReadRoute
       ? tableProjectionRequest(readAnswers.table_projection)
       : undefined;
-    const readResultStyle = isReadRoute && toolSelection?.kind === 'selected'
-      && toolSelection.needsNaturalLanguageAnswer ? 'summary' : undefined;
+    const naturalAnswer = evaluation.answers.needs_natural_language_answer;
+    const needsNaturalLanguageAnswer = toolSelection?.kind === 'selected'
+      ? toolSelection.needsNaturalLanguageAnswer
+      : selectedRoute === 'http_read' && naturalAnswer?.type === 'boolean'
+        && Number.isFinite(naturalAnswer.probability)
+        && naturalAnswer.probability > 0.5 && naturalAnswer.probability <= 1;
+    const readResultStyle = isReadRoute && needsNaturalLanguageAnswer ? 'summary' : undefined;
     return withTelemetry({
       kind: 'command', command, route: selectedRoute, confidence: selectedConfidence,
       ...(transformRequest ? { tableTransform: transformRequest } : {}),

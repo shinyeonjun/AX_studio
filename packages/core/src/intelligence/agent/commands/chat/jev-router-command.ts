@@ -17,7 +17,6 @@ import {
   type JevTableTransformMode,
   type JevTableTransformRequest,
 } from './jev-table-transform.js';
-import type { JevActionHint, JevActionQuestionGroup } from './jev-action-catalog.js';
 import type {
   JevWorkflowStepCandidate,
   JevWorkflowStepRemovalQuestionGroup,
@@ -60,11 +59,6 @@ export function tableProjectionRequest(answer: DecisionAnswer | undefined): JevT
   const selected = choiceAnswer(answer);
   if (!selected) return undefined;
   return selected.choice === 'requested_columns' ? selected.choice : undefined;
-}
-
-export function readResultStyleRequest(answer: DecisionAnswer | undefined): 'summary' | undefined {
-  const selected = choiceAnswer(answer);
-  return selected?.choice === 'summary' ? 'summary' : undefined;
 }
 
 export function httpReadCommand(
@@ -146,39 +140,6 @@ export function capabilityReadCommandForHint(
       params,
     },
   };
-}
-
-export function capabilityReadCommand(
-  hints: readonly JevReadOperationHint[],
-  answers: Record<string, DecisionAnswer>,
-  routeConfidence: number,
-): AxCommand | JevChatRouterResult {
-  if (hints.length === 0) return fallback('missing_context');
-  const answer = choiceAnswer(answers.operation);
-  if (!answer) return fallback('uncertain');
-  if (answer.choice === 'none') return fallback('missing_context');
-  const hint = hints.find((candidate) => candidate.key === answer.choice);
-  if (!hint) {
-    return fallback('uncertain');
-  }
-  return capabilityReadCommandForHint(hint, routeConfidence);
-}
-
-export function selectedActionFinalists(
-  groups: readonly JevActionQuestionGroup[],
-  answers: Record<string, DecisionAnswer>,
-): Array<{ hint: JevActionHint; answer: ChoiceDecisionAnswer }> | undefined {
-  const finalists: Array<{ hint: JevActionHint; answer: ChoiceDecisionAnswer }> = [];
-  for (const group of groups) {
-    const answer = choiceAnswer(answers[group.questionId]);
-    if (!answer) return undefined;
-    if (answer.choice === 'none') continue;
-    // Each choice set already includes `none`; confidence is not a second action policy here.
-    const hint = group.hints.find((candidate) => candidate.key === answer.choice);
-    if (!hint) return undefined;
-    finalists.push({ hint, answer });
-  }
-  return finalists;
 }
 
 export function selectedWorkflowStepFinalists(

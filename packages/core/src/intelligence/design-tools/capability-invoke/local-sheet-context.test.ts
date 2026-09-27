@@ -7,7 +7,8 @@ import type { DecisionEngine } from '../../../contracts/decision.js';
 import { AgentHarness } from '../../agent/harness.js';
 import { runAxCommandChat } from '../../agent/commands/chat.js';
 import { AxCommandService } from '../../agent/commands/service.js';
-import { scriptedModel } from '../../agent/commands/chat/fixtures.js';
+import { parallelToolAnswersForTest, scriptedModel } from '../../agent/commands/chat/fixtures.js';
+
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { buildJevReadOperationIndex } from '../../decision/read-operation-catalog.js';
@@ -35,18 +36,16 @@ describe('local sheet capability context', () => {
       const decisionEngine: DecisionEngine = {
         evaluate: async (request) => {
           jevEvaluations += 1;
-          const operationQuestion = request.questions.operation;
-          if (operationQuestion?.type !== 'choice') throw new Error('Expected Jev read-operation choices');
-          const operation = Object.entries(operationQuestion.criteria).find(([key, criterion]) =>
-            key.startsWith('op_') && JSON.stringify(criterion).includes('local_sheet'),
-          )?.[0];
-          if (!operation) throw new Error('Expected a local sheet candidate');
           return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action',
+              needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.connector === 'local_sheet',
+            }),
             route: {
               type: 'choice', choice: 'capability_read',
               probabilities: { capability_read: 0.99 }, confidence: 0.99,
             },
-            operation: { type: 'choice', choice: operation, probabilities: { [operation]: 0.99 }, confidence: 0.99 },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           } };
         },

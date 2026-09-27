@@ -13,7 +13,7 @@ import { createTestConnectors, mockGmail } from '../../../../testing/connectors/
 import { runAxCommandChat } from '../chat.js';
 import { createDesignToolReadGateway } from '../read-gateway.js';
 import { AxCommandService } from '../service.js';
-import { scriptedModel } from './fixtures.js';
+import { parallelToolAnswersForTest, parallelToolCandidateForTest, scriptedModel } from './fixtures.js';
 import { commandChatContext } from '../service/fixtures.js';
 import { MAX_DECISION_CHOICE_CRITERIA, type DecisionEngine } from '../../../../contracts/decision.js';
 import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
@@ -28,6 +28,10 @@ import type { ConnectorCapability } from '../../../../catalog/capability-types.j
 
 function matchesAction(criterion: unknown, connector: string, action: string): boolean {
   return typeof criterion === 'string' && criterion.startsWith(`${connector}.${action} —`);
+}
+
+function answerOnlyAnswers(request: Parameters<DecisionEngine['evaluate']>[0]) {
+  return parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true });
 }
 
 vi.mock('../../../../persistence/paths/app-log.js', () => ({ appendAppLog: vi.fn() }));
@@ -129,10 +133,11 @@ describe('runAxCommandChat command loop', () => {
     const textSeen: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
         return {
           answers: {
+            ...answerOnlyAnswers(request),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.98 }, confidence: 0.98 },
             explicit_workflow_run: { type: 'boolean', probability: 0.01 },
           },
@@ -246,7 +251,7 @@ describe('runAxCommandChat command loop', () => {
       const execute = vi.spyOn(service, 'execute');
       const textSeen: TextGenerateInput[] = [];
       const decisionEngine: DecisionEngine = {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
             route: {
               type: 'choice', choice: 'resource_list',
@@ -287,10 +292,11 @@ describe('runAxCommandChat command loop', () => {
         },
       };
       const decisionEngine: DecisionEngine = {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           model: 'mock-jev',
           providerRequestCount: 1,
           answers: {
+            ...answerOnlyAnswers(request),
             route: {
               type: 'choice',
               choice: 'answer',
@@ -348,12 +354,13 @@ describe('runAxCommandChat command loop', () => {
             },
           } };
         }
-        const action = request.questions.action;
-        const selectedAction = action?.type === 'choice'
-          ? Object.entries(action.criteria).find(([, criterion]) => matchesAction(criterion, 'gmail', 'message.send'))
-          : undefined;
         return {
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action',
+              needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
             route: {
               type: 'choice',
               choice: 'execution_enqueue_once',
@@ -361,18 +368,6 @@ describe('runAxCommandChat command loop', () => {
               confidence: 0.99,
             },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice',
-              choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 },
-              confidence: 0.99,
-            },
-            action: {
-              type: 'choice',
-              choice: selectedAction?.[0] ?? 'none',
-              probabilities: { [selectedAction?.[0] ?? 'none']: 0.99, none: selectedAction ? 0.01 : 0.99 },
-              confidence: 0.99,
-            },
           },
         };
       },
@@ -394,7 +389,7 @@ describe('runAxCommandChat command loop', () => {
       onInputRequests: (requests) => inputRequests.push(...requests),
     })).resolves.toContain('실행에 필요한 정보를 입력해 주세요');
 
-    expect(evaluations).toBe(3);
+    expect(evaluations).toBe(2);
     expect(enqueueOnce).not.toHaveBeenCalled();
     expect(commands[0]?.args.steps).toMatchObject([{
       connector: 'gmail', action: 'message.send',
@@ -407,7 +402,7 @@ describe('runAxCommandChat command loop', () => {
     db.close();
   });
 
-  it('routes more than 255 connected write tools through the production chat loop without an LLM call', async () => {
+  it('evaluates more than 255 connected write tools in parallel through the production chat loop', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));
     const execute = vi.spyOn(service, 'execute').mockResolvedValue({
@@ -423,42 +418,33 @@ describe('runAxCommandChat command loop', () => {
     registerDynamicCapabilities(capabilities);
     const requests: Array<{
       state: unknown;
-      questions: Record<string, { type: string; criteria?: Record<string, unknown> }>;
+      questions: Record<string, {
+        type: string;
+        criteria?: Record<string, unknown>;
+        instructions?: { candidate?: { capability_id?: string } };
+      }>;
     }> = [];
+    const requestBytes: number[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
-      const request = JSON.parse(String(init?.body)) as (typeof requests)[number];
+      const body = String(init?.body);
+      requestBytes.push(new TextEncoder().encode(body).byteLength);
+      const request = JSON.parse(body) as (typeof requests)[number];
       requests.push(request);
       const answers: Record<string, unknown> = {};
-      const choiceForCapability = (
-        question: (typeof request.questions)[string],
-        capabilityId: string,
-      ): string => Object.entries(question.criteria ?? {}).find(([, value]) =>
-        typeof value === 'string' && value.startsWith(`${capabilityId} —`),
-      )?.[0] ?? 'none';
       const choiceAnswer = (choice: string) => ({
         type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99,
       });
 
       for (const [questionId, question] of Object.entries(request.questions)) {
-        if (question.type === 'noul') {
-          answers[questionId] = { type: 'noul', noul: 0.01 };
-        } else if (question.type === 'choice') {
-          const choice = Object.hasOwn(question.criteria ?? {}, 'none')
-            ? 'none' : Object.keys(question.criteria ?? {})[0]!;
-          answers[questionId] = choiceAnswer(choice);
-        }
-      }
-      if (request.questions.route) {
-        answers.route = choiceAnswer('execution_enqueue_once');
-      }
-      if (request.questions.explicit_execution_now) answers.explicit_execution_now = choiceAnswer('execute_now');
-      if (request.questions.action_scope) answers.action_scope = choiceAnswer('single_action');
-      for (const [questionId, question] of Object.entries(request.questions)) {
-        if (questionId.startsWith('action_group_') && question.type === 'choice') {
-          const target = questionId.endsWith('_0') ? 'test.action_0' : 'test.action_259';
-          answers[questionId] = choiceAnswer(choiceForCapability(question, target));
-        } else if (questionId.startsWith('action_tournament_') && question.type === 'choice') {
-          answers[questionId] = choiceAnswer(choiceForCapability(question, 'test.action_259'));
+        if (questionId === 'route') answers[questionId] = choiceAnswer('execution_enqueue_once');
+        else if (questionId === 'request_mode') answers[questionId] = choiceAnswer('single_action');
+        else if (questionId === 'explicit_execution_now') answers[questionId] = choiceAnswer('execute_now');
+        else if (question.type === 'noul') {
+          const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
+          answers[questionId] = {
+            type: 'noul',
+            noul: questionId === 'needs_natural_language_answer' ? 0.01 : selected ? 0.99 : 0.01,
+          };
         }
       }
 
@@ -478,26 +464,27 @@ describe('runAxCommandChat command loop', () => {
       });
       expect(reply).toContain('큐');
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
-      expect(requests).toHaveLength(3);
-      expect(Object.keys(requests[0]!.questions)).toEqual(['route', 'explicit_execution_now', 'action_scope']);
-      expect(Object.keys(requests[1]!.questions)).toEqual(['action_group_0', 'action_group_1']);
-      expect(Object.keys(requests[2]!.questions)).toEqual(['action_tournament_0_group_0']);
+      expect(requests.length).toBeGreaterThan(1);
+      const toolQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
+        .filter(([id]) => id.startsWith('tool_')));
+      expect(toolQuestions).toHaveLength(capabilities.length);
+      expect(toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id))
+        .toEqual(capabilities.map(({ id }) => id));
+      expect(new Set(toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id)).size)
+        .toBe(capabilities.length);
       for (const request of requests) {
+        expect(new TextEncoder().encode(JSON.stringify(request)).byteLength).toBeLessThanOrEqual(65_536);
         for (const question of Object.values(request.questions)) {
           if (question.type === 'choice') {
             expect(Object.keys(question.criteria ?? {}).length).toBeLessThanOrEqual(MAX_DECISION_CHOICE_CRITERIA);
           }
         }
       }
-      const actionGroups = requests.flatMap(({ questions }) => Object.entries(questions).filter(
-        ([id, question]) => id.startsWith('action_group_') && question.type === 'choice',
-      ));
-      const offeredIds = actionGroups.flatMap(([, question]) => question.type === 'choice'
-        ? Object.values(question.criteria).flatMap((value) => typeof value === 'string' && value.includes(' — ')
-          ? [value.split(' — ', 1)[0]!] : [])
-        : []);
-      expect(offeredIds).toHaveLength(capabilities.length);
-      expect(new Set(offeredIds).size).toBe(capabilities.length);
+      expect(appendAppLog).toHaveBeenCalledWith('info', 'Jev chat route timing recorded.', expect.objectContaining({
+        jevEvaluationCalls: 1,
+        jevProviderRequestCount: requests.length,
+        jevEstimatedRequestBytes: requestBytes.reduce((total, bytes) => total + bytes, 0),
+      }));
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'execution.enqueue_once',
@@ -514,13 +501,11 @@ describe('runAxCommandChat command loop', () => {
         jevSelectedRoute: 'execution_enqueue_once',
         jevRouteConfidence: 0.99,
         jevActionScopeChoice: 'single_action',
-        jevActionScopeConfidence: 0.99,
         jevActionCandidateSelected: true,
-        jevActionCandidateConfidence: 0.99,
         jevActionCandidateCount: capabilities.length,
         jevActionCatalogSize: capabilities.length,
-        jevEvaluationCalls: 3,
-        jevProviderRequestCount: 3,
+        jevEvaluationCalls: 1,
+        jevProviderRequestCount: requests.length,
         jevEstimatedRequestBytes: expect.any(Number),
       }));
     } finally {
@@ -550,39 +535,18 @@ describe('runAxCommandChat command loop', () => {
       });
       const decisionEngine: DecisionEngine = {
         evaluate: async (request) => {
-          const action = request.questions.action;
-          const selected = action?.type === 'choice'
-            ? Object.entries(action.criteria).find(([, criterion]) =>
-                matchesAction(criterion, 'gmail', 'message.send'))
-            : undefined;
-          if (!selected) {
-            return { answers: {
-              route: {
-                type: 'choice', choice: 'execution_enqueue_once',
-                probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-              },
-              explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-              action_scope: {
-                type: 'choice', choice: 'single_action',
-                probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-              },
-            } };
-          }
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action',
+                needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+              }),
               route: {
                 type: 'choice', choice: 'execution_enqueue_once',
                 probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
               },
               explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-              action_scope: {
-                type: 'choice', choice: 'single_action',
-                probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-              },
-              action: {
-                type: 'choice', choice: selected[0],
-                probabilities: { [selected[0]]: 0.84, none: 0.16 }, confidence: 0.83,
-              },
             },
           };
         },
@@ -626,8 +590,9 @@ describe('runAxCommandChat command loop', () => {
     const seen: StructuredGenerateInput<unknown>[] = [];
     const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
+          ...answerOnlyAnswers(request),
           route: {
             type: 'choice',
             choice: 'answer',
@@ -662,10 +627,11 @@ describe('runAxCommandChat command loop', () => {
     const textSeen: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
         return {
           answers: {
+            ...answerOnlyAnswers(request),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.98 }, confidence: 0.98 },
             explicit_workflow_run: { type: 'boolean', probability: 0.01 },
           },
@@ -692,10 +658,11 @@ describe('runAxCommandChat command loop', () => {
     const textSeen: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
         return {
           answers: {
+            ...answerOnlyAnswers(request),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
             explicit_workflow_run: { type: 'boolean', probability: 0.01 },
           },
@@ -721,10 +688,11 @@ describe('runAxCommandChat command loop', () => {
     const textSeen: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
         return {
           answers: {
+            ...answerOnlyAnswers(request),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
             explicit_workflow_run: { type: 'boolean', probability: 0.01 },
           },
@@ -827,12 +795,13 @@ describe('runAxCommandChat command loop', () => {
             }];
           })) };
         }
-        const requestText = typeof request.state === 'object' && request.state !== null
-          && 'request' in request.state && typeof request.state.request === 'string'
-          ? request.state.request
-          : '';
-        const resultStyle = requestText.includes('요약') ? 'summary' : 'data';
+        const needsNaturalLanguageAnswer = JSON.stringify(request.state).includes('간단히 요약');
         return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action',
+              needsNaturalLanguageAnswer,
+              select: (candidate) => candidate.capabilityId === 'http.request',
+            }),
             route: {
               type: 'choice',
               choice: 'http_read',
@@ -845,10 +814,6 @@ describe('runAxCommandChat command loop', () => {
             table_projection: {
               type: 'choice', choice: 'requested_columns',
               probabilities: { requested_columns: 0.99, all_columns: 0.01 }, confidence: 0.99,
-            },
-            read_result_style: {
-              type: 'choice', choice: resultStyle,
-              probabilities: { [resultStyle]: 0.99 }, confidence: 0.99,
             },
           } };
       },
@@ -1087,7 +1052,7 @@ describe('runAxCommandChat command loop', () => {
       readGateway: { execute: async () => { throw new Error('HTTP should not run without a cataloged path'); } },
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
           route: {
             type: 'choice', choice: 'http_read',
@@ -1175,15 +1140,20 @@ describe('runAxCommandChat command loop', () => {
             }]));
           return { answers: columnAnswers };
         }
-        const operation = request.questions.operation;
-        if (operation?.type !== 'choice') throw new Error('Expected discovered read operations');
-        const productChoice = Object.entries(operation.criteria).find(([key, value]) =>
-          key.startsWith('op_') && JSON.stringify(value).includes('DummyJSON: Products'),
-        )?.[0];
-        if (!productChoice) throw new Error('Products should be a Jev choice');
+        const productCandidate = Object.entries(request.questions)
+          .filter(([id]) => id.startsWith('tool_'))
+          .map(([, question]) => parallelToolCandidateForTest(question))
+          .find((candidate) => candidate?.kind === 'read'
+            && candidate.capabilityId === 'http.request'
+            && `${candidate.label} ${candidate.description}`.includes('Products'));
+        if (!productCandidate) throw new Error('Products should be a Jev tool candidate');
         return { answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action',
+            needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === productCandidate.id,
+          }),
           route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-          operation: { type: 'choice', choice: productChoice, probabilities: { [productChoice]: 0.99 }, confidence: 0.99 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           table_projection: {
             type: 'choice', choice: 'requested_columns', probabilities: { requested_columns: 0.99 }, confidence: 0.99,
@@ -1242,7 +1212,7 @@ describe('runAxCommandChat command loop', () => {
     const seen: StructuredGenerateInput<unknown>[] = [];
     const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
           route: {
             type: 'choice', choice: 'http_read',
@@ -1648,16 +1618,17 @@ describe('runAxCommandChat command loop', () => {
       },
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
           },
-          operation: {
-            type: 'choice', choice: 'op_0',
-            probabilities: { op_0: 0.98, none: 0.02 }, confidence: 0.98,
-          },
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action',
+            needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
           table_transform: {
             type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99,
           },
@@ -1718,15 +1689,20 @@ describe('runAxCommandChat command loop', () => {
     const decisionEngine: DecisionEngine = {
       evaluate: async (request) => {
         requests.push(request);
-        const operation = request.questions.operation;
-        const operationKeys = operation?.type === 'choice'
-          ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
-          : [];
+        const toolCandidates = Object.entries(request.questions)
+          .filter(([id]) => id.startsWith('tool_'))
+          .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+          .filter((id): id is string => Boolean(id));
+        const selection = (selectedId: string) => parallelToolAnswersForTest(request, {
+          mode: 'single_action',
+          needsNaturalLanguageAnswer: false,
+          select: (candidate) => candidate.id === selectedId,
+        });
         if (requests.length === 1) {
-          expect(operationKeys).toEqual(['op_0', 'op_1']);
+          expect(toolCandidates).toEqual(['read:op_0', 'read:op_1']);
           return { answers: {
+            ...selection('read:op_0'),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-            operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.99 }, confidence: 0.99 },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           } };
         }
@@ -1736,17 +1712,16 @@ describe('runAxCommandChat command loop', () => {
           status: 'error',
           failure_kind: 'transient',
         });
-        expect(operationKeys).toEqual(['op_1']);
+        expect(toolCandidates).toEqual(['read:op_1']);
         const route = request.questions.route;
         expect(route?.type === 'choice' ? Object.keys(route.criteria) : []).toEqual(['answer', 'capability_read']);
-        expect(request.questions).not.toHaveProperty('action');
         expect(request.questions).not.toHaveProperty('explicit_execution_now');
         expect(JSON.stringify(request)).not.toContain('"table":"inventory"');
         expect(JSON.stringify(request)).not.toContain('do-not-forward');
         expect(JSON.stringify(request)).not.toContain('private response body');
         return { answers: {
+          ...selection('read:op_1'),
           route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-          operation: { type: 'choice', choice: 'op_1', probabilities: { op_1: 0.99 }, confidence: 0.99 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
         } };
       },
@@ -1804,12 +1779,15 @@ describe('runAxCommandChat command loop', () => {
       },
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
-        const operation = evaluations === 1 ? 'op_0' : 'op_1';
         return { answers: {
           route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-          operation: { type: 'choice', choice: operation, probabilities: { [operation]: 0.99 }, confidence: 0.99 },
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action',
+            needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
         } };
       },
     };
@@ -1868,16 +1846,20 @@ describe('runAxCommandChat command loop', () => {
     });
     const decisionEngine: DecisionEngine = {
       evaluate: async (request) => {
-        const operation = request.questions.operation;
-        offeredOperations = operation?.type === 'choice'
-          ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
-          : [];
+        offeredOperations = Object.entries(request.questions)
+          .filter(([id]) => id.startsWith('tool_'))
+          .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+          .filter((id): id is string => Boolean(id));
         return { answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action',
+            needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_70',
+          }),
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.98 }, confidence: 0.98,
           },
-          operation: { type: 'choice', choice: 'op_70', probabilities: { op_70: 0.98 }, confidence: 0.98 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
         } };
       },
@@ -1911,15 +1893,18 @@ describe('runAxCommandChat command loop', () => {
     const textSeen: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
+      evaluate: async (request) => {
         evaluations += 1;
         return {
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action',
+              needsNaturalLanguageAnswer: false,
+            }),
             route: {
               type: 'choice', choice: 'capability_read',
               probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
             },
-            operation: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           },
         };
       },
@@ -1974,15 +1959,16 @@ describe('runAxCommandChat command loop', () => {
       },
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action',
+            needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
-          },
-          operation: {
-            type: 'choice', choice: 'op_0',
-            probabilities: { op_0: 0.98, none: 0.02 }, confidence: 0.98,
           },
         },
       }),
@@ -2074,8 +2060,9 @@ describe('runAxCommandChat command loop', () => {
     const seen: StructuredGenerateInput<unknown>[] = [];
     const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async () => ({
+      evaluate: async (request) => ({
         answers: {
+          ...answerOnlyAnswers(request),
           route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
           explicit_workflow_run: { type: 'boolean', probability: 0.01 },
         },
@@ -2130,255 +2117,6 @@ describe('runAxCommandChat command loop', () => {
     })).resolves.toContain('따옴표로 지정한 이름');
     expect(execute).not.toHaveBeenCalled();
     expect(seen).toHaveLength(0);
-  });
-
-  it('fails closed when Jev becomes unavailable while planning a saved workflow', async () => {
-    const db = await createDatabaseAsync(':memory:');
-    const store = new WorkflowStore(db);
-    store.setConnection('gmail', true, { email: 'primary' });
-    const workspaceSessionId = store.saveWorkspaceChat({ messages: [] }).id;
-    const service = new AxCommandService(store);
-    const execute = vi.spyOn(service, 'execute');
-    let evaluations = 0;
-    const decisionEngine: DecisionEngine = {
-      evaluate: async () => {
-        evaluations += 1;
-        if (evaluations === 1) {
-          return {
-            answers: {
-              route: {
-                type: 'choice',
-                choice: 'workflow_create',
-                probabilities: { workflow_create: 0.99, answer: 0.01 },
-                confidence: 0.99,
-              },
-              explicit_workflow_create: { type: 'choice', choice: 'create_now', probabilities: { create_now: 0.99 }, confidence: 0.99 },
-              explicit_workflow_run: { type: 'choice', choice: 'do_not_run', probabilities: { do_not_run: 0.99 }, confidence: 0.99 },
-              workflow_trigger: {
-                type: 'choice', choice: 'manual',
-                probabilities: { manual: 0.99, schedule: 0.01 }, confidence: 0.99,
-              },
-            },
-          };
-        }
-        throw new Error('jev_unavailable');
-      },
-    };
-    const harness = new AgentHarness(scriptedModel([
-      { kind: 'command', command: { name: 'workflow.create', args: { name: '차단된 업무', goal: '생성 요청' } } },
-    ], []));
-
-    await expect(runAxCommandChat({
-      harness,
-      commandService: service,
-      decisionEngine,
-      connectedConnectors: ['gmail'],
-      workspaceSessionId,
-      readOperationHints: [{
-        key: 'gmail_search', capabilityId: 'gmail.messages.search', connector: 'gmail',
-        label: 'Gmail 메일 검색', description: 'Gmail 메일 목록 조회', params: {},
-      }],
-      messages: [],
-      userMessage: '업무를 만들어줘',
-    })).resolves.toContain('Jev가 다단계 실행 계획을 판단하지 못해 중단했습니다');
-    expect(evaluations).toBe(2);
-    expect(execute).not.toHaveBeenCalled();
-  });
-
-  it('saves a Jev-compiled manual workflow without an LLM command or reply call', async () => {
-    const db = await createDatabaseAsync(':memory:');
-    const store = new WorkflowStore(db);
-    store.setConnection('gmail', true, { email: 'primary' });
-    const workspaceSessionId = store.saveWorkspaceChat({ messages: [] }).id;
-    const service = new AxCommandService(store);
-    const execute = vi.spyOn(service, 'execute');
-    const seen: StructuredGenerateInput<unknown>[] = [];
-    const textSeen: unknown[] = [];
-    const commandResults: string[] = [];
-    const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
-        if (request.questions.route) {
-          return {
-            answers: {
-              route: {
-                type: 'choice' as const, choice: 'workflow_create',
-                probabilities: { workflow_create: 0.98, answer: 0.02 }, confidence: 0.98,
-              },
-              explicit_workflow_create: { type: 'choice' as const, choice: 'create_now', probabilities: { create_now: 0.99 }, confidence: 0.99 },
-              workflow_trigger: {
-                type: 'choice' as const, choice: 'manual',
-                probabilities: { manual: 0.99, schedule: 0.01 }, confidence: 0.99,
-              },
-            },
-          };
-        }
-        const state = request.state as { planned_steps?: unknown[] };
-        if ((state.planned_steps?.length ?? 0) > 0) {
-          return {
-            answers: {
-              next_step: {
-                type: 'choice' as const, choice: 'done',
-                probabilities: { done: 0.99 }, confidence: 0.99,
-              },
-            },
-          };
-        }
-        const next = request.questions.next_step;
-        if (next?.type !== 'choice') throw new Error('expected Jev workflow planning');
-        const selected = Object.entries(next.criteria).find(([, criterion]) =>
-          JSON.stringify(criterion).includes('gmail.messages.search'));
-        return {
-          answers: {
-            next_step: {
-              type: 'choice' as const, choice: selected?.[0] ?? 'done',
-              probabilities: { [selected?.[0] ?? 'done']: 0.99, done: selected ? 0.01 : 0.99 },
-              confidence: 0.99,
-            },
-          },
-        };
-      },
-    };
-    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [], textSeen));
-
-    const reply = await runAxCommandChat({
-      harness,
-      commandService: service,
-      decisionEngine,
-      connectedConnectors: ['gmail'],
-      workspaceSessionId,
-      readOperationHints: [{
-        key: 'gmail_search', capabilityId: 'gmail.messages.search', connector: 'gmail',
-        label: 'Gmail 메일 검색', description: 'Gmail 메일 목록 조회', params: {},
-      }],
-      messages: [],
-      userMessage: 'Gmail 메일을 검색하는 수동 workflow를 저장해줘',
-      onCommandResult: (result) => commandResults.push(result.command),
-    });
-
-    expect(reply).toContain('수동 workflow를 저장했습니다');
-    expect(store.listWorkflows()).toHaveLength(1);
-    expect(commandResults).toEqual(['workflow.create']);
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(seen).toHaveLength(0);
-    expect(textSeen).toHaveLength(0);
-    db.close();
-  });
-
-  it('lets Jev map a quoted workflow subject and host-requests the still-missing body', async () => {
-    const db = await createDatabaseAsync(':memory:');
-    const store = new WorkflowStore(db);
-    store.setConnection('gmail', true, { email: 'primary' });
-    const workspaceSessionId = store.saveWorkspaceChat({ messages: [] }).id;
-    const service = new AxCommandService(store);
-    const execute = vi.spyOn(service, 'execute');
-    const seen: StructuredGenerateInput<unknown>[] = [];
-    const textSeen: TextGenerateInput[] = [];
-    const commands: AxCommand[] = [];
-    const inputRequests: AxInputRequest[] = [];
-    const decisionRequests: Parameters<DecisionEngine['evaluate']>[0][] = [];
-    let pendingCommand: AxCommand | undefined;
-    const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
-        decisionRequests.push(request);
-        if (request.questions.route) {
-          return { answers: {
-            route: {
-              type: 'choice', choice: 'workflow_create',
-              probabilities: { workflow_create: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
-            explicit_workflow_create: { type: 'choice', choice: 'create_now', probabilities: { create_now: 0.99 }, confidence: 0.99 },
-            workflow_trigger: {
-              type: 'choice', choice: 'manual', probabilities: { manual: 0.99 }, confidence: 0.99,
-            },
-          } };
-        }
-        const inputQuestion = request.questions.action_input_0;
-        if (inputQuestion?.type === 'choice') {
-          const subject = Object.entries(inputQuestion.criteria).find(([, criterion]) =>
-            typeof criterion === 'object' && criterion !== null
-              && 'parameter_name' in criterion && criterion.parameter_name === 'subject',
-          )?.[0] ?? 'none';
-          return { answers: {
-            action_input_0: { type: 'choice', choice: subject, probabilities: { [subject]: 0.99 }, confidence: 0.99 },
-          } };
-        }
-        const state = request.state as { planned_steps?: unknown[] };
-        const next = request.questions.next_step;
-        if (next?.type !== 'choice') throw new Error('expected Jev workflow planning');
-        const selected = (state.planned_steps?.length ?? 0) > 0
-          ? ['done', next.criteria.done]
-          : Object.entries(next.criteria).find(([, criterion]) =>
-              JSON.stringify(criterion).includes('gmail.message.send'),
-            );
-        const choice = selected?.[0] ?? 'done';
-        return { answers: {
-          next_step: { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 },
-        } };
-      },
-    };
-
-    const harness = new AgentHarness(scriptedModel([], seen, 'test-provider', [], textSeen));
-    const reply = await runAxCommandChat({
-      harness,
-      commandService: service,
-      decisionEngine,
-      connectedConnectors: ['gmail'],
-      workspaceSessionId,
-      messages: [],
-      userMessage: '이번만 person@example.com에게 "견적서 발송 안내" 제목으로 메일을 보내는 수동 workflow를 저장해줘.',
-      onCommandResult: (_result, command) => {
-        if (!command) return;
-        commands.push(command);
-        if (command.name === 'workflow.create') pendingCommand = command;
-      },
-      onInputRequests: (requests) => inputRequests.push(...requests),
-    });
-
-    expect(reply).toContain('필요한 값이 없습니다: body');
-    expect(decisionRequests.some((request) => request.questions.action_input_0?.type === 'choice')).toBe(true);
-    expect(commands[0]?.args.steps).toMatchObject([{
-      action: 'message.send',
-      params: { to: 'person@example.com', subject: '견적서 발송 안내' },
-    }]);
-    expect(commands[0]?.args.steps).not.toMatchObject([{ params: { body: '견적서 발송 안내' } }]);
-    expect(inputRequests).toEqual(expect.arrayContaining([expect.objectContaining({ label: '본문', required: true })]));
-    expect(store.listWorkflows()).toHaveLength(0);
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(seen).toHaveLength(0);
-    expect(textSeen).toHaveLength(0);
-
-    if (!pendingCommand) throw new Error('expected host-held workflow command');
-    const decisionsBeforeResume = decisionRequests.length;
-    const resumedInputRequests: AxInputRequest[] = [];
-    const resumedReply = await runAxCommandChat({
-      harness,
-      commandService: service,
-      messages: [],
-      workspaceSessionId,
-      userMessage: '본문: 견적서를 보내 주세요',
-      decisionMessage: '이번만 person@example.com에게 "견적서 발송 안내" 제목으로 메일을 보내는 수동 workflow를 저장해줘.',
-      pendingCommand,
-      commandInputValues: inputRequests.map((request) => ({
-        label: request.label,
-        value: '견적서를 보내 주세요',
-        ...(request.stepId ? { stepId: request.stepId } : {}),
-        ...(request.capabilityId ? { capabilityId: request.capabilityId } : {}),
-        ...(request.parameterName ? { parameterName: request.parameterName } : {}),
-      })),
-      onInputRequests: (requests) => resumedInputRequests.push(...requests),
-    });
-
-    expect(resumedReply).toContain('수동 workflow를 저장했습니다');
-    expect(decisionRequests).toHaveLength(decisionsBeforeResume);
-    expect(resumedInputRequests).toHaveLength(0);
-    const savedWorkflows = store.listWorkflows();
-    expect(savedWorkflows).toHaveLength(1);
-    expect(store.getWorkflow(savedWorkflows[0]!.id)?.steps).toMatchObject([{
-      action: 'message.send',
-      params: { to: 'person@example.com', subject: '견적서 발송 안내', body: '견적서를 보내 주세요' },
-    }]);
-    expect(execute).toHaveBeenCalledTimes(2);
-    db.close();
   });
 
   it('deletes only the current workflow version selected by Jev without an LLM call', async () => {

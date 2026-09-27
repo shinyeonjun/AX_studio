@@ -150,6 +150,7 @@ describe('routeChatWithJev parallel selection', () => {
                   needs_natural_language_answer: bool(0.01),
                   tool_0: bool(0.99),
                   tool_1: bool(0.99),
+                  explicit_execution_now: choice('execute_now'),
                 },
               };
             }

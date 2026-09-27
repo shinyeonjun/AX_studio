@@ -60,6 +60,7 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
       inputTokens?: number;
       outputTokens?: number;
       questionIds: string[];
+      toolCandidates: Array<{ id: string; capabilityId?: string }>;
       answers: Record<string, { choice?: string; confidence?: number; probability?: number }>;
     }> = [];
     const decisionEngine: DecisionEngine = {
@@ -76,6 +77,15 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
           ...(response.usage?.inputTokens === undefined ? {} : { inputTokens: response.usage.inputTokens }),
           ...(response.usage?.outputTokens === undefined ? {} : { outputTokens: response.usage.outputTokens }),
           questionIds: Object.keys(request.questions),
+          toolCandidates: Object.entries(request.questions)
+            .filter(([id]) => id.startsWith('tool_'))
+            .flatMap(([id, question]) => {
+              const candidate = question.type === 'boolean' ? question.instructions?.candidate : undefined;
+              return candidate && typeof candidate === 'object' && 'id' in candidate
+                ? [{ id, ...('capability_id' in candidate && typeof candidate.capability_id === 'string'
+                    ? { capabilityId: candidate.capability_id } : {}) }]
+                : [];
+            }),
           answers: Object.fromEntries(Object.entries(response.answers).map(([id, answer]: [string, DecisionAnswer]) => [
             id,
             answer.type === 'choice'
@@ -113,23 +123,21 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
       const queuedAction = queuedPlan?.steps[0];
       const selected = queuedAction?.type === 'action' ? queuedAction : undefined;
       const selectedCandidates = calls.flatMap((call) => Object.entries(call.answers)
-        .filter(([questionId]) => questionId.startsWith('action_group_')
-          || questionId.startsWith('action_tournament_'))
-        .map(([, answer]) => answer.choice)
-        .filter((choice): choice is string => Boolean(choice && choice !== 'none')));
+        .filter(([questionId, answer]) => questionId.startsWith('tool_') && (answer.probability ?? 0) > 0.5)
+        .map(([questionId]) => call.toolCandidates.find(({ id }) => id === questionId)?.capabilityId)
+        .filter((id): id is string => Boolean(id)));
 
       console.info('[live Jev router]', JSON.stringify({
         elapsedMs,
         reply,
         route: calls[0]?.answers.route?.choice,
         routeConfidence: calls[0]?.answers.route?.confidence,
-        actionScopeChoice: calls[0]?.answers.action_scope?.choice,
-        actionScopeConfidence: calls[0]?.answers.action_scope?.confidence,
+        requestMode: calls[0]?.answers.request_mode?.choice,
+        needsNaturalLanguageAnswer: calls[0]?.answers.needs_natural_language_answer?.probability,
         actionCandidateSelected: selectedCandidates.length > 0,
-        actionCandidateConfidence: calls.flatMap((call) => Object.entries(call.answers)
-          .filter(([questionId]) => questionId.startsWith('action_group_')
-            || questionId.startsWith('action_tournament_'))
-          .map(([, answer]) => answer.confidence ?? 0))[0],
+        actionCandidateProbability: calls.flatMap((call) => Object.entries(call.answers)
+          .filter(([questionId]) => questionId.startsWith('tool_'))
+          .map(([, answer]) => answer.probability ?? 0))[0],
         selectedConnector: selected?.connector,
         selectedAction: selected?.action,
         selectedCandidates,
@@ -155,8 +163,8 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
       });
       expect(store.listWorkflows()).toHaveLength(0);
       expect(calls[0]?.answers.route?.choice).toBe('execution_enqueue_once');
-      expect(calls[0]?.answers.action_scope?.choice).toBe('single_action');
-      expect(selectedCandidates).toContain('action_259');
+      expect(calls[0]?.answers.request_mode?.choice).toBe('single_action');
+      expect(selectedCandidates).toContain(`${liveConnector}.action_259`);
       expect(calls.length).toBeGreaterThanOrEqual(2);
       expect(calls.reduce((sum, call) => sum + call.providerRequests, 0)).toBe(calls.length);
       expect(textCalls).toHaveLength(0);

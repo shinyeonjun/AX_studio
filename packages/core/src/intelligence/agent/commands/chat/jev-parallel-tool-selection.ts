@@ -13,6 +13,7 @@ export interface JevParallelToolCandidate {
   id: string;
   kind: 'read' | 'write';
   connector: string;
+  capabilityId?: string;
   label: string;
   description: string;
 }
@@ -93,6 +94,7 @@ export function parallelToolSelectionQuestions(
           id: boundDecisionString(candidate.id, 128),
           kind: candidate.kind,
           connector: boundDecisionString(candidate.connector, 64),
+          ...(candidate.capabilityId ? { capability_id: boundDecisionString(candidate.capabilityId, 160) } : {}),
           label: boundDecisionString(candidate.label, 120),
           description: boundDecisionString(candidate.description, 240),
         },

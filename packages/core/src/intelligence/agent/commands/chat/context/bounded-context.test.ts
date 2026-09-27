@@ -6,7 +6,7 @@ import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
-import { scriptedModel } from '../fixtures.js';
+import { parallelToolAnswersForTest, scriptedModel } from '../fixtures.js';
 
 describe('runAxCommandChat bounded context', () => {
   it('sends bounded user-confirmed memory to Jev decisions and text responses', async () => {
@@ -18,9 +18,11 @@ describe('runAxCommandChat bounded context', () => {
     const textCalls: TextGenerateInput[] = [];
     const decisionStates: unknown[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async ({ state }) => {
+      evaluate: async (request) => {
+        const { state } = request;
         decisionStates.push(state);
         return { answers: {
+          ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
           route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
         } };
       },
