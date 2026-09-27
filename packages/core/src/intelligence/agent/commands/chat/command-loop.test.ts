@@ -26,6 +26,12 @@ import type { AxCommand, AxInputRequest } from '../schema.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 
+const builtInTransformCapabilityIds = [
+  'transform.table_to_text',
+  'transform.document_to_text',
+  'transform.http_to_table',
+];
+
 function matchesAction(criterion: unknown, connector: string, action: string): boolean {
   return typeof criterion === 'string' && criterion.startsWith(`${connector}.${action} —`);
 }
@@ -467,11 +473,14 @@ describe('runAxCommandChat command loop', () => {
       expect(requests.length).toBeGreaterThan(1);
       const toolQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
         .filter(([id]) => id.startsWith('tool_')));
-      expect(toolQuestions).toHaveLength(capabilities.length);
+      expect(toolQuestions).toHaveLength(capabilities.length + builtInTransformCapabilityIds.length);
       expect(toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id))
-        .toEqual(capabilities.map(({ id }) => id));
+        .toEqual([
+          ...capabilities.map(({ id }) => id),
+          ...builtInTransformCapabilityIds,
+        ]);
       expect(new Set(toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id)).size)
-        .toBe(capabilities.length);
+        .toBe(capabilities.length + builtInTransformCapabilityIds.length);
       for (const request of requests) {
         expect(new TextEncoder().encode(JSON.stringify(request)).byteLength).toBeLessThanOrEqual(65_536);
         for (const question of Object.values(request.questions)) {
@@ -1699,7 +1708,11 @@ describe('runAxCommandChat command loop', () => {
           select: (candidate) => candidate.id === selectedId,
         });
         if (requests.length === 1) {
-          expect(toolCandidates).toEqual(['read:op_0', 'read:op_1']);
+          expect(toolCandidates).toEqual([
+            'read:op_0',
+            'read:op_1',
+            ...builtInTransformCapabilityIds.map((id) => `transform:${id}`),
+          ]);
           return { answers: {
             ...selection('read:op_0'),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
@@ -1879,7 +1892,7 @@ describe('runAxCommandChat command loop', () => {
     })).resolves.toContain('"stock": 12');
 
     expect(selection.mode).toBe('full_catalog');
-    expect(offeredOperations).toHaveLength(71);
+    expect(offeredOperations).toHaveLength(71 + builtInTransformCapabilityIds.length);
     expect(resolveReadOperationSelection).toHaveBeenCalledExactlyOnceWith();
     expect(textSeen).toHaveLength(0);
     db.close();
