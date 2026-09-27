@@ -4,6 +4,9 @@ import type {
   DecisionEvaluationRequest,
   DecisionQuestion,
 } from '../../../../contracts/decision.js';
+import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
+import type { JevActionHint } from './jev-action-catalog.js';
+import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
@@ -16,6 +19,39 @@ export interface JevParallelToolCandidate {
   capabilityId?: string;
   label: string;
   description: string;
+}
+
+export function buildJevParallelToolCandidates(input: {
+  readOperationHints: readonly JevReadOperationHint[];
+  actionHints: readonly JevActionHint[];
+  transformCapabilities: readonly ConnectorCapability[];
+}): JevParallelToolCandidate[] {
+  return [
+    ...input.readOperationHints.map((hint) => ({
+      id: `read:${hint.key}`,
+      kind: 'read' as const,
+      connector: hint.connector,
+      capabilityId: hint.capabilityId,
+      label: hint.label,
+      description: hint.description,
+    })),
+    ...input.actionHints.map(({ key, capability }) => ({
+      id: `write:${key}`,
+      kind: 'write' as const,
+      connector: capability.connector,
+      capabilityId: capability.id,
+      label: capability.label,
+      description: capability.description,
+    })),
+    ...input.transformCapabilities.map((capability) => ({
+      id: `transform:${capability.id}`,
+      kind: 'read' as const,
+      connector: capability.connector,
+      capabilityId: capability.id,
+      label: capability.label,
+      description: capability.description,
+    })),
+  ];
 }
 
 export type JevParallelToolMode = 'answer_only' | 'single_action' | 'multi_action';

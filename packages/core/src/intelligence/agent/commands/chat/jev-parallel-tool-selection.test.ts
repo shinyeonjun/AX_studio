@@ -150,6 +150,9 @@ describe('routeChatWithJev parallel selection', () => {
                   needs_natural_language_answer: bool(0.01),
                   tool_0: bool(0.99),
                   tool_1: bool(0.99),
+                  ...Object.fromEntries(Object.keys(request.questions)
+                    .filter((id) => id.startsWith('tool_') && id !== 'tool_0' && id !== 'tool_1')
+                    .map((id) => [id, bool(0.01)])),
                   explicit_execution_now: choice('execute_now'),
                 },
               };

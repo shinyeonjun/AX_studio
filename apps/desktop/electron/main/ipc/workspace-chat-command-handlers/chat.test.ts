@@ -16,6 +16,53 @@ import * as axCore from '@ax-studio/core';
 import { claimPendingCommand, clearPendingCommand } from './pending-command.js';
 import { commandInputContinuation } from '../chat-boundary.js';
 
+type MockJevQuestion = {
+  type: string;
+  criteria?: Record<string, unknown>;
+  instructions?: Record<string, unknown>;
+};
+
+type MockJevRequest = {
+  state: { planned_steps?: unknown[] };
+  questions: Record<string, MockJevQuestion>;
+};
+
+function mockJevAnswers(
+  request: MockJevRequest,
+  input: {
+    route: string;
+    mode: 'answer_only' | 'single_action' | 'multi_action';
+    needsNaturalLanguageAnswer: boolean;
+    selectTool?: (candidate: Record<string, unknown>) => boolean;
+    selectChoice?: (id: string, question: MockJevQuestion) => string | undefined;
+  },
+): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
+    if (question.type === 'boolean' || question.type === 'noul') {
+      const probability = id === 'needs_natural_language_answer'
+        ? Number(input.needsNaturalLanguageAnswer)
+        : id.startsWith('tool_')
+          ? Number(input.selectTool?.(question.instructions?.candidate as Record<string, unknown>) === true)
+          : 0;
+      return [id, { type: 'noul', noul: probability ? 0.99 : 0.01 }];
+    }
+    if (question.type === 'choice') {
+      const criteria = question.criteria ?? {};
+      const selected = id === 'route'
+        ? input.route
+        : id === 'request_mode'
+          ? input.mode
+          : input.selectChoice?.(id, question)
+            ?? (Object.hasOwn(criteria, 'none') ? 'none' : Object.keys(criteria)[0] ?? 'none');
+      return [id, {
+        type: 'choice', choice: selected,
+        probabilities: { [selected]: 0.99 }, confidence: 0.99,
+      }];
+    }
+    return [id, { type: 'score', score: 0, probabilities: {} }];
+  }));
+}
+
 function actionCriterionId(value: unknown): string | undefined {
   if (typeof value === 'string') return value.split(' — ', 1)[0]?.trim() || undefined;
   if (typeof value !== 'object' || value === null) return undefined;
@@ -60,23 +107,10 @@ describe('Desktop workspace chat Jev routing', () => {
     const events: string[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
       events.push('jev');
-      const request = JSON.parse(String(init?.body)) as {
-        questions: Record<string, { type: 'noul' | 'choice' | 'score'; criteria?: Record<string, unknown> }>;
-      };
-      const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
-        if (question.type === 'noul') return [id, { type: 'noul', noul: 0.01 }];
-        if (question.type === 'choice') {
-          const choices = Object.keys(question.criteria ?? {});
-          const selected = id === 'route' ? 'answer' : choices.includes('none') ? 'none' : choices[0]!;
-          return [id, {
-            type: 'choice',
-            choice: selected,
-            probabilities: Object.fromEntries(choices.map(choice => [choice, choice === selected ? 0.99 : 0.01])),
-            confidence: 0.99,
-          }];
-        }
-        return [id, { type: 'score', score: 0, probabilities: {} }];
-      }));
+      const request = JSON.parse(String(init?.body)) as MockJevRequest;
+      const answers = mockJevAnswers(request, {
+        route: 'answer', mode: 'answer_only', needsNaturalLanguageAnswer: true,
+      });
       return new Response(JSON.stringify({ model: 'test-jev', answers }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -148,35 +182,22 @@ describe('Desktop workspace chat Jev routing', () => {
     const queued = vi.fn((_workflow: WorkflowIR) => ({ jobId: 'must-not-queue' }));
     const commandService = new AxCommandService(store, { enqueueOnce: queued });
     const execute = vi.spyOn(commandService, 'execute');
-    const requests: Array<{ questions: Record<string, { type: string; criteria?: Record<string, unknown> }> }> = [];
-    const matchingChoice = (entries: Array<[string, unknown]>, field: string, value: string): string =>
-      entries.find(([, criterion]) => typeof criterion === 'object' && criterion !== null
-        && field in criterion && (criterion as Record<string, unknown>)[field] === value)?.[0] ?? 'none';
-    const selectedChoice = (id: string, entries: Array<[string, unknown]>): string => {
-      if (id === 'route') return 'execution_enqueue_once';
-      if (id === 'explicit_execution_now') return 'execute_now';
-      if (id === 'action_scope') return 'single_action';
-      if (id.startsWith('action_input_')) return matchingChoice(entries, 'parameter_name', 'subject');
-      if (id === 'action' || id.startsWith('action_group_')) {
-        return entries.find(([, criterion]) => actionCriterionId(criterion) === 'gmail.message.send')?.[0] ?? 'none';
-      }
-      return entries.some(([key]) => key === 'none') ? 'none' : entries[0]?.[0] ?? 'none';
-    };
+    const requests: MockJevRequest[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
-      const request = JSON.parse(String(init?.body)) as (typeof requests)[number];
+      const request = JSON.parse(String(init?.body)) as MockJevRequest;
       requests.push(request);
-      const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
-        if (question.type === 'noul') return [id, { type: 'noul', noul: 0.01 }];
-        if (question.type === 'choice') {
+      const answers = mockJevAnswers(request, {
+        route: 'execution_enqueue_once', mode: 'single_action', needsNaturalLanguageAnswer: false,
+        selectTool: candidate => candidate.capability_id === 'gmail.message.send',
+        selectChoice: (id, question) => {
           const entries = Object.entries(question.criteria ?? {});
-          const selected = selectedChoice(id, entries);
-          return [id, {
-            type: 'choice', choice: selected,
-            probabilities: { [selected]: 0.99 }, confidence: 0.99,
-          }];
-        }
-        return [id, { type: 'score', score: 0, probabilities: {} }];
-      }));
+          if (id === 'explicit_execution_now') return 'execute_now';
+          if (id === 'next_step') {
+            return entries.find(([, criterion]) => actionCriterionId(criterion) === 'gmail.message.send')?.[0];
+          }
+          return undefined;
+        },
+      });
       return new Response(JSON.stringify({ model: 'test-jev', answers }), {
         status: 200, headers: { 'content-type': 'application/json' },
       });
@@ -214,14 +235,15 @@ describe('Desktop workspace chat Jev routing', () => {
 
       const reply = await handler(event, requestMessage, 'request-write-1', undefined, chat.id);
 
-      expect(requests).toHaveLength(2);
+      expect(requests).toHaveLength(1);
       expect(requests[0]?.questions).toHaveProperty('route');
       expect(requests[0]?.questions).toHaveProperty('explicit_execution_now');
-      expect(requests[0]?.questions).toHaveProperty('action_scope');
-      expect(requests[0]?.questions).not.toHaveProperty('action');
-      expect(requests[1]?.questions).toHaveProperty('action');
-      expect(requests[1]?.questions).not.toHaveProperty('action_scope');
-      expect(requests.some(({ questions }) => Object.hasOwn(questions, 'action_input_0'))).toBe(false);
+      expect(requests[0]?.questions).toHaveProperty('request_mode');
+      expect(requests[0]?.questions).toHaveProperty('needs_natural_language_answer');
+      expect(Object.values(requests[0]?.questions ?? {}).some(question =>
+        question.type === 'noul'
+        && (question.instructions?.candidate as Record<string, unknown> | undefined)?.capability_id === 'gmail.message.send',
+      )).toBe(true);
       expect(reply.inputContinuation).toBe('command');
       expect(reply.inputRequests?.map((request) => request.parameterName)).toEqual(['body']);
       expect(reply.inputRequests).toEqual(expect.arrayContaining([
@@ -265,7 +287,7 @@ describe('Desktop workspace chat Jev routing', () => {
       );
 
       expect(continuation.content).toContain('큐에 등록했습니다');
-      expect(requests).toHaveLength(2);
+      expect(requests).toHaveLength(1);
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
       expect(agentHarness.runText).not.toHaveBeenCalled();
       expect(queued).toHaveBeenCalledTimes(1);
@@ -309,38 +331,26 @@ describe('Desktop workspace chat Jev routing', () => {
       const queued = vi.fn((_workflow: WorkflowIR) => ({ jobId: 'test-job' }));
       const commandService = new AxCommandService(store, { enqueueOnce: queued });
       const execute = vi.spyOn(commandService, 'execute');
-      const requests: Array<{ questions: Record<string, {
-        type: string;
-        criteria?: Record<string, unknown>;
-        instructions?: { focus?: string };
-      }> }> = [];
+      const requests: MockJevRequest[] = [];
       const targetId = (index: number) => index < 200
         ? `openapi.catalog_api.write_${index}`
         : `mcp.catalog_mcp.tool_${index}`;
       const chooseCapability = (criteria: Record<string, unknown>, id: string): string | undefined =>
         Object.entries(criteria).find(([, value]) => actionCriterionId(value) === id)?.[0];
-      const chooseJevOption = (id: string, criteria: Record<string, unknown>): string => {
-        if (id === 'route') return 'execution_enqueue_once';
-        if (id === 'explicit_execution_now') return 'execute_now';
-        if (id === 'action_scope') return 'single_action';
-        return chooseCapability(criteria, targetId(259))
-          ?? chooseCapability(criteria, targetId(0))
-          ?? (Object.hasOwn(criteria, 'none') ? 'none' : Object.keys(criteria)[0] ?? 'none');
-      };
       const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
-        const request = JSON.parse(String(init?.body)) as (typeof requests)[number];
+        const request = JSON.parse(String(init?.body)) as MockJevRequest;
         requests.push(request);
-        const answers: Record<string, unknown> = {};
-        for (const [id, question] of Object.entries(request.questions)) {
-          if (question.type === 'noul') {
-            answers[id] = { type: 'noul', noul: 0.01 };
-            continue;
-          }
-          if (question.type !== 'choice') continue;
-          const criteria = question.criteria ?? {};
-          const choice = chooseJevOption(id, criteria);
-          answers[id] = { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 };
-        }
+        const answers = mockJevAnswers(request, {
+          route: 'execution_enqueue_once', mode: 'single_action', needsNaturalLanguageAnswer: false,
+          selectTool: candidate => candidate.capability_id === targetId(259),
+          selectChoice: (id, question) => {
+            if (id === 'explicit_execution_now') return 'execute_now';
+            if (id === 'next_step') {
+              return chooseCapability(question.criteria ?? {}, targetId(259));
+            }
+            return undefined;
+          },
+        });
         return new Response(JSON.stringify({ model: 'test-jev', answers }), {
           status: 200, headers: { 'content-type': 'application/json' },
         });
@@ -372,21 +382,21 @@ describe('Desktop workspace chat Jev routing', () => {
         question.type !== 'choice' || Object.keys(question.criteria ?? {}).length <= MAX_DECISION_CHOICE_CRITERIA,
       ))).toBe(true);
       const actionQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
-        .filter(([id, question]) => (id === 'action' || id.startsWith('action_group_')) && question.type === 'choice')
+        .filter(([id, question]) => id.startsWith('tool_') && question.type === 'noul')
         .map(([, question]) => question));
-      const actionCriteria = actionQuestions.flatMap((question) =>
-        Object.values(question.criteria ?? {}).filter((value): value is string =>
-          actionCriterionId(value) !== undefined,
-        ));
-      const offered = new Set(actionCriteria.flatMap((criterion) => {
-        const id = actionCriterionId(criterion);
-        return id?.startsWith('openapi.catalog_api.') || id?.startsWith('mcp.catalog_mcp.') ? [id] : [];
+      const offered = new Set(actionQuestions.flatMap((question) => {
+        const candidate = question.instructions?.candidate as Record<string, unknown> | undefined;
+        const id = candidate?.capability_id;
+        return typeof id === 'string'
+          && (id.startsWith('openapi.catalog_api.') || id.startsWith('mcp.catalog_mcp.'))
+          ? [id]
+          : [];
       }));
       const ingestedIds = [...ingestedOpenApi.capabilityIds, ...ingestedMcp.capabilityIds];
       expect(offered.size).toBe(260);
       expect(ingestedIds.every((id) => offered.has(id))).toBe(true);
       expect(actionQuestions.every(({ instructions }) =>
-        instructions?.focus?.includes('untrusted data') && instructions.focus.includes('approval'),
+        String(instructions?.focus).includes('untrusted data') && String(instructions?.focus).includes('never approves'),
       )).toBe(true);
       expect(execute).toHaveBeenCalledWith(expect.objectContaining({
         name: 'execution.enqueue_once',
@@ -457,41 +467,24 @@ describe('Desktop workspace chat Jev routing', () => {
       const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
         const requestBody = String(init?.body);
         requestBodies.push(requestBody);
-        const request = JSON.parse(requestBody) as {
-          state: { planned_steps?: unknown[] };
-          questions: Record<string, { type: string; criteria?: Record<string, unknown> }>;
-        };
-        const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
-          if (question.type === 'noul') {
-            const probability = id === 'explicit_workflow_update' || id === 'explicit_workflow_step_addition'
-              ? 0.99
-              : 0.01;
-            return [id, { type: 'noul', noul: probability }];
-          }
-          if (question.type !== 'choice') return [id, { type: 'score', score: 0, probabilities: {} }];
-          const selected = id === 'route'
-            ? 'workflow_update'
-            : id === 'explicit_workflow_update'
-              ? 'update_now'
-              : id === 'explicit_workflow_step_addition'
-                ? 'add_now'
-                : id === 'explicit_workflow_step_removal'
-                  ? 'do_not_remove'
-                  : id === 'next_step' && !request.state.planned_steps?.length
-              ? Object.entries(question.criteria ?? {}).find(([, criterion]) =>
-                  typeof criterion === 'object' && criterion !== null
-                    && 'capability_id' in criterion && criterion.capability_id === 'transform.table_to_text',
-              )?.[0] ?? 'none'
-              : id === 'next_step'
-                ? 'done'
-                : Object.hasOwn(question.criteria ?? {}, 'none')
-                  ? 'none'
-                  : Object.keys(question.criteria ?? {})[0] ?? 'none';
-          return [id, {
-            type: 'choice', choice: selected,
-            probabilities: { [selected]: 0.99 }, confidence: 0.99,
-          }];
-        }));
+        const request = JSON.parse(requestBody) as MockJevRequest;
+        const answers = mockJevAnswers(request, {
+          route: 'workflow_update', mode: 'single_action', needsNaturalLanguageAnswer: false,
+          selectTool: candidate => candidate.capability_id === 'transform.table_to_text',
+          selectChoice: (id, question) => {
+            if (id === 'explicit_workflow_update') return 'update_now';
+            if (id === 'explicit_workflow_step_addition') return 'add_now';
+            if (id === 'explicit_workflow_step_removal') return 'do_not_remove';
+            if (id === 'next_step' && !request.state.planned_steps?.length) {
+              return Object.entries(question.criteria ?? {}).find(([, criterion]) =>
+                typeof criterion === 'object' && criterion !== null
+                  && 'capability_id' in criterion && criterion.capability_id === 'transform.table_to_text',
+              )?.[0];
+            }
+            if (id === 'next_step') return 'done';
+            return undefined;
+          },
+        });
         return new Response(JSON.stringify({ model: 'test-jev', answers }), {
           status: 200, headers: { 'content-type': 'application/json' },
         });
@@ -538,7 +531,7 @@ describe('Desktop workspace chat Jev routing', () => {
       }), expect.anything());
       expect(store.getWorkflow(workflow.id!, 2)?.steps).toHaveLength(2);
       expect(store.isWorkflowActive(workflow.id!)).toBe(false);
-      expect(requestBodies.length).toBeGreaterThanOrEqual(3);
+      expect(requestBodies).toHaveLength(1);
       expect(requestBodies.every((body) => !body.includes('PRIVATE_CHANNEL_ID_123'))).toBe(true);
       expect(agentHarness.runText).not.toHaveBeenCalled();
     } finally {
@@ -579,30 +572,23 @@ describe('Desktop workspace chat Jev routing', () => {
       const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
         const body = String(init?.body);
         requestBodies.push(body);
-        const request = JSON.parse(body) as {
-          state: { planned_steps?: unknown[] };
-          questions: Record<string, { type: string; criteria?: Record<string, unknown> }>;
-        };
-        const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
-          if (question.type === 'noul') {
-            const positive = id === 'explicit_workflow_update' || id === 'explicit_workflow_step_addition';
-            return [id, { type: 'noul', noul: positive ? 0.99 : 0.01 }];
-          }
-          if (question.type !== 'choice') return [id, { type: 'score', score: 0, probabilities: {} }];
-          const entries = Object.entries(question.criteria ?? {});
-          const selected = id === 'route'
-            ? 'workflow_update'
-            : id === 'next_step' && !request.state.planned_steps?.length
-              ? entries.find(([, criterion]) => typeof criterion === 'object' && criterion !== null
-                  && 'capability_id' in criterion && criterion.capability_id === 'gmail.message.send')?.[0] ?? 'none'
-              : id === 'next_step'
-                ? 'done'
-                : entries.some(([key]) => key === 'none') ? 'none' : entries[0]?.[0] ?? 'none';
-          return [id, {
-            type: 'choice', choice: selected,
-            probabilities: { [selected]: 0.99 }, confidence: 0.99,
-          }];
-        }));
+        const request = JSON.parse(body) as MockJevRequest;
+        const answers = mockJevAnswers(request, {
+          route: 'workflow_update', mode: 'single_action', needsNaturalLanguageAnswer: false,
+          selectTool: candidate => candidate.capability_id === 'gmail.message.send',
+          selectChoice: (id, question) => {
+            if (id === 'explicit_workflow_update') return 'update_now';
+            if (id === 'explicit_workflow_step_addition') return 'add_now';
+            if (id === 'next_step' && !request.state.planned_steps?.length) {
+              return Object.entries(question.criteria ?? {}).find(([, criterion]) =>
+                typeof criterion === 'object' && criterion !== null
+                  && 'capability_id' in criterion && criterion.capability_id === 'gmail.message.send',
+              )?.[0];
+            }
+            if (id === 'next_step') return 'done';
+            return undefined;
+          },
+        });
         return new Response(JSON.stringify({ model: 'test-jev', answers }), {
           status: 200, headers: { 'content-type': 'application/json' },
         });

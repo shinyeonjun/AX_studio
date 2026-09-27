@@ -1,5 +1,5 @@
 import type { DecisionInstruction, DecisionQuestion } from '../../../../contracts/decision.js';
-import type { CapabilityParam } from '../../../../catalog/capability-types.js';
+import type { CapabilityParam, ConnectorCapability } from '../../../../catalog/capability-types.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
 import {
   boundDecisionString,
@@ -12,8 +12,8 @@ import type { ConnectorFailureKind } from '../../../../connectors/types.js';
 import { jevWorkflowTriggerCriteria, type JevWorkflowTriggerHint } from './jev-workflow-proposal.js';
 import type { JevActionHint } from './jev-action-catalog.js';
 import {
+  buildJevParallelToolCandidates,
   parallelToolSelectionQuestions,
-  type JevParallelToolCandidate,
 } from './jev-parallel-tool-selection.js';
 import type { JevWorkflowStepHint } from './jev-workflow-update.js';
 import { jevHttpEndpointChoices, type JevHttpEndpointHint } from './jev-http-endpoint.js';
@@ -53,6 +53,7 @@ interface BuildJevDecisionRequestInput {
   readOperationCatalogSize: number;
   readOperationCatalogMayBeBounded?: boolean;
   actionSelection: JevActionSelection;
+  transformCapabilities?: readonly ConnectorCapability[];
   readRecoveryContext?: JevReadRecoveryContext;
   previousReadResult?: TableArtifact;
 }
@@ -96,24 +97,11 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
   const hasCurrentWorkflow = Boolean(input.currentWorkflowId?.trim());
   const hasWorkspaceSession = input.hasWorkspaceSession === true;
   const operationChoiceHints = input.readOperationHints.filter((hint) => /^op_[0-9]+$/u.test(hint.key));
-  const parallelToolCandidates: JevParallelToolCandidate[] = [
-    ...operationChoiceHints.map((hint) => ({
-      id: `read:${hint.key}`,
-      kind: 'read' as const,
-      connector: hint.connector,
-      capabilityId: hint.capabilityId,
-      label: hint.label,
-      description: hint.description,
-    })),
-    ...input.actionSelection.hints.map(({ key, capability }) => ({
-      id: `write:${key}`,
-      kind: 'write' as const,
-      connector: capability.connector,
-      capabilityId: capability.id,
-      label: capability.label,
-      description: capability.description,
-    })),
-  ];
+  const parallelToolCandidates = buildJevParallelToolCandidates({
+    readOperationHints: operationChoiceHints,
+    actionHints: input.actionSelection.hints,
+    transformCapabilities: input.transformCapabilities ?? [],
+  });
   const operationCandidateCount = operationChoiceHints.length;
   const hasReadOperationCatalog = input.readOperationCatalogSize > 0 || input.readOperationHints.length > 0;
   const httpEndpointChoices = jevHttpEndpointChoices(input.httpEndpoints ?? []);
@@ -364,5 +352,6 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
     questions,
     routeCriteria,
     operationCandidateCount,
+    parallelToolCandidates,
   };
 }

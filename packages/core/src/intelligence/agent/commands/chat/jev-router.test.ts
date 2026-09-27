@@ -21,6 +21,12 @@ import {
   parallelToolQuestionIdForTest,
 } from './fixtures.js';
 
+const builtInTransformToolIds = [
+  'transform:transform.table_to_text',
+  'transform:transform.document_to_text',
+  'transform:transform.http_to_table',
+];
+
 describe('explicitHttpPath', () => {
   it('separates a Korean object particle attached to a query value', () => {
     expect(explicitHttpPath('GET products?limit=2를 조회하고 표로 보여줘.'))
@@ -197,10 +203,14 @@ describe('routeChatWithJev', () => {
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
       const toolQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
         .filter(([id]) => id.startsWith('tool_')));
-      expect(toolQuestions).toHaveLength(capabilities.length);
-      const candidateIds = toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id);
-      expect(candidateIds).toEqual(capabilities.map(({ id }) => id));
-      expect(new Set(candidateIds).size).toBe(capabilities.length);
+      expect(toolQuestions).toHaveLength(capabilities.length + builtInTransformToolIds.length);
+      const candidateIds = toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id
+        ?? question.instructions?.candidate?.id);
+      expect(candidateIds).toEqual([
+        ...capabilities.map(({ id }) => id),
+        ...builtInTransformToolIds.map((id) => id.slice('transform:'.length)),
+      ]);
+      expect(new Set(candidateIds).size).toBe(capabilities.length + builtInTransformToolIds.length);
       expect(JSON.stringify(requests)).not.toContain('Required input');
       for (const request of requests) {
         for (const question of Object.values(request.questions)) {
@@ -1165,7 +1175,10 @@ describe('routeChatWithJev', () => {
     });
 
     expect(selectedCandidateIds.slice(0, 2)).toEqual(['read:op_0', 'read:op_1']);
-    expect(selectedCandidateIds).toHaveLength(65);
+    expect(selectedCandidateIds).toEqual([
+      ...readOperationHints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
     expect(result).toMatchObject({
       kind: 'command',
       command: { args: { id: 'rdb.query.table_0' } },
@@ -1265,7 +1278,8 @@ describe('routeChatWithJev', () => {
     })).resolves.toMatchObject({ kind: 'reply', route: 'answer' });
 
     expect(questionIds).toEqual([
-      'route', 'request_mode', 'needs_natural_language_answer', 'tool_0', 'table_transform', 'table_projection',
+      'route', 'request_mode', 'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2', 'tool_3',
+      'table_transform', 'table_projection',
     ]);
     expect(routeCriteria).toHaveProperty('capability_read');
   });
@@ -1406,8 +1420,9 @@ describe('routeChatWithJev', () => {
 
     expect(result).toEqual(expect.objectContaining({ kind: 'fallback', reason: 'missing_context' }));
     expect(routeCriteria).toHaveProperty('capability_read');
-    expect(offeredToolIds).toHaveLength(64);
+    expect(offeredToolIds).toHaveLength(64 + builtInTransformToolIds.length);
     expect(offeredToolIds[63]).toBe('read:op_63');
+    expect(offeredToolIds.slice(-builtInTransformToolIds.length)).toEqual(builtInTransformToolIds);
   });
 
   it('lets Jev select semantically from the full in-limit catalog despite a lexical distractor', async () => {
@@ -1446,7 +1461,7 @@ describe('routeChatWithJev', () => {
 
     expect(selection.mode).toBe('full_catalog');
     expect(selection.lexicalMatchedOperationCount).toBeGreaterThan(0);
-    expect(offeredTools).toHaveLength(72);
+    expect(offeredTools).toHaveLength(72 + builtInTransformToolIds.length);
     expect(result).toMatchObject({
       kind: 'command',
       command: { args: { id: 'rdb.query.read', params: { table: 'inventory' } } },
@@ -1670,7 +1685,10 @@ describe('routeChatWithJev', () => {
     const toolIds = Object.entries(evaluatedQuestions)
       .filter(([id]) => id.startsWith('tool_'))
       .map(([, question]) => parallelToolCandidateForTest(question)?.id);
-    expect(toolIds).toEqual(hints.map(({ key }) => `read:${key}`));
+    expect(toolIds).toEqual([
+      ...hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
     expect(result).toMatchObject({
       kind: 'command',
       route: 'capability_read',
@@ -1691,7 +1709,10 @@ describe('routeChatWithJev', () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
-          offeredToolIds = Object.keys(request.questions).filter((id) => id.startsWith('tool_'));
+          offeredToolIds = Object.entries(request.questions)
+            .filter(([id]) => id.startsWith('tool_'))
+            .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+            .filter((id): id is string => id !== undefined);
           return { answers: {
             ...parallelToolAnswersForTest(request, {
               mode: 'single_action', needsNaturalLanguageAnswer: false,
@@ -1712,7 +1733,10 @@ describe('routeChatWithJev', () => {
 
     expect(relevantKey).toBeDefined();
     expect(selection.hints).toHaveLength(selection.totalCount);
-    expect(offeredToolIds).toHaveLength(selection.totalCount);
+    expect(offeredToolIds).toEqual([
+      ...selection.hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
     expect(result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'orders' } } } });
   });
 
@@ -1737,7 +1761,8 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
-    expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_'))).toHaveLength(260);
+    expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_')))
+      .toHaveLength(260 + builtInTransformToolIds.length);
     expect(evaluatedQuestions).toHaveProperty('request_mode');
     expect(evaluatedQuestions).toHaveProperty('needs_natural_language_answer');
     expect(evaluatedQuestions).toHaveProperty('request_mode');
@@ -1782,7 +1807,10 @@ describe('routeChatWithJev', () => {
       userMessage: '재고를 보여줘',
       readOperationHints: hints,
     });
-    expect(offeredToolIds).toEqual(hints.map(({ key }) => `read:${key}`));
+    expect(offeredToolIds).toEqual([
+      ...hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
   });
 
   it('surfaces Jev usage and bounded question metadata for latency accounting', async () => {

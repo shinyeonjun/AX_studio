@@ -28,7 +28,6 @@ import { JEV_CHAT_ROUTE_CRITERIA, type JevChatRouteName } from './jev-route-crit
 import { deriveJevRequestFeatures } from './request-features.js';
 import {
   parseParallelToolSelection,
-  type JevParallelToolCandidate,
   type JevParallelToolSelection,
 } from './jev-parallel-tool-selection.js';
 import type {
@@ -77,24 +76,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   const workflowTriggerHints = readRecovery
     ? []
     : selectJevWorkflowTriggerHints(connectedConnectors, capabilitySnapshot);
-  const parallelToolCandidates: JevParallelToolCandidate[] = [
-    ...operationHints.map((hint) => ({
-      id: `read:${hint.key}`,
-      kind: 'read' as const,
-      connector: hint.connector,
-      capabilityId: hint.capabilityId,
-      label: hint.label,
-      description: hint.description,
-    })),
-    ...actionSelection.hints.map(({ key, capability }) => ({
-      id: `write:${key}`,
-      kind: 'write' as const,
-      connector: capability.connector,
-      capabilityId: capability.id,
-      label: capability.label,
-      description: capability.description,
-    })),
-  ];
+  const transformCapabilities = capabilitySnapshot.filter((capability) =>
+    capability.connector === 'transform' && capability.kind === 'read' && capability.id !== 'transform.evaluate',
+  );
   const routeCatalog: Record<string, DecisionInstruction> = readRecovery
     ? { answer: JEV_CHAT_ROUTE_CRITERIA.answer, capability_read: JEV_CHAT_ROUTE_CRITERIA.capability_read }
     : JEV_CHAT_ROUTE_CRITERIA;
@@ -107,6 +91,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       questions,
       routeCriteria,
       operationCandidateCount,
+      parallelToolCandidates,
     } = buildJevDecisionRequest({
       userMessage: input.userMessage,
       requestFeatures,
@@ -123,6 +108,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       readOperationCatalogSize: operationCatalogSize,
       readOperationCatalogMayBeBounded: operationCatalogMayBeBounded,
       actionSelection,
+      transformCapabilities: readRecovery ? [] : transformCapabilities,
       readRecoveryContext: input.readRecoveryContext,
       previousReadResult: input.previousReadResult,
     });
@@ -289,7 +275,12 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       ? new Set(toolSelection.selectedToolIds)
       : new Set<string>();
     const selectedReadHints = operationHints.filter((hint) => selectedToolIds.has(`read:${hint.key}`));
-    const selectedActionHints = actionSelection.hints.filter(({ key }) => selectedToolIds.has(`write:${key}`));
+    const selectedActionHints = [
+      ...actionSelection.hints.filter(({ key }) => selectedToolIds.has(`write:${key}`)),
+      ...transformCapabilities
+        .filter((capability) => selectedToolIds.has(`transform:${capability.id}`))
+        .map((capability, index) => ({ key: `transform_${index}`, capability })),
+    ];
 
     if (
       (selectedRoute === 'workflow_update' || selectedRoute === 'workflow_delete')
