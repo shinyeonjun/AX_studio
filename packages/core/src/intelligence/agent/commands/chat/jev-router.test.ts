@@ -3,14 +3,15 @@ import {
   MAX_DECISION_CHOICE_CRITERIA,
   type DecisionAnswer,
   type DecisionEngine,
+  type DecisionEvaluationResult,
 } from '../../../../contracts/decision.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
 import * as capabilityGraph from '../../../../catalog/capability-graph.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
-import { buildJevReadOperationIndex } from '../../../decision/read-operation-catalog.js';
+import { buildJevReadOperationIndex, type JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
-import { AxDiscoverySearchArgsSchema } from '../schema/workflow-args.js';
+import { AxDiscoverySearchArgsSchema, AxExecutionEnqueueOnceArgsSchema } from '../schema/workflow-args.js';
 import { jevActionCriteria } from './jev-action-catalog.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
 import { routeChatWithJev } from './jev-router.js';
@@ -60,7 +61,7 @@ function engineFor(
   onRequest?: (request: Parameters<DecisionEngine['evaluate']>[0]) => void,
 ): DecisionEngine {
   return {
-    evaluate: async (request) => {
+    evaluate: async (request): Promise<DecisionEvaluationResult> => {
       onRequest?.(request);
       return {
         answers: {
@@ -219,11 +220,11 @@ describe('routeChatWithJev', () => {
       ));
       expect(actionGroups.length).toBeGreaterThan(1);
       expect(actionGroups.every(([, question]) =>
-        question.type === 'choice' && Object.keys(question.criteria).length <= MAX_DECISION_CHOICE_CRITERIA,
+        question.type === 'choice' && Object.keys(question.criteria ?? {}).length <= MAX_DECISION_CHOICE_CRITERIA,
       )).toBe(true);
       const offeredCapabilityIds = actionGroups.flatMap(([, question]) =>
       question.type === 'choice'
-          ? Object.values(question.criteria).flatMap((criterion) =>
+          ? Object.values(question.criteria ?? {}).flatMap((criterion) =>
               typeof criterion === 'string' && criterion.includes(' — ')
                 ? [criterion.split(' — ', 1)[0]!]
                 : [],
@@ -236,7 +237,7 @@ describe('routeChatWithJev', () => {
       expect(offeredCapabilityIds).toContain('test.action_259');
       const offeredCriteria = actionGroups.flatMap(([, question]) =>
         question.type === 'choice'
-          ? Object.entries(question.criteria).filter(([key]) => key !== 'none').map(([, criterion]) => criterion)
+          ? Object.entries(question.criteria ?? {}).filter(([key]) => key !== 'none').map(([, criterion]) => criterion)
           : [],
       );
       expect(offeredCriteria.every((criterion) =>
@@ -288,7 +289,7 @@ describe('routeChatWithJev', () => {
     try {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           const answers: Record<string, DecisionAnswer> = {};
           if (request.questions.route) {
@@ -403,11 +404,12 @@ describe('routeChatWithJev', () => {
     expect(result.kind).toBe('command');
     if (result.kind === 'command') {
       expect(result.telemetry?.planningCandidateCatalogMayBeBounded).toBe(false);
-      expect(result.command.args.steps).toHaveLength(131);
-      expect(result.command.args.steps[0]).toMatchObject({
+      const args = AxExecutionEnqueueOnceArgsSchema.parse(result.command.args);
+      expect(args.steps).toHaveLength(131);
+      expect(args.steps[0]).toMatchObject({
         id: 'jev_step_1', connector: 'rdb', action: 'synthetic_source',
       });
-      expect(result.command.args.steps[130]).toMatchObject({
+      expect(args.steps[130]).toMatchObject({
         id: 'jev_step_131', connector: 'rdb', action: 'synthetic_sink',
         bindings: { table: { from: 'jev_step_1', output: 'primary' } },
       });
@@ -670,7 +672,7 @@ describe('routeChatWithJev', () => {
     }]);
     let actionChoice: 'offered' | 'unlisted' = 'offered';
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         const answers: Record<string, DecisionAnswer> = {};
         for (const [questionId, question] of Object.entries(request.questions)) {
           if (questionId === 'route') {
@@ -735,7 +737,7 @@ describe('routeChatWithJev', () => {
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             evaluationCalls += 1;
             expect(request.questions).not.toHaveProperty('action');
             return {
@@ -778,7 +780,7 @@ describe('routeChatWithJev', () => {
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             requests.push(request);
             if (request.questions.route) {
               return {
@@ -820,7 +822,7 @@ describe('routeChatWithJev', () => {
     const requestQuestionIds: string[][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requestQuestionIds.push(Object.keys(request.questions));
           const action = request.questions.action;
           actionChoices = action?.type === 'choice' ? Object.keys(action.criteria) : [];
@@ -888,9 +890,9 @@ describe('routeChatWithJev', () => {
 
     expect(result.kind).toBe('command');
     if (result.kind !== 'command' || result.command.name !== 'discovery.search') return;
-    expect(result.command.args.query).toHaveLength(500);
-    expect(result.command.args.query.endsWith('…[truncated]')).toBe(true);
-    expect(AxDiscoverySearchArgsSchema.safeParse(result.command.args).success).toBe(true);
+    const args = AxDiscoverySearchArgsSchema.parse(result.command.args);
+    expect(args.query).toHaveLength(500);
+    expect(args.query.endsWith('…[truncated]')).toBe(true);
   });
 
   it('uses the user-requested result count for discovery search', async () => {
@@ -1007,7 +1009,7 @@ describe('routeChatWithJev', () => {
     let selectedOperation: string | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           if (request.questions.read_parameter_0) {
             return { answers: {
               read_parameter_0: { type: 'choice', choice: 'value_0', probabilities: { value_0: 0.99 }, confidence: 0.99 },
@@ -1051,7 +1053,7 @@ describe('routeChatWithJev', () => {
     let endpointCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const question = request.questions.http_endpoint;
           endpointCriteria = question?.type === 'choice' ? question.criteria : undefined;
           return { answers: {
@@ -1199,7 +1201,7 @@ describe('routeChatWithJev', () => {
     let questionIds: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           questionIds = Object.keys(request.questions);
           return {
             answers: {
@@ -1320,7 +1322,7 @@ describe('routeChatWithJev', () => {
 
   it('keeps the host relevance ordering without truncating the indexed read choices', async () => {
     let operationKeys: string[] = [];
-    const readOperationHints = Array.from({ length: 65 }, (_, index) => ({
+    const readOperationHints: JevReadOperationHint[] = Array.from({ length: 65 }, (_, index) => ({
       key: `op_${index}`,
       capabilityId: `rdb.query.table_${index}`,
       connector: 'rdb',
@@ -1330,7 +1332,7 @@ describe('routeChatWithJev', () => {
     }));
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const operation = request.questions.operation;
           operationKeys = operation?.type === 'choice'
             ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
@@ -1412,7 +1414,7 @@ describe('routeChatWithJev', () => {
     let routeCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
@@ -1436,7 +1438,7 @@ describe('routeChatWithJev', () => {
     let routeCriteria: Record<string, unknown> | undefined;
     await expect(routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           questionIds = Object.keys(request.questions);
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
@@ -1493,7 +1495,7 @@ describe('routeChatWithJev', () => {
     let requestFeatures: unknown;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requestFeatures = (request.state as { request_features: unknown }).request_features;
           return {
             answers: {
@@ -1535,7 +1537,7 @@ describe('routeChatWithJev', () => {
     let state: Record<string, unknown> | undefined;
     await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           state = request.state as Record<string, unknown>;
           return {
             answers: {
@@ -1569,7 +1571,7 @@ describe('routeChatWithJev', () => {
     let operationCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           operationCriteria = (request.questions.operation as { criteria: Record<string, unknown> }).criteria;
           return {
@@ -1611,7 +1613,7 @@ describe('routeChatWithJev', () => {
     let offeredOperations: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const operation = request.questions.operation;
           offeredOperations = operation?.type === 'choice'
             ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
@@ -1655,7 +1657,7 @@ describe('routeChatWithJev', () => {
     let jevRequest = '';
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           jevRequest = JSON.stringify(request);
           const operation = request.questions.operation;
           if (operation?.type !== 'choice') throw new Error('Expected operation choices');
@@ -1722,7 +1724,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (request.questions.route) {
             return { answers: {
@@ -1788,7 +1790,7 @@ describe('routeChatWithJev', () => {
     }]).select('주문을 보여줘');
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => request.questions.route
+        evaluate: async (request): Promise<DecisionEvaluationResult> => request.questions.route
           ? { answers: {
               route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
               operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.99 }, confidence: 0.99 },
@@ -1823,7 +1825,7 @@ describe('routeChatWithJev', () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           const answers: Record<string, DecisionAnswer> = {};
           if (request.questions.route) {
@@ -1939,7 +1941,7 @@ describe('routeChatWithJev', () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           const answers: Record<string, DecisionAnswer> = {
             route: {
@@ -2001,7 +2003,7 @@ describe('routeChatWithJev', () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           return {
             model: 'mock-jev',
@@ -2054,7 +2056,7 @@ describe('routeChatWithJev', () => {
     let operationCriteria: Record<string, unknown> | undefined;
     await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           operationCriteria = (request.questions.operation as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
@@ -2197,7 +2199,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     let sourceLoads = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         if (evaluations === 1) {
           expect(request.questions).not.toHaveProperty('report_template_source');
@@ -2279,7 +2281,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     let followupSignal: AbortSignal | undefined;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         if (evaluations === 1) {
           return { answers: {
@@ -2313,7 +2315,7 @@ describe('routeChatWithJev', () => {
   it('does not ask Jev to choose report sources when fewer than two ready PDFs exist', async () => {
     let sourceLoads = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         expect(request.questions).not.toHaveProperty('report_template_source');
         expect(request.questions).not.toHaveProperty('report_example_source');
         return {
@@ -2352,7 +2354,7 @@ describe('routeChatWithJev', () => {
     let sourceLoads = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           expect(request.questions).not.toHaveProperty('report_template_source');
           expect(request.questions).not.toHaveProperty('report_example_source');
@@ -2392,7 +2394,7 @@ describe('routeChatWithJev', () => {
     const decisionStates: unknown[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           decisionStates.push(request.state);
           if (request.questions.route) {
             return {
@@ -2487,7 +2489,7 @@ describe('routeChatWithJev', () => {
     let routeEvaluated = false;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           if (request.questions.route) {
             routeEvaluated = true;
             return {
@@ -2560,7 +2562,7 @@ describe('routeChatWithJev', () => {
       let planningCalls = 0;
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             if (request.questions.route) return { answers: {
               route: {
                 type: 'choice', choice: 'workflow_create',
@@ -2591,13 +2593,13 @@ describe('routeChatWithJev', () => {
 
   it('lets Jev propose a schedule and defers its missing values to host validation', async () => {
     let planningCalls = 0;
-    const search = {
+    const search: JevReadOperationHint = {
       key: 'op_0', capabilityId: 'gmail.messages.search', connector: 'gmail',
       label: 'Gmail 메일 검색', description: 'Gmail 메일 검색', params: {},
     };
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           if (request.questions.route) {
             return { answers: {
               route: {
@@ -2637,7 +2639,7 @@ describe('routeChatWithJev', () => {
   it('uses Jev’s selected answer route even when confidence is low', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => ({
+        evaluate: async (request): Promise<DecisionEvaluationResult> => ({
           answers: {
             route: {
               type: 'choice',
@@ -2662,7 +2664,7 @@ describe('routeChatWithJev', () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           const criteria = request.questions.action?.type === 'choice'
             ? request.questions.action.criteria
@@ -2701,7 +2703,7 @@ describe('routeChatWithJev', () => {
   it('allows a connected draft action when Jev confirms that execution is requested now', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const criteria = request.questions.action?.type === 'choice'
             ? request.questions.action.criteria
             : {};
@@ -2739,7 +2741,7 @@ describe('routeChatWithJev', () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           const criteria = request.questions.action?.type === 'choice'
             ? request.questions.action.criteria
@@ -2796,7 +2798,7 @@ describe('routeChatWithJev', () => {
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             requests.push(request);
             if (request.questions.route) {
               return { answers: {
@@ -2842,7 +2844,7 @@ describe('routeChatWithJev', () => {
   it('does not treat Korean role particles as a supplied write-action value', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const criteria = request.questions.action?.type === 'choice'
             ? request.questions.action.criteria
             : {};
@@ -2871,15 +2873,16 @@ describe('routeChatWithJev', () => {
 
     expect(result.kind).toBe('command');
     if (result.kind !== 'command') throw new Error('expected the selected Gmail action');
-    expect(result.command.args.steps?.[0]).toMatchObject({ connector: 'gmail', action: 'message.send' });
-    expect(result.command.args.steps?.[0]?.params).not.toHaveProperty('to');
+    const args = AxExecutionEnqueueOnceArgsSchema.parse(result.command.args);
+    expect(args.steps[0]).toMatchObject({ connector: 'gmail', action: 'message.send' });
+    expect(args.steps[0]).not.toHaveProperty('params.to');
   });
 
   it('does not compile a quoted write value when Jev cannot identify its input field', async () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           if (request.questions.action_input_0?.type === 'choice') {
             return { answers: {
@@ -2926,7 +2929,7 @@ describe('routeChatWithJev', () => {
   it('uses Jev’s semantic execution choice without an arbitrary confidence cutoff', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const criteria = request.questions.action?.type === 'choice'
             ? request.questions.action.criteria
             : {};
@@ -3074,7 +3077,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           expect(questions).not.toHaveProperty('workflow_step_to_remove');
           return {
@@ -3104,7 +3107,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) {
             expect(questions).not.toHaveProperty('workflow_step_to_remove');
@@ -3160,7 +3163,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) return {
             answers: {
@@ -3236,7 +3239,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) return {
             answers: {
@@ -3250,18 +3253,19 @@ describe('routeChatWithJev', () => {
             },
           };
 
-          const answers = Object.fromEntries(Object.entries(questions).map(([questionId, question]) => {
-            const keys = Object.keys(question.criteria ?? {}).filter((key) => /^step_\d+$/u.test(key));
+          const answers = Object.fromEntries(Object.entries(questions).flatMap(([questionId, question]) => {
+            if (question.type !== 'choice') return [];
+            const keys = Object.keys(question.criteria).filter((key) => /^step_\d+$/u.test(key));
             const selectedKey = `step_${selectedIndex}`;
             const choice = keys.includes(selectedKey)
               ? selectedKey
               : evaluations === 2 && keys.includes('step_0') ? 'step_0' : 'none';
-            return [questionId, {
+            return [[questionId, {
               type: 'choice' as const,
               choice,
               probabilities: { [choice]: 0.99 },
               confidence: 0.99,
-            }];
+            }]];
           }));
           return { answers };
         },
@@ -3305,7 +3309,7 @@ describe('routeChatWithJev', () => {
     registerDynamicCapabilities([capability]);
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ state, questions }) => {
+        evaluate: async ({ state, questions }): Promise<DecisionEvaluationResult> => {
           if (questions.route) return {
             answers: {
               route: {

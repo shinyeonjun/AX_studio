@@ -162,7 +162,7 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
       expect(textCalls).toHaveLength(0);
     } finally {
       clearDynamicCatalogForTests();
-      db.close();
+      db.close?.();
     }
   }, 120_000);
 

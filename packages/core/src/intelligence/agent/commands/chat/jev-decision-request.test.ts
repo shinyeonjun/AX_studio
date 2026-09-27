@@ -165,9 +165,12 @@ describe('buildJevDecisionRequest', () => {
 
     expect(result.state.request_features).toEqual({});
     expect(result.routeCriteria).toHaveProperty('capability_read');
-    expect(result.questions.operation?.criteria).toMatchObject({
+    expect(result.questions.operation).toMatchObject({
+      type: 'choice',
+      criteria: {
       none: expect.any(String),
       op_0: { label: '상품 목록', what: '상품 데이터를 읽습니다.', connector: 'openapi' },
+      },
     });
     expect(result.questions.table_transform).toMatchObject({
       type: 'choice',
@@ -245,7 +248,7 @@ describe('buildJevDecisionRequest', () => {
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(result.questions.operation?.criteria).toHaveProperty('op_1000');
+    expect(result.questions.operation).toMatchObject({ type: 'choice', criteria: { op_1000: expect.anything() } });
   });
 
   it('fans out oversized read metadata under Jev’s wire byte ceiling without dropping candidates', async () => {
@@ -570,22 +573,25 @@ describe('buildJevDecisionRequest', () => {
       workflowTriggerHints: selectJevWorkflowTriggerHints(['gmail']),
     });
 
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    const workflowTrigger = result.questions.workflow_trigger;
+    expect(workflowTrigger).toMatchObject({ type: 'choice', criteria: {
       none: expect.any(String),
       manual: { trigger_type: 'manual' },
-    });
-    const triggerChoice = Object.values(result.questions.workflow_trigger?.criteria ?? {}).find(
+    } });
+    const triggerChoice = workflowTrigger?.type === 'choice'
+      ? Object.values(workflowTrigger.criteria).find(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { connector?: unknown }).connector === 'gmail',
-    );
+        && 'connector' in criterion && criterion.connector === 'gmail',
+      )
+      : undefined;
     expect(triggerChoice).toMatchObject({ connector: 'gmail', trigger_type: 'gmail.new_message' });
     expect(triggerChoice).not.toHaveProperty('instruction');
-    expect(result.questions.workflow_trigger?.instructions).toMatchObject({
+    expect(workflowTrigger?.instructions).toMatchObject({
       focus: expect.stringContaining('never invent targets'),
     });
-    expect(Object.values(result.questions.workflow_trigger?.criteria ?? {}).some(
+    expect((workflowTrigger?.type === 'choice' ? Object.values(workflowTrigger.criteria) : []).some(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { connector?: unknown }).connector === 'slack',
+        && 'connector' in criterion && criterion.connector === 'slack',
     )).toBe(false);
     expect(result.questions).not.toHaveProperty('job_template');
   });
@@ -602,10 +608,10 @@ describe('buildJevDecisionRequest', () => {
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    expect(result.questions.workflow_trigger).toMatchObject({ type: 'choice', criteria: {
       none: expect.any(String),
       schedule: { trigger_type: 'schedule', connector: 'host_scheduler' },
-    });
+    } });
   });
 
   it('offers trigger choices to Jev for natural recurring intent without repeat keywords', () => {
@@ -622,12 +628,13 @@ describe('buildJevDecisionRequest', () => {
     });
 
     expect(result.state.request_features).toEqual({});
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    const workflowTrigger = result.questions.workflow_trigger;
+    expect(workflowTrigger).toMatchObject({ type: 'choice', criteria: {
       schedule: { trigger_type: 'schedule' },
-    });
-    expect(Object.values(result.questions.workflow_trigger?.criteria ?? {}).some(
+    } });
+    expect((workflowTrigger?.type === 'choice' ? Object.values(workflowTrigger.criteria) : []).some(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { trigger_type?: unknown }).trigger_type === 'gmail.new_message',
+        && 'trigger_type' in criterion && criterion.trigger_type === 'gmail.new_message',
     )).toBe(true);
   });
 
