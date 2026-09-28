@@ -433,19 +433,23 @@ export async function runCommandChatLoop({
   };
 
   const selectedHttpRead = selectedHttpReadCommand(options.userMessage, messages, options.httpEndpoints ?? []);
+  const executeScopedChatCommand = (
+    command: AxCommand,
+    readAuthorization?: NonNullable<ReturnType<typeof readAuthorizationFor>>,
+  ) => executeChatCommand(options, command, {
+    executionContext: AGENT_COMMAND_CONTEXT,
+    userMessage: options.userMessage,
+    workspaceSessionId: options.workspaceSessionId,
+    currentWorkflowId: session.workflowId,
+    abortSignal: signal,
+    designToolContext: options.designToolContext,
+    designToolContextFactory: options.designToolContextFactory,
+    ...(readAuthorization ? { readAuthorization } : {}),
+  });
   if (selectedHttpRead) {
     const { command, userIntent } = selectedHttpRead;
     const readAuthorization = readAuthorizationFor(command);
-    const result = await executeChatCommand(options, command, {
-      executionContext: AGENT_COMMAND_CONTEXT,
-      userMessage: options.userMessage,
-      workspaceSessionId: options.workspaceSessionId,
-      currentWorkflowId: session.workflowId,
-      abortSignal: signal,
-      designToolContext: options.designToolContext,
-      designToolContextFactory: options.designToolContextFactory,
-      ...(readAuthorization ? { readAuthorization } : {}),
-    });
+    const result = await executeScopedChatCommand(command, readAuthorization);
     signal.throwIfAborted();
     const resultForLoop = publishResult(command.name, result);
     if (resultForLoop.status !== 'ok') {
@@ -655,16 +659,7 @@ export async function runCommandChatLoop({
           : {}),
       });
       const readAuthorization = readAuthorizationFor(jevRoute.command);
-      const result = await executeChatCommand(options, jevRoute.command, {
-        executionContext: AGENT_COMMAND_CONTEXT,
-        userMessage: options.userMessage,
-        workspaceSessionId: options.workspaceSessionId,
-        currentWorkflowId: session.workflowId,
-        abortSignal: signal,
-        designToolContext: options.designToolContext,
-        designToolContextFactory: options.designToolContextFactory,
-        ...(readAuthorization ? { readAuthorization } : {}),
-      });
+      const result = await executeScopedChatCommand(jevRoute.command, readAuthorization);
       signal.throwIfAborted();
       const resultForLoop = publishResult(jevRoute.command.name, result, jevRoute.command);
       appendAppLog('info', 'Jev-selected chat route completed.', {
@@ -770,16 +765,7 @@ export async function runCommandChatLoop({
           );
           if (!identity || !selectedHint || attempted.has(identity)) break;
           attempted.add(identity);
-          const retryResult = await executeChatCommand(options, recovery.command, {
-            executionContext: AGENT_COMMAND_CONTEXT,
-            userMessage: options.userMessage,
-            workspaceSessionId: options.workspaceSessionId,
-            currentWorkflowId: session.workflowId,
-            abortSignal: signal,
-            designToolContext: options.designToolContext,
-            designToolContextFactory: options.designToolContextFactory,
-            readAuthorization: recoveryAuthorization,
-          });
+          const retryResult = await executeScopedChatCommand(recovery.command, recoveryAuthorization);
           signal.throwIfAborted();
           completedCommand = recovery.command;
           completedResult = publishResult(recovery.command.name, retryResult, recovery.command);

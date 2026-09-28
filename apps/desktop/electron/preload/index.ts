@@ -14,7 +14,6 @@ contextBridge.exposeInMainWorld('ax', {
   clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),
   exportGeneratedArtifact: (artifactId: string) => ipcRenderer.invoke('ax:exportGeneratedArtifact', artifactId),
   saveGeneratedArtifactToFolder: (artifactId: string) => ipcRenderer.invoke('ax:saveGeneratedArtifactToFolder', artifactId),
-  setGlobalActive: (active: boolean) => ipcRenderer.invoke('ax:setGlobalActive', active),
   setWorkflowActive: (workflowId: string, active: boolean) => ipcRenderer.invoke('ax:setWorkflowActive', workflowId, active),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
   connectSlack: (payload: string | { token: string; appToken?: string }) =>
@@ -50,16 +49,6 @@ contextBridge.exposeInMainWorld('ax', {
     label?: string;
   }) => ipcRenderer.invoke('ax:connectRdb', payload),
   disconnectRdb: () => ipcRenderer.invoke('ax:disconnectRdb'),
-  connectOpenApi: (payload: {
-    specId: string;
-    label?: string;
-    specUrl?: string;
-    specJson?: string;
-  }) => ipcRenderer.invoke('ax:connectOpenApi', payload),
-  disconnectOpenApi: () => ipcRenderer.invoke('ax:disconnectOpenApi'),
-  connectMcp: (payload: { serverId: string; label?: string; toolsJson: string }) =>
-    ipcRenderer.invoke('ax:connectMcp', payload),
-  disconnectMcp: () => ipcRenderer.invoke('ax:disconnectMcp'),
   setAiProvider: (config: unknown) => ipcRenderer.invoke('ax:setAiProvider', config),
   detectAiCli: () => ipcRenderer.invoke('ax:detectAiCli'),
   getAiConfig: () => ipcRenderer.invoke('ax:getAiConfig'),
@@ -69,9 +58,6 @@ contextBridge.exposeInMainWorld('ax', {
   getJevDecisionConfig: () => ipcRenderer.invoke('ax:getJevDecisionConfig'),
   saveJevDecisionConfig: (prefs: unknown) => ipcRenderer.invoke('ax:saveJevDecisionConfig', prefs),
   testJevDecisionApi: (prefs?: unknown) => ipcRenderer.invoke('ax:testJevDecisionApi', prefs),
-  setEnvSecret: (key: string, value: string) => ipcRenderer.invoke('ax:setEnvSecret', key, value),
-  getEnvSecretStatus: (key: string) => ipcRenderer.invoke('ax:getEnvSecretStatus', key),
-  printPdf: (html: string) => ipcRenderer.invoke('ax:printPdf', html),
   loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
   sendCommandChat: (
     userMessage: string,

@@ -35,13 +35,4 @@ export interface AxConnectorApi {
     label?: string;
   }) => Promise<unknown>;
   disconnectRdb: () => Promise<unknown>;
-  connectOpenApi: (payload: {
-    specId: string;
-    label?: string;
-    specUrl?: string;
-    specJson?: string;
-  }) => Promise<unknown>;
-  disconnectOpenApi: () => Promise<unknown>;
-  connectMcp: (payload: { serverId: string; label?: string; toolsJson: string }) => Promise<unknown>;
-  disconnectMcp: () => Promise<unknown>;
 }

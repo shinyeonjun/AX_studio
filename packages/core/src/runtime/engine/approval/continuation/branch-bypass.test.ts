@@ -11,6 +11,7 @@ describe('approval continuation branch guard', () => {
       name: '분기 승인 우회 방지',
       goal: '분기에서 메일을 승인 후 발송',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'if',

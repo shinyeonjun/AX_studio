@@ -44,13 +44,4 @@ export interface SettingsPageProps {
     label?: string;
   }) => Promise<void>;
   onDisconnectRdb: () => Promise<void>;
-  onConnectOpenApi: (payload: {
-    specId: string;
-    label?: string;
-    specUrl?: string;
-    specJson?: string;
-  }) => Promise<void>;
-  onDisconnectOpenApi: () => Promise<void>;
-  onConnectMcp: (payload: { serverId: string; label?: string; toolsJson: string }) => Promise<void>;
-  onDisconnectMcp: () => Promise<void>;
 }

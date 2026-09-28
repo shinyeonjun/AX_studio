@@ -29,7 +29,7 @@ it('asks for source clarification instead of using the LLM when Jev is uncertain
   let llmCalls = 0;
   const runner: InvestigationRunner = {
     providerName: 'fixture',
-    async run<T>() {
+    async run() {
       llmCalls += 1;
       throw new Error('LLM must not choose report data sources');
     },
@@ -666,8 +666,9 @@ describe('ReportPlanner', () => {
     });
 
     expect(repaired.mismatches).toEqual([]);
-    const status = repaired.plan.tables.find((table) => table.id === 'risk')?.kind === 'aggregate'
-      ? repaired.plan.tables.find((table) => table.id === 'risk')?.columns.find((column) => column.id === 'status')
+    const riskTable = repaired.plan.tables.find((table) => table.id === 'risk');
+    const status = riskTable?.kind === 'aggregate'
+      ? riskTable.columns.find((column) => column.id === 'status')
       : undefined;
     expect(status).toMatchObject({
       value: { expression: { branches: [{ when: { kind: 'compare', operation: 'lt' } }] } },
@@ -851,7 +852,8 @@ describe('ReportPlanner', () => {
         ? repaired.plan.tables[0].columns.find((candidate) => candidate.id === id)
         : undefined;
       expect(column?.value).toMatchObject({ kind: 'aggregate' });
-      expect(column?.value.kind === 'aggregate' ? column.value.expression.where : undefined).toEqual(eligible);
+      const expression = column?.value.kind === 'aggregate' ? column.value.expression : undefined;
+      expect(expression && expression.kind !== 'arithmetic' ? expression.where : undefined).toEqual(eligible);
     }
   });
 
@@ -1395,7 +1397,7 @@ describe('ReportPlanner', () => {
   });
 
   it('selects required connector types with one batched Jev decision and no LLM source planner call', async () => {
-    const runner: InvestigationRunner = { providerName: 'fixture', async run<T>() {
+    const runner: InvestigationRunner = { providerName: 'fixture', async run() {
       throw new Error('LLM must not choose report data sources');
     } };
     let request: Parameters<DecisionEngine['evaluate']>[0] | undefined;
@@ -2062,7 +2064,7 @@ describe('ReportPlanner', () => {
         data: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
         archive: { type: 'array', length: 2, item: { type: 'object', fields: { id: { type: 'number' } } } },
       } },
-    }], log: entry => logCodes.push(entry.code) })).rejects.toMatchObject({ code: 'report_capture_refinement_jev_answer_invalid' });
+    }], log: entry => { if (entry.code) logCodes.push(entry.code); } })).rejects.toMatchObject({ code: 'report_capture_refinement_jev_answer_invalid' });
     expect(seen.map(request => request.logContext)).toEqual(['report-source-plan']);
     expect(logCodes).toContain('report_capture_refinement_jev_answer_invalid');
     expect(logCodes).not.toContain('report_capture_refinement_jev_completed');
@@ -2248,7 +2250,7 @@ describe('ReportPlanner', () => {
     let modelCalls = 0;
     const runner: InvestigationRunner = {
       providerName: 'fixture',
-      async run<T>() {
+      async run() {
         modelCalls += 1;
         throw new Error('model_should_not_run');
       },
@@ -2632,7 +2634,7 @@ describe('ReportPlanner', () => {
       scalars: [], tables: [], texts: [],
     };
     const repaired = repairReportMetadataReferences(plan, {
-      capturePlan: { schemaVersion: 1, http: [{ alias: 'orders', path: '/orders' }], rdb: [{ alias: 'contracts', table: 'public.contracts' }] },
+      capturePlan: { schemaVersion: 1, http: [{ alias: 'orders', path: '/orders', rowsPath: '$' }], rdb: [{ alias: 'contracts', table: 'public.contracts' }] },
     });
     expect(repaired.joins[0]?.where).toMatchObject({ right: { path: 'meta.periodEndInclusive' } });
     expect(repaired.filter).toMatchObject({ right: { path: 'meta.periodEndExclusive' } });

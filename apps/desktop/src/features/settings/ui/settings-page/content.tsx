@@ -7,8 +7,6 @@ import { LocalFolderConnectionForm } from '../connectors/LocalFolderConnectionFo
 import { HttpConnectionForm } from '../connectors/HttpConnectionForm';
 import { WebhookConnectionForm } from '../connectors/WebhookConnectionForm';
 import { RdbConnectionForm } from '../connectors/RdbConnectionForm';
-import { OpenApiConnectionForm } from '../connectors/OpenApiConnectionForm';
-import { McpConnectionForm } from '../connectors/McpConnectionForm';
 import { SettingsHub } from '../SettingsHub';
 import type { SettingsPageProps } from './contracts';
 
@@ -37,10 +35,6 @@ export function SettingsPageContent({
   onPickSqliteFile,
   onConnectRdb,
   onDisconnectRdb,
-  onConnectOpenApi,
-  onDisconnectOpenApi,
-  onConnectMcp,
-  onDisconnectMcp,
 }: SettingsPageContentProps) {
   const detailBrand = brandFromSettingsScreen(screen);
 
@@ -101,12 +95,6 @@ export function SettingsPageContent({
           onConnect={onConnectRdb}
           onDisconnect={onDisconnectRdb}
         />
-      )}
-      {screen === 'openapi' && (
-        <OpenApiConnectionForm state={state} onConnect={onConnectOpenApi} onDisconnect={onDisconnectOpenApi} />
-      )}
-      {screen === 'mcp' && (
-        <McpConnectionForm state={state} onConnect={onConnectMcp} onDisconnect={onDisconnectMcp} />
       )}
     </div>
   );

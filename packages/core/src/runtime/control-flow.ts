@@ -1,4 +1,4 @@
-export { linearContractSteps, linearSteps, skipInLinearScan, stepsById } from '../workflow/control-flow.js';
+export { linearSteps, stepsById } from '../workflow/control-flow.js';
 
 export interface ExecutionCheckpoint {
   variables: Record<string, unknown>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DecisionEngine } from '../../contracts/decision.js';
+import type { DecisionEngine, DecisionEvaluationResult } from '../../contracts/decision.js';
 import type { CandidateProgram, SourceDescriptor } from '../schema.js';
 import { judgeReplayAmbiguity } from './decision-judge.js';
 
@@ -135,7 +135,13 @@ describe('judgeReplayAmbiguity', () => {
       probabilities: { not_a_candidate: 1 },
     }]) {
       const result = await judgeReplayAmbiguity({
-        decisionEngine: { evaluate: async () => ({ answers: answer ? { ambiguity_0: answer } : {} }) },
+        decisionEngine: {
+          evaluate: async () => {
+            const answers: DecisionEvaluationResult['answers'] = {};
+            if (answer) answers.ambiguity_0 = answer;
+            return { answers };
+          },
+        },
         userGoal: 'Build the current sales summary',
         candidates,
         ambiguousPaths: [outputPath],

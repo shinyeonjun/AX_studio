@@ -2,7 +2,6 @@ export {
   cloudDataAllowedForReadSource,
   cloudDataAllowedForDecision,
   decisionEngineCanReceiveEvidence,
-  hasDecisionEvidence,
   hasDecisionEvidenceFromBindings,
   workflowNeedsDocumentEvidence,
 } from './evidence/availability.js';

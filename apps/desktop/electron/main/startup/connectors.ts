@@ -6,7 +6,6 @@ import { hydrateHttpConnector } from '../http/connection.js';
 import { hydrateWebhookConnection } from '../webhook/connection.js';
 import { hydrateRdbConnector } from '../rdb/connection.js';
 import { hydrateOpenApiConnector } from '../openapi/connection.js';
-import { hydrateMcpConnector } from '../mcp/connection.js';
 
 type DesktopCore = Awaited<ReturnType<typeof createAxStudioCore>>;
 
@@ -14,6 +13,8 @@ export async function hydrateConnectorsForStartup(
   core: DesktopCore,
 ): Promise<SlackSecret | null> {
   const tolerateHydrationFailure = !app.isPackaged && process.env.AX_E2E === '1';
+  const savedMockMcp = core.store.getConnections().find((entry) => entry.connector === 'mcp');
+  if (savedMockMcp?.connected) core.store.setConnection('mcp', false, savedMockMcp.config);
 
   async function runStep<T>(label: string, step: () => Promise<T>, fallback: T): Promise<T> {
     try {
@@ -35,6 +36,5 @@ export async function hydrateConnectorsForStartup(
   await runStep('webhook', () => hydrateWebhookConnection(core.store), undefined);
   await runStep('rdb', () => hydrateRdbConnector(core.store, core.runtime), undefined);
   await runStep('openapi', () => hydrateOpenApiConnector(core.store, core.runtime), undefined);
-  await runStep('mcp', () => hydrateMcpConnector(core.store, core.runtime), undefined);
   return slackSecret;
 }

@@ -11,6 +11,7 @@ describe('approval continuation branch resume', () => {
       name: '분기 승인 후 후속',
       goal: '조건 분기 승인 뒤 바깥 단계 실행',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'if',
@@ -83,7 +84,7 @@ it.each([true, false])('defers approval-owned descendant action to nested branch
   const store = new WorkflowStore(db);
   const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
   const ir: WorkflowIR = {
-    name: 'Nested conditional approved action', goal: 'Send only once when nested condition is true', version: 1,
+    name: 'Nested conditional approved action', goal: 'Send only once when nested condition is true', version: 1, inputs: [],
     steps: [
       { type: 'if', id: 'outer', condition: { op: 'eq', left: { ref: 'enter' }, right: { lit: true } }, thenStepIds: ['approve', 'inner'], elseStepIds: [] },
       { type: 'human_approval', id: 'approve', reason: 'Approve possible send', forActionIds: ['send'] },

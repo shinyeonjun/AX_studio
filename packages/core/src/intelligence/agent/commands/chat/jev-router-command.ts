@@ -37,7 +37,7 @@ export function choiceAnswer(answer: DecisionAnswer | undefined): ChoiceDecision
   return answer?.type === 'choice' ? answer : undefined;
 }
 
-export function resultLimit(
+function resultLimit(
   answers: Record<string, DecisionAnswer>,
   requestFeatures: JevRequestFeatures,
 ): number {
@@ -61,7 +61,7 @@ export function tableProjectionRequest(answer: DecisionAnswer | undefined): JevT
   return selected.choice === 'requested_columns' ? selected.choice : undefined;
 }
 
-export function httpReadCommand(
+function httpReadCommand(
   input: JevChatRouterInput,
   answers: Record<string, DecisionAnswer>,
 ): AxCommand | JevChatRouterResult {

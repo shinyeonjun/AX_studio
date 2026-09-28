@@ -105,13 +105,13 @@ describe('report source catalog disclosure', () => {
     const connections = Array.from({ length: 20 }, (_, index) => ({ id: `api-${index}`, label: 'API', basePath: `/${'a'.repeat(2_000)}` }));
     const first = inspectReportCatalog(connections, [], { kind: 'catalog', limit: 20 });
     expect(first).toHaveProperty('hasMore', true);
-    if (!first.entries) throw new Error('Expected a catalog page');
+    if (!('entries' in first)) throw new Error('Expected a catalog page');
     expect(JSON.stringify(first).length).toBeLessThan(24_000);
     const ids = first.entries.map(entry => entry.connectionId);
     let nextOffset = first.nextOffset;
     while (nextOffset !== null) {
       const page = inspectReportCatalog(connections, [], { kind: 'catalog', offset: nextOffset, limit: 20 });
-      if (!page.entries) throw new Error('Expected a catalog page');
+      if (!('entries' in page)) throw new Error('Expected a catalog page');
       ids.push(...page.entries.map(entry => entry.connectionId));
       nextOffset = page.nextOffset;
     }

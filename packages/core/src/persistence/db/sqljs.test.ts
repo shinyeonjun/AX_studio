@@ -19,7 +19,7 @@ describe('sql.js database persistence', () => {
         readonly.close();
       }
     } finally {
-      db.close();
+      db.close?.();
       rmSync(root, { recursive: true, force: true });
     }
   });
@@ -40,7 +40,8 @@ describe('sql.js database persistence', () => {
         '[sql.js] deferred database persistence failed:',
         expect.any(Error),
       );
-      expect(() => db.close()).toThrow();
+      expect(db.close).toBeDefined();
+      expect(() => db.close?.()).toThrow();
       expect(() => db.prepare('SELECT 1').get()).toThrow();
     } finally {
       vi.useRealTimers();
@@ -57,7 +58,8 @@ describe('sql.js database persistence', () => {
     mkdirSync(path);
 
     try {
-      expect(() => db.close()).toThrow();
+      expect(db.close).toBeDefined();
+      expect(() => db.close?.()).toThrow();
       expect(existsSync(path + '.tmp')).toBe(false);
       expect(() => db.prepare('SELECT 1').get()).toThrow();
     } finally {

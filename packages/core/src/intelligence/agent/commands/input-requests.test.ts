@@ -47,6 +47,7 @@ describe('inputRequestsForResult', () => {
           reason: '이 요청에 사용할 HTTP 연결은 무엇인가요?',
         }],
       }],
+      inputRequests: [],
     });
 
     expect(requests).toEqual([
@@ -109,6 +110,7 @@ describe('inputRequestsForResult', () => {
         path: 'steps.send.params',
         message: 'slack.message.send 단계에 필요한 값이 없습니다: channel, text',
       }],
+      inputRequests: [],
     })).toEqual([]);
   });
 
@@ -122,6 +124,7 @@ describe('inputRequestsForResult', () => {
         message: '이전 단계가 필요한 데이터를 제공하지 않습니다.',
         expected: ['TextArtifact'],
       }],
+      inputRequests: [],
     })).toEqual([]);
   });
 });

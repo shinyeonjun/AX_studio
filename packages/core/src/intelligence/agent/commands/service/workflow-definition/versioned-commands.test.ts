@@ -85,6 +85,7 @@ describe('AxCommandService versioned workflow commands', () => {
       name: '삭제 경합 테스트',
       goal: '실행 정리 후 삭제',
       version: 1,
+      inputs: [],
       steps: [{
         type: 'action',
         id: 'read',

@@ -20,7 +20,7 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     not_for: 'Natural-language requests that match a discovered API operation; choose capability_read for those. Never infer a path that the user did not provide.',
   },
   capability_read: {
-    what: 'Handle a request for connected HTTP API, OpenAPI, database, or MCP data using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
+    what: 'Handle a request for connected HTTP API, OpenAPI, or database data using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
     examples: ['DummyJSON에서 상품 5개만 가져와서 이름과 가격을 보여줘.', '이번 달 주문 중 결제 완료된 것만 보여줘.'],
     requires: 'Choose only an operation listed in the operation question. If context.read_operation_candidates_deferred is true and read_operation_catalog_size is positive, choose this route for a matching data request; Jev will select from the complete catalog in a follow-up before any command is produced. Otherwise, if the operation question offers only none, do not invent an operation, URL, table, tool, or parameter; ask the user to narrow the request or check the connection.',
     not_for: 'Writes, triggers, or operations absent from the connected read catalog.',

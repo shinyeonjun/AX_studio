@@ -11,11 +11,15 @@ import { WorkspaceSourceService } from '../../../../persistence/workspace-source
 import { WorkflowRuntime } from '../../../../runtime/engine.js';
 import { createTestConnectors, mockGmail } from '../../../../testing/connectors/test-connectors.js';
 import { runAxCommandChat } from '../chat.js';
-import { createDesignToolReadGateway } from '../read-gateway.js';
+import { createDesignToolReadGateway, type AxCommandReadGateway } from '../read-gateway.js';
 import { AxCommandService } from '../service.js';
 import { parallelToolAnswersForTest, parallelToolCandidateForTest, scriptedModel } from './fixtures.js';
 import { commandChatContext } from '../service/fixtures.js';
-import { MAX_DECISION_CHOICE_CRITERIA, type DecisionEngine } from '../../../../contracts/decision.js';
+import {
+  MAX_DECISION_CHOICE_CRITERIA,
+  type DecisionEngine,
+  type DecisionEvaluationResult,
+} from '../../../../contracts/decision.js';
 import { buildHttpResponseArtifact } from '../../../../contracts/artifacts/http-response.js';
 import { buildTableArtifact } from '../../../../contracts/artifacts/table-build.js';
 import { buildDesignToolContext } from '../../../design-tools/context.js';
@@ -31,10 +35,6 @@ const builtInTransformCapabilityIds = [
   'transform.document_to_text',
   'transform.http_to_table',
 ];
-
-function matchesAction(criterion: unknown, connector: string, action: string): boolean {
-  return typeof criterion === 'string' && criterion.startsWith(`${connector}.${action} —`);
-}
 
 function answerOnlyAnswers(request: Parameters<DecisionEngine['evaluate']>[0]) {
   return parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true });
@@ -54,7 +54,7 @@ describe('runAxCommandChat command loop', () => {
       matrix: [['A', 50, 45], ['B', 10, 20], ['C', 20, 5]],
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async ({ state, questions }) => {
+      evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
         if (questions.route) {
           const route = questions.route;
           const routeChoice = route?.type === 'choice' && Object.hasOwn(route.criteria, 'previous_result')
@@ -98,7 +98,7 @@ describe('runAxCommandChat command loop', () => {
     expect(reply).toContain('| C | 20 | 5 |');
     expect(reply).not.toContain('| A |');
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('reports configured model metadata without Jev or an LLM round trip', async () => {
@@ -164,7 +164,7 @@ describe('runAxCommandChat command loop', () => {
     expect(evaluations).toBe(1);
     expect(textSeen).toHaveLength(1);
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('uses Jev to select a safe read and renders its known list without an LLM turn', async () => {
@@ -257,7 +257,7 @@ describe('runAxCommandChat command loop', () => {
       const execute = vi.spyOn(service, 'execute');
       const textSeen: TextGenerateInput[] = [];
       const decisionEngine: DecisionEngine = {
-        evaluate: async (request) => ({
+        evaluate: async () => ({
           answers: {
             route: {
               type: 'choice', choice: 'resource_list',
@@ -280,7 +280,7 @@ describe('runAxCommandChat command loop', () => {
       expect(reply).toContain('"local_folder"');
       expect(textSeen).toHaveLength(0);
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 
@@ -333,7 +333,7 @@ describe('runAxCommandChat command loop', () => {
         expect.objectContaining({ requestId: 'chat-failure-9' }),
       );
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 
@@ -345,7 +345,7 @@ describe('runAxCommandChat command loop', () => {
     const service = new AxCommandService(store, { enqueueOnce });
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         const inputQuestion = request.questions.action_input_0;
         if (inputQuestion?.type === 'choice') {
@@ -405,7 +405,7 @@ describe('runAxCommandChat command loop', () => {
     expect(inputRequests).toEqual(expect.arrayContaining([expect.objectContaining({ label: '본문', required: true })]));
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('evaluates more than 255 connected write tools in parallel through the production chat loop', async () => {
@@ -519,7 +519,7 @@ describe('runAxCommandChat command loop', () => {
       }));
     } finally {
       clearDynamicCatalogForTests();
-      db.close();
+      db.close?.();
     }
   });
 
@@ -588,7 +588,7 @@ describe('runAxCommandChat command loop', () => {
       expect(gmail.sent).toEqual([{ to: 'person@example.com', body: '견적서를 보내 주세요' }]);
       await runtime.waitForIdle();
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 
@@ -893,7 +893,7 @@ describe('runAxCommandChat command loop', () => {
     expect(JSON.stringify(textSeen)).not.toContain('do-not-send-to-llm');
     expect(JSON.stringify(textSeen)).not.toContain('stale-history-sentinel');
     expect(JSON.stringify(textSeen)).toContain('DummyJSON에서 GET customers?limit=2');
-    const summaryEvidence = textSeen[0]?.messages.find((message) => message.content.startsWith('AX command result'));
+    const summaryEvidence = textSeen[0]?.messages?.find((message) => message.content.startsWith('AX command result'));
     expect(summaryEvidence?.content.length).toBeLessThan(14_000);
     expect(summaryEvidence?.content).toContain('"truncated":true');
     expect(JSON.stringify(textSeen)).toContain('external_client_ref');
@@ -957,7 +957,7 @@ describe('runAxCommandChat command loop', () => {
     });
     const jevRequests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         jevRequests.push(request);
         if (request.questions.route) {
           return { answers: {
@@ -1008,7 +1008,7 @@ describe('runAxCommandChat command loop', () => {
     });
     expect(executionTiming).not.toHaveProperty('params');
     expect(executionTiming).not.toHaveProperty('userMessage');
-    db.close();
+    db.close?.();
   });
 
   it('records command execution timing when a selected command throws', async () => {
@@ -1050,7 +1050,7 @@ describe('runAxCommandChat command loop', () => {
       expect(executionTiming).not.toHaveProperty('params');
       expect(executionTiming).not.toHaveProperty('userMessage');
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 
@@ -1061,7 +1061,7 @@ describe('runAxCommandChat command loop', () => {
       readGateway: { execute: async () => { throw new Error('HTTP should not run without a cataloged path'); } },
     });
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => ({
+      evaluate: async () => ({
         answers: {
           route: {
             type: 'choice', choice: 'http_read',
@@ -1120,7 +1120,7 @@ describe('runAxCommandChat command loop', () => {
       ] }),
       truncated: false,
     });
-    const read = vi.fn(async () => ({
+    const read = vi.fn<AxCommandReadGateway['execute']>(async () => ({
       tool: 'capabilities.invoke',
       ok: true as const,
       data: { capabilityId: 'http.request', data: response, citations: [], untrusted: true },
@@ -1129,7 +1129,7 @@ describe('runAxCommandChat command loop', () => {
     const jevRequests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     let limitCriteria: Record<string, unknown> | undefined;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         jevRequests.push(request);
         if (request.questions.read_parameter_0) {
           const question = request.questions.read_parameter_0;
@@ -1196,7 +1196,7 @@ describe('runAxCommandChat command loop', () => {
     expect(limitCriteria).toMatchObject({ value_0: { value: 30 }, value_1: { value: 5 } });
     expect(jevRequests).toHaveLength(3);
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('executes an explicit Jev-selected HTTP path and renders the host response without LLM planning', async () => {
@@ -1221,7 +1221,7 @@ describe('runAxCommandChat command loop', () => {
     const seen: StructuredGenerateInput<unknown>[] = [];
     const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => ({
+      evaluate: async () => ({
         answers: {
           route: {
             type: 'choice', choice: 'http_read',
@@ -1317,7 +1317,7 @@ describe('runAxCommandChat command loop', () => {
     expect(reply).toContain('Less stock');
     expect(reply.indexOf('Less stock')).toBeLessThan(reply.indexOf('More stock'));
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('does not ask for an HTTP connection before Jev classifies an ambiguous request', async () => {
@@ -1376,7 +1376,7 @@ describe('runAxCommandChat command loop', () => {
     };
 
     await runAxCommandChat({
-      harness: new AgentHarness(scriptedModel([])),
+      harness: new AgentHarness(scriptedModel([], [])),
       commandService: service,
       decisionEngine,
       connectedConnectors: ['http'],
@@ -1398,7 +1398,7 @@ describe('runAxCommandChat command loop', () => {
       }),
       expect.anything(),
     );
-    db.close();
+    db.close?.();
   });
 
   it('never converts an explicit HTTP write method to GET during connection selection', async () => {
@@ -1410,7 +1410,7 @@ describe('runAxCommandChat command loop', () => {
     };
 
     await runAxCommandChat({
-      harness: new AgentHarness(scriptedModel([])),
+      harness: new AgentHarness(scriptedModel([], [])),
       commandService: service,
       decisionEngine,
       connectedConnectors: ['http'],
@@ -1432,7 +1432,7 @@ describe('runAxCommandChat command loop', () => {
       }),
       expect.anything(),
     );
-    db.close();
+    db.close?.();
   });
 
   it('shows the HTTP connection chooser only after Jev cannot choose a listed endpoint', async () => {
@@ -1535,7 +1535,7 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen[0]?.system).toContain('otherwise explain that no supported operation was selected');
     expect(seen).toHaveLength(0);
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('keeps the deterministic unsupported message when LLM reply generation fails', async () => {
@@ -1558,7 +1558,7 @@ describe('runAxCommandChat command loop', () => {
     expect(textSeen).toHaveLength(1);
     expect(seen).toHaveLength(0);
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('explains an oversized current request instead of sending a truncated prompt', async () => {
@@ -1575,7 +1575,7 @@ describe('runAxCommandChat command loop', () => {
       userMessage: request,
     })).resolves.toContain('요청이 너무 길어');
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('keeps the LLM conversational when Jev is not configured', async () => {
@@ -1596,7 +1596,7 @@ describe('runAxCommandChat command loop', () => {
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(1);
     expect(textSeen[0]?.system).toContain('No AX command or connected-resource operation was executed');
-    db.close();
+    db.close?.();
   });
 
   it('finishes a Jev-selected catalog read without a second text-model call', async () => {
@@ -1696,7 +1696,7 @@ describe('runAxCommandChat command loop', () => {
       },
     };
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         const toolCandidates = Object.entries(request.questions)
           .filter(([id]) => id.startsWith('tool_'))
@@ -1765,7 +1765,7 @@ describe('runAxCommandChat command loop', () => {
     expect(requests).toHaveLength(2);
     expect(readCalls).toBe(2);
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it.each([
@@ -1824,7 +1824,7 @@ describe('runAxCommandChat command loop', () => {
     expect(evaluations).toBe(1);
     expect(readCalls).toBe(1);
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('uses Jev to find a semantic match in the full indexed catalog through the chat flow', async () => {
@@ -1895,7 +1895,7 @@ describe('runAxCommandChat command loop', () => {
     expect(offeredOperations).toHaveLength(71 + builtInTransformCapabilityIds.length);
     expect(resolveReadOperationSelection).toHaveBeenCalledExactlyOnceWith();
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('stops safely when Jev detects a data request but a bounded catalog has no local match', async () => {
@@ -1939,7 +1939,7 @@ describe('runAxCommandChat command loop', () => {
     expect(execute).not.toHaveBeenCalled();
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('asks for missing required read parameters instead of letting the LLM guess them', async () => {
@@ -2059,7 +2059,7 @@ describe('runAxCommandChat command loop', () => {
       harness,
       commandService: service,
       decisionEngine,
-      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', baseUrl: 'https://dummyjson.com/' }],
+      httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON' }],
       messages: [],
       userMessage: 'DummyJSON에서 상품 목록을 조회해줘',
     })).resolves.toContain('의미 판단 서비스를 확인할 수 없어');
@@ -2190,7 +2190,7 @@ describe('runAxCommandChat command loop', () => {
     expect(store.getWorkflow(saved.workflowId)).toBeNull();
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('runs the selected workflow from an indirect request after Jev confirms intent', async () => {
@@ -2245,7 +2245,7 @@ describe('runAxCommandChat command loop', () => {
     expect(runWorkflow).toHaveBeenCalledExactlyOnceWith(saved.workflowId);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('updates an explicitly quoted workflow name through Jev and the versioned host command', async () => {
@@ -2312,7 +2312,7 @@ describe('runAxCommandChat command loop', () => {
     );
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('removes only the Jev-selected current step and deactivates the edited active workflow', async () => {
@@ -2346,7 +2346,7 @@ describe('runAxCommandChat command loop', () => {
     const textCalls: TextGenerateInput[] = [];
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async ({ questions }) => {
+      evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         if (questions.route) {
           expect(questions).not.toHaveProperty('workflow_step_to_remove');
@@ -2406,7 +2406,7 @@ describe('runAxCommandChat command loop', () => {
     expect(store.isWorkflowActive(createdData.workflowId)).toBe(false);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('starts a fresh report when the model echoes an id from an earlier execution result', async () => {
@@ -2438,7 +2438,7 @@ describe('runAxCommandChat command loop', () => {
     });
     const harness = new AgentHarness(scriptedModel([], []));
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => Object.hasOwn(request.questions, 'intent_match')
+      evaluate: async (request): Promise<DecisionEvaluationResult> => Object.hasOwn(request.questions, 'intent_match')
         ? {
             answers: {
               intent_match: {

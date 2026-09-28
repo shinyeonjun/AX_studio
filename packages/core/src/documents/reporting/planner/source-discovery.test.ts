@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../../intelligence/agent/investigation-runner.js';
 import { zodToCodexJsonSchema } from '../../../intelligence/agent/model/cli-json.js';
 import { REPORT_SOURCE_DISCOVERY_TIMEOUT_MS, ReportSourceDecisionSchema, ReportSourceDecisionWireSchema, discoverReportSources, type ReportSourceInspection } from './source-discovery.js';
+import type { ReportCaptureInference } from './schema.js';
 
 const plan = {
   schemaVersion: 1,
@@ -32,7 +33,7 @@ describe('source discovery response contract', () => {
       } };
       const result = discoverReportSources({ runner, context, user: 'Report', images: [], requirements: [],
         inspect: (_inspection, signal) => new Promise((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('inspection_aborted')), { once: true });
+          signal?.addEventListener('abort', () => reject(new Error('inspection_aborted')), { once: true });
         }), validate: value => value }).then(
           () => { settled = true; }, error => { failure = error; settled = true; });
       await vi.advanceTimersByTimeAsync(180_001);
@@ -100,7 +101,7 @@ describe('source discovery response contract', () => {
       requirementBindings: [],
     };
     const decision = { schemaVersion: 1, status: 'planned', plan: complete };
-    const validate = vi.fn(async (value: typeof complete,
+    const validate = vi.fn(async (value: ReportCaptureInference,
       evidence: Array<{ request: ReportSourceInspection; result: unknown }>) => {
       if (!evidence.some(item => item.request.kind === 'rdb_table' && item.request.table === 'warehouse.orders')) {
         evidence.push({ request: { kind: 'rdb_table', table: 'warehouse.orders' },

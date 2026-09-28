@@ -6,7 +6,7 @@ import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-response.js';
 import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
 import type { Connector, ConnectorContext } from '../../connectors/types.js';
-import type { DecisionEngine } from '../../contracts/decision.js';
+import type { DecisionEngine, DecisionEvaluationResult } from '../../contracts/decision.js';
 import { ReportGenerationService } from './service.js';
 import { ReportCheckpointStore, reportDigest } from './checkpoints.js';
 import { ReportSourceReplanRequired, type ReportSourceNeed, type ReportCaptureInference } from './planner/schema.js';
@@ -18,13 +18,15 @@ describe('ReportGenerationService', () => {
     const seen: string[] = [];
     const log = vi.fn();
     const decisionEngine: DecisionEngine = { async evaluate({ questions }) {
-      return { answers: Object.fromEntries(Object.keys(questions).map(id => {
+      const answers: DecisionEvaluationResult['answers'] = {};
+      for (const id of Object.keys(questions)) {
         const sourceCandidate = id.startsWith('source_');
         const choice = id === 'rdb_required' ? 'required' : id === 'http_required' ? 'not_required' : 'use_source';
-        return [id, { type: 'choice' as const, choice,
-          probabilities: sourceCandidate ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
-            : { required: 0.4, not_required: 0.35, unclear: 0.25 }, confidence: 0.4 }];
-      })) };
+        const probabilities: Record<string, number> = sourceCandidate ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
+          : { required: 0.4, not_required: 0.35, unclear: 0.25 };
+        answers[id] = { type: 'choice', choice, probabilities, confidence: 0.4 };
+      }
+      return { answers };
     } };
     const planner = new ReportPlanner({ providerName: 'fixture', async run(request) {
       seen.push(request.context.untrustedData ?? '');
@@ -111,7 +113,7 @@ describe('ReportGenerationService', () => {
       name: 'http',
       execute: vi.fn(async (_action, params) => ({ ok: true, data: buildHttpResponseArtifact({
         executionId: 'inspection', url: `https://events.test${String(params.path)}`,
-        status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
+        status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]', truncated: false,
       }) })),
     };
     const service = new ReportGenerationService({
@@ -175,7 +177,7 @@ describe('ReportGenerationService', () => {
         requests.push(params);
         return { ok: true, data: buildHttpResponseArtifact({
           executionId: 'inspection', url: `http://orders.test${String(params.path)}`,
-          status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
+          status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]', truncated: false,
         }) };
       }),
     };
@@ -417,14 +419,15 @@ describe('ReportGenerationService', () => {
             executionId: 'http-read', url: `http://example.test${path}`, status: 200, statusText: 'OK',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ data: [{ id: 'o1' }, { id: 'o2' }], meta: { page: 1, total_pages: 1 } }),
+            truncated: false,
           }),
         };
       }),
     };
-    const refineCapturePlan = vi.fn(async ({ provisional }: { provisional: Record<string, unknown> }) => ({
-      ...(provisional as object),
+    const refineCapturePlan = vi.fn(async ({ provisional }: Parameters<ReportPlanner['refineCapturePlan']>[0]) => ({
+      ...provisional,
       capturePlan: {
-        schemaVersion: 1,
+        schemaVersion: 1 as const,
         http: [{
           alias: 'orders', connectionId: 'orders-api', path: '/records', rowsPath: 'data',
           dateQuery: { fromParam: 'from', toParam: 'to' },
@@ -722,7 +725,8 @@ describe('ReportGenerationService', () => {
       scalarBindings: [{ slotId: 'count', value: { kind: 'scalar' as const, id: 'count' } }],
       tableBindings: [],
     };
-    const reviseReportPlan = vi.fn(async function (this: { inferCapturePlan: unknown }, input: { replayFailure: { mismatches: unknown[] } }) {
+    const reviseReportPlan = vi.fn(async function (this: Pick<ReportPlanner, 'inferCapturePlan'>,
+      input: Parameters<ReportPlanner['reviseReportPlan']>[0]) {
       expect(this.inferCapturePlan).toBeTypeOf('function');
       events.push('revise');
       expect(input.replayFailure.mismatches).toEqual([{ slotId: 'count', expected: '2', actual: '0' }]);

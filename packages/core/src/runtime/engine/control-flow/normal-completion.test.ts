@@ -11,6 +11,7 @@ describe('runtime control-flow normal completion', () => {
       name: '정상 분기 후속 실행',
       goal: '분기와 바깥 후속 알림을 각각 한 번 실행',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'if',

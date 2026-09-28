@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inferWorkflowBindings } from '../../bindings.js';
 import { validateWorkflowContracts } from '../../contract-validator.js';
-import { folderToDocument } from '../fixtures.js';
 import type { WorkflowIR } from '../../schema.js';
 
 describe('validateWorkflowContracts graph and control flow', () => {
@@ -24,7 +23,7 @@ describe('validateWorkflowContracts graph and control flow', () => {
         {
           type: 'if',
           id: 'branch',
-          condition: 'true',
+          condition: { op: 'eq', left: { lit: true }, right: { lit: true } },
           thenStepIds: ['to_text'],
           elseStepIds: [],
         },

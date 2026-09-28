@@ -24,6 +24,7 @@ describe('runtime output binding', () => {
       name: '결제 결과 공유',
       goal: '결제 주문을 요약해서 Slack으로 공유',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'ai_decision',

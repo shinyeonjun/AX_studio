@@ -42,7 +42,7 @@ describe('runAxCommandChat provider compatibility', () => {
       expect(textCalls).toHaveLength(1);
       expect(structuredCalls).toHaveLength(0);
       expect(execute).not.toHaveBeenCalled();
-      db.close();
+      db.close?.();
     },
   );
 
@@ -67,7 +67,7 @@ describe('runAxCommandChat provider compatibility', () => {
     expect(textCalls[0]?.system).toContain('No AX command or connected-resource operation was executed');
     expect(structuredCalls).toHaveLength(0);
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it('does not commit a job when the request is already aborted', async () => {
@@ -86,6 +86,6 @@ describe('runAxCommandChat provider compatibility', () => {
       abortSignal: controller.signal,
     })).rejects.toThrow('요청이 취소되었습니다.');
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 });

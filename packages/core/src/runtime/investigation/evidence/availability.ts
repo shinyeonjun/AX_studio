@@ -76,7 +76,7 @@ export function decisionEngineCanReceiveEvidence(
   return cloudAllowed && cloudDataAllowedForReadSource(ir, source);
 }
 
-export function hasDecisionEvidence(
+function hasDecisionEvidence(
   ctx: ConnectorContext,
   stepResults: Record<string, unknown>,
   evidence: Array<{ source: string; detail: string }>,

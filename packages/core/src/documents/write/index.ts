@@ -2,7 +2,6 @@ export * from './types.js';
 export {
   setDesktopPrintBridge,
   getDesktopPrintBridge,
-  MockDesktopPrintBridge,
   type DesktopPrintBridge,
   type DesktopPrintOptions,
 } from './desktop-print.js';

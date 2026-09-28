@@ -67,9 +67,7 @@ describe('runAxCommandChat bounded context', () => {
         },
       }),
       commandService: service,
-      messages: [{
-        role: 'assistant', content: firstReply, presentations,
-      }],
+      messages: [{ role: 'assistant', content: firstReply }],
       userMessage: selectedAction.value,
       workspaceSessionId: chat.id,
       contextUpdateConfirmation: selectedAction.contextUpdate,
@@ -83,7 +81,7 @@ describe('runAxCommandChat bounded context', () => {
     expect(secondTextCalls).toHaveLength(0);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('asks for concrete text instead of saving a vague memory request', async () => {
@@ -111,6 +109,6 @@ describe('runAxCommandChat bounded context', () => {
       onPresentation,
     })).resolves.toContain('기억할 규칙이나 선호');
     expect(onPresentation).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 });

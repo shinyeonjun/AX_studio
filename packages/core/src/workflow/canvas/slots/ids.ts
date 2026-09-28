@@ -1,7 +1,4 @@
 const NODE_PARAM_SLOT = /^(.+)\.params\.(.+)$/;
-const NODE_MEMO_SLOT = /^(.+)\.memo$/;
-const NODE_TEXT_SLOT = /^(.+)\.(goal|reason)$/;
-const NODE_CONDITION_SLOT = /^(.+)\.condition$/;
 
 const NODE_ROLE_HINTS: Record<string, string> = {
   critical: '긴급(critical)', urgent: '긴급', high: '운영(high)', ops: '운영', operational: '운영',
@@ -14,20 +11,8 @@ export function parseNodeParamSlot(slot: string): { nodeId: string; paramName: s
   const match = NODE_PARAM_SLOT.exec(slot.trim());
   return match ? { nodeId: match[1]!, paramName: match[2]! } : null;
 }
-export function parseNodeMemoSlot(slot: string): { nodeId: string } | null {
-  const match = NODE_MEMO_SLOT.exec(slot.trim());
-  return match ? { nodeId: match[1]! } : null;
-}
-export type NodeTextSlotField = 'goal' | 'reason';
+type NodeTextSlotField = 'goal' | 'reason';
 export function nodeTextSlotId(nodeId: string, field: NodeTextSlotField): string { return `${nodeId}.${field}`; }
-export function parseNodeTextSlot(slot: string): { nodeId: string; field: NodeTextSlotField } | null {
-  const match = NODE_TEXT_SLOT.exec(slot.trim());
-  return match ? { nodeId: match[1]!, field: match[2] as NodeTextSlotField } : null;
-}
-export function parseNodeConditionSlot(slot: string): { nodeId: string } | null {
-  const match = NODE_CONDITION_SLOT.exec(slot.trim());
-  return match ? { nodeId: match[1]! } : null;
-}
 export function nodeRoleHint(nodeId: string): string | undefined {
   for (const token of nodeId.toLowerCase().split(/[_\-.]+/).filter(Boolean)) {
     const hint = NODE_ROLE_HINTS[token];

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { MockDesktopPrintBridge } from '../../../testing/desktop-print.js';
 import {
   generatePdf,
   isPdfGeneratePending,
-  MockDesktopPrintBridge,
   setDesktopPrintBridge,
 } from '../index.js';
 

@@ -1,7 +1,6 @@
 import type { SourceListingConnection } from '../../connectors/types.js';
 import { parseHttpEndpoints } from '../../connectors/http/connection.js';
 import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
-import { parseMcpConnectionConfig } from '../../connectors/protocols/mcp/index.js';
 import {
   parseOpenApiConnectionConfig,
   parseOpenApiSpec,
@@ -35,7 +34,7 @@ const SENSITIVE_PARAMETER_NAME = /(?:api[_-]?key|authorization|password|secret|t
 export interface JevReadOperationHint {
   key: string;
   capabilityId: string;
-  connector: 'http' | 'openapi' | 'mcp' | 'rdb' | 'gmail' | 'slack' | 'local_folder' | 'local_sheet';
+  connector: 'http' | 'openapi' | 'rdb' | 'gmail' | 'slack' | 'local_folder' | 'local_sheet';
   sourceLabel?: string;
   label: string;
   description: string;
@@ -125,14 +124,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined;
-}
-
-function scalarParameterChoices(value: unknown): readonly (string | number | boolean)[] | undefined {
-  if (!Array.isArray(value) || value.length === 0 || value.length > JEV_READ_OPERATION_MAX_CHOICES) return undefined;
-  if (!value.every((entry) => (typeof entry === 'string' && entry.length <= 200)
-    || (typeof entry === 'number' && Number.isFinite(entry))
-    || typeof entry === 'boolean')) return undefined;
-  return [...new Set(value)] as (string | number | boolean)[];
 }
 
 function escapeRegExp(value: string): string {
@@ -377,67 +368,6 @@ function addRdbOperations(
   }
 }
 
-function addMcpOperations(operations: IndexedReadOperation[], connection: SourceListingConnection): void {
-  const parsed = parseMcpConnectionConfig(connection.config);
-  if (!parsed) return;
-  for (const tool of parsed.tools) {
-    if (tool.sideEffect !== 'NONE') continue;
-    const schema = asRecord(tool.inputSchema);
-    const required = Array.isArray(schema?.required)
-      ? schema.required.filter((entry): entry is string => typeof entry === 'string')
-      : [];
-    if (required.some((name) => SENSITIVE_PARAMETER_NAME.test(name))) continue;
-    const properties = asRecord(schema?.properties);
-    const parameterNames = [...new Set([
-      ...Object.keys(properties ?? {}),
-      ...required,
-    ])];
-    const safeParameterNames = parameterNames
-      .filter((name) => !SENSITIVE_PARAMETER_NAME.test(name))
-      .slice(0, 50);
-    const parameterHintsFor = (userMessage: string) => safeParameterNames.map((name) => {
-      const property = asRecord(properties?.[name]);
-      const choices = scalarParameterChoices(property?.enum)
-        ?? naturalLimitChoices(name, typeof property?.type === 'string' ? property.type : undefined, userMessage);
-      return {
-        path: name,
-        ...(typeof property?.type === 'string' ? { type: property.type.slice(0, 40) } : {}),
-        ...(typeof property?.description === 'string' ? { description: property.description.slice(0, 180) } : {}),
-        required: required.includes(name),
-        ...(choices ? { choices } : {}),
-      };
-    });
-    const description = text(tool.description, MAX_TEXT_CHARS) ?? `MCP 읽기 도구 ${tool.name}`;
-    addIndexedOperation(operations, {
-      capabilityId: `mcp.${parsed.serverId}.${tool.name}`,
-      connector: 'mcp',
-      sourceLabel: parsed.serverId,
-      label: text(tool.name, 160) ?? 'MCP 읽기 도구',
-      description,
-    }, (userMessage) => {
-      const params: Record<string, unknown> = {};
-      for (const name of safeParameterNames) {
-        const property = asRecord(properties?.[name]);
-        const parameter: OpenApiParameter = {
-          name,
-          in: 'query',
-          required: required.includes(name),
-          ...(typeof property?.type === 'string' ? { type: property.type } : {}),
-        };
-        let value = parameterValue(userMessage, parameter);
-        if (value === undefined && isSearchParameter(name)) value = explicitSearchQuery(userMessage);
-        const choices = scalarParameterChoices(property?.enum);
-        if (value !== undefined && (!choices || choices.includes(value))) params[name] = value;
-      }
-      return {
-        params,
-        parameterHints: parameterHintsFor(userMessage),
-        missingParameterPaths: required.filter((name) => !Object.hasOwn(params, name)),
-      };
-    });
-  }
-}
-
 function explicitSearchQuery(message: string): string | undefined {
   const labeled = ['query', 'q', '검색어', '검색조건', '검색 조건']
     .map((name) => explicitParameterValue(message, name))
@@ -597,7 +527,6 @@ export class JevReadOperationIndex {
       if (connection.connector === 'http') addHttpOperations(operations, connection);
       if (connection.connector === 'openapi') addOpenApiOperations(operations, connection);
       if (connection.connector === 'rdb') addRdbOperations(operations, connection);
-      if (connection.connector === 'mcp') addMcpOperations(operations, connection);
       if (connection.connector === 'gmail') addGmailOperations(operations);
       if (connection.connector === 'slack') addSlackOperations(operations);
       if (connection.connector === 'local_folder') addLocalFolderOperations(operations, connection);

@@ -43,6 +43,7 @@ describe('validateWorkflowForPersistence document ingest', () => {
     permissions: {},
     approval: [],
     allowExternalAuto: true,
+    sideEffects: {},
     dataPolicy: {},
   };
 

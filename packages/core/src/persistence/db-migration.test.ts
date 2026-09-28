@@ -3,10 +3,23 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDatabaseAsync } from './db.js';
+import { createDatabaseAsync, type AppDatabase } from './db.js';
 import { applyLegacyMigrations } from './db/schema/legacy.js';
 import { createSqlJsDatabase, openReadonlySqlJs } from './db/sqljs.js';
 import { WorkflowStore } from './workflow-store.js';
+
+function mockDatabase(): AppDatabase {
+  const statement = {
+    run: vi.fn<(...params: unknown[]) => { changes: number }>(() => ({ changes: 0 })),
+    all: vi.fn<(...params: unknown[]) => Record<string, unknown>[]>(() => []),
+    get: vi.fn<(...params: unknown[]) => Record<string, unknown> | undefined>(),
+  };
+  return {
+    exec: vi.fn<(sql: string) => void>(),
+    prepare: vi.fn<(sql: string) => typeof statement>(() => statement),
+    close: vi.fn<() => void>(),
+  };
+}
 
 describe('legacy database migrations', () => {
   it('adds the pending-approval ordering index to existing databases', async () => {
@@ -129,13 +142,9 @@ describe('legacy database migrations', () => {
   });
 
   it('propagates migration errors and closes the native adapter instead of falling back', async () => {
-    const native = {
-      close: vi.fn(),
-      exec: vi.fn(),
-      prepare: vi.fn(),
-    };
+    const native = mockDatabase();
     const migrationError = new Error('migration constraint');
-    const fallback = vi.fn(async () => ({ close: vi.fn() }));
+    const fallback = vi.fn(async () => mockDatabase());
 
     await expect(createDatabaseAsync(':memory:', {
       createNativeDatabase: () => native,
@@ -150,7 +159,7 @@ describe('legacy database migrations', () => {
   });
 
   it('bounds native fallback diagnostics instead of printing binding search paths', async () => {
-    const fallbackDatabase = { close: vi.fn() };
+    const fallbackDatabase = mockDatabase();
     const fallback = vi.fn(async () => fallbackDatabase);
     const nativeError = Object.assign(
       new Error('Could not locate the bindings file. Tried: C:\\secret\\node_modules\\better_sqlite3.node'),
@@ -175,7 +184,7 @@ describe('legacy database migrations', () => {
   });
 
   it('falls back only when the native loader is unavailable', async () => {
-    const fallbackDatabase = { close: vi.fn() };
+    const fallbackDatabase = mockDatabase();
     const fallback = vi.fn(async () => fallbackDatabase);
     const nativeError = Object.assign(
       new Error('better-sqlite3 was compiled against a different Node.js version'),
@@ -272,7 +281,7 @@ describe('legacy database migrations', () => {
         readonly.close();
       }
     } finally {
-      db?.close();
+      db?.close?.();
       vi.useRealTimers();
       if (previousBackend === undefined) delete process.env.AX_DB_BACKEND;
       else process.env.AX_DB_BACKEND = previousBackend;

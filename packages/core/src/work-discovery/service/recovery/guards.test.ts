@@ -6,7 +6,6 @@ import { createDiscoveryCommandGateway } from '../../../intelligence/agent/comma
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import type { DiscoverySourceProvider } from '../../../contracts/discovery-source.js';
-import type { DiscoverySessionState } from '../../schema.js';
 import { WorkDiscoveryService } from '../../service.js';
 import { DiscoverySourceRegistry } from '../../sources/registry.js';
 import { makeSession } from '../fixtures.js';

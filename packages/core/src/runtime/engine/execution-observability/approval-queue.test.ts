@@ -20,6 +20,7 @@ describe('runtime approval and queue observability', () => {
       name: 'HTTP POST 승인',
       goal: '외부 API에 payload를 보낸다',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'action',
@@ -61,6 +62,7 @@ describe('runtime approval and queue observability', () => {
       name: '큐 일회 실행',
       goal: '한 번씩 순서대로 처리한다',
       version: 1,
+      inputs: [],
       steps: [],
       permissions: {},
       approval: [],

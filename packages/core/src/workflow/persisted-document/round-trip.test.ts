@@ -59,10 +59,14 @@ describe('persisted workflow document round-trip', () => {
     const loaded = mergeWorkflowDocument(stored);
     const reparsed = parseStoredWorkflow(stored);
 
-    expect(loaded.steps.find((step) => step.id === 'ingest' && step.type === 'action')?.params).toMatchObject({
+    const ingest = loaded.steps.find((step) => step.id === 'ingest');
+    if (!ingest || ingest.type !== 'action') throw new Error('missing ingest action');
+    expect(ingest.params).toMatchObject({
       path: '/tmp/sample.pdf',
     });
-    expect(reparsed.steps.find((step) => step.id === 'classify' && step.type === 'ai_decision')?.memo).toBe(
+    const classify = reparsed.steps.find((step) => step.id === 'classify');
+    if (!classify || classify.type !== 'ai_decision') throw new Error('missing classify decision');
+    expect(classify.memo).toBe(
       'critical=긴급',
     );
   });

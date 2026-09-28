@@ -51,7 +51,7 @@ AI 인터뷰로 조건과 빈칸 확인
 | 업무 설계 | 대화형 Work Discovery, 구조화된 Workflow IR, 시각적 워크플로우 캔버스 |
 | 실행 | 등록한 workflow 활성화, 스케줄 실행, 실행 결과와 활동 이력 |
 | 안전 | Gmail 발송 등 외부 부작용 전 승인, 개발/설치 데이터 격리, OS credential store 사용 |
-| 연결 | Gmail, Slack, 읽기 전용 PostgreSQL/MySQL, 로컬 폴더·문서, OpenAPI, MCP 도구 |
+| 연결 | Gmail, Slack, 읽기 전용 PostgreSQL/MySQL, 로컬 폴더·문서 |
 | 데이터 | CSV/XLSX 읽기용 `local_sheet`, SQLite 기반 로컬 상태 저장 |
 | 결과물 | HTML/DOCX/PDF 보고서 생성 경로 |
 | 검증 | core 단위 테스트, 정적 빌드, Electron 제품 QA harness |

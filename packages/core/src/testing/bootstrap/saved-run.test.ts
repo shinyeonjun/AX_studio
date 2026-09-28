@@ -33,6 +33,7 @@ describe('saved workflow completion projection', () => {
       name: '부트스트랩 결과',
       goal: '완료 결과를 대화에 남긴다',
       version: 1,
+      inputs: [],
       steps: [],
       permissions: {},
       approval: [],

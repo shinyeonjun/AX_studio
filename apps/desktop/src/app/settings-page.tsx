@@ -63,22 +63,6 @@ export function AppSettingsPage({ screen, state, onScreenChange, onRefresh, dete
         await window.ax.disconnectRdb();
         await onRefresh();
       }}
-      onConnectOpenApi={async (payload) => {
-        await window.ax.connectOpenApi(payload);
-        await onRefresh();
-      }}
-      onDisconnectOpenApi={async () => {
-        await window.ax.disconnectOpenApi();
-        await onRefresh();
-      }}
-      onConnectMcp={async (payload) => {
-        await window.ax.connectMcp(payload);
-        await onRefresh();
-      }}
-      onDisconnectMcp={async () => {
-        await window.ax.disconnectMcp();
-        await onRefresh();
-      }}
     />
   );
 }

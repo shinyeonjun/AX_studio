@@ -11,6 +11,7 @@ describe('workflow save validation guard', () => {
       goal: 'Slack에 보내기',
       version: 1,
       trigger: { type: 'manual' },
+      inputs: [],
       steps: [{ type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#ops' }, sideEffect: 'EXTERNAL' }],
       permissions: {},
       approval: [],

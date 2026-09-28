@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.js';
 import type { DecisionEngine } from '../../../contracts/decision.js';
+import type { TextGenerateInput } from '../../agent/model/provider.js';
 import { AgentHarness } from '../../agent/harness.js';
 import { runAxCommandChat } from '../../agent/commands/chat.js';
 import { AxCommandService } from '../../agent/commands/service.js';
@@ -55,7 +56,7 @@ describe('local sheet capability context', () => {
         allowUntrustedData: true,
         connectors: { local_sheet: new LocalSheetConnector() },
       });
-      const textSeen = [];
+      const textSeen: TextGenerateInput[] = [];
       const reply = await runAxCommandChat({
         harness: new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen)),
         commandService: service,
@@ -72,7 +73,7 @@ describe('local sheet capability context', () => {
       expect(jevEvaluations).toBe(1);
       expect(textSeen).toHaveLength(0);
     } finally {
-      db.close();
+      db.close?.();
       rmSync(folderPath, { recursive: true, force: true });
     }
   });

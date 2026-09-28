@@ -120,7 +120,7 @@ describe('discovery recovery through the production interface', () => {
       let release!: () => void;
       const saved: string[] = [];
       const runner: InvestigationRunner = { providerName: 'test', async run<T>(request: InvestigationRunRequest<T>) {
-        return new Promise(resolve => { release = () => resolve({ output: request.outputSchema.parse(complete) }); });
+        return new Promise<{ output: T }>(resolve => { release = () => resolve({ output: request.outputSchema.parse(complete) }); });
       } };
       const planner = new ReportPlanner(runner).forExecution(async (name, _input, run) => {
         const result = await run(); saved.push(name); return result;

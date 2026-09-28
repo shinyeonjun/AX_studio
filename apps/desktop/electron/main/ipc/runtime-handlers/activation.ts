@@ -21,13 +21,6 @@ export function registerRuntimeActivationHandlers(): void {
       core.store.releaseWorkflowDeletion(workflowId);
     }
   });
-  ipcHandle('ax:setGlobalActive', async (_e, active: unknown) => {
-    const core = getCore();
-    if (typeof active !== 'boolean') throw new Error('전역 실행 상태가 올바르지 않습니다.');
-    core.store.setSetting('globalActive', active);
-    core.runtime.setGlobalActive(active);
-    return { ok: true };
-  });
   ipcHandle('ax:setWorkflowActive', async (_e, workflowId: unknown, active: unknown) => {
     const core = getCore();
     if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('Workflow id가 필요합니다.');

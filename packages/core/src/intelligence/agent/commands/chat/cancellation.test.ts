@@ -36,7 +36,7 @@ describe('command chat cancellation boundaries', () => {
     await vi.advanceTimersByTimeAsync(11);
     await rejected;
     expect(execute).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 
   it.each(['context', 'factory'] as const)('forwards abort through the real service and %s into the connector', async (source) => {
@@ -76,7 +76,7 @@ describe('command chat cancellation boundaries', () => {
       expect(execute).toHaveBeenCalledOnce();
       expect(onCommandResult).not.toHaveBeenCalled();
     } finally {
-      db.close();
+      db.close?.();
     }
   });
 });

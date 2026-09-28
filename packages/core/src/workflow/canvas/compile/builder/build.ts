@@ -1,6 +1,6 @@
 import type { Step, WorkflowIR } from '../../../schema.js';
 import { applyContractCompilation } from '../../../contract-adapters.js';
-import { parseWorkflowIR, validateWorkflowIR } from '../../../schema.js';
+import { parseWorkflowIR } from '../../../schema.js';
 import { renderWorkflowDocument } from '../../presentation/workflow-document.js';
 import type { WorkflowCanvasDraftInput } from '../../draft/schema.js';
 import { resolveNodeConnectorAction } from '../../draft/actions.js';
@@ -11,52 +11,9 @@ import {
   injectGmailReadIfNeeded,
   normalizeDraft,
   toStep,
-  toStepLenient,
   workflowInputs,
 } from './nodes.js';
 import { UnknownCapabilityError } from './errors.js';
-
-export function buildLenientIRFromWorkflow(draft: WorkflowCanvasDraftInput): Partial<WorkflowIR> {
-  const normalizedDraft = normalizeDraft(draft);
-  const rawSteps = normalizedDraft.nodes
-    .map((node) => toStepLenient(normalizedDraft, node))
-    .filter((step): step is Step => step !== null);
-  const steps = consolidateApprovals(injectGmailReadIfNeeded(rawSteps, normalizedDraft));
-  const ir: Partial<WorkflowIR> = {
-    name: normalizedDraft.name,
-    goal: normalizedDraft.goal,
-    version: 1,
-    trigger: buildTrigger(normalizedDraft),
-    steps,
-    success: normalizedDraft.success,
-    assumptions: normalizedDraft.assumptions,
-    inputs: workflowInputs(normalizedDraft.triggerType, steps),
-    permissions: {},
-    approval: steps
-      .filter((step): step is Extract<Step, { type: 'action' }> =>
-        step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH',
-      )
-      .map((step) => step.connector + '.' + step.action),
-    allowExternalAuto: false,
-    dataPolicy: {
-      emailBody: { cloudAllowed: true },
-      document: { cloudAllowed: true },
-    },
-    sideEffects: Object.fromEntries(
-      steps.filter((step) => step.type === 'action').map((step) => [step.id, step.sideEffect]),
-    ),
-  };
-  // Conversational completeness may inspect a partial IR, but only a schema-
-  // valid IR may enter contract compilation. Invalid partial data remains
-  // visible as-is so the slot layer can ask for it instead of hiding a parser
-  // or compiler defect behind a generic fallback.
-  const validation = validateWorkflowIR(ir);
-  if (!validation.ok) return ir;
-
-  const compiled = applyContractCompilation(validation.value);
-  compiled.document = renderWorkflowDocument(compiled);
-  return compiled;
-}
 
 export function buildIRFromWorkflow(draft: WorkflowCanvasDraftInput): Partial<WorkflowIR> {
   const normalized = normalizeDraft(draft);

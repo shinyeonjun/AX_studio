@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AgentHarness } from '../harness.js';
-import type { ModelProvider, TextGenerateInput } from '../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
 
 describe('agent text harness', () => {
   it('runs a text-only finalizer through the same bounded harness policy', async () => {
@@ -11,7 +11,7 @@ describe('agent text harness', () => {
       async generateStructured<T>(): Promise<T> {
         throw new Error('structured_generation_not_used');
       },
-      async generateText(input): Promise<string> {
+      async generateText(input: TextGenerateInput): Promise<string> {
         seen = input;
         input.onUsage?.({ inputTokens: 23, outputTokens: 7, totalTokens: 30 });
         return '결과를 요약했습니다.';
@@ -43,7 +43,7 @@ describe('agent text harness', () => {
       async generateStructured<T>(): Promise<T> {
         throw new Error('structured_generation_not_used');
       },
-      async generateText(input): Promise<string> {
+      async generateText(input: TextGenerateInput): Promise<string> {
         seen = input;
         return 'investigation summary';
       },
@@ -68,7 +68,7 @@ describe('agent text harness', () => {
   it('returns provider-reported usage for structured calls', async () => {
     const provider: ModelProvider = {
       name: 'mock',
-      async generateStructured<T>(input): Promise<T> {
+      async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
         input.onUsage?.({ inputTokens: 31, outputTokens: 9, totalTokens: 40 });
         return input.schema.parse({ answer: 'ok' });
       },

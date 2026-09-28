@@ -90,34 +90,3 @@ export function consolidateApprovals(steps: Step[]): Step[] {
     (step) => step.type !== 'human_approval' || step.forActionIds.length > 0,
   );
 }
-
-function toActionStepLenient(draft: WorkflowCanvasDraft, node: WorkflowNode): Step | null {
-  const resolved = resolveNodeConnectorAction(draft, node);
-  if (!resolved) return null;
-
-  const cap = resolveCapability(resolved.connector, resolved.action);
-  if (!cap) return null;
-
-  return {
-    type: 'action',
-    id: node.id,
-    connector: cap.connector,
-    action: capabilityActionName(cap),
-    actionRef: resolved.actionRef,
-    params: getNodeParams(draft, node),
-    bindings: getNodeBindings(draft, node),
-    sideEffect: (cap.sideEffect as SideEffectLevel | undefined) ?? 'EXTERNAL',
-  };
-}
-
-export function toStepLenient(draft: WorkflowCanvasDraft, node: WorkflowNode): Step | null {
-  try {
-    if (node.type === 'action') return toActionStepLenient(draft, node);
-    return toStep(draft, node);
-  } catch {
-    // Lenient compilation exists only to expose the rest of the draft to the
-    // deterministic slot/graph validator. A malformed branch must not mask
-    // the actual graph issue by throwing from the lenient path itself.
-    return null;
-  }
-}

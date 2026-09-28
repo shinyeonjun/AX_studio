@@ -26,7 +26,14 @@ describe('validateManualRunInput', () => {
       name: '네이버 메일 Slack 요약',
       goal: '요약',
       version: 1,
+      inputs: [],
       trigger: { type: 'gmail.new_message', accountId: 'primary' },
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
       steps: [
         {
           type: 'action',
@@ -55,7 +62,14 @@ describe('enrichManualRunInput', () => {
       name: '네이버 메일 Slack 요약',
       goal: '요약',
       version: 1,
+      inputs: [],
       trigger: { type: 'gmail.new_message', accountId: 'primary' },
+      permissions: {},
+      approval: [],
+      allowExternalAuto: false,
+      assumptions: [],
+      sideEffects: {},
+      dataPolicy: {},
       steps: [
         {
           type: 'action',

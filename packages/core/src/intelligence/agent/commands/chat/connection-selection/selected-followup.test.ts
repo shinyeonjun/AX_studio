@@ -97,7 +97,7 @@ describe('runAxCommandChat connection selection', () => {
       truncated: false,
     });
     const read = vi.fn(async () => ({
-      tool: 'capabilities.invoke',
+      tool: 'capabilities.invoke' as const,
       ok: true as const,
       data: { capabilityId: 'http.request', data: response, citations: [], untrusted: true },
     }));
@@ -119,7 +119,7 @@ describe('runAxCommandChat connection selection', () => {
     expect(reply).toContain('| title | stock |');
     expect(textSeen).toHaveLength(0);
     expect(read).toHaveBeenCalledOnce();
-    db.close();
+    db.close?.();
   });
 
   it('lets Jev select a schema-bound filter and returns the local result without a text-model call', async () => {
@@ -188,7 +188,7 @@ describe('runAxCommandChat connection selection', () => {
     expect(jevRequests).toHaveLength(1);
     expect(JSON.stringify(jevRequests[0]?.state)).not.toContain('First');
     expect(jevRequests[0]?.questions).toHaveProperty('filter_column');
-    db.close();
+    db.close?.();
   });
 
   it('keeps Jev auto-selected raw display authoritative over lexical render gates', async () => {
@@ -249,14 +249,14 @@ describe('runAxCommandChat connection selection', () => {
     expect(textSeen).toHaveLength(0);
     expect(jevRequests).toHaveLength(1);
     expect(jevRequests[0]?.questions).toHaveProperty('table_transform');
-    db.close();
+    db.close?.();
   });
 
   it('does not reuse an HTTP path from an older unrelated user message', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const read = vi.fn(async () => ({
-      tool: 'capabilities.invoke',
+      tool: 'capabilities.invoke' as const,
       ok: true as const,
       data: { status: 200, body: '[]' },
     }));
@@ -283,6 +283,6 @@ describe('runAxCommandChat connection selection', () => {
     });
 
     expect(read).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 });

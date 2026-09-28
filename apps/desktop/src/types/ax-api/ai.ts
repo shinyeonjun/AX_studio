@@ -39,6 +39,4 @@ export interface AxAiApi {
     masked?: string;
     saved: boolean;
   }>;
-  setEnvSecret: (key: string, value: string) => Promise<{ ok: boolean; masked?: string }>;
-  getEnvSecretStatus: (key: string) => Promise<{ configured: boolean; masked?: string; envFilePath?: string }>;
 }

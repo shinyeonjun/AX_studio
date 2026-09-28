@@ -44,11 +44,6 @@ export function linearContractSteps(steps: Step[]): Step[] {
   return steps.filter((step) => !skip.has(step.id));
 }
 
-/** Backward-compatible name for contract-oriented callers. */
-export function skipInLinearScan(steps: Step[]): Set<string> {
-  return skipIdsForLinearScan(steps, true);
-}
-
 export function stepsById(steps: Step[], ids: string[]): Step[] {
   const map = new Map(steps.map((step) => [step.id, step]));
   return ids.flatMap((id) => {

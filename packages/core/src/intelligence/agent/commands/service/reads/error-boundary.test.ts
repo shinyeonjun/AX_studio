@@ -108,7 +108,7 @@ describe('AxCommandService read error boundary', () => {
       status: 'forbidden',
       issues: [{ failureKind: 'host_policy' }],
     });
-    db.close();
+    db.close?.();
   });
 
   it('carries connector policy classification through the production read gateway', async () => {
@@ -143,6 +143,6 @@ describe('AxCommandService read error boundary', () => {
       issues: [{ failureKind: 'host_policy' }],
     });
     expect(JSON.stringify(response)).not.toContain('ssrf_blocked');
-    db.close();
+    db.close?.();
   });
 });

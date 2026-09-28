@@ -3,11 +3,11 @@ import { capabilityActionName, resolveCapability } from '../../../catalog/capabi
 import type { PortBinding } from '../../bindings.js';
 import type { ActionInstance, WorkflowCanvasDraft, WorkflowCanvasDraftInput, WorkflowNode } from './schema.js';
 
-export function getActionInstance(draft: WorkflowCanvasDraftInput, nodeId: string): ActionInstance | undefined {
+function getActionInstance(draft: WorkflowCanvasDraftInput, nodeId: string): ActionInstance | undefined {
   return draft.actions?.[nodeId] as ActionInstance | undefined;
 }
 
-export function resolveNodeActionRef(node: WorkflowNode, instance?: ActionInstance): string | undefined {
+function resolveNodeActionRef(node: WorkflowNode, instance?: ActionInstance): string | undefined {
   if (node.type !== 'action') return undefined;
   if (instance?.actionRef?.trim()) return instance.actionRef.trim();
   if (node.actionRef?.trim()) return node.actionRef.trim();
@@ -52,46 +52,6 @@ export function getNodeBindings(
 ): Record<string, PortBinding> | undefined {
   if (node.type !== 'action') return undefined;
   return getActionInstance(draft, node.id)?.bindings ?? node.bindings;
-}
-
-export function setNodeParam(
-  draft: WorkflowCanvasDraft,
-  nodeId: string,
-  paramName: string,
-  value: unknown,
-): WorkflowCanvasDraft {
-  const node = draft.nodes.find((entry) => entry.id === nodeId && entry.type === 'action');
-  if (!node) return draft;
-  return replaceActionParams(draft, node, { ...getNodeParams(draft, node), [paramName]: value });
-}
-
-export function replaceActionParams(
-  draft: WorkflowCanvasDraft,
-  node: WorkflowNode,
-  params: Record<string, unknown>,
-): WorkflowCanvasDraft {
-  if (node.type !== 'action') return draft;
-  const current = getActionInstance(draft, node.id);
-  const resolved = resolveNodeConnectorAction(draft, node);
-  const actionRef = resolved?.actionRef ?? current?.actionRef ?? '';
-  return {
-    ...draft,
-    actions: {
-      ...(draft.actions ?? {}),
-      [node.id]: {
-        actionRef,
-        connector: resolved?.connector ?? current?.connector,
-        action: resolved?.action ?? current?.action,
-        params,
-        bindings: current?.bindings,
-      },
-    },
-    nodes: draft.nodes.map((entry) => {
-      if (entry.id !== node.id || entry.type !== 'action') return entry;
-      const { params: _params, bindings: _bindings, connector: _connector, action: _action, ...rest } = entry;
-      return { ...rest, type: 'action', actionRef: actionRef || entry.actionRef };
-    }),
-  };
 }
 
 export function normalizeDraftActions(draft: WorkflowCanvasDraft): WorkflowCanvasDraft {

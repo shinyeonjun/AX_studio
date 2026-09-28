@@ -67,12 +67,13 @@ describe('workspace chat transcript persistence', () => {
         role: 'assistant',
         content: '처리 전에 확인해 주세요.',
         inputContinuation: 'command',
-        inputRequests: [{ id: 'channel', label: 'Slack 채널', type: 'slack_channel' }],
+        inputRequests: [{ id: 'channel', label: 'Slack 채널', type: 'slack_channel', required: true }],
         presentations: [{
           title: '확인 필요',
           blocks: [{ type: 'decision', label: '대상', value: '연결된 폴더' }],
+          inputMode: 'individual',
           inputs: [],
-          actions: [{ id: 'continue', label: '진행', value: '진행해줘' }],
+          actions: [{ id: 'continue', label: '진행', value: '진행해줘', tone: 'primary', purpose: 'confirm_job' }],
         }],
       }],
     });

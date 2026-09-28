@@ -76,6 +76,6 @@ describe('runAxCommandChat target selection', () => {
       ],
       actions: [{ id: 'review_execution_targets', label: '선택하고 실행안 검토' }],
     });
-    db.close();
+    db.close?.();
   });
 });

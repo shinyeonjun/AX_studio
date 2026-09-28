@@ -13,6 +13,7 @@ describe('runtime engine connector guards', () => {
         name: '연결 누락',
         goal: '가짜 전송 금지',
         version: 1,
+        inputs: [],
         trigger: { type: 'manual' },
         steps: [
           {

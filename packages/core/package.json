@@ -47,19 +47,18 @@
     }
   },
   "scripts": {
-    "build": "node scripts/embed-skills.mjs && tsc",
+    "build": "node scripts/embed-skills.mjs && node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true })\" && tsc",
     "test": "node scripts/embed-skills.mjs && vitest run",
     "test:e2e": "node scripts/embed-skills.mjs && vitest run src/testing/e2e",
     "eval": "node scripts/embed-skills.mjs && vitest run --config vitest.eval.config.ts",
     "knip": "knip --directory ../.. --workspace packages/core",
     "arch:check": "depcruise src --config ../../.dependency-cruiser.cjs --output-type err",
-    "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit"
+    "typecheck": "node scripts/embed-skills.mjs && tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.52",
     "@slack/socket-mode": "^3.0.0",
     "@slack/web-api": "^7.8.0",
-    "@types/sql.js": "^1.4.11",
     "ai": "^7.0.106",
     "better-sqlite3": "^13.0.3",
     "docxtemplater": "^3.55.0",
@@ -78,6 +77,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.13.4",
     "@types/pg": "^8.11.11",
+    "@types/sql.js": "^1.4.11",
     "typescript": "^5.7.3",
     "vitest": "^5.0.1"
   }

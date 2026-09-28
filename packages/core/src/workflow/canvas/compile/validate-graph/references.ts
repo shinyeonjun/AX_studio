@@ -1,7 +1,5 @@
 import {
-  WorkflowCanvasDraftSchema,
   type WorkflowCanvasDraft,
-  type WorkflowCanvasDraftInput,
   type WorkflowNode,
 } from '../../draft/schema.js';
 import { getNodeParams } from '../../draft/actions.js';
@@ -11,7 +9,6 @@ import type { DraftGraphIssue } from './types.js';
 
 function conditionRefs(condition: ConditionExpr | undefined): string[] {
   if (!condition || typeof condition !== 'object') return [];
-  if (!condition) return [];
   if (condition.op === 'and' || condition.op === 'or') {
     return condition.args.flatMap((item) => conditionRefs(item));
   }
@@ -64,12 +61,4 @@ export function appendReferenceIssues(
       });
     }
   }
-}
-
-/** Contract-only validation used before a plan is persisted. */
-export function validateCanvasDraftReferences(draft: WorkflowCanvasDraftInput): DraftGraphIssue[] {
-  const parsed = WorkflowCanvasDraftSchema.parse(draft);
-  const issues: DraftGraphIssue[] = [];
-  appendReferenceIssues(issues, parsed, parsed.nodes ?? []);
-  return issues;
 }
