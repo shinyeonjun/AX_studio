@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ConnectorContext } from '../types.js';
 import { RdbConnector } from './connector.js';
 import { createSqliteCustomersFixture } from './sqlite-test-fixture.js';
 
-function connectorContext(options: { reportCapture?: boolean } = {}) {
+function connectorContext(options: { reportCapture?: boolean } = {}): ConnectorContext {
   return {
-    variables: {} as Record<string, unknown>,
+    executionId: 'rdb-test',
+    variables: {},
     log: vi.fn(),
     ...options,
   };
@@ -40,11 +42,10 @@ describe('RdbConnector sqlite', () => {
       if (query.ok) {
         expect(query.data).toMatchObject({
           kind: 'table',
+          rows: [{ values: { priority: 'critical' } }, {}],
           truncated: false,
           completeness: { status: 'complete', observedCount: 2, hasMore: false },
         });
-        expect(query.data.rows).toHaveLength(2);
-        expect(query.data.rows[0]).toMatchObject({ values: { priority: 'critical' } });
         expect(queryCtx.variables.queryResult).toEqual(query.data);
       }
 

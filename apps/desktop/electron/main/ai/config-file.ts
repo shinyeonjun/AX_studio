@@ -7,11 +7,8 @@ export {
   writeAiToml,
 } from './config-file/storage.js';
 export {
-  envKeyForBrand,
   getJevSecret,
-  getSecretByEnvKey,
   getSecretForBrand,
-  isAiEnvKey,
   loadAiTomlIntoEnv,
   migrateAiSecretsToOsStore,
   setBrandSecret,

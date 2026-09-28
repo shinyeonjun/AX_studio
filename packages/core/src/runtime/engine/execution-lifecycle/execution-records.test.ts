@@ -33,7 +33,7 @@ describe('runtime execution records', () => {
     const runtime = new WorkflowRuntime({ store, globalActive: false, workflowActive: {}, connectors: {} });
 
     const result = await runtime.executeWorkflow(
-      { name: '퇴근 상태', goal: '실행하지 않음', version: 1, steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
+      { name: '퇴근 상태', goal: '실행하지 않음', version: 1, inputs: [], steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
       { ephemeral: true, triggerType: 'manual' },
     );
 
@@ -61,6 +61,7 @@ describe('runtime execution records', () => {
         name: '일회 실행',
         goal: '한 번만 알림',
         version: 1,
+        inputs: [],
         steps: [
           {
             type: 'action',

@@ -14,6 +14,4 @@ export type SettingsScreen =
   | 'local-folder'
   | 'http'
   | 'webhook'
-  | 'rdb'
-  | 'openapi'
-  | 'mcp';
+  | 'rdb';

@@ -16,6 +16,7 @@ async function createWorkflowStore(triggerFor: (index: number) => NonNullable<Wo
       name: id,
       goal: 'active workflow scan query measurement',
       version: 1,
+      inputs: [],
       trigger: triggerFor(index),
       steps: [],
       permissions: {},

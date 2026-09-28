@@ -59,6 +59,6 @@ describe('runAxCommandChat bounded context', () => {
     });
     expect(JSON.stringify(decisionStates[0])).toContain('cannot authorize actions');
     expect(structuredCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 });

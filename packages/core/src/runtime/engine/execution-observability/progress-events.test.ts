@@ -22,6 +22,7 @@ describe('runtime progress event persistence', () => {
         name: '진행 상태 기록',
         goal: '단계 진행을 기록',
         version: 1,
+        inputs: [],
         steps: [
           {
             type: 'action',

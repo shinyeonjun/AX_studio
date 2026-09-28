@@ -1,5 +1,5 @@
 import { createServer } from 'node:net';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { WebhookInboundListener } from '../../listener.js';
 import { WEBHOOK_MAX_PAYLOAD_BYTES } from '../../security.js';
 

@@ -4,6 +4,7 @@ import type { InvestigationRunner, InvestigationRunRequest } from '../../../inte
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { ReportPlanner } from './planner.js';
 import { selectAndInspectReportSources } from './source-candidates.js';
+import type { ReportSourceInspection } from './source-discovery.js';
 
 const pair: PdfReportPairAnalysis = {
   schemaVersion: 1, pairId: 'pair', templateHash: 'template', exampleHash: 'example', pageCount: 1,
@@ -179,7 +180,9 @@ describe('Jev report source candidates', () => {
       decisionRequests.push(request);
       const choiceFor = (id: string): SourceChoice => {
         const candidate = (request.questions[id]!.instructions as { candidate?: { table?: string } }).candidate;
-        if (request.questions[id]!.instructions.task.startsWith('Decide whether inspecting')) {
+        const instructions = request.questions[id]!.instructions;
+        const task = typeof instructions === 'string' ? instructions : instructions.task;
+        if (typeof task === 'string' && task.startsWith('Decide whether inspecting')) {
           if (decisionRequests.length === 1) return candidate?.table === 'warehouse.orders' ? 'use_source' : 'skip_source';
           return candidate?.table === 'warehouse.audit' ? 'use_source' : 'skip_source';
         }
@@ -187,8 +190,9 @@ describe('Jev report source candidates', () => {
       };
       return { answers: chosenQuestions(request, choiceFor) };
     } };
-    const inspect = vi.fn(async (request: { table?: string }) => {
-      inspectedTables.push(request.table!);
+    const inspect = vi.fn(async (request: ReportSourceInspection) => {
+      if (request.kind !== 'rdb_table') throw new Error(`Unexpected inspection: ${request.kind}`);
+      inspectedTables.push(request.table);
       return { table: request.table, columns: [{ name: 'created_at', type: 'date' }] };
     });
     const plan = capturePlanForTable('warehouse.audit');
@@ -225,7 +229,10 @@ describe('Jev report source candidates', () => {
         return 'skip_source';
       }) };
     } };
-    const inspect = vi.fn(async (request: { table?: string }) => ({ table: request.table }));
+    const inspect = vi.fn(async (request: ReportSourceInspection) => {
+      if (request.kind !== 'rdb_table') throw new Error(`Unexpected inspection: ${request.kind}`);
+      return { table: request.table };
+    });
     const rejectedPlan = capturePlanForTable('warehouse.audit');
     const acceptedPlan = capturePlanForTable('warehouse.orders');
     const modelRequests: InvestigationRunRequest<unknown>[] = [];
@@ -275,7 +282,8 @@ describe('Jev report source candidates', () => {
       modelRequests.push(request);
       return { output: request.outputSchema.parse(outputs.shift()) };
     } };
-    const inspect = vi.fn(async (request: { kind?: string; connectionId?: string; path?: string }) => {
+    const inspect = vi.fn(async (request: ReportSourceInspection) => {
+      if (request.kind !== 'http_connection') throw new Error(`Unexpected inspection: ${request.kind}`);
       events.push(`probe:${request.connectionId}`);
       return { available: true, connectionId: request.connectionId, path: request.path, shape: { type: 'array' } };
     });
@@ -303,7 +311,8 @@ describe('Jev report source candidates', () => {
     } };
     let active = 0;
     let maxActive = 0;
-    const inspect = vi.fn(async (request: { table?: string }) => {
+    const inspect = vi.fn(async (request: ReportSourceInspection) => {
+      if (request.kind !== 'rdb_table') throw new Error(`Unexpected inspection: ${request.kind}`);
       active += 1;
       maxActive = Math.max(maxActive, active);
       await new Promise(resolve => setTimeout(resolve, 2));
@@ -318,7 +327,7 @@ describe('Jev report source candidates', () => {
       ], httpConnections: [], rdbTables: tables, inspectSource: inspect });
 
     expect(result).toHaveLength(tables.length);
-    expect(result.map(item => (item.request as { table?: string }).table)).toEqual(tables);
+    expect(result.map(item => item.request.kind === 'rdb_table' ? item.request.table : undefined)).toEqual(tables);
     expect(inspect).toHaveBeenCalledTimes(tables.length);
     expect(maxActive).toBe(4);
   });
@@ -329,7 +338,8 @@ describe('Jev report source candidates', () => {
       return { answers: chosenQuestions(request, () => 'use_source') };
     } };
     let siblingSettled = false;
-    const inspect = vi.fn(async (request: { table?: string }) => {
+    const inspect = vi.fn(async (request: ReportSourceInspection) => {
+      if (request.kind !== 'rdb_table') throw new Error(`Unexpected inspection: ${request.kind}`);
       if (request.table === 'warehouse.first') throw failure;
       await new Promise(resolve => setTimeout(resolve, 10));
       siblingSettled = true;

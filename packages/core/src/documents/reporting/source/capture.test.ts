@@ -48,7 +48,7 @@ it('removes one rejected static query only after a successful bare-path recovery
     .mockResolvedValueOnce({ ok: false, error: 'http_400', errorCode: 'http_error' })
     .mockResolvedValueOnce({ ok: true, data: buildHttpResponseArtifact({
       executionId: 'bare', url: 'http://example.test/records', status: 200,
-      statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]',
+      statusText: 'OK', headers: { 'content-type': 'application/json' }, body: '[]', truncated: false,
     }) });
   const result = await probeReportHttpSourcesWithRecovery({ schemaVersion: 1, rdb: [], http: [{
     alias: 'ledger', connectionId: 'selected', path: '/records', rowsPath: '$',
@@ -207,6 +207,7 @@ describe('captureReportSources', () => {
           executionId: `rooted-${page}`, url: url.href, status: 200, statusText: 'OK',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ data: [{ id: page }], meta: { total_pages: 2, page } }),
+          truncated: false,
         }) };
       },
     });
@@ -222,6 +223,7 @@ describe('captureReportSources', () => {
         executionId: `repeat-${page}`, url: url.href, status: 200, statusText: 'OK',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ data: [{ id: 1 }], meta: { total_pages: 3 } }),
+        truncated: false,
       }) };
     });
     await expect(captureReportSources({ schemaVersion: 1, rdb: [], http: [{

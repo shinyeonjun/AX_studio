@@ -10,9 +10,7 @@ export type ConnectorUiId =
   | 'local_folder'
   | 'http'
   | 'webhook'
-  | 'rdb'
-  | 'openapi'
-  | 'mcp';
+  | 'rdb';
 
 export interface ConnectorUiMeta {
   id: ConnectorUiId;
@@ -73,32 +71,9 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
     settingsScreen: 'rdb',
     emoji: '🗄️',
   },
-  openapi: {
-    id: 'openapi',
-    title: 'OpenAPI',
-    description: 'OpenAPI spec에서 동적 API 연결',
-    emojiIcon: '📜',
-    settingsScreen: 'openapi',
-    emoji: '📜',
-  },
-  mcp: {
-    id: 'mcp',
-    title: 'MCP',
-    description: 'MCP tool 정의를 업무에 등록',
-    emojiIcon: '🔌',
-    settingsScreen: 'mcp',
-    emoji: '🔌',
-  },
 };
 
 export const MESSAGING_CONNECTOR_IDS: ConnectorUiId[] = ['gmail', 'slack'];
 export const STORAGE_CONNECTOR_IDS: ConnectorUiId[] = ['local_folder'];
 export const API_CONNECTOR_IDS: ConnectorUiId[] = ['http', 'webhook'];
-/** Connectors kept in catalog but hidden until product-ready. */
-const HIDDEN_CONNECTOR_UI_IDS: ConnectorUiId[] = ['openapi', 'mcp'];
-
 export const DATA_CONNECTOR_IDS: ConnectorUiId[] = ['rdb'];
-
-export function isConnectorVisibleInUi(id: ConnectorUiId): boolean {
-  return !HIDDEN_CONNECTOR_UI_IDS.includes(id);
-}

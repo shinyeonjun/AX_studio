@@ -330,7 +330,7 @@ describe('JevDecisionEngine', () => {
 
   it('propagates an external abort to an in-flight request', async () => {
     const controller = new AbortController();
-    let requestSignal: AbortSignal | undefined;
+    let requestSignal: AbortSignal | null | undefined;
     const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
       requestSignal = init?.signal;
       return await new Promise<Response>((_resolve, reject) => {

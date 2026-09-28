@@ -39,7 +39,7 @@ describe('rdbDiscoverySource', () => {
         source: { queryFingerprint: expect.any(String), capturedAt: expect.any(String) },
       });
     } finally {
-      db.close();
+      db.close?.();
       fixture.cleanup();
     }
   });

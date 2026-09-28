@@ -12,13 +12,15 @@ describe('compile WorkflowIR', () => {
     expect(ir.trigger).toEqual({ type: 'manual' });
     const evalSteps = ir.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
     expect(evalSteps.length).toBeGreaterThan(0);
-    expect(evalSteps[0]?.params.expr).toBeTruthy();
+    const evalStep = evalSteps[0];
+    if (evalStep?.type !== 'action') throw new Error('missing evaluate action');
+    expect(evalStep.params.expr).toBeTruthy();
     expect(ir.outputContract?.inputSchemas).toEqual([{
       sourceId: 'rdb:sales',
       stepId: expect.stringMatching(/^read_/),
       columns: [{ name: 'amount', type: 'number' }],
     }]);
     expect(JSON.parse(ir.document ?? '{}')).toMatchObject({ origin: 'discovery', sessionId: session.id });
-    expect(evalSteps[0]?.bindings).toEqual({ table: { from: expect.stringMatching(/^read_/), output: 'rows' } });
+    expect(evalStep.bindings).toEqual({ table: { from: expect.stringMatching(/^read_/), output: 'rows' } });
   });
 });

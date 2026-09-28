@@ -13,7 +13,6 @@ connectors/          External-system adapters and connector package assembly
   {connector}/       One adapter boundary per connector
   document/read/     Document connector read actions
   document/write/    Document connector write actions
-  protocols/mcp/     MCP protocol adapter
   protocols/openapi/ OpenAPI protocol adapter
   packages/          Explicit connector package registration
 

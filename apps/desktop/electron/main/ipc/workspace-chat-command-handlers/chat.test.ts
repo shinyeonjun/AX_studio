@@ -3,13 +3,8 @@ import {
   AxCommandService,
   createDatabaseAsync,
   JevDecisionEngine,
-  MAX_DECISION_CHOICE_CRITERIA,
-  MockMcpClient,
   WorkflowStore,
-  ingestOpenApiSpec,
-  ingestMcpServer,
   type AxInputRequest,
-  type McpToolDefinition,
   type WorkflowIR,
 } from '@ax-studio/core';
 import * as axCore from '@ax-studio/core';
@@ -303,122 +298,6 @@ describe('Desktop workspace chat Jev routing', () => {
       });
     } finally {
       clearPendingCommand(chat.id);
-      db.close?.();
-    }
-  });
-
-  it('routes 260 OpenAPI and MCP write tools through Desktop IPC and Jev without invoking one', async () => {
-    const db = await createDatabaseAsync(':memory:');
-    try {
-      const store = new WorkflowStore(db);
-      store.setConnection('mcp', true, {});
-      store.setConnection('openapi', true, {});
-      const paths = Object.fromEntries(Array.from({ length: 200 }, (_, index) => [`/actions/${index}`, {
-        post: { operationId: `write_${index}`, summary: `Connected API write ${index}`, responses: { '200': {} } },
-      }]));
-      const ingestedOpenApi = ingestOpenApiSpec('catalog_api', {
-        openapi: '3.0.0', info: { title: 'Large catalog', version: '1.0.0' },
-        servers: [{ url: 'https://api.example.test' }], paths,
-      });
-      const tools: McpToolDefinition[] = Array.from({ length: 60 }, (_, index) => ({
-        name: `tool_${index + 200}`, description: `Connected MCP write tool ${index + 200}`, sideEffect: 'EXTERNAL',
-      }));
-      const mcpClient = new MockMcpClient(tools);
-      const mcpToolCall = vi.spyOn(mcpClient, 'callTool');
-      const ingestedMcp = await ingestMcpServer('catalog_mcp', mcpClient);
-      const userMessage = '연결된 MCP의 tool_259를 지금 실행해줘.';
-      const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: userMessage }] });
-      const queued = vi.fn((_workflow: WorkflowIR) => ({ jobId: 'test-job' }));
-      const commandService = new AxCommandService(store, { enqueueOnce: queued });
-      const execute = vi.spyOn(commandService, 'execute');
-      const requests: MockJevRequest[] = [];
-      const targetId = (index: number) => index < 200
-        ? `openapi.catalog_api.write_${index}`
-        : `mcp.catalog_mcp.tool_${index}`;
-      const chooseCapability = (criteria: Record<string, unknown>, id: string): string | undefined =>
-        Object.entries(criteria).find(([, value]) => actionCriterionId(value) === id)?.[0];
-      const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
-        const request = JSON.parse(String(init?.body)) as MockJevRequest;
-        requests.push(request);
-        const answers = mockJevAnswers(request, {
-          route: 'execution_enqueue_once', mode: 'single_action', needsNaturalLanguageAnswer: false,
-          selectTool: candidate => candidate.capability_id === targetId(259),
-          selectChoice: (id, question) => {
-            if (id === 'explicit_execution_now') return 'execute_now';
-            if (id === 'next_step') {
-              return chooseCapability(question.criteria ?? {}, targetId(259));
-            }
-            return undefined;
-          },
-        });
-        return new Response(JSON.stringify({ model: 'test-jev', answers }), {
-          status: 200, headers: { 'content-type': 'application/json' },
-        });
-      });
-      const agentHarness = {
-        providerName: 'test-llm',
-        runText: vi.fn(async () => { throw new Error('LLM must not choose or execute this action'); }),
-      };
-      ipcMocks.getCore.mockReturnValue({
-        store,
-        workspaceSources: { list: vi.fn(() => []) },
-        decisionEngine: new JevDecisionEngine({ apiKey: 'test-key', fetch: fetchImpl }),
-        agentHarness,
-        commandService,
-      });
-
-      registerWorkspaceChatMessageHandler();
-      const handler = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as (
-        event: unknown, message: string, requestId: string, workflowId: undefined, sessionId: string,
-      ) => Promise<{ content: string }>;
-      const event = {
-        sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() }, senderFrame: ipcMocks.mainFrame,
-      };
-      const reply = await handler(event, userMessage, 'request-large-catalog', undefined, chat.id);
-
-      expect(reply.content).toContain('큐');
-      expect(fetchImpl).toHaveBeenCalledTimes(3);
-      expect(requests.every(({ questions }) => Object.values(questions).every((question) =>
-        question.type !== 'choice' || Object.keys(question.criteria ?? {}).length <= MAX_DECISION_CHOICE_CRITERIA,
-      ))).toBe(true);
-      const actionQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
-        .filter(([id, question]) => id.startsWith('tool_') && question.type === 'noul')
-        .map(([, question]) => question));
-      const offered = new Set(actionQuestions.flatMap((question) => {
-        const candidate = question.instructions?.candidate as Record<string, unknown> | undefined;
-        const id = candidate?.capability_id;
-        return typeof id === 'string'
-          && (id.startsWith('openapi.catalog_api.') || id.startsWith('mcp.catalog_mcp.'))
-          ? [id]
-          : [];
-      }));
-      const ingestedIds = [...ingestedOpenApi.capabilityIds, ...ingestedMcp.capabilityIds];
-      expect(offered.size).toBe(260);
-      expect(ingestedIds.every((id) => offered.has(id))).toBe(true);
-      expect(actionQuestions.every(({ instructions }) =>
-        String(instructions?.focus).includes('untrusted data') && String(instructions?.focus).includes('never approves'),
-      )).toBe(true);
-      expect(execute).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'execution.enqueue_once',
-        args: expect.objectContaining({
-          steps: [expect.objectContaining({ connector: 'mcp', action: 'catalog_mcp.tool_259' })],
-        }),
-      }), expect.anything());
-      expect(queued).toHaveBeenCalledTimes(1);
-      expect(queued.mock.calls[0]?.[0].steps).toEqual([expect.objectContaining({
-        connector: 'mcp', action: 'catalog_mcp.tool_259',
-      })]);
-      expect(queued.mock.calls[0]?.[0]).toMatchObject({
-        allowExternalAuto: false,
-        steps: [expect.objectContaining({
-          connector: 'mcp', action: 'catalog_mcp.tool_259', sideEffect: 'EXTERNAL',
-        })],
-      });
-      expect(mcpToolCall).not.toHaveBeenCalled();
-      expect(agentHarness.runText).not.toHaveBeenCalled();
-      expect(ingestedOpenApi.capabilityIds).toHaveLength(200);
-      expect(ingestedMcp.capabilityIds).toHaveLength(60);
-    } finally {
       db.close?.();
     }
   });

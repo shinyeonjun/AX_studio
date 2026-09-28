@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
-import type { WorkflowIR } from '../../../workflow/schema.js';
+import type { Step, WorkflowIR } from '../../../workflow/schema.js';
 import { createAgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
 import { createTestConnectors, mockSlack } from '../../../testing/connectors/test-connectors.js';
 import { NoReadProvider } from '../fixtures.js';
@@ -37,6 +37,7 @@ describe('runtime output binding', () => {
       name: '결제 주문 공유',
       goal: '결제 완료 주문을 금액순으로 정리해 Slack으로 공유',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'action',

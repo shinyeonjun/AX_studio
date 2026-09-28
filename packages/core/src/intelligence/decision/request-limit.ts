@@ -2,7 +2,7 @@ const MAX_NUMERIC_CANDIDATES = 8;
 const LIMIT_PARAMETER_NAMES = new Set(['count', 'limit', 'pagesize', 'perpage', 'per_page', 'size', 'top']);
 
 /** Extract numeric literals only; Jev decides whether any literal is a result limit. */
-export function requestNumericLiterals(message: string): number[] {
+function requestNumericLiterals(message: string): number[] {
   const values = new Set<number>();
   for (const match of message.matchAll(/-?\d[\d,]*(?:\.\d+)?/gu)) {
     const value = Number(match[0].replace(/,/g, ''));

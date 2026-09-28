@@ -6,6 +6,7 @@ import type { WorkflowIR } from '../../workflow/schema.js';
 
 const approvedWorkflow: WorkflowIR = {
   name: 'Approval lifecycle', goal: 'Synthetic delayed connector', version: 1,
+  inputs: [],
   steps: [
     { type: 'human_approval', id: 'approve', reason: 'Review', forActionIds: ['send'] },
     { type: 'action', id: 'send', connector: 'gmail', action: 'message.send',
@@ -58,6 +59,7 @@ describe('runtime resource lifecycle', () => {
     const workflow: WorkflowIR = {
       id: 'workflow-being-removed',
       name: 'Removable workflow', goal: 'Abort the connector', version: 1,
+      inputs: [],
       steps: [
         { type: 'action', id: 'read', connector: 'gmail', action: 'messages.search',
           params: { query: 'pending' }, sideEffect: 'NONE' },
@@ -70,7 +72,7 @@ describe('runtime resource lifecycle', () => {
       connectors: {
         gmail: {
           name: 'gmail',
-          execute: async (_action, _params, ctx) => await new Promise((resolve, reject) => {
+          execute: async (_action, _params, ctx) => await new Promise((_resolve, reject) => {
             entered();
             ctx.abortSignal?.addEventListener('abort', () => {
               aborted = true;
@@ -105,6 +107,7 @@ describe('runtime resource lifecycle', () => {
     const workflow: WorkflowIR = {
       id: 'workflow-with-late-result',
       name: 'Late result workflow', goal: 'Reject a late connector result', version: 1,
+      inputs: [],
       steps: [
         { type: 'action', id: 'read', connector: 'gmail', action: 'messages.search',
           params: { query: 'pending' }, sideEffect: 'NONE' },

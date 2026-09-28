@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import { AgentHarness } from '../harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
 
@@ -15,7 +14,7 @@ describe('agent result lifecycle', () => {
       let release!: () => void;
       const provider: ModelProvider = { name: 'mock', async generateText() { return ''; },
         async generateStructured<T>(request: { schema: z.ZodType<T>; onUsage?: (usage: { inputTokens: number }) => void }) {
-          return new Promise(resolve => { release = () => {
+          return new Promise<T>(resolve => { release = () => {
             request.onUsage?.({ inputTokens: 5 });
             resolve(request.schema.parse({ value: 'late' }));
           }; });

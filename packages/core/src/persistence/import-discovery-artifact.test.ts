@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { DocumentArtifact } from '../contracts/artifacts/document.js';
 import {
   MockDocumentEngineClient,
   setDocumentEngineClient,
@@ -20,7 +21,7 @@ describe('importDiscoveryArtifact', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-discovery-import-'));
     const store = new ArtifactStore(root);
     const mock = new MockDocumentEngineClient();
-    mock.ingest = async (path) => {
+    mock.ingest = async () => {
       const documentId = 'doc_mock';
       return {
         documentId,
@@ -45,7 +46,7 @@ describe('importDiscoveryArtifact', () => {
     writeFileSync(pdfPath, '%PDF-1.4 mock');
 
     const stored = await importDiscoveryArtifact(store, pdfPath);
-    const json = store.getDocumentArtifact(stored.id);
+    const json = store.getDocumentArtifact<DocumentArtifact>(stored.id);
 
     expect(json?.id).toBe(stored.id);
     expect(json?.engine).toBe('docling');

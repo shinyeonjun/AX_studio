@@ -38,9 +38,9 @@ describe('HTTP exact selection and completeness', () => {
   });
 
   it.each([
-    { status: 206, headers: { 'content-range': 'bytes 0-1/10' } },
-    { status: 200, headers: { link: '</items?page=2>; rel="next"' } },
-    { status: 200, headers: { link: '</items?page=2>; rel="next last"' } },
+    { status: 206, headers: new Headers({ 'content-range': 'bytes 0-1/10' }) },
+    { status: 200, headers: new Headers({ link: '</items?page=2>; rel="next"' }) },
+    { status: 200, headers: new Headers({ link: '</items?page=2>; rel="next last"' }) },
   ])('marks provider partial results as incomplete: %j', async ({ status, headers }) => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { status, headers })));
     const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/' });

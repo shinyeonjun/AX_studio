@@ -1,7 +1,5 @@
 import { getDesktopPrintBridge } from '../desktop-print.js';
-import { isPdfGeneratePending, type PdfGenerateInput, type PdfGenerateResult } from '../types.js';
-
-export { isPdfGeneratePending };
+import type { PdfGenerateInput, PdfGenerateResult } from '../types.js';
 
 function pdfFileName(title?: string): string {
   const base = (title?.trim() || 'report').replace(/[^\w\uAC00-\uD7A3.-]+/g, '_');

@@ -1,7 +1,7 @@
 import type { CompletenessResult, WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
 import { connectionGuidance } from '@ax-studio/core/workflow/canvas/presentation/panel-fields';
 import type { SettingsScreen } from '../../../../types/navigation';
-import { CONNECTOR_UI_CATALOG, isConnectorVisibleInUi, type ConnectorUiId } from '../../../../ui/constants/connectors';
+import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../../../../ui/constants/connectors';
 import type { WorkflowVisualNodeData } from '../types.js';
 import { displayForTrigger, displayForWorkflowNode } from '../node-display.js';
 
@@ -11,7 +11,6 @@ export function findWorkflowNode(draft: WorkflowCanvasDraft | undefined, sourceI
 }
 
 export function settingsScreenForConnector(connectorId: string): SettingsScreen | null {
-  if (!isConnectorVisibleInUi(connectorId as ConnectorUiId)) return null;
   return CONNECTOR_UI_CATALOG[connectorId as ConnectorUiId]?.settingsScreen ?? null;
 }
 

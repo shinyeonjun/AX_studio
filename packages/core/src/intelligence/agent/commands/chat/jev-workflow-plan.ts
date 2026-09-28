@@ -41,7 +41,7 @@ import type {
   JevWorkflowOutputHint,
   PlanCandidate,
 } from './jev-workflow-plan-types.js';
-export type { ActionPlanCandidate, JevWorkflowOutputHint, PlanCandidate } from './jev-workflow-plan-types.js';
+export type { JevWorkflowOutputHint } from './jev-workflow-plan-types.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import {
   AGENT_SCOPED_CONTEXT_DECISION_POLICY,

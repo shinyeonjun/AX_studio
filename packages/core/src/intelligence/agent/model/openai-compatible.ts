@@ -14,7 +14,6 @@ function reportSdkUsage(
     reasoningTokens: usage.outputTokenDetails.reasoningTokens,
   });
 }
-
 export function toSdkMessages(input: {
   system: string;
   user?: string;
@@ -103,20 +102,5 @@ export class OpenAICompatibleProvider implements ModelProvider {
     });
     reportSdkUsage(input, result.usage);
     return result.text;
-  }
-}
-
-export class MockModelProvider implements ModelProvider {
-  readonly name = 'mock';
-  responses: Record<string, unknown> = {};
-
-  async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    const key = input.system.slice(0, 50);
-    if (this.responses[key]) return this.responses[key] as T;
-    throw new Error(`No mock response for: ${key}`);
-  }
-
-  async generateText(input: TextGenerateInput): Promise<string> {
-    return `Mock response to: ${input.user?.slice(0, 80) ?? input.messages?.at(-1)?.content.slice(0, 80) ?? ''}`;
   }
 }

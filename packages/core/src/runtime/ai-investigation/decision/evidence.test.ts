@@ -46,7 +46,7 @@ describe('runAiDecision evidence and binding', () => {
 
   it('uses explicit bindings instead of scanning stepResults for document text', async () => {
     const model = new PrivacyCaptureProvider();
-    const documentIr = {
+    const documentIr: WorkflowIR = {
       ...ir,
       dataPolicy: { document: { cloudAllowed: true } },
       steps: [
@@ -135,13 +135,14 @@ describe('runAiDecision evidence and binding', () => {
       {},
     );
 
-    expect(model.captured?.user).toContain('Essence Mascara Lash Princess');
-    expect(model.captured?.user).toContain('lowStockCount');
-    expect(model.captured?.user).toContain('previewTruncated');
-    expect(model.captured?.user.length).toBeLessThan(26_000);
-    expect(model.captured?.user).not.toContain('json-secret');
-    expect(model.captured?.user).not.toContain('C:/private/source.json');
-    expect(model.captured?.user).toContain('untrusted');
+    const capturedUser = model.captured?.user ?? '';
+    expect(capturedUser).toContain('Essence Mascara Lash Princess');
+    expect(capturedUser).toContain('lowStockCount');
+    expect(capturedUser).toContain('previewTruncated');
+    expect(capturedUser.length).toBeLessThan(26_000);
+    expect(capturedUser).not.toContain('json-secret');
+    expect(capturedUser).not.toContain('C:/private/source.json');
+    expect(capturedUser).toContain('untrusted');
     expect(model.captured?.user).not.toContain('C:/private/inventory.csv');
     expect(model.captured?.user).not.toContain('MUST-NOT-LEAK');
   });

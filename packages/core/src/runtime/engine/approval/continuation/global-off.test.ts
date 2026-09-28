@@ -11,6 +11,7 @@ describe('approval continuation global execution guard', () => {
       name: '퇴근 승인 차단',
       goal: '전역 실행 중지 중에는 승인 후 전송하지 않음',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'action',

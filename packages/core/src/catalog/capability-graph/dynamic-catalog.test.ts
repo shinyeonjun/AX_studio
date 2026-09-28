@@ -15,8 +15,8 @@ describe('capability graph dynamic catalog', () => {
         params: [],
       },
       {
-        id: 'mcp.demo.newEvent',
-        connector: 'mcp',
+        id: 'webhook.demo.newEvent',
+        connector: 'webhook',
         kind: 'trigger',
         label: '새 이벤트',
         description: '새 이벤트 수신',
@@ -27,7 +27,7 @@ describe('capability graph dynamic catalog', () => {
       expect(resolveCapability('openapi', 'demo.listPets')?.label).toBe('반려동물 목록');
       expect(designCapabilities().some((cap) => cap.id === 'openapi.demo.listPets')).toBe(true);
       expect(availableCapabilities(['openapi']).some((cap) => cap.id === 'openapi.demo.listPets')).toBe(true);
-      expect(triggerCapabilityId('mcp.demo.newEvent')).toBe('mcp.demo.newEvent');
+      expect(triggerCapabilityId('webhook.demo.newEvent')).toBe('webhook.demo.newEvent');
     } finally {
       clearDynamicCatalogForTests();
     }

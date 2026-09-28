@@ -9,7 +9,7 @@ describe('workflow definitions batch read', () => {
       const store = new WorkflowStore(db);
       const workflow = {
         id: 'workflow-batch', name: 'Batch read', goal: 'Avoid per-workflow reads', version: 1,
-        steps: [], permissions: {}, approval: [], allowExternalAuto: true,
+        inputs: [], steps: [], permissions: {}, approval: [], allowExternalAuto: true,
         assumptions: [], sideEffects: {}, dataPolicy: {},
       };
       store.saveWorkflow(workflow);

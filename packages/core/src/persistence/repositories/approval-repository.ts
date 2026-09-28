@@ -135,10 +135,6 @@ export function getPendingApprovalsWithExecutionSnapshots(db: AppDatabase) {
   }));
 }
 
-export function hasPendingApprovalForExecution(db: AppDatabase, executionId: string): boolean {
-  return hasOpenApprovalForExecution(db, executionId);
-}
-
 export function hasOpenApprovalForExecution(db: AppDatabase, executionId: string): boolean {
   const row = readRow<{ found: number }>(
     db.prepare("SELECT 1 AS found FROM approvals WHERE execution_id = ? AND status IN ('pending', 'processing') LIMIT 1"),

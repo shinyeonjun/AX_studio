@@ -6,7 +6,7 @@ import type { InvestigationRunner, InvestigationRunRequest } from '../../intelli
 import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-response.js';
 import type { ConnectorContext, ConnectorResult } from '../../connectors/types.js';
 import { ReportCheckpointStore } from './checkpoints.js';
-import type { DecisionEngine } from '../../contracts/decision.js';
+import type { DecisionEngine, DecisionEvaluationResult } from '../../contracts/decision.js';
 import { ReportPlanner } from './planner/planner.js';
 import { REPORT_SOURCE_DISCOVERY_TIMEOUT_MS } from './planner/source-discovery.js';
 import { ReportGenerationService } from './service.js';
@@ -38,13 +38,15 @@ describe('report source inspection cancellation', () => {
             : { kind: 'http_connection', connectionId: 'api', path: '/records' } }) };
       } };
       const decisionEngine: DecisionEngine = { async evaluate({ questions }) {
-        return { answers: Object.fromEntries(Object.keys(questions).map(id => {
+        const answers: DecisionEvaluationResult['answers'] = {};
+        for (const id of Object.keys(questions)) {
           const sourceCandidate = id.startsWith('source_');
           const choice = id.endsWith('_required') ? 'required' : id === 'source_0' ? 'use_source' : 'skip_source';
-          return [id, { type: 'choice' as const, choice,
-            probabilities: sourceCandidate ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
-              : { required: 0.4, not_required: 0.35, unclear: 0.25 }, confidence: 0.4 }];
-        })) };
+          const probabilities: Record<string, number> = sourceCandidate ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
+            : { required: 0.4, not_required: 0.35, unclear: 0.25 };
+          answers[id] = { type: 'choice', choice, probabilities, confidence: 0.4 };
+        }
+        return { answers };
       } };
       const service = new ReportGenerationService({ checkpoints,
         workspaceSources: { resolveStoredFile: (_session, id) => ({ source: { id, fileName: `${id}.pdf` }, artifact: { storedPath: sourcePath } }) },

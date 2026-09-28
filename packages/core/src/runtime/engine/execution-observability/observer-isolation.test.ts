@@ -23,6 +23,7 @@ describe('runtime observer failure isolation', () => {
         name: '관찰자 실패 격리',
         goal: '실행 결과는 관찰자와 독립적이어야 한다',
         version: 1,
+        inputs: [],
         steps: [
           {
             type: 'action',

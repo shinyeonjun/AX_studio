@@ -25,7 +25,8 @@ it.each(['어느 기간을 이번 달로 볼까요?', '연결 A와 B 중 어떤 
       getConnector: name => name === 'http' ? { name, execute: async () => ({ ok: false }) } : undefined,
     });
     const result = await service.generate({ goal: '지난번처럼 해줘', templateSourceId: 't', exampleSourceId: 'e' }, {
-      workspaceSessionId: 'chat', artifactSink: { putBytes: vi.fn() }, log: entry => log.push(entry),
+      executionId: 'clarification', workspaceSessionId: 'chat', variables: {},
+      artifactSink: { putBytes: vi.fn() }, log: entry => log.push(entry),
       connections: [{ connector: 'http', connected: true,
         config: { endpoints: [{ id: 'api', baseUrl: 'https://api.test' }] } }],
     });

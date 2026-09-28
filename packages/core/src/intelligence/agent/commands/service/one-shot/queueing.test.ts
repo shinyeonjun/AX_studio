@@ -24,7 +24,7 @@ describe('AxCommandService one-shot queue', () => {
     expect(response.status).toBe('queued');
     expect(queued).toHaveLength(1);
     expect(store.listWorkflows()).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('queues a validated one-shot plan without persisting a workflow', async () => {
@@ -92,6 +92,6 @@ describe('AxCommandService one-shot queue', () => {
       },
     ]);
     expect(enqueueOnce).not.toHaveBeenCalled();
-    db.close();
+    db.close?.();
   });
 });

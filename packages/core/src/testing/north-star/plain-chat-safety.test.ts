@@ -5,12 +5,12 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearDynamicCatalogForTests } from '../../catalog/dynamic-catalog.js';
 import { buildDesignToolContext, executeDesignTool } from '../../intelligence/design-tools/index.js';
 import { MockSlackConnector } from '../connectors/mocks/slack.js';
 import { applySnippetPolicy, MAX_CLOUD_SNIPPET_CHARS } from '../../intelligence/retrieval/snippet-policy.js';
-import { setDocumentEngineClient } from '../../documents/read/engine-client.js';
+import { MockDocumentEngineClient, setDocumentEngineClient } from '../../documents/read/engine-client.js';
 
 describe('North Star QA plain-chat safety', () => {
   afterEach(() => {
@@ -49,20 +49,15 @@ describe('North Star QA plain-chat safety', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ax-qa-pdf-'));
     const pdfPath = join(dir, 'doc.pdf');
     writeFileSync(pdfPath, 'pdf');
-    setDocumentEngineClient({
-      ping: async () => true,
-      ingest: async () => ({
-        documentId: 'd1',
-        artifactPath: '/a',
-        engine: 'test',
-        summary: { pageCount: 1, chunkCount: 1, tableCount: 0, imageCount: 0, visualPageCount: 0, visualPages: [], engine: 'test' },
-        text: 'secret-pdf-body',
-      }),
-      pdfToHtml: async () => { throw new Error('unused'); },
-      getChunk: async () => { throw new Error('unused'); },
-      getPage: async () => { throw new Error('unused'); },
-      search: async () => { throw new Error('unused'); },
+    const client = new MockDocumentEngineClient();
+    const ingest = vi.spyOn(client, 'ingest').mockResolvedValue({
+      documentId: 'd1',
+      artifactPath: '/a',
+      engine: 'test',
+      summary: { pageCount: 1, chunkCount: 1, tableCount: 0, imageCount: 0, visualPageCount: 0, visualPages: [], engine: 'test' },
+      text: 'secret-pdf-body',
     });
+    setDocumentEngineClient(client);
     const ctx = buildDesignToolContext(
       [{ connector: 'local_folder', connected: true, config: { folders: [{ id: 'f1', label: 'Inbox', path: dir }] } }],
       ['local_folder'],
@@ -74,6 +69,7 @@ describe('North Star QA plain-chat safety', () => {
     );
     expect(result.ok).toBe(false);
     expect(result.error).toBe('source_content_requires_local_ai');
+    expect(ingest).not.toHaveBeenCalled();
   });
 
   it('caps search snippets for cloud callers', () => {

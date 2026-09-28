@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../intelligence/agent/investigation-runner.js';
-import type { DecisionEngine } from '../../contracts/decision.js';
+import type { DecisionEngine, DecisionEvaluationResult } from '../../contracts/decision.js';
 import { buildHttpResponseArtifact } from '../../contracts/artifacts/http-response.js';
 import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import type { ConnectorContext } from '../../connectors/types.js';
@@ -18,16 +18,17 @@ async function runReport(mode: Mode, schemaFailure: 'returned' | 'thrown' | 'inv
   let decisionRequest: Parameters<DecisionEngine['evaluate']>[0] | undefined;
   const decisionEngine: DecisionEngine = { async evaluate(request) {
     if ('http_required' in request.questions || 'rdb_required' in request.questions) decisionRequest = request;
-    return { answers: Object.fromEntries(Object.keys(request.questions).map(id => {
+    const answers: DecisionEvaluationResult['answers'] = {};
+    for (const id of Object.keys(request.questions)) {
       const choice = id === 'http_required' ? (dbSelected ? 'not_required' : 'required')
         : id === 'rdb_required' ? (dbSelected ? 'required' : 'not_required')
           : id.startsWith('source_') ? 'use_source' : 'unclear';
-      const probabilities = id.startsWith('source_')
+      const probabilities: Record<string, number> = id.startsWith('source_')
         ? { use_source: 0.4, skip_source: 0.35, unclear: 0.25 }
         : { required: 0.4, not_required: 0.35, unclear: 0.25 };
-      return [id, { type: 'choice' as const, choice,
-        probabilities, confidence: 0.4 }];
-    })) };
+      answers[id] = { type: 'choice', choice, probabilities, confidence: 0.4 };
+    }
+    return { answers };
   } };
   const executeRdb = vi.fn(async (action: string, _params: Record<string, unknown>) => {
     if (action === 'schema.describe') {

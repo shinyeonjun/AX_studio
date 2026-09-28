@@ -94,6 +94,7 @@ describe('work discovery north-star e2e', () => {
     const evalSteps = workflow!.steps.filter((step) => step.type === 'action' && step.action === 'evaluate');
     expect(evalSteps.length).toBeGreaterThanOrEqual(3);
     for (const step of evalSteps) {
+      if (step.type !== 'action') continue;
       expect(step.params.expr).toBeTruthy();
     }
 

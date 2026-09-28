@@ -13,6 +13,7 @@ describe('runtime control-flow nested risk branch', () => {
       name: '위험도 분기 알림',
       goal: '위험도별로 정확히 한 채널에 알림',
       version: 1,
+      inputs: [],
       trigger: { type: 'manual' },
       steps: [
         {
@@ -105,6 +106,7 @@ describe('runtime control-flow nested risk branch', () => {
       name: '자유형 분기 차단',
       goal: '분기 출력 계약 확인',
       version: 1,
+      inputs: [],
       trigger: { type: 'manual' },
       steps: [
         {
@@ -184,6 +186,7 @@ describe('runtime control-flow nested risk branch', () => {
       name: '모델 숫자 분기 차단',
       goal: 'LLM이 계산한 수치로 실행 경로를 선택하지 않음',
       version: 1,
+      inputs: [],
       trigger: { type: 'manual' },
       steps: [
         {

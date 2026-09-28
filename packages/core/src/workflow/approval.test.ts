@@ -11,6 +11,7 @@ const httpRequest: ActionDefinition = {
   connector: 'http',
   action: 'request',
   kind: 'read',
+  sideEffect: 'NONE',
   params: [],
 };
 
@@ -44,6 +45,7 @@ function minimalWorkflow(overrides: Partial<WorkflowIR> = {}): WorkflowIR {
     sideEffects: {},
     dataPolicy: {},
     ...overrides,
+    inputs: overrides.inputs ?? [],
   };
 }
 

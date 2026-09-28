@@ -130,36 +130,6 @@ describe('buildJevReadOperationHints', () => {
     expect(JSON.stringify(hints)).not.toContain('app.db');
   });
 
-  it('exposes read-only MCP tools and records safe argument contracts', () => {
-    const hints = buildJevReadOperationHints([
-      {
-        connector: 'mcp',
-        connected: true,
-        config: {
-          serverId: 'ops',
-          tools: [
-            { name: 'status', description: '현재 상태 조회', sideEffect: 'NONE' },
-            { name: 'search', sideEffect: 'NONE', inputSchema: { required: ['query'] } },
-            { name: 'refresh_cache', sideEffect: 'REVERSIBLE' },
-            { name: 'deploy', sideEffect: 'EXTERNAL' },
-          ],
-        },
-      },
-    ], '상태를 보여줘');
-
-    expect(hints).toHaveLength(2);
-    expect(hints[0]).toMatchObject({
-      capabilityId: 'mcp.ops.status',
-      connector: 'mcp',
-      params: {},
-    });
-    expect(hints[1]).toMatchObject({
-      capabilityId: 'mcp.ops.search',
-      parameterHints: [{ path: 'query', required: true }],
-      missingParameterPaths: ['query'],
-    });
-  });
-
   it('fails closed for required auth parameters instead of extracting secrets from chat', () => {
     const hints = buildJevReadOperationHints([
       {
@@ -423,41 +393,7 @@ describe('buildJevReadOperationHints', () => {
     ]));
   });
 
-  it('resolves required MCP scalar parameters only when named in the request', () => {
-    const index = buildJevReadOperationIndex([{
-      connector: 'mcp',
-      connected: true,
-      config: {
-        serverId: 'ops',
-        tools: [{
-          name: 'search',
-          sideEffect: 'NONE',
-          inputSchema: {
-            type: 'object',
-            required: ['query', 'limit'],
-            properties: { query: { type: 'string' }, limit: { type: 'integer' } },
-          },
-        }],
-      },
-    }]);
-
-    expect(index.select('query=inventory limit=5로 검색해줘').hints).toEqual([
-      expect.objectContaining({
-        capabilityId: 'mcp.ops.search',
-        params: { query: 'inventory', limit: 5 },
-        missingParameterPaths: [],
-      }),
-    ]);
-    expect(index.select('재고를 검색해줘').hints).toEqual([
-      expect.objectContaining({
-        capabilityId: 'mcp.ops.search',
-        params: {},
-        missingParameterPaths: ['query', 'limit'],
-      }),
-    ]);
-  });
-
-  it('normalizes search parameters for OpenAPI, MCP, and Slack without consuming adjacent arguments', () => {
+  it('normalizes search parameters for OpenAPI and Slack without consuming adjacent arguments', () => {
     const index = buildJevReadOperationIndex([
       {
         connector: 'openapi',
@@ -480,18 +416,12 @@ describe('buildJevReadOperationHints', () => {
           },
         },
       },
-      {
-        connector: 'mcp', connected: true,
-        config: { serverId: 'ops', tools: [{ name: 'search', sideEffect: 'NONE',
-          inputSchema: { required: ['query'], properties: { query: { type: 'string' } } } }] },
-      },
       { connector: 'slack', connected: true, config: {} },
     ]);
 
     const natural = index.select('재고 관련 상품 조회').hints;
     expect(natural).toEqual(expect.arrayContaining([
       expect.objectContaining({ capabilityId: 'openapi.inventory.searchItems', params: { query: { q: '재고' } } }),
-      expect.objectContaining({ capabilityId: 'mcp.ops.search', params: { query: '재고' }, missingParameterPaths: [] }),
       expect.objectContaining({ capabilityId: 'slack.messages.search', params: { query: '재고' }, missingParameterPaths: [] }),
     ]));
 

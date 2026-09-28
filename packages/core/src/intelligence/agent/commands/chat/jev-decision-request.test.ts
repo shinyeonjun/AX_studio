@@ -278,7 +278,7 @@ describe('buildJevDecisionRequest', () => {
         const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
           if (question.type === 'noul') return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
           if (question.type !== 'choice') throw new Error('Expected a Jev choice question.');
-          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria)[0]!;
+          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria ?? {})[0]!;
           return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
         }));
         return new Response(JSON.stringify({ answers }), {
@@ -374,7 +374,7 @@ describe('buildJevDecisionRequest', () => {
           if (question.type === 'noul') {
             return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
           }
-          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria)[0]!;
+          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria ?? {})[0]!;
           return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
         }));
         return new Response(JSON.stringify({ answers }), {

@@ -23,6 +23,7 @@ function workflowFor(outputSchema: Record<string, unknown> | undefined, action: 
     permissions: {},
     approval: [],
     allowExternalAuto: false,
+    inputs: [],
     assumptions: [],
     sideEffects: {},
     dataPolicy: {},

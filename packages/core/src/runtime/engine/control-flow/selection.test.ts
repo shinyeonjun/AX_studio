@@ -55,6 +55,7 @@ describe('runtime control-flow selection', () => {
       name: '발신자 필터',
       goal: '특정 발신자만 알림',
       version: 1,
+      inputs: [],
       steps: [
         {
           type: 'if',

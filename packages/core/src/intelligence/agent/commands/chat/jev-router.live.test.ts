@@ -80,7 +80,10 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
           toolCandidates: Object.entries(request.questions)
             .filter(([id]) => id.startsWith('tool_'))
             .flatMap(([id, question]) => {
-              const candidate = question.type === 'boolean' ? question.instructions?.candidate : undefined;
+              const instructions = question.type === 'boolean' ? question.instructions : undefined;
+              const candidate = typeof instructions === 'object' && instructions !== null
+                ? instructions.candidate
+                : undefined;
               return candidate && typeof candidate === 'object' && 'id' in candidate
                 ? [{ id, ...('capability_id' in candidate && typeof candidate.capability_id === 'string'
                     ? { capabilityId: candidate.capability_id } : {}) }]

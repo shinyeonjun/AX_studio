@@ -8,15 +8,9 @@ import {
   JEV_API_ENV_KEY,
 } from './contracts.js';
 
-export function envKeyForBrand(brand: AiBrand, mode?: AiConnectionMode): string {
+function envKeyForBrand(brand: AiBrand, mode?: AiConnectionMode): string {
   if (brand === 'grok' && mode === 'api') return GROK_API_ENV_KEY;
   return BRAND_ENV_KEYS[brand];
-}
-
-export function isAiEnvKey(key: string): boolean {
-  return Object.values(BRAND_ENV_KEYS).includes(key)
-    || key === GROK_API_ENV_KEY
-    || key === JEV_API_ENV_KEY;
 }
 
 export async function setBrandSecret(brand: AiBrand, value: string, mode?: AiConnectionMode): Promise<void> {
@@ -36,10 +30,6 @@ export async function getJevSecret(): Promise<string> {
 
 export async function getSecretForBrand(brand: AiBrand, mode?: AiConnectionMode): Promise<string> {
   const envKey = envKeyForBrand(brand, mode);
-  return (await getOsSecret(envKey))?.trim() ?? '';
-}
-
-export async function getSecretByEnvKey(envKey: string): Promise<string> {
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
 

@@ -14,6 +14,7 @@ describe('branchHintsFromWorkflow', () => {
         type: 'ai_decision',
         id: 'classify',
         goal: '위험도 분류',
+        investigation: false,
         outputSchema: {
           type: 'object',
           properties: {

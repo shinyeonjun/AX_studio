@@ -11,6 +11,7 @@ const missingInputWorkflow: WorkflowIR = {
   name: 'PDF 입력 필요',
   goal: '연결된 PDF를 처리한다',
   version: 1,
+  inputs: [],
   steps: [{
     type: 'action',
     id: 'ingest',

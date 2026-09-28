@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyStepBindings, inferWorkflowBindings } from '../bindings.js';
 import { folderToSlack } from './fixtures.js';
+import type { WorkflowIR } from '../schema.js';
 
 describe('inferWorkflowBindings folder to Slack', () => {
   it('binds trigger file to document ingest and chains text to slack', () => {

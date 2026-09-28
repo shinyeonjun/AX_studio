@@ -64,7 +64,8 @@ describe('insertContractAdapters', () => {
       ],
     };
     const adapted = insertContractAdapters(gmailFlow);
-    expect(adapted.steps.some((step) => step.connector === 'gmail' && step.action === 'messages.read')).toBe(true);
+    expect(adapted.steps.some((step) => step.type === 'action'
+      && step.connector === 'gmail' && step.action === 'messages.read')).toBe(true);
     expect(validateWorkflowContracts(adapted)).toEqual([]);
   });
 });

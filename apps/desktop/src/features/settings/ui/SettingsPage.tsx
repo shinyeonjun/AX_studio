@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { SettingsScreen } from '../../../types/navigation';
-import { isSettingsScreenVisibleInUi, SETTINGS_TITLES } from '../../../ui/constants/settings';
+import { SETTINGS_TITLES } from '../../../ui/constants/settings';
 import { PageHeader } from '../../../ui/layout/PageHeader';
 import { SettingsPageContent } from './settings-page/content';
 import type { SettingsPageProps } from './settings-page/contracts';
@@ -26,12 +26,6 @@ export function SettingsPage(props: SettingsPageProps) {
       void refreshDetection().catch(() => {});
     }
   }, [screen, refreshDetection]);
-
-  useEffect(() => {
-    if (!isSettingsScreenVisibleInUi(screen)) {
-      onScreenChange('hub');
-    }
-  }, [screen, onScreenChange]);
 
   return (
     <>

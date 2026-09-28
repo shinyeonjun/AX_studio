@@ -13,7 +13,6 @@ export { isPdfGeneratePending } from './documents/write/types.js';
 export {
   setDesktopPrintBridge,
   getDesktopPrintBridge,
-  MockDesktopPrintBridge,
   type DesktopPrintBridge,
   type DesktopPrintOptions,
 } from './documents/write/desktop-print.js';
@@ -86,7 +85,6 @@ export * from './workflow/visual-display.js';
 export * from './platform/index.js';
 export { summarizeApprovalGates, type ApprovalGateSummary, type ApprovalGateEntry } from './workflow/approval-gates.js';
 export * from './connectors/protocols/openapi/index.js';
-export * from './connectors/protocols/mcp/index.js';
 
 export * from './persistence/paths/index.js';
 export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './application/bootstrap.js';

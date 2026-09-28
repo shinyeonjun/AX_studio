@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MockDesktopPrintBridge } from '../../../../testing/desktop-print.js';
 import {
-  MockDesktopPrintBridge,
   setDesktopPrintBridge,
 } from '../../../../documents/write/desktop-print.js';
 import type { ArtifactSink, ConnectorContext } from '../../../types.js';

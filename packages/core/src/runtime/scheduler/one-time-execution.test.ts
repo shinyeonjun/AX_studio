@@ -16,6 +16,7 @@ describe('Scheduler', () => {
       name: '일회성 재시도',
       goal: '실패한 일회성 업무는 재시도',
       version: 1,
+      inputs: [],
       trigger: { type: 'once', runAt: new Date(Date.now() - 1_000).toISOString() },
       steps: [],
       permissions: {},
@@ -27,7 +28,7 @@ describe('Scheduler', () => {
     });
     store.setWorkflowActive('once-workflow', true);
 
-    const statuses = ['failed', 'success'] as const;
+    const statuses = ['failed', 'success'];
     const runtime = {
       executeWorkflow: vi.fn(async () => ({ status: statuses.shift() ?? 'failed' })),
       removeWorkflow: vi.fn(),
@@ -58,6 +59,7 @@ describe('Scheduler', () => {
       name: '느린 일회성 작업',
       goal: '실행 중인 작업을 중복 시작하지 않음',
       version: 1,
+      inputs: [],
       trigger: { type: 'once', runAt: new Date(Date.now() - 1_000).toISOString() },
       steps: [],
       permissions: {},
@@ -99,6 +101,7 @@ describe('Scheduler', () => {
       name: '일회성 삭제 경쟁',
       goal: '완료된 일회성 작업을 정리한다',
       version: 1,
+      inputs: [],
       trigger: { type: 'once' as const, runAt: new Date(Date.now() - 1_000).toISOString() },
       steps: [],
       permissions: {},

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
 import { AgentHarness } from '../../../harness.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
@@ -24,8 +25,8 @@ describe('runAxCommandChat recurring workflow target selection', () => {
       },
     });
     const presentations: import('../../schema.js').AxUiPresentation[] = [];
-    const structuredCalls: unknown[] = [];
-    const textCalls: unknown[] = [];
+    const structuredCalls: StructuredGenerateInput<unknown>[] = [];
+    const textCalls: TextGenerateInput[] = [];
     const decisionEngine = gmailToSlackRecurringDecisionEngine();
 
     const reply = await runAxCommandChat({
@@ -59,6 +60,6 @@ describe('runAxCommandChat recurring workflow target selection', () => {
     expect(store.listWorkflows()).toHaveLength(0);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 });

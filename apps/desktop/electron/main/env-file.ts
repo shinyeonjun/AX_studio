@@ -69,20 +69,6 @@ export async function readEnvFile(): Promise<Record<string, string>> {
   return parseEnvContent(content);
 }
 
-export async function setEnvFileValue(key: string, value: string): Promise<void> {
-  if (!isDevEnvFileEnabled()) {
-    throw new Error('.env는 개발 빌드에서만 사용할 수 있습니다.');
-  }
-  if (!ENV_FILE_ALLOWED_KEYS.has(key)) {
-    throw new Error(`${key}는 .env에 저장할 수 없습니다. 앱 설정에서 등록하세요.`);
-  }
-  const path = getEnvFilePath();
-  const current = await readEnvFile();
-  current[key] = value;
-  await writeFile(path, serializeEnv(current), 'utf8');
-  process.env[key] = value;
-}
-
 /** AI API 키 등 금지된 항목을 .env 파일에서 제거한다. */
 export async function purgeDisallowedEnvFileKeys(): Promise<string[]> {
   if (!isDevEnvFileEnabled()) return [];

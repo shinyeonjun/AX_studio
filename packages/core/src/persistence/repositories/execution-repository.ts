@@ -135,15 +135,12 @@ export function clearExecutions(db: AppDatabase): number {
   db.exec('BEGIN');
   try {
     const terminalStatuses = "('success', 'failed', 'cancelled')";
-    const countRow = readRow<{ count: number }>(
-      db.prepare(`SELECT COUNT(*) AS count FROM executions WHERE status IN ${terminalStatuses}`),
-    )!;
     db.prepare(
       `DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE status IN ${terminalStatuses})`,
     ).run();
-    db.prepare(`DELETE FROM executions WHERE status IN ${terminalStatuses}`).run();
+    const deleted = db.prepare(`DELETE FROM executions WHERE status IN ${terminalStatuses}`).run();
     db.exec('COMMIT');
-    return countRow.count;
+    return deleted.changes;
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

@@ -52,7 +52,7 @@ it('ranks and limits a view by an undisplayed source column', () => {
       groupBy: [{ id: 'name', value: field('sales.name') }],
       columns: [
         { id: 'name', value: { kind: 'group_key', keyId: 'name' } },
-        { id: 'amount', value: { kind: 'sum', value: field('sales.amount') } },
+        { id: 'amount', value: { kind: 'aggregate', expression: { kind: 'sum', value: field('sales.amount') } } },
       ],
     }, {
       kind: 'view', id: 'top_customer', sourceTable: 'customers', columns: ['name'],
@@ -163,7 +163,7 @@ it('evaluates metadata value scalars and aggregate expressions in derived table 
   expect(result.tables.summary?.rows.map((row) => row.raw.attainment)).toEqual([1.8, 1, 1]);
 });
 
-it('unwraps aggregate wrappers nested inside derived table expressions', () => {
+it('evaluates aggregate expressions nested inside derived table expressions', () => {
   const input: ReportPlan = {
     schemaVersion: 1,
     baseSource: 'orders',
@@ -182,14 +182,8 @@ it('unwraps aggregate wrappers nested inside derived table expressions', () => {
             expression: {
               kind: 'arithmetic',
               operation: 'divide',
-              left: {
-                kind: 'aggregate',
-                expression: { kind: 'sum', value: field('orders.net') },
-              },
-              right: {
-                kind: 'aggregate',
-                expression: { kind: 'first', value: field('orders.net'), requireConsistent: false },
-              },
+              left: { kind: 'sum', value: field('orders.net') },
+              right: { kind: 'first', value: field('orders.net'), requireConsistent: false },
             },
           },
         },

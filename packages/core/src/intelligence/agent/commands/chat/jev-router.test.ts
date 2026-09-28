@@ -14,7 +14,6 @@ import { JevDecisionEngine } from '../../../decision/jev.js';
 import { AxDiscoverySearchArgsSchema, AxExecutionEnqueueOnceArgsSchema } from '../schema/workflow-args.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
 import { routeChatWithJev } from './jev-router.js';
-import { deriveJevRequestFeatures } from './request-features.js';
 import {
   parallelToolAnswersForTest,
   parallelToolCandidateForTest,
@@ -818,12 +817,12 @@ describe('routeChatWithJev', () => {
             } };
           }
           selectedOperation = parallelToolQuestionIdForTest(request, (candidate) =>
-            candidate.kind === 'read' && candidate.label.includes('Products'));
+            candidate.kind === 'read' && (candidate.label ?? '').includes('Products'));
           const confidence = 0.99;
           return { answers: {
             ...parallelToolAnswersForTest(request, {
               mode: 'single_action', needsNaturalLanguageAnswer: false,
-              select: (candidate) => candidate.kind === 'read' && candidate.label.includes('Products'),
+              select: (candidate) => candidate.kind === 'read' && (candidate.label ?? '').includes('Products'),
             }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: confidence }, confidence },

@@ -177,7 +177,7 @@ describe('openapi ingest', () => {
     });
     const originalFetch = globalThis.fetch;
     let requestedUrl = '';
-    let requestedHeaders: HeadersInit | undefined;
+    let requestedHeaders: RequestInit['headers'];
     globalThis.fetch = async (input, init) => {
       requestedUrl = String(input);
       requestedHeaders = init?.headers;

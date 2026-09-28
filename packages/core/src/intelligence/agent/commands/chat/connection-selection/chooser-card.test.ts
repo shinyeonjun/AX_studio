@@ -51,7 +51,7 @@ describe('runAxCommandChat connection selection', () => {
       actions: [],
     }]);
     expect(JSON.stringify(presentations)).not.toContain('alpha.example.com');
-    db.close();
+    db.close?.();
   });
 
   it('does not add a chooser card when Jev classifies a connection inventory request', async () => {
@@ -86,6 +86,6 @@ describe('runAxCommandChat connection selection', () => {
     expect(reply).toContain('깃허브 연결');
     expect(reply).toContain('테스트 HTTP 연결');
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 });

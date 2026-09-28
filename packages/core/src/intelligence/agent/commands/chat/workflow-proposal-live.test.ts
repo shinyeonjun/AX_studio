@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { DecisionEngine } from '../../../../contracts/decision.js';
+import type { DecisionEngine, DecisionEvaluationResult } from '../../../../contracts/decision.js';
 import { createDatabaseAsync } from '../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../../../workflow/schema.js';
 import { AgentHarness } from '../../harness.js';
-import type { AxCommand, AxInputRequest } from '../schema.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../model/provider.js';
+import type { AxCommand } from '../schema.js';
 import { runAxCommandChat } from '../chat.js';
 import { AxCommandService } from '../service.js';
 import { parallelToolAnswersForTest, parallelToolQuestionIdForTest, scriptedModel } from './fixtures.js';
-import { gmailToSlackRecurringDecisionEngine } from './jev-recurring-workflow-fixture.js';
 
 describe('Desktop chat recurring workflow proposal', () => {
   it('asks for missing fields of a Jev-selected one-shot action without delegating payload generation to the LLM', async () => {
@@ -23,14 +23,14 @@ describe('Desktop chat recurring workflow proposal', () => {
         return { jobId: 'should-not-queue-before-input' };
       },
     });
-    const structuredCalls: unknown[] = [];
-    const textCalls: unknown[] = [];
+    const structuredCalls: StructuredGenerateInput<unknown>[] = [];
+    const textCalls: TextGenerateInput[] = [];
     const evaluations: string[][] = [];
     const jevStates: string[] = [];
     let sendActionId: string | undefined;
     let jevCalls = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         jevCalls += 1;
         evaluations.push(Object.keys(request.questions));
         jevStates.push(JSON.stringify(request.state));
@@ -122,7 +122,7 @@ describe('Desktop chat recurring workflow proposal', () => {
     expect(jevStates.join('\n')).not.toContain('person@example.com');
     expect(jevStates.join('\n')).not.toContain('견적서를 보내 주세요');
     expect(store.listWorkflows()).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 
   it('resumes the exact host-held one-shot plan without routing or planning again', async () => {
@@ -137,8 +137,8 @@ describe('Desktop chat recurring workflow proposal', () => {
         return { jobId: 'resumed-exact-plan' };
       },
     });
-    const structuredCalls: unknown[] = [];
-    const textCalls: unknown[] = [];
+    const structuredCalls: StructuredGenerateInput<unknown>[] = [];
+    const textCalls: TextGenerateInput[] = [];
     let jevCalls = 0;
     const decisionEngine: DecisionEngine = {
       evaluate: async () => {
@@ -209,7 +209,7 @@ describe('Desktop chat recurring workflow proposal', () => {
         params: { to: 'second@example.com', body: '두 번째 안내' },
       },
     ]);
-    db.close();
+    db.close?.();
   });
 
   it('lets Jev compile a manual workflow without an LLM command call', async () => {
@@ -218,11 +218,11 @@ describe('Desktop chat recurring workflow proposal', () => {
     store.setConnection('gmail', true, { email: 'primary' });
     const workspaceSessionId = store.saveWorkspaceChat({ messages: [] }).id;
     const service = new AxCommandService(store);
-    const structuredCalls: unknown[] = [];
-    const textCalls: unknown[] = [];
+    const structuredCalls: StructuredGenerateInput<unknown>[] = [];
+    const textCalls: TextGenerateInput[] = [];
     let selectedRead = false;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         if (request.questions.route) {
           return {
             answers: {
@@ -295,6 +295,6 @@ describe('Desktop chat recurring workflow proposal', () => {
     ]);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);
-    db.close();
+    db.close?.();
   });
 });

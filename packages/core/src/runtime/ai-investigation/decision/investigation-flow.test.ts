@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DecisionAnswer, DecisionEngine, DecisionEvaluationRequest } from '../../../contracts/decision.js';
+import type { DecisionAnswer, DecisionEngine, DecisionEvaluationRequest, DecisionEvaluationResult } from '../../../contracts/decision.js';
+import type { InvestigationRunRequest } from '../../../intelligence/agent/investigation-runner.js';
 import { buildTableArtifact } from '../../../contracts/artifacts/table-build.js';
 import { createAgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
 import { runAiDecision } from '../../ai-investigation.js';
@@ -48,7 +49,7 @@ describe('runAiDecision investigation flow', () => {
       },
     };
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         const criteria = request.questions.output_0;
         if (criteria?.type !== 'choice') throw new Error('Expected a Jev choice question');
         const keys = Object.keys(criteria.criteria);
@@ -81,7 +82,7 @@ describe('runAiDecision investigation flow', () => {
       },
     };
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         const question = request.questions.output_0;
         if (question?.type !== 'choice') throw new Error('Expected a Jev choice question');
         expect(question.criteria).toEqual({
@@ -145,7 +146,7 @@ describe('runAiDecision investigation flow', () => {
     });
     let state: unknown;
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         state = request.state;
         return {
           answers: {
@@ -240,7 +241,7 @@ describe('runAiDecision investigation flow', () => {
       },
     };
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         expect(Object.keys(request.questions)).toEqual(['output_0', 'output_1']);
         return {
           answers: {
@@ -283,7 +284,7 @@ describe('runAiDecision investigation flow', () => {
     const logs: Array<Parameters<typeof ctx.log>[0]> = [];
     const decisionContext = { ...ctx, log: (entry: Parameters<typeof ctx.log>[0]) => logs.push(entry) };
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         expect(request.questions.output_0?.type).toBe('choice');
         if (request.questions.output_0?.type === 'choice') {
           expect(request.questions.output_0.criteria).toHaveProperty('unclear');
@@ -418,7 +419,7 @@ describe('runAiDecision investigation flow', () => {
     const model = new InvestigationProvider();
     const requests: DecisionEvaluationRequest[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         return readAnswers(request, (questionId) =>
           requests.length === 1 && questionId === 'read_op_0' ? 'read' : 'skip');
@@ -461,7 +462,7 @@ describe('runAiDecision investigation flow', () => {
     const model = new InvestigationProvider();
     const decisionRequests: DecisionEvaluationRequest[] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         decisionRequests.push(request);
         return {
           ...readAnswers(request, (questionId) => /^read_op_[1-5]$/u.test(questionId) ? 'read' : 'skip'),
@@ -622,7 +623,7 @@ describe('runAiDecision investigation flow', () => {
     });
     let evaluations = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         evaluations += 1;
         const selected = evaluations === 1
@@ -632,9 +633,10 @@ describe('runAiDecision investigation flow', () => {
           answers: Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
             const instructions = question.instructions;
             const operation = instructions && typeof instructions === 'object'
-              ? instructions.operation as { label?: unknown } | undefined
+              ? instructions.operation
               : undefined;
-            const label = typeof operation?.label === 'string' ? operation.label : '';
+            const label = operation && typeof operation === 'object' && 'label' in operation
+              && typeof operation.label === 'string' ? operation.label : '';
             return [id, readAnswer(selected.has(label) ? 'read' : 'skip')];
           })),
         };
@@ -722,15 +724,17 @@ describe('runAiDecision investigation flow', () => {
           id: String(params.table), name: String(params.table), headers: ['id'], matrix: [[1]],
         }) });
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => {
+      evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         const selected = new Set(['DB 조회: orders', 'DB 조회: customers']);
         return {
           answers: Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
             const instructions = question.instructions;
             const operation = instructions && typeof instructions === 'object'
-              ? instructions.operation as { label?: unknown } | undefined
+              ? instructions.operation
               : undefined;
-            return [id, readAnswer(typeof operation?.label === 'string' && selected.has(operation.label) ? 'read' : 'skip')];
+            const label = operation && typeof operation === 'object' && 'label' in operation
+              && typeof operation.label === 'string' ? operation.label : '';
+            return [id, readAnswer(selected.has(label) ? 'read' : 'skip')];
           })),
         };
       }),
@@ -855,11 +859,7 @@ describe('runAiDecision investigation flow', () => {
     let receivedCloudPolicy: boolean | undefined;
     const runner = {
       providerName: 'ollama-local',
-      async run<T>(request: {
-        outputSchema: { parse(value: unknown): T };
-        context: { evidence: unknown };
-        cloudAllowed: boolean;
-      }) {
+      async run<T>(request: InvestigationRunRequest<T>) {
         receivedEvidence = request.context.evidence;
         receivedCloudPolicy = request.cloudAllowed;
         return { output: request.outputSchema.parse({ conclusion: '로컬 분석 완료' }) };
