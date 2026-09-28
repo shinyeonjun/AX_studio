@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { DecisionInstruction, DecisionQuestion } from '../../../../contracts/decision.js';
+import type { DecisionInstruction } from '../../../../contracts/decision.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import { deriveJevRequestFeatures } from './request-features.js';
-import { buildJevDecisionRequest, oneShotExecutionQuestions } from './jev-decision-request.js';
+import { buildJevDecisionRequest } from './jev-decision-request.js';
 import { JEV_CHAT_ROUTE_CRITERIA } from './jev-route-criteria.js';
-import { jevActionQuestionGroups } from './jev-action-catalog.js';
 import { selectJevWorkflowTriggerHints } from './jev-workflow-proposal.js';
 import { selectJevActionHints } from './jev-action-catalog.js';
 
@@ -47,7 +46,7 @@ describe('buildJevDecisionRequest', () => {
     const result = build('안녕');
 
     expect(result.questions).toHaveProperty('route');
-    expect(Object.keys(result.questions)).toEqual(['route']);
+    expect(Object.keys(result.questions)).toEqual(['route', 'request_mode', 'needs_natural_language_answer']);
     expect(result.routeCriteria).toEqual({ answer: routeCatalog.answer });
     expect(routeCatalog).toHaveProperty('context_remember');
     expect(routeCatalog).toHaveProperty('capability_read');
@@ -81,8 +80,10 @@ describe('buildJevDecisionRequest', () => {
       },
     });
 
-    expect(result.questions.action_scope?.type).toBe('choice');
+    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions.explicit_execution_now?.type).toBe('choice');
+    expect(result.questions.needs_natural_language_answer?.type).toBe('boolean');
+    expect(result.questions.tool_0?.type).toBe('boolean');
     expect(result.questions.explicit_execution_now?.type === 'choice'
       ? Object.keys(result.questions.explicit_execution_now.criteria)
       : []).toEqual(['execute_now', 'do_not_execute', 'unclear']);
@@ -148,8 +149,8 @@ describe('buildJevDecisionRequest', () => {
     });
 
     expect(result.routeCriteria).toHaveProperty('capability_read');
-    expect(result.questions.operation?.type === 'choice' ? result.questions.operation.criteria : {})
-      .toEqual({ none: expect.any(String) });
+    expect(result.questions.request_mode?.type).toBe('choice');
+    expect(Object.keys(result.questions).filter((key) => key.startsWith('tool_'))).toEqual([]);
   });
 
   it('lets Jev choose whether to answer or use connected read operations from meaning', () => {
@@ -165,9 +166,13 @@ describe('buildJevDecisionRequest', () => {
 
     expect(result.state.request_features).toEqual({});
     expect(result.routeCriteria).toHaveProperty('capability_read');
-    expect(result.questions.operation?.criteria).toMatchObject({
-      none: expect.any(String),
-      op_0: { label: '상품 목록', what: '상품 데이터를 읽습니다.', connector: 'openapi' },
+    expect(result.questions.request_mode?.type).toBe('choice');
+    expect(result.questions.tool_0).toMatchObject({
+      type: 'boolean',
+      instructions: { candidate: {
+        id: 'read:op_0', kind: 'read', capability_id: 'products.list', connector: 'openapi',
+        label: '상품 목록', description: '상품 데이터를 읽습니다.',
+      } },
     });
     expect(result.questions.table_transform).toMatchObject({
       type: 'choice',
@@ -177,13 +182,10 @@ describe('buildJevDecisionRequest', () => {
       type: 'choice',
       criteria: { all_columns: expect.any(String), requested_columns: expect.any(String) },
     });
-    expect(result.questions.read_result_style).toMatchObject({
-      type: 'choice',
-      criteria: { data: expect.any(String), summary: expect.any(String) },
-    });
+    expect(result.questions.needs_natural_language_answer?.type).toBe('boolean');
   });
 
-  it('defers read-result questions with oversized read candidates until Jev selects the read route', () => {
+  it('evaluates every read tool beside the request type, even with a large catalog', () => {
     const hints = Array.from({ length: 260 }, (_, index) => ({
       ...readOperation,
       key: `op_${index}`,
@@ -194,16 +196,16 @@ describe('buildJevDecisionRequest', () => {
       routeCatalog,
       readOperationHints: hints,
       readOperationCatalogSize: hints.length,
-      deferReadOperationChoices: true,
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(Object.keys(result.questions)).toEqual(['route']);
-    expect(result.deferredReadQuestions).toHaveProperty('operation_group_0');
-    expect(result.deferredReadQuestions).toHaveProperty('operation_group_1');
-    expect(result.deferredReadQuestions).toHaveProperty('table_transform');
-    expect(result.deferredReadQuestions).toHaveProperty('table_projection');
-    expect(result.deferredReadQuestions).toHaveProperty('read_result_style');
+    expect(Object.keys(result.questions).slice(0, 3)).toEqual(['route', 'request_mode', 'needs_natural_language_answer']);
+    expect(Object.keys(result.questions).filter((key) => key.startsWith('tool_'))).toHaveLength(hints.length);
+    expect(result.questions.tool_259).toMatchObject({
+      type: 'boolean', instructions: { candidate: { id: 'read:op_259' } },
+    });
+    expect(result.questions).toHaveProperty('table_transform');
+    expect(result.questions).toHaveProperty('table_projection');
   });
 
   it('keeps presentation questions in the initial request when HTTP endpoint choices are available', () => {
@@ -222,17 +224,16 @@ describe('buildJevDecisionRequest', () => {
       ],
       readOperationHints: hints,
       readOperationCatalogSize: hints.length,
-      deferReadOperationChoices: true,
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
     expect(result.questions).toHaveProperty('table_transform');
     expect(result.questions).toHaveProperty('table_projection');
-    expect(result.questions).toHaveProperty('read_result_style');
+    expect(result.questions).toHaveProperty('needs_natural_language_answer');
     expect(result.questions).toHaveProperty('http_endpoint');
-    expect(result.questions).not.toHaveProperty('operation_group_0');
-    expect(result.deferredReadQuestions).toHaveProperty('operation_group_0');
-    expect(result.deferredReadQuestions).not.toHaveProperty('table_transform');
+    expect(result.questions.tool_259).toMatchObject({
+      type: 'boolean', instructions: { candidate: { id: 'read:op_259' } },
+    });
   });
 
   it('keeps generated operation keys above 999 in Jev choices', () => {
@@ -245,7 +246,9 @@ describe('buildJevDecisionRequest', () => {
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(result.questions.operation?.criteria).toHaveProperty('op_1000');
+    expect(result.questions.tool_0).toMatchObject({
+      type: 'boolean', instructions: { candidate: { id: 'read:op_1000' } },
+    });
   });
 
   it('fans out oversized read metadata under Jev’s wire byte ceiling without dropping candidates', async () => {
@@ -264,19 +267,18 @@ describe('buildJevDecisionRequest', () => {
       readOperationCatalogSize: hints.length,
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
-    expect(result.operationGroups.length).toBeGreaterThan(1);
-    expect(result.operationGroups.flatMap(({ hints: groupHints }) => groupHints.map(({ key }) => key)))
-      .toEqual(hints.map(({ key }) => key));
+    expect(Object.keys(result.questions).filter((id) => id.startsWith('tool_'))).toHaveLength(hints.length);
 
-    const sentBodies: Array<{ questions: Record<string, DecisionQuestion> }> = [];
+    const sentBodies: Array<{ questions: Record<string, { type: string; criteria?: Record<string, unknown> }> }> = [];
     const decisionEngine = new JevDecisionEngine({
       apiKey: 'test-key',
       fetch: async (_url, init) => {
-        const request = JSON.parse(String(init?.body)) as { questions: Record<string, DecisionQuestion> };
+        const request = JSON.parse(String(init?.body)) as (typeof sentBodies)[number];
         sentBodies.push(request);
         const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
+          if (question.type === 'noul') return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
           if (question.type !== 'choice') throw new Error('Expected a Jev choice question.');
-          const choice = Object.keys(question.criteria).find((key) => key.startsWith('op_'))!;
+          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria)[0]!;
           return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
         }));
         return new Response(JSON.stringify({ answers }), {
@@ -286,20 +288,18 @@ describe('buildJevDecisionRequest', () => {
       },
     });
 
-    const evaluation = await decisionEngine.evaluate({ state: result.state, questions: result.operationQuestions });
-    const transportedKeys = sentBodies.flatMap(({ questions }) => Object.values(questions)
-      .flatMap((question) => question.type === 'choice'
-        ? Object.keys(question.criteria).filter((key) => key.startsWith('op_'))
-        : [],
-      ));
+    const evaluation = await decisionEngine.evaluate({ state: result.state, questions: result.questions });
+    const transportedKeys = sentBodies.flatMap(({ questions }) => Object.entries(questions)
+      .filter(([id, question]) => id.startsWith('tool_') && question.type === 'noul')
+      .map(([id]) => id));
 
     expect(sentBodies.length).toBeGreaterThan(1);
     expect(sentBodies.every((request) => new TextEncoder().encode(JSON.stringify(request)).byteLength <= 65_536)).toBe(true);
-    expect(transportedKeys).toEqual(hints.map(({ key }) => key));
-    expect(Object.keys(evaluation.answers)).toEqual(result.operationGroups.map(({ questionId }) => questionId));
+    expect(transportedKeys).toEqual(hints.map((_, index) => `tool_${index}`));
+    expect(Object.keys(evaluation.answers)).toEqual(Object.keys(result.questions));
   });
 
-  it('offers every oversized catalog operation in Jev-sized choice groups', () => {
+  it('offers every oversized catalog operation as an individual parallel decision', () => {
     const hints: JevReadOperationHint[] = Array.from({ length: 510 }, (_, index) => ({
       ...readOperation,
       key: `op_${index}`,
@@ -313,24 +313,16 @@ describe('buildJevDecisionRequest', () => {
       readOperationCatalogSize: hints.length,
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
-    const groups = result.operationGroups;
-    const offeredKeys = groups.flatMap(({ hints: groupHints }) => groupHints.map(({ key }) => key));
-
-    expect(groups.map(({ hints: groupHints }) => groupHints.length)).toEqual([254, 254, 2]);
-    expect(new Set(offeredKeys).size).toBe(hints.length);
-    expect(offeredKeys).toEqual(hints.map(({ key }) => key));
-    for (const { questionId } of groups) {
-      const question = result.questions[questionId];
-      expect(question?.type).toBe('choice');
-      if (question?.type === 'choice') {
-        expect(Object.keys(question.criteria).length).toBeLessThanOrEqual(255);
-        expect(question.criteria).toHaveProperty('none');
-      }
-    }
+    const tools = Object.keys(result.questions).filter((id) => id.startsWith('tool_'));
+    expect(tools).toHaveLength(hints.length);
+    expect(new Set(tools).size).toBe(hints.length);
+    expect(result.questions.tool_509).toMatchObject({
+      type: 'boolean', instructions: { candidate: { id: 'read:op_509', capability_id: 'products.read.509' } },
+    });
     expect(result.questions).not.toHaveProperty('operation');
   });
 
-  it('keeps write tools out of route classification without serializing their input schemas', async () => {
+  it('evaluates write tools in parallel without serializing their input schemas', async () => {
     const hints = Array.from({ length: 254 }, (_, index) => ({
       key: `action_${index}`,
       capability: {
@@ -359,32 +351,17 @@ describe('buildJevDecisionRequest', () => {
       readOperationCatalogSize: 0,
       actionSelection: { hints, catalogSize: hints.length, catalogMayBeBounded: false },
     });
-    const groups = jevActionQuestionGroups(hints);
-    const offeredKeys = groups.flatMap(({ hints: groupHints }) => groupHints.map(({ key }) => key));
-
-    expect(groups.length).toBeGreaterThan(1);
-    expect(offeredKeys).toEqual(hints.map(({ key }) => key));
-    expect(new Set(offeredKeys).size).toBe(hints.length);
-    expect(result.questions).not.toHaveProperty('action');
-    expect(result.questions).toHaveProperty('action_scope');
+    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions).toHaveProperty('explicit_execution_now');
+    const toolQuestions = Object.entries(result.questions).filter(([id]) => id.startsWith('tool_'));
+    expect(toolQuestions).toHaveLength(hints.length);
+    expect(new Set(toolQuestions.map(([, question]) => question.type))).toEqual(new Set(['boolean']));
+    expect(result.questions.tool_0).toMatchObject({
+      instructions: { candidate: { id: 'write:action_0', capability_id: 'connector.write_0' } },
+    });
+    expect(JSON.stringify(result.questions.tool_0)).not.toContain('Required input');
 
-    const actionQuestions = oneShotExecutionQuestions(hints, groups);
-    const actionCriterion = groups[0]?.criteria.action_0;
-    expect(actionCriterion).toMatch(/^connector\.write_0 — /u);
-    expect(String(actionCriterion)).not.toContain('Required input');
-    expect(String(actionCriterion)).not.toContain('capability_id');
-    expect(String(actionCriterion)).not.toContain('side_effect');
-    for (const { questionId } of groups) {
-      const question = actionQuestions[questionId];
-      expect(question?.type).toBe('choice');
-      if (question?.type === 'choice') {
-        expect(Object.keys(question.criteria)).toContain('none');
-        expect(new TextEncoder().encode(JSON.stringify(question)).byteLength).toBeLessThan(262_144);
-      }
-    }
-
-    const sentBodies: Array<{ state: unknown; questions: Record<string, DecisionQuestion> }> = [];
+    const sentBodies: Array<{ state: unknown; questions: Record<string, { type: string; criteria?: Record<string, unknown> }> }> = [];
     const requestBytes: number[] = [];
     const decisionEngine = new JevDecisionEngine({
       apiKey: 'test-key',
@@ -393,36 +370,30 @@ describe('buildJevDecisionRequest', () => {
         requestBytes.push(new TextEncoder().encode(body).byteLength);
         const request = JSON.parse(body) as (typeof sentBodies)[number];
         sentBodies.push(request);
-        const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => [id,
-          question.type === 'choice'
-            ? {
-                type: 'choice',
-                choice: Object.keys(question.criteria)[0]!,
-                probabilities: { [Object.keys(question.criteria)[0]!]: 0.99 },
-                confidence: 0.99,
-              }
-            : { type: 'noul', noul: 0.99 },
-        ]));
+        const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
+          if (question.type === 'noul') {
+            return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
+          }
+          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria)[0]!;
+          return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
+        }));
         return new Response(JSON.stringify({ answers }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
       },
     });
-    const evaluation = await decisionEngine.evaluate({ state: result.state, questions: actionQuestions });
+    const evaluation = await decisionEngine.evaluate({ state: result.state, questions: result.questions });
     const transportedKeys = sentBodies.flatMap(({ questions }) => Object.entries(questions)
-      .filter(([id]) => id.startsWith('action_group_'))
-      .flatMap(([, question]) => question.type === 'choice'
-        ? Object.keys(question.criteria).filter((key) => /^action_[0-9]+$/u.test(key))
-        : [],
-      ));
+      .filter(([id, question]) => id.startsWith('tool_') && question.type === 'noul')
+      .map(([id]) => id));
 
-    expect(sentBodies).toHaveLength(1);
+    expect(sentBodies.length).toBeGreaterThan(0);
     expect(JSON.stringify(sentBodies)).not.toContain('Required input');
     expect(requestBytes.every((bytes) => bytes <= 65_536)).toBe(true);
-    expect(transportedKeys).toEqual(hints.map(({ key }) => key));
+    expect(transportedKeys).toEqual(hints.map((_, index) => `tool_${index}`));
     expect(new Set(transportedKeys).size).toBe(hints.length);
-    for (const { questionId } of groups) expect(evaluation.answers).toHaveProperty(questionId);
+    expect(Object.keys(evaluation.answers)).toEqual(Object.keys(result.questions));
   });
 
   it('offers safe connected HTTP endpoints as closed Jev choices', () => {
@@ -454,7 +425,7 @@ describe('buildJevDecisionRequest', () => {
     expect(result.questions).not.toHaveProperty('http_endpoint');
   });
 
-  it('classifies write intent without sending dynamic write candidates during route classification', () => {
+  it('includes connected write tools in the initial parallel evaluation', () => {
     const userMessage = 'Gmail에 답장 초안을 부탁해';
     const result = buildJevDecisionRequest({
       userMessage,
@@ -470,7 +441,9 @@ describe('buildJevDecisionRequest', () => {
 
     expect(result.state.context).toMatchObject({ connected_write_action_count: expect.any(Number) });
     expect(result.questions).toHaveProperty('explicit_execution_now');
-    expect(result.questions).toHaveProperty('action_scope');
+    expect(result.questions.request_mode?.type).toBe('choice');
+    expect(result.questions).toHaveProperty('needs_natural_language_answer');
+    expect(Object.keys(result.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     expect(result.questions).not.toHaveProperty('action');
     expect(result.state.request_features).toEqual({});
   });
@@ -570,22 +543,25 @@ describe('buildJevDecisionRequest', () => {
       workflowTriggerHints: selectJevWorkflowTriggerHints(['gmail']),
     });
 
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    const workflowTrigger = result.questions.workflow_trigger;
+    expect(workflowTrigger).toMatchObject({ type: 'choice', criteria: {
       none: expect.any(String),
       manual: { trigger_type: 'manual' },
-    });
-    const triggerChoice = Object.values(result.questions.workflow_trigger?.criteria ?? {}).find(
+    } });
+    const triggerChoice = workflowTrigger?.type === 'choice'
+      ? Object.values(workflowTrigger.criteria).find(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { connector?: unknown }).connector === 'gmail',
-    );
+        && 'connector' in criterion && criterion.connector === 'gmail',
+      )
+      : undefined;
     expect(triggerChoice).toMatchObject({ connector: 'gmail', trigger_type: 'gmail.new_message' });
     expect(triggerChoice).not.toHaveProperty('instruction');
-    expect(result.questions.workflow_trigger?.instructions).toMatchObject({
+    expect(workflowTrigger?.instructions).toMatchObject({
       focus: expect.stringContaining('never invent targets'),
     });
-    expect(Object.values(result.questions.workflow_trigger?.criteria ?? {}).some(
+    expect((workflowTrigger?.type === 'choice' ? Object.values(workflowTrigger.criteria) : []).some(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { connector?: unknown }).connector === 'slack',
+        && 'connector' in criterion && criterion.connector === 'slack',
     )).toBe(false);
     expect(result.questions).not.toHaveProperty('job_template');
   });
@@ -602,10 +578,10 @@ describe('buildJevDecisionRequest', () => {
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    expect(result.questions.workflow_trigger).toMatchObject({ type: 'choice', criteria: {
       none: expect.any(String),
       schedule: { trigger_type: 'schedule', connector: 'host_scheduler' },
-    });
+    } });
   });
 
   it('offers trigger choices to Jev for natural recurring intent without repeat keywords', () => {
@@ -622,12 +598,13 @@ describe('buildJevDecisionRequest', () => {
     });
 
     expect(result.state.request_features).toEqual({});
-    expect(result.questions.workflow_trigger?.criteria).toMatchObject({
+    const workflowTrigger = result.questions.workflow_trigger;
+    expect(workflowTrigger).toMatchObject({ type: 'choice', criteria: {
       schedule: { trigger_type: 'schedule' },
-    });
-    expect(Object.values(result.questions.workflow_trigger?.criteria ?? {}).some(
+    } });
+    expect((workflowTrigger?.type === 'choice' ? Object.values(workflowTrigger.criteria) : []).some(
       (criterion) => typeof criterion === 'object' && criterion !== null
-        && (criterion as { trigger_type?: unknown }).trigger_type === 'gmail.new_message',
+        && 'trigger_type' in criterion && criterion.trigger_type === 'gmail.new_message',
     )).toBe(true);
   });
 

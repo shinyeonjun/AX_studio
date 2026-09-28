@@ -6,7 +6,7 @@ import { createDatabaseAsync } from '../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../chat.js';
 import { AxCommandService } from '../service.js';
-import { scriptedModel } from './fixtures.js';
+import { parallelToolAnswersForTest, scriptedModel } from './fixtures.js';
 
 describe('runAxCommandChat provider compatibility', () => {
   it.each(['codex-cli', 'claude-cli', 'ollama-api'])(
@@ -18,7 +18,8 @@ describe('runAxCommandChat provider compatibility', () => {
       const structuredCalls: StructuredGenerateInput<unknown>[] = [];
       const textCalls: TextGenerateInput[] = [];
       const decisionEngine: DecisionEngine = {
-        evaluate: async () => ({ answers: {
+        evaluate: async (request) => ({ answers: {
+          ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
           route: {
             type: 'choice', choice: 'answer',
             probabilities: { answer: 0.99, http_read: 0.01 }, confidence: 0.99,

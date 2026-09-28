@@ -3,22 +3,29 @@ import {
   MAX_DECISION_CHOICE_CRITERIA,
   type DecisionAnswer,
   type DecisionEngine,
+  type DecisionEvaluationResult,
 } from '../../../../contracts/decision.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
 import * as capabilityGraph from '../../../../catalog/capability-graph.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
-import { buildJevReadOperationIndex } from '../../../decision/read-operation-catalog.js';
+import { buildJevReadOperationIndex, type JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
-import { AxDiscoverySearchArgsSchema } from '../schema/workflow-args.js';
-import { jevActionCriteria } from './jev-action-catalog.js';
+import { AxDiscoverySearchArgsSchema, AxExecutionEnqueueOnceArgsSchema } from '../schema/workflow-args.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
 import { routeChatWithJev } from './jev-router.js';
 import { deriveJevRequestFeatures } from './request-features.js';
+import {
+  parallelToolAnswersForTest,
+  parallelToolCandidateForTest,
+  parallelToolQuestionIdForTest,
+} from './fixtures.js';
 
-function matchesAction(criterion: unknown, connector: string, action: string): boolean {
-  return typeof criterion === 'string' && criterion.startsWith(`${connector}.${action} —`);
-}
+const builtInTransformToolIds = [
+  'transform:transform.table_to_text',
+  'transform:transform.document_to_text',
+  'transform:transform.http_to_table',
+];
 
 describe('explicitHttpPath', () => {
   it('separates a Korean object particle attached to a query value', () => {
@@ -27,41 +34,29 @@ describe('explicitHttpPath', () => {
   });
 });
 
-describe('jevActionCriteria', () => {
-  it('keeps required inputs host-owned during action selection', () => {
-    const criteria = jevActionCriteria([
-      {
-        key: 'send',
-        capability: {
-          id: 'gmail.message.send', connector: 'gmail', kind: 'write',
-          label: 'Send message', description: 'Send one email.', sideEffect: 'EXTERNAL',
-          params: [{ name: 'to', label: 'Recipient', question: 'Who receives it?', required: true }],
-        },
-      },
-      {
-        key: 'archive',
-        capability: {
-          id: 'gmail.message.archive', connector: 'gmail', kind: 'write',
-          label: 'Archive message', description: 'Archive one email.', sideEffect: 'EXTERNAL', params: [],
-        },
-      },
-    ]);
-
-    expect(criteria.send).toBe('gmail.message.send — Send message: Send one email.');
-    expect(String(criteria.send)).not.toContain('Recipient');
-    expect(criteria.archive).toBe('gmail.message.archive — Archive message: Archive one email.');
-  });
-});
-
 function engineFor(
   route: string,
   confidence = 0.95,
   explicitRunChoice: 'run_now' | 'do_not_run' = 'do_not_run',
   onRequest?: (request: Parameters<DecisionEngine['evaluate']>[0]) => void,
+  explicitExecutionNow: 'execute_now' | 'do_not_execute' | 'unclear' = 'do_not_execute',
 ): DecisionEngine {
   return {
-    evaluate: async (request) => {
+    evaluate: async (request): Promise<DecisionEvaluationResult> => {
       onRequest?.(request);
+      const preferredToolKind = route === 'answer'
+        ? undefined
+        : route === 'capability_read' ? 'read' : 'write';
+      let selectedTool = false;
+      const parallelAnswers = parallelToolAnswersForTest(request, {
+        mode: route === 'answer' ? 'answer_only' : 'single_action',
+        needsNaturalLanguageAnswer: route === 'answer',
+        select: (candidate) => {
+          if (selectedTool || candidate.kind !== preferredToolKind) return false;
+          selectedTool = true;
+          return true;
+        },
+      });
       return {
         answers: {
           route: {
@@ -78,6 +73,15 @@ function engineFor(
               confidence: 0.99,
             },
           } : {}),
+          ...(request.questions.explicit_execution_now ? {
+            explicit_execution_now: {
+              type: 'choice' as const,
+              choice: explicitExecutionNow,
+              probabilities: { [explicitExecutionNow]: confidence },
+              confidence,
+            },
+          } : {}),
+          ...parallelAnswers,
           ...(request.questions.table_transform ? {
             table_transform: {
               type: 'choice' as const, choice: 'none',
@@ -132,7 +136,7 @@ describe('routeChatWithJev', () => {
     }
   });
 
-  it('lets Jev select a connected write action from every catalog group', async () => {
+  it('evaluates all connected write tools in parallel and compiles the selected tool', async () => {
     clearDynamicCatalogForTests();
     const capabilities: ConnectorCapability[] = Array.from({ length: 260 }, (_, index) => ({
       id: `test.action_${index}`,
@@ -151,7 +155,11 @@ describe('routeChatWithJev', () => {
     registerDynamicCapabilities(capabilities);
     const requests: Array<{
       state: unknown;
-      questions: Record<string, { type: string; criteria?: Record<string, unknown> }>;
+      questions: Record<string, {
+        type: string;
+        criteria?: Record<string, unknown>;
+        instructions?: { candidate?: { id?: string; capability_id?: string } };
+      }>;
     }> = [];
     const requestBytes: number[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
@@ -160,31 +168,20 @@ describe('routeChatWithJev', () => {
       const request = JSON.parse(body) as (typeof requests)[number];
       requests.push(request);
       const answers: Record<string, unknown> = {};
-      const choiceForCapability = (
-        question: (typeof request.questions)[string],
-        capabilityId: string,
-      ): string => Object.entries(question.criteria ?? {}).find(([, value]) =>
-        typeof value === 'string' && value.startsWith(`${capabilityId} —`),
-      )?.[0] ?? 'none';
       const choiceAnswer = (choice: string) => ({
         type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99,
       });
 
-      if (request.questions.route) {
-        answers.route = choiceAnswer('execution_enqueue_once');
-      }
-      if (request.questions.explicit_execution_now) answers.explicit_execution_now = choiceAnswer('execute_now');
-      if (request.questions.action_scope) {
-        answers.action_scope = { ...choiceAnswer('single_action'), confidence: 0.84 };
-      }
       for (const [questionId, question] of Object.entries(request.questions)) {
-        if (questionId.startsWith('action_group_') && question.type === 'choice') {
-          const first = choiceForCapability(question, 'test.action_0');
-          const last = choiceForCapability(question, 'test.action_259');
-          answers[questionId] = choiceAnswer(first !== 'none' ? first : last);
-        }
-        if (questionId.startsWith('action_tournament_') && question.type === 'choice') {
-          answers[questionId] = choiceAnswer(choiceForCapability(question, 'test.action_259'));
+        if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
+        else if (questionId === 'request_mode') answers.request_mode = choiceAnswer('single_action');
+        else if (questionId === 'explicit_execution_now') answers.explicit_execution_now = choiceAnswer('execute_now');
+        else if (question.type === 'noul') {
+          const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
+          answers[questionId] = {
+            type: 'noul',
+            noul: questionId === 'needs_natural_language_answer' ? 0.01 : selected ? 0.99 : 0.01,
+          };
         }
       }
 
@@ -204,9 +201,17 @@ describe('routeChatWithJev', () => {
 
       expect(requests.length).toBeGreaterThan(1);
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
-      expect(Object.keys(requests[0]!.questions)).toEqual(['route', 'explicit_execution_now', 'action_scope']);
-      expect(JSON.stringify(requests[0])).not.toMatch(/test\.action_\d+/u);
-      expect(requests.slice(1).some(({ questions }) => Object.keys(questions).some((id) => id.startsWith('action_group_')))).toBe(true);
+      const toolQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
+        .filter(([id]) => id.startsWith('tool_')));
+      expect(toolQuestions).toHaveLength(capabilities.length + builtInTransformToolIds.length);
+      const candidateIds = toolQuestions.map(([, question]) => question.instructions?.candidate?.capability_id
+        ?? question.instructions?.candidate?.id);
+      expect(candidateIds).toEqual([
+        ...capabilities.map(({ id }) => id),
+        ...builtInTransformToolIds.map((id) => id.slice('transform:'.length)),
+      ]);
+      expect(new Set(candidateIds).size).toBe(capabilities.length + builtInTransformToolIds.length);
+      expect(JSON.stringify(requests)).not.toContain('Required input');
       for (const request of requests) {
         for (const question of Object.values(request.questions)) {
           if (question.type === 'choice') {
@@ -214,37 +219,7 @@ describe('routeChatWithJev', () => {
           }
         }
       }
-      const actionGroups = requests.flatMap(({ questions }) => Object.entries(questions).filter(
-        ([id, question]) => id.startsWith('action_group_') && question.type === 'choice',
-      ));
-      expect(actionGroups.length).toBeGreaterThan(1);
-      expect(actionGroups.every(([, question]) =>
-        question.type === 'choice' && Object.keys(question.criteria).length <= MAX_DECISION_CHOICE_CRITERIA,
-      )).toBe(true);
-      const offeredCapabilityIds = actionGroups.flatMap(([, question]) =>
-      question.type === 'choice'
-          ? Object.values(question.criteria).flatMap((criterion) =>
-              typeof criterion === 'string' && criterion.includes(' — ')
-                ? [criterion.split(' — ', 1)[0]!]
-                : [],
-            )
-          : [],
-      );
-      expect(offeredCapabilityIds).toHaveLength(capabilities.length);
-      expect(new Set(offeredCapabilityIds).size).toBe(capabilities.length);
-      expect(offeredCapabilityIds).toContain('test.action_0');
-      expect(offeredCapabilityIds).toContain('test.action_259');
-      const offeredCriteria = actionGroups.flatMap(([, question]) =>
-        question.type === 'choice'
-          ? Object.entries(question.criteria).filter(([key]) => key !== 'none').map(([, criterion]) => criterion)
-          : [],
-      );
-      expect(offeredCriteria.every((criterion) =>
-        typeof criterion === 'string',
-      )).toBe(true);
-      expect(requests.some(({ questions }) => Object.hasOwn(questions, 'action_tournament_0_group_0'))).toBe(true);
-      expect(result.telemetry?.evaluationCalls).toBe(3);
-      expect(requestBytes).toHaveLength(4);
+      expect(result.telemetry?.evaluationCalls).toBe(1);
       expect(result.telemetry?.providerRequestCount).toBe(requestBytes.length);
       expect(Math.max(...requestBytes)).toBeLessThanOrEqual(65_536);
       expect(result.telemetry?.estimatedRequestBytes).toBe(requestBytes.reduce((total, bytes) => total + bytes, 0));
@@ -256,162 +231,6 @@ describe('routeChatWithJev', () => {
           args: { steps: [{ connector: 'test', action: 'action_259' }] },
         },
       });
-    } finally {
-      clearDynamicCatalogForTests();
-    }
-  });
-
-  it('lets Jev bind a workflow input from every compatible prior output through the chat router', async () => {
-    clearDynamicCatalogForTests();
-    const source: ConnectorCapability = {
-      id: 'rdb.synthetic_source',
-      connector: 'rdb',
-      kind: 'read',
-      label: 'Synthetic source',
-      description: 'Test-only source with multiple typed outputs.',
-      sideEffect: 'NONE',
-      params: [],
-      io: { inputs: {}, outputs: { primary: 'TableArtifact', secondary: 'TableArtifact' } },
-    };
-    const sink: ConnectorCapability = {
-      id: 'rdb.synthetic_sink',
-      connector: 'rdb',
-      kind: 'write',
-      label: 'Synthetic sink',
-      description: 'Test-only action that consumes a typed table.',
-      sideEffect: 'EXTERNAL',
-      params: [],
-      io: { inputs: { table: 'TableArtifact' }, outputs: {} },
-    };
-    registerDynamicCapabilities([source, sink]);
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
-    try {
-    const result = await routeChatWithJev({
-      decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          const answers: Record<string, DecisionAnswer> = {};
-          if (request.questions.route) {
-            answers.route = {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99,
-            };
-            if (request.questions.explicit_execution_now) {
-              answers.explicit_execution_now = { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 };
-            }
-            if (request.questions.action_scope) {
-              answers.action_scope = {
-                type: 'choice', choice: 'multi_step',
-                probabilities: { multi_step: 0.99 }, confidence: 0.84,
-              };
-            }
-            return { answers };
-          }
-          if (request.questions.action_scope) {
-            return { answers: {
-              explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-              action_scope: {
-                type: 'choice', choice: 'multi_step',
-                probabilities: { multi_step: 0.99 }, confidence: 0.99,
-              },
-            } };
-          }
-
-          const state = request.state as { planned_steps?: Array<{ capability_id?: string }> };
-          if (request.questions.plan_status) {
-            const plannedCount = state.planned_steps?.length ?? 0;
-            const targetCapability = plannedCount < 130
-              ? source.id
-              : plannedCount === 130 ? sink.id : undefined;
-            for (const [questionId, question] of Object.entries(request.questions)) {
-              if (!questionId.startsWith('next_step_group_') || question.type !== 'choice') continue;
-              const choice = targetCapability
-                ? Object.entries(question.criteria).find(([, criterion]) =>
-                    typeof criterion === 'object' && criterion !== null
-                      && 'capability_id' in criterion && criterion.capability_id === targetCapability,
-                  )?.[0] ?? 'none'
-                : 'none';
-              answers[questionId] = {
-                type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99,
-              };
-            }
-            const status = plannedCount > 130 ? 'done' : 'continue';
-            answers.plan_status = {
-              type: 'choice', choice: status, probabilities: { [status]: 0.99 }, confidence: 0.99,
-            };
-            return { answers };
-          }
-          if (request.questions.next_step) {
-            const plannedCount = state.planned_steps?.length ?? 0;
-            const question = request.questions.next_step;
-            if (question.type !== 'choice') throw new Error('Expected the workflow next-step choice.');
-            const selectedCapability = plannedCount < 130
-              ? source.id
-              : plannedCount === 130 ? sink.id : undefined;
-            const choice = selectedCapability
-              ? Object.entries(question.criteria).find(([, criterion]) =>
-                  typeof criterion === 'object' && criterion !== null
-                    && 'capability_id' in criterion && criterion.capability_id === selectedCapability,
-                )?.[0] ?? 'none'
-              : 'done';
-            answers.next_step = {
-              type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99,
-            };
-            return { answers };
-          }
-
-          for (const [questionId, question] of Object.entries(request.questions)) {
-            if (!questionId.startsWith('input_') || question.type !== 'choice') continue;
-            const keys = Object.keys(question.criteria);
-            const choice = questionId.endsWith('_group_0')
-              ? keys.find((key) => key.startsWith('source_')) ?? 'none'
-              : 'none';
-            answers[questionId] = {
-              type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99,
-            };
-          }
-          return { answers };
-        },
-      },
-      userMessage: '연결된 데이터 확인 작업을 지금 여러 단계로 실행해줘.',
-      connectedConnectors: ['rdb'],
-      readOperationHints: [{
-        key: 'op_0', capabilityId: source.id, connector: 'rdb',
-        label: source.label, description: source.description, params: {},
-      }],
-    });
-
-    const bindingRequest = requests.find((request) =>
-      Object.keys(request.questions).some((id) => id.startsWith('input_')),
-    );
-    expect(requests.every((request) => !Object.keys(request.questions).some((id) =>
-      id === 'action' || id.startsWith('action_group_'),
-    ))).toBe(true);
-    const bindingGroups = Object.entries(bindingRequest?.questions ?? {})
-      .filter(([id, question]) => id.startsWith('input_') && question.type === 'choice');
-    const offeredOutputs = bindingGroups.flatMap(([, question]) => question.type === 'choice'
-      ? Object.values(question.criteria).flatMap((criterion) =>
-          typeof criterion === 'object' && criterion !== null
-            && 'from_step' in criterion && 'output' in criterion
-            ? [`${String(criterion.from_step)}:${String(criterion.output)}`]
-            : [],
-        )
-      : []);
-    expect(bindingGroups).toHaveLength(2);
-    expect(offeredOutputs).toHaveLength(260);
-    expect(new Set(offeredOutputs).size).toBe(260);
-    expect(result.kind).toBe('command');
-    if (result.kind === 'command') {
-      expect(result.telemetry?.planningCandidateCatalogMayBeBounded).toBe(false);
-      expect(result.command.args.steps).toHaveLength(131);
-      expect(result.command.args.steps[0]).toMatchObject({
-        id: 'jev_step_1', connector: 'rdb', action: 'synthetic_source',
-      });
-      expect(result.command.args.steps[130]).toMatchObject({
-        id: 'jev_step_131', connector: 'rdb', action: 'synthetic_sink',
-        bindings: { table: { from: 'jev_step_1', output: 'primary' } },
-      });
-    }
     } finally {
       clearDynamicCatalogForTests();
     }
@@ -549,10 +368,12 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result.kind).toBe('reply');
-    expect(questionIds).toEqual(['route']);
+    expect(questionIds).toContain('route');
+    expect(questionIds).toContain('request_mode');
+    expect(questionIds).toContain('needs_natural_language_answer');
   });
 
-  it('classifies execution intent without sending connected write candidates until needed', async () => {
+  it('classifies reply and evaluates connected write tools in parallel', async () => {
     let questionIds: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: engineFor('answer', 0.96, 'do_not_run', (request) => {
@@ -565,8 +386,9 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
     expect(questionIds).toContain('route');
     expect(questionIds).toContain('explicit_execution_now');
-    expect(questionIds).toContain('action_scope');
-    expect(questionIds).not.toContain('action');
+    expect(questionIds).toContain('request_mode');
+    expect(questionIds).toContain('needs_natural_language_answer');
+    expect(questionIds.some((id) => id.startsWith('tool_'))).toBe(true);
   });
 
   it('lets Jev route an implicit preference to a host-rendered confirmation proposal', async () => {
@@ -612,8 +434,9 @@ describe('routeChatWithJev', () => {
   it('does not propose a memory update when Jev chooses a conversational answer', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice', choice: 'answer',
               probabilities: { answer: 0.96, context_remember: 0.04 }, confidence: 0.96,
@@ -638,20 +461,17 @@ describe('routeChatWithJev', () => {
     expect(result).toEqual({ kind: 'fallback', reason: 'unsupported' });
   });
 
-  it('does not delegate an uncertain multi-step action to the planner', async () => {
+  it('clarifies when the selected action count disagrees with the request mode', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'multi_action', needsNaturalLanguageAnswer: false }),
             route: {
               type: 'choice', choice: 'execution_enqueue_once',
               probabilities: { execution_enqueue_once: 0.96, answer: 0.04 }, confidence: 0.96,
             },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'multi_step',
-              probabilities: { multi_step: 0.4, single_action: 0.35, unclear: 0.25 }, confidence: 0.4,
-            },
           },
         }),
       },
@@ -661,7 +481,7 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
   });
 
-  it('uses Jev’s selected local action without a second confidence threshold', async () => {
+  it('uses a selected local action when its first-pass probability is above one half', async () => {
     clearDynamicCatalogForTests();
     registerDynamicCapabilities([{
       id: 'test.archive', connector: 'test', kind: 'write',
@@ -670,36 +490,21 @@ describe('routeChatWithJev', () => {
     }]);
     let actionChoice: 'offered' | 'unlisted' = 'offered';
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         const answers: Record<string, DecisionAnswer> = {};
-        for (const [questionId, question] of Object.entries(request.questions)) {
-          if (questionId === 'route') {
-            answers[questionId] = {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-            };
-          } else if (questionId === 'explicit_execution_now') {
-            answers[questionId] = { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 };
-          } else if (questionId === 'action_scope') {
-            answers[questionId] = {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.01 }, confidence: 0.99,
-            };
-          } else if (question.type === 'choice' && questionId.startsWith('action')) {
-            const offered = Object.entries(question.criteria).find(([, criterion]) =>
-              matchesAction(criterion, 'test', 'archive'),
-            )?.[0];
-            const choice = actionChoice === 'offered' ? offered : 'unlisted.action';
-            if (choice) {
-              const confidence = actionChoice === 'offered' ? 0.83 : 0.99;
-              answers[questionId] = {
-                type: 'choice', choice,
-                probabilities: { [choice]: actionChoice === 'offered' ? 0.84 : 0.99, none: actionChoice === 'offered' ? 0.16 : 0.01 },
-                confidence,
-              };
-            }
-          }
-        }
+        Object.assign(answers, parallelToolAnswersForTest(request, {
+          mode: 'single_action',
+          needsNaturalLanguageAnswer: false,
+          select: (candidate) => actionChoice === 'offered' && candidate.capabilityId === 'test.archive',
+          selectedProbability: 0.52,
+        }));
+        answers.route = {
+          type: 'choice', choice: 'execution_enqueue_once',
+          probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
+        };
+        answers.explicit_execution_now = {
+          type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99,
+        };
         return { answers };
       },
     };
@@ -724,7 +529,7 @@ describe('routeChatWithJev', () => {
     }
   });
 
-  it('does not send write tools when Jev has not affirmatively selected execution', async () => {
+  it('does not queue selected tools without explicit immediate execution intent', async () => {
     clearDynamicCatalogForTests();
     let evaluationCalls = 0;
     registerDynamicCapabilities([{
@@ -735,16 +540,23 @@ describe('routeChatWithJev', () => {
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             evaluationCalls += 1;
-            expect(request.questions).not.toHaveProperty('action');
+            expect(request.questions).toHaveProperty('request_mode');
             return {
               model: 'jev-test',
               providerRequestCount: 1,
               answers: {
+                ...parallelToolAnswersForTest(request, {
+                  mode: 'single_action', needsNaturalLanguageAnswer: false,
+                  select: (candidate) => candidate.capabilityId === 'test.archive',
+                }),
                 route: {
                   type: 'choice', choice: 'execution_enqueue_once',
                   probabilities: { execution_enqueue_once: 0.43 }, confidence: 0.43,
+                },
+                explicit_execution_now: {
+                  type: 'choice', choice: 'do_not_execute', probabilities: { do_not_execute: 0.99 }, confidence: 0.99,
                 },
               },
             };
@@ -758,7 +570,7 @@ describe('routeChatWithJev', () => {
       expect(result.telemetry).toMatchObject({
         selectedRoute: 'execution_enqueue_once',
         routeConfidence: 0.43,
-        actionCandidateCount: 0,
+        actionCandidateCount: 1,
       });
       expect(evaluationCalls).toBe(1);
       expect(result.telemetry).not.toHaveProperty('request');
@@ -767,78 +579,71 @@ describe('routeChatWithJev', () => {
     }
   });
 
-  it('fails closed when Jev becomes unavailable after selecting an execution route', async () => {
+  it('fails closed when Jev becomes unavailable while filling the selected tool command', async () => {
     clearDynamicCatalogForTests();
     registerDynamicCapabilities([{
       id: 'test.archive', connector: 'test', kind: 'write',
       label: 'Archive the test record', description: 'Archive one explicitly selected test record.',
-      sideEffect: 'EXTERNAL', params: [],
+      sideEffect: 'EXTERNAL', params: [
+        { name: 'subject', label: '제목', question: '제목', required: true },
+        { name: 'body', label: '본문', question: '본문', required: true },
+      ],
     }]);
     const requests: Array<Parameters<DecisionEngine['evaluate']>[0]> = [];
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             requests.push(request);
             if (request.questions.route) {
               return {
                 model: 'jev-test',
                 providerRequestCount: 1,
                 answers: {
+                  ...parallelToolAnswersForTest(request, {
+                    mode: 'single_action', needsNaturalLanguageAnswer: false,
+                    select: (candidate) => candidate.capabilityId === 'test.archive',
+                  }),
                   route: {
                     type: 'choice', choice: 'execution_enqueue_once',
                     probabilities: { execution_enqueue_once: 0.96, answer: 0.04 }, confidence: 0.96,
                   },
                   explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-                  action_scope: {
-                    type: 'choice', choice: 'single_action',
-                    probabilities: { single_action: 0.99 }, confidence: 0.99,
-                  },
                 },
               };
             }
             throw new Error('jev_unavailable');
           },
         },
-        userMessage: '테스트 레코드를 지금 보관 처리해줘.',
+        userMessage: '테스트 레코드를 지금 보관해줘: "요약 결과"',
         connectedConnectors: ['test'],
       });
 
       expect(requests).toHaveLength(2);
-      expect(requests[0]!.questions).toHaveProperty('action_scope');
-      expect(requests[1]!.questions).not.toHaveProperty('action_scope');
-      expect(Object.keys(requests[1]!.questions).some((id) => id.startsWith('action'))).toBe(true);
-      expect(result).toMatchObject({ kind: 'fallback', reason: 'service_error' });
-      expect(result.telemetry).toMatchObject({ evaluationCalls: 2, selectedRoute: 'execution_enqueue_once' });
+      expect(requests[0]!.questions).toHaveProperty('request_mode');
+      expect(requests[0]!.questions).toHaveProperty('tool_0');
+      expect(requests[1]!.questions).toHaveProperty('action_input_0');
+      expect(['clarify', 'fallback']).toContain(result.kind);
+      expect(result).not.toHaveProperty('command');
     } finally {
       clearDynamicCatalogForTests();
     }
   });
 
   it('clarifies when no connected write capability matches instead of inventing an action', async () => {
-    let actionChoices: string[] = [];
     const requestQuestionIds: string[][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requestQuestionIds.push(Object.keys(request.questions));
-          const action = request.questions.action;
-          actionChoices = action?.type === 'choice' ? Object.keys(action.criteria) : [];
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
               route: {
                 type: 'choice', choice: 'execution_enqueue_once',
                 probabilities: { execution_enqueue_once: 0.96, answer: 0.04 }, confidence: 0.96,
               },
               explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-              action_scope: {
-                type: 'choice', choice: 'single_action',
-                probabilities: { single_action: 0.96, multi_step: 0.02, unclear: 0.02 }, confidence: 0.96,
-              },
-              action: {
-                type: 'choice', choice: 'none',
-                probabilities: { none: 0.99, action_0: 0.01 }, confidence: 0.99,
-              },
             },
           };
         },
@@ -848,10 +653,9 @@ describe('routeChatWithJev', () => {
     });
 
     const questionIds = requestQuestionIds.flat();
-    expect(questionIds).toContain('action_scope');
-    expect(questionIds).toContain('action');
-    expect(actionChoices).toContain('none');
-    expect(actionChoices.some((choice) => choice !== 'none')).toBe(true);
+    expect(questionIds).toContain('request_mode');
+    expect(questionIds).toContain('needs_natural_language_answer');
+    expect(questionIds.some((id) => id.startsWith('tool_'))).toBe(true);
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
   });
 
@@ -888,9 +692,9 @@ describe('routeChatWithJev', () => {
 
     expect(result.kind).toBe('command');
     if (result.kind !== 'command' || result.command.name !== 'discovery.search') return;
-    expect(result.command.args.query).toHaveLength(500);
-    expect(result.command.args.query.endsWith('…[truncated]')).toBe(true);
-    expect(AxDiscoverySearchArgsSchema.safeParse(result.command.args).success).toBe(true);
+    const args = AxDiscoverySearchArgsSchema.parse(result.command.args);
+    expect(args.query).toHaveLength(500);
+    expect(args.query.endsWith('…[truncated]')).toBe(true);
   });
 
   it('uses the user-requested result count for discovery search', async () => {
@@ -1007,21 +811,21 @@ describe('routeChatWithJev', () => {
     let selectedOperation: string | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           if (request.questions.read_parameter_0) {
             return { answers: {
               read_parameter_0: { type: 'choice', choice: 'value_0', probabilities: { value_0: 0.99 }, confidence: 0.99 },
             } };
           }
-          const question = request.questions.operation;
-          if (question?.type !== 'choice') throw new Error('Expected catalog choices');
-          selectedOperation = Object.entries(question.criteria).find(([key, value]) =>
-            key.startsWith('op_') && JSON.stringify(value).includes('Products'),
-          )?.[0];
+          selectedOperation = parallelToolQuestionIdForTest(request, (candidate) =>
+            candidate.kind === 'read' && candidate.label.includes('Products'));
           const confidence = 0.99;
           return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.kind === 'read' && candidate.label.includes('Products'),
+            }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
-            operation: { type: 'choice', choice: selectedOperation!, probabilities: { [selectedOperation!]: confidence }, confidence },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: confidence }, confidence },
           } };
         },
@@ -1051,7 +855,7 @@ describe('routeChatWithJev', () => {
     let endpointCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const question = request.questions.http_endpoint;
           endpointCriteria = question?.type === 'choice' ? question.criteria : undefined;
           return { answers: {
@@ -1199,17 +1003,17 @@ describe('routeChatWithJev', () => {
     let questionIds: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           questionIds = Object.keys(request.questions);
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: {
                 type: 'choice', choice: 'capability_read',
                 probabilities: { capability_read: 0.6, answer: 0.4 }, confidence: 0.6,
-              },
-              operation: {
-                type: 'choice', choice: 'op_0',
-                probabilities: { op_0: 0.52, none: 0.48 }, confidence: 0.52,
               },
             },
           };
@@ -1227,7 +1031,8 @@ describe('routeChatWithJev', () => {
       }],
     });
 
-    expect(questionIds).toContain('operation');
+    expect(questionIds).toContain('request_mode');
+    expect(questionIds).toContain('tool_0');
     expect(questionIds).toContain('table_transform');
     expect(result).toEqual({
       kind: 'command',
@@ -1247,13 +1052,16 @@ describe('routeChatWithJev', () => {
   it('carries Jev-selected table transformation intent with the read command', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === 'read:op_0',
+            }),
             route: {
               type: 'choice', choice: 'capability_read',
                 probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
             },
-            operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.96 }, confidence: 0.96 },
             table_transform: { type: 'choice', choice: 'sort', probabilities: { sort: 0.4 }, confidence: 0.4 },
           },
         }),
@@ -1271,12 +1079,15 @@ describe('routeChatWithJev', () => {
   it('carries a Jev-selected dynamic column projection with the read command', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({ answers: {
+        evaluate: async (request) => ({ answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
           },
-          operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.96 }, confidence: 0.96 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           table_projection: {
             type: 'choice', choice: 'requested_columns',
@@ -1299,12 +1110,15 @@ describe('routeChatWithJev', () => {
   it('preserves Jev selecting no table transform so later code cannot override it', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({ answers: {
+        evaluate: async (request) => ({ answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
           },
-          operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.96 }, confidence: 0.96 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
         } }),
       },
@@ -1319,8 +1133,8 @@ describe('routeChatWithJev', () => {
   });
 
   it('keeps the host relevance ordering without truncating the indexed read choices', async () => {
-    let operationKeys: string[] = [];
-    const readOperationHints = Array.from({ length: 65 }, (_, index) => ({
+    let selectedCandidateIds: string[] = [];
+    const readOperationHints: JevReadOperationHint[] = Array.from({ length: 65 }, (_, index) => ({
       key: `op_${index}`,
       capabilityId: `rdb.query.table_${index}`,
       connector: 'rdb',
@@ -1330,20 +1144,19 @@ describe('routeChatWithJev', () => {
     }));
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          const operation = request.questions.operation;
-          operationKeys = operation?.type === 'choice'
-            ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
-            : [];
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          selectedCandidateIds = Object.entries(request.questions)
+            .filter(([id]) => id.startsWith('tool_'))
+            .flatMap(([, question]) => parallelToolCandidateForTest(question)?.id ?? []);
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: {
                 type: 'choice', choice: 'capability_read',
                 probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
-              },
-              operation: {
-                type: 'choice', choice: 'op_0',
-                probabilities: { op_0: 0.96, none: 0.04 }, confidence: 0.96,
               },
               table_transform: {
                 type: 'choice', choice: 'none',
@@ -1361,8 +1174,11 @@ describe('routeChatWithJev', () => {
       readOperationSelectionMode: 'lexical_relevance',
     });
 
-    expect(operationKeys.slice(0, 2)).toEqual(['op_0', 'op_1']);
-    expect(operationKeys).toHaveLength(65);
+    expect(selectedCandidateIds.slice(0, 2)).toEqual(['read:op_0', 'read:op_1']);
+    expect(selectedCandidateIds).toEqual([
+      ...readOperationHints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
     expect(result).toMatchObject({
       kind: 'command',
       command: { args: { id: 'rdb.query.table_0' } },
@@ -1372,15 +1188,15 @@ describe('routeChatWithJev', () => {
   it('asks for required values after Jev selects an operation that needs them', async () => {
     await expect(routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === 'read:op_0',
+            }),
             route: {
               type: 'choice', choice: 'capability_read',
               probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
-            },
-            operation: {
-              type: 'choice', choice: 'op_0',
-              probabilities: { op_0: 0.96, none: 0.04 }, confidence: 0.96,
             },
           },
         }),
@@ -1412,10 +1228,11 @@ describe('routeChatWithJev', () => {
     let routeCriteria: Record<string, unknown> | undefined;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer',
                 probabilities: { answer: 0.96 }, confidence: 0.96,
@@ -1436,11 +1253,12 @@ describe('routeChatWithJev', () => {
     let routeCriteria: Record<string, unknown> | undefined;
     await expect(routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           questionIds = Object.keys(request.questions);
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
               },
@@ -1459,24 +1277,27 @@ describe('routeChatWithJev', () => {
       }],
     })).resolves.toMatchObject({ kind: 'reply', route: 'answer' });
 
-    expect(questionIds).toEqual(['route', 'operation', 'table_transform', 'table_projection', 'read_result_style']);
+    expect(questionIds).toEqual([
+      'route', 'request_mode', 'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2', 'tool_3',
+      'table_transform', 'table_projection',
+    ]);
     expect(routeCriteria).toHaveProperty('capability_read');
   });
 
   it('lets Jev choose when a read result needs natural-language summary generation', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({ answers: {
+        evaluate: async (request) => ({ answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action', needsNaturalLanguageAnswer: true,
+            select: (candidate) => candidate.id === 'read:op_0',
+          }),
           route: {
             type: 'choice', choice: 'capability_read',
             probabilities: { capability_read: 0.97, answer: 0.03 }, confidence: 0.97,
           },
-          operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.96 }, confidence: 0.96 },
           table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
           table_projection: { type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.99 }, confidence: 0.99 },
-          read_result_style: {
-            type: 'choice', choice: 'summary', probabilities: { summary: 0.97, data: 0.03 }, confidence: 0.97,
-          },
         } }),
       },
       userMessage: '이번 달 매출 결과에서 핵심만 요약해줘.',
@@ -1493,7 +1314,7 @@ describe('routeChatWithJev', () => {
     let requestFeatures: unknown;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requestFeatures = (request.state as { request_features: unknown }).request_features;
           return {
             answers: {
@@ -1501,10 +1322,10 @@ describe('routeChatWithJev', () => {
                 type: 'choice', choice: 'capability_read',
                 probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
               },
-              operation: {
-                type: 'choice', choice: 'op_0',
-                probabilities: { op_0: 0.99, none: 0.01 }, confidence: 0.99,
-              },
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === 'read:op_0',
+            }),
             },
           };
         },
@@ -1535,10 +1356,11 @@ describe('routeChatWithJev', () => {
     let state: Record<string, unknown> | undefined;
     await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           state = request.state as Record<string, unknown>;
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
               },
@@ -1566,18 +1388,21 @@ describe('routeChatWithJev', () => {
 
   it('routes unmatched bounded catalogs to clarification instead of removing connected-data routing', async () => {
     let routeCriteria: Record<string, unknown> | undefined;
-    let operationCriteria: Record<string, unknown> | undefined;
+    let offeredToolIds: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
-          operationCriteria = (request.questions.operation as { criteria: Record<string, unknown> }).criteria;
+          offeredToolIds = Object.entries(request.questions)
+            .filter(([id]) => id.startsWith('tool_'))
+            .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+            .filter((id): id is string => id !== undefined);
           return {
             answers: {
+              ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
               route: {
                 type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.96 }, confidence: 0.96,
               },
-              operation: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
             },
           };
         },
@@ -1595,8 +1420,9 @@ describe('routeChatWithJev', () => {
 
     expect(result).toEqual(expect.objectContaining({ kind: 'fallback', reason: 'missing_context' }));
     expect(routeCriteria).toHaveProperty('capability_read');
-    expect(operationCriteria).toHaveProperty('none');
-    expect(Object.keys(operationCriteria ?? {}).filter((key) => key.startsWith('op_'))).toHaveLength(64);
+    expect(offeredToolIds).toHaveLength(64 + builtInTransformToolIds.length);
+    expect(offeredToolIds[63]).toBe('read:op_63');
+    expect(offeredToolIds.slice(-builtInTransformToolIds.length)).toEqual(builtInTransformToolIds);
   });
 
   it('lets Jev select semantically from the full in-limit catalog despite a lexical distractor', async () => {
@@ -1608,20 +1434,20 @@ describe('routeChatWithJev', () => {
         allowedTables: [...Array.from({ length: 69 }, (_, index) => `table_${index}`), 'stock', 'inventory'],
       },
     }]).select('stock levels');
-    let offeredOperations: string[] = [];
+    let offeredTools: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          const operation = request.questions.operation;
-          offeredOperations = operation?.type === 'choice'
-            ? Object.keys(operation.criteria).filter((key) => key.startsWith('op_'))
-            : [];
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          offeredTools = Object.keys(request.questions).filter((id) => id.startsWith('tool_'));
           return { model: 'mock-jev', answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === 'read:op_71',
+            }),
             route: {
               type: 'choice', choice: 'capability_read',
               probabilities: { capability_read: 0.97 }, confidence: 0.97,
             },
-            operation: { type: 'choice', choice: 'op_71', probabilities: { op_71: 0.97 }, confidence: 0.97 },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97 },
           } };
         },
@@ -1635,7 +1461,7 @@ describe('routeChatWithJev', () => {
 
     expect(selection.mode).toBe('full_catalog');
     expect(selection.lexicalMatchedOperationCount).toBeGreaterThan(0);
-    expect(offeredOperations).toHaveLength(72);
+    expect(offeredTools).toHaveLength(72 + builtInTransformToolIds.length);
     expect(result).toMatchObject({
       kind: 'command',
       command: { args: { id: 'rdb.query.read', params: { table: 'inventory' } } },
@@ -1652,20 +1478,26 @@ describe('routeChatWithJev', () => {
       },
     }]).select('sales-2026.xlsx 재고 현황 보여줘');
     let offeredOperation: string | undefined;
+    let localSheetCandidateId: string | undefined;
     let jevRequest = '';
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           jevRequest = JSON.stringify(request);
-          const operation = request.questions.operation;
-          if (operation?.type !== 'choice') throw new Error('Expected operation choices');
-          offeredOperation = Object.entries(operation.criteria).find(([key, criterion]) =>
-            key.startsWith('op_') && JSON.stringify(criterion).includes('local_sheet'),
-          )?.[0];
+          const localSheetCandidate = Object.entries(request.questions)
+            .map(([, question]) => parallelToolCandidateForTest(question))
+            .find((candidate) => candidate?.capabilityId === 'local_sheet.read');
+          offeredOperation = parallelToolQuestionIdForTest(request, (candidate) =>
+            candidate.capabilityId === 'local_sheet.read');
+          localSheetCandidateId = localSheetCandidate?.id;
+          if (!offeredOperation) throw new Error('Expected local spreadsheet candidate');
           const confidence = 0.99;
           return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === localSheetCandidateId,
+            }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
-            operation: { type: 'choice', choice: offeredOperation!, probabilities: { [offeredOperation!]: confidence }, confidence },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: confidence }, confidence },
           } };
         },
@@ -1722,33 +1554,38 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
+          if (request.questions.read_parameter_0) {
+            const statusQuestion = request.questions.read_parameter_0;
+            const regionQuestion = request.questions.read_parameter_1;
+            if (statusQuestion?.type !== 'choice' || regionQuestion?.type !== 'choice') {
+              throw new Error('Expected batched schema-derived parameter choices');
+            }
+            expect(Object.keys(statusQuestion.criteria)).toEqual(['none', 'value_0', 'value_1']);
+            expect(JSON.stringify(statusQuestion.criteria)).toContain('paid');
+            expect(Object.keys(regionQuestion.criteria)).toEqual(['none', 'value_0', 'value_1']);
+            return { answers: {
+              read_parameter_0: {
+                type: 'choice', choice: 'value_0',
+                probabilities: { value_0: 0.54, none: 0.46 }, confidence: 0.54,
+              },
+              read_parameter_1: {
+                type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99,
+              },
+            } };
+          }
           if (request.questions.route) {
             return { answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-              operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.99 }, confidence: 0.99 },
               table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
             } };
           }
-          const statusQuestion = request.questions.read_parameter_0;
-          const regionQuestion = request.questions.read_parameter_1;
-          if (statusQuestion?.type !== 'choice' || regionQuestion?.type !== 'choice') {
-            throw new Error('Expected batched schema-derived parameter choices');
-          }
-          expect(Object.keys(statusQuestion.criteria)).toEqual(['none', 'value_0', 'value_1']);
-          expect(JSON.stringify(statusQuestion.criteria)).toContain('paid');
-          expect(Object.keys(regionQuestion.criteria)).toEqual(['none', 'value_0', 'value_1']);
-          return { answers: {
-            read_parameter_0: {
-              type: 'choice', choice: 'value_0',
-              probabilities: { value_0: 0.54, none: 0.46 }, confidence: 0.54,
-            },
-            read_parameter_1: {
-              type: 'choice', choice: 'none',
-              probabilities: { none: 0.99 }, confidence: 0.99,
-            },
-          } };
+          throw new Error('Unexpected Jev follow-up');
         },
       },
       userMessage: 'paid 주문만 보여줘',
@@ -1788,10 +1625,13 @@ describe('routeChatWithJev', () => {
     }]).select('주문을 보여줘');
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => request.questions.route
+        evaluate: async (request): Promise<DecisionEvaluationResult> => request.questions.route
           ? { answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
-              operation: { type: 'choice', choice: 'op_0', probabilities: { op_0: 0.99 }, confidence: 0.99 },
               table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
             } }
           : { answers: {
@@ -1811,7 +1651,7 @@ describe('routeChatWithJev', () => {
     });
   });
 
-  it('defers oversized lexical-miss catalogs for non-reads without dropping read candidates', async () => {
+  it('sends every read candidate in one first-pass parallel evaluation', async () => {
     const hints = Array.from({ length: 510 }, (_, index) => ({
       key: `op_${index}`,
       capabilityId: 'rdb.query.read',
@@ -1820,149 +1660,67 @@ describe('routeChatWithJev', () => {
       description: `허용된 테이블 table-${index} 읽기`,
       params: { table: `table-${index}` },
     }));
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
+    let evaluatedQuestions: Parameters<DecisionEngine['evaluate']>[0]['questions'] = {};
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          const answers: Record<string, DecisionAnswer> = {};
-          if (request.questions.route) {
-            answers.route = {
-              type: 'choice', choice: 'capability_read',
-              probabilities: { capability_read: 0.97 }, confidence: 0.97,
-            };
-          } else {
-            const operationGroups = Object.entries(request.questions).filter(
-              ([questionId, question]) => questionId.startsWith('operation_group_') && question.type === 'choice',
-            );
-            if (operationGroups.length > 0) {
-              for (const [questionId, question] of operationGroups) {
-                if (question.type !== 'choice') continue;
-                const choice = Object.hasOwn(question.criteria, 'op_508')
-                  ? 'op_508'
-                  : Object.keys(question.criteria).find((key) => key.startsWith('op_'))!;
-                answers[questionId] = {
-                  type: 'choice', choice, probabilities: { [choice]: 0.97 }, confidence: 0.97,
-                };
-              }
-            } else {
-              const [questionId, question] = Object.entries(request.questions).find(
-                ([id, value]) => id.startsWith('operation_tournament_') && value.type === 'choice',
-              )!;
-              expect(question.type).toBe('choice');
-              if (question.type !== 'choice') throw new Error('Expected a Jev tournament choice question.');
-              expect(question.criteria).toHaveProperty('op_508');
-              answers[questionId] = {
-                type: 'choice', choice: 'op_508', probabilities: { op_508: 0.97 }, confidence: 0.97,
-              };
-            }
-          }
-          if (request.questions.table_transform) {
-            answers.table_transform = {
-              type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97,
-            };
-          }
-          if (request.questions.table_projection) {
-            answers.table_projection = {
-              type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.97 }, confidence: 0.97,
-            };
-          }
-          if (request.questions.read_result_style) {
-            answers.read_result_style = {
-              type: 'choice', choice: 'data', probabilities: { data: 0.97 }, confidence: 0.97,
-            };
-          }
-          return { model: 'mock-jev', providerRequestCount: 1, answers };
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          evaluatedQuestions = request.questions;
+          return { providerRequestCount: 1, answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === 'read:op_508',
+            }),
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97 },
+            table_projection: { type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.97 }, confidence: 0.97 },
+          } };
         },
       },
       userMessage: '재고 상황을 알려줘',
       readOperationHints: hints,
-      readOperationCatalogSize: hints.length,
+      readOperationSelectionMode: 'full_catalog',
       readOperationCatalogMayBeBounded: false,
-      readOperationSelectionMode: 'no_lexical_match',
     });
 
-    const offeredOperationKeys = Object.entries(requests[1]!.questions)
-      .filter(([id, question]) => id.startsWith('operation_group_') && question.type === 'choice')
-      .flatMap(([, question]) => question.type === 'choice'
-        ? Object.keys(question.criteria).filter((key) => key.startsWith('op_'))
-        : []);
-    expect(offeredOperationKeys).toEqual(hints.map(({ key }) => key));
-    expect(Object.keys(requests[0]!.questions)).not.toContain('operation');
-    expect(Object.keys(requests[0]!.questions).some((id) => id.startsWith('operation_group_'))).toBe(false);
-    expect(requests[0]!.questions).not.toHaveProperty('table_transform');
-    expect(requests[0]!.questions).not.toHaveProperty('table_projection');
-    expect(requests[0]!.questions).not.toHaveProperty('read_result_style');
-    expect(requests[1]!.questions).toHaveProperty('table_transform');
-    expect(requests[1]!.questions).toHaveProperty('table_projection');
-    expect(requests[1]!.questions).toHaveProperty('read_result_style');
-    expect(requests[0]!.state).toMatchObject({ context: { read_operation_candidates_deferred: true } });
-    expect(requests[1]!.state).toMatchObject({ context: { read_operation_candidates_deferred: false } });
-    expect(requests).toHaveLength(3);
+    const toolIds = Object.entries(evaluatedQuestions)
+      .filter(([id]) => id.startsWith('tool_'))
+      .map(([, question]) => parallelToolCandidateForTest(question)?.id);
+    expect(toolIds).toEqual([
+      ...hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
     expect(result).toMatchObject({
       kind: 'command',
       route: 'capability_read',
       command: { args: { id: 'rdb.query.read', params: { table: 'table-508' } } },
-      telemetry: {
-        evaluationCalls: 3,
-        operationCandidateCount: 510,
-        operationCatalogSize: 510,
-        operationCatalogMayBeBounded: false,
-      },
+      telemetry: { evaluationCalls: 1, operationCandidateCount: 510 },
     });
-
-    const answerQuestionIds: string[][] = [];
-    const answer = await routeChatWithJev({
-      decisionEngine: engineFor('answer', 0.96, 'do_not_run', (request) => {
-        answerQuestionIds.push(Object.keys(request.questions));
-      }),
-      userMessage: '안녕',
-      readOperationHints: hints,
-      readOperationCatalogSize: hints.length,
-      readOperationCatalogMayBeBounded: false,
-      readOperationSelectionMode: 'no_lexical_match',
-    });
-
-    expect(answer).toMatchObject({ kind: 'reply', route: 'answer' });
-    expect(answerQuestionIds).toHaveLength(1);
-    expect(answerQuestionIds[0]).not.toContain('operation');
-    expect(answerQuestionIds[0]?.some((id) => id.startsWith('operation_group_'))).toBe(false);
   });
 
-  it('keeps semantically relevant reads available when lexical hits would otherwise hide them', async () => {
+  it('keeps semantically relevant reads available across the full indexed catalog', async () => {
     const tables = [...Array.from({ length: 299 }, (_, index) => `archive_${index}`), 'orders'];
     const selection = buildJevReadOperationIndex([{
       connector: 'rdb',
       connected: true,
       config: { type: 'sqlite', allowedTables: ['customer', ...tables] },
     }]).select('customer purchase history');
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
+    const relevantKey = selection.hints.find((hint) => hint.params.table === 'orders')?.key;
+    let offeredToolIds: string[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          const answers: Record<string, DecisionAnswer> = {
-            route: {
-              type: 'choice', choice: 'capability_read',
-              probabilities: { capability_read: 0.97 }, confidence: 0.97,
-            },
-            table_transform: {
-              type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97,
-            },
-          };
-          for (const [questionId, question] of Object.entries(request.questions)) {
-            if (!questionId.startsWith('operation_group_') || question.type !== 'choice') continue;
-            const match = Object.entries(question.criteria).find(([, criterion]) =>
-              typeof criterion === 'object' && criterion !== null
-                && 'what' in criterion && typeof criterion.what === 'string'
-                && criterion.what.includes('orders'),
-            )?.[0];
-            const choice = match ?? 'none';
-            answers[questionId] = {
-              type: 'choice', choice, probabilities: { [choice]: 0.97 }, confidence: 0.97,
-            };
-          }
-          return { answers };
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          offeredToolIds = Object.entries(request.questions)
+            .filter(([id]) => id.startsWith('tool_'))
+            .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+            .filter((id): id is string => id !== undefined);
+          return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.id === `read:${relevantKey}`,
+            }),
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97 },
+          } };
         },
       },
       userMessage: 'customer purchase history 조회해줘',
@@ -1973,69 +1731,49 @@ describe('routeChatWithJev', () => {
       readOperationSelectionMode: selection.mode,
     });
 
-    const offeredKeys = Object.entries(requests[0]!.questions)
-      .filter(([id, question]) => id.startsWith('operation_group_') && question.type === 'choice')
-      .flatMap(([, question]) => question.type === 'choice'
-        ? Object.keys(question.criteria).filter((key) => key.startsWith('op_'))
-        : []);
-    expect(selection.mode).toBe('lexical_relevance');
-    expect(selection.catalogMayBeBounded).toBe(false);
+    expect(relevantKey).toBeDefined();
     expect(selection.hints).toHaveLength(selection.totalCount);
-    expect(offeredKeys).toHaveLength(selection.totalCount);
-    expect(new Set(offeredKeys).size).toBe(selection.totalCount);
-    expect(result).toMatchObject({
-      kind: 'command',
-      command: { args: { id: 'rdb.query.read', params: { table: 'orders' } } },
-    });
+    expect(offeredToolIds).toEqual([
+      ...selection.hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
+    expect(result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'orders' } } } });
   });
 
-  it('does not send read-result questions when Jev routes oversized-catalog small talk to answer', async () => {
+  it('evaluates answer-only requests with every tool marked unnecessary', async () => {
     const hints = Array.from({ length: 260 }, (_, index) => ({
-      key: `op_${index}`,
-      capabilityId: `rdb.query.read.${index}`,
-      connector: 'rdb' as const,
-      label: `Synthetic table ${index}`,
-      description: `Read rows from synthetic table ${index}.`,
-      params: {},
+      key: `op_${index}`, capabilityId: `rdb.query.read.${index}`, connector: 'rdb' as const,
+      label: `Synthetic table ${index}`, description: `Read rows from synthetic table ${index}.`, params: {},
     }));
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
+    let evaluatedQuestions: Parameters<DecisionEngine['evaluate']>[0]['questions'] = {};
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          return {
-            model: 'mock-jev',
-            providerRequestCount: 1,
-            answers: {
-              route: {
-                type: 'choice', choice: 'answer',
-                probabilities: { answer: 0.97 }, confidence: 0.97,
-              },
-            },
-          };
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          evaluatedQuestions = request.questions;
+          return { answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.97 }, confidence: 0.97 },
+          } };
         },
       },
       userMessage: '안녕',
       readOperationHints: hints,
-      readOperationCatalogSize: hints.length,
-      readOperationSelectionMode: 'no_lexical_match',
     });
 
     expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
-    expect(requests).toHaveLength(1);
-    expect(Object.keys(requests[0]!.questions)).toEqual(['route']);
-    expect(result.telemetry?.questionIds).toEqual(['route']);
+    expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_')))
+      .toHaveLength(260 + builtInTransformToolIds.length);
+    expect(evaluatedQuestions).toHaveProperty('request_mode');
+    expect(evaluatedQuestions).toHaveProperty('needs_natural_language_answer');
+    expect(evaluatedQuestions).toHaveProperty('request_mode');
   });
 
-  it('treats Jev’s explicit no-match choice as missing context, not an uncertain selection', async () => {
+  it('treats an empty read-tool selection as missing context', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({ answers: {
-          route: {
-            type: 'choice', choice: 'capability_read',
-            probabilities: { capability_read: 0.97 }, confidence: 0.97,
-          },
-          operation: { type: 'choice', choice: 'none', probabilities: { none: 0.97 }, confidence: 0.97 },
+        evaluate: async (request) => ({ answers: {
+          ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
+          route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
         } }),
       },
       userMessage: '이 데이터를 조회해줘',
@@ -2043,60 +1781,46 @@ describe('routeChatWithJev', () => {
         key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb',
         label: 'DB 조회', description: '허용된 테이블 읽기', params: {},
       }],
-      readOperationCatalogSize: 1,
-      readOperationSelectionMode: 'full_catalog',
     });
 
     expect(result).toEqual(expect.objectContaining({ kind: 'fallback', reason: 'missing_context' }));
   });
 
-  it('keeps a relevant operation from the bounded catalog available', async () => {
-    let operationCriteria: Record<string, unknown> | undefined;
+  it('keeps candidates visible to the first evaluation even when the user asks for chat', async () => {
+    const hints = Array.from({ length: 64 }, (_, index) => ({
+      key: `op_${index}`, capabilityId: `openapi.orders.operation${index}`, connector: 'openapi' as const,
+      label: '주문 목록', description: 'GET /orders — 주문 목록', params: {},
+    }));
+    let offeredToolIds: string[] = [];
     await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          operationCriteria = (request.questions.operation as { criteria: Record<string, unknown> }).criteria;
-          return {
-            answers: {
-              route: {
-                type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
-              },
-            },
-          };
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          offeredToolIds = Object.entries(request.questions).filter(([id]) => id.startsWith('tool_'))
+            .map(([, question]) => parallelToolCandidateForTest(question)?.id)
+            .filter((id): id is string => id !== undefined);
+          return { answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96 },
+          } };
         },
       },
       userMessage: '재고를 보여줘',
-      readOperationHints: [
-        ...Array.from({ length: 63 }, (_, index) => ({
-          key: `op_${index}`,
-          capabilityId: `openapi.orders.operation${index}`,
-          connector: 'openapi' as const,
-          label: '주문 목록',
-          description: 'GET /orders — 주문 목록',
-          params: {},
-        })),
-        {
-          key: 'op_63',
-          capabilityId: 'openapi.inventory.listStock',
-          connector: 'openapi' as const,
-          label: '재고 목록',
-          description: 'GET /inventory — 재고 목록',
-          params: {},
-        },
-      ],
+      readOperationHints: hints,
     });
-
-    expect(operationCriteria).toHaveProperty('op_63');
-    expect(Object.keys(operationCriteria ?? {})).toContain('none');
+    expect(offeredToolIds).toEqual([
+      ...hints.map(({ key }) => `read:${key}`),
+      ...builtInTransformToolIds,
+    ]);
   });
 
   it('surfaces Jev usage and bounded question metadata for latency accounting', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           model: 'jev-1.13',
           usage: { inputTokens: 120, outputTokens: 8 },
           answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
             },
@@ -2117,7 +1841,7 @@ describe('routeChatWithJev', () => {
         model: 'jev-1.13',
         inputTokens: 120,
         outputTokens: 8,
-        questionIds: ['route', 'result_limit', 'operation'],
+        questionIds: expect.arrayContaining(['route', 'request_mode', 'needs_natural_language_answer', 'result_limit']),
         routeCandidateCount: 13,
         operationCandidateCount: 0,
         operationCatalogSize: 71,
@@ -2197,7 +1921,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     let sourceLoads = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         if (evaluations === 1) {
           expect(request.questions).not.toHaveProperty('report_template_source');
@@ -2279,7 +2003,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     let followupSignal: AbortSignal | undefined;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         evaluations += 1;
         if (evaluations === 1) {
           return { answers: {
@@ -2313,7 +2037,7 @@ describe('routeChatWithJev', () => {
   it('does not ask Jev to choose report sources when fewer than two ready PDFs exist', async () => {
     let sourceLoads = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         expect(request.questions).not.toHaveProperty('report_template_source');
         expect(request.questions).not.toHaveProperty('report_example_source');
         return {
@@ -2352,7 +2076,7 @@ describe('routeChatWithJev', () => {
     let sourceLoads = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           expect(request.questions).not.toHaveProperty('report_template_source');
           expect(request.questions).not.toHaveProperty('report_example_source');
@@ -2392,11 +2116,15 @@ describe('routeChatWithJev', () => {
     const decisionStates: unknown[] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           decisionStates.push(request.state);
           if (request.questions.route) {
             return {
               answers: {
+                ...parallelToolAnswersForTest(request, {
+                  mode: 'single_action', needsNaturalLanguageAnswer: false,
+                  select: (candidate) => candidate.capabilityId === 'gmail.messages.search',
+                }),
                 route: {
                   type: 'choice', choice: 'workflow_create',
                   probabilities: { workflow_create: 0.4, answer: 0.6 }, confidence: 0.4,
@@ -2441,9 +2169,10 @@ describe('routeChatWithJev', () => {
       sessionMemo: { tone: '간결하게' },
       workflowPolicy: { confidentiality: '고객 정보 보호' },
       readOperationHints: [{
-        key: 'gmail_search', capabilityId: 'gmail.messages.search', connector: 'gmail',
+        key: 'op_0', capabilityId: 'gmail.messages.search', connector: 'gmail',
         label: 'Gmail 메일 검색', description: 'Gmail 메일 목록 조회', params: {},
       }],
+      readOperationSelectionMode: 'full_catalog',
     });
 
     expect(result).toMatchObject({
@@ -2456,12 +2185,7 @@ describe('routeChatWithJev', () => {
         },
       },
     });
-    expect(result.telemetry).toMatchObject({
-      evaluationCalls: 3,
-      providerRequestCount: 9,
-      planningCalls: 2,
-      planningProviderRequestCount: 7,
-    });
+    expect(result.telemetry).toMatchObject({ evaluationCalls: 1, providerRequestCount: 2 });
     expect(decisionStates[0]).toMatchObject({
       context: {
         user_confirmed_preferences: {
@@ -2472,67 +2196,17 @@ describe('routeChatWithJev', () => {
         },
       },
     });
-    expect(decisionStates[1]).toMatchObject({
-      user_confirmed_preferences: {
-        values: [
-          { scope: 'session', key: 'tone', value: '간결하게' },
-          { scope: 'workflow', key: 'confidentiality', value: '고객 정보 보호' },
-        ],
-      },
-    });
-  });
-
-  it('keeps failed workflow-planning provider requests in chat telemetry', async () => {
-    const failure = Object.assign(new Error('provider unavailable'), { providerRequestCount: 3, requestBytes: 987 });
-    let routeEvaluated = false;
-    const result = await routeChatWithJev({
-      decisionEngine: {
-        evaluate: async (request) => {
-          if (request.questions.route) {
-            routeEvaluated = true;
-            return {
-              answers: {
-                route: {
-                  type: 'choice', choice: 'workflow_create',
-                  probabilities: { workflow_create: 0.95, answer: 0.05 }, confidence: 0.95,
-                },
-                explicit_workflow_create: { type: 'choice', choice: 'create_now', probabilities: { create_now: 0.99 }, confidence: 0.99 },
-                workflow_trigger: {
-                  type: 'choice', choice: 'manual',
-                  probabilities: { manual: 0.99, schedule: 0.01 }, confidence: 0.99,
-                },
-              },
-              providerRequestCount: 2,
-            };
-          }
-          if (!routeEvaluated) throw new Error('expected route evaluation first');
-          throw failure;
-        },
-      },
-      userMessage: 'Gmail에서 메일을 찾는 수동 workflow를 저장해줘',
-      connectedConnectors: ['gmail'],
-      hasWorkspaceSession: true,
-      readOperationHints: [{
-        key: 'gmail_search', capabilityId: 'gmail.messages.search', connector: 'gmail',
-        label: 'Gmail 메일 검색', description: 'Gmail 메일 목록 조회', params: {},
-      }],
-    });
-
-    expect(result).toMatchObject({ kind: 'clarify', route: 'workflow_create' });
-    expect(result.telemetry).toMatchObject({
-      evaluationCalls: 2,
-      providerRequestCount: 5,
-      planningCalls: 1,
-      planningProviderRequestCount: 3,
-      planningEstimatedRequestBytes: 987,
-    });
   });
 
   it('does not save a manual workflow when Jev selects a recurring trigger', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async () => ({
+        evaluate: async (request) => ({
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.capabilityId === 'gmail.messages.search',
+            }),
             route: {
               type: 'choice', choice: 'workflow_create',
               probabilities: { workflow_create: 0.95, answer: 0.05 }, confidence: 0.95,
@@ -2546,7 +2220,13 @@ describe('routeChatWithJev', () => {
         }),
       },
       userMessage: '매일 Gmail 메일을 확인하는 workflow를 저장해줘',
+      connectedConnectors: ['gmail'],
       hasWorkspaceSession: true,
+      readOperationHints: [{
+        key: 'op_0', capabilityId: 'gmail.messages.search', connector: 'gmail',
+        label: 'Gmail 메일 검색', description: 'Gmail 메일 목록 조회', params: {},
+      }],
+      readOperationSelectionMode: 'full_catalog',
     });
 
     expect(result).toMatchObject({ kind: 'clarify', route: 'workflow_create' });
@@ -2560,8 +2240,12 @@ describe('routeChatWithJev', () => {
       let planningCalls = 0;
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             if (request.questions.route) return { answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: {
                 type: 'choice', choice: 'workflow_create',
                 probabilities: { workflow_create: 0.95, answer: 0.05 }, confidence: 0.95,
@@ -2591,15 +2275,19 @@ describe('routeChatWithJev', () => {
 
   it('lets Jev propose a schedule and defers its missing values to host validation', async () => {
     let planningCalls = 0;
-    const search = {
+    const search: JevReadOperationHint = {
       key: 'op_0', capabilityId: 'gmail.messages.search', connector: 'gmail',
       label: 'Gmail 메일 검색', description: 'Gmail 메일 검색', params: {},
     };
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           if (request.questions.route) {
             return { answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.id === 'read:op_0',
+              }),
               route: {
                 type: 'choice', choice: 'job_propose',
                 probabilities: { job_propose: 0.99, answer: 0.01 }, confidence: 0.99,
@@ -2626,19 +2314,21 @@ describe('routeChatWithJev', () => {
       connectedConnectors: ['gmail'],
       hasWorkspaceSession: true,
       readOperationHints: [search],
+      readOperationSelectionMode: 'full_catalog',
     });
 
     expect(result).toMatchObject({ kind: 'command', route: 'job_propose', command: {
       name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '', timezone: '' } },
     } });
-    expect(planningCalls).toBe(2);
+    expect(planningCalls).toBe(0);
   });
 
   it('uses Jev’s selected answer route even when confidence is low', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => ({
+        evaluate: async (request): Promise<DecisionEvaluationResult> => ({
           answers: {
+            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice',
               choice: 'answer',
@@ -2658,31 +2348,19 @@ describe('routeChatWithJev', () => {
     expect(result).toEqual({ kind: 'reply', route: 'answer', confidence: 0.55 });
   });
 
-  it('requires Jev to affirm immediate execution before queueing a negated request', async () => {
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
+  it('requires explicit execution approval after the first-pass tool selection', async () => {
+    let evaluatedQuestions: Parameters<DecisionEngine['evaluate']>[0]['questions'] = {};
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const sendAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'message.send'))?.[0] ?? 'none';
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          evaluatedQuestions = request.questions;
           return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.6, answer: 0.4 }, confidence: 0.6,
-            },
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
+            route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
             explicit_execution_now: { type: 'choice', choice: 'do_not_execute', probabilities: { do_not_execute: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.52, multi_step: 0.24, unclear: 0.24 }, confidence: 0.52,
-            },
-            action: {
-              type: 'choice', choice: sendAction,
-              probabilities: { [sendAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
           } };
         },
       },
@@ -2690,137 +2368,35 @@ describe('routeChatWithJev', () => {
       connectedConnectors: ['gmail'],
     });
 
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.questions).toHaveProperty('explicit_execution_now');
-    expect(requests[0]!.questions).not.toHaveProperty('action');
+    expect(evaluatedQuestions).toHaveProperty('request_mode');
+    expect(evaluatedQuestions).toHaveProperty('needs_natural_language_answer');
+    expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_')).length).toBeGreaterThan(0);
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
     if (result.kind !== 'clarify') throw new Error('expected an execution clarification');
-    expect(result.message).toContain('아무 작업도 등록하지 않았습니다');
+    expect(result.message).toContain('확실하지 않아 실행하지 않았습니다');
   });
 
-  it('allows a connected draft action when Jev confirms that execution is requested now', async () => {
-    const result = await routeChatWithJev({
-      decisionEngine: {
-        evaluate: async (request) => {
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const draftAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'draft.create'))?.[0] ?? 'none';
-          return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
-            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-            },
-            action: {
-              type: 'choice', choice: draftAction,
-              probabilities: { [draftAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
-          } };
-        },
-      },
-      userMessage: '이번만 Gmail에서 메일 초안을 만들어줘.',
-      connectedConnectors: ['gmail'],
-    });
-
-    expect(result).toMatchObject({
-      kind: 'command',
-      route: 'execution_enqueue_once',
-      command: { name: 'execution.enqueue_once' },
-    });
-  });
-
-  it('routes a natural-language write action before sending Jev the tool catalog', async () => {
-    const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
-    const result = await routeChatWithJev({
-      decisionEngine: {
-        evaluate: async (request) => {
-          requests.push(request);
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const draftAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'draft.create'))?.[0] ?? 'none';
-          return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
-            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-            },
-            action: {
-              type: 'choice', choice: draftAction,
-              probabilities: { [draftAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
-          }, providerRequestCount: 3 };
-        },
-      },
-      userMessage: 'Gmail에 답장 초안 부탁해',
-      connectedConnectors: ['gmail'],
-    });
-
-    expect(deriveJevRequestFeatures('Gmail에 답장 초안 부탁해')).toEqual({});
-    expect(requests).toHaveLength(2);
-    expect(requests[0]!.questions).toHaveProperty('route');
-    expect(requests[0]!.questions).not.toHaveProperty('action');
-    expect(requests[0]!.questions).toHaveProperty('explicit_execution_now');
-    expect(requests[0]!.questions).toHaveProperty('action_scope');
-    expect(requests[1]!.questions).not.toHaveProperty('explicit_execution_now');
-    expect(requests[1]!.questions).toHaveProperty('action');
-    expect(result).toMatchObject({ kind: 'command', route: 'execution_enqueue_once', command: { name: 'execution.enqueue_once' } });
-    expect(result.telemetry?.evaluationCalls).toBe(2);
-    expect(result.telemetry?.providerRequestCount).toBe(6);
-  });
-
-  it('does not treat a quoted tool name as an input value when the action accepts no inputs', async () => {
+  it('selects a no-input action in the same first-pass evaluation', async () => {
     clearDynamicCatalogForTests();
     const capability: ConnectorCapability = {
-      id: 'test.no_input_action',
-      connector: 'test',
-      kind: 'write',
-      label: 'No-input action',
-      description: 'A synthetic action that accepts no parameters.',
-      sideEffect: 'EXTERNAL',
-      params: [],
+      id: 'test.no_input_action', connector: 'test', kind: 'write',
+      label: 'No-input action', description: 'A synthetic action that accepts no parameters.',
+      sideEffect: 'EXTERNAL', params: [],
     };
     registerDynamicCapabilities([capability]);
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     try {
       const result = await routeChatWithJev({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             requests.push(request);
-            if (request.questions.route) {
-              return { answers: {
-                route: {
-                  type: 'choice', choice: 'execution_enqueue_once',
-                  probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99,
-                },
-                explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-                action_scope: {
-                  type: 'choice', choice: 'single_action',
-                  probabilities: { single_action: 0.99 }, confidence: 0.99,
-                },
-              } };
-            }
-            const action = request.questions.action;
-            const selected = action?.type === 'choice'
-              ? Object.entries(action.criteria).find(([, criterion]) =>
-                  matchesAction(criterion, capability.connector, 'no_input_action'))?.[0]
-              : undefined;
             return { answers: {
-              action: {
-                type: 'choice', choice: selected ?? 'none',
-                probabilities: { [selected ?? 'none']: 0.99 }, confidence: 0.99,
-              },
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.capabilityId === capability.id,
+              }),
+              route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
+              explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
             } };
           },
         },
@@ -2832,79 +2408,33 @@ describe('routeChatWithJev', () => {
         kind: 'command',
         command: { name: 'execution.enqueue_once', args: { steps: [{ connector: 'test', action: 'no_input_action', params: {} }] } },
       });
-      expect(requests).toHaveLength(2);
-      expect(requests.some(({ questions }) => Object.hasOwn(questions, 'action_input_0'))).toBe(false);
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.questions).toHaveProperty('request_mode');
+      expect(requests[0]!.questions).toHaveProperty('needs_natural_language_answer');
+      expect(Object.keys(requests[0]!.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     } finally {
       clearDynamicCatalogForTests();
     }
   });
 
-  it('does not treat Korean role particles as a supplied write-action value', async () => {
-    const result = await routeChatWithJev({
-      decisionEngine: {
-        evaluate: async (request) => {
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const sendAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'message.send'))?.[0] ?? 'none';
-          return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
-            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-            },
-            action: {
-              type: 'choice', choice: sendAction,
-              probabilities: { [sendAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
-          } };
-        },
-      },
-      userMessage: '이번만 수신자에게 메일을 보내줘. 지금 실행해줘.',
-      connectedConnectors: ['gmail'],
-    });
-
-    expect(result.kind).toBe('command');
-    if (result.kind !== 'command') throw new Error('expected the selected Gmail action');
-    expect(result.command.args.steps?.[0]).toMatchObject({ connector: 'gmail', action: 'message.send' });
-    expect(result.command.args.steps?.[0]?.params).not.toHaveProperty('to');
-  });
-
-  it('does not compile a quoted write value when Jev cannot identify its input field', async () => {
+  it('does not infer a write parameter from an unlabelled quoted value', async () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
           requests.push(request);
           if (request.questions.action_input_0?.type === 'choice') {
             return { answers: {
               action_input_0: { type: 'choice', choice: 'none', probabilities: { none: 0.99 }, confidence: 0.99 },
             } };
           }
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const sendAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'message.send'))?.[0] ?? 'none';
           return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
+            route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.99, multi_step: 0.005, unclear: 0.005 }, confidence: 0.99,
-            },
-            action: {
-              type: 'choice', choice: sendAction,
-              probabilities: { [sendAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
           } };
         },
       },
@@ -2912,8 +2442,8 @@ describe('routeChatWithJev', () => {
       connectedConnectors: ['gmail'],
     });
 
-    expect(requests).toHaveLength(3);
-    const inputQuestion = requests[2]!.questions.action_input_0;
+    expect(requests).toHaveLength(2);
+    const inputQuestion = requests[1]!.questions.action_input_0;
     expect(inputQuestion?.type).toBe('choice');
     if (inputQuestion?.type === 'choice') {
       expect(Object.keys(inputQuestion.criteria)).toEqual(['none', 'field_0', 'field_1']);
@@ -2923,58 +2453,51 @@ describe('routeChatWithJev', () => {
     expect(result).not.toHaveProperty('command');
   });
 
-  it('uses Jev’s semantic execution choice without an arbitrary confidence cutoff', async () => {
+  it('does not treat Korean role particles as supplied write-action values', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async (request) => {
-          const criteria = request.questions.action?.type === 'choice'
-            ? request.questions.action.criteria
-            : {};
-          const draftAction = Object.entries(criteria).find(([, criterion]) =>
-            matchesAction(criterion, 'gmail', 'draft.create'))?.[0] ?? 'none';
+        evaluate: async (request): Promise<DecisionEvaluationResult> => ({ answers: {
+          ...parallelToolAnswersForTest(request, {
+            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+          }),
+          route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
+          explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
+        } }),
+      },
+      userMessage: '이번만 수신자에게 메일을 보내줘. 지금 실행해줘.',
+      connectedConnectors: ['gmail'],
+    });
+
+    expect(result.kind).toBe('command');
+    if (result.kind !== 'command') throw new Error('expected the selected Gmail action');
+    const args = AxExecutionEnqueueOnceArgsSchema.parse(result.command.args);
+    expect(args.steps[0]).toMatchObject({ connector: 'gmail', action: 'message.send' });
+    expect(args.steps[0]).not.toHaveProperty('params.to');
+  });
+
+  it('uses the selected mode and tool even at low confidence when each decision clears one half', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          const toolAnswers = parallelToolAnswersForTest(request, {
+            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            select: (candidate) => candidate.capabilityId === 'gmail.draft.create',
+            selectedProbability: 0.52,
+          });
           return { answers: {
-            route: {
-              type: 'choice', choice: 'execution_enqueue_once',
-              probabilities: { execution_enqueue_once: 0.6, answer: 0.4 }, confidence: 0.6,
-            },
+            ...toolAnswers,
+            request_mode: { type: 'choice', choice: 'single_action', probabilities: { single_action: 0.52 }, confidence: 0.52 },
+            route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.6 }, confidence: 0.6 },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.52, do_not_execute: 0.24, unclear: 0.24 }, confidence: 0.52 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.52, multi_step: 0.24, unclear: 0.24 }, confidence: 0.52,
-            },
-            action: {
-              type: 'choice', choice: draftAction,
-              probabilities: { [draftAction]: 0.99, none: 0.01 }, confidence: 0.99,
-            },
           } };
         },
       },
-      userMessage: 'Gmail에 답장 초안 부탁해',
+      userMessage: 'Gmail에 답장 초안 부탁해. 일회성으로 실행해줘.',
       connectedConnectors: ['gmail'],
     });
 
     expect(result).toMatchObject({ kind: 'command', route: 'execution_enqueue_once', command: { name: 'execution.enqueue_once' } });
-  });
-
-  it('rejects workflow update and delete choices when there is no current workflow', async () => {
-    await expect(routeChatWithJev({
-      decisionEngine: engineFor('workflow_update'),
-      userMessage: '현재 workflow의 이름을 바꿔줘',
-    })).resolves.toEqual({ kind: 'fallback', reason: 'unsupported' });
-    await expect(routeChatWithJev({
-      decisionEngine: {
-        evaluate: async () => ({
-          answers: {
-            route: {
-              type: 'choice', choice: 'workflow_delete',
-              probabilities: { workflow_delete: 0.99, answer: 0.01 }, confidence: 0.99,
-            },
-            explicit_workflow_delete: { type: 'choice', choice: 'delete_now', probabilities: { delete_now: 0.99 }, confidence: 0.99 },
-          },
-        }),
-      },
-      userMessage: '현재 workflow를 삭제해줘',
-    })).resolves.toEqual({ kind: 'fallback', reason: 'unsupported' });
   });
 
   it.each([
@@ -3074,7 +2597,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           expect(questions).not.toHaveProperty('workflow_step_to_remove');
           return {
@@ -3104,7 +2627,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) {
             expect(questions).not.toHaveProperty('workflow_step_to_remove');
@@ -3160,7 +2683,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) return {
             answers: {
@@ -3236,7 +2759,7 @@ describe('routeChatWithJev', () => {
     let evaluations = 0;
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ questions }) => {
+        evaluate: async ({ questions }): Promise<DecisionEvaluationResult> => {
           evaluations += 1;
           if (questions.route) return {
             answers: {
@@ -3250,18 +2773,19 @@ describe('routeChatWithJev', () => {
             },
           };
 
-          const answers = Object.fromEntries(Object.entries(questions).map(([questionId, question]) => {
-            const keys = Object.keys(question.criteria ?? {}).filter((key) => /^step_\d+$/u.test(key));
+          const answers = Object.fromEntries(Object.entries(questions).flatMap(([questionId, question]) => {
+            if (question.type !== 'choice') return [];
+            const keys = Object.keys(question.criteria).filter((key) => /^step_\d+$/u.test(key));
             const selectedKey = `step_${selectedIndex}`;
             const choice = keys.includes(selectedKey)
               ? selectedKey
               : evaluations === 2 && keys.includes('step_0') ? 'step_0' : 'none';
-            return [questionId, {
+            return [[questionId, {
               type: 'choice' as const,
               choice,
               probabilities: { [choice]: 0.99 },
               confidence: 0.99,
-            }];
+            }]];
           }));
           return { answers };
         },
@@ -3305,9 +2829,14 @@ describe('routeChatWithJev', () => {
     registerDynamicCapabilities([capability]);
     const result = await routeChatWithJev({
       decisionEngine: {
-        evaluate: async ({ state, questions }) => {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          const { state, questions } = request;
           if (questions.route) return {
             answers: {
+              ...parallelToolAnswersForTest(request, {
+                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                select: (candidate) => candidate.capabilityId === capability.id,
+              }),
               route: {
                 type: 'choice', choice: 'workflow_update',
                 probabilities: { workflow_update: 0.99, answer: 0.01 }, confidence: 0.99,
@@ -3369,7 +2898,6 @@ describe('routeChatWithJev', () => {
         },
       },
     });
-    expect(result.telemetry?.planningCalls).toBe(2);
   });
 
   it('requires Jev confirmation before a workflow run', async () => {

@@ -49,8 +49,8 @@ describe('runAxCommandChat recurring workflow target selection', () => {
     expect(presentations[0]).toMatchObject({
       title: '공유 대상 선택',
       inputs: [{
-        id: 'job-action-jev_step_3-slack-channel',
-        stepId: 'jev_step_3',
+        id: 'job-action-jev_step_2-slack-channel',
+        stepId: 'jev_step_2',
         capabilityId: 'slack.message.send',
         parameterName: 'channel',
         options: [{ value: 'C_OPERATIONS', label: '#운영' }],

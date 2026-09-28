@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_DECISION_CHOICE_CRITERIA, type DecisionEngine } from '../../../../contracts/decision.js';
+import {
+  MAX_DECISION_CHOICE_CRITERIA,
+  type DecisionAnswer,
+  type DecisionEngine,
+  type DecisionEvaluationResult,
+} from '../../../../contracts/decision.js';
 import { availableCapabilities } from '../../../../catalog/capability-graph.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
@@ -7,6 +12,7 @@ import { JevDecisionEngine } from '../../../decision/jev.js';
 import { groupJevChoiceCandidates } from './jev-choice-grouping.js';
 import { applyJevCommandInputValuesToCommand, compileJevOneShotAction } from './jev-action-catalog.js';
 import { planJevWorkflow } from './jev-workflow-plan.js';
+import { AxWorkflowCreateArgsSchema } from '../schema/workflow-args.js';
 
 describe('planJevWorkflow', () => {
   it('groups complete choice catalogs by UTF-8 request size', () => {
@@ -44,7 +50,7 @@ describe('planJevWorkflow', () => {
     registerDynamicCapabilities(capabilities);
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         const questionIds = Object.keys(request.questions).filter((id) =>
           id.startsWith('next_step_group_') || id.startsWith('next_step_tournament_'),
@@ -59,7 +65,7 @@ describe('planJevWorkflow', () => {
         };
         const state = request.state as { planned_steps?: unknown[] };
         const complete = Boolean(state.planned_steps?.length);
-        const answers: Record<string, unknown> = {};
+        const answers: Record<string, DecisionAnswer> = {};
         if (request.questions.plan_status) {
           answers.plan_status = {
             type: 'choice',
@@ -218,7 +224,7 @@ describe('planJevWorkflow', () => {
           .filter(([id]) => id.startsWith('next_step_group_'))
           .flatMap(([, question]) => Object.values(question.criteria ?? {})
             .filter((criterion): criterion is Record<string, unknown> =>
-              Boolean(criterion) && typeof criterion === 'object' && 'capability_id' in criterion,
+              typeof criterion === 'object' && criterion !== null && 'capability_id' in criterion,
             ),
           ),
         );
@@ -262,11 +268,11 @@ describe('planJevWorkflow', () => {
       try {
         const result = await planJevWorkflow({
           decisionEngine: {
-            evaluate: async (request) => {
+            evaluate: async (request): Promise<DecisionEvaluationResult> => {
               const groupQuestions = Object.entries(request.questions).filter(
                 ([id, question]) => id.startsWith('next_step_group_') && question.type === 'choice',
               );
-              const answers: Record<string, unknown> = {
+              const answers: Record<string, DecisionAnswer> = {
                 plan_status: {
                   type: 'choice',
                   choice: caseName === 'unclear-status' ? 'unclear' : 'done',
@@ -345,22 +351,22 @@ describe('planJevWorkflow', () => {
   it('uses Jev typed output choices without imposing a confidence cutoff', async () => {
     clearDynamicCatalogForTests();
     const firstReader: ConnectorCapability = {
-      id: 'test.reader_first', connector: 'test', kind: 'read', label: '첫 자료 조회',
+      id: 'rdb.reader_first', connector: 'rdb', kind: 'read', label: '첫 자료 조회',
       description: '첫 자료 조회', params: [], io: { inputs: {}, outputs: { result: 'TableArtifact' } },
     };
     const secondReader: ConnectorCapability = {
-      id: 'test.reader_second', connector: 'test', kind: 'read', label: '두 번째 자료 조회',
+      id: 'rdb.reader_second', connector: 'rdb', kind: 'read', label: '두 번째 자료 조회',
       description: '두 번째 자료 조회', params: [], io: { inputs: {}, outputs: { result: 'TableArtifact' } },
     };
     const writer: ConnectorCapability = {
-      id: 'test.table_write', connector: 'test', kind: 'write', sideEffect: 'EXTERNAL',
+      id: 'rdb.table_write', connector: 'rdb', kind: 'write', sideEffect: 'EXTERNAL',
       label: '표 저장', description: '표 저장', params: [],
       io: { inputs: { table: 'TableArtifact' }, outputs: {} },
     };
     registerDynamicCapabilities([firstReader, secondReader, writer]);
     let nextStepCalls = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         const inputQuestion = request.questions.input_0;
         if (inputQuestion?.type === 'choice') {
           return { answers: {
@@ -391,9 +397,9 @@ describe('planJevWorkflow', () => {
       const result = await planJevWorkflow({
         decisionEngine,
         request: '두 자료를 읽고 표 저장 도구로 합쳐서 저장해줘.',
-        connectedConnectors: ['test'],
+        connectedConnectors: ['rdb'],
         readOperationHints: [firstReader, secondReader].map((capability, index) => ({
-          key: `read_${index}`, capabilityId: capability.id, connector: 'test' as const,
+          key: `read_${index}`, capabilityId: capability.id, connector: 'rdb',
           label: capability.label, description: capability.description, params: {},
         })),
         actionHints: [{ key: 'write', capability: writer }],
@@ -402,10 +408,10 @@ describe('planJevWorkflow', () => {
       expect(result.kind).toBe('command');
       if (result.kind !== 'command') return;
       expect(result.command.args.steps).toMatchObject([
-        { type: 'action', connector: 'test', action: 'reader_first' },
-        { type: 'action', connector: 'test', action: 'reader_second' },
+        { type: 'action', connector: 'rdb', action: 'reader_first' },
+        { type: 'action', connector: 'rdb', action: 'reader_second' },
         {
-          type: 'action', connector: 'test', action: 'table_write',
+          type: 'action', connector: 'rdb', action: 'table_write',
           bindings: { table: { from: 'jev_step_2', output: 'result' } },
         },
       ]);
@@ -457,7 +463,8 @@ describe('planJevWorkflow', () => {
 
     expect(result.kind).toBe('command');
     if (result.kind !== 'command') return;
-    expect(result.command.args.steps?.[0]).toMatchObject({
+    const args = AxWorkflowCreateArgsSchema.parse(result.command.args);
+    expect(args.steps?.[0]).toMatchObject({
       connector: 'local_folder', action: 'list', params: { folderId: 'finance-folder' },
     });
     expect(planningCalls).toBe(2);
@@ -480,7 +487,7 @@ describe('planJevWorkflow', () => {
     try {
       const result = await planJevWorkflow({
         decisionEngine: {
-          evaluate: async (request) => {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
             planningCalls += 1;
             if (request.questions.read_parameter_0?.type === 'choice') {
               expect(JSON.stringify(request.questions.read_parameter_0.criteria)).toContain('paid');
@@ -510,7 +517,8 @@ describe('planJevWorkflow', () => {
 
       expect(result.kind).toBe('command');
       if (result.kind !== 'command') return;
-      expect(result.command.args.steps?.[0]).toMatchObject({
+      const args = AxWorkflowCreateArgsSchema.parse(result.command.args);
+      expect(args.steps?.[0]).toMatchObject({
         connector: 'openapi', action: 'orders.listOrders', params: { query: { status: 'paid' } },
       });
       expect(planningCalls).toBe(3);
@@ -709,11 +717,11 @@ describe('planJevWorkflow', () => {
   it('uses an explicit quoted text input instead of also binding prior text output', async () => {
     clearDynamicCatalogForTests();
     const reader: ConnectorCapability = {
-      id: 'test.text.read', connector: 'test', kind: 'read', label: '텍스트 조회',
+      id: 'rdb.text.read', connector: 'rdb', kind: 'read', label: '텍스트 조회',
       description: '텍스트를 조회한다', params: [], io: { inputs: {}, outputs: { text: 'TextArtifact' } },
     };
     const sender: ConnectorCapability = {
-      id: 'test.text.send', connector: 'test', kind: 'write', label: '텍스트 전송',
+      id: 'rdb.text.send', connector: 'rdb', kind: 'write', label: '텍스트 전송',
       description: '텍스트를 전송한다', sideEffect: 'NONE',
       params: [{ name: 'body', label: '본문', question: '본문은?', required: true }],
       io: { inputs: { body: 'TextArtifact' }, outputs: {} },
@@ -743,9 +751,9 @@ describe('planJevWorkflow', () => {
       const result = await planJevWorkflow({
         decisionEngine,
         request: '조회한 내용 말고 본문은 "사용자가 직접 준 본문"으로 보내줘.',
-        connectedConnectors: ['test'],
+        connectedConnectors: ['rdb'],
         readOperationHints: [{
-          key: 'read', capabilityId: reader.id, connector: 'test', label: reader.label,
+          key: 'read', capabilityId: reader.id, connector: 'rdb', label: reader.label,
           description: reader.description, params: {},
         }],
         actionHints: [{ key: 'send', capability: sender }],
@@ -753,11 +761,12 @@ describe('planJevWorkflow', () => {
 
       expect(result.kind, result.kind === 'clarify' ? result.message : undefined).toBe('command');
       if (result.kind !== 'command') return;
+      const args = AxWorkflowCreateArgsSchema.parse(result.command.args);
       expect(result.command.args.steps).toMatchObject([
-        { type: 'action', connector: 'test', action: 'text.read' },
-        { type: 'action', connector: 'test', action: 'text.send', params: { body: '사용자가 직접 준 본문' } },
+        { type: 'action', connector: 'rdb', action: 'text.read' },
+        { type: 'action', connector: 'rdb', action: 'text.send', params: { body: '사용자가 직접 준 본문' } },
       ]);
-      expect(result.command.args.steps?.[1]).not.toHaveProperty('bindings.body');
+      expect(args.steps?.[1]).not.toHaveProperty('bindings.body');
       expect(planningCalls).toBe(3);
       expect(result.telemetry.calls).toBe(3);
     } finally {
@@ -770,7 +779,7 @@ describe('planJevWorkflow', () => {
     expect(gmailSend).toBeDefined();
     const command = compileJevOneShotAction(
       [{ key: 'send', capability: gmailSend! }],
-      { type: 'choice', choice: 'send', confidence: 0.99 },
+      { type: 'choice', choice: 'send', probabilities: { send: 0.99 }, confidence: 0.99 },
       '이번만 메일을 보내줘.',
       [{
         label: '수신자', value: 'person@example.com',
@@ -877,7 +886,7 @@ describe('planJevWorkflow', () => {
     let nextStepCalls = 0;
     let inputMappingCalls = 0;
     const decisionEngine: DecisionEngine = {
-      evaluate: async (request) => {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
         if (request.questions.action_input_0?.type === 'choice') {
           inputMappingCalls += 1;
           const body = Object.entries(request.questions.action_input_0.criteria).find(([, criterion]) =>

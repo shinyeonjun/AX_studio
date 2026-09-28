@@ -1,8 +1,7 @@
 import { availableCapabilities, capabilityActionName, resolveCapability } from '../../../../catalog/capability-graph.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
-import { type DecisionAnswer, type DecisionInstruction } from '../../../../contracts/decision.js';
-import { boundDecisionString } from '../../../decision/context.js';
-import { groupJevChoiceCandidates, MAX_JEV_CHOICE_CANDIDATES } from './jev-choice-grouping.js';
+import type { DecisionAnswer } from '../../../../contracts/decision.js';
+import { MAX_JEV_CHOICE_CANDIDATES } from './jev-choice-grouping.js';
 import { actionRefFor } from '../../../../workflow/action-definition.js';
 import { AxExecutionEnqueueOnceArgsSchema, type AxCommand } from '../schema.js';
 import { AxWorkflowCreateArgsSchema, AxWorkflowUpdateArgsSchema } from '../schema/workflow-args.js';
@@ -17,12 +16,6 @@ const FIELD_VALUE_PARTICLE = '(?:([:=])|(은|는))';
 export interface JevActionHint {
   key: string;
   capability: ConnectorCapability;
-}
-
-export interface JevActionQuestionGroup {
-  questionId: string;
-  hints: readonly JevActionHint[];
-  criteria: Record<string, DecisionInstruction>;
 }
 
 export interface JevActionInputValue {
@@ -47,38 +40,6 @@ export function selectJevActionHints(
     catalogSize: actions.length,
     catalogMayBeBounded: false,
   };
-}
-
-export function jevActionQuestionGroups(
-  hints: readonly JevActionHint[],
-  questionPrefix = 'action',
-): JevActionQuestionGroup[] {
-  const criteria = jevActionCriteria(hints);
-  const groups = groupJevChoiceCandidates(
-    hints,
-    questionPrefix,
-    (hint) => hint.key,
-    (hint) => criteria[hint.key]!,
-  );
-  return groups.map(({ questionId, candidates, criteria: groupCriteria }) => ({
-    questionId: questionPrefix === 'action' && groups.length === 1 ? 'action' : questionId,
-    hints: candidates,
-    criteria: groupCriteria,
-  }));
-}
-
-export function jevActionCriteria(hints: readonly JevActionHint[]): Record<string, DecisionInstruction> {
-  // The opaque key maps back to host-owned policy; flatten metadata to avoid
-  // repeating JSON field names for every candidate in large connected catalogs.
-  // Required inputs stay host-owned and are resolved only after an action wins.
-  return Object.fromEntries(hints.map(({ key, capability }) => {
-    const identity = `${boundDecisionString(capability.connector, 128)}.${boundDecisionString(capabilityActionName(capability), 128)}`;
-    const description = [...new Set([
-      boundDecisionString(capability.label, 120),
-      boundDecisionString(capability.description, 240),
-    ].filter(Boolean))].join(': ');
-    return [key, [identity, description].filter(Boolean).join(' — ')];
-  }));
 }
 
 function explicitNamedValue(message: string, name: string): string | undefined {

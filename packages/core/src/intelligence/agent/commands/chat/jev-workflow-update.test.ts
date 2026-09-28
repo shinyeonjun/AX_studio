@@ -29,12 +29,20 @@ describe('workflow update intent', () => {
     expect(groups.flatMap(({ candidates }) => candidates.map(({ index }) => index)))
       .toEqual(steps.map((_, index) => index));
     for (const { question } of groups) {
+      if (question.type !== 'choice') throw new Error('expected a choice question');
       expect(Object.keys(question.criteria ?? {}).length).toBeLessThanOrEqual(MAX_DECISION_CHOICE_CRITERIA);
       expect(question.criteria).toHaveProperty('none');
-      expect(question.instructions?.focus).toContain('exact listed existing step');
+      expect(question.instructions).toMatchObject({ focus: expect.stringContaining('exact listed existing step') });
     }
-    expect(groups[0]?.question.criteria).toHaveProperty('step_0');
-    expect(groups.at(-1)?.question.criteria).toHaveProperty(`step_${steps.length - 1}`);
+    const firstQuestion = groups[0]?.question;
+    const lastQuestion = groups.at(-1)?.question;
+    expect(firstQuestion?.type).toBe('choice');
+    expect(lastQuestion?.type).toBe('choice');
+    if (firstQuestion?.type !== 'choice' || lastQuestion?.type !== 'choice') {
+      throw new Error('expected choice questions');
+    }
+    expect(firstQuestion.criteria).toHaveProperty('step_0');
+    expect(lastQuestion.criteria).toHaveProperty(`step_${steps.length - 1}`);
   });
 });
 

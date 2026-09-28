@@ -5,7 +5,7 @@ import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
-import { scriptedModel } from '../fixtures.js';
+import { parallelToolAnswersForTest, scriptedModel } from '../fixtures.js';
 import type { DecisionEngine } from '../../../../../contracts/decision.js';
 
 describe('runAxCommandChat target selection', () => {
@@ -30,27 +30,18 @@ describe('runAxCommandChat target selection', () => {
     const textSeen: TextGenerateInput[] = [];
     const decisionEngine: DecisionEngine = {
       evaluate: async (request) => {
-        const action = request.questions.action;
-        const selectedAction = action?.type === 'choice'
-          ? Object.entries(action.criteria).find(([, criterion]) =>
-            typeof criterion === 'string' && criterion.startsWith('slack.message.send —'))
-          : undefined;
         return {
           answers: {
+            ...parallelToolAnswersForTest(request, {
+              mode: 'single_action',
+              needsNaturalLanguageAnswer: false,
+              select: (candidate) => candidate.capabilityId === 'slack.message.send',
+            }),
             route: {
               type: 'choice', choice: 'execution_enqueue_once',
               probabilities: { execution_enqueue_once: 0.98, answer: 0.02 }, confidence: 0.98,
             },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
-            action_scope: {
-              type: 'choice', choice: 'single_action',
-              probabilities: { single_action: 0.98, multi_step: 0.01, unclear: 0.01 }, confidence: 0.98,
-            },
-            action: {
-              type: 'choice', choice: selectedAction?.[0] ?? 'none',
-              probabilities: { [selectedAction?.[0] ?? 'none']: 0.99, none: selectedAction ? 0.01 : 0.99 },
-              confidence: 0.99,
-            },
           },
         };
       },
