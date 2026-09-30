@@ -19,7 +19,7 @@ describe('runAxCommandChat provider compatibility', () => {
       const textCalls: TextGenerateInput[] = [];
       const decisionEngine: DecisionEngine = {
         evaluate: async (request) => ({ answers: {
-          ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+          ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
           route: {
             type: 'choice', choice: 'answer',
             probabilities: { answer: 0.99, http_read: 0.01 }, confidence: 0.99,

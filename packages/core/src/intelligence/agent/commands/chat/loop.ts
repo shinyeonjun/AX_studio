@@ -365,6 +365,7 @@ export async function runCommandChatLoop({
     tableTransform?: JevTableTransformRequest,
     tableProjection?: 'requested_columns',
     readResultStyle?: 'summary',
+    llmRequired?: boolean,
   ): Promise<string> => {
     const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection);
     const invokeArgs = command.name === 'capability.invoke'
@@ -423,6 +424,8 @@ export async function runCommandChatLoop({
       }
       return deterministicReply;
     }
+
+    if (llmRequired === false) return hostFacingMessage(result, fallback);
 
     messages.push(
       { role: 'assistant', content: JSON.stringify({ kind: 'command', command }) },
@@ -498,6 +501,7 @@ export async function runCommandChatLoop({
       jevRoute = await routeChatWithJev({
         decisionEngine: options.decisionEngine,
         userMessage: options.decisionMessage ?? options.userMessage,
+        conversationHistory: messages.slice(0, -1).slice(-6),
         currentWorkflowId: session.workflowId,
         currentWorkflowVersion: options.currentWorkflowVersion,
         currentWorkflowSteps: options.currentWorkflowSteps,
@@ -542,10 +546,8 @@ export async function runCommandChatLoop({
           jevOutputTokens: jevTelemetry.outputTokens,
           jevSelectedRoute: jevTelemetry.selectedRoute,
           jevRouteConfidence: jevTelemetry.routeConfidence,
-          jevActionScopeChoice: jevTelemetry.actionScopeChoice,
-          jevActionScopeConfidence: jevTelemetry.actionScopeConfidence,
+          jevSelectedToolCount: jevTelemetry.selectedToolCount,
           jevActionCandidateSelected: jevTelemetry.actionCandidateSelected,
-          jevActionCandidateConfidence: jevTelemetry.actionCandidateConfidence,
           jevQuestionIds: jevTelemetry.questionIds,
           jevRouteCandidateCount: jevTelemetry.routeCandidateCount,
           jevOperationCandidateCount: jevTelemetry.operationCandidateCount,
@@ -719,6 +721,7 @@ export async function runCommandChatLoop({
           const recovery = await routeChatWithJev({
             decisionEngine: options.decisionEngine!,
             userMessage: options.decisionMessage ?? options.userMessage,
+            conversationHistory: messages.slice(0, -1).slice(-6),
             sessionMemo: options.sessionMemo,
             workflowPolicy: session.workflowPolicy,
             readOperationHints: remainingHints,
@@ -795,6 +798,7 @@ export async function runCommandChatLoop({
         completedTableTransform,
         completedTableProjection,
         completedReadResultStyle,
+        jevRoute.requestPlan?.response.llmRequired,
       );
     }
   }

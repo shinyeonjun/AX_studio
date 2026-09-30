@@ -18,6 +18,7 @@ import {
 import type { JevWorkflowStepHint } from './jev-workflow-update.js';
 import { jevHttpEndpointChoices, type JevHttpEndpointHint } from './jev-http-endpoint.js';
 import type { JevRequestFeatures } from './request-features.js';
+import { JEV_RECENT_CONVERSATION_POLICY, type JevConversationTurn } from './jev-request-plan.js';
 import { JEV_TABLE_PROJECTION_CRITERIA, JEV_TABLE_TRANSFORM_CRITERIA } from './jev-table-transform.js';
 import {
   AGENT_SCOPED_CONTEXT_DECISION_POLICY,
@@ -40,6 +41,7 @@ export interface JevReadRecoveryContext {
 interface BuildJevDecisionRequestInput {
   userMessage: string;
   requestFeatures: JevRequestFeatures;
+  conversationHistory?: readonly JevConversationTurn[];
   routeCatalog: Record<string, DecisionInstruction>;
   currentWorkflowId?: string;
   currentWorkflowSteps?: readonly JevWorkflowStepHint[];
@@ -127,6 +129,12 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
       current_workflow_present: hasCurrentWorkflow,
       workspace_session_present: hasWorkspaceSession,
       ...(userConfirmedPreferences ? { user_confirmed_preferences: userConfirmedPreferences } : {}),
+      ...(input.conversationHistory?.length ? {
+        recent_conversation: input.conversationHistory.slice(-6).map(({ role, content }) => ({
+          role,
+          content: boundDecisionString(content, 800),
+        })),
+      } : {}),
       connected_connectors: (input.connectedConnectors ?? [])
         .slice(0, 20)
         .map((connector) => boundDecisionString(connector, 128)),
@@ -165,6 +173,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
     },
     policy: [
       DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+      input.conversationHistory?.length ? JEV_RECENT_CONVERSATION_POLICY : undefined,
       userConfirmedPreferences ? AGENT_SCOPED_CONTEXT_DECISION_POLICY : undefined,
     ].filter(Boolean).join('\n'),
   };

@@ -40,7 +40,6 @@ describe('Desktop chat recurring workflow proposal', () => {
         return {
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'gmail.message.send',
             }),
@@ -73,7 +72,6 @@ describe('Desktop chat recurring workflow proposal', () => {
       },
     });
 
-    expect(evaluations.flat()).toContain('request_mode');
     expect(evaluations.flat()).toContain('needs_natural_language_answer');
     expect(sendActionId).toMatch(/^tool_\d+$/u);
     expect(reply).toContain('실행에 필요한 정보를 입력해 주세요');
@@ -227,7 +225,6 @@ describe('Desktop chat recurring workflow proposal', () => {
           return {
             answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action',
                 needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),

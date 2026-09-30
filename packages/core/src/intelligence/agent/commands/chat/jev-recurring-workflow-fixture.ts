@@ -13,7 +13,6 @@ export function gmailToSlackRecurringDecisionEngine(): DecisionEngine {
         if (!trigger) throw new Error('gmail_event_trigger_not_offered');
         return { answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'multi_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => ['gmail.messages.read', 'slack.message.send'].includes(candidate.capabilityId ?? ''),
           }),

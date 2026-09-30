@@ -54,6 +54,7 @@ client_secret*.json
 *.log
 npm-debug.log*
 .vite/
+.vitest/
 .cache/
 coverage/
 /test-results/

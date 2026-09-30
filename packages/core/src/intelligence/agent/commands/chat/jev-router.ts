@@ -7,7 +7,7 @@ import {
 } from '../../../../contracts/decision.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import { choiceAnswerConfidence } from '../../../decision/confidence.js';
-import type { AxCommand } from '../schema.js';
+import { AxCapabilityInvokeArgsSchema, type AxCommand } from '../schema.js';
 import { availableCapabilities } from '../../../../catalog/capability-graph.js';
 import {
   selectJevReadOperationHints,
@@ -30,6 +30,7 @@ import {
   parseParallelToolSelection,
   type JevParallelToolSelection,
 } from './jev-parallel-tool-selection.js';
+import type { JevChatRequestPlan, JevCommandPlan } from './jev-request-plan.js';
 import type {
   JevChatRouterInput,
   JevChatRouterResult,
@@ -95,6 +96,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     } = buildJevDecisionRequest({
       userMessage: input.userMessage,
       requestFeatures,
+      conversationHistory: input.conversationHistory,
       routeCatalog,
       currentWorkflowId: readRecovery ? undefined : input.currentWorkflowId,
       currentWorkflowSteps: readRecovery ? undefined : input.currentWorkflowSteps,
@@ -146,8 +148,12 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
           providerRequestCount: evaluation.providerRequestCount ?? 1,
         }
       : undefined;
-    const withTelemetry = (result: JevChatRouterResult): JevChatRouterResult =>
-      telemetry ? { ...result, telemetry } : result;
+    let requestPlan: JevChatRequestPlan | undefined;
+    const withTelemetry = (result: JevChatRouterResult): JevChatRouterResult => ({
+      ...result,
+      ...(requestPlan ? { requestPlan } : {}),
+      ...(telemetry ? { telemetry } : {}),
+    });
     const requestBytes = (requestState: unknown, requestQuestions: Record<string, DecisionQuestion>) =>
       new TextEncoder().encode(JSON.stringify({ state: requestState, questions: requestQuestions })).byteLength;
     const recordFollowupTelemetry = (
@@ -204,7 +210,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const resolveReadParameterChoices = async (
       hint: JevReadOperationHint,
     ): Promise<JevReadOperationHint> => {
-      return resolveJevReadOperationParameters(hint, input.userMessage, evaluateFollowup);
+      return resolveJevReadOperationParameters(hint, input.userMessage, evaluateFollowup, requestPlan);
     };
 
     const routeAnswer = choiceAnswer(evaluation.answers.route);
@@ -219,7 +225,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const explicitWorkflowCreate = choiceAnswer(evaluation.answers.explicit_workflow_create);
     const explicitWorkflowDelete = choiceAnswer(evaluation.answers.explicit_workflow_delete);
     const explicitWorkflowUpdate = choiceAnswer(evaluation.answers.explicit_workflow_update);
-    const selectedRoute = route;
+    let selectedRoute = route;
     const selectedConfidence = confidence;
     let toolSelection: JevParallelToolSelection | undefined;
     const updateAddsSteps = choiceAnswer(evaluation.answers.explicit_workflow_step_addition)?.choice === 'add_now';
@@ -242,38 +248,51 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         },
       });
       if (toolSelection.kind === 'clarify') {
-        if (selectedRoute === 'capability_read' && toolSelection.reason === 'no_tool_selected') {
-          return withTelemetry(fallback('missing_context'));
-        }
-        const message = toolSelection.reason === 'tool_count_mismatch'
-          ? '선택한 실행 유형과 필요한 도구 수가 맞지 않습니다. 한 개 실행인지, 여러 도구 실행인지 요청을 분명히 해 주세요.'
-          : '요청에 필요한 도구를 확실히 고르지 못했습니다. 사용할 서비스와 원하는 결과를 더 구체적으로 알려 주세요.';
+        const message = '요청에 필요한 도구나 자연어 답변 여부를 확실히 판단하지 못했습니다. 원하는 결과와 대상을 조금 더 구체적으로 알려 주세요.';
         if (selectedRoute === 'answer' || selectedRoute === 'capability_read') {
+          if (selectedRoute === 'capability_read' && toolSelection.reason === 'no_answer_or_tool') {
+            return withTelemetry(fallback('missing_context'));
+          }
           return withTelemetry(fallback('uncertain'));
         }
-        return withTelemetry({ kind: 'clarify', route: selectedRoute, message, confidence: selectedConfidence });
-      }
-      if ((selectedRoute === 'answer') !== (toolSelection.kind === 'reply')) {
-        if (selectedRoute === 'capability_read' && toolSelection.kind === 'reply') {
-          return withTelemetry(fallback('missing_context'));
+        if (selectedRoute === 'execution_enqueue_once' || selectedRoute === 'workflow_create'
+          || selectedRoute === 'workflow_update' || selectedRoute === 'job_propose') {
+          return withTelemetry({ kind: 'clarify', route: selectedRoute, message, confidence: selectedConfidence });
         }
         return withTelemetry(fallback('uncertain'));
       }
-      if (selectedRoute === 'capability_read' && toolSelection.kind === 'selected'
-        && toolSelection.selectedToolIds.some((id) => !id.startsWith('read:'))) {
+      requestPlan = {
+        request: {
+          message: boundDecisionString(input.userMessage),
+          features: requestFeatures,
+          context: {
+            recentTurns: (input.conversationHistory ?? []).slice(-6).map(({ role, content }) => ({
+              role,
+              content: boundDecisionString(content, 800),
+            })),
+          },
+        },
+        response: { llmRequired: toolSelection.needsNaturalLanguageAnswer },
+        operationDecisions: toolSelection.operationDecisions,
+      };
+      const selectedToolIds = new Set(toolSelection.operationDecisions
+        .filter(({ selected }) => selected)
+        .map(({ id }) => id));
+      if (selectedRoute === 'capability_read'
+        && [...selectedToolIds].some((id) => !id.startsWith('read:'))) {
         return withTelemetry(fallback('uncertain'));
       }
-      if (telemetry && toolSelection.kind === 'selected') {
+      if (telemetry) {
         telemetry = {
           ...telemetry,
-          actionScopeChoice: toolSelection.mode,
-          actionCandidateSelected: toolSelection.selectedToolIds.some((id) => id.startsWith('write:')),
+          selectedToolCount: selectedToolIds.size,
+          actionCandidateSelected: [...selectedToolIds].some((id) => id.startsWith('write:')),
         };
       }
     }
-    const selectedToolIds = toolSelection?.kind === 'selected'
-      ? new Set(toolSelection.selectedToolIds)
-      : new Set<string>();
+    const selectedToolIds = new Set(toolSelection?.kind === 'selected'
+      ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
+      : []);
     const selectedReadHints = operationHints.filter((hint) => selectedToolIds.has(`read:${hint.key}`));
     const selectedActionHints = [
       ...actionSelection.hints.filter(({ key }) => selectedToolIds.has(`write:${key}`)),
@@ -281,6 +300,23 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         .filter((capability) => selectedToolIds.has(`transform:${capability.id}`))
         .map((capability, index) => ({ key: `transform_${index}`, capability })),
     ];
+    if (selectedRoute === 'capability_read' && selectedToolIds.size === 0
+      && toolSelection?.kind === 'selected' && toolSelection.needsNaturalLanguageAnswer) {
+      selectedRoute = 'answer';
+      if (telemetry) telemetry = { ...telemetry, selectedRoute };
+    }
+    if (selectedRoute === 'answer') {
+      if (selectedToolIds.size === 0) {
+        return withTelemetry({ kind: 'reply', route: 'answer', confidence: selectedConfidence });
+      }
+      selectedRoute = selectedToolIds.size === 1 && selectedReadHints.length === 1
+        ? 'capability_read'
+        : 'execution_enqueue_once';
+      if (telemetry) telemetry = { ...telemetry, selectedRoute };
+    }
+    if (selectedRoute === 'capability_read' && selectedReadHints.length === 0) {
+      return withTelemetry(fallback('missing_context'));
+    }
 
     if (
       (selectedRoute === 'workflow_update' || selectedRoute === 'workflow_delete')
@@ -392,11 +428,17 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       };
       const result: JevChatRouterResult = plan.kind === 'clarify'
         ? { kind: 'clarify', route, message: plan.message, confidence: selectedConfidence }
-        : { kind: 'command', route, command: plan.command, confidence: selectedConfidence };
-      return { ...result, telemetry: planTelemetry };
+        : {
+            kind: 'command', route, command: plan.command, confidence: selectedConfidence,
+            ...(plan.commandPlan ? { commandPlan: plan.commandPlan } : {}),
+          };
+      return {
+        ...result,
+        ...(requestPlan ? { requestPlan } : {}),
+        telemetry: planTelemetry,
+      };
     };
 
-    if (selectedRoute === 'answer') return withTelemetry({ kind: 'reply', route: selectedRoute, confidence: selectedConfidence });
     if (selectedRoute === 'previous_result') {
       return withTelemetry({ kind: 'previous_result', route: selectedRoute, confidence: selectedConfidence });
     }
@@ -407,6 +449,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       answers: evaluation.answers,
       selectedReadHints,
       selectedActionHints,
+      requestPlan,
       workflowTriggerHints,
       withTelemetry,
       evaluateFollowup,
@@ -431,6 +474,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         readOperationHints: selectedReadHints,
         actionHints: selectedActionHints,
         actionInputValues: input.actionInputValues,
+        requestPlan,
         sessionMemo: input.sessionMemo,
         workflowPolicy: input.workflowPolicy,
         signal: input.abortSignal,
@@ -452,6 +496,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         connectedConnectors,
         readOperationHints: selectedReadHints,
         actionHints: [],
+        requestPlan,
         sessionMemo: input.sessionMemo,
         workflowPolicy: input.workflowPolicy,
         signal: input.abortSignal,
@@ -467,6 +512,21 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       command = commandForRoute(selectedRoute, input, readAnswers, requestFeatures);
     }
     if ('kind' in command) return withTelemetry(command);
+    let commandPlan: JevCommandPlan | undefined;
+    if (selectedRoute === 'capability_read' && toolSelection?.kind === 'selected'
+      && command.name === 'capability.invoke') {
+      const parsed = AxCapabilityInvokeArgsSchema.safeParse(command.args);
+      if (parsed.success) {
+        commandPlan = {
+          commands: [{
+            id: 'operation_1',
+            operationId: parsed.data.id,
+            input: { ...parsed.data.params },
+            dependsOn: [],
+          }],
+        };
+      }
+    }
     const isReadRoute = selectedRoute === 'capability_read' || selectedRoute === 'http_read';
     const transformRequest = isReadRoute
       ? tableTransformRequest(readAnswers.table_transform)
@@ -483,6 +543,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     const readResultStyle = isReadRoute && needsNaturalLanguageAnswer ? 'summary' : undefined;
     return withTelemetry({
       kind: 'command', command, route: selectedRoute, confidence: selectedConfidence,
+      ...(commandPlan ? { commandPlan } : {}),
       ...(transformRequest ? { tableTransform: transformRequest } : {}),
       ...(projectionRequest ? { tableProjection: projectionRequest } : {}),
       ...(readResultStyle ? { readResultStyle } : {}),

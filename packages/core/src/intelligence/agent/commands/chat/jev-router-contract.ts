@@ -9,12 +9,15 @@ import type { JevWorkflowOutputHint } from './jev-workflow-plan.js';
 import type { JevWorkflowStepHint } from './jev-workflow-update.js';
 import type { JevHttpEndpointHint } from './jev-http-endpoint.js';
 import type { JevReadRecoveryContext } from './jev-decision-request.js';
+import type { JevChatRequestPlan, JevCommandPlan, JevConversationTurn } from './jev-request-plan.js';
 import type { JevChatRouteName } from './jev-route-criteria.js';
 import type { JevTableProjectionRequest, JevTableTransformRequest } from './jev-table-transform.js';
 
 export interface JevChatRouterInput {
   decisionEngine: DecisionEngine;
   userMessage: string;
+  /** Bounded prior chat turns; the current message is supplied separately. */
+  conversationHistory?: readonly JevConversationTurn[];
   currentWorkflowId?: string;
   currentWorkflowVersion?: number;
   currentWorkflowSteps?: readonly JevWorkflowStepHint[];
@@ -50,10 +53,8 @@ export interface JevChatRouterTelemetry {
   outputTokens?: number;
   selectedRoute?: JevChatRouteName;
   routeConfidence?: number;
-  actionScopeChoice?: string;
-  actionScopeConfidence?: number;
+  selectedToolCount?: number;
   actionCandidateSelected?: boolean;
-  actionCandidateConfidence?: number;
   questionIds: readonly string[];
   routeCandidateCount: number;
   operationCandidateCount: number;
@@ -94,7 +95,7 @@ interface MissingReadParameters {
 }
 
 type JevChatRouterResultValue =
-  | { kind: 'command'; command: AxCommand; route: JevChatRouteName; confidence: number; tableTransform?: JevTableTransformRequest; tableProjection?: JevTableProjectionRequest; readResultStyle?: 'summary' }
+  | { kind: 'command'; command: AxCommand; route: JevChatRouteName; confidence: number; commandPlan?: JevCommandPlan; tableTransform?: JevTableTransformRequest; tableProjection?: JevTableProjectionRequest; readResultStyle?: 'summary' }
   | { kind: 'previous_result'; route: 'previous_result'; confidence: number }
   | { kind: 'reply'; route: 'answer'; confidence: number }
   | { kind: 'clarify'; route: 'workflow_create' | 'workflow_update' | 'workflow_delete' | 'job_propose' | 'execution_enqueue_once' | 'context_remember' | 'report_generate'; message: string; confidence: number }
@@ -108,4 +109,5 @@ type JevChatRouterResultValue =
 
 export type JevChatRouterResult = JevChatRouterResultValue & {
   telemetry?: JevChatRouterTelemetry;
+  requestPlan?: JevChatRequestPlan;
 };

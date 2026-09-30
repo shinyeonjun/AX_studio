@@ -1,6 +1,7 @@
 import type { DecisionAnswer, DecisionQuestion } from '../../../../contracts/decision.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import type { JevReadOperationHint, JevReadParameterHint } from '../../../decision/read-operation-catalog.js';
+import { JEV_RECENT_CONVERSATION_POLICY, type JevChatRequestPlan } from './jev-request-plan.js';
 
 function parameterQuestion(parameter: JevReadParameterHint): DecisionQuestion {
   return {
@@ -57,6 +58,7 @@ export async function resolveJevReadOperationParameters(
     state: unknown,
     questions: Record<string, DecisionQuestion>,
   ) => Promise<{ answers: Record<string, DecisionAnswer> }>,
+  requestPlan?: JevChatRequestPlan,
 ): Promise<JevReadOperationHint> {
   const selection = jevReadOperationParameterQuestions(hint);
   if (selection.fields.length === 0) return hint;
@@ -66,7 +68,11 @@ export async function resolveJevReadOperationParameters(
       capability_id: hint.capabilityId,
       label: boundDecisionString(hint.label, 160),
     },
-    policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+    ...(requestPlan ? { request_plan: requestPlan } : {}),
+    policy: [
+      DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+      requestPlan?.request.context.recentTurns.length ? JEV_RECENT_CONVERSATION_POLICY : undefined,
+    ].filter(Boolean).join('\n'),
   }, selection.questions);
 
   return applyJevReadOperationParameterAnswers(hint, selection.fields, evaluation.answers);

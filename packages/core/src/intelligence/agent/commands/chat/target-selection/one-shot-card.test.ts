@@ -33,7 +33,6 @@ describe('runAxCommandChat target selection', () => {
         return {
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'slack.message.send',
             }),

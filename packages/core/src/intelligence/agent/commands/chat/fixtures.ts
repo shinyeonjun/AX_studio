@@ -41,19 +41,12 @@ export function parallelToolQuestionIdForTest(
 export function parallelToolAnswersForTest(
   request: DecisionEvaluationRequest,
   input: {
-    mode: 'answer_only' | 'single_action' | 'multi_action';
     needsNaturalLanguageAnswer: boolean;
     select?: (candidate: ParallelToolCandidateForTest) => boolean;
     selectedProbability?: number;
   },
 ): Record<string, DecisionAnswer> {
   const answers: Record<string, DecisionAnswer> = {
-    request_mode: {
-      type: 'choice',
-      choice: input.mode,
-      probabilities: { [input.mode]: 0.99 },
-      confidence: 0.99,
-    },
     needs_natural_language_answer: {
       type: 'boolean',
       probability: input.needsNaturalLanguageAnswer ? 0.99 : 0.01,

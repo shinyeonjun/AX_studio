@@ -48,7 +48,6 @@ function engineFor(
         : route === 'capability_read' ? 'read' : 'write';
       let selectedTool = false;
       const parallelAnswers = parallelToolAnswersForTest(request, {
-        mode: route === 'answer' ? 'answer_only' : 'single_action',
         needsNaturalLanguageAnswer: route === 'answer',
         select: (candidate) => {
           if (selectedTool || candidate.kind !== preferredToolKind) return false;
@@ -173,7 +172,6 @@ describe('routeChatWithJev', () => {
 
       for (const [questionId, question] of Object.entries(request.questions)) {
         if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
-        else if (questionId === 'request_mode') answers.request_mode = choiceAnswer('single_action');
         else if (questionId === 'explicit_execution_now') answers.explicit_execution_now = choiceAnswer('execute_now');
         else if (question.type === 'noul') {
           const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
@@ -368,7 +366,6 @@ describe('routeChatWithJev', () => {
 
     expect(result.kind).toBe('reply');
     expect(questionIds).toContain('route');
-    expect(questionIds).toContain('request_mode');
     expect(questionIds).toContain('needs_natural_language_answer');
   });
 
@@ -385,7 +382,6 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
     expect(questionIds).toContain('route');
     expect(questionIds).toContain('explicit_execution_now');
-    expect(questionIds).toContain('request_mode');
     expect(questionIds).toContain('needs_natural_language_answer');
     expect(questionIds.some((id) => id.startsWith('tool_'))).toBe(true);
   });
@@ -435,7 +431,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request) => ({
           answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice', choice: 'answer',
               probabilities: { answer: 0.96, context_remember: 0.04 }, confidence: 0.96,
@@ -465,7 +461,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request) => ({
           answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'multi_action', needsNaturalLanguageAnswer: false }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }),
             route: {
               type: 'choice', choice: 'execution_enqueue_once',
               probabilities: { execution_enqueue_once: 0.96, answer: 0.04 }, confidence: 0.96,
@@ -492,7 +488,6 @@ describe('routeChatWithJev', () => {
       evaluate: async (request): Promise<DecisionEvaluationResult> => {
         const answers: Record<string, DecisionAnswer> = {};
         Object.assign(answers, parallelToolAnswersForTest(request, {
-          mode: 'single_action',
           needsNaturalLanguageAnswer: false,
           select: (candidate) => actionChoice === 'offered' && candidate.capabilityId === 'test.archive',
           selectedProbability: 0.52,
@@ -541,13 +536,12 @@ describe('routeChatWithJev', () => {
         decisionEngine: {
           evaluate: async (request): Promise<DecisionEvaluationResult> => {
             evaluationCalls += 1;
-            expect(request.questions).toHaveProperty('request_mode');
             return {
               model: 'jev-test',
               providerRequestCount: 1,
               answers: {
                 ...parallelToolAnswersForTest(request, {
-                  mode: 'single_action', needsNaturalLanguageAnswer: false,
+                  needsNaturalLanguageAnswer: false,
                   select: (candidate) => candidate.capabilityId === 'test.archive',
                 }),
                 route: {
@@ -600,7 +594,7 @@ describe('routeChatWithJev', () => {
                 providerRequestCount: 1,
                 answers: {
                   ...parallelToolAnswersForTest(request, {
-                    mode: 'single_action', needsNaturalLanguageAnswer: false,
+                    needsNaturalLanguageAnswer: false,
                     select: (candidate) => candidate.capabilityId === 'test.archive',
                   }),
                   route: {
@@ -619,7 +613,6 @@ describe('routeChatWithJev', () => {
       });
 
       expect(requests).toHaveLength(2);
-      expect(requests[0]!.questions).toHaveProperty('request_mode');
       expect(requests[0]!.questions).toHaveProperty('tool_0');
       expect(requests[1]!.questions).toHaveProperty('action_input_0');
       expect(['clarify', 'fallback']).toContain(result.kind);
@@ -637,7 +630,7 @@ describe('routeChatWithJev', () => {
           requestQuestionIds.push(Object.keys(request.questions));
           return {
             answers: {
-              ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
+              ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }),
               route: {
                 type: 'choice', choice: 'execution_enqueue_once',
                 probabilities: { execution_enqueue_once: 0.96, answer: 0.04 }, confidence: 0.96,
@@ -652,7 +645,6 @@ describe('routeChatWithJev', () => {
     });
 
     const questionIds = requestQuestionIds.flat();
-    expect(questionIds).toContain('request_mode');
     expect(questionIds).toContain('needs_natural_language_answer');
     expect(questionIds.some((id) => id.startsWith('tool_'))).toBe(true);
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
@@ -821,7 +813,7 @@ describe('routeChatWithJev', () => {
           const confidence = 0.99;
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.kind === 'read' && (candidate.label ?? '').includes('Products'),
             }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
@@ -1007,7 +999,7 @@ describe('routeChatWithJev', () => {
           return {
             answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: {
@@ -1030,7 +1022,6 @@ describe('routeChatWithJev', () => {
       }],
     });
 
-    expect(questionIds).toContain('request_mode');
     expect(questionIds).toContain('tool_0');
     expect(questionIds).toContain('table_transform');
     expect(result).toEqual({
@@ -1054,7 +1045,7 @@ describe('routeChatWithJev', () => {
         evaluate: async (request) => ({
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === 'read:op_0',
             }),
             route: {
@@ -1080,7 +1071,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request) => ({ answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_0',
           }),
           route: {
@@ -1111,7 +1102,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request) => ({ answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_0',
           }),
           route: {
@@ -1150,7 +1141,7 @@ describe('routeChatWithJev', () => {
           return {
             answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: {
@@ -1190,7 +1181,7 @@ describe('routeChatWithJev', () => {
         evaluate: async (request) => ({
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === 'read:op_0',
             }),
             route: {
@@ -1231,7 +1222,7 @@ describe('routeChatWithJev', () => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
-              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+              ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer',
                 probabilities: { answer: 0.96 }, confidence: 0.96,
@@ -1257,7 +1248,7 @@ describe('routeChatWithJev', () => {
           routeCriteria = (request.questions.route as { criteria: Record<string, unknown> }).criteria;
           return {
             answers: {
-              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+              ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
               },
@@ -1277,7 +1268,7 @@ describe('routeChatWithJev', () => {
     })).resolves.toMatchObject({ kind: 'reply', route: 'answer' });
 
     expect(questionIds).toEqual([
-      'route', 'request_mode', 'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2', 'tool_3',
+      'route', 'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2', 'tool_3',
       'table_transform', 'table_projection',
     ]);
     expect(routeCriteria).toHaveProperty('capability_read');
@@ -1288,7 +1279,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request) => ({ answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action', needsNaturalLanguageAnswer: true,
+            needsNaturalLanguageAnswer: true,
             select: (candidate) => candidate.id === 'read:op_0',
           }),
           route: {
@@ -1322,7 +1313,7 @@ describe('routeChatWithJev', () => {
                 probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
               },
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === 'read:op_0',
             }),
             },
@@ -1359,7 +1350,7 @@ describe('routeChatWithJev', () => {
           state = request.state as Record<string, unknown>;
           return {
             answers: {
-              ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+              ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
               route: {
                 type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
               },
@@ -1398,7 +1389,7 @@ describe('routeChatWithJev', () => {
             .filter((id): id is string => id !== undefined);
           return {
             answers: {
-              ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
+              ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }),
               route: {
                 type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.96 }, confidence: 0.96,
               },
@@ -1440,7 +1431,7 @@ describe('routeChatWithJev', () => {
           offeredTools = Object.keys(request.questions).filter((id) => id.startsWith('tool_'));
           return { model: 'mock-jev', answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === 'read:op_71',
             }),
             route: {
@@ -1493,7 +1484,7 @@ describe('routeChatWithJev', () => {
           const confidence = 0.99;
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === localSheetCandidateId,
             }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
@@ -1577,7 +1568,7 @@ describe('routeChatWithJev', () => {
           if (request.questions.route) {
             return { answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
@@ -1627,7 +1618,7 @@ describe('routeChatWithJev', () => {
         evaluate: async (request): Promise<DecisionEvaluationResult> => request.questions.route
           ? { answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
@@ -1666,7 +1657,7 @@ describe('routeChatWithJev', () => {
           evaluatedQuestions = request.questions;
           return { providerRequestCount: 1, answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === 'read:op_508',
             }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
@@ -1714,7 +1705,7 @@ describe('routeChatWithJev', () => {
             .filter((id): id is string => id !== undefined);
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.id === `read:${relevantKey}`,
             }),
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
@@ -1750,7 +1741,7 @@ describe('routeChatWithJev', () => {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
           evaluatedQuestions = request.questions;
           return { answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.97 }, confidence: 0.97 },
           } };
         },
@@ -1762,16 +1753,14 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
     expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_')))
       .toHaveLength(260 + builtInTransformToolIds.length);
-    expect(evaluatedQuestions).toHaveProperty('request_mode');
     expect(evaluatedQuestions).toHaveProperty('needs_natural_language_answer');
-    expect(evaluatedQuestions).toHaveProperty('request_mode');
   });
 
   it('treats an empty read-tool selection as missing context', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request) => ({ answers: {
-          ...parallelToolAnswersForTest(request, { mode: 'single_action', needsNaturalLanguageAnswer: false }),
+          ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }),
           route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.97 }, confidence: 0.97 },
         } }),
       },
@@ -1798,7 +1787,7 @@ describe('routeChatWithJev', () => {
             .map(([, question]) => parallelToolCandidateForTest(question)?.id)
             .filter((id): id is string => id !== undefined);
           return { answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
             route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96 },
           } };
         },
@@ -1819,7 +1808,7 @@ describe('routeChatWithJev', () => {
           model: 'jev-1.13',
           usage: { inputTokens: 120, outputTokens: 8 },
           answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice', choice: 'answer', probabilities: { answer: 0.96 }, confidence: 0.96,
             },
@@ -1840,7 +1829,7 @@ describe('routeChatWithJev', () => {
         model: 'jev-1.13',
         inputTokens: 120,
         outputTokens: 8,
-        questionIds: expect.arrayContaining(['route', 'request_mode', 'needs_natural_language_answer', 'result_limit']),
+        questionIds: expect.arrayContaining(['route', 'needs_natural_language_answer', 'result_limit']),
         routeCandidateCount: 13,
         operationCandidateCount: 0,
         operationCatalogSize: 71,
@@ -2121,7 +2110,7 @@ describe('routeChatWithJev', () => {
             return {
               answers: {
                 ...parallelToolAnswersForTest(request, {
-                  mode: 'single_action', needsNaturalLanguageAnswer: false,
+                  needsNaturalLanguageAnswer: false,
                   select: (candidate) => candidate.capabilityId === 'gmail.messages.search',
                 }),
                 route: {
@@ -2203,7 +2192,7 @@ describe('routeChatWithJev', () => {
         evaluate: async (request) => ({
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'gmail.messages.search',
             }),
             route: {
@@ -2242,7 +2231,7 @@ describe('routeChatWithJev', () => {
           evaluate: async (request): Promise<DecisionEvaluationResult> => {
             if (request.questions.route) return { answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: {
@@ -2284,7 +2273,7 @@ describe('routeChatWithJev', () => {
           if (request.questions.route) {
             return { answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.id === 'read:op_0',
               }),
               route: {
@@ -2327,7 +2316,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => ({
           answers: {
-            ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+            ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
             route: {
               type: 'choice',
               choice: 'answer',
@@ -2355,7 +2344,7 @@ describe('routeChatWithJev', () => {
           evaluatedQuestions = request.questions;
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'gmail.message.send',
             }),
             route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
@@ -2367,7 +2356,6 @@ describe('routeChatWithJev', () => {
       connectedConnectors: ['gmail'],
     });
 
-    expect(evaluatedQuestions).toHaveProperty('request_mode');
     expect(evaluatedQuestions).toHaveProperty('needs_natural_language_answer');
     expect(Object.keys(evaluatedQuestions).filter((id) => id.startsWith('tool_')).length).toBeGreaterThan(0);
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
@@ -2391,7 +2379,7 @@ describe('routeChatWithJev', () => {
             requests.push(request);
             return { answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.capabilityId === capability.id,
               }),
               route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
@@ -2408,7 +2396,6 @@ describe('routeChatWithJev', () => {
         command: { name: 'execution.enqueue_once', args: { steps: [{ connector: 'test', action: 'no_input_action', params: {} }] } },
       });
       expect(requests).toHaveLength(1);
-      expect(requests[0]!.questions).toHaveProperty('request_mode');
       expect(requests[0]!.questions).toHaveProperty('needs_natural_language_answer');
       expect(Object.keys(requests[0]!.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     } finally {
@@ -2429,7 +2416,7 @@ describe('routeChatWithJev', () => {
           }
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action', needsNaturalLanguageAnswer: false,
+              needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'gmail.message.send',
             }),
             route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
@@ -2457,7 +2444,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => ({ answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.capabilityId === 'gmail.message.send',
           }),
           route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.99 }, confidence: 0.99 },
@@ -2480,13 +2467,12 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const toolAnswers = parallelToolAnswersForTest(request, {
-            mode: 'single_action', needsNaturalLanguageAnswer: false,
+            needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.capabilityId === 'gmail.draft.create',
             selectedProbability: 0.52,
           });
           return { answers: {
             ...toolAnswers,
-            request_mode: { type: 'choice', choice: 'single_action', probabilities: { single_action: 0.52 }, confidence: 0.52 },
             route: { type: 'choice', choice: 'execution_enqueue_once', probabilities: { execution_enqueue_once: 0.6 }, confidence: 0.6 },
             explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.52, do_not_execute: 0.24, unclear: 0.24 }, confidence: 0.52 },
           } };
@@ -2833,7 +2819,7 @@ describe('routeChatWithJev', () => {
           if (questions.route) return {
             answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action', needsNaturalLanguageAnswer: false,
+                needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.capabilityId === capability.id,
               }),
               route: {
