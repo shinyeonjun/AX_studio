@@ -12,6 +12,7 @@ import { planJevSelectedTools, type JevWorkflowPlanResult } from './jev-workflow
 import type { JevWorkflowTriggerHint } from './jev-workflow-proposal.js';
 import { choiceAnswer, fallback, selectedWorkflowStepFinalists } from './jev-router-command.js';
 import type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
+import type { JevChatRequestPlan } from './jev-request-plan.js';
 import type { JevChatRouteName } from './jev-route-criteria.js';
 
 export interface JevWorkflowRouteContext {
@@ -21,6 +22,7 @@ export interface JevWorkflowRouteContext {
   answers: Record<string, DecisionAnswer>;
   selectedReadHints: readonly JevReadOperationHint[];
   selectedActionHints: readonly JevActionHint[];
+  requestPlan?: JevChatRequestPlan;
   workflowTriggerHints: readonly JevWorkflowTriggerHint[];
   withTelemetry: (result: JevChatRouterResult) => JevChatRouterResult;
   evaluateFollowup: (
@@ -65,6 +67,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       readOperationHints: context.selectedReadHints,
       actionHints: context.selectedActionHints,
       actionInputValues: input.actionInputValues,
+      requestPlan: context.requestPlan,
       signal: input.abortSignal,
     });
     return workflowPlanResult(plan, selectedRoute);
@@ -166,6 +169,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         readOperationHints: context.selectedReadHints,
         actionHints: context.selectedActionHints,
         actionInputValues: input.actionInputValues,
+        requestPlan: context.requestPlan,
         signal: input.abortSignal,
       });
       if (plan.kind === 'clarify') return workflowPlanResult(plan, selectedRoute);
@@ -247,6 +251,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       readOperationHints: context.selectedReadHints,
       actionHints: context.selectedActionHints,
       actionInputValues: input.actionInputValues,
+      requestPlan: context.requestPlan,
       signal: input.abortSignal,
     });
     return workflowPlanResult(plan, selectedRoute);

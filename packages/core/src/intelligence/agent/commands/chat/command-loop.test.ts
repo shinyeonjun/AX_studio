@@ -37,7 +37,7 @@ const builtInTransformCapabilityIds = [
 ];
 
 function answerOnlyAnswers(request: Parameters<DecisionEngine['evaluate']>[0]) {
-  return parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true });
+  return parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true });
 }
 
 vi.mock('../../../../persistence/paths/app-log.js', () => ({ appendAppLog: vi.fn() }));
@@ -363,7 +363,6 @@ describe('runAxCommandChat command loop', () => {
         return {
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.capabilityId === 'gmail.message.send',
             }),
@@ -443,7 +442,6 @@ describe('runAxCommandChat command loop', () => {
 
       for (const [questionId, question] of Object.entries(request.questions)) {
         if (questionId === 'route') answers[questionId] = choiceAnswer('execution_enqueue_once');
-        else if (questionId === 'request_mode') answers[questionId] = choiceAnswer('single_action');
         else if (questionId === 'explicit_execution_now') answers[questionId] = choiceAnswer('execute_now');
         else if (question.type === 'noul') {
           const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
@@ -509,7 +507,7 @@ describe('runAxCommandChat command loop', () => {
       expect(appendAppLog).toHaveBeenCalledWith('info', 'Jev chat route timing recorded.', expect.objectContaining({
         jevSelectedRoute: 'execution_enqueue_once',
         jevRouteConfidence: 0.99,
-        jevActionScopeChoice: 'single_action',
+        jevSelectedToolCount: 1,
         jevActionCandidateSelected: true,
         jevActionCandidateCount: capabilities.length,
         jevActionCatalogSize: capabilities.length,
@@ -547,7 +545,6 @@ describe('runAxCommandChat command loop', () => {
           return {
             answers: {
               ...parallelToolAnswersForTest(request, {
-                mode: 'single_action',
                 needsNaturalLanguageAnswer: false,
                 select: (candidate) => candidate.capabilityId === 'gmail.message.send',
               }),
@@ -807,7 +804,6 @@ describe('runAxCommandChat command loop', () => {
         const needsNaturalLanguageAnswer = JSON.stringify(request.state).includes('간단히 요약');
         return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer,
               select: (candidate) => candidate.capabilityId === 'http.request',
             }),
@@ -1158,7 +1154,6 @@ describe('runAxCommandChat command loop', () => {
         if (!productCandidate) throw new Error('Products should be a Jev tool candidate');
         return { answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === productCandidate.id,
           }),
@@ -1634,7 +1629,6 @@ describe('runAxCommandChat command loop', () => {
             probabilities: { capability_read: 0.98, answer: 0.02 }, confidence: 0.98,
           },
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_0',
           }),
@@ -1703,7 +1697,6 @@ describe('runAxCommandChat command loop', () => {
           .map(([, question]) => parallelToolCandidateForTest(question)?.id)
           .filter((id): id is string => Boolean(id));
         const selection = (selectedId: string) => parallelToolAnswersForTest(request, {
-          mode: 'single_action',
           needsNaturalLanguageAnswer: false,
           select: (candidate) => candidate.id === selectedId,
         });
@@ -1797,7 +1790,6 @@ describe('runAxCommandChat command loop', () => {
         return { answers: {
           route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_0',
           }),
@@ -1865,7 +1857,6 @@ describe('runAxCommandChat command loop', () => {
           .filter((id): id is string => Boolean(id));
         return { answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_70',
           }),
@@ -1911,7 +1902,6 @@ describe('runAxCommandChat command loop', () => {
         return {
           answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer: false,
             }),
             route: {
@@ -1975,7 +1965,6 @@ describe('runAxCommandChat command loop', () => {
       evaluate: async (request) => ({
         answers: {
           ...parallelToolAnswersForTest(request, {
-            mode: 'single_action',
             needsNaturalLanguageAnswer: false,
             select: (candidate) => candidate.id === 'read:op_0',
           }),

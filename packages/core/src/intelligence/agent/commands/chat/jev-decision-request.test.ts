@@ -46,7 +46,7 @@ describe('buildJevDecisionRequest', () => {
     const result = build('안녕');
 
     expect(result.questions).toHaveProperty('route');
-    expect(Object.keys(result.questions)).toEqual(['route', 'request_mode', 'needs_natural_language_answer']);
+    expect(Object.keys(result.questions)).toEqual(['route', 'needs_natural_language_answer']);
     expect(result.routeCriteria).toEqual({ answer: routeCatalog.answer });
     expect(routeCatalog).toHaveProperty('context_remember');
     expect(routeCatalog).toHaveProperty('capability_read');
@@ -80,7 +80,6 @@ describe('buildJevDecisionRequest', () => {
       },
     });
 
-    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions.explicit_execution_now?.type).toBe('choice');
     expect(result.questions.needs_natural_language_answer?.type).toBe('boolean');
     expect(result.questions.tool_0?.type).toBe('boolean');
@@ -149,7 +148,6 @@ describe('buildJevDecisionRequest', () => {
     });
 
     expect(result.routeCriteria).toHaveProperty('capability_read');
-    expect(result.questions.request_mode?.type).toBe('choice');
     expect(Object.keys(result.questions).filter((key) => key.startsWith('tool_'))).toEqual([]);
   });
 
@@ -166,7 +164,6 @@ describe('buildJevDecisionRequest', () => {
 
     expect(result.state.request_features).toEqual({});
     expect(result.routeCriteria).toHaveProperty('capability_read');
-    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions.tool_0).toMatchObject({
       type: 'boolean',
       instructions: { candidate: {
@@ -199,7 +196,7 @@ describe('buildJevDecisionRequest', () => {
       actionSelection: { hints: [], catalogSize: 0, catalogMayBeBounded: false },
     });
 
-    expect(Object.keys(result.questions).slice(0, 3)).toEqual(['route', 'request_mode', 'needs_natural_language_answer']);
+    expect(Object.keys(result.questions).slice(0, 3)).toEqual(['route', 'needs_natural_language_answer', 'tool_0']);
     expect(Object.keys(result.questions).filter((key) => key.startsWith('tool_'))).toHaveLength(hints.length);
     expect(result.questions.tool_259).toMatchObject({
       type: 'boolean', instructions: { candidate: { id: 'read:op_259' } },
@@ -278,7 +275,7 @@ describe('buildJevDecisionRequest', () => {
         const answers = Object.fromEntries(Object.entries(request.questions).map(([id, question]) => {
           if (question.type === 'noul') return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
           if (question.type !== 'choice') throw new Error('Expected a Jev choice question.');
-          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria ?? {})[0]!;
+          const choice = Object.keys(question.criteria ?? {})[0]!;
           return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
         }));
         return new Response(JSON.stringify({ answers }), {
@@ -351,7 +348,6 @@ describe('buildJevDecisionRequest', () => {
       readOperationCatalogSize: 0,
       actionSelection: { hints, catalogSize: hints.length, catalogMayBeBounded: false },
     });
-    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions).toHaveProperty('explicit_execution_now');
     const toolQuestions = Object.entries(result.questions).filter(([id]) => id.startsWith('tool_'));
     expect(toolQuestions).toHaveLength(hints.length);
@@ -374,7 +370,7 @@ describe('buildJevDecisionRequest', () => {
           if (question.type === 'noul') {
             return [id, { type: 'noul', noul: id === 'needs_natural_language_answer' ? 0.99 : 0.01 }];
           }
-          const choice = id === 'request_mode' ? 'answer_only' : Object.keys(question.criteria ?? {})[0]!;
+          const choice = Object.keys(question.criteria ?? {})[0]!;
           return [id, { type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 }];
         }));
         return new Response(JSON.stringify({ answers }), {
@@ -441,7 +437,6 @@ describe('buildJevDecisionRequest', () => {
 
     expect(result.state.context).toMatchObject({ connected_write_action_count: expect.any(Number) });
     expect(result.questions).toHaveProperty('explicit_execution_now');
-    expect(result.questions.request_mode?.type).toBe('choice');
     expect(result.questions).toHaveProperty('needs_natural_language_answer');
     expect(Object.keys(result.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     expect(result.questions).not.toHaveProperty('action');

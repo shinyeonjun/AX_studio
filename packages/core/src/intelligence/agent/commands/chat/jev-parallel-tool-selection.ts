@@ -7,6 +7,7 @@ import type {
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import type { JevActionHint } from './jev-action-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
+import type { JevChatRequestPlan } from './jev-request-plan.js';
 import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
@@ -54,8 +55,6 @@ export function buildJevParallelToolCandidates(input: {
   ];
 }
 
-export type JevParallelToolMode = 'answer_only' | 'single_action' | 'multi_action';
-
 export interface JevParallelToolSelectionTelemetry {
   evaluationCalls: number;
   providerRequestCount: number;
@@ -65,57 +64,31 @@ export interface JevParallelToolSelectionTelemetry {
 
 export type JevParallelToolSelection =
   | {
-      kind: 'reply';
-      mode: 'answer_only';
-      needsNaturalLanguageAnswer: true;
-      selectedToolIds: [];
-      telemetry: JevParallelToolSelectionTelemetry;
-    }
-  | {
       kind: 'selected';
-      mode: 'single_action' | 'multi_action';
       needsNaturalLanguageAnswer: boolean;
-      selectedToolIds: string[];
+      operationDecisions: JevChatRequestPlan['operationDecisions'];
       telemetry: JevParallelToolSelectionTelemetry;
     }
   | {
       kind: 'clarify';
       reason:
-        | 'unclear_mode'
-        | 'invalid_mode_answer'
+        | 'invalid_answer_requirement'
         | 'incomplete_tool_answers'
         | 'invalid_tool_answers'
         | 'uncertain_tool_answers'
-        | 'no_tool_selected'
-        | 'tool_count_mismatch';
+        | 'no_answer_or_tool';
       telemetry: JevParallelToolSelectionTelemetry;
     };
-
-function choiceAnswer(answer: DecisionAnswer | undefined): string | undefined {
-  return answer?.type === 'choice' ? answer.choice : undefined;
-}
 
 export function parallelToolSelectionQuestions(
   candidates: readonly JevParallelToolCandidate[],
 ): Record<string, DecisionQuestion> {
   const questions: Record<string, DecisionQuestion> = {
-    request_mode: {
-      type: 'choice',
-      instructions: {
-        question: 'How many connected tool actions are needed to satisfy the user request?',
-        focus: 'Choose answer_only when no connected tool is needed, single_action when exactly one connected operation is needed, and multi_action when two or more operations are needed. Schedule or event triggers are handled separately. Classify meaning, not keywords. This choice does not grant permission to execute.',
-      },
-      criteria: {
-        answer_only: 'The request can be satisfied conversationally without calling a connected operation.',
-        single_action: 'Exactly one listed connected operation is needed to satisfy the request.',
-        multi_action: 'Two or more listed connected operations are needed to satisfy the request.',
-      },
-    },
     needs_natural_language_answer: {
       type: 'boolean',
       instructions: {
         question: 'Does the user need a generated natural-language answer in addition to any selected tool actions?',
-        focus: 'Answer true when the user requests an explanation, synthesis, or conversational response beyond raw structured results or a deterministic execution status. Answer false when raw results or a deterministic status fully satisfy the request. For answer_only, answer true.',
+        focus: 'Evaluate the need for a natural-language response independently from tool selection. Answer true when the user requests an explanation, synthesis, or conversational response beyond raw structured results or a deterministic execution status. Answer false when no generated prose is needed; a request may need both a natural-language response and connected tools.',
       },
     },
   };
@@ -146,40 +119,16 @@ export function parseParallelToolSelection(input: {
   telemetry: JevParallelToolSelectionTelemetry;
 }): JevParallelToolSelection {
   const { answers, candidates, telemetry } = input;
-  const mode = choiceAnswer(answers.request_mode);
   const naturalAnswer = answers.needs_natural_language_answer;
-  if (mode === 'answer_only') {
-    if (naturalAnswer?.type !== 'boolean'
-      || !Number.isFinite(naturalAnswer.probability)
-      || naturalAnswer.probability < 0
-      || naturalAnswer.probability > 1
-      || naturalAnswer.probability <= 0.5) {
-      return { kind: 'clarify', reason: 'invalid_mode_answer', telemetry };
-    }
-    for (const [index] of candidates.entries()) {
-      const answer = answers[`tool_${index}`];
-      if (answer?.type !== 'boolean'
-        || !Number.isFinite(answer.probability)
-        || answer.probability < 0
-        || answer.probability > 1
-        || answer.probability >= 0.5) {
-        return { kind: 'clarify', reason: 'tool_count_mismatch', telemetry };
-      }
-    }
-    return { kind: 'reply', mode, needsNaturalLanguageAnswer: true, selectedToolIds: [], telemetry };
-  }
-  if (mode !== 'single_action' && mode !== 'multi_action') {
-    return { kind: 'clarify', reason: 'unclear_mode', telemetry };
-  }
   if (naturalAnswer?.type !== 'boolean'
     || !Number.isFinite(naturalAnswer.probability)
     || naturalAnswer.probability < 0
     || naturalAnswer.probability > 1
     || naturalAnswer.probability === 0.5) {
-    return { kind: 'clarify', reason: 'invalid_mode_answer', telemetry };
+    return { kind: 'clarify', reason: 'invalid_answer_requirement', telemetry };
   }
 
-  const selectedToolIds: string[] = [];
+  const operationDecisions: Array<{ id: string; selected: boolean }> = [];
   for (const [index, candidate] of candidates.entries()) {
     const answer = answers[`tool_${index}`];
     if (answer?.type !== 'boolean') {
@@ -191,19 +140,17 @@ export function parseParallelToolSelection(input: {
     if (answer.probability === 0.5) {
       return { kind: 'clarify', reason: 'uncertain_tool_answers', telemetry };
     }
-    if (answer.probability > 0.5) selectedToolIds.push(candidate.id);
+    operationDecisions.push({ id: candidate.id, selected: answer.probability > 0.5 });
   }
 
-  if (selectedToolIds.length === 0) return { kind: 'clarify', reason: 'no_tool_selected', telemetry };
-  if ((mode === 'single_action' && selectedToolIds.length !== 1)
-    || (mode === 'multi_action' && selectedToolIds.length < 2)) {
-    return { kind: 'clarify', reason: 'tool_count_mismatch', telemetry };
+  const needsNaturalLanguageAnswer = naturalAnswer.probability > 0.5;
+  if (!needsNaturalLanguageAnswer && operationDecisions.every(({ selected }) => !selected)) {
+    return { kind: 'clarify', reason: 'no_answer_or_tool', telemetry };
   }
   return {
     kind: 'selected',
-    mode,
-    needsNaturalLanguageAnswer: naturalAnswer.probability > 0.5,
-    selectedToolIds,
+    needsNaturalLanguageAnswer,
+    operationDecisions,
     telemetry,
   };
 }

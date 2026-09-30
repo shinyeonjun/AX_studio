@@ -135,7 +135,6 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
         reply,
         route: calls[0]?.answers.route?.choice,
         routeConfidence: calls[0]?.answers.route?.confidence,
-        requestMode: calls[0]?.answers.request_mode?.choice,
         needsNaturalLanguageAnswer: calls[0]?.answers.needs_natural_language_answer?.probability,
         actionCandidateSelected: selectedCandidates.length > 0,
         actionCandidateProbability: calls.flatMap((call) => Object.entries(call.answers)
@@ -166,7 +165,6 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
       });
       expect(store.listWorkflows()).toHaveLength(0);
       expect(calls[0]?.answers.route?.choice).toBe('execution_enqueue_once');
-      expect(calls[0]?.answers.request_mode?.choice).toBe('single_action');
       expect(selectedCandidates).toContain(`${liveConnector}.action_259`);
       expect(calls.length).toBeGreaterThanOrEqual(2);
       expect(calls.reduce((sum, call) => sum + call.providerRequests, 0)).toBe(calls.length);

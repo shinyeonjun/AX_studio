@@ -39,7 +39,6 @@ describe('local sheet capability context', () => {
           jevEvaluations += 1;
           return { answers: {
             ...parallelToolAnswersForTest(request, {
-              mode: 'single_action',
               needsNaturalLanguageAnswer: false,
               select: (candidate) => candidate.connector === 'local_sheet',
             }),

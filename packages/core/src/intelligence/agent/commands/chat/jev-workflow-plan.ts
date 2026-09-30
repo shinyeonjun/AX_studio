@@ -43,6 +43,7 @@ import type {
 } from './jev-workflow-plan-types.js';
 export type { JevWorkflowOutputHint } from './jev-workflow-plan-types.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
+import { JEV_RECENT_CONVERSATION_POLICY, type JevChatRequestPlan, type JevCommandPlan } from './jev-request-plan.js';
 import {
   AGENT_SCOPED_CONTEXT_DECISION_POLICY,
   boundedAgentScopedContext,
@@ -82,7 +83,7 @@ interface JevWorkflowPlanTelemetry {
 }
 
 type JevWorkflowPlanValue =
-  | { kind: 'command'; command: AxCommand }
+  | { kind: 'command'; command: AxCommand; commandPlan?: JevCommandPlan }
   | { kind: 'clarify'; message: string };
 
 export type JevWorkflowPlanResult = JevWorkflowPlanValue & { telemetry: JevWorkflowPlanTelemetry };
@@ -265,18 +266,26 @@ function workflowCommand(
   mode: 'one_shot' | 'manual_workflow' | 'recurring_workflow' | 'workflow_update',
   trigger?: Trigger,
   update?: { workflowId: string; workflowVersion: number },
+  commandPlan?: JevCommandPlan,
 ): AxCommand {
-  const compiledSteps = steps.map((planned) => planned.kind === 'action'
-    ? {
-        type: 'action',
-        id: planned.id,
-        connector: planned.capability.connector,
-        action: capabilityActionName(planned.capability),
-        actionRef: actionRefFor(planned.capability.connector, capabilityActionName(planned.capability)),
-        params: planned.params,
-        ...(Object.keys(planned.bindings).length > 0 ? { bindings: planned.bindings } : {}),
-      }
-    : planned.step);
+  const compileAction = (planned: PlannedAction, id: string, params: Record<string, unknown>) => ({
+    type: 'action',
+    id,
+    connector: planned.capability.connector,
+    action: capabilityActionName(planned.capability),
+    actionRef: actionRefFor(planned.capability.connector, capabilityActionName(planned.capability)),
+    params,
+    ...(Object.keys(planned.bindings).length > 0 ? { bindings: planned.bindings } : {}),
+  });
+  const compiledSteps = commandPlan
+    ? commandPlan.commands.map((block) => {
+        const planned = steps.find((step): step is PlannedAction => step.kind === 'action' && step.id === block.id);
+        if (!planned || planned.capability.id !== block.operationId) throw new Error('invalid_command_plan');
+        return compileAction(planned, block.id, block.input);
+      })
+    : steps.map((planned) => planned.kind === 'action'
+      ? compileAction(planned, planned.id, planned.params)
+      : planned.step);
   if (mode === 'recurring_workflow') {
     if (!trigger) throw new Error('workflow_trigger_required');
     return {
@@ -330,6 +339,7 @@ export async function planJevSelectedTools(input: {
   readOperationHints: readonly JevReadOperationHint[];
   actionHints: readonly JevActionHint[];
   actionInputValues?: readonly JevActionInputValue[];
+  requestPlan?: JevChatRequestPlan;
   sessionMemo?: AgentScopedContextMap;
   workflowPolicy?: AgentScopedContextMap;
   signal?: AbortSignal;
@@ -349,6 +359,7 @@ export async function planJevSelectedTools(input: {
   const userConfirmedPreferences = boundedAgentScopedContext(input.sessionMemo, input.workflowPolicy);
   const decisionPolicy = [
     DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
+    input.requestPlan?.request.context.recentTurns.length ? JEV_RECENT_CONVERSATION_POLICY : undefined,
     userConfirmedPreferences ? AGENT_SCOPED_CONTEXT_DECISION_POLICY : undefined,
   ].filter(Boolean).join('\n');
   const noCommitMessage = input.mode === 'manual_workflow'
@@ -523,6 +534,17 @@ export async function planJevSelectedTools(input: {
     if (Object.keys(questions).length > 0) {
       const state = {
         request: boundDecisionString(input.request, 2_000),
+        ...(input.requestPlan ? { request_plan: input.requestPlan } : {}),
+        command_plan_template: {
+          commands: entries.map(({ candidate, id }) => ({
+            id,
+            operationId: candidate.capability.id,
+            input: Object.fromEntries(candidate.capability.params
+              .filter(({ name, required }) => required || Object.hasOwn(candidate.params, name))
+              .map(({ name }) => [name, candidate.params[name] ?? null])),
+            dependsOn: [],
+          })),
+        },
         command_blocks: entries.map(({ candidate, id }) => ({
           step_id: id,
           capability_id: candidate.capability.id,
@@ -629,12 +651,21 @@ export async function planJevSelectedTools(input: {
       pendingIds.delete(next!.id);
     }
 
+    const commandPlan: JevCommandPlan = {
+      commands: ordered.map((planned) => ({
+        id: planned.id,
+        operationId: planned.capability.id,
+        input: { ...planned.params },
+        dependsOn: [...new Set(Object.values(planned.bindings).map(({ from }) => from))],
+      })),
+    };
     const command = workflowCommand(input.request, ordered, input.mode, input.trigger,
       input.mode === 'workflow_update'
         ? { workflowId: input.workflowId!.trim(), workflowVersion: input.workflowVersion! }
-        : undefined);
+        : undefined,
+      commandPlan);
     telemetry.plannedStepCount = ordered.length;
-    return finish({ kind: 'command', command });
+    return finish({ kind: 'command', command, commandPlan });
   } catch (error) {
     if (input.signal?.aborted) throw error;
     telemetry.providerRequestCount += decisionProviderRequestCountFromError(error) ?? 0;

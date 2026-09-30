@@ -26,7 +26,6 @@ function mockJevAnswers(
   request: MockJevRequest,
   input: {
     route: string;
-    mode: 'answer_only' | 'single_action' | 'multi_action';
     needsNaturalLanguageAnswer: boolean;
     selectTool?: (candidate: Record<string, unknown>) => boolean;
     selectChoice?: (id: string, question: MockJevQuestion) => string | undefined;
@@ -45,10 +44,8 @@ function mockJevAnswers(
       const criteria = question.criteria ?? {};
       const selected = id === 'route'
         ? input.route
-        : id === 'request_mode'
-          ? input.mode
-          : input.selectChoice?.(id, question)
-            ?? (Object.hasOwn(criteria, 'none') ? 'none' : Object.keys(criteria)[0] ?? 'none');
+        : input.selectChoice?.(id, question)
+          ?? (Object.hasOwn(criteria, 'none') ? 'none' : Object.keys(criteria)[0] ?? 'none');
       return [id, {
         type: 'choice', choice: selected,
         probabilities: { [selected]: 0.99 }, confidence: 0.99,
@@ -104,7 +101,7 @@ describe('Desktop workspace chat Jev routing', () => {
       events.push('jev');
       const request = JSON.parse(String(init?.body)) as MockJevRequest;
       const answers = mockJevAnswers(request, {
-        route: 'answer', mode: 'answer_only', needsNaturalLanguageAnswer: true,
+        route: 'answer', needsNaturalLanguageAnswer: true,
       });
       return new Response(JSON.stringify({ model: 'test-jev', answers }), {
         status: 200,
@@ -182,7 +179,7 @@ describe('Desktop workspace chat Jev routing', () => {
       const request = JSON.parse(String(init?.body)) as MockJevRequest;
       requests.push(request);
       const answers = mockJevAnswers(request, {
-        route: 'execution_enqueue_once', mode: 'single_action', needsNaturalLanguageAnswer: false,
+        route: 'execution_enqueue_once', needsNaturalLanguageAnswer: false,
         selectTool: candidate => candidate.capability_id === 'gmail.message.send',
         selectChoice: (id, question) => {
           const entries = Object.entries(question.criteria ?? {});
@@ -233,7 +230,6 @@ describe('Desktop workspace chat Jev routing', () => {
       expect(requests).toHaveLength(1);
       expect(requests[0]?.questions).toHaveProperty('route');
       expect(requests[0]?.questions).toHaveProperty('explicit_execution_now');
-      expect(requests[0]?.questions).toHaveProperty('request_mode');
       expect(requests[0]?.questions).toHaveProperty('needs_natural_language_answer');
       expect(Object.values(requests[0]?.questions ?? {}).some(question =>
         question.type === 'noul'
@@ -348,7 +344,7 @@ describe('Desktop workspace chat Jev routing', () => {
         requestBodies.push(requestBody);
         const request = JSON.parse(requestBody) as MockJevRequest;
         const answers = mockJevAnswers(request, {
-          route: 'workflow_update', mode: 'single_action', needsNaturalLanguageAnswer: false,
+          route: 'workflow_update', needsNaturalLanguageAnswer: false,
           selectTool: candidate => candidate.capability_id === 'transform.table_to_text',
           selectChoice: (id, question) => {
             if (id === 'explicit_workflow_update') return 'update_now';
@@ -453,7 +449,7 @@ describe('Desktop workspace chat Jev routing', () => {
         requestBodies.push(body);
         const request = JSON.parse(body) as MockJevRequest;
         const answers = mockJevAnswers(request, {
-          route: 'workflow_update', mode: 'single_action', needsNaturalLanguageAnswer: false,
+          route: 'workflow_update', needsNaturalLanguageAnswer: false,
           selectTool: candidate => candidate.capability_id === 'gmail.message.send',
           selectChoice: (id, question) => {
             if (id === 'explicit_workflow_update') return 'update_now';

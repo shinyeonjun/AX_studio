@@ -22,7 +22,7 @@ describe('runAxCommandChat bounded context', () => {
         const { state } = request;
         decisionStates.push(state);
         return { answers: {
-          ...parallelToolAnswersForTest(request, { mode: 'answer_only', needsNaturalLanguageAnswer: true }),
+          ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: true }),
           route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
         } };
       },

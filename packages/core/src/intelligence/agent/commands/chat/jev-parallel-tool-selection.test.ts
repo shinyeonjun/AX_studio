@@ -24,14 +24,13 @@ function bool(probability: number): DecisionAnswer {
 }
 
 describe('selectParallelTools', () => {
-  it('chooses the action count, answer requirement, and tools in one evaluation', async () => {
+  it('decides the answer requirement and each tool independently in one evaluation', async () => {
     const requests: Parameters<DecisionEngine['evaluate']>[0][] = [];
     const decisionEngine: DecisionEngine = {
       evaluate: async (request): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         return {
           answers: {
-            request_mode: choice('multi_action'),
             needs_natural_language_answer: bool(0.01),
             tool_0: bool(0.99),
             tool_1: bool(0.98),
@@ -52,25 +51,27 @@ describe('selectParallelTools', () => {
 
     expect(result).toMatchObject({
       kind: 'selected',
-      mode: 'multi_action',
       needsNaturalLanguageAnswer: false,
-      selectedToolIds: ['db.read', 'slack.search'],
+      operationDecisions: [
+        { id: 'db.read', selected: true },
+        { id: 'slack.search', selected: true },
+        { id: 'gmail.send', selected: false },
+      ],
       telemetry: { evaluationCalls: 1, providerRequestCount: 1, candidateCount: 3, estimatedRequestBytes: 1_234 },
     });
     expect(requests).toHaveLength(1);
     expect(Object.keys(requests[0]!.questions)).toEqual([
-      'request_mode', 'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2',
+      'needs_natural_language_answer', 'tool_0', 'tool_1', 'tool_2',
     ]);
     expect(requests[0]!.questions.tool_0?.type).toBe('boolean');
     expect(requests[0]!.questions.tool_1?.type).toBe('boolean');
   });
 
-  it('returns answer-only only when Jev selects no tools and requests a natural-language answer', async () => {
+  it('allows a natural-language response with no selected tools', async () => {
     const result = await selectParallelTools({
       decisionEngine: {
         evaluate: async () => ({
           answers: {
-            request_mode: choice('answer_only'),
             needs_natural_language_answer: bool(0.99),
             tool_0: bool(0.01), tool_1: bool(0.01), tool_2: bool(0.01),
           },
@@ -81,36 +82,42 @@ describe('selectParallelTools', () => {
     });
 
     expect(result).toMatchObject({
-      kind: 'reply', mode: 'answer_only', needsNaturalLanguageAnswer: true, selectedToolIds: [],
+      kind: 'selected',
+      needsNaturalLanguageAnswer: true,
+      operationDecisions: [
+        { id: 'db.read', selected: false },
+        { id: 'slack.search', selected: false },
+        { id: 'gmail.send', selected: false },
+      ],
     });
   });
 
-  it('fails closed when tool votes are uncertain, missing, invalid, or contradict the action count', async () => {
+  it('fails closed when tool votes are uncertain, missing, invalid, or neither answer nor tool is selected', async () => {
     const selection = (answers: Record<string, DecisionAnswer>) => selectParallelTools({
       decisionEngine: { evaluate: async () => ({ answers }) },
       userMessage: '검색해줘',
       candidates,
     });
     const uncertain = await selection({
-      request_mode: choice('multi_action'), needs_natural_language_answer: bool(0.01),
+      needs_natural_language_answer: bool(0.01),
       tool_0: bool(0.99), tool_1: bool(0.5), tool_2: bool(0.01),
     });
     const incomplete = await selection({
-      request_mode: choice('multi_action'), needs_natural_language_answer: bool(0.01), tool_0: bool(0.99),
+      needs_natural_language_answer: bool(0.01), tool_0: bool(0.99),
     });
     const invalid = await selection({
-      request_mode: choice('single_action'), needs_natural_language_answer: bool(0.01),
+      needs_natural_language_answer: bool(0.01),
       tool_0: bool(0.99), tool_1: bool(Number.NaN), tool_2: bool(0.01),
     });
-    const mismatch = await selection({
-      request_mode: choice('single_action'), needs_natural_language_answer: bool(0.01),
-      tool_0: bool(0.99), tool_1: bool(0.99), tool_2: bool(0.01),
+    const empty = await selection({
+      needs_natural_language_answer: bool(0.01),
+      tool_0: bool(0.01), tool_1: bool(0.01), tool_2: bool(0.01),
     });
 
     expect(uncertain).toMatchObject({ kind: 'clarify', reason: 'uncertain_tool_answers' });
     expect(incomplete).toMatchObject({ kind: 'clarify', reason: 'incomplete_tool_answers' });
     expect(invalid).toMatchObject({ kind: 'clarify', reason: 'invalid_tool_answers' });
-    expect(mismatch).toMatchObject({ kind: 'clarify', reason: 'tool_count_mismatch' });
+    expect(empty).toMatchObject({ kind: 'clarify', reason: 'no_answer_or_tool' });
   });
 });
 
@@ -146,7 +153,6 @@ describe('routeChatWithJev parallel selection', () => {
               return {
                 answers: {
                   route: choice('execution_enqueue_once'),
-                  request_mode: choice('multi_action'),
                   needs_natural_language_answer: bool(0.01),
                   tool_0: bool(0.99),
                   tool_1: bool(0.99),
@@ -181,7 +187,7 @@ describe('routeChatWithJev parallel selection', () => {
       });
       expect(requests).toHaveLength(2);
       expect(Object.keys(requests[0]!.questions)).toEqual(expect.arrayContaining([
-        'request_mode', 'needs_natural_language_answer', 'tool_0', 'tool_1',
+        'needs_natural_language_answer', 'tool_0', 'tool_1',
       ]));
       expect(Object.keys(requests[1]!.questions)).toEqual(['action_input_0', 'action_input_1']);
     } finally {
