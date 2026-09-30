@@ -337,7 +337,20 @@ describe('routeChatWithJev', () => {
     await expect(routeChatWithJev({
       decisionEngine: engineFor('answer', 0.96),
       userMessage: 'workflow와 일회 실행의 차이를 설명해줘',
-    })).resolves.toEqual({ kind: 'reply', route: 'answer', confidence: 0.96 });
+    })).resolves.toEqual({
+      kind: 'reply',
+      route: 'answer',
+      confidence: 0.96,
+      requestPlan: {
+        request: {
+          message: 'workflow와 일회 실행의 차이를 설명해줘',
+          features: {},
+          context: { recentTurns: [] },
+        },
+        response: { llmRequired: true },
+        operationDecisions: builtInTransformToolIds.map((id) => ({ id, selected: false })),
+      },
+    });
   });
 
   it('preserves failed provider request counts on route fallback', async () => {
@@ -1036,6 +1049,26 @@ describe('routeChatWithJev', () => {
           params: { query: { limit: 10 } },
         },
       },
+      requestPlan: {
+        request: {
+          message: '상품을 10개만 보여줘',
+          features: { result_limit_candidates: [10] },
+          context: { recentTurns: [] },
+        },
+        response: { llmRequired: false },
+        operationDecisions: [
+          { id: 'read:op_0', selected: true },
+          ...builtInTransformToolIds.map((id) => ({ id, selected: false })),
+        ],
+      },
+      commandPlan: {
+        commands: [{
+          id: 'operation_1',
+          operationId: 'openapi.catalog.listProducts',
+          input: { query: { limit: 10 } },
+          dependsOn: [],
+        }],
+      },
     });
   });
 
@@ -1210,6 +1243,18 @@ describe('routeChatWithJev', () => {
       plan: {
         capabilityId: 'openapi.orders.getOrder',
         requiredParameterPaths: ['pathParams.orderId'],
+      },
+      requestPlan: {
+        request: {
+          message: '주문 상세를 보여줘',
+          features: {},
+          context: { recentTurns: [] },
+        },
+        response: { llmRequired: false },
+        operationDecisions: [
+          { id: 'read:op_0', selected: true },
+          ...builtInTransformToolIds.map((id) => ({ id, selected: false })),
+        ],
       },
     });
   });
@@ -2333,7 +2378,20 @@ describe('routeChatWithJev', () => {
       userMessage: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
     });
 
-    expect(result).toEqual({ kind: 'reply', route: 'answer', confidence: 0.55 });
+    expect(result).toEqual({
+      kind: 'reply',
+      route: 'answer',
+      confidence: 0.55,
+      requestPlan: {
+        request: {
+          message: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
+          features: { result_limit_candidates: [5] },
+          context: { recentTurns: [] },
+        },
+        response: { llmRequired: true },
+        operationDecisions: builtInTransformToolIds.map((id) => ({ id, selected: false })),
+      },
+    });
   });
 
   it('requires explicit execution approval after the first-pass tool selection', async () => {
