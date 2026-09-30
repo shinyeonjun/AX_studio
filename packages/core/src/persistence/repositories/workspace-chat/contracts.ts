@@ -29,6 +29,7 @@ export interface WorkspaceChatMessage {
   approval?: WorkspaceChatApproval;
   /** Safe metadata for a generated PDF; the host keeps the physical artifact path. */
   generatedPdf?: WorkspaceChatGeneratedPdf;
+  generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
   /** Bounded table shown in this reply, for immediate follow-up operations. */
   readResult?: TableArtifact;
 }
@@ -63,6 +64,12 @@ export const WorkspaceChatGeneratedPdfSchema = z.object({
   size: z.number().int().nonnegative(),
   mimeType: z.literal('application/pdf'),
 });
+
+export const WorkspaceChatGeneratedSpreadsheetSchema = WorkspaceChatGeneratedPdfSchema.extend({
+  fileName: WorkspaceChatGeneratedPdfSchema.shape.fileName.refine(value => value.toLowerCase().endsWith('.xlsx')),
+  mimeType: z.literal('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+});
+export type WorkspaceChatGeneratedSpreadsheet = z.infer<typeof WorkspaceChatGeneratedSpreadsheetSchema>;
 
 export const WorkspaceChatReadResultSchema = TableArtifactSchema.pick({
   id: true,
@@ -117,6 +124,7 @@ export const workspaceChatMessageSchema = z.object({
   presentations: z.array(AxUiPresentationSchema).max(4).optional(),
   approval: WorkspaceChatApprovalSchema.optional(),
   generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
+  generatedSpreadsheet: WorkspaceChatGeneratedSpreadsheetSchema.optional(),
   readResult: WorkspaceChatReadResultSchema.optional(),
 }).superRefine((message, context) => {
   if (message.approval && message.kind !== 'execution_result') {
@@ -125,6 +133,9 @@ export const workspaceChatMessageSchema = z.object({
       path: ['approval'],
       message: 'approval은 실행 결과 메시지에만 사용할 수 있습니다.',
     });
+  }
+  if (message.generatedSpreadsheet && message.kind !== 'execution_result') {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['generatedSpreadsheet'], message: 'Excel 산출물은 실행 결과에만 표시합니다.' });
   }
   if (message.generatedPdf && message.kind !== 'execution_result') {
     context.addIssue({

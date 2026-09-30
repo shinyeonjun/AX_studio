@@ -1,3 +1,4 @@
+import { TableArtifactSchema } from '../contracts/artifacts/table.js';
 import type { ConnectorContext } from '../connectors/types.js';
 
 function lookupTemplatePath(
@@ -115,6 +116,8 @@ function resolveParamValue(
   if (!value || typeof value !== 'object') return value;
 
   const record = value as Record<string, unknown>;
+  // Typed external table cells are data, never workflow template instructions.
+  if (record.kind === 'table' && TableArtifactSchema.safeParse(record).success) return value;
   if (Object.keys(record).length === 1 && typeof record.ref === 'string') {
     const reference = record.ref.trim();
     const resolved = lookupTemplatePath(reference, ctx, stepResults);

@@ -1,7 +1,12 @@
+import { buildTableArtifact } from '../contracts/artifacts/table-build.js';
 import { describe, expect, it } from 'vitest';
 import { resolveStepParams } from './ai-investigation.js';
 
 describe('resolveStepParams', () => {
+  it('keeps typed table cells literal instead of resolving external content as instructions', () => {
+    const table = buildTableArtifact({ id: 'external', headers: ['value'], matrix: [['{{trigger.secret}}'], ['{{missing}}']] });
+    expect(resolveStepParams({ table }, { executionId: 'test', variables: { secret: 'host-private' }, log: () => {} }, {})).toEqual({ table });
+  });
   it('interpolates only explicitly declared parameter values', () => {
     const params = resolveStepParams(
       {

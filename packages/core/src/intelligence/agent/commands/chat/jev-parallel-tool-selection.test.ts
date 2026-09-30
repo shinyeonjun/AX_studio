@@ -149,6 +149,7 @@ describe('routeChatWithJev parallel selection', () => {
         decisionEngine: {
           evaluate: async (request): Promise<DecisionEvaluationResult> => {
             requests.push(request);
+            if (request.questions.requirements) return { answers: { requirements: choice('met'), scope: choice('preserved') } };
             if (request.questions.route) {
               return {
                 answers: {
@@ -183,9 +184,9 @@ describe('routeChatWithJev parallel selection', () => {
             ],
           },
         },
-        telemetry: { evaluationCalls: 2 },
+        telemetry: { evaluationCalls: 3 },
       });
-      expect(requests).toHaveLength(2);
+      expect(requests).toHaveLength(3);
       expect(Object.keys(requests[0]!.questions)).toEqual(expect.arrayContaining([
         'needs_natural_language_answer', 'tool_0', 'tool_1',
       ]));

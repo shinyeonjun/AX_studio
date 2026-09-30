@@ -1,3 +1,4 @@
+import { planPreviousTableExport } from './jev-table-export.js';
 import type { ChatMessage } from '../../model/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../connectors/failure-kind.js';
 import type { AxCommandChatOptions } from './contracts.js';
@@ -347,6 +348,7 @@ export async function runCommandChatLoop({
       ...(plan.status === 'transformed' ? { rowCount: plan.table.rows.length } : {}),
     });
     if (plan.status === 'transformed') return { table: plan.table };
+    if (plan.status === 'export_xlsx') return { reply: '조회한 표를 확인한 뒤 이 표를 Excel로 저장해 달라고 요청해 주세요. 아직 파일은 만들지 않았습니다.' };
     if (plan.status === 'clarify') return { reply: plan.message };
     const unavailableWork = [
       ...(request && request !== 'none' && request !== 'auto' ? ['필터·정렬'] : []),
@@ -523,6 +525,7 @@ export async function runCommandChatLoop({
         resolveWorkspaceSources: options.resolveWorkspaceSources,
         abortSignal: signal,
       });
+      if (jevRoute.presentation) options.onPresentation?.(jevRoute.presentation);
       jevTelemetry = jevRoute.telemetry;
       jevRouteOutcome = jevRoute.kind === 'fallback'
         ? `fallback:${jevRoute.reason}`
@@ -628,6 +631,24 @@ export async function runCommandChatLoop({
         status: transformed.status,
         ...(transformed.status === 'transformed' ? { rowCount: transformed.table.rows.length } : {}),
       });
+      if (transformed.status === 'export_xlsx') {
+        const exportPlan = await planPreviousTableExport({ table: previousReadResult,
+          request: options.userMessage, decisionEngine: options.decisionEngine, signal });
+        appendAppLog('info', 'Previous-table export plan checked.', { ...requestContext,
+          event: 'jev_chat_table_export_plan', evaluationCalls: exportPlan.evaluationCalls,
+          providerRequestCount: exportPlan.providerRequestCount, requestBytes: exportPlan.requestBytes,
+          usage: exportPlan.usage, accepted: Boolean(exportPlan.command) });
+        if (!exportPlan.command) return exportPlan.message!;
+        options.onPresentation?.({ title: 'Excel 저장 계획 검사', inputMode: 'individual', inputs: [], actions: [],
+          blocks: [{ type: 'decision', label: '입력·요구 충족·범위', value: 'Host 입력 검사 및 Jev 검토 통과' },
+            { type: 'steps', title: '의존 순서', items: ['현재 표 → Excel 산출물 저장'] },
+            { type: 'note', text: '실행 완료가 아닙니다. 현재 표만 저장하며 원본 재조회나 외부 발송은 하지 않습니다.' }] });
+        const result = await executeScopedChatCommand(exportPlan.command);
+        signal.throwIfAborted();
+        publishResult(exportPlan.command.name, result, exportPlan.command);
+        return result.status === 'queued' ? '현재 표의 Excel 저장을 실행 큐에 등록했습니다. 파일 생성 결과는 실행 결과에서 확인합니다.'
+          : 'Excel 저장을 시작하지 못했습니다. 실행 결과를 확인해 주세요.';
+      }
       if (transformed.status === 'clarify') return transformed.message;
       if (transformed.status === 'unavailable') {
         return '이전 결과는 유지했지만 Jev가 변환 조건을 확인하지 못해 바꾸지 않았습니다. 조건을 조금 더 구체적으로 말해 주세요.';

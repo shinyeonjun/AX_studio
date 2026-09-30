@@ -4,6 +4,7 @@ import {
   AxUiPresentationSchema,
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
+  WorkspaceChatGeneratedSpreadsheetSchema,
   WorkspaceChatReadResultSchema,
   type WorkspaceChatMessage,
 } from '@ax-studio/core';
@@ -103,6 +104,11 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (generatedPdf?.success && record.kind !== 'execution_result') {
       throw new Error(`대화 ${index + 1}번째 생성 PDF 정보는 실행 결과 메시지에만 사용할 수 있습니다.`);
     }
+    const generatedSpreadsheet = record.generatedSpreadsheet === undefined ? undefined
+      : WorkspaceChatGeneratedSpreadsheetSchema.safeParse(record.generatedSpreadsheet);
+    if (generatedSpreadsheet && (!generatedSpreadsheet.success || record.kind !== 'execution_result')) {
+      throw new Error(`대화 ${index + 1}번째 Excel 산출물 정보가 올바르지 않습니다.`);
+    }
     const readResult = record.readResult === undefined
       ? undefined
       : WorkspaceChatReadResultSchema.safeParse(record.readResult);
@@ -129,6 +135,7 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(presentations ? { presentations: presentations.data } : {}),
       ...(approval ? { approval: approval.data } : {}),
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
+      ...(generatedSpreadsheet?.success ? { generatedSpreadsheet: generatedSpreadsheet.data } : {}),
       ...(readResult ? { readResult: readResult.data } : {}),
     };
   });

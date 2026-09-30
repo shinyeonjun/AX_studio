@@ -25,6 +25,7 @@ export type {
   WorkspaceChatMessage,
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
+  WorkspaceChatGeneratedSpreadsheet,
   WorkspaceChatReadResult,
   WorkspaceChatRecord,
   WorkspaceChatListRecord,
@@ -32,6 +33,7 @@ export type {
 export {
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
+  WorkspaceChatGeneratedSpreadsheetSchema,
   WorkspaceChatReadResultSchema,
 } from './persistence/repositories/workspace-chat-repository.js';
 export { ArtifactStore, type StoredArtifact } from './persistence/artifact-store.js';

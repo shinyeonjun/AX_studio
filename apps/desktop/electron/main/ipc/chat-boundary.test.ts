@@ -367,6 +367,16 @@ describe('workspace chat boundary', () => {
     }])).toThrow();
   });
 
+  it('preserves only safe Excel result metadata', () => {
+    const generatedSpreadsheet = { artifactId: 'art_xlsx_1', fileName: 'table.xlsx', size: 123,
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+    const message = { role: 'assistant', content: '저장 완료', kind: 'execution_result', executionId: 'exec_xlsx', generatedSpreadsheet };
+    expect(normalizeChatMessages([message])[0]?.generatedSpreadsheet).toEqual(generatedSpreadsheet);
+    expect(() => normalizeChatMessages([{ ...message, kind: undefined }])).toThrow();
+    expect(() => normalizeChatMessages([{ ...message, generatedSpreadsheet: { ...generatedSpreadsheet, fileName: '../table.xlsx' } }])).toThrow();
+    expect(() => normalizeChatMessages([{ ...message, generatedSpreadsheet: { ...generatedSpreadsheet, mimeType: 'application/pdf' } }])).toThrow();
+  });
+
   it('persists only a bounded structured table on assistant replies', () => {
     const readResult = {
       id: 'products',

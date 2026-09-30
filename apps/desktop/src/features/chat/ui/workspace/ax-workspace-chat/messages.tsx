@@ -45,6 +45,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         status={message.executionStatus}
         approval={message.approval}
         generatedPdf={message.generatedPdf}
+        generatedSpreadsheet={message.generatedSpreadsheet}
         busy={busy}
         onApprove={onApproveApproval}
         onReject={onRejectApproval}

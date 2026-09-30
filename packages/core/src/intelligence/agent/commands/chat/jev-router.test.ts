@@ -171,7 +171,9 @@ describe('routeChatWithJev', () => {
       });
 
       for (const [questionId, question] of Object.entries(request.questions)) {
-        if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
+        if (questionId === 'requirements') answers.requirements = choiceAnswer('met');
+        else if (questionId === 'scope') answers.scope = choiceAnswer('preserved');
+        else if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
         else if (questionId === 'explicit_execution_now') answers.explicit_execution_now = choiceAnswer('execute_now');
         else if (question.type === 'noul') {
           const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
@@ -216,7 +218,7 @@ describe('routeChatWithJev', () => {
           }
         }
       }
-      expect(result.telemetry?.evaluationCalls).toBe(1);
+      expect(result.telemetry?.evaluationCalls).toBe(2);
       expect(result.telemetry?.providerRequestCount).toBe(requestBytes.length);
       expect(Math.max(...requestBytes)).toBeLessThanOrEqual(65_536);
       expect(result.telemetry?.estimatedRequestBytes).toBe(requestBytes.reduce((total, bytes) => total + bytes, 0));
@@ -2150,6 +2152,7 @@ describe('routeChatWithJev', () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          if (request.questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           decisionStates.push(request.state);
           if (request.questions.route) {
             return {
@@ -2218,7 +2221,7 @@ describe('routeChatWithJev', () => {
         },
       },
     });
-    expect(result.telemetry).toMatchObject({ evaluationCalls: 1, providerRequestCount: 2 });
+    expect(result.telemetry).toMatchObject({ evaluationCalls: 2, providerRequestCount: 3 });
     expect(decisionStates[0]).toMatchObject({
       context: {
         user_confirmed_preferences: {
@@ -2315,6 +2318,7 @@ describe('routeChatWithJev', () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          if (request.questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           if (request.questions.route) {
             return { answers: {
               ...parallelToolAnswersForTest(request, {
@@ -2453,7 +2457,7 @@ describe('routeChatWithJev', () => {
         kind: 'command',
         command: { name: 'execution.enqueue_once', args: { steps: [{ connector: 'test', action: 'no_input_action', params: {} }] } },
       });
-      expect(requests).toHaveLength(1);
+      expect(requests).toHaveLength(2);
       expect(requests[0]!.questions).toHaveProperty('needs_natural_language_answer');
       expect(Object.keys(requests[0]!.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     } finally {
@@ -2874,6 +2878,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const { state, questions } = request;
+          if (questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           if (questions.route) return {
             answers: {
               ...parallelToolAnswersForTest(request, {

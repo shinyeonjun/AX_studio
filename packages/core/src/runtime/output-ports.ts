@@ -10,7 +10,9 @@ import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/
 import { ArtifactCompletenessSchema } from '../contracts/artifacts/completeness.js';
 import { tableArtifactFromMatrix, tableArtifactFromRows } from '../contracts/artifacts/table-build.js';
 
-function outputCandidate(port: string, data: unknown, outputCount: number): unknown {
+function outputCandidate(port: string, data: unknown, outputCount: number, type: ContractTypeName): unknown {
+  // A direct typed table owns its rows field; it is not a port envelope named rows.
+  if (outputCount === 1 && type === 'TableArtifact' && TableArtifactSchema.safeParse(data).success) return data;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
   const record = data as Record<string, unknown>;
   if (Object.hasOwn(record, port)) return record[port];
@@ -136,6 +138,6 @@ export function materializeStepOutputs(
   const entries = Object.entries(outputContracts);
   return Object.fromEntries(entries.map(([port, type]) => [
     port,
-    normalizeOutput(type, outputCandidate(port, data, entries.length), stepId, port, data),
+    normalizeOutput(type, outputCandidate(port, data, entries.length, type), stepId, port, data),
   ]));
 }

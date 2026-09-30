@@ -82,7 +82,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   );
   const routeCatalog: Record<string, DecisionInstruction> = readRecovery
     ? { answer: JEV_CHAT_ROUTE_CRITERIA.answer, capability_read: JEV_CHAT_ROUTE_CRITERIA.capability_read }
-    : JEV_CHAT_ROUTE_CRITERIA;
+    : { ...JEV_CHAT_ROUTE_CRITERIA };
   if (!input.previousReadResult || readRecovery) delete routeCatalog.previous_result;
   let telemetry: JevChatRouterTelemetry | undefined;
   let evaluationCalls = 0;
@@ -412,6 +412,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       };
       const planTelemetry: JevChatRouterTelemetry = {
         ...baseTelemetry,
+        estimatedRequestBytes: baseTelemetry.estimatedRequestBytes + plan.telemetry.estimatedRequestBytes,
+        inputTokens: baseTelemetry.inputTokens === undefined && plan.telemetry.inputTokens === undefined ? undefined : (baseTelemetry.inputTokens ?? 0) + (plan.telemetry.inputTokens ?? 0),
+        outputTokens: baseTelemetry.outputTokens === undefined && plan.telemetry.outputTokens === undefined ? undefined : (baseTelemetry.outputTokens ?? 0) + (plan.telemetry.outputTokens ?? 0),
         evaluationCalls: (telemetry?.evaluationCalls ?? 1) + plan.telemetry.calls,
         providerRequestCount: (telemetry?.providerRequestCount ?? telemetry?.evaluationCalls ?? 1)
           + plan.telemetry.providerRequestCount,
@@ -436,6 +439,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         ...result,
         ...(requestPlan ? { requestPlan } : {}),
         telemetry: planTelemetry,
+        ...(plan.presentation ? { presentation: plan.presentation } : {}),
       };
     };
 

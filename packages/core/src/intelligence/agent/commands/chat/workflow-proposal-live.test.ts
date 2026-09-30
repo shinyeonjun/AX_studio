@@ -221,6 +221,7 @@ describe('Desktop chat recurring workflow proposal', () => {
     let selectedRead = false;
     const decisionEngine: DecisionEngine = {
       evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        if (request.questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
         if (request.questions.route) {
           return {
             answers: {

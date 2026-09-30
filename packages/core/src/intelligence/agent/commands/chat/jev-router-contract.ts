@@ -1,3 +1,4 @@
+import type { AxUiPresentation } from '../schema.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type { AxCommand } from '../schema.js';
 import type { AgentScopedContextMap } from '../../scoped-context.js';
@@ -108,6 +109,7 @@ type JevChatRouterResultValue =
     };
 
 export type JevChatRouterResult = JevChatRouterResultValue & {
+  presentation?: AxUiPresentation;
   telemetry?: JevChatRouterTelemetry;
   requestPlan?: JevChatRequestPlan;
 };

@@ -1,3 +1,4 @@
+import { WorkspaceChatGeneratedSpreadsheetSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { formatApprovalTitle } from '../approval-display.js';
@@ -79,6 +80,9 @@ export function publishExecutionResultToWorkspaceChat(
   const workflowName = executionIr?.name;
   const inlineApproval = inlineApprovalForExecution(store, result, execution, executionIr);
   const generatedPdf = generatedPdfFromExecutionLog(result.log);
+  const spreadsheetEntry = result.status === 'success' ? [...result.log].reverse().find(entry => entry.code === 'xlsx_generated') : undefined;
+  const spreadsheet = WorkspaceChatGeneratedSpreadsheetSchema.safeParse(spreadsheetEntry?.data);
+
 
   const updated = store.upsertWorkspaceChatExecutionResult(target, {
     role: 'assistant',
@@ -92,6 +96,7 @@ export function publishExecutionResultToWorkspaceChat(
     }),
     ...(inlineApproval ? { approval: inlineApproval } : {}),
     ...(generatedPdf ? { generatedPdf } : {}),
+    ...(spreadsheet.success ? { generatedSpreadsheet: spreadsheet.data } : {}),
   });
   if (!updated) return null;
   return {

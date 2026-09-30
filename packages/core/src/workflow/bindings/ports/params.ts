@@ -1,3 +1,4 @@
+import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
 import type { Step } from '../../schema.js';
 
 export function isConcreteParamValue(value: unknown): boolean {
@@ -31,5 +32,6 @@ export function hasConcreteParamForPort(
   if (inputPort === 'source') {
     return isConcreteParamValue(value) || Boolean(step.params?.file) || isDeferredParamValue(value);
   }
-  return isConcreteParamValue(value) || isDeferredParamValue(value);
+  return isConcreteParamValue(value) || isDeferredParamValue(value)
+    || (inputPort === 'table' && TableArtifactSchema.safeParse(value).success);
 }

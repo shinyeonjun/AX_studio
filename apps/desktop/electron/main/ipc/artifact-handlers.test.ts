@@ -42,6 +42,28 @@ describe('generated PDF export boundary', () => {
     vi.clearAllMocks();
   });
 
+  it('exports an Excel artifact through the same host path/hash boundary, with cancellation and no overwrite', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-xlsx-export-')); roots.push(root);
+    const sourcePath = join(root, 'table.xlsx'); const destination = join(root, 'saved.xlsx');
+    const bytes = Buffer.from('synthetic xlsx boundary bytes'); writeFileSync(sourcePath, bytes);
+    const stored = artifact({ fileName: 'table.xlsx', storedPath: sourcePath, size: bytes.length,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const copy = vi.fn(async (source: string, dest: string) => { copyFileSync(source, dest, 1); });
+    const deps: GeneratedArtifactExportDependencies = { getArtifact: () => stored,
+      resolveSourcePath: value => resolveGeneratedArtifactSourcePath(root, value.storedPath, value.size, value.sha256),
+      showSaveDialog: async () => ({ canceled: false, filePath: destination }), copyFile: copy };
+    expect(await exportGeneratedArtifact('art_xlsx', deps)).toEqual({ ok: true, fileName: 'saved.xlsx' });
+    expect(readFileSync(destination)).toEqual(bytes);
+    expect((await exportGeneratedArtifact('art_xlsx', deps)).ok).toBe(false);
+    const count = copy.mock.calls.length;
+    expect(await exportGeneratedArtifact('art_xlsx', { ...deps, showSaveDialog: async () => ({ canceled: true }) })).toEqual({ ok: false, canceled: true });
+    expect(copy).toHaveBeenCalledTimes(count);
+    writeFileSync(sourcePath, 'tampered');
+    expect((await exportGeneratedArtifact('art_xlsx', deps)).ok).toBe(false);
+    expect(copy).toHaveBeenCalledTimes(count);
+  });
+
   it('copies a validated PDF through the user-selected destination without returning paths', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-pdf-export-'));
     roots.push(root);
@@ -98,19 +120,19 @@ describe('generated PDF export boundary', () => {
 
     await expect(exportGeneratedArtifact('', deps)).resolves.toEqual({
       ok: false,
-      error: 'PDF 결과물 ID가 필요합니다.',
+      error: '생성 결과물 ID가 필요합니다.',
     });
     await expect(exportGeneratedArtifact('missing', deps)).resolves.toEqual({
       ok: false,
-      error: 'PDF 결과물을 찾을 수 없습니다.',
+      error: '생성 결과물을 찾을 수 없습니다.',
     });
     await expect(exportGeneratedArtifact('text', deps)).resolves.toEqual({
       ok: false,
-      error: 'PDF 결과물 형식이 올바르지 않습니다.',
+      error: '생성 결과물 형식이 올바르지 않습니다.',
     });
     await expect(exportGeneratedArtifact('../escaped', deps)).resolves.toEqual({
       ok: false,
-      error: 'PDF 결과물을 찾을 수 없습니다.',
+      error: '생성 결과물을 찾을 수 없습니다.',
     });
     expect(showSaveDialog).not.toHaveBeenCalled();
     expect(resolveSourcePath).not.toHaveBeenCalled();
@@ -130,7 +152,7 @@ describe('generated PDF export boundary', () => {
 
     const result = await exportGeneratedArtifact('art_pdf_1', deps);
 
-    expect(result).toEqual({ ok: false, error: 'PDF 저장에 실패했습니다.' });
+    expect(result).toEqual({ ok: false, error: '결과물 저장에 실패했습니다.' });
     expect(JSON.stringify(result)).not.toContain(sourcePath);
     expect(JSON.stringify(result)).not.toContain(destinationPath);
   });
@@ -186,7 +208,7 @@ describe('generated PDF export boundary', () => {
 
     await expect(saveGeneratedArtifactToFolder('art_pdf_1', deps)).resolves.toEqual({
       ok: false,
-      error: '같은 이름의 PDF가 이미 있어 덮어쓰지 않았습니다.',
+      error: '같은 이름의 파일이 이미 있어 덮어쓰지 않았습니다.',
     });
   });
 
@@ -202,7 +224,7 @@ describe('generated PDF export boundary', () => {
 
     await expect(exportGeneratedArtifact('art_pdf_1', deps)).resolves.toEqual({
       ok: false,
-      error: '같은 이름의 PDF가 이미 있어 덮어쓰지 않았습니다.',
+      error: '같은 이름의 파일이 이미 있어 덮어쓰지 않았습니다.',
     });
   });
 });

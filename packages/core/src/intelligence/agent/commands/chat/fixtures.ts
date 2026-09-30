@@ -46,6 +46,10 @@ export function parallelToolAnswersForTest(
     selectedProbability?: number;
   },
 ): Record<string, DecisionAnswer> {
+  if (request.questions.requirements && request.questions.scope) return {
+    requirements: { type: 'choice', choice: 'met', probabilities: { met: 1 } },
+    scope: { type: 'choice', choice: 'preserved', probabilities: { preserved: 1 } },
+  };
   const answers: Record<string, DecisionAnswer> = {
     needs_natural_language_answer: {
       type: 'boolean',

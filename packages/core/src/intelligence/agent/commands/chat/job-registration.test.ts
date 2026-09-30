@@ -44,7 +44,7 @@ describe('runAxCommandChat recurring job registration', () => {
     });
 
     expect(proposed).toContain('초안을 확인한 뒤 저장할 수 있습니다');
-    expect(presentations[0]?.actions[0]).toMatchObject({ purpose: 'confirm_job', value: JOB_COMMIT_CONFIRM_VALUE });
+    expect(presentations.find(p => p.actions.some(a => a.purpose === 'confirm_job'))?.actions[0]).toMatchObject({ purpose: 'confirm_job', value: JOB_COMMIT_CONFIRM_VALUE });
     expect(store.listWorkflows()).toHaveLength(0);
     expect(seen).toHaveLength(0);
 
@@ -57,7 +57,7 @@ describe('runAxCommandChat recurring job registration', () => {
       userMessage: JOB_COMMIT_CONFIRM_VALUE,
       workspaceSessionId: chat.id,
       allowJobCommit: true,
-      jobCommitConfirmationToken: presentations[0]?.actions[0]?.id.split(':')[1],
+      jobCommitConfirmationToken: presentations.find(p => p.actions.some(a => a.purpose === 'confirm_job'))?.actions[0]?.id.split(':')[1],
     });
 
     expect(committed).toContain('반복 업무를 저장하고 활성화했습니다');
