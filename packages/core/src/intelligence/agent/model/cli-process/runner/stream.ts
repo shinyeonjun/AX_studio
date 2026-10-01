@@ -1,9 +1,21 @@
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
+import type { Writable } from 'node:stream';
 import { commandInvocation } from '../environment.js';
 import type { CommandResult } from '../contracts.js';
 import { commandArgumentLimitError, MAX_STREAM_OUTPUT_BYTES } from './limits.js';
 import { commandProcesses, terminateOwnedChild } from './ownership.js';
+
+// These module-level handlers retain no invocation options, buffers or callbacks.
+function ignoreDetachedStdinError(): void {}
+function releaseDetachedStdinError(this: Writable): void {
+  this.removeListener('error', ignoreDetachedStdinError);
+}
+function protectDetachedStdin(stdin: Writable | null): void {
+  if (!stdin || stdin.closed) return;
+  stdin.on('error', ignoreDetachedStdinError);
+  stdin.once('close', releaseDetachedStdinError);
+}
 
 export interface RunCommandStreamingOptions {
   input?: string;
@@ -59,6 +71,9 @@ export function runCommandStreaming(
       clearTimeout(escalationTimer);
       clearTimeout(terminationTimer);
       options.abortSignal?.removeEventListener('abort', onAbort);
+      if ((error as NodeJS.ErrnoException | undefined)?.code === 'command_termination_failed') {
+        protectDetachedStdin(child.stdin);
+      }
       child.stdin?.removeListener('error', onStdinError);
       child.stdout?.removeListener('data', onStdoutData);
       child.stderr?.removeListener('data', onStderrData);

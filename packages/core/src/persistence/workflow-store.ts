@@ -86,8 +86,8 @@ export class WorkflowStore {
   }
 
   isWorkflowSnapshotCurrent(workflow: WorkflowIR): boolean {
-    if (!workflow.id) return true;
     const snapshot = this.workflowSnapshotGenerations.get(workflow);
+    if (!workflow.id) return snapshot === undefined;
     // All host writers use this store. Reads capture a token and successful
     // deletion retires it synchronously, including while async callers wait.
     return snapshot?.workflowId === workflow.id
@@ -97,6 +97,9 @@ export class WorkflowStore {
 
   private rememberWorkflowSnapshot<T extends WorkflowIR | null>(workflow: T): T {
     if (workflow?.id) {
+      // An issued object keeps its creation owner for its entire lifetime.
+      // Saving that object again may create a row, but cannot renew its authority.
+      if (this.workflowSnapshotGenerations.has(workflow)) return workflow;
       const key = workflowRepo.getWorkflowSnapshotGenerationKey(workflow);
       const generation = key ? this.rememberWorkflowGeneration(workflow.id, key) : this.getWorkflowGeneration(workflow.id);
       if (generation) this.workflowSnapshotGenerations.set(workflow, generation);

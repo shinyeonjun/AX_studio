@@ -30,6 +30,44 @@ afterEach(() => {
 });
 
 describe('command resource cleanup', () => {
+  it('shares the detached error sink across invocations without retaining line callbacks', async () => {
+    vi.useFakeTimers();
+    let sink: Function | undefined;
+    for (let index = 0; index < 3; index++) {
+      const onStdoutLine = vi.fn();
+      const result = start({ timeoutMs: 10, onStdoutLine }).catch(error => error);
+      await vi.advanceTimersByTimeAsync(5_010);
+      expect(await result).toMatchObject({ code: 'command_termination_failed' });
+      const listener = state.child.stdin.listeners('error')[0];
+      if (sink) expect(listener).toBe(sink);
+      sink = listener;
+      expect(listener.name).toBe('ignoreDetachedStdinError');
+      expect(state.child.stdout.listeners('data')).toEqual([]);
+      state.child.stdout.emit('data', Buffer.from('late caller data\n'));
+      expect(onStdoutLine).not.toHaveBeenCalled();
+      state.child.emit('close', null, 'SIGKILL');
+      expect(() => state.child.stdin.emit('error', Object.assign(new Error('late pipe error'), { code: 'EPIPE' }))).not.toThrow();
+      state.child.stdin.emit('close');
+      expect(state.child.stdin.listeners('error')).toEqual([]);
+      expect(state.child.stdin.listeners('close')).toEqual([]);
+      expect(state.active.size).toBe(0);
+    }
+  });
+
+  it('contains late stdin errors while an unacknowledged child is still owned', async () => {
+    vi.useFakeTimers();
+    const result = start({ timeoutMs: 10, input: 'synthetic input' }).catch(error => error);
+    await vi.advanceTimersByTimeAsync(5_010);
+    expect(await result).toMatchObject({ code: 'command_termination_failed' });
+    expect(state.active.size).toBe(1);
+    expect(() => state.child.stdin.emit('error', Object.assign(new Error('late pipe error'), { code: 'EPIPE' }))).not.toThrow();
+    state.child.emit('close', null, 'SIGKILL');
+    state.child.stdin.emit('close');
+    expect(state.active.size).toBe(0);
+    expect(state.child.stdin.listenerCount('error')).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('terminates a live child when writing input throws synchronously', async () => {
     vi.useFakeTimers();
     const result = start({}, new Error('synthetic_stdin_failure')).catch(error => error);
@@ -83,12 +121,15 @@ describe('command resource cleanup', () => {
     expect(await result).toMatchObject({ code: 'command_termination_failed' });
     expect(state.child.stdout.listenerCount('data')).toBe(0);
     expect(state.child.stderr.listenerCount('data')).toBe(0);
-    expect(state.child.stdin.listenerCount('error')).toBe(0);
+    expect(state.child.stdin.listenerCount('error')).toBe(1);
+    expect(state.child.stdin.listeners('error')[0].name).toBe('ignoreDetachedStdinError');
     expect(getEventListeners(signal, 'abort')).toHaveLength(0);
     expect(vi.getTimerCount()).toBe(0);
     // Ownership remains until close; disposing callbacks must not lose the child.
     expect(state.active.size).toBe(1);
     state.child.emit('close', null, 'SIGKILL');
+    state.child.stdin.emit('close');
+    expect(state.child.stdin.listenerCount('error')).toBe(0);
     expect(state.active.size).toBe(0);
   });
 });

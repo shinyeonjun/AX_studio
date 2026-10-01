@@ -111,10 +111,20 @@ export class Scheduler {
 
   private enqueueDueOccurrences(now: Date): { pending: PendingOccurrence[]; fired: Record<string, string> } {
     let pending = this.pendingOccurrences();
+    const unproven = pending.filter(entry => typeof entry.workflowGeneration !== 'string' || !entry.workflowGeneration.trim());
+    if (unproven.length > 0) {
+      // Old pending settings had neither an FK nor a creation proof. A matching
+      // ID/version/trigger cannot establish ownership after an upgrade.
+      pending = pending.filter(entry => typeof entry.workflowGeneration === 'string' && entry.workflowGeneration.trim());
+      const diagnostic = { code: 'scheduler_pending_generation_missing', at: now.toISOString(), count: unproven.length,
+        message: '생성 세대를 확인할 수 없는 과거 예약 실행을 건너뛰었습니다. 필요한 과거 작업은 직접 실행해 주세요.' };
+      this.store.setSetting('scheduler.lastDiscardedPending', diagnostic);
+      console.warn('[scheduler] ' + diagnostic.message, { code: diagnostic.code, count: diagnostic.count });
+      this.savePendingOccurrences(pending);
+    }
     const pendingKeys = new Set(pending.map((entry) => `${entry.workflowId}:${entry.occurrenceKey}`));
     const fired = this.lastFired();
     const additions: PendingOccurrence[] = [];
-    const generations = new Map<string, string>();
     const currentMinute = new Date(now);
     currentMinute.setSeconds(0, 0);
     const observed = this.lastObservedAt();
@@ -126,7 +136,7 @@ export class Scheduler {
     for (const { id, workflow: ir } of this.store.listActiveWorkflowDefinitions()) {
       if (!ir?.trigger) continue;
       const workflowGeneration = this.store.getWorkflowSnapshotGeneration(ir)?.key;
-      if (workflowGeneration) generations.set(id, workflowGeneration);
+      if (!workflowGeneration) continue;
 
       let due = false;
       let triggerType: PendingOccurrence['triggerType'] = 'schedule';
@@ -160,14 +170,7 @@ export class Scheduler {
       }
     }
 
-    let upgraded = false;
-    pending = pending.map((entry) => {
-      const workflowGeneration = generations.get(entry.workflowId);
-      if (entry.workflowGeneration !== undefined || !workflowGeneration) return entry;
-      upgraded = true;
-      return { ...entry, workflowGeneration };
-    });
-    if (additions.length > 0 || upgraded) {
+    if (additions.length > 0) {
       pending = [...pending, ...additions];
       this.savePendingOccurrences(pending);
     }

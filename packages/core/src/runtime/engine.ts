@@ -51,16 +51,21 @@ export class WorkflowRuntime {
     return this.runWorkflow(ir, options);
   }
 
-  private assertWorkflowCurrent(ir: import('../workflow/schema.js').WorkflowIR): void {
-    if (!ir.id) return;
+  private assertWorkflowCurrent(
+    ir: import('../workflow/schema.js').WorkflowIR,
+    admittedGeneration?: WorkflowGeneration,
+  ): WorkflowGeneration | undefined {
+    const snapshot = admittedGeneration ?? this.config.store.getWorkflowSnapshotGeneration(ir);
+    if (!ir.id && !snapshot) return;
     // ID-bearing runs must use a snapshot issued by this host store. The
     // command gateway builds fresh one-shot plans without a saved workflow ID.
     // Neither forceManual nor ephemeral may adopt a removed/recreated ID.
-    const generation = this.config.store.getWorkflowGeneration(ir.id);
-    if (!generation || !this.config.store.isWorkflowSnapshotCurrent(ir)
+    const generation = ir.id ? this.config.store.getWorkflowGeneration(ir.id) : undefined;
+    if (!generation || snapshot !== generation || this.config.store.isWorkflowDeletionClaimed(generation.workflowId)
       || this.removedWorkflowGenerations.has(generation)) {
       throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
     }
+    return generation;
   }
 
   private isWorkflowGenerationCurrent(workflowId: string, key?: string): boolean {
@@ -74,9 +79,9 @@ export class WorkflowRuntime {
   private async runWorkflow(
     ir: import('../workflow/schema.js').WorkflowIR,
     options: WorkflowExecutionOptions,
+    admittedGeneration?: WorkflowGeneration,
   ): Promise<ExecutionResult> {
-    this.assertWorkflowCurrent(ir);
-    const generationKey = this.config.store.getWorkflowSnapshotGeneration(ir)?.key;
+    const generationKey = this.assertWorkflowCurrent(ir, admittedGeneration)?.key;
     return this.trackWorkflowExecution(ir.id, options.abortSignal, signal =>
       this.executionRunner.execute(ir, { ...options, abortSignal: signal }, generationKey));
   }
@@ -134,16 +139,19 @@ export class WorkflowRuntime {
   ): EphemeralExecutionQueueItem {
     if (!this.accepting) throw new Error('runtime_stopping');
     if (this.queuedExecutionCount >= 128) throw new Error('runtime_queue_full');
-    this.assertWorkflowCurrent(ir);
+    const admittedGeneration = this.assertWorkflowCurrent(ir);
+    // The caller can reuse or edit its object while this job waits. Keep both
+    // the admitted creation and its definition independent of that reference.
+    const queuedIr = structuredClone(ir);
     this.queuedExecutionCount += 1;
     const jobId = randomUUID();
     const queuedOptions = { ...options, jobId, ephemeral: true, forceManual: true };
     const run = this.ephemeralQueueTail.then(async () => {
-      try { return await this.runWorkflow(ir, queuedOptions); }
+      try { return await this.runWorkflow(queuedIr, queuedOptions, admittedGeneration); }
       catch (error) {
         if ((error as { code?: string }).code !== 'workflow_removed') throw error;
         // Accepted jobs still publish a cancellation, without invoking actions.
-        return this.trackExecution(() => this.executionRunner.execute(ir, {
+        return this.trackExecution(() => this.executionRunner.execute(queuedIr, {
           ...queuedOptions, abortSignal: AbortSignal.abort(error),
         }));
       }

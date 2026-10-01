@@ -1,0 +1,45 @@
+{
+  "generatedWith": "b5950377e81175017d2dcce75593e9359b87787b",
+  "generationChangedDuringBaselineRecreation": true,
+  "pending": [
+    {
+      "workflowId": "synthetic-legacy-midnight",
+      "occurrenceKey": "2026-10-02T00:00",
+      "triggerType": "schedule",
+      "workflowVersion": 1,
+      "triggerSnapshot": "{\"type\":\"schedule\",\"schedule\":\"0 0 * * *\",\"timezone\":\"UTC\"}"
+    }
+  ],
+  "lastObservedAt": "2026-10-02T00:00:00.000Z",
+  "freshWorkflow": {
+    "id": "synthetic-legacy-midnight",
+    "version": 1,
+    "name": "Synthetic midnight",
+    "goal": "Upgrade ownership only",
+    "trigger": {
+      "type": "schedule",
+      "schedule": "0 0 * * *",
+      "timezone": "UTC"
+    },
+    "inputs": [],
+    "steps": [
+      {
+        "type": "action",
+        "id": "read",
+        "connector": "gmail",
+        "action": "messages.search",
+        "actionRef": "gmail.messages.search@1",
+        "params": {
+          "query": "fresh"
+        },
+        "sideEffect": "NONE"
+      }
+    ],
+    "permissions": {},
+    "approval": [],
+    "allowExternalAuto": false,
+    "assumptions": [],
+    "sideEffects": {},
+    "dataPolicy": {}
+  }
+}
