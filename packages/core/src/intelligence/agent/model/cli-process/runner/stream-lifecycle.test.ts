@@ -31,6 +31,17 @@ describe('streaming process ownership', () => {
     expect(await result).toMatchObject({ stdout: '', exitCode: 0 });
     expect(onStdoutLine).toHaveBeenCalledWith('{"type":"turn.completed"}');
   });
+  it('retains newline-free chunks, split CRLF and a final unterminated line', async () => {
+    const onStdoutLine = vi.fn();
+    const result = start({ onStdoutLine });
+    for (const chunk of ['한', '😀\r', '\n \r', '\n끝', ' tail']) {
+      state.child.stdout.emit('data', Buffer.from(chunk));
+    }
+    expect(onStdoutLine.mock.calls).toEqual([['한😀']]);
+    state.child.emit('close', 0, null);
+    expect(await result).toMatchObject({ stdout: '한😀\r\n \r\n끝 tail', exitCode: 0 });
+    expect(onStdoutLine.mock.calls).toEqual([['한😀'], ['끝 tail']]);
+  });
   it('uses close status, never treating signal termination as success', async () => {
     const result = start(); state.child.emit('close', null, 'SIGTERM');
     expect((await result).exitCode).not.toBe(0);

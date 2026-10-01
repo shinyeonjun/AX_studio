@@ -57,3 +57,14 @@ test('the document-engine requirement selects the reviewed pypdf security releas
   const entries = requirements.split(/\r?\n/).filter((line) => /^pypdf\s*(?:[=<>!~]|$)/i.test(line));
   assert.deepEqual(entries, ['pypdf==6.19.0']);
 });
+
+test('Electron install, package build and allowScripts retain one reviewed runtime pin', () => {
+  const version = readJson('apps/desktop/package.json').devDependencies.electron;
+  assert.equal(version, '44.5.1', 'review a different Electron runtime before changing this pin');
+  assert.equal(lock.packages['apps/desktop'].devDependencies.electron, version);
+  assert.equal(lock.packages['node_modules/electron'].version, version);
+  assert.equal(readJson('apps/desktop/electron-builder.yml').electronVersion, version);
+  const allowed = Object.entries(readJson('package.json').allowScripts)
+    .filter(([name, enabled]) => name.startsWith('electron@') && enabled);
+  assert.deepEqual(allowed, [[`electron@${version}`, true]]);
+});

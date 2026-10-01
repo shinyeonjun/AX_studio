@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, pythonRuntimes, verifyArchiveBytes } from './lib/package-platform.mjs';
+import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, packagedDependencyNoticePaths, pythonRuntimes, verifyArchiveBytes } from './lib/package-platform.mjs';
 
 const root = join(import.meta.dirname, '..');
 const engineRoot = join(root, 'packages', 'document-engine');
@@ -95,7 +95,7 @@ async function verifyPackage(directory, { skipUi = false } = {}) {
       throw new Error('Packaged project notice differs from source: ' + source);
     }
   }
-  for (const relative of ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']) {
+  for (const relative of packagedDependencyNoticePaths()) {
     if (asar.extractFile(layout.archive, relative).length < 100) throw new Error('Missing archived dependency notice: ' + relative);
   }
   verifyBundle(layout.bundle);

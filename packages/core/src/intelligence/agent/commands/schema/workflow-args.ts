@@ -1,3 +1,4 @@
+import { AuthoritativeRequestAnchorSchema } from '../../../../contracts/request-anchor.js';
 import { z } from 'zod';
 import {
   AiDecisionStepSchema,
@@ -93,6 +94,7 @@ export type AxWorkflowStepInput = z.infer<typeof AxWorkflowStepInputSchema>;
 export const AxWorkflowCreateArgsSchema = z.object({
   name: z.string().trim().min(1),
   goal: z.string().trim().min(1),
+  requestAnchor: AuthoritativeRequestAnchorSchema.optional(),
   trigger: TriggerSchema.optional(),
   success: z.string().optional(),
   assumptions: z.array(z.string()).max(200).default([]),

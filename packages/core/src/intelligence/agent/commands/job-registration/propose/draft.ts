@@ -43,6 +43,7 @@ export function createPendingJob(options: {
   const spec = {
     name: data.name,
     goal: data.goal,
+    ...(data.requestAnchor ? { requestAnchor: data.requestAnchor } : {}),
     cron,
     timezone,
     path,
@@ -112,6 +113,7 @@ function createPendingGenericJob(
     args: {
       name: data.name,
       goal: data.goal,
+    ...(data.requestAnchor ? { requestAnchor: data.requestAnchor } : {}),
       trigger: data.trigger,
       steps: data.steps,
       success: data.success,

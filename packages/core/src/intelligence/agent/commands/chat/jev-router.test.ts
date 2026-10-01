@@ -1,3 +1,4 @@
+import { createAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_DECISION_CHOICE_CRITERIA,
@@ -344,7 +345,9 @@ describe('routeChatWithJev', () => {
       route: 'answer',
       confidence: 0.96,
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('workflow와 일회 실행의 차이를 설명해줘'),
           message: 'workflow와 일회 실행의 차이를 설명해줘',
           features: {},
           context: { recentTurns: [] },
@@ -689,18 +692,15 @@ describe('routeChatWithJev', () => {
     expect(request?.questions.route).toMatchObject({ type: 'choice' });
   });
 
-  it('keeps a long discovery request within the search command schema', async () => {
+  it('refuses an overlong executable search instead of shortening its authority', async () => {
     const result = await routeChatWithJev({
       decisionEngine: engineFor('discovery_search', 0.93),
       userMessage: '주문 데이터를 찾아줘 '.repeat(60),
       connectedConnectors: ['rdb'],
     });
 
-    expect(result.kind).toBe('command');
-    if (result.kind !== 'command' || result.command.name !== 'discovery.search') return;
-    const args = AxDiscoverySearchArgsSchema.parse(result.command.args);
-    expect(args.query).toHaveLength(500);
-    expect(args.query.endsWith('…[truncated]')).toBe(true);
+    expect(AxDiscoverySearchArgsSchema.safeParse({ query: '주문 데이터를 찾아줘 '.repeat(60) }).success).toBe(false);
+    expect(result).toEqual({ kind: 'fallback', reason: 'missing_context' });
   });
 
   it('uses the user-requested result count for discovery search', async () => {
@@ -1052,7 +1052,9 @@ describe('routeChatWithJev', () => {
         },
       },
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('상품을 10개만 보여줘'),
           message: '상품을 10개만 보여줘',
           features: { result_limit_candidates: [10] },
           context: { recentTurns: [] },
@@ -1247,7 +1249,9 @@ describe('routeChatWithJev', () => {
         requiredParameterPaths: ['pathParams.orderId'],
       },
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('주문 상세를 보여줘'),
           message: '주문 상세를 보여줘',
           features: {},
           context: { recentTurns: [] },
@@ -2387,7 +2391,9 @@ describe('routeChatWithJev', () => {
       route: 'answer',
       confidence: 0.55,
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.'),
           message: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
           features: { result_limit_candidates: [5] },
           context: { recentTurns: [] },

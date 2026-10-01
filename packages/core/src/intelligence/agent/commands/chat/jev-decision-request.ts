@@ -123,7 +123,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
   if (!input.previousReadResult || input.readRecoveryContext) delete routeCriteria.previous_result;
 
   const state = {
-    request: boundDecisionString(input.userMessage),
+    request: input.userMessage,
     request_features: input.requestFeatures,
     context: {
       current_workflow_present: hasCurrentWorkflow,

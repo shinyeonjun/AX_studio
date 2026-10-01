@@ -1,3 +1,5 @@
+import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget } from '../../../../contracts/request-anchor.js';
+import { resolveAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import type { DecisionAnswer, DecisionInstruction, DecisionQuestion } from '../../../../contracts/decision.js';
 import { boundDecisionString } from '../../../decision/context.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
@@ -58,9 +60,12 @@ function selectedSources(
 export function reportCommand(input: {
   hasWorkspaceSession?: boolean;
   userMessage: string;
+  requestAnchor?: AuthoritativeRequestAnchor;
+  requestBudget?: Partial<AuthoritativeRequestBudget>;
   answers: Record<string, DecisionAnswer>;
   candidates: readonly WorkspaceSourceRecord[];
 }): AxCommand | { kind: 'fallback'; reason: 'missing_context' | 'uncertain' } {
+  const anchor = resolveAuthoritativeRequestAnchor(input.userMessage, input.requestAnchor, {}, input.requestBudget);
   if (!input.hasWorkspaceSession || input.candidates.length < 2) {
     return { kind: 'fallback', reason: 'missing_context' };
   }
@@ -73,7 +78,8 @@ export function reportCommand(input: {
   return {
     name: 'report.generate',
     args: {
-      goal: boundDecisionString(input.userMessage),
+      goal: anchor.text,
+      requestAnchor: anchor,
       templateSourceId,
       exampleSourceId,
     },

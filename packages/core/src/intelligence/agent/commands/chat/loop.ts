@@ -1,3 +1,4 @@
+import { authoritativeRequestClarification, createAuthoritativeRequestAnchor, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import { planPreviousTableExport } from './jev-table-export.js';
 import type { ChatMessage } from '../../model/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../connectors/failure-kind.js';
@@ -324,7 +325,10 @@ export async function runCommandChatLoop({
 
     const startedAt = Date.now();
     const plan = await applyJevTableTransform({
-      decisionEngine: options.decisionEngine,
+      decisionEngine: guardAuthoritativeRequestDecisions(options.decisionEngine,
+        resolveAuthoritativeRequestAnchor(userMessage,
+          options.requestAnchor?.text === userMessage ? options.requestAnchor : undefined,
+          {}, options.requestBudget), options.requestBudget),
       table,
       userMessage,
       mode: request ?? 'auto',
@@ -453,6 +457,7 @@ export async function runCommandChatLoop({
   });
   if (selectedHttpRead) {
     const { command, userIntent } = selectedHttpRead;
+    createAuthoritativeRequestAnchor(userIntent, {}, options.requestBudget);
     const readAuthorization = readAuthorizationFor(command);
     const result = await executeScopedChatCommand(command, readAuthorization);
     signal.throwIfAborted();
@@ -502,7 +507,9 @@ export async function runCommandChatLoop({
     try {
       jevRoute = await routeChatWithJev({
         decisionEngine: options.decisionEngine,
-        userMessage: options.decisionMessage ?? options.userMessage,
+        userMessage: options.requestAnchor!.text,
+        requestAnchor: options.requestAnchor,
+        requestBudget: options.requestBudget,
         conversationHistory: messages.slice(0, -1).slice(-6),
         currentWorkflowId: session.workflowId,
         currentWorkflowVersion: options.currentWorkflowVersion,
@@ -529,6 +536,7 @@ export async function runCommandChatLoop({
       jevTelemetry = jevRoute.telemetry;
       jevRouteOutcome = jevRoute.kind === 'fallback'
         ? `fallback:${jevRoute.reason}`
+        : jevRoute.kind === 'request_rejected' ? `request_rejected:${jevRoute.failure.code}`
         : `${jevRoute.kind}:${jevRoute.route}`;
     } finally {
       appendAppLog('info', 'Jev chat route timing recorded.', {
@@ -581,6 +589,10 @@ export async function runCommandChatLoop({
         ...(!jevTelemetry && 'providerRequestCount' in jevRoute && jevRoute.providerRequestCount !== undefined
           ? { jevProviderRequestCount: jevRoute.providerRequestCount } : {}),
       });
+    }
+    if (jevRoute.kind === 'request_rejected') {
+      options.onRequestRejected?.(jevRoute.failure);
+      return authoritativeRequestClarification(jevRoute.failure);
     }
     if (jevRoute.kind === 'fallback') {
       appendAppLog('info', 'Jev chat route could not select a supported operation.', {
@@ -741,7 +753,9 @@ export async function runCommandChatLoop({
           const recoveryStartedAt = Date.now();
           const recovery = await routeChatWithJev({
             decisionEngine: options.decisionEngine!,
-            userMessage: options.decisionMessage ?? options.userMessage,
+            userMessage: options.requestAnchor!.text,
+            requestAnchor: options.requestAnchor,
+            requestBudget: options.requestBudget,
             conversationHistory: messages.slice(0, -1).slice(-6),
             sessionMemo: options.sessionMemo,
             workflowPolicy: session.workflowPolicy,
@@ -778,6 +792,10 @@ export async function runCommandChatLoop({
             } : {}),
           });
 
+          if (recovery.kind === 'request_rejected') {
+            options.onRequestRejected?.(recovery.failure);
+            return authoritativeRequestClarification(recovery.failure);
+          }
           if (recovery.kind === 'parameterized') {
             return missingReadValuesMessage(recovery.plan.requiredParameterPaths);
           }

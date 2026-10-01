@@ -1,5 +1,5 @@
 import type { DecisionAnswer, DecisionQuestion } from '../../../../contracts/decision.js';
-import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
+import { DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import { AxWorkflowUpdateArgsSchema } from '../schema.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import type { JevActionHint } from './jev-action-catalog.js';
@@ -60,6 +60,8 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
     const plan = await planJevSelectedTools({
       decisionEngine: input.decisionEngine,
       request: input.userMessage,
+      requestAnchor: input.requestAnchor,
+      requestBudget: input.requestBudget,
       mode: 'manual_workflow',
       connectedConnectors: input.connectedConnectors ?? [],
       sessionMemo: input.sessionMemo,
@@ -117,7 +119,9 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
     }
     if (removalIntent?.choice === 'remove_now' && workflowSteps.length > 0) {
       const updateState = {
-        request: boundDecisionString(input.userMessage),
+        request: input.userMessage,
+        requestAnchor: input.requestAnchor,
+      requestBudget: input.requestBudget,
         context: { current_workflow_step_count: workflowSteps.length },
         policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
       };
@@ -157,6 +161,8 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
+        requestAnchor: input.requestAnchor,
+        requestBudget: input.requestBudget,
         mode: 'workflow_update',
         workflowId,
         workflowVersion: input.currentWorkflowVersion,
@@ -243,6 +249,8 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
     const plan = await planJevSelectedTools({
       decisionEngine: input.decisionEngine,
       request: input.userMessage,
+      requestAnchor: input.requestAnchor,
+      requestBudget: input.requestBudget,
       mode: 'recurring_workflow',
       trigger: selectedTrigger.trigger,
       connectedConnectors: input.connectedConnectors ?? [],

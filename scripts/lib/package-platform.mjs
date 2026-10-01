@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { cpSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 
 // Deliberately native-only. macOS, ARM and musl need their own reviewed runtimes.
 export function packagePlatform(platform = process.platform, arch = process.arch) {
@@ -43,6 +43,12 @@ export function packagePaths(directory, platform = process.platform, arch = proc
   const layout = packagePlatform(platform, arch);
   return { ...layout, executablePath: join(directory, layout.executable), archive: join(directory, 'resources', 'app.asar'),
     bundle: join(directory, 'resources', 'document-engine') };
+}
+
+export function packagedDependencyNoticePaths(platform = process.platform) {
+  // @electron/asar traverses directories using the host's native path separator.
+  const path = platform === 'win32' ? win32 : posix;
+  return [path.join('node_modules', 'react', 'LICENSE'), path.join('node_modules', '@ai-sdk', 'provider', 'LICENSE')];
 }
 
 export function isolatedPythonEnv(scratch, env = process.env, platform = process.platform) {

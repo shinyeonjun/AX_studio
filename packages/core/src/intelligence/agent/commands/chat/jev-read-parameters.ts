@@ -63,7 +63,7 @@ export async function resolveJevReadOperationParameters(
   const selection = jevReadOperationParameterQuestions(hint);
   if (selection.fields.length === 0) return hint;
   const evaluation = await evaluate({
-    request: boundDecisionString(request),
+    request,
     selected_operation: {
       capability_id: hint.capabilityId,
       label: boundDecisionString(hint.label, 160),

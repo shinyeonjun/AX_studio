@@ -1,3 +1,4 @@
+import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
 import type { AgentHarness } from '../../harness.js';
 import type { ChatMessage } from '../../model/chat.js';
 import type { AxCommandReadContext } from '../read-gateway.js';
@@ -27,6 +28,10 @@ export interface AxCommandChatOptions {
   decisionEngine?: DecisionEngine;
   messages: ChatMessage[];
   userMessage: string;
+  /** Complete host-accepted intent, reused unchanged on typed input continuation. */
+  requestAnchor?: AuthoritativeRequestAnchor;
+  requestBudget?: Partial<AuthoritativeRequestBudget>;
+  connectionRevision?: number;
   /** Structured table shown in the immediately preceding assistant message. */
   previousReadResult?: TableArtifact;
   /** Original host-verified task while resuming typed command inputs. */
@@ -69,6 +74,8 @@ export interface AxCommandChatOptions {
   allowJobCommit?: boolean;
   /** Opaque token from the exact host-rendered job confirmation action. */
   jobCommitConfirmationToken?: string;
+  onRequestAnchor?: (anchor: AuthoritativeRequestAnchor) => void;
+  onRequestRejected?: (failure: AuthoritativeRequestFailure) => void;
   onProgress?: (event: { message: string }) => void;
   abortSignal?: AbortSignal;
   timeoutMs?: number;

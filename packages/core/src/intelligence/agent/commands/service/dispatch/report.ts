@@ -1,3 +1,5 @@
+import { verifyAuthoritativeRequestAnchor } from '../../../../decision/request-anchor.js';
+import type { AuthoritativeRequestAnchor } from '../../../../../contracts/request-anchor.js';
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { issue, result, textArg } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
@@ -27,6 +29,16 @@ export async function executeReportCommand(
   options: AxCommandExecuteOptions,
 ): Promise<AxCommandResult> {
   let goal = textArg(command, 'goal');
+  let requestAnchor: AuthoritativeRequestAnchor | undefined;
+  if (command.args.requestAnchor !== undefined) {
+    try {
+      requestAnchor = verifyAuthoritativeRequestAnchor(command.args.requestAnchor);
+      if (requestAnchor.text.trim() !== goal) throw new Error('request_anchor_mismatch');
+      goal = requestAnchor.text;
+    } catch {
+      return result(command.name, 'invalid', undefined, [issue('request_anchor_mismatch', '요청 원문과 보고서 목표가 일치하지 않습니다.')]);
+    }
+  }
   let templateSourceId = textArg(command, 'templateSourceId');
   let exampleSourceId = textArg(command, 'exampleSourceId');
   const requestedResumeExecutionId = textArg(command, 'resumeExecutionId');
@@ -58,6 +70,10 @@ export async function executeReportCommand(
       }
       // Resume the saved request, not the model's paraphrase of "try again".
       goal = step.params.goal;
+      // Legacy snapshots stay legacy. A retry never stamps the new turn onto the old goal.
+      requestAnchor = step.params.requestAnchor === undefined
+        ? undefined : verifyAuthoritativeRequestAnchor(step.params.requestAnchor);
+      if (requestAnchor && requestAnchor.text !== goal) throw new Error('request_anchor_mismatch');
       templateSourceId = step.params.templateSourceId;
       exampleSourceId = step.params.exampleSourceId;
     } catch {
@@ -98,6 +114,7 @@ export async function executeReportCommand(
     args: {
       name: '예시 기반 PDF 보고서 생성',
       goal,
+      ...(requestAnchor ? { requestAnchor } : {}),
       success: '완성 예시의 계산 기준이 재현 검증되고 다음 기간 PDF가 생성됨',
       assumptions: ['외부 전송과 원본 데이터 변경 없음', '예시 재현 실패 시 결과물 생성 중단'],
       steps: [{
@@ -106,7 +123,7 @@ export async function executeReportCommand(
         connector: 'document',
         action: 'pdf.report.generate',
         actionRef: 'document.pdf.report.generate',
-        params: { goal, templateSourceId, exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) },
+        params: { goal, ...(requestAnchor ? { requestAnchor } : {}), templateSourceId, exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) },
       }],
     },
   };

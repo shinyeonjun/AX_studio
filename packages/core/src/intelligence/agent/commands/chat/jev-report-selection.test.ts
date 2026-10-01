@@ -1,3 +1,4 @@
+import { createAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import { describe, expect, it } from 'vitest';
 import { MAX_DECISION_CHOICE_CRITERIA, type DecisionAnswer } from '../../../../contracts/decision.js';
 import type { WorkspaceSourceRecord } from '../../../../persistence/workspace-source-service.js';
@@ -80,6 +81,7 @@ describe('report source selection', () => {
       name: 'report.generate',
       args: {
         goal: '보고서를 만들어줘',
+        requestAnchor: createAuthoritativeRequestAnchor('보고서를 만들어줘'),
         templateSourceId: 'template',
         exampleSourceId: 'example',
       },

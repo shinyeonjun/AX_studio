@@ -15,7 +15,7 @@ import {
 } from '@ax-studio/core';
 import { app } from 'electron';
 import { performance } from 'node:perf_hooks';
-import type { AxCommand, AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -141,7 +141,9 @@ export function registerWorkspaceChatMessageHandler() {
     let inputRequests: AxInputRequest[] = [];
     const presentations: AxUiPresentation[] = [];
     let readResult: TableArtifact | undefined;
-    let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[] } | undefined;
+    let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
+      request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor } | undefined;
+    let acceptedRequestAnchor: AuthoritativeRequestAnchor | undefined;
     let pendingInputRequestToken: string | undefined;
     let outcome: 'success' | 'failed' = 'failed';
     try {
@@ -167,7 +169,7 @@ export function registerWorkspaceChatMessageHandler() {
             presentations,
           };
         }
-        pendingCommandClaim = { token: claim.token, command: claim.command, inputValues: claim.inputValues };
+        pendingCommandClaim = { ...claim };
       } else {
         clearPendingCommand(safeWorkspaceSessionId);
       }
@@ -222,6 +224,8 @@ export function registerWorkspaceChatMessageHandler() {
         harness: core.agentHarness,
         commandService: core.commandService,
         decisionEngine: core.decisionEngine,
+        connectionRevision,
+        onRequestAnchor: (anchor) => { acceptedRequestAnchor = anchor; },
         connectedConnectors,
         httpEndpoints,
         resolveReadOperationSelection: () => selectJevReadOperations(
@@ -234,7 +238,8 @@ export function registerWorkspaceChatMessageHandler() {
         userMessage,
         ...(previousReadResult ? { previousReadResult } : {}),
         ...(pendingInput && pendingCommandClaim ? {
-          decisionMessage: pendingInput.request,
+          decisionMessage: pendingCommandClaim.request,
+          requestAnchor: pendingCommandClaim.requestAnchor,
           commandInputValues: pendingCommandClaim.inputValues,
         } : {}),
         ...(pendingCommandClaim ? { pendingCommand: pendingCommandClaim.command } : {}),
@@ -273,14 +278,16 @@ export function registerWorkspaceChatMessageHandler() {
               pendingCommandClaim.token,
               command,
               Date.now(),
-              pendingInput?.request ?? userMessage,
+              pendingCommandClaim.request,
+              acceptedRequestAnchor,
             );
           } else {
             pendingInputRequestToken = rememberPendingCommand(
               safeWorkspaceSessionId,
               command,
               Date.now(),
-              pendingInput?.request ?? userMessage,
+              userMessage,
+              acceptedRequestAnchor,
             );
           }
         },

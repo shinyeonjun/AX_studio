@@ -66,6 +66,7 @@ export function compileScheduledHttpSlackJob(spec: NormalizedJobSpec): WorkflowI
   return parseWorkflowIR({
     name: spec.name,
     goal: spec.goal,
+    ...(spec.requestAnchor ? { requestAnchor: spec.requestAnchor } : {}),
     version: 1,
     trigger: { type: 'schedule', schedule: spec.cron, timezone: spec.timezone },
     inputs: [],

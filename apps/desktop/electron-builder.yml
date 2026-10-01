@@ -1,7 +1,7 @@
 {
   "appId": "com.axstudio.desktop",
   "productName": "AX Studio",
-  "electronVersion": "44.3.0",
+  "electronVersion": "44.5.1",
   "npmRebuild": false,
   "electronDist": "../../node_modules/electron/dist",
   "directories": {

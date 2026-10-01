@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { join } from 'node:path';
 import { mkdtempSync, mkdirSync, readFileSync, realpathSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, parsePackageArgs, pythonRuntimes, verifyArchiveBytes } from './package-platform.mjs';
+import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, packagedDependencyNoticePaths, parsePackageArgs, pythonRuntimes, verifyArchiveBytes } from './package-platform.mjs';
 
 test('Windows packaging layout retains the original executable, embed runtime and directory', () => {
   const layout = packagePaths('/package', 'win32', 'x64');
@@ -23,6 +23,11 @@ test('Linux packaging uses a portable runtime, Linux directory and explicit exec
   assert.match(layout.sitePackages, /python3\.13\/site-packages$/);
   assert.match(pythonRuntimes.linux.url, /20260901\/.*install_only_stripped\.tar\.gz$/);
   assert.match(pythonRuntimes.linux.noticesUrl, /pgo%2Blto-full\.tar\.zst$/);
+});
+test('archived dependency notices retain both licenses using native path separators', () => {
+  assert.deepEqual(packagedDependencyNoticePaths('win32'), ['node_modules\\react\\LICENSE', 'node_modules\\@ai-sdk\\provider\\LICENSE']);
+  assert.deepEqual(packagedDependencyNoticePaths('linux'), ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']);
+  assert.deepEqual(packagedDependencyNoticePaths(), [join('node_modules', 'react', 'LICENSE'), join('node_modules', '@ai-sdk', 'provider', 'LICENSE')]);
 });
 test('unsupported platforms, architectures and cross-packaging fail closed', () => {
   assert.throws(() => packagePlatform('darwin', 'x64'), /native Windows x64 and Linux/);

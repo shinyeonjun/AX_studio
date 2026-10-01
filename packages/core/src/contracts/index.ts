@@ -51,3 +51,5 @@ export {
   type WorkbookSheet,
 } from './artifacts/workbook.js';
 export { ArtifactMetadataSchema, type ArtifactMetadata } from './artifacts/base.js';
+
+export * from './request-anchor.js';

@@ -1,3 +1,4 @@
+import { AuthoritativeRequestError, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import {
   decisionProviderRequestBytesFromError,
   decisionProviderRequestCountFromError,
@@ -55,6 +56,15 @@ import { handleJevWorkflowRoute } from './jev-router-workflows.js';
  */
 export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevChatRouterResult> {
   input.abortSignal?.throwIfAborted();
+  try {
+    const anchor = resolveAuthoritativeRequestAnchor(input.userMessage, input.requestAnchor,
+      { catalogRevision: input.connectionRevision }, input.requestBudget);
+    input = { ...input, requestAnchor: anchor,
+      decisionEngine: guardAuthoritativeRequestDecisions(input.decisionEngine, anchor, input.requestBudget) };
+  } catch (error) {
+    if (!(error instanceof AuthoritativeRequestError)) throw error;
+    return { kind: 'request_rejected', failure: error.failure };
+  }
   const requestFeatures = deriveJevRequestFeatures(input.userMessage);
   // The index has already selected safe candidates; do not apply a second
   // lexical filter that could hide a semantic match from Jev.
@@ -262,8 +272,10 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         return withTelemetry(fallback('uncertain'));
       }
       requestPlan = {
+        version: 2,
         request: {
-          message: boundDecisionString(input.userMessage),
+          message: input.requestAnchor!.text,
+          anchor: input.requestAnchor!,
           features: requestFeatures,
           context: {
             recentTurns: (input.conversationHistory ?? []).slice(-6).map(({ role, content }) => ({
@@ -377,7 +389,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         });
       }
       const sourceState = {
-        request: boundDecisionString(input.userMessage),
+        request: input.requestAnchor!.text,
         context: { ready_pdf_candidate_count: reportSelection.catalogSize },
         policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
       };
@@ -386,6 +398,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       const command = reportCommand({
         hasWorkspaceSession: input.hasWorkspaceSession,
         userMessage: input.userMessage,
+        requestAnchor: input.requestAnchor,
+        requestBudget: input.requestBudget,
         answers: sourceEvaluation.answers,
         candidates: reportSelection.candidates,
       });
@@ -429,6 +443,9 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         planningOutputTokens: plan.telemetry.outputTokens,
         planningModels: plan.telemetry.models,
       };
+      if (plan.kind === 'clarify' && plan.requestFailure) {
+        return { kind: 'request_rejected', failure: plan.requestFailure, telemetry: planTelemetry };
+      }
       const result: JevChatRouterResult = plan.kind === 'clarify'
         ? { kind: 'clarify', route, message: plan.message, confidence: selectedConfidence }
         : {
@@ -473,6 +490,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
+        requestAnchor: input.requestAnchor,
+        requestBudget: input.requestBudget,
         mode: 'one_shot',
         connectedConnectors,
         readOperationHints: selectedReadHints,
@@ -496,6 +515,8 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
+        requestAnchor: input.requestAnchor,
+        requestBudget: input.requestBudget,
         mode: 'one_shot',
         connectedConnectors,
         readOperationHints: selectedReadHints,
@@ -554,6 +575,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     });
   } catch (error) {
     if (input.abortSignal?.aborted) throw error;
+    if (error instanceof AuthoritativeRequestError) return { kind: 'request_rejected', failure: error.failure };
     const failedProviderRequestCount = decisionProviderRequestCountFromError(error);
     const failedProviderRequestBytes = decisionProviderRequestBytesFromError(error);
     if (telemetry) {
