@@ -1,4 +1,4 @@
-import { JevDecisionEngine } from '@ax-studio/core';
+import { JevDecisionEngine, JevDecisionError, validateJevApiKey } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -51,6 +51,7 @@ function normalizePrefs(raw: unknown): Required<Pick<JevDecisionPrefs, 'enabled'
   if (prefs.apiKey !== undefined && typeof prefs.apiKey !== 'string') {
     throw new Error('Jev API 키 형식이 올바르지 않습니다.');
   }
+  if (prefs.apiKey !== undefined && prefs.apiKey !== '') validateJevApiKey(prefs.apiKey);
   return {
     enabled: prefs.enabled ?? false,
     model: prefs.model?.trim() || DEFAULT_JEV_MODEL,
@@ -77,7 +78,7 @@ export function registerDecisionPlaneHandlers(): void {
 
   ipcHandle('ax:saveJevDecisionConfig', async (_event, raw: unknown) => {
     const prefs = normalizePrefs(raw);
-    if (prefs.apiKey?.trim()) await setJevSecret(prefs.apiKey.trim());
+    if (prefs.apiKey) await setJevSecret(prefs.apiKey);
     const secret = await getJevSecret();
     if (prefs.enabled && !secret) {
       throw new Error('Jev를 사용하려면 API 키를 먼저 등록하세요.');
@@ -102,6 +103,8 @@ export function registerDecisionPlaneHandlers(): void {
   });
 
   ipcHandle('ax:testJevDecisionApi', async (_event, raw: unknown) => {
+    // Reject malformed draft credentials before reading stored configuration or constructing a request.
+    normalizePrefs(raw ?? {});
     const current = await snapshot();
     const prefs = normalizePrefs({
       enabled: current.enabled,
@@ -109,7 +112,7 @@ export function registerDecisionPlaneHandlers(): void {
       baseURL: current.baseURL,
       ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as JevDecisionPrefs : {}),
     });
-    const draft = prefs.apiKey?.trim();
+    const draft = prefs.apiKey || undefined;
     const secret = draft || await getJevSecret();
     if (!secret) throw new Error('Jev API 키가 없습니다.');
 
@@ -118,15 +121,32 @@ export function registerDecisionPlaneHandlers(): void {
       model: prefs.model,
       baseURL: prefs.baseURL,
     });
-    const result = await engine.evaluate({
-      state: { purpose: 'AX Studio Jev connection check' },
-      questions: {
-        reachable: {
-          type: 'boolean',
-          instructions: 'Return a probability for whether this is a connection check request.',
+    let result;
+    try {
+      result = await engine.evaluate({
+        state: { purpose: 'AX Studio Jev connection check' },
+        questions: {
+          reachable: {
+            type: 'boolean',
+            instructions: 'Return a probability for whether this is a connection check request.',
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (error instanceof JevDecisionError && (
+        error.message.startsWith('TypeSafe API keys must be')
+        || error.message.startsWith('TypeSafe request headers are invalid.')
+      )) {
+        throw error;
+      }
+      if (error instanceof JevDecisionError && (error.status === 401 || error.status === 403)) {
+        throw new Error(`TypeSafe rejected the API key (HTTP ${error.status}). Check the key and try again.`);
+      }
+      if (error instanceof JevDecisionError && error.status !== undefined) {
+        throw new Error(`TypeSafe rejected the connection check (HTTP ${error.status}). Check the endpoint and API access.`);
+      }
+      throw new Error('TypeSafe connection check failed. Check network access and the Base URL, then try again.');
+    }
 
     if (draft) {
       await setJevSecret(draft);

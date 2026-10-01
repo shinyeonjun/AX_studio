@@ -34,7 +34,7 @@ describe('role prompts', () => {
     expect(prompt).not.toContain('tools.list');
   });
 
-  it('uses catalog read capabilities for investigation', () => {
+  it('limits the investigation model to prose without a tool catalog', () => {
     const prompt = buildInvestigatePrompt('investigate', {
       skillGoal: '문서 요약',
       taskGoal: '문서 evidence를 요약',
@@ -42,7 +42,9 @@ describe('role prompts', () => {
       connectedConnectors: ['document'],
     });
 
-    expect(prompt).toContain('document.ingest');
+    expect(prompt).toContain('purpose:prose');
+    expect(prompt).toContain('Jev');
+    expect(prompt).not.toContain('document.ingest');
   });
 
   it('bounds provider history while retaining the newest message', () => {

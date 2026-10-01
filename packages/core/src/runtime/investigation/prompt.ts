@@ -12,7 +12,7 @@ export function investigationUserPrompt(
 ): string {
   const base = buildInvestigationUser(step, ctx, stepResults, { includeSensitiveData, ir });
   if (!step.investigation) {
-    return `${base}\n\n추가 자료 조회는 실행되지 않았습니다. 현재 제공된 근거만으로 결론을 작성하고, 근거가 부족하면 부족하다고 명시하세요.`;
+    return [base, '추가 자료 조회는 실행되지 않았습니다. 현재 제공된 근거만으로 요청된 문안 필드만 작성하고, 근거가 부족하면 부족하다고 명시하세요.', extra].filter(Boolean).join('\n\n');
   }
   return [
     base,

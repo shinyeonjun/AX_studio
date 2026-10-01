@@ -76,6 +76,7 @@ export async function continueWorkflowAfterApproval(
     execution.workspaceSessionId,
   );
   ctx.outputs = { ...(checkpoint?.outputs ?? {}) };
+  ctx.presentationVariableSources = { ...(checkpoint?.presentationVariableSources ?? {}) };
   const stepResults: Record<string, unknown> = { ...(checkpoint?.stepResults ?? {}) };
   const approvalSnapshots = new Map<string, { actionRef: string; paramsHash: string }>();
   for (const snapshot of payload?.actionSnapshots ?? []) {

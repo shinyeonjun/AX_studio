@@ -723,7 +723,7 @@ describe('planJevWorkflow', () => {
     const sender: ConnectorCapability = {
       id: 'rdb.text.send', connector: 'rdb', kind: 'write', label: '텍스트 전송',
       description: '텍스트를 전송한다', sideEffect: 'NONE',
-      params: [{ name: 'body', label: '본문', question: '본문은?', required: true }],
+      params: [{ name: 'body', label: '본문', question: '본문은?', required: true, purpose: 'prose' }],
       io: { inputs: { body: 'TextArtifact' }, outputs: {} },
     };
     registerDynamicCapabilities([reader, sender]);

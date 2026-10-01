@@ -2,6 +2,7 @@ import type { ContractTypeName } from '../../contracts/capability-io.js';
 import { contractTypesCompatible } from '../../contracts/compatibility.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
 import type { Step, WorkflowIR } from '../schema.js';
+import { isProseActionInput } from '../ai-output-contract.js';
 import {
   findCompatibleSource,
   findPreferredTextSource,
@@ -20,10 +21,11 @@ export function inferActionBindings(
   const bindings = { ...(step.bindings ?? {}) };
 
   for (const [inputPort, inputType] of Object.entries(inputPorts)) {
+    const candidates = available.filter((output) => output.purpose !== 'prose' || isProseActionInput(step, inputPort));
     // A folder event is the source of truth for the file being processed. This
     // also repairs workflows saved before document.ingest used FileRef params.
     if (ir.trigger?.type === 'local_folder.new_file' && inputPort === 'source') {
-      const triggerSource = available.find(
+      const triggerSource = candidates.find(
         (candidate) =>
           candidate.from === 'trigger' &&
           contractTypesCompatible(candidate.type, inputType as ContractTypeName),
@@ -36,8 +38,8 @@ export function inferActionBindings(
 
     if (bindings[inputPort] || hasConcreteParamForPort(step, inputPort)) continue;
     const source = cap?.notification === true && (inputPort === 'text' || inputPort === 'body')
-      ? findPreferredTextSource(available, inputType as ContractTypeName)
-      : findCompatibleSource(available, inputType as ContractTypeName);
+      ? findPreferredTextSource(candidates, inputType as ContractTypeName)
+      : findCompatibleSource(candidates, inputType as ContractTypeName);
     if (!source) continue;
     if (source.from !== 'trigger' && !guaranteedSources.has(source.from)) continue;
     bindings[inputPort] = { from: source.from, output: source.port };

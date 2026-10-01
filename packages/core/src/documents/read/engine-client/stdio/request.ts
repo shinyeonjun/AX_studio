@@ -15,6 +15,12 @@ export interface DocumentEngineTransportOptions {
   workerCwd: string;
 }
 
+export function normalizeDocumentEngineError(message: string): string {
+  return /(?:No module named\s+['"][^'"]+['"]|ModuleNotFoundError|ImportError)/iu.test(message)
+    ? 'document_engine_dependency_missing'
+    : message;
+}
+
 function documentEngineEnv(): NodeJS.ProcessEnv {
   const env = commandEnv();
   for (const key of ['AX_DATA_ROOT', 'AX_DOCUMENT_ARTIFACT_ROOT', 'AX_TEMPLATE_ROOT']) {

@@ -28,6 +28,9 @@ export function errorMessage(code: string): string {
   if (code === 'workspace_source_stopping') return '앱이 종료 중입니다. 다시 실행한 뒤 시도해 주세요.';
   if (code === 'document_engine_worker_missing') return '문서 엔진을 찾을 수 없습니다.';
   if (code === 'document_engine_timeout') return '문서 분석 시간이 초과되었습니다.';
+  if (code === 'document_engine_dependency_missing') {
+    return '문서 엔진 Python 패키지가 없습니다. `AX_DOCUMENT_ENGINE_PYTHON`을 설정했다면 지우고 앱을 다시 시작하세요. 계속 실패하면 프로젝트 루트에서 `npm run document-engine:setup`을 실행한 뒤 다시 시작해 주세요.';
+  }
   if (code === 'workspace_source_artifact_missing') return '업로드한 원본 파일을 찾을 수 없습니다.';
   return '문서 분석에 실패했습니다.';
 }

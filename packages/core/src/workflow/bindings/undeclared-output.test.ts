@@ -39,14 +39,14 @@ describe('inferWorkflowBindings undeclared AI output', () => {
     };
 
     const notify = ir.steps[1]!;
-    expect(
+    expect(() =>
       applyStepBindings(
         notify as Extract<WorkflowIR['steps'][number], { type: 'action' }>,
         ir,
         { channel: '#ax' },
         { classify: { conclusion: '암묵 요약' } },
         {},
-      ).text,
-    ).toBeUndefined();
+      ),
+    ).toThrow(expect.objectContaining({ code: 'ai_output_boundary' }));
   });
 });

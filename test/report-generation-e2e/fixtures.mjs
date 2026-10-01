@@ -113,11 +113,15 @@ export function createPdfPair(root, benchmarkCase) {
   const payload = JSON.stringify({
     root,
     templateRows: benchmarkCase.templateRows,
+    pageRowDistribution: benchmarkCase.pageRowDistribution,
     footer: benchmarkCase.footer,
     example: values,
     fontPath,
   });
-  const result = spawnSync(pythonPath, ['-c', PDF_SCRIPT], { input: payload, encoding: 'utf8' });
+  const fixtureCommand = benchmarkCase.pageRowDistribution?.length > 1
+    ? [join(here, 'multipage_fixture.py')]
+    : ['-c', PDF_SCRIPT];
+  const result = spawnSync(pythonPath, fixtureCommand, { input: payload, encoding: 'utf8' });
   if (result.status !== 0) {
     throw new Error('pdf_fixture_failed:' + (result.error?.message || result.stderr || result.stdout || 'unknown'));
   }

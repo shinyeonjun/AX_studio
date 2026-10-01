@@ -12,6 +12,7 @@ import { actionRefFor, resolveActionDefinition, validateActionParams } from '../
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
 import { approvalParamsHash, redactedApprovalParams } from './approval-snapshot.js';
+import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
 
 export function resolveActionParamsForExecution(
   step: Extract<Step, { type: 'action' }>,
@@ -24,8 +25,11 @@ export function resolveActionParamsForExecution(
   if (!actionDefinition) {
     throw Object.assign(new Error(`Unknown action definition: ${actionRef}`), { code: 'unknown_action' });
   }
-  let params = applyStepBindings(step, ir, step.params, stepResults, ctx.variables, ctx.outputs);
-  params = resolveStepParams(params, ctx, stepResults);
+  assertWorkflowOutputBoundaries(ir, ctx.presentationVariableSources);
+  // Interpret templates authored in the workflow once. Bound content is opaque
+  // data and must never become a second round of workflow instructions.
+  let params = resolveStepParams(step.params, ctx, stepResults);
+  params = applyStepBindings(step, ir, params, stepResults, ctx.variables, ctx.outputs);
   if (actionDefinition.id === 'document.ingest') {
     const resolved = resolveDocumentIngestExecution(params, ctx);
     if (!resolved.ok) {
@@ -48,6 +52,7 @@ export async function executeStep(
   approvedActionIds: ReadonlySet<string> = new Set(),
   decisionEngine?: DecisionEngine,
 ): Promise<void> {
+  assertWorkflowOutputBoundaries(ir, ctx.presentationVariableSources);
   switch (step.type) {
     case 'action':
       {
@@ -89,7 +94,18 @@ export async function executeStep(
         throw err;
       }
 
+      const presentation = presentationDerivedSteps(ir, ctx.presentationVariableSources).has(step.id);
+      const previousVariables = presentation || ctx.presentationVariableSources
+        ? structuredClone(ctx.variables) : undefined;
       const result = await connector.execute(actionDefinition.action, params, ctx);
+      if (presentation || ctx.presentationVariableSources) {
+        ctx.presentationVariableSources ??= {};
+        for (const key of new Set([...Object.keys(previousVariables ?? {}), ...Object.keys(ctx.variables)])) {
+          if (JSON.stringify(previousVariables?.[key]) === JSON.stringify(ctx.variables[key])) continue;
+          if (presentation && Object.hasOwn(ctx.variables, key)) ctx.presentationVariableSources[key] = step.id;
+          else delete ctx.presentationVariableSources[key];
+        }
+      }
       if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
       if (actionDefinition.io?.outputs) {
         ctx.outputs ??= {};

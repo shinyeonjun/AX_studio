@@ -5,6 +5,7 @@ import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../
 import { buildJevReadOperationIndex } from '../../intelligence/decision/read-operation-catalog.js';
 import { untrustedEvidencePreview } from './input.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
+import { assertDecisionOutputContract } from '../../workflow/ai-output-contract.js';
 import { CapabilityReadFailure, performCapabilityRead } from '../capability-read.js';
 import { evaluateDecisionOutputs, planDecisionOutputs } from './decision-outputs.js';
 import {
@@ -61,6 +62,7 @@ export async function runAiDecisionLoop({
   decisionInput,
   runModel,
 }: DecisionLoopContext): Promise<void> {
+  assertDecisionOutputContract(step);
   let reads = 0;
   const usedKeys = new Set<string>();
   const readFailures: Array<{ source: string; operation: string; errorCode: string; failureKind: ConnectorFailureKind }> = [];
@@ -78,7 +80,7 @@ export async function runAiDecisionLoop({
       { code: 'jev_unavailable', data: { stepId: step.id, fields } },
     );
   }
-  if (!runModel && (outputPlan.modelFields === undefined || outputPlan.modelFields.length > 0)) {
+  if (!runModel && outputPlan.modelFields.length > 0) {
     throw Object.assign(new Error('이 AI 판단의 문장 출력에 사용할 LLM이 없습니다.'), { code: 'agent_unavailable' });
   }
   const readIndex = allowReads ? buildJevReadOperationIndex(ctx.connections ?? []) : undefined;
@@ -296,13 +298,13 @@ export async function runAiDecisionLoop({
     step, ctx, plan: outputPlan, decisionEngine: outputDecisionEngine, decisionInput, evidence,
   });
   const outputFields = outputPlan.modelFields;
-  const modelOutput = runModel && (outputFields === undefined || outputFields.length > 0)
-    ? await runModel({
+  const modelOutput = runModel && outputFields.length > 0
+    ? selectModelProse(await runModel({
         requireDeclaredFields: !allowReads,
         final: true,
-        ...(outputFields === undefined ? {} : { outputFields }),
+        outputFields,
         decisionValues: jevOutput,
-      })
+      }), outputFields)
     : {};
   const output = { ...modelOutput, ...jevOutput, needMore: false };
   if (allowReads && !hasRequiredOutputFields(step, output)) {
@@ -313,6 +315,9 @@ export async function runAiDecisionLoop({
       step, ir, ctx, stepResults, evidence, documentRequired, runModel, outputFields, jevOutput,
     });
     return;
+  }
+  if (!hasRequiredOutputFields(step, output)) {
+    throw Object.assign(new Error(`${step.id}가 필수 문안 출력을 반환하지 않았습니다. 다시 실행하세요.`), { code: 'ai_output_missing' });
   }
   persistOutput({ step, ir, ctx, stepResults, evidence, documentRequired, output });
 }
@@ -329,15 +334,15 @@ async function persistFinalOutput(context: {
   evidence: Array<{ source: string; detail: string }>;
   documentRequired: boolean;
   runModel: DecisionModelRun;
-  outputFields?: string[];
+  outputFields: string[];
   jevOutput: Record<string, unknown>;
 }): Promise<void> {
-  const modelOutput = await context.runModel({
+  const modelOutput = selectModelProse(await context.runModel({
     requireDeclaredFields: true,
     final: true,
-    ...(context.outputFields === undefined ? {} : { outputFields: context.outputFields }),
+    outputFields: context.outputFields,
     decisionValues: context.jevOutput,
-  });
+  }), context.outputFields);
   const output = { ...modelOutput, ...context.jevOutput, needMore: false };
   if (!hasRequiredOutputFields(context.step, output)) {
     throw Object.assign(
@@ -346,6 +351,22 @@ async function persistFinalOutput(context: {
     );
   }
   persistOutput({ ...context, output });
+}
+
+/** The provider's schema adherence is not a trust boundary. Persist only prose. */
+function selectModelProse(output: DecisionModelOutput, fields: readonly string[]): Record<string, string> {
+  if (!output || typeof output !== 'object' || Array.isArray(output)) {
+    throw Object.assign(new Error('LLM이 선언된 문안 출력 객체를 반환하지 않았습니다.'), { code: 'ai_output_invalid' });
+  }
+  const selected: Record<string, string> = {};
+  for (const field of fields) {
+    if (!Object.hasOwn(output, field) || output[field] == null) continue;
+    if (typeof output[field] !== 'string') {
+      throw Object.assign(new Error(`LLM 문안 출력 ${field}가 문자열이 아닙니다.`), { code: 'ai_output_invalid' });
+    }
+    Object.defineProperty(selected, field, { value: output[field], enumerable: true, configurable: true });
+  }
+  return selected;
 }
 
 function persistOutput(context: {

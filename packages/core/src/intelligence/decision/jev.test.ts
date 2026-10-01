@@ -65,10 +65,10 @@ describe('JevDecisionEngine', () => {
 
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe('https://api.typesafe.ai/v1/systemone');
-    const headers = init?.headers as Record<string, string>;
-    expect(headers.Authorization).toBe('Bearer test-key');
-    expect(headers['Content-Type']).toBe('application/json');
-    expect(headers['X-Test']).toBe('kept');
+    const headers = new Headers(init?.headers);
+    expect(headers.get('authorization')).toBe('Bearer test-key');
+    expect(headers.get('content-type')).toBe('application/json');
+    expect(headers.get('x-test')).toBe('kept');
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
     expect(body).toMatchObject({ model: 'jev-latest', state: { candidate: 'sales table' } });
     expect(body.questions).toEqual({
@@ -77,6 +77,35 @@ describe('JevDecisionEngine', () => {
         instructions: 'Is this source plausibly relevant?',
       },
     });
+  });
+
+  it('rejects non-ASCII, whitespace, and control characters in synthetic API keys before request I/O', () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const invalidKeys = ['synthetic\uD55C\uAE00', 'synthetic\nkey', ' synthetic-key', 'synthetic-key ', 'synthetic key'];
+
+    expect(() => new Headers({ Authorization: 'Bearer \uD55C\uAE00' })).toThrow(/ByteString.*index 7/i);
+    for (const apiKey of invalidKeys) {
+      expect(() => new JevDecisionEngine({ apiKey, fetch: fetchImpl })).toThrow(/ASCII bearer tokens/);
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('validates the final request headers before counting or starting a fetch', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const engine = new JevDecisionEngine({
+      apiKey: 'synthetic-token-123',
+      headers: { 'X-Test': '합성값' },
+      fetch: fetchImpl,
+    });
+
+    await expect(engine.evaluate({
+      state: 'check',
+      questions: { reachable: { type: 'boolean', instructions: 'Reachable?' } },
+    })).rejects.toMatchObject({
+      message: 'TypeSafe request headers are invalid. Check the API key and custom headers, then try again.',
+      providerRequestCount: 0,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('treats baseURL as an API root like the official SDK', async () => {

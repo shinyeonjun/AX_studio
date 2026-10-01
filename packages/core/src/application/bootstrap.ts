@@ -45,6 +45,8 @@ export interface AxStudioCoreOptions {
   cloudModel?: string;
   /** Optional fuzzy decision plane. Deterministic execution remains authoritative. */
   decisionEngine?: DecisionEngine;
+  /** Optional report planner injected by deterministic host tests. */
+  reportPlanner?: import('../documents/reporting/service.js').ReportGenerationDependencies['planner'];
   /** Electron injects Chromium printToPDF; omit in core-only tests. */
   desktopPrintBridge?: DesktopPrintBridge | null;
   onExecutionStarted?: (executionId: string) => void;
@@ -132,12 +134,13 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
       import('../documents/reporting/planner/planner.js'),
       import('../documents/reporting/service.js'),
     ]).then(([{ getDocumentEngineClient }, { ReportPlanner }, { ReportGenerationService }]) => {
-      reportPlanner = new ReportPlanner(investigationRunner, { decisionEngine: activeDecisionEngine });
+      const planner = options.reportPlanner ?? new ReportPlanner(investigationRunner, { decisionEngine: activeDecisionEngine });
+      reportPlanner = planner instanceof ReportPlanner ? planner : undefined;
       return new ReportGenerationService({
         checkpoints: new ReportCheckpointStore(join(paths.sessions, 'report-checkpoints')),
         workspaceSources,
         documentEngine: getDocumentEngineClient(),
-        planner: reportPlanner,
+        planner,
         getConnector: (name) => runtime?.connectors[name] ?? connectors[name],
       });
     }).catch((error: unknown) => {

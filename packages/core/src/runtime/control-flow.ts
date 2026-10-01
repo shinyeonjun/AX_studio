@@ -5,6 +5,7 @@ export interface ExecutionCheckpoint {
   stepResults: Record<string, unknown>;
   /** Validated output ports needed by steps after an approval resume. */
   outputs?: Record<string, Record<string, unknown>>;
+  presentationVariableSources?: Record<string, string>;
   remainingStepIds: string[];
   /** Steps in outer sequences waiting after a nested branch completes. */
   pendingOuterStepIds?: string[];
@@ -20,6 +21,8 @@ export function isExecutionCheckpoint(value: unknown): value is ExecutionCheckpo
     isRecord(rec.variables) &&
     isRecord(rec.stepResults) &&
     (rec.outputs === undefined || isRecord(rec.outputs)) &&
+    (rec.presentationVariableSources === undefined || (isRecord(rec.presentationVariableSources)
+      && Object.values(rec.presentationVariableSources).every((source) => typeof source === 'string'))) &&
     Array.isArray(rec.remainingStepIds),
   );
 }

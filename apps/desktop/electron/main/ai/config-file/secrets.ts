@@ -25,7 +25,7 @@ export async function setJevSecret(value: string): Promise<void> {
 }
 
 export async function getJevSecret(): Promise<string> {
-  return (await getOsSecret(JEV_API_ENV_KEY))?.trim() ?? '';
+  return (await getOsSecret(JEV_API_ENV_KEY)) ?? '';
 }
 
 export async function getSecretForBrand(brand: AiBrand, mode?: AiConnectionMode): Promise<string> {
@@ -36,7 +36,8 @@ export async function getSecretForBrand(brand: AiBrand, mode?: AiConnectionMode)
 async function loadAiSecretsIntoEnv(): Promise<void> {
   const keys = [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY, JEV_API_ENV_KEY];
   for (const envKey of keys) {
-    const stored = (await getOsSecret(envKey))?.trim();
+    const rawStored = await getOsSecret(envKey);
+    const stored = envKey === JEV_API_ENV_KEY ? rawStored : rawStored?.trim();
     if (stored) process.env[envKey] = stored;
   }
 }
@@ -50,10 +51,13 @@ export async function migrateAiSecretsToOsStore(): Promise<void> {
   const config = await readAiToml();
   const envFile = await readEnvFile();
   for (const envKey of [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY, JEV_API_ENV_KEY]) {
-    const existing = (await getOsSecret(envKey))?.trim();
+    const rawExisting = await getOsSecret(envKey);
+    const existing = envKey === JEV_API_ENV_KEY ? rawExisting : rawExisting?.trim();
     if (existing) continue;
-    const fromToml = (config.secrets[envKey.toLowerCase()] ?? config.secrets[envKey] ?? '').trim();
-    const fromEnvFile = (envFile[envKey] ?? '').trim();
+    const rawFromToml = config.secrets[envKey.toLowerCase()] ?? config.secrets[envKey] ?? '';
+    const rawFromEnvFile = envFile[envKey] ?? '';
+    const fromToml = envKey === JEV_API_ENV_KEY ? rawFromToml : rawFromToml.trim();
+    const fromEnvFile = envKey === JEV_API_ENV_KEY ? rawFromEnvFile : rawFromEnvFile.trim();
     const value = fromToml || fromEnvFile;
     if (value) await setOsSecret(envKey, value);
   }

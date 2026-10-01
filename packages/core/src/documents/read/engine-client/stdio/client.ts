@@ -22,7 +22,11 @@ import type {
   DocumentEngineClient,
   DocumentEngineClientOptions,
 } from '../contracts.js';
-import { requestDocumentEngine, type DocumentEngineTransportOptions } from './request.js';
+import {
+  normalizeDocumentEngineError,
+  requestDocumentEngine,
+  type DocumentEngineTransportOptions,
+} from './request.js';
 
 const MAX_DOCUMENT_SOURCE_BYTES = 100 * 1024 * 1024;
 
@@ -170,6 +174,15 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       timeoutMs: this.timeoutMs,
       workerCwd: this.workerCwd,
     };
-    return requestDocumentEngine(options, command, params);
+    try {
+      const response = await requestDocumentEngine<T>(options, command, params);
+      if (response.ok || !response.error) return response;
+      return { ...response, error: normalizeDocumentEngineError(response.error) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const normalized = normalizeDocumentEngineError(message);
+      if (normalized === message) throw error;
+      throw new Error(normalized);
+    }
   }
 }

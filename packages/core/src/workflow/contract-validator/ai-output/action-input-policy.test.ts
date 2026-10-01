@@ -70,10 +70,10 @@ describe('AI output action-input policy', () => {
     }));
   });
 
-  it('allows free-form LLM text only through a TextArtifact action input', () => {
+  it('allows declared prose through a catalog prose input', () => {
     const workflow = workflowFor({
       type: 'object',
-      properties: { summary: { type: 'string' } },
+      properties: { summary: { type: 'string', purpose: 'prose' } },
       required: ['summary'],
     }, slackSend({ channel: '#ops' }, { text: { from: 'compose', output: 'summary' } }));
 

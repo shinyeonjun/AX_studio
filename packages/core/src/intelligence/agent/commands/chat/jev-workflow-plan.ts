@@ -133,7 +133,8 @@ function candidateFor(
   };
   for (const [port, type] of Object.entries(capability.io?.inputs ?? {})) {
     if (hasConcreteParamForPort(candidateStep, port)) continue;
-    const compatible = outputs.filter((output) => contractTypesCompatible(output.type, type));
+    const compatible = outputs.filter((output) => contractTypesCompatible(output.type, type)
+      && (output.capabilityId !== 'workflow.ai_decision' || capability.params.some((param) => param.name === port && param.purpose === 'prose')));
     if (compatible.length === 0) {
       // Keep a required free-text input selectable so the host can ask for it after planning.
       const hasTextParam = type === 'TextArtifact' && capability.params.some((param) => {
@@ -247,6 +248,11 @@ function buildAiTextStep(request: string, source: OutputChoice | undefined, id: 
       type: 'ai_decision',
       id,
       investigation: false,
+      outputSchema: {
+        type: 'object',
+        properties: { conclusion: { type: 'string', purpose: 'prose' } },
+        required: ['conclusion'],
+      },
       goal: [
         `사용자 요청: ${boundDecisionString(request, 2_000)}`,
         source
@@ -584,7 +590,8 @@ export async function planJevSelectedTools(input: {
       const stepBindings: Record<string, PortBinding> = {};
       for (const [portIndex, [port, type]] of Object.entries(candidate.capability.io?.inputs ?? {}).entries()) {
         if (hasConcreteParamForPort(candidateStep, port)) continue;
-        const compatible = outputChoices.filter((source) => source.from !== id && contractTypesCompatible(source.type, type));
+        const compatible = outputChoices.filter((source) => source.from !== id && contractTypesCompatible(source.type, type)
+          && (source.capabilityId !== 'workflow.ai_decision' || candidate.capability.params.some((param) => param.name === port && param.purpose === 'prose')));
         if (compatible.length === 1) {
           stepBindings[port] = { from: compatible[0]!.from, output: compatible[0]!.output };
           continue;

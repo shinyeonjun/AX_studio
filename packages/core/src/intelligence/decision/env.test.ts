@@ -25,4 +25,11 @@ describe('createExperimentalJevDecisionEngineFromEnvironment', () => {
 
     expect(engine).toBeInstanceOf(JevDecisionEngine);
   });
+
+  it('rejects surrounding whitespace instead of normalizing a configured key', () => {
+    expect(() => createExperimentalJevDecisionEngineFromEnvironment({
+      AX_EXPERIMENT_JEV_DECISION_PLANE: '1',
+      TYPESAFE_API_KEY: ' synthetic-key ',
+    })).toThrow(/ASCII bearer tokens/);
+  });
 });

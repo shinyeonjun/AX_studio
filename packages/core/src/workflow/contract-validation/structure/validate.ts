@@ -10,6 +10,7 @@ import {
 } from './control-flow.js';
 import { validateNotificationBranching } from './notifications.js';
 import { validateWorkflowReferences } from './references-validation.js';
+import { decisionOutputContractErrors } from '../../ai-output-contract.js';
 
 export function validateWorkflowStructure(
   ir: WorkflowIR,
@@ -21,6 +22,11 @@ export function validateWorkflowStructure(
 
   for (const step of ir.steps) {
     if (step.type === 'action') issues.push(...validateActionContract(step, options));
+    if (step.type === 'ai_decision') {
+      issues.push(...decisionOutputContractErrors(step).map((message): ContractValidationIssue => ({
+        code: 'invalid_workflow_schema', stepId: step.id, message: `${step.id} 출력 계약: ${message}`,
+      })));
+    }
     issues.push(...validateStepControlFlow(step, byId));
   }
 

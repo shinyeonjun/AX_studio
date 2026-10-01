@@ -87,6 +87,72 @@ describe('report layout materialization', () => {
     expect(verifyReportExampleReplay(pair, rendered.values)).toEqual({ ok: true, mismatches: [] });
   });
 
+  it('fills detected table rows across two template pages without extending the page count', () => {
+    const originalGroup = pair.tableGroups[0]!;
+    const secondPageRows = [
+      {
+        index: 2,
+        pageIndex: 1,
+        y: 120,
+        cells: [
+          { ...originalGroup.rows[0]!.cells[0]!, id: 'page-two-name-1', pageIndex: 1, rect: { ...originalGroup.rows[0]!.cells[0]!.rect, y: 120 }, exampleText: 'Gamma' },
+          { ...originalGroup.rows[0]!.cells[1]!, id: 'page-two-sales-1', pageIndex: 1, rect: { ...originalGroup.rows[0]!.cells[1]!.rect, y: 120 }, exampleText: '400' },
+        ],
+      },
+      {
+        index: 3,
+        pageIndex: 1,
+        y: 140,
+        cells: [
+          { ...originalGroup.rows[1]!.cells[0]!, id: 'page-two-name-2', pageIndex: 1, rect: { ...originalGroup.rows[1]!.cells[0]!.rect, y: 140 }, exampleText: 'Delta' },
+          { ...originalGroup.rows[1]!.cells[1]!, id: 'page-two-sales-2', pageIndex: 1, rect: { ...originalGroup.rows[1]!.cells[1]!.rect, y: 140 }, exampleText: '50' },
+        ],
+      },
+    ];
+    const multiPagePair: PdfReportPairAnalysis = {
+      ...pair,
+      pageCount: 2,
+      pages: [...pair.pages, { ...pair.pages[0]!, index: 1 }],
+      tableGroups: [{
+        ...originalGroup,
+        rowCount: 4,
+        rows: [...originalGroup.rows, ...secondPageRows],
+        pageBounds: [{ pageIndex: 0, x: 60, width: 200 }, { pageIndex: 1, x: 60, width: 200 }],
+      }],
+    };
+    const multiPageResult: ReportPlanResult = {
+      ...result,
+      tables: {
+        ...result.tables,
+        customers: {
+          ...result.tables.customers!,
+          rows: [
+            ...result.tables.customers!.rows,
+            { raw: { name: 'Gamma', sales: 400 }, display: { name: 'Gamma', sales: '400' } },
+            { raw: { name: 'Delta', sales: 50 }, display: { name: 'Delta', sales: '50' } },
+          ],
+        },
+      },
+    };
+
+    const rendered = materializeReportLayout(multiPagePair, layout, multiPageResult, { periodLabel: '2026-09' });
+    const pageTwoFields = rendered.template.fields.filter((field) => field.pageIndex === 1);
+    expect(rendered.template.pageCount).toBe(2);
+    expect(pageTwoFields.map((field) => field.id)).toEqual([
+      'page-two-name-1',
+      'page-two-sales-1',
+      'page-two-name-2',
+      'page-two-sales-2',
+    ]);
+    expect(rendered.values).toMatchObject({
+      'page-two-name-1': 'Gamma',
+      'page-two-sales-1': '400',
+      'page-two-name-2': 'Delta',
+      'page-two-sales-2': '50',
+    });
+    expect(rendered.template.fields.some((field) => field.id.includes('overflow'))).toBe(false);
+  });
+
   it('fails replay when a computed value does not recreate the completed example', () => {
     const rendered = materializeReportLayout(pair, layout, {
       ...result,

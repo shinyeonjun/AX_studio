@@ -18,23 +18,22 @@ import {
 } from './evidence.js';
 import { investigationSchemaFor } from './output.js';
 import { runAiDecisionLoop, type DecisionModelOutput, type DecisionModelRun } from './decision-loop.js';
+import { assertDecisionOutputContract, decisionOutputProperties, decisionRequiredFields } from '../../workflow/ai-output-contract.js';
+import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../../workflow/contract-validation/structure/references-validation.js';
 
 function stepForModelFields(
   step: Step & { type: 'ai_decision' },
   outputFields?: string[],
 ): Step & { type: 'ai_decision' } {
-  const outputSchema = step.outputSchema;
-  const properties = outputSchema?.properties;
-  if (!outputFields || !outputSchema || !properties || typeof properties !== 'object' || Array.isArray(properties)) return step;
+  if (!outputFields) return step;
+  const properties = decisionOutputProperties(step);
   const selected = new Set(outputFields);
   return {
     ...step,
     outputSchema: {
-      ...outputSchema,
+      type: 'object',
       properties: Object.fromEntries(Object.entries(properties).filter(([field]) => selected.has(field))),
-      ...(Array.isArray(outputSchema.required)
-        ? { required: outputSchema.required.filter((field): field is string => typeof field === 'string' && selected.has(field)) }
-        : {}),
+      required: decisionRequiredFields(step).filter((field) => selected.has(field)),
     },
   };
 }
@@ -48,6 +47,9 @@ export async function runAiDecision(
   connectors: Record<string, Connector>,
   decisionEngine?: DecisionEngine,
 ): Promise<void> {
+  assertDecisionOutputContract(step);
+  const boundaryIr = { ...ir, steps: [...ir.steps.filter((candidate) => candidate.id !== step.id), step] };
+  assertWorkflowOutputBoundaries(boundaryIr, ctx.presentationVariableSources);
   const allowReads = step.investigation === true;
   const maxReads = allowReads ? step.maxReads : undefined;
   const evidence: Array<{ source: string; detail: string }> = [];
@@ -110,10 +112,13 @@ export async function runAiDecision(
     ? decisionEngine
     : undefined;
   const decisionInput = outputDecisionEngine
-    ? buildInvestigationUser(step, ctx, stepResults, {
+    ? buildInvestigationUser(step, {
+        ...ctx,
+        variables: Object.fromEntries(Object.entries(ctx.variables).filter(([key]) => !ctx.presentationVariableSources?.[key])),
+      }, decisionEvidenceResults(boundaryIr, stepResults, ctx.presentationVariableSources), {
         includeSensitiveData: true,
         includeDocumentVisuals: false,
-        ir,
+        ir: boundaryIr,
       })
     : '';
   const promptFor = (extra?: string) => investigationUserPrompt(
@@ -190,4 +195,16 @@ export async function runAiDecision(
     decisionInput,
     runModel,
   });
+}
+
+function decisionEvidenceResults(ir: WorkflowIR, results: Record<string, unknown>, runtimeSources?: Record<string, string>): Record<string, unknown> {
+  const derived = presentationDerivedSteps(ir, runtimeSources);
+  const byId = new Map(ir.steps.map((step) => [step.id, step]));
+  return Object.fromEntries(Object.entries(results).flatMap(([id, value]) => {
+    const source = byId.get(id);
+    if (derived.has(id)) return [];
+    // Model prose is presentation, not evidence for a later Jev decision.
+    if (source?.type === 'ai_decision') return [];
+    return [[id, value]];
+  }));
 }
