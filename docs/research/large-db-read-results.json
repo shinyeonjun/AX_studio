@@ -1,0 +1,108 @@
+{
+  "source_commit": "4071ce0e82515f41d6763fc3ae8ba341a33f6555",
+  "source_url": "https://github.com/shinyeonjun/AX_studio/tree/4071ce0e82515f41d6763fc3ae8ba341a33f6555",
+  "research_date": "2026-10-01",
+  "status": "audit_and_design_complete_no_product_patch",
+  "live_databases_used": false,
+  "production_schema_changed": false,
+  "coverage_warning": "Characterization tests reproduce baseline defects; mechanism tests are synthetic SQLite only, not AX 10m support or PostgreSQL/MySQL readiness.",
+  "source_sha256": {
+    "packages/core/src/connectors/rdb/connector.ts": "afd2979d9762ca27af7d1e6e5e4bef80ed079228123ec0a6c1e1746a7e3d5a49",
+    "packages/core/src/connectors/rdb/client/rows.ts": "9e8bcb6f05375c33590e985d43179c6799e9847feabe8e0e5a9d6b9ddda379da",
+    "packages/core/src/connectors/rdb/client/drivers.ts": "d2d8ba54393315ca127d665043d10c81179c6e32a2c0a8d008cabbebfbada271",
+    "packages/core/src/connectors/rdb/client/describe.ts": "3125a3ad11a20ca1a28023750e34fa20187cec7a31eedd2ebb009d5a6877582e",
+    "packages/core/src/documents/reporting/source/capture.ts": "d0dc666bec1c7303e9bd5c0d39bda200450eb415cb5ecdc11144d99864dfbd93",
+    "packages/core/src/documents/reporting/source/schema.ts": "811398a56ae880f50701370113c811313750e252d86dc2b41195824d00e705cc",
+    "packages/core/src/documents/reporting/plan/value.ts": "d9a2c0b9eee8c6b6fa27930d06f33d5987e2c6c70ac39754eefcfbc20f078ca2",
+    "packages/core/src/documents/reporting/plan/aggregate.ts": "40d454f7e672624f030bcad79f594f6f6732e3ee2e71a52959c2696f7d66fdc7",
+    "packages/core/src/contracts/artifacts/table-build.ts": "718f2a9f3f081e074a8f3377634dc1b18f1df7c9e6d78e059d274463b495e6e0"
+  },
+  "results": {
+    "baseline-focused-tests.json": {
+      "runtime": "Node 24.19.0",
+      "test_files": 15,
+      "tests_passed": 76,
+      "failed": 0
+    },
+    "baseline-focused-node22.json": {
+      "runtime": "Node 22.23.2",
+      "test_files": 15,
+      "tests_passed": 76,
+      "failed": 0
+    },
+    "source-characterization.json": {
+      "runtime": "Node 24.19.0",
+      "test_files": 1,
+      "tests_passed": 10,
+      "failed": 0
+    },
+    "source-characterization-node22.json": {
+      "runtime": "Node 22.23.2",
+      "test_files": 1,
+      "tests_passed": 10,
+      "failed": 0
+    },
+    "sqlite-mechanisms.json": {
+      "runtime": "Python 3.12.14, SQLite 3.53.1",
+      "stages": [
+        {
+          "input_rows": 10000,
+          "exact_count": 10000,
+          "exact_sum": 5005000,
+          "fixture_bytes_with_index": 253952,
+          "keyset_max_batch": 4096,
+          "keyset_walk_ms": 5.9308670006430475,
+          "process_peak_rss_kib": 14752
+        },
+        {
+          "input_rows": 100000,
+          "exact_count": 100000,
+          "exact_sum": 50050000,
+          "fixture_bytes_with_index": 2613248,
+          "keyset_max_batch": 4096,
+          "keyset_walk_ms": 49.86878599993361,
+          "process_peak_rss_kib": 18912
+        },
+        {
+          "input_rows": 1000000,
+          "exact_count": 1000000,
+          "exact_sum": 500500000,
+          "fixture_bytes_with_index": 26742784,
+          "keyset_max_batch": 4096,
+          "keyset_walk_ms": 443.7940330008132,
+          "process_peak_rss_kib": 72464
+        }
+      ],
+      "elapsed_seconds": 3.346426631000213
+    },
+    "sqlite-mechanisms-10m.json": {
+      "runtime": "Python 3.12.14, SQLite 3.53.1",
+      "stages": [
+        {
+          "input_rows": 10000000,
+          "exact_count": 10000000,
+          "exact_sum": 5005000000,
+          "fixture_bytes_with_index": 279248896,
+          "keyset_max_batch": 4096,
+          "keyset_walk_ms": 5756.283843998972,
+          "process_peak_rss_kib": 79176
+        }
+      ],
+      "elapsed_seconds": 37.3888173510004
+    }
+  },
+  "not_run": [
+    "Full repository suite",
+    "Real PostgreSQL/MySQL server integration",
+    "Production workload and privacy verification",
+    "SQL compiler differential tests because proposed compiler is not implemented"
+  ],
+  "deliverables": [
+    "README.md",
+    "audit.md",
+    "contract-design.md",
+    "sqlite_read_harness.py",
+    "tests/source-gaps.test.ts",
+    "vitest.config.mjs"
+  ]
+}

@@ -25,6 +25,43 @@ it('resolves the installed worker and Python without relying on the checkout', (
   } finally { rmSync(resources, { recursive: true, force: true }); }
 });
 
+it('fails closed when the installed Python is missing instead of using a venv or host Python', () => {
+  const resources = mkdtempSync(join(tmpdir(), 'ax-installed-missing-python-'));
+  const engine = join(resources, 'document-engine');
+  const worker = join(engine, 'src', 'worker.py');
+  const venvPython = join(engine, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  try {
+    mkdirSync(join(engine, 'src'), { recursive: true });
+    mkdirSync(join(engine, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin'), { recursive: true });
+    writeFileSync(worker, '');
+    writeFileSync(venvPython, '');
+    vi.stubEnv('AX_DOCUMENT_ENGINE_WORKER', undefined);
+    vi.stubEnv('AX_DOCUMENT_ENGINE_PYTHON', undefined);
+    vi.stubGlobal('process', { ...process, resourcesPath: resources });
+    expect(() => defaultPythonPath()).toThrow('Packaged document-engine Python is missing');
+  } finally { rmSync(resources, { recursive: true, force: true }); }
+});
+
+it('fails closed for a missing packaged worker even when the checkout is available', () => {
+  const resources = mkdtempSync(join(tmpdir(), 'ax-installed-missing-worker-'));
+  try {
+    writeFileSync(join(resources, 'app.asar'), 'package marker');
+    vi.stubEnv('AX_DOCUMENT_ENGINE_WORKER', undefined);
+    vi.stubGlobal('process', { ...process, resourcesPath: resources });
+    expect(() => defaultWorkerScript()).toThrow('Packaged document-engine worker is missing');
+  } finally { rmSync(resources, { recursive: true, force: true }); }
+});
+
+it('preserves explicit developer Python overrides', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ax-python-override-'));
+  const python = join(dir, process.platform === 'win32' ? 'python.exe' : 'python3');
+  try {
+    writeFileSync(python, '');
+    vi.stubEnv('AX_DOCUMENT_ENGINE_PYTHON', python);
+    expect(defaultPythonPath(join(dir, 'src/worker.py'))).toBe(python);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 describe('StdioDocumentEngineClient integration', () => {
   it('ingests a text file via basic adapter when python is available', async (context) => {
     if (spawnSync(defaultPythonPath(), ['-c', 'import pypdf'], { windowsHide: true }).status !== 0) {

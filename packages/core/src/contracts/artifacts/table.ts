@@ -28,12 +28,18 @@ export const TableColumnSchema = z.object({
   nullable: z.boolean().default(true),
   inferred: z.boolean().default(false),
   format: z.string().optional(),
+  /** One-based physical worksheet column, independent of the normalized name. */
+  sourceColumn: z.number().int().positive().optional(),
 });
 
 export const TableRowSchema = z.object({
   index: z.number().int().nonnegative(),
   key: z.string().optional(),
   values: z.record(ScalarValueSchema),
+  /** Source scalars before trimming/coercion; absent for legacy or derived rows. */
+  rawValues: z.record(ScalarValueSchema).optional(),
+  /** One-based physical worksheet row; index remains a presentation position. */
+  sourceRow: z.number().int().positive().optional(),
 });
 
 export const TableProfileFieldSchema = z.object({
@@ -69,6 +75,9 @@ export const TableArtifactSchema = z.object({
     artifactId: z.string().optional(),
     filePath: z.string().optional(),
     workbookSheet: z.string().optional(),
+    /** SHA-256 of the immutable input bytes used to issue source row keys. */
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    headerRow: z.number().int().positive().optional(),
     database: z.string().optional(),
     schema: z.string().optional(),
     table: z.string().optional(),

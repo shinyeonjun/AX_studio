@@ -1,5 +1,7 @@
 # AX Studio
 
+> 최신 제품 방향과 구현·검증 상태: [프로젝트 문서](docs/project/README.md)
+
 <p align="center">
   <img src="apps/desktop/src/ui/images/AX_Studio.png" alt="AX Studio" width="560" />
 </p>
@@ -105,7 +107,7 @@ npm run dev
 
 보고서 E2E가 사용할 Python을 명시해야 하는 환경에서는 `AX_DOCUMENT_ENGINE_PYTHON`에 실행 파일 경로를 지정합니다. 지정하지 않으면 번들된 Windows 가상환경, `python`, `python3` 순서로 탐색합니다.
 
-`npm run dev`는 Electron 데스크톱 앱을 실행합니다. macOS와 Linux에서도 Electron 개발 실행은 가능할 수 있지만, 현재 제품 검증과 패키징의 우선 대상은 Windows입니다.
+`npm run dev`는 Electron 데스크톱 앱을 실행합니다. Linux glibc x64 AppImage 빌드와 격리된 패키지 smoke 경로도 제공합니다. 실제 GUI·설치·라이선스 검증 범위는 [Linux 패키징 문서](docs/LINUX_PACKAGING.md)를 확인하세요. macOS 패키징은 아직 검증하지 않았습니다.
 
 ## 검증
 
@@ -156,7 +158,10 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 | --- | --- |
 | `npm run dev` | 데스크톱 개발 실행 |
 | `npm run build` | core와 desktop 빌드 |
-| `npm run pack:win -w @ax-studio/desktop` | Windows 설치본 빌드 |
+| `npm run pack:win -w @ax-studio/desktop` | Windows x64 설치본 빌드 |
+| `npm run pack:linux -w @ax-studio/desktop` | Linux glibc x64 AppImage 빌드 및 패키지 smoke |
+| `npm run pack:linux:build -w @ax-studio/desktop` | Linux headless 빌드 (GUI 검증 별도) |
+| `npm run test:packaging` | 플랫폼 경로·체크섬·격리·이동성 회귀 테스트 |
 | `npm run eval` | core eval 실행 |
 | `npm run test:product-qa` | Electron 제품 QA harness 실행 |
 | `npm run test:report-e2e` | 보고서 생성 E2E 실행 |
@@ -168,6 +173,8 @@ GOOGLE_OAUTH_CLIENT_SECRET=xxxxx
 - [Work Discovery 마스터 플랜](docs/AX_STUDIO_WORK_DISCOVERY_MASTER_PLAN.md)
 - [Work Discovery 전환 계획](docs/plans/work-discovery-transition.md)
 - [Work Discovery 전환 연구](docs/research/work-discovery-transition.md)
+- [Linux 패키징 및 검증](docs/LINUX_PACKAGING.md)
+- [패키징 라이선스 및 배포 전제](docs/PACKAGING_NOTICES.md)
 - [제품 QA harness](test/product-qa/README.md)
 - [수동 커넥터 검증](test/manual/README.md)
 

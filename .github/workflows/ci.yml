@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Packaging path and isolation regression tests
+        run: npm run test:packaging
+
       - name: Document engine dependencies
         run: python -m pip install -r packages/document-engine/requirements.txt
 
@@ -99,6 +102,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Packaging path and isolation regression tests
+        run: npm run test:packaging
 
       - name: Set up Python for packaging
         uses: actions/setup-python@v5

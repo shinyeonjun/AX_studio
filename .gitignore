@@ -84,3 +84,7 @@ Desktop.ini
 packages/document-engine/.venv/
 **/__pycache__/
 *.py[cod]
+
+# Scoped local build tools and test evidence
+/.tools/
+/build-evidence/

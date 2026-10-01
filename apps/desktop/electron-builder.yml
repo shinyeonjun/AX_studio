@@ -19,7 +19,15 @@
   ],
   "asar": true,
   "extraResources": [
-    { "from": "../../packages/document-engine/out/document-engine", "to": "document-engine", "filter": ["**/*"] }
+    {
+      "from": "../../docs/PACKAGING_NOTICES.md",
+      "to": "PACKAGING_NOTICES.md"
+    },
+    {
+      "from": "../../packages/document-engine/out/document-engine",
+      "to": "document-engine",
+      "filter": ["**/*"]
+    }
   ],
   "win": {
     "target": [
@@ -39,6 +47,13 @@
     "identity": null
   },
   "linux": {
-    "target": ["AppImage"]
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      }
+    ],
+    "executableName": "ax-studio",
+    "category": "Office"
   }
 }

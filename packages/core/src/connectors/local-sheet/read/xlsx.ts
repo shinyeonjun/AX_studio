@@ -6,6 +6,10 @@ import type { FileRef } from '../../../contracts/artifacts/file-ref.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
 import type { WorkbookArtifact } from '../../../contracts/artifacts/workbook.js';
 import {
+  completeArtifactCompleteness,
+  partialArtifactCompleteness,
+} from '../../../contracts/artifacts/completeness.js';
+import {
   buildTableArtifact,
   DEFAULT_TABLE_ROW_LIMIT,
   MAX_TABLE_ROW_LIMIT,
@@ -23,9 +27,14 @@ import {
 function sheetToMatrix(
   sheet: XLSX.WorkSheet,
   requestedRowLimit = DEFAULT_TABLE_ROW_LIMIT,
-): { headers: string[]; matrix: unknown[][] } {
+): {
+  headers: string[];
+  matrix: unknown[][];
+  sourceRowCount: number;
+  origin?: { firstRow: number; firstColumn: number };
+} {
   const rangeText = typeof sheet['!ref'] === 'string' ? sheet['!ref'] : undefined;
-  if (!rangeText) return { headers: [], matrix: [] };
+  if (!rangeText) return { headers: [], matrix: [], sourceRowCount: 0 };
   const range = XLSX.utils.decode_range(rangeText);
   const rowCount = range.e.r - range.s.r + 1;
   const columnCount = range.e.c - range.s.c + 1;
@@ -37,15 +46,22 @@ function sheetToMatrix(
     : DEFAULT_TABLE_ROW_LIMIT;
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
+    raw: true,
+    // Keep blanks so matrix positions still correspond to physical worksheet rows.
+    blankrows: true,
     defval: null,
     range: {
       s: range.s,
       e: { r: Math.min(range.e.r, range.s.r + rowLimit), c: range.e.c },
     },
   }) as unknown[][];
-  if (rows.length === 0) return { headers: [], matrix: [] };
   const headers = (rows[0] ?? []).map((cell, index) => String(cell ?? `column_${index + 1}`));
-  return { headers, matrix: rows.slice(1) };
+  return {
+    headers,
+    matrix: rows.slice(1),
+    sourceRowCount: Math.max(0, rowCount - 1),
+    origin: { firstRow: range.s.r + 2, firstColumn: range.s.c + 1 },
+  };
 }
 
 export function readXlsxWorkbook(options: {
@@ -71,6 +87,7 @@ export function readXlsxWorkbook(options: {
     cellNF: false,
     WTF: false,
   });
+  const contentHash = createHash('sha256').update(workbookData).digest('hex');
   const sheetNames = xlsx.SheetNames.slice(0, MAX_WORKBOOK_SHEETS);
   const tables: Record<string, TableArtifact> = {};
   const sheets: WorkbookArtifact['sheets'] = [];
@@ -78,7 +95,7 @@ export function readXlsxWorkbook(options: {
   for (const [index, name] of sheetNames.entries()) {
     const sheet = xlsx.Sheets[name];
     if (!sheet) continue;
-    const { headers, matrix } = sheetToMatrix(sheet, rowLimit);
+    const { headers, matrix, sourceRowCount, origin } = sheetToMatrix(sheet, rowLimit);
     const tableId = `tbl_${createHash('sha256').update(`${workbookId}:${name}`).digest('hex').slice(0, 16)}`;
     const table = buildTableArtifact({
       id: tableId,
@@ -86,7 +103,21 @@ export function readXlsxWorkbook(options: {
       headers,
       matrix,
       rowLimit,
-      source: { filePath: path, workbookSheet: name },
+      sourceRowCount,
+      preserveRawValues: true,
+      rowProvenance: origin ? {
+        ...origin,
+        // Content, sheet and physical row identify the source independently of business IDs.
+        rowKeys: matrix.map((_, rowIndex) => `row_${createHash('sha256')
+          .update(JSON.stringify([contentHash, name, origin.firstRow + rowIndex]))
+          .digest('hex')}`),
+      } : undefined,
+      source: {
+        filePath: path,
+        workbookSheet: name,
+        contentHash,
+        ...(origin ? { headerRow: origin.firstRow - 1 } : {}),
+      },
     });
     tables[tableId] = table;
     const range = sheet['!ref'];
@@ -106,6 +137,17 @@ export function readXlsxWorkbook(options: {
     kind: 'workbook',
     file,
     sheets,
+    completeness: xlsx.SheetNames.length > MAX_WORKBOOK_SHEETS
+      ? partialArtifactCompleteness('provider_limit', {
+        observedCount: sheets.length,
+        limit: MAX_WORKBOOK_SHEETS,
+        hasMore: true,
+      })
+      : sheets.length < sheetNames.length
+        ? { status: 'unknown', reason: 'unknown' }
+        : Object.values(tables).some((table) => table.truncated)
+          ? partialArtifactCompleteness('row_limit', { hasMore: true })
+          : completeArtifactCompleteness(),
     namedRanges: (xlsx.Workbook?.Names ?? []).map((entry) => ({
       name: String((entry as { Name?: string }).Name ?? ''),
       ref: String((entry as { Ref?: string }).Ref ?? ''),

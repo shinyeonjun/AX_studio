@@ -65,6 +65,21 @@ export function normalizeScalar(value: unknown): ScalarValue {
   return text;
 }
 
+/** Keep source strings untrimmed and uncoerced; serialize only non-scalar values. */
+function rawScalar(value: unknown): ScalarValue {
+  if (value == null) return null;
+  if (typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value) ?? '';
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+  return String(value);
+}
+
 const NON_FINITE_PROFILE_KEY = Symbol('non-finite-profile-value');
 
 export function profileTable(columns: TableColumn[], rows: TableArtifact['rows']): TableProfile {
@@ -140,6 +155,15 @@ export function buildTableArtifact(params: {
   matrix: unknown[][];
   rowLimit?: number;
   source?: TableArtifact['source'];
+  /** Full source extent before a connector caps its matrix. */
+  sourceRowCount?: number;
+  /** Opt in at source intake; calculated values keep their legacy semantics. */
+  preserveRawValues?: boolean;
+  rowProvenance?: {
+    firstRow: number;
+    firstColumn: number;
+    rowKeys: string[];
+  };
 }): TableArtifact {
   const configuredRowLimit = params.rowLimit ?? DEFAULT_TABLE_ROW_LIMIT;
   const rowLimit = Number.isFinite(configuredRowLimit)
@@ -154,12 +178,33 @@ export function buildTableArtifact(params: {
     type: inferColumnType(columnValues[index] ?? []),
     nullable: true,
     inferred: true,
+    ...(params.rowProvenance ? { sourceColumn: params.rowProvenance.firstColumn + index } : {}),
   }));
-  const truncated = params.matrix.length > rowLimit;
-  const limited = truncated ? params.matrix.slice(0, rowLimit) : params.matrix;
+  const limited = params.matrix.length > rowLimit ? params.matrix.slice(0, rowLimit) : params.matrix;
+  const sourceRowCount = params.sourceRowCount ?? params.matrix.length;
+  if (!Number.isInteger(sourceRowCount) || sourceRowCount < params.matrix.length) {
+    throw new Error('invalid_table_source_row_count');
+  }
+  const provenance = params.rowProvenance;
+  if (provenance && (
+    !Number.isInteger(provenance.firstRow) || provenance.firstRow < 1
+    || !Number.isInteger(provenance.firstColumn) || provenance.firstColumn < 1
+    || provenance.rowKeys.length !== params.matrix.length
+    || provenance.rowKeys.some((key) => typeof key !== 'string' || !key)
+  )) {
+    throw new Error('invalid_table_row_provenance');
+  }
+  const truncated = sourceRowCount > limited.length;
   const rows = limited.map((row, index) => ({
     index,
     values: Object.fromEntries(headers.map((name, columnIndex) => [name, normalizeScalar(row[columnIndex])])),
+    ...(params.preserveRawValues ? {
+      rawValues: Object.fromEntries(headers.map((name, columnIndex) => [name, rawScalar(row[columnIndex])])),
+    } : {}),
+    ...(params.rowProvenance ? {
+      key: params.rowProvenance.rowKeys[index],
+      sourceRow: params.rowProvenance.firstRow + index,
+    } : {}),
   }));
   const artifact: TableArtifact = {
     id: params.id,
