@@ -1,5 +1,34 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { connectGmailViaLoopback, createOAuthState, oauthCallbackStateMatches } from './oauth.js';
+
+vi.mock('googleapis', () => ({
+  google: {
+    auth: {
+      OAuth2: class {
+        constructor(
+          _clientId: string,
+          _clientSecret: string | undefined,
+          private readonly redirectUri: string,
+        ) {}
+
+        generateAuthUrl(params: { state: string }): string {
+          const url = new URL('https://oauth.fixture.invalid/auth');
+          url.searchParams.set('redirect_uri', this.redirectUri);
+          url.searchParams.set('state', params.state);
+          return url.toString();
+        }
+
+        async getToken(): Promise<never> {
+          throw new Error('Unexpected token exchange in loopback timeout test');
+        }
+      },
+    },
+  },
+}));
+
+vi.mock('google-auth-library', () => ({
+  CodeChallengeMethod: { S256: 'S256' },
+}));
 
 describe('Gmail OAuth state', () => {
   it('accepts the original state and rejects missing or mutated values', () => {
