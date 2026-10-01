@@ -7,6 +7,11 @@ from protocol import EngineResponse
 
 
 def _configure_stdio() -> None:
+    # The host sends UTF-8 JSON bytes. Windows pipe stdin may use a legacy
+    # codepage, and packaged -E launches ignore PYTHONUTF8 environment settings.
+    reconfigure_stdin = getattr(sys.stdin, "reconfigure", None)
+    if callable(reconfigure_stdin):
+        reconfigure_stdin(encoding="utf-8", errors="strict")
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if callable(reconfigure):
