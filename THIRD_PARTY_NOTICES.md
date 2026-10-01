@@ -26,7 +26,7 @@ index is not a substitute for the full notices shipped with dependencies.
 Retain installed package trees, `*.dist-info` metadata and license directories,
 including nested native-library notices for Chromium, PDFium, NumPy and OpenCV.
 Keep these files with redistribution; a top-level library license alone may not
-cover all bundled components. 
+cover all bundled components.
 
 ## PDF engine licensing
 

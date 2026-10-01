@@ -79,7 +79,9 @@ export function parsePackageArgs(args, host = process.platform, arch = process.a
 
 // Node otherwise rewrites relative symlinks to absolute staging paths.
 export function copyBundle(source, target) {
-  cpSync(source, target, { recursive: true, dereference: false, verbatimSymlinks: true });
+  // Node 22's native recursive copy mishandles Unicode Windows paths.
+  // An all-inclusive filter uses the Unicode-safe JS path (nodejs/node#61878).
+  cpSync(source, target, { recursive: true, dereference: false, verbatimSymlinks: true, filter: () => true });
 }
 
 export function assertNativeBuildHost(layout, host = {}) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import { join } from 'node:path';
-import { mkdtempSync, mkdirSync, realpathSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, parsePackageArgs, pythonRuntimes, verifyArchiveBytes } from './package-platform.mjs';
 
@@ -64,6 +64,27 @@ test('headless verification is an explicit option, never a silent GUI pass', () 
   assert.equal(parsePackageArgs([], 'linux', 'x64').skipUi, false);
   assert.equal(parsePackageArgs(['--skip-ui', '--dir'], 'linux', 'x64').skipUi, true);
   assert.equal(parsePackageArgs(['--platform=win32'], 'win32', 'x64').builderFlag, '--win');
+});
+
+test('bundle relocation copies nested files to a spaced Unicode path on every platform', () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'ax-copy-test-'));
+  try {
+    const source = join(scratch, 'staging');
+    const target = join(scratch, 'relocated payload 한글');
+    const files = {
+      'python/python.exe': 'fixture interpreter',
+      'python/Lib/site-packages/example/data.txt': 'nested dependency data',
+      'src/worker.py': 'fixture worker',
+    };
+    mkdirSync(join(source, 'python/Lib/site-packages/example'), { recursive: true });
+    mkdirSync(join(source, 'src'));
+    for (const [relative, content] of Object.entries(files)) writeFileSync(join(source, relative), content);
+    copyBundle(source, target);
+    rmSync(source, { recursive: true, force: true });
+    for (const [relative, content] of Object.entries(files)) {
+      assert.equal(readFileSync(join(target, relative), 'utf8'), content);
+    }
+  } finally { rmSync(scratch, { recursive: true, force: true }); }
 });
 
 test('relocating a Linux bundle preserves relative executable symlinks', { skip: process.platform === 'win32' }, () => {
