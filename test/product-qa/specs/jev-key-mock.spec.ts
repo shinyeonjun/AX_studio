@@ -4,9 +4,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron as electron, expect, test } from '@playwright/test';
 import { build } from 'esbuild';
+import { fixtureRuntime, isolatedFixtureEnv } from '../lib/isolated-fixture-env.mjs';
 
 const require = createRequire(import.meta.url);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const runtimeCleanups = new Set<() => void>();
+test.afterEach(() => {
+  for (const cleanup of runtimeCleanups) cleanup();
+  runtimeCleanups.clear();
+});
 
 // This launches only a synthetic Electron renderer. It never loads AX startup,
 // credential modules, user configuration, connectors, or a network provider.
@@ -15,6 +21,8 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
   const runRoot = resolve(process.env.AX_JEV_MOCK_QA_DIR ?? join(repoRoot, 'test/product-qa/runs/jev-key-mock-' + Date.now()));
   const sourceRoot = resolve(process.env.AX_JEV_MOCK_SOURCE_ROOT ?? repoRoot);
   mkdirSync(runRoot, { recursive: true });
+  const runtime = fixtureRuntime(runRoot);
+  runtimeCleanups.add(runtime.cleanup);
   const form = join(sourceRoot, 'apps/desktop/src/features/settings/ui/ai/JevDecisionPlaneForm.tsx');
   const renderer = `
     import React from 'react';
@@ -42,12 +50,12 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
       win.loadFile(${JSON.stringify(join(runRoot, 'index.html'))});
     });
   `);
-  const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
-  const app = await electron.launch({ executablePath: require('electron') as string,
-    args: [join(runRoot, 'main.cjs'), '--user-data-dir=' + join(runRoot, 'user-data')], cwd: runRoot,
-    env: { SYSTEMROOT: systemRoot, WINDIR: systemRoot, PATH: join(systemRoot, 'System32'),
-      USERPROFILE: runRoot, APPDATA: join(runRoot, 'roaming'), LOCALAPPDATA: join(runRoot, 'local'), TEMP: runRoot, TMP: runRoot } });
+  const app = await electron.launch({ executablePath: require('electron') as string, chromiumSandbox: true,
+    args: [join(runRoot, 'main.cjs'), '--user-data-dir=' + join(runtime.root, 'user-data')], cwd: runRoot,
+    env: isolatedFixtureEnv(runtime.root, { windowsPath: 'system32' }) });
   try {
+    expect(await app.evaluate(({ app }) => ['no-sandbox', 'disable-setuid-sandbox', 'disable-namespace-sandbox']
+      .filter((flag) => app.commandLine.hasSwitch(flag)))).toEqual([]);
     const page = await app.firstWindow();
     const badge = page.locator('.connection-badge');
     await expect(badge).toHaveText('키 등록됨 · 인증 미확인');

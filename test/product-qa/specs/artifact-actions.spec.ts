@@ -7,12 +7,18 @@ import { fileURLToPath } from 'node:url';
 import { _electron as electron, expect, test } from '@playwright/test';
 import { ArtifactStore } from '@ax-studio/core';
 import * as XLSX from 'xlsx';
+import { fixtureRuntime, isolatedFixtureEnv } from '../lib/isolated-fixture-env.mjs';
 
 const require = createRequire(import.meta.url);
 const electronExecutable = require('electron') as string;
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const userlikeRunsRoot = join(repoRoot, 'test/userlike-planner/runs');
 const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const runtimeCleanups = new Set<() => void>();
+test.afterEach(() => {
+  for (const cleanup of runtimeCleanups) cleanup();
+  runtimeCleanups.clear();
+});
 
 function isWithin(parent: string, candidate: string): boolean {
   const path = relative(parent, candidate);
@@ -30,26 +36,21 @@ test('scripted order export result card downloads and saves XLSX through rendere
   test.setTimeout(300_000);
   const runId = 'artifact-actions-' + Date.now();
   const artifactDir = join(repoRoot, 'test/product-qa/runs', runId);
+  const runtime = fixtureRuntime(artifactDir);
+  runtimeCleanups.add(runtime.cleanup);
   const screenshotsDir = join(artifactDir, 'screenshots');
-  const tempDir = join(artifactDir, '.temp');
+  const tempDir = join(runtime.root, '.temp');
   const dataRoot = join(artifactDir, 'data');
-  const userDataDir = join(artifactDir, 'electron-user-data');
+  const userDataDir = join(runtime.root, 'electron-user-data');
   const isolatedLocalAppData = join(artifactDir, 'local-appdata');
   const isolatedRoamingAppData = join(artifactDir, 'roaming-appdata');
   for (const path of [screenshotsDir, tempDir, dataRoot, userDataDir, isolatedLocalAppData, isolatedRoamingAppData]) {
     mkdirSync(path, { recursive: true });
   }
 
-  const safeWindowsEnv: Record<string, string> = {
-    PATH: process.env.Path ?? process.env.PATH ?? '',
-    SYSTEMROOT: process.env.SystemRoot ?? 'C:\\Windows',
-    WINDIR: process.env.WINDIR ?? process.env.SystemRoot ?? 'C:\\Windows',
-    TEMP: tempDir,
-    TMP: tempDir,
-    USERPROFILE: userDataDir,
-    LOCALAPPDATA: isolatedLocalAppData,
-    APPDATA: isolatedRoamingAppData,
-  };
+  const safeFixtureEnv = isolatedFixtureEnv(runtime.root, {
+    homeDir: userDataDir, tempDir, localAppData: isolatedLocalAppData, appData: isolatedRoamingAppData,
+  });
 
   const scriptedOutput = execFileSync(process.execPath, [
     join(repoRoot, 'test/userlike-planner/run-core.mjs'),
@@ -58,7 +59,7 @@ test('scripted order export result card downloads and saves XLSX through rendere
     '4',
   ], {
     cwd: repoRoot,
-    env: safeWindowsEnv,
+    env: safeFixtureEnv,
     encoding: 'utf8',
     timeout: 120_000,
   });
@@ -112,7 +113,7 @@ test('scripted order export result card downloads and saves XLSX through rendere
 
   const mainEntry = join(repoRoot, 'apps/desktop/out/main/index.js');
   const env = {
-    ...safeWindowsEnv,
+    ...safeFixtureEnv,
     AX_DATA_ROOT: dataRoot,
     AX_PRODUCT_QA: '1',
     AX_PRODUCT_QA_RUN_ID: runId,
@@ -123,12 +124,15 @@ test('scripted order export result card downloads and saves XLSX through rendere
   };
   const app = await electron.launch({
     executablePath: electronExecutable,
+    chromiumSandbox: true,
     args: [mainEntry, '--user-data-dir=' + userDataDir],
     cwd: repoRoot,
     env,
     timeout: 120_000,
   });
   try {
+    expect(await app.evaluate(({ app }) => ['no-sandbox', 'disable-setuid-sandbox', 'disable-namespace-sandbox']
+      .filter((flag) => app.commandLine.hasSwitch(flag)))).toEqual([]);
     const page = await app.firstWindow({ timeout: 120_000 });
     const pageErrors: string[] = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
