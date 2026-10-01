@@ -95,7 +95,7 @@ async function verifyPackage(directory, { skipUi = false } = {}) {
       throw new Error('Packaged project notice differs from source: ' + source);
     }
   }
-  for (const relative of ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']) {
+  for (const relative of [join('node_modules', 'react', 'LICENSE'), join('node_modules', '@ai-sdk', 'provider', 'LICENSE')]) {
     if (asar.extractFile(layout.archive, relative).length < 100) throw new Error('Missing archived dependency notice: ' + relative);
   }
   verifyBundle(layout.bundle);
