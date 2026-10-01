@@ -46,7 +46,9 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
       ...(template && typeof template === 'object' ? { template: template as PdfFormFillOptions['template'] } : {}),
       ...(fontPath ? { fontPath } : {}),
     };
-    const result = await getDocumentEngineClient().pdfFormFill(resolvedPath.path, options);
+    const result = await getDocumentEngineClient().pdfFormFill(resolvedPath.path, options,
+      ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     ctx.variables.pdfFormFillResult = result;
     ctx.variables.pdfFormOutputPath = result.outputPath;
 
@@ -78,6 +80,7 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
     });
     return { ok: true, data: artifact ? { ...result, artifact } : result };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'pdf_form_fill_failed' };
   }

@@ -34,7 +34,8 @@ export const ingest: DocumentActionHandler = async (params, ctx): Promise<Connec
     const result = await client.ingest(resolvedPath.path, {
       ocr: (params.ocr as 'auto' | 'off' | 'force' | undefined) ?? 'auto',
       engine: (params.engine as 'auto' | 'basic' | 'docling' | undefined) ?? 'auto',
-    });
+    }, ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
 
     ctx.variables.documentId = result.documentId;
     ctx.variables.documentArtifactPath = result.artifactPath;
@@ -67,6 +68,7 @@ export const ingest: DocumentActionHandler = async (params, ctx): Promise<Connec
       data: artifact,
     };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'document_ingest_failed' };
   }

@@ -21,6 +21,7 @@ import type {
 import type {
   DocumentEngineClient,
   DocumentEngineClientOptions,
+  DocumentEngineCallOptions,
 } from '../contracts.js';
 import {
   normalizeDocumentEngineError,
@@ -45,12 +46,13 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     this.workerCwd = options.workerCwd ?? defaultWorkerCwd(this.workerScript);
   }
 
-  async ping(): Promise<boolean> {
-    const response = await this.request<{ engine: string }>('ping', {});
+  async ping(call?: DocumentEngineCallOptions): Promise<boolean> {
+    const response = await this.request<{ engine: string }>('ping', {}, call);
     return response.ok;
   }
 
-  async ingest(path: string, options: IngestDocumentOptions = {}): Promise<IngestDocumentResult> {
+  async ingest(path: string, options: IngestDocumentOptions = {}, call?: DocumentEngineCallOptions): Promise<IngestDocumentResult> {
+    call?.abortSignal?.throwIfAborted();
     if (statSync(path).size > MAX_DOCUMENT_SOURCE_BYTES) {
       throw new Error('document_source_too_large');
     }
@@ -60,42 +62,42 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       allowedPaths: [path],
       allowedRoots: [this.artifactRoot],
       options,
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_ingest_failed');
     }
     return response.data;
   }
 
-  async pdfToHtml(path: string, options: PdfToHtmlOptions = {}): Promise<PdfToHtmlResult> {
+  async pdfToHtml(path: string, options: PdfToHtmlOptions = {}, call?: DocumentEngineCallOptions): Promise<PdfToHtmlResult> {
     const response = await this.request<PdfToHtmlResult>('pdf_to_html', {
       path,
       templateRoot: defaultTemplateRoot(),
       allowedPaths: [path],
       allowedRoots: [defaultTemplateRoot()],
       options,
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_to_html_failed');
     }
     return response.data;
   }
 
-  async pdfFormAnalyze(path: string, options: PdfFormAnalyzeOptions = {}): Promise<PdfFormTemplate> {
+  async pdfFormAnalyze(path: string, options: PdfFormAnalyzeOptions = {}, call?: DocumentEngineCallOptions): Promise<PdfFormTemplate> {
     const response = await this.request<PdfFormTemplate>('pdf_form_analyze', {
       path,
       templateRoot: defaultTemplateRoot(),
       allowedPaths: [path],
       allowedRoots: [defaultTemplateRoot()],
       options,
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_form_analyze_failed');
     }
     return response.data;
   }
 
-  async pdfFormFill(path: string, options: PdfFormFillOptions): Promise<PdfFormFillResult> {
+  async pdfFormFill(path: string, options: PdfFormFillOptions, call?: DocumentEngineCallOptions): Promise<PdfFormFillResult> {
     const response = await this.request<PdfFormFillResult>('pdf_form_fill', {
       path,
       templateRoot: defaultTemplateRoot(),
@@ -103,34 +105,34 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
       allowedRoots: [this.artifactRoot, defaultTemplateRoot()],
       ...options,
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_form_fill_failed');
     }
     return response.data;
   }
 
-  async pdfReportAnalyze(templatePath: string, examplePath: string): Promise<PdfReportPairAnalysis> {
+  async pdfReportAnalyze(templatePath: string, examplePath: string, call?: DocumentEngineCallOptions): Promise<PdfReportPairAnalysis> {
     const response = await this.request<PdfReportPairAnalysis>('pdf_report_analyze', {
       templatePath,
       examplePath,
       artifactRoot: this.artifactRoot,
       allowedPaths: [templatePath, examplePath],
       allowedRoots: [this.artifactRoot],
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_report_analyze_failed');
     }
     return response.data;
   }
 
-  async getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }> {
+  async getChunk(documentId: string, chunkId: string, call?: DocumentEngineCallOptions): Promise<{ chunk: Record<string, unknown> }> {
     const response = await this.request<{ chunk: Record<string, unknown> }>('get_chunk', {
       documentId,
       chunkId,
       artifactRoot: this.artifactRoot,
       allowedRoots: [this.artifactRoot],
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_get_chunk_failed');
     }
@@ -140,39 +142,41 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
   async getPage(
     documentId: string,
     pageIndex: number,
+    call?: DocumentEngineCallOptions,
   ): Promise<{ page: Record<string, unknown>; text: string | null }> {
     const response = await this.request<{ page: Record<string, unknown>; text: string | null }>('get_page', {
       documentId,
       pageIndex,
       artifactRoot: this.artifactRoot,
       allowedRoots: [this.artifactRoot],
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_get_page_failed');
     }
     return response.data;
   }
 
-  async search(documentId: string, query: string): Promise<{ hits: DocumentChunkHit[] }> {
+  async search(documentId: string, query: string, call?: DocumentEngineCallOptions): Promise<{ hits: DocumentChunkHit[] }> {
     const response = await this.request<{ hits: DocumentChunkHit[] }>('search', {
       documentId,
       query,
       artifactRoot: this.artifactRoot,
       allowedRoots: [this.artifactRoot],
-    });
+    }, call);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_search_failed');
     }
     return response.data;
   }
 
-  private async request<T>(command: string, params: Record<string, unknown>): Promise<DocumentEngineResponse<T>> {
+  private async request<T>(command: string, params: Record<string, unknown>, call?: DocumentEngineCallOptions): Promise<DocumentEngineResponse<T>> {
     const options: DocumentEngineTransportOptions = {
       pythonPath: this.pythonPath,
       workerScript: this.workerScript,
       artifactRoot: this.artifactRoot,
       timeoutMs: this.timeoutMs,
       workerCwd: this.workerCwd,
+      abortSignal: call?.abortSignal,
     };
     try {
       const response = await requestDocumentEngine<T>(options, command, params);

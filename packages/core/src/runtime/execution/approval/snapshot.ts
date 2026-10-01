@@ -8,6 +8,8 @@ export interface PersistedApprovalExecution {
   id: string;
   irJson?: string;
   logJson?: string;
+  workflowId?: string | null;
+  ephemeral?: boolean;
 }
 
 export type ApprovalResumeSnapshot =
@@ -18,7 +20,7 @@ function failResume(
   host: WorkflowExecutionHost,
   approvalId: string,
   executionId: string,
-  code: 'invalid_execution_snapshot' | 'invalid_execution_log',
+  code: 'invalid_execution_snapshot' | 'invalid_execution_log' | 'workflow_removed',
   message: string,
 ): ApprovalResumeSnapshot {
   host.config.store.failApproval(approvalId);
@@ -56,8 +58,14 @@ export function restoreApprovalSnapshot(
   }
 
   let ir: WorkflowIR;
+  let generationKey: string | undefined;
   try {
-    ir = parseWorkflowIR(JSON.parse(execution.irJson));
+    const snapshot: unknown = JSON.parse(execution.irJson);
+    if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+      const key = (snapshot as Record<string, unknown>)._workflowGenerationKey;
+      if (typeof key === 'string') generationKey = key;
+    }
+    ir = parseWorkflowIR(snapshot);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return failResume(
@@ -67,6 +75,16 @@ export function restoreApprovalSnapshot(
       'invalid_execution_snapshot',
       '승인 재개에 필요한 실행 스냅샷이 손상되었습니다: ' + message,
     );
+  }
+
+  if (ir.id) {
+    // Legacy saved approvals are protected by their workflow FK and the
+    // pending-execution guard. Unbound legacy ID copies have no generation proof.
+    const owned = generationKey !== undefined || (!execution.ephemeral
+      && execution.workflowId === ir.id && Boolean(host.config.store.getWorkflow(ir.id, ir.version)));
+    if (!owned || !host.isWorkflowGenerationCurrent(ir.id, generationKey)) {
+      return failResume(host, approvalId, executionId, 'workflow_removed', '이 승인을 현재 워크플로에 연결할 수 없습니다. 워크플로를 다시 실행해 새 승인을 요청해 주세요.');
+    }
   }
 
   try {

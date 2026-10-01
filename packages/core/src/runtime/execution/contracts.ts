@@ -5,6 +5,7 @@ import type { Step, WorkflowIR } from '../../workflow/schema.js';
 export interface WorkflowExecutionHost {
   readonly config: RuntimeConfig;
   readonly connectors: Record<string, Connector>;
+  isWorkflowGenerationCurrent(workflowId: string, generationKey?: string): boolean;
   notifyExecutionStarted(executionId: string): void;
   notifyExecutionProgress(progress: ExecutionProgress): void;
   notifyExecutionFinished(result: ExecutionResult): void;

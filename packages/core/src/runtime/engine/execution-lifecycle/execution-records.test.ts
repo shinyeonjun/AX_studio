@@ -57,7 +57,6 @@ describe('runtime execution records', () => {
     });
     const result = await runtime.executeWorkflow(
       {
-        id: 'draft-only-workflow',
         name: '일회 실행',
         goal: '한 번만 알림',
         version: 1,

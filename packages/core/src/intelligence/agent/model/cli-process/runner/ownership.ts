@@ -22,9 +22,15 @@ export class CommandProcessRegistry {
 
   track(child: ChildProcess): void {
     const closed = new Promise<void>(resolve => {
-      const release = () => { this.active.delete(child); resolve(); };
+      const release = () => {
+        child.removeListener('close', release);
+        child.removeListener('error', onError);
+        this.active.delete(child);
+        resolve();
+      };
+      const onError = () => { if (child.pid === undefined) release(); };
       child.once('close', release);
-      child.once('error', () => { if (child.pid === undefined) release(); });
+      child.on('error', onError);
     });
     this.active.set(child, closed);
   }

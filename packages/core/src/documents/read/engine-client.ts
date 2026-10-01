@@ -1,6 +1,7 @@
 export type {
   DocumentEngineClient,
   DocumentEngineClientOptions,
+  DocumentEngineCallOptions,
 } from './engine-client/contracts.js';
 export {
   defaultPythonPath,

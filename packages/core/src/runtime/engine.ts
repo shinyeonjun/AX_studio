@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import type { Connector } from '../connectors/types.js';
+import type { WorkflowGeneration } from '../persistence/workflow-store.js';
 import type {
   EphemeralExecutionQueueItem,
   ExecutionProgress,
@@ -26,7 +27,7 @@ export class WorkflowRuntime {
   private idleWaiters: Array<() => void> = [];
   private readonly activeWorkflowRuns = new Map<string, Set<AbortController>>();
   private readonly workflowIdleWaiters = new Map<string, Array<() => void>>();
-  private readonly removedWorkflowIds = new Map<string, undefined>();
+  private readonly removedWorkflowGenerations = new WeakSet<WorkflowGeneration>();
   private ephemeralQueueTail: Promise<void> = Promise.resolve();
   private readonly executionRunner: WorkflowExecutionRunner;
 
@@ -35,6 +36,7 @@ export class WorkflowRuntime {
     this.executionRunner = new WorkflowExecutionRunner({
       config: this.config,
       connectors: this.connectors,
+      isWorkflowGenerationCurrent: (id, key) => this.isWorkflowGenerationCurrent(id, key),
       notifyExecutionStarted: (executionId) => this.notifyExecutionStarted(executionId),
       notifyExecutionProgress: (progress) => this.notifyExecutionProgress(progress),
       notifyExecutionFinished: (result) => this.notifyExecutionFinished(result),
@@ -46,26 +48,57 @@ export class WorkflowRuntime {
     options: WorkflowExecutionOptions = {},
   ): Promise<ExecutionResult> {
     if (!this.accepting) throw new Error('runtime_stopping');
-    if (ir.id && this.removedWorkflowIds.has(ir.id)) {
+    return this.runWorkflow(ir, options);
+  }
+
+  private assertWorkflowCurrent(ir: import('../workflow/schema.js').WorkflowIR): void {
+    if (!ir.id) return;
+    // ID-bearing runs must use a snapshot issued by this host store. The
+    // command gateway builds fresh one-shot plans without a saved workflow ID.
+    // Neither forceManual nor ephemeral may adopt a removed/recreated ID.
+    const generation = this.config.store.getWorkflowGeneration(ir.id);
+    if (!generation || !this.config.store.isWorkflowSnapshotCurrent(ir)
+      || this.removedWorkflowGenerations.has(generation)) {
       throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
     }
+  }
+
+  private isWorkflowGenerationCurrent(workflowId: string, key?: string): boolean {
+    // Saved pending approvals keep their row alive; a deletion claim alone
+    // must not cancel those protected continuations.
+    const generation = this.config.store.getWorkflowGeneration(workflowId);
+    return Boolean(generation && (key === undefined || key === generation.key)
+      && !this.removedWorkflowGenerations.has(generation));
+  }
+
+  private async runWorkflow(
+    ir: import('../workflow/schema.js').WorkflowIR,
+    options: WorkflowExecutionOptions,
+  ): Promise<ExecutionResult> {
+    this.assertWorkflowCurrent(ir);
+    const generationKey = this.config.store.getWorkflowSnapshotGeneration(ir)?.key;
+    return this.trackWorkflowExecution(ir.id, options.abortSignal, signal =>
+      this.executionRunner.execute(ir, { ...options, abortSignal: signal }, generationKey));
+  }
+
+  private async trackWorkflowExecution(
+    workflowId: string | undefined,
+    abortSignal: AbortSignal | undefined,
+    run: (signal: AbortSignal) => Promise<ExecutionResult>,
+  ): Promise<ExecutionResult> {
     const controller = new AbortController();
-    const abortExternal = () => controller.abort(options.abortSignal?.reason);
-    if (options.abortSignal?.aborted) abortExternal();
-    options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
-    const workflowId = ir.id;
+    const abortExternal = () => controller.abort(abortSignal?.reason);
+    if (abortSignal?.aborted) abortExternal();
+    abortSignal?.addEventListener('abort', abortExternal, { once: true });
     if (workflowId) {
       const runs = this.activeWorkflowRuns.get(workflowId) ?? new Set<AbortController>();
       runs.add(controller);
       this.activeWorkflowRuns.set(workflowId, runs);
     }
     try {
-      return await this.trackExecution(() => this.executionRunner.execute(ir, {
-        ...options,
-        abortSignal: controller.signal,
-      }));
+      return await this.trackExecution(() => run(controller.signal));
     } finally {
-      options.abortSignal?.removeEventListener('abort', abortExternal);
+      abortSignal?.removeEventListener('abort', abortExternal);
       if (workflowId) {
         const runs = this.activeWorkflowRuns.get(workflowId);
         runs?.delete(controller);
@@ -101,16 +134,20 @@ export class WorkflowRuntime {
   ): EphemeralExecutionQueueItem {
     if (!this.accepting) throw new Error('runtime_stopping');
     if (this.queuedExecutionCount >= 128) throw new Error('runtime_queue_full');
+    this.assertWorkflowCurrent(ir);
     this.queuedExecutionCount += 1;
     const jobId = randomUUID();
-    const run = this.ephemeralQueueTail.then(() =>
-      this.trackExecution(() => this.executionRunner.execute(ir, {
-        ...options,
-        jobId,
-        ephemeral: true,
-        forceManual: true,
-      })),
-    );
+    const queuedOptions = { ...options, jobId, ephemeral: true, forceManual: true };
+    const run = this.ephemeralQueueTail.then(async () => {
+      try { return await this.runWorkflow(ir, queuedOptions); }
+      catch (error) {
+        if ((error as { code?: string }).code !== 'workflow_removed') throw error;
+        // Accepted jobs still publish a cancellation, without invoking actions.
+        return this.trackExecution(() => this.executionRunner.execute(ir, {
+          ...queuedOptions, abortSignal: AbortSignal.abort(error),
+        }));
+      }
+    });
     this.ephemeralQueueTail = run.then(
       () => { this.queuedExecutionCount -= 1; },
       () => { this.queuedExecutionCount -= 1; },
@@ -160,7 +197,12 @@ export class WorkflowRuntime {
   }
 
   setWorkflowActive(workflowId: string, active: boolean): void {
-    if (active) this.removedWorkflowIds.delete(workflowId);
+    if (this.config.store.isWorkflowDeletionClaimed(workflowId)) {
+      throw Object.assign(new Error('workflow_deletion_in_progress'), { code: 'workflow_deletion_in_progress' });
+    }
+    const generation = this.config.store.getWorkflowGeneration(workflowId);
+    if (!generation) { delete this.config.workflowActive[workflowId]; return; }
+    if (active) this.removedWorkflowGenerations.delete(generation);
     this.config.workflowActive[workflowId] = active;
   }
 
@@ -177,14 +219,9 @@ export class WorkflowRuntime {
     // Pending approvals have no live controller to drain; leave deletion to
     // the repository guard instead of partially pausing a workflow.
     if (this.config.store.hasPendingApprovalForWorkflow(workflowId)) return;
-    this.removedWorkflowIds.delete(workflowId);
-    this.removedWorkflowIds.set(workflowId, undefined);
-    // ponytail: bound tombstones to 1024 IDs; a persistent deletion journal is unnecessary here.
-    if (this.removedWorkflowIds.size > 1024) {
-      const oldest = this.removedWorkflowIds.keys().next().value;
-      if (oldest) this.removedWorkflowIds.delete(oldest);
-    }
-    this.config.workflowActive[workflowId] = false;
+    const generation = this.config.store.getWorkflowGeneration(workflowId);
+    if (generation) this.removedWorkflowGenerations.add(generation);
+    delete this.config.workflowActive[workflowId];
     for (const controller of this.activeWorkflowRuns.get(workflowId) ?? []) {
       controller.abort(new Error('workflow_removed'));
     }
@@ -206,8 +243,18 @@ export class WorkflowRuntime {
     this.config.decisionEngine = decisionEngine;
   }
 
-  continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
-    if (!this.accepting) return Promise.reject(new Error('runtime_stopping'));
-    return this.trackExecution(() => this.executionRunner.continueAfterApproval(approvalId));
+  async continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
+    if (!this.accepting) throw new Error('runtime_stopping');
+    const approval = this.config.store.getApproval(approvalId);
+    const execution = approval && this.config.store.getExecution(approval.executionId);
+    let workflowId = execution?.workflowId ?? undefined;
+    if (!workflowId && execution?.irJson) {
+      try {
+        const snapshot = JSON.parse(execution.irJson);
+        if (typeof snapshot?.id === 'string') workflowId = snapshot.id;
+      } catch { /* The runner records invalid snapshots through its failure boundary. */ }
+    }
+    return this.trackWorkflowExecution(workflowId, undefined,
+      signal => this.executionRunner.continueAfterApproval(approvalId, signal));
   }
 }

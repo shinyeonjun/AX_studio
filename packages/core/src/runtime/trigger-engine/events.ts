@@ -91,10 +91,13 @@ export class TriggerEventCoordinator {
       if (!ir || !trigger || trigger.type !== driver.triggerType) continue;
       if (!driver.matchesTrigger(trigger as { type: string; channel?: string }, event)) continue;
       if (!matchesTriggerFilter(trigger, event)) continue;
+      if (!this.store.isWorkflowSnapshotCurrent(ir)) continue;
 
       const dedupeKey = driver.dedupeKey(workflowId, event);
+      // A late result may still own its key after this ID has been recreated.
+      const inFlightKey = JSON.stringify([this.store.getWorkflowSnapshotGeneration(ir)!.key, dedupeKey]);
       if (this.store.isTriggerReceiptCompleted(dedupeKey)) continue;
-      if (this.inFlightEvents.has(dedupeKey)) continue;
+      if (this.inFlightEvents.has(inFlightKey)) continue;
       if (
         !this.store.claimTriggerReceipt({
           dedupeKey,
@@ -105,12 +108,13 @@ export class TriggerEventCoordinator {
         continue;
       }
 
-      this.inFlightEvents.add(dedupeKey);
+      this.inFlightEvents.add(inFlightKey);
       try {
         const result = await this.runtime.executeWorkflow(ir, {
           triggerType: trigger.type,
           input: triggerInputFromEvent(event),
         });
+        if (!this.store.isWorkflowSnapshotCurrent(ir)) continue;
         if (!triggerRunWasAccepted(result)) {
           this.store.failTriggerReceipt(dedupeKey);
           continue;
@@ -119,10 +123,11 @@ export class TriggerEventCoordinator {
         this.rememberEvent(dedupeKey);
         this.onTriggeredRun?.(workflowId, result);
       } catch (err) {
+        if (!this.store.isWorkflowSnapshotCurrent(ir)) continue;
         this.store.failTriggerReceipt(dedupeKey);
         console.error(`[trigger-engine] push failed for skill ${workflowId}:`, err);
       } finally {
-        this.inFlightEvents.delete(dedupeKey);
+        this.inFlightEvents.delete(inFlightKey);
       }
     }
   }

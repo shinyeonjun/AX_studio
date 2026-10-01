@@ -80,6 +80,9 @@ export async function fetchTextWithTimeout(
     throw error;
   } finally {
     clearTimeout(timer);
-    if (reader) await reader.cancel().catch(() => undefined);
+    if (reader) {
+      try { await reader.cancel().catch(() => undefined); }
+      finally { reader.releaseLock(); }
+    }
   }
 }

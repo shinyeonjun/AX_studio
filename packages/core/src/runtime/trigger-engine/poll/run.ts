@@ -3,6 +3,7 @@ import type { TriggerPollerOptions } from './contracts.js';
 import { loadTriggerCursors, saveTriggerCursors } from './cursors.js';
 import { shouldPollTriggerType } from './eligibility.js';
 import { pollTriggerWorkflow } from './workflow.js';
+import type { TriggerPollState } from './contracts.js';
 
 export async function runTriggerPoll(
   options: TriggerPollerOptions,
@@ -11,9 +12,9 @@ export async function runTriggerPoll(
 ): Promise<void> {
   if (!options.store.getGlobalActive()) return;
 
-  const state = {
+  const state: TriggerPollState = {
     cursors: loadTriggerCursors(options.store),
-    cursorsChanged: false,
+    changedWorkflows: new Map(),
   };
 
   for (const { id: workflowId, workflow } of options.store.listActiveWorkflowDefinitions()) {
@@ -35,7 +36,14 @@ export async function runTriggerPoll(
     if (!shouldContinue) return;
   }
 
-  if (state.cursorsChanged && options.isCurrentGeneration(generation)) {
-    saveTriggerCursors(options.store, state.cursors);
+  if (state.changedWorkflows.size > 0 && options.isCurrentGeneration(generation)) {
+    const cursors = loadTriggerCursors(options.store);
+    let changed = false;
+    for (const [workflowId, workflow] of state.changedWorkflows) {
+      if (!options.store.isWorkflowSnapshotCurrent(workflow)) continue;
+      cursors[workflowId] = state.cursors[workflowId]!;
+      changed = true;
+    }
+    if (changed) saveTriggerCursors(options.store, cursors);
   }
 }

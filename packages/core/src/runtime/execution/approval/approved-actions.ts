@@ -27,6 +27,7 @@ export async function executeApprovedActions(
   options: ApprovedActionExecutionOptions,
 ): Promise<void> {
   for (const actionStep of options.approvedActions) {
+    options.ctx.abortSignal?.throwIfAborted();
     const actionId = actionStep.id;
     // A branch may have captured the approved action in its remaining sequence.
     // In that case runSequence will execute it exactly once with this approval present.
@@ -62,6 +63,7 @@ export async function executeApprovedActions(
         params,
         options.ctx,
       );
+      options.ctx.abortSignal?.throwIfAborted();
       if (!result.ok) {
         throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
       }

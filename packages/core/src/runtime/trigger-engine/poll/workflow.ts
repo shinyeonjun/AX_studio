@@ -10,7 +10,7 @@ import {
   triggerRunWasAccepted,
 } from '../helpers.js';
 import type { TriggerPollerOptions, TriggerPollState } from './contracts.js';
-import { saveTriggerCursors } from './cursors.js';
+import { saveWorkflowTriggerCursor } from './cursors.js';
 
 type Trigger = NonNullable<WorkflowIR['trigger']>;
 
@@ -57,6 +57,7 @@ export async function pollTriggerWorkflow({
 }: PollWorkflowParams): Promise<boolean> {
   const handler = getTriggerHandler(trigger.type);
   if (!handler?.poll) return true;
+  if (!options.store.isWorkflowSnapshotCurrent(workflow)) return true;
 
   try {
     const pollResult = await awaitPollRead(() => handler.poll!({
@@ -67,6 +68,7 @@ export async function pollTriggerWorkflow({
       abortSignal,
     }), abortSignal);
     if (!pollResult || abortSignal?.aborted || !options.isCurrentGeneration(generation)) return false;
+    if (!options.store.isWorkflowSnapshotCurrent(workflow)) return true;
 
     let processedCursor: TriggerCursor = {
       ...cursor,
@@ -76,12 +78,13 @@ export async function pollTriggerWorkflow({
     };
     for (const event of pollResult.events) {
       if (!options.isCurrentGeneration(generation)) return false;
+      if (!options.store.isWorkflowSnapshotCurrent(workflow)) return true;
       const dedupeKey = eventDedupeKey(workflowId, event);
       if (dedupeKey && options.store.isTriggerReceiptCompleted(dedupeKey)) {
         processedCursor = cursorAfterEvent(processedCursor, event);
         state.cursors[workflowId] = processedCursor;
-        saveTriggerCursors(options.store, state.cursors);
-        state.cursorsChanged = false;
+        saveWorkflowTriggerCursor(options.store, workflowId, processedCursor);
+        state.changedWorkflows.delete(workflowId);
         continue;
       }
 
@@ -89,8 +92,8 @@ export async function pollTriggerWorkflow({
         processedCursor = cursorAfterEvent(processedCursor, event);
         if (dedupeKey) options.rememberEvent(dedupeKey);
         state.cursors[workflowId] = processedCursor;
-        saveTriggerCursors(options.store, state.cursors);
-        state.cursorsChanged = false;
+        saveWorkflowTriggerCursor(options.store, workflowId, processedCursor);
+        state.changedWorkflows.delete(workflowId);
         continue;
       }
 
@@ -104,8 +107,8 @@ export async function pollTriggerWorkflow({
       ) {
         processedCursor = cursorAfterEvent(processedCursor, event);
         state.cursors[workflowId] = processedCursor;
-        saveTriggerCursors(options.store, state.cursors);
-        state.cursorsChanged = false;
+        saveWorkflowTriggerCursor(options.store, workflowId, processedCursor);
+        state.changedWorkflows.delete(workflowId);
         continue;
       }
 
@@ -116,9 +119,11 @@ export async function pollTriggerWorkflow({
           input: triggerInputFromEvent(event),
         });
       } catch (err) {
+        if (!options.store.isWorkflowSnapshotCurrent(workflow)) return true;
         if (dedupeKey) options.store.failTriggerReceipt(dedupeKey);
         throw err;
       }
+      if (!options.store.isWorkflowSnapshotCurrent(workflow)) return true;
       if (!triggerRunWasAccepted(result)) {
         if (dedupeKey) options.store.failTriggerReceipt(dedupeKey);
         throw new Error(
@@ -131,15 +136,15 @@ export async function pollTriggerWorkflow({
       processedCursor = cursorAfterEvent(processedCursor, event);
       if (dedupeKey) options.rememberEvent(dedupeKey);
       state.cursors[workflowId] = processedCursor;
-      saveTriggerCursors(options.store, state.cursors);
-      state.cursorsChanged = false;
+      saveWorkflowTriggerCursor(options.store, workflowId, processedCursor);
+      state.changedWorkflows.delete(workflowId);
       if (!options.isCurrentGeneration(generation)) return false;
       options.onTriggeredRun?.(workflowId, result);
     }
 
     if (JSON.stringify(pollResult.cursor) !== JSON.stringify(processedCursor)) {
       state.cursors[workflowId] = pollResult.cursor;
-      state.cursorsChanged = true;
+      state.changedWorkflows.set(workflowId, workflow);
     }
   } catch (err) {
     console.error(`[trigger-engine] poll failed for skill ${workflowId}:`, err);

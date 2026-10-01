@@ -14,11 +14,12 @@ export class WorkflowExecutionRunner {
   execute(
     ir: WorkflowIR,
     options: WorkflowExecutionOptions = {},
+    workflowGenerationKey?: string,
   ): Promise<ExecutionResult> {
-    return executeWorkflow(this.host, ir, options);
+    return executeWorkflow(this.host, ir, options, workflowGenerationKey);
   }
 
-  continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
-    return continueWorkflowAfterApproval(this.host, approvalId);
+  continueAfterApproval(approvalId: string, abortSignal?: AbortSignal): Promise<ExecutionResult> {
+    return continueWorkflowAfterApproval(this.host, approvalId, abortSignal);
   }
 }

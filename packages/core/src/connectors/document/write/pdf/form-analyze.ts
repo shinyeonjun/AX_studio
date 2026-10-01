@@ -15,7 +15,9 @@ export const pdfFormAnalyze: DocumentActionHandler = async (params, ctx): Promis
       ocr: (params.ocr as PdfFormAnalyzeOptions['ocr'] | undefined) ?? 'auto',
       ...(Array.isArray(params.fieldHints) ? { fieldHints: params.fieldHints as PdfFormAnalyzeOptions['fieldHints'] } : {}),
     };
-    const template = await getDocumentEngineClient().pdfFormAnalyze(resolvedPath.path, options);
+    const template = await getDocumentEngineClient().pdfFormAnalyze(resolvedPath.path, options,
+      ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     ctx.variables.pdfFormTemplate = template;
     ctx.variables.pdfFormTemplatePath = template.templatePath;
     ctx.variables.pdfFormSourcePath = resolvedPath.path;
@@ -33,6 +35,7 @@ export const pdfFormAnalyze: DocumentActionHandler = async (params, ctx): Promis
     });
     return { ok: true, data: template };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'pdf_form_analyze_failed' };
   }

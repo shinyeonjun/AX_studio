@@ -13,6 +13,8 @@ export interface DocumentEngineTransportOptions {
   artifactRoot: string;
   timeoutMs: number;
   workerCwd: string;
+  /** Host-owned cancellation; never included in the Python JSON payload. */
+  abortSignal?: AbortSignal;
 }
 
 export function normalizeDocumentEngineError(message: string): string {
@@ -35,6 +37,7 @@ export async function requestDocumentEngine<T>(
   command: string,
   params: Record<string, unknown>,
 ): Promise<DocumentEngineResponse<T>> {
+  options.abortSignal?.throwIfAborted();
   const payload: DocumentEngineRequest = {
     id: randomUUID(),
     command,
@@ -52,6 +55,7 @@ export async function requestDocumentEngine<T>(
     cwd: options.workerCwd,
     input: JSON.stringify(payload),
     env: documentEngineEnv(),
+    abortSignal: options.abortSignal,
   });
 
   const stdout = result.stdout.trim();

@@ -65,8 +65,10 @@ describe('runtime resource lifecycle', () => {
           params: { query: 'pending' }, sideEffect: 'NONE' },
       ], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
     };
+    const store = new WorkflowStore(db);
+    store.saveWorkflow(workflow);
     const runtime = new WorkflowRuntime({
-      store: new WorkflowStore(db),
+      store,
       globalActive: true,
       workflowActive: { [workflow.id!]: true },
       connectors: {
@@ -113,8 +115,10 @@ describe('runtime resource lifecycle', () => {
           params: { query: 'pending' }, sideEffect: 'NONE' },
       ], permissions: {}, approval: [], allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
     };
+    const store = new WorkflowStore(db);
+    store.saveWorkflow(workflow);
     const runtime = new WorkflowRuntime({
-      store: new WorkflowStore(db),
+      store,
       globalActive: true,
       workflowActive: { [workflow.id!]: true },
       connectors: {
@@ -164,5 +168,35 @@ describe('runtime resource lifecycle', () => {
       store.deleteWorkflow(workflow.id!);
       db.close?.();
     }
+  });
+
+  it('preserves a saved workflow while its claimed approval is processing', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const workflow = { ...approvedWorkflow, id: 'synthetic-processing-approval' };
+    store.saveWorkflow(workflow);
+    const flags = { [workflow.id]: true };
+    let entered!: () => void; let release!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: flags,
+      connectors: { gmail: { name: 'synthetic', execute: async () => {
+        entered(); await held; return { ok: true, data: {} };
+      } } } });
+    let resumed: Promise<import('../types.js').ExecutionResult> | undefined;
+    try {
+      const first = await runtime.executeWorkflow(workflow);
+      expect(first.status).toBe('pending_approval');
+      resumed = runtime.continueAfterApproval(first.pendingApprovalId!); await started;
+      expect(store.getApproval(first.pendingApprovalId!)?.status).toBe('processing');
+      expect(store.claimWorkflowDeletion(workflow.id, 1)).toBe(true);
+      await runtime.removeWorkflow(workflow.id);
+      expect(() => store.deleteWorkflow(workflow.id)).toThrowError(expect.objectContaining({ code: 'workflow_execution_active' }));
+      store.releaseWorkflowDeletion(workflow.id);
+      expect(flags[workflow.id]).toBe(true);
+      release(); expect((await resumed).status).toBe('success');
+      await runtime.removeWorkflow(workflow.id); expect(store.deleteWorkflow(workflow.id)).toBe(true);
+      expect(Object.keys(flags)).toHaveLength(0);
+    } finally { release?.(); await resumed; store.releaseWorkflowDeletion(workflow.id); db.close?.(); }
   });
 });

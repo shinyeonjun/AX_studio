@@ -3,6 +3,23 @@ import type { ChildProcess } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CommandProcessRegistry } from './ownership.js';
 afterEach(() => vi.useRealTimers());
+it('keeps error supervision for a live child and releases its own listeners on close', () => {
+  const registry = new CommandProcessRegistry();
+  const child = Object.assign(new EventEmitter(), { pid: 123456 }) as unknown as ChildProcess;
+  const observer = vi.fn();
+  child.on('error', observer);
+  registry.track(child);
+  child.emit('error', new Error('synthetic-first-error'));
+  expect(child.listenerCount('error')).toBe(2);
+  child.emit('error', new Error('synthetic-second-error'));
+  expect(child.listenerCount('error')).toBe(2);
+  expect(Reflect.get(registry, 'active').size).toBe(1);
+  child.emit('close', 1, null);
+  expect(Reflect.get(registry, 'active').size).toBe(0);
+  expect(child.listeners('error')).toEqual([observer]);
+  expect(child.listenerCount('close')).toBe(0);
+  expect(observer).toHaveBeenCalledTimes(2);
+});
 it('drains only owned children and closes admission on shutdown', async () => {
   const registry = new CommandProcessRegistry();
   const child = Object.assign(new EventEmitter(), { kill: vi.fn(), pid: undefined }) as unknown as ChildProcess;

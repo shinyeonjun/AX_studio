@@ -9,10 +9,13 @@ export const search: DocumentActionHandler = async (params, ctx): Promise<Connec
   if (!query.trim()) return { ok: false, error: 'query_required', errorCode: 'query_required' };
 
   try {
-    const data = await getDocumentEngineClient().search(documentId.trim(), query.trim());
+    const data = await getDocumentEngineClient().search(documentId.trim(), query.trim(),
+      ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     ctx.variables.documentSearchHits = data.hits;
     return { ok: true, data };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'document_search_failed' };
   }

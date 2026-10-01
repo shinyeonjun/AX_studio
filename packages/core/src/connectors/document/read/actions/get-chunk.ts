@@ -9,10 +9,13 @@ export const getChunk: DocumentActionHandler = async (params, ctx): Promise<Conn
   if (!chunkId?.trim()) return { ok: false, error: 'chunk_id_required', errorCode: 'chunk_id_required' };
 
   try {
-    const data = await getDocumentEngineClient().getChunk(documentId.trim(), chunkId.trim());
+    const data = await getDocumentEngineClient().getChunk(documentId.trim(), chunkId.trim(),
+      ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     ctx.variables.documentChunk = data.chunk;
     return { ok: true, data };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'document_chunk_failed' };
   }

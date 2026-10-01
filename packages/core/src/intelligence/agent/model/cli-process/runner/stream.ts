@@ -59,21 +59,29 @@ export function runCommandStreaming(
       clearTimeout(escalationTimer);
       clearTimeout(terminationTimer);
       options.abortSignal?.removeEventListener('abort', onAbort);
+      child.stdin?.removeListener('error', onStdinError);
+      child.stdout?.removeListener('data', onStdoutData);
+      child.stderr?.removeListener('data', onStderrData);
+      child.removeListener('error', onChildError);
+      child.removeListener('close', onChildClose);
+      const result = { stdout, stderr, exitCode };
+      // A child that failed to terminate stays in the ownership registry. Its
+      // callbacks must not retain this request's buffers or caller context.
+      stdout = '';
+      stderr = '';
+      lineBuf = '';
       if (error) {
         reject(error);
         return;
       }
-      resolve({
-        stdout,
-        stderr,
-        exitCode,
-      });
+      resolve(result);
     };
 
     const terminate = (error: Error) => {
       if (settled || terminationError) return;
       terminationError = error;
       terminateOwnedChild(child);
+      if (settled) return;
       escalationTimer = setTimeout(() => terminateOwnedChild(child, true), 1_000);
       terminationTimer = setTimeout(() => finish(Object.assign(
         new Error('Child termination was not acknowledged', { cause: error }),
@@ -87,14 +95,11 @@ export function runCommandStreaming(
     const onAbort = () => {
       terminate(Object.assign(new Error('ABORT_ERR'), { code: 'ABORT_ERR' }));
     };
-    options.abortSignal?.addEventListener('abort', onAbort, { once: true });
-    if (options.abortSignal?.aborted) onAbort();
-    child.stdin?.on('error', (error: NodeJS.ErrnoException) => {
+    const onStdinError = (error: NodeJS.ErrnoException) => {
       if (error.code !== 'EPIPE') terminate(error);
-    });
-    child.stdin?.end(options.input);
+    };
 
-    child.stdout?.on('data', (chunk: Buffer | string) => {
+    const onStdoutData = (chunk: Buffer | string) => {
       if (settled || terminationError) return;
       const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
       stdoutBytes += bytes.length;
@@ -116,8 +121,8 @@ export function runCommandStreaming(
           catch (error) { terminate(error instanceof Error ? error : new Error(String(error))); return; }
         }
       }
-    });
-    child.stderr?.on('data', (chunk: Buffer | string) => {
+    };
+    const onStderrData = (chunk: Buffer | string) => {
       if (settled || terminationError) return;
       const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
       stderrBytes += bytes.length;
@@ -126,9 +131,14 @@ export function runCommandStreaming(
         return;
       }
       stderr += stderrDecoder.write(bytes);
-    });
-    child.on('error', (error) => finish(error));
-    child.on('close', (code: number | null) => {
+    };
+    const onChildError = (error: Error) => {
+      // Spawn failure has no child to reap. Errors on a live process still
+      // require termination and close acknowledgement before settling.
+      if (child.pid === undefined || child.exitCode != null || child.signalCode != null) finish(error);
+      else terminate(error);
+    };
+    const onChildClose = (code: number | null) => {
       if (settled) return;
       const finalText = stdoutDecoder.end();
       if (options.captureStdout !== false) stdout += finalText;
@@ -143,6 +153,17 @@ export function runCommandStreaming(
         // The close event is authoritative, including signal-only exits.
         finish(undefined, code ?? 1);
       }
-    });
+    };
+    child.stdin?.on('error', onStdinError);
+    child.stdout?.on('data', onStdoutData);
+    child.stderr?.on('data', onStderrData);
+    child.on('error', onChildError);
+    child.on('close', onChildClose);
+    options.abortSignal?.addEventListener('abort', onAbort, { once: true });
+    if (options.abortSignal?.aborted) onAbort();
+    if (!settled && !terminationError) {
+      try { child.stdin?.end(options.input); }
+      catch (error) { terminate(error instanceof Error ? error : new Error(String(error))); }
+    }
   });
 }

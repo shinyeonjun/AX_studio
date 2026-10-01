@@ -13,6 +13,7 @@ type PendingOccurrence = {
   occurrenceKey: string;
   triggerType: 'once' | 'schedule';
   workflowVersion?: number;
+  workflowGeneration?: string;
   triggerSnapshot?: string;
 };
 
@@ -113,6 +114,7 @@ export class Scheduler {
     const pendingKeys = new Set(pending.map((entry) => `${entry.workflowId}:${entry.occurrenceKey}`));
     const fired = this.lastFired();
     const additions: PendingOccurrence[] = [];
+    const generations = new Map<string, string>();
     const currentMinute = new Date(now);
     currentMinute.setSeconds(0, 0);
     const observed = this.lastObservedAt();
@@ -123,6 +125,8 @@ export class Scheduler {
 
     for (const { id, workflow: ir } of this.store.listActiveWorkflowDefinitions()) {
       if (!ir?.trigger) continue;
+      const workflowGeneration = this.store.getWorkflowSnapshotGeneration(ir)?.key;
+      if (workflowGeneration) generations.set(id, workflowGeneration);
 
       let due = false;
       let triggerType: PendingOccurrence['triggerType'] = 'schedule';
@@ -151,12 +155,19 @@ export class Scheduler {
       const key = `${id}:${occurrenceKey}`;
       if (due && !pendingKeys.has(key)) {
         additions.push({ workflowId: id, occurrenceKey, triggerType,
-          workflowVersion: ir.version, triggerSnapshot: JSON.stringify(ir.trigger) });
+          workflowVersion: ir.version, workflowGeneration, triggerSnapshot: JSON.stringify(ir.trigger) });
         pendingKeys.add(key);
       }
     }
 
-    if (additions.length > 0) {
+    let upgraded = false;
+    pending = pending.map((entry) => {
+      const workflowGeneration = generations.get(entry.workflowId);
+      if (entry.workflowGeneration !== undefined || !workflowGeneration) return entry;
+      upgraded = true;
+      return { ...entry, workflowGeneration };
+    });
+    if (additions.length > 0 || upgraded) {
       pending = [...pending, ...additions];
       this.savePendingOccurrences(pending);
     }
@@ -217,6 +228,7 @@ export class Scheduler {
       }
       const ir = this.store.getWorkflow(occurrence.workflowId);
       if (!ir?.trigger || ir.trigger.type !== occurrence.triggerType ||
+        (occurrence.workflowGeneration !== undefined && occurrence.workflowGeneration !== this.store.getWorkflowSnapshotGeneration(ir)?.key) ||
         (occurrence.workflowVersion !== undefined && occurrence.workflowVersion !== ir.version) ||
         (occurrence.triggerSnapshot !== undefined && occurrence.triggerSnapshot !== JSON.stringify(ir.trigger))) {
         removedPendingKeys.add(pendingKey);
@@ -233,7 +245,8 @@ export class Scheduler {
       }
       // Stopping prevents new work; it must not erase acknowledgement of work already completed.
       const current = this.store.getWorkflow(occurrence.workflowId);
-      const unchanged = current?.version === ir.version && JSON.stringify(current.trigger) === JSON.stringify(ir.trigger);
+      const sameGeneration = this.store.isWorkflowSnapshotCurrent(ir);
+      const unchanged = sameGeneration && current?.version === ir.version && JSON.stringify(current.trigger) === JSON.stringify(ir.trigger);
       if (occurrence.triggerType === 'once') {
         if (result.status === 'pending_approval' && unchanged) {
           // Deactivate without marking lastFired so reactivating the job can
@@ -258,7 +271,7 @@ export class Scheduler {
 
       removedPendingKeys.add(pendingKey);
       pendingChanged = true;
-      this.onScheduledRun?.(occurrence.workflowId, result);
+      if (sameGeneration) this.onScheduledRun?.(occurrence.workflowId, result);
     }
     if (pendingChanged) {
       this.savePendingOccurrences(scheduledPending.filter((occurrence) =>

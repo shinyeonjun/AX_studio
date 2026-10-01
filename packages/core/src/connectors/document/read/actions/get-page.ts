@@ -21,11 +21,14 @@ export const getPage: DocumentActionHandler = async (params, ctx): Promise<Conne
   }
 
   try {
-    const data = await getDocumentEngineClient().getPage(documentId.trim(), numericPageIndex);
+    const data = await getDocumentEngineClient().getPage(documentId.trim(), numericPageIndex,
+      ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     ctx.variables.documentPage = data.page;
     ctx.variables.documentPageText = data.text;
     return { ok: true, data };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'document_page_failed' };
   }

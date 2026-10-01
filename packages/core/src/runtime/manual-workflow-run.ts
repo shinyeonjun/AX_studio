@@ -18,6 +18,12 @@ export interface ManualWorkflowRunDeps {
   runtime: WorkflowRuntime;
 }
 
+function assertWorkflowCurrent(deps: ManualWorkflowRunDeps, ir: WorkflowIR): void {
+  if (!deps.store.isWorkflowSnapshotCurrent(ir)) {
+    throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
+  }
+}
+
 function recordManualRunFailure(
   deps: ManualWorkflowRunDeps,
   ir: WorkflowIR,
@@ -25,6 +31,7 @@ function recordManualRunFailure(
   errorCode: string,
   message: string,
 ): ExecutionResult {
+  assertWorkflowCurrent(deps, ir);
   const executionId = deps.store.createExecution({
     workflowId: options.ephemeral ? undefined : options.workflowId ?? ir.id,
     workflowVersion: ir.version,
@@ -50,6 +57,7 @@ export async function runManualWorkflow(
   ir: WorkflowIR,
   options: ManualWorkflowRunOptions,
 ): Promise<ExecutionResult> {
+  assertWorkflowCurrent(deps, ir);
   if (!deps.store.getGlobalActive()) {
     return deps.runtime.executeWorkflow(ir, {
       ephemeral: options.ephemeral,
@@ -71,7 +79,9 @@ export async function runManualWorkflow(
     );
   }
 
+  assertWorkflowCurrent(deps, ir);
   const enrichedInput = await enrichManualRunInput(ir, deps.runtime.connectors, input);
+  assertWorkflowCurrent(deps, ir);
   const validation = validateManualRunInput(ir, enrichedInput);
   if (!validation.ok) {
     return recordManualRunFailure(deps, ir, options, validation.errorCode, validation.message);

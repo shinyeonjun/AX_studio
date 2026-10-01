@@ -28,7 +28,8 @@ export const pdfToHtml: DocumentActionHandler = async (params, ctx): Promise<Con
     const result = await importPdfTemplate(resolvedPath.path, {
       engine: (params.engine as 'auto' | 'basic' | 'docling' | undefined) ?? 'auto',
       ocr: (params.ocr as 'auto' | 'off' | 'force' | undefined) ?? 'auto',
-    });
+    }, ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
 
     ctx.variables.templateId = result.templateId;
     ctx.variables.templateHtml = result.html;
@@ -50,6 +51,7 @@ export const pdfToHtml: DocumentActionHandler = async (params, ctx): Promise<Con
 
     return { ok: true, data: result };
   } catch (error) {
+    if (ctx.abortSignal?.aborted) return { ok: false, error: 'aborted', errorCode: 'aborted' };
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'pdf_to_html_failed' };
   }

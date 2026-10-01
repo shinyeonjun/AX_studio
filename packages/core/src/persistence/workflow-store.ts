@@ -24,9 +24,18 @@ import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.j
 import * as workflowRepo from './repositories/workflow-repository.js';
 import * as discoveryMetadata from './repositories/discovery-metadata-repository.js';
 
+export interface WorkflowGeneration {
+  readonly workflowId: string;
+  readonly key: string;
+}
+
 export class WorkflowStore {
   // Main-process writers share this store; hold the id while async runtime cleanup drains.
   private readonly deletingWorkflowIds = new Set<string>();
+  // Strong entries belong only to current saved rows. Old snapshots own their
+  // token through a weak-key map, so deletion needs no historical ID journal.
+  private readonly workflowGenerations = new Map<string, WorkflowGeneration>();
+  private readonly workflowSnapshotGenerations = new WeakMap<WorkflowIR, WorkflowGeneration>();
   // Invalidates derived catalogs without hashing large persisted connector configs.
   private connectionRevision = 0;
 
@@ -38,7 +47,9 @@ export class WorkflowStore {
         code: 'workflow_deletion_in_progress',
       });
     }
-    return workflowRepo.saveWorkflow(this.db, ir);
+    const saved = workflowRepo.saveWorkflow(this.db, ir);
+    if (ir.id === saved.workflowId && ir.version === saved.version) this.rememberWorkflowSnapshot(ir);
+    return saved;
   }
 
   claimWorkflowDeletion(workflowId: string, expectedVersion: number): boolean {
@@ -52,14 +63,65 @@ export class WorkflowStore {
     this.deletingWorkflowIds.delete(workflowId);
   }
 
-  getWorkflow(workflowId: string, version?: number) { return workflowRepo.getWorkflow(this.db, workflowId, version); }
+  isWorkflowDeletionClaimed(workflowId: string): boolean {
+    return this.deletingWorkflowIds.has(workflowId);
+  }
+
+  getWorkflowGeneration(workflowId: string): WorkflowGeneration | undefined {
+    const key = workflowRepo.getWorkflowGeneration(this.db, workflowId);
+    if (!key) { this.workflowGenerations.delete(workflowId); return undefined; }
+    return this.rememberWorkflowGeneration(workflowId, key);
+  }
+
+  private rememberWorkflowGeneration(workflowId: string, key: string): WorkflowGeneration {
+    const previous = this.workflowGenerations.get(workflowId);
+    if (previous?.key === key) return previous;
+    const generation = Object.freeze({ workflowId, key });
+    this.workflowGenerations.set(workflowId, generation);
+    return generation;
+  }
+
+  getWorkflowSnapshotGeneration(workflow: WorkflowIR): WorkflowGeneration | undefined {
+    return this.workflowSnapshotGenerations.get(workflow);
+  }
+
+  isWorkflowSnapshotCurrent(workflow: WorkflowIR): boolean {
+    if (!workflow.id) return true;
+    const snapshot = this.workflowSnapshotGenerations.get(workflow);
+    // All host writers use this store. Reads capture a token and successful
+    // deletion retires it synchronously, including while async callers wait.
+    return snapshot?.workflowId === workflow.id
+      && !this.isWorkflowDeletionClaimed(workflow.id)
+      && snapshot === this.workflowGenerations.get(workflow.id);
+  }
+
+  private rememberWorkflowSnapshot<T extends WorkflowIR | null>(workflow: T): T {
+    if (workflow?.id) {
+      const key = workflowRepo.getWorkflowSnapshotGenerationKey(workflow);
+      const generation = key ? this.rememberWorkflowGeneration(workflow.id, key) : this.getWorkflowGeneration(workflow.id);
+      if (generation) this.workflowSnapshotGenerations.set(workflow, generation);
+    }
+    return workflow;
+  }
+
+  getWorkflow(workflowId: string, version?: number) {
+    return this.rememberWorkflowSnapshot(workflowRepo.getWorkflow(this.db, workflowId, version));
+  }
   getWorkflowPolicy(workflowId: string) { return workflowRepo.getWorkflowPolicy(this.db, workflowId); }
   updateWorkflowPolicy(workflowId: string, patch: AgentScopedContextPatch) {
     return workflowRepo.updateWorkflowPolicy(this.db, workflowId, patch);
   }
   listWorkflows() { return workflowRepo.listWorkflows(this.db); }
-  listWorkflowDefinitions() { return workflowRepo.listWorkflowDefinitions(this.db); }
-  listActiveWorkflowDefinitions() { return workflowRepo.listActiveWorkflowDefinitions(this.db); }
+  listWorkflowDefinitions() {
+    const rows = workflowRepo.listWorkflowDefinitions(this.db);
+    rows.forEach(row => this.rememberWorkflowSnapshot(row.workflow));
+    return rows;
+  }
+  listActiveWorkflowDefinitions() {
+    const rows = workflowRepo.listActiveWorkflowDefinitions(this.db);
+    rows.forEach(row => this.rememberWorkflowSnapshot(row.workflow));
+    return rows;
+  }
   isWorkflowActive(workflowId: string) { return workflowRepo.isWorkflowActive(this.db, workflowId); }
   setWorkflowActive(workflowId: string, active: boolean) {
     if (active && this.deletingWorkflowIds.has(workflowId)) {
@@ -69,7 +131,11 @@ export class WorkflowStore {
     }
     return workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
-  deleteWorkflow(workflowId: string) { return workflowRepo.deleteWorkflow(this.db, workflowId); }
+  deleteWorkflow(workflowId: string) {
+    const deleted = workflowRepo.deleteWorkflow(this.db, workflowId);
+    this.workflowGenerations.delete(workflowId);
+    return deleted;
+  }
 
   saveWorkspaceChat(params: {
     id?: string;

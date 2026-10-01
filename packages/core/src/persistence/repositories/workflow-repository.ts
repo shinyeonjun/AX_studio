@@ -13,6 +13,17 @@ import {
 } from '../../intelligence/agent/scoped-context.js';
 import * as settingsRepo from './settings-repository.js';
 
+const snapshotGenerationKeys = new WeakMap<WorkflowIR, string>();
+export function getWorkflowSnapshotGenerationKey(workflow: WorkflowIR): string | undefined {
+  return snapshotGenerationKeys.get(workflow);
+}
+
+function parseWorkflowSnapshot(workflowId: string, version: number, irJson: string, generationKey: string): WorkflowIR {
+  const workflow = parseWorkflowVersion(workflowId, version, irJson);
+  snapshotGenerationKeys.set(workflow, generationKey);
+  return workflow;
+}
+
 export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: string; version: number } {
   const now = new Date().toISOString();
   const normalized = parseWorkflowIR(ir);
@@ -73,13 +84,21 @@ function parseWorkflowVersion(workflowId: string, version: number, irJson: strin
 }
 
 export function getWorkflow(db: AppDatabase, workflowId: string, version?: number): WorkflowIR | null {
+  const generation = '(SELECT id FROM workflow_versions WHERE workflow_id = ? ORDER BY version ASC LIMIT 1) AS generation_key';
   const target = version
-    ? readRow<{ version: number; ir_json: string }>(db.prepare(
-      'SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ? AND version = ?'), workflowId, version)
-    : readRow<{ version: number; ir_json: string }>(db.prepare(
-      'SELECT version, ir_json FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC LIMIT 1'), workflowId);
+    ? readRow<{ version: number; ir_json: string; generation_key: string }>(db.prepare(
+      `SELECT version, ir_json, ${generation} FROM workflow_versions WHERE workflow_id = ? AND version = ?`), workflowId, workflowId, version)
+    : readRow<{ version: number; ir_json: string; generation_key: string }>(db.prepare(
+      `SELECT version, ir_json, ${generation} FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC LIMIT 1`), workflowId, workflowId);
   if (!target) return null;
-  return parseWorkflowVersion(workflowId, target.version, target.ir_json);
+  return parseWorkflowSnapshot(workflowId, target.version, target.ir_json, target.generation_key);
+}
+
+/** First version UUID identifies one creation of an ID, including version-1 recreation. */
+export function getWorkflowGeneration(db: AppDatabase, workflowId: string): string | undefined {
+  return readRow<{ id: string }>(db.prepare(
+    'SELECT v.id FROM workflow_versions v JOIN workflows w ON w.id = v.workflow_id WHERE w.id = ? ORDER BY v.version ASC LIMIT 1'),
+  workflowId)?.id;
 }
 
 export function getWorkflowPolicy(db: AppDatabase, workflowId: string): AgentScopedContextMap {
@@ -135,38 +154,41 @@ export function listWorkflowDefinitions(db: AppDatabase): Array<{
     active: number;
     version: number | null;
     ir_json: string | null;
+    generation_key: string;
   }>(db.prepare(
-    `SELECT w.id, w.name, w.active, v.version, v.ir_json
+    `SELECT w.id, w.name, w.active, v.version, v.ir_json,
+       (SELECT id FROM workflow_versions WHERE workflow_id = w.id ORDER BY version ASC LIMIT 1) AS generation_key
      FROM workflows w
      LEFT JOIN workflow_versions v
        ON v.workflow_id = w.id
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)`,
   ));
 
-  return rows.map(({ id, name, active, version, ir_json }) => ({
+  return rows.map(({ id, name, active, version, ir_json, generation_key }) => ({
     id,
     name,
     active: Boolean(active),
     latestVersion: version ?? 0,
     workflow: version === null || ir_json === null
       ? null
-      : parseWorkflowVersion(id, version, ir_json),
+      : parseWorkflowSnapshot(id, version, ir_json, generation_key),
   }));
 }
 
 // Scheduler and trigger scans share this batch read instead of querying each active workflow separately.
 export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: string; workflow: WorkflowIR }> {
-  const rows = readRows<{ id: string; version: number; ir_json: string }>(db.prepare(
-    `SELECT w.id, v.version, v.ir_json
+  const rows = readRows<{ id: string; version: number; ir_json: string; generation_key: string }>(db.prepare(
+    `SELECT w.id, v.version, v.ir_json,
+       (SELECT id FROM workflow_versions WHERE workflow_id = w.id ORDER BY version ASC LIMIT 1) AS generation_key
      FROM workflows w
      JOIN workflow_versions v
        ON v.workflow_id = w.id
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)
      WHERE w.active = 1`,
   ));
-  return rows.map(({ id, version, ir_json }) => ({
+  return rows.map(({ id, version, ir_json, generation_key }) => ({
     id,
-    workflow: parseWorkflowVersion(id, version, ir_json),
+    workflow: parseWorkflowSnapshot(id, version, ir_json, generation_key),
   }));
 }
 
@@ -190,6 +212,11 @@ function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
     if (!value || typeof value !== 'object' || !(workflowId in value)) continue;
     const { [workflowId]: _removed, ...rest } = value;
     settingsRepo.setSetting(db, key, rest);
+  }
+  const pending = settingsRepo.getSetting<unknown>(db, 'scheduler.pendingOccurrences', []);
+  if (Array.isArray(pending)) {
+    const remaining = pending.filter((entry) => entry?.workflowId !== workflowId);
+    if (remaining.length !== pending.length) settingsRepo.setSetting(db, 'scheduler.pendingOccurrences', remaining);
   }
 }
 

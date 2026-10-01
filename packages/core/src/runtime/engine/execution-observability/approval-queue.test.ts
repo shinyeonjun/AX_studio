@@ -58,7 +58,6 @@ describe('runtime approval and queue observability', () => {
       onExecutionFinished: (result) => events.push(`finish:${result.executionId}`),
     });
     const plan: WorkflowIR = {
-      id: 'queued-draft',
       name: '큐 일회 실행',
       goal: '한 번씩 순서대로 처리한다',
       version: 1,

@@ -1,6 +1,7 @@
 import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import type { WorkflowRuntime } from '../../engine.js';
 import type { TriggerCursorStore } from '../../../triggers/types.js';
+import type { WorkflowIR } from '../../../workflow/schema.js';
 
 export interface TriggerPollerOptions {
   store: WorkflowStore;
@@ -14,5 +15,5 @@ export interface TriggerPollerOptions {
 
 export interface TriggerPollState {
   cursors: TriggerCursorStore;
-  cursorsChanged: boolean;
+  changedWorkflows: Map<string, WorkflowIR>;
 }

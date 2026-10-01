@@ -22,6 +22,7 @@ import { resolveActionParamsForExecution } from '../../step-executor.js';
 export async function continueWorkflowAfterApproval(
   host: WorkflowExecutionHost,
   approvalId: string,
+  abortSignal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const guard = prepareApprovalResume(host, approvalId);
   if (!guard.ok) return guard.result;
@@ -74,6 +75,7 @@ export async function continueWorkflowAfterApproval(
       host.config.store.updateExecutionLog(execution.id, log);
     },
     execution.workspaceSessionId,
+    abortSignal,
   );
   ctx.outputs = { ...(checkpoint?.outputs ?? {}) };
   ctx.presentationVariableSources = { ...(checkpoint?.presentationVariableSources ?? {}) };
@@ -91,6 +93,7 @@ export async function continueWorkflowAfterApproval(
   }
 
   try {
+    abortSignal?.throwIfAborted();
     const contractIssues = validateWorkflowContracts(ir, { runtimeConnectors: host.connectors });
     if (contractIssues.length > 0) {
       throw Object.assign(new Error(contractIssues[0]!.message), {
@@ -146,6 +149,7 @@ export async function continueWorkflowAfterApproval(
       );
     }
 
+    abortSignal?.throwIfAborted();
     if (ir.outputContract) {
       const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
       if (!output.ok) throw createContractFailure('output_contract_failed', 'after_sequence', output);
@@ -158,6 +162,14 @@ export async function continueWorkflowAfterApproval(
     return successResult;
   } catch (err) {
     const error = err as PendingError;
+    if (abortSignal?.aborted) {
+      host.config.store.failApproval(approvalId);
+      log.push({ at: new Date().toISOString(), level: 'warn', code: 'cancelled', message: '워크플로 실행이 취소되었습니다.' });
+      host.config.store.finishExecution(execution.id, 'cancelled', 'cancelled', log);
+      const result: ExecutionResult = { executionId: execution.id, status: 'cancelled', errorCode: 'cancelled', log };
+      host.notifyExecutionFinished(result);
+      return result;
+    }
     if (error.pending && error.approvalId) {
       if (error.checkpoint) {
         host.config.store.updateApprovalPayload(error.approvalId, {

@@ -341,6 +341,7 @@ export class ReportGenerationService {
       const pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId, example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
         template.artifact.storedPath,
         example.artifact.storedPath,
+        ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const),
       ), (saved) => [...saved.templateImages, ...saved.exampleImages].every(existsSync));
       const reportEvidencePathnames = reportHttpEvidencePathnames(params.goal, pair);
 
@@ -699,7 +700,8 @@ export class ReportGenerationService {
         template: targetLayout.template,
         values: targetLayout.values,
         outputPath,
-      });
+      }, ...(ctx.abortSignal ? [{ abortSignal: ctx.abortSignal }] as const : [] as const));
+      if (ctx.abortSignal?.aborted) throw new Error('agent_aborted');
       if (!filled.verified || !existsSync(filled.outputPath)) throw new Error('report_pdf_verification_failed');
       phase = 'artifact_store';
       const artifact = ctx.artifactSink.putBytes(readFileSync(filled.outputPath), {
@@ -744,7 +746,7 @@ export class ReportGenerationService {
           ctx.log({ at: new Date().toISOString(), level: 'warn', code: 'report_checkpoint_save_failed', message: '재시도용 중간 결과를 저장하지 못했습니다.' });
         }
       }
-      const code = errorCode(error);
+      const code = ctx.abortSignal?.aborted ? 'agent_aborted' : errorCode(error);
       ctx.log({
         at: new Date().toISOString(), level: 'error', code,
         message: error instanceof Error ? error.message : String(error),

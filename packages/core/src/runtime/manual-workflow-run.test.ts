@@ -12,6 +12,7 @@ const missingInputWorkflow: WorkflowIR = {
   goal: '연결된 PDF를 처리한다',
   version: 1,
   inputs: [],
+  trigger: { type: 'local_folder.new_file', folderId: 'synthetic-unconfigured-folder' },
   steps: [{
     type: 'action',
     id: 'ingest',
@@ -32,6 +33,7 @@ describe('saved manual workflow completion observer', () => {
   it('notifies the shared completion boundary when input preflight fails', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
+    store.saveWorkflow(missingInputWorkflow);
     const finished: ExecutionResult[] = [];
     const runtime = new WorkflowRuntime({
       store,

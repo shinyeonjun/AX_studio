@@ -36,6 +36,7 @@ export async function executeWorkflow(
   host: WorkflowExecutionHost,
   ir: WorkflowIR,
   options: WorkflowExecutionOptions = {},
+  workflowGenerationKey?: string,
 ): Promise<ExecutionResult> {
   let parsedIr: WorkflowIR;
   try {
@@ -45,6 +46,10 @@ export async function executeWorkflow(
     return recordPreflightResult(host, options, undefined, 'failed', 'invalid_workflow_schema', message);
   }
   ir = parsedIr;
+
+  if (options.abortSignal?.aborted) {
+    return recordPreflightResult(host, options, ir, 'cancelled', 'cancelled', '워크플로 실행이 취소되었습니다.');
+  }
 
   if (!host.config.globalActive) {
     return recordPreflightResult(
@@ -88,7 +93,8 @@ export async function executeWorkflow(
     workflowVersion: workflowIr.version,
     ephemeral: options.ephemeral ?? false,
     triggerType: options.triggerType,
-    irJson: JSON.stringify(workflowIr),
+    // Host ownership also covers one-shot snapshots whose workflow FK is null.
+    irJson: JSON.stringify({ ...workflowIr, ...(workflowGenerationKey === undefined ? {} : { _workflowGenerationKey: workflowGenerationKey }) }),
     workspaceSessionId: options.workspaceSessionId,
   });
   host.notifyExecutionStarted(executionId);
