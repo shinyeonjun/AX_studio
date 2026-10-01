@@ -5,6 +5,18 @@ import { join } from 'node:path';
 import { mkdtempSync, mkdirSync, readFileSync, realpathSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, packagedDependencyNoticePaths, parsePackageArgs, pythonRuntimes, verifyArchiveBytes } from './package-platform.mjs';
+import { assertElectronSandbox } from './electron-sandbox.mjs';
+
+test('Electron acceptance requires verifiable sandbox state and rejects every bypass switch', async () => {
+  const application = (flags) => ({ evaluate: (callback) => callback({
+    app: { commandLine: { hasSwitch: (flag) => flags.includes(flag) } },
+  }) });
+  await assert.doesNotReject(() => assertElectronSandbox(application([])));
+  for (const flag of ['no-sandbox', 'disable-setuid-sandbox', 'disable-namespace-sandbox']) {
+    await assert.rejects(() => assertElectronSandbox(application([flag])), /Electron sandbox bypass detected/);
+  }
+  await assert.rejects(() => assertElectronSandbox({ evaluate: () => undefined }), /Could not verify Electron sandbox switches/);
+});
 
 test('Windows packaging layout retains the original executable, embed runtime and directory', () => {
   const layout = packagePaths('/package', 'win32', 'x64');

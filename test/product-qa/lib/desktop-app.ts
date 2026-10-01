@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
 import { prepareProductQaDataRoot } from './data-root.js';
 import type { ProductQaMode } from './types.js';
+import { assertElectronSandbox } from '../../../scripts/lib/electron-sandbox.mjs';
 
 const require = createRequire(import.meta.url);
 const electronExecutable = require('electron') as string;
@@ -109,11 +110,18 @@ export async function launchDesktop(options: LaunchOptions): Promise<DesktopCont
 
   const app = await electron.launch({
     executablePath: electronExecutable,
+    chromiumSandbox: true,
     args: electronArgs,
     cwd: repoRoot,
     env,
     timeout: 120_000,
   });
+  try {
+    await assertElectronSandbox(app);
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
 
   const page = await app.firstWindow({ timeout: 120_000 });
   await page.waitForLoadState('domcontentloaded');

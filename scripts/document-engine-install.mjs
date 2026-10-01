@@ -4,6 +4,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { assertNativeBuildHost, copyBundle, isolatedAppEnv, isolatedPythonEnv, packagePaths, packagePlatform, packagedDependencyNoticePaths, pythonRuntimes, verifyArchiveBytes } from './lib/package-platform.mjs';
+import { assertElectronSandbox } from './lib/electron-sandbox.mjs';
 
 const root = join(import.meta.dirname, '..');
 const engineRoot = join(root, 'packages', 'document-engine');
@@ -111,8 +112,9 @@ async function verifyPackage(directory, { skipUi = false } = {}) {
   const scratch = mkdtempSync(join(tmpdir(), 'ax-package-ui-'));
   let app;
   try {
-    app = await _electron.launch({ executablePath: layout.executablePath,
+    app = await _electron.launch({ executablePath: layout.executablePath, chromiumSandbox: true,
       args: ['--user-data-dir=' + join(scratch, 'profile')], cwd: scratch, env: isolatedAppEnv(scratch), timeout: 60_000 });
+    await assertElectronSandbox(app);
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '새 대화', exact: true }).waitFor({ timeout: 30_000 });
     if (!await app.evaluate(({ app }) => app.isPackaged)) throw new Error('Expected packaged application');
