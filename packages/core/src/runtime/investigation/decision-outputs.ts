@@ -3,14 +3,15 @@ import type { DecisionAnswer, DecisionEngine, DecisionInstruction, DecisionQuest
 import { classifyDecisionOutput, MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../intelligence/decision/context.js';
 import type { Step } from '../../workflow/schema.js';
+import { decisionOutputProperties } from '../../workflow/ai-output-contract.js';
 
 export interface DecisionOutputPlan {
   readonly questions: Record<string, DecisionQuestion>;
   readonly bindings: Map<string, DecisionOutputBinding>;
   readonly values: Record<string, unknown>;
   readonly jevUnavailableFields: string[];
-  /** undefined means the schema is unstructured and stays with the LLM. */
-  readonly modelFields?: string[];
+  /** Only explicitly declared prose (or the legacy conclusion) reaches the LLM. */
+  readonly modelFields: string[];
 }
 
 interface DecisionOutputBinding {
@@ -28,8 +29,7 @@ export function planDecisionOutputs(
   step: Step & { type: 'ai_decision' },
   decisionEngine?: DecisionEngine,
 ): DecisionOutputPlan {
-  const properties = record(step.outputSchema?.properties);
-  if (!properties) return { questions: {}, bindings: new Map(), values: {}, jevUnavailableFields: [] };
+  const properties = decisionOutputProperties(step);
 
   const questions: Record<string, DecisionQuestion> = {};
   const bindings = new Map<string, DecisionOutputBinding>();

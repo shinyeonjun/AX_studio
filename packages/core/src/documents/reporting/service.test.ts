@@ -271,7 +271,7 @@ describe('ReportGenerationService', () => {
         pdfFormFill: async (sourcePath, options) => {
           writeFileSync(options.outputPath!, 'pdf');
           return { sourcePath, outputPath: options.outputPath!, sourceHash: 'template', outputHash: 'output',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true };
         },
       },
@@ -448,7 +448,7 @@ describe('ReportGenerationService', () => {
           writeFileSync(options.outputPath!, `generated from ${path}`);
           return {
             sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'out',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true,
           };
         },
@@ -531,7 +531,7 @@ describe('ReportGenerationService', () => {
         writeFileSync(options.outputPath!, `generated from ${path}`);
         return {
           sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'output-hash',
-          pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+          pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
           interactive: false, sourceUnchanged: true,
         };
       }),
@@ -749,7 +749,7 @@ describe('ReportGenerationService', () => {
           writeFileSync(options.outputPath!, 'pdf');
           return {
             sourcePath: path, outputPath: options.outputPath!, sourceHash: 'hash', outputHash: 'out',
-            pageCount: 1, fieldCount: 1, writerEngine: 'pymupdf' as const, verified: true,
+            pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab' as const, verified: true,
             interactive: false, sourceUnchanged: true,
           };
         },
@@ -835,7 +835,7 @@ describe('ReportGenerationService', () => {
         writeFileSync(options.outputPath!, 'pdf');
         return {
           sourcePath: path, outputPath: options.outputPath!, sourceHash: 'template-hash', outputHash: 'output-hash',
-          pageCount: 1, fieldCount: Object.keys(options.values).length, writerEngine: 'pymupdf' as const,
+          pageCount: 1, fieldCount: Object.keys(options.values).length, writerEngine: 'pypdf-reportlab' as const,
           verified: true, interactive: false, sourceUnchanged: true,
         };
       }),

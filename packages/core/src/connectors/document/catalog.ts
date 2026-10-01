@@ -57,8 +57,8 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     sideEffect: 'REVERSIBLE',
     params: [
       { name: 'template', label: 'Handlebars 템플릿', question: '문서 HTML 템플릿을 입력하세요.', required: false },
-      { name: 'title', label: '제목', question: '문서 제목', required: false },
-      { name: 'data', label: '데이터', question: '템플릿에 넣을 데이터', required: false },
+      { name: 'title', label: '제목', question: '문서 제목', required: false, purpose: 'prose' },
+      { name: 'data', label: '데이터', question: '템플릿에 넣을 데이터', required: false, purpose: 'prose' },
     ],
   },
   {
@@ -68,7 +68,10 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     label: 'DOCX 작성',
     description: 'DOCX 양식 채우기',
     sideEffect: 'REVERSIBLE',
-    params: [{ name: 'template', label: '문서 양식', question: '어떤 문서 양식을 사용할까요?', required: true }],
+    params: [
+      { name: 'template', label: '문서 양식', question: '어떤 문서 양식을 사용할까요?', required: true },
+      { name: 'data', label: '문안 데이터', question: '양식의 본문에 넣을 내용은요?', required: false, purpose: 'prose' },
+    ],
   },
   {
     id: 'document.pdf.toHtml',
@@ -104,7 +107,7 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     params: [
       { name: 'path', label: 'PDF 경로', question: '어떤 원본 PDF에 채울까요?', required: true },
       { name: 'templatePath', label: '양식 템플릿', question: '어떤 PDF 양식 분석 결과를 사용할까요?', required: false },
-      { name: 'values', label: '입력 값', question: '각 필드에 어떤 값을 채울까요?', required: true },
+      { name: 'values', label: '입력 값', question: '각 필드에 어떤 값을 채울까요?', required: true, purpose: 'prose' },
       { name: 'outputPath', label: '출력 경로', question: '채운 PDF를 어디에 저장할까요?', required: false },
       { name: 'fontPath', label: '폰트 경로', question: '필요하면 어떤 유니코드 폰트를 사용할까요?', required: false },
     ],
@@ -118,7 +121,7 @@ export const DOCUMENT_CAPABILITIES: ConnectorCapability[] = [
     sideEffect: 'REVERSIBLE',
     params: [
       { name: 'html', label: 'HTML', question: 'PDF로 변환할 HTML', required: false },
-      { name: 'title', label: '제목', question: 'PDF 제목', required: false },
+      { name: 'title', label: '제목', question: 'PDF 제목', required: false, purpose: 'prose' },
     ],
   },
   {

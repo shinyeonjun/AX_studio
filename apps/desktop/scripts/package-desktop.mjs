@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { verifyAppImagePolicy } from './appimage-policy.mjs';
 import { assertNativeBuildHost, parsePackageArgs } from '../../../scripts/lib/package-platform.mjs';
 
 const root = join(import.meta.dirname, '..', '..', '..');
@@ -25,6 +27,10 @@ run('Install official Electron distribution', process.execPath, [require.resolve
 run('Build native desktop package (publishing disabled)', process.execPath,
   [require.resolve('electron-builder/cli.js'), options.builderFlag, '--x64', '--publish', 'never', ...(options.directoryOnly ? ['--dir'] : [])],
   join(root, 'apps/desktop'));
+if (options.platform === 'linux' && !options.directoryOnly) {
+  const { version } = JSON.parse(readFileSync(join(root, 'apps/desktop/package.json'), 'utf8'));
+  verifyAppImagePolicy(join(root, `apps/desktop/release/AX Studio-${version}.AppImage`));
+}
 run('Verify packaged archive and document payload', process.execPath,
   [join(root, 'scripts/document-engine-install.mjs'), '--verify-package', join(root, 'apps/desktop/release', options.unpacked),
     ...(options.skipUi ? ['--skip-ui'] : [])]);

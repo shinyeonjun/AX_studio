@@ -65,6 +65,8 @@ export interface ConnectorContext {
   variables: Record<string, unknown>;
   /** Validated outputs keyed by producing step and declared port. */
   outputs?: Record<string, Record<string, unknown>>;
+  /** Host-owned provenance for variables written by content-consuming actions. */
+  presentationVariableSources?: Record<string, string>;
   log: (entry: ExecutionLogEntry) => void;
   connections?: Array<{ connector: string; connected: boolean; config?: Record<string, unknown> }>;
   /** Host-approved input paths for discovery-generated, non-folder sources. */

@@ -16,6 +16,7 @@ function outputSchemaFromFields(node: WorkflowNode): Record<string, unknown> | u
         {
           type: field.type,
           description: field.description,
+          ...(field.purpose ? { purpose: field.purpose } : {}),
           ...(field.enumValues?.length ? { enum: field.enumValues } : {}),
         },
       ]),

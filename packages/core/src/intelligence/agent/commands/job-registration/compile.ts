@@ -37,7 +37,7 @@ export function compileScheduledHttpSlackJob(spec: NormalizedJobSpec): WorkflowI
         type: 'object',
         properties: {
           notify: { type: 'boolean' },
-          summary: { type: 'string' },
+          summary: { type: 'string', purpose: 'prose' },
         },
         required: ['notify', 'summary'],
       },

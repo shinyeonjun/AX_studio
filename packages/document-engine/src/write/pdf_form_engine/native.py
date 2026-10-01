@@ -3,20 +3,17 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from .primitives import _TRUTHY, _as_float, _as_string
-from .runtime import _pymupdf, _pymupdf_rect
+from .widgets import FormWidget
+from .primitives import _object
 
-def _native_field_distance(pdf: Any, field: Mapping[str, Any], widget: Any) -> float:
-    raw_rect = field.get("rect")
-    widget_rect = getattr(widget, "rect", None)
-    if not isinstance(raw_rect, Mapping) or widget_rect is None:
+def _native_field_distance(field: Mapping[str, Any], widget: FormWidget) -> float:
+    raw = field.get("rect")
+    if not isinstance(raw, Mapping):
         return float("inf")
-    rect = _pymupdf_rect(pdf, raw_rect)
-    return (
-        abs(rect.x0 - widget_rect.x0)
-        + abs(rect.y0 - widget_rect.y0)
-        + abs(rect.x1 - widget_rect.x1)
-        + abs(rect.y1 - widget_rect.y1)
-    )
+    rect = (float(raw["x"]), float(raw["y"]), float(raw["x"]) + float(raw["width"]),
+            float(raw["y"]) + float(raw["height"]))
+    return sum(abs(a - b) for a, b in zip(rect, widget.rect))
+
 
 def _native_widget_assignments(
     document: Any,
@@ -29,7 +26,6 @@ def _native_widget_assignments(
     request address exactly one widget while still allowing a name-based radio
     value such as ``"low"`` to select the matching export value.
     """
-    pdf = _pymupdf()
     fields_by_group: dict[tuple[int, str], list[Mapping[str, Any]]] = {}
     for field in template.get("fields") or []:
         if not isinstance(field, Mapping) or _as_string(field.get("source")) != "acroform":
@@ -40,14 +36,15 @@ def _native_widget_assignments(
             fields_by_group.setdefault((page_index, name), []).append(field)
 
     widgets_by_group: dict[tuple[int, str], list[tuple[Any, Any]]] = {}
-    for page_index in range(len(document)):
-        page = document[page_index]
-        for widget in list(page.widgets() or []):
-            name = _as_string(getattr(widget, "field_name", ""))
-            if name:
-                # Keep the page alive with the widget. PyMuPDF widget methods
-                # use a weak page reference and otherwise fail at update().
-                widgets_by_group.setdefault((page_index, name), []).append((page, widget))
+    for page_index in range(len(document.pages)):
+        page = document.pages[page_index]
+        for reference in page.get("/Annots") or []:
+            raw = _object(reference)
+            if raw.get("/Subtype") != "/Widget":
+                continue
+            widget = FormWidget(raw, float(page.mediabox.height))
+            if widget.field_name:
+                widgets_by_group.setdefault((page_index, widget.field_name), []).append((page, widget))
 
     assignments: list[tuple[int, Any, Any, Mapping[str, Any]]] = []
     for group, fields in fields_by_group.items():
@@ -55,7 +52,7 @@ def _native_widget_assignments(
         widgets = widgets_by_group.get(group) or []
         pairs = sorted(
             (
-                _native_field_distance(pdf, field, widget),
+                _native_field_distance(field, widget),
                 widget_index,
                 field_index,
             )
@@ -98,6 +95,7 @@ def _fill_native_widgets(
     document: Any,
     template: Mapping[str, Any],
     values: Mapping[str, Any],
+    *, font_path: str | None = None,
 ) -> int:
     assignments = _native_widget_assignments(document, template)
     requested_keys = {
@@ -105,14 +103,14 @@ def _fill_native_widgets(
         for key, value in values.items()
         if value is not None
     }
-    radio_groups: dict[tuple[int, str], list[Mapping[str, Any]]] = {}
+    radio_groups: dict[str, list[Mapping[str, Any]]] = {}
     for page_index, _page, _widget, field in assignments:
         if _as_string(field.get("type")) == "radio":
-            radio_groups.setdefault((page_index, _as_string(field.get("name"))), []).append(field)
+            radio_groups.setdefault(_as_string(field.get("name")), []).append(field)
     radio_id_groups = {
         group
         for group, fields in radio_groups.items()
-        if any(_as_string(field.get("id")) in values for field in fields)
+        if any(values.get(_as_string(field.get("id"))) is not None for field in fields)
     }
     updated = 0
     applied_keys: set[str] = set()
@@ -121,7 +119,7 @@ def _fill_native_widgets(
         field_id = _as_string(field.get("id"))
         field_name = _as_string(field.get("name"))
         field_type = _as_string(field.get("type"))
-        group = (page_index, field_name)
+        group = field_name
         value_key: str | None = None
         value: Any = None
         should_apply = False
@@ -146,11 +144,27 @@ def _fill_native_widgets(
             continue
         operations.append((page_index, _page, widget, field, value, value_key))
 
+    # A terminal field has one canonical value even when it has widgets on
+    # several pages. Addressing one widget must update all its appearances.
+    canonical_values: dict[int, tuple[Any, str | None]] = {}
+    for _index, _page, widget, field, value, key in operations:
+        if field.get("type") == "radio":
+            continue
+        identity = id(widget.canonical)
+        if identity in canonical_values and canonical_values[identity][0] != value:
+            raise ValueError("native_field_value_conflict:" + widget.field_name)
+        canonical_values[identity] = (value, key)
+    existing = {id(widget.raw) for _, _, widget, _, _, _ in operations}
+    for index, page, widget, field in assignments:
+        if id(widget.raw) not in existing and id(widget.canonical) in canonical_values:
+            value, _key = canonical_values[id(widget.canonical)]
+            operations.append((index, page, widget, field, value, None))
+
     def operation_is_selected(operation: tuple[int, Any, Any, Mapping[str, Any], Any, str | None]) -> bool:
         page_index, _page, _widget, field, value, value_key = operation
         if _as_string(field.get("type")) != "radio":
             return False
-        group = (page_index, _as_string(field.get("name")))
+        group = _as_string(field.get("name"))
         candidates = radio_groups.get(group) or [field]
         field_id = _as_string(field.get("id"))
         return _radio_selected(
@@ -166,23 +180,23 @@ def _fill_native_widgets(
     for page_index, _page, widget, field, value, value_key in operations:
         field_id = _as_string(field.get("id"))
         field_type = _as_string(field.get("type"))
-        group = (page_index, _as_string(field.get("name")))
+        group = _as_string(field.get("name"))
         if field_type == "checkbox":
             if value is True or _as_string(value).strip().lower() in _TRUTHY:
                 on_state = getattr(widget, "on_state", None)
-                widget.field_value = on_state() if callable(on_state) else True
+                new_value = on_state() if callable(on_state) else True
             else:
-                widget.field_value = False
+                new_value = False
         elif field_type == "radio":
             candidates = radio_groups.get(group) or [field]
             on_state = getattr(widget, "on_state", None)
             if _radio_selected(field, value, candidates, value_key="id" if value_key == field_id else "name"):
-                widget.field_value = on_state() if callable(on_state) else True
+                new_value = on_state() if callable(on_state) else True
             else:
-                widget.field_value = False
+                new_value = False
         else:
-            widget.field_value = value if isinstance(value, list) else _as_string(value)
-        widget.update()
+            new_value = value if isinstance(value, list) else _as_string(value)
+        widget.write_value(document, new_value, field, font_path)
         updated += 1
         if value_key:
             applied_keys.add(value_key)

@@ -1,4 +1,5 @@
 import type { Step } from '../../schema.js';
+import { decisionOutputProperties, decisionRequiredFields } from '../../ai-output-contract.js';
 
 export function referencePaths(value: unknown): string[] {
   if (typeof value === 'string') {
@@ -25,23 +26,10 @@ export function conditionReferencePaths(condition: unknown): string[] {
   });
 }
 
-function hasDeclaredOutputField(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
-  const properties = step.outputSchema?.properties;
-  return Boolean(
-    properties &&
-      typeof properties === 'object' &&
-      !Array.isArray(properties) &&
-      Object.prototype.hasOwnProperty.call(properties, field),
-  );
-}
-
 export function outputFieldExists(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
-  // conclusion is part of the default AI result contract. Other custom
-  // fields still require an explicit schema declaration.
-  return field === 'conclusion' || hasDeclaredOutputField(step, field);
+  return Object.hasOwn(decisionOutputProperties(step), field);
 }
 
 export function outputFieldIsRequired(step: Extract<Step, { type: 'ai_decision' }>, field: string): boolean {
-  if (field === 'conclusion' && !hasDeclaredOutputField(step, field)) return true;
-  return Array.isArray(step.outputSchema?.required) && step.outputSchema.required.includes(field);
+  return decisionRequiredFields(step).includes(field);
 }

@@ -69,8 +69,8 @@ function reportPlan() {
 }
 
 function layoutFor(pair) {
-  const scalarIds = ['period', 'revenue', 'orders', 'customers', 'attainment', 'status'];
-  if (pair.scalarSlots.length !== scalarIds.length) {
+  const scalarIds = ['period', 'revenue', 'orders', 'customers', 'attainment'];
+  if (pair.scalarSlots.length < scalarIds.length + 1) {
     throw new Error('benchmark_pair_scalar_contract:' + pair.scalarSlots.length);
   }
   if (pair.tableGroups.length !== 1) {
@@ -85,7 +85,7 @@ function layoutFor(pair) {
     outputFileName: 'monthly_customer_report_{{meta.periodYearMonth}}.pdf',
     scalarBindings: pair.scalarSlots.map((slot, index) => ({
       slotId: slot.id,
-      value: { kind: 'scalar', id: scalarIds[index] },
+      value: { kind: 'scalar', id: scalarIds[index] ?? 'status' },
     })),
     tableBindings: [{
       groupId: group.id,

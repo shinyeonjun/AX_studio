@@ -63,7 +63,7 @@ function verifyBundle(bundle) {
     if (!response.ok || !JSON.stringify(response.data).includes('AX packaged document smoke')) {
       throw new Error('Packaged PDF ingestion failed: ' + JSON.stringify(response));
     }
-    console.log('Packaged document engine: relocated Python, native PDF rendering, OpenCV and worker ingestion passed.');
+    console.log('Packaged document engine: relocated Python, permissive PDF backend, mixed CJK/Latin forms, all rotations, native rendering, OpenCV and worker ingestion passed.');
     console.log('Packaged dependency versions: ' + JSON.stringify(evidence.distributions));
   } finally { rmSync(scratch, { recursive: true, force: true }); }
 }
@@ -86,10 +86,14 @@ async function verifyPackage(directory, { skipUi = false } = {}) {
   for (const relative of ['LICENSE.electron.txt', 'LICENSES.chromium.html', 'resources/PACKAGING_NOTICES.md']) {
     requiredFile(join(directory, relative));
   }
-  // Do not invent a license for branches lacking one. Existing project notices
-  // must survive packaging when configured; final distribution review is separate.
+  // The owner-approved MIT project license and dependency index must survive packaging.
+  // Presence checks are not legal clearance or a complete license audit.
   for (const [source, target] of [['LICENSE', 'LICENSE.AX-Studio.txt'], ['THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md']]) {
-    if (existsSync(join(root, source))) requiredFile(join(directory, 'resources', target));
+    requiredFile(join(root, source));
+    requiredFile(join(directory, 'resources', target));
+    if (!readFileSync(join(root, source)).equals(readFileSync(join(directory, 'resources', target)))) {
+      throw new Error('Packaged project notice differs from source: ' + source);
+    }
   }
   for (const relative of ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']) {
     if (asar.extractFile(layout.archive, relative).length < 100) throw new Error('Missing archived dependency notice: ' + relative);

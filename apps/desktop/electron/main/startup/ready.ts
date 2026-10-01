@@ -2,8 +2,6 @@ import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
   type DecisionEngine,
-  createExperimentalJevDecisionEngineFromEnvironment,
-  JevDecisionEngine,
   setDocumentEngineClient,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
@@ -28,14 +26,17 @@ import {
 } from '../data-paths.js';
 import { migrateAxDataIfNeeded } from '../data-migrate.js';
 import { E2EDocumentEngineClient } from '../e2e-test-seam.js';
+import { isE2ERuntimeEnabled, shouldLoadE2EBenchmarkReportPlanner } from '../e2e-test-seam/gates.js';
+import { loadE2EBenchmarkReportPlanner } from '../e2e-test-seam/report-planner.js';
 import { hydrateConnectorsForStartup } from './connectors.js';
+import { createStartupJevDecisionEngine } from './jev.js';
 import { drainDesktopCore, isDesktopShuttingDown, setDesktopStartupTask, setWorkspaceSourceUnsubscribe } from './lifecycle.js';
 
 export function registerDesktopReadyHandler(): void {
   const startup = app.whenReady().then(async () => {
     try {
       if (isDesktopShuttingDown()) return;
-      const isE2E = !app.isPackaged && process.env.AX_E2E === '1';
+      const isE2E = isE2ERuntimeEnabled(app.isPackaged, process.env);
       const paths = initDesktopAxDataPaths();
       if (!isE2E) await migrateAxDataIfNeeded(paths);
       app.setPath('cache', paths.cache.chromium);
@@ -54,23 +55,17 @@ export function registerDesktopReadyHandler(): void {
 
       let decisionEngine: DecisionEngine | undefined;
       if (!isE2E) {
-        const jev = aiToml?.decision?.jev;
-        const apiKey = process.env.TYPESAFE_API_KEY?.trim();
-        if (jev?.enabled && apiKey) {
-          decisionEngine = new JevDecisionEngine({
-            apiKey,
-            model: jev.model?.trim() || undefined,
-            baseURL: jev.baseURL?.trim() || undefined,
-          });
-        } else {
-          decisionEngine = createExperimentalJevDecisionEngineFromEnvironment();
-        }
+        decisionEngine = createStartupJevDecisionEngine(aiToml?.decision?.jev, process.env);
       }
 
       if (isDesktopShuttingDown()) return;
+      const reportPlanner = shouldLoadE2EBenchmarkReportPlanner(app.isPackaged, process.env)
+        ? await loadE2EBenchmarkReportPlanner(process.env.AX_E2E_REPORT_CASE?.trim() || 'complete-api-db-report')
+        : undefined;
       const core = await createAxStudioCore({
         paths,
         decisionEngine,
+        reportPlanner,
         desktopPrintBridge: { printHtml: printHtmlToPdf },
         onExecutionStarted: () => notifyStateChanged(),
         onExecutionProgress: () => notifyStateChanged(),

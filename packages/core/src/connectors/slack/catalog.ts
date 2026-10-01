@@ -57,7 +57,7 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     notification: true,
     params: [
       { name: 'channel', label: 'Slack 채널', question: 'Slack 채널은 어디인가요?', required: true, inputType: 'slack_channel', placeholder: '#채널명 또는 채널 ID', displayInSummary: true, displayInApproval: true },
-      { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: true },
+      { name: 'text', label: '메시지', question: '무슨 내용을 보낼까요?', required: true, purpose: 'prose' },
     ],
     io: { inputs: { text: 'TextArtifact' }, outputs: { message: 'SlackMessageRef' } },
   },

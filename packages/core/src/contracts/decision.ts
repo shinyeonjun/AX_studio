@@ -22,8 +22,15 @@ export type DecisionOutputRoute =
 
 /** Shared by runtime routing and workflow validation so output roles cannot drift. */
 export function classifyDecisionOutput(value: unknown): DecisionOutputRoute {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return { kind: 'model' };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { kind: 'unsupported' };
   const schema = value as Record<string, unknown>;
+  // LLM output is explicitly declared prose. A field's primitive type alone
+  // never grants the model authority to produce a decision or execution input.
+  if (Object.hasOwn(schema, 'purpose')) {
+    return schema.purpose === 'prose' && schema.type === 'string' && !Object.hasOwn(schema, 'enum')
+      ? { kind: 'model' }
+      : { kind: 'unsupported' };
+  }
   if (schema.type === 'boolean') {
     if (!Object.hasOwn(schema, 'enum')) return { kind: 'boolean' };
     return Array.isArray(schema.enum)
@@ -33,7 +40,7 @@ export function classifyDecisionOutput(value: unknown): DecisionOutputRoute {
       ? { kind: 'boolean' }
       : { kind: 'unsupported' };
   }
-  if (!Object.hasOwn(schema, 'enum')) return { kind: 'model' };
+  if (!Object.hasOwn(schema, 'enum')) return { kind: 'unsupported' };
 
   const options = decisionChoiceValues(schema.enum);
   if (!options) return { kind: 'unsupported' };

@@ -111,7 +111,7 @@ export interface PdfFormFillResult {
   outputHash: string;
   pageCount: number;
   fieldCount: number;
-  writerEngine: 'pymupdf';
+  writerEngine: 'pypdf-reportlab';
   verified: boolean;
   interactive: boolean;
   sourceUnchanged: boolean;

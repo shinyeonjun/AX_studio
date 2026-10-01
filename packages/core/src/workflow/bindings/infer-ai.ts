@@ -1,5 +1,6 @@
 import type { ContractTypeName } from '../../contracts/capability-io.js';
 import type { Step } from '../schema.js';
+import { isProseOnlyDecision } from '../ai-output-contract.js';
 import {
   findAiDecisionSource,
   findCompatibleSource,
@@ -32,6 +33,7 @@ export function inferAiBindings(
   available: AvailableOutput[],
   guaranteedSources: Set<string | 'trigger'>,
 ): Extract<Step, { type: 'ai_decision' }> {
+  available = available.filter((output) => output.purpose !== 'prose' || isProseOnlyDecision(step));
   const inputContracts = inferAiDecisionInputContracts(step, available);
   if (Object.keys(inputContracts).length === 0) return step;
 

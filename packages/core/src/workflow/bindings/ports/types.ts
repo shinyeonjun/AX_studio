@@ -4,4 +4,5 @@ export interface AvailableOutput {
   from: 'trigger' | string;
   port: string;
   type: ContractTypeName;
+  purpose?: 'prose';
 }

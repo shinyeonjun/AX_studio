@@ -106,16 +106,29 @@ The PDF paths deliberately use different engines for different jobs:
   then PDF text/vector geometry, then OCR/layout candidates. This geometry
   path is separate from semantic Docling extraction because a form writer
   must know the exact page and field rectangle.
-- **Canonical form write:** `pdf_form_fill` uses PyMuPDF to update native
-  widgets or draw values on a copy of the source PDF. The response identifies
-  `writerEngine: "pymupdf"` and returns `verified: true` only after reopening
+- **Canonical form write:** `pdf_form_fill` uses pypdf for PDF structure and
+  canonical AcroForm values, plus ReportLab for saved appearances and overlays
+  on a copy of the source PDF. The response identifies
+  `writerEngine: "pypdf-reportlab"` and returns `verified: true` only after reopening
   the temporary output and checking page geometry plus requested field values.
   Text overlays validate the selected font's glyph coverage and use an
-  embedded PyMuPDF CJK fallback when no configured system font covers the
+  embedded OFL-licensed Nanum Gothic or Noto Sans CJK fallback when no explicit font covers the
   value; missing or partial explicit fonts fail instead of falling back to an
   ASCII-only font. Native text and choice fields are verified against the
-  reopened rendered text as well as their logical widget values. A source hash
+  reopened rendered text as well as their logical widget values. PDFium independently
+  inspects saved appearance streams; button on/off states must render differently.
+  Clearing a native value is verified against the saved appearance too. A source hash
   check prevents writing over a changed source or the source file itself.
+  An overflow or verification failure leaves any existing output intact and
+  removes the temporary file. The default runtime has no PyMuPDF/MuPDF dependency.
+
+The bundled Korean font stays preferred for Korean-only values. Mixed Chinese,
+Japanese, Korean and accented Latin values can use the pan-CJK fallback after
+glyph coverage checks. Unsupported characters fail closed; this is not a claim
+of all-Unicode coverage. The unchanged Noto variable font is rendered at its
+default Thin instance by ReportLab, with Simplified-Chinese regional glyph forms.
+Language-tagged regional substitutions and variable weight selection are not
+implemented. See `src/assets/fonts/README.md` for exact provenance and size.
 - **PDF → HTML editing:** `pdf_to_html` remains the editable preview route;
   it is not used as the canonical form export. HTML is printed through the
   Chromium path when an HTML workflow is explicitly requested.

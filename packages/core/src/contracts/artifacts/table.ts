@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ArtifactMetadataSchema } from './base.js';
 import { ArtifactCompletenessSchema } from './completeness.js';
+import { RdbReadCoverageSchema, RdbReadScopeSchema } from './rdb-read.js';
 
 export const ScalarValueSchema = z.union([
   z.string(),
@@ -69,8 +70,12 @@ export const TableArtifactSchema = z.object({
   offset: z.number().int().nonnegative().optional(),
   /** Next provider page origin; absent when this page is complete. */
   nextOffset: z.number().int().nonnegative().optional(),
-  /** Explicitly describes whether the rows represent the complete source. */
+  /** Legacy transport extent; RDB consumers must also inspect readScope/coverage. */
   completeness: ArtifactCompletenessSchema.optional(),
+  /** Host-issued RDB query/page identity. Absent on legacy/non-RDB tables. */
+  readScope: RdbReadScopeSchema.optional(),
+  /** RDB page, query, source extent and consistency are separate claims. */
+  coverage: RdbReadCoverageSchema.optional(),
   source: z.object({
     artifactId: z.string().optional(),
     filePath: z.string().optional(),

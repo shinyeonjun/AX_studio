@@ -69,6 +69,9 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'document_engine_empty_response') {
     return 'Document Engine 응답이 없습니다. Python venv 설치 후 앱을 재시작해 주세요.';
   }
+  if (errorCode === 'document_engine_dependency_missing') {
+    return '문서 엔진 Python 패키지가 없습니다. `AX_DOCUMENT_ENGINE_PYTHON`을 설정했다면 지우고 앱을 다시 시작하세요. 계속 실패하면 프로젝트 루트에서 `npm run document-engine:setup`을 실행한 뒤 다시 시작해 주세요.';
+  }
   if (errorCode === 'slack_error') return 'Slack 전송에 실패했습니다';
   if (errorCode === 'agent_invoke_failed') return 'AI 판단 단계 호출에 실패했습니다';
   if (errorCode === 'agent_timeout') return 'AI 판단 단계가 시간 초과되었습니다';

@@ -251,10 +251,28 @@ export interface ReportPlan extends ReportDataset {
   texts: ReportTextSpec[];
 }
 
+/** Host-owned source coverage, independent of a page's legacy complete flag. */
+export interface ReportSourceCoverage {
+  schemaVersion: 1;
+  scope: 'whole_query';
+  transport: 'complete' | 'partial';
+  query: 'complete' | 'partial' | 'unknown';
+  source: 'complete' | 'partial' | 'unknown';
+  consistency: 'verified_snapshot' | 'immutable_source' | 'best_effort' | 'unverified';
+  observedRows: number;
+  pagesRead: number;
+  queryFingerprint?: string;
+  /** The requested report period is provenance, not an executed DB predicate. */
+  periodFilterApplied: boolean;
+  reason?: 'independent_offset_reads' | 'legacy_rdb_page_contract';
+}
+
 export interface ReportSourceSnapshot {
   id: string;
   rows: Array<Record<string, unknown>>;
+  /** Legacy capture exhaustion; does not establish snapshot/source exactness. */
   complete: boolean;
+  coverage?: ReportSourceCoverage;
   fingerprint?: string;
   provenance?: {
     source: string;

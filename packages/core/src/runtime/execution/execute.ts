@@ -68,7 +68,8 @@ export async function executeWorkflow(
     );
   }
 
-  const contractIssues = validateWorkflowContracts(ir, { runtimeConnectors: host.connectors });
+  const workflowIr = inferWorkflowBindings(ir);
+  const contractIssues = validateWorkflowContracts(workflowIr, { runtimeConnectors: host.connectors });
   if (contractIssues.length > 0) {
     const issue = contractIssues[0]!;
     return recordPreflightResult(
@@ -82,7 +83,6 @@ export async function executeWorkflow(
     );
   }
 
-  const workflowIr = inferWorkflowBindings(ir);
   const executionId = host.config.store.createExecution({
     workflowId: options.ephemeral ? undefined : workflowIr.id,
     workflowVersion: workflowIr.version,

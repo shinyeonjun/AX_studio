@@ -12,9 +12,11 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeyMasked, setApiKeyMasked] = useState<string | undefined>();
+  const [apiKeyVerified, setApiKeyVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +30,10 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         setApiKeyMasked(config.apiKeyMasked);
       })
       .catch((error) => {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : 'Jev 설정을 읽지 못했습니다.');
+        if (!cancelled) {
+          setMessage(error instanceof Error ? error.message : 'Jev 설정을 읽지 못했습니다.');
+          setMessageIsError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -39,29 +44,33 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   }, []);
 
   const canSave = useMemo(
-    () => Boolean(model.trim() && baseURL.trim() && (!enabled || apiKeyConfigured || apiKeyDraft.trim())),
+    () => Boolean(model.trim() && baseURL.trim() && (!enabled || apiKeyConfigured || apiKeyDraft.length > 0)),
     [model, baseURL, enabled, apiKeyConfigured, apiKeyDraft],
   );
 
   const testConnection = async () => {
     setTesting(true);
+    setApiKeyVerified(false);
     setMessage('');
+    setMessageIsError(false);
     try {
-      const draft = apiKeyDraft.trim();
+      const draft = apiKeyDraft.length > 0 ? apiKeyDraft : undefined;
       const result = await window.ax.testJevDecisionApi({
         model: model.trim(),
         baseURL: baseURL.trim(),
-        ...(draft ? { apiKey: draft } : {}),
+        ...(draft === undefined ? {} : { apiKey: draft }),
       });
       if (result.saved) {
         setApiKeyDraft('');
         setApiKeyConfigured(true);
         setApiKeyMasked(result.masked);
       }
+      setApiKeyVerified(true);
       setMessage(`연결되었습니다. 모델: ${result.model}`);
       await onRefresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Jev 연결 테스트에 실패했습니다.');
+      setMessageIsError(true);
     } finally {
       setTesting(false);
     }
@@ -71,19 +80,21 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
     if (!canSave) return;
     setSaving(true);
     setMessage('');
+    setMessageIsError(false);
     try {
-      const draft = apiKeyDraft.trim();
+      const draft = apiKeyDraft.length > 0 ? apiKeyDraft : undefined;
       const config = await window.ax.saveJevDecisionConfig({
         enabled,
         model: model.trim(),
         baseURL: baseURL.trim(),
-        ...(draft ? { apiKey: draft } : {}),
+        ...(draft === undefined ? {} : { apiKey: draft }),
       });
       setEnabled(config.enabled);
       setModel(config.model);
       setBaseURL(config.baseURL);
       setApiKeyConfigured(config.apiKeyConfigured);
       setApiKeyMasked(config.apiKeyMasked);
+      setApiKeyVerified(false);
       setApiKeyDraft('');
       setMessage(config.enabled
         ? '저장되었습니다. Jev Decision Plane이 즉시 적용되었습니다.'
@@ -91,6 +102,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       await onRefresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Jev 설정 저장에 실패했습니다.');
+      setMessageIsError(true);
     } finally {
       setSaving(false);
     }
@@ -99,8 +111,6 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   if (!loaded) {
     return <div className="settings-section"><p className="muted">Jev 설정을 불러오는 중...</p></div>;
   }
-
-  const connected = apiKeyConfigured;
 
   return (
     <div className="settings-scroll">
@@ -137,8 +147,8 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
             <div className="provider-option-title">TypeSafe API</div>
-            <span className={`connection-badge ${connected ? 'connected' : ''}`}>
-              {connected ? '키 등록됨' : '미연결'}
+            <span className={`connection-badge ${apiKeyVerified ? 'connected' : ''}`}>
+              {apiKeyVerified ? '인증 확인됨' : apiKeyConfigured ? '키 등록됨 · 인증 미확인' : '미등록'}
             </span>
           </div>
           {apiKeyConfigured && apiKeyMasked && (
@@ -153,7 +163,10 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             type="password"
             placeholder="TypeSafe API key"
             value={apiKeyDraft}
-            onChange={(event) => setApiKeyDraft(event.target.value)}
+            onChange={(event) => {
+              setApiKeyDraft(event.target.value);
+              setApiKeyVerified(false);
+            }}
           />
         </div>
 
@@ -163,7 +176,10 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             id="jev-model"
             type="text"
             value={model}
-            onChange={(event) => setModel(event.target.value)}
+            onChange={(event) => {
+              setModel(event.target.value);
+              setApiKeyVerified(false);
+            }}
             placeholder="jev-latest"
           />
         </div>
@@ -174,7 +190,10 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             id="jev-base-url"
             type="text"
             value={baseURL}
-            onChange={(event) => setBaseURL(event.target.value)}
+            onChange={(event) => {
+              setBaseURL(event.target.value);
+              setApiKeyVerified(false);
+            }}
             placeholder="https://api.typesafe.ai"
           />
         </div>
@@ -184,7 +203,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             type="button"
             className="btn btn-secondary"
             onClick={() => void testConnection()}
-            disabled={testing || (!apiKeyDraft.trim() && !apiKeyConfigured)}
+            disabled={testing || (apiKeyDraft.length === 0 && !apiKeyConfigured)}
           >
             {testing ? '확인 중...' : 'API 연결 테스트'}
           </button>
@@ -199,7 +218,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         </div>
 
         {message && (
-          <p className={`connection-form-message ${message.includes('실패') || message.includes('없') ? 'error' : ''}`}>
+          <p className={`connection-form-message ${messageIsError ? 'error' : ''}`}>
             {message}
           </p>
         )}

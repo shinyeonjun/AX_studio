@@ -20,6 +20,14 @@
   "asar": true,
   "extraResources": [
     {
+      "from": "../../LICENSE",
+      "to": "LICENSE.AX-Studio.txt"
+    },
+    {
+      "from": "../../THIRD_PARTY_NOTICES.md",
+      "to": "THIRD_PARTY_NOTICES.md"
+    },
+    {
       "from": "../../docs/PACKAGING_NOTICES.md",
       "to": "PACKAGING_NOTICES.md"
     },
@@ -55,5 +63,9 @@
     ],
     "executableName": "ax-studio",
     "category": "Office"
+  },
+  "afterPack": "scripts/after-pack-linux.mjs",
+  "appImage": {
+    "executableArgs": []
   }
 }

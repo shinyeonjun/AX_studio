@@ -30,6 +30,8 @@ import {
   releaseWorkspaceChat,
 } from '../../workspace-chat-registry.js';
 import { runE2EChat } from '../../e2e-test-seam.js';
+import { runE2EReportGeneration } from '../../e2e-test-seam/report.js';
+import { e2EReportPhase, shouldUseE2EFakeAgent } from '../../e2e-test-seam/gates.js';
 import {
   claimPendingCommand,
   bindPendingCommandInputRequests,
@@ -169,7 +171,25 @@ export function registerWorkspaceChatMessageHandler() {
       } else {
         clearPendingCommand(safeWorkspaceSessionId);
       }
-      if (!pendingCommandClaim && !app.isPackaged && process.env.AX_E2E === '1' && process.env.AX_E2E_FAKE_AGENT === '1') {
+      if (!pendingCommandClaim && shouldUseE2EFakeAgent(app.isPackaged, process.env)) {
+        const phase = e2EReportPhase(app.isPackaged, process.env, userMessage);
+        if (phase) {
+          const reply = await runE2EReportGeneration({
+            core,
+            userMessage,
+            workspaceSessionId: safeWorkspaceSessionId,
+          }, phase);
+          outcome = 'success';
+          return {
+            role: 'assistant' as const,
+            content: reply.content,
+            requestId: chatRequestId,
+            changedWorkflowIds: reply.changedWorkflowIds,
+            removedWorkflowIds: reply.removedWorkflowIds,
+            inputRequests: reply.inputRequests,
+            presentations: reply.presentations,
+          };
+        }
         const reply = await runE2EChat({
           core,
           userMessage,

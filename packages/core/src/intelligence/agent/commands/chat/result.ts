@@ -102,6 +102,12 @@ function selectAvailableColumns(
 const MAX_CHAT_TABLE_ROWS = 100;
 const MAX_CHAT_TABLE_COLUMNS = 50;
 
+function rdbPageWarning(table: TableArtifact): string | undefined {
+  return table.readScope || table.coverage
+    ? '이 결과는 페이지 조회이며 전체 데이터의 정확한 집계나 동일 시점의 스냅샷을 보장하지 않습니다.'
+    : undefined;
+}
+
 function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly string[]): string {
   const allHeaders = selectAvailableColumns(
     table.columns.map((column) => column.name),
@@ -109,7 +115,10 @@ function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly strin
   );
   const headers = allHeaders.slice(0, MAX_CHAT_TABLE_COLUMNS);
   const rows = table.rows.slice(0, MAX_CHAT_TABLE_ROWS);
-  if (headers.length === 0) return '조회 결과가 비어 있습니다.';
+  const coverageWarning = rdbPageWarning(table);
+  if (headers.length === 0) return coverageWarning
+    ? `현재 페이지의 조회 결과가 비어 있습니다.\n\n${coverageWarning}`
+    : '조회 결과가 비어 있습니다.';
   const lines = [
     `| ${headers.map(markdownCell).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
@@ -124,6 +133,7 @@ function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly strin
   if (table.truncated || table.completeness?.status !== 'complete') {
     lines.push('', '응답이 일부만 포함되어 있습니다.');
   }
+  if (coverageWarning) lines.push('', coverageWarning);
   return lines.join('\n');
 }
 
@@ -149,6 +159,10 @@ export function boundedChatReadResult(table: TableArtifact): TableArtifact | und
     rows,
     truncated: table.truncated || columns.length < table.columns.length || rows.length < table.rows.length,
     ...(table.completeness ? { completeness: table.completeness } : {}),
+    ...(table.offset === undefined ? {} : { offset: table.offset }),
+    ...(table.nextOffset === undefined ? {} : { nextOffset: table.nextOffset }),
+    ...(table.readScope ? { readScope: table.readScope } : {}),
+    ...(table.coverage ? { coverage: table.coverage } : {}),
   };
   return new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 64_000 ? bounded : undefined;
 }

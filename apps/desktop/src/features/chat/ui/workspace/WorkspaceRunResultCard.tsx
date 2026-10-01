@@ -7,6 +7,7 @@ import type {
 } from '@ax-studio/core';
 import type { GeneratedArtifactExportResult } from '../../../../types/ax-api/contracts';
 import { formatFileSize } from '../../../../ui/lib/format-file-size';
+import { executionErrorLabel } from '../../../../ui/lib/work-display';
 
 interface WorkspaceRunResultCardProps {
   content: string;
@@ -77,6 +78,9 @@ export function WorkspaceRunResultCard({
   const artifactLabel = generatedSpreadsheet ? 'Excel' : 'PDF';
   const resolvedStatus = resolveWorkspaceExecutionStatus(status, content);
   const presentation = statusPresentation(resolvedStatus);
+  const recoveryGuidance = resolvedStatus === 'failed' && content.includes('document_engine_dependency_missing')
+    ? executionErrorLabel('document_engine_dependency_missing')
+    : undefined;
   const [busyAction, setBusyAction] = useState<'approve' | 'reject' | null>(null);
   const [actionError, setActionError] = useState('');
   const [artifactAction, setArtifactAction] = useState<'download' | 'folder' | null>(null);
@@ -128,6 +132,7 @@ export function WorkspaceRunResultCard({
         {presentation.label}
       </p>
       <p>{content}</p>
+      {recoveryGuidance && <p className="ax-workspace-run-card-guidance">{recoveryGuidance}</p>}
       {generatedArtifact && (
         <section className="ax-workspace-generated-pdf" aria-label={`생성된 ${artifactLabel} 결과물`}>
           <div className="ax-workspace-generated-pdf-copy">

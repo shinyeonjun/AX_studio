@@ -56,7 +56,8 @@ describe('runtime output binding', () => {
           maxReads: 1,
           outputSchema: {
             type: 'object',
-            properties: { summary: { type: 'string' } },
+            properties: { conclusion: { type: 'string', purpose: 'prose' } },
+            required: ['conclusion'],
           },
         },
         {

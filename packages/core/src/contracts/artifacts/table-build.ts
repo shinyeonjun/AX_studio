@@ -30,7 +30,7 @@ function uniqueHeaders(headers: string[]): string[] {
   });
 }
 
-export function inferColumnType(values: unknown[]): TableColumnType {
+export function inferColumnType(values: unknown[], options: { numericStrings?: boolean } = {}): TableColumnType {
   const nonNull = values.filter((value) => value != null && `${value}`.trim() !== '');
   if (nonNull.length === 0) return 'unknown';
   if (nonNull.every((value) => typeof value === 'boolean')) return 'boolean';
@@ -40,7 +40,8 @@ export function inferColumnType(values: unknown[]): TableColumnType {
   if (asString.every((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))) return 'date';
   if (asString.every((value) => /^\d{4}-\d{2}-\d{2}[T ]/.test(value))) return 'datetime';
   if (asString.every((value) => value.endsWith('%'))) return 'percentage';
-  if (asString.every((value) => /^-?\d[\d,]*(\.\d+)?$/.test(value.replace(/[₩$€,]/g, '')))) return 'number';
+  if (options.numericStrings !== false
+    && asString.every((value) => /^-?\d[\d,]*(\.\d+)?$/.test(value.replace(/[₩$€,]/g, '')))) return 'number';
   return 'string';
 }
 
@@ -159,6 +160,8 @@ export function buildTableArtifact(params: {
   sourceRowCount?: number;
   /** Opt in at source intake; calculated values keep their legacy semantics. */
   preserveRawValues?: boolean;
+  /** Preserve provider scalar types/strings rather than trim or infer numbers. */
+  scalarPolicy?: 'legacy' | 'preserve';
   rowProvenance?: {
     firstRow: number;
     firstColumn: number;
@@ -175,7 +178,7 @@ export function buildTableArtifact(params: {
   );
   const columns: TableColumn[] = headers.map((name, index) => ({
     name,
-    type: inferColumnType(columnValues[index] ?? []),
+    type: inferColumnType(columnValues[index] ?? [], { numericStrings: params.scalarPolicy !== 'preserve' }),
     nullable: true,
     inferred: true,
     ...(params.rowProvenance ? { sourceColumn: params.rowProvenance.firstColumn + index } : {}),
@@ -197,7 +200,8 @@ export function buildTableArtifact(params: {
   const truncated = sourceRowCount > limited.length;
   const rows = limited.map((row, index) => ({
     index,
-    values: Object.fromEntries(headers.map((name, columnIndex) => [name, normalizeScalar(row[columnIndex])])),
+    values: Object.fromEntries(headers.map((name, columnIndex) => [name,
+      params.scalarPolicy === 'preserve' ? rawScalar(row[columnIndex]) : normalizeScalar(row[columnIndex])])),
     ...(params.preserveRawValues ? {
       rawValues: Object.fromEntries(headers.map((name, columnIndex) => [name, rawScalar(row[columnIndex])])),
     } : {}),
@@ -229,7 +233,14 @@ export function buildTableArtifact(params: {
 /** Convert the common connector row shape at one shared contract seam. */
 export function tableArtifactFromRows(
   value: unknown,
-  options: { id: string; name?: string; source?: TableArtifact['source']; rowLimit?: number },
+  options: {
+    id: string;
+    name?: string;
+    source?: TableArtifact['source'];
+    rowLimit?: number;
+    preserveRawValues?: boolean;
+    scalarPolicy?: 'legacy' | 'preserve';
+  },
 ): TableArtifact | undefined {
   if (Array.isArray(value)) {
     const headerSet = new Set<string>();
@@ -246,6 +257,8 @@ export function tableArtifactFromRows(
       matrix: value.map((row) => headers.map((header) => (row as Record<string, unknown>)[header])),
       rowLimit: options.rowLimit,
       source: options.source,
+      preserveRawValues: options.preserveRawValues,
+      scalarPolicy: options.scalarPolicy,
     });
   }
   return undefined;

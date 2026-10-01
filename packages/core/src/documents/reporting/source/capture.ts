@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { HttpResponseArtifactSchema, isCompleteHttpPage } from '../../../contracts/artifacts/http-response.js';
 import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
+import { assertSafeRdbScalars } from '../../../connectors/rdb/client/scalars.js';
+import type { ReportSourceCoverage } from '../plan/schema.js';
 import {
   ReportPeriodSchema,
   ReportSourceCapturePlanSchema,
@@ -155,10 +157,13 @@ async function captureRdbSource(
   spec: { alias: string; table: string },
   gateway: ReportSourceGateway,
   consume: (rows: Array<Record<string, unknown>>) => void,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<{ rows: Array<Record<string, unknown>>; coverage: ReportSourceCoverage }> {
   const rows: Array<Record<string, unknown>> = [];
   const pageFingerprints = new Set<string>();
   let offset = 0;
+  let queryFingerprint: string | undefined;
+  let resolvedTable: string | undefined;
+  let hasLegacyPages = false;
   for (let pageIndex = 0; ; pageIndex += 1) {
     if (pageIndex >= MAX_RDB_CAPTURE_PAGES) {
       throw new Error(`report_rdb_page_limit:${spec.alias}`);
@@ -171,10 +176,38 @@ async function captureRdbSource(
     if (!result.ok) throw new Error(`report_rdb_request_failed:${spec.alias}:${result.errorCode ?? 'unknown'}`);
     const table = TableArtifactSchema.safeParse(result.data);
     if (!table.success) throw new Error(`report_rdb_response_invalid:${spec.alias}`);
+    const { readScope, coverage } = table.data;
+    if (Boolean(readScope) !== Boolean(coverage)) {
+      throw new Error(`report_rdb_read_contract_invalid:${spec.alias}`);
+    }
+    if (readScope && coverage) {
+      if (readScope.offset !== offset || coverage.observedRows !== table.data.rows.length
+        || readScope.limit > REPORT_RDB_PAGE_SIZE || table.data.rows.length > readScope.limit
+        || coverage.hasMore !== table.data.truncated
+        || coverage.hasMore !== table.data.completeness?.hasMore
+        || (table.data.offset !== undefined && table.data.offset !== offset)
+        || (table.data.nextOffset !== undefined && table.data.nextOffset !== offset + table.data.rows.length)
+        || table.data.rows.some(row => !row.rawValues
+          || Object.keys(row.rawValues).length !== Object.keys(row.values).length
+          || Object.entries(row.values).some(([key, value]) => !Object.hasOwn(row.rawValues!, key) || row.rawValues![key] !== value))
+        || (table.data.source?.queryFingerprint !== undefined
+          && table.data.source.queryFingerprint !== readScope.queryFingerprint)
+        || (queryFingerprint !== undefined && readScope.queryFingerprint !== queryFingerprint)
+        || (resolvedTable !== undefined && readScope.table !== resolvedTable)) {
+        throw new Error(`report_rdb_read_contract_invalid:${spec.alias}`);
+      }
+      queryFingerprint = readScope.queryFingerprint;
+      resolvedTable = readScope.table;
+    } else {
+      hasLegacyPages = true;
+    }
     const complete = !table.data.truncated
       && table.data.completeness?.status === 'complete'
       && table.data.completeness.hasMore !== true;
-    const pageRows = table.data.rows.map((row) => ({ ...row.values }));
+    // DB intake must not reintroduce normalized identifier or numeric text.
+    // Legacy tables remain readable, but their coverage stays unverified.
+    const pageRows = table.data.rows.map((row) => ({ ...(row.rawValues ?? row.values) }));
+    assertSafeRdbScalars(pageRows);
     if (pageIndex > 0 && pageRows.length === 0) {
       throw new Error(`report_rdb_pagination_no_progress:${spec.alias}`);
     }
@@ -185,7 +218,16 @@ async function captureRdbSource(
     pageFingerprints.add(pageFingerprint);
     consume(pageRows);
     rows.push(...pageRows);
-    if (complete) return rows;
+    if (complete) return { rows, coverage: {
+      schemaVersion: 1, scope: 'whole_query', transport: 'complete',
+      // Exhausting independent OFFSET calls does not prove one source extent.
+      query: 'unknown', source: 'unknown',
+      consistency: hasLegacyPages ? 'unverified' : 'best_effort',
+      reason: hasLegacyPages ? 'legacy_rdb_page_contract' : 'independent_offset_reads',
+      observedRows: rows.length, pagesRead: pageIndex + 1,
+      ...(hasLegacyPages || !queryFingerprint ? {} : { queryFingerprint }),
+      periodFilterApplied: false,
+    } };
     if (table.data.completeness?.hasMore !== true || pageRows.length === 0) {
       throw new Error(`report_rdb_response_incomplete:${spec.alias}`);
     }
@@ -231,8 +273,8 @@ export async function captureReportSources(
   }
   for (const spec of plan.rdb) {
     const startedAt = new Date().toISOString();
-    const rows = await captureRdbSource(spec, gateway, consume);
-    captured[spec.alias] = { id: spec.alias, rows, complete: true, fingerprint: fingerprint(rows),
+    const { rows, coverage } = await captureRdbSource(spec, gateway, consume);
+    captured[spec.alias] = { id: spec.alias, rows, complete: true, coverage, fingerprint: fingerprint(rows),
       provenance: { source: spec.table, startedAt, completedAt: new Date().toISOString(),
         requestedPeriod: period, consistency: 'unverified' } };
   }
