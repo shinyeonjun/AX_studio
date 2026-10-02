@@ -1,6 +1,6 @@
 # 유한 PDF span의 행 묶기에서 최신 행만 검사한다
 
-**상태: 사후 기록·독립 ADR 검토 대기.** 2026-10-02 UTC. 코드 작성 전 ADR 검토 지시를 받기 전에 로컬 후보 `e9eff762a4ab3ff32865600246bb145717f8c084`를 이미 구현·검증했다. 이 문서는 선행 승인이나 배포 기록이 아니다. 기준은 `3dd272aaeffc5feb42ab63ce8507357f3baae965`이며, 검토 답변 전에는 제품 코드를 더 변경하지 않는다. 실제 정책과 검증 상태를 구분하는 [프로젝트 결정 기록](../project/architecture-decisions.md)의 관례를 따른다.
+**상태: prototype 범위의 게시·후속 검증 승인, 병합 대기.** 2026-10-02 UTC. 코드 작성 전 ADR 검토 지시를 받기 전에 로컬 후보 `e9eff762a4ab3ff32865600246bb145717f8c084`를 이미 구현·검증했다. 이 문서는 선행 승인이나 배포 기록이 아니다. 기준은 `3dd272aaeffc5feb42ab63ce8507357f3baae965`이며 제품 코드는 그 후보를 유지한다. 실제 정책과 검증 상태를 구분하는 [프로젝트 결정 기록](../project/architecture-decisions.md)의 관례를 따른다.
 
 ## 문제와 제약
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 변경 없음 | 호환성 위험과 guard 비용이 없고 sparse grouping은 계속 이차 비용 | 가능한 기본안이자 롤백 대상 |
 | 페이지·y별 탐색 인덱스와 legacy fallback | 후보 탐색을 줄일 수 있지만 anchor·tolerance·순서·타입 처리를 위한 상태와 검증이 늘어남 | 가능하지만 이번 작은 변경에는 불필요 |
-| 입력 조건을 확인한 최신 행 검사와 legacy fallback | 정상 grouping을 선형으로 줄이고 기존 정렬·구조 유지; 입력 확인 때문에 dense 비용 증가 가능 | **현재 로컬 후보의 선택**, 승인 대기 |
+| 입력 조건을 확인한 최신 행 검사와 legacy fallback | 정상 grouping을 선형으로 줄이고 기존 정렬·구조 유지; 입력 확인 때문에 dense 비용 증가 가능 | **현재 후보의 선택**, prototype 게시·후속 검증 승인 |
 | 조건 없이 최신 행 검사 | 가장 단순하지만 NaN 장벽이나 부작용 있는 정렬 키에서 결과가 달라짐 | 호환성 제약을 위반하므로 제외 |
 
 선택한 후보는 정렬 전에 입력이 정확한 내장 list이고, 각 항목이 정확한 `_Span`, 내장 int 페이지, 길이 4의 내장 tuple, 네 개의 유한 내장 float인지 확인한다. 큰 int 페이지와 음수 페이지는 변환 없이 허용한다. bool·정수 좌표·혼합/사용자 정의 타입·비정상 shape·누락 필드는 기존 탐색으로 보낸다. `getattr` 기본값과 타입 검사의 단락 평가로 새 validation 예외나 미검증 메서드 호출을 만들지 않는다.
@@ -48,8 +48,14 @@ sparse median은 364.44배 개선되고 dense median은 31.2% 증가했다. 이�
 
 재현은 `python -m unittest discover -s packages/document-engine/src -p '*_test.py' -v`와 [`pdf-rows-benchmark.py`](../../packages/document-engine/scripts/pdf-rows-benchmark.py)를 사용한다. task-4의 `evidence/`에는 oracle, 의도된 실패 로그, 56개 케이스의 raw samples·hashes·환경·scaling·패치 검사 결과가 있으며 `pdf-rows-evidence.zip`으로 묶었다. 이 로컬 자료는 제품 배포 artifact가 아니다.
 
-## 제안된 도입과 롤백
+## 독립 검토 — 부모 전달 결과, 작성자 측정과 별개
 
-**미구현·검토 대상:** 부모가 이 ADR과 코드의 의미 보존 근거를 독립적으로 검토하고, 현재 dense 비용을 수용할지 판정한 뒤 PR·통합 검증·main 병합·canonical 동기화를 순서대로 처리한다. 새로운 입력 타입의 fast path 확대, 추가 자료구조, dense 특례는 이 결정에 포함되지 않으며 구현 전에 별도 가설·검토가 필요하다.
+2026-10-02 부모가 전달한 독립 ADR·정확한 소스 diff 검토는 게시와 다음 검증 단계를 승인했다. 검토자는 production patch의 SHA-256 `4f1539bd8e7a85a2ba6bed04ef03f4a628e8329196ef9abb1744088d84a21e08`과 후보 Git blob `96e40d6e8b56ec3a30abb72fedba20592ce3d8ea`를 재구성했고, 별도 5,000개 차등 edge case 및 comparator mutation trace에서 불일치가 없다고 보고했다. 이는 위 작성자 측정과 별개의 검토 결과이며, 작성자가 독립 검토 실행을 다시 수행했다는 뜻은 아니다.
 
-내용·identity·순서·예외/콜백·계약에서 하나라도 차등 회귀가 나오면 통합을 보류하고 원본 `_rows`로 되돌린다. 정상 행 검사량이 선형이라는 가설이 깨지거나 통합 워크로드의 성능 예산을 넘으면 도입을 보류/롤백한다. 그런 예산은 아직 정해지지 않았으며 관측한 dense 수치에 맞춰 임의 임계치를 만들지 않는다. 원본 oracle과 재현 자료는 롤백 판단의 기준으로 유지한다. 현재는 로컬 후보와 이 회고 문서만 있으며 PR·main·canonical·installer 조작은 실행하지 않았다.
+부모는 `n=8192` dense median 증가 **2.0836ms / 31.2%**를 이 prototype 단계의 문서화된 절충으로 수용했다. production SLA나 실사용 PDF/OCR 성능 승인을 뜻하지 않는다. 통합된 정확한 head의 일반 테스트와 전체 변경 소스 검토는 병합 전에 필요하다. 승인은 source·tests·benchmark·ADR만 담은 draft PR에 한정하며 생성된 로컬 evidence·사용자 데이터의 게시, 병합·canonical 동기화·installer 실행은 이 작업에 위임하지 않는다.
+
+## 승인된 게시 범위와 롤백
+
+통합 대상 `test/integration-followup-20261001`의 `49a72ace8706e6927d49c0e08e3e8c6c953f7ce2`에 대한 적용과 일반 document-engine 테스트를 확인한 뒤 draft PR을 게시한다. 통합 대상에 이미 ADR 0002가 있으므로 이 문서는 0003으로 번호를 구분한다. 부모가 후속 전체 통합 검증·병합·canonical 동기화를 직렬로 처리한다. 새로운 입력 타입의 fast path 확대, 추가 자료구조, dense 특례는 이 결정에 포함되지 않으며 구현 전에 별도 가설·검토가 필요하다.
+
+내용·identity·순서·예외/콜백·계약에서 하나라도 차등 회귀가 나오면 통합을 보류하고 원본 `_rows`로 되돌린다. 정상 행 검사량이 선형이라는 가설이 깨지거나 통합 워크로드의 성능 예산을 넘으면 도입을 보류/롤백한다. 그런 예산은 아직 정해지지 않았으며 관측한 dense 수치에 맞춰 임의 임계치를 만들지 않는다. 원본 oracle과 재현 자료는 롤백 판단의 기준으로 유지한다. 자동 병합이나 자동 롤백은 승인하지 않는다.
