@@ -138,9 +138,9 @@ function queryRows(db: SqlJsRawDatabase, sql: string, params: unknown[], limit =
 class SqlJsDatabaseAdapter implements AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
   private maxPersistTimer: ReturnType<typeof setTimeout> | undefined;
-  private transactionDepth = 0;
   private readDepth = 0;
-  private snapshotUnsafe = false;
+  private unusableReason?: 'read_snapshot_cleanup_failed' | 'persistence_transaction_state_unknown'
+    | 'persistence_connection_restore_failed' | 'persistence_close_failed';
 
   constructor(
     private db: SqlJsRawDatabase,
@@ -148,12 +148,36 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   ) {}
 
   private assertUsable(): void {
-    if (this.snapshotUnsafe) throw new Error('read_snapshot_cleanup_failed');
+    if (this.unusableReason) throw new Error(this.unusableReason);
   }
 
   private failSnapshot(): void {
-    this.snapshotUnsafe = true;
+    this.failClosed('read_snapshot_cleanup_failed');
+  }
+
+  private failClosed(reason: NonNullable<SqlJsDatabaseAdapter['unusableReason']>): void {
+    this.unusableReason ??= reason;
     this.clearPersistTimers();
+  }
+
+  private hasCallerTransaction(): boolean {
+    this.assertOutsideSnapshot();
+    // SQLite owns SAVEPOINT names/nesting, compound and prepared controls,
+    // and implicit rollbacks. Probe engine state rather than counting BEGINs.
+    try {
+      this.db.run('BEGIN DEFERRED');
+    } catch (error) {
+      if (error instanceof Error && error.message === 'cannot start a transaction within a transaction') return true;
+      this.failClosed('persistence_transaction_state_unknown');
+      throw error;
+    }
+    try {
+      this.db.run('ROLLBACK'); // Only the successfully acquired probe is ours.
+    } catch (error) {
+      this.failClosed('persistence_transaction_state_unknown');
+      throw error;
+    }
+    return false;
   }
 
   private assertOutsideSnapshot(): void {
@@ -171,9 +195,8 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     this.assertUsable();
     if (this.readDepth > 0) return read();
     const queryOnly = queryRows(this.db, 'PRAGMA query_only', [])[0]?.query_only;
-    // A savepoint also joins caller SAVEPOINT transactions without relying on
-    // the persistence adapter's BEGIN-depth bookkeeping. Never use exec here:
-    // its COMMIT/ROLLBACK path schedules an export of the loaded image.
+    // Join caller SAVEPOINTs using raw control. Never use exec here: it
+    // schedules persistence of the loaded image.
     let acquired = false;
     let failed = false;
     this.readDepth += 1;
@@ -206,17 +229,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 
   exec(sql: string): void {
     this.assertOutsideSnapshot();
-    const command = sql.trim().split(/\s+/, 1)[0]?.toUpperCase();
     this.db.run(sql);
-    if (command === 'BEGIN') {
-      this.transactionDepth += 1;
-      return;
-    }
-    if (command === 'COMMIT' || command === 'END' || command === 'ROLLBACK') {
-      this.transactionDepth = Math.max(0, this.transactionDepth - 1);
-      if (this.transactionDepth === 0) this.persist();
-      return;
-    }
     this.persist();
   }
 
@@ -248,18 +261,21 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   close(): void {
     if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
     this.clearPersistTimers();
-    if (this.snapshotUnsafe) {
+    if (this.unusableReason) {
       this.db.close();
       return; // Never export an image whose transaction/setting cleanup failed.
     }
     let failure: unknown;
     let failed = false;
     try {
-      if (this.transactionDepth > 0) {
-        this.db.run('ROLLBACK');
-        this.transactionDepth = 0;
+      if (this.hasCallerTransaction()) {
+        try { this.db.run('ROLLBACK'); } // Explicit disposal, never normal persistence.
+        catch (error) {
+          this.failClosed('persistence_transaction_state_unknown');
+          throw error;
+        }
       }
-      this.flushPersist();
+      this.flushPersist(true);
     } catch (error) {
       failure = error;
       failed = true;
@@ -267,6 +283,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     try {
       this.db.close();
     } catch (error) {
+      this.failClosed('persistence_close_failed');
       if (!failed) failure = error;
       failed = true;
     }
@@ -275,23 +292,34 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 
   persistNow(): void {
     this.assertOutsideSnapshot();
-    this.flushPersist();
+    this.flushPersist(true);
   }
 
-  private flushPersist(): void {
+  private flushPersist(requireIdle = false): boolean {
     this.assertUsable();
+    if (this.hasCallerTransaction()) {
+      if (requireIdle) throw new Error('persistence_transaction_open');
+      return false; // Retain pending work and timers; only the caller can end ownership.
+    }
     this.clearPersistTimers();
-    if (!this.filePath || this.filePath === ':memory:') return;
-    if (this.transactionDepth > 0) return;
+    if (!this.filePath || this.filePath === ':memory:') return true;
     assertStandaloneDatabase(this.filePath);
     const temporaryPath = this.filePath + '.tmp';
     try {
       let snapshot: Uint8Array;
+      let exportFailed = false;
       try {
         snapshot = this.db.export();
+      } catch (error) {
+        exportFailed = true;
+        throw error;
       } finally {
         // sql.js export reopens the connection and resets connection pragmas.
-        this.db.run('PRAGMA foreign_keys = ON');
+        try { this.db.run('PRAGMA foreign_keys = ON'); }
+        catch (error) {
+          this.failClosed('persistence_connection_restore_failed');
+          if (!exportFailed) throw error; // Preserve a primary export failure.
+        }
       }
       writeFileSync(temporaryPath, snapshot);
       renameSync(temporaryPath, this.filePath);
@@ -302,6 +330,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
         // Preserve the persistence error; the next successful flush replaces this snapshot.
       }
     }
+    return true;
   }
 
   private clearPersistTimers(): void {
@@ -313,19 +342,25 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 
   private flushPersistFromTimer(): void {
     try {
-      this.flushPersist();
+      if (!this.flushPersist()) this.persist();
     } catch (error) {
       console.error('[sql.js] deferred database persistence failed:', error);
     }
   }
 
   private persist(): void {
+    this.assertUsable();
     if (!this.filePath || this.filePath === ':memory:') return;
-    if (this.transactionDepth > 0) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
-    this.persistTimer = setTimeout(() => this.flushPersistFromTimer(), PERSIST_DEBOUNCE_MS);
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = undefined;
+      this.flushPersistFromTimer();
+    }, PERSIST_DEBOUNCE_MS);
     if (!this.maxPersistTimer) {
-      this.maxPersistTimer = setTimeout(() => this.flushPersistFromTimer(), MAX_PERSIST_DELAY_MS);
+      this.maxPersistTimer = setTimeout(() => {
+        this.maxPersistTimer = undefined;
+        this.flushPersistFromTimer();
+      }, MAX_PERSIST_DELAY_MS);
     }
   }
 }

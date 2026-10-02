@@ -1,6 +1,6 @@
 # Retain sql.js caller transaction ownership across persistence
 
-**Status: proposed; product changes are held for parent review.** Base `41cf05691e30677fda2148ef5b88e79f0fb957f3`. This decision is limited to sql.js persistence and its tests. It does not authorize publication, integration, main merge, UI/cancellation changes or canonical writes.
+**Status: independently approved design; implementation review remains required.** The parent relayed design-only approval of checkpoint `50de5337cac32286b396c8285f24ee46ef3d018e`, tree `3ef343234dc33b4e0a867359cfa82601c89992d0`, including 61 pinned-engine feasibility observations. Base `41cf05691e30677fda2148ef5b88e79f0fb957f3`. Implementation is authorized only within these decisions and their acceptance regressions. This decision is limited to sql.js persistence and its tests; it does not authorize publication, integration, main merge, UI/cancellation changes or canonical writes.
 
 ## Existing contract and reproduced gap
 
@@ -10,7 +10,7 @@ The exact main adapter loses caller work outside the read callback. With synthet
 
 No production caller SAVEPOINT call site was found. Prepared transaction statements, compound control SQL, nested/duplicate names and ROLLBACK TO still make a hand-maintained counter insufficient. Neither sql.js exclusive-profile support nor SQLite isolation is expanded.
 
-## Choices requiring approval
+## Approved choices
 
 1. **Explicit persistence barrier:** when any caller transaction is open, `persistNow()` throws `persistence_transaction_open` before export, file changes or pending-timer cancellation. This also replaces the old silent BEGIN no-op with an explicit failure. Caller rows and named SAVEPOINTs remain available for the caller to commit, release or roll back.
 2. **Deferred persistence:** existing debounce/max-delay callbacks never export an open transaction. Persistence remains pending and retries at the existing 250 ms debounce cadence until caller ownership ends or explicit close cancels it. These retries are bounded to the adapter's existing timer slots; there is no forced commit, rollback, deadline extension of tests, or new worker. After the caller ends ownership, the existing persistence path exports committed state. This also handles ownership ending through prepared `all/get` controls without adding export hooks to reads.
@@ -19,6 +19,10 @@ No production caller SAVEPOINT call site was found. Prepared transaction stateme
 5. **Uncertain detection:** unexpected BEGIN or probe-ROLLBACK errors preserve the original exception and fail the adapter closed with a separate persistence-ownership diagnostic. Cancel pending timers, reject further normal queries/writes/exports, and allow explicit disposal without export or a caller-wide rollback. This follows ADR 0002's existing uncertain-cleanup containment, with an accurate diagnostic for the new boundary.
 
 The BEGIN/ROLLBACK probe must not run inside the read callback or use generic adapter `exec`, which schedules persistence. It must retain query_only/foreign_keys settings, caller writes and SAVEPOINT state. Successful read snapshots keep their existing savepoint/query_only behavior.
+
+The implementation removes the BEGIN counter entirely. Generic exec/run records pending persistence while caller ownership is open; no export hook is added to reads. At most the existing debounce and maximum-delay timer slots remain active. The maximum-delay callback is subject to ownership fencing and cannot guarantee a one-second flush during an indefinitely open caller transaction. Prepared all/get completion can end ownership without scheduling another write; retained callbacks then persist the completed state.
+
+Uncertain engine probes report `persistence_transaction_state_unknown` on later access. Failed post-export connection restoration reports `persistence_connection_restore_failed`; unsuccessful disposal reports `persistence_close_failed` unless an earlier containment reason already applies. Original exceptions take precedence over subsequent restoration/disposal errors. A recoverable export error with successful restoration permits an explicit retry. These diagnostics do not turn disposal into acknowledgement of uncommitted work.
 
 ## Alternatives
 
@@ -37,4 +41,3 @@ Use exclusively owned synthetic SQLite files/profiles, allowlisted process envir
 Regressions cover explicit BEGIN and SAVEPOINT barriers after nested read snapshots; commented/quoted control SQL and prepared run/all/get; compound control statements; nested/duplicate SAVEPOINTs; ROLLBACK TO versus full ROLLBACK; RELEASE/END/COMMIT; failed controls and deferred-foreign-key commit failure; both pending-timer deadlines and later persistence; explicit-close rollback-before-export; uncertain probe acquisition/cleanup with primary-exception and unchanged-file assertions. Existing native/sql.js snapshot guards, history compatibility/reopen cases, relevant units, source/test types, compilation and architecture must pass on an immutable candidate.
 
 The engine probe preserves idle database rows/settings but briefly opens and rolls back its own transaction. Actual caller state must not be finalized or altered. Writable sql.js still requires exclusive profile ownership and reflects only its loaded image. This decision makes no UI, runtime recovery, multi-process locking, installed-app, packaging or release acceptance claim.
-
