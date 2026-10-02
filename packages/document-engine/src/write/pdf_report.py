@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+from math import isfinite
 from statistics import median
 from pathlib import Path
 from typing import Any
@@ -162,16 +163,33 @@ def _scalar_payload(span: _Span, page: Any, text_spans: list[_Span]) -> dict[str
 
 def _rows(spans: list[_Span]) -> list[list[_Span]]:
     rows: list[list[_Span]] = []
+    # Check before sorting: custom sort keys can rewrite geometry during comparisons.
+    ordered_geometry = type(spans) is list and all(
+        type(span) is _Span
+        and type(getattr(span, "page_index", None)) is int
+        and type(getattr(span, "rect", None)) is tuple
+        and len(span.rect) == 4
+        and all(type(value) is float and isfinite(value) for value in span.rect)
+        for span in spans
+    )
     for span in sorted(spans, key=lambda value: (value.page_index, value.rect[1], value.rect[0])):
-        existing = next(
-            (
-                row
-                for row in reversed(rows)
-                if row[0].page_index == span.page_index
-                and abs(row[0].rect[1] - span.rect[1]) <= _ROW_TOLERANCE
-            ),
-            None,
-        )
+        if ordered_geometry:
+            # Anchors increase within each page, so an older row cannot be closer.
+            existing = rows[-1] if (
+                rows
+                and rows[-1][0].page_index == span.page_index
+                and abs(rows[-1][0].rect[1] - span.rect[1]) <= _ROW_TOLERANCE
+            ) else None
+        else:
+            existing = next(
+                (
+                    row
+                    for row in reversed(rows)
+                    if row[0].page_index == span.page_index
+                    and abs(row[0].rect[1] - span.rect[1]) <= _ROW_TOLERANCE
+                ),
+                None,
+            )
         if existing is None:
             rows.append([span])
         else:
