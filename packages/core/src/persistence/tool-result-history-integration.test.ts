@@ -108,8 +108,13 @@ describe('read-only image and history-preserving cancellation composition', () =
     expect(store.rejectPendingApproval(fixture.approvalId)).toBe(true);
     const before = readFileSync(path);
     vi.spyOn(db, 'persistNow').mockImplementationOnce(() => { throw new Error('synthetic persistence failure'); });
-    expect(() => store.finishExecution(fixture.pendingId, 'cancelled', 'approval_rejected', [], { preserveHistory: true }))
-      .toThrow('synthetic persistence failure');
+    let failure: unknown;
+    try { store.finishExecution(fixture.pendingId, 'cancelled', 'approval_rejected', [], { preserveHistory: true }); }
+    catch (error) { failure = error; }
+    expect(failure).toMatchObject({
+      message: 'database_persistence_failed', code: 'database_persistence_failed',
+      cause: expect.objectContaining({ message: 'synthetic persistence failure' }),
+    });
     expect(readFileSync(path)).toEqual(before);
     expect(previewApprovalHistoryBytes(db)).toEqual(original);
   });
