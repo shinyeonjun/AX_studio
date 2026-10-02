@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve, win32 } from 'node:path';
-import { runnerContext, DISPOSABLE_MARKER, assertInside, windowsPath, assertNoReparse, isolatedAppEnvironment } from './runner-safety.mjs';
+import { runnerContext, DISPOSABLE_MARKER, assertInside, windowsPath, assertNoReparse, isolatedAppEnvironment, denyRendererHttp } from './runner-safety.mjs';
 import { assertPeMetadata, readManifest, sha256, verifyFile, verifyInstalled, fileInventory } from './verify-assets.mjs';
-import { assertUpgradeObservation, assertProcessedPdfSource, CALCULATED_OUTPUT, TAIL_MESSAGES } from './acceptance-contract.mjs';
+import { assertUpgradeObservation, assertProcessedPdfSource, retentionCheckpointName, CALCULATED_OUTPUT, TAIL_MESSAGES } from './acceptance-contract.mjs';
+import { assertPreviewCoreReady, PREVIEW_CORE_FILES, previewDocumentArguments, verifyPreviewArchive } from './build-preview.mjs';
 
 const runnerEnv = { GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', RUNNER_OS: 'Windows', RUNNER_ARCH: 'X64',
   AX_INSTALLER_DISPOSABLE: DISPOSABLE_MARKER, GITHUB_REPOSITORY: 'shinyeonjun/AX_studio', GITHUB_SHA: 'a'.repeat(40),
@@ -16,7 +17,9 @@ const runnerEnv = { GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted',
 
 test('runner execution requires every independent hosted/disposable identity guard', () => {
   const context = runnerContext(runnerEnv, 'runneradmin', 'win32');
-  assert.equal(context.install, 'D:\\a\\_temp\\ax-installer-42-1-installer\\program');
+  assert.equal(context.install, 'D:\\a\\_temp\\ax-installer-42-1-installer\\program AX 설치');
+  assert.equal(context.acceptance, 'D:\\a\\_temp\\ax-installer-42-1-installer\\acceptance 한글 자료');
+  assertInside(context.root, context.install); assertInside(context.root, context.acceptance);
   for (const [key, value] of Object.entries({ GITHUB_ACTIONS: 'false', RUNNER_ENVIRONMENT: 'self-hosted', RUNNER_OS: 'Linux',
     RUNNER_ARCH: 'ARM64', AX_INSTALLER_DISPOSABLE: '', GITHUB_REPOSITORY: 'someone/another', GITHUB_SHA: 'main',
     GITHUB_RUN_ID: '', GITHUB_RUN_ATTEMPT: '0', GITHUB_JOB: '../other', USERPROFILE: 'C:\\Users\\existing-user',
@@ -29,8 +32,8 @@ test('runner execution requires every independent hosted/disposable identity gua
 });
 
 test('target boundary rejects sibling prefixes, drive-relative paths, UNC/device paths, traversal and ADS', () => {
-  const root = 'D:\\a\\_temp\\owned';
-  assert.equal(assertInside(root, root + '\\program'), root + '\\program');
+  const root = 'D:\\a\\_temp\\owned 한글 경로';
+  assert.equal(assertInside(root, root + '\\program AX 설치'), root + '\\program AX 설치');
   for (const path of [root, root + '-sibling\\program', 'C:\\program', root + '\\..\\user',
     'D:program', '\\\\server\\share', '\\\\?\\D:\\program', root + '\\program:stream', root + '\\*.exe']) {
     assert.throws(() => assertInside(root, path), path);
@@ -39,7 +42,7 @@ test('target boundary rejects sibling prefixes, drive-relative paths, UNC/device
 });
 
 test('app environment removes real credentials, developer seams and Python overrides; all data paths are synthetic', () => {
-  const workspace = 'D:\\a\\_temp\\owned\\acceptance';
+  const workspace = 'D:\\a\\_temp\\owned\\acceptance 한글 자료';
   const env = isolatedAppEnvironment({ PATH: 'runtime-path', SystemRoot: 'C:\\Windows', OPENAI_API_KEY: 'private',
     GOOGLE_OAUTH_CLIENT_SECRET: 'private', AX_E2E: '1', AX_PRODUCT_QA: '1', AX_DOCUMENT_ENGINE_PYTHON: 'host-python',
     NODE_OPTIONS: '--require private.js', PYTHONPATH: 'host-packages', HOME: 'user-home', LOCALAPPDATA: 'user-data' }, workspace);
@@ -102,13 +105,15 @@ test('manifest requires exact source/version, exact assets and installed PDF pay
 });
 
 test('real filesystem inventory rejects reparse ancestors and catches deletion/byte changes', () => {
-  const data = join(scratch, 'data'); mkdirSync(data);
-  const file = join(data, 'synthetic.db'); writeFileSync(file, 'synthetic database bytes');
+  const data = join(scratch, 'data 한글 자료'); mkdirSync(data);
+  const file = join(data, 'synthetic 데이터.db'); writeFileSync(file, 'synthetic database bytes');
   const before = fileInventory(data);
   assert.deepEqual(fileInventory(data), before);
   writeFileSync(file, 'different database bytes'); assert.notDeepEqual(fileInventory(data), before);
-  const link = join(scratch, 'redirect'); symlinkSync(data, link, process.platform === 'win32' ? 'junction' : 'dir');
-  assert.throws(() => assertNoReparse(join(link, 'synthetic.db')), /Reparse|resolves/);
+  unlinkSync(file); assert.notDeepEqual(fileInventory(data), before);
+  writeFileSync(file, 'different database bytes');
+  const link = join(scratch, 'redirect 한글'); symlinkSync(data, link, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => assertNoReparse(join(link, 'synthetic 데이터.db')), /Reparse|resolves/);
   assert.equal(readFileSync(file, 'utf8'), 'different database bytes');
 });
 
@@ -139,10 +144,10 @@ test('PDF acceptance requires completed real ingestion and extracted text, never
   assert.throws(() => assertProcessedPdfSource(source, { text: 'wrong parsed content' }));
 });
 
-test('every release Electron launcher explicitly enables Chromium sandbox, including future launchers', () => {
+test('current and preview launch chains explicitly sandbox every reachable Electron launcher', () => {
   function assertSandboxedLaunches(source, file) {
-    const calls = [...source.matchAll(/\belectron\.launch\s*\(/g)];
-    const options = [...source.matchAll(/\belectron\.launch\s*\(\s*\{([\s\S]*?)\}\s*\)/g)];
+    const calls = [...source.matchAll(/\b(?:electron|_electron)\.launch\s*\(/g)];
+    const options = [...source.matchAll(/\b(?:electron|_electron)\.launch\s*\(\s*\{([\s\S]*?)\}\s*\)/g)];
     assert.equal(options.length, calls.length, `${file}: launcher options must be explicit for review`);
     for (const [, body] of options) {
       const settings = [...body.matchAll(/\bchromiumSandbox\s*:\s*([^,}\s]+)/g)];
@@ -152,7 +157,9 @@ test('every release Electron launcher explicitly enables Chromium sandbox, inclu
     return calls.length;
   }
   let launches = 0;
-  for (const file of readdirSync(import.meta.dirname).filter(file => file.endsWith('.mjs') && !file.endsWith('.test.mjs'))) {
+  const files = [...readdirSync(import.meta.dirname).filter(file => file.endsWith('.mjs') && !file.endsWith('.test.mjs')),
+    '../../scripts/document-engine-install.mjs'];
+  for (const file of files) {
     const source = readFileSync(join(import.meta.dirname, file), 'utf8');
     const count = assertSandboxedLaunches(source, file);
     launches += count;
@@ -161,7 +168,107 @@ test('every release Electron launcher explicitly enables Chromium sandbox, inclu
       assert.throws(() => assertSandboxedLaunches(source.replace(/chromiumSandbox\s*:\s*true/g, 'chromiumSandbox: false'), file), /sandbox must be enabled/);
     }
   }
-  assert(launches >= 2, 'Both installed-app and clean-startup launchers must be covered');
+  assert(launches >= 4, 'Installed, clean, safe preview and nested current packaging launchers must be covered');
+  assert.throws(() => assertSandboxedLaunches('_electron.launch({ executablePath: "legacy.exe" })', 'legacy preview'), /chromiumSandbox/);
+  const currentPack = readFileSync(join(import.meta.dirname, '../../apps/desktop/scripts/package-desktop.mjs'), 'utf8');
+  assert(currentPack.includes('scripts/document-engine-install.mjs') && currentPack.includes("'--verify-package'"));
+});
+
+test('pinned preview builds Core before the sandbox-safe package orchestration', () => {
+  const workflow = readFileSync(join(import.meta.dirname, '../../.github/workflows/windows-installer.yml'), 'utf8');
+  const step = workflow.split('      - name: Rebuild pinned preview NSIS and its exact fixture Store')[1]
+    .split('      - name: Exact preview identity')[0];
+  const core = step.indexOf('npm run build -w @ax-studio/core');
+  const packageIndex = step.indexOf('test/release/build-preview.mjs');
+  assert(core >= 0, 'A fresh pinned preview checkout must compile Core fixture imports');
+  assert(packageIndex > core, 'Preview Core must finish before the safe package builder');
+});
+
+test('preview builder refuses local execution before build, Python setup or Electron launch', () => {
+  const repo = resolve(import.meta.dirname, '../..');
+  const outputs = ['packages/core/dist', 'packages/document-engine/.venv', 'apps/desktop/release'].map(path => join(repo, path));
+  const before = outputs.map(path => existsSync(path));
+  const result = spawnSync(process.execPath, [join(import.meta.dirname, 'build-preview.mjs'), '--repo', repo],
+    { env: { ...process.env, GITHUB_ACTIONS: 'false' }, encoding: 'utf8', windowsHide: true });
+  assert.notEqual(result.status, 0); assert.match(result.stderr, /GITHUB_ACTIONS|Windows/);
+  assert.deepEqual(outputs.map(path => existsSync(path)), before);
+});
+
+test('preview workflow never delegates to the old pack:win nested Electron launcher', () => {
+  const workflow = readFileSync(join(import.meta.dirname, '../../.github/workflows/windows-installer.yml'), 'utf8');
+  const step = workflow.split('      - name: Rebuild pinned preview NSIS and its exact fixture Store')[1]
+    .split('      - name: Exact preview identity')[0];
+  assert(!step.includes('npm run pack:win'), 'Pinned pack:win would run its unsafe --verify-package launcher');
+  assert(step.includes('test/release/build-preview.mjs'), 'Preview must use the reviewed guarded orchestration');
+  assert.deepEqual(previewDocumentArguments('--bundle'), ['--bundle']);
+  assert.deepEqual(previewDocumentArguments('--verify-bundle', 'owned bundle 한글'), ['--verify-bundle', 'owned bundle 한글']);
+  for (const mode of ['--verify-package', '--skip-ui', '--no-sandbox', '--bundle --verify-package']) {
+    assert.throws(() => previewDocumentArguments(mode, 'owned'), /forbidden/);
+  }
+  const builder = readFileSync(join(import.meta.dirname, 'build-preview.mjs'), 'utf8');
+  assert(builder.indexOf('assertPreviewCoreReady(repo);') < builder.indexOf("run('python'"));
+  assert(builder.includes("previewDocumentArguments('--bundle')") && builder.includes("previewDocumentArguments('--verify-bundle'"));
+  assert(builder.includes("'--publish', 'never'"));
+  assert(!/npm.*pack:win|AX_E2E\s*[:=]|AX_E2E_FAKE_AGENT\s*[:=]|skipUi\s*:\s*true/.test(builder));
+});
+
+test('preview Core prerequisite rejects absent, partial or empty fixture imports', () => {
+  const repo = join(scratch, 'preview Core 한글'); mkdirSync(repo);
+  assert.throws(() => assertPreviewCoreReady(repo), /Build pinned preview Core/);
+  for (const [index, file] of PREVIEW_CORE_FILES.entries()) {
+    const path = join(repo, 'packages/core/dist', file);
+    mkdirSync(resolve(path, '..'), { recursive: true }); writeFileSync(path, '// synthetic compiled fixture');
+    if (index < PREVIEW_CORE_FILES.length - 1) assert.throws(() => assertPreviewCoreReady(repo), /Build pinned preview Core/);
+  }
+  assertPreviewCoreReady(repo);
+  for (const file of PREVIEW_CORE_FILES) {
+    const path = join(repo, 'packages/core/dist', file); writeFileSync(path, '');
+    assert.throws(() => assertPreviewCoreReady(repo), /Build pinned preview Core/);
+    writeFileSync(path, '// synthetic compiled fixture');
+  }
+});
+
+test('safe preview verifier retains recursive ASAR integrity and archived license checks', () => {
+  const bytes = Buffer.from('synthetic nested packaged code');
+  const nested = join('out', 'main.js');
+  let code = bytes;
+  let notice = Buffer.alloc(100, 'L');
+  const asar = { getRawHeader: () => ({ header: { files: { out: { files: { 'main.js': {
+    integrity: { hash: createHash('sha256').update(bytes).digest('hex') } } } } } } }),
+    extractFile: (_, path) => path === nested ? code : notice };
+  verifyPreviewArchive(asar, 'synthetic.asar');
+  code = Buffer.from('tampered'); assert.throws(() => verifyPreviewArchive(asar, 'synthetic.asar'), /integrity mismatch/);
+  code = bytes; notice = Buffer.alloc(99); assert.throws(() => verifyPreviewArchive(asar, 'synthetic.asar'), /license notice/);
+});
+
+test('both uninstalls compare their own fresh app-data snapshot without expanding cleanup', () => {
+  assert.notEqual(retentionCheckpointName('initial'), retentionCheckpointName('final'));
+  for (const phase of ['../foreign', 'final/other', '', 'unknown']) assert.throws(() => retentionCheckpointName(phase), /owned initial\/final/);
+  const source = readFileSync(join(import.meta.dirname, 'windows-installer.ps1'), 'utf8');
+  const recovery = source.indexOf("Test-App 'reinstall-recovery'");
+  const snapshot = source.indexOf('--snapshot --phase final', recovery);
+  const uninstall = source.indexOf('Uninstall-App $installedVersion', snapshot);
+  const compare = source.indexOf('--compare --phase final', uninstall);
+  assert(recovery >= 0 && snapshot > recovery && uninstall > snapshot && compare > uninstall);
+  assert(compare < source.indexOf('$passed = $true', recovery));
+  const retained = readFileSync(join(import.meta.dirname, 'retained-data.mjs'), 'utf8');
+  assert(retained.includes("fileInventory(join(values.workspace, 'app-data'))"));
+  assert(!/electron-profile|Remove-Item|rmSync/.test(retained));
+});
+
+test('renderer HTTP boundary blocks unexpected dispatch without recording secrets or replacing agents', async () => {
+  let pattern, handler, aborted;
+  const boundary = await denyRendererHttp({ route: async (urlPattern, routeHandler) => { pattern = urlPattern; handler = routeHandler; } });
+  boundary.assertUnused(); assert(pattern.test('https://provider.invalid/request')); assert(!pattern.test('file:///local.html'));
+  await handler({ request: () => ({ url: () => 'https://provider.invalid/request?api_key=synthetic' }), abort: async reason => { aborted = reason; } });
+  assert.equal(aborted, 'blockedbyclient'); assert.deepEqual(boundary.blocked, ['https://provider.invalid/request']);
+  assert.throws(() => boundary.assertUnused(), /Unexpected renderer/);
+  const permitted = new Set(['getState', 'getAiConfig', 'loadWorkspaceChat', 'saveWorkspaceChat', 'attachWorkspaceSource', 'listWorkspaceSources', 'getExecutionOutput']);
+  for (const file of ['installed-app.mjs', 'clean-startup.mjs']) {
+    const source = readFileSync(join(import.meta.dirname, file), 'utf8');
+    for (const [, name] of source.matchAll(/\bwindow\.ax\.([A-Za-z0-9_]+)\(/g)) assert(permitted.has(name), 'Unexpected message/provider/data-write IPC: ' + name);
+    assert(source.includes('denyRendererHttp(app.context())'));
+  }
 });
 
 test('installer source keeps guard ahead of side effects and exposes only a source-only dry-run escape', () => {

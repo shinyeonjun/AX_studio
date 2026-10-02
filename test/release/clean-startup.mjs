@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { assertRunner, isolatedAppEnvironment } from './runner-safety.mjs';
+import { assertRunner, isolatedAppEnvironment, denyRendererHttp } from './runner-safety.mjs';
 
 const { values } = parseArgs({ options: { executable: { type: 'string' }, version: { type: 'string' } } });
 const context = assertRunner({ paths: [values.executable] });
@@ -16,9 +16,12 @@ for (const directory of [workspace, profile, env.HOME, env.APPDATA, env.LOCALAPP
 const report = { schemaVersion: 1, scenario: 'clean-startup', windowsScenarioExecuted: true, passed: false };
 const { _electron: electron } = await import('@playwright/test');
 let app;
+let network;
 try {
   assertRunner({ paths: [values.executable, workspace] });
   app = await electron.launch({ executablePath: values.executable, chromiumSandbox: true, args: [`--user-data-dir=${profile}`], cwd: workspace, env, timeout: 60_000 });
+  network = await denyRendererHttp(app.context());
+  report.networkBoundary = { scope: 'renderer HTTP(S) after context creation', blocked: network.blocked, processIsolation: false };
   const page = await app.firstWindow({ timeout: 60_000 });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -44,6 +47,8 @@ try {
 finally {
   try { if (app) await app.close(); }
   catch (error) { report.passed = false; report.closeError = error.message; process.exitCode = 1; }
+  try { network?.assertUnused(); }
+  catch (error) { report.passed = false; report.networkError = error.message; process.exitCode = 1; }
   assertRunner({ paths: [workspace] });
   writeFileSync(join(context.root, 'clean-startup.json'), JSON.stringify(report, null, 2));
 }

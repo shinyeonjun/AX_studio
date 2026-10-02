@@ -51,8 +51,10 @@ jobs:
       - name: Source-only contracts
         run: npm run test:release:contracts
 
-      - name: Build current NSIS (publishing disabled)
-        run: npm run pack:win -w @ax-studio/desktop
+      - name: Build current NSIS and synthetic packaging smoke (publishing disabled)
+        run: |
+          Write-Output '[package] Synthetic packaging smoke with sandbox enabled; installed real acceptance runs separately.'
+          npm run pack:win -w @ax-studio/desktop
 
       - name: Exact current identity, version and hashed manifest
         run: ./test/release/package-metadata.ps1 -Repo (Get-Location).Path -SourceSha $env:GITHUB_SHA
@@ -70,9 +72,13 @@ jobs:
         working-directory: preview
         run: |
           if ((git rev-parse HEAD) -cne '0ba5e22f54cc9fe2bb777f085290bb03de5f457b') { throw 'Preview source mismatch.' }
+          node ../current/test/release/runner-safety.mjs --path (Get-Location).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm run pack:win -w @ax-studio/desktop
+          npm run build -w @ax-studio/core
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node ../current/test/release/build-preview.mjs --repo (Get-Location).Path
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exact preview identity, version and hashed manifest
@@ -99,10 +105,12 @@ jobs:
             current/apps/desktop/release/pe-metadata.json
             preview/apps/desktop/release/installation-manifest.json
             preview/apps/desktop/release/pe-metadata.json
-            ${{ runner.temp }}/ax-installer-*/acceptance/*.json
-            ${{ runner.temp }}/ax-installer-*/acceptance/*.png
-            ${{ runner.temp }}/ax-installer-*/acceptance/saved-*.pdf
+            ${{ runner.temp }}/ax-installer-*/acceptance 한글 자료/*.json
+            ${{ runner.temp }}/ax-installer-*/acceptance 한글 자료/*.png
+            ${{ runner.temp }}/ax-installer-*/acceptance 한글 자료/saved-*.pdf
             ${{ runner.temp }}/ax-installer-*/clean-startup.json
             ${{ runner.temp }}/ax-installer-*/clean-startup.png
+            ${{ runner.temp }}/ax-installer-*/preview-package.json
+            ${{ runner.temp }}/ax-installer-*/preview-package.png
           if-no-files-found: warn
           retention-days: 14

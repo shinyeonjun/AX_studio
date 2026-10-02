@@ -39,6 +39,9 @@ layout change fails closed and requires review of the guard.
    installer/blockmap hashes and the entire unpacked payload inventory.
 2. Install the same NSIS asset per-user into the owned runner-temp directory.
    Verify the installed payload bytes and per-user registration before startup.
+   The owned install directory is `program AX 설치`, the acceptance directory is
+   `acceptance 한글 자료`, and migration/input/export fixtures also use Korean
+   names with spaces. These paths still pass the same ownership/reparse guards.
 3. First launch the installed executable with an empty synthetic profile, data
    root and home. Require usable startup, an empty history/approval list, no
    configured API key and a real migration marker. Then use a separate owned
@@ -58,18 +61,27 @@ layout change fails closed and requires review of the guard.
 7. Snapshot every synthetic app-data file and hash. Uninstall with confirmed NSIS
    completion; require all packaged payload files and registration/shortcuts to
    disappear while the synthetic data inventory remains byte-for-byte identical.
-8. Reinstall current, reopen retained data/credentials, and uninstall again.
+8. Reinstall current, reopen retained data/credentials, take a new final snapshot,
+   uninstall again, and compare against that final snapshot. Recovery adds a new
+   parsed source, so reusing the first snapshot would be an invalid comparison.
 
 The byte-preservation snapshot covers every file under `AX_DATA_ROOT` (the owned
 `app-data` directory). It does not compare every Electron-profile, home or temp
 file. Legacy DB, saved chat, credential and exported-file checks cover the stated
-individual behaviors. A fresh snapshot/comparison around the final uninstall,
-Unicode paths and the safe preview build revision are proposed in
-[ADR 0002](../../docs/adr/0002-disposable-windows-installer-acceptance.md); that local
-implementation is held pending independent ADR review and validation.
+individual behaviors. Initial and final uninstall checkpoints are distinct and
+must each remain byte-for-byte identical across their own removal. See
+[ADR 0002](../../docs/adr/0002-disposable-windows-installer-acceptance.md), accepted
+for source implementation; actual Windows execution still awaits parent review.
 
 `preview-upgrade` first rebuilds immutable preview
 `0ba5e22f54cc9fe2bb777f085290bb03de5f457b` (`0.1.0-preview.1`) and its Core Store.
+The workflow explicitly runs `npm run build -w @ax-studio/core` before invoking
+`build-preview.mjs`, which also requires all three compiled fixture imports.
+The pinned product sources stay unchanged. Its old `pack:win` is never run:
+that command omitted Core and reached an unsafe historical Electron launcher.
+The adapter retains the old Python-only bundle/verify-bundle checks (native
+imports, fonts/licenses, Korean forms and worker ingestion), ASAR integrity and
+distribution notices, then performs a new sandboxed graphical package check.
 The fixture generator imports that exact preview's compiled Store/schema, never
 the current schema. The installed preview then performs real migration, saves
 the chat through its real IPC, closes, and restarts before current is installed
@@ -93,8 +105,28 @@ requires both current-user registry locations to still name the owned directory,
 the expected installed version, and the previously hashed owned uninstaller.
 Timeout or changed ownership blocks cleanup and retries. No script manually
 deletes registry entries, updater caches, existing user profiles or retained
-data; the disposable job runner owns cleanup. Ordinary E2E packaging smoke in
-the existing packaging command remains separate from this real startup evidence.
+data; the disposable job runner owns cleanup.
+
+Every reachable Electron launcher must explicitly use `chromiumSandbox: true`:
+current `pack:win` -> `package-desktop.mjs` -> current document helper startup;
+preview Core build -> `build-preview.mjs` -> Python-only legacy checks plus its
+new graphical launcher; then `clean-startup.mjs` and `installed-app.mjs` after
+NSIS installation. Contracts cover both `electron` and `_electron` aliases and
+reject omission/false. The unsafe pinned `--verify-package` route is rejected.
+Current packaging smoke may use its existing E2E/fake environment and is labeled
+synthetic; it contributes package-smoke evidence only. Genuine installed launches
+use no fake flags or handler replacements and provide separate real startup proof.
+
+App environments exclude real credentials and connector settings. Acceptance
+uses only local save/source/output IPC, never chat/provider submission, connector
+tests, approval execution or external message/data writes. When a Playwright
+context is available, unexpected renderer HTTP(S) is aborted and fails acceptance;
+records omit query tokens and request bodies. This boundary does not intercept
+main-process SDKs, Python, or traffic before the context exists. There is residual
+network risk: no process-wide isolation or zero-outbound-packet guarantee is
+claimed, and no OS firewall/security setting is changed. If execution requires
+that stronger boundary, it needs a separately reviewed and explicitly authorized
+network policy before dispatch. Source tests alone cannot establish it.
 
 The workflow keeps source/asset manifests and per-stage synthetic JSON, PNG and
 exported PDF evidence. It does not upload databases, credential files or whole

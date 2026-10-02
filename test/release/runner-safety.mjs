@@ -46,7 +46,7 @@ export function runnerContext(env, username, platform = process.platform) {
   assert.equal(win32.dirname(temp).toLowerCase(), win32.dirname(win32.dirname(workspace)).toLowerCase(), 'Temp/workspace roots differ');
   assert(!temp.toLowerCase().startsWith(profile.toLowerCase() + '\\'), 'Runner temp is inside a user profile');
   const root = win32.join(temp, `ax-installer-${env.GITHUB_RUN_ID}-${env.GITHUB_RUN_ATTEMPT}-${env.GITHUB_JOB}`);
-  return { root, temp, workspace, profile, install: win32.join(root, 'program'), acceptance: win32.join(root, 'acceptance'),
+  return { root, temp, workspace, profile, install: win32.join(root, 'program AX 설치'), acceptance: win32.join(root, 'acceptance 한글 자료'),
     marker: win32.join(root, 'disposable-runner.json'), schemaVersion: 1, kind: DISPOSABLE_MARKER,
     runId: env.GITHUB_RUN_ID, attempt: env.GITHUB_RUN_ATTEMPT, job: env.GITHUB_JOB, sourceSha: env.GITHUB_SHA };
 }
@@ -103,6 +103,18 @@ export function isolatedAppEnvironment(env, workspace) {
     TEMP: win32.join(workspace, 'temp'), TMP: win32.join(workspace, 'temp'),
     PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1' });
   return result;
+}
+
+// Playwright can deny renderer HTTP(S) after its context becomes available.
+// This is not a fence around main-process SDKs, Python, or early startup traffic.
+export async function denyRendererHttp(context) {
+  const blocked = [];
+  await context.route(/^https?:\/\//i, async route => {
+    const url = new URL(route.request().url());
+    blocked.push(url.origin + url.pathname); // Never record query tokens or bodies.
+    await route.abort('blockedbyclient');
+  });
+  return { blocked, assertUnused: () => assert.deepEqual(blocked, [], 'Unexpected renderer HTTP(S) dispatch') };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

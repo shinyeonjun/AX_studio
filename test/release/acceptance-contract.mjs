@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 export const CALCULATED_OUTPUT = { version: 1, fields: [{ path: 'synthetic.total', label: 'Synthetic total', valueJson: '731' }] };
 export const TAIL_MESSAGES = { interrupted: 'AX interrupted append-only tail', pending: 'AX pending append-only tail' };
 
+export function retentionCheckpointName(phase) {
+  assert(['initial', 'final'].includes(phase), 'Only owned initial/final retention checkpoints are allowed');
+  return `uninstall-retention-${phase}.json`;
+}
+
 export function assertProcessedPdfSource(source, document) {
   assert.equal(source.status, 'ready', 'A queued PDF is not worker acceptance');
   assert(source.documentArtifactId, 'The real worker must persist its document artifact');

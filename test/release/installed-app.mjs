@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, win32 } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { assertRunner, isolatedAppEnvironment, PREVIEW_SHA, PREVIEW_VERSION } from './runner-safety.mjs';
+import { assertRunner, isolatedAppEnvironment, denyRendererHttp, PREVIEW_SHA, PREVIEW_VERSION } from './runner-safety.mjs';
 import { sha256 } from './verify-assets.mjs';
 import { assertUpgradeObservation, assertProcessedPdfSource, CALCULATED_OUTPUT, TAIL_MESSAGES } from './acceptance-contract.mjs';
 
@@ -77,7 +77,7 @@ if (!values.reopen) {
   } finally { db.close(); }
   writeFileSync(join(profile, 'ai.toml'), `[providers.gpt]\nmode = "api"\nmodel = "gpt-5.5"\n\n[secrets]\nopenai_api_key = "${secret}"\n`);
   mkdirSync(join(env.HOME, '.ax-studio/documents'), { recursive: true });
-  writeFileSync(join(env.HOME, '.ax-studio/documents/migration-fixture.txt'), 'AX synthetic legacy document');
+  writeFileSync(join(env.HOME, '.ax-studio/documents/이관 문서 한글.txt'), 'AX synthetic legacy document');
   checkpoint.legacyDatabaseSha256 = sha256(legacyDb);
 } else {
   checkpoint = JSON.parse(readFileSync(checkpointPath, 'utf8'));
@@ -88,7 +88,7 @@ if (!values.reopen) {
 
 // Fresh source-only fixture creation uses the exact old Store only above. Reopen
 // never seeds, applies a current schema to an old fixture, or recreates outputs.
-const pdfPath = join(workspace, `engine-${values.stage}.pdf`);
+const pdfPath = join(workspace, `engine-${values.stage} 한글 입력.pdf`);
 assertRunner({ paths: [pdfPath, values.executable] });
 const runtime = join(context.install, 'resources/document-engine/python');
 const pdfRun = spawnSync(join(runtime, 'python.exe'), [join(import.meta.dirname, 'pdf-acceptance.py'), runtime, pdfPath],
@@ -97,7 +97,7 @@ assert.equal(pdfRun.status, 0, pdfRun.error?.message ?? pdfRun.stderr);
 report.pdfEngine = JSON.parse(pdfRun.stdout.trim());
 if (!values.reopen) {
   const { ArtifactStore } = await importFrom(values['fixture-repo'], 'packages/core/dist/persistence/artifact-store.js');
-  const artifact = new ArtifactStore(paths.reports).putBytes(readFileSync(pdfPath), { fileName: 'synthetic-result.pdf', mimeType: 'application/pdf' });
+  const artifact = new ArtifactStore(paths.reports).putBytes(readFileSync(pdfPath), { fileName: '합성 결과 한글.pdf', mimeType: 'application/pdf' });
   checkpoint.artifact = { artifactId: artifact.id, fileName: artifact.fileName, size: artifact.size, mimeType: 'application/pdf' };
   const { createSqlJsDatabase } = await importFrom(values['fixture-repo'], 'packages/core/dist/persistence/db/sqljs.js');
   const { WorkflowStore } = await importFrom(values['fixture-repo'], 'packages/core/dist/persistence/workflow-store.js');
@@ -116,7 +116,10 @@ const app = await electron.launch({ executablePath: values.executable, chromiumS
 let diagnostic = '';
 for (const stream of [app.process().stdout, app.process().stderr]) stream?.on('data', chunk => { diagnostic = (diagnostic + chunk).slice(-16_384); });
 let projection;
+let network;
 try {
+  network = await denyRendererHttp(app.context());
+  report.networkBoundary = { scope: 'renderer HTTP(S) after context creation', blocked: network.blocked, processIsolation: false };
   const page = await app.firstWindow({ timeout: 60_000 });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -140,7 +143,7 @@ try {
     assert.equal(state.executions.find(entry => entry.id === checkpoint.pending)?.status, 'pending_approval');
     assert.equal(state.executions.find(entry => entry.id === checkpoint.completed)?.status, 'success');
     assert(state.approvals.some(entry => entry.id === checkpoint.approval));
-    assert.equal(readFileSync(join(paths.documents, 'migration-fixture.txt'), 'utf8'), 'AX synthetic legacy document');
+    assert.equal(readFileSync(join(paths.documents, '이관 문서 한글.txt'), 'utf8'), 'AX synthetic legacy document');
     assert.equal(sha256(legacyDb), checkpoint.legacyDatabaseSha256, 'Legacy DB must remain unchanged');
     if (values.reopen) assert.equal(sha256(paths.migration), checkpoint.migrationSha256, 'Migration must not repeat');
     checkpoint.migrationSha256 = sha256(paths.migration);
@@ -203,12 +206,12 @@ try {
   });
   await page.locator('.workspace-sidebar-tab', { hasText: '활동' }).click();
   await check('real native Save dialog and production file-export IPC', async () => {
-    const saved = join(workspace, `saved-${values.stage}.pdf`);
+    const saved = join(workspace, `saved-${values.stage} 한글 결과.pdf`);
     const source = join(paths.reports, readdirReportFile());
-    if (values.reopen) assert.equal(sha256(join(workspace, 'saved-initial.pdf')), checkpoint.savedPdfSha256);
+    if (values.reopen) assert.equal(sha256(join(workspace, 'saved-initial 한글 결과.pdf')), checkpoint.savedPdfSha256);
     await nativeDialog('save', saved, async () => {
-      await page.getByRole('button', { name: 'synthetic-result.pdf PDF 다운로드', exact: true }).click();
-      await page.getByRole('button', { name: 'synthetic-result.pdf PDF 다운로드', exact: true }).filter({ hasText: '다운로드됨' }).waitFor({ timeout: 30_000 });
+      await page.getByRole('button', { name: '합성 결과 한글.pdf PDF 다운로드', exact: true }).click();
+      await page.getByRole('button', { name: '합성 결과 한글.pdf PDF 다운로드', exact: true }).filter({ hasText: '다운로드됨' }).waitFor({ timeout: 30_000 });
     });
     assert.equal(sha256(saved), sha256(source), 'Exported file bytes differ');
     if (!values.reopen) checkpoint.savedPdfSha256 = sha256(saved);
@@ -235,6 +238,7 @@ try {
   await check('renderer errors', async () => assert.deepEqual(pageErrors, []));
   await page.screenshot({ path: join(workspace, values.stage + '.png') });
 } finally { await app.close(); }
+await check('no unexpected renderer HTTP dispatch (main/Python network is not fenced)', () => network.assertUnused());
 
 // Inspect physical values with a read-only SQLite handle. No current migration or
 // Store writer can rewrite the evidence while the acceptance oracle reads it.

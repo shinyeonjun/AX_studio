@@ -148,7 +148,11 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Uninstall changed synthetic data.' }
   Install-App $repo $currentSha $installerPath
   Test-App 'reinstall-recovery' $installedVersion -Reopen -Upgrade:([bool]$PreviousInstaller)
+  & node (Join-Path $PSScriptRoot 'retained-data.mjs') --workspace $context.acceptance --snapshot --phase final
+  if ($LASTEXITCODE -ne 0) { throw 'Final retention snapshot failed.' }
   Uninstall-App $installedVersion
+  & node (Join-Path $PSScriptRoot 'retained-data.mjs') --workspace $context.acceptance --compare --phase final
+  if ($LASTEXITCODE -ne 0) { throw 'Final uninstall changed synthetic data.' }
   $passed = $true
 } finally {
   if ($script:owned -and -not $script:exitUnconfirmed) { Uninstall-App $installedVersion }
