@@ -51,7 +51,7 @@ async function seed(kind: Kind, condition: Condition | 'valid') {
   state.store.setConnection('gmail', true);
   const session = state.store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'Synthetic cancellation/history composition fixture' }] });
   const send = vi.fn(async () => ({ ok: true, data: { id: 'synthetic-unused-receipt' } }));
-  const identify = vi.fn(async (draft: { tool: string; to?: string }) => ({ provider: 'gmail',
+  const identify = vi.fn(async (draft: { tool: string; to?: string }) => ({ provider: 'gmail' as const,
     accountId: 'sender@example.test', accountLabel: 'sender@example.test',
     destinationId: draft.to ?? '', destinationLabel: 'recipient@example.test' }));
   const gmail: Connector = { name: 'gmail', execute: send, prepareMessageSend: identify };
