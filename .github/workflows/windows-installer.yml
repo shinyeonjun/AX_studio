@@ -1,0 +1,108 @@
+name: Disposable Windows installer acceptance
+
+# Source-only candidate. A maintainer reviews the patch before manually running
+# this workflow. Never use a self-hosted runner or invoke these scripts on a PC.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: ${{ matrix.scenario }}
+    runs-on: windows-2025
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [clean-lifecycle, preview-upgrade]
+    env:
+      AX_INSTALLER_DISPOSABLE: ax-github-windows-disposable-v1
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: current
+    steps:
+      - name: Check out current source
+        uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: current/package-lock.json
+
+      - name: Set up Python for isolated packaging
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Mark a fresh disposable runner workspace
+        run: node test/release/runner-safety.mjs --initialize
+
+      - name: Install current source dependencies
+        run: npm ci
+
+      - name: Source-only contracts
+        run: npm run test:release:contracts
+
+      - name: Build current NSIS (publishing disabled)
+        run: npm run pack:win -w @ax-studio/desktop
+
+      - name: Exact current identity, version and hashed manifest
+        run: ./test/release/package-metadata.ps1 -Repo (Get-Location).Path -SourceSha $env:GITHUB_SHA
+
+      - name: Check out immutable preview source
+        if: matrix.scenario == 'preview-upgrade'
+        uses: actions/checkout@v4
+        with:
+          ref: 0ba5e22f54cc9fe2bb777f085290bb03de5f457b
+          path: preview
+          persist-credentials: false
+
+      - name: Rebuild pinned preview NSIS and its exact fixture Store
+        if: matrix.scenario == 'preview-upgrade'
+        working-directory: preview
+        run: |
+          if ((git rev-parse HEAD) -cne '0ba5e22f54cc9fe2bb777f085290bb03de5f457b') { throw 'Preview source mismatch.' }
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run pack:win -w @ax-studio/desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exact preview identity, version and hashed manifest
+        if: matrix.scenario == 'preview-upgrade'
+        run: ./test/release/package-metadata.ps1 -Repo (Join-Path $env:GITHUB_WORKSPACE 'preview') -SourceSha '0ba5e22f54cc9fe2bb777f085290bb03de5f457b'
+
+      - name: Real NSIS lifecycle and installed-app acceptance
+        run: |
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $arguments = @{ Installer = Join-Path (Get-Location) "apps/desktop/release/AX Studio Setup $version.exe" }
+          if ('${{ matrix.scenario }}' -eq 'preview-upgrade') {
+            $arguments.PreviousRepo = Join-Path $env:GITHUB_WORKSPACE 'preview'
+            $arguments.PreviousInstaller = Join-Path $arguments.PreviousRepo 'apps/desktop/release/AX Studio Setup 0.1.0-preview.1.exe'
+          }
+          ./test/release/windows-installer.ps1 @arguments
+
+      - name: Retain only synthetic acceptance and asset evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ matrix.scenario }}-${{ github.sha }}
+          path: |
+            current/apps/desktop/release/installation-manifest.json
+            current/apps/desktop/release/pe-metadata.json
+            preview/apps/desktop/release/installation-manifest.json
+            preview/apps/desktop/release/pe-metadata.json
+            ${{ runner.temp }}/ax-installer-*/acceptance/*.json
+            ${{ runner.temp }}/ax-installer-*/acceptance/*.png
+            ${{ runner.temp }}/ax-installer-*/acceptance/saved-*.pdf
+            ${{ runner.temp }}/ax-installer-*/clean-startup.json
+            ${{ runner.temp }}/ax-installer-*/clean-startup.png
+          if-no-files-found: warn
+          retention-days: 14
