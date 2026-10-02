@@ -7,6 +7,11 @@ preparation. The measurements are not fresh executions of a later documentation
 commit and do not certify repository-wide CI or live integration behavior.
 The later approval-resume fixture correction and its separate local results are
 recorded in [CI fixture verification](tool-result-ci-fixtures.md).
+The subsequent editable Slack smoke correction, its real synthetic host-roundtrip
+scope and retained legacy coverage are recorded in
+[smoke fixture verification](tool-result-smoke-fixtures.md) and the later section of
+[design QA](design-qa.md). Those fresh checks do not replace the historical source
+scope of this guide or certify live delivery.
 
 ## Source and isolation
 

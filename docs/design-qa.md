@@ -4,6 +4,8 @@ Recorded validation date: 2026-10-02. The results below describe isolated synthe
 renderer checks and pixel inspection. They are historical measurements, not fresh
 browser/native runs of the current complete build. Later Core and metadata changes
 received source/contract verification; see [the verification guide](tool-result-verification.md).
+Fresh, narrower Slack host-roundtrip checks from the later smoke follow-up are
+recorded separately below and in [the smoke fixture contracts](tool-result-smoke-fixtures.md).
 
 ## Passed within the recorded scope
 
@@ -87,8 +89,8 @@ security settings. These initial failures are not counted as passing results.
 
 | Area | Boundary |
 | --- | --- |
-| Fresh visual/native certification | No new browser, Electron launch or screenshot was produced for the later Core/metadata composition or documentation-only changes. |
-| Complete production tool IPC | Native startup checks real main/preload state; tool cases use a renderer-only synthetic API. Full provider IPC roundtrips remain uncertified. |
+| Fresh visual/native certification | Earlier renderer results remain historical. The later Slack smoke follow-up below adds fresh Electron UI checks and captures; it does not recertify Gmail/DB layouts. |
+| Complete production tool IPC | Earlier tool fixtures used synthetic renderer APIs. The later Slack smoke follows real main/preload/runtime approval and result publication with an in-memory connector. Other provider IPC and live delivery remain uncertified. |
 | Restart | Synthetic fixture reload and Core database reopen checks do not certify the complete completed-chat UI/cache disk-restart journey. Manual edits/seals remain memory-only. |
 | Live integrations | Real Gmail/Slack delivery, provider/model calls and external network database reads were not exercised. |
 | Unsupported capabilities | Gmail attachments, Slack threads/files, exact SQL/friendly historical DB labels and export remain unmet where requested. |
@@ -106,3 +108,45 @@ under `test/tool-result-ui/runs/`, with native output in `native-electron/`.
 Reproduction generates new evidence; it must not relabel these recorded
 measurements as a fresh run. [Native QA](tool-result-native-qa.md) documents the
 normal startup and isolation boundary in more detail.
+
+## Later Slack smoke follow-up: 2026-10-02
+
+The follow-up starts from public head
+`d4cd792ca016779faa553e7322d8a6663fce7390`. It changes the deterministic test seam,
+typed harness/scenarios and documentation. Production editor/styles, tool IPC,
+runtime, connector implementations, security settings and launchers are unchanged.
+The immutable local review artifact records its exact final head/tree, source
+protection matrix and complete reports. It is local and awaits independent review;
+the published required CI run 37038157173 remains failed.
+
+| Check | Fresh result and scope |
+| --- | --- |
+| Strict full deterministic smoke | 22/22 Playwright tests, including the two updated Slack decisions and two retained generic legacy decisions. Generated batches are reported by the complete Playwright report and scenario evidence separately. |
+| Repeated decision journeys | 13/13 Playwright tests: eight approval/cancellation journeys (four decisions twice) plus five existing harness regressions. |
+| Main/preload/runtime roundtrip | Actual Slack draft update, host identity/destination review, opaque confirmation, synthetic connector dispatch, receipt and workspace result publication. No tool IPC handler is replaced. |
+| Dispatch evidence | Zero fixture invocations before explicit confirmation; one exact literal overridden payload after repeated confirmation input; zero after repeated cancellation input. Generic legacy approval sends once and rejection sends nothing. |
+| Keyboard accessibility | Confirmation receives focus after review, and back navigation restores review-button focus. Accessible region/field/button names drive the journey. |
+| Pixel inspection | Five final Slack states: filled draft, reviewed override, sent receipt, reviewed cancellation and cancelled status, at 1280 × 873 CSS pixels with settled chat output. |
+| Regression checks | Desktop 255 passed in 48 files; Core 2,383 passed, zero failed, 11 skipped in 476 files; Core/desktop/harness types, normal production build, existing security 8/8 and architecture passed. |
+
+The initial local attempt used an incorrect cancellation label. Actual pixels and
+runtime format confirmed `실행 취소`; the corrected assertion still requires the
+rejected approval, `approval_rejected` execution, removed action controls and zero
+sends. Failed attempt reports are preserved and are not counted as passes. Early
+captures also contained a transient reply placeholder, so final scenarios wait
+for the completed synthetic chat reply before capture.
+
+Pixel inspection confirmed the existing pale lavender panels, Slack branding,
+visible workspace/sender/destination and complete literal payload. The review pane
+scrolls vertically at this CI viewport; footer actions are reachable through focus
+and actual clicks. The terminal sent view contains the synthetic receipt and no
+resend action. Cancellation removes the editor and returns to the existing context
+pane with a cancelled chat result. This is narrow flow QA, not a new certification
+of every responsive size or a pixel-exact comparison against all design references.
+
+All runs use fresh isolated synthetic profiles, the existing
+`chromiumSandbox: true` launcher and no-bypass assertions. No live send/provider,
+external DB operation, credential/grant, canonical checkout, packaging or OS/security
+change is involved. The c837 installer safety block remains in force. Gmail
+attachments, Slack threads/files, historical DB labels/SQL and the earlier broader
+live/native limitations above remain outside this follow-up.

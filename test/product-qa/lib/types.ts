@@ -33,9 +33,12 @@ export interface ProductScenario {
 
 export type ScenarioAction =
   | { action: 'newChat'; label?: string }
+  | { action: 'setViewport'; width: number; height: number }
   | { action: 'sendMessage'; text: string; label?: string; waitForReply?: boolean }
   | { action: 'selectInputOption'; requestId: string; value: string }
   | { action: 'clickInlineApproval'; decision: 'approve' | 'reject' }
+  | { action: 'editSlackDraft'; channel?: string; text?: string }
+  | { action: 'clickSlackResult'; control: 'review' | 'back' | 'confirm' | 'cancel'; repeat?: boolean }
   | { action: 'waitMs'; ms: number }
   | { action: 'waitForAssistantReply'; timeoutMs?: number; optional?: boolean }
   | { action: 'startDiscoveryFixture'; artifact: string; folder: string; label?: string }
@@ -49,9 +52,14 @@ export type ScenarioAction =
   | { action: 'openAiSettings'; brand: 'Claude' | 'GPT' }
   | { action: 'toggleTheme' }
   | { action: 'openContextTab'; tab: '자료' | '흐름' }
-  | { action: 'screenshot'; name: string };
+  | { action: 'screenshot'; name: string; scale?: 'css' | 'device' };
 
 export type ScenarioCheck =
+  | { check: 'slackDraft'; channel: string; text: string; severity?: DefectSeverity }
+  | { check: 'slackReview'; channelId: string; channelLabel: string; text: string; severity?: DefectSeverity }
+  | { check: 'slackTerminal'; decision: 'sent' | 'cancelled'; severity?: DefectSeverity }
+  | { check: 'syntheticSlackEvidence'; sends: number; status: 'pending_approval' | 'success' | 'cancelled';
+      legacy?: boolean; params?: { channel: string; text: string }; literal?: boolean; severity?: DefectSeverity }
   | {
       check: 'assistantMessageContains';
       text: string;
