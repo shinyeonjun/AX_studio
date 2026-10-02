@@ -123,3 +123,45 @@ requires fresh review. Unknown outcomes never automatically resend. Legacy bound
 command-chat tables without source provenance remain unverified. Live delivery,
 external network database reads, ordinary-language activation/model quality,
 native menus/dialogs/full chrome and packaging/installer QA remain uncertified.
+
+## Combined source with reviewed main history
+
+The isolated combined branch merges reviewed main
+`41cf05691e30677fda2148ef5b88e79f0fb957f3` and immutable approved UI/smoke input
+`e74eb60b58007ecfe3412b85d446fb3bf1ff408a`. All final checks run on
+`2c56816579f6cb327c3b2014ad49a71265118cfb`, tree
+`ee695336231927b87b0b5aeeb498aaa329d6b8cf`. The final documentation-only commit
+has the same code and test blobs; the artifact includes exact identities and proof.
+
+Core passes 2,540 tests across 482 files, with zero failures and eleven existing
+environment/live skips. Desktop passes 310 tests across 53 files with no skips.
+Five new regressions verify native/sql.js read-snapshot ownership with committed
+barriers, read-only query/close guards, preserved raw history with immediate durable
+cancellation, and propagation of classified persistence failure and its cause.
+All 26 Core and twelve Desktop relevant contract files pass inside these full
+suites, including migration fixture ownership, preview upgrade/rejection, lazy
+output, read snapshots, tool approvals, metadata refresh/fencing and recovery.
+
+Core production/test, Desktop, visual fixture and harness types pass. Normal Core
+and Desktop builds pass, existing security passes 8/8, architecture reports zero
+violations (1,333 modules / 5,064 dependencies), and offline request understanding
+passes 24/24 without forbidden, generated-model or live-provider calls. The strict
+full deterministic Electron run passes 22/22; the four decision journeys repeated
+twice pass 13/13 including five regressions. All twelve decision scenarios match
+their exact committed definitions and retain zero-before, exact-once-confirmed and
+zero-cancelled synthetic dispatch evidence. Five fresh Slack captures were inspected
+as actual pixels at 1280 by 873 CSS pixels.
+
+Initial merge and dependency/test-expectation failures remain preserved separately
+from final passing counts. Exact prompt normalization/restoration evidence precedes
+the final Core source-suite run. The combined source retains main's fixture lifecycle,
+snapshot/lazy-output APIs and tool-specific UI/seal/metadata/no-replay contracts;
+the sole additional production composition fix reinstates the existing durable
+barrier before a history-preserving early return. See
+[the integration contract](tool-result-history-integration.md) for failure evidence,
+exact resolution, skip/dependency details and reproduction boundaries.
+
+Fresh combined review and ordinary CI remain pending; no publication is performed.
+Faulted reviewer-owned Electron processes were left untouched and did not block the
+isolated QA runs. Security, sandbox, OS settings and c837 packaging restrictions
+remain unchanged. The existing unsupported/live/visual limitations above remain.

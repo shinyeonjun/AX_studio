@@ -64,16 +64,71 @@ Source matrices and input-to-candidate diffs accompany the review artifact.
 
 ## Verification boundary
 
-Combined checks are pending. The integration will run relevant historical
-preservation, snapshot, lazy output, editable approval, metadata fencing and
-recovery tests, complete Core/Desktop units, types, normal builds, architecture,
-existing security checks and strict deterministic product smoke. Test children
-use isolated synthetic data, inherit no provider credentials and retain the
-existing external-network guard. Existing Electron launchers retain
-`chromiumSandbox: true` and their no-bypass checks.
+All final code checks ran on commit
+`2c56816579f6cb327c3b2014ad49a71265118cfb`, tree
+`ee695336231927b87b0b5aeeb498aaa329d6b8cf`. The final review commit only updates
+these verification documents; the review artifact proves every code, fixture
+and test blob is identical to that tested source.
+
+| Check | Combined result |
+| --- | --- |
+| Core complete source suite | 2,540 passed, zero failed, eleven skipped; 2,551 tests across 482 files. |
+| Desktop complete source suite | 310 passed, zero failed or skipped across 53 files. |
+| New composition regressions | Five passed: native/sql.js snapshot barriers, read-only snapshot/query guards, durable history-preserving cancellation, and classified persistence failure with original cause. |
+| Relevant contract coverage | All 26 Core and twelve Desktop focused contract files pass within the complete suites, including preview history, lazy output, native snapshots, migration ownership, editable approval, metadata fencing and no-replay. |
+| Types and normal builds | Core production/test, Desktop, visual fixture and product harness types pass; normal Core and Desktop builds pass. |
+| Existing security checks | Eight passed. Architecture has zero violations across 1,333 modules and 5,064 dependencies. |
+| Offline request understanding | 24/24 cases passed, zero forbidden calls or generated-model/live-provider calls. |
+| Strict deterministic full smoke | 22/22 Playwright tests and 22/22 scenario runs; zero unexpected, skipped, flaky or defective scenarios. |
+| Repeated approval/cancellation journeys | 13/13 Playwright tests; four decisions twice plus five existing regressions. |
+| Fresh pixel inspection | Five settled Slack flow captures at 1280 by 873 CSS pixels; draft, reviewed override, synthetic receipt, review before cancellation and cancelled result. |
+
+All twelve synthetic decision runs match their complete final scenario definitions.
+The evidence records zero dispatches before explicit confirmation, exactly one
+literal edited payload after repeated confirmation input, and zero dispatches
+after repeated cancellation. It also covers unchanged generic legacy decisions,
+back navigation, review invalidation and keyboard focus restoration.
+
+The eleven Core skips are existing environment/live boundaries: three POSIX or
+symlink cases, one unavailable Python-engine integration, five live discovery
+cases and two live Jev cases. They are not counted as passes. An initial complete
+Desktop attempt passed 309 assertions but failed to load one suite because the
+locked Electron executable was absent and its download was blocked by the network
+guard. Materializing the exact locked executable from the existing task-local
+cache resolved that dependency; the final complete run passed all 310. The first
+post-fix composition report also retained one test expectation mismatch: the
+persistence helper correctly classifies the injected failure. The final test
+asserts both `database_persistence_failed` and its original cause. Earlier failures
+remain in the artifact and are excluded from final passing counts.
+
+Test children use isolated synthetic data, inherit no provider credentials and
+retain the existing external-network guard. Existing Electron launchers retain
+`chromiumSandbox: true` and their no-bypass checks. Normal Core build regeneration
+produced only physical/literal CRLF formatting; a recorded normalization proof
+preceded restoration of the exact tracked prompt bytes. The complete Core suite
+then ran on those restored bytes. No generated prompt change is included.
+
+The parent reported two faulted reviewer-owned Electron processes with cleanup
+denied. They were left untouched: no alternate termination route or denial bypass
+was attempted. They did not block these isolated combined QA runs.
 
 Previous input checks are evidence for their own source identities only. This
-different tree requires its own validation and independent combined review. No
+different tree has its own validation above and still requires independent combined
+review and fresh CI on any subsequently authorized published candidate. No
 push, PR update, main merge, packaging, c837 retry or security/OS change is
 authorized here. Live Gmail/Slack delivery, external databases and real profiles
 remain outside the verification scope.
+
+## Remaining design and release limits
+
+The five fresh captures certify the synthetic Slack approval flow through the real
+main/preload/runtime contracts. Review content scrolls vertically at this viewport;
+focus and actual clicks reach the footer actions. They do not recertify Gmail/DB
+pixels, every responsive size, real provider planning/delivery, menus/dialogs,
+completed-chat disk restart or packaging. Earlier documented unsupported attachment,
+thread/file, historical DB label/SQL and export capabilities remain unsupported.
+Manual edits and review seals remain memory-only and require renewed review after
+restart. Unknown outcomes never automatically resend. External databases remain
+read-only. See [design QA](design-qa.md), [UI contracts](tool-result-ui-contracts.md)
+and [ADR0004](adr/0004-tool-specific-editable-results.md) for the unchanged renderer,
+extensibility and permission contracts.

@@ -150,3 +150,36 @@ external DB operation, credential/grant, canonical checkout, packaging or OS/sec
 change is involved. The c837 installer safety block remains in force. Gmail
 attachments, Slack threads/files, historical DB labels/SQL and the earlier broader
 live/native limitations above remain outside this follow-up.
+
+## Combined main-history verification: 2026-10-02
+
+The isolated integration combines reviewed main
+`41cf05691e30677fda2148ef5b88e79f0fb957f3` and approved UI/smoke input
+`e74eb60b58007ecfe3412b85d446fb3bf1ff408a`. Final checks ran on
+`2c56816579f6cb327c3b2014ad49a71265118cfb`, tree
+`ee695336231927b87b0b5aeeb498aaa329d6b8cf`; the final artifact proves the later
+verification-only commit has identical code and tests.
+
+| Area | Fresh combined result |
+| --- | --- |
+| Full smoke | Passed: 22/22 tests, 22/22 strict deterministic scenarios, no flaky/skipped/unexpected tests. |
+| Repeated decisions | Passed: 13/13 tests; eight real approval/cancellation journeys plus five regressions. All twelve decisions across both runs retain exact payload/count evidence. |
+| Pixels and interaction | Passed within scope: five settled 1280 by 873 CSS-pixel Slack captures, actual draft/review/back/edit/confirm/cancel controls, review invalidation and keyboard focus. |
+| Core/Desktop composition | Passed: 2,540 Core tests with eleven existing skips, 310 Desktop tests and five new composition regressions; types/builds/security/architecture and offline 24 cases pass. |
+| Gmail/DB and other responsive views | Historical only; this merge does not change renderer/style blobs and does not provide fresh certification of these layouts. |
+| Live integrations and complete restart/release | Uncertified; no real send, provider/model budget, external database call, real profile or installer run. |
+| Independent review and published CI | Pending for this combined candidate; no push, PR update or main merge. The c837 packaging block remains. |
+
+Actual pixels retain the pale lavender language, tool branding, autofilled
+destination, complete literal override and accurate unsent/synthetic-receipt states.
+The reviewed pane scrolls vertically at this viewport, with footer controls reachable
+by focus and actual clicks. Cancellation removes the editor and restores existing
+context. The existing context-pane PDF label is pre-existing content, not a new
+general product-purpose restriction.
+
+The combined history fix preserves preview bytes while durably recording
+cancellation; it introduces no renderer change or new architecture choice. The
+failed-before evidence, exact source matrices and all final reports are documented
+in [the integration contract](tool-result-history-integration.md). Existing sandbox
+and no-bypass assertions remain. Faulted reviewer processes were left untouched
+and did not block these isolated runs. All earlier limits above still apply.
