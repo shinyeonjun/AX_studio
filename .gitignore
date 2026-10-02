@@ -25,6 +25,9 @@ test/
 !/test/work-discovery-benchmark/**
 !/test/report-generation-e2e/
 !/test/report-generation-e2e/**
+!/test/release/
+!/test/release/**
+/test/release/runs/
 !/test/userlike-planner/
 !/test/userlike-planner/*.mjs
 !/test/userlike-planner/README.md

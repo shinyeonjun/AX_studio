@@ -77,6 +77,9 @@ jobs:
       - name: Packaging path and isolation regression tests
         run: npm run test:packaging
 
+      - name: Installer safety and data preservation contracts (source only)
+        run: npm run test:release:contracts
+
       - name: Document engine dependencies
         run: python -m pip install -r packages/document-engine/requirements.txt
 
@@ -139,6 +142,19 @@ jobs:
 
       - name: Packaging path and isolation regression tests
         run: npm run test:packaging
+
+      - name: Installer safety and data preservation contracts (source only)
+        run: npm run test:release:contracts
+
+      - name: Parse installer PowerShell sources without execution
+        shell: pwsh
+        run: |
+          foreach ($file in Get-ChildItem test/release/*.ps1) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
 
       - name: Set up Python for packaging
         uses: actions/setup-python@v5
