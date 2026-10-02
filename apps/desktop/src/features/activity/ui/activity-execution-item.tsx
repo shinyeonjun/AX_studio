@@ -6,6 +6,7 @@ import {
   formatRelativeTime,
 } from '../../../ui/lib/work-display';
 import { formatFileSize, formatTimestamp } from './format.js';
+import { CalculatedOutput } from './calculated-output.js';
 
 type ActivityExecution = AppState['executions'][number];
 
@@ -82,6 +83,14 @@ export function ActivityExecutionItem({
           {errorDetail ? ` · ${errorDetail}` : ''}
           {execution.errorMessage && execution.errorMessage !== errorDetail ? ` · ${execution.errorMessage}` : ''}
         </div>
+        {Boolean(execution.historyDiagnostics?.length) && (
+          <div className="timeline-step" role="alert">
+            이전 기록을 완전히 읽을 수 없습니다. 원본은 보존되어 있습니다.
+            {execution.historyDiagnostics?.map((diagnostic, index) => (
+              <div key={index}>{diagnostic.code}{diagnostic.sequence === undefined ? '' : ` (${diagnostic.sequence})`}</div>
+            ))}
+          </div>
+        )}
         {execution.currentStepId && (
           <div className="timeline-step">
             현재 단계 · {execution.currentStepId}
@@ -101,6 +110,7 @@ export function ActivityExecutionItem({
             ))}
           </div>
         )}
+        {ok && execution.hasOutput && <CalculatedOutput key={execution.id} executionId={execution.id} />}
         {generatedPdf && (
           <div className="generated-pdf" data-testid="generated-pdf">
             <div className="generated-pdf-copy">

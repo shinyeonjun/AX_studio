@@ -3,6 +3,7 @@ export * from './refs/index.js';
 export * from './capability-io.js';
 export * from './decision.js';
 export { ExecutionResultStatusSchema, type ExecutionResultStatus } from './execution-status.js';
+export * from './execution-output.js';
 
 export { fileRefFromLocalScan, FileRefSchema, FileCreatedEventSchema } from './artifacts/file-ref.js';
 export {

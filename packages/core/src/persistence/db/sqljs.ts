@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { applyMigrations } from './schema.js';
 import type { AppDatabase, SqlStatement } from './types.js';
+import { assertReadSnapshotSql } from './read-snapshot-sql.js';
 
 const PERSIST_DEBOUNCE_MS = 250;
 const MAX_PERSIST_DELAY_MS = 1_000;
@@ -138,13 +139,73 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
   private maxPersistTimer: ReturnType<typeof setTimeout> | undefined;
   private transactionDepth = 0;
+  private readDepth = 0;
+  private snapshotUnsafe = false;
 
   constructor(
     private db: SqlJsRawDatabase,
     private filePath?: string,
   ) {}
 
+  private assertUsable(): void {
+    if (this.snapshotUnsafe) throw new Error('read_snapshot_cleanup_failed');
+  }
+
+  private failSnapshot(): void {
+    this.snapshotUnsafe = true;
+    this.clearPersistTimers();
+  }
+
+  private assertOutsideSnapshot(): void {
+    this.assertUsable();
+    if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
+  }
+
+  private assertSnapshotQuery(sql: string): void {
+    this.assertUsable();
+    if (this.readDepth === 0) return;
+    assertReadSnapshotSql(sql);
+  }
+
+  readSnapshot<T>(read: () => T): T {
+    this.assertUsable();
+    if (this.readDepth > 0) return read();
+    const queryOnly = queryRows(this.db, 'PRAGMA query_only', [])[0]?.query_only;
+    // A savepoint also joins caller SAVEPOINT transactions without relying on
+    // the persistence adapter's BEGIN-depth bookkeeping. Never use exec here:
+    // its COMMIT/ROLLBACK path schedules an export of the loaded image.
+    let acquired = false;
+    let failed = false;
+    this.readDepth += 1;
+    try {
+      this.db.run('SAVEPOINT ax_read_snapshot');
+      acquired = true;
+      this.db.run('PRAGMA query_only = ON');
+      const result = read();
+      this.db.run('RELEASE ax_read_snapshot');
+      acquired = false;
+      return result;
+    } catch (error) {
+      failed = true;
+      if (acquired) {
+        try {
+          this.db.run('ROLLBACK TO ax_read_snapshot');
+          this.db.run('RELEASE ax_read_snapshot');
+        } catch { this.failSnapshot(); }
+      } else this.failSnapshot(); // Acquisition failed; do not assume ownership/state.
+      throw error;
+    } finally {
+      this.readDepth -= 1;
+      try { this.db.run(`PRAGMA query_only = ${queryOnly ? 'ON' : 'OFF'}`); }
+      catch (error) {
+        this.failSnapshot();
+        if (!failed) throw error;
+      }
+    }
+  }
+
   exec(sql: string): void {
+    this.assertOutsideSnapshot();
     const command = sql.trim().split(/\s+/, 1)[0]?.toUpperCase();
     this.db.run(sql);
     if (command === 'BEGIN') {
@@ -160,26 +221,37 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   prepare(sql: string): SqlStatement {
+    this.assertUsable();
     const db = this.db;
     const persist = () => this.persist();
+    const assertOutsideSnapshot = () => this.assertOutsideSnapshot();
+    const assertSnapshotQuery = () => this.assertSnapshotQuery(sql);
     return {
       run(...params: unknown[]) {
+        assertOutsideSnapshot();
         const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
         db.run(sql, bound);
         persist();
         return { changes: db.getRowsModified() };
       },
       all(...params: unknown[]) {
+        assertSnapshotQuery();
         return queryRows(db, sql, params);
       },
       get(...params: unknown[]) {
+        assertSnapshotQuery();
         return queryRows(db, sql, params, 1)[0];
       },
     };
   }
 
   close(): void {
+    if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
     this.clearPersistTimers();
+    if (this.snapshotUnsafe) {
+      this.db.close();
+      return; // Never export an image whose transaction/setting cleanup failed.
+    }
     let failure: unknown;
     let failed = false;
     try {
@@ -202,10 +274,12 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   persistNow(): void {
+    this.assertOutsideSnapshot();
     this.flushPersist();
   }
 
   private flushPersist(): void {
+    this.assertUsable();
     this.clearPersistTimers();
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
@@ -284,17 +358,22 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
 
 export async function openReadonlySqlJs(filePath: string): Promise<{
   all(sql: string, params?: unknown[]): Record<string, unknown>[];
+  readSnapshot<T>(read: () => T): T;
   close(): void;
 }> {
   const SQL = await loadSqlJs();
   assertStandaloneDatabase(filePath);
   const db = new SQL.Database(readFileSync(filePath));
+  const adapter = new SqlJsDatabaseAdapter(db);
   return {
     all(sql: string, params: unknown[] = []) {
-      return queryRows(db, sql, params);
+      return adapter.prepare(sql).all(...params);
+    },
+    readSnapshot<T>(read: () => T): T {
+      return adapter.readSnapshot(read);
     },
     close() {
-      db.close();
+      adapter.close();
     },
   };
 }

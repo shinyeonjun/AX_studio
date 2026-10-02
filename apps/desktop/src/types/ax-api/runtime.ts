@@ -2,6 +2,7 @@ import type {
   GeneratedArtifactExportResult,
   GeneratedArtifactFolderSaveResult,
 } from './contracts.js';
+import type { ExecutionOutput } from '@ax-studio/core';
 
 export interface AxRuntimeApi {
   getState: () => Promise<unknown>;
@@ -9,6 +10,7 @@ export interface AxRuntimeApi {
   reject: (id: string) => Promise<unknown>;
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
   deleteExecution: (executionId: string) => Promise<unknown>;
+  getExecutionOutput: (executionId: string) => Promise<ExecutionOutput>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;
   exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   saveGeneratedArtifactToFolder: (artifactId: string) => Promise<GeneratedArtifactFolderSaveResult>;

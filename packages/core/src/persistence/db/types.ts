@@ -11,6 +11,8 @@ export interface SqlStatement {
 export interface AppDatabase {
   exec(sql: string): void;
   prepare(sql: string): SqlStatement;
+  /** Synchronous, read-only projection; retains any caller transaction. */
+  readSnapshot<T>(read: () => T): T;
   close?(): void;
 }
 

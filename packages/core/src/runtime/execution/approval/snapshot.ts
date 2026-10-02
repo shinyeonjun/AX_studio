@@ -28,7 +28,8 @@ function failResume(
     code,
     message,
   }];
-  host.config.store.finishExecution(executionId, 'failed', code, log);
+  // Report the validation failure without replacing the evidence that caused it.
+  host.config.store.finishExecution(executionId, 'failed', code, undefined, { preserveHistory: true });
   const result: ExecutionResult = {
     executionId,
     status: 'failed',
