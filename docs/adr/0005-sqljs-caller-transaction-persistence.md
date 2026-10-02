@@ -24,6 +24,8 @@ The implementation removes the BEGIN counter entirely. Generic exec/run records 
 
 Uncertain engine probes report `persistence_transaction_state_unknown` on later access. Failed post-export connection restoration reports `persistence_connection_restore_failed`; unsuccessful disposal reports `persistence_close_failed` unless an earlier containment reason already applies. Original exceptions take precedence over subsequent restoration/disposal errors. A recoverable export error with successful restoration permits an explicit retry. These diagnostics do not turn disposal into acknowledgement of uncommitted work.
 
+Startup cleanup also retains the original initialization/persistence exception when disposal fails. It cancels an attached adapter's timers and discards the image without exporting it. Started exec/run operations queue persistence even when SQLite throws: a compound batch or conflict FAIL can retain successful effects. Scheduling failures cannot replace a prior SQL exception; the existing engine fence still postpones export while a caller owns a transaction. These corrections implement the approved pending-work/error-precedence policy without changing the ownership, disposal or isolation decisions.
+
 ## Alternatives
 
 | Approach | Why not selected |

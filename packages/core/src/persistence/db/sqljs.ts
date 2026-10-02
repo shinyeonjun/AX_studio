@@ -229,22 +229,32 @@ class SqlJsDatabaseAdapter implements AppDatabase {
 
   exec(sql: string): void {
     this.assertOutsideSnapshot();
-    this.db.run(sql);
-    this.persist();
+    this.runAndPersist(sql);
+  }
+
+  private runAndPersist(sql: string, params?: (string | number | null)[]): void {
+    let failed = false;
+    try { this.db.run(sql, params); }
+    catch (error) { failed = true; throw error; }
+    finally {
+      // Batches and SQLite FAIL can retain writes before throwing. Queue the
+      // image even on failure; the flush still fences actual caller ownership.
+      try { this.persist(); }
+      catch (error) { if (!failed) throw error; }
+    }
   }
 
   prepare(sql: string): SqlStatement {
     this.assertUsable();
     const db = this.db;
-    const persist = () => this.persist();
+    const runAndPersist = (params: (string | number | null)[]) => this.runAndPersist(sql, params);
     const assertOutsideSnapshot = () => this.assertOutsideSnapshot();
     const assertSnapshotQuery = () => this.assertSnapshotQuery(sql);
     return {
       run(...params: unknown[]) {
         assertOutsideSnapshot();
         const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
-        db.run(sql, bound);
-        persist();
+        runAndPersist(bound);
         return { changes: db.getRowsModified() };
       },
       all(...params: unknown[]) {
@@ -258,11 +268,17 @@ class SqlJsDatabaseAdapter implements AppDatabase {
     };
   }
 
+  discard(): void {
+    if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
+    this.clearPersistTimers();
+    this.db.close();
+  }
+
   close(): void {
     if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
     this.clearPersistTimers();
     if (this.unusableReason) {
-      this.db.close();
+      this.discard();
       return; // Never export an image whose transaction/setting cleanup failed.
     }
     let failure: unknown;
@@ -377,16 +393,20 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   } else {
     db = new SQL.Database();
   }
+  let adapter: SqlJsDatabaseAdapter | undefined;
   try {
     db.run('PRAGMA foreign_keys = ON');
     // Do not attach persistence timers until all initialization has succeeded.
     applyMigrations(new SqlJsDatabaseAdapter(db));
-    const adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
+    adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
     adapter.exec('PRAGMA foreign_keys = ON');
     adapter.persistNow();
     return adapter;
   } catch (error) {
-    db.close();
+    try {
+      if (adapter) adapter.discard(); // Cancel timers and never persist failed initialization.
+      else db.close();
+    } catch { /* Retain the primary initialization failure over disposal failure. */ }
     throw error;
   }
 }
