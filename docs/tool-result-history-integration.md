@@ -77,13 +77,17 @@ remain represented. Raw cancellation observations retain diagnosed history throu
 two reopens on both adapters; a compiled sql.js probe retains caller savepoints
 and committed state through two reopens.
 
-The immutable review artifact binds inputs, conflict resolution, source matrix,
-tested code and a documentation-only child to their exact identities. It preserves
-the inherited extra blank EOF in an approved persistence test; the full patch
-whitespace check reports that single formatting finding. The adapter and new
-documentation pass their own whitespace checks.
+The original immutable review artifact binds inputs, conflict resolution, source
+matrix and tested code to their exact identities. Its inherited extra blank EOF
+in the startup/partial-write test failed configured PR CI. A bounded correction
+removes exactly one final LF byte and preserves all sixteen assertions. The 55-case
+ownership file remains byte-exact; the corrected file retains every other byte.
+Runtime and all other test modes/blobs are unchanged. The configured main-relative
+PR whitespace command and affected-file/type checks pass on corrected source.
+A separate immutable delta/proof preserves the original candidate and evidence.
 
 See [verification](tool-result-verification.md) and [design QA](design-qa.md) for
-counts, reproduction and scope. Final combined independent review and fresh CI
-remain required before publication. Live provider delivery, real profiles,
+counts, reproduction and scope. The combined semantics have been independently
+reviewed; the EOF/documentation delta still requires bounded review and fresh CI
+before publication. Live provider delivery, real profiles,
 complete chat UI disk restart and packaging are outside these results.
