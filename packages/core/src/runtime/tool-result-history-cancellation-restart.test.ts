@@ -41,7 +41,7 @@ async function open(path: string, kind: Kind) {
   handles.push(db);
   return { db, store: new WorkflowStore(db), path };
 }
-async function seed(kind: Kind, condition: Condition) {
+async function seed(kind: Kind, condition: Condition | 'valid') {
   vi.useFakeTimers();
   const root = mkdtempSync(join(tmpdir(), 'ax-history-cancel-restart-'));
   roots.push(root);
@@ -77,7 +77,7 @@ async function seed(kind: Kind, condition: Condition) {
   state.db.persistNow();
   const history = previewApprovalHistoryBytes(state.db);
   const diagnostics = state.store.getExecution(executionId)?.historyDiagnostics;
-  expect(diagnostics?.some(item => item.source !== 'output')).toBe(true);
+  expect(Boolean(diagnostics?.some(item => item.source !== 'output'))).toBe(condition !== 'valid');
   return { ...state, root, runtime, approvalId, executionId, history, diagnostics, send, identify };
 }
 function summaries(history: ReturnType<typeof previewApprovalHistoryBytes>, executionId: string) {
@@ -175,6 +175,42 @@ describe.each<Kind>(['sqljs', 'native'])('%s actual editable cancellation preser
       reproducedBaseCommit: 'ac8c88231c48f1127916e160dfe9c891d0ad2f4c', kind, original: summaries(f.history, f.executionId),
       afterSecondReopen: summaries(second.after, f.executionId), originalHistoryPreserved: true,
       status: second.status, errorCode: second.errorCode, providerSends: f.send.mock.calls.length, identityLookups: f.identify.mock.calls.length,
+    });
+  });
+  it('retains ordinary checkpoint replacement for valid rejected history through two reopens', async () => {
+    const f = await seed(kind, 'valid');
+    expect(f.store.rejectPendingApproval(f.approvalId)).toBe(true);
+    const path = kind === 'sqljs' ? join(f.root, 'synthetic-valid-cancellation.sqlite') : f.path;
+    if (kind === 'sqljs') copyFileSync(f.path, path);
+    const first = await recovered(f, kind, path);
+    expect(first.classified).toBe(true);
+    expect(first.candidate?.status).toBe('rejected');
+    expect(first.beforeStatus).toBe('pending_approval');
+    expect(first.before).toEqual(f.history);
+    const before = f.history.executions.find(row => row.id === f.executionId)!;
+    const after = first.after.executions.find(row => row.id === f.executionId)!;
+    expect(after.checkpoint).not.toBe(before.checkpoint);
+    expect(after.output).toBe(before.output);
+    expect(after.snapshot).toBe(before.snapshot);
+    expect(f.history.tail.filter(row => row.execution_id === f.executionId)).toHaveLength(1);
+    expect(first.after.tail.filter(row => row.execution_id === f.executionId)).toHaveLength(0);
+    expect(JSON.parse(first.store.getExecution(f.executionId)!.logJson)).toContainEqual(expect.objectContaining({
+      level: 'info', code: 'approval_rejected', message: 'Recovered durable cancellation. No send.',
+    }));
+    expect(first.after.executions.filter(row => row.id !== f.executionId)).toEqual(f.history.executions.filter(row => row.id !== f.executionId));
+    expect(first.after.tail.filter(row => row.execution_id !== f.executionId)).toEqual(f.history.tail.filter(row => row.execution_id !== f.executionId));
+    const path2 = kind === 'sqljs' ? join(f.root, 'synthetic-valid-cancellation-reopen.sqlite') : path;
+    if (kind === 'sqljs') copyFileSync(path, path2);
+    const second = await recovered(f, kind, path2);
+    expect(second.beforeStatus).toBe('cancelled');
+    expect(second.candidate).toBeUndefined();
+    expect(second.before).toEqual(first.after);
+    expect(second.after).toEqual(first.after);
+    writeObservation(`restart-${kind}-valid-history-control.json`, {
+      reproducedBaseCommit: 'ac8c88231c48f1127916e160dfe9c891d0ad2f4c', kind,
+      original: summaries(f.history, f.executionId), afterRecovery: summaries(first.after, f.executionId),
+      afterSecondReopen: summaries(second.after, f.executionId), status: second.status, errorCode: second.errorCode,
+      checkpointReplacementRetained: true, providerSends: f.send.mock.calls.length, identityLookups: f.identify.mock.calls.length,
     });
   });
 });

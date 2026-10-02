@@ -104,8 +104,11 @@ export class ToolResultApprovals {
         continue;
       }
       if (approval.status === 'rejected') {
+        // Match explicit rejection: replacing diagnosed preview logs would erase the raw tail.
+        const preserveHistory = Boolean(execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output'));
         store.finishExecution(execution.id, 'cancelled', 'approval_rejected', [...previousLog,
-          { at: new Date().toISOString(), level: 'info', code: 'approval_rejected', message: 'Recovered durable cancellation. No send.' }]);
+          { at: new Date().toISOString(), level: 'info', code: 'approval_rejected', message: 'Recovered durable cancellation. No send.' }],
+          { preserveHistory });
         continue;
       }
       const payload = record(approval.payload);
