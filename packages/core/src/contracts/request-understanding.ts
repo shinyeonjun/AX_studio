@@ -68,12 +68,23 @@ export const SourceMetadataEvidenceSchema = z.object({
 });
 export type SourceMetadataEvidence = z.infer<typeof SourceMetadataEvidenceSchema>;
 
+export const REQUEST_UNDERSTANDING_FIELDS = ['intent', 'targetSourceRef', 'outputKind'] as const;
+export type RequestUnderstandingField = (typeof REQUEST_UNDERSTANDING_FIELDS)[number];
+export interface RequestFieldAuthority {
+  readonly anchor: AuthoritativeRequestAnchor;
+  readonly requestRevision: number;
+}
+export type RequestFieldProvenance = Readonly<Record<RequestUnderstandingField, {
+  readonly requestDigest: string; readonly requestRevision: number;
+}>>;
+
 export interface ActiveRequestSnapshot {
   readonly anchor: AuthoritativeRequestAnchor;
   readonly requestRevision: number;
   readonly catalogRevision: number;
   readonly policyRevision: number;
   readonly signal: AbortSignal;
+  readonly fieldAuthorities: Readonly<Record<RequestUnderstandingField, RequestFieldAuthority>>;
 }
 
 export interface RequestUnderstanding {
@@ -90,6 +101,7 @@ export interface RequestUnderstanding {
     readonly catalogRevision: number;
     readonly policyRevision: number;
     readonly selectedRefs: Readonly<Record<string, string>>;
+    readonly fieldAuthorities: RequestFieldProvenance;
   };
 }
 
@@ -104,13 +116,14 @@ export interface RequestUnderstandingAssessment {
   readonly provenance: {
     readonly requestDigest: string; readonly requestRevision: number;
     readonly catalogRevision: number; readonly policyRevision: number;
+    readonly fieldAuthorities: RequestFieldProvenance;
   };
 }
 
 export type UnderstandingStop =
   | 'answered' | 'outside_slice' | 'ambiguous_intent' | 'unsupported_intent'
   | 'source_required' | 'source_ambiguous' | 'candidate_coverage_incomplete'
-  | 'output_ambiguous' | 'metadata_unavailable' | 'invalid_decision'
+  | 'output_ambiguous' | 'metadata_unavailable' | 'unsupported_operation' | 'invalid_decision'
   | 'permission_denied' | 'metadata_budget_exhausted' | 'provider_failure';
 
 export interface RequestUnderstandingResult {

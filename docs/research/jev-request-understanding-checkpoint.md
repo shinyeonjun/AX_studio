@@ -1,5 +1,10 @@
 # Local review checkpoint: Jev request-understanding first slice
 
+This is the historical checkpoint for `ac5feca`, preserved for comparison.
+Independent review requested five corrections. See the
+[prepublication revision checkpoint](jev-request-understanding-revision.md) for
+the corrected local change and current validation/publication status.
+
 Base: `ab46777e0ab76d55980faffcb702b0f93223058e`.
 Branch: `feat/jev-decision-harness-offline`.
 The accepted [ADR](../architecture/jev-request-understanding.md) and

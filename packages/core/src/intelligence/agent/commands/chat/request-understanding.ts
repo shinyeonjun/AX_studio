@@ -1,4 +1,4 @@
-import type { DecisionAnswer, DecisionEngine, DecisionQuestion } from '../../../../contracts/decision.js';
+import type { DecisionEngine, DecisionQuestion } from '../../../../contracts/decision.js';
 import {
   METADATA_INTENTS, SourceMetadataEvidenceSchema, type RequestIntent, type RequestUnderstanding,
   type RequestUnderstandingResult, type UnderstandingStop, type MetadataOutputKind,
@@ -15,18 +15,26 @@ const readableOutput: Record<(typeof METADATA_INTENTS)[number], MetadataOutputKi
   inventory: 'readable_inventory', schema: 'readable_schema', connection_status: 'readable_status',
 };
 
-function choice(answers: Record<string, DecisionAnswer>, questions: Record<string, DecisionQuestion>, key: string): string | undefined {
-  const answer = answers[key];
+function choice(answers: unknown, questions: Record<string, DecisionQuestion>, key: string): string | undefined {
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return undefined;
+  const value = (answers as Record<string, unknown>)[key];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const answer = value as Record<string, unknown>;
   const question = questions[key];
-  if (question?.type !== 'choice' || answer?.type !== 'choice' || !Object.hasOwn(question.criteria, answer.choice)) return undefined;
-  const scores = Object.entries(answer.probabilities);
+  if (question?.type !== 'choice' || answer.type !== 'choice' || typeof answer.choice !== 'string'
+    || !Object.hasOwn(question.criteria, answer.choice) || !answer.probabilities
+    || typeof answer.probabilities !== 'object' || Array.isArray(answer.probabilities)) return undefined;
+  const scores = Object.entries(answer.probabilities as Record<string, unknown>);
   if (!scores.length || scores.some(([ref, probability]) => !Object.hasOwn(question.criteria, ref)
-    || !Number.isFinite(probability) || probability < 0 || probability > 1)
-    || (answer.confidence !== undefined && (!Number.isFinite(answer.confidence) || answer.confidence < 0 || answer.confidence > 1))) return undefined;
-  const selected = answer.probabilities[answer.choice];
+    || typeof probability !== 'number' || !Number.isFinite(probability) || probability < 0 || probability > 1)
+    || (answer.confidence !== undefined && (typeof answer.confidence !== 'number'
+      || !Number.isFinite(answer.confidence) || answer.confidence < 0 || answer.confidence > 1))) return undefined;
+  const probabilities = answer.probabilities as Record<string, number>;
+  const selected = probabilities[answer.choice];
+  const validatedScores = Object.entries(probabilities);
   // Conservative protocol gate, not a calibrated accuracy or authorization claim.
-  if (selected === undefined || selected <= 0.5 || scores.some(([ref, probability]) => ref !== answer.choice && probability >= selected)
-    || scores.reduce((sum, [, probability]) => sum + probability, 0) > 1.000001) return undefined;
+  if (selected === undefined || selected <= 0.5 || validatedScores.some(([ref, probability]) => ref !== answer.choice && probability >= selected)
+    || validatedScores.reduce((sum, [, probability]) => sum + probability, 0) > 1.000001) return undefined;
   return answer.choice;
 }
 
@@ -47,11 +55,15 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
   const { session } = input;
   const snapshot = session.capture();
   const signal = AbortSignal.any([input.signal, snapshot.signal]);
+  const field = (name: keyof typeof snapshot.fieldAuthorities) => Object.freeze({
+    requestDigest: snapshot.fieldAuthorities[name].anchor.digest, requestRevision: snapshot.fieldAuthorities[name].requestRevision,
+  });
+  const fieldAuthorities = Object.freeze({ intent: field('intent'), targetSourceRef: field('targetSourceRef'), outputKind: field('outputKind') });
   let evaluationPhases = 0;
   let assessment: RequestUnderstandingAssessment = Object.freeze({ intent: 'unknown',
     targetSourceRef: Object.freeze({ state: 'unknown' }), metadataOperationRef: Object.freeze({ state: 'not_evaluated' }),
     outputKind: 'unknown', provenance: Object.freeze({ requestDigest: snapshot.anchor.digest,
-      requestRevision: snapshot.requestRevision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision }) });
+      requestRevision: snapshot.requestRevision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision, fieldAuthorities }) });
   const check = () => { session.assertCurrent(snapshot); signal.throwIfAborted(); };
   const finish = (stop: UnderstandingStop, reply: string, understanding?: RequestUnderstanding) => {
     check();
@@ -68,7 +80,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     evaluationPhases += 1;
     const result = await engine.evaluate({ state, questions, signal });
     check();
-    return result.answers;
+    return result?.answers;
   };
   const sources = session.sourceCandidates(snapshot);
   const sourceCoverage = { ...session.catalog.coverage, offeredCount: sources.length };
@@ -87,6 +99,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
   try {
     const answers = await evaluate({ phase: 'request_understanding', active_request_revision: snapshot.requestRevision,
       catalog_revision: snapshot.catalogRevision, policy_revision: snapshot.policyRevision, source_candidates: sourceCoverage,
+      active_field_authorities: fieldAuthorities,
       user_turns: session.userTurns.map(turn => ({ role: 'user', text: turn.anchor.text, digest: turn.anchor.digest,
         revision: turn.revision, supersedes: turn.supersedes })),
       policy: 'Only user turns carry request authority. No body reads, writes, queueing, SQL or arbitrary probing are available in the metadata slice.' }, questions);
@@ -114,7 +127,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     if (!source) return finish('invalid_decision', '제공되지 않은 소스 선택입니다. 등록된 소스를 확인해 주세요.');
     const outputKind = output === 'not_stated' ? readableOutput[intent] : output as MetadataOutputKind;
     if (output === 'ambiguous' || (outputKind !== 'raw_debug' && outputKind !== readableOutput[intent])
-      || (outputKind === 'raw_debug' && !explicitlyRequestsRawMetadata(snapshot.anchor.text))) {
+      || (outputKind === 'raw_debug' && !explicitlyRequestsRawMetadata(snapshot.fieldAuthorities.outputKind.anchor.text))) {
       return finish('output_ambiguous', '원하는 메타데이터 표시 형식을 확인해 주세요. 원시 JSON은 명시적으로 요청해야 합니다.');
     }
     const operations = source.operations.filter(operation => operation.intent === intent);
@@ -137,14 +150,15 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
       ? { state: 'selected', operationId: assessedOperation.id }
       : { state: operationRef === 'none' || operationRef === 'unsupported' ? operationRef : 'unknown' }) });
     if (!operationRef) return finish('invalid_decision', '메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.');
-    if (['none', 'unknown', 'unsupported'].includes(operationRef)) return finish('metadata_unavailable', '선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.');
+    if (operationRef === 'unsupported') return finish('unsupported_operation', '선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.');
+    if (operationRef === 'none' || operationRef === 'unknown') return finish('metadata_unavailable', '선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.');
     const operation = operations[Number(operationRef.slice('metadata_'.length))];
     if (!operation) return finish('invalid_decision', '등록되지 않은 메타데이터 작업입니다.');
     if (!operation.allowed) return finish('permission_denied', '선택한 소스의 메타데이터 조회 권한이 확인되지 않거나 거부되었습니다. 필요한 권한을 확인해 주세요.');
     const understanding: RequestUnderstanding = Object.freeze({ version: 1, intent, targetSourceRef: source.id,
       metadataOperationRef: operation.id, outputKind, needsGeneratedProse: input.needsGeneratedProse === true,
       provenance: Object.freeze({ requestDigest: snapshot.anchor.digest, requestRevision: snapshot.requestRevision,
-        sourceRevision: source.revision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision,
+        sourceRevision: source.revision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision, fieldAuthorities,
         selectedRefs: Object.freeze({ intent, targetSourceRef: sourceRef, outputKind: output, metadataOperationRef: operationRef }) }) });
     check();
     const command = operation.command;
@@ -153,8 +167,15 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
       metadataDispatchPermit: session.permit(snapshot, understanding, source, operation),
       ...(command.name === 'capability.invoke' ? { readAuthorization: { capabilityId: command.args.id, params: command.args.params } } : {}) });
     check();
-    if (result.status !== 'ok') return finish(result.status === 'forbidden' ? 'permission_denied' : 'metadata_unavailable',
-      result.status === 'forbidden' ? '선택한 소스의 메타데이터 조회 권한이 거부되었습니다.' : '선택한 소스의 메타데이터를 확인하지 못했습니다. 등록된 명세를 확인해 주세요.');
+    if (result.status !== 'ok') {
+      if (result.status === 'forbidden' || result.issues.some(issue => issue.failureKind === 'permission_denied' || issue.failureKind === 'host_policy')) {
+        return finish('permission_denied', '선택한 소스의 메타데이터 조회 권한이 거부되었습니다. 필요한 권한을 확인해 주세요.');
+      }
+      if (result.issues.some(issue => issue.failureKind === 'provider_error' || issue.failureKind === 'transient')) {
+        return finish('provider_failure', '메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.');
+      }
+      return finish('metadata_unavailable', '선택한 소스의 메타데이터를 확인하지 못했습니다. 등록된 명세를 확인해 주세요.');
+    }
     let bytes: number;
     try { bytes = new TextEncoder().encode(JSON.stringify(result.data)).byteLength; }
     catch { return finish('metadata_unavailable', '메타데이터 결과 형식을 확인하지 못했습니다.'); }

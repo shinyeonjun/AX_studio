@@ -441,7 +441,7 @@ export function deterministicHttpConnectionListChatReply(
   return [
     `저장된 HTTP 연결 (${connections.length}/${total}개):`,
     ...connections.map((connection) =>
-      `- ${JSON.stringify(connection.label)} (ID: ${JSON.stringify(connection.id)}) — ${connection.usable ? '설정 준비됨' : connection.connected ? '인증 설정 필요' : '저장된 연결 없음'}`),
+      `- ${JSON.stringify(connection.label)} (ID: ${JSON.stringify(connection.id)}) — ${connection.usable ? '설정 준비됨' : connection.connected ? '인증 설정 필요' : '설정 저장됨, 연결 안 됨'}`),
     '저장된 설정 상태이며, 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.',
     ...(data.truncated === true ? ['', '목록이 일부만 표시되었습니다.'] : []),
   ].join('\n');

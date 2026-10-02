@@ -26,6 +26,9 @@ function permit(task: RequestUnderstandingSession) {
     metadataOperationRef: operation.id, outputKind: 'readable_schema', needsGeneratedProse: false,
     provenance: { requestDigest: snapshot.anchor.digest, requestRevision: snapshot.requestRevision,
       sourceRevision: source.revision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision,
+      fieldAuthorities: { intent: { requestDigest: snapshot.fieldAuthorities.intent.anchor.digest, requestRevision: snapshot.fieldAuthorities.intent.requestRevision },
+        targetSourceRef: { requestDigest: snapshot.fieldAuthorities.targetSourceRef.anchor.digest, requestRevision: snapshot.fieldAuthorities.targetSourceRef.requestRevision },
+        outputKind: { requestDigest: snapshot.fieldAuthorities.outputKind.anchor.digest, requestRevision: snapshot.fieldAuthorities.outputKind.requestRevision } },
       selectedRefs: { intent: 'schema', targetSourceRef: 'source_0', metadataOperationRef: 'metadata_0', outputKind: 'readable_schema' } } };
   return task.permit(snapshot, understanding, source, operation);
 }

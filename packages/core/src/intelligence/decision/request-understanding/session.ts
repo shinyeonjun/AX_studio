@@ -1,6 +1,7 @@
 import type { AxCommand } from '../../agent/commands/schema.js';
 import {
   MetadataCatalogSchema,
+  REQUEST_UNDERSTANDING_FIELDS, type RequestUnderstandingField, type RequestFieldAuthority,
   type MetadataCatalog, type AcceptedMetadataCatalog, type ActiveRequestSnapshot,
   type RegisteredMetadataOperation, type RegisteredMetadataSource, type RequestUnderstanding,
 } from '../../../contracts/request-understanding.js';
@@ -52,7 +53,8 @@ export class RequestUnderstandingSession {
   private requestRevision = 1;
   private controller = new AbortController();
   private catalogValue: AcceptedMetadataCatalog;
-  private turns: Array<{ anchor: AuthoritativeRequestAnchor; revision: number; supersedes: readonly string[] }>;
+  private fieldAuthorities: Readonly<Record<RequestUnderstandingField, RequestFieldAuthority>>;
+  private turns: Array<{ anchor: AuthoritativeRequestAnchor; revision: number; supersedes: readonly RequestUnderstandingField[] }>;
 
   constructor(input: { text: string; requestId: string; workspaceSessionId: string; catalog: MetadataCatalog }) {
     this.catalogValue = acceptedCatalog(input.catalog);
@@ -61,6 +63,8 @@ export class RequestUnderstandingSession {
       catalogRevision: this.catalogValue.revision,
     });
     this.turns = [{ anchor: this.anchor, revision: this.requestRevision, supersedes: [] }];
+    const authority = Object.freeze({ anchor: this.anchor, requestRevision: this.requestRevision });
+    this.fieldAuthorities = Object.freeze({ intent: authority, targetSourceRef: authority, outputKind: authority });
   }
 
   get catalog(): AcceptedMetadataCatalog { return this.catalogValue; }
@@ -69,7 +73,7 @@ export class RequestUnderstandingSession {
   capture(): ActiveRequestSnapshot {
     return Object.freeze({ anchor: this.anchor, requestRevision: this.requestRevision,
       catalogRevision: this.catalogValue.revision, policyRevision: this.catalogValue.policyRevision,
-      signal: this.controller.signal });
+      signal: this.controller.signal, fieldAuthorities: this.fieldAuthorities });
   }
 
   assertCurrent(snapshot: ActiveRequestSnapshot): void {
@@ -80,7 +84,10 @@ export class RequestUnderstandingSession {
     if (snapshot.signal.aborted || this.controller.signal.aborted) throw new RequestUnderstandingInvalidatedError('cancelled');
   }
 
-  acceptCorrection(input: { text: string; requestId: string; supersedes: readonly ('intent' | 'targetSourceRef' | 'outputKind')[] }): void {
+  acceptCorrection(input: { text: string; requestId: string; supersedes: readonly RequestUnderstandingField[] }): void {
+    if (!Array.isArray(input.supersedes) || input.supersedes.some(field => !REQUEST_UNDERSTANDING_FIELDS.includes(field))) {
+      throw new Error('invalid_request_field_supersession');
+    }
     const anchor = createAuthoritativeRequestAnchor(input.text, {
       originalRequestId: input.requestId, workspaceSessionId: this.anchor.workspaceSessionId,
       catalogRevision: this.catalogValue.revision,
@@ -90,6 +97,12 @@ export class RequestUnderstandingSession {
     this.anchor = anchor;
     this.requestRevision += 1;
     this.turns.push({ anchor, revision: this.requestRevision, supersedes: [...input.supersedes] });
+    const authority = Object.freeze({ anchor, requestRevision: this.requestRevision });
+    this.fieldAuthorities = Object.freeze({
+      intent: input.supersedes.includes('intent') ? authority : this.fieldAuthorities.intent,
+      targetSourceRef: input.supersedes.includes('targetSourceRef') ? authority : this.fieldAuthorities.targetSourceRef,
+      outputKind: input.supersedes.includes('outputKind') ? authority : this.fieldAuthorities.outputKind,
+    });
   }
 
   replaceCatalog(catalog: MetadataCatalog): void {
@@ -107,13 +120,15 @@ export class RequestUnderstandingSession {
   /** Exact literal alias/name spans are candidates, never semantic extraction or authorization. */
   sourceCandidates(snapshot: ActiveRequestSnapshot) {
     this.assertCurrent(snapshot);
+    const authority = snapshot.fieldAuthorities.targetSourceRef;
     return this.catalog.sources.map((source, index) => ({ ref: `source_${index}`, source,
       spans: [source.label, ...source.aliases].flatMap(alias => {
         // ASCII folding preserves UTF-16 offsets; unrestricted Unicode folding need not.
         const fold = (text: string) => text.replace(/[A-Z]/gu, letter => letter.toLowerCase());
-        const start = fold(snapshot.anchor.text).indexOf(fold(alias));
+        const start = fold(authority.anchor.text).indexOf(fold(alias));
         return start < 0 ? [] : [{ start, end: start + alias.length,
-          text: snapshot.anchor.text.slice(start, start + alias.length), requestDigest: snapshot.anchor.digest }];
+          text: authority.anchor.text.slice(start, start + alias.length), requestDigest: authority.anchor.digest,
+          requestRevision: authority.requestRevision }];
       }),
     }));
   }
@@ -128,7 +143,9 @@ export class RequestUnderstandingSession {
       || !operation.allowed || understanding.targetSourceRef !== source.id || understanding.metadataOperationRef !== operation.id
       || understanding.intent !== operation.intent || provenance.requestDigest !== snapshot.anchor.digest
       || provenance.requestRevision !== snapshot.requestRevision || provenance.catalogRevision !== snapshot.catalogRevision
-      || provenance.policyRevision !== snapshot.policyRevision || provenance.sourceRevision !== source.revision) {
+      || provenance.policyRevision !== snapshot.policyRevision || provenance.sourceRevision !== source.revision
+      || REQUEST_UNDERSTANDING_FIELDS.some(field => provenance.fieldAuthorities?.[field]?.requestDigest !== snapshot.fieldAuthorities[field].anchor.digest
+        || provenance.fieldAuthorities?.[field]?.requestRevision !== snapshot.fieldAuthorities[field].requestRevision)) {
       throw new Error('invalid_metadata_authorization');
     }
     const permit = Object.freeze({ sourceId: source.id, operationId: operation.id });

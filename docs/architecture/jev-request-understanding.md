@@ -179,3 +179,31 @@ No live providers, secrets, user DB/email/screenshot data, installers, applicati
 restart or blocked c837 QA are authorized. Work stays in the isolated task-local
 feature branch. The parent reviews the exact code before any push, PR, main merge
 or canonical synchronization.
+
+## Prepublication correction clarification
+
+Independent review of `ac5feca` reproduced five defects. Their correction stays
+within this accepted slice; it introduces no Desktop activation, general parser,
+read-controller wiring or additional live study.
+
+Legacy display views must follow each actual command producer: discovery
+candidates, described operations/schema and nested paging, session filenames and
+saved HTTP endpoints. Only approved metadata fields are displayed. A counter
+alone never establishes an empty collection, and nested/display truncation must
+remain visible. Saved configuration and its connected/active flag are separate
+facts; neither establishes current authentication, permission or health.
+
+The host retains the exact authoritative user turn for each finite request field
+(`intent`, `targetSourceRef`, `outputKind`). A correction replaces only its named
+fields; the others keep their prior authority. Raw/debug authorization is checked
+against the active output field's turn, with an affirmative syntax requirement
+and a conservative rejection of refusals, quotations or ambiguous mentions.
+Every dispatch and publication still binds the current request/catalog/policy
+revision, even when a field originated in an earlier immutable turn.
+
+Decision protocol validation precedes property iteration. Connector denial,
+provider failure, unsupported operation, unavailable metadata and exhausted
+budget remain different terminal outcomes, with no alternative read or enqueue.
+The original 24 hand-labeled cases remain unchanged. Reviewer probes and added
+synthetic regressions are reported separately and establish integration behavior
+only, with publication held for independent review of the corrected commit.
