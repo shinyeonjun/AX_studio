@@ -34,6 +34,10 @@ export function renderSourceMetadata(sourceLabel: string, evidence: SourceMetada
   outputKind: MetadataOutputKind): string {
   if (outputKind === 'raw_debug') return jsonFence(evidence);
   const label = inertMetadataText(sourceLabel);
+  const localScope = evidence.scope === 'validated_local_registration'
+    ? '\n저장된 로컬 등록 보기만 확인했습니다. 원격 API 전체 목록이나 현재 권한을 확인한 것이 아닙니다.'
+    : evidence.scope === 'registered_field_dictionary' ? '\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.' : '';
+  const filtered = evidence.filtered ? '\n안전하게 표시할 수 없는 등록 항목을 제외했습니다. 필터링된 보기는 완전한 목록이 아닙니다.' : '';
   const coverage = evidence.truncated || evidence.knownTotal === null || evidence.knownTotal > evidence.entries.length
     ? '\n현재 등록된 메타데이터의 일부이며, 원천 데이터 전체를 확인한 것은 아닙니다.'
     : '\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.';
@@ -45,12 +49,14 @@ export function renderSourceMetadata(sourceLabel: string, evidence: SourceMetada
     const health = { healthy: '정상 확인됨', unhealthy: '문제 확인됨', unknown: '미확인' };
     return `${label} 연결 상태:\n- 카탈로그: ${status.catalogExists ? '등록됨' : '미등록'}\n`
       + `- 설정: ${status.configured ? '저장됨' : '미설정'}\n- 인증: ${authentication[status.authentication]}\n`
-      + `- 작업 권한: ${permission[status.operationPermission]}\n- 현재 상태: ${health[status.health]}`;
+      + `- 작업 권한: ${permission[status.operationPermission]}\n- 현재 상태: ${health[status.health]}`
+      + (status.enabled === undefined ? '' : `\n- 저장된 사용 설정: ${status.enabled ? '켜짐' : '꺼짐'}`) + localScope;
   }
-  const title = evidence.intent === 'schema' ? '등록된 스키마' : '등록된 데이터 종류';
+  const title = evidence.intent === 'schema' ? evidence.scope === 'registered_field_dictionary' ? '등록된 필드 사전' : '등록된 스키마' : '등록된 데이터 종류';
   const rows = evidence.entries.map(entry => `- ${inertMetadataText(entry.label || entry.id)}`
-    + (entry.fields?.length ? `: ${entry.fields.map(field => `${inertMetadataText(field.name)} (${inertMetadataText(field.type)})`).join(', ')}` : ''));
-  return `${label} ${title}:\n${rows.length ? rows.join('\n') : '등록된 항목이 없습니다.'}${coverage}`;
+    + (entry.path ? ` — ${inertMetadataText(entry.path)}` : '')
+    + (entry.fields?.length ? `: ${entry.fields.map(field => `${inertMetadataText(field.name)} (${field.type ? inertMetadataText(field.type) : '형식: 알 수 없음'}${evidence.scope === 'registered_field_dictionary' ? `, 필수: ${field.required === undefined ? '알 수 없음' : field.required ? '예' : '아니요'}` : ''})`).join(', ')}` : ''));
+  return `${label} ${title}:\n${rows.length ? rows.join('\n') : evidence.truncated ? '현재 검증된 등록 보기에서 표시할 항목이 없습니다.' : '등록된 항목이 없습니다.'}${coverage}${localScope}${filtered}`;
 }
 
 interface MetadataView {

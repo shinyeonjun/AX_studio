@@ -45,7 +45,7 @@ export interface RequestUnderstandingChatInput {
   onResult?: (result: RequestUnderstandingResult) => void;
 }
 
-/** Explicit experimental chat seam. Desktop never constructs this input in this slice. */
+/** Explicit experimental seam; only the default-off offline Desktop installation constructs it. */
 export async function runRequestUnderstandingChat(input: RequestUnderstandingChatInput & {
   decisionEngine?: DecisionEngine;
   commandService: AxCommandService;
@@ -176,6 +176,12 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
       ...(command.name === 'capability.invoke' ? { readAuthorization: { capabilityId: command.args.id, params: command.args.params } } : {}) });
     check();
     if (result.status !== 'ok') {
+      if (result.issues.some(issue => issue.code === 'registered_http_inventory_unavailable')) {
+        return finish('metadata_unavailable', '저장된 HTTP 작업 목록이 없습니다. 이 경로는 등록된 목록만 확인하며 원격 API를 탐색하지 않습니다.');
+      }
+      if (result.issues.some(issue => issue.code === 'registered_http_dictionary_unavailable')) {
+        return finish('metadata_unavailable', '이 HTTP 엔드포인트의 등록된 필드 사전이 없습니다. 원격 데이터 스키마는 확인하지 않았습니다.');
+      }
       if (result.status === 'forbidden' || result.issues.some(issue => issue.failureKind === 'permission_denied' || issue.failureKind === 'host_policy')) {
         return finish('permission_denied', '선택한 소스의 메타데이터 조회 권한이 거부되었습니다. 필요한 권한을 확인해 주세요.');
       }

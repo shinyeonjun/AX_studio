@@ -4,6 +4,8 @@ import type {
   WorkspaceChatChangedEvent,
   WorkspaceChatMessage,
   WorkspaceChatRecord,
+  WorkspaceChatSaveOptions,
+  WorkspaceChatPersistedReplyReceipt,
   WorkspaceSourceRecord,
 } from '@ax-studio/core';
 
@@ -13,10 +15,13 @@ export interface AxWorkspaceApi {
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,
+    options?: Pick<WorkspaceChatSaveOptions, 'metadataLane'>,
   ) => Promise<{
     role: 'assistant';
     content: string;
     requestId: string;
+    persistedReply?: WorkspaceChatPersistedReplyReceipt;
+    metadataStop?: string;
     changedWorkflowIds: string[];
     removedWorkflowIds: string[];
     inputRequests: AxInputRequest[];
@@ -38,6 +43,7 @@ export interface AxWorkspaceApi {
     id: string | undefined,
     messages: WorkspaceChatMessage[],
     workflowId?: string | null,
+    options?: WorkspaceChatSaveOptions,
   ) => Promise<WorkspaceChatRecord>;
   loadWorkspaceChat: (id: string) => Promise<WorkspaceChatRecord>;
   loadWorkspaceChatByWorkflowId: (workflowId: string) => Promise<WorkspaceChatRecord | null>;

@@ -23,6 +23,7 @@ import {
   commandInputContinuation,
   selectChatContext,
   selectMessagesThroughUserMessage,
+  selectMessagesThroughUserTurn,
 } from '../chat-boundary.js';
 import { buildDesktopDesignToolContext } from '../design-tool-context.js';
 import {
@@ -42,6 +43,7 @@ import {
   type PendingCommandInputValue,
 } from './pending-command.js';
 import { contextUpdateConfirmation as findContextUpdateConfirmation, isJobConfirmation, workflowIdsChanged } from './helpers.js';
+import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
 
 type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
 
@@ -72,6 +74,7 @@ export function registerWorkspaceChatMessageHandler() {
     requestId?: unknown,
     workflowId?: unknown,
     workspaceSessionId?: unknown,
+    chatOptions?: unknown,
   ) => {
     const core = getCore();
     const startedAt = performance.now();
@@ -86,8 +89,31 @@ export function registerWorkspaceChatMessageHandler() {
     const storedChat = core.store.getWorkspaceChat(safeWorkspaceSessionId);
     if (!storedChat) throw new Error('대화를 찾을 수 없습니다.');
     const userMessage = boundedText(userMessageInput, '사용자 메시지').trim();
-    const requestMessages = selectMessagesThroughUserMessage(storedChat.messages, userMessage);
+    if (chatOptions !== undefined && (!chatOptions || typeof chatOptions !== 'object' || Array.isArray(chatOptions))) throw new Error('workspace_chat_invalid_lane');
+    const preferences = (chatOptions ?? {}) as Record<string, unknown>;
+    if (Object.keys(preferences).some(key => key !== 'metadataLane')
+      || (preferences.metadataLane !== undefined && preferences.metadataLane !== 'registered_http_metadata')) throw new Error('workspace_chat_invalid_lane');
+    const metadataLane = preferences.metadataLane === 'registered_http_metadata';
+    if (metadataLane && !registeredHttpMetadataAvailable()) {
+      return metadataTerminalReply(typeof requestId === 'string' ? requestId : 'metadata-unavailable',
+        'gate_unavailable', '등록된 HTTP 메타데이터 경로를 현재 사용할 수 없습니다.');
+    }
+    const exactTurn = typeof requestId === 'string' && storedChat.messages.some(message => message.role === 'user' && message.turnId === requestId);
+    const requestMessages = metadataLane || exactTurn
+      ? selectMessagesThroughUserTurn(storedChat.messages, userMessage, requestId)
+      : selectMessagesThroughUserMessage(storedChat.messages, userMessage);
     const pendingInput = commandInputContinuation(requestMessages);
+    if (metadataLane) {
+      const metadataRequestId = requestId as string;
+      if (pendingInput || requestMessages.at(-2)?.inputContinuation === 'command'
+        || findContextUpdateConfirmation(requestMessages, userMessage) || isJobConfirmation(requestMessages, userMessage)) {
+        return metadataTerminalReply(metadataRequestId, 'continuation_not_supported', '입력 또는 명령 확인 이어가기는 이 메타데이터 경로에서 지원하지 않습니다. 새 요청을 저장해 주세요.');
+      }
+      return runRegisteredHttpMetadataTurn({ store: core.store, commandService: core.commandService, harness: core.agentHarness,
+        sessionId: safeWorkspaceSessionId, requestId: metadataRequestId, userText: userMessage,
+        onProgress: message => event.sender.send('ax:chat-progress', { message, requestId: metadataRequestId }),
+      });
+    }
     const requestedWorkflowId = typeof workflowId === 'string' ? workflowId.trim() : undefined;
     const mappedWorkflowId = storedChat.workflowId;
     const effectiveWorkflowId = requestedWorkflowId || mappedWorkflowId;

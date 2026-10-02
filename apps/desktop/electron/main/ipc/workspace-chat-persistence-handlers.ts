@@ -3,6 +3,7 @@ import { getCore } from '../core-instance.js';
 import { normalizeChatMessages } from './chat-boundary.js';
 import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
 import { clearPendingCommand } from './workspace-chat-command-handlers/pending-command.js';
+import { observeSavedWorkspaceTurn, registeredHttpMetadataAvailable } from './workspace-chat-command-handlers/metadata-turns.js';
 
 export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:listChatSessions', async () => {
@@ -22,7 +23,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
 
   ipcHandle(
     'ax:saveWorkspaceChat',
-    async (_event, id: string | undefined, messages: unknown, workflowId?: unknown) => {
+    async (_event, id: string | undefined, messages: unknown, workflowId?: unknown, saveOptions?: unknown) => {
       const core = getCore();
       if (id !== undefined && typeof id !== 'string') throw new Error('대화 id 형식이 올바르지 않습니다.');
       if (workflowId !== undefined && workflowId !== null && typeof workflowId !== 'string') {
@@ -34,11 +35,28 @@ export function registerWorkspaceChatPersistenceHandlers() {
           : typeof workflowId === 'string'
             ? workflowId.trim() || null
             : undefined;
-      return core.store.saveWorkspaceChat({
+      if (saveOptions !== undefined && (!saveOptions || typeof saveOptions !== 'object' || Array.isArray(saveOptions))) {
+        throw new Error('workspace_chat_invalid_save_options');
+      }
+      const options = (saveOptions ?? {}) as Record<string, unknown>;
+      if (Object.keys(options).some(key => !['expectedTranscriptRevision', 'metadataLane'].includes(key))
+        || (options.expectedTranscriptRevision !== undefined && (typeof options.expectedTranscriptRevision !== 'string' || options.expectedTranscriptRevision.length > 128))
+        || (options.metadataLane !== undefined && options.metadataLane !== 'registered_http_metadata')) throw new Error('workspace_chat_invalid_save_options');
+      const normalized = normalizeChatMessages(messages);
+      const turnIds = normalized.filter(message => message.role === 'user' && message.turnId).map(message => message.turnId);
+      if (new Set(turnIds).size !== turnIds.length) throw new Error('workspace_chat_duplicate_turn_id');
+      let before;
+      try { before = id ? core.store.getWorkspaceChat(id) : undefined; } catch { /* An ordinary save can still repair an old corrupt row. */ }
+      const metadataPreference = options.metadataLane === 'registered_http_metadata';
+      const saved = core.store.saveWorkspaceChat({
         id,
-        messages: normalizeChatMessages(messages),
+        messages: normalized,
+        expectedTranscriptRevision: options.expectedTranscriptRevision as string | undefined,
+        registeredMetadataParticipation: metadataPreference && registeredHttpMetadataAvailable(),
         ...(normalizedWorkflowId === undefined ? {} : { workflowId: normalizedWorkflowId }),
       });
+      observeSavedWorkspaceTurn(core.store, before?.messages ?? [], saved, metadataPreference);
+      return saved;
     },
   );
 

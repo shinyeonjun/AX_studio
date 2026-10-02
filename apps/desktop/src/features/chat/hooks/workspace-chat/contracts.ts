@@ -5,6 +5,7 @@ import type {
   WorkspaceChatMessage,
   WorkspaceSourceRecord,
   TableArtifact,
+  WorkspaceChatPersistedReplyReceipt,
 } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 
@@ -15,11 +16,20 @@ export interface WorkspaceChatRefs {
   busyRef: MutableRefObject<boolean>;
   sourceBusyRef: MutableRefObject<boolean>;
   pendingWorkspaceChatRefreshRef: MutableRefObject<string | undefined>;
+  transcriptRevisionRef?: MutableRefObject<string | undefined>;
+}
+
+/** One render snapshot owns both its messages and the token for those messages. */
+export interface WorkspaceChatTranscriptSnapshot {
+  readonly messages: WorkspaceChatMessage[];
+  readonly transcriptRevision?: string;
 }
 
 export interface WorkspaceChatContext {
   refs: WorkspaceChatRefs;
   chatMessages: WorkspaceChatMessage[];
+  transcriptSnapshot?: WorkspaceChatTranscriptSnapshot;
+  setTranscriptSnapshot?: Dispatch<SetStateAction<WorkspaceChatTranscriptSnapshot>>;
   workspaceWorkflowState: WorkspaceWorkflowState | null;
   refresh: () => Promise<void>;
   onSessionsChanged?: () => void;
@@ -46,6 +56,9 @@ export interface WorkspaceChatMessageContext extends WorkspaceChatContext {
 export interface WorkspaceSendResponse {
   role: 'assistant';
   content: string;
+  requestId?: string;
+  persistedReply?: WorkspaceChatPersistedReplyReceipt;
+  metadataStop?: string;
   changedWorkflowIds?: string[];
   removedWorkflowIds?: string[];
   inputContinuation?: 'command';

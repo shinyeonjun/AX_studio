@@ -1,3 +1,5 @@
+import { cancelMetadataRequest, cancelMetadataSession, shutdownMetadataTurns } from './ipc/workspace-chat-command-handlers/metadata-turns.js';
+
 type ActiveWorkspaceChat = {
   controller: AbortController;
   sessionId?: string;
@@ -19,15 +21,16 @@ export function releaseWorkspaceChat(requestId: string, controller: AbortControl
 }
 
 export function cancelWorkspaceChat(requestId: string): boolean {
+  const metadataCancelled = cancelMetadataRequest(requestId);
   const active = activeChats.get(requestId);
-  if (!active) return false;
+  if (!active) return metadataCancelled;
   active.controller.abort();
   activeChats.delete(requestId);
   return true;
 }
 
 export function cancelWorkspaceChatSession(sessionId: string): number {
-  let cancelled = 0;
+  let cancelled = cancelMetadataSession(sessionId);
   for (const [requestId, active] of activeChats) {
     if (active.sessionId !== sessionId) continue;
     active.controller.abort();
@@ -39,6 +42,7 @@ export function cancelWorkspaceChatSession(sessionId: string): number {
 
 /** Abort every in-flight chat turn. Used on app shutdown so quit is not held by a provider call. */
 export function abortAllWorkspaceChats(): void {
+  shutdownMetadataTurns();
   for (const { controller } of activeChats.values()) controller.abort();
   activeChats.clear();
 }
