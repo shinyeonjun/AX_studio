@@ -207,3 +207,14 @@ budget remain different terminal outcomes, with no alternative read or enqueue.
 The original 24 hand-labeled cases remain unchanged. Reviewer probes and added
 synthetic regressions are reported separately and establish integration behavior
 only, with publication held for independent review of the corrected commit.
+
+The second prepublication review clarified four remaining applications of these
+same requirements. The raw syntax gate must accept a complete affirmative output
+directive, not merely its verb prefix; an unknown continuation receives no raw
+authorization. A recognized empty page and a known zero-match lookup are
+different facts. Registered capability metadata includes parameter identifiers,
+required/optional flags and bounded named input/output contract types. Unsupported
+replies retain the exact active intent-authority text with its revision, marking
+an earlier target mention as historical and displaying the current registered
+target separately. This quotes existing host-held user text; it does not extract
+a new semantic goal or reactivate an earlier source or permit.

@@ -1,0 +1,612 @@
+{
+  "priorCandidate": "487f8ea37363128cc05be91b8c06049092c098d8",
+  "originalCandidate": "ac5feca0aba1d873875d7b6411a779bd1e13a670",
+  "correctedCommit": "the commit containing this evidence; exact hash supplied in handoff",
+  "publication": "held for independent exact-commit rereview",
+  "kind": "bounded synthetic integration validation; no real-model comparison",
+  "failureFirst": {
+    "tests": 8,
+    "failed": 7,
+    "passedControl": 1,
+    "unchangedReviewerFixtureSha256": "d41e82541af246a1e7bd586c09a5fd080d7adca176adf3a68fb8f61d9ef85a69",
+    "assertions": [
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 보여주지 마.",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 출력해 주지 마.",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 보여줄 필요 없어.",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes distinguishes current-page emptiness from total matches: R2-empty-current-page",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes distinguishes current-page emptiness from total matches: control-zero-matches",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes preserves real capability contract facts in readable output: R3-required-parameter-fact",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes preserves real capability contract facts in readable output: R3-output-contract-fact",
+        "status": "failed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes retains unsuperseded unsupported intent detail after a target-only correction",
+        "status": "failed"
+      }
+    ]
+  },
+  "originalCorpus": {
+    "cases": 24,
+    "passed": 24,
+    "usefulAnswerCases": 10,
+    "fixtureSha256": "e3581b246342189a4d670281b20af4bb6a8e889c44bca133fe85ce3794627dc3",
+    "fixtureBlob": "025bfcac02a18bdef40e3b1c9d0dbae869510d4a",
+    "unchanged": true,
+    "metadataDispatches": 13,
+    "scriptedEvaluatorPhases": 41,
+    "forbiddenCalls": 0,
+    "generatedModelCalls": 0,
+    "gates": [
+      {
+        "id": "01",
+        "name": "colloquial inventory",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "02",
+        "name": "mixed-language schema",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "03",
+        "name": "configured status with unknown authentication",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "04",
+        "name": "inventory independent of prose flag",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "05",
+        "name": "explicit raw debug output",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "06",
+        "name": "unstated output uses readable intent format",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "07",
+        "name": "complete empty inventory",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "08",
+        "name": "partial inventory is not all source data",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "09",
+        "name": "retrieval contrast",
+        "stop": "outside_slice",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "10",
+        "name": "action contrast",
+        "stop": "outside_slice",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "11",
+        "name": "duplicate source labels",
+        "stop": "source_ambiguous",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "12",
+        "name": "missing candidate in partial catalog",
+        "stop": "candidate_coverage_incomplete",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "13",
+        "name": "no target in complete catalog",
+        "stop": "source_required",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "14",
+        "name": "unresolved pronoun",
+        "stop": "source_ambiguous",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "15",
+        "name": "unsupported intent retains original detail",
+        "stop": "unsupported_intent",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "16",
+        "name": "malformed understanding response",
+        "stop": "invalid_decision",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "17",
+        "name": "tied response despite claimed confidence",
+        "stop": "invalid_decision",
+        "commands": 0,
+        "phases": 1,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "18",
+        "name": "missing metadata operation",
+        "stop": "metadata_unavailable",
+        "commands": 0,
+        "phases": 2,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "19",
+        "name": "forged operation ref",
+        "stop": "invalid_decision",
+        "commands": 0,
+        "phases": 2,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "20",
+        "name": "real service metadata denial",
+        "stop": "permission_denied",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "21",
+        "name": "catalog and policy revision invalidates pending decision",
+        "stop": "superseded",
+        "commands": 0,
+        "phases": 2,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "22",
+        "name": "adversarial metadata remains inert",
+        "stop": "answered",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [
+          "dummyjson"
+        ],
+        "revision": 1,
+        "failures": []
+      },
+      {
+        "id": "23",
+        "name": "delayed A after accepted correction to B",
+        "stop": "answered",
+        "commands": 2,
+        "phases": 4,
+        "publishedSources": [
+          "source-b"
+        ],
+        "revision": 2,
+        "failures": []
+      },
+      {
+        "id": "24",
+        "name": "cancellation suppresses delayed result",
+        "stop": "cancelled",
+        "commands": 1,
+        "phases": 2,
+        "publishedSources": [],
+        "revision": 1,
+        "failures": []
+      }
+    ]
+  },
+  "priorReviewRegressions": {
+    "tests": 30,
+    "passed": 30
+  },
+  "newReviewRegressions": {
+    "reviewerCases": 8,
+    "supplementalTests": 8,
+    "total": 16,
+    "assertions": [
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 보여주지 마.",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 출력해 주지 마.",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes honors Korean raw refusal through actual legacy chat/service: 리소스 목록을 raw JSON으로 보여줄 필요 없어.",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes distinguishes current-page emptiness from total matches: R2-empty-current-page",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes distinguishes current-page emptiness from total matches: control-zero-matches",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes preserves real capability contract facts in readable output: R3-required-parameter-fact",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes preserves real capability contract facts in readable output: R3-output-contract-fact",
+        "status": "passed"
+      },
+      {
+        "name": "independent 487f8ea semantic regression probes retains unsuperseded unsupported intent detail after a target-only correction",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) retains affirmative raw output through real chat/service: 리소스 목록을 raw JSON으로 보여 주세요.",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) retains affirmative raw output through real chat/service: 리소스 목록을 raw JSON으로 출력해줘.",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) does not authorize raw output by accepting a prefix with an unknown continuation",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) keeps empty incomplete pages distinct from catalog absence: {\"candidates\":[],\"truncated\":true,\"totalMatches\":1,\"nextOffset\":2}",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) keeps empty incomplete pages distinct from catalog absence: {\"candidates\":[],\"truncated\":true}",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) preserves actual required/optional identifiers and named output types in readable and approved raw views",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) does not display arbitrary values disguised as capability I/O contracts",
+        "status": "passed"
+      },
+      {
+        "name": "supplemental second-review contracts (outside the original 24 cases) replaces explicitly superseded intent without reviving the old unsupported goal",
+        "status": "passed"
+      }
+    ],
+    "outcomes": [
+      {
+        "probe": "R1-Korean-raw-refusal",
+        "userMessage": "리소스 목록을 raw JSON으로 보여주지 마.",
+        "reply": "등록된 리소스:\n- Gmail — 저장된 연결 상태: 연결 안 됨\n- Slack — 저장된 연결 상태: 연결 안 됨\n- 로컬 폴더 — 저장된 연결 상태: 연결 안 됨\n- Document — 저장된 연결 상태: 연결됨\n- DB — 저장된 연결 상태: 연결 안 됨\n- Sheets — 저장된 연결 상태: 연결됨\n- Transform — 저장된 연결 상태: 연결됨\n- HTTP — 저장된 연결 상태: 연결 안 됨\n- Webhook — 저장된 연결 상태: 연결 안 됨\n등록된 범위 (HTTP): 0개.\n저장된 연결 상태는 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.",
+        "rawSyntaxGate": false,
+        "commands": [
+          {
+            "name": "resource.list",
+            "args": {}
+          }
+        ],
+        "generatedModelCalls": {
+          "text": 0,
+          "structured": 0
+        }
+      },
+      {
+        "probe": "R1-Korean-raw-refusal",
+        "userMessage": "리소스 목록을 raw JSON으로 출력해 주지 마.",
+        "reply": "등록된 리소스:\n- Gmail — 저장된 연결 상태: 연결 안 됨\n- Slack — 저장된 연결 상태: 연결 안 됨\n- 로컬 폴더 — 저장된 연결 상태: 연결 안 됨\n- Document — 저장된 연결 상태: 연결됨\n- DB — 저장된 연결 상태: 연결 안 됨\n- Sheets — 저장된 연결 상태: 연결됨\n- Transform — 저장된 연결 상태: 연결됨\n- HTTP — 저장된 연결 상태: 연결 안 됨\n- Webhook — 저장된 연결 상태: 연결 안 됨\n등록된 범위 (HTTP): 0개.\n저장된 연결 상태는 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.",
+        "rawSyntaxGate": false,
+        "commands": [
+          {
+            "name": "resource.list",
+            "args": {}
+          }
+        ],
+        "generatedModelCalls": {
+          "text": 0,
+          "structured": 0
+        }
+      },
+      {
+        "probe": "R1-Korean-raw-refusal",
+        "userMessage": "리소스 목록을 raw JSON으로 보여줄 필요 없어.",
+        "reply": "등록된 리소스:\n- Gmail — 저장된 연결 상태: 연결 안 됨\n- Slack — 저장된 연결 상태: 연결 안 됨\n- 로컬 폴더 — 저장된 연결 상태: 연결 안 됨\n- Document — 저장된 연결 상태: 연결됨\n- DB — 저장된 연결 상태: 연결 안 됨\n- Sheets — 저장된 연결 상태: 연결됨\n- Transform — 저장된 연결 상태: 연결됨\n- HTTP — 저장된 연결 상태: 연결 안 됨\n- Webhook — 저장된 연결 상태: 연결 안 됨\n등록된 범위 (HTTP): 0개.\n저장된 연결 상태는 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.",
+        "rawSyntaxGate": false,
+        "commands": [
+          {
+            "name": "resource.list",
+            "args": {}
+          }
+        ],
+        "generatedModelCalls": {
+          "text": 0,
+          "structured": 0
+        }
+      },
+      {
+        "probe": "R2-empty-current-page",
+        "reply": "등록된 데이터·도구:\n현재 페이지에 표시할 항목이 없습니다.\n등록된 범위 (totalMatches): 1개.",
+        "command": {
+          "name": "discovery.search",
+          "args": {
+            "query": "DummyJSON",
+            "kind": "http_endpoint",
+            "offset": 1,
+            "limit": 8
+          }
+        },
+        "status": "ok",
+        "page": {
+          "query": "DummyJSON",
+          "candidates": [],
+          "totalMatches": 1,
+          "catalogSize": 45,
+          "truncated": false
+        }
+      },
+      {
+        "probe": "control-zero-matches",
+        "reply": "등록된 데이터·도구:\n등록된 항목이 없습니다.\n등록된 범위 (totalMatches): 0개.",
+        "command": {
+          "name": "discovery.search",
+          "args": {
+            "query": "A7FFFF9ZZMissing",
+            "kind": "http_endpoint",
+            "offset": 0,
+            "limit": 8
+          }
+        },
+        "status": "ok",
+        "page": {
+          "query": "A7FFFF9ZZMissing",
+          "candidates": [],
+          "totalMatches": 0,
+          "catalogSize": 45,
+          "truncated": false
+        }
+      },
+      {
+        "probe": "R3-required-parameter-fact",
+        "userMessage": "rdb.query.read 필수 파라미터 목록 알려줘",
+        "reply": "도구 정보:\n- DB 조회 — read\n- 출력 rows: TableArtifact\n- 테이블 (table) — 필수\n- 시작 위치 (offset) — 선택\n- 페이지 크기 (limit) — 선택",
+        "command": {
+          "name": "capability.describe",
+          "args": {
+            "id": "rdb.query.read"
+          }
+        },
+        "registeredParams": [
+          {
+            "name": "table",
+            "label": "테이블",
+            "required": true
+          },
+          {
+            "name": "offset",
+            "label": "시작 위치",
+            "required": false
+          },
+          {
+            "name": "limit",
+            "label": "페이지 크기",
+            "required": false
+          }
+        ],
+        "registeredIO": {
+          "inputs": {},
+          "outputs": {
+            "rows": "TableArtifact"
+          }
+        },
+        "approvedRawReply": "```json\n{\n  \"id\": \"rdb.query.read\",\n  \"label\": \"DB 조회\",\n  \"connector\": \"rdb\",\n  \"kind\": \"read\",\n  \"sideEffect\": \"NONE\",\n  \"params\": [\n    {\n      \"name\": \"table\",\n      \"label\": \"테이블\",\n      \"required\": true\n    },\n    {\n      \"name\": \"offset\",\n      \"label\": \"시작 위치\",\n      \"required\": false\n    },\n    {\n      \"name\": \"limit\",\n      \"label\": \"페이지 크기\",\n      \"required\": false\n    }\n  ],\n  \"io\": {\n    \"inputs\": {},\n    \"outputs\": {\n      \"rows\": \"TableArtifact\"\n    }\n  }\n}\n```"
+      },
+      {
+        "probe": "R3-output-contract-fact",
+        "userMessage": "rdb.query.read 입출력 스키마 보여줘",
+        "reply": "도구 정보:\n- DB 조회 — read\n- 출력 rows: TableArtifact\n- 테이블 (table) — 필수\n- 시작 위치 (offset) — 선택\n- 페이지 크기 (limit) — 선택",
+        "command": {
+          "name": "capability.describe",
+          "args": {
+            "id": "rdb.query.read"
+          }
+        },
+        "registeredParams": [
+          {
+            "name": "table",
+            "label": "테이블",
+            "required": true
+          },
+          {
+            "name": "offset",
+            "label": "시작 위치",
+            "required": false
+          },
+          {
+            "name": "limit",
+            "label": "페이지 크기",
+            "required": false
+          }
+        ],
+        "registeredIO": {
+          "inputs": {},
+          "outputs": {
+            "rows": "TableArtifact"
+          }
+        },
+        "approvedRawReply": "```json\n{\n  \"id\": \"rdb.query.read\",\n  \"label\": \"DB 조회\",\n  \"connector\": \"rdb\",\n  \"kind\": \"read\",\n  \"sideEffect\": \"NONE\",\n  \"params\": [\n    {\n      \"name\": \"table\",\n      \"label\": \"테이블\",\n      \"required\": true\n    },\n    {\n      \"name\": \"offset\",\n      \"label\": \"시작 위치\",\n      \"required\": false\n    },\n    {\n      \"name\": \"limit\",\n      \"label\": \"페이지 크기\",\n      \"required\": false\n    }\n  ],\n  \"io\": {\n    \"inputs\": {},\n    \"outputs\": {\n      \"rows\": \"TableArtifact\"\n    }\n  }\n}\n```"
+      },
+      {
+        "probe": "R4-retained-unsupported-intent",
+        "commands": [],
+        "generatedModelCalls": 0,
+        "originalText": "source A로 주가 예측해 봐",
+        "originalReply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: source A로 주가 예측해 봐",
+        "correctedReply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다.\n이전 의도 근거 (요청 버전 1): source A로 주가 예측해 봐\n현재 대상: source B",
+        "stops": [
+          "unsupported_intent",
+          "unsupported_intent"
+        ],
+        "currentRequestRevision": 2,
+        "fieldProvenance": {
+          "intent": {
+            "requestDigest": "sha256:8601ecad009fc1852311f000d63f5e0a1edf9e0f0e1ddbfd997ed03960f6dd85",
+            "requestRevision": 1
+          },
+          "targetSourceRef": {
+            "requestDigest": "sha256:6d8d4d2d03a64af7d8c1118b64dfeb331ed72ab48890bb74352b50b15ebb7acd",
+            "requestRevision": 2
+          },
+          "outputKind": {
+            "requestDigest": "sha256:8601ecad009fc1852311f000d63f5e0a1edf9e0f0e1ddbfd997ed03960f6dd85",
+            "requestRevision": 1
+          }
+        }
+      }
+    ]
+  },
+  "checks": {
+    "focusedTests": 101,
+    "focusedFiles": 5,
+    "regressionTests": 533,
+    "regressionFiles": 59,
+    "priorRegressionTests": 517,
+    "newTests": 16,
+    "coreProductionTypes": "passed",
+    "coreTestTypes": "passed",
+    "securityTests": 8,
+    "architecture": {
+      "status": "passed",
+      "modules": 1300,
+      "dependencies": 4857
+    },
+    "diffWhitespace": "passed"
+  },
+  "limits": {
+    "modelQualityMeasured": false,
+    "liveProviderCalls": 0,
+    "liveCallLedger": "27/30 unchanged",
+    "desktopActivation": false,
+    "productionEvidenceAdapter": false,
+    "existingReadControllerActivated": false,
+    "broadEngineRewrite": false,
+    "screenshotCausalTraceProven": false
+  }
+}

@@ -114,7 +114,15 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
       outputKind: (output ?? 'unknown') as RequestUnderstandingAssessment['outputKind'] });
     if (!intent || !sourceRef || !output) return finish('invalid_decision', '판단 응답이 누락·불확실하거나 제공된 선택지와 맞지 않습니다. 요청한 대상과 결과를 확인해 주세요.');
     if (intent === 'ambiguous') return finish('ambiguous_intent', '데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.');
-    if (intent === 'unsupported') return finish('unsupported_intent', `이 메타데이터 범위에서는 지원하지 않는 요청입니다: ${inertMetadataText(snapshot.anchor.text)}`);
+    if (intent === 'unsupported') {
+      const authority = snapshot.fieldAuthorities.intent;
+      const goal = inertMetadataText(authority.anchor.text);
+      if (snapshot.requestRevision === 1) return finish('unsupported_intent', `이 메타데이터 범위에서는 지원하지 않는 요청입니다: ${goal}`);
+      const history = authority.requestRevision < snapshot.requestRevision ? '이전 ' : '';
+      return finish('unsupported_intent', '이 메타데이터 범위에서는 지원하지 않는 요청입니다.\n'
+        + `${history}의도 근거 (요청 버전 ${authority.requestRevision}): ${goal}\n`
+        + `현재 대상: ${assessedSource ? inertMetadataText(assessedSource.label) : '미확인'}`);
+    }
     if (intent === 'retrieval' || intent === 'action') return finish('outside_slice', intent === 'retrieval'
       ? '실제 레코드 조회 요청입니다. 이 메타데이터 경로에서는 레코드를 읽지 않습니다. 별도의 승인된 조회 경로가 필요합니다.'
       : '연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.');

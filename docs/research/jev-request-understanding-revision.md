@@ -1,5 +1,10 @@
 # Prepublication revision checkpoint
 
+This checkpoint records `487f8ea`, preserved for comparison. The second
+independent review requested four further corrections. See the
+[second revision checkpoint](jev-request-understanding-second-revision.md) for
+the current change, checks and publication gate.
+
 The original candidate `ac5feca0aba1d873875d7b6411a779bd1e13a670` is preserved in
 history. This revision follows the independent **REVISE** report and ten unchanged
 reviewer repros from the authorized task-10 workspace. The exact corrected commit

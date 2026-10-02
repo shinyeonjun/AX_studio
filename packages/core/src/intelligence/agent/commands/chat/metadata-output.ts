@@ -1,22 +1,22 @@
 import type { AxCommand } from '../schema.js';
 import type { MetadataOutputKind, SourceMetadataEvidence } from '../../../../contracts/request-understanding.js';
+import { ContractTypeNameSchema } from '../../../../contracts/capability-io.js';
 
 /** Only an explicit output request can opt into raw metadata. This is syntax, not intent parsing. */
 export function explicitlyRequestsRawMetadata(text: string): boolean {
-  // A quoted term or bare mention is not an output directive. Unknown syntax stays readable.
-  const unquoted = text.replace(/```[\s\S]*?```|`[^`]*`|"[^"]*"|'[^']*'|“[^”]*”|‘[^’]*’/gu, ' ');
-  const mentions = [...unquoted.matchAll(/\b(?:(?:raw|debug)\s+)?json\b|원시\s*json|디버그\s*(?:용\s*)?json/giu)];
-  let affirmative = false;
-  for (const mention of mentions) {
-    const before = unquoted.slice(Math.max(0, mention.index - 64), mention.index);
-    const after = unquoted.slice(mention.index + mention[0].length, mention.index + mention[0].length + 64);
-    if (/\b(?:do\s+not|don't|not|without|instead\s+of|avoid|never|no)\b[^.;\n]{0,48}$/iu.test(before)
-      || /^(?:[^.;\n]{0,32})(?:말고|없이|말아|금지|하지\s*마|안\s*(?:돼|되|쓰|보|사용|출력)|\bnot\s+(?:wanted|needed|allowed)\b)/iu.test(after)) return false;
-    if (/^\s*(?:(?:으로|형태로|형식으로|원문|그대로)\s*)?(?:보여|출력|반환|표시)/u.test(after)
-      || (/\b(?:show|print|output|return|render|provide|give|export|dump)\b[^.;?\n]{0,56}$/iu.test(before)
-        && /^\s*(?:(?:please|format|output)\b\s*)?(?:[.!?]?\s*$|\b(?:of|for)\b)/iu.test(after))) affirmative = true;
-  }
-  return affirmative;
+  // Recognize complete affirmative format directives. Unknown continuations are
+  // never accepted by a verb-prefix match or a growing list of refusal suffixes.
+  const quoted = [...text.matchAll(/```[\s\S]*?```|`[^`]*`|"[^"]*"|'[^']*'|“[^”]*”|‘[^’]*’/gu)];
+  const mentions = [...text.matchAll(/\b(?:(?:raw|debug)\s+)?json\b|원시\s*json|디버그\s*(?:용\s*)?json/giu)]
+    .filter(mention => !quoted.some(quote => mention.index >= quote.index && mention.index < quote.index + quote[0].length));
+  if (mentions.length !== 1) return false;
+  const mention = mentions[0]!;
+  const before = text.slice(0, mention.index);
+  const after = text.slice(mention.index + mention[0].length);
+  const koreanDirective = /^\s*(?:원문\s*)?(?:(?:으로|형태로|형식으로|그대로)\s*)?(?:보여(?:\s*(?:줘(?:요)?|주세요|주십시오|줄래(?:요)?))?|(?:출력|반환|표시)(?:해(?:\s*(?:줘(?:요)?|주세요|주십시오))?|하(?:세요|십시오))?)\s*[.!?。！？]*\s*$/u;
+  const englishDirective = /^\s*(?:(?:please|(?:can|could|would)\s+you)\s+)?(?:show|print|output|return|render|provide|give|export|dump)\s+(?:(?:the\s+)?(?:(?:registered|saved)\s+)?(?:resources|metadata|inventory|schema|status)\s+)?(?:(?:as|in|using)\s+)?$/iu;
+  const englishCompletion = /^\s*(?:(?:of|for)\s+(?:the\s+)?(?:(?:registered|saved)\s+)?(?:resources|metadata|inventory|schema|status)\s*)?(?:please\s*)?[.!?]*\s*$/iu;
+  return koreanDirective.test(after) || (englishDirective.test(before) && englishCompletion.test(after));
 }
 
 export function inertMetadataText(value: string): string {
@@ -57,6 +57,7 @@ interface MetadataView {
   fields: readonly string[];
   lists?: Readonly<Record<string, MetadataView>>;
   objects?: Readonly<Record<string, MetadataView>>;
+  io?: boolean;
 }
 const PAGE_FIELDS = ['count', 'total', 'totalMatches', 'totalSources', 'totalTools', 'totalOperations', 'endpointCount', 'nextOffset', 'truncated'];
 const IDENTITY_FIELDS = ['id', 'label', 'name', 'connector', 'kind', 'type', 'status', 'connected', 'connectable', 'availability'];
@@ -65,7 +66,7 @@ const ENTRY_VIEW: MetadataView = { fields: IDENTITY_FIELDS, lists: { fields: FIE
 const RESPONSE_VIEW: MetadataView = { fields: ['status', 'description', 'required'], lists: { fields: FIELD_VIEW } };
 const OPERATION_VIEW: MetadataView = { fields: [...IDENTITY_FIELDS, 'operationId', 'method', 'path', 'summary', 'sideEffect'],
   lists: { params: FIELD_VIEW, parameters: FIELD_VIEW, responses: RESPONSE_VIEW }, objects: { requestBody: RESPONSE_VIEW } };
-const CAPABILITY_VIEW: MetadataView = { ...ENTRY_VIEW, fields: [...IDENTITY_FIELDS, 'available', 'reason', 'sideEffect'] };
+const CAPABILITY_VIEW: MetadataView = { ...ENTRY_VIEW, fields: [...IDENTITY_FIELDS, 'available', 'reason', 'sideEffect'], io: true };
 const DETAILS_VIEW: MetadataView = { fields: ['available', 'reason', 'table', 'folderId', ...PAGE_FIELDS],
   lists: { operations: OPERATION_VIEW, tools: CAPABILITY_VIEW },
   objects: { capability: CAPABILITY_VIEW, schema: ENTRY_VIEW, api: { fields: ['id', 'title'] }, endpoint: ENTRY_VIEW,
@@ -107,6 +108,26 @@ function approvedMetadata(value: unknown, view: MetadataView): Record<string, un
   for (const [key, child] of Object.entries(view.objects ?? {})) {
     if (record[key] && typeof record[key] === 'object' && !Array.isArray(record[key])) result[key] = approvedMetadata(record[key], child);
   }
+  if (view.io && record.io && typeof record.io === 'object' && !Array.isArray(record.io)) {
+    const io = record.io as Record<string, unknown>;
+    const approvedIO: Record<string, Record<string, string>> = {};
+    for (const direction of ['inputs', 'outputs']) {
+      const ports = io[direction];
+      if (!ports || typeof ports !== 'object' || Array.isArray(ports)) {
+        approvedIO[direction] = {};
+        if (ports !== undefined) result.truncated = true;
+        continue;
+      }
+      const entries = Object.entries(ports);
+      const approvedPorts = entries.slice(0, 32).flatMap(([name, contract]) => {
+        const type = ContractTypeNameSchema.safeParse(contract);
+        return name.length <= 160 && type.success ? [[name, type.data]] : [];
+      });
+      approvedIO[direction] = Object.fromEntries(approvedPorts);
+      if (approvedPorts.length !== entries.length) result.truncated = true;
+    }
+    result.io = approvedIO;
+  }
   return result;
 }
 
@@ -115,8 +136,8 @@ export function renderCatalogMetadata(command: AxCommand, data: unknown, raw: bo
   const approved = view ? approvedMetadata(data, view) : {};
   const named = (entry: Record<string, unknown>) => [entry.label, entry.fileName, entry.name, entry.title, entry.operationId, entry.id, entry.connector, entry.table]
     .find(value => typeof value === 'string') as string | undefined;
-  const sections = (entry: Record<string, unknown>): Record<string, unknown>[] => Object.values(entry).flatMap(value =>
-    Array.isArray(value) ? value : value && typeof value === 'object' ? [value as Record<string, unknown>] : []);
+  const sections = (entry: Record<string, unknown>): Record<string, unknown>[] => Object.entries(entry).flatMap(([key, value]) =>
+    key === 'io' ? [] : Array.isArray(value) ? value : value && typeof value === 'object' ? [value as Record<string, unknown>] : []);
   // Paging counters alone do not establish a recognized collection, much less an empty one.
   if (!named(approved) && !sections(approved).length && !Object.values(approved).some(Array.isArray)) {
     return '표시할 메타데이터 형식을 확인하지 못했습니다. 등록된 명세를 확인해 주세요.';
@@ -135,7 +156,15 @@ export function renderCatalogMetadata(command: AxCommand, data: unknown, raw: bo
       typeof entry[key] === 'string' ? [inertMetadataText(entry[key] as string)] : []);
     if (typeof entry.connected === 'boolean') details.push(`저장된 연결 상태: ${entry.connected ? '연결됨' : '연결 안 됨'}`);
     if (typeof entry.available === 'boolean') details.push(`등록된 사용 준비 상태: ${entry.available ? '준비됨' : '준비 안 됨'}`);
-    if (name) lines.push(`- ${inertMetadataText(name)}${details.length ? ` — ${details.join(', ')}` : ''}`);
+    if (typeof entry.required === 'boolean') details.push(entry.required ? '필수' : '선택');
+    if (name) lines.push(`- ${inertMetadataText(name)}${typeof entry.name === 'string' && entry.name !== name ? ` (${inertMetadataText(entry.name)})` : ''}`
+      + (details.length ? ` — ${details.join(', ')}` : ''));
+    if (entry.io) {
+      const io = entry.io as Record<string, Record<string, string>>;
+      for (const [direction, title] of [['inputs', '입력'], ['outputs', '출력']]) {
+        for (const [port, type] of Object.entries(io[direction!] ?? {})) lines.push(`- ${title} ${inertMetadataText(port)}: ${inertMetadataText(type)}`);
+      }
+    }
     if (entry.truncated === true || typeof entry.nextOffset === 'number') coverage.push('현재 카탈로그의 일부만 표시했습니다.'
       + (typeof entry.nextOffset === 'number' ? ` 다음 위치: ${entry.nextOffset}.` : ''));
     for (const key of ['totalMatches', 'total', 'totalSources', 'totalTools', 'totalOperations', 'endpointCount']) {
@@ -144,7 +173,11 @@ export function renderCatalogMetadata(command: AxCommand, data: unknown, raw: bo
     sections(entry).forEach(visit);
   };
   visit(approved);
-  return `${titles[command.name] ?? '메타데이터'}:\n${lines.length ? lines.join('\n') : sections(approved).length ? '표시할 메타데이터 이름이 없습니다.' : '등록된 항목이 없습니다.'}`
+  const total = ['totalMatches', 'total', 'totalSources', 'totalTools', 'totalOperations', 'endpointCount', 'count']
+    .map(key => approved[key]).find(value => typeof value === 'number');
+  const incomplete = approved.truncated === true || typeof approved.nextOffset === 'number';
+  const empty = total === 0 && !incomplete ? '등록된 항목이 없습니다.' : '현재 페이지에 표시할 항목이 없습니다.';
+  return `${titles[command.name] ?? '메타데이터'}:\n${lines.length ? lines.join('\n') : sections(approved).length ? '표시할 메타데이터 이름이 없습니다.' : empty}`
     + (coverage.length ? `\n${[...new Set(coverage)].join('\n')}` : '')
     + (command.name === 'resource.list' ? '\n저장된 연결 상태는 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.' : '');
 }
