@@ -180,4 +180,3 @@ describe('sql.js startup and partially executed writes', () => {
     expect(rows()).toEqual([{ id: 1 }, { id: 2 }]);
   });
 });
-
