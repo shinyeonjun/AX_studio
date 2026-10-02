@@ -21,6 +21,7 @@ export * from './intelligence/agent/index.js';
 export * from './intelligence/decision/index.js';
 export * from './persistence/db.js';
 export * from './persistence/workflow-store.js';
+export type { ExecutionHistoryDiagnostic } from './persistence/repositories/execution-history.js';
 export type {
   WorkspaceChatMessage,
   WorkspaceChatApproval,

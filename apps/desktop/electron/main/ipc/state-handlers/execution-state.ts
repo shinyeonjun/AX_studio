@@ -70,8 +70,9 @@ export function buildPendingApprovals(core: AxCore) {
 }
 
 export function buildExecutions(core: AxCore) {
-  return core.store.listExecutions(50).map((execution) => {
-    const logSummary = executionLogSummary(execution.logJson, execution.status);
+  return core.store.listExecutions(50, false).map((execution) => {
+    const logSummary = execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output')
+      ? {} : executionLogSummary(execution.logJson, execution.status);
     const quality = executionQualityState(execution);
     const errorMessage =
       logSummary.errorMessage ??
@@ -82,6 +83,8 @@ export function buildExecutions(core: AxCore) {
       ephemeral: execution.ephemeral,
       workspaceSessionId: execution.workspaceSessionId,
       status: execution.status,
+      hasOutput: execution.hasOutput,
+      historyDiagnostics: execution.historyDiagnostics,
       startedAt: execution.startedAt,
       finishedAt: execution.finishedAt,
       errorCode: execution.errorCode,

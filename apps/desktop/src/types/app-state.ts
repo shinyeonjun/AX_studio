@@ -1,6 +1,6 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
 import type { ConnectionEntry } from './connection-entry';
-import type { LocalFolderEntry } from '@ax-studio/core';
+import type { ExecutionHistoryDiagnostic, LocalFolderEntry } from '@ax-studio/core';
 
 export interface AiProviderState {
   provider?: string;
@@ -63,6 +63,8 @@ export interface AppState {
     /** The workspace conversation that owns a one-off result, when available. */
     workspaceSessionId?: string;
     status: string;
+    hasOutput?: boolean;
+    historyDiagnostics?: ExecutionHistoryDiagnostic[];
     startedAt: string;
     finishedAt?: string | null;
     errorCode?: string | null;

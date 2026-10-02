@@ -57,12 +57,14 @@ export function registerRuntimeApprovalHandlers(): void {
       throw new Error('Approval is already being processed or resolved');
     }
     const execution = core.store.getExecution(approval.executionId);
-    const rejectionLog = executionLogWithRejection(execution?.logJson);
+    const preserveHistory = Boolean(execution?.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output'));
+    const rejectionLog = executionLogWithRejection(preserveHistory ? undefined : execution?.logJson);
     core.store.finishExecution(
       approval.executionId,
       'cancelled',
       'approval_rejected',
       rejectionLog,
+      { preserveHistory },
     );
     const rejectionResult: ExecutionResult = {
       executionId: approval.executionId,
