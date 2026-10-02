@@ -6,13 +6,31 @@ import type { Step, WorkflowIR } from '../../../workflow/schema.js';
 import { createAgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
 import { createTestConnectors, mockSlack } from '../../../testing/connectors/test-connectors.js';
 import { NoReadProvider } from '../fixtures.js';
+import type { MessageToolDraft } from '../../../contracts/tool-result.js';
 
 describe('runtime output binding', () => {
 
-  it('infers Slack text through an approval node when the model emits message', async () => {
+  it.each([true, false])('infers Slack text through a legacy approval node; unsupported message field: %s', async unsupportedMessage => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
+    const session = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'Synthetic legacy approval binding fixture' }] });
+    store.setConnection('slack', true);
     const connectors = createTestConnectors();
+    const slack = mockSlack(connectors);
+    const prepare = vi.fn(async (draft: MessageToolDraft) => {
+      expect(draft).toEqual({ tool: 'slack', channel: 'CORBC7MDFE73', text: '주간 보고 결과' });
+      return { provider: 'slack' as const, accountId: 'U12345678', accountLabel: 'Synthetic sender',
+        workspaceId: 'T12345678', workspaceLabel: 'Synthetic workspace',
+        destinationId: 'CORBC7MDFE73', destinationLabel: '#synthetic' };
+    });
+    connectors.slack!.prepareMessageSend = prepare;
+    const execute = slack.execute.bind(slack);
+    const send = vi.spyOn(slack, 'execute').mockImplementation(async (action, params, ctx) => {
+      const result = await execute(action, params, ctx);
+      return action === 'message.send' && result.ok
+        ? { ...result, data: { ...(result.data as { channel: string; text: string }), ts: '100.001' } }
+        : result;
+    });
     const httpExecute = vi.fn(async () => ({
       ok: true as const,
       data: {
@@ -72,7 +90,7 @@ describe('runtime output binding', () => {
           connector: 'slack',
           action: 'message.send',
           actionRef: 'slack.message.send',
-          params: { channel: 'CORBC7MDFE73', message: '모델이 사용한 비표준 본문 키' },
+          params: { channel: 'CORBC7MDFE73', ...(unsupportedMessage ? { message: '모델이 사용한 비표준 본문 키' } : {}) },
           sideEffect: 'EXTERNAL',
         },
       ],
@@ -82,7 +100,7 @@ describe('runtime output binding', () => {
       assumptions: [],
       sideEffects: {},
       dataPolicy: {},
-    }, { ephemeral: true, triggerType: 'manual', workspaceSessionId: 'chat-1' });
+    }, { ephemeral: true, triggerType: 'manual', workspaceSessionId: session.id });
 
     expect(httpExecute).toHaveBeenCalledOnce();
     const snapshot = JSON.parse(store.getExecution(first.executionId)?.irJson ?? '{}') as WorkflowIR;
@@ -94,12 +112,41 @@ describe('runtime output binding', () => {
     expect(first.status).toBe('pending_approval');
     expect(mockSlack(connectors).messages).toHaveLength(0);
 
-    const resumed = await runtime.continueAfterApproval(first.pendingApprovalId!);
+    const approvalId = first.pendingApprovalId!;
+    const unconfirmed = await runtime.continueAfterApproval(approvalId);
+    expect(unconfirmed.errorCode).toBe('tool_result_confirmation_required');
+    expect(store.getApproval(approvalId)?.status).toBe('pending');
+    expect(send).not.toHaveBeenCalled();
+
+    const source = runtime.getToolResult(approvalId);
+    expect(source?.draft).toEqual({ tool: 'slack', channel: 'CORBC7MDFE73', text: '주간 보고 결과' });
+    expect(source?.blockedFields).toEqual(unsupportedMessage ? ['message'] : []);
+    const request = { approvalId, workspaceSessionId: session.id, revision: 0 };
+    if (unsupportedMessage) {
+      expect(notifySnapshot?.params.message).toBe('모델이 사용한 비표준 본문 키');
+      await expect(runtime.reviewToolResult(request)).rejects.toThrow('tool_result_unsupported_fields');
+      expect(prepare).not.toHaveBeenCalled();
+      expect(send).not.toHaveBeenCalled();
+      expect(store.getApproval(approvalId)?.status).toBe('pending');
+      expect(mockSlack(connectors).messages).toHaveLength(0);
+      return;
+    }
+
+    const review = await runtime.reviewToolResult(request);
+    expect(review.draft).toEqual(source!.draft);
+    expect(review.binding).toMatchObject({ workspaceId: 'T12345678', destinationId: 'CORBC7MDFE73' });
+    const resumed = await runtime.continueAfterApproval(approvalId, review.confirmation);
 
     expect(resumed.status).toBe('success');
+    expect(resumed.errorCode).toBeUndefined();
+    expect(resumed.toolSendOutcome).toMatchObject({ status: 'sent', receiptId: '100.001' });
     expect(mockSlack(connectors).messages).toEqual([{
       channel: 'CORBC7MDFE73',
       text: '주간 보고 결과',
     }]);
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledOnce();
+    expect((await runtime.continueAfterApproval(approvalId, review.confirmation)).status).toBe('failed');
+    expect(send).toHaveBeenCalledOnce();
   });
 });

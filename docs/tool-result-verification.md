@@ -5,10 +5,13 @@ performed before the documentation-only publication preparation. Production,
 test, fixture, configuration and launcher content is unchanged by that
 preparation. The measurements are not fresh executions of a later documentation
 commit and do not certify repository-wide CI or live integration behavior.
+The later approval-resume fixture correction and its separate local results are
+recorded in [CI fixture verification](tool-result-ci-fixtures.md).
 
 ## Source and isolation
 
-The non-documentation full-index binary patch relative to public base
+At published head `71f3c4f3b73e65d76d1da7e4683d09568001bff8`, the
+non-documentation full-index binary patch relative to public base
 `13446a568df671a18504386316d8f085c97def7c` has SHA-256:
 
 `60439771c0c1ad6d2ccf908cc7e2823b98b12e5ccf2c1ab25eed79d0dd894219`.
@@ -17,7 +20,7 @@ Its definition excludes `docs/**` and the tool-fixture README. It can be reprodu
 from the repository root with:
 
 ```sh
-git diff --binary --full-index 13446a568df671a18504386316d8f085c97def7c HEAD -- . ':(exclude)docs/**' ':(exclude)test/tool-result-ui/README.md'
+git diff --binary --full-index 13446a568df671a18504386316d8f085c97def7c 71f3c4f3b73e65d76d1da7e4683d09568001bff8 -- . ':(exclude)docs/**' ':(exclude)test/tool-result-ui/README.md'
 ```
 
 All tests used synthetic connectors, scripted transports, fresh in-memory/local
