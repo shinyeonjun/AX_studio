@@ -1,6 +1,6 @@
 # Retain sql.js caller transaction ownership across persistence
 
-**Status: independently approved design; implementation review remains required.** The parent relayed design-only approval of checkpoint `50de5337cac32286b396c8285f24ee46ef3d018e`, tree `3ef343234dc33b4e0a867359cfa82601c89992d0`, including 61 pinned-engine feasibility observations. Base `41cf05691e30677fda2148ef5b88e79f0fb957f3`. Implementation is authorized only within these decisions and their acceptance regressions. This decision is limited to sql.js persistence and its tests; it does not authorize publication, integration, main merge, UI/cancellation changes or canonical writes.
+**Status: accepted for sql.js ownership, persistence and cleanup.** The implemented policy covers explicit barriers, deferred timers, caller-owned transactions, disposal and initialization errors. Publication and deployment remain subject to validation of the combined application.
 
 ## Existing contract and reproduced gap
 
