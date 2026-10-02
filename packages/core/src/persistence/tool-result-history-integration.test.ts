@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNativeDatabase } from './db-native.js';
 import { createSqlJsDatabase, openReadonlySqlJs } from './db/sqljs.js';
@@ -18,7 +18,12 @@ afterEach(() => {
   vi.restoreAllMocks();
   for (const db of handles.splice(0)) db.close?.();
   vi.useRealTimers();
-  if (directory) rmSync(directory, { recursive: true, force: true });
+  if (directory) {
+    const owned = realpathSync(directory);
+    expect(dirname(owned)).toBe(realpathSync(tmpdir()));
+    expect(basename(owned)).toMatch(/^ax-tool-history-integration-/u);
+    rmSync(owned, { recursive: true, force: true });
+  }
   directory = undefined;
 });
 function ownDirectory() {

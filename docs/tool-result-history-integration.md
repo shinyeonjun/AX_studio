@@ -38,6 +38,24 @@ list omits bodies, while single-execution reads retain validated output. Workflo
 store and preload/type/contract exports retain both APIs. The migration mock has
 both required adapter methods.
 
+Source inspection found one semantic conflict in the automatic execution merge:
+main's history-preserving early return skipped the UI input's existing durable
+completion barrier. The combined branch calls that same barrier before returning
+without touching `log_json`, `output_json` or the raw tail. A crash-image regression
+and an injected barrier-failure regression failed on the initial merge (three
+controls passed, two failures). Both original reports are preserved. Applying
+the existing barrier is a reconciliation of accepted behavior, not a new storage
+or recovery design.
+
+The first unchanged Desktop focused run passed 139 tests and failed thirteen.
+Twelve main preview-rejection cases used a partial runtime object lacking draft
+disposal; their fixture now uses an inactive real runtime with no connectors,
+stops it and drains it before closing owned databases. All original history-byte,
+terminal status, double-rejection and reopen assertions remain. The thirteenth
+test now asserts the added `preserveHistory: false` argument in addition to its
+original cancellation and observer-failure assertions. No runtime optional chain
+or weakened historical preservation check was added.
+
 Main's new migration fixture owner/cleanup lifecycle, preview readers, native
 snapshot and guard tests, lazy activity output and resume-failure presentation
 remain unchanged. Tool renderers, sealed confirmation, metadata fencing,

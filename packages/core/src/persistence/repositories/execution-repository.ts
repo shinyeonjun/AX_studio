@@ -50,6 +50,7 @@ export function finishExecution(
     // Updating log_json would fire a preview trigger that deletes the raw tail.
     db.prepare('UPDATE executions SET status = ?, finished_at = ?, error_code = ? WHERE id = ?')
       .run(status, new Date().toISOString(), errorCode ?? null, id);
+    persistDatabase(db);
     return;
   }
   db
