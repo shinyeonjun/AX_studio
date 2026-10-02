@@ -2,6 +2,11 @@ import { linearContractSteps } from './control-flow.js';
 import { triggerAvailableTypes } from './bindings/contracts.js';
 import type { WorkflowIR } from './schema.js';
 import { validateActionConfiguration } from './contract-validation/structure/actions.js';
+import {
+  indexWorkflowSteps,
+  validateControlFlowCycles,
+  validateStepControlFlow,
+} from './contract-validation/structure/control-flow.js';
 import { validateWorkflowStructure } from './contract-validation/structure/validate.js';
 import { validateSequence } from './contract-validation/sequence/validate.js';
 import type {
@@ -14,6 +19,14 @@ export type {
   ContractValidationIssue,
   WorkflowContractValidationOptions,
 } from './contract-validation/types.js';
+
+/** Graph preflight required before recursive binding inference. */
+export function validateWorkflowGraph(ir: WorkflowIR): ContractValidationIssue[] {
+  const { byId, issues } = indexWorkflowSteps(ir.steps);
+  for (const step of ir.steps) issues.push(...validateStepControlFlow(step, byId));
+  issues.push(...validateControlFlowCycles(ir.steps, byId));
+  return issues;
+}
 
 export function validateWorkflowContracts(
   ir: WorkflowIR,
