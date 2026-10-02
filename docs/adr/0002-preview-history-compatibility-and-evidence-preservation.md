@@ -1,6 +1,6 @@
 # Restore preview history without replacing its evidence
 
-**Status: retrospective record, pending independent ADR review.** This documents product code already written in `920aa0e8c84ba5dd09236cf1e7872bac1ad089b0`, based on `3dd272aaeffc5feb42ab63ce8507357f3baae965`. It is not prior approval. Product code is frozen at that checkpoint; the remaining proposals below are unimplemented and require review before further implementation.
+**Status: retrospective record plus proposed commitments, REVISE review awaiting acceptance.** This documents product code already written in `920aa0e8c84ba5dd09236cf1e7872bac1ad089b0`, based on `3dd272aaeffc5feb42ab63ce8507357f3baae965`. It is not prior approval. Product code remains frozen there until explicit independent ADR acceptance. The choices below are unimplemented; acceptance permits only their approved implementation, not merge or activation.
 
 ## Problem and constraints
 
@@ -18,11 +18,11 @@ The change must recover readable historical results without rewriting migrations
 | Add a separate immutable evidence/diagnostic journal | Rich durable failure prose and independent audit history | Requires new storage/lifecycle contracts and migration work beyond this bounded compatibility fix. |
 | Read-only compatibility plus existing lazy display and explicit preservation writes | Recovers results while keeping original evidence | Chosen narrow approach; retains the existing v1 and failure-state semantics. |
 
-The implemented reader probes optional columns/tables, strictly decodes full stored JSON bytes, and validates the preview v1 output contract. Valid checkpoint entries precede tail entries ordered by sequence; repeated events and global sequence gaps remain meaningful. Invalid/unsupported history returns separate diagnostics and an explicitly raw/unavailable projection, never a fabricated normal log or a complete-looking partial prefix. Reads do not change execution or approval state.
+The implemented reader probes optional schema, decodes full stored JSON bytes and validates preview v1 output. Checkpoint precedes sequence-ordered tail, retaining duplicates and global gaps. Invalid/unsupported history yields separate diagnostics and a raw/unavailable projection, never fabricated normal events or a complete-looking partial prefix. Reads do not change lifecycle state.
 
-Default lists carry result presence rather than bodies or result-length scans. The restored preview component requests output on demand through the existing trusted IPC wrapper. Output is limited to 262,144 UTF-16 code units, with a compatible 786,432-byte SQL guard; tail materialization uses a 10,000-entry/4 MiB stored-input budget. This does not bound existing checkpoint loading or aggregate-query scan cost.
+Default lists carry presence without result bodies/length scans; the preview component uses on-demand trusted IPC. Output caps are 262,144 UTF-16 units/786,432 SQL bytes; tail materialization has a 10,000-entry/4 MiB stored-input budget. Checkpoint loading and aggregate scan cost remain unbounded by these caps.
 
-Approval snapshot/log validation failures and rejection with log-source diagnostics opt into the existing `finishExecution` method's preservation mode. Only status, finish time and error code change; checkpoint/output/IR/tail bytes remain. Failed approvals remain closed, and invalid work is not resumed. New failure/rejection prose is returned and notified; persistent failure facts are metadata, not replacement historical log entries. Valid rejection and normal runtime checkpoint/deletion operations retain their existing behavior.
+Approval snapshot/log validation failures and rejection with log-source diagnostics opt into `finishExecution` preservation mode. Only status, finish time and error code change; checkpoint/output/IR/tail bytes remain. Invalid work does not resume. Failure/rejection prose is returned/notified; metadata persists the failure. Valid rejection and normal checkpoint/deletion behavior remain unchanged.
 
 ## Tradeoffs, expected effects and correctness criteria
 
@@ -31,16 +31,39 @@ Approval snapshot/log validation failures and rejection with log-source diagnost
 - Validation failure/rejection tests must preserve checkpoint/output/IR/tail HEX through two reopenings and repeated requests while recording the intended terminal state. No invalid action may execute. A limit violation must not resume a partial log.
 - Default-list/lazy-query tests must prove no broadcast result bodies, no list result-length scans, and no log/IR/tail fetch by the output-only query. Unicode, NUL, BOM, invalid UTF-8, optional schema and SQLite error paths must retain their existing rejection/diagnostic behavior.
 
-Recorded synthetic results at the product checkpoint: upgrade baseline 6 failures/4 passing controls; approval preservation baseline 14 failures; rejection baseline 10 failures/2 passing controls. After the fix, compatibility has 70 passing cases, new approval/rejection coverage has 26 passing cases, and focused suites pass 102/27 tests. Full core passes 2,268 tests with 4 skips; desktop passes 191. Core production/test and desktop types, core build and architecture checks pass. These are local Windows results, not independent reruns or combined c837/Product QA evidence. The independent code review reported no blocker; independent ADR review is still pending.
+Recorded Windows native/sql.js results: upgrade baseline 6 failures/4 controls; approval preservation 14 failures; rejection 10 failures/2 controls. After fixing: 70 compatibility and 26 new approval/rejection cases pass; full core 2,268 pass/4 skip, desktop 191 pass. Types, core build and architecture pass. These are not independent reruns or combined c837/Product QA evidence. Code review reported no blocker; ADR acceptance remains pending.
 
-## Remaining proposals and unverified risks
+## Proposed commitments after REVISE (not implemented)
 
-1. **Display reason (P3, proposed).** `execution-state.ts:77–79` currently falls back to “unreadable log” after an invalid snapshot even when the preserved log is readable. Derive the accurate fallback reason from `errorCode` and add a regression with valid preserved log/invalid snapshot, asserting accurate state text and unchanged evidence. No display fix is implemented here, and no evidence should be rewritten to correct wording.
-2. **Concurrent writers (assumption requiring review).** Tail COUNT/SUM and body SELECT are separate statements. The current size/merge guarantees assume stable legacy history and no concurrent external writer during a synchronous Store read. Multi-process/external-writer interleavings are untested. If that assumption is unacceptable, a consistent read snapshot or a bounded instability check plus a two-connection interleaving regression is proposed; no mitigation is implemented.
-3. **c837 integration (proposed, unverified).** Its generation/admission lineage changes `workflow-store.ts` and approval snapshot validation and still routes failures through replacement writes. Retain its ownership checks/error-code expansion while reconciling preservation behavior, then test combined generation/admission and history invariants. Combined source behavior and packaging/runtime UI remain unverified. Existing blocked Windows packaging/UI QA and security restrictions remain in force.
+### One snapshot for the execution and its tail
+
+The current code selects execution state/checkpoint and tail COUNT/SUM/body in separate statements without an encompassing transaction. **Choose a consistent SQLite read snapshot**, rather than accepting this implicit stable-writer assumption or rechecking aggregate totals. Equal counts and lengths cannot prove row/byte identity; replacements can retain both.
+
+A backend-owned synchronous read snapshot starts before schema/execution selection. Native SQLite owns `BEGIN DEFERRED` unless already in a caller transaction; the first database read establishes the snapshot. Schema, execution status/checkpoint/output presence, tail COUNT/SUM and ordered body SELECT share it. Lists cover all selected executions/tails in one snapshot. Apply current budgets before fetching bodies and validate all entries. Join caller transactions without finalizing them; finalize/rollback only owned transactions, including error cleanup. No callback writes or weakened isolation. WAL pages can remain pinned until release. This guarantees coherent projections, not later approval-write ownership. [SQLite transactions](https://www.sqlite.org/lang_transaction.html), [snapshot isolation](https://www.sqlite.org/isolation.html).
+
+sql.js loads an independent image, misses external file commits and can overwrite them on export. Its snapshot covers that image only. Generic transaction-control `exec`/close can persist; the new read snapshot must avoid exports while retaining caller transaction/persistence ownership. Test no read-triggered export. Writable sql.js requires exclusive profile ownership/no external writer; if unassured, keep it inactive. This is a support/deployment constraint, not a claim that the current adapter detects external writers. Native multi-connection results establish neither sql.js file locking nor cross-process writer support.
+
+Proposed deterministic regressions, with synthetic files only and barriers rather than sleeps:
+
+- Two native WAL connections: append after execution selection and after COUNT/SUM, including count/byte boundary crossings. The reader returns its original complete snapshot; the next snapshot sees the append or limit diagnostic.
+- Update status/checkpoint and trigger tail deletion between those reads. Return old execution plus old tail, never a mixture; the next snapshot sees the new state.
+- Equal-count/equal-length replacements must not defeat identity coherence. Test owned-transaction cleanup, caller-transaction retention, zero reader writes and bounded bodies.
+- sql.js: test loaded-image coherence, no read-triggered export and fresh import against a controlled writer using a read-only image. These are not two live connections; never persist a stale writable image over that writer. Writable-profile tests stay exclusively owned.
+
+### Current terminal reason precedes historical error prose
+
+`execution-state.ts:77–79` mislabels invalid snapshots as unreadable logs. For preserved snapshot/log failures, terminal `errorCode` (`invalid_execution_snapshot`/`invalid_execution_log`) takes precedence over older error prose. Describe failed resume validation, not current unreadability; retain historical messages without rewriting them. Proposed regressions use readable logs with no error and with an older error, including invalid-snapshot continuation. Assert current reason, terminal status, unchanged payload/tail HEX and reopens. Additional c837 failure codes need separate review.
+
+### c837 remains separately gated
+
+Its Store/snapshot lineage still uses replacement failure writes. Retain ownership checks/error-code expansion and independently review/test the exact combined commit's generation/admission/history behavior. Combined source and packaging/runtime UI are unverified; existing Windows QA/security blocks remain. No new blocking defect was established in reviewed code; these commitments await acceptance.
 
 ## Rollout and rollback criteria
 
-Keep the PR draft and product-code hold until independent ADR review returns. Parent owns subsequent integration and canonical sync. Before activation, review the writer assumption and disposition of the P3 display proposal, pass the invariants on the resulting branch, and coordinate authorized sandbox Product QA; this record does not clear the c837 packaging/UI blocker.
+1. Keep the PR draft and product-code hold until explicit independent ADR acceptance. Acceptance authorizes only the approved implementation scope; it authorizes neither merge nor activation.
+2. Record the resulting product commit, independently review it and rerun proposed regressions, native/sql.js compatibility, full units, types/build and architecture on it. `920aa0e` results do not approve later code. Parent owns merge/canonical decisions; c837 combination and authorized Product QA/packaging stay separately gated with existing blockers.
+3. Any changed original bytes, mixed/partial or falsely successful evidence, invalid action execution, cap bypass or broken generation guard blocks rollout.
 
-Any changed original bytes, falsely successful/partial evidence, invalid action execution, cap bypass or broken generation guard blocks rollout. At this source-only stage the preserved product checkpoint and regression fixtures permit review/revision without user-data changes. A later rollback must stop affected approval/rejection mutations and retain history unchanged before reverting or fixing forward: reverting to the old replacement-write path alone reintroduces evidence loss. The concrete containment mechanism is a remaining proposal to review before activation; no rollback flag, DB downgrade or history rewrite is implemented.
+**Rollback containment (not executed):** prevent relaunch and stop **all** affected app/Electron, runtime, CLI/service and worker processes before rollback deployment. Verify exit/no active DB handles or persistence owners; without quiescence, do not replace/restart. Global execution off is insufficient: rejection writes and sql.js persistence remain possible.
+
+Retain DB/sidecars unchanged through build rollback: no downgrade, normalization, old-snapshot restore or sidecar deletion. Restart only an exact independently reviewed preservation-safe build with passing preservation regressions; the old replacement-write build is unsafe. Without a safe build, keep processes stopped and seek reviewed fix forward. This documentation executes no process stop, deployment or DB operation.
