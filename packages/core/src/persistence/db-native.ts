@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { AppDatabase, SqlRunResult, SqlStatement } from './db/types.js';
+import { assertReadSnapshotSql } from './db/read-snapshot-sql.js';
 
 function bindParams(params: unknown[]): unknown[] {
   return params.map((value) => (value === undefined ? null : value));
@@ -36,12 +37,14 @@ function wrapDatabase(db: Database.Database): AppDatabase {
       db.exec(sql);
     },
     prepare(sql: string) {
+      if (readDepth > 0) assertReadSnapshotSql(sql);
       const statement = db.prepare(sql);
       return wrapStatement(statement, () => {
         // Transaction control and connection-setting pragmas may be readonly
         // to SQLite, but cannot release or weaken the enclosing snapshot.
-        if (readDepth > 0 && (!statement.readonly || !statement.reader)) {
-          throw new Error('read_snapshot_write_forbidden');
+        if (readDepth > 0) {
+          assertReadSnapshotSql(sql);
+          if (!statement.readonly || !statement.reader) throw new Error('read_snapshot_write_forbidden');
         }
       });
     },

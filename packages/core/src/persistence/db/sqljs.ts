@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { applyMigrations } from './schema.js';
 import type { AppDatabase, SqlStatement } from './types.js';
+import { assertReadSnapshotSql } from './read-snapshot-sql.js';
 
 const PERSIST_DEBOUNCE_MS = 250;
 const MAX_PERSIST_DELAY_MS = 1_000;
@@ -139,48 +140,67 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   private maxPersistTimer: ReturnType<typeof setTimeout> | undefined;
   private transactionDepth = 0;
   private readDepth = 0;
+  private snapshotUnsafe = false;
 
   constructor(
     private db: SqlJsRawDatabase,
     private filePath?: string,
   ) {}
 
+  private assertUsable(): void {
+    if (this.snapshotUnsafe) throw new Error('read_snapshot_cleanup_failed');
+  }
+
+  private failSnapshot(): void {
+    this.snapshotUnsafe = true;
+    this.clearPersistTimers();
+  }
+
   private assertOutsideSnapshot(): void {
+    this.assertUsable();
     if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
   }
 
   private assertSnapshotQuery(sql: string): void {
+    this.assertUsable();
     if (this.readDepth === 0) return;
-    // query_only rejects DML, including WITH ... RETURNING. Restrict connection
-    // and transaction commands too, since they can disable that protection.
-    if (!/^\s*(SELECT|WITH|EXPLAIN)\b/i.test(sql)
-      && !/^\s*PRAGMA\s+table_info\s*\(/i.test(sql)) {
-      throw new Error('read_snapshot_write_forbidden');
-    }
+    assertReadSnapshotSql(sql);
   }
 
   readSnapshot<T>(read: () => T): T {
+    this.assertUsable();
     if (this.readDepth > 0) return read();
     const queryOnly = queryRows(this.db, 'PRAGMA query_only', [])[0]?.query_only;
     // A savepoint also joins caller SAVEPOINT transactions without relying on
     // the persistence adapter's BEGIN-depth bookkeeping. Never use exec here:
     // its COMMIT/ROLLBACK path schedules an export of the loaded image.
-    this.db.run('SAVEPOINT ax_read_snapshot');
-    this.db.run('PRAGMA query_only = ON');
+    let acquired = false;
+    let failed = false;
     this.readDepth += 1;
     try {
+      this.db.run('SAVEPOINT ax_read_snapshot');
+      acquired = true;
+      this.db.run('PRAGMA query_only = ON');
       const result = read();
       this.db.run('RELEASE ax_read_snapshot');
+      acquired = false;
       return result;
     } catch (error) {
-      try {
-        this.db.run('ROLLBACK TO ax_read_snapshot');
-        this.db.run('RELEASE ax_read_snapshot');
-      } catch { /* Retain the original read error. */ }
+      failed = true;
+      if (acquired) {
+        try {
+          this.db.run('ROLLBACK TO ax_read_snapshot');
+          this.db.run('RELEASE ax_read_snapshot');
+        } catch { this.failSnapshot(); }
+      } else this.failSnapshot(); // Acquisition failed; do not assume ownership/state.
       throw error;
     } finally {
       this.readDepth -= 1;
-      this.db.run(`PRAGMA query_only = ${queryOnly ? 'ON' : 'OFF'}`);
+      try { this.db.run(`PRAGMA query_only = ${queryOnly ? 'ON' : 'OFF'}`); }
+      catch (error) {
+        this.failSnapshot();
+        if (!failed) throw error;
+      }
     }
   }
 
@@ -201,6 +221,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   prepare(sql: string): SqlStatement {
+    this.assertUsable();
     const db = this.db;
     const persist = () => this.persist();
     const assertOutsideSnapshot = () => this.assertOutsideSnapshot();
@@ -225,8 +246,12 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   close(): void {
-    this.assertOutsideSnapshot();
+    if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
     this.clearPersistTimers();
+    if (this.snapshotUnsafe) {
+      this.db.close();
+      return; // Never export an image whose transaction/setting cleanup failed.
+    }
     let failure: unknown;
     let failed = false;
     try {
@@ -254,6 +279,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   private flushPersist(): void {
+    this.assertUsable();
     this.clearPersistTimers();
     if (!this.filePath || this.filePath === ':memory:') return;
     if (this.transactionDepth > 0) return;
