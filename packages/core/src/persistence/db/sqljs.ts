@@ -138,13 +138,54 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
   private maxPersistTimer: ReturnType<typeof setTimeout> | undefined;
   private transactionDepth = 0;
+  private readDepth = 0;
 
   constructor(
     private db: SqlJsRawDatabase,
     private filePath?: string,
   ) {}
 
+  private assertOutsideSnapshot(): void {
+    if (this.readDepth > 0) throw new Error('read_snapshot_write_forbidden');
+  }
+
+  private assertSnapshotQuery(sql: string): void {
+    if (this.readDepth === 0) return;
+    // query_only rejects DML, including WITH ... RETURNING. Restrict connection
+    // and transaction commands too, since they can disable that protection.
+    if (!/^\s*(SELECT|WITH|EXPLAIN)\b/i.test(sql)
+      && !/^\s*PRAGMA\s+table_info\s*\(/i.test(sql)) {
+      throw new Error('read_snapshot_write_forbidden');
+    }
+  }
+
+  readSnapshot<T>(read: () => T): T {
+    if (this.readDepth > 0) return read();
+    const queryOnly = queryRows(this.db, 'PRAGMA query_only', [])[0]?.query_only;
+    // A savepoint also joins caller SAVEPOINT transactions without relying on
+    // the persistence adapter's BEGIN-depth bookkeeping. Never use exec here:
+    // its COMMIT/ROLLBACK path schedules an export of the loaded image.
+    this.db.run('SAVEPOINT ax_read_snapshot');
+    this.db.run('PRAGMA query_only = ON');
+    this.readDepth += 1;
+    try {
+      const result = read();
+      this.db.run('RELEASE ax_read_snapshot');
+      return result;
+    } catch (error) {
+      try {
+        this.db.run('ROLLBACK TO ax_read_snapshot');
+        this.db.run('RELEASE ax_read_snapshot');
+      } catch { /* Retain the original read error. */ }
+      throw error;
+    } finally {
+      this.readDepth -= 1;
+      this.db.run(`PRAGMA query_only = ${queryOnly ? 'ON' : 'OFF'}`);
+    }
+  }
+
   exec(sql: string): void {
+    this.assertOutsideSnapshot();
     const command = sql.trim().split(/\s+/, 1)[0]?.toUpperCase();
     this.db.run(sql);
     if (command === 'BEGIN') {
@@ -162,23 +203,29 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   prepare(sql: string): SqlStatement {
     const db = this.db;
     const persist = () => this.persist();
+    const assertOutsideSnapshot = () => this.assertOutsideSnapshot();
+    const assertSnapshotQuery = () => this.assertSnapshotQuery(sql);
     return {
       run(...params: unknown[]) {
+        assertOutsideSnapshot();
         const bound = params.map((value) => (value === undefined ? null : value)) as (string | number | null)[];
         db.run(sql, bound);
         persist();
         return { changes: db.getRowsModified() };
       },
       all(...params: unknown[]) {
+        assertSnapshotQuery();
         return queryRows(db, sql, params);
       },
       get(...params: unknown[]) {
+        assertSnapshotQuery();
         return queryRows(db, sql, params, 1)[0];
       },
     };
   }
 
   close(): void {
+    this.assertOutsideSnapshot();
     this.clearPersistTimers();
     let failure: unknown;
     let failed = false;
@@ -202,6 +249,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   persistNow(): void {
+    this.assertOutsideSnapshot();
     this.flushPersist();
   }
 
@@ -284,17 +332,22 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
 
 export async function openReadonlySqlJs(filePath: string): Promise<{
   all(sql: string, params?: unknown[]): Record<string, unknown>[];
+  readSnapshot<T>(read: () => T): T;
   close(): void;
 }> {
   const SQL = await loadSqlJs();
   assertStandaloneDatabase(filePath);
   const db = new SQL.Database(readFileSync(filePath));
+  const adapter = new SqlJsDatabaseAdapter(db);
   return {
     all(sql: string, params: unknown[] = []) {
-      return queryRows(db, sql, params);
+      return adapter.prepare(sql).all(...params);
+    },
+    readSnapshot<T>(read: () => T): T {
+      return adapter.readSnapshot(read);
     },
     close() {
-      db.close();
+      adapter.close();
     },
   };
 }

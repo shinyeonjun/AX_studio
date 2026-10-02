@@ -17,6 +17,7 @@ function mockDatabase(): AppDatabase {
   return {
     exec: vi.fn<(sql: string) => void>(),
     prepare: vi.fn<(sql: string) => typeof statement>(() => statement),
+    readSnapshot: <T>(read: () => T) => read(),
     close: vi.fn<() => void>(),
   };
 }

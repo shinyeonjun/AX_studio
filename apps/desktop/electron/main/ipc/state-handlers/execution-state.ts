@@ -74,7 +74,12 @@ export function buildExecutions(core: AxCore) {
     const logSummary = execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output')
       ? {} : executionLogSummary(execution.logJson, execution.status);
     const quality = executionQualityState(execution);
+    const resumeFailure = execution.status !== 'failed' ? undefined
+      : execution.errorCode === 'invalid_execution_snapshot' ? '실행 스냅샷 검증에 실패하여 실행을 재개하지 못했습니다.'
+        : execution.errorCode === 'invalid_execution_log' ? '실행 로그 검증에 실패하여 실행을 재개하지 못했습니다.'
+          : undefined;
     const errorMessage =
+      resumeFailure ??
       logSummary.errorMessage ??
       (execution.status === 'failed' && execution.logJson ? '실행 로그를 읽지 못했습니다.' : undefined);
     return {

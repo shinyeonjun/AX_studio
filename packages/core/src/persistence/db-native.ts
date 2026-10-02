@@ -7,30 +7,63 @@ function bindParams(params: unknown[]): unknown[] {
   return params.map((value) => (value === undefined ? null : value));
 }
 
-function wrapStatement(stmt: Database.Statement): SqlStatement {
+function wrapStatement(stmt: Database.Statement, assertReadable: () => void): SqlStatement {
   return {
     run(...params: unknown[]): SqlRunResult {
+      assertReadable();
       const result = stmt.run(...(bindParams(params) as never[]));
       return { changes: result.changes };
     },
     all(...params: unknown[]) {
+      assertReadable();
       return stmt.all(...(bindParams(params) as never[])) as Record<string, unknown>[];
     },
     get(...params: unknown[]) {
+      assertReadable();
       return stmt.get(...(bindParams(params) as never[])) as Record<string, unknown> | undefined;
     },
   };
 }
 
 function wrapDatabase(db: Database.Database): AppDatabase {
+  let readDepth = 0;
+  function assertOutsideSnapshot() {
+    if (readDepth > 0) throw new Error('read_snapshot_write_forbidden');
+  }
   return {
     exec(sql: string) {
+      assertOutsideSnapshot();
       db.exec(sql);
     },
     prepare(sql: string) {
-      return wrapStatement(db.prepare(sql));
+      const statement = db.prepare(sql);
+      return wrapStatement(statement, () => {
+        // Transaction control and connection-setting pragmas may be readonly
+        // to SQLite, but cannot release or weaken the enclosing snapshot.
+        if (readDepth > 0 && (!statement.readonly || !statement.reader)) {
+          throw new Error('read_snapshot_write_forbidden');
+        }
+      });
+    },
+    readSnapshot<T>(read: () => T): T {
+      const owned = !db.inTransaction;
+      if (owned) db.exec('BEGIN DEFERRED');
+      readDepth += 1;
+      try {
+        const result = read();
+        if (owned) db.exec('COMMIT');
+        return result;
+      } catch (error) {
+        if (owned && db.inTransaction) {
+          try { db.exec('ROLLBACK'); } catch { /* Retain the original read error. */ }
+        }
+        throw error;
+      } finally {
+        readDepth -= 1;
+      }
     },
     close() {
+      assertOutsideSnapshot();
       db.close();
     },
   };

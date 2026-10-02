@@ -144,24 +144,32 @@ function mapExecution(db: AppDatabase, row: HistoricalExecutionRow, schema: Retu
 }
 
 export function getExecution(db: AppDatabase, id: string) {
-  const schema = executionHistorySchema(db);
-  const row = readRow<HistoricalExecutionRow>(db.prepare(`SELECT ${executionColumns(schema.hasOutputColumn, true)} FROM executions WHERE id = ?`), id);
-  if (!row) return undefined;
-  return mapExecution(db, row, schema, true);
+  return db.readSnapshot(() => {
+    const schema = executionHistorySchema(db);
+    const row = readRow<HistoricalExecutionRow>(db.prepare(`SELECT ${executionColumns(schema.hasOutputColumn, true)} FROM executions WHERE id = ?`), id);
+    if (!row) return undefined;
+    return mapExecution(db, row, schema, true);
+  });
 }
 
 /** The default list never materializes result bodies. */
 export function listExecutions(db: AppDatabase, limit = 50, includeOutput = false) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) throw new Error('invalid_execution_limit');
-  const schema = executionHistorySchema(db);
-  const rows = readRows<HistoricalExecutionRow>(
-    db.prepare(`SELECT ${executionColumns(schema.hasOutputColumn, includeOutput)} FROM executions ORDER BY started_at DESC, id DESC LIMIT ?`), limit,
-  );
-  return rows.map(row => mapExecution(db, row, schema, includeOutput));
+  return db.readSnapshot(() => {
+    const schema = executionHistorySchema(db);
+    const rows = readRows<HistoricalExecutionRow>(
+      db.prepare(`SELECT ${executionColumns(schema.hasOutputColumn, includeOutput)} FROM executions ORDER BY started_at DESC, id DESC LIMIT ?`), limit,
+    );
+    return rows.map(row => mapExecution(db, row, schema, includeOutput));
+  });
 }
 
 /** Reads just the result; a large log/IR is not fetched for the lazy IPC. */
 export function getExecutionOutput(db: AppDatabase, id: string) {
+  return db.readSnapshot(() => readExecutionOutput(db, id));
+}
+
+function readExecutionOutput(db: AppDatabase, id: string) {
   const schema = executionHistorySchema(db);
   if (!schema.hasOutputColumn) throw new Error('execution_output_unavailable');
   const row = readRow<Pick<HistoricalExecutionRow, 'status' | 'output_length' | 'output_byte_length' | 'output_json'>>(

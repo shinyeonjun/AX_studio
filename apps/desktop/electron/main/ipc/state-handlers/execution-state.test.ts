@@ -26,6 +26,14 @@ describe('buildPendingApprovals', () => {
 });
 
 describe('historical execution state projection', () => {
+  it.each(['invalid_execution_snapshot', 'invalid_execution_log'])('does not describe %s as terminal before failure', errorCode => {
+    const core = { store: { listExecutions: () => [{ id: 'synthetic', status: 'running', errorCode,
+      hasOutput: false, historyDiagnostics: [],
+      logJson: JSON.stringify([{ at: '2026-09-01T00:00:00Z', level: 'error', code: 'old_failure', message: 'Older synthetic error' }]),
+    }] } } as unknown as AxCore;
+    expect(buildExecutions(core)[0]).toMatchObject({ status: 'running', errorMessage: 'Older synthetic error' });
+  });
+
   it('keeps result bodies out of app state and derives pending progress from the restored tail', () => {
     const listExecutions = vi.fn(() => [{ id: 'synthetic-pending', workflowId: null, ephemeral: true,
       status: 'pending_approval', errorCode: 'pending_approval', hasOutput: false, historyDiagnostics: [],
