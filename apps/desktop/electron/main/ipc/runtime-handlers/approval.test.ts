@@ -139,7 +139,7 @@ describe('editable tool approval IPC', () => {
     mocks.notify.mockImplementationOnce(() => { throw new Error('refresh unavailable'); });
     expect(await invoke('ax:reject', confirmation.approvalId)).toEqual({ ok: true });
     expect(core.runtime.discardToolDraft).toHaveBeenCalledWith(confirmation.approvalId);
-    expect(core.store.finishExecution).toHaveBeenCalledWith('execution-fixture', 'cancelled', 'approval_rejected', expect.arrayContaining([expect.objectContaining({ code: 'approval_rejected' })]));
+    expect(core.store.finishExecution).toHaveBeenCalledWith('execution-fixture', 'cancelled', 'approval_rejected', expect.arrayContaining([expect.objectContaining({ code: 'approval_rejected' })]), { preserveHistory: false });
     expect(core.runtime.continueAfterApproval).not.toHaveBeenCalled();
   });
   it('losing cancellation cannot erase an in-flight draft or alter a claimed execution', async () => {

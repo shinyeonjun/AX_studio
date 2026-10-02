@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppDatabase } from '../../../../../../packages/core/src/persistence/db.js';
 import { WorkflowStore } from '../../../../../../packages/core/src/persistence/workflow-store.js';
+import { WorkflowRuntime } from '../../../../../../packages/core/src/runtime/engine.js';
 import {
   createPreviewApprovalFixture, INVALID_PREVIEW_HISTORIES, openCurrentPreviewHistory, previewApprovalHistoryBytes,
 } from '../../../../../../packages/core/src/persistence/repositories/fixtures/preview-approval-history.fixture.js';
@@ -28,13 +29,30 @@ function trustedEvent() { return { sender: { id: 7, mainFrame: mocks.frame }, se
 describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidence (%s)', backend => {
   let directory: string;
   let db: AppDatabase;
+  let runtime: WorkflowRuntime | undefined;
+  async function stopRuntime() {
+    runtime?.stopAccepting();
+    await runtime?.waitForIdle();
+    runtime = undefined;
+  }
+  async function attachCore(store: WorkflowStore) {
+    await stopRuntime();
+    // The combined handler owns draft disposal as well as history rejection.
+    // An inactive real runtime supplies that contract without connector calls.
+    runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, workflowActive: {}, onExecutionFinished: mocks.finished });
+    mocks.getCore.mockReturnValue({ store, runtime });
+  }
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.handlers.clear();
     mocks.ipcMain.handle.mockImplementation((channel: string, handler: InvokeHandler) => mocks.handlers.set(channel, handler));
     registerRuntimeApprovalHandlers();
   });
-  afterEach(() => { db?.close?.(); if (directory) rmSync(directory, { recursive: true, force: true }); });
+  afterEach(async () => {
+    await stopRuntime();
+    db?.close?.();
+    if (directory) rmSync(directory, { recursive: true, force: true });
+  });
 
   it.each(INVALID_PREVIEW_HISTORIES)('cancels without replacing %s bytes', async condition => {
     directory = mkdtempSync(join(tmpdir(), 'ax-preview-rejection-'));
@@ -43,7 +61,7 @@ describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidenc
     db = await openCurrentPreviewHistory(filePath, backend);
     const evidence = previewApprovalHistoryBytes(db);
     const store = new WorkflowStore(db);
-    mocks.getCore.mockReturnValue({ store, runtime: { notifyExecutionFinished: mocks.finished } });
+    await attachCore(store);
     expect(store.getExecution(fixture.pendingId)?.historyDiagnostics.some(d => d.source !== 'output')).toBe(true);
 
     await expect(mocks.handlers.get('ax:reject')!(trustedEvent(), fixture.approvalId)).resolves.toEqual({ ok: true });
@@ -58,9 +76,13 @@ describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidenc
       const reopenedStore = new WorkflowStore(db);
       expect(reopenedStore.getApproval(fixture.approvalId)?.status).toBe('rejected');
       expect(reopenedStore.getExecution(fixture.pendingId)?.historyDiagnostics.some(d => d.source !== 'output')).toBe(true);
-      if (opening < 2) { db.close?.(); db = await openCurrentPreviewHistory(filePath, backend); }
+      if (opening < 2) {
+        await stopRuntime();
+        db.close?.();
+        db = await openCurrentPreviewHistory(filePath, backend);
+      }
     }
-    mocks.getCore.mockReturnValue({ store: new WorkflowStore(db), runtime: { notifyExecutionFinished: mocks.finished } });
+    await attachCore(new WorkflowStore(db));
     await expect(mocks.handlers.get('ax:reject')!(trustedEvent(), fixture.approvalId)).rejects.toThrow('already being processed or resolved');
     expect(JSON.stringify(previewApprovalHistoryBytes(db)) === JSON.stringify(evidence), 'original checkpoint/output/tail bytes changed').toBe(true);
   });
@@ -71,7 +93,7 @@ describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidenc
     const fixture = createPreviewApprovalFixture(filePath, 'valid');
     db = await openCurrentPreviewHistory(filePath, backend);
     const store = new WorkflowStore(db);
-    mocks.getCore.mockReturnValue({ store, runtime: { notifyExecutionFinished: mocks.finished } });
+    await attachCore(store);
     await mocks.handlers.get('ax:reject')!(trustedEvent(), fixture.approvalId);
     expect(JSON.parse(store.getExecution(fixture.pendingId)!.logJson)).toEqual([
       ...fixture.checkpoint, fixture.waiting, expect.objectContaining({ code: 'approval_rejected' }),
