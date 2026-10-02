@@ -60,6 +60,14 @@ layout change fails closed and requires review of the guard.
    disappear while the synthetic data inventory remains byte-for-byte identical.
 8. Reinstall current, reopen retained data/credentials, and uninstall again.
 
+The byte-preservation snapshot covers every file under `AX_DATA_ROOT` (the owned
+`app-data` directory). It does not compare every Electron-profile, home or temp
+file. Legacy DB, saved chat, credential and exported-file checks cover the stated
+individual behaviors. A fresh snapshot/comparison around the final uninstall,
+Unicode paths and the safe preview build revision are proposed in
+[ADR 0002](../../docs/adr/0002-disposable-windows-installer-acceptance.md); that local
+implementation is held pending independent ADR review and validation.
+
 `preview-upgrade` first rebuilds immutable preview
 `0ba5e22f54cc9fe2bb777f085290bb03de5f457b` (`0.1.0-preview.1`) and its Core Store.
 The fixture generator imports that exact preview's compiled Store/schema, never
