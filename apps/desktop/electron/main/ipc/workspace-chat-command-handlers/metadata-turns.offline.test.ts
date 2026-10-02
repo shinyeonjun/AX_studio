@@ -377,7 +377,8 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const f = await fixture({ script: { output: 'raw_debug' } });
     const secret = 'SYNTH_OPERATION_SECRET';
     const unsafe = [`user:${secret}@host/orders`, `orders?token=${secret}`, `orders#${secret}`, `user%3a${secret}%40host/orders`,
-      `orders%3Ftoken%3D${secret}`, `orders%23${secret}`, `orders%253F${secret}`, `orders%2F${secret}`, `https:${secret}`, `orders%ZZ${secret}`];
+      `orders%3Ftoken%3D${secret}`, `orders%23${secret}`, `orders%253F${secret}`, `orders%2F${secret}`, `https:${secret}`, `orders%ZZ${secret}`,
+      '\r\nsafe/sibling', ' safe/sibling '];
     f.store.setConnection('http', true, { endpoints: [{ ...endpoint(), discoveredReadOperations: [
       ...unsafe.map((path, index) => ({ path, label: `${secret}_LABEL_${index}` })), { path: 'safe/sibling', label: 'Safe sibling' },
     ] }] });
@@ -396,6 +397,6 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     ] }] });
     const readableReply = await (await readable.start()).pending;
     expect(readableReply.content).toContain('필터링된 보기'); expect(readableReply.content).toContain('Safe sibling'); expect(readableReply.content).not.toContain(secret);
-    f.record('HTTP-13', 'ten unsafe/encoded references and associated labels absent from wire/evidence/raw/transcript/progress; safe sibling exact; filtered readable coverage');
+    f.record('HTTP-13', 'twelve unsafe/encoded references including normalized-path collisions and associated labels absent from wire/evidence/raw/transcript/progress; safe sibling exact; filtered readable coverage');
   });
 });

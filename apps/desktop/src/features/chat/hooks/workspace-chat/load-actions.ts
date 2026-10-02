@@ -2,14 +2,14 @@ import type { WorkspaceChatContext } from './contracts';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { detachActiveRequest, invalidateSession } from './lifecycle-actions';
+import { publishWorkspaceTranscript } from './transcript-snapshot';
 
 export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
   const refreshMappedWorkspaceChat = async (sessionId: string) => {
     try {
       const loaded = await window.ax.loadWorkspaceChat(sessionId);
       if (!ctx.isViewingSession(sessionId)) return;
-      if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = loaded.transcriptRevision;
-      ctx.setChatMessages(loaded.messages);
+      publishWorkspaceTranscript(ctx, loaded);
       ctx.setWorkspaceWorkflowState((current) =>
         current ? { ...current, messages: loaded.messages } : current,
       );
@@ -35,9 +35,8 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       const loaded = await window.ax.loadWorkspaceChat(id);
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.refs.workspaceSessionIdRef.current = loaded.id;
-      if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = loaded.transcriptRevision;
       ctx.setWorkspaceSessionId(loaded.id);
-      ctx.setChatMessages(loaded.messages);
+      publishWorkspaceTranscript(ctx, loaded);
       const workflowId = loaded.workflowId;
       const [sourceResult, workflow] = await Promise.all([
         window.ax.listWorkspaceSources(loaded.id),
@@ -73,12 +72,11 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
     ctx.refs.pendingWorkspaceChatRefreshRef.current = undefined;
     ctx.setBusy(true);
     ctx.setError('');
-    ctx.setChatMessages([]);
+    publishWorkspaceTranscript(ctx, { messages: [] });
     ctx.setWorkspaceSources([]);
     ctx.setWorkspaceWorkflowState(null);
     ctx.setWorkflowRegistered(false);
     ctx.refs.workspaceSessionIdRef.current = undefined;
-    if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = undefined;
     ctx.setWorkspaceSessionId(undefined);
     try {
       const [mappedChat, loaded] = await Promise.all([
@@ -88,9 +86,8 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       if (!ctx.isCurrentSession(epoch)) return;
       if (mappedChat) {
         ctx.refs.workspaceSessionIdRef.current = mappedChat.id;
-        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = mappedChat.transcriptRevision;
         ctx.setWorkspaceSessionId(mappedChat.id);
-        ctx.setChatMessages(mappedChat.messages);
+        publishWorkspaceTranscript(ctx, mappedChat);
         const sourceResult = await window.ax.listWorkspaceSources(mappedChat.id);
         if (!ctx.isCurrentSession(epoch)) return;
         ctx.setWorkspaceSources(sourceResult.sources);
@@ -103,7 +100,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
         messages: mappedChat?.messages,
       };
       if (!ctx.isCurrentSession(epoch)) return;
-      if (!mappedChat) ctx.setChatMessages(state.messages ?? []);
+      if (!mappedChat) publishWorkspaceTranscript(ctx, { messages: state.messages ?? [] });
       ctx.setWorkspaceWorkflowState(state);
       ctx.setWorkflowRegistered(loaded.active === true);
     } catch (err) {

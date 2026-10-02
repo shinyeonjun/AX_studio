@@ -16,6 +16,8 @@ vi.mock('react', () => ({
 
 import { useDiscovery } from './useDiscovery';
 import { createWorkspaceMessageActions } from './workspace-chat/message-actions';
+import { createWorkspaceLoadActions } from './workspace-chat/load-actions';
+import { transcriptSnapshot } from './workspace-chat/transcript-snapshot';
 import { createWorkspaceSourceActions } from './workspace-chat/source-actions';
 import { createWorkspaceWorkflowActions } from './workspace-chat/workflow-actions';
 import type { WorkspaceChatMessageContext } from './workspace-chat/contracts';
@@ -262,6 +264,75 @@ describe('workspace asynchronous session ordering', () => {
       expect(saved.messages.map(message => message.content)).toEqual(['Saved metadata', 'Main-approved saved facts']);
       expect(ctx.setChatMessages).toHaveBeenLastCalledWith(saved.messages);
       expect(ctx.refs.transcriptRevisionRef.current).toBe(saved.transcriptRevision);
+    } finally { db.close?.(); }
+  });
+
+  it.each(['refresh', 'conflict-reload', 'newer-user'] as const)('keeps a retained render snapshot paired with its own token after %s', async mode => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const b = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'Metadata B', turnId: 'metadata-b' }], registeredMetadataParticipation: true });
+      const ctx = workspaceContext();
+      ctx.refs.workspaceSessionIdRef.current = b.id;
+      ctx.refs.transcriptRevisionRef = { current: b.transcriptRevision };
+      ctx.chatMessages = b.messages;
+      ctx.transcriptSnapshot = transcriptSnapshot(b.messages, b.transcriptRevision);
+      ctx.setTranscriptSnapshot = vi.fn();
+      const retained = createWorkspaceMessageActions(ctx);
+      const answered = store.appendWorkspaceChatMetadataReply({ sessionId: b.id, turnId: 'metadata-b', userText: 'Metadata B',
+        reply: 'Approved B inventory', expectedTranscriptRevision: b.transcriptRevision!, assertCurrent: () => undefined });
+      const current = mode === 'newer-user' ? store.saveWorkspaceChat({ id: b.id, messages: [...answered.messages,
+        { role: 'user', content: 'New ordinary C', turnId: 'ordinary-c' }], expectedTranscriptRevision: answered.transcriptRevision }) : answered;
+      const save = vi.fn(async (id: string, messages: WorkspaceChatMessage[], _workflowId: unknown, options?: WorkspaceChatSaveOptions) =>
+        store.saveWorkspaceChat({ id, messages, expectedTranscriptRevision: options?.expectedTranscriptRevision }));
+      const send = vi.fn(async (_text: string, requestId: string) => ({ content: 'Ordinary D reply', requestId }));
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: { saveWorkspaceChat: save, sendCommandChat: send,
+        loadWorkspaceChat: async (id: string) => store.getWorkspaceChat(id)! } } });
+      if (mode === 'conflict-reload') await retained.sendMessage('Unsaved D');
+      else await createWorkspaceLoadActions(ctx).refreshMappedWorkspaceChat(b.id);
+      expect(ctx.refs.transcriptRevisionRef.current).toBe(current.transcriptRevision);
+      expect(ctx.setTranscriptSnapshot).toHaveBeenLastCalledWith({ messages: current.messages, transcriptRevision: current.transcriptRevision });
+      // Even a callback created after the ref advances must use the old render's
+      // complete state pair, while React's replacement render is still pending.
+      await createWorkspaceMessageActions(ctx).sendMessage('Unsaved D');
+      await retained.sendMessage('Unsaved D');
+      expect(send).not.toHaveBeenCalled();
+      for (const call of save.mock.calls) expect(call[3]?.expectedTranscriptRevision).toBe(b.transcriptRevision);
+      expect(store.getWorkspaceChat(b.id)).toEqual(current);
+      expect(ctx.setEditHint).toHaveBeenCalledWith('Unsaved D');
+      // A genuinely current render can append once without losing B or C.
+      ctx.chatMessages = current.messages;
+      ctx.transcriptSnapshot = transcriptSnapshot(current.messages, current.transcriptRevision);
+      await createWorkspaceMessageActions(ctx).sendMessage('Current D');
+      expect(send).toHaveBeenCalledOnce();
+      const final = store.getWorkspaceChat(b.id)!;
+      expect(final.messages).toContainEqual({ role: 'assistant', content: 'Approved B inventory' });
+      if (mode === 'newer-user') expect(final.messages).toContainEqual({ role: 'user', content: 'New ordinary C', turnId: 'ordinary-c' });
+      expect(final.messages.filter(message => message.role === 'user' && message.content === 'Current D')).toHaveLength(1);
+    } finally { db.close?.(); }
+  });
+
+  it('does not borrow a fresh ref token for a speculative snapshot that has no persisted revision', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const b = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'Metadata B', turnId: 'metadata-b' }], registeredMetadataParticipation: true });
+      const answered = store.appendWorkspaceChatMetadataReply({ sessionId: b.id, turnId: 'metadata-b', userText: 'Metadata B',
+        reply: 'Approved B inventory', expectedTranscriptRevision: b.transcriptRevision!, assertCurrent: () => undefined });
+      const ctx = workspaceContext();
+      ctx.refs.workspaceSessionIdRef.current = b.id;
+      ctx.refs.transcriptRevisionRef = { current: answered.transcriptRevision };
+      ctx.chatMessages = b.messages;
+      ctx.transcriptSnapshot = transcriptSnapshot(b.messages);
+      const save = vi.fn(async (id: string, messages: WorkspaceChatMessage[], _workflow: unknown, options?: WorkspaceChatSaveOptions) =>
+        store.saveWorkspaceChat({ id, messages, expectedTranscriptRevision: options?.expectedTranscriptRevision }));
+      const send = vi.fn();
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: { saveWorkspaceChat: save, sendCommandChat: send,
+        loadWorkspaceChat: async (id: string) => store.getWorkspaceChat(id)! } } });
+      await createWorkspaceMessageActions(ctx).sendMessage('Unsaved D');
+      expect(save).toHaveBeenCalledOnce(); expect(save.mock.calls[0]?.[3]).toBeUndefined();
+      expect(send).not.toHaveBeenCalled(); expect(store.getWorkspaceChat(b.id)).toEqual(answered);
+      expect(ctx.setEditHint).toHaveBeenCalledWith('Unsaved D');
     } finally { db.close?.(); }
   });
 

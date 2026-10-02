@@ -1,0 +1,183 @@
+{
+  "kind": "synthetic scripted real-store/service/trusted-IPC integration",
+  "baselineCommit": "c42548ca0cc572b9eaeb7e0eaf035689f62a5e18",
+  "docsBeforeCodeCommit": "3368680ad18d25315365b31de56a0c513e2d899b",
+  "acceptanceRows": 13,
+  "passedRows": 13,
+  "modelQualityMeasured": false,
+  "liveProviderCalls": 0,
+  "liveLedger": "27/30 unchanged",
+  "transport": {
+    "scriptedFetches": 40,
+    "requestBytes": 112613,
+    "countsIncludeFailuresAndCancellation": true,
+    "forbiddenCalls": 0,
+    "tokenUsage": "not measured by scripted transport",
+    "cost": "not measured by scripted transport"
+  },
+  "rows": [
+    {
+      "id": "HTTP-01",
+      "passed": true,
+      "scriptedFetches": 0,
+      "requestBytes": 0,
+      "forbiddenCalls": 0,
+      "checks": "gate off, ordinary model identity, continuation fence, trusted sender"
+    },
+    {
+      "id": "HTTP-02",
+      "passed": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4700,
+      "forbiddenCalls": 0,
+      "checks": "four exact labels/paths, approved facts, main append, local coverage"
+    },
+    {
+      "id": "HTTP-03",
+      "passed": true,
+      "scriptedFetches": 4,
+      "requestBytes": 9206,
+      "forbiddenCalls": 0,
+      "checks": "missing versus saved empty inventory, no remote emptiness claim"
+    },
+    {
+      "id": "HTTP-04",
+      "passed": true,
+      "scriptedFetches": 4,
+      "requestBytes": 9368,
+      "forbiddenCalls": 0,
+      "checks": "registered dictionary facts, unknown fields, missing dictionary, successful revision mutations"
+    },
+    {
+      "id": "HTTP-05",
+      "passed": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4665,
+      "forbiddenCalls": 0,
+      "checks": "disabled saved candidate, saved bit visible, remote verification unknown"
+    },
+    {
+      "id": "HTTP-06",
+      "passed": true,
+      "scriptedFetches": 3,
+      "requestBytes": 12011,
+      "forbiddenCalls": 0,
+      "checks": "duplicate labels, 33-source overflow, malformed config, no default"
+    },
+    {
+      "id": "HTTP-07",
+      "passed": true,
+      "scriptedFetches": 4,
+      "requestBytes": 13212,
+      "forbiddenCalls": 0,
+      "checks": "retrieval/action, malformed and uncertain decisions terminate"
+    },
+    {
+      "id": "HTTP-08",
+      "passed": true,
+      "scriptedFetches": 4,
+      "requestBytes": 11341,
+      "forbiddenCalls": 0,
+      "checks": "metadata and ordinary B supersede delayed A before publication"
+    },
+    {
+      "id": "HTTP-09",
+      "passed": true,
+      "scriptedFetches": 2,
+      "requestBytes": 6429,
+      "forbiddenCalls": 0,
+      "checks": "fresh correction fragment, goal clarification, no inherited authority"
+    },
+    {
+      "id": "HTTP-10",
+      "passed": true,
+      "scriptedFetches": 6,
+      "requestBytes": 19818,
+      "forbiddenCalls": 0,
+      "checks": "six delayed and three before-start cancellation/deletion/shutdown/revision variants"
+    },
+    {
+      "id": "HTTP-11",
+      "passed": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4710,
+      "forbiddenCalls": 0,
+      "checks": "exact identical-text IDs, stale/missing CAS rejection, background/current turns intact"
+    },
+    {
+      "id": "HTTP-12",
+      "passed": true,
+      "scriptedFetches": 3,
+      "requestBytes": 7866,
+      "forbiddenCalls": 0,
+      "checks": "inert adversarial labels, forged/replayed/wrong-source permits, raw refusal"
+    },
+    {
+      "id": "HTTP-13",
+      "passed": true,
+      "scriptedFetches": 4,
+      "requestBytes": 9287,
+      "forbiddenCalls": 0,
+      "checks": "unsafe references and labels absent before projection; useful safe sibling; explicit filtered coverage; unsafe-first control/padded duplicates retain only the safe sibling own label"
+    }
+  ],
+  "regressions": {
+    "core": {
+      "passed": 566,
+      "failed": 0,
+      "files": 71
+    },
+    "desktop": {
+      "passed": 59,
+      "failed": 0,
+      "files": 8
+    }
+  },
+  "unchanged24CaseGate": {
+    "cases": 24,
+    "passed": 24,
+    "forbiddenCalls": 0,
+    "generatedModelCalls": 0,
+    "fixtureGitBlob": "025bfcac02a18bdef40e3b1c9d0dbae869510d4a",
+    "fixtureGitBytesSha256": "e3581b246342189a4d670281b20af4bb6a8e889c44bca133fe85ce3794627dc3",
+    "fixtureCheckoutBytesSha256": "1357d82a9f340c75dc80c9caf8ab60eeb4f71ce051caaa86b01fb5198a74e9f3"
+  },
+  "exactCommitEvidence": "task-local review-patches/registered-http-metadata-revision-identity.json and build-evidence/registered-http-metadata-revision/verification.json",
+  "limitations": [
+    "Default-off offline installation only; no automatic metadata routing or product mode selector.",
+    "Saved HTTP registrations and field dictionaries only; remote authentication, permission and health unknown.",
+    "Desktop correction fields start fresh; full correction UX and partial inheritance deferred.",
+    "Single main-process database owner; cross-process writers outside scope.",
+    "Broader read controller remains unwired; scripted responses do not measure Korean model performance.",
+    "No UI worker commits combined; parent exact review required before publication.",
+    "Live question/context contrast requires new permission and a fresh atomic dispatch/token/cost cap."
+  ],
+  "reviewedRejectedCommit": "d14f3c4a79c796409502a9183e9c8842db069eb6",
+  "reviewAcceptance": "pending independent rereview",
+  "reviewArchiveSha256": "ba28fb3352201abf179ec14bd78d3af0066c0ec54d9d5075ef26a6c1c1a33e56",
+  "originalEvidence": "task-local review-patches/original-d14f3c4",
+  "immutableReviewerProbes": {
+    "original": {
+      "passed": 4,
+      "failed": 7
+    },
+    "fixed": {
+      "passed": 11,
+      "failed": 0
+    },
+    "sealedMembersVerified": 103,
+    "probeBytesUnchanged": true,
+    "hashes": {
+      "transcript": "0915989a6018c7b938b9dff45212c6141840607ff29d120d7fc086d7bf8e532f",
+      "operations": "5725aee5447132501584b002f3644ae492b0d698bf084de9be8de43302b3a3ef",
+      "ipc": "7ebe743d032cd967c30f5e1e6be119f4a8e52689386519a9132fa67be093a6a9"
+    }
+  },
+  "independentIPC": {
+    "scriptedFetches": 4,
+    "requestBytes": 9401,
+    "forbiddenCalls": 0,
+    "liveCalls": 0,
+    "staleDRejectedBeforeDispatch": true
+  }
+}

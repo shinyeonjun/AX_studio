@@ -19,9 +19,17 @@ export interface WorkspaceChatRefs {
   transcriptRevisionRef?: MutableRefObject<string | undefined>;
 }
 
+/** One render snapshot owns both its messages and the token for those messages. */
+export interface WorkspaceChatTranscriptSnapshot {
+  readonly messages: WorkspaceChatMessage[];
+  readonly transcriptRevision?: string;
+}
+
 export interface WorkspaceChatContext {
   refs: WorkspaceChatRefs;
   chatMessages: WorkspaceChatMessage[];
+  transcriptSnapshot?: WorkspaceChatTranscriptSnapshot;
+  setTranscriptSnapshot?: Dispatch<SetStateAction<WorkspaceChatTranscriptSnapshot>>;
   workspaceWorkflowState: WorkspaceWorkflowState | null;
   refresh: () => Promise<void>;
   onSessionsChanged?: () => void;

@@ -2,8 +2,12 @@ import type { WorkspaceChatMessageContext, WorkspaceSendResponse } from './contr
 import type { WorkspaceChatMessage, WorkspaceChatSaveOptions } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
+import { publishWorkspaceTranscript, transcriptSnapshot } from './transcript-snapshot';
 
 export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) {
+  // Production context carries a single React state pair. Older isolated callers
+  // capture their pair once here, before any refresh can advance the shared ref.
+  const captured = ctx.transcriptSnapshot ?? transcriptSnapshot(ctx.chatMessages, ctx.refs.transcriptRevisionRef?.current);
   const sendChat = async (text: string, metadataLane?: WorkspaceChatSaveOptions['metadataLane']) => {
     if (ctx.refs.busyRef.current) return;
     const epoch = ctx.refs.sessionEpochRef.current;
@@ -13,7 +17,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     ctx.refs.busyRef.current = true;
     ctx.refs.activeRequestIdRef.current = requestId;
     const nextMessages: WorkspaceChatMessage[] = [
-      ...ctx.chatMessages,
+      ...captured.messages,
       { role: 'user', content: text, turnId: requestId },
     ];
     if (ctx.isCurrentSession(epoch)) {
@@ -29,7 +33,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     let initialTranscriptSaved = false;
     try {
       const saveOptions: WorkspaceChatSaveOptions = {
-        ...(ctx.refs.transcriptRevisionRef?.current ? { expectedTranscriptRevision: ctx.refs.transcriptRevisionRef.current } : {}),
+        ...(captured.transcriptRevision ? { expectedTranscriptRevision: captured.transcriptRevision } : {}),
         ...(metadataLane ? { metadataLane } : {}),
       };
       const initialSaved = await window.ax.saveWorkspaceChat(
@@ -42,7 +46,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       savedSessionId = initialSaved.id;
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(originSessionId)) {
         ctx.refs.workspaceSessionIdRef.current = initialSaved.id;
-        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = initialSaved.transcriptRevision;
+        publishWorkspaceTranscript(ctx, initialSaved);
         ctx.setWorkspaceSessionId(initialSaved.id);
       }
       const res = (await window.ax.sendCommandChat(
@@ -65,8 +69,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         if (authoritative.id !== savedSessionId) throw new Error('workspace_chat_persisted_reply_identity_conflict');
         ctx.onSessionsChanged?.();
         if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
-          ctx.setChatMessages(authoritative.messages);
-          if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = authoritative.transcriptRevision;
+          publishWorkspaceTranscript(ctx, authoritative);
         } else if (ctx.isViewingSession(savedSessionId)) {
           ctx.refs.pendingWorkspaceChatRefreshRef.current = savedSessionId;
         }
@@ -108,9 +111,8 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         ctx.refs.pendingWorkspaceChatRefreshRef.current = savedSessionId;
       }
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
-        ctx.setChatMessages(saved.messages);
+        publishWorkspaceTranscript(ctx, saved);
         ctx.refs.workspaceSessionIdRef.current = saved.id;
-        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = saved.transcriptRevision;
         ctx.setWorkspaceSessionId(saved.id);
         if (changedWorkflowId) {
           const workflow = await window.ax.loadWorkChat(changedWorkflowId);
@@ -141,8 +143,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
           if (savedSessionId) {
             const authoritative = await window.ax.loadWorkspaceChat(savedSessionId);
             if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
-              ctx.setChatMessages(authoritative.messages);
-              if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = authoritative.transcriptRevision;
+              publishWorkspaceTranscript(ctx, authoritative);
             }
           }
         } catch { /* Keep the input and conflict visible; never retry a snapshot or command. */ }

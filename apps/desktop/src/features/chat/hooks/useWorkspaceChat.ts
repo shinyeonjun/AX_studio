@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceWorkflowState } from './workspace-chat-helpers';
-import type { WorkspaceChatMessage, WorkspaceSourceRecord } from '@ax-studio/core';
-import type { WorkspaceChatContext } from './workspace-chat/contracts';
+import type { WorkspaceSourceRecord } from '@ax-studio/core';
+import type { WorkspaceChatContext, WorkspaceChatTranscriptSnapshot } from './workspace-chat/contracts';
+import { transcriptSnapshot as createTranscriptSnapshot } from './workspace-chat/transcript-snapshot';
 import { createWorkspaceMessageActions } from './workspace-chat/message-actions';
 import { createWorkspaceLifecycleActions } from './workspace-chat/lifecycle-actions';
 import { createWorkspaceLoadActions } from './workspace-chat/load-actions';
@@ -23,7 +24,14 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   const busyRef = useRef(false);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | undefined>();
   const [workspaceContextKey, setWorkspaceContextKey] = useState(0);
-  const [chatMessages, setChatMessages] = useState<WorkspaceChatMessage[]>([]);
+  const [transcriptSnapshot, setTranscriptSnapshot] = useState<WorkspaceChatTranscriptSnapshot>(() => createTranscriptSnapshot([]));
+  const chatMessages = transcriptSnapshot.messages;
+  const setChatMessages = useCallback<WorkspaceChatContext['setChatMessages']>((update) => {
+    // Optimistic display updates carry no persisted token. Never give an older
+    // literal replacement the revision of whatever state React currently holds.
+    setTranscriptSnapshot(current => createTranscriptSnapshot(
+      typeof update === 'function' ? update(current.messages) : update));
+  }, []);
   const [workspaceWorkflowState, setWorkspaceWorkflowState] = useState<WorkspaceWorkflowState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +59,8 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       pendingWorkspaceChatRefreshRef,
     },
     chatMessages,
+    transcriptSnapshot,
+    setTranscriptSnapshot,
     workspaceWorkflowState,
     refresh,
     onSessionsChanged,
@@ -69,7 +79,8 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     setWorkspaceSources,
     setSourceBusy,
   }), [
-    chatMessages,
+    transcriptSnapshot,
+    setChatMessages,
     isCurrentSession,
     isViewingSession,
     onSessionsChanged,

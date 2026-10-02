@@ -57,6 +57,23 @@ describe('local registered HTTP metadata bounds and permit routing', () => {
     } finally { log.mockRestore(); db.close?.(); }
   });
 
+  it.each(['\r\norders', ' orders '])('excludes the whole unsafe raw entry %j before a safe duplicate is parsed', async unsafePath => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      store.setConnection('http', true, { endpoints: [{ id: 'test', baseUrl: 'https://offline.invalid', discoveredReadOperations: [
+        { path: unsafePath, label: 'REJECTED_RAW_LABEL' }, { path: 'orders', label: 'Own safe label' },
+      ] }] });
+      const { adapter } = snapshotRegisteredHttpMetadata(store, { catalogRevision: 1, policyRevision: 1 });
+      const output = describeRegisteredHttpMetadata(store, { name: 'discovery.describe', args: { assetId: 'http:test', depth: 'summary' } },
+        { adapter, sourceId: 'http:test', sourceRevision: 1, intent: 'inventory' });
+      expect(output.status).toBe('ok');
+      expect(output.data).toMatchObject({ entries: [{ id: 'local_entry_0', path: 'orders', label: 'Own safe label' }],
+        knownTotal: 1, filtered: true, truncated: true });
+      expect(JSON.stringify(output)).not.toContain('REJECTED_RAW_LABEL');
+    } finally { db.close?.(); }
+  });
+
   it('rejects an unsupported private adapter kind without invoking normal dispatch', async () => {
     const db = await createDatabaseAsync(':memory:');
     try {

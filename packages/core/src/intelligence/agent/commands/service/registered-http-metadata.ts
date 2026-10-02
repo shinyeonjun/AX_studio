@@ -39,8 +39,16 @@ function localSources(store: WorkflowStore) {
   const rawRecords = Array.isArray(rawConfig.endpoints) && rawConfig.endpoints.length > 0 ? rawConfig.endpoints : [rawConfig];
   const capped = rawRecords.length > SOURCE_INPUT_LIMIT;
   const records = rawRecords.slice(0, SOURCE_INPUT_LIMIT);
+  // Filter whole raw objects before the legacy parser trims or deduplicates a
+  // path. Otherwise a rejected entry's label could survive under a safe sibling.
+  const safeRecords = records.map(entry => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || !Array.isArray(entry.discoveredReadOperations)) return entry;
+    return { ...entry, discoveredReadOperations: entry.discoveredReadOperations.filter((operation: unknown) =>
+      operation !== null && typeof operation === 'object' && !Array.isArray(operation)
+        && isSafeRegisteredHttpOperationPath((operation as Record<string, unknown>).path)) };
+  });
   const parsed = parseHttpEndpoints(Array.isArray(rawConfig.endpoints) && rawConfig.endpoints.length > 0
-    ? { endpoints: records } : rawConfig);
+    ? { endpoints: safeRecords } : safeRecords[0]);
   let incomplete = capped || parsed.length !== rawRecords.length;
   const sources: LocalSource[] = [];
   for (const endpoint of parsed) {
@@ -53,9 +61,7 @@ function localSources(store: WorkflowStore) {
     const raw = records.find((entry, index) => entry && typeof entry === 'object' && !Array.isArray(entry)
       && (typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : index === 0 ? 'default' : `http-${index + 1}`) === endpoint.id);
     const storedOperations: unknown = raw && typeof raw === 'object' ? raw.discoveredReadOperations : undefined;
-    const operations = endpoint.discoveredReadOperations?.filter(operation => isSafeRegisteredHttpOperationPath(operation.path)
-      && Array.isArray(storedOperations) && storedOperations.some(entry => entry && typeof entry === 'object'
-        && entry.path === operation.path && isSafeRegisteredHttpOperationPath(entry.path)));
+    const operations = endpoint.discoveredReadOperations;
     const operationInputFiltered = Array.isArray(storedOperations)
       ? operations?.length !== storedOperations.length : storedOperations !== undefined;
     const id = `http:${endpoint.id}`;
