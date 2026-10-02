@@ -1,3 +1,4 @@
+import { tableToXlsx } from './xlsx.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
 import {
   HttpResponseArtifactSchema,
@@ -15,6 +16,7 @@ export async function executeTransformAction(
   ctx: ConnectorContext,
 ): Promise<ConnectorResult> {
   switch (action) {
+    case 'table_to_xlsx': return tableToXlsx(params.table, ctx);
     case 'table_to_text': {
       const table = params.table;
       if (table == null) {

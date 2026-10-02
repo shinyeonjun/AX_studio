@@ -15,7 +15,7 @@ import {
 } from '@ax-studio/core';
 import { app } from 'electron';
 import { performance } from 'node:perf_hooks';
-import type { AxCommand, AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -30,6 +30,8 @@ import {
   releaseWorkspaceChat,
 } from '../../workspace-chat-registry.js';
 import { runE2EChat } from '../../e2e-test-seam.js';
+import { runE2EReportGeneration } from '../../e2e-test-seam/report.js';
+import { e2EReportPhase, shouldUseE2EFakeAgent } from '../../e2e-test-seam/gates.js';
 import {
   claimPendingCommand,
   bindPendingCommandInputRequests,
@@ -139,7 +141,9 @@ export function registerWorkspaceChatMessageHandler() {
     let inputRequests: AxInputRequest[] = [];
     const presentations: AxUiPresentation[] = [];
     let readResult: TableArtifact | undefined;
-    let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[] } | undefined;
+    let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
+      request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor } | undefined;
+    let acceptedRequestAnchor: AuthoritativeRequestAnchor | undefined;
     let pendingInputRequestToken: string | undefined;
     let outcome: 'success' | 'failed' = 'failed';
     try {
@@ -165,11 +169,29 @@ export function registerWorkspaceChatMessageHandler() {
             presentations,
           };
         }
-        pendingCommandClaim = { token: claim.token, command: claim.command, inputValues: claim.inputValues };
+        pendingCommandClaim = { ...claim };
       } else {
         clearPendingCommand(safeWorkspaceSessionId);
       }
-      if (!pendingCommandClaim && !app.isPackaged && process.env.AX_E2E === '1' && process.env.AX_E2E_FAKE_AGENT === '1') {
+      if (!pendingCommandClaim && shouldUseE2EFakeAgent(app.isPackaged, process.env)) {
+        const phase = e2EReportPhase(app.isPackaged, process.env, userMessage);
+        if (phase) {
+          const reply = await runE2EReportGeneration({
+            core,
+            userMessage,
+            workspaceSessionId: safeWorkspaceSessionId,
+          }, phase);
+          outcome = 'success';
+          return {
+            role: 'assistant' as const,
+            content: reply.content,
+            requestId: chatRequestId,
+            changedWorkflowIds: reply.changedWorkflowIds,
+            removedWorkflowIds: reply.removedWorkflowIds,
+            inputRequests: reply.inputRequests,
+            presentations: reply.presentations,
+          };
+        }
         const reply = await runE2EChat({
           core,
           userMessage,
@@ -202,6 +224,8 @@ export function registerWorkspaceChatMessageHandler() {
         harness: core.agentHarness,
         commandService: core.commandService,
         decisionEngine: core.decisionEngine,
+        connectionRevision,
+        onRequestAnchor: (anchor) => { acceptedRequestAnchor = anchor; },
         connectedConnectors,
         httpEndpoints,
         resolveReadOperationSelection: () => selectJevReadOperations(
@@ -214,7 +238,8 @@ export function registerWorkspaceChatMessageHandler() {
         userMessage,
         ...(previousReadResult ? { previousReadResult } : {}),
         ...(pendingInput && pendingCommandClaim ? {
-          decisionMessage: pendingInput.request,
+          decisionMessage: pendingCommandClaim.request,
+          requestAnchor: pendingCommandClaim.requestAnchor,
           commandInputValues: pendingCommandClaim.inputValues,
         } : {}),
         ...(pendingCommandClaim ? { pendingCommand: pendingCommandClaim.command } : {}),
@@ -253,14 +278,16 @@ export function registerWorkspaceChatMessageHandler() {
               pendingCommandClaim.token,
               command,
               Date.now(),
-              pendingInput?.request ?? userMessage,
+              pendingCommandClaim.request,
+              acceptedRequestAnchor,
             );
           } else {
             pendingInputRequestToken = rememberPendingCommand(
               safeWorkspaceSessionId,
               command,
               Date.now(),
-              pendingInput?.request ?? userMessage,
+              userMessage,
+              acceptedRequestAnchor,
             );
           }
         },

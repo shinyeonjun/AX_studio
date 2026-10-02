@@ -1,4 +1,5 @@
 export interface RdbConnectionConfig {
+  /** External DB connections require an account granted read permissions only. */
   type: 'mysql' | 'postgres' | 'sqlite';
   connectionString?: string;
   filePath?: string;

@@ -23,7 +23,7 @@ describe('runAiDecision evidence and binding', () => {
           goal: 'PDF 시각 위험도 분류',
           investigation: false,
           maxReads: 1,
-          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } } },
         },
         ir,
         { executionId: 'exec-1', variables: {}, log: () => {} },
@@ -66,7 +66,7 @@ describe('runAiDecision evidence and binding', () => {
           maxReads: 1,
           inputContracts: { document: 'DocumentArtifact' },
           bindings: { document: { from: 'ingest', output: 'document' } },
-          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } } },
         },
       ],
     };
@@ -108,7 +108,7 @@ describe('runAiDecision evidence and binding', () => {
             table: { from: 'read', output: 'table' },
             metrics: { from: 'read', output: 'metrics' },
           },
-          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } } },
         },
       ],
     };
@@ -160,7 +160,7 @@ describe('runAiDecision evidence and binding', () => {
           investigation: false, maxReads: 1,
           inputContracts: { table: 'TableArtifact' as const },
           bindings: { table: { from: 'read', output: 'table' } },
-          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } } },
+          outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } } },
         },
       ],
     };

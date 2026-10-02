@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 function moduleDir(): string {
@@ -35,6 +35,9 @@ export function defaultWorkerScript(): string {
   if (resourcesPath) {
     const bundled = join(resourcesPath, 'document-engine', 'src', 'worker.py');
     if (existsSync(bundled)) return bundled;
+    if (existsSync(join(resourcesPath, 'app.asar'))) {
+      throw new Error('Packaged document-engine worker is missing: ' + bundled);
+    }
   }
 
   return (
@@ -53,6 +56,10 @@ export function defaultPythonPath(workerScript = defaultWorkerScript()): string 
     ? join(engineRoot, 'python', 'python.exe')
     : join(engineRoot, 'python', 'bin', 'python3');
   if (existsSync(bundledPython)) return bundledPython;
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resourcesPath && resolve(workerScript) === resolve(join(resourcesPath, 'document-engine', 'src', 'worker.py'))) {
+    throw new Error('Packaged document-engine Python is missing: ' + bundledPython);
+  }
   const venvPython = pythonInVenv(engineRoot);
   if (existsSync(venvPython)) return venvPython;
 

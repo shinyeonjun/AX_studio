@@ -82,7 +82,7 @@ export class MockDocumentEngineClient implements DocumentEngineClient {
       outputHash: 'mock-output-hash',
       pageCount: 1,
       fieldCount: Object.keys(options.values).length,
-      writerEngine: 'pymupdf',
+      writerEngine: 'pypdf-reportlab',
       verified: true,
       interactive: false,
       sourceUnchanged: true,

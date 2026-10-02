@@ -1,3 +1,4 @@
+import { verifyAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import {
   capabilityActionName,
   resolveCapability,
@@ -27,6 +28,15 @@ export function candidateFromCreateCommand(
     return { ok: false, result: ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]] };
   }
 
+  let requestAnchor;
+  if (parsed.data.requestAnchor) {
+    try {
+      requestAnchor = verifyAuthoritativeRequestAnchor(parsed.data.requestAnchor);
+      if (requestAnchor.text.trim() !== parsed.data.goal) throw new Error('request_anchor_mismatch');
+    } catch {
+      return { ok: false, result: ['invalid', undefined, [issue('request_anchor_mismatch', '요청 원문과 저장 목표가 일치하지 않습니다.')]] };
+    }
+  }
   const steps = normalizeStepInputs(parsed.data.steps);
   if (!steps.ok) return { ok: false, result: ['invalid', undefined, steps.issues] };
 
@@ -34,7 +44,8 @@ export function candidateFromCreateCommand(
     ok: true,
     value: {
       name: parsed.data.name,
-      goal: parsed.data.goal,
+      goal: requestAnchor?.text ?? parsed.data.goal,
+      ...(requestAnchor ? { requestAnchor } : {}),
       version: 1,
       inputs: [],
       trigger: parsed.data.trigger,

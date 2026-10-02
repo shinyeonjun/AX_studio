@@ -44,6 +44,8 @@ const JEV_DEFAULT_MAX_REQUEST_BYTES = 65_536;
 // ponytail: 13-way synthetic fan-out hit system_overloaded once; keep all batches, but send at most four concurrently.
 const JEV_MAX_CONCURRENT_BATCHES = 4;
 const JEV_DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
+const JEV_MAX_API_KEY_LENGTH = 8_192;
+const JEV_API_KEY_PATTERN = /^[A-Za-z0-9._~+\/-]+=*$/u;
 
 export interface JevDecisionEngineOptions {
   apiKey: string;
@@ -68,6 +70,30 @@ export class JevDecisionError extends Error {
     this.status = status;
     this.providerRequestCount = providerRequestCount;
     this.requestBytes = requestBytes;
+  }
+}
+
+/** Validate without trimming or otherwise changing the credential. */
+export function validateJevApiKey(apiKey: string): void {
+  if (!apiKey) throw new JevDecisionError('A TypeSafe API key is required.');
+  if (apiKey.length > JEV_MAX_API_KEY_LENGTH || !JEV_API_KEY_PATTERN.test(apiKey)) {
+    throw new JevDecisionError(
+      'TypeSafe API keys must be ASCII bearer tokens with no whitespace. Re-enter the key exactly as issued.',
+    );
+  }
+}
+
+function createRequestHeaders(apiKey: string, customHeaders: Record<string, string>): Headers {
+  try {
+    const headers = new Headers(customHeaders);
+    headers.set('Authorization', `Bearer ${apiKey}`);
+    headers.set('Accept', 'application/json');
+    headers.set('Content-Type', 'application/json');
+    return headers;
+  } catch {
+    throw new JevDecisionError(
+      'TypeSafe request headers are invalid. Check the API key and custom headers, then try again.',
+    );
   }
 }
 
@@ -207,9 +233,8 @@ export class JevDecisionEngine implements DecisionEngine {
   private readonly maxResponseBytes: number;
 
   constructor(options: JevDecisionEngineOptions) {
-    const apiKey = options.apiKey.trim();
-    if (!apiKey) throw new JevDecisionError('A TypeSafe API key is required.');
-    this.apiKey = apiKey;
+    validateJevApiKey(options.apiKey);
+    this.apiKey = options.apiKey;
     this.model = options.model?.trim() || 'jev-latest';
     this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
     let parsedBaseURL: URL;
@@ -430,15 +455,11 @@ export class JevDecisionEngine implements DecisionEngine {
     let response: Response;
     let rawBody: unknown;
     try {
+      const headers = createRequestHeaders(this.apiKey, this.headers);
       onProviderRequest(requestBytes);
       response = await this.fetchImpl(`${this.baseURL}/v1/systemone`, {
         method: 'POST',
-        headers: {
-          ...this.headers,
-          Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers,
         body,
         signal: controller.signal,
       });

@@ -3,15 +3,18 @@ import type {
   ExecutionResultStatus,
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
+  WorkspaceChatGeneratedSpreadsheet,
 } from '@ax-studio/core';
 import type { GeneratedArtifactExportResult } from '../../../../types/ax-api/contracts';
 import { formatFileSize } from '../../../../ui/lib/format-file-size';
+import { executionErrorLabel } from '../../../../ui/lib/work-display';
 
 interface WorkspaceRunResultCardProps {
   content: string;
   status?: ExecutionResultStatus;
   approval?: WorkspaceChatApproval;
   generatedPdf?: WorkspaceChatGeneratedPdf;
+  generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
   busy?: boolean;
   onApprove?: (approvalId: string) => Promise<void>;
   onReject?: (approvalId: string) => Promise<void>;
@@ -64,14 +67,20 @@ export function WorkspaceRunResultCard({
   status,
   approval,
   generatedPdf,
+  generatedSpreadsheet,
   busy = false,
   onApprove,
   onReject,
   onDownloadPdf,
   onSavePdfToFolder,
 }: WorkspaceRunResultCardProps) {
+  const generatedArtifact = generatedSpreadsheet ?? generatedPdf;
+  const artifactLabel = generatedSpreadsheet ? 'Excel' : 'PDF';
   const resolvedStatus = resolveWorkspaceExecutionStatus(status, content);
   const presentation = statusPresentation(resolvedStatus);
+  const recoveryGuidance = resolvedStatus === 'failed' && content.includes('document_engine_dependency_missing')
+    ? executionErrorLabel('document_engine_dependency_missing')
+    : undefined;
   const [busyAction, setBusyAction] = useState<'approve' | 'reject' | null>(null);
   const [actionError, setActionError] = useState('');
   const [artifactAction, setArtifactAction] = useState<'download' | 'folder' | null>(null);
@@ -93,21 +102,21 @@ export function WorkspaceRunResultCard({
   };
 
   const runArtifactAction = async (action: 'download' | 'folder') => {
-    if (!generatedPdf || busy || artifactAction) return;
+    if (!generatedArtifact || busy || artifactAction) return;
     const handler = action === 'download' ? onDownloadPdf : onSavePdfToFolder;
     if (!handler) return;
     setArtifactAction(action);
     setCompletedArtifactAction(null);
     setArtifactError('');
     try {
-      const result = await handler(generatedPdf.artifactId);
+      const result = await handler(generatedArtifact.artifactId);
       if (!result.ok) {
-        if (!result.canceled) setArtifactError(result.error ?? 'PDF를 저장하지 못했습니다.');
+        if (!result.canceled) setArtifactError(result.error ?? `${artifactLabel}를 저장하지 못했습니다.`);
         return;
       }
       setCompletedArtifactAction(action);
     } catch (error) {
-      setArtifactError(error instanceof Error ? error.message : 'PDF를 저장하지 못했습니다.');
+      setArtifactError(error instanceof Error ? error.message : `${artifactLabel}를 저장하지 못했습니다.`);
     } finally {
       setArtifactAction(null);
     }
@@ -123,14 +132,15 @@ export function WorkspaceRunResultCard({
         {presentation.label}
       </p>
       <p>{content}</p>
-      {generatedPdf && (
-        <section className="ax-workspace-generated-pdf" aria-label="생성된 PDF 결과물">
+      {recoveryGuidance && <p className="ax-workspace-run-card-guidance">{recoveryGuidance}</p>}
+      {generatedArtifact && (
+        <section className="ax-workspace-generated-pdf" aria-label={`생성된 ${artifactLabel} 결과물`}>
           <div className="ax-workspace-generated-pdf-copy">
-            <span className="ax-workspace-generated-pdf-eyebrow">생성된 결과물 · PDF</span>
-            <strong className="ax-workspace-generated-pdf-name" title={generatedPdf.fileName}>
-              {generatedPdf.fileName}
+            <span className="ax-workspace-generated-pdf-eyebrow">생성된 결과물 · {artifactLabel}</span>
+            <strong className="ax-workspace-generated-pdf-name" title={generatedArtifact.fileName}>
+              {generatedArtifact.fileName}
             </strong>
-            <span className="ax-workspace-generated-pdf-size">{formatFileSize(generatedPdf.size)}</span>
+            <span className="ax-workspace-generated-pdf-size">{formatFileSize(generatedArtifact.size)}</span>
           </div>
           <div className="ax-workspace-generated-pdf-actions" aria-live="polite">
             <button

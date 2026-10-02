@@ -88,7 +88,7 @@ def _digital_geometry_fields(
                         if page_object.type != pdfium.raw.FPDF_PAGEOBJ_PATH:
                             continue
                         left, bottom, right, top = (
-                            _as_float(value) for value in page_object.get_pos()
+                            _as_float(value) for value in page_object.get_bounds()
                         )
                         width = right - left
                         height = top - bottom

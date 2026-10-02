@@ -169,7 +169,7 @@ describe('runtime control-flow nested risk branch', () => {
     expect(result).toMatchObject({ status: 'failed', errorCode: 'contract_validation_failed' });
     expect(result.log[0]).toMatchObject({
       code: 'contract_validation_failed',
-      message: expect.stringContaining('classify.riskLevel'),
+      message: expect.stringContaining('riskLevel'),
       data: {
         issues: expect.arrayContaining([
           expect.objectContaining({ code: 'invalid_workflow_schema', stepId: 'classify' }),

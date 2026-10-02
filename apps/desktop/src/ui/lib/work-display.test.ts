@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  executionErrorLabel,
   executionStatusLabel,
   isPersistentWork,
   isSingleExecution,
@@ -24,5 +25,11 @@ describe('work display classification', () => {
     expect(executionStatusLabel('running')).toBe('실행 중');
     expect(executionStatusLabel('pending_approval')).toBe('승인 대기');
     expect(executionStatusLabel('success')).toBe('성공');
+  });
+
+  it('provides a project-venv recovery step for missing document-engine packages', () => {
+    const message = executionErrorLabel('document_engine_dependency_missing');
+    expect(message).toContain('AX_DOCUMENT_ENGINE_PYTHON');
+    expect(message).toContain('npm run document-engine:setup');
   });
 });

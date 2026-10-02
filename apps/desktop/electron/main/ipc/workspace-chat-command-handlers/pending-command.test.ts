@@ -113,3 +113,27 @@ describe('pending command continuation', () => {
     });
   });
 });
+
+describe('exact long pending intent', () => {
+  it('rejects the historical same-prefix collision and keeps intent/digest across replacement', () => {
+    clearPendingCommand('exact-session', true);
+    const prefix = 'a'.repeat(2_050);
+    const original = `${prefix} do not send Slack`;
+    const token = rememberPendingCommand('exact-session', command(original), 1_000, original)!;
+    const input = { id: 'body', label: 'Body', type: 'text' as const, required: true };
+    bindPendingCommandInputRequests('exact-session', token, [input]);
+    const values = [{ requestId: 'body', value: 'Synthetic body' }];
+    expect(claimPendingCommand('exact-session', `${prefix} send Slack`, ['body'], values, 1_001))
+      .toEqual({ kind: 'mismatch' });
+    const claim = claimPendingCommand('exact-session', original, ['body'], values, 1_002);
+    expect(claim).toMatchObject({ kind: 'claimed', request: original, requestDigest: expect.stringMatching(/^sha256:/u) });
+    if (claim.kind !== 'claimed') throw new Error('expected claim');
+    expect(replaceClaimedPendingCommand('exact-session', claim.token, command(`${original} now send`), 1_003))
+      .toBeUndefined();
+    const replacement = replaceClaimedPendingCommand('exact-session', claim.token, command(original, 'updated'), 1_003);
+    bindPendingCommandInputRequests('exact-session', replacement!, [{ ...input, id: 'body-2' }]);
+    const resumed = claimPendingCommand('exact-session', original, ['body-2'], [{ requestId: 'body-2', value: 'next' }], 1_004);
+    expect(resumed).toMatchObject({ kind: 'claimed', request: original, requestDigest: claim.requestDigest });
+    clearPendingCommand('exact-session', true);
+  });
+});

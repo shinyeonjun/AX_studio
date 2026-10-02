@@ -1,3 +1,4 @@
+import { AuthoritativeRequestAnchorSchema } from '../../contracts/request-anchor.js';
 import { z } from 'zod';
 import { OutputContractSchema } from '../../contracts/output-contract.js';
 import { MAX_WORKFLOW_STEPS } from './limits.js';
@@ -15,6 +16,8 @@ export const WorkflowIRSchema = z.object({
   version: z.number().int().min(1).default(1),
   name: z.string(),
   goal: z.string(),
+  /** Absent in legacy snapshots; never inferred from a historical goal. */
+  requestAnchor: AuthoritativeRequestAnchorSchema.optional(),
   trigger: TriggerSchema.optional(),
   inputs: z.array(z.string()).max(MAX_WORKFLOW_STEPS).default([]),
   steps: z.array(StepSchema).max(MAX_WORKFLOW_STEPS),

@@ -106,6 +106,8 @@ export function runCommandStreaming(
       if (options.captureStdout !== false) stdout += text;
       if (!options.onStdoutLine) return;
       lineBuf += text;
+      // Only new text can add an LF. Avoid rescanning a growing unterminated line.
+      if (!text.includes('\n')) return;
       const lines = lineBuf.split(/\r?\n/);
       lineBuf = lines.pop() ?? '';
       for (const line of lines) {

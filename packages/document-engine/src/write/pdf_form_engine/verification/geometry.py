@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import hashlib
 from typing import Any, Mapping
 
 from ..primitives import _as_float, _as_string
-from ..runtime import _pymupdf
 
 
 def _page_geometry_signature(document: Any) -> list[tuple[float, float, int]]:
     signature: list[tuple[float, float, int]] = []
-    for page in document:
+    for page in document.pages:
         mediabox = page.mediabox
         signature.append(
             (
@@ -72,23 +70,3 @@ def _validate_template_fields(
             or y + height > page_height + 0.01
         ):
             raise ValueError(f"template_field_rect_invalid:{field_id}")
-
-
-def _display_clip_rect(page: Any, rect: Any, pdf: Any) -> Any:
-    """Convert an unrotated PDF-user rect to PyMuPDF's displayed clip space."""
-    width = _as_float(page.mediabox.width)
-    height = _as_float(page.mediabox.height)
-    rotation = int(_as_float(getattr(page, "rotation", 0))) % 360
-    if rotation == 90:
-        return pdf.Rect(height - rect.y1, rect.x0, height - rect.y0, rect.x1)
-    if rotation == 180:
-        return pdf.Rect(width - rect.x1, height - rect.y1, width - rect.x0, height - rect.y0)
-    if rotation == 270:
-        return pdf.Rect(rect.y0, width - rect.x1, rect.y1, width - rect.x0)
-    return rect
-
-
-def _render_clip_digest(page: Any, rect: Any, pdf: Any) -> bytes:
-    clip = _display_clip_rect(page, rect, pdf)
-    pixmap = page.get_pixmap(matrix=pdf.Matrix(2.0, 2.0), clip=clip, alpha=False)
-    return hashlib.sha256(bytes(pixmap.samples)).digest()

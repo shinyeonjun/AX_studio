@@ -38,8 +38,8 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     sideEffect: 'REVERSIBLE',
     params: [
       { name: 'to', label: '수신자', question: '초안을 누구에게 보낼까요?', required: true, inputType: 'email', placeholder: 'name@example.com' },
-      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false },
-      { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
+      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false, purpose: 'prose' },
+      { name: 'body', label: '본문', question: '메일 내용은요?', required: true, purpose: 'prose' },
     ],
     io: { inputs: { body: 'TextArtifact' }, outputs: { draft: 'EmailMessageRef' } },
   },
@@ -53,8 +53,8 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
     notification: true,
     params: [
       { name: 'to', label: '수신자', question: '메일을 누구에게 보낼까요?', required: true, inputType: 'email', placeholder: 'name@example.com', displayInSummary: true, displayInApproval: true },
-      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false, displayInSummary: true },
-      { name: 'body', label: '본문', question: '메일 내용은요?', required: true },
+      { name: 'subject', label: '제목', question: '메일 제목은요?', required: false, displayInSummary: true, purpose: 'prose' },
+      { name: 'body', label: '본문', question: '메일 내용은요?', required: true, purpose: 'prose' },
     ],
     io: { inputs: { body: 'TextArtifact' }, outputs: { message: 'EmailMessageRef' } },
   },

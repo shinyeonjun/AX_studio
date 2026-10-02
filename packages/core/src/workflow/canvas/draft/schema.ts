@@ -28,6 +28,7 @@ export const WorkflowNodeSchema = z.object({
         name: z.string(),
         type: z.enum(['string', 'number', 'boolean', 'array']),
         description: z.string(),
+        purpose: z.literal('prose').optional(),
         enumValues: z.array(z.string()).optional(),
       }),
     )

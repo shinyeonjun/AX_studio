@@ -17,18 +17,26 @@ const defaultRoot = process.platform === 'win32'
 const PDF_TEXT_SCRIPT = String.raw`
 import json
 import sys
-import pymupdf
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from write.pdf_read import inspect_pages, open_pdf, page_text
 
 path = json.loads(sys.stdin.read())
-with pymupdf.open(path) as document:
-    print(json.dumps({
-        "pageCount": document.page_count,
-        "text": "\n".join(page.get_text() for page in document),
-        "lines": [{"page": page.number, "bbox": line["bbox"],
-                   "text": "".join(span["text"] for span in line["spans"])}
-                  for page in document for block in page.get_text("dict")["blocks"]
-                  for line in block.get("lines", [])],
-    }, ensure_ascii=False))
+pages = inspect_pages(Path(path))
+texts = []
+with open_pdf(path) as document:
+    for index in range(len(document)):
+        page = document[index]
+        try:
+            texts.append(page_text(page))
+        finally:
+            page.close()
+print(json.dumps({
+    "pageCount": len(pages),
+    "text": "\n".join(texts),
+    "lines": [{"page": index, "bbox": span["bbox"], "text": span["text"], "origin": span["origin"]}
+              for index, page in enumerate(pages) for span in page.spans],
+}, ensure_ascii=False))
 `;
 
 function coreDist(relativePath) {
@@ -36,10 +44,11 @@ function coreDist(relativePath) {
 }
 
 async function loadCore() {
-  const [serviceModule, checkpointModule, engineModule, httpModule, tableModule] = await Promise.all([
+  const [serviceModule, checkpointModule, engineModule, enginePathsModule, httpModule, tableModule] = await Promise.all([
     import(coreDist('documents/reporting/service.js')),
     import(coreDist('documents/reporting/checkpoints.js')),
     import(coreDist('documents/read/engine-client/stdio/client.js')),
+    import(coreDist('documents/read/engine-client/paths.js')),
     import(coreDist('connectors/http/connector.js')),
     import(coreDist('contracts/artifacts/table-build.js')),
   ]);
@@ -47,6 +56,7 @@ async function loadCore() {
     ReportGenerationService: serviceModule.ReportGenerationService,
     ReportCheckpointStore: checkpointModule.ReportCheckpointStore,
     StdioDocumentEngineClient: engineModule.StdioDocumentEngineClient,
+    defaultPythonPath: enginePathsModule.defaultPythonPath,
     HttpConnector: httpModule.HttpConnector,
     buildTableArtifact: tableModule.buildTableArtifact,
   };
@@ -57,7 +67,7 @@ function normalizeText(value) {
 }
 
 export function extractPdfText(path) {
-  const result = spawnSync(pythonPath, ['-c', PDF_TEXT_SCRIPT], {
+  const result = spawnSync(pythonPath, ['-c', PDF_TEXT_SCRIPT, join(repositoryRoot, 'packages', 'document-engine', 'src')], {
     input: JSON.stringify(path),
     encoding: 'utf8',
     env: { ...process.env, PYTHONUTF8: '1' },
@@ -98,43 +108,67 @@ function artifactSink(root) {
   };
 }
 
-// This oracle verifies the fixed, one-page fixture geometry, not arbitrary PDF layouts.
+// This oracle verifies the fixed fixture geometry, not arbitrary PDF layouts.
 // Gold values come only from cases.mjs, independently of the production planner.
 export function verifyPdf(caseDefinition, textResult) {
-  const lines = (textResult.lines ?? []).filter(line => line.page === 0 && normalizeText(line.text));
+  const lines = (textResult.lines ?? []).filter(line => normalizeText(line.text));
   const tight = caseDefinition.footer === 'tight';
   const bodyTop = tight ? 225.89 : 160.89;
   const bodyBottom = tight ? 301 : 370;
   const boundaries = [40, 102, 207, 273, 377, 432, 555];
-  const body = lines.filter(line => line.bbox[1] >= bodyTop && line.bbox[1] < bodyBottom);
+  const expectedPageCount = caseDefinition.pageRowDistribution?.length ?? 1;
+  // PDFium's loose font boxes differ from MuPDF's, especially for Helvetica.
+  // Saved text baselines keep the fixed fixture's row/slot positions independent
+  // of that difference. Full glyph boxes still check columns and clipping.
+  const yPosition = line => line.origin?.[1] ?? line.bbox[1];
+  const body = lines.filter(line => yPosition(line) >= bodyTop && yPosition(line) < bodyBottom);
   const grouped = [];
   let invalidGeometry = false;
-  for (const line of [...body].sort((a, b) => a.bbox[1] - b.bbox[1] || a.bbox[0] - b.bbox[0])) {
+  for (const line of [...body].sort((a, b) => a.page - b.page || yPosition(a) - yPosition(b) || a.bbox[0] - b.bbox[0])) {
     const [x0, y0, x1, y1] = line.bbox;
     const column = boundaries.findIndex((x, index) => index < 6 && x0 >= x - 0.5 && x1 <= boundaries[index + 1] + 0.5);
     if (column < 0 || y1 > bodyBottom) { invalidGeometry = true; continue; }
-    let row = grouped.find(item => Math.abs(item.y - y0) <= 2);
-    if (!row) { row = { y: y0, cells: Array.from({ length: 6 }, () => []) }; grouped.push(row); }
+    let row = grouped.find(item => item.page === line.page && Math.abs(item.y - yPosition(line)) <= 2);
+    if (!row) { row = { page: line.page, y: yPosition(line), cells: Array.from({ length: 6 }, () => []) }; grouped.push(row); }
     row.cells[column].push(line);
   }
-  const actualRows = grouped.map(row => row.cells.map(cell => normalizeText(cell.sort((a, b) => a.bbox[0] - b.bbox[0]).map(line => line.text).join(' '))));
+  const actualRows = grouped.map(row => ({
+    page: row.page,
+    cells: row.cells.map(cell => normalizeText(cell.sort((a, b) => a.bbox[0] - b.bbox[0]).map(line => line.text).join(' '))),
+  }));
+  const pageRowDistribution = caseDefinition.pageRowDistribution ?? [caseDefinition.targetExpected.rows.length];
   const rows = caseDefinition.targetExpected.rows.map((row, index) => {
     const tokens = [row.id, row.name, row.region, row.revenue, row.orders, row.attainment];
-    return { id: row.id, complete: tokens.every((token, column) => actualRows[index]?.[column] === normalizeText(token)), tokens };
+    let remaining = index;
+    const expectedPage = pageRowDistribution.findIndex(rowCount => {
+      if (remaining < rowCount) return true;
+      remaining -= rowCount;
+      return false;
+    });
+    return {
+      id: row.id,
+      page: expectedPage,
+      complete: actualRows[index]?.page === expectedPage
+        && tokens.every((token, column) => actualRows[index]?.cells[column] === normalizeText(token)),
+      tokens,
+    };
   });
   const scalarPositions = [[160, 54.7], [160, 79.7], [400, 79.7], [160, 104.7], [400, 104.7], [160, tight ? 300.5 : 370.5]];
-  const atPosition = (value, x, y) => {
-    const matches = lines.filter(line => Math.abs(line.bbox[0] - x) <= 2 && Math.abs(line.bbox[1] - y) <= 2);
+  const atPosition = (value, x, y, page = 0, baseline = y) => {
+    const matches = lines.filter(line => line.page === page && Math.abs(line.bbox[0] - x) <= 2
+      && Math.abs(yPosition(line) - (line.origin ? baseline : y)) <= 2);
     return matches.length === 1 && normalizeText(matches[0].text) === normalizeText(value);
   };
-  const scalarValuesPresent = caseDefinition.targetExpected.scalars.filter((value, index) => atPosition(value, ...scalarPositions[index])).length;
-  const staticTokensPresent = Number(atPosition('AX REPORT E2E', 400, 30.5))
-    + Number(atPosition('SOURCE: orders-api + customer-db', 40, tight ? 355.3 : 425.3));
+  // Fixed fixture baselines, independent of production geometry inference.
+  const scalarBaselines = [61.89, 86.89, 86.89, 111.89, 111.89, tight ? 306.89 : 376.89];
+  const scalarValuesPresent = caseDefinition.targetExpected.scalars.filter((value, index) => atPosition(value, ...scalarPositions[index], 0, scalarBaselines[index])).length;
+  const staticTokensPresent = Number(atPosition('AX REPORT E2E', 400, 30.5, 0, 36.89))
+    + Number(atPosition('SOURCE: orders-api + customer-db', 40, tight ? 355.3 : 425.3, 0, tight ? 360.89 : 430.89));
   const exactRows = !invalidGeometry && actualRows.length === rows.length && rows.every(row => row.complete);
   return {
-    verificationScope: 'fixed-one-page-fixture-geometry',
+    verificationScope: 'fixed-fixture-geometry',
     pageCount: textResult.pageCount,
-    expectedPageCount: 1,
+    expectedPageCount,
     expectedScalarCount: caseDefinition.targetExpected.scalars.length,
     scalarValuesPresent,
     scalarCompleteness: scalarValuesPresent / caseDefinition.targetExpected.scalars.length,
@@ -146,7 +180,7 @@ export function verifyPdf(caseDefinition, textResult) {
     actualRows,
     staticTokensPresent,
     staticTokenCount: 2,
-    ok: textResult.pageCount === 1 && exactRows
+    ok: textResult.pageCount === expectedPageCount && exactRows
       && scalarValuesPresent === caseDefinition.targetExpected.scalars.length
       && staticTokensPresent === 2,
   };
@@ -174,12 +208,21 @@ function checkVerifierContract() {
   const keys = ['id', 'name', 'region', 'revenue', 'orders', 'attainment'];
   const xs = [45, 107, 212, 278, 382, 437];
   const scalarPositions = [[160, 55], [160, 80], [400, 80], [160, 105], [400, 105], [160, 371]];
-  const line = (text, x, y) => ({ text, bbox: [x, y, x + 20, y + 7], page: 0 });
-  const base = [line('AX REPORT E2E', 400, 31), line('SOURCE: orders-api + customer-db', 40, 426),
-    ...definition.targetExpected.scalars.map((text, index) => line(text, ...scalarPositions[index]))];
-  const make = rows => {
-    const lines = [...base, ...rows.flatMap((row, index) => keys.map((key, column) => line(row[key], xs[column], 168.5 + index * 19)))];
-    return { pageCount: 1, text: lines.map(item => item.text).join(' '), lines };
+  const scalarBaselines = [61.89, 86.89, 86.89, 111.89, 111.89, 376.89];
+  const line = (text, x, y, baseline = y, page = 0) => ({ text, bbox: [x, y, x + 20, y + 7], origin: [x, baseline], page });
+  const base = [line('AX REPORT E2E', 400, 31, 36.89), line('SOURCE: orders-api + customer-db', 40, 426, 430.89),
+    ...definition.targetExpected.scalars.map((text, index) => line(text, ...scalarPositions[index], scalarBaselines[index]))];
+  const make = (rows, pageRowDistribution = [rows.length]) => {
+    const lines = [...base, ...rows.flatMap((row, index) => {
+      let rowOnPage = index;
+      const page = pageRowDistribution.findIndex(count => {
+        if (rowOnPage < count) return true;
+        rowOnPage -= count;
+        return false;
+      });
+      return keys.map((key, column) => line(row[key], xs[column], 168.5 + rowOnPage * 19, 174.89 + rowOnPage * 19, page));
+    })];
+    return { pageCount: pageRowDistribution.length, text: lines.map(item => item.text).join(' '), lines };
   };
   const rows = structuredClone(definition.targetExpected.rows);
   if (!verifyPdf(definition, make(rows)).ok) throw new Error('verifier_rejected_valid_rows');
@@ -187,6 +230,10 @@ function checkVerifierContract() {
   [swapped[0].revenue, swapped[1].revenue] = [swapped[1].revenue, swapped[0].revenue];
   const bag = make(rows);
   bag.lines = [line(bag.text, 45, 168.5)];
+  const shifted = make(rows);
+  shifted.lines = shifted.lines.map(item => ({ ...item, origin: [item.origin[0], item.origin[1] + 5] }));
+  const clipped = make(rows);
+  clipped.lines = clipped.lines.map(item => item.text === rows[0].id ? { ...item, bbox: [45, 168.5, 65, 371] } : item);
   const negatives = {
     'bag-of-tokens': bag,
     'wrong-association': make(swapped),
@@ -194,9 +241,20 @@ function checkVerifierContract() {
     'duplicate-row': make([...rows, rows[0]]),
     'missing-row': make(rows.slice(1)),
     'extraneous-row': make([...rows, { ...rows[0], id: 'C999' }]),
+    'wrong-position': shifted,
+    'clipped-row': clipped,
   };
   const accepted = Object.entries(negatives).filter(([, value]) => verifyPdf(definition, value).ok).map(([name]) => name);
   if (accepted.length) throw new Error('verifier_accepted_invalid:' + accepted.join(','));
+  const multipage = CASES.find(item => item.id === 'multi-page-table-template');
+  if (!multipage) throw new Error('verifier_multipage_fixture_missing');
+  const validMultipage = make(multipage.targetExpected.rows, multipage.pageRowDistribution);
+  if (!verifyPdf(multipage, validMultipage).ok) throw new Error('verifier_rejected_valid_multipage_rows');
+  const wrongPageCount = { ...validMultipage, pageCount: 1 };
+  const wrongPageRows = { ...validMultipage, lines: validMultipage.lines.map(item => ({ ...item, page: 0 })) };
+  if (verifyPdf(multipage, wrongPageCount).ok || verifyPdf(multipage, wrongPageRows).ok) {
+    throw new Error('verifier_accepted_invalid_multipage_rows');
+  }
 }
 
 function checkContract() {
@@ -269,7 +327,6 @@ async function runCase(caseDefinition, root, core) {
     sink = artifactSink(caseRoot);
     const documentEngine = new core.StdioDocumentEngineClient({
       artifactRoot: join(caseRoot, 'engine-artifacts'),
-      pythonPath,
       timeoutMs: 180_000,
     });
     const checkpoints = new core.ReportCheckpointStore(join(caseRoot, 'checkpoints'));
@@ -381,7 +438,7 @@ function buildMetrics(cases) {
     e2eSuccessRate: positive.length ? successful.length / positive.length : 1,
     replayPassRate: positive.length ? positive.filter(item => item.replayPass).length / positive.length : 1,
     outputCompletenessRate: completed.length ? completed.reduce((sum, item) => sum + item.verification.rowCompleteness, 0) / completed.length : 0,
-    templateFidelityRate: completed.length ? completed.filter(item => item.verification.pageCount === 1 && item.verification.staticTokensPresent === 2).length / completed.length : 0,
+    templateFidelityRate: completed.length ? completed.filter(item => item.verification.pageCount === item.verification.expectedPageCount && item.verification.staticTokensPresent === 2).length / completed.length : 0,
     safeFailureRate: negative.length ? negative.filter(item => item.passed).length / negative.length : 1,
     categories: [...new Set(cases.map((item) => item.category))].sort(),
     latencyMs: latency(cases.map(item => item.durationMs)),
@@ -407,6 +464,10 @@ async function main() {
   const root = resolve(rootArgument?.slice('--root='.length) ?? process.env.AX_REPORT_E2E_ROOT ?? defaultRoot);
   mkdirSync(root, { recursive: true });
   const core = await loadCore();
+  const documentEnginePython = core.defaultPythonPath();
+  if (resolve(documentEnginePython) !== resolve(pythonPath)) {
+    throw new Error('report_e2e_python_selection_mismatch:fixture=' + pythonPath + ':document_engine=' + documentEnginePython);
+  }
   const definitions = selected ? [selected] : CASES;
   const results = [];
   for (const item of definitions) results.push(await runCase(item, root, core));
@@ -414,6 +475,11 @@ async function main() {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     root,
+    runtimeSelection: {
+      fixturePythonPath: pythonPath,
+      documentEnginePythonPath: documentEnginePython,
+      usesCoreDefaultResolver: true,
+    },
     cases: results,
     metrics: buildMetrics(results),
   };

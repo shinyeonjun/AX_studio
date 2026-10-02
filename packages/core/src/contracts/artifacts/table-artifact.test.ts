@@ -97,6 +97,48 @@ describe('TableArtifact', () => {
     });
   });
 
+  it('keeps raw-value capture opt-in and preserves original scalar types', () => {
+    const input = {
+      id: 'tbl_source_values',
+      headers: ['id', 'amount', 'empty', 'blank', 'boolean'],
+      matrix: [['00123', 123, '', '  ', false]],
+    };
+    expect(buildTableArtifact(input).rows[0]).not.toHaveProperty('rawValues');
+    const artifact = TableArtifactSchema.parse(buildTableArtifact({ ...input, preserveRawValues: true }));
+    expect(artifact.rows[0]?.rawValues).toEqual({ id: '00123', amount: 123, empty: '', blank: '  ', boolean: false });
+    expect(artifact.rows[0]?.values).toEqual({ id: 123, amount: 123, empty: null, blank: null, boolean: false });
+  });
+
+  it('retains raw values for duplicate headers using the same unique column names', () => {
+    const artifact = buildTableArtifact({
+      id: 'tbl_raw_headers',
+      headers: ['id', 'id', ''],
+      matrix: [['00123', '00456', '  untouched  ']],
+      preserveRawValues: true,
+    });
+    expect(artifact.rows[0]?.rawValues).toEqual({ id: '00123', id_2: '00456', column_3: '  untouched  ' });
+  });
+
+  it('uses a connector-supplied source extent when its matrix is already capped', () => {
+    const artifact = buildTableArtifact({
+      id: 'tbl_capped', headers: ['amount'], matrix: [[1], [2]], rowLimit: 2, sourceRowCount: 3,
+    });
+    expect(artifact.truncated).toBe(true);
+    expect(artifact.completeness).toEqual({
+      status: 'partial', reason: 'row_limit', observedCount: 2, limit: 2, hasMore: true,
+    });
+    expect(() => buildTableArtifact({
+      id: 'tbl_inconsistent', headers: ['amount'], matrix: [[1]], sourceRowCount: 0,
+    })).toThrow('invalid_table_source_row_count');
+  });
+
+  it('rejects inconsistent physical row provenance rather than dropping source identity', () => {
+    expect(() => buildTableArtifact({
+      id: 'tbl_bad_provenance', headers: ['amount'], matrix: [[1]],
+      rowProvenance: { firstRow: 2, firstColumn: 1, rowKeys: [] },
+    })).toThrow('invalid_table_row_provenance');
+  });
+
   it('preserves profile statistics for null, mixed, and non-finite scalar values', () => {
     const columns = [
       { name: 'amount', type: 'number' as const, nullable: true, inferred: false },

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { InvestigationOutputSchema } from '../investigation-schema.js';
 import type { Step } from '../../workflow/schema.js';
+import { decisionOutputProperties, decisionRequiredFields } from '../../workflow/ai-output-contract.js';
 
 const MAX_OUTPUT_PREVIEW_FIELDS = 16;
 const MAX_OUTPUT_PREVIEW_CHARS = 400;
@@ -34,18 +34,8 @@ export function investigationSchemaFor(
   step: Step & { type: 'ai_decision' },
   requireDeclaredFields = true,
 ): z.ZodTypeAny {
-  const properties = step.outputSchema?.properties;
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
-    return InvestigationOutputSchema;
-  }
-
-  const required = new Set(
-    Array.isArray(step.outputSchema?.required)
-      ? requireDeclaredFields
-        ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
-        : []
-      : [],
-  );
+  const properties = decisionOutputProperties(step);
+  const required = new Set(requireDeclaredFields ? decisionRequiredFields(step) : []);
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const [key, definition] of Object.entries(properties)) {
     const type = definition && typeof definition === 'object' && !Array.isArray(definition)
@@ -65,11 +55,9 @@ export function investigationSchemaFor(
     if (!required.has(key)) field = field.optional();
     shape[key] = field;
   }
-  return InvestigationOutputSchema.extend(shape);
+  return z.object(shape);
 }
 
 export function requiredOutputFields(step: Step & { type: 'ai_decision' }): string[] {
-  return Array.isArray(step.outputSchema?.required)
-    ? step.outputSchema.required.filter((value): value is string => typeof value === 'string')
-    : [];
+  return decisionRequiredFields(step);
 }

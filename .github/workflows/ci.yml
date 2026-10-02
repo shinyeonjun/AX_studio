@@ -17,7 +17,7 @@ concurrency:
 jobs:
   verify:
     name: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
 
     steps:
@@ -39,6 +39,43 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Read-only Linux sandbox diagnostics
+        shell: bash
+        run: |
+          id
+          uname -a
+          cat /etc/os-release
+          printf 'ImageOS=%s ImageVersion=%s RUNNER_OS=%s RUNNER_ARCH=%s\n' \
+            "${ImageOS:-<unset>}" "${ImageVersion:-<unset>}" "${RUNNER_OS:-<unset>}" "${RUNNER_ARCH:-<unset>}"
+          for path in /proc/sys/kernel/unprivileged_userns_clone \
+            /proc/sys/user/max_user_namespaces \
+            /proc/sys/kernel/apparmor_restrict_unprivileged_userns \
+            /proc/sys/kernel/apparmor_restrict_unprivileged_unconfined \
+            /sys/module/apparmor/parameters/enabled /sys/kernel/security/lsm \
+            "/proc/$$/attr/current"; do
+            printf '%s: ' "$path"
+            if [ -r "$path" ]; then cat "$path"; else printf '<absent or unreadable>\n'; fi
+          done
+          helper="$PWD/node_modules/electron/dist/chrome-sandbox"
+          if [ -f "$helper" ]; then
+            stat -Lc 'type=%F mode=%a uid=%u gid=%g path=%n' "$helper" "$(dirname "$helper")"
+            sha256sum "$helper"
+          else
+            printf 'Electron sandbox helper absent: %s\n' "$helper"
+          fi
+          if command -v unshare >/dev/null && command -v timeout >/dev/null; then
+            if timeout 5s unshare --user --map-root-user --pid --net --fork /bin/true; then
+              printf 'unprivileged_namespace_probe_exit=0\n'
+            else
+              printf 'unprivileged_namespace_probe_exit=%s\n' "$?"
+            fi
+          else
+            printf 'unprivileged namespace probe not run: unshare or timeout unavailable\n'
+          fi
+
+      - name: Packaging path and isolation regression tests
+        run: npm run test:packaging
 
       - name: Document engine dependencies
         run: python -m pip install -r packages/document-engine/requirements.txt
@@ -99,6 +136,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Packaging path and isolation regression tests
+        run: npm run test:packaging
 
       - name: Set up Python for packaging
         uses: actions/setup-python@v5

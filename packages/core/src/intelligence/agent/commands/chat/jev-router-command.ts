@@ -1,5 +1,4 @@
 import type { ChoiceDecisionAnswer, DecisionAnswer } from '../../../../contracts/decision.js';
-import { boundDecisionString } from '../../../decision/context.js';
 import type { AxCommand } from '../schema.js';
 import { deriveJevRequestFeatures, type JevRequestFeatures } from './request-features.js';
 import {
@@ -164,7 +163,10 @@ export function commandForRoute(
   answers: Record<string, DecisionAnswer>,
   requestFeatures: JevRequestFeatures,
 ): AxCommand | JevChatRouterResult {
-  const query = boundDecisionString(input.userMessage, ROUTE_QUERY_MAX_CHARS);
+  const query = input.userMessage;
+  // An executable query is never a shortened authority prefix.
+  if ((route === 'source_search' || route === 'discovery_search')
+    && query.length > ROUTE_QUERY_MAX_CHARS) return fallback('missing_context');
   const workflowId = input.currentWorkflowId?.trim();
 
   switch (route) {

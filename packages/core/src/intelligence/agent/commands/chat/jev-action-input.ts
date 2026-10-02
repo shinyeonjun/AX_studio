@@ -36,7 +36,7 @@ export async function mapJevQuotedActionInput(input: {
   let selected = mapping.params.length === 1 ? mapping.params[0] : undefined;
   if (!selected) {
     const state = {
-      request: boundDecisionString(input.userMessage),
+      request: input.userMessage,
       selected_action: {
         capability_id: input.capability.id,
         connector: input.capability.connector,

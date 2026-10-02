@@ -227,7 +227,7 @@ describe('Desktop workspace chat Jev routing', () => {
 
       const reply = await handler(event, requestMessage, 'request-write-1', undefined, chat.id);
 
-      expect(requests).toHaveLength(1);
+      expect(requests).toHaveLength(2);
       expect(requests[0]?.questions).toHaveProperty('route');
       expect(requests[0]?.questions).toHaveProperty('explicit_execution_now');
       expect(requests[0]?.questions).toHaveProperty('needs_natural_language_answer');
@@ -235,6 +235,9 @@ describe('Desktop workspace chat Jev routing', () => {
         question.type === 'noul'
         && (question.instructions?.candidate as Record<string, unknown> | undefined)?.capability_id === 'gmail.message.send',
       )).toBe(true);
+      expect(reply).toMatchObject({ presentations: expect.arrayContaining([expect.objectContaining({ title: '실행 전 계획 검사', inputs: [], actions: [] })]) });
+      expect(requests[1]?.questions).toHaveProperty('requirements');
+      expect(requests[1]?.questions).toHaveProperty('scope');
       expect(reply.inputContinuation).toBe('command');
       expect(reply.inputRequests?.map((request) => request.parameterName)).toEqual(['body']);
       expect(reply.inputRequests).toEqual(expect.arrayContaining([
@@ -278,7 +281,7 @@ describe('Desktop workspace chat Jev routing', () => {
       );
 
       expect(continuation.content).toContain('큐에 등록했습니다');
-      expect(requests).toHaveLength(1);
+      expect(requests).toHaveLength(2);
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
       expect(agentHarness.runText).not.toHaveBeenCalled();
       expect(queued).toHaveBeenCalledTimes(1);
@@ -406,7 +409,7 @@ describe('Desktop workspace chat Jev routing', () => {
       }), expect.anything());
       expect(store.getWorkflow(workflow.id!, 2)?.steps).toHaveLength(2);
       expect(store.isWorkflowActive(workflow.id!)).toBe(false);
-      expect(requestBodies).toHaveLength(1);
+      expect(requestBodies).toHaveLength(2);
       expect(requestBodies.every((body) => !body.includes('PRIVATE_CHANNEL_ID_123'))).toBe(true);
       expect(agentHarness.runText).not.toHaveBeenCalled();
     } finally {

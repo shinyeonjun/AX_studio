@@ -6,6 +6,7 @@ export function gmailToSlackRecurringDecisionEngine(): DecisionEngine {
   return {
     evaluate: async (request): Promise<DecisionEvaluationResult> => {
       const { questions } = request;
+      if (questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
       if (questions.route) {
         const trigger = Object.entries(questions.workflow_trigger?.type === 'choice'
           ? questions.workflow_trigger.criteria

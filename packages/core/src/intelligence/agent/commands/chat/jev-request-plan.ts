@@ -1,3 +1,4 @@
+import type { AuthoritativeRequestAnchor } from '../../../../contracts/request-anchor.js';
 import type { JevRequestFeatures } from './request-features.js';
 
 export const JEV_RECENT_CONVERSATION_POLICY =
@@ -9,8 +10,11 @@ export interface JevConversationTurn {
 }
 
 export interface JevChatRequestPlan {
+  /** Missing version is a legacy, possibly bounded snapshot; never upgraded in place. */
+  version?: 2;
   request: {
     message: string;
+    anchor?: AuthoritativeRequestAnchor;
     features: JevRequestFeatures;
     context: { recentTurns: readonly JevConversationTurn[] };
   };

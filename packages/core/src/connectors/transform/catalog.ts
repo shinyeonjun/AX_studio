@@ -3,6 +3,12 @@ import type { ConnectorCatalogEntry } from '../../catalog/connector-types.js';
 
 export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
   {
+    id: 'transform.table_to_xlsx', connector: 'transform', kind: 'write',
+    label: '표 → Excel 파일', description: '현재 표의 행과 순서를 Excel 파일로 저장. 원본 전체 재조회나 외부 전송 없음.',
+    sideEffect: 'REVERSIBLE', params: [],
+    io: { inputs: { table: 'TableArtifact' }, outputs: { artifact: 'JsonArtifact' } },
+  },
+  {
     id: 'transform.evaluate',
     connector: 'transform',
     kind: 'read',

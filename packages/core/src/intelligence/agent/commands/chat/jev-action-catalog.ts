@@ -169,7 +169,7 @@ export function compileJevOneShotAction(
     name: 'execution.enqueue_once',
     args: {
       name: `${capability.label} — 일회 실행`.slice(0, 120),
-      goal: userMessage.trim().slice(0, 2_000),
+      goal: userMessage,
       steps: [{
         type: 'action',
         id: 'action_1',

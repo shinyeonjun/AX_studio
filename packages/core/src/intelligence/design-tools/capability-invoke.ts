@@ -5,6 +5,7 @@ import { citationsFromSearchHits } from '../../platform/citations.js';
 import type { ConnectorContext, ConnectorFailureKind, ConnectorResult } from '../../connectors/types.js';
 import { connectorFailureKind } from '../../connectors/failure-kind.js';
 import { ArtifactCompletenessSchema, type ArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
+import { RdbReadCoverageSchema, RdbReadScopeSchema } from '../../contracts/artifacts/rdb-read.js';
 import type { DesignToolContext } from './types.js';
 
 export { connectorFailureKind };
@@ -33,7 +34,7 @@ const MAX_EVIDENCE_STRING_CHARS = 2_000;
 const MAX_EVIDENCE_DEPTH = 8;
 const MAX_PAGING_METADATA_CHARS = 8_000;
 const PAGING_CURSOR_KEYS = ['nextPageToken', 'nextCursor', 'nextLatest'] as const;
-const PAGING_COUNT_KEYS = ['nextPage', 'nextOffset', 'page', 'pageSize', 'limit', 'total', 'totalCount', 'resultSizeEstimate', 'returnedCount'] as const;
+const PAGING_COUNT_KEYS = ['nextPage', 'offset', 'nextOffset', 'page', 'pageSize', 'limit', 'total', 'totalCount', 'resultSizeEstimate', 'returnedCount'] as const;
 
 /** Paging controls are atomic: preserve exact values or fail, never shorten a cursor. */
 export function capabilityPagingMetadata(input: Record<string, unknown>): Record<string, unknown> {
@@ -55,6 +56,15 @@ export function capabilityPagingMetadata(input: Record<string, unknown>): Record
   if (input.completeness !== undefined) {
     const parsed = ArtifactCompletenessSchema.safeParse(input.completeness);
     if (parsed.success) output.completeness = parsed.data;
+  }
+  // Like cursors, RDB scope/coverage is atomic upstream metadata. Reserve it
+  // before row evidence can consume the budget and hide an exactness warning.
+  if (input.kind === 'table' && (input.readScope !== undefined || input.coverage !== undefined)) {
+    const scope = RdbReadScopeSchema.safeParse(input.readScope);
+    const coverage = RdbReadCoverageSchema.safeParse(input.coverage);
+    if (!scope.success || !coverage.success) throw new Error('capability_rdb_read_metadata_invalid');
+    output.readScope = scope.data;
+    output.coverage = coverage.data;
   }
   if (JSON.stringify(output).length > MAX_PAGING_METADATA_CHARS) throw new Error('capability_paging_metadata_too_large');
   return output;

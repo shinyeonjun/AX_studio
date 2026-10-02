@@ -2,6 +2,7 @@ import { SNAPSHOT_BINDING_PREFIX } from '../../port-binding.js';
 import { isConcreteParamValue } from '../ports.js';
 import type { Step, WorkflowIR } from '../../schema.js';
 import { resolveBindingValue } from './resolve.js';
+import { assertWorkflowOutputBoundaries } from '../../contract-validation/structure/references-validation.js';
 
 function applyBoundValueToParams(
   inputPort: string,
@@ -71,6 +72,7 @@ export function applyStepBindings(
   variables: Record<string, unknown>,
   outputs?: Record<string, Record<string, unknown>>,
 ): Record<string, unknown> {
+  assertWorkflowOutputBoundaries(ir);
   if (!step.bindings) return params;
 
   let merged = { ...params };

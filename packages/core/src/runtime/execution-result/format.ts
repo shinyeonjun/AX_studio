@@ -90,6 +90,14 @@ export function formatExecutionResultMessage(
   const actions = completedActionSummaries(options.irJson, result.log);
   if (actions.length > 0) lines.push(`완료한 작업: ${actions.join(', ')}`);
 
+  const spreadsheet = [...result.log].reverse().find(entry => entry.code === 'xlsx_generated');
+  const file = record(spreadsheet?.data);
+  if (result.status === 'success' && file && typeof file.artifactId === 'string'
+    && /^art_[a-zA-Z0-9]+$/.test(file.artifactId)) {
+    lines.push(`Excel 산출물: table.xlsx (${safeText(file.rowCount, 20) ?? '?'}행)`);
+    lines.push(`산출물 ID: ${file.artifactId}`);
+    if (file.partial === true) lines.push('현재 표에 있는 행만 저장했습니다. 원본 전체가 아닐 수 있습니다.');
+  }
   const preview = outputPreviewFromLog(result.log);
   if (preview) {
     const category = safeText(preview.category, 120);

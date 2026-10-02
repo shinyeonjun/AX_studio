@@ -394,7 +394,7 @@ describe('runAxCommandChat command loop', () => {
       onInputRequests: (requests) => inputRequests.push(...requests),
     })).resolves.toContain('실행에 필요한 정보를 입력해 주세요');
 
-    expect(evaluations).toBe(2);
+    expect(evaluations).toBe(3);
     expect(enqueueOnce).not.toHaveBeenCalled();
     expect(commands[0]?.args.steps).toMatchObject([{
       connector: 'gmail', action: 'message.send',
@@ -441,7 +441,9 @@ describe('runAxCommandChat command loop', () => {
       });
 
       for (const [questionId, question] of Object.entries(request.questions)) {
-        if (questionId === 'route') answers[questionId] = choiceAnswer('execution_enqueue_once');
+        if (questionId === 'requirements') answers[questionId] = choiceAnswer('met');
+        else if (questionId === 'scope') answers[questionId] = choiceAnswer('preserved');
+        else if (questionId === 'route') answers[questionId] = choiceAnswer('execution_enqueue_once');
         else if (questionId === 'explicit_execution_now') answers[questionId] = choiceAnswer('execute_now');
         else if (question.type === 'noul') {
           const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
@@ -488,7 +490,7 @@ describe('runAxCommandChat command loop', () => {
         }
       }
       expect(appendAppLog).toHaveBeenCalledWith('info', 'Jev chat route timing recorded.', expect.objectContaining({
-        jevEvaluationCalls: 1,
+        jevEvaluationCalls: 2,
         jevProviderRequestCount: requests.length,
         jevEstimatedRequestBytes: requestBytes.reduce((total, bytes) => total + bytes, 0),
       }));
@@ -511,7 +513,7 @@ describe('runAxCommandChat command loop', () => {
         jevActionCandidateSelected: true,
         jevActionCandidateCount: capabilities.length,
         jevActionCatalogSize: capabilities.length,
-        jevEvaluationCalls: 1,
+        jevEvaluationCalls: 2,
         jevProviderRequestCount: requests.length,
         jevEstimatedRequestBytes: expect.any(Number),
       }));

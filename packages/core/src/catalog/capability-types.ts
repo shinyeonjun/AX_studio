@@ -19,6 +19,8 @@ export const CapabilityParamSchema = z.object({
   required: z.boolean().default(false),
   /** Optional renderer control metadata; absent means a normal text field. */
   inputType: CapabilityParamInputTypeSchema.optional(),
+  /** Host-reviewed content sink. Never use for identifiers, queries, code or filters. */
+  purpose: z.literal('prose').optional(),
   placeholder: z.string().optional(),
   /** Safe scalar values that may be shown in human-facing summaries. */
   displayInSummary: z.boolean().optional(),

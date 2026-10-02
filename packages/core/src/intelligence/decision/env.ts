@@ -14,7 +14,7 @@ export function createExperimentalJevDecisionEngineFromEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): DecisionEngine | undefined {
   if (env[JEV_EXPERIMENT_FLAG] !== '1') return undefined;
-  const apiKey = env.TYPESAFE_API_KEY?.trim();
+  const apiKey = env.TYPESAFE_API_KEY;
   if (!apiKey) {
     throw new Error(`${JEV_EXPERIMENT_FLAG}=1 requires TYPESAFE_API_KEY.`);
   }

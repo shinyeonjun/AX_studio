@@ -1,8 +1,13 @@
+import { createHash } from 'node:crypto';
+import type { AuthoritativeRequestAnchor } from '@ax-studio/core';
 import type { AxCommand, AxInputRequest } from '@ax-studio/core';
 
 const PENDING_COMMAND_TTL_MS = 24 * 60 * 60 * 1_000;
 
 interface PendingPlan {
+  version: 2;
+  requestDigest: string;
+  requestAnchor?: AuthoritativeRequestAnchor;
   token: string;
   goal: string;
   command: AxCommand;
@@ -22,7 +27,8 @@ export type PendingCommandInputValue = {
 
 export type PendingCommandClaim =
   | { kind: 'missing' | 'mismatch' | 'in_progress' }
-  | { kind: 'claimed'; token: string; command: AxCommand; inputValues: PendingCommandInputValue[] };
+  | { kind: 'claimed'; token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
+      request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor };
 
 // ponytail: keep one host-only continuation per chat; after restart/expiry, fail closed instead of re-planning a possibly different action.
 const pendingBySession = new Map<string, PendingPlan>();
@@ -30,11 +36,11 @@ let nextToken = 0;
 
 function goalOf(command: AxCommand, workflowUpdateGoal?: string): string | undefined {
   if (command.name === 'workflow.update') {
-    return workflowUpdateGoal?.trim().slice(0, 2_000) || undefined;
+    return workflowUpdateGoal?.trim() ? workflowUpdateGoal : undefined;
   }
   if (!['execution.enqueue_once', 'workflow.create', 'job.propose'].includes(command.name)
     || typeof command.args.goal !== 'string') return undefined;
-  return command.args.goal.trim().slice(0, 2_000);
+  return workflowUpdateGoal ?? command.args.goal;
 }
 
 function pruneExpired(now: number): void {
@@ -43,11 +49,20 @@ function pruneExpired(now: number): void {
   }
 }
 
-function save(sessionId: string, command: AxCommand, now: number, workflowUpdateGoal?: string): string | undefined {
+const requestDigest = (text: string) => `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}`;
+
+function save(sessionId: string, command: AxCommand, now: number, workflowUpdateGoal?: string,
+  requestAnchor?: AuthoritativeRequestAnchor): string | undefined {
   const goal = goalOf(command, workflowUpdateGoal);
-  if (!sessionId || !goal) return undefined;
+  if (!sessionId || !goal?.trim()) return undefined;
+  const digest = requestDigest(goal);
+  if (requestAnchor && (requestAnchor.version !== 1 || requestAnchor.decisionTextComplete !== true
+    || requestAnchor.text !== goal || requestAnchor.digest !== digest
+    || (requestAnchor.workspaceSessionId !== undefined && requestAnchor.workspaceSessionId !== sessionId))) return undefined;
   const token = `${now}-${++nextToken}`;
   pendingBySession.set(sessionId, {
+    version: 2, requestDigest: digest,
+    ...(requestAnchor ? { requestAnchor: Object.freeze(structuredClone(requestAnchor)) } : {}),
     token,
     goal,
     command: structuredClone(command),
@@ -63,9 +78,10 @@ export function rememberPendingCommand(
   command: AxCommand,
   now = Date.now(),
   workflowUpdateGoal?: string,
+  requestAnchor?: AuthoritativeRequestAnchor,
 ): string | undefined {
   pruneExpired(now);
-  return save(sessionId, command, now, workflowUpdateGoal);
+  return save(sessionId, command, now, workflowUpdateGoal, requestAnchor);
 }
 
 export function claimPendingCommand(
@@ -78,7 +94,8 @@ export function claimPendingCommand(
   pruneExpired(now);
   const plan = pendingBySession.get(sessionId);
   if (!plan) return { kind: 'missing' };
-  if (plan.goal !== request.trim().slice(0, 2_000)) {
+  // Legacy/versionless volatile records cannot establish completeness; require a new request.
+  if (plan.version !== 2 || plan.goal !== request || plan.requestDigest !== requestDigest(request)) {
     return { kind: 'mismatch' };
   }
   const actualRequestIds = [...new Set(requestIds)].sort();
@@ -113,6 +130,8 @@ export function claimPendingCommand(
   plan.state = 'running';
   return {
     kind: 'claimed',
+    request: plan.goal, requestDigest: plan.requestDigest,
+    ...(plan.requestAnchor ? { requestAnchor: plan.requestAnchor } : {}),
     token: plan.token,
     command: structuredClone(plan.command),
     inputValues: [...valuesById.values()],
@@ -137,11 +156,15 @@ export function replaceClaimedPendingCommand(
   command: AxCommand,
   now = Date.now(),
   workflowUpdateGoal?: string,
+  requestAnchor?: AuthoritativeRequestAnchor,
 ): string | undefined {
   const current = pendingBySession.get(sessionId);
   if (current?.token !== token || current.state !== 'running' || !goalOf(command, workflowUpdateGoal)) return undefined;
+  const anchor = requestAnchor ?? current.requestAnchor;
+  const goal = goalOf(command, workflowUpdateGoal);
+  if (goal !== current.goal || (anchor && anchor.digest !== current.requestDigest)) return undefined;
   pendingBySession.delete(sessionId);
-  return save(sessionId, command, now, workflowUpdateGoal);
+  return save(sessionId, command, now, workflowUpdateGoal, anchor);
 }
 
 export function finishClaimedPendingCommand(sessionId: string, token: string): void {

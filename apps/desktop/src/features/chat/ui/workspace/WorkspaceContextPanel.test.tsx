@@ -184,6 +184,16 @@ describe('Workspace flow state', () => {
     expect(markup).toContain('생성된 PDF 결과물');
   });
 
+  it('renders Excel delivery actions without labeling the workbook as PDF', () => {
+    const markup = renderToStaticMarkup(<WorkspaceRunResultCard content="파일 생성 완료" status="success"
+      generatedSpreadsheet={{ artifactId: 'art_xlsx_1', fileName: 'table.xlsx', size: 123,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }}
+      onDownloadPdf={async () => ({ ok: true, fileName: 'table.xlsx' })} onSavePdfToFolder={async () => ({ ok: true, fileName: 'table.xlsx' })} />);
+    expect(markup).toContain('생성된 Excel 결과물'); expect(markup).toContain('table.xlsx');
+    expect(markup).toContain('다운로드'); expect(markup).toContain('지정 폴더에 저장');
+    expect(markup).not.toContain('PDF');
+  });
+
   it('prioritizes a surfaced error so recovery remains visible', () => {
     expect(resolveWorkspaceFlowPresentation({
       ...emptyFlow,

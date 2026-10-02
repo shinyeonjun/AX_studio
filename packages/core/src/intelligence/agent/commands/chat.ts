@@ -1,3 +1,4 @@
+import { AuthoritativeRequestError, authoritativeRequestClarification, createAuthoritativeRequestAnchor, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../decision/request-anchor.js';
 import type { ChatMessage } from '../model/chat.js';
 import type { AxCommand, AxCommandResult } from './schema.js';
 import { inputRequestsForResult } from './input-requests.js';
@@ -36,6 +37,25 @@ function configuredModelReply(userMessage: string, harness: AxCommandChatOptions
  * the text model only writes replies from the conversation and executed results.
  */
 export async function runAxCommandChat(options: AxCommandChatOptions): Promise<string> {
+  // Admission precedes catalog preparation, decisions, pending execution and queueing.
+  try {
+    createAuthoritativeRequestAnchor(options.userMessage, {}, options.requestBudget);
+    const anchor = resolveAuthoritativeRequestAnchor(
+      options.decisionMessage ?? options.requestAnchor?.text ?? options.userMessage,
+      options.requestAnchor,
+      { originalRequestId: options.requestId, workspaceSessionId: options.workspaceSessionId,
+        catalogRevision: options.connectionRevision },
+      options.requestBudget,
+    );
+    options = { ...options, requestAnchor: anchor,
+      ...(options.decisionEngine ? { decisionEngine: guardAuthoritativeRequestDecisions(
+        options.decisionEngine, anchor, options.requestBudget) } : {}) };
+    options.onRequestAnchor?.(anchor);
+  } catch (error) {
+    if (!(error instanceof AuthoritativeRequestError)) throw error;
+    options.onRequestRejected?.(error.failure);
+    return authoritativeRequestClarification(error.failure);
+  }
   const startedAt = Date.now();
   const requestContext = options.requestId ? { requestId: options.requestId } : {};
   const controller = new AbortController();
@@ -94,6 +114,10 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
     controller.signal.throwIfAborted();
     if (loopResult !== undefined) return loopResult;
   } catch (error) {
+    if (error instanceof AuthoritativeRequestError && !controller.signal.aborted) {
+      options.onRequestRejected?.(error.failure);
+      return authoritativeRequestClarification(error.failure);
+    }
     appendAppLog('error', error instanceof Error ? error.message : String(error), {
       ...requestContext,
       event: 'command_chat_failed',

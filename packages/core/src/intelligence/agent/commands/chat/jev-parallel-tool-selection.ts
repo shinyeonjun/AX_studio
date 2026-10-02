@@ -1,3 +1,5 @@
+import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget } from '../../../../contracts/request-anchor.js';
+import { resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import type {
   DecisionAnswer,
   DecisionEngine,
@@ -159,6 +161,8 @@ export function parseParallelToolSelection(input: {
 export async function selectParallelTools(input: {
   decisionEngine: DecisionEngine;
   userMessage: string;
+  requestAnchor?: AuthoritativeRequestAnchor;
+  requestBudget?: Partial<AuthoritativeRequestBudget>;
   /** Host-built, bounded conversation context. Conversation text remains untrusted evidence. */
   contextPacket?: string;
   candidates: readonly JevParallelToolCandidate[];
@@ -171,7 +175,7 @@ export async function selectParallelTools(input: {
   }
 
   const state = {
-    request: boundDecisionString(input.userMessage, 2_000),
+    request: input.userMessage,
     ...(input.contextPacket?.trim()
       ? { context_packet: boundDecisionString(input.contextPacket, 4_000) }
       : {}),
@@ -179,7 +183,8 @@ export async function selectParallelTools(input: {
   };
   const questions = parallelToolSelectionQuestions(input.candidates);
   const request: DecisionEvaluationRequest = { state, questions, signal: input.signal };
-  const evaluation = await input.decisionEngine.evaluate(request);
+  const anchor = resolveAuthoritativeRequestAnchor(input.userMessage, input.requestAnchor, {}, input.requestBudget);
+  const evaluation = await guardAuthoritativeRequestDecisions(input.decisionEngine, anchor, input.requestBudget).evaluate(request);
   input.signal?.throwIfAborted();
 
   const telemetry: JevParallelToolSelectionTelemetry = {

@@ -16,15 +16,15 @@ export function defaultDependencies(): GeneratedArtifactExportDependencies & Gen
       resolveGeneratedArtifactSourcePath(store.root, artifact.storedPath, artifact.size, artifact.sha256),
     showSaveDialog: async (fileName) => {
       const result = await dialog.showSaveDialog({
-        title: 'PDF 저장',
+        title: '결과물 저장',
         defaultPath: fileName,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        filters: fileName.toLowerCase().endsWith('.xlsx') ? [{ name: 'Excel', extensions: ['xlsx'] }] : [{ name: 'PDF', extensions: ['pdf'] }],
       });
       return { canceled: result.canceled, filePath: result.filePath };
     },
     showFolderDialog: async () => {
       const result = await dialog.showOpenDialog({
-        title: 'PDF를 저장할 폴더 선택',
+        title: '결과물을 저장할 폴더 선택',
         properties: ['openDirectory', 'createDirectory'],
       });
       return { canceled: result.canceled, filePath: result.filePaths[0] };

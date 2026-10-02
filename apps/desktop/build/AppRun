@@ -1,0 +1,39 @@
+#!/bin/sh
+# Project-owned AppImage entry point. Never weaken Chromium sandboxing.
+set -eu
+
+fail() {
+  message="AX Studio: $1"
+  printf '%s\n' "$message" >&2
+  # Make a desktop launch failure visible too, without requiring a GUI helper.
+  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    if command -v zenity >/dev/null 2>&1; then
+      zenity --error --title='AX Studio cannot start safely' --text="$message" 2>/dev/null || true
+    elif command -v kdialog >/dev/null 2>&1; then
+      kdialog --error "$message" 2>/dev/null || true
+    fi
+  fi
+  exit 78
+}
+
+for argument in "$@"; do
+  case "$argument" in
+    --no-sandbox|--no-sandbox=*|--disable-*sandbox|--disable-*sandbox=*)
+      fail 'Sandbox-disabling launch flags are unsupported. Launch stopped.' ;;
+  esac
+done
+
+if [ "$(id -u)" -eq 0 ]; then
+  fail 'Run as a regular desktop user. Running as root is unsupported.'
+fi
+if ! command -v unshare >/dev/null 2>&1 || ! unshare -Ur true 2>/dev/null; then
+  fail 'Linux user namespaces are required for the Chromium sandbox and are unavailable. Use a supported host or ask your administrator. Launch stopped; no sandbox bypass was applied.'
+fi
+
+APPDIR=${APPDIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+export APPDIR
+export PATH="$APPDIR:$APPDIR/usr/sbin${PATH:+:$PATH}"
+export XDG_DATA_DIRS="$APPDIR/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}:/usr/share/gnome:/usr/local/share:/usr/share"
+export LD_LIBRARY_PATH="$APPDIR/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export GSETTINGS_SCHEMA_DIR="$APPDIR/usr/share/glib-2.0/schemas${GSETTINGS_SCHEMA_DIR:+:$GSETTINGS_SCHEMA_DIR}"
+exec "$APPDIR/ax-studio" "$@"

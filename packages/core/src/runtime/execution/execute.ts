@@ -1,5 +1,5 @@
 import type { ExecutionLogEntry, ConnectorContext } from '../../connectors/types.js';
-import { validateWorkflowContracts } from '../../workflow/contract-validator.js';
+import { validateWorkflowContracts, validateWorkflowGraph } from '../../workflow/contract-validator.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { inferWorkflowBindings } from '../../workflow/bindings.js';
 import type { ExecutionResult, WorkflowExecutionOptions } from '../types.js';
@@ -68,7 +68,14 @@ export async function executeWorkflow(
     );
   }
 
-  const contractIssues = validateWorkflowContracts(ir, { runtimeConnectors: host.connectors });
+  // Reject invalid graphs before inference follows IF branches recursively.
+  // Full contracts still need the inferred bindings of a valid graph.
+  let workflowIr = ir;
+  let contractIssues = validateWorkflowGraph(ir);
+  if (contractIssues.length === 0) {
+    workflowIr = inferWorkflowBindings(ir);
+    contractIssues = validateWorkflowContracts(workflowIr, { runtimeConnectors: host.connectors });
+  }
   if (contractIssues.length > 0) {
     const issue = contractIssues[0]!;
     return recordPreflightResult(
@@ -82,7 +89,6 @@ export async function executeWorkflow(
     );
   }
 
-  const workflowIr = inferWorkflowBindings(ir);
   const executionId = host.config.store.createExecution({
     workflowId: options.ephemeral ? undefined : workflowIr.id,
     workflowVersion: workflowIr.version,

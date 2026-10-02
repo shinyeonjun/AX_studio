@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "build": "npm run build -w @ax-studio/core && npm run build -w @ax-studio/desktop",
-    "test": "npm run test:manual:webhook:security && npm run test -w @ax-studio/core --",
+    "test": "npm run test:dependencies && npm run test:manual:webhook:security && npm run test -w @ax-studio/core --",
+    "test:dependencies": "node --test scripts/dependency-security.test.mjs",
     "test:e2e": "node test/e2e/run.mjs",
     "test:product-qa": "node test/product-qa/run.mjs",
     "test:integration": "node test/integration/run.mjs",
@@ -32,24 +33,31 @@
     "dev:poc": "npm run dev:poc -w @ax-studio/desktop",
     "document-engine:setup": "python -m venv packages/document-engine/.venv && npm run document-engine:install",
     "document-engine:install": "node scripts/document-engine-install.mjs",
-    "document-engine:install:docling": "node scripts/document-engine-install.mjs --docling"
+    "document-engine:install:docling": "node scripts/document-engine-install.mjs --docling",
+    "test:packaging": "node --test scripts/lib/package-platform.test.mjs apps/desktop/scripts/appimage-policy.test.mjs",
+    "test:electron-runtime": "node --test scripts/electron-runtime.test.mjs"
   },
   "engines": {
     "node": "22.x"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
-    "electron@44.3.0": true
+    "electron@44.5.1": true
   },
   "overrides": {
     "@xmldom/xmldom": "^0.9.12",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "axios@^1.0.0": "1.20.0",
+    "brace-expansion@^1.0.0": "1.1.21",
+    "brace-expansion@^2.0.0": "2.1.7",
+    "brace-expansion@^5.0.0": "5.0.12"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",
     "@playwright/test": "^1.62.1",
     "dependency-cruiser": "^18.2.0",
     "knip": "^6.32.2",
-    "node-gyp": "12.1.0"
+    "node-gyp": "12.1.0",
+    "undici": "7.29.1"
   }
 }

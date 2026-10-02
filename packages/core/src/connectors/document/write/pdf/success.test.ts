@@ -119,7 +119,7 @@ describe('document.pdf.form.fill successful output', () => {
         outputHash: 'output-hash',
         pageCount: 1,
         fieldCount: 1,
-        writerEngine: 'pymupdf',
+        writerEngine: 'pypdf-reportlab',
         verified: true,
         interactive: false,
         sourceUnchanged: true,

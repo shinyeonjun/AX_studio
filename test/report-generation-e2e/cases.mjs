@@ -147,6 +147,14 @@ export const CASES = Object.freeze([
     goal: '원천 API의 행 순서는 믿지 말고 전체를 읽은 뒤 고객별 매출이 큰 순서로 예시 형식에 맞춰줘.',
   }),
   baseCase({
+    id: 'multi-page-table-template',
+    category: 'positive-multipage-template',
+    description: 'Four detected table rows span two matching report-template pages.',
+    templateRows: 4,
+    pageRowDistribution: [2, 2],
+    goal: 'Generate the usual monthly report with the table continued on page two.',
+  }),
+  baseCase({
     id: 'safe-failure-layout-capacity',
     category: 'safe-failure-layout',
     description: 'A target table exceeds the verified page gap and must fail closed.',

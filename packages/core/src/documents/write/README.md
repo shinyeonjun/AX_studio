@@ -46,4 +46,4 @@ functions from `@ax-studio/core/documents/write` (for example,
 `import { renderHtml } from '@ax-studio/core/documents/write'`). The connector
 loads the HTML, DOCX, or PDF implementation when that action is executed.
 
-Read/parse: `packages/document-engine/` (Python) + `packages/core/src/documents/read/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use the Python worker's PyMuPDF path and publish only verified output. PDF→HTML remains an explicit editable preview/export route.
+Read/parse: `packages/document-engine/` (Python) + `packages/core/src/documents/read/` (TS client). Semantic PDF reads use Docling when available; source-authoritative PDF form writes use pypdf/ReportLab and independent PDFium verification, publishing only verified output. PDF→HTML remains an explicit editable preview/export route.

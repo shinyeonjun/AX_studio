@@ -1,3 +1,5 @@
+import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
+import type { AxUiPresentation } from '../schema.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import type { AxCommand } from '../schema.js';
 import type { AgentScopedContextMap } from '../../scoped-context.js';
@@ -16,6 +18,10 @@ import type { JevTableProjectionRequest, JevTableTransformRequest } from './jev-
 export interface JevChatRouterInput {
   decisionEngine: DecisionEngine;
   userMessage: string;
+  /** Complete host-accepted intent, reused unchanged on typed input continuation. */
+  requestAnchor?: AuthoritativeRequestAnchor;
+  requestBudget?: Partial<AuthoritativeRequestBudget>;
+  connectionRevision?: number;
   /** Bounded prior chat turns; the current message is supplied separately. */
   conversationHistory?: readonly JevConversationTurn[];
   currentWorkflowId?: string;
@@ -96,6 +102,7 @@ interface MissingReadParameters {
 
 type JevChatRouterResultValue =
   | { kind: 'command'; command: AxCommand; route: JevChatRouteName; confidence: number; commandPlan?: JevCommandPlan; tableTransform?: JevTableTransformRequest; tableProjection?: JevTableProjectionRequest; readResultStyle?: 'summary' }
+  | { kind: 'request_rejected'; failure: AuthoritativeRequestFailure }
   | { kind: 'previous_result'; route: 'previous_result'; confidence: number }
   | { kind: 'reply'; route: 'answer'; confidence: number }
   | { kind: 'clarify'; route: 'workflow_create' | 'workflow_update' | 'workflow_delete' | 'job_propose' | 'execution_enqueue_once' | 'context_remember' | 'report_generate'; message: string; confidence: number }
@@ -108,6 +115,7 @@ type JevChatRouterResultValue =
     };
 
 export type JevChatRouterResult = JevChatRouterResultValue & {
+  presentation?: AxUiPresentation;
   telemetry?: JevChatRouterTelemetry;
   requestPlan?: JevChatRequestPlan;
 };

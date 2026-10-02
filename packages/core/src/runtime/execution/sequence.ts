@@ -76,6 +76,7 @@ export async function runSequence(
           variables: { ...ctx.variables },
           stepResults: { ...stepResults },
           outputs: ctx.outputs ? { ...ctx.outputs } : undefined,
+          presentationVariableSources: ctx.presentationVariableSources ? { ...ctx.presentationVariableSources } : undefined,
           remainingStepIds: sequence.slice(index + 1).map((item) => item.id),
           pendingOuterStepIds: afterSequenceStepIds,
         };

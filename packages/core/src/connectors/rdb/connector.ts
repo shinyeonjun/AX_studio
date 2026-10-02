@@ -1,4 +1,5 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { createHash } from 'node:crypto';
 import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
 import { describeRdbTablePage, parseRdbMetadataPage } from './client/describe.js';
 import {
@@ -13,6 +14,8 @@ import {
   resolveRdbTableRef,
 } from './client.js';
 import type { RdbConnectionConfig } from './client/types.js';
+import { prepareRdbRows, RdbScalarReadError } from './client/scalars.js';
+import type { RdbReadCoverage, RdbReadScope } from '../../contracts/artifacts/rdb-read.js';
 
 export type { RdbConnectionConfig } from './client/types.js';
 
@@ -79,23 +82,51 @@ export class RdbConnector implements Connector {
         const rows = await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal,
           { offset });
         ctx.abortSignal?.throwIfAborted();
-        const table = tableArtifactFromRows(rows, {
+        const queryFingerprint = createHash('sha256').update(JSON.stringify({
+          schemaVersion: 1,
+          database: this.config.type,
+          // Bind identity to the configured source without exposing its path,
+          // credentials or connection string in the resulting artifact.
+          connection: this.config.connectionString ?? this.config.filePath ?? null,
+          allowedSchemas: [...(this.config.allowedSchemas ?? [])].sort(),
+          allowedTables: [...(this.config.allowedTables ?? [])].sort(),
+          table: formatRdbTableRef(ref),
+          accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset',
+        })).digest('hex');
+        const table = tableArtifactFromRows(prepareRdbRows(rows), {
           id: `rdb_${ctx.executionId}_${formatRdbTableRef(ref).replace(/[^A-Za-z0-9_]+/g, '_')}`,
           name: formatRdbTableRef(ref),
           rowLimit: requestedLimit,
+          preserveRawValues: true,
+          scalarPolicy: 'preserve',
           source: {
             database: this.config.type,
             schema: ref.schema,
             table: ref.table,
+            queryFingerprint,
             capturedAt: new Date().toISOString(),
           },
         });
         if (!table) return { ok: false, error: 'rdb_rows_invalid', errorCode: 'rdb_error' };
+        const readScope: RdbReadScope = {
+          schemaVersion: 1, kind: 'page', queryFingerprint, table: formatRdbTableRef(ref),
+          accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset', scalarPolicy: 'preserve',
+          offset, limit: requestedLimit,
+        };
+        const coverage: RdbReadCoverage = {
+          schemaVersion: 1, page: 'complete',
+          query: table.truncated || offset > 0 ? 'partial' : 'unknown',
+          source: table.truncated || offset > 0 ? 'partial' : 'unknown',
+          consistency: 'best_effort', reason: 'independent_offset_reads',
+          observedRows: table.rows.length, hasMore: table.truncated,
+        };
         // Keep the provider page boundary visible to generic model callers.
         // The table rows remain bounded by the configured limit, while a
         // caller can continue from the exact next offset when more rows exist.
         const data = {
           ...table,
+          readScope,
+          coverage,
           offset,
           ...(table.truncated ? { nextOffset: offset + table.rows.length } : {}),
         };
@@ -103,6 +134,9 @@ export class RdbConnector implements Connector {
         return { ok: true, data };
       } catch (error) {
         if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
+        if (error instanceof RdbScalarReadError) {
+          return { ok: false, error: error.reason, errorCode: error.errorCode };
+        }
         ctx.log({
           at: new Date().toISOString(),
           level: 'error',

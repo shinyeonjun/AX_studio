@@ -132,7 +132,7 @@ describe('runAiDecision investigation flow', () => {
     };
 
     await expect(runAiDecision(step, ir, ctx, {}, runner, {}, decisionEngine))
-      .rejects.toMatchObject({ code: 'jev_unavailable' });
+      .rejects.toMatchObject({ code: 'ai_output_contract_invalid' });
 
     expect(decisionEngine.evaluate).not.toHaveBeenCalled();
     expect(modelCalls).toEqual([]);
@@ -265,7 +265,7 @@ describe('runAiDecision investigation flow', () => {
         properties: {
           riskLevel: { type: 'string', enum: ['critical', 'normal', 'low'] },
           urgent: { type: 'boolean' },
-          summary: { type: 'string' },
+          summary: { type: 'string', purpose: 'prose' },
         },
         required: ['riskLevel', 'urgent', 'summary'],
       },
@@ -329,7 +329,7 @@ describe('runAiDecision investigation flow', () => {
         goal: 'PDF 요약',
         investigation: false,
         maxReads: 4,
-        outputSchema: { type: 'object', properties: { summary: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } }, required: ['conclusion'] },
       },
       ir,
       ctx,
@@ -363,7 +363,7 @@ describe('runAiDecision investigation flow', () => {
         maxReads: 2,
         outputSchema: {
           type: 'object',
-          properties: { riskLevel: { type: 'string' } },
+          properties: { riskLevel: { type: 'string', purpose: 'prose' } },
           required: ['riskLevel'],
         },
       },
@@ -397,7 +397,7 @@ describe('runAiDecision investigation flow', () => {
         type: 'ai_decision', id: 'find_inventory',
         goal: '최근 7일 동안 재고 관련 Slack 메시지를 찾아줘',
         investigation: true, maxReads: 1,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -434,7 +434,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'inspect_inventory', goal: '재고 관련 메시지를 확인한다',
         investigation: true, maxReads: 2,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -482,7 +482,7 @@ describe('runAiDecision investigation flow', () => {
       ...ir,
       steps: [{
         type: 'ai_decision', id: 'inspect', goal: '연결된 업무 테이블을 조사한다', investigation: true,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       }],
     });
     const step = workflow.steps[0];
@@ -540,7 +540,7 @@ describe('runAiDecision investigation flow', () => {
       steps: [{
         type: 'ai_decision', id: 'budgeted_inspect', goal: '연결된 업무 테이블을 조사한다',
         investigation: true, maxReads: 2,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       }],
     });
     const step = workflow.steps[0];
@@ -591,7 +591,7 @@ describe('runAiDecision investigation flow', () => {
     const step = {
       type: 'ai_decision' as const, id: 'parallel_reads', goal: 'orders와 customers 테이블을 확인한다',
       investigation: true, maxReads: 2,
-      outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+      outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
     };
     const context = {
       executionId: 'exec-parallel-reads', variables: { queryResult: 'previous-step-value' }, log: vi.fn(),
@@ -648,7 +648,7 @@ describe('runAiDecision investigation flow', () => {
         type: 'ai_decision', id: 'recover_parallel_reads',
         goal: 'orders와 customers를 조회하고 products로 대체할 수 있는지 확인한다',
         investigation: true, maxReads: 3,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -691,7 +691,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'parallel_failure', goal: 'orders와 customers 테이블을 확인한다',
         investigation: true, maxReads: 2,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -744,7 +744,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'do_not_bypass_policy', goal: 'orders와 customers를 확인한다',
         investigation: true, maxReads: 3,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -771,7 +771,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'missing_read_answer', goal: 'Gmail 메일을 확인한다',
         investigation: true, maxReads: 1,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       ir,
       {
@@ -800,7 +800,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'private_mail', goal: '메일을 요약한다',
         investigation: true, maxReads: 1,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       { ...ir, dataPolicy: { gmail: { cloudAllowed: false } } },
       {
@@ -877,7 +877,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'local_mail_summary', goal: '메일을 요약한다',
         investigation: true, maxReads: 1,
-        outputSchema: { type: 'object', properties: { conclusion: { type: 'string' } } },
+        outputSchema: { type: 'object', properties: { conclusion: { type: 'string', purpose: 'prose' } } },
       },
       { ...ir, dataPolicy: { gmail: { cloudAllowed: false } } },
       {
@@ -903,7 +903,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'classify', goal: '위험도 분류', investigation: true,
         maxReads: 2,
-        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } }, required: ['riskLevel'] },
+        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } }, required: ['riskLevel'] },
       },
       ir,
       {
@@ -932,7 +932,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'classify', goal: '위험도 분류', investigation: true,
         maxReads: 2,
-        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } }, required: ['riskLevel'] },
+        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } }, required: ['riskLevel'] },
       },
       ir,
       {
@@ -966,7 +966,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'classify', goal: '위험도 분류', investigation: true,
         maxReads: 2,
-        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } }, required: ['riskLevel'] },
+        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } }, required: ['riskLevel'] },
       },
       ir,
       {
@@ -1003,7 +1003,7 @@ describe('runAiDecision investigation flow', () => {
       {
         type: 'ai_decision', id: 'classify', goal: '위험도 분류', investigation: true,
         maxReads: 1,
-        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string' } }, required: ['riskLevel'] },
+        outputSchema: { type: 'object', properties: { riskLevel: { type: 'string', purpose: 'prose' } }, required: ['riskLevel'] },
       },
       ir,
       {
@@ -1035,7 +1035,7 @@ describe('runAiDecision investigation flow', () => {
         maxReads: 2,
         outputSchema: {
           type: 'object',
-          properties: { riskLevel: { type: 'string' } },
+          properties: { riskLevel: { type: 'string', purpose: 'prose' } },
           required: ['riskLevel'],
         },
       },

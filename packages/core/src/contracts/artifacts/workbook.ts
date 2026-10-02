@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ArtifactMetadataSchema } from './base.js';
 import { FileRefSchema } from './file-ref.js';
+import { ArtifactCompletenessSchema } from './completeness.js';
 
 export const WorkbookSheetSchema = z.object({
   name: z.string(),
@@ -28,6 +29,8 @@ export const WorkbookArtifactSchema = z.object({
   kind: z.literal('workbook'),
   file: FileRefSchema,
   sheets: z.array(WorkbookSheetSchema),
+  /** Covers omitted sheets or rows; each table retains its own bounded-read counts. */
+  completeness: ArtifactCompletenessSchema.optional(),
   namedRanges: z.array(z.object({
     name: z.string(),
     ref: z.string(),

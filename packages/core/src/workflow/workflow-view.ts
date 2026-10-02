@@ -49,6 +49,7 @@ function nodeFromStep(step: Step): { node: WorkflowNode; action?: ActionInstance
                   | 'number'
                   | 'boolean',
                 description: typeof definition.description === 'string' ? definition.description : name,
+                purpose: definition.purpose === 'prose' ? 'prose' as const : undefined,
                 enumValues: Array.isArray(definition.enum) ? definition.enum.map(String) : undefined,
               }),
             )

@@ -47,8 +47,12 @@ export function evaluateSelect(
     ...table,
     columns: table.columns.filter((column) => expr.columns.includes(column.name)),
     rows: table.rows.map((row, index) => ({
+      ...row,
       index,
       values: Object.fromEntries(expr.columns.map((name) => [name, row.values[name] ?? null])),
+      ...(row.rawValues ? {
+        rawValues: Object.fromEntries(expr.columns.map((name) => [name, row.rawValues![name] ?? null])),
+      } : {}),
     })),
   };
 }

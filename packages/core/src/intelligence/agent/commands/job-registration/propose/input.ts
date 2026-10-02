@@ -1,3 +1,4 @@
+import { verifyAuthoritativeRequestAnchor } from '../../../../decision/request-anchor.js';
 import { isValidCronExpression, isValidTimeZone } from '../../../../../workflow/cron.js';
 import type { AxCommandIssue, AxCommandResult } from '../../schema.js';
 import {
@@ -37,6 +38,14 @@ export function validateProposeInput(
   }
 
   const data: AxJobProposeArgs = parsed.data;
+  if (data.requestAnchor) {
+    try {
+      data.requestAnchor = verifyAuthoritativeRequestAnchor(data.requestAnchor);
+      data.goal = data.requestAnchor.text;
+    } catch {
+      return { ok: false, response: ['invalid', undefined, [issue('request_anchor_mismatch', '요청 원문을 확인하지 못했습니다.')]] };
+    }
+  }
   const genericWorkflow = data.trigger !== undefined || data.steps !== undefined;
   if (genericWorkflow && (!data.trigger || !data.steps || data.steps.length === 0)) {
     return {

@@ -1,3 +1,4 @@
+import { createAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_DECISION_CHOICE_CRITERIA,
@@ -171,7 +172,9 @@ describe('routeChatWithJev', () => {
       });
 
       for (const [questionId, question] of Object.entries(request.questions)) {
-        if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
+        if (questionId === 'requirements') answers.requirements = choiceAnswer('met');
+        else if (questionId === 'scope') answers.scope = choiceAnswer('preserved');
+        else if (questionId === 'route') answers.route = choiceAnswer('execution_enqueue_once');
         else if (questionId === 'explicit_execution_now') answers.explicit_execution_now = choiceAnswer('execute_now');
         else if (question.type === 'noul') {
           const selected = question.instructions?.candidate?.capability_id === 'test.action_259';
@@ -216,7 +219,7 @@ describe('routeChatWithJev', () => {
           }
         }
       }
-      expect(result.telemetry?.evaluationCalls).toBe(1);
+      expect(result.telemetry?.evaluationCalls).toBe(2);
       expect(result.telemetry?.providerRequestCount).toBe(requestBytes.length);
       expect(Math.max(...requestBytes)).toBeLessThanOrEqual(65_536);
       expect(result.telemetry?.estimatedRequestBytes).toBe(requestBytes.reduce((total, bytes) => total + bytes, 0));
@@ -342,7 +345,9 @@ describe('routeChatWithJev', () => {
       route: 'answer',
       confidence: 0.96,
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('workflow와 일회 실행의 차이를 설명해줘'),
           message: 'workflow와 일회 실행의 차이를 설명해줘',
           features: {},
           context: { recentTurns: [] },
@@ -687,18 +692,15 @@ describe('routeChatWithJev', () => {
     expect(request?.questions.route).toMatchObject({ type: 'choice' });
   });
 
-  it('keeps a long discovery request within the search command schema', async () => {
+  it('refuses an overlong executable search instead of shortening its authority', async () => {
     const result = await routeChatWithJev({
       decisionEngine: engineFor('discovery_search', 0.93),
       userMessage: '주문 데이터를 찾아줘 '.repeat(60),
       connectedConnectors: ['rdb'],
     });
 
-    expect(result.kind).toBe('command');
-    if (result.kind !== 'command' || result.command.name !== 'discovery.search') return;
-    const args = AxDiscoverySearchArgsSchema.parse(result.command.args);
-    expect(args.query).toHaveLength(500);
-    expect(args.query.endsWith('…[truncated]')).toBe(true);
+    expect(AxDiscoverySearchArgsSchema.safeParse({ query: '주문 데이터를 찾아줘 '.repeat(60) }).success).toBe(false);
+    expect(result).toEqual({ kind: 'fallback', reason: 'missing_context' });
   });
 
   it('uses the user-requested result count for discovery search', async () => {
@@ -1050,7 +1052,9 @@ describe('routeChatWithJev', () => {
         },
       },
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('상품을 10개만 보여줘'),
           message: '상품을 10개만 보여줘',
           features: { result_limit_candidates: [10] },
           context: { recentTurns: [] },
@@ -1245,7 +1249,9 @@ describe('routeChatWithJev', () => {
         requiredParameterPaths: ['pathParams.orderId'],
       },
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('주문 상세를 보여줘'),
           message: '주문 상세를 보여줘',
           features: {},
           context: { recentTurns: [] },
@@ -2150,6 +2156,7 @@ describe('routeChatWithJev', () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          if (request.questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           decisionStates.push(request.state);
           if (request.questions.route) {
             return {
@@ -2218,7 +2225,7 @@ describe('routeChatWithJev', () => {
         },
       },
     });
-    expect(result.telemetry).toMatchObject({ evaluationCalls: 1, providerRequestCount: 2 });
+    expect(result.telemetry).toMatchObject({ evaluationCalls: 2, providerRequestCount: 3 });
     expect(decisionStates[0]).toMatchObject({
       context: {
         user_confirmed_preferences: {
@@ -2315,6 +2322,7 @@ describe('routeChatWithJev', () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          if (request.questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           if (request.questions.route) {
             return { answers: {
               ...parallelToolAnswersForTest(request, {
@@ -2383,7 +2391,9 @@ describe('routeChatWithJev', () => {
       route: 'answer',
       confidence: 0.55,
       requestPlan: {
+        version: 2,
         request: {
+          anchor: createAuthoritativeRequestAnchor('상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.'),
           message: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
           features: { result_limit_candidates: [5] },
           context: { recentTurns: [] },
@@ -2453,7 +2463,7 @@ describe('routeChatWithJev', () => {
         kind: 'command',
         command: { name: 'execution.enqueue_once', args: { steps: [{ connector: 'test', action: 'no_input_action', params: {} }] } },
       });
-      expect(requests).toHaveLength(1);
+      expect(requests).toHaveLength(2);
       expect(requests[0]!.questions).toHaveProperty('needs_natural_language_answer');
       expect(Object.keys(requests[0]!.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     } finally {
@@ -2874,6 +2884,7 @@ describe('routeChatWithJev', () => {
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
           const { state, questions } = request;
+          if (questions.requirements) return { answers: parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false }) };
           if (questions.route) return {
             answers: {
               ...parallelToolAnswersForTest(request, {

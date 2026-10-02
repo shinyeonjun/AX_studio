@@ -1,3 +1,4 @@
+import { AuthoritativeRequestAnchorSchema, type AuthoritativeRequestAnchor } from '../../../../contracts/request-anchor.js';
 import { z } from 'zod';
 import {
   TriggerSchema,
@@ -89,7 +90,8 @@ export function coerceJobProposeArgs(value: unknown): unknown {
 
 export const AxJobProposeArgsSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  goal: z.string().trim().min(1).max(2_000),
+  goal: z.string().trim().min(1),
+  requestAnchor: AuthoritativeRequestAnchorSchema.optional(),
   schedule: z.object({
     cron: z.string().trim().min(1).max(80).optional(),
     timezone: z.string().trim().min(1).max(80).optional(),
@@ -115,6 +117,13 @@ export const AxJobProposeArgsSchema = z.object({
   assumptions: z.array(z.string().max(2_000)).max(200).optional(),
   runOnceNow: z.boolean().default(true),
   allowExternalAuto: z.boolean().default(true),
+}).superRefine((data, context) => {
+  if (!data.requestAnchor && data.goal.length > 2_000) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['goal'], message: 'Legacy job goals are limited to 2000 characters.' });
+  }
+  if (data.requestAnchor && data.requestAnchor.text.trim() !== data.goal) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['requestAnchor'], message: 'Request anchor and goal must match.' });
+  }
 });
 
 export const AxJobCommitArgsSchema = z.object({});
@@ -124,6 +133,7 @@ export type AxJobProposeArgs = z.infer<typeof AxJobProposeArgsSchema>;
 export interface NormalizedJobSpec {
   name: string;
   goal: string;
+  requestAnchor?: AuthoritativeRequestAnchor;
   cron: string;
   timezone: string;
   path: string;
