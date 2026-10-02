@@ -14,6 +14,10 @@ import { TableArtifactSchema, type TableArtifact } from '../../../contracts/arti
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Stable persisted turn identity; old transcripts may omit it. */
+  turnId?: string;
+  /** Host-authored durable CAS membership, not permission or a routing preference. */
+  registeredMetadataTurn?: true;
   /** Host-generated durable result, distinguishable from a normal reply. */
   kind?: 'execution_result';
   /** Execution id used to make background result delivery idempotent. */
@@ -96,6 +100,8 @@ export interface WorkspaceChatRecord {
   messages: WorkspaceChatMessage[];
   workflowId?: string;
   updatedAt: string;
+  /** Opaque token owned by this main-process database instance, never durable authority. */
+  transcriptRevision?: string;
   /** Listed rows can be marked when old/corrupt JSON needs user deletion. */
   corrupted?: boolean;
 }
@@ -116,6 +122,8 @@ export interface WorkspaceChatListRecord {
 export const workspaceChatMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string(),
+  turnId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/u).optional(),
+  registeredMetadataTurn: z.literal(true).optional(),
   kind: z.literal('execution_result').optional(),
   executionId: z.string().min(1).max(128).optional(),
   executionStatus: ExecutionResultStatusSchema.optional(),
@@ -127,6 +135,9 @@ export const workspaceChatMessageSchema = z.object({
   generatedSpreadsheet: WorkspaceChatGeneratedSpreadsheetSchema.optional(),
   readResult: WorkspaceChatReadResultSchema.optional(),
 }).superRefine((message, context) => {
+  if (message.registeredMetadataTurn && (message.role !== 'user' || !message.turnId)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['registeredMetadataTurn'], message: 'invalid_registered_metadata_turn' });
+  }
   if (message.approval && message.kind !== 'execution_result') {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -154,6 +165,21 @@ export const workspaceChatMessageSchema = z.object({
 });
 
 export const workspaceChatMessagesSchema = z.array(workspaceChatMessageSchema);
+
+export interface WorkspaceChatSaveOptions {
+  expectedTranscriptRevision?: string;
+  /** Internal admission preference, never permission or a source identity. */
+  metadataLane?: 'registered_http_metadata';
+}
+
+export interface WorkspaceChatPersistedReplyReceipt {
+  kind: 'registered_http_metadata';
+  sessionId: string;
+  requestId: string;
+  turnId: string;
+  requestGeneration: number;
+  transcriptRevision: string;
+}
 
 export function parseMessages(messagesJson: string, id: string): WorkspaceChatMessage[] {
   let raw: unknown;

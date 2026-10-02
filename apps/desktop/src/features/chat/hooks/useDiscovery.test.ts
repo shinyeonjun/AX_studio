@@ -19,6 +19,7 @@ import { createWorkspaceMessageActions } from './workspace-chat/message-actions'
 import { createWorkspaceSourceActions } from './workspace-chat/source-actions';
 import { createWorkspaceWorkflowActions } from './workspace-chat/workflow-actions';
 import type { WorkspaceChatMessageContext } from './workspace-chat/contracts';
+import { createDatabaseAsync, WorkflowStore, type WorkspaceChatMessage, type WorkspaceChatSaveOptions } from '@ax-studio/core';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -169,6 +170,99 @@ describe('workspace asynchronous session ordering', () => {
     expect(ctx.setWorkspaceSessionId).not.toHaveBeenCalled();
     expect(ctx.setWorkspaceSources).not.toHaveBeenCalled();
     expect(ctx.setSourceBusy).not.toHaveBeenCalled();
+  });
+
+  it('rejects a delayed ordinary reply snapshot after metadata B, a background result and a newer turn', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const empty = store.saveWorkspaceChat({ messages: [] });
+      const pending = deferred<unknown>();
+      const sendCommandChat = vi.fn().mockReturnValue(pending.promise);
+      const saveWorkspaceChat = vi.fn(async (id: string | undefined, messages: WorkspaceChatMessage[], workflowId?: string | null, options?: WorkspaceChatSaveOptions) =>
+        store.saveWorkspaceChat({ id, messages, workflowId, expectedTranscriptRevision: options?.expectedTranscriptRevision }));
+      const loadWorkspaceChat = vi.fn(async (id: string) => store.getWorkspaceChat(id)!);
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: { saveWorkspaceChat, sendCommandChat, loadWorkspaceChat } } });
+      const ctx = workspaceContext();
+      ctx.refs.workspaceSessionIdRef.current = empty.id;
+      ctx.refs.transcriptRevisionRef = { current: empty.transcriptRevision };
+      const running = createWorkspaceMessageActions(ctx).sendMessage('Repeated identical text');
+      await vi.waitFor(() => expect(sendCommandChat).toHaveBeenCalledOnce());
+      const a = store.getWorkspaceChat(empty.id)!;
+      const b = store.saveWorkspaceChat({ id: a.id, messages: [...a.messages, { role: 'user', content: 'Repeated identical text', turnId: 'metadata-b' }],
+        expectedTranscriptRevision: a.transcriptRevision, registeredMetadataParticipation: true });
+      store.appendWorkspaceChatMetadataReply({ sessionId: b.id, turnId: 'metadata-b', userText: 'Repeated identical text', reply: 'Stored B metadata',
+        expectedTranscriptRevision: b.transcriptRevision!, assertCurrent: () => undefined });
+      store.upsertWorkspaceChatExecutionResult(b.id, { role: 'assistant', content: 'Background result', kind: 'execution_result', executionId: 'background' });
+      const afterBackground = store.getWorkspaceChat(b.id)!;
+      const authoritative = store.saveWorkspaceChat({ id: b.id, messages: [...afterBackground.messages, { role: 'user', content: 'New user turn', turnId: 'new-turn' }],
+        expectedTranscriptRevision: afterBackground.transcriptRevision });
+      ctx.refs.transcriptRevisionRef.current = authoritative.transcriptRevision;
+      pending.resolve({ content: 'Late ordinary A' });
+      await running;
+      expect(sendCommandChat).toHaveBeenCalledOnce(); expect(saveWorkspaceChat).toHaveBeenCalledTimes(2);
+      expect(saveWorkspaceChat.mock.calls[1]?.[3]?.expectedTranscriptRevision).toBe(a.transcriptRevision);
+      expect(store.getWorkspaceChat(b.id)).toEqual(authoritative);
+      expect(ctx.setChatMessages).toHaveBeenLastCalledWith(authoritative.messages);
+      expect(ctx.setError).toHaveBeenCalledWith(expect.stringContaining('오래된 저장을 거부'));
+      expect(authoritative.messages.filter(message => message.role === 'user')).toHaveLength(3);
+    } finally { db.close?.(); }
+  });
+
+  it('keeps unsaved new text for review after a stale initial snapshot without dispatch or retry', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const old = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'A', turnId: 'turn-a' }] });
+      const current = store.saveWorkspaceChat({ id: old.id, messages: [...old.messages, { role: 'user', content: 'B', turnId: 'turn-b' }],
+        expectedTranscriptRevision: old.transcriptRevision, registeredMetadataParticipation: true });
+      const sendCommandChat = vi.fn();
+      const saveWorkspaceChat = vi.fn(async (id: string, messages: WorkspaceChatMessage[], _workflowId: unknown, options?: WorkspaceChatSaveOptions) =>
+        store.saveWorkspaceChat({ id, messages, expectedTranscriptRevision: options?.expectedTranscriptRevision }));
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: {
+        saveWorkspaceChat, sendCommandChat, loadWorkspaceChat: async (id: string) => store.getWorkspaceChat(id),
+      } } });
+      const ctx = workspaceContext();
+      ctx.refs.workspaceSessionIdRef.current = old.id;
+      ctx.refs.transcriptRevisionRef = { current: old.transcriptRevision };
+      ctx.chatMessages = old.messages;
+      await createWorkspaceMessageActions(ctx).sendMessage('Unsaved text for review');
+      expect(sendCommandChat).not.toHaveBeenCalled(); expect(saveWorkspaceChat).toHaveBeenCalledOnce();
+      expect(ctx.setEditHint).toHaveBeenCalledWith('Unsaved text for review');
+      expect(ctx.setChatMessages).toHaveBeenLastCalledWith(current.messages);
+      expect(ctx.refs.transcriptRevisionRef.current).toBe(current.transcriptRevision);
+      expect(store.getWorkspaceChat(old.id)).toEqual(current);
+    } finally { db.close?.(); }
+  });
+
+  it('consumes a matching main-persisted metadata receipt without replacing its transcript', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const empty = store.saveWorkspaceChat({ messages: [] });
+      const saveWorkspaceChat = vi.fn(async (id: string, messages: WorkspaceChatMessage[], _workflowId: unknown, options?: WorkspaceChatSaveOptions) =>
+        store.saveWorkspaceChat({ id, messages, expectedTranscriptRevision: options?.expectedTranscriptRevision,
+          registeredMetadataParticipation: options?.metadataLane === 'registered_http_metadata' }));
+      const sendCommandChat = vi.fn(async (text: string, requestId: string, _workflow: unknown, sessionId: string) => {
+        const before = store.getWorkspaceChat(sessionId)!;
+        const saved = store.appendWorkspaceChatMetadataReply({ sessionId, turnId: requestId, userText: text, reply: 'Main-approved saved facts',
+          expectedTranscriptRevision: before.transcriptRevision!, assertCurrent: () => undefined });
+        return { requestId, content: 'Main-approved saved facts', metadataStop: 'answered',
+          persistedReply: { kind: 'registered_http_metadata', requestId, sessionId, turnId: requestId,
+            requestGeneration: 1, transcriptRevision: saved.transcriptRevision } };
+      });
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: { saveWorkspaceChat, sendCommandChat,
+        loadWorkspaceChat: async (id: string) => store.getWorkspaceChat(id) } } });
+      const ctx = workspaceContext();
+      ctx.refs.workspaceSessionIdRef.current = empty.id;
+      ctx.refs.transcriptRevisionRef = { current: empty.transcriptRevision };
+      await createWorkspaceMessageActions(ctx).sendMessage('Saved metadata', { metadataLane: 'registered_http_metadata' });
+      expect(saveWorkspaceChat).toHaveBeenCalledOnce(); expect(sendCommandChat).toHaveBeenCalledOnce();
+      const saved = store.getWorkspaceChat(empty.id)!;
+      expect(saved.messages.map(message => message.content)).toEqual(['Saved metadata', 'Main-approved saved facts']);
+      expect(ctx.setChatMessages).toHaveBeenLastCalledWith(saved.messages);
+      expect(ctx.refs.transcriptRevisionRef.current).toBe(saved.transcriptRevision);
+    } finally { db.close?.(); }
   });
 
   it('does not mark the new session registered when an old workflow activation finishes', async () => {

@@ -4,6 +4,7 @@ import {
   REQUEST_UNDERSTANDING_FIELDS, type RequestUnderstandingField, type RequestFieldAuthority,
   type MetadataCatalog, type AcceptedMetadataCatalog, type ActiveRequestSnapshot,
   type RegisteredMetadataOperation, type RegisteredMetadataSource, type RequestUnderstanding,
+  type MetadataIntent,
 } from '../../../contracts/request-understanding.js';
 import type { AuthoritativeRequestAnchor } from '../../../contracts/request-anchor.js';
 import { createAuthoritativeRequestAnchor } from '../request-anchor.js';
@@ -56,7 +57,14 @@ export class RequestUnderstandingSession {
   private fieldAuthorities: Readonly<Record<RequestUnderstandingField, RequestFieldAuthority>>;
   private turns: Array<{ anchor: AuthoritativeRequestAnchor; revision: number; supersedes: readonly RequestUnderstandingField[] }>;
 
-  constructor(input: { text: string; requestId: string; workspaceSessionId: string; catalog: MetadataCatalog }) {
+  constructor(input: { text: string; requestId: string; workspaceSessionId: string; catalog: MetadataCatalog;
+    initialRequestRevision?: number; metadataAdapter?: LocalMetadataAdapterDescriptor; assertHostCurrent?: () => void }) {
+    if (input.initialRequestRevision !== undefined) {
+      if (!Number.isSafeInteger(input.initialRequestRevision) || input.initialRequestRevision < 1) throw new Error('invalid_request_revision');
+      this.requestRevision = input.initialRequestRevision;
+    }
+    this.metadataAdapter = input.metadataAdapter && Object.freeze({ ...input.metadataAdapter });
+    this.assertHostCurrent = input.assertHostCurrent;
     this.catalogValue = acceptedCatalog(input.catalog);
     this.originalAnchor = this.anchor = createAuthoritativeRequestAnchor(input.text, {
       originalRequestId: input.requestId, workspaceSessionId: input.workspaceSessionId,
@@ -66,6 +74,9 @@ export class RequestUnderstandingSession {
     const authority = Object.freeze({ anchor: this.anchor, requestRevision: this.requestRevision });
     this.fieldAuthorities = Object.freeze({ intent: authority, targetSourceRef: authority, outputKind: authority });
   }
+
+  private readonly metadataAdapter?: LocalMetadataAdapterDescriptor;
+  private readonly assertHostCurrent?: () => void;
 
   get catalog(): AcceptedMetadataCatalog { return this.catalogValue; }
   get userTurns() { return freeze(this.turns.map(turn => ({ ...turn, supersedes: [...turn.supersedes] }))); }
@@ -77,6 +88,7 @@ export class RequestUnderstandingSession {
   }
 
   assertCurrent(snapshot: ActiveRequestSnapshot): void {
+    this.assertHostCurrent?.();
     if (snapshot.requestRevision !== this.requestRevision || snapshot.anchor.digest !== this.anchor.digest
       || snapshot.catalogRevision !== this.catalogValue.revision || snapshot.policyRevision !== this.catalogValue.policyRevision) {
       throw new RequestUnderstandingInvalidatedError('superseded');
@@ -149,15 +161,29 @@ export class RequestUnderstandingSession {
       throw new Error('invalid_metadata_authorization');
     }
     const permit = Object.freeze({ sourceId: source.id, operationId: operation.id });
-    permits.set(permit, { session: this, snapshot, command: operation.command, consumed: false });
+    permits.set(permit, { session: this, snapshot, command: operation.command, consumed: false,
+      intent: understanding.intent, sourceId: source.id, sourceRevision: source.revision, adapter: this.metadataAdapter });
     return permit;
   }
 }
 
 /** Only host-minted objects in the private registry are recognized by the service. */
 export interface MetadataDispatchPermit { readonly sourceId: string; readonly operationId: string }
+/** Host-installed local adapter identity, held privately with a recognized permit. */
+export interface LocalMetadataAdapterDescriptor {
+  readonly kind: 'registered_http_metadata';
+  readonly connectionRevision: number;
+  readonly discoveryMetadataRevision: number;
+}
+export interface ClaimedMetadataDispatch {
+  readonly intent: MetadataIntent;
+  readonly sourceId: string;
+  readonly sourceRevision: number;
+  readonly adapter?: LocalMetadataAdapterDescriptor;
+}
 const permits = new WeakMap<MetadataDispatchPermit, {
   session: RequestUnderstandingSession; snapshot: ActiveRequestSnapshot; command: AxCommand; consumed: boolean;
+  intent: MetadataIntent; sourceId: string; sourceRevision: number; adapter?: LocalMetadataAdapterDescriptor;
 }>();
 
 export function assertMetadataDispatchPermit(permit: MetadataDispatchPermit, command: AxCommand): void {
@@ -167,9 +193,10 @@ export function assertMetadataDispatchPermit(permit: MetadataDispatchPermit, com
   if (JSON.stringify(command) !== JSON.stringify(held.command)) throw new Error('metadata_command_mismatch');
 }
 
-export function claimMetadataDispatchPermit(permit: MetadataDispatchPermit, command: AxCommand): void {
+export function claimMetadataDispatchPermit(permit: MetadataDispatchPermit, command: AxCommand): ClaimedMetadataDispatch {
   assertMetadataDispatchPermit(permit, command);
   const held = permits.get(permit)!;
   if (held.consumed) throw new Error('metadata_permit_consumed');
   held.consumed = true;
+  return Object.freeze({ intent: held.intent, sourceId: held.sourceId, sourceRevision: held.sourceRevision, adapter: held.adapter });
 }

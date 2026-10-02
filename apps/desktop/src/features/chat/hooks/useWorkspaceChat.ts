@@ -19,6 +19,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
   const sessionEpochRef = useRef(0);
   const workspaceSessionIdRef = useRef<string | undefined>(undefined);
   const activeRequestIdRef = useRef<string | undefined>(undefined);
+  const transcriptRevisionRef = useRef<string | undefined>(undefined);
   const busyRef = useRef(false);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | undefined>();
   const [workspaceContextKey, setWorkspaceContextKey] = useState(0);
@@ -44,6 +45,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
       sessionEpochRef,
       workspaceSessionIdRef,
       activeRequestIdRef,
+      transcriptRevisionRef,
       busyRef,
       sourceBusyRef,
       pendingWorkspaceChatRefreshRef,

@@ -28,6 +28,8 @@ import { createCommandServiceState } from './service/state.js';
 import {
   assertMetadataDispatchPermit, claimMetadataDispatchPermit, RequestUnderstandingInvalidatedError,
 } from '../../decision/request-understanding/session.js';
+import { describeRegisteredHttpMetadata } from './service/registered-http-metadata.js';
+export { snapshotRegisteredHttpMetadata } from './service/registered-http-metadata.js';
 
 /**
  * Single domain gateway for AI-facing commands.
@@ -87,15 +89,18 @@ export class AxCommandService {
       return result(command.name, 'forbidden', undefined, [issue('command_forbidden', access.reason)]);
     }
 
+    let metadataClaim;
     if (options.metadataDispatchPermit) {
       try {
-        claimMetadataDispatchPermit(options.metadataDispatchPermit, command);
+        metadataClaim = claimMetadataDispatchPermit(options.metadataDispatchPermit, command);
       } catch (error) {
         if (error instanceof RequestUnderstandingInvalidatedError) throw error;
         return result(command.name, 'forbidden', undefined, [issue('metadata_scope_forbidden', '등록된 소스와 현재 요청에 고정된 메타데이터 작업만 허용됩니다.')]);
       }
     }
-    const executed = await executeCommand(this.state, command, options);
+    const executed = metadataClaim?.adapter
+      ? describeRegisteredHttpMetadata(this.state.store, command, metadataClaim)
+      : await executeCommand(this.state, command, options);
     if (options.metadataDispatchPermit) assertMetadataDispatchPermit(options.metadataDispatchPermit, command);
     return executed;
   }

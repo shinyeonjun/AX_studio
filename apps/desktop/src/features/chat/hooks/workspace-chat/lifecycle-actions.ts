@@ -23,6 +23,7 @@ export function createWorkspaceLifecycleActions(ctx: WorkspaceChatContext) {
     detachActiveRequest(ctx);
     invalidateSession(ctx);
     ctx.refs.workspaceSessionIdRef.current = undefined;
+    if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = undefined;
     ctx.setWorkspaceSessionId(undefined);
     ctx.setWorkspaceWorkflowState(null);
     ctx.setChatMessages([]);

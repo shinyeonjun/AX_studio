@@ -5,6 +5,7 @@ import type {
   WorkspaceChatMessage,
   WorkspaceSourceRecord,
   TableArtifact,
+  WorkspaceChatPersistedReplyReceipt,
 } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 
@@ -15,6 +16,7 @@ export interface WorkspaceChatRefs {
   busyRef: MutableRefObject<boolean>;
   sourceBusyRef: MutableRefObject<boolean>;
   pendingWorkspaceChatRefreshRef: MutableRefObject<string | undefined>;
+  transcriptRevisionRef?: MutableRefObject<string | undefined>;
 }
 
 export interface WorkspaceChatContext {
@@ -46,6 +48,9 @@ export interface WorkspaceChatMessageContext extends WorkspaceChatContext {
 export interface WorkspaceSendResponse {
   role: 'assistant';
   content: string;
+  requestId?: string;
+  persistedReply?: WorkspaceChatPersistedReplyReceipt;
+  metadataStop?: string;
   changedWorkflowIds?: string[];
   removedWorkflowIds?: string[];
   inputContinuation?: 'command';

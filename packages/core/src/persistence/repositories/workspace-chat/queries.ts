@@ -1,5 +1,6 @@
 import type { AppDatabase } from '../../db.js';
 import { readRow, readRows } from '../../db/types.js';
+import { registerWorkspaceChatRevisionFence, workspaceChatRevision } from './revisions.js';
 import {
   parseMessages,
   type WorkspaceChatListRecord,
@@ -14,14 +15,16 @@ interface ChatRow {
   updated_at: string;
 }
 
-function toWorkspaceChatRecord(row: ChatRow): WorkspaceChatRecord {
+function toWorkspaceChatRecord(db: AppDatabase, row: ChatRow): WorkspaceChatRecord {
   const messages = parseMessages(row.messages_json, row.id);
+  if (messages.some(message => message.registeredMetadataTurn)) registerWorkspaceChatRevisionFence(db, row.id);
   return {
     id: row.id,
     title: row.title,
     messages,
     ...(row.workflow_id ? { workflowId: row.workflow_id } : {}),
     updatedAt: row.updated_at,
+    transcriptRevision: workspaceChatRevision(db, row.id),
   };
 }
 
@@ -30,14 +33,14 @@ export function getWorkspaceChat(db: AppDatabase, id: string): WorkspaceChatReco
     db.prepare('SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE id = ?'),
     id,
   );
-  return row ? toWorkspaceChatRecord(row) : null;
+  return row ? toWorkspaceChatRecord(db, row) : null;
 }
 
 export function getWorkspaceChatByWorkflowId(db: AppDatabase, workflowId: string): WorkspaceChatRecord | null {
   const row = readRow<ChatRow>(db.prepare(
     'SELECT id, title, messages_json, workflow_id, updated_at FROM workspace_chats WHERE workflow_id = ? ORDER BY updated_at DESC LIMIT 1',
   ), workflowId);
-  return row ? toWorkspaceChatRecord(row) : null;
+  return row ? toWorkspaceChatRecord(db, row) : null;
 }
 
 export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatListRecord[] {

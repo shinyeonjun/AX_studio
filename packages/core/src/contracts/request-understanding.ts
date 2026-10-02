@@ -55,12 +55,19 @@ export const SourceMetadataEvidenceSchema = z.object({
   intent: z.enum(METADATA_INTENTS),
   entries: z.array(z.object({
     id, label: z.string().max(160),
-    fields: z.array(z.object({ name: z.string().min(1).max(160), type: z.string().min(1).max(80) })).max(64).optional(),
+    /** Exact registered relative reference, not an inferred remote operation identifier. */
+    path: z.string().min(1).max(512).optional(),
+    fields: z.array(z.object({ name: z.string().min(1).max(160), type: z.string().min(1).max(80).optional(),
+      required: z.boolean().optional() })).max(64).optional(),
   })).max(64),
   knownTotal: z.number().int().nonnegative().nullable(),
   truncated: z.boolean(),
+  scope: z.enum(['validated_local_registration', 'registered_field_dictionary']).optional(),
+  filtered: z.boolean().optional(),
   status: z.object({
     catalogExists: z.boolean(), configured: z.boolean(),
+    /** Saved registration switch, not current reachability/authentication. */
+    enabled: z.boolean().optional(),
     authentication: z.enum(['ready', 'not_ready', 'unknown']),
     operationPermission: z.enum(['verified', 'denied', 'unknown']),
     health: z.enum(['healthy', 'unhealthy', 'unknown']),

@@ -8,6 +8,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
     try {
       const loaded = await window.ax.loadWorkspaceChat(sessionId);
       if (!ctx.isViewingSession(sessionId)) return;
+      if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = loaded.transcriptRevision;
       ctx.setChatMessages(loaded.messages);
       ctx.setWorkspaceWorkflowState((current) =>
         current ? { ...current, messages: loaded.messages } : current,
@@ -34,6 +35,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       const loaded = await window.ax.loadWorkspaceChat(id);
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.refs.workspaceSessionIdRef.current = loaded.id;
+      if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = loaded.transcriptRevision;
       ctx.setWorkspaceSessionId(loaded.id);
       ctx.setChatMessages(loaded.messages);
       const workflowId = loaded.workflowId;
@@ -76,6 +78,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
     ctx.setWorkspaceWorkflowState(null);
     ctx.setWorkflowRegistered(false);
     ctx.refs.workspaceSessionIdRef.current = undefined;
+    if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = undefined;
     ctx.setWorkspaceSessionId(undefined);
     try {
       const [mappedChat, loaded] = await Promise.all([
@@ -85,6 +88,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       if (!ctx.isCurrentSession(epoch)) return;
       if (mappedChat) {
         ctx.refs.workspaceSessionIdRef.current = mappedChat.id;
+        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = mappedChat.transcriptRevision;
         ctx.setWorkspaceSessionId(mappedChat.id);
         ctx.setChatMessages(mappedChat.messages);
         const sourceResult = await window.ax.listWorkspaceSources(mappedChat.id);

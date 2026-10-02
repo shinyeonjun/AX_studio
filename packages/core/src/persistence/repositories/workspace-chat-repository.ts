@@ -6,6 +6,8 @@ export type {
   WorkspaceChatListRecord,
   WorkspaceChatMessage,
   WorkspaceChatRecord,
+  WorkspaceChatSaveOptions,
+  WorkspaceChatPersistedReplyReceipt,
 } from './workspace-chat/contracts.js';
 export {
   WorkspaceChatApprovalSchema,
@@ -22,6 +24,7 @@ export {
 } from './workspace-chat/queries.js';
 export {
   deleteWorkspaceChat,
+  appendWorkspaceChatMetadataReply,
   saveWorkspaceChat,
   upsertWorkspaceChatExecutionResult,
 } from './workspace-chat/mutations.js';

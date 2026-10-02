@@ -20,6 +20,8 @@ Task-5's unmerged Core `19cfbda` and renderer `df277f0` remain separate. This br
 
 The new metadata adapter and generation owner are separate modules. The broader read controller stays unwired. Any supporting load/context edit must remain limited to carrying revision tokens, with its exact diff listed in the implementation checkpoint.
 
+Restart fence refinement, communicated before the additional shared-contract edit: the host marks the admitted user message with optional `registeredMetadataTurn: true` in the existing JSON transcript. It records durable CAS participation only, with no permission or routing authority. A new process restores the revision fence from that marker and mints fresh tokens. Incoming renderer flags cannot create membership; current whole-transcript saves preserve previously host-marked turns. Deleting the session remains the supported removal boundary. This needs no database migration and prevents missing-revision writers from bypassing the fence after restart. Supporting producer changes also include suppressing raw corrupt-configuration diagnostics for the metadata adapter and supplying the current revision in trusted job-registration transcript mapping writes.
+
 ## Frozen acceptance matrix
 
 These are 13 host-integration cases, not additional model-quality cases. Use the actual trusted registered IPC wrapper, real in-memory database/WorkflowStore, real AxCommandService and local adapter, existing RequestUnderstandingSession and JevDecisionEngine with scripted injected fetch. External network, connector/body retrieval, queue/workflow and prose calls must fail if reached. No E2E fake-agent branch or mocked evidence/service is sufficient.

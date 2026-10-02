@@ -1,10 +1,10 @@
 import type { WorkspaceChatMessageContext, WorkspaceSendResponse } from './contracts';
-import type { WorkspaceChatMessage } from '@ax-studio/core';
+import type { WorkspaceChatMessage, WorkspaceChatSaveOptions } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
 export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) {
-  const sendChat = async (text: string) => {
+  const sendChat = async (text: string, metadataLane?: WorkspaceChatSaveOptions['metadataLane']) => {
     if (ctx.refs.busyRef.current) return;
     const epoch = ctx.refs.sessionEpochRef.current;
     const requestId = crypto.randomUUID();
@@ -14,7 +14,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     ctx.refs.activeRequestIdRef.current = requestId;
     const nextMessages: WorkspaceChatMessage[] = [
       ...ctx.chatMessages,
-      { role: 'user', content: text },
+      { role: 'user', content: text, turnId: requestId },
     ];
     if (ctx.isCurrentSession(epoch)) {
       ctx.setChatMessages(nextMessages);
@@ -26,15 +26,23 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     let responseReceived = false;
     let finalMessages: WorkspaceChatMessage[] | undefined;
     let finalTranscriptSaved = false;
+    let initialTranscriptSaved = false;
     try {
+      const saveOptions: WorkspaceChatSaveOptions = {
+        ...(ctx.refs.transcriptRevisionRef?.current ? { expectedTranscriptRevision: ctx.refs.transcriptRevisionRef.current } : {}),
+        ...(metadataLane ? { metadataLane } : {}),
+      };
       const initialSaved = await window.ax.saveWorkspaceChat(
         originSessionId,
         nextMessages,
         originWorkflowId,
+        ...(Object.keys(saveOptions).length ? [saveOptions] : []),
       );
+      initialTranscriptSaved = true;
       savedSessionId = initialSaved.id;
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(originSessionId)) {
         ctx.refs.workspaceSessionIdRef.current = initialSaved.id;
+        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = initialSaved.transcriptRevision;
         ctx.setWorkspaceSessionId(initialSaved.id);
       }
       const res = (await window.ax.sendCommandChat(
@@ -42,8 +50,31 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         requestId,
         originWorkflowId,
         initialSaved.id,
+        ...(metadataLane ? [{ metadataLane }] : []),
       )) as WorkspaceSendResponse;
       responseReceived = true;
+      if (res.persistedReply) {
+        const receipt = res.persistedReply;
+        if (receipt.kind !== 'registered_http_metadata' || receipt.sessionId !== savedSessionId
+          || receipt.requestId !== requestId || receipt.turnId !== requestId || res.requestId !== requestId
+          || !receipt.transcriptRevision || !Number.isSafeInteger(receipt.requestGeneration) || receipt.requestGeneration < 1) {
+          throw new Error('workspace_chat_persisted_reply_identity_conflict');
+        }
+        finalTranscriptSaved = true;
+        const authoritative = await window.ax.loadWorkspaceChat(savedSessionId);
+        if (authoritative.id !== savedSessionId) throw new Error('workspace_chat_persisted_reply_identity_conflict');
+        ctx.onSessionsChanged?.();
+        if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
+          ctx.setChatMessages(authoritative.messages);
+          if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = authoritative.transcriptRevision;
+        } else if (ctx.isViewingSession(savedSessionId)) {
+          ctx.refs.pendingWorkspaceChatRefreshRef.current = savedSessionId;
+        }
+        return;
+      }
+      if (res.metadataStop && ['cancelled', 'conflict', 'duplicate_request', 'turn_not_admitted'].includes(res.metadataStop)) {
+        throw new Error('workspace_chat_revision_conflict');
+      }
       finalMessages = [
         ...nextMessages,
         {
@@ -68,6 +99,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         savedSessionId,
         finalMessages,
         workflowId,
+        ...(initialSaved.transcriptRevision ? [{ expectedTranscriptRevision: initialSaved.transcriptRevision }] : []),
       );
       finalTranscriptSaved = true;
       savedSessionId = saved.id;
@@ -78,6 +110,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
         ctx.setChatMessages(saved.messages);
         ctx.refs.workspaceSessionIdRef.current = saved.id;
+        if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = saved.transcriptRevision;
         ctx.setWorkspaceSessionId(saved.id);
         if (changedWorkflowId) {
           const workflow = await window.ax.loadWorkChat(changedWorkflowId);
@@ -99,9 +132,26 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         }
       }
     } catch (err) {
+      const conflict = ipcErrorMessage(err).includes('workspace_chat_revision_conflict')
+        || ipcErrorMessage(err).includes('workspace_chat_turn_conflict')
+        || ipcErrorMessage(err).includes('workspace_chat_persisted_reply_identity_conflict');
+      if (conflict) {
+        if (!initialTranscriptSaved && ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) ctx.setEditHint(text);
+        try {
+          if (savedSessionId) {
+            const authoritative = await window.ax.loadWorkspaceChat(savedSessionId);
+            if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
+              ctx.setChatMessages(authoritative.messages);
+              if (ctx.refs.transcriptRevisionRef) ctx.refs.transcriptRevisionRef.current = authoritative.transcriptRevision;
+            }
+          }
+        } catch { /* Keep the input and conflict visible; never retry a snapshot or command. */ }
+      }
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
         const errorMessage = ipcErrorMessage(err, '대화 처리에 실패했습니다.');
-        ctx.setError(responseReceived && !finalTranscriptSaved
+        ctx.setError(conflict ? '대화가 갱신되어 오래된 저장을 거부했습니다. 현재 대화를 확인해 주세요.'
+          + (!initialTranscriptSaved ? ' 저장되지 않은 새 입력은 위에 보관했습니다.' : '')
+          + ' 작업을 자동으로 다시 실행하지 않았습니다.' : responseReceived && !finalTranscriptSaved
           ? `${errorMessage} 응답은 받았지만 대화 저장에 실패했습니다. 외부 작업 요청이었다면 이미 실행됐을 수 있으니, 중복 실행 전에 연결된 서비스 상태를 확인해 주세요.`
           : errorMessage);
       }
@@ -126,11 +176,11 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     }
   };
 
-  const sendMessage = async (rawText: string) => {
+  const sendMessage = async (rawText: string, options?: Pick<WorkspaceChatSaveOptions, 'metadataLane'>) => {
     const text = rawText.trim();
     if (!text || ctx.refs.busyRef.current) return;
     ctx.setError('');
-    await sendChat(text);
+    await sendChat(text, options?.metadataLane);
   };
 
   return { sendMessage };

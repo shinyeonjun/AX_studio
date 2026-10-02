@@ -58,6 +58,7 @@ export async function commitJob(options: {
         id: sessionId,
         messages: chat.messages,
         workflowId: saved.workflowId,
+        expectedTranscriptRevision: chat.transcriptRevision,
       });
     }
 
