@@ -54,3 +54,4 @@ export {
 export { ArtifactMetadataSchema, type ArtifactMetadata } from './artifacts/base.js';
 
 export * from './request-anchor.js';
+export type { MetadataCatalog, RequestUnderstandingResult, SourceMetadataEvidence } from './request-understanding.js';

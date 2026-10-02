@@ -64,6 +64,7 @@ export function setConnection(
 
 export function getConnections(
   db: AppDatabase,
+  options?: { suppressCorruptDiagnostics?: boolean },
 ): Array<{ connector: string; connected: boolean; config?: Record<string, unknown>; configCorrupted?: boolean }> {
   const rows = readRows<ConnectionRow>(db.prepare('SELECT connector, connected, config_json FROM connections'));
   return rows.map((c) => {
@@ -82,7 +83,7 @@ export function getConnections(
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[settings] connection JSON corrupted for ${c.connector}: ${message}`);
+      if (!options?.suppressCorruptDiagnostics) console.error(`[settings] connection JSON corrupted for ${c.connector}: ${message}`);
       return {
         connector: c.connector,
         connected: false,

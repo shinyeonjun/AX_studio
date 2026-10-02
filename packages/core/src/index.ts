@@ -29,6 +29,8 @@ export type {
   WorkspaceChatGeneratedSpreadsheet,
   WorkspaceChatReadResult,
   WorkspaceChatRecord,
+  WorkspaceChatSaveOptions,
+  WorkspaceChatPersistedReplyReceipt,
   WorkspaceChatListRecord,
 } from './persistence/repositories/workspace-chat-repository.js';
 export {

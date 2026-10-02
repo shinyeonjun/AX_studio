@@ -39,6 +39,9 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       throw new Error(`대화 ${index + 1}번째 메시지 형식이 올바르지 않습니다.`);
     }
     const record = entry as Record<string, unknown>;
+    if (record.turnId !== undefined && (typeof record.turnId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/u.test(record.turnId))) {
+      throw new Error('workspace_chat_invalid_turn_id');
+    }
     if (record.role !== 'user' && record.role !== 'assistant') {
       throw new Error(`대화 ${index + 1}번째 메시지 역할이 올바르지 않습니다.`);
     }
@@ -127,6 +130,8 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     return {
       role: record.role,
       content: record.content,
+      ...(typeof record.turnId === 'string' ? { turnId: record.turnId } : {}),
+      ...(record.registeredMetadataTurn === true ? { registeredMetadataTurn: true as const } : {}),
       ...(record.kind === 'execution_result' ? { kind: record.kind } : {}),
       ...(typeof record.executionId === 'string' ? { executionId: record.executionId } : {}),
       ...(executionStatus ? { executionStatus: executionStatus.data } : {}),
@@ -171,6 +176,14 @@ export function selectMessagesThroughUserMessage(
     }
   }
   throw new Error('현재 사용자 메시지를 찾을 수 없습니다.');
+}
+
+/** Metadata requires an exact persisted turn identity, including its original text. */
+export function selectMessagesThroughUserTurn(messages: DesktopChatMessage[], userMessage: string, turnId: unknown): DesktopChatMessage[] {
+  if (typeof turnId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/u.test(turnId)) throw new Error('workspace_chat_invalid_turn_id');
+  const matches = messages.flatMap((message, index) => message.role === 'user' && message.turnId === turnId ? [index] : []);
+  if (matches.length !== 1 || messages[matches[0]!]!.content !== userMessage) throw new Error('workspace_chat_turn_conflict');
+  return messages.slice(0, matches[0]! + 1);
 }
 
 export function commandInputContinuation(

@@ -7,3 +7,4 @@ export {
 export { createExperimentalJevDecisionEngineFromEnvironment, JEV_EXPERIMENT_FLAG } from './env.js';
 
 export * from './request-anchor.js';
+export { RequestUnderstandingSession, RequestUnderstandingInvalidatedError } from './request-understanding/session.js';

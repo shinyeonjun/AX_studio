@@ -29,6 +29,7 @@ export class WorkflowStore {
   private readonly deletingWorkflowIds = new Set<string>();
   // Invalidates derived catalogs without hashing large persisted connector configs.
   private connectionRevision = 0;
+  private discoveryMetadataRevision = 0;
 
   constructor(private db: AppDatabase) {}
 
@@ -75,8 +76,13 @@ export class WorkflowStore {
     id?: string;
     messages: workspaceChatRepo.WorkspaceChatMessage[];
     workflowId?: string | null;
+    expectedTranscriptRevision?: string;
+    registeredMetadataParticipation?: boolean;
   }) {
     return workspaceChatRepo.saveWorkspaceChat(this.db, params);
+  }
+  appendWorkspaceChatMetadataReply(input: Parameters<typeof workspaceChatRepo.appendWorkspaceChatMetadataReply>[1]) {
+    return workspaceChatRepo.appendWorkspaceChatMetadataReply(this.db, input);
   }
   upsertWorkspaceChatExecutionResult(
     target: string | { workflowId: string },
@@ -180,7 +186,7 @@ export class WorkflowStore {
     this.connectionRevision++;
   }
   getConnectionRevision() { return this.connectionRevision; }
-  getConnections() { return settingsRepo.getConnections(this.db); }
+  getConnections(options?: { suppressCorruptDiagnostics?: boolean }) { return settingsRepo.getConnections(this.db, options); }
 
   getDiscoveryMetadata(assetId: string): DiscoveryMetadataRecord | undefined {
     return discoveryMetadata.getDiscoveryMetadata(this.db, assetId);
@@ -189,11 +195,16 @@ export class WorkflowStore {
     return discoveryMetadata.listDiscoveryMetadata(this.db);
   }
   upsertDiscoveryMetadata(input: DiscoveryMetadataInput): DiscoveryMetadataRecord {
-    return discoveryMetadata.upsertDiscoveryMetadata(this.db, input);
+    const saved = discoveryMetadata.upsertDiscoveryMetadata(this.db, input);
+    this.discoveryMetadataRevision++;
+    return saved;
   }
   deleteDiscoveryMetadata(assetId: string): boolean {
-    return discoveryMetadata.deleteDiscoveryMetadata(this.db, assetId);
+    const removed = discoveryMetadata.deleteDiscoveryMetadata(this.db, assetId);
+    if (removed) this.discoveryMetadataRevision++;
+    return removed;
   }
+  getDiscoveryMetadataRevision() { return this.discoveryMetadataRevision; }
 
   claimTriggerReceipt(params: {
     dedupeKey: string;

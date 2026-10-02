@@ -1,0 +1,706 @@
+{
+  "baseCommit": "ab46777e0ab76d55980faffcb702b0f93223058e",
+  "node": "v22.23.2",
+  "fixtureSha256": "e3581b246342189a4d670281b20af4bb6a8e889c44bca133fe85ce3794627dc3",
+  "validation": {
+    "corpusCases": 24,
+    "passed": 24,
+    "forbiddenCalls": 0,
+    "generatedModelCalls": 0,
+    "regressionTests": 487,
+    "regressionFiles": 57,
+    "coreProductionTypes": "passed",
+    "coreTestTypes": "passed",
+    "securityTests": 8,
+    "architecture": "passed",
+    "modelQualityMeasured": false,
+    "liveProviderCalls": 0,
+    "liveCallLedger": "27/30 unchanged"
+  },
+  "handLabelReview": "Concrete fixture labels await parent exact-code review; ADR scope independently accepted.",
+  "cases": [
+    {
+      "id": "01",
+      "name": "colloquial inventory",
+      "reply": "DummyJSON 등록된 데이터 종류:\n- products\n- users\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "DummyJSON",
+        "products",
+        "users"
+      ],
+      "forbiddenFacts": [
+        "```json",
+        "몇 개",
+        "모든 데이터"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "02",
+      "name": "mixed-language schema",
+      "reply": "DummyJSON 등록된 스키마:\n- products: id (integer), title (string)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "스키마",
+        "id (integer)",
+        "title (string)"
+      ],
+      "forbiddenFacts": [
+        "```json",
+        "SELECT",
+        "레코드 10개"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "03",
+      "name": "configured status with unknown authentication",
+      "reply": "DummyJSON 연결 상태:\n- 카탈로그: 등록됨\n- 설정: 저장됨\n- 인증: 미확인\n- 작업 권한: 미확인\n- 현재 상태: 미확인",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "카탈로그: 등록됨",
+        "설정: 저장됨",
+        "인증: 미확인",
+        "작업 권한: 미확인",
+        "현재 상태: 미확인"
+      ],
+      "forbiddenFacts": [
+        "사용 가능",
+        "정상 확인됨",
+        "작업 권한: 검증됨"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "04",
+      "name": "inventory independent of prose flag",
+      "reply": "DummyJSON 등록된 데이터 종류:\n- products\n- users\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "products",
+        "users",
+        "등록된 데이터 종류"
+      ],
+      "forbiddenFacts": [
+        "```json",
+        "생성된 설명"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "05",
+      "name": "explicit raw debug output",
+      "reply": "```json\n{\n  \"sourceId\": \"dummyjson\",\n  \"sourceRevision\": 1,\n  \"intent\": \"inventory\",\n  \"entries\": [\n    {\n      \"id\": \"products\",\n      \"label\": \"products\"\n    },\n    {\n      \"id\": \"users\",\n      \"label\": \"users\"\n    }\n  ],\n  \"knownTotal\": 2,\n  \"truncated\": false\n}\n```",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "```json",
+        "\"sourceId\": \"dummyjson\"",
+        "\"label\": \"products\""
+      ],
+      "forbiddenFacts": [
+        "DO_NOT_DISCLOSE",
+        "privateToken",
+        "messageBody"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "06",
+      "name": "unstated output uses readable intent format",
+      "reply": "DummyJSON 등록된 데이터 종류:\n- products\n- users\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "등록된 데이터 종류",
+        "products",
+        "users"
+      ],
+      "forbiddenFacts": [
+        "```json",
+        "표시 형식을 확인"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "07",
+      "name": "complete empty inventory",
+      "reply": "DummyJSON 등록된 데이터 종류:\n등록된 항목이 없습니다.\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "등록된 항목이 없습니다",
+        "현재 등록된 메타데이터 범위"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "원천 데이터가 없습니다"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "08",
+      "name": "partial inventory is not all source data",
+      "reply": "DummyJSON 등록된 데이터 종류:\n- products\n현재 등록된 메타데이터의 일부이며, 원천 데이터 전체를 확인한 것은 아닙니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "products",
+        "메타데이터의 일부",
+        "전체를 확인한 것은 아닙니다"
+      ],
+      "forbiddenFacts": [
+        "모든 데이터",
+        "users",
+        "카탈로그가 완전"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "09",
+      "name": "retrieval contrast",
+      "reply": "실제 레코드 조회 요청입니다. 이 메타데이터 경로에서는 레코드를 읽지 않습니다. 별도의 승인된 조회 경로가 필요합니다.",
+      "errors": [],
+      "stop": "outside_slice",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "실제 레코드 조회 요청",
+        "별도의 승인된 조회 경로"
+      ],
+      "forbiddenFacts": [
+        "조회했습니다",
+        "큐에 등록",
+        "등록된 데이터 종류"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "10",
+      "name": "action contrast",
+      "reply": "연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.",
+      "errors": [],
+      "stop": "outside_slice",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "작업 실행 요청",
+        "발송을 지원하지 않습니다"
+      ],
+      "forbiddenFacts": [
+        "보냈습니다",
+        "큐에 등록",
+        "발송 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "11",
+      "name": "duplicate source labels",
+      "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+      "errors": [],
+      "stop": "source_ambiguous",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "어느 등록된 소스",
+        "이름이 같은 소스"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "12",
+      "name": "missing candidate in partial catalog",
+      "reply": "현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.",
+      "errors": [],
+      "stop": "candidate_coverage_incomplete",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "카탈로그가 불완전",
+        "소스 이름 또는 연결"
+      ],
+      "forbiddenFacts": [
+        "소스가 존재하지",
+        "소스가 없습니다",
+        "products"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "13",
+      "name": "no target in complete catalog",
+      "reply": "메타데이터를 확인할 등록된 소스 이름을 알려 주세요.",
+      "errors": [],
+      "stop": "source_required",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "등록된 소스 이름을 알려"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "몇 개"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "14",
+      "name": "unresolved pronoun",
+      "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+      "errors": [],
+      "stop": "source_ambiguous",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "어느 등록된 소스",
+        "이전 대상 참조"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "이전 결과를 조회"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "15",
+      "name": "unsupported intent retains original detail",
+      "reply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: DummyJSON로 주가 예측해 봐",
+      "errors": [],
+      "stop": "unsupported_intent",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "지원하지 않는 요청",
+        "주가 예측해 봐"
+      ],
+      "forbiddenFacts": [
+        "예측 결과",
+        "조회 완료",
+        "products"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "16",
+      "name": "malformed understanding response",
+      "reply": "판단 응답이 누락·불확실하거나 제공된 선택지와 맞지 않습니다. 요청한 대상과 결과를 확인해 주세요.",
+      "errors": [],
+      "stop": "invalid_decision",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "판단 응답",
+        "누락·불확실"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "17",
+      "name": "tied response despite claimed confidence",
+      "reply": "판단 응답이 누락·불확실하거나 제공된 선택지와 맞지 않습니다. 요청한 대상과 결과를 확인해 주세요.",
+      "errors": [],
+      "stop": "invalid_decision",
+      "commands": 0,
+      "phases": 1,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "불확실",
+        "대상과 결과를 확인"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "18",
+      "name": "missing metadata operation",
+      "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+      "errors": [],
+      "stop": "metadata_unavailable",
+      "commands": 0,
+      "phases": 2,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "메타데이터 작업이 현재 카탈로그에 없습니다",
+        "등록된 명세"
+      ],
+      "forbiddenFacts": [
+        "id (integer)",
+        "대신 레코드",
+        "SELECT"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "19",
+      "name": "forged operation ref",
+      "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+      "errors": [],
+      "stop": "invalid_decision",
+      "commands": 0,
+      "phases": 2,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "작업 선택",
+        "제공된 작업과 맞지"
+      ],
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "20",
+      "name": "real service metadata denial",
+      "reply": "선택한 소스의 메타데이터 조회 권한이 거부되었습니다.",
+      "errors": [],
+      "stop": "permission_denied",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "메타데이터 조회 권한이 거부"
+      ],
+      "forbiddenFacts": [
+        "id (integer)",
+        "대신 조회",
+        "큐에 등록"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "21",
+      "name": "catalog and policy revision invalidates pending decision",
+      "reply": "",
+      "errors": [
+        "요청 또는 메타데이터 버전이 바뀌어 이전 작업을 중단했습니다."
+      ],
+      "stop": "superseded",
+      "commands": 0,
+      "phases": 2,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [],
+      "requiredError": "버전이 바뀌어",
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "22",
+      "name": "adversarial metadata remains inert",
+      "reply": "DummyJSON 등록된 데이터 종류:\n- products \\[run\\]\\(https://evil.test\\) &lt;script&gt;\n- users\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [],
+      "stop": "answered",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [
+        "dummyjson"
+      ],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "products",
+        "\\[run\\]",
+        "&lt;script&gt;"
+      ],
+      "forbiddenFacts": [
+        "NEVER_EXECUTE",
+        "DO_NOT_DISCLOSE",
+        "[run](https"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "23",
+      "name": "delayed A after accepted correction to B",
+      "reply": "source B 등록된 데이터 종류:\n- b-products\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.",
+      "errors": [
+        "요청 또는 메타데이터 버전이 바뀌어 이전 작업을 중단했습니다."
+      ],
+      "stop": "answered",
+      "commands": 2,
+      "phases": 4,
+      "publishedSources": [
+        "source-b"
+      ],
+      "revision": 2,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [
+        "source B",
+        "b-products"
+      ],
+      "requiredError": "버전이 바뀌어",
+      "forbiddenFacts": [
+        "a-products",
+        "source A 등록된",
+        "```json"
+      ],
+      "allGatesPassed": true
+    },
+    {
+      "id": "24",
+      "name": "cancellation suppresses delayed result",
+      "reply": "",
+      "errors": [
+        "요청이 취소되었습니다."
+      ],
+      "stop": "cancelled",
+      "commands": 1,
+      "phases": 2,
+      "publishedSources": [],
+      "revision": 1,
+      "generatedProse": 0,
+      "forbiddenCalls": {
+        "collection": 0,
+        "enqueue": 0,
+        "write": 0
+      },
+      "requiredFacts": [],
+      "requiredError": "요청이 취소되었습니다",
+      "forbiddenFacts": [
+        "products",
+        "users",
+        "조회 완료"
+      ],
+      "allGatesPassed": true
+    }
+  ],
+  "limitations": [
+    "Scripted choices do not measure Korean semantics or calibrated accuracy.",
+    "No Desktop callsite or broader read-controller integration is enabled.",
+    "Concrete fixture labels and exact code await parent review before publication.",
+    "Provider transport dispatch counts/costs require a separately authorized live study."
+  ]
+}

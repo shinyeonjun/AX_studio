@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   WorkspaceChatChangedEvent,
   WorkspaceChatMessage,
+  WorkspaceChatSaveOptions,
   WorkspaceSourceRecord,
 } from '@ax-studio/core';
 
@@ -65,14 +66,16 @@ contextBridge.exposeInMainWorld('ax', {
     requestId?: string,
     workflowId?: string,
     workspaceSessionId?: string,
-  ) => ipcRenderer.invoke('ax:sendCommandChat', userMessage, requestId, workflowId, workspaceSessionId),
+    options?: Pick<WorkspaceChatSaveOptions, 'metadataLane'>,
+  ) => ipcRenderer.invoke('ax:sendCommandChat', userMessage, requestId, workflowId, workspaceSessionId, options),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (
     id: string | undefined,
     messages: WorkspaceChatMessage[],
     workflowId?: string | null,
-  ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId),
+    options?: WorkspaceChatSaveOptions,
+  ) => ipcRenderer.invoke('ax:saveWorkspaceChat', id, messages, workflowId, options),
   loadWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:loadWorkspaceChat', id),
   loadWorkspaceChatByWorkflowId: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkspaceChatByWorkflowId', workflowId),
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),

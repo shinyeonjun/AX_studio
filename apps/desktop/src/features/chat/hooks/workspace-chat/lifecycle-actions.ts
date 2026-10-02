@@ -1,4 +1,5 @@
 import type { WorkspaceChatContext } from './contracts';
+import { publishWorkspaceTranscript } from './transcript-snapshot';
 
 export function invalidateSession(ctx: WorkspaceChatContext): void {
   ctx.refs.sessionEpochRef.current += 1;
@@ -25,7 +26,7 @@ export function createWorkspaceLifecycleActions(ctx: WorkspaceChatContext) {
     ctx.refs.workspaceSessionIdRef.current = undefined;
     ctx.setWorkspaceSessionId(undefined);
     ctx.setWorkspaceWorkflowState(null);
-    ctx.setChatMessages([]);
+    publishWorkspaceTranscript(ctx, { messages: [] });
     ctx.setBusy(false);
     ctx.setError('');
     ctx.setProgress('');
