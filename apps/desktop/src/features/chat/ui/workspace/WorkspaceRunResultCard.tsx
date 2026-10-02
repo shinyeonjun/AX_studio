@@ -163,7 +163,8 @@ export function WorkspaceRunResultCard({
           </div>
         </section>
       )}
-      {approval && (
+      {approval?.toolResult && <p className="ax-workspace-run-card-guidance">오른쪽 결과에서 내용을 수정하고 발송 전에 확인할 수 있습니다.</p>}
+      {approval && !approval.toolResult && (
         <section className="ax-workspace-inline-approval" aria-label="외부 작업 승인">
           <div className="ax-workspace-inline-approval-copy">
             <span className="ax-workspace-inline-approval-eyebrow">외부 작업 전 확인</span>

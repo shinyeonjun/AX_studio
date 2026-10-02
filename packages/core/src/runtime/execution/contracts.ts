@@ -3,11 +3,12 @@ import type { ExecutionProgress, ExecutionResult, RuntimeConfig } from '../types
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
 
 export interface WorkflowExecutionHost {
+  readonly toolResults?: import('../tool-result-approval.js').ToolResultApprovals;
   readonly config: RuntimeConfig;
   readonly connectors: Record<string, Connector>;
   notifyExecutionStarted(executionId: string): void;
   notifyExecutionProgress(progress: ExecutionProgress): void;
-  notifyExecutionFinished(result: ExecutionResult): void;
+  notifyExecutionFinished(result: ExecutionResult): boolean | void;
 }
 
 export type PendingError = Error & {

@@ -124,4 +124,14 @@ describe('useAppState refresh ordering', () => {
     await vi.waitFor(() => expect(setState).toHaveBeenLastCalledWith(latestState));
     expect(setState).toHaveBeenCalledTimes(2);
   });
+  it('reports a failed action refresh while background refresh remains safe to ignore', async () => {
+    const failure = new Error('Synthetic refresh failure');
+    const getState = vi.fn().mockRejectedValue(failure);
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: { ax: { getState } } });
+    const hook = useAppState();
+    await expect(hook.refresh()).resolves.toBeUndefined();
+    await expect(hook.refreshForAction()).rejects.toBe(failure);
+    getState.mockResolvedValueOnce({ globalActive: true });
+    await expect(hook.refreshForAction()).resolves.toBeUndefined();
+  });
 });

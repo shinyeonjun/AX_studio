@@ -26,6 +26,8 @@ export interface AxWorkspaceApi {
     removedWorkflowIds: string[];
     inputRequests: AxInputRequest[];
     presentations: AxUiPresentation[];
+    readResult?: WorkspaceChatMessage['readResult'];
+    dbConnection?: WorkspaceChatMessage['dbConnection'];
   }>;
   cancelChat: (requestId: string) => Promise<{ ok: boolean }>;
   listChatSessions: () => Promise<

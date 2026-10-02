@@ -1,4 +1,9 @@
 import type {
+  ExecutionResult,
+  ToolResultConfirmation,
+  EditableToolResult, ToolDraftUpdate, ToolReviewRequest, ToolResultReview, ToolSendOutcome,
+} from '@ax-studio/core';
+import type {
   GeneratedArtifactExportResult,
   GeneratedArtifactFolderSaveResult,
 } from './contracts.js';
@@ -6,6 +11,10 @@ import type {
 export interface AxRuntimeApi {
   getState: () => Promise<unknown>;
   approve: (id: string) => Promise<unknown>;
+  confirmToolResult: (confirmation: ToolResultConfirmation) => Promise<ExecutionResult>;
+  getToolResult: (lookup: string | { executionId: string }) => Promise<{ source?: EditableToolResult; outcome?: ToolSendOutcome; executionId?: string; refreshWarning?: boolean; persistenceWarning?: boolean; requiresReview: boolean; cancelled: boolean; processing: boolean }>;
+  updateToolDraft: (input: ToolDraftUpdate) => Promise<EditableToolResult>;
+  reviewToolResult: (input: ToolReviewRequest) => Promise<ToolResultReview>;
   reject: (id: string) => Promise<unknown>;
   deleteWorkflow: (workflowId: string) => Promise<unknown>;
   deleteExecution: (executionId: string) => Promise<unknown>;

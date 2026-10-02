@@ -163,23 +163,28 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     onExecutionStarted: options.onExecutionStarted,
     onExecutionProgress: options.onExecutionProgress,
     onExecutionFinished: (result) => {
+      let refreshFailed = false;
       try {
         const event = publishExecutionResultToWorkspaceChat(store, result);
         if (event) {
           try {
             options.onWorkspaceChatChanged?.(event);
           } catch {
-            // Renderer notifications are observers and must not affect a run.
+            refreshFailed = true;
           }
         }
       } catch {
-        // Conversation delivery is an optional projection of the execution;
-        // Activity and the persisted execution remain authoritative.
+        refreshFailed = true;
       }
       try {
         options.onExecutionFinished?.(result);
       } catch {
-        // Preserve the runtime observer contract for the caller as well.
+        refreshFailed = true;
+      }
+      if (refreshFailed) {
+        // Notify the other observer first; runtime preserves the outcome and
+        // records the presentation failure separately from the provider receipt.
+        throw new Error('Execution completion presentation refresh failed.');
       }
     },
   });

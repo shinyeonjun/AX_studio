@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { ToolSendOutcome } from '@ax-studio/core';
 import type { AppState } from '../../../../types/app-state';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { PageHeader } from '../../../../ui/layout/PageHeader';
+import { ToolAwareApproval } from './ToolAwareApproval';
+import { OutcomeResult } from '../../../chat/ui/workspace/tool-result/ToolResultPane';
 
 interface ApprovalsPageProps {
   state: AppState | null;
@@ -13,6 +16,8 @@ interface ApprovalsPageProps {
 export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: ApprovalsPageProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [lastOutcome, setLastOutcome] = useState<{ outcome: ToolSendOutcome; refreshWarning?: boolean }>();
+  const recordOutcome = useCallback((outcome: ToolSendOutcome, refreshWarning?: boolean) => setLastOutcome({ outcome, refreshWarning }), []);
 
   const approvals = state?.approvals ?? [];
 
@@ -42,6 +47,7 @@ export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: Approva
             {actionError}
           </div>
         )}
+        {lastOutcome && <OutcomeResult {...lastOutcome} />}
 
         {approvals.length === 0 ? (
           <div className="empty-state">
@@ -51,33 +57,8 @@ export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: Approva
             </p>
           </div>
         ) : (
-          approvals.map((approval) => {
-            const busy = busyId === approval.id;
-            return (
-              <article key={approval.id} className="approval-card">
-                <h3>{approval.title ?? approval.reason}</h3>
-                <p className="muted">{approval.reason}</p>
-                <div className="approval-actions">
-                  <button
-                    type="button"
-                    className="btn btn-approve"
-                    disabled={busy}
-                    onClick={() => void runAction(approval.id, 'approve')}
-                  >
-                    {busy ? '처리 중…' : '승인'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-reject"
-                    disabled={busy}
-                    onClick={() => void runAction(approval.id, 'reject')}
-                  >
-                    거절
-                  </button>
-                </div>
-              </article>
-            );
-          })
+          approvals.map(approval => <ToolAwareApproval key={approval.id} approval={approval} busy={busyId === approval.id}
+            onLegacyAction={runAction} onRefresh={onRefresh} onOutcome={recordOutcome} />)
         )}
       </div>
     </>

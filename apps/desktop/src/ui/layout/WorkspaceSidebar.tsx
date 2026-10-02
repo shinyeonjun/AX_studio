@@ -1,4 +1,5 @@
 import type { AppState } from '../../types/app-state';
+import { useState } from 'react';
 import type { SettingsScreen, SidebarTab } from '../../types/navigation';
 import type { ChatSessionSummary } from '../../features/chat/hooks/useChatSessions';
 import type { AiHubController } from '../../features/settings/hooks/useAiHub';
@@ -51,13 +52,18 @@ export function WorkspaceSidebar({
   onDeleteWork,
   onOpenSettings,
 }: WorkspaceSidebarProps) {
+  const [navigationExpanded, setNavigationExpanded] = useState(false);
   return (
-    <aside className="workspace-sidebar">
+    <aside className={'workspace-sidebar' + (navigationExpanded ? ' workspace-sidebar--expanded' : '')}>
       <div className="workspace-sidebar-brand">
         <img src={axStudioLogo} alt="" className="brand-icon" />
         <span className="brand-text">AX Studio</span>
         <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
       </div>
+      <button type="button" className="tool-result-mobile-navigation" aria-expanded={navigationExpanded}
+        aria-controls="workspace-sidebar-result-navigation" onClick={() => setNavigationExpanded(value => !value)}>
+        {navigationExpanded ? '대화와 업무 목록 닫기' : '대화와 업무 목록 열기'}
+      </button>
 
       <SidebarNavigation
         tab={tab}
@@ -65,13 +71,14 @@ export function WorkspaceSidebar({
         onTabChange={onTabChange}
       />
 
+      <div id="workspace-sidebar-result-navigation" className="tool-result-sidebar-navigation">
       <div className="workspace-sidebar-panel scrollbar-overlay">
         {tab === 'work' && (
           <SidebarWorkPanel
             state={state}
             sessions={sessions}
-            onOpenWork={onOpenWork}
-            onOpenExecution={onOpenExecution}
+            onOpenWork={id => { setNavigationExpanded(false); onOpenWork(id); }}
+            onOpenExecution={execution => { setNavigationExpanded(false); onOpenExecution(execution); }}
             onToggleWorkActive={onToggleWorkActive}
             onDeleteWork={onDeleteWork}
           />
@@ -96,10 +103,11 @@ export function WorkspaceSidebar({
       <SidebarSessionList
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onNewChat={onNewChat}
-        onSelectSession={onSelectSession}
+        onNewChat={() => { setNavigationExpanded(false); onNewChat(); }}
+        onSelectSession={session => { setNavigationExpanded(false); onSelectSession(session); }}
         onDeleteSession={onDeleteSession}
       />
+      </div>
     </aside>
   );
 }

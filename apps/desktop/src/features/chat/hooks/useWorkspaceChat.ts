@@ -13,10 +13,11 @@ export type { WorkspaceWorkflowState } from './workspace-chat-helpers';
 
 export interface UseWorkspaceChatOptions {
   refresh: () => Promise<void>;
+  refreshAfterAction?: () => Promise<void>;
   onSessionsChanged?: () => void;
 }
 
-export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceChatOptions) {
+export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChanged }: UseWorkspaceChatOptions) {
   const sessionEpochRef = useRef(0);
   const workspaceSessionIdRef = useRef<string | undefined>(undefined);
   const activeRequestIdRef = useRef<string | undefined>(undefined);
@@ -63,6 +64,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     setTranscriptSnapshot,
     workspaceWorkflowState,
     refresh,
+    refreshAfterAction,
     onSessionsChanged,
     isCurrentSession,
     isViewingSession,
@@ -175,6 +177,7 @@ export function useWorkspaceChat({ refresh, onSessionsChanged }: UseWorkspaceCha
     sendMessage: messageActions.sendMessage,
     approveChatApproval: workflowActions.approveChatApproval,
     rejectChatApproval: workflowActions.rejectChatApproval,
+    confirmToolResult: workflowActions.confirmToolResult,
     downloadGeneratedPdf,
     saveGeneratedPdfToFolder,
     workspaceSources,

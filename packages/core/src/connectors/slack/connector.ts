@@ -4,13 +4,34 @@ import { pollSlackNewMessages } from './new-message-poll/poll.js';
 import { listSlackChannelPage, readSlackMessagePage, searchSlackMessagePage } from './read-page.js';
 import { composeSlackMessagePayload } from './format-message/payload.js';
 import { slackRequest } from './request.js';
+import { messageToolDraft, type MessageToolDraft, type MessageSendBinding } from '../../contracts/tool-result.js';
+import { resolveSlackChannelId } from './channel-resolve.js';
 
 export class SlackConnector implements Connector {
   name = 'slack';
 
   constructor(private token: string) {}
 
+  async prepareMessageSend(draft: MessageToolDraft): Promise<MessageSendBinding> {
+    if (draft.tool !== 'slack' || !draft.channel.trim()) throw new Error('tool_result_destination_unknown');
+    const { WebClient } = await import('@slack/web-api');
+    const client = new WebClient(this.token, { timeout: 30_000, retryConfig: { retries: 0 }, rejectRateLimitedCalls: true });
+    const auth = await client.auth.test();
+    if (!auth.ok || !auth.team_id || !auth.user_id) throw new Error('tool_result_identity_unverified');
+    const channelId = await resolveSlackChannelId(client, draft.channel.trim());
+    if (!channelId) throw new Error('tool_result_destination_unknown');
+    // Even an ID-shaped string must resolve through this authenticated workspace.
+    const info = await client.conversations.info({ channel: channelId });
+    if (!info.ok || info.channel?.id !== channelId || info.channel.is_archived) throw new Error('tool_result_destination_unknown');
+    return { provider: 'slack', accountId: auth.user_id, accountLabel: auth.user || auth.user_id,
+      workspaceId: auth.team_id, workspaceLabel: auth.team || auth.team_id,
+      destinationId: channelId, destinationLabel: info.channel.name ? '#' + info.channel.name : channelId };
+  }
+
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
+    if (action === 'message.send' && Object.keys(params).some(key => !['channel', 'text'].includes(key))) {
+      return { ok: false, error: 'Unsupported Slack thread/file/delivery fields', errorCode: 'unsupported_message_fields' };
+    }
     try {
       ctx.abortSignal?.throwIfAborted();
       const { WebClient } = await import('@slack/web-api');
@@ -33,13 +54,15 @@ export class SlackConnector implements Connector {
           if (!rawText.trim()) {
             return { ok: false, error: 'text_required', errorCode: 'invalid_params' };
           }
-          const payload = composeSlackMessagePayload(rawText, ctx);
+          if (!messageToolDraft('slack.message.send', params)) return { ok: false, error: 'invalid_message_payload', errorCode: 'invalid_params' };
+          const payload = ctx.literalMessage ? { text: rawText } : composeSlackMessagePayload(rawText, ctx);
           const res = await slackRequest(() => client.chat.postMessage({
             channel,
             text: payload.text,
             ...(payload.blocks ? { blocks: payload.blocks } : {}),
           }));
-          ctx.log({ at: new Date().toISOString(), level: 'info', message: 'slack.send', data: { channel: params.channel } });
+          try { ctx.log({ at: new Date().toISOString(), level: 'info', message: 'slack.send', data: { channel: params.channel } }); }
+          catch { /* The provider receipt remains authoritative when logging fails. */ }
           return { ok: true, data: res };
         }
         case 'new_message.poll': {

@@ -17,6 +17,7 @@ interface AppMainContentProps {
   tab: SidebarTab;
   state: AppState | null;
   refresh: () => Promise<void>;
+  approvalRefresh?: () => Promise<void>;
   workspaceChat: WorkspaceChatApi;
   settingsPage: ReactNode;
   onApprove: (id: string) => Promise<void>;
@@ -27,6 +28,7 @@ export function AppMainContent({
   tab,
   state,
   refresh,
+  approvalRefresh,
   workspaceChat,
   settingsPage,
   onApprove,
@@ -54,7 +56,7 @@ export function AppMainContent({
           </div>
         }
       >
-        <ApprovalsPage state={state} onRefresh={refresh} onApprove={onApprove} onReject={onReject} />
+        <ApprovalsPage state={state} onRefresh={approvalRefresh ?? refresh} onApprove={onApprove} onReject={onReject} />
       </Suspense>
     );
   }

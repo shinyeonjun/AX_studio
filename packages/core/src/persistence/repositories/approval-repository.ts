@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
-import { readRow, readRows } from '../db/types.js';
+import { persistDatabase, readRow, readRows } from '../db/types.js';
+import type { ToolSendOutcome } from '../../contracts/tool-result.js';
 import type { ApprovalRow } from '../rows.js';
 
 function parseApprovalJson<T>(raw: string, field: string, approvalId: string): T {
@@ -75,20 +76,30 @@ export function updateApprovalPayload(db: AppDatabase, id: string, extra: Record
       ? { ...(current.payload as Record<string, unknown>), ...extra }
       : extra;
   db.prepare('UPDATE approvals SET payload_json = ? WHERE id = ?').run(JSON.stringify(payload), id);
+  persistDatabase(db);
 }
 
 export function resolveApproval(db: AppDatabase, id: string, approved: boolean) {
   db
     .prepare("UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN ('pending', 'processing')")
     .run(approved ? 'approved' : 'rejected', new Date().toISOString(), id);
+  persistDatabase(db);
 }
 
 /** Rejects only a still-pending UI approval; a claimed approval belongs to its runner. */
 export function rejectPendingApproval(db: AppDatabase, id: string): boolean {
+  const current = readRow<{ status: string; resolved_at: string | null }>(db.prepare('SELECT status, resolved_at FROM approvals WHERE id = ?'), id);
+  if (current?.status !== 'pending') return false;
   const result = db
     .prepare("UPDATE approvals SET status = 'rejected', resolved_at = ? WHERE id = ? AND status = 'pending'")
     .run(new Date().toISOString(), id);
-  return result.changes === 1;
+  if (result.changes !== 1) return false;
+  try { persistDatabase(db); }
+  catch (error) {
+    db.prepare("UPDATE approvals SET status = 'pending', resolved_at = ? WHERE id = ? AND status = 'rejected'").run(current.resolved_at, id);
+    throw error;
+  }
+  return true;
 }
 
 /** Closes a claimed approval when its execution can no longer be resumed. */
@@ -96,15 +107,27 @@ export function failApproval(db: AppDatabase, id: string): boolean {
   const result = db
     .prepare("UPDATE approvals SET status = 'failed', resolved_at = ? WHERE id = ? AND status = 'processing'")
     .run(new Date().toISOString(), id);
+  if (result.changes === 1) persistDatabase(db);
   return result.changes === 1;
 }
 
 /** Atomically reserves a pending approval so two UI clicks cannot resume it twice. */
-export function claimApproval(db: AppDatabase, id: string): boolean {
+export function claimApproval(db: AppDatabase, id: string, intent?: Pick<ToolSendOutcome, 'binding' | 'paramsHash'>): boolean {
+  const current = getApproval(db, id);
+  if (!current || current.status !== 'pending') return false;
+  const originalPayload = current.payload === undefined ? null : JSON.stringify(current.payload);
+  const payload = intent ? { ...(current.payload && typeof current.payload === 'object' ? current.payload : {}), toolSendIntent: intent } : current.payload;
   const result = db
-    .prepare("UPDATE approvals SET status = 'processing' WHERE id = ? AND status = 'pending'")
-    .run(id);
-  return result.changes === 1;
+    .prepare("UPDATE approvals SET status = 'processing', payload_json = ? WHERE id = ? AND status = 'pending'")
+    .run(payload === undefined ? null : JSON.stringify(payload), id);
+  if (result.changes !== 1) return false;
+  try { persistDatabase(db); }
+  catch (error) {
+    // No provider has been called. Restore the editable in-process state; require a new seal.
+    db.prepare("UPDATE approvals SET status = 'pending', payload_json = ? WHERE id = ? AND status = 'processing'").run(originalPayload, id);
+    throw error;
+  }
+  return true;
 }
 
 export function getApproval(db: AppDatabase, id: string) {
@@ -119,6 +142,21 @@ export function getPendingApprovals(db: AppDatabase) {
     'pending',
   );
   return rows.map(mapApproval);
+}
+
+export function getProcessingApprovals(db: AppDatabase) {
+  return readRows<ApprovalRow>(db.prepare('SELECT * FROM approvals WHERE status = ?'), 'processing').map(mapApproval);
+}
+
+/** Durable checkpoints whose paired execution may need restart reconciliation. */
+export function getApprovalRecoveryCandidates(db: AppDatabase) {
+  return readRows<ApprovalRow>(db.prepare(
+    `SELECT a.* FROM approvals a
+     JOIN executions e ON e.id = a.execution_id
+     WHERE a.status = 'processing'
+        OR (a.status IN ('pending', 'approved', 'rejected', 'failed')
+            AND e.status IN ('running', 'pending_approval'))`,
+  )).map(mapApproval);
 }
 
 export function getPendingApprovalsWithExecutionSnapshots(db: AppDatabase) {

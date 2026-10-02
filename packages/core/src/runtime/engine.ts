@@ -10,6 +10,8 @@ import type {
   WorkflowExecutionOptions,
 } from './types.js';
 import { WorkflowExecutionRunner } from './execution/runner.js';
+import { ToolSendOutcomeSchema, type ToolDraftUpdate, type ToolReviewRequest, type ToolResultConfirmation } from '../contracts/tool-result.js';
+import { ToolResultApprovals, requiresToolResultReview } from './tool-result-approval.js';
 
 /**
  * Public lifecycle facade for workflow execution.
@@ -29,12 +31,15 @@ export class WorkflowRuntime {
   private readonly removedWorkflowIds = new Map<string, undefined>();
   private ephemeralQueueTail: Promise<void> = Promise.resolve();
   private readonly executionRunner: WorkflowExecutionRunner;
+  private readonly toolResults: ToolResultApprovals;
 
   constructor(private config: RuntimeConfig) {
     this.connectors = { ...(config.connectors ?? {}) };
+    this.toolResults = new ToolResultApprovals(config.store, this.connectors);
     this.executionRunner = new WorkflowExecutionRunner({
       config: this.config,
       connectors: this.connectors,
+      toolResults: this.toolResults,
       notifyExecutionStarted: (executionId) => this.notifyExecutionStarted(executionId),
       notifyExecutionProgress: (progress) => this.notifyExecutionProgress(progress),
       notifyExecutionFinished: (result) => this.notifyExecutionFinished(result),
@@ -128,6 +133,7 @@ export class WorkflowRuntime {
 
   stopAccepting(): void {
     this.accepting = false;
+    this.toolResults.dispose();
   }
 
   private notifyExecutionStarted(executionId: string): void {
@@ -147,11 +153,19 @@ export class WorkflowRuntime {
   }
 
   /** Notify host observers for every completion path, including preflight failures. */
-  notifyExecutionFinished(result: ExecutionResult): void {
+  notifyExecutionFinished(result: ExecutionResult): boolean {
     try {
       this.config.onExecutionFinished?.(result);
+      return true;
     } catch {
-      // Observers must not change execution outcomes.
+      // Preserve the provider outcome while making a failed refresh observable.
+      result.refreshWarning = true;
+      if (result.toolSendOutcome) {
+        result.log.push({ at: new Date().toISOString(), level: 'warn', code: 'execution_refresh_failed',
+          message: 'Provider outcome retained; completion observer refresh failed.' });
+        try { this.config.store.updateExecutionLog(result.executionId, result.log); } catch { /* Keep the receipt authoritative. */ }
+      }
+      return false;
     }
   }
 
@@ -206,8 +220,24 @@ export class WorkflowRuntime {
     this.config.decisionEngine = decisionEngine;
   }
 
-  continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
+  continueAfterApproval(approvalId: string, confirmation?: ToolResultConfirmation): Promise<ExecutionResult> {
     if (!this.accepting) return Promise.reject(new Error('runtime_stopping'));
-    return this.trackExecution(() => this.executionRunner.continueAfterApproval(approvalId));
+    return this.trackExecution(() => this.executionRunner.continueAfterApproval(approvalId, confirmation));
   }
+
+  getToolResult(approvalId: string) { return this.toolResults.read(approvalId); }
+  requiresToolResultReview(approvalId: string) { return requiresToolResultReview(this.config.store, approvalId); }
+  getToolSendOutcome(approvalId: string) {
+    const approval = this.config.store.getApproval(approvalId);
+    if (!approval || approval.status === 'pending' || approval.status === 'processing') return undefined;
+    const payload = approval.payload as { toolSendOutcome?: unknown; toolSendIntent?: unknown } | undefined;
+    const parsed = ToolSendOutcomeSchema.safeParse(payload?.toolSendOutcome ??
+      (payload?.toolSendIntent && typeof payload.toolSendIntent === 'object'
+        ? { ...payload.toolSendIntent, status: 'unknown' } : undefined));
+    return parsed.success ? parsed.data : undefined;
+  }
+  updateToolDraft(input: ToolDraftUpdate) { return this.toolResults.update(input); }
+  reviewToolResult(input: ToolReviewRequest) { return this.toolResults.review(input); }
+  discardToolDraft(approvalId: string) { this.toolResults.discard(approvalId); }
+  discardSessionToolDrafts(sessionId: string) { this.toolResults.discardSession(sessionId); }
 }

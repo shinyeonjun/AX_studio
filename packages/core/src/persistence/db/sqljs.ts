@@ -2,6 +2,9 @@ import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
 import { backup, DatabaseSync } from 'node:sqlite';
 import {
   existsSync,
+  openSync,
+  closeSync,
+  fsyncSync,
   mkdtempSync,
   readFileSync,
   renameSync,
@@ -13,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { applyMigrations } from './schema.js';
 import type { AppDatabase, SqlStatement } from './types.js';
+import { assertReadonlySqliteQuery } from './readonly-query.js';
 
 const PERSIST_DEBOUNCE_MS = 250;
 const MAX_PERSIST_DELAY_MS = 1_000;
@@ -202,6 +206,7 @@ class SqlJsDatabaseAdapter implements AppDatabase {
   }
 
   persistNow(): void {
+    if (this.transactionDepth > 0) throw new Error('persistence_transaction_open');
     this.flushPersist();
   }
 
@@ -219,7 +224,9 @@ class SqlJsDatabaseAdapter implements AppDatabase {
         // sql.js export reopens the connection and resets connection pragmas.
         this.db.run('PRAGMA foreign_keys = ON');
       }
-      writeFileSync(temporaryPath, snapshot);
+      const handle = openSync(temporaryPath, 'w');
+      try { writeFileSync(handle, snapshot); fsyncSync(handle); }
+      finally { closeSync(handle); }
       renameSync(temporaryPath, this.filePath);
     } finally {
       try {
@@ -289,8 +296,13 @@ export async function openReadonlySqlJs(filePath: string): Promise<{
   const SQL = await loadSqlJs();
   assertStandaloneDatabase(filePath);
   const db = new SQL.Database(readFileSync(filePath));
+  try {
+    db.run('PRAGMA query_only = ON');
+    if (queryRows(db, 'PRAGMA query_only', [])[0]?.query_only !== 1) throw new Error('sqlite_read_only_unverified');
+  } catch (error) { db.close(); throw error; }
   return {
     all(sql: string, params: unknown[] = []) {
+      assertReadonlySqliteQuery(sql);
       return queryRows(db, sql, params);
     },
     close() {

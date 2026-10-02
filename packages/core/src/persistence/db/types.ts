@@ -11,7 +11,14 @@ export interface SqlStatement {
 export interface AppDatabase {
   exec(sql: string): void;
   prepare(sql: string): SqlStatement;
+  /** Complete committed writes before an external side effect or its acknowledgement. */
+  persistNow(): void;
   close?(): void;
+}
+
+export function persistDatabase(db: AppDatabase): void {
+  try { db.persistNow(); }
+  catch (cause) { throw Object.assign(new Error('database_persistence_failed', { cause }), { code: 'database_persistence_failed' }); }
 }
 
 /**

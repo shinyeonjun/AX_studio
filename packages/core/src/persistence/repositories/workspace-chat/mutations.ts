@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../../db.js';
-import { readRow } from '../../db/types.js';
+import { persistDatabase, readRow } from '../../db/types.js';
 import { listWorkspaceSources } from '../workspace-source-repository.js';
 import {
   parseMessages,
@@ -198,6 +198,7 @@ export function upsertWorkspaceChatExecutionResult(
 export function deleteWorkspaceChat(db: AppDatabase, id: string): void {
   db.prepare('DELETE FROM workspace_chats WHERE id = ?').run(id);
   invalidateWorkspaceChatRevision(db, id);
+  persistDatabase(db);
 }
 
 /** Host-owned synchronous append: no renderer full snapshot is accepted here. */
