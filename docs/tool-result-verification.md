@@ -165,3 +165,30 @@ Fresh combined review and ordinary CI remain pending; no publication is performe
 Faulted reviewer-owned Electron processes were left untouched and did not block the
 isolated QA runs. Security, sandbox, OS settings and c837 packaging restrictions
 remain unchanged. The existing unsupported/live/visual limitations above remain.
+
+## Interrupted cancellation recovery re-review
+
+The ac8 combined review independently found original checkpoint/tail loss during
+interrupted editable cancellation recovery on both backends. A new isolated branch
+applies the existing diagnosed-history preservation option to startup rejection;
+the sql.js adapter, completion barrier and all other production paths remain intact.
+The imported real-runtime probes reproduce four failures/two controls before the
+fix. After adding two valid-history controls and narrowing the synthetic Gmail
+binding's literal type, final code `98b39139fbfa1e117cca5d3b8eef6cfc46f52fde` passes
+eight restart cases and proves terminal durable cancellation, original HEX through
+second reopen and zero sends/identity lookups. Optional raw observations are included.
+
+Complete Core passes 2,548/11 existing skips (483 files), Desktop 310 (53 files), all
+27 Core/twelve Desktop relevant contract files, types/normal builds, security 8/8,
+architecture zero violations (1,334 modules / 5,076 dependencies), offline 24/24,
+sandboxed Electron focused 13/13 and full smoke 22/22. Five fresh reference-sized
+Slack captures were inspected. All previous test names/statuses and multiplicities
+are retained. Failed-before and interim type reports remain separate from final passes.
+
+The final review commit only changes verification docs, with identical tested code/
+test modes and blobs. Original ac8 evidence remains immutable. The separately assigned
+sql.js caller-savepoint ownership fix remains outside this branch; both fixes and
+their eventual combined review/fresh CI must clear before publication. Filesystem/
+command access was verified after disconnect callbacks without restarting uncertain
+commands. No canonical/live/security/c837 action or denied-process cleanup occurred.
+See [the bounded fix record](tool-result-cancellation-recovery-fix.md).

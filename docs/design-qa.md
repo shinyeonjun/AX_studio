@@ -183,3 +183,25 @@ failed-before evidence, exact source matrices and all final reports are document
 in [the integration contract](tool-result-history-integration.md). Existing sandbox
 and no-bypass assertions remain. Faulted reviewer processes were left untouched
 and did not block these isolated runs. All earlier limits above still apply.
+
+## Cancellation restart correction: 2026-10-02
+
+Independent review found evidence loss on interrupted cancellation recovery despite
+the prior passing UI flow. The isolated correction is confined to the runtime's
+diagnosed-rejection recovery policy; renderer/style/launcher blobs are unchanged.
+Final code `98b39139fbfa1e117cca5d3b8eef6cfc46f52fde` passes eight native/sql.js
+restart controls, Core 2,548/11 existing skips, Desktop 310, types/builds/security/
+architecture/offline 24 and fresh sandboxed Electron focused 13/full smoke 22.
+
+Five fresh 1280 by 873 CSS-pixel Slack captures were inspected as actual pixels.
+They retain autofill, full literal override and unsent review, verified synthetic
+destination, receipt/no resend and cancellation removing decision controls. Review
+content scrolls; focus and real clicks reach the footer. This certifies the narrow
+synthetic flow, not Gmail/DB, all viewports or complete crash-restart UI. Core raw-HEX
+regressions separately establish diagnosed history preservation through two reopens.
+
+The fix awaits independent re-review. The separate sql.js savepoint ownership fix
+and subsequent combined review/fresh CI remain publication gates. Earlier visual,
+live, unsupported-capability and c837 limitations remain. Original ac8 source/evidence
+and faulted reviewer processes are untouched. See
+[the correction record](tool-result-cancellation-recovery-fix.md).

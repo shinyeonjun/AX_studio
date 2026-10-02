@@ -132,3 +132,25 @@ restart. Unknown outcomes never automatically resend. External databases remain
 read-only. See [design QA](design-qa.md), [UI contracts](tool-result-ui-contracts.md)
 and [ADR0004](adr/0004-tool-specific-editable-results.md) for the unchanged renderer,
 extensibility and permission contracts.
+
+## Independent restart finding and isolated correction
+
+Independent review of `ac8c88231c48f1127916e160dfe9c891d0ad2f4c` reproduced
+interrupted editable cancellation losing its original checkpoint/tail during startup
+on native SQLite and sql.js. The prior five composition tests did not enter that
+actual editable-runtime recovery gap. The correction uses the already accepted
+diagnosed-rejection preservation option in the runtime's rejected startup branch;
+valid rejection keeps its ordinary checkpoint behavior. No adapter internals change.
+
+The corrected source `98b39139fbfa1e117cca5d3b8eef6cfc46f52fde` passes eight new
+restart/control cases with second-reopen HEX equality, terminal cancellation and zero
+sends/identity lookups. Complete Core passes 2,548/11 existing skips, Desktop 310,
+and types/builds/security/architecture/offline 24/Electron 13/full smoke 22 pass.
+See [the cancellation correction](tool-result-cancellation-recovery-fix.md) for
+immutable failed-before evidence, exact scope and re-review results.
+
+The broader review also found inherited sql.js caller-savepoint export ownership
+failure. A separate author owns its isolated fix. Earlier BEGIN-only passing checks
+do not establish that ownership contract; it remains a combined-publication blocker.
+Both fixes, independent exact-source review and fresh CI are required. The original
+combined source, reports and archive remain preserved; no publication has occurred.
