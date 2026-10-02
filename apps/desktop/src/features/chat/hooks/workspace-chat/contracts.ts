@@ -32,6 +32,7 @@ export interface WorkspaceChatContext {
   setTranscriptSnapshot?: Dispatch<SetStateAction<WorkspaceChatTranscriptSnapshot>>;
   workspaceWorkflowState: WorkspaceWorkflowState | null;
   refresh: () => Promise<void>;
+  refreshAfterAction?: () => Promise<void>;
   onSessionsChanged?: () => void;
   isCurrentSession: (epoch: number) => boolean;
   isViewingSession: (sessionId: string | undefined) => boolean;
@@ -50,7 +51,7 @@ export interface WorkspaceChatContext {
 }
 
 export interface WorkspaceChatMessageContext extends WorkspaceChatContext {
-  refreshMappedWorkspaceChat: (sessionId: string) => Promise<void>;
+  refreshMappedWorkspaceChat: (sessionId: string) => Promise<void | boolean>;
 }
 
 export interface WorkspaceSendResponse {
@@ -65,4 +66,5 @@ export interface WorkspaceSendResponse {
   inputRequests?: AxInputRequest[];
   presentations?: AxUiPresentation[];
   readResult?: TableArtifact;
+  dbConnection?: WorkspaceChatMessage['dbConnection'];
 }

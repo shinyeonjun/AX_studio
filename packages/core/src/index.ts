@@ -77,6 +77,7 @@ export * from './triggers/registry.js';
 export * from './triggers/filter.js';
 export { SlackSocketModeListener } from './triggers/slack/new-message/socket-mode.js';
 export * from './runtime/approval-display.js';
+export { editableToolResult } from './runtime/tool-result-approval.js';
 export { formatCondition, type ConditionExpr } from './runtime/condition-expr.js';
 export {
   actionDefinitionFromCapability,

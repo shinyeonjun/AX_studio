@@ -77,6 +77,8 @@ export const TableArtifactSchema = z.object({
   /** RDB page, query, source extent and consistency are separate claims. */
   coverage: RdbReadCoverageSchema.optional(),
   source: z.object({
+    executionId: z.string().min(1).max(128).optional(),
+    readOnlyEnforced: z.literal(true).optional(),
     artifactId: z.string().optional(),
     filePath: z.string().optional(),
     workbookSheet: z.string().optional(),

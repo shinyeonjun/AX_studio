@@ -6,6 +6,7 @@ import type { ExecutionResult } from '../types.js';
 import { formatExecutionResultMessage, safeText } from './format.js';
 import type { WorkspaceChatChangedEvent } from './contracts.js';
 import { generatedPdfFromExecutionLog } from './generated-pdf.js';
+import { editableToolResult, toolResultReference } from '../tool-result-approval.js';
 
 function parseExecutionIr(irJson: string | null | undefined): WorkflowIR | null {
   if (!irJson) return null;
@@ -44,10 +45,12 @@ function inlineApprovalForExecution(
     const reason = safeText(approval.reason, 1_200);
     const safeTitle = safeText(title, 240);
     if (!reason || !safeTitle) return undefined;
+    const toolResult = editableToolResult(store, approval.id);
     return {
       id: approval.id,
       title: safeTitle,
       reason,
+      ...(toolResult ? { toolResult: toolResultReference(toolResult) } : {}),
     };
   } catch {
     // A malformed approval must not prevent the execution result from being
@@ -89,6 +92,7 @@ export function publishExecutionResultToWorkspaceChat(
     kind: 'execution_result',
     executionId: result.executionId,
     executionStatus: result.status,
+    ...(result.toolSendOutcome ? { toolSendOutcome: result.toolSendOutcome } : {}),
     content: formatExecutionResultMessage(result, {
       workflowName,
       irJson: execution.irJson ?? undefined,

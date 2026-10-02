@@ -28,6 +28,14 @@ test/
 !/test/userlike-planner/
 !/test/userlike-planner/*.mjs
 !/test/userlike-planner/README.md
+!/test/tool-result-ui/
+!/test/tool-result-ui/*.mjs
+!/test/tool-result-ui/*.ts
+!/test/tool-result-ui/*.tsx
+!/test/tool-result-ui/*.html
+!/test/tool-result-ui/tsconfig.json
+!/test/tool-result-ui/README.md
+/test/tool-result-ui/runs/
 /test/userlike-planner/runs/
 .drawio/
 

@@ -51,6 +51,8 @@ export interface ArtifactSink {
 }
 
 export interface ConnectorContext {
+  /** Host-only: a reviewed message is dispatched literally, without format/source rewrites. */
+  literalMessage?: boolean;
   abortSignal?: AbortSignal;
   executionId: string;
   workflowId?: string;
@@ -95,5 +97,7 @@ export interface ConnectorResult {
 
 export interface Connector {
   name: string;
+  /** Registered send adapter: authenticated identity and destination, using existing read grants. */
+  prepareMessageSend?(draft: import('../contracts/tool-result.js').MessageToolDraft): Promise<import('../contracts/tool-result.js').MessageSendBinding>;
   execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult>;
 }

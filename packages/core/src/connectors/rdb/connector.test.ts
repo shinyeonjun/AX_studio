@@ -95,10 +95,7 @@ describe('RdbConnector sqlite', () => {
       const unprivileged = await limited.execute('query.read', {
         table: 'customers', offset: 0, limit: 100, reportCapture: true,
       }, connectorContext());
-      expect(unprivileged).toMatchObject({ ok: true, data: {
-        rows: [{ values: { id: 1 } }], truncated: true,
-        completeness: { status: 'partial', reason: 'row_limit', hasMore: true },
-      } });
+      expect(unprivileged).toMatchObject({ ok: false, errorCode: 'policy_denied' });
       expect(secondPage).toMatchObject({ ok: true, data: {
         rows: [{ values: { id: 2 } }], truncated: false,
         completeness: { status: 'complete', hasMore: false },

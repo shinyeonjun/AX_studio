@@ -1,20 +1,167 @@
 {
   "id": "one-shot-inline-approval",
-  "name": "One-shot inline approval — 대화 안에서 승인",
-  "description": "일회 실행의 승인 대기를 대화 카드에서 승인하거나 취소할 수 있는지 확인합니다.",
+  "name": "One-shot Slack editor approval",
+  "description": "Review verified destination, invalidate review after back/edit, and confirm a complete literal override once.",
   "mode": "deterministic",
-  "tags": ["chat", "approval", "deterministic"],
-  "covers": ["runtime:approvals-activity"],
+  "tags": [
+    "chat",
+    "approval",
+    "deterministic"
+  ],
+  "covers": [
+    "runtime:approvals-activity"
+  ],
   "timeoutMs": 120000,
   "steps": [
-    { "action": "newChat", "label": "inline-approval" },
-    { "action": "sendMessage", "text": "__e2e:inline-approval__" },
-    { "action": "waitMs", "ms": 1800 },
-    { "check": "inlineApprovalPresent", "severity": "critical" },
-    { "check": "visibleTextContains", "text": "외부 작업 전 확인", "severity": "critical" },
-    { "action": "clickInlineApproval", "decision": "approve" },
-    { "check": "inlineApprovalAbsent", "severity": "critical" },
-    { "check": "visibleTextContains", "text": "실행 완료", "severity": "critical" },
-    { "check": "composerEnabled", "severity": "major" }
+    {
+      "action": "setViewport",
+      "width": 1280,
+      "height": 873
+    },
+    {
+      "action": "newChat",
+      "label": "inline-approval"
+    },
+    {
+      "action": "sendMessage",
+      "text": "__e2e:inline-approval__"
+    },
+    {
+      "check": "assistantMessageContains",
+      "text": "E2E inline_approval_queued"
+    },
+    {
+      "check": "slackDraft",
+      "channel": "#e2e",
+      "text": "E2E approval test"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "pending_approval"
+    },
+    {
+      "action": "screenshot",
+      "name": "slack-draft",
+      "scale": "css"
+    },
+    {
+      "action": "clickSlackResult",
+      "control": "review"
+    },
+    {
+      "check": "slackReview",
+      "channelId": "C12345678",
+      "channelLabel": "#e2e",
+      "text": "E2E approval test"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "pending_approval"
+    },
+    {
+      "action": "clickSlackResult",
+      "control": "back"
+    },
+    {
+      "check": "slackDraft",
+      "channel": "C12345678",
+      "text": "E2E approval test"
+    },
+    {
+      "action": "editSlackDraft",
+      "channel": "#e2e-edited",
+      "text": "E2E edited {{literal}}\n**exact payload**"
+    },
+    {
+      "check": "slackDraft",
+      "channel": "#e2e-edited",
+      "text": "E2E edited {{literal}}\n**exact payload**"
+    },
+    {
+      "action": "clickSlackResult",
+      "control": "review"
+    },
+    {
+      "check": "slackReview",
+      "channelId": "C87654321",
+      "channelLabel": "#e2e-edited",
+      "text": "E2E edited {{literal}}\n**exact payload**"
+    },
+    {
+      "action": "editSlackDraft",
+      "text": "E2E edited {{literal}}\n**exact payload**\nAfter review edit"
+    },
+    {
+      "check": "slackDraft",
+      "channel": "C87654321",
+      "text": "E2E edited {{literal}}\n**exact payload**\nAfter review edit"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "pending_approval"
+    },
+    {
+      "action": "clickSlackResult",
+      "control": "review"
+    },
+    {
+      "check": "slackReview",
+      "channelId": "C87654321",
+      "channelLabel": "#e2e-edited",
+      "text": "E2E edited {{literal}}\n**exact payload**\nAfter review edit"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "pending_approval"
+    },
+    {
+      "action": "screenshot",
+      "name": "slack-reviewed",
+      "scale": "css"
+    },
+    {
+      "action": "clickSlackResult",
+      "control": "confirm",
+      "repeat": true
+    },
+    {
+      "check": "slackTerminal",
+      "decision": "sent"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 1,
+      "status": "success",
+      "params": {
+        "channel": "C87654321",
+        "text": "E2E edited {{literal}}\n**exact payload**\nAfter review edit"
+      }
+    },
+    {
+      "action": "waitMs",
+      "ms": 500
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 1,
+      "status": "success",
+      "params": {
+        "channel": "C87654321",
+        "text": "E2E edited {{literal}}\n**exact payload**\nAfter review edit"
+      }
+    },
+    {
+      "action": "screenshot",
+      "name": "slack-sent",
+      "scale": "css"
+    },
+    {
+      "check": "composerEnabled",
+      "severity": "major"
+    }
   ]
 }

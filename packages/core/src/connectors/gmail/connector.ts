@@ -6,6 +6,7 @@ import { extractGmailPlainBody } from './body-extract.js';
 import { pollGmailNewMessages } from './new-message-poll/poll.js';
 import { resolveGmailMessageId } from './message-id.js';
 import { searchGmailMessagePage } from './search-page.js';
+import { messageToolDraft, validGmailRecipient, type MessageToolDraft, type MessageSendBinding } from '../../contracts/tool-result.js';
 
 export interface GmailConnectorConfig {
   clientId: string;
@@ -22,6 +23,16 @@ export class GmailConnector implements Connector {
   private tokenWriteQueue: Promise<void> = Promise.resolve();
 
   constructor(private config: GmailConnectorConfig) {}
+
+  async prepareMessageSend(draft: MessageToolDraft): Promise<MessageSendBinding> {
+    if (draft.tool !== 'gmail' || !validGmailRecipient(draft.to)) throw new Error('tool_result_recipient_invalid');
+    const gmail = await this.getClient();
+    const profile = await gmail.users.getProfile({ userId: 'me' });
+    const account = profile.data.emailAddress;
+    if (!account) throw new Error('tool_result_identity_unverified');
+    return { provider: 'gmail', accountId: account, accountLabel: account,
+      destinationId: draft.to.trim(), destinationLabel: draft.to.trim() };
+  }
 
   private async getClient(signal?: AbortSignal): Promise<gmail_v1.Gmail> {
     const { google } = await import('googleapis');
@@ -53,6 +64,9 @@ export class GmailConnector implements Connector {
   }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
+    if ((action === 'message.send' || action === 'draft.create') && Object.keys(params).some(key => !['to', 'subject', 'body'].includes(key))) {
+      return { ok: false, error: 'Unsupported Gmail delivery fields', errorCode: 'unsupported_message_fields' };
+    }
     try {
       ctx.abortSignal?.throwIfAborted();
       switch (action) {
@@ -99,6 +113,7 @@ export class GmailConnector implements Connector {
           return { ok: true, data: res.data };
         }
         case 'message.send': {
+          if (!messageToolDraft('gmail.message.send', params)) return { ok: false, error: 'invalid_message_payload', errorCode: 'invalid_params' };
           const to = typeof params.to === 'string' ? params.to.trim() : '';
           if (!to) {
             return { ok: false, error: 'to_required', errorCode: 'invalid_params' };

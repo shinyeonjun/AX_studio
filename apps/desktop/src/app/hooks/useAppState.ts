@@ -9,6 +9,7 @@ export function useAppState() {
   const refreshIdRef = useRef(0);
   const refreshQueue = useRef(new CoalescedRefresh<void>());
   const mounted = useRef(true);
+  const refreshFailure = useRef<{ cause: unknown } | undefined>(undefined);
   const [state, setState] = useState<AppState | null>(null);
   const [loadState, setLoadState] = useState<AppLoadState>('loading');
   const [error, setError] = useState('');
@@ -24,15 +25,21 @@ export function useAppState() {
         setState(next as AppState);
         setLoadState('ready');
         setError('');
+        refreshFailure.current = undefined;
       } catch (err) {
         if (!mounted.current || refreshId !== refreshIdRef.current) return;
         const message = ipcErrorMessage(err, '앱 상태를 불러오지 못했습니다.');
         setError(message);
         setLoadState((current) => (current === 'loading' ? 'error' : 'stale'));
+        refreshFailure.current = { cause: err };
       }
     });
   }, []);
   const refresh = useCallback(() => requestRefresh(true), [requestRefresh]);
+  const refreshForAction = useCallback(async () => {
+    await requestRefresh(true);
+    if (refreshFailure.current) throw refreshFailure.current.cause;
+  }, [requestRefresh]);
 
   useEffect(() => {
     mounted.current = true;
@@ -54,6 +61,7 @@ export function useAppState() {
     loadState,
     error,
     refresh,
+    refreshForAction,
     isLoading: loadState === 'loading',
     isStale: loadState === 'stale',
     hasError: loadState === 'error' || Boolean(error),

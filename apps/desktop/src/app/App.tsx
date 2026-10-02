@@ -21,13 +21,13 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
   const [actionError, setActionError] = useState('');
 
-  const { state, error: stateError, refresh, isLoading, isStale } = useAppState();
+  const { state, error: stateError, refresh, refreshForAction, isLoading, isStale } = useAppState();
   const detection = useAiDetection();
   const { refreshDetection } = detection;
   const aiHub = useAiHub(state, refresh, detection);
   const { isDark, toggleTheme } = useTheme();
   const { sessions, error: sessionsError, refreshSessions } = useChatSessions();
-  const workspaceChat = useWorkspaceChat({ refresh, onSessionsChanged: refreshSessions });
+  const workspaceChat = useWorkspaceChat({ refresh, refreshAfterAction: refreshForAction, onSessionsChanged: refreshSessions });
 
   const appActions = createAppActions({
     activeSessionId,
@@ -74,6 +74,7 @@ export default function App() {
       tab={sidebarTab}
       state={state}
       refresh={refresh}
+      approvalRefresh={refreshForAction}
       workspaceChat={workspaceChat}
       settingsPage={settingsPage}
       onApprove={appActions.handleApprove}

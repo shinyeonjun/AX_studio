@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
-import { readRow, readRows } from '../db/types.js';
+import { persistDatabase, readRow, readRows } from '../db/types.js';
 import type { ExecutionRow, ExecutionStatus } from '../rows.js';
 import { hasOpenApprovalForExecution } from './approval-repository.js';
 import { MAX_EXECUTION_OUTPUT_JSON_LENGTH, parseExecutionOutput } from '../../contracts/execution-output.js';
@@ -55,6 +55,7 @@ export function finishExecution(
   db
     .prepare('UPDATE executions SET status = ?, finished_at = ?, error_code = ?, log_json = ? WHERE id = ?')
     .run(status, new Date().toISOString(), errorCode ?? null, JSON.stringify(log ?? []), id);
+  persistDatabase(db);
 }
 
 /** Leaves the execution open so a pending approval can resume it later. */
@@ -67,6 +68,7 @@ export function markExecutionPending(
   db
     .prepare('UPDATE executions SET status = ?, finished_at = NULL, error_code = ?, log_json = ? WHERE id = ?')
     .run('pending_approval', errorCode, JSON.stringify(log ?? []), id);
+  persistDatabase(db);
 }
 
 export function updateExecutionLog(db: AppDatabase, id: string, log: unknown[]) {

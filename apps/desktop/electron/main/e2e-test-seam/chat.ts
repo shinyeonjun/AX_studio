@@ -1,4 +1,5 @@
 import { pauseForDeterministicBusyCheck } from './timing.js';
+import { syntheticSlackApprovalConnector, syntheticSlackApprovalPlan } from './slack-approval.js';
 import type { E2EChatReply, E2EChatRequest } from './contracts.js';
 
 function emptyReply(content: string): E2EChatReply {
@@ -78,34 +79,11 @@ export async function runE2EChat(request: E2EChatRequest): Promise<E2EChatReply>
     };
   }
 
-  if (instruction === '__e2e:inline-approval__') {
-    core.runtime.setConnector('slack', {
-      name: 'e2e-slack',
-      execute: async () => ({ ok: true, data: { id: 'e2e-message' } }),
-    });
-    core.runtime.enqueueEphemeralWorkflow({
-      name: 'E2E 일회 승인',
-      goal: '승인 후에만 테스트 메시지를 전송합니다.',
-      version: 1,
-      inputs: [],
-      steps: [
-        {
-          type: 'action',
-          id: 'send',
-          connector: 'slack',
-          action: 'message.send',
-          actionRef: 'slack.message.send',
-          params: { channel: '#e2e', text: 'E2E approval test' },
-          sideEffect: 'EXTERNAL',
-        },
-      ],
-      permissions: {},
-      approval: [],
-      allowExternalAuto: false,
-      assumptions: [],
-      sideEffects: {},
-      dataPolicy: {},
-    }, { workspaceSessionId: request.workspaceSessionId });
+  if (instruction === '__e2e:inline-approval__' || instruction === '__e2e:legacy-approval__') {
+    core.store.setConnection('slack', true, { synthetic: true });
+    core.runtime.setConnector('slack', syntheticSlackApprovalConnector());
+    core.runtime.enqueueEphemeralWorkflow(syntheticSlackApprovalPlan(instruction === '__e2e:legacy-approval__'),
+      { workspaceSessionId: request.workspaceSessionId });
     return emptyReply('E2E inline_approval_queued');
   }
 

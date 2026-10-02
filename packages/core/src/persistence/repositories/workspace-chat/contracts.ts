@@ -10,6 +10,7 @@ import {
   type ExecutionResultStatus,
 } from '../../../contracts/execution-status.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
+import { ToolResultReferenceSchema, ToolSendOutcomeSchema, type ToolResultReference, type ToolSendOutcome } from '../../../contracts/tool-result.js';
 
 export interface WorkspaceChatMessage {
   role: 'user' | 'assistant';
@@ -24,6 +25,7 @@ export interface WorkspaceChatMessage {
   executionId?: string;
   /** Structured lifecycle state for host-generated execution results. */
   executionStatus?: ExecutionResultStatus;
+  toolSendOutcome?: ToolSendOutcome;
   /** UI hint only; main still requires the matching host-held command and request IDs. */
   inputContinuation?: 'command';
   /** Optional host-rendered controls attached to this assistant message. */
@@ -36,12 +38,14 @@ export interface WorkspaceChatMessage {
   generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
   /** Bounded table shown in this reply, for immediate follow-up operations. */
   readResult?: TableArtifact;
+  dbConnection?: { label?: string; type?: 'postgres' | 'mysql' | 'sqlite' };
 }
 
 export interface WorkspaceChatApproval {
   id: string;
   title: string;
   reason: string;
+  toolResult?: ToolResultReference;
 }
 
 /** Safe, renderer-facing metadata for a generated PDF. Physical paths and bytes stay host-owned. */
@@ -56,6 +60,7 @@ export const WorkspaceChatApprovalSchema = z.object({
   id: z.string().trim().min(1).max(128),
   title: z.string().trim().min(1).max(240),
   reason: z.string().trim().min(1).max(1_200),
+  toolResult: ToolResultReferenceSchema.optional(),
 });
 
 export const WorkspaceChatGeneratedPdfSchema = z.object({
@@ -83,7 +88,16 @@ export const WorkspaceChatReadResultSchema = TableArtifactSchema.pick({
   rows: true,
   truncated: true,
   completeness: true,
+  readScope: true,
+  coverage: true,
+}).extend({
+  source: TableArtifactSchema.shape.source.unwrap().pick({ executionId: true, readOnlyEnforced: true,
+    database: true, schema: true, table: true, queryFingerprint: true, capturedAt: true }).optional(),
 }).superRefine((table, context) => {
+  if (table.source?.readOnlyEnforced && (!table.source.executionId || !table.readScope
+    || table.source.queryFingerprint !== table.readScope.queryFingerprint)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'DB rows and read provenance must belong to the same execution' });
+  }
   if (table.columns.length > 50 || table.rows.length > 100) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: '이전 표 결과는 100행·50열 이내여야 합니다.' });
   }
@@ -127,6 +141,7 @@ export const workspaceChatMessageSchema = z.object({
   kind: z.literal('execution_result').optional(),
   executionId: z.string().min(1).max(128).optional(),
   executionStatus: ExecutionResultStatusSchema.optional(),
+  toolSendOutcome: ToolSendOutcomeSchema.optional(),
   inputContinuation: z.literal('command').optional(),
   inputRequests: z.array(AxInputRequestSchema).max(8).optional(),
   presentations: z.array(AxUiPresentationSchema).max(4).optional(),
@@ -134,6 +149,7 @@ export const workspaceChatMessageSchema = z.object({
   generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
   generatedSpreadsheet: WorkspaceChatGeneratedSpreadsheetSchema.optional(),
   readResult: WorkspaceChatReadResultSchema.optional(),
+  dbConnection: z.object({ label: z.string().min(1).max(240).optional(), type: z.enum(['postgres', 'mysql', 'sqlite']).optional() }).strict().optional(),
 }).superRefine((message, context) => {
   if (message.registeredMetadataTurn && (message.role !== 'user' || !message.turnId)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['registeredMetadataTurn'], message: 'invalid_registered_metadata_turn' });

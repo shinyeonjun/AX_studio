@@ -11,6 +11,7 @@ interface WorkConversationSplitProps {
   onSplitterDoubleClick?: () => void;
   chat: ReactNode;
   panel: ReactNode;
+  resultVisible?: boolean;
 }
 
 export function WorkConversationSplit({
@@ -20,10 +21,11 @@ export function WorkConversationSplit({
   onSplitterDoubleClick,
   chat,
   panel,
+  resultVisible = false,
 }: WorkConversationSplitProps) {
   return (
     <div
-      className={`work-conversation-body${isResizing ? ' work-conversation-body--resizing' : ''}`}
+      className={`work-conversation-body${isResizing ? ' work-conversation-body--resizing' : ''}${resultVisible ? ' work-conversation-body--result' : ''}`}
       style={{ gridTemplateColumns: `minmax(0, 1fr) 5px ${width}px` }}
     >
       <div className="work-conversation-chat">{chat}</div>
