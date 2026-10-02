@@ -1,194 +1,96 @@
-# Editable tool-result verification
+# Editable tool results: combined verification
 
-Recorded validation date: 2026-10-02. This guide records focused synthetic checks
-performed before the documentation-only publication preparation. Production,
-test, fixture, configuration and launcher content is unchanged by that
-preparation. The measurements are not fresh executions of a later documentation
-commit and do not certify repository-wide CI or live integration behavior.
-The later approval-resume fixture correction and its separate local results are
-recorded in [CI fixture verification](tool-result-ci-fixtures.md).
-The subsequent editable Slack smoke correction, its real synthetic host-roundtrip
-scope and retained legacy coverage are recorded in
-[smoke fixture verification](tool-result-smoke-fixtures.md) and the later section of
-[design QA](design-qa.md). Those fresh checks do not replace the historical source
-scope of this guide or certify live delivery.
+Recorded on 2026-10-02 against the frozen combined code/test source. The final
+documentation commit retains every tested code/test mode and blob; exact inputs,
+tested identity, candidate identity, all-path matrix and reports accompany the
+immutable review artifact. This is local validation, with final combined
+independent review and fresh CI still required before publication.
 
-## Source and isolation
+## Passed checks
 
-At published head `71f3c4f3b73e65d76d1da7e4683d09568001bff8`, the
-non-documentation full-index binary patch relative to public base
-`13446a568df671a18504386316d8f085c97def7c` has SHA-256:
-
-`60439771c0c1ad6d2ccf908cc7e2823b98b12e5ccf2c1ab25eed79d0dd894219`.
-
-Its definition excludes `docs/**` and the tool-fixture README. It can be reproduced
-from the repository root with:
-
-```sh
-git diff --binary --full-index 13446a568df671a18504386316d8f085c97def7c 71f3c4f3b73e65d76d1da7e4683d09568001bff8 -- . ':(exclude)docs/**' ':(exclude)test/tool-result-ui/README.md'
-```
-
-All tests used synthetic connectors, scripted transports, fresh in-memory/local
-fixture databases and isolated application data. No provider credentials or live
-model/provider budget were inherited. Local database seeding is fixture setup;
-external databases received no writes. Electron launchers retain
-`chromiumSandbox: true` and requested/actual no-bypass checks.
-
-## Recorded checks
-
-| Check | Result | Scope |
-| --- | --- | --- |
-| Focused Core regression union | 877/877, 144 files | Approval, persistence/recovery, connectors, DB read-only/provenance, graph preflight, command output, metadata/transcript and four composition cases. |
-| Focused Desktop regression union | 142/142, 14 files | Draft/controller/pane, trusted IPC, existing refresh/navigation and metadata HTTP cases. |
-| Metadata HTTP contract | 13/13 | Original case assertions, scripted transport and forbidden-call requirements unchanged; included in Desktop total. |
-| Request-understanding fixture/scorer | 24/24 | Original cases; zero forbidden calls and zero generated-model calls. |
-| Supplemental metadata controls | 11/11 | Paired transcript/revision 5, operation association 4 and trusted IPC 2. |
-| Supplemental producer/service controls | 4/4 | Actual hook with queued-state model and legacy registration association. |
-| Supplemental tool-result controls | 5/5 | Bootstrap warning points, generic confirmation guard and verified command handoff. |
-| Core disk-reopen controls | 2/2 | Gmail/Slack persisted receipt/warning, stale seal rejection and one synthetic send after reopen. |
-| Types | Passed | Core production/test, Desktop and renderer fixture. |
-| Normal builds | Passed | Core and Desktop main/preload/renderer; no packaging or installer. |
-| Existing security checks | 8/8 | Dependency and webhook security regressions. |
-| Architecture | Passed | 1,317 modules, 4,988 dependencies, zero violations. |
-
-Supplemental controls are separate measurements and are not additional tests in
-the 877/142 totals. There is no configured lint script. Diff-whitespace checking
-is a separate source/documentation check.
-
-## Critical regression contracts
-
-| Area | Committed regression coverage |
+| Check | Result |
 | --- | --- |
-| Editable drafts and trusted confirmation | `runtime/tool-result-approval.test.ts`, Desktop `draft-controller.test.ts`, `ToolResultPane.test.tsx` and IPC `approval.test.ts`: literal overrides, missing essentials, unsupported fields, strict requests, seal invalidation, stale review, concurrent confirmation and cancellation. |
-| Durable claims and outcomes | `runtime/tool-result-durability.test.ts` and `tool-result-persistence-failure.test.ts`: persistence before dispatch/acknowledgement, receipt retention, deletion invalidation, unknown outcome and no replay. |
-| Crash boundaries | `runtime/tool-result-recovery-ordering.test.ts`: twelve cases, six each on file-backed SQL.js/native SQLite, observing real last disk/WAL state without an added close/flush. Pending checkpoints, resolved sent/unknown states, cancellation and interrupted recovery stay reachable and do not resend. |
-| Bootstrap warnings | `application/tool-result-refresh.test.ts`: provider success survives projection, workspace notification and observer failures with bounded warnings, exact literal payload, receipt, durable state and one send. |
-| Command handoff | `commands/chat/command-loop.tool-result-handoff.test.ts`: verified persisted-session handoff succeeds after explicit review; the existing generic continuation test requires confirmation and sends zero times. |
-| Metadata and tool-result composition | `application/tool-result-metadata-reconciliation.test.ts`: four Gmail/Slack cases with real fresh Core/store, manual literal edits, stale transcript/metadata writer rejection, one sealed dispatch, receipt persistence and session deletion after database reopen. |
-| DB enforcement | `connectors/rdb/client/readonly.test.ts`, `persistence/db/readonly-adapters.test.ts`, RDB read-contract/connector suites: read-only setup failure, SQLite mutation/pragma/multiple-statement rejection and execution-owned result evidence. |
+| Complete Core source suite | 2,619 passed, zero failed, eleven existing skips; 2,630 total across 485 files. |
+| Complete Desktop source suite | 310 passed, zero failed or skipped across 53 files. |
+| Relevant contracts within the full suites | All 29 Core files / 370 assertions and twelve Desktop files / 152 assertions pass: editable drafts/seals, missing essentials, literal overrides, review invalidation, concurrent confirmation, cancellation, stale/context updates, metadata fencing, preview history, lazy outputs, migration ownership, native snapshots, read-only guards and sql.js persistence. |
+| Cancellation history reopen evidence | Eight cases pass on native/sql.js; raw checkpoint/output/IR/tail observations remain correct through two reopens, with zero sends or identity lookups. This rerun is not added to the distinct unit-test total. |
+| Persistence regression retention | The two approved sql.js test blobs remain exact: 55 ownership cases and sixteen startup/partial-write cases. All 341 input suite names/statuses/multiplicities remain represented in the combined complete suite; earlier UI/history Core and Desktop cases remain represented. |
+| Compiled sql.js ownership probe | Open caller savepoint rejects the barrier without changing rows, savepoint or disk; caller rollback works; released committed rows survive two reopens. |
+| Types and normal builds | Core production/test, Desktop, visual fixture and harness types pass; normal Core and Desktop builds pass. |
+| Existing security and architecture | Eight security checks pass; zero dependency violations across 1,336 modules and 5,086 dependencies. |
+| Offline request understanding | 24/24 pass, with zero forbidden, generated-model or live-provider calls. |
+| Strict deterministic Electron full smoke | 22/22 Playwright tests and 22/22 complete scenario runs; zero skipped, flaky, unexpected tests or defects. |
+| Repeated approval/cancellation journeys | 13/13 Playwright tests: four decisions twice plus five existing regressions. |
+| Fresh pixels | Five inspected Slack states at 1280 by 873 CSS pixels; see [design QA](design-qa.md) for the precise boundary. |
 
-Core paths in this table are relative to `packages/core/src`; Desktop controller
-and pane tests are under `src/features/chat/ui/workspace/tool-result`, and IPC
-tests are under `electron/main/ipc/runtime-handlers`.
+The eleven existing Core skips are three POSIX/symlink cases, one unavailable
+Python-engine integration, five live discovery cases and two live provider cases.
+They are not counted as passes. Twelve synthetic decisions across the focused and
+full runs match their complete committed scenario definitions: zero dispatches
+before explicit confirmation, one exact literal overridden payload after repeated
+confirmation and zero dispatches after repeated cancellation. Generic legacy
+approval/rejection, back navigation and keyboard focus remain covered.
 
-The metadata IPC fixture supplies a real inactive `WorkflowRuntime` over its real
-store and drains it during cleanup. This satisfies the deletion handler's runtime
-contract without optional production deletion or changed original case assertions.
-An initial fixture lacked that runtime and failed one case; all thirteen original
-assertions passed after fixture completion. An initial forced SQL.js test backend
-bypassed two native migration controls; removing that environment override restored
-the unchanged controls and the complete 877-test focused run. These setup failures
-are excluded from final passing counts.
+Children inherit only OS essentials and explicit synthetic flags, with no provider
+credentials and blocked external Node transports. Fresh owned profiles are used.
+Existing Electron launchers retain `chromiumSandbox: true` and no-bypass assertions;
+no launcher, sandbox setting or OS configuration changes. The exact locked
+Electron runtime was materialized from an existing dependency cache. Normal Core
+prompt generation differed only in physical/literal CRLF serialization; the proof
+and generated bytes are preserved, and exact tracked bytes were restored before
+the complete Core source run. There is no generated prompt delta.
 
-Core build prompt regeneration was checked for Markdown CRLF-only differences and
-restored to the committed source. No semantic prompt content changed.
+There is no dedicated workspace lint script. Full input-to-candidate whitespace
+inspection reports one inherited extra blank EOF in
+`packages/core/src/persistence/db/sqljs-startup-and-batch.test.ts`; its approved
+blob remains exact. The changed adapter and new documentation pass their scoped
+whitespace checks. No global whitespace policy was changed.
 
-## Reproduction commands
+## Reproduction
 
-Use normal repository dependency installation and synthetic fixture configuration.
-Relevant existing root commands include:
+Use the locked Node/dependency versions, fresh synthetic data and an environment
+without provider credentials or live configuration. Standard repository commands:
 
 ```sh
-npm run typecheck
 npm run build
+npm run typecheck
+npm run test:dependencies
+npm run test:manual:webhook:security
+npm run test -w @ax-studio/core -- src --configLoader native
+npm run test:desktop
 npm run arch:check
 node scripts/verification/request-understanding-offline.mjs
+npm run test:product-qa -- --mode deterministic --tier smoke --strict --isolated-data --skip-build
+npm run test:product-qa -- --mode deterministic --tier smoke --strict --isolated-data --skip-build --repeat 2 --scenario one-shot-inline-approval --scenario one-shot-inline-approval-reject --scenario one-shot-legacy-approval --scenario one-shot-legacy-approval-reject
 ```
 
-The following focused commands cover the principal committed contracts; they do
-not reproduce the entire 144/14-file regression union:
+On Windows, prompt regeneration may need an inspected newline-only restoration
+before testing exact frozen source. Reproduction produces new evidence and must
+not relabel these measurements. The [renderer fixture README](../test/tool-result-ui/README.md)
+and [Slack smoke contracts](tool-result-smoke-fixtures.md) describe their narrower
+synthetic seams.
 
-```sh
-npm run test -w @ax-studio/core -- src/runtime/tool-result-approval.test.ts src/runtime/tool-result-durability.test.ts src/runtime/tool-result-persistence-failure.test.ts src/runtime/tool-result-recovery-ordering.test.ts src/application/tool-result-refresh.test.ts src/application/tool-result-metadata-reconciliation.test.ts src/intelligence/agent/commands/chat/command-loop.tool-result-handoff.test.ts src/connectors/message-send-review.test.ts src/connectors/rdb/client/readonly.test.ts src/persistence/db/readonly-adapters.test.ts --configLoader native --maxWorkers 1
-npm run test -w @ax-studio/desktop -- electron/main/ipc/runtime-handlers/approval.test.ts electron/main/ipc/workspace-chat-command-handlers/metadata-turns.offline.test.ts src/features/chat/ui/workspace/tool-result/draft-controller.test.ts src/features/chat/ui/workspace/tool-result/ToolResultPane.test.tsx src/features/chat/hooks/workspace-chat/workflow-actions.test.ts --configLoader native --maxWorkers 1
-```
+## Known limits and release boundary
 
-Within `packages/core`, `npx --no-install tsc --noEmit -p tsconfig.test.json` checks
-test types. From the root,
-`npx --no-install tsc --noEmit -p test/tool-result-ui/tsconfig.json` checks fixture
-types. [The fixture README](../test/tool-result-ui/README.md) covers mounted browser
-and native QA.
+Post-disposal `exec` / prepared `run` misuse synchronously rejects but briefly
+schedules two timer slots. Fake-timer observations show no export, unchanged
+original file bytes and zero timers after 250 ms. Deferred logging and a later
+`persistence_transaction_state_unknown` error can misdiagnose the disposed state.
+This known nonblocking limitation is documented without changing the approved
+scope. Open caller ownership can defer ordinary sql.js persistence indefinitely;
+writable sql.js does not gain external-writer locking.
 
-## Visual and live boundaries
+Fresh visual checks cover synthetic Slack through real main/preload/runtime
+contracts. Gmail/DB pixels and broader responsive checks are historical. Complete
+completed-chat UI disk restart, live planning/delivery, external database access,
+real-profile migration, OS menus/dialogs and packaging remain uncertified.
+Attachments, threads/files, unrecorded historical DB SQL/labels and export remain
+unsupported. Drafts and seals remain memory-only and need fresh review after
+restart; unknown outcomes never automatically resend. See
+[UI contracts](tool-result-ui-contracts.md), [design QA](design-qa.md) and
+[integration contracts](tool-result-history-integration.md).
 
-Recorded browser/native checks passed 17/17 and 18/18 with 22 inspected captures;
-[design QA](design-qa.md) and [native QA](tool-result-native-qa.md) describe their
-historical source scope. They are not fresh certification of the complete current
-build. Normal builds and Core database reopen tests are narrower than the full
-completed-chat UI/cache disk-restart journey or complete production tool IPC.
-
-Gmail attachments, Slack thread/file posting, exact SQL/friendly historical DB
-labels and export remain unsupported. Edits/seals are memory-only and restart
-requires fresh review. Unknown outcomes never automatically resend. Legacy bounded
-command-chat tables without source provenance remain unverified. Live delivery,
-external network database reads, ordinary-language activation/model quality,
-native menus/dialogs/full chrome and packaging/installer QA remain uncertified.
-
-## Combined source with reviewed main history
-
-The isolated combined branch merges reviewed main
-`41cf05691e30677fda2148ef5b88e79f0fb957f3` and immutable approved UI/smoke input
-`e74eb60b58007ecfe3412b85d446fb3bf1ff408a`. All final checks run on
-`2c56816579f6cb327c3b2014ad49a71265118cfb`, tree
-`ee695336231927b87b0b5aeeb498aaa329d6b8cf`. The final documentation-only commit
-has the same code and test blobs; the artifact includes exact identities and proof.
-
-Core passes 2,540 tests across 482 files, with zero failures and eleven existing
-environment/live skips. Desktop passes 310 tests across 53 files with no skips.
-Five new regressions verify native/sql.js read-snapshot ownership with committed
-barriers, read-only query/close guards, preserved raw history with immediate durable
-cancellation, and propagation of classified persistence failure and its cause.
-All 26 Core and twelve Desktop relevant contract files pass inside these full
-suites, including migration fixture ownership, preview upgrade/rejection, lazy
-output, read snapshots, tool approvals, metadata refresh/fencing and recovery.
-
-Core production/test, Desktop, visual fixture and harness types pass. Normal Core
-and Desktop builds pass, existing security passes 8/8, architecture reports zero
-violations (1,333 modules / 5,064 dependencies), and offline request understanding
-passes 24/24 without forbidden, generated-model or live-provider calls. The strict
-full deterministic Electron run passes 22/22; the four decision journeys repeated
-twice pass 13/13 including five regressions. All twelve decision scenarios match
-their exact committed definitions and retain zero-before, exact-once-confirmed and
-zero-cancelled synthetic dispatch evidence. Five fresh Slack captures were inspected
-as actual pixels at 1280 by 873 CSS pixels.
-
-Initial merge and dependency/test-expectation failures remain preserved separately
-from final passing counts. Exact prompt normalization/restoration evidence precedes
-the final Core source-suite run. The combined source retains main's fixture lifecycle,
-snapshot/lazy-output APIs and tool-specific UI/seal/metadata/no-replay contracts;
-the sole additional production composition fix reinstates the existing durable
-barrier before a history-preserving early return. See
-[the integration contract](tool-result-history-integration.md) for failure evidence,
-exact resolution, skip/dependency details and reproduction boundaries.
-
-Fresh combined review and ordinary CI remain pending; no publication is performed.
-Faulted reviewer-owned Electron processes were left untouched and did not block the
-isolated QA runs. Security, sandbox, OS settings and c837 packaging restrictions
-remain unchanged. The existing unsupported/live/visual limitations above remain.
-
-## Interrupted cancellation recovery re-review
-
-The ac8 combined review independently found original checkpoint/tail loss during
-interrupted editable cancellation recovery on both backends. A new isolated branch
-applies the existing diagnosed-history preservation option to startup rejection;
-the sql.js adapter, completion barrier and all other production paths remain intact.
-The imported real-runtime probes reproduce four failures/two controls before the
-fix. After adding two valid-history controls and narrowing the synthetic Gmail
-binding's literal type, final code `98b39139fbfa1e117cca5d3b8eef6cfc46f52fde` passes
-eight restart cases and proves terminal durable cancellation, original HEX through
-second reopen and zero sends/identity lookups. Optional raw observations are included.
-
-Complete Core passes 2,548/11 existing skips (483 files), Desktop 310 (53 files), all
-27 Core/twelve Desktop relevant contract files, types/normal builds, security 8/8,
-architecture zero violations (1,334 modules / 5,076 dependencies), offline 24/24,
-sandboxed Electron focused 13/13 and full smoke 22/22. Five fresh reference-sized
-Slack captures were inspected. All previous test names/statuses and multiplicities
-are retained. Failed-before and interim type reports remain separate from final passes.
-
-The final review commit only changes verification docs, with identical tested code/
-test modes and blobs. Original ac8 evidence remains immutable. The separately assigned
-sql.js caller-savepoint ownership fix remains outside this branch; both fixes and
-their eventual combined review/fresh CI must clear before publication. Filesystem/
-command access was verified after disconnect callbacks without restarting uncertain
-commands. No canonical/live/security/c837 action or denied-process cleanup occurred.
-See [the bounded fix record](tool-result-cancellation-recovery-fix.md).
+No real send, external database write, new credential/grant, canonical integration,
+push, PR update, release or installer action is part of these results. The existing
+packaging safety block remains in force. Local passing tests do not replace final
+combined review or fresh published CI.
