@@ -10,6 +10,7 @@ import {
   type CommandChatSessionState,
 } from './chat/result.js';
 import { runCommandChatLoop } from './chat/loop.js';
+import { runRequestUnderstandingChat } from './chat/request-understanding.js';
 
 export type { AxCommandChatOptions } from './chat/contracts.js';
 
@@ -86,6 +87,16 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
 
   try {
     if (controller.signal.aborted) throw new Error('ax_command_chat_timeout');
+    if (options.requestUnderstanding) {
+      const snapshot = options.requestUnderstanding.session.capture();
+      if (snapshot.anchor.text !== options.requestAnchor?.text
+        || snapshot.anchor.workspaceSessionId !== options.workspaceSessionId) {
+        return '현재 요청과 메타데이터 작업의 원문 또는 대화 세션이 일치하지 않습니다. 원래 요청을 확인해 주세요.';
+      }
+      return await runRequestUnderstandingChat({ ...options.requestUnderstanding,
+        decisionEngine: options.decisionEngine, commandService: options.commandService,
+        signal: controller.signal, publishResult });
+    }
     if (!options.pendingCommand && !options.contextUpdateConfirmation && !options.allowJobCommit) {
       const modelReply = configuredModelReply(options.userMessage, options.harness);
       if (modelReply) {

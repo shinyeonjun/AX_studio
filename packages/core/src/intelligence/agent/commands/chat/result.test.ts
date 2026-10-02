@@ -288,7 +288,7 @@ describe('deterministicWorkflowListChatReply', () => {
 });
 
 describe('deterministicMetadataChatReply', () => {
-  it('renders host-bounded metadata as safe JSON without semantic model work', () => {
+  it('renders readable host-bounded metadata without semantic model work', () => {
     const reply = deterministicMetadataChatReply({ name: 'resource.list', args: {} }, {
       command: 'resource.list',
       status: 'ok',
@@ -297,10 +297,30 @@ describe('deterministicMetadataChatReply', () => {
       inputRequests: [],
     }, '연결된 리소스 목록을 보여줘');
 
-    expect(reply).toContain('조회 결과:');
+    expect(reply).toContain('등록된 리소스:');
+    expect(reply).toContain('HTTP \\`catalog\\`');
+    expect(reply).toContain('저장된 연결 상태: 연결됨');
+    expect(reply).toContain('현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다');
+    expect(reply).not.toContain('```json');
+  });
+
+  it('renders only allowlisted JSON when raw debug output is explicitly requested', () => {
+    const reply = deterministicMetadataChatReply({ name: 'resource.list', args: {} }, {
+      command: 'resource.list', status: 'ok', issues: [], inputRequests: [],
+      data: { resources: [{ id: 'http', label: 'HTTP', connected: true, secret: 'never-display' }], credentials: 'never-display' },
+    }, '리소스 목록 raw JSON으로 보여줘');
     expect(reply).toContain('"id": "http"');
-    expect(reply).toContain('"HTTP `catalog`"');
     expect(reply).toMatch(/```json[\s\S]*```$/);
+    expect(reply).not.toContain('never-display');
+  });
+
+  it('discloses incomplete metadata and does not call an unrecognized shape empty', () => {
+    const command: AxCommand = { name: 'discovery.search', args: {} };
+    const result: AxCommandResult = { command: command.name, status: 'ok', issues: [], inputRequests: [],
+      data: { assets: [{ id: 'products', label: 'products' }], nextOffset: 1, truncated: true } };
+    expect(deterministicMetadataChatReply(command, result, '목록 보여줘')).toContain('카탈로그의 일부');
+    expect(deterministicMetadataChatReply(command, { ...result, data: { unexpectedEnvelope: [] } }, '목록 보여줘'))
+      .toContain('메타데이터 형식을 확인하지 못했습니다');
   });
 
   it('keeps semantic interpretation and non-metadata commands on their existing paths', () => {
@@ -337,6 +357,8 @@ describe('deterministicHttpConnectionListChatReply', () => {
     expect(reply).toContain('Test `connection`');
     expect(reply).toContain('ID: "test"');
     expect(reply).not.toContain('private.example.test');
+    expect(reply).toContain('설정 준비됨');
+    expect(reply).not.toContain('사용 가능');
   });
 
   it('keeps semantic requests and malformed host results on the existing path', () => {
