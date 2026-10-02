@@ -11,6 +11,7 @@ import {
 } from '../../../../contracts/artifacts/http-response.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../../contracts/artifacts/table.js';
 import { tableArtifactFromRows } from '../../../../contracts/artifacts/table-build.js';
+import { explicitlyRequestsRawMetadata, renderCatalogMetadata } from './metadata-output.js';
 
 export interface CommandChatSessionState {
   workflowId?: string;
@@ -440,7 +441,8 @@ export function deterministicHttpConnectionListChatReply(
   return [
     `저장된 HTTP 연결 (${connections.length}/${total}개):`,
     ...connections.map((connection) =>
-      `- ${JSON.stringify(connection.label)} (ID: ${JSON.stringify(connection.id)}) — ${connection.usable ? '사용 가능' : connection.connected ? '인증 설정 필요' : '연결 끊김'}`),
+      `- ${JSON.stringify(connection.label)} (ID: ${JSON.stringify(connection.id)}) — ${connection.usable ? '설정 준비됨' : connection.connected ? '인증 설정 필요' : '설정 저장됨, 연결 안 됨'}`),
+    '저장된 설정 상태이며, 현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다.',
     ...(data.truncated === true ? ['', '목록이 일부만 표시되었습니다.'] : []),
   ].join('\n');
 }
@@ -457,14 +459,7 @@ export function deterministicMetadataChatReply(
     || needsModelTransform(userMessage)
     || !METADATA_DISPLAY_INTENT.test(userMessage)) return undefined;
 
-  try {
-    const serialized = JSON.stringify(result.data, null, 2);
-    return serialized === undefined
-      ? undefined
-      : `조회 결과:\n\n${fencedBody(serialized)}`;
-  } catch {
-    return undefined;
-  }
+  return renderCatalogMetadata(command, result.data, explicitlyRequestsRawMetadata(userMessage));
 }
 
 export function applyCommandResultToSession(

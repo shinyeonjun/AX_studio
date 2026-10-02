@@ -14,6 +14,7 @@ import type { DiscoveryCommandGateway } from '../discovery-gateway.js';
 import type { PendingJobDraft } from '../job-registration/contract.js';
 import type { RepairCommandGateway } from '../repair-gateway.js';
 import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
+import type { MetadataDispatchPermit } from '../../../decision/request-understanding/session.js';
 
 export interface AxCommandServiceOptions {
   removeWorkflow?: (workflowId: string) => Promise<void> | void;
@@ -35,6 +36,8 @@ export interface AxCommandServiceOptions {
 }
 
 export interface AxCommandExecuteOptions {
+  /** Host-minted, single-use source/revision-bound metadata-only permit. */
+  metadataDispatchPermit?: MetadataDispatchPermit;
   abortSignal?: AbortSignal;
   /** The current user utterance, supplied by chat so host-only intent guards can run. */
   userMessage?: string;

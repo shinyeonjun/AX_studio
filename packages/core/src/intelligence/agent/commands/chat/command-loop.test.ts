@@ -276,8 +276,9 @@ describe('runAxCommandChat command loop', () => {
       });
 
       expect(execute).toHaveBeenCalledWith({ name: 'resource.list', args: {} }, expect.anything());
-      expect(reply).toContain('"resources"');
-      expect(reply).toContain('"local_folder"');
+      expect(reply).toContain('등록된 리소스');
+      expect(reply).toContain('폴더');
+      expect(reply).not.toContain('```json');
       expect(textSeen).toHaveLength(0);
     } finally {
       db.close?.();

@@ -17,8 +17,11 @@ import type {
 import type { JevActionInputValue } from './jev-action-catalog.js';
 import type { JevWorkflowOutputHint } from './jev-workflow-plan.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import type { RequestUnderstandingChatInput } from './request-understanding.js';
 
 export interface AxCommandChatOptions {
+  /** Explicit offline/experimental metadata seam. No Desktop callsite is enabled here. */
+  requestUnderstanding?: RequestUnderstandingChatInput;
   /** Chat may generate prose only; Jev owns route and command decisions. */
   harness: Pick<AgentHarness, 'providerName' | 'modelName' | 'runText'>;
   commandService: AxCommandService;
