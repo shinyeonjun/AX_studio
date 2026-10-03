@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run build -w @ax-studio/core && npm run build -w @ax-studio/desktop",
     "test": "npm run test:dependencies && npm run test:manual:webhook:security && npm run test -w @ax-studio/core --",
-    "test:dependencies": "node --test scripts/dependency-security.test.mjs",
+    "test:dependencies": "node --test scripts/dependency-security.test.mjs scripts/desktop-renderer-import.test.mjs",
     "test:e2e": "node test/e2e/run.mjs",
     "test:product-qa": "node test/product-qa/run.mjs",
     "test:integration": "node test/integration/run.mjs",
