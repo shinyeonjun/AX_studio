@@ -91,6 +91,7 @@ export default defineConfig({
         '@ax-studio/core/workflow/canvas/presentation/panel-fields': resolve('../../packages/core/src/workflow/canvas/presentation/panel-fields.ts'),
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/intelligence/agent/settings/ai-catalog.ts'),
+        '@ax-studio/core/tool-result': resolve('../../packages/core/src/contracts/tool-result.ts'),
       },
     },
     build: {
