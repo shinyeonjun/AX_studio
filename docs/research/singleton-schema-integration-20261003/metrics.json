@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "kind": "synthetic_scripted_offline_integration",
+  "codeCommit": "68826edb0a78ba53e91369ac49b72c7d8c447765",
+  "liveProviderCalls": 0,
+  "definitions": {
+    "taskCompletion": "Validated dictionary answer; IPC additionally requires a persisted reply. Passing an assertion is not task success.",
+    "clarification": "Typed unresolved intent/source/output stops; frozen missing-field expectations distinguish required from unnecessary. Retry advice is not a semantic clarification.",
+    "latency": "Local fixture milliseconds including scripted delays; not live provider latency.",
+    "dispatch": "First service execution attempt, including failed reads. Post-read invalidation and CAS conflict remain noncompletion."
+  },
+  "core": {
+    "episodes": 96,
+    "fullCompletions": 5,
+    "noncompletions": 91,
+    "byStop": {
+      "provider_failure": 49,
+      "answered": 5,
+      "invalid_decision": 4,
+      "metadata_unavailable": 7,
+      "unsupported_operation": 2,
+      "ambiguous_intent": 2,
+      "source_required": 2,
+      "source_ambiguous": 2,
+      "candidate_coverage_incomplete": 2,
+      "unsupported_intent": 2,
+      "outside_slice": 4,
+      "permission_denied": 2,
+      "metadata_budget_exhausted": 1,
+      "cancelled": 3,
+      "superseded": 9
+    },
+    "requiredClarifications": 8,
+    "unnecessaryClarifications": 0,
+    "permissionRejections": 2,
+    "outsideSliceStops": 4,
+    "noncompletedEpisodesWithServiceAttempt": 6,
+    "readAvailabilityOrEvidenceFailures": 4,
+    "scriptedFetches": 177,
+    "requestBytes": 422037,
+    "metadataServiceAttempts": 11,
+    "approvedEvidenceCallbacks": 5,
+    "forbiddenCalls": 0,
+    "eligibleParaphrasePairs": {
+      "off": {
+        "episodes": 3,
+        "completed": 0,
+        "scriptedFetches": 6,
+        "metadataAttempts": 0
+      },
+      "on": {
+        "episodes": 3,
+        "completed": 3,
+        "scriptedFetches": 6,
+        "metadataAttempts": 3
+      }
+    },
+    "elapsedMs": {
+      "min": 0.4473000000002685,
+      "max": 21.05079999999998,
+      "total": 122.06920000000036
+    }
+  },
+  "ipc": {
+    "episodes": 63,
+    "fullCompletions": 5,
+    "noncompletions": 58,
+    "byStop": {
+      "provider_failure": 25,
+      "answered": 5,
+      "invalid_decision": 2,
+      "metadata_unavailable": 5,
+      "unsupported_operation": 2,
+      "ambiguous_intent": 2,
+      "source_required": 2,
+      "source_ambiguous": 2,
+      "candidate_coverage_incomplete": 2,
+      "unsupported_intent": 2,
+      "outside_slice": 2,
+      "cancelled": 10,
+      "conflict": 2
+    },
+    "requiredClarifications": 8,
+    "unnecessaryClarifications": 0,
+    "permissionRejections": 0,
+    "outsideSliceStops": 2,
+    "noncompletedEpisodesWithServiceAttempt": 2,
+    "readAvailabilityOrEvidenceFailures": 1,
+    "scriptedFetches": 114,
+    "requestBytes": 276046,
+    "metadataServiceAttempts": 7,
+    "approvedEvidenceCallbacks": 6,
+    "forbiddenCalls": 0,
+    "eligibleParaphrasePairs": {
+      "off": {
+        "episodes": 3,
+        "completed": 0,
+        "scriptedFetches": 6,
+        "metadataAttempts": 0
+      },
+      "on": {
+        "episodes": 3,
+        "completed": 3,
+        "scriptedFetches": 6,
+        "metadataAttempts": 3
+      }
+    },
+    "elapsedMs": {
+      "min": 1.0583999999998923,
+      "max": 58.26350000000002,
+      "total": 705.5786000000003
+    }
+  },
+  "layersRepeatScenarios": true,
+  "semanticQualityOrLiveGainMeasured": false
+}

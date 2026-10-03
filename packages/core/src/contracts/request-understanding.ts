@@ -85,6 +85,14 @@ export type RequestFieldProvenance = Readonly<Record<RequestUnderstandingField, 
   readonly requestDigest: string; readonly requestRevision: number;
 }>>;
 
+/** A pre-terminal host selection, retaining the failed Jev slot rather than claiming a Jev choice. */
+export interface SchemaSelectionResolution {
+  readonly producer: 'host_singleton';
+  readonly cause: 'missing_metadata_operation_answer';
+  readonly questionRef: 'metadataOperationRef';
+  readonly operationId: string;
+}
+
 export interface ActiveRequestSnapshot {
   readonly anchor: AuthoritativeRequestAnchor;
   readonly requestRevision: number;
@@ -109,6 +117,7 @@ export interface RequestUnderstanding {
     readonly policyRevision: number;
     readonly selectedRefs: Readonly<Record<string, string>>;
     readonly fieldAuthorities: RequestFieldProvenance;
+    readonly metadataOperationResolution?: SchemaSelectionResolution;
   };
 }
 
@@ -141,4 +150,7 @@ export interface RequestUnderstandingResult {
   readonly assessment: RequestUnderstandingAssessment;
   /** Offline phase count, deliberately not a provider-transport call count. */
   readonly evaluationPhases: number;
+  /** Reserved before execute, including failed first reads. No retry is available in this slice. */
+  readonly metadataReadAttempts: 0 | 1;
+  readonly metadataOperationResolution?: SchemaSelectionResolution;
 }

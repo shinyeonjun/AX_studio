@@ -22,6 +22,20 @@ Sources: [Desktop handler](https://github.com/shinyeonjun/AX_studio/blob/aa09357
 
 The host option is absent/off by default. The first implementation supports only an internal `offline_test` installation with an explicitly injected evaluator transport; there is no environment-variable-only live enable path or shipped UI activation. Tests call the actual registered IPC handler, not a replacement E2E fake agent.
 
+[ADR 0009](../adr/0009-singleton-schema-selection-recovery.md) adds a separate
+internal `singletonSchemaSelectionRecovery` installation option, absent/off by
+default. Only a typed clean omission of the sole operation answer may select the
+one current, allowed local schema operation after normal intent/source/readable
+output acceptance and complete source/operation coverage. The session counts
+schema candidates before permission filtering and preserves host provenance and
+the failed selection cause. It permits only the normal first read, using the same
+permit, revision and publication boundaries. No renderer input, environment
+variable, UI, natural-language activation or broader controller enables it.
+Reinstalling the option off advances the existing policy epoch and invalidates
+in-flight requests. Any terminal outcome remains terminal; refusal, wrong-question
+or malformed decisions, other provider/transport failures, permission/budget
+failure, stale/cancel and CAS conflict never start an alternative read or enqueue.
+
 A bounded explicit lane marker (`registered_http_metadata`) is necessary in addition to that host gate. It is internal research/test admission, not a permanent daily user-facing mode-selection workflow. Ordinary-language activation is deferred. The marker is an untrusted request preference, never permission or a source ID. With no marker, existing general chat/model identity/pending-command/confirmation routing remains unchanged. With the marker but the gate unavailable, answer that this metadata path is unavailable; do not silently send it through executable legacy routing. Pending command/input-confirmation continuations cannot enter this lane.
 
 No extra LLM planner, broad regex intent parser or preliminary live classifier is added. The existing `runRequestUnderstandingChat` remains the sole finite intent/source/output/metadata-operation evaluator. Retrieval/action, uncertain decisions and unavailable metadata terminate inside the lane. They never fall through to another reader or enqueue path. Ordinary chat remains available as a separate normal request.

@@ -1,6 +1,64 @@
 import { describe, expect, it, vi } from 'vitest';
 import { JevDecisionEngine, JevDecisionError } from './jev.js';
 
+describe('host parser clean-omission provenance', () => {
+  const question = { type: 'choice' as const, instructions: 'Select a registered schema operation.', criteria: { metadata_0: 'Schema', unknown: 'Unknown' } };
+  const request = { state: { phase: 'metadata_operation' }, questions: { metadataOperationRef: question } };
+  it('preserves the typed sole-slot omission and dispatch byte accounting through evaluate', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ answers: {}, model: 'offline', usage: { input_tokens: 5, output_tokens: 0 } }));
+    const engine = new JevDecisionEngine({ apiKey: 'offline-test', fetch: fetchImpl });
+    let failure: unknown;
+    try { await engine.evaluate(request); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(JevDecisionError);
+    expect(failure).toMatchObject({ failure: { kind: 'missing_answer', questionRef: 'metadataOperationRef' },
+      providerRequestCount: 1, requestBytes: Buffer.byteLength(String(fetchImpl.mock.calls[0]![1]?.body), 'utf8') });
+    expect((failure as JevDecisionError).cause).toBeInstanceOf(JevDecisionError);
+    expect(Object.isFrozen((failure as JevDecisionError).failure)).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { id: 'wrong_question', body: { answers: { wrong_question: { type: 'choice', choice: 'metadata_0', probabilities: { metadata_0: 1 } } } } },
+    { id: 'provider_error_with_http_200', body: { answers: {}, error: { type: 'permission_denied', message: 'synthetic refusal' } } },
+    { id: 'undeclared_envelope_key', body: { answers: {}, extra: 'undeclared' } },
+    { id: 'missing_answers', body: {} },
+    { id: 'null_answers', body: { answers: null } },
+    { id: 'array_answers', body: { answers: [] } },
+    { id: 'malformed_answer', body: { answers: { metadataOperationRef: { type: 'choice' } } } },
+    { id: 'malformed_unrequested_answer', body: { answers: { wrong_question: { type: 'choice' } } } },
+    { id: 'invalid_usage_envelope', body: { answers: {}, usage: { input_tokens: 'invalid' } } },
+    { id: 'invalid_model_envelope', body: { answers: {}, model: {} } },
+    { id: 'nonobject_envelope', body: 'invalid' },
+  ])('$id cannot acquire a clean-omission tag', async ({ body }) => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => Response.json(body));
+    const engine = new JevDecisionEngine({ apiKey: 'offline-test', fetch: fetchImpl });
+    await expect(engine.evaluate(request)).rejects.toMatchObject({ name: 'JevDecisionError', failure: undefined, providerRequestCount: 1 });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('HTTP and transport errors cannot acquire parser provenance from their messages', async () => {
+    for (const transport of [false, true]) {
+      const fetchImpl = vi.fn<typeof fetch>(async () => {
+        if (transport) throw new Error('TypeSafe response is missing answer metadataOperationRef.');
+        return Response.json({ answers: {}, error: 'TypeSafe response is missing answer metadataOperationRef.' }, { status: 503 });
+      });
+      const engine = new JevDecisionEngine({ apiKey: 'offline-test', fetch: fetchImpl });
+      await expect(engine.evaluate(request)).rejects.toMatchObject({ failure: undefined, providerRequestCount: 1 });
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    }
+  });
+
+  it('an empty answer to a multi-question request stays ineligible even after splitting', async () => {
+    for (const maxRequestBytes of [65_536, 350]) {
+      const long = { ...question, instructions: 'x'.repeat(120) };
+      const engine = new JevDecisionEngine({ apiKey: 'offline-test', maxRequestBytes,
+        fetch: vi.fn<typeof fetch>(async () => Response.json({ answers: {} })) });
+      await expect(engine.evaluate({ state: {}, questions: { metadataOperationRef: long, other: long } }))
+        .rejects.toMatchObject({ failure: undefined });
+    }
+  });
+});
+
 describe('JevDecisionEngine', () => {
   it('shares the 255-choice wire ceiling and rejects the next option before network I/O', async () => {
     const choices = (count: number) => Object.fromEntries(

@@ -2,10 +2,11 @@ import type { DecisionEngine, DecisionQuestion } from '../../../../contracts/dec
 import {
   METADATA_INTENTS, SourceMetadataEvidenceSchema, type RequestIntent, type RequestUnderstanding,
   type RequestUnderstandingResult, type UnderstandingStop, type MetadataOutputKind,
-  type RequestUnderstandingAssessment,
+  type RequestUnderstandingAssessment, type SchemaSelectionResolution,
 } from '../../../../contracts/request-understanding.js';
 import { AuthoritativeRequestError, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import { RequestUnderstandingSession } from '../../../decision/request-understanding/session.js';
+import { JevDecisionError } from '../../../decision/jev.js';
 import type { AxCommandService } from '../service.js';
 import type { AxCommand, AxCommandResult } from '../schema.js';
 import { AGENT_COMMAND_CONTEXT } from '../access.js';
@@ -42,6 +43,8 @@ export interface RequestUnderstandingChatInput {
   session: RequestUnderstandingSession;
   /** Preserved separately from output kind; this slice renders deterministic evidence. */
   needsGeneratedProse?: boolean;
+  /** Trusted host option, absent/off by default; never populated from user text or renderer input. */
+  singletonSchemaSelectionRecovery?: boolean;
   onResult?: (result: RequestUnderstandingResult) => void;
 }
 
@@ -60,6 +63,8 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
   });
   const fieldAuthorities = Object.freeze({ intent: field('intent'), targetSourceRef: field('targetSourceRef'), outputKind: field('outputKind') });
   let evaluationPhases = 0;
+  let metadataReadAttempts: 0 | 1 = 0;
+  let metadataOperationResolution: SchemaSelectionResolution | undefined;
   let assessment: RequestUnderstandingAssessment = Object.freeze({ intent: 'unknown',
     targetSourceRef: Object.freeze({ state: 'unknown' }), metadataOperationRef: Object.freeze({ state: 'not_evaluated' }),
     outputKind: 'unknown', provenance: Object.freeze({ requestDigest: snapshot.anchor.digest,
@@ -67,7 +72,8 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
   const check = () => { session.assertCurrent(snapshot); signal.throwIfAborted(); };
   const finish = (stop: UnderstandingStop, reply: string, understanding?: RequestUnderstanding) => {
     check();
-    input.onResult?.(Object.freeze({ stop, reply, requestRevision: snapshot.requestRevision, evaluationPhases, assessment,
+    input.onResult?.(Object.freeze({ stop, reply, requestRevision: snapshot.requestRevision, evaluationPhases, assessment, metadataReadAttempts,
+      ...(metadataOperationResolution ? { metadataOperationResolution } : {}),
       ...(understanding ? { understanding } : {}) }));
     check();
     return reply;
@@ -147,12 +153,26 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
             label: operation.label, command: operation.command,
           }])) } },
     };
-    const operationAnswers = await evaluate({ phase: 'metadata_operation', active_request_revision: snapshot.requestRevision,
-      source_id: source.id, source_revision: source.revision, catalog_revision: snapshot.catalogRevision, policy_revision: snapshot.policyRevision,
-      accepted_intent: intent, output_kind: outputKind, metadata_candidates: { ...source.operationCoverage,
-        knownTotal: source.operationCoverage.truncated || source.operationCoverage.overflow || source.operationCoverage.knownTotal === null
-          ? null : operations.length, offeredCount: operations.length } }, operationQuestions);
-    const operationRef = choice(operationAnswers, operationQuestions, 'metadataOperationRef');
+    let operationRef: string | undefined;
+    try {
+      const operationAnswers = await evaluate({ phase: 'metadata_operation', active_request_revision: snapshot.requestRevision,
+        source_id: source.id, source_revision: source.revision, catalog_revision: snapshot.catalogRevision, policy_revision: snapshot.policyRevision,
+        accepted_intent: intent, output_kind: outputKind, metadata_candidates: { ...source.operationCoverage,
+          knownTotal: source.operationCoverage.truncated || source.operationCoverage.overflow || source.operationCoverage.knownTotal === null
+            ? null : operations.length, offeredCount: operations.length } }, operationQuestions);
+      operationRef = choice(operationAnswers, operationQuestions, 'metadataOperationRef');
+    } catch (error) {
+      check();
+      if (input.singletonSchemaSelectionRecovery !== true || !(error instanceof JevDecisionError)
+        || error.failure?.kind !== 'missing_answer' || error.failure.questionRef !== 'metadataOperationRef') throw error;
+      const singleton = session.singletonLocalSchemaOperation(snapshot, { ...assessment, outputKind });
+      if (!singleton) throw error;
+      const index = operations.indexOf(singleton);
+      if (index < 0) throw error;
+      operationRef = `metadata_${index}`;
+      metadataOperationResolution = Object.freeze({ producer: 'host_singleton', cause: 'missing_metadata_operation_answer',
+        questionRef: 'metadataOperationRef', operationId: singleton.id });
+    }
     const assessedOperation = operations.find((_, index) => `metadata_${index}` === operationRef);
     assessment = Object.freeze({ ...assessment, metadataOperationRef: Object.freeze(assessedOperation
       ? { state: 'selected', operationId: assessedOperation.id }
@@ -167,9 +187,12 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
       metadataOperationRef: operation.id, outputKind, needsGeneratedProse: input.needsGeneratedProse === true,
       provenance: Object.freeze({ requestDigest: snapshot.anchor.digest, requestRevision: snapshot.requestRevision,
         sourceRevision: source.revision, catalogRevision: snapshot.catalogRevision, policyRevision: snapshot.policyRevision, fieldAuthorities,
-        selectedRefs: Object.freeze({ intent, targetSourceRef: sourceRef, outputKind: output, metadataOperationRef: operationRef }) }) });
+        selectedRefs: Object.freeze({ intent, targetSourceRef: sourceRef, outputKind: output, metadataOperationRef: operationRef }),
+        ...(metadataOperationResolution ? { metadataOperationResolution } : {}) }) });
     check();
     const command = operation.command;
+    if (metadataReadAttempts >= 1) return finish('metadata_budget_exhausted', '메타데이터 조회 예산을 모두 사용했습니다.');
+    metadataReadAttempts = 1;
     const result = await input.commandService.execute(command, { executionContext: AGENT_COMMAND_CONTEXT,
       workspaceSessionId: snapshot.anchor.workspaceSessionId, userMessage: snapshot.anchor.text, abortSignal: signal,
       metadataDispatchPermit: session.permit(snapshot, understanding, source, operation),

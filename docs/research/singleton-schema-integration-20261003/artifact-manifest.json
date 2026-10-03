@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "079a8c9fbc4b51812802e971971b101db682444d",
+  "reviewedCodeCommit": "68826edb0a78ba53e91369ac49b72c7d8c447765",
+  "reviewedCodeTree": "14120d10aa5ac7e5603216445438a2105b6ebb09",
+  "independentReviewEvidence": "98946ac219c7560287195c90453b34bb33e115cb",
+  "reviewedSubtrees": {
+    "apps": "b224821bf813bd0c2b9e298eb17de3bf6a963bbc",
+    "packages": "6fef2321cebe22e931bf83025ef382aa43f63c78"
+  },
+  "reviewedFiles": [
+    {
+      "path": "apps/desktop/electron/main/ipc/workspace-chat-command-handlers/metadata-turns.singleton-schema.test.ts",
+      "blob": "888470fa616c800c609e623a1dd0b77bc884e7ed"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/workspace-chat-command-handlers/metadata-turns.ts",
+      "blob": "7a81279ff48942ef6fa049c449d969ef475bf4c0"
+    },
+    {
+      "path": "docs/adr/0009-singleton-schema-selection-recovery.md",
+      "blob": "80f603568739053dd0c402c6e4b1c8652f0c5e80"
+    },
+    {
+      "path": "docs/architecture/jev-request-understanding.md",
+      "blob": "e82b50c56c5641939f01414b774cc02e52c5caf7"
+    },
+    {
+      "path": "docs/architecture/registered-http-metadata-desktop.md",
+      "blob": "f4b81b82db3fa98a6f0ee36f5709edcc751df511"
+    },
+    {
+      "path": "packages/core/src/contracts/request-understanding.ts",
+      "blob": "243a9eb78facc6db226ddc85c200c47036d10dd9"
+    },
+    {
+      "path": "packages/core/src/intelligence/agent/commands/chat/request-understanding.singleton-schema.fixture.ts",
+      "blob": "754872f3c8afe71a5a9d39072a03e9a4653feda6"
+    },
+    {
+      "path": "packages/core/src/intelligence/agent/commands/chat/request-understanding.singleton-schema.test.ts",
+      "blob": "6686d320b221bdd016581484658aa231c32ed3e3"
+    },
+    {
+      "path": "packages/core/src/intelligence/agent/commands/chat/request-understanding.ts",
+      "blob": "70b5569890aa30e519d4ffe70486821658e0ce25"
+    },
+    {
+      "path": "packages/core/src/intelligence/decision/jev.test.ts",
+      "blob": "b608eaf27a5f5f57e68eca2e5076df68cfbb4f1d"
+    },
+    {
+      "path": "packages/core/src/intelligence/decision/jev.ts",
+      "blob": "91647014eec8ca67383e8c6fd7ab4e58f0be9165"
+    },
+    {
+      "path": "packages/core/src/intelligence/decision/request-understanding/session.ts",
+      "blob": "55d9e13ec75ca56effe32c1687f77542bff281a9"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/.gitattributes",
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/README.md",
+      "bytes": 7554,
+      "sha256": "e36b364e766bd539157223a0af4dd89eb5f54cbbb7ecb3f5588e4f6cd1449366"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/aggregate-validation.json",
+      "bytes": 6784,
+      "sha256": "33835099c8e2967e910cd5b7477084f4ee1da6a088af0fd833ed478dcb3c52c3"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/core-schema-observations.json",
+      "bytes": 181690,
+      "sha256": "ab75ccab5fbbcc77dad201243517ccfef03a85fdca2343cfc63c6c743e67bf50"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/ipc-schema-observations.json",
+      "bytes": 128414,
+      "sha256": "5b35c9487f1d9ccb81b1eb82b209027fe7b2521c6bae6e651b2c41dd5e3d9c87"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/legacy-request-understanding-observations.json",
+      "bytes": 13634,
+      "sha256": "cf0956a5c52167096555a3e9cde38e0f0e16d8828acbb78cce6ce732a6636f83"
+    },
+    {
+      "path": "docs/research/singleton-schema-integration-20261003/metrics.json",
+      "bytes": 3467,
+      "sha256": "0f19061d6dd23d345e337c205752441443f210bda8c3888b25f41d8c345d86e7"
+    }
+  ],
+  "excludedArtifacts": [
+    "private full runner JSON and text logs",
+    "canonical readonly sentinel details",
+    "raw code patch",
+    "historical IPC billing ledger",
+    "prototype history",
+    "executables and build outputs"
+  ]
+}

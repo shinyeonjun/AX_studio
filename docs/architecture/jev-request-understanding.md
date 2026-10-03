@@ -72,7 +72,7 @@ connection status versus retrieval, action and unresolved requests.
 | --- | --- | --- |
 | intent | Jev Choice over a fixed enum | ambiguous, unsupported |
 | targetSourceRef | Jev Choice over offered configured source refs | none, ambiguous |
-| metadataOperationRef | Dependent Jev Choice over registered metadata operations for the accepted source | none, unknown, unsupported |
+| metadataOperationRef | Dependent Jev Choice over registered metadata operations for the accepted source; the sole default-off host exception is ADR 0009 | none, unknown, unsupported |
 | outputKind | Jev Choice over readable inventory/schema/status or raw debug | not_stated, ambiguous |
 | exact names/paths | Validated registry entry or exact deterministic user-text span | unresolved original text |
 
@@ -86,6 +86,19 @@ All selected IDs must belong to the offered revision-bound set.
 
 The implementation keeps finite unresolved fields in a typed assessment, separate
 from the accepted metadata understanding and its single-use execution permit.
+
+[ADR 0009](../adr/0009-singleton-schema-selection-recovery.md), approved at
+`a2b69f3773813045a025395be01f077dc6e34b2b`, permits one pre-terminal host schema
+selection when Jev's sole operation question has a valid envelope and empty answer
+map, with zero unrequested keys. Intent/source/readable output and current user
+field authority must already be accepted. The session requires a current private
+local HTTP metadata adapter, complete coverage, and exactly one matching allowed
+source-bound schema operation counted before permission filtering. The trusted
+option is absent/off by default. Record `host_singleton` and the retained
+`missing_metadata_operation_answer` cause; this is not a Jev-produced choice.
+Reserve at most the normal first local read before execute and reuse the existing
+single-use permit, evidence validation and publication fences. All other missing,
+malformed, wrong-question, refused or unresolved decisions keep their old stops.
 
 Intent, source and output questions can share one understanding batch.
 Metadata-operation selection follows only after accepting the source. Do not
@@ -204,6 +217,11 @@ revision, even when a field originated in an earlier immutable turn.
 Decision protocol validation precedes property iteration. Connector denial,
 provider failure, unsupported operation, unavailable metadata and exhausted
 budget remain different terminal outcomes, with no alternative read or enqueue.
+ADR 0009's clean missing-slot selection occurs before a terminal outcome; it
+allows only the normal first local schema read. Once any outcome is terminal,
+there is no automatic read, alternative, enqueue or resumption. Denial, other
+provider/transport failure, unavailable metadata, unsupported operation, budget
+exhaustion, stale/cancelled requests and publication conflict retain these fences.
 The original 24 hand-labeled cases remain unchanged. Reviewer probes and added
 synthetic regressions are reported separately and establish integration behavior
 only, with publication held for independent review of the corrected commit.
