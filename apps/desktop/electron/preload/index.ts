@@ -4,11 +4,17 @@ import type {
   WorkspaceChatMessage,
   WorkspaceChatSaveOptions,
   WorkspaceSourceRecord,
+  ToolResultConfirmation,
+  ToolDraftUpdate, ToolReviewRequest,
 } from '@ax-studio/core';
 
 contextBridge.exposeInMainWorld('ax', {
   getState: () => ipcRenderer.invoke('ax:getState'),
   approve: (id: string) => ipcRenderer.invoke('ax:approve', id),
+  confirmToolResult: (confirmation: ToolResultConfirmation) => ipcRenderer.invoke('ax:confirmToolResult', confirmation),
+  getToolResult: (lookup: string | { executionId: string }) => ipcRenderer.invoke('ax:getToolResult', lookup),
+  updateToolDraft: (input: ToolDraftUpdate) => ipcRenderer.invoke('ax:updateToolDraft', input),
+  reviewToolResult: (input: ToolReviewRequest) => ipcRenderer.invoke('ax:reviewToolResult', input),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
   deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
   deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),

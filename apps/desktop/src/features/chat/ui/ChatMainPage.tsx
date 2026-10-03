@@ -9,6 +9,7 @@ import { AxWorkspaceChat } from './workspace/AxWorkspaceChat';
 import { WorkspaceContextPanel } from './workspace/WorkspaceContextPanel';
 import { WorkspaceFlowPanel } from './workspace/WorkspaceFlowPanel';
 import './workspace/ax-workspace.css';
+import { toolResultMessages, ToolResultPane } from './workspace/tool-result/ToolResultPane';
 
 const WorkflowPreviewPanel = lazy(() =>
   import('../../workflows/authoring/WorkflowPreviewPanel').then(({ WorkflowPreviewPanel }) => ({
@@ -30,6 +31,14 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
     },
   });
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
+  const [showContext, setShowContext] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<string>();
+  const results = toolResultMessages(workspaceChat.displayMessages);
+  const resultKey = (message: typeof results[number], index: number) => (message.approval?.id ?? message.readResult?.id ?? message.executionId ?? 'result') + ':' + index;
+  const selectedIndex = selectedResult === undefined ? -1 : results.findIndex((message, index) => resultKey(message, index) === selectedResult);
+  const toolResult = selectedIndex >= 0 ? results[selectedIndex] : results.at(-1);
+  useEffect(() => { setSelectedResult(undefined); }, [workspaceChat.workspaceContextKey]);
+  useEffect(() => { setShowContext(false); }, [workspaceChat.workspaceContextKey, toolResult?.approval?.id, toolResult?.readResult?.id]);
   const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
     useWorkflowPanelWidth();
 
@@ -137,8 +146,25 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         isResizing={isResizing}
         onSplitterPointerDown={onSplitterPointerDown}
         onSplitterDoubleClick={resetWidth}
+        resultVisible={Boolean(toolResult)}
         chat={chatBlock}
         panel={
+          <div className="tool-result-panel">
+          {results.length > 1 && <nav className="tool-result-history" aria-label="이 대화의 결과">
+            {results.map((message, index) => <button type="button" key={resultKey(message, index)}
+              aria-pressed={message === toolResult} onClick={() => { setSelectedResult(resultKey(message, index)); setShowContext(false); }}>
+              {message.approval?.toolResult?.tool === 'gmail' ? 'Gmail 초안' : message.approval?.toolResult?.tool === 'slack' ? 'Slack 초안'
+                : message.toolSendOutcome ? (message.toolSendOutcome.binding.provider === 'gmail' ? 'Gmail 결과' : 'Slack 결과') : 'DB 조회'} {index + 1}
+            </button>)}
+          </nav>}
+          {toolResult && <>
+            <button type="button" className="tool-result-context-link" onClick={() => setShowContext(current => !current)}>{showContext ? '결과 편집으로 돌아가기' : '자료 · 흐름 보기'}</button>
+            <div className="tool-result-view" hidden={showContext}>
+            <ToolResultPane key={workspaceChat.workspaceContextKey} message={toolResult} busy={workspaceChat.busy || discovery.busy} active={!showContext}
+              onConfirm={workspaceChat.confirmToolResult} onCancel={workspaceChat.rejectChatApproval} />
+            </div>
+          </>}
+          <div className="tool-result-context" hidden={Boolean(toolResult && !showContext)}>
           <WorkspaceContextPanel
             sources={workspaceChat.workspaceSources}
             sourceBusy={workspaceChat.sourceBusy}
@@ -147,6 +173,8 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
             workflow={workflowPreview}
             workflowAvailable={showGraph}
           />
+          </div>
+          </div>
         }
       />
     </div>

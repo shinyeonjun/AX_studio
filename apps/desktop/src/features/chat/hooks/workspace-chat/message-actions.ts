@@ -87,6 +87,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
           ...(res.inputRequests?.length ? { inputRequests: res.inputRequests } : {}),
           ...(res.presentations?.length ? { presentations: res.presentations } : {}),
           ...(res.readResult ? { readResult: res.readResult } : {}),
+          ...(res.dbConnection ? { dbConnection: res.dbConnection } : {}),
         },
       ];
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {

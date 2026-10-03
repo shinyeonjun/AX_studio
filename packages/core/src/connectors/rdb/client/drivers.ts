@@ -1,6 +1,10 @@
 import { Socket } from 'node:net';
 import type { RdbConnectionConfig, RdbRow, RdbSqlClient } from './types.js';
 
+function assertReadQuery(sql: string): void {
+  if (!/^\s*SELECT\s/iu.test(sql) || /[;\0]/u.test(sql)) throw new Error('rdb_read_only_query_required');
+}
+
 function withAbort<T>(signal: AbortSignal | undefined, run: () => Promise<T>, cancel: () => void): Promise<T> {
   signal?.throwIfAborted();
   if (!signal) return run();
@@ -38,12 +42,14 @@ export async function openRdbSqlClient(config: RdbConnectionConfig, abortSignal?
     const cancel = () => { void close().catch(() => undefined); };
     try {
       await withAbort(abortSignal, () => client.connect(), cancel);
+      await withAbort(abortSignal, () => client.query('BEGIN READ ONLY'), cancel);
     } catch (error) {
       await close().catch(() => undefined);
       throw error;
     }
     return {
       query: async (sql, values = []) => {
+        assertReadQuery(sql);
         const result = await withAbort(abortSignal, () => client.query(sql, values), cancel);
         return result.rows as RdbRow[];
       },
@@ -62,12 +68,15 @@ export async function openRdbSqlClient(config: RdbConnectionConfig, abortSignal?
       await withAbort(abortSignal, () => new Promise<void>((resolve, reject) => {
         raw.connect(error => error ? reject(error) : resolve());
       }), cancel);
+      await withAbort(abortSignal, () => connection.query('SET SESSION TRANSACTION READ ONLY'), cancel);
+      await withAbort(abortSignal, () => connection.query('START TRANSACTION READ ONLY'), cancel);
     } catch (error) {
       cancel();
       throw error;
     }
     return {
       query: async (sql, values = []) => {
+        assertReadQuery(sql);
         const [rows] = await withAbort(abortSignal,
           () => connection.execute({ sql, timeout: 30_000 }, values), cancel);
         return (Array.isArray(rows) ? rows : []) as RdbRow[];

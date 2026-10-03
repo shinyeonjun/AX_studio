@@ -26,6 +26,10 @@ export class RdbConnector implements Connector {
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
+    const fields = action === 'schema.describe' ? [] : ['table', 'offset', 'limit'];
+    if (Object.keys(params).some(key => !fields.includes(key))) {
+      return { ok: false, error: 'rdb_read_only_fields_required', errorCode: 'policy_denied' };
+    }
     const rowLimit = normalizeRdbRowLimit(this.config.rowLimit, 1000);
 
     if (action === 'schema.describe') {
@@ -100,6 +104,8 @@ export class RdbConnector implements Connector {
           preserveRawValues: true,
           scalarPolicy: 'preserve',
           source: {
+            executionId: ctx.executionId,
+            readOnlyEnforced: true,
             database: this.config.type,
             schema: ref.schema,
             table: ref.table,

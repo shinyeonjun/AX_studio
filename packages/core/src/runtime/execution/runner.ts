@@ -5,6 +5,7 @@ import {
 } from './contracts.js';
 import { continueWorkflowAfterApproval } from './approval/resume.js';
 import { executeWorkflow } from './execute.js';
+import type { ToolResultConfirmation } from '../../contracts/tool-result.js';
 
 export type { WorkflowExecutionHost } from './contracts.js';
 
@@ -18,7 +19,7 @@ export class WorkflowExecutionRunner {
     return executeWorkflow(this.host, ir, options);
   }
 
-  continueAfterApproval(approvalId: string): Promise<ExecutionResult> {
-    return continueWorkflowAfterApproval(this.host, approvalId);
+  continueAfterApproval(approvalId: string, confirmation?: ToolResultConfirmation): Promise<ExecutionResult> {
+    return continueWorkflowAfterApproval(this.host, approvalId, confirmation);
   }
 }

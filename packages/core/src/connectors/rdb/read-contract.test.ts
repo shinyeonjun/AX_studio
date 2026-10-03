@@ -94,11 +94,7 @@ describe('RDB bounded read contract', () => {
       coverage: { source: 'complete', consistency: 'verified_snapshot' },
       sql: 'DELETE FROM facts', columns: ['id'], where: { id: 3 },
     }, context());
-    expect(result).toMatchObject({ ok: true, data: {
-      rows: [{ values: { id: 1, amount: 10 } }, { values: { id: 2 } }], nextOffset: 2,
-      readScope: { kind: 'page', limit: 2, predicate: 'none', projection: 'all_columns' },
-      coverage: { source: 'partial', consistency: 'best_effort' },
-    } });
+    expect(result).toMatchObject({ ok: false, errorCode: 'policy_denied' });
   });
 
   it('uses one query identity across offsets, scoped to source and permission configuration', async () => {

@@ -2,6 +2,7 @@ import { confirmDeleteChat } from '../../ui/lib/confirm-delete';
 import { ipcErrorMessage } from '../../ui/lib/ipc-error';
 import type { AppSessionActionContext } from './contracts';
 import type { ChatSessionSummary } from '../../features/chat/hooks/useChatSessions';
+import { clearToolDrafts } from '../../features/chat/ui/workspace/tool-result/draft-controller';
 
 export function createAppSessionActions({
   activeSessionId,
@@ -34,6 +35,7 @@ export function createAppSessionActions({
     setActionError('');
     try {
       await window.ax.deleteWorkspaceChat(session.id);
+      clearToolDrafts(session.id);
 
       if (isActive) {
         workspaceChat.startNewChat();

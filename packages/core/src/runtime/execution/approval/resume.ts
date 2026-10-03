@@ -18,14 +18,34 @@ import { restoreApprovalSnapshot } from './snapshot.js';
 import { prepareApprovalResume } from './guards.js';
 import { approvalParamsHash } from '../../approval-snapshot.js';
 import { resolveActionParamsForExecution } from '../../step-executor.js';
+import type { ToolResultConfirmation, ToolSendOutcome } from '../../../contracts/tool-result.js';
+import { requiresToolResultReview, type PreparedToolSend } from '../../tool-result-approval.js';
 
 export async function continueWorkflowAfterApproval(
   host: WorkflowExecutionHost,
   approvalId: string,
+  confirmation?: ToolResultConfirmation,
 ): Promise<ExecutionResult> {
-  const guard = prepareApprovalResume(host, approvalId);
+  let prepared: PreparedToolSend | undefined;
+  if (confirmation || requiresToolResultReview(host.config.store, approvalId)) {
+    try {
+      if (!confirmation) throw new Error('tool_result_confirmation_required');
+      if (!host.toolResults) throw new Error('tool_result_confirmation_required');
+      prepared = host.toolResults.prepare(approvalId, confirmation);
+    } catch (error) {
+      return { executionId: host.config.store.getApproval(approvalId)?.executionId ?? '', status: 'failed',
+        pendingApprovalId: host.config.store.getApproval(approvalId)?.status === 'pending' ? approvalId : undefined,
+        errorCode: error instanceof Error ? error.message : 'invalid_tool_result', log: [] };
+    }
+  }
+  // Consume before attempting durable reservation: a failed write requires fresh review.
+  if (prepared) host.toolResults?.consume(approvalId);
+  const guard = prepareApprovalResume(host, approvalId, prepared ? {
+    binding: prepared.review.binding, paramsHash: prepared.review.paramsHash,
+  } : undefined);
   if (!guard.ok) return guard.result;
   const { approval, execution } = guard;
+  let toolSendOutcome: ToolSendOutcome | undefined;
 
   const restored = restoreApprovalSnapshot(host, approvalId, approval.executionId, execution);
   if (!restored.ok) return restored.result;
@@ -110,6 +130,19 @@ export async function continueWorkflowAfterApproval(
         });
       }
     }
+    // Original bindings were checked above. A manually edited final send is literal data.
+    // This path cannot affect branches, remaining steps, workflows or other approvals.
+    const editedParams = prepared?.params;
+    if (prepared && editedParams) {
+      approvalSnapshots.set(prepared.source.actionId, {
+        actionRef: approvalSnapshots.get(prepared.source.actionId)!.actionRef,
+        paramsHash: approvalParamsHash(editedParams),
+      });
+      log.push({ at: new Date().toISOString(), level: 'info', code: 'tool_result_confirmed',
+        message: '수정한 결과와 대상을 확인했습니다.',
+        data: { actionId: prepared.source.actionId, paramsHash: approvalParamsHash(editedParams) } });
+      ctx.literalMessage = true;
+    }
     const remainingStepIds = new Set([
       ...(checkpoint?.remainingStepIds ?? []),
       ...(checkpoint?.pendingOuterStepIds ?? []),
@@ -132,6 +165,16 @@ export async function continueWorkflowAfterApproval(
       ctx,
       stepResults,
       approvalSnapshots,
+      ...(editedParams ? { editedParams } : {}),
+      ...(prepared ? { pinnedConnector: prepared.connector, onProviderSuccess: (data: unknown) => {
+        const receipt = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+        const receiptId = prepared.review.binding.provider === 'gmail' ? receipt.id : receipt.ts;
+        toolSendOutcome = { status: typeof receiptId === 'string' && receiptId.length > 0 ? 'sent' : 'unknown',
+          binding: prepared.review.binding, paramsHash: prepared.review.paramsHash,
+          ...(typeof receiptId === 'string' && receiptId.length > 0 ? { receiptId: receiptId.slice(0, 128) } : {}) };
+        host.config.store.updateApprovalPayload(approvalId, { toolSendOutcome });
+        if (toolSendOutcome.status === 'unknown') throw Object.assign(new Error('Missing provider receipt'), { code: 'tool_send_unknown' });
+      } } : {}),
     });
 
     if (checkpoint) {
@@ -153,11 +196,34 @@ export async function continueWorkflowAfterApproval(
 
     host.config.store.resolveApproval(approvalId, true);
     host.config.store.finishExecution(execution.id, 'success', undefined, log);
-    const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log };
-    host.notifyExecutionFinished(successResult);
+    const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log, ...(toolSendOutcome ? { toolSendOutcome } : {}) };
+    if (host.notifyExecutionFinished(successResult) === false) successResult.refreshWarning = true;
     return successResult;
   } catch (err) {
     const error = err as PendingError;
+    if (prepared) {
+      toolSendOutcome ??= { status: 'unknown', binding: prepared.review.binding, paramsHash: prepared.review.paramsHash };
+      const sent = toolSendOutcome.status === 'sent';
+      let persistenceFailed = error.code === 'database_persistence_failed';
+      const code = persistenceFailed ? 'database_persistence_failed' : sent ? 'tool_send_presentation_failed' : 'tool_send_unknown';
+      log.push({ at: new Date().toISOString(), level: 'warn', code,
+        message: sent ? 'Provider confirmed sending; result refresh failed.' : 'Send outcome is unknown. Check the provider before creating another request.' });
+      persistenceFailed = false;
+      const record = (write: () => void) => { try { write(); } catch { persistenceFailed = true; } };
+      record(() => host.config.store.updateApprovalPayload(approvalId, { toolSendOutcome }));
+      record(() => { if (sent) host.config.store.resolveApproval(approvalId, true); else host.config.store.failApproval(approvalId); });
+      if (persistenceFailed && code !== 'database_persistence_failed') log.push({ at: new Date().toISOString(), level: 'warn',
+        code: 'database_persistence_failed', message: 'Local outcome persistence failed. The durable claim remains consumed.' });
+      record(() => host.config.store.finishExecution(execution.id, sent && !persistenceFailed ? 'success' : 'failed',
+        persistenceFailed ? 'database_persistence_failed' : sent ? undefined : code, log));
+      const result: ExecutionResult = { executionId: execution.id, status: sent && !persistenceFailed ? 'success' : 'failed',
+        ...(sent ? { refreshWarning: true } : {}),
+        ...(!sent || persistenceFailed ? { errorCode: persistenceFailed ? 'database_persistence_failed' : code } : {}),
+        toolSendOutcome, log };
+      try { if (host.notifyExecutionFinished(result) === false) result.refreshWarning = true; }
+      catch { result.refreshWarning = true; }
+      return result;
+    }
     if (error.pending && error.approvalId) {
       if (error.checkpoint) {
         host.config.store.updateApprovalPayload(error.approvalId, {

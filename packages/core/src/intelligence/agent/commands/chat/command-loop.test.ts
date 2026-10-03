@@ -584,8 +584,10 @@ describe('runAxCommandChat command loop', () => {
       expect(textSeen).toHaveLength(0);
 
       const result = await runtime.continueAfterApproval(approval!.id);
-      expect(result.status).toBe('success');
-      expect(gmail.sent).toEqual([{ to: 'person@example.com', body: '견적서를 보내 주세요' }]);
+      expect(result).toMatchObject({ status: 'failed', errorCode: 'tool_result_confirmation_required' });
+      expect(store.getApproval(approval!.id)?.status).toBe('pending');
+      expect(store.getExecution(approval!.executionId)?.status).toBe('pending_approval');
+      expect(gmail.sent).toEqual([]);
       await runtime.waitForIdle();
     } finally {
       db.close?.();

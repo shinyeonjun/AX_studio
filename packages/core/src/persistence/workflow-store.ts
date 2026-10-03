@@ -1,6 +1,7 @@
 import type { AppDatabase } from './db.js';
 import type { AgentScopedContextPatch } from '../intelligence/agent/scoped-context.js';
 import type { TableArtifact } from '../contracts/artifacts/table.js';
+import type { ToolSendOutcome } from '../contracts/tool-result.js';
 import type { DiscoverySessionState } from '../work-discovery/schema.js';
 import type { WorkflowIR } from '../workflow/schema.js';
 import type { ExecutionStatus } from './rows.js';
@@ -29,6 +30,7 @@ export class WorkflowStore {
   private readonly deletingWorkflowIds = new Set<string>();
   // Invalidates derived catalogs without hashing large persisted connector configs.
   private connectionRevision = 0;
+  private readonly sessionDeletionObservers = new Set<(id: string) => void>();
   private discoveryMetadataRevision = 0;
 
   constructor(private db: AppDatabase) {}
@@ -91,6 +93,13 @@ export class WorkflowStore {
     return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, target, message);
   }
   getWorkspaceChat(id: string) { return workspaceChatRepo.getWorkspaceChat(this.db, id); }
+  hasWorkspaceChat(id: string): boolean {
+    return !!this.db.prepare('SELECT 1 FROM workspace_chats WHERE id = ?').get(id);
+  }
+  onWorkspaceChatDeleted(observer: (id: string) => void): () => void {
+    this.sessionDeletionObservers.add(observer);
+    return () => { this.sessionDeletionObservers.delete(observer); };
+  }
   getWorkspaceChatMemo(sessionId: string) { return workspaceChatRepo.getWorkspaceChatMemo(this.db, sessionId); }
   updateWorkspaceChatMemo(sessionId: string, patch: AgentScopedContextPatch) {
     return workspaceChatRepo.updateWorkspaceChatMemo(this.db, sessionId, patch);
@@ -99,7 +108,11 @@ export class WorkflowStore {
     return workspaceChatRepo.getWorkspaceChatByWorkflowId(this.db, workflowId);
   }
   listWorkspaceChats(limit = 50) { return workspaceChatRepo.listWorkspaceChats(this.db, limit); }
-  deleteWorkspaceChat(id: string) { workspaceChatRepo.deleteWorkspaceChat(this.db, id); }
+  deleteWorkspaceChat(id: string) {
+    // Discard private edits and seals immediately, even if durable deletion fails.
+    for (const observer of this.sessionDeletionObservers) observer(id);
+    workspaceChatRepo.deleteWorkspaceChat(this.db, id);
+  }
   refreshWorkspaceChatTitle(sessionId: string) {
     return workspaceChatRepo.refreshWorkspaceChatTitle(this.db, sessionId);
   }
@@ -166,12 +179,16 @@ export class WorkflowStore {
   resolveApproval(id: string, approved: boolean) { approvalRepo.resolveApproval(this.db, id, approved); }
   rejectPendingApproval(id: string) { return approvalRepo.rejectPendingApproval(this.db, id); }
   failApproval(id: string) { return approvalRepo.failApproval(this.db, id); }
-  claimApproval(id: string) { return approvalRepo.claimApproval(this.db, id); }
+  claimApproval(id: string, intent?: Pick<ToolSendOutcome, 'binding' | 'paramsHash'>) {
+    return approvalRepo.claimApproval(this.db, id, intent);
+  }
   updateApprovalPayload(id: string, extra: Record<string, unknown>) {
     approvalRepo.updateApprovalPayload(this.db, id, extra);
   }
   getApproval(id: string) { return approvalRepo.getApproval(this.db, id); }
   getPendingApprovals() { return approvalRepo.getPendingApprovals(this.db); }
+  getProcessingApprovals() { return approvalRepo.getProcessingApprovals(this.db); }
+  getApprovalRecoveryCandidates() { return approvalRepo.getApprovalRecoveryCandidates(this.db); }
   getPendingApprovalsWithExecutionSnapshots() {
     return approvalRepo.getPendingApprovalsWithExecutionSnapshots(this.db);
   }

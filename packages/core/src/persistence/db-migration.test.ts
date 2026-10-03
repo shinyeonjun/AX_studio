@@ -15,6 +15,7 @@ function mockDatabase(): AppDatabase {
     get: vi.fn<(...params: unknown[]) => Record<string, unknown> | undefined>(),
   };
   return {
+    persistNow: vi.fn(),
     exec: vi.fn<(sql: string) => void>(),
     prepare: vi.fn<(sql: string) => typeof statement>(() => statement),
     readSnapshot: <T>(read: () => T) => read(),

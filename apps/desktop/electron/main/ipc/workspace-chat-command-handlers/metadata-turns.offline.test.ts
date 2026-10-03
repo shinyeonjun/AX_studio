@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
-  AGENT_COMMAND_CONTEXT, ArtifactStore, AxCommandService, createDatabaseAsync, WorkflowStore, WorkspaceSourceService,
+  AGENT_COMMAND_CONTEXT, ArtifactStore, AxCommandService, createDatabaseAsync, WorkflowStore, WorkspaceSourceService, WorkflowRuntime,
   type WorkspaceChatMessage, type WorkspaceChatRecord, type SourceMetadataEvidence,
 } from '@ax-studio/core';
 import { registerWorkspaceChatMessageHandler } from './chat.js';
@@ -59,10 +59,14 @@ async function fixture(input: { script?: Script | ((request: WireRequest) => Scr
   const execute = vi.spyOn(commandService, 'execute');
   const root = resolve(process.env.AX_DATA_ROOT ?? resolve('../../build-evidence/registered-http-metadata/scratch'));
   const sources = new WorkspaceSourceService(store, new ArtifactStore(join(root, 'artifacts')), join(root, 'sessions'));
+  const runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, workflowActive: {} });
   await sources.waitForIdle();
-  resources.push({ close: () => db.close?.(), waitForIdle: () => sources.waitForIdle() });
+  resources.push({ close: () => db.close?.(), waitForIdle: async () => {
+    runtime.stopAccepting();
+    await Promise.all([sources.waitForIdle(), runtime.waitForIdle()]);
+  } });
   const event = { sender: { id: 42, mainFrame: ipc.frame, send: vi.fn() }, senderFrame: ipc.frame };
-  ipc.getCore.mockReturnValue({ store, commandService, workspaceSources: sources,
+  ipc.getCore.mockReturnValue({ store, runtime, commandService, workspaceSources: sources,
     agentHarness: { providerName: 'offline-prose', modelName: 'fixture-model', runText: prose },
     decisionEngine: { evaluate: trap('ordinary_decision') } });
   registerWorkspaceChatPersistenceHandlers();

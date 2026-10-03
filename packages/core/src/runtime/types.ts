@@ -33,6 +33,8 @@ export interface ExecutionProgress {
 }
 
 export interface ExecutionResult {
+  toolSendOutcome?: import('../contracts/tool-result.js').ToolSendOutcome;
+  refreshWarning?: boolean;
   executionId: string;
   status: ExecutionResultStatus;
   errorCode?: string;

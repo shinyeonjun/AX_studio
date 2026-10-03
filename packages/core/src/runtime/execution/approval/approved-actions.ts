@@ -12,8 +12,11 @@ import { recordRepairProposal, reportStepProgress } from '../progress.js';
 import { materializeStepOutputs } from '../../output-ports.js';
 import { approvalParamsHash } from '../../approval-snapshot.js';
 import { resolveActionParamsForExecution } from '../../step-executor.js';
+import { messageTool, messageToolDraft } from '../../../contracts/tool-result.js';
 
 export interface ApprovedActionExecutionOptions {
+  pinnedConnector?: import('../../../connectors/types.js').Connector;
+  onProviderSuccess?: (data: unknown) => void;
   host: WorkflowExecutionHost;
   ir: WorkflowIR;
   approvedActions: Extract<Step, { type: 'action' }>[];
@@ -21,6 +24,8 @@ export interface ApprovedActionExecutionOptions {
   ctx: ConnectorContext;
   stepResults: Record<string, unknown>;
   approvalSnapshots: ReadonlyMap<string, { actionRef: string; paramsHash: string }>;
+  /** Validated by resume only for one final one-shot send, after original binding checks. */
+  editedParams?: Record<string, unknown>;
 }
 
 export async function executeApprovedActions(
@@ -33,8 +38,13 @@ export async function executeApprovedActions(
     if (options.remainingStepIds.has(actionId)) continue;
     reportStepProgress(options.host, options.ctx, actionStep, 'step_started');
     try {
-      const { actionDefinition, params } = resolveActionParamsForExecution(actionStep, options.ir, options.ctx, options.stepResults);
-      const connector = options.host.connectors[actionDefinition.connector];
+      const resolved = resolveActionParamsForExecution(actionStep, options.ir, options.ctx, options.stepResults);
+      const actionDefinition = resolved.actionDefinition;
+      const params = options.editedParams ?? resolved.params;
+      if (messageTool(actionDefinition.id) && !messageToolDraft(actionDefinition.id, params)) {
+        throw Object.assign(new Error('Unsupported message delivery fields'), { code: 'unsupported_message_fields' });
+      }
+      const connector = options.pinnedConnector ?? options.host.connectors[actionDefinition.connector];
       if (!connector) {
         throw Object.assign(new Error('Connector not found: ' + actionDefinition.connector), {
           code: 'connector_missing',
@@ -65,6 +75,7 @@ export async function executeApprovedActions(
       if (!result.ok) {
         throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
       }
+      options.onProviderSuccess?.(result.data);
       if (actionDefinition.io?.outputs) {
         options.ctx.outputs ??= {};
         options.ctx.outputs[actionId] = materializeStepOutputs(actionId, actionDefinition.io.outputs, result.data);

@@ -1,0 +1,58 @@
+{
+  "id": "one-shot-legacy-approval-reject",
+  "name": "Generic legacy workflow approval reject",
+  "description": "A continuation excludes the final-action editor; retain real legacy approval-card coverage.",
+  "mode": "deterministic",
+  "tags": [
+    "chat",
+    "approval",
+    "deterministic"
+  ],
+  "covers": [
+    "runtime:approvals-activity"
+  ],
+  "timeoutMs": 120000,
+  "steps": [
+    {
+      "action": "newChat"
+    },
+    {
+      "action": "sendMessage",
+      "text": "__e2e:legacy-approval__"
+    },
+    {
+      "check": "inlineApprovalPresent"
+    },
+    {
+      "check": "visibleTextContains",
+      "text": "외부 작업 전 확인"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "pending_approval",
+      "legacy": true
+    },
+    {
+      "action": "clickInlineApproval",
+      "decision": "reject"
+    },
+    {
+      "check": "inlineApprovalAbsent"
+    },
+    {
+      "check": "visibleTextContains",
+      "text": "실행 취소"
+    },
+    {
+      "check": "syntheticSlackEvidence",
+      "sends": 0,
+      "status": "cancelled",
+      "legacy": true
+    },
+    {
+      "check": "composerEnabled",
+      "severity": "major"
+    }
+  ]
+}

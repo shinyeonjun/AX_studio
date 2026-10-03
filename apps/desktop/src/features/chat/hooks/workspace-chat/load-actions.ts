@@ -8,16 +8,18 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
   const refreshMappedWorkspaceChat = async (sessionId: string) => {
     try {
       const loaded = await window.ax.loadWorkspaceChat(sessionId);
-      if (!ctx.isViewingSession(sessionId)) return;
+      if (!ctx.isViewingSession(sessionId)) return true;
       publishWorkspaceTranscript(ctx, loaded);
       ctx.setWorkspaceWorkflowState((current) =>
         current ? { ...current, messages: loaded.messages } : current,
       );
       ctx.onSessionsChanged?.();
+      return true;
     } catch (err) {
       if (ctx.isViewingSession(sessionId)) {
         ctx.setError(ipcErrorMessage(err, '실행 결과를 대화에 불러오지 못했습니다.'));
       }
+      return false;
     }
   };
 

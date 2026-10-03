@@ -35,6 +35,8 @@ import type {
   StepMetric,
 } from './types.js';
 import { defaultReplyTimeoutMs, fixturePath, type DesktopContext } from './desktop-app.js';
+import { assertSlackDraft, assertSlackReview, assertSlackTerminal, assertSyntheticSlackEvidence,
+  clickSlackResult, editSlackDraft } from './slack-result.js';
 
 interface SessionState {
   label: string;
@@ -132,6 +134,10 @@ export class StepRunner {
 
   private async runAction(page: Page, step: Extract<ScenarioStep, { action: string }>): Promise<void> {
     switch (step.action) {
+      case 'setViewport': {
+        await page.setViewportSize({ width: step.width, height: step.height });
+        return;
+      }
       case 'newChat': {
         await clickNewChat(page);
         if (step.label) {
@@ -173,6 +179,14 @@ export class StepRunner {
       }
       case 'clickInlineApproval': {
         await clickInlineApproval(page, step.decision);
+        return;
+      }
+      case 'editSlackDraft': {
+        await editSlackDraft(page, step);
+        return;
+      }
+      case 'clickSlackResult': {
+        await clickSlackResult(page, step.control, step.repeat);
         return;
       }
       case 'waitMs': {
@@ -230,6 +244,7 @@ export class StepRunner {
         await page.screenshot({
           path: `${this.ctx.artifactDir}/screenshots/${this.scenario.id}-run${this.runIndex}-${step.name}.png`,
           fullPage: true,
+          scale: step.scale,
         });
         return;
       }
@@ -299,6 +314,17 @@ export class StepRunner {
     };
 
     switch (step.check) {
+      case 'slackDraft':
+      case 'slackReview':
+      case 'slackTerminal':
+      case 'syntheticSlackEvidence': {
+        let actual = 'matched';
+        if (step.check === 'slackDraft') await assertSlackDraft(page, step);
+        else if (step.check === 'slackReview') await assertSlackReview(page, step);
+        else if (step.check === 'slackTerminal') await assertSlackTerminal(page, step.decision);
+        else actual = JSON.stringify(await assertSyntheticSlackEvidence(this.ctx, step));
+        return { ...base, check: step.check, expected: JSON.stringify(step), actual, passed: true };
+      }
       case 'assistantMessageContains': {
         await expect(page.locator('.ax-workspace-message--assistant').filter({ hasText: step.text }).last())
           .toBeVisible({ timeout: 10_000 });

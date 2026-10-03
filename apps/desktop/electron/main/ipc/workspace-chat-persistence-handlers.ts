@@ -78,6 +78,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
     cancelWorkspaceChatSession(id);
     clearPendingCommand(id, true);
     await core.workspaceSources.deleteSession(id);
+    core.runtime.discardSessionToolDrafts(id);
     core.commandService.releaseWorkspaceSession(id);
     return { ok: true };
   });

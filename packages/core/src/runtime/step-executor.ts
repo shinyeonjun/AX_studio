@@ -12,6 +12,7 @@ import { actionRefFor, resolveActionDefinition, validateActionParams } from '../
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
 import { approvalParamsHash, redactedApprovalParams } from './approval-snapshot.js';
+import { messageTool, messageToolDraft } from '../contracts/tool-result.js';
 import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
 
 export function resolveActionParamsForExecution(
@@ -94,6 +95,9 @@ export async function executeStep(
         throw err;
       }
 
+      if (messageTool(actionDefinition.id) && !messageToolDraft(actionDefinition.id, params)) {
+        throw Object.assign(new Error('Unsupported message delivery fields'), { code: 'unsupported_message_fields' });
+      }
       const presentation = presentationDerivedSteps(ir, ctx.presentationVariableSources).has(step.id);
       const previousVariables = presentation || ctx.presentationVariableSources
         ? structuredClone(ctx.variables) : undefined;
