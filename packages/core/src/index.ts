@@ -89,6 +89,7 @@ export {
 } from './workflow/action-definition.js';
 export * from './intelligence/design-tools/index.js';
 export * from './workflow/visual-display.js';
+export * from './workflow/schedule/index.js';
 export * from './platform/index.js';
 export { summarizeApprovalGates, type ApprovalGateSummary, type ApprovalGateEntry } from './workflow/approval-gates.js';
 export * from './connectors/protocols/openapi/index.js';

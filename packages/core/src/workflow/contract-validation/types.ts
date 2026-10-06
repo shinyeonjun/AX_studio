@@ -21,7 +21,8 @@ export interface ContractValidationIssue {
     question: string;
     target?: 'trigger';
     capabilityId?: string;
-    inputType?: CapabilityParamInputType;
+    /** `schedule` renders the structured schedule form instead of a text field. */
+    inputType?: CapabilityParamInputType | 'schedule';
     placeholder?: string;
   }>;
 }

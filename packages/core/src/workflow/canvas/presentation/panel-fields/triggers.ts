@@ -1,10 +1,10 @@
 import { displayForTrigger } from '../../../visual-display/trigger-display/display.js';
 import type { WorkflowCanvasDraft } from '../../draft/schema.js';
+import { describeSchedule } from '../../../schedule/describe.js';
 import type { CompletenessResult } from '../../slots/types.js';
 import type { PanelField } from './types.js';
 
 const TRIGGER_DRAFT_FIELDS: Record<string, keyof WorkflowCanvasDraft> = {
-  'trigger.schedule': 'schedule',
   'trigger.timezone': 'timezone',
   'trigger.runAt': 'runAt',
   'gmail.new_message.accountId': 'gmailAccount',
@@ -16,6 +16,7 @@ const TRIGGER_DRAFT_FIELDS: Record<string, keyof WorkflowCanvasDraft> = {
 
 function triggerDraftValue(draft: WorkflowCanvasDraft, slot: string): string {
   if (slot === 'triggerType') return draft.triggerType ?? '';
+  if (slot === 'trigger.schedule') return describeSchedule(draft);
   const field = TRIGGER_DRAFT_FIELDS[slot];
   if (!field) return '';
   const value = draft[field];

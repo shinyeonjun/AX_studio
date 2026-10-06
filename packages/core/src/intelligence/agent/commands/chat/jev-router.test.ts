@@ -2316,6 +2316,7 @@ describe('routeChatWithJev', () => {
 
   it('lets Jev propose a schedule and defers its missing values to host validation', async () => {
     let planningCalls = 0;
+    const scheduleQuestions: string[] = [];
     const search: JevReadOperationHint = {
       key: 'op_0', capabilityId: 'gmail.messages.search', connector: 'gmail',
       label: 'Gmail 메일 검색', description: 'Gmail 메일 검색', params: {},
@@ -2340,6 +2341,15 @@ describe('routeChatWithJev', () => {
               },
             } };
           }
+          if (request.questions.schedule_pattern) {
+            scheduleQuestions.push(...Object.keys(request.questions));
+            const pick = (choice: string) => ({ type: 'choice' as const, choice, probabilities: { [choice]: 0.97 }, confidence: 0.97 });
+            return { answers: {
+              schedule_pattern: pick('daily'), schedule_interval: pick('n_1'),
+              schedule_time_1_hour: pick('h_9'), schedule_time_1_minute: pick('m_0'),
+              schedule_time_2_hour: pick('none'), schedule_time_2_minute: pick('none'),
+            } };
+          }
           planningCalls += 1;
           const criteria = request.questions.next_step?.type === 'choice' ? request.questions.next_step.criteria : {};
           const action = Object.entries(criteria).find(([, value]) =>
@@ -2360,9 +2370,13 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result).toMatchObject({ kind: 'command', route: 'job_propose', command: {
-      // "매일 오전 9시" is prefilled for confirmation on the job card; the time zone is the host's.
-      name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '0 9 * * *', timezone: expect.any(String) } },
+      // Jev's bounded schedule choices become a typed recurrence the job card describes in Korean.
+      name: 'job.propose', args: { trigger: { type: 'schedule', timezone: expect.any(String), recurrence: {
+        kind: 'recurrence', freq: 'daily', interval: 1, times: [{ hour: 9, minute: 0 }], anchor: expect.any(String),
+      } } },
     } });
+    expect(result.kind === 'command' && 'schedule' in (result.command.args as { trigger: object }).trigger).toBe(false);
+    expect(scheduleQuestions).toContain('schedule_pattern');
     expect(planningCalls).toBe(0);
   });
 

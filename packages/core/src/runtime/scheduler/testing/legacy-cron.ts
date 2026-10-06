@@ -1,11 +1,5 @@
-import { parseCronExpression, type ParsedCronExpression } from '../../workflow/cron.js';
-
-export interface ScheduledJob {
-  workflowId: string;
-  schedule: string;
-  timezone: string;
-  nextRunAt?: string;
-}
+// Frozen copy of the pre-recurrence cron matcher (tests only): the backward-compatibility oracle.
+import { parseCronExpression, type ParsedCronExpression } from '../../../workflow/cron.js';
 
 function zonedDateParts(
   date: Date,
@@ -146,9 +140,6 @@ function latestCronMatchOnDate(
   return latest;
 }
 
-const CRON_CALENDAR_CYCLE_DAYS = 28 * 366;
-const EARLY_EXIT_MARGIN_DAYS = 2;
-
 export function findLatestCronMatch(
   expr: string,
   from: Date,
@@ -172,22 +163,13 @@ export function findLatestCronMatch(
   lastUtcDay.setUTCHours(0, 0, 0, 0);
   // A timezone's local date can differ from UTC by a day. Scan that margin and
   // compare absolute instants so date-line changes cannot reorder occurrences.
-  // Bounded catch-up: the Gregorian date/weekday calendar repeats every 28 years
-  // (1901-2099), so a cron with no match in that span never matches earlier.
-  const firstDay = Math.max(firstUtcDay.getTime() - dayLength, lastUtcDay.getTime() - CRON_CALENDAR_CYCLE_DAYS * dayLength);
+  const firstDay = firstUtcDay.getTime() - dayLength;
   const lastDay = lastUtcDay.getTime() + dayLength;
   const hours = [...parsed.hour].sort((a, b) => b - a);
   const minutes = [...parsed.minute].sort((a, b) => b - a);
   let latestOverall: number | undefined;
-  let matchedDay: number | undefined;
 
-  // Complexity: O(min(window, 28y) days) cheap calendar checks, but scanning stops
-  // EARLY_EXIT_MARGIN_DAYS after the newest matching day, so a long downtime costs
-  // O(days back to the latest occurrence) rather than O(downtime).
   for (let dayTimestamp = lastDay; dayTimestamp >= firstDay; dayTimestamp -= dayLength) {
-    // Local dates map to disjoint, ascending instant ranges; the extra days only
-    // guard zones whose repeated hour crosses midnight.
-    if (matchedDay !== undefined && matchedDay - dayTimestamp > EARLY_EXIT_MARGIN_DAYS * dayLength) break;
     const latestOnDate = latestCronMatchOnDate(
       parsed,
       new Date(dayTimestamp),
@@ -200,11 +182,6 @@ export function findLatestCronMatch(
     if (latestOnDate !== undefined && (latestOverall === undefined || latestOnDate > latestOverall)) {
       latestOverall = latestOnDate;
     }
-    if (latestOnDate !== undefined) matchedDay ??= dayTimestamp;
   }
   return latestOverall === undefined ? undefined : new Date(latestOverall);
-}
-
-export function cronMatches(expr: string, date: Date, timeZone?: string): boolean {
-  return compileCronMatcher(expr, timeZone)?.(date) ?? false;
 }

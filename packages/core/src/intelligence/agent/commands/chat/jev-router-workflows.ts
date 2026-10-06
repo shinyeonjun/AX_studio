@@ -13,8 +13,10 @@ import type { JevWorkflowTriggerHint } from './jev-workflow-proposal.js';
 import { choiceAnswer, fallback, selectedWorkflowStepFinalists } from './jev-router-command.js';
 import type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
 import type { JevChatRequestPlan } from './jev-request-plan.js';
-import { koreanScheduleToCron, localTimeZone } from '../../../../workflow/cron-natural.js';
+import { localTimeZone } from '../../../../workflow/schedule/zoned.js';
+import { extractRecurrenceWithJev } from './jev-schedule-extraction.js';
 import type { JevChatRouteName } from './jev-route-criteria.js';
+import type { Trigger } from '../../../../workflow/schema.js';
 
 export interface JevWorkflowRouteContext {
   input: JevChatRouterInput;
@@ -234,11 +236,22 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       });
     }
     const triggerAnswer = choiceAnswer(answers.workflow_trigger);
-    // Common phrases ("매일 오전 9시") prefill the cron; the job card still shows it for confirmation,
-    // and anything unparsed stays blank for the host schedule form.
-    const prefilledSchedule = koreanScheduleToCron(input.userMessage);
-    const selectedTrigger = triggerAnswer?.choice === 'schedule'
-      ? { key: 'schedule', trigger: { type: 'schedule' as const, schedule: prefilledSchedule ?? '', timezone: prefilledSchedule ? localTimeZone() : '' } }
+    // Jev fills the typed Recurrence from bounded choices; the host validates it and the job card
+    // shows the plain-Korean schedule with its next run dates. Anything unclear stays blank and the
+    // host schedule form asks the user.
+    let scheduleTrigger: Trigger | undefined;
+    if (triggerAnswer?.choice === 'schedule') {
+      const extraction = await extractRecurrenceWithJev(
+        input.requestAnchor?.text ?? input.userMessage,
+        { now: new Date(), timeZone: localTimeZone() },
+        evaluateFollowup,
+      );
+      scheduleTrigger = extraction.kind === 'recurrence'
+        ? { type: 'schedule', recurrence: extraction.recurrence, timezone: extraction.recurrence.timezone }
+        : { type: 'schedule', schedule: '', timezone: '' };
+    }
+    const selectedTrigger = scheduleTrigger
+      ? { key: 'schedule', trigger: scheduleTrigger }
       : triggerAnswer
         ? workflowTriggerHints.find((hint) => hint.key === triggerAnswer.choice)
         : undefined;

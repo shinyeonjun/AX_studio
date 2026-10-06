@@ -1,6 +1,7 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
 import type { ConnectionEntry } from './connection-entry';
 import type { ExecutionHistoryDiagnostic, LocalFolderEntry } from '@ax-studio/core';
+import type { Recurrence } from '@ax-studio/core/schedule';
 
 export interface AiProviderState {
   provider?: string;
@@ -15,7 +16,7 @@ export interface WorkSummary {
   active: boolean;
   latestVersion: number;
   goal?: string;
-  trigger?: { type: string; schedule?: string; runAt?: string };
+  trigger?: { type: string; schedule?: string; recurrence?: Recurrence; timezone?: string; runAt?: string };
   connectors?: string[];
   lastRunAt?: string;
   lastStatus?: string;

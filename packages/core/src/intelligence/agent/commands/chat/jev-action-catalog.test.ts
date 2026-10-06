@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AxCommand } from '../schema.js';
 import { applyJevCommandInputValuesToCommand } from './jev-action-catalog.js';
+import { encodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 
 describe('Jev command input continuation', () => {
   it('applies scoped answers to an upserted action in workflow.update', () => {
@@ -58,5 +59,25 @@ describe('Jev command input continuation', () => {
         ],
       },
     });
+  });
+
+  it('replaces a blank or legacy schedule with the recurrence chosen in the schedule form', () => {
+    const recurrence = {
+      kind: 'recurrence' as const, freq: 'monthly' as const, interval: 1, byMonthDay: [-1],
+      times: [{ hour: 18, minute: 0 }], anchor: '2026-10-06', timezone: 'America/New_York',
+    };
+    const pending = (trigger: Record<string, unknown>): AxCommand => ({
+      name: 'job.propose',
+      args: { name: '월말 보고', goal: '월말 보고', trigger, steps: [{ type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#a', text: 'x' } }] },
+    });
+    const value = { label: '실행 일정', value: encodeScheduleInputValue(recurrence), target: 'trigger' as const, parameterName: 'recurrence' };
+    for (const trigger of [{ type: 'schedule', schedule: '', timezone: '' }, { type: 'schedule', schedule: '0 9 * * *', timezone: 'Asia/Seoul' }]) {
+      const applied = applyJevCommandInputValuesToCommand(pending(trigger), [value]);
+      expect((applied?.args as { trigger: unknown }).trigger).toEqual({ type: 'schedule', recurrence, timezone: 'America/New_York' });
+    }
+    // A tampered or unreadable value leaves the schedule untouched, so host validation asks again.
+    const tampered = { ...value, value: '매월 마지막 날 오후 6:00 ⟦일정:e30⟧' };
+    expect((applyJevCommandInputValuesToCommand(pending({ type: 'schedule', schedule: '', timezone: '' }), [tampered])?.args as { trigger: unknown }).trigger)
+      .toEqual({ type: 'schedule', schedule: '', timezone: '' });
   });
 });

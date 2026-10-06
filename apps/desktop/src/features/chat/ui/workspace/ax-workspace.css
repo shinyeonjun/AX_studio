@@ -2028,3 +2028,81 @@
   background: transparent;
   cursor: pointer;
 }
+
+/* Structured schedule form (no rule syntax is ever shown). */
+.ax-workspace-presentation-input-schedule {
+  display: grid;
+  gap: 10px;
+}
+
+.ax-schedule-input {
+  display: grid;
+  gap: 8px;
+}
+
+.ax-schedule-input-row,
+.ax-schedule-input-time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-schedule-input-row > label {
+  min-width: 56px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-schedule-input fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 9px;
+}
+
+.ax-schedule-input legend {
+  padding: 0 4px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-schedule-input select,
+.ax-schedule-input input[type='time'],
+.ax-schedule-input input[type='date'] {
+  padding: 7px 9px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 8px;
+  background: var(--ax-chat-composer-bg);
+  color: var(--ax-chat-text);
+}
+
+.ax-schedule-input select:focus,
+.ax-schedule-input input:focus,
+.ax-schedule-input button:focus-visible {
+  outline: 2px solid rgba(124, 92, 230, 0.34);
+  outline-offset: 1px;
+}
+
+.ax-schedule-input-preview {
+  display: grid;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--ax-chat-composer-bg);
+  color: var(--ax-chat-text);
+  font-size: 12px;
+}
+
+.ax-schedule-input-preview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ax-schedule-input-error {
+  color: #b42318;
+}

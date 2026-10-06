@@ -7,6 +7,18 @@ function card(data: unknown): { presentation: AxUiPresentation; text: string; su
   return { presentation: value.presentation, text: JSON.stringify(value.presentation), summary: value.summary };
 }
 
+describe('job confirmation card schedule wording', () => {
+  it('shows the schedule in plain Korean with next run dates, never the cron text', async () => {
+    const { service, chat } = await connectedService();
+    const response = await service.execute({ name: 'job.propose', args: dailyBriefArgs }, { ...commandChatContext, workspaceSessionId: chat.id });
+    const { text } = card(response.data);
+    expect(text).toContain('일정: 매일 오후 9:00');
+    expect(text).toMatch(/다음 실행: \d+월 \d+일\([월화수목금토일]\) 오후 9:00/u);
+    expect(text).not.toContain('0 21 * * *');
+    expect(text).not.toMatch(/cron/iu);
+  });
+});
+
 describe('job confirmation card safety defaults', () => {
   it('does not auto-send or run now unless the proposal explicitly opts in', async () => {
     const { service, chat } = await connectedService();

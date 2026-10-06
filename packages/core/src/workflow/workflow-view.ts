@@ -74,7 +74,14 @@ function nodeFromStep(step: Step): { node: WorkflowNode; action?: ActionInstance
 function triggerFields(ir: WorkflowIR): Partial<WorkflowCanvasDraft> {
   const trigger = ir.trigger;
   if (!trigger) return {};
-  if (trigger.type === 'schedule') return { triggerType: 'schedule', schedule: trigger.schedule, timezone: trigger.timezone };
+  if (trigger.type === 'schedule') {
+    return {
+      triggerType: 'schedule',
+      ...(trigger.schedule !== undefined ? { schedule: trigger.schedule } : {}),
+      ...(trigger.recurrence ? { recurrence: trigger.recurrence } : {}),
+      timezone: trigger.timezone,
+    };
+  }
   if (trigger.type === 'once') return { triggerType: 'once', runAt: trigger.runAt, triggerFilter: trigger.filter };
   if (trigger.type === 'manual') return { triggerType: 'manual', triggerFilter: trigger.filter };
   if (trigger.type === 'gmail.new_message') {

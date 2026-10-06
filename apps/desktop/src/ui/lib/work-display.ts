@@ -1,4 +1,5 @@
 import { CONNECTOR_CATALOG, getCapability } from '@ax-studio/core/catalog-data';
+import { describeSchedule } from '@ax-studio/core/schedule';
 import type { WorkSummary } from '../../types/app-state';
 
 function connectorLabel(connector: string): string {
@@ -6,7 +7,7 @@ function connectorLabel(connector: string): string {
 }
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '수동 실행';
-  if (trigger.type === 'schedule') return `반복 · ${trigger.schedule ?? ''}`;
+  if (trigger.type === 'schedule') return `반복 · ${describeSchedule(trigger) || '일정 미정'}`;
   if (trigger.type === 'once') return '1회성';
   const capability = getCapability(trigger.type);
   if (capability) {

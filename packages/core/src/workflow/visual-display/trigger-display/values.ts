@@ -1,4 +1,5 @@
 import type { WorkflowCanvasDraft } from '../../canvas/draft/schema.js';
+import { describeSchedule } from '../../schedule/describe.js';
 
 export type TriggerParamValues = Record<string, string | undefined>;
 
@@ -15,7 +16,8 @@ export function triggerParamValues(draft: WorkflowCanvasDraft): TriggerParamValu
         extensions: draft.localFolderExtensions?.trim(),
       };
     case 'schedule':
-      return { schedule: draft.schedule?.trim(), timezone: draft.timezone?.trim() };
+      // Plain-language description only; cron text never reaches the canvas.
+      return { schedule: describeSchedule(draft) || undefined, timezone: draft.timezone?.trim() };
     case 'once':
       return { runAt: draft.runAt?.trim() };
     default:

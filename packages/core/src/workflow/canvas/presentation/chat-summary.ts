@@ -1,6 +1,7 @@
 import { resolveCapability } from '../../../catalog/capability-graph.js';
 import { KO } from '../../../i18n/ko.js';
 import { formatCondition } from '../../condition-expr/format.js';
+import { describeSchedule } from '../../schedule/describe.js';
 import type { WorkflowIR, Step } from '../../schema.js';
 
 function triggerSummary(trigger?: WorkflowIR['trigger']): string {
@@ -11,7 +12,7 @@ function triggerSummary(trigger?: WorkflowIR['trigger']): string {
       : KO.chatSummary.triggerOnce;
   }
   if (trigger.type === 'schedule') {
-    return KO.workflowDocument.triggerSchedule(trigger.schedule, trigger.timezone ?? '?');
+    return KO.workflowDocument.triggerSchedule(describeSchedule(trigger));
   }
   if (trigger.type === 'gmail.new_message') {
     const base = KO.workflowDocument.triggerGmail(trigger.accountId);

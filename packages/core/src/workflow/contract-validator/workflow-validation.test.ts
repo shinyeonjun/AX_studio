@@ -31,10 +31,23 @@ describe('validateWorkflowContracts', () => {
     });
     const requests = issues.flatMap((issue) => issue.missingInputs ?? []);
 
-    expect(requests).toMatchObject([
-      { name: 'schedule', target: 'trigger', inputType: 'text', placeholder: '0 9 * * *' },
-      { name: 'timezone', target: 'trigger', inputType: 'text', placeholder: 'Asia/Seoul' },
-    ]);
+    // One structured schedule form (repeat, days, times, start, time zone); no cron text field.
+    expect(requests).toEqual([expect.objectContaining({ name: 'recurrence', target: 'trigger', inputType: 'schedule' })]);
+    expect(JSON.stringify(requests)).not.toMatch(/cron|\*/iu);
+  });
+  it('accepts a valid recurrence and rejects one that can never run', () => {
+    const recurrence = {
+      kind: 'recurrence' as const, freq: 'weekly' as const, interval: 2, byWeekday: [{ day: 'WE' as const }],
+      times: [{ hour: 10, minute: 0 }], anchor: '2026-10-06', timezone: 'Asia/Seoul',
+    };
+    expect(validateWorkflowContracts({ ...folderToDocument, trigger: { type: 'schedule', recurrence, timezone: 'Asia/Seoul' } })
+      .filter((issue) => issue.code === 'invalid_workflow_schema')).toEqual([]);
+    const impossible = { ...recurrence, freq: 'yearly' as const, interval: 1, byWeekday: undefined, byMonth: [2], byMonthDay: [30] };
+    const issues = validateWorkflowContracts({ ...folderToDocument, trigger: { type: 'schedule', recurrence: impossible, timezone: 'Asia/Seoul' } });
+    expect(issues).toContainEqual(expect.objectContaining({
+      code: 'invalid_workflow_schema',
+      missingInputs: [expect.objectContaining({ name: 'recurrence', inputType: 'schedule' })],
+    }));
   });
   it('preserves a missing upstream data contract and also exposes the missing action text field', () => {
     const issues = validateWorkflowForPersistence({
@@ -61,6 +74,9 @@ describe('validateWorkflowContracts', () => {
   });
   it('rejects an invalid schedule timezone instead of saving a never-running workflow', () => {
     const issues = validateWorkflowContracts({ ...folderToDocument, trigger: { type: 'schedule', schedule: '0 9 * * *', timezone: 'Mars/Olympus' } });
-    expect(issues).toContainEqual(expect.objectContaining({ code: 'invalid_workflow_schema', message: 'schedule timezone이 올바르지 않습니다: Mars/Olympus' }));
+    expect(issues).toContainEqual(expect.objectContaining({
+      code: 'invalid_workflow_schema',
+      missingInputs: [expect.objectContaining({ name: 'recurrence', inputType: 'schedule' })],
+    }));
   });
 });

@@ -13,6 +13,7 @@ function triggerSnapshot(draft: WorkflowCanvasDraft): string {
   return JSON.stringify({
     triggerType: draft.triggerType,
     schedule: draft.schedule ?? '',
+    recurrence: draft.recurrence ?? null,
     timezone: draft.timezone ?? '',
     runAt: draft.runAt ?? '',
     gmailAccount: draft.gmailAccount ?? '',

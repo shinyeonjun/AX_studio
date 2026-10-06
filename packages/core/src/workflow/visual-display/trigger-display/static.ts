@@ -47,8 +47,8 @@ export function staticTriggerDisplay(
     const summary = schedule ? truncate(schedule, 22) : '예약 실행';
     return {
       label: '예약',
-      lines: [{ text: schedule ? schedule : '스케줄: ?', complete: Boolean(schedule) }],
-      tooltip: schedule ? `예약 · ${schedule}` : '예약 · 스케줄 미설정',
+      lines: [{ text: schedule ? schedule : '일정: ?', complete: Boolean(schedule) }],
+      tooltip: schedule ? `예약 · ${schedule}` : '예약 · 일정 미설정',
       iconConnector: undefined,
       card: {
         header: 'Trigger',
