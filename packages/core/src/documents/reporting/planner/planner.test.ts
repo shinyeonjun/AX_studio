@@ -283,6 +283,23 @@ describe('ReportPlanner', () => {
     }, layout, capacityPair);
     expect(layoutOnly.tables.find(table => table.id === 'summary')).not.toHaveProperty('limit');
 
+    // "Top 2 by amount" whose example filled exactly 2 rows is a ranking, not a layout cap.
+    const ranking = repairReportTableCapacities({
+      ...plan,
+      tables: plan.tables.map((table) => table.id === 'summary' ? {
+        ...table,
+        columns: [...table.columns, { id: 'amount', value: { kind: 'aggregate' as const, expression: { fn: 'sum' as const, value: { kind: 'field' as const, path: 'ledger.amount' } } } }],
+        sort: [{ columnId: 'amount', direction: 'desc' as const }],
+        limit: 2,
+      } : table),
+    } as never, layout, capacityPair);
+    expect(ranking.tables.find(table => table.id === 'summary')?.limit).toBe(2);
+    const byKey = repairReportTableCapacities({
+      ...plan,
+      tables: plan.tables.map((table) => table.id === 'summary' ? { ...table, sort: [{ columnId: 'key', direction: 'asc' as const }], limit: 2 } : table),
+    }, layout, capacityPair);
+    expect(byKey.tables.find(table => table.id === 'summary')).not.toHaveProperty('limit');
+
     const noLimit = repairReportTableCapacities({
       ...plan,
       tables: plan.tables.map((table) => table.id === 'summary' ? (() => {
