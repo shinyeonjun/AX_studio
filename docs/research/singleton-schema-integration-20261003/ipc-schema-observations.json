@@ -1,0 +1,3270 @@
+{
+  "fixtureKind": "synthetic_scripted_offline_integration",
+  "liveProviderCalls": 0,
+  "episodes": 63,
+  "completions": 5,
+  "noncompletions": 58,
+  "observations": [
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-01 pairs the same two guarded evaluations off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4672,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 1,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 24.116600000000062
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-01 pairs the same two guarded evaluations off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "answered",
+      "taskCompleted": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4672,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 2,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "metadataOperationResolution": {
+            "producer": "host_singleton",
+            "cause": "missing_metadata_operation_answer",
+            "questionRef": "metadataOperationRef",
+            "operationId": "http:orders:schema"
+          },
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 2,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              },
+              "metadataOperationResolution": {
+                "producer": "host_singleton",
+                "cause": "missing_metadata_operation_answer",
+                "questionRef": "metadataOperationRef",
+                "operationId": "http:orders:schema"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 8.543099999999868
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-02 pairs the same two guarded evaluations off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4669,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 4,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 4.748600000000124
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-02 pairs the same two guarded evaluations off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "answered",
+      "taskCompleted": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4669,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 5,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "metadataOperationResolution": {
+            "producer": "host_singleton",
+            "cause": "missing_metadata_operation_answer",
+            "questionRef": "metadataOperationRef",
+            "operationId": "http:orders:schema"
+          },
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 5,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              },
+              "metadataOperationResolution": {
+                "producer": "host_singleton",
+                "cause": "missing_metadata_operation_answer",
+                "questionRef": "metadataOperationRef",
+                "operationId": "http:orders:schema"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 5.440200000000004
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-03 pairs the same two guarded evaluations off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4702,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 7,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 5.604600000000119
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > SCHEMA-03 pairs the same two guarded evaluations off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "answered",
+      "taskCompleted": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4702,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 8,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "metadataOperationResolution": {
+            "producer": "host_singleton",
+            "cause": "missing_metadata_operation_answer",
+            "questionRef": "metadataOperationRef",
+            "operationId": "http:orders:schema"
+          },
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 8,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              },
+              "metadataOperationResolution": {
+                "producer": "host_singleton",
+                "cause": "missing_metadata_operation_answer",
+                "questionRef": "metadataOperationRef",
+                "operationId": "http:orders:schema"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.475500000000011
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > absent flag retains omission; a normal answered selection remains unchanged off/on",
+      "flag": "absent",
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 10,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 5.4133999999999105
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > absent flag retains omission; a normal answered selection remains unchanged off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "answered",
+      "taskCompleted": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 11,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 11,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.5437000000001717
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > absent flag retains omission; a normal answered selection remains unchanged off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "answered",
+      "taskCompleted": true,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 12,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 12,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.757499999999709
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > wrong_question retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 14,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.856199999999717
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > wrong_question retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 15,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5421999999998661
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > provider_error_with_http_200 retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 17,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.999300000000403
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > provider_error_with_http_200 retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 18,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.0154999999999745
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > missing_container retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 20,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6314000000002125
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > missing_container retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 21,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.4463000000000648
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > array_container retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 23,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.9135999999998603
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > array_container retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 24,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6539000000002488
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_answer retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 26,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 3.0376000000001113
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_answer retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 27,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.8979999999996835
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_envelope retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 29,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.7031999999999243
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_envelope retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 30,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6915000000003602
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_json retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 32,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6855999999997948
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > malformed_json retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 33,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5221999999998843
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > http_failure retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 35,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5893000000000939
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > http_failure retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 36,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5953999999996995
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > transport_failure retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 38,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5738999999998668
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > transport_failure retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 39,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6360999999997148
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > tie retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "invalid_decision",
+          "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unknown"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 41,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.713799999999992
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > tie retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "invalid_decision",
+          "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unknown"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 42,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5303000000003522
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > none retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "metadata_unavailable",
+          "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "none"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 44,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.611000000000331
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > none retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "metadata_unavailable",
+          "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "none"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 45,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5907999999999447
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unknown retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "metadata_unavailable",
+          "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unknown"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 47,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.7060999999998785
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unknown retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "metadata_unavailable",
+          "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unknown"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 48,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.956000000000131
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unsupported retains its original stop off/on, with no dispatch",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "unsupported_operation",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "unsupported_operation",
+          "reply": "선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unsupported"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 50,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5183999999999287
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unsupported retains its original stop off/on, with no dispatch",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "unsupported_operation",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "unsupported_operation",
+          "reply": "선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "unsupported"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 51,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.4655000000002474
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > goal_absent cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "ambiguous_intent",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3184,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "ambiguous_intent",
+          "reply": "데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "ambiguous",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 53,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5055999999999585
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > goal_absent cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "ambiguous_intent",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3184,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "ambiguous_intent",
+          "reply": "데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "ambiguous",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 54,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5208999999999833
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > target_absent cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "source_required",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3051,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "source_required",
+          "reply": "메타데이터를 확인할 등록된 소스 이름을 알려 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "none"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 56,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.267399999999725
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > target_absent cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "source_required",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3051,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "source_required",
+          "reply": "메타데이터를 확인할 등록된 소스 이름을 알려 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "none"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 57,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.10129999999981
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unresolved_pronoun cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "source_ambiguous",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3065,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "source_ambiguous",
+          "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "ambiguous"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 59,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.1502000000000407
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unresolved_pronoun cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "source_ambiguous",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3065,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "source_ambiguous",
+          "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "ambiguous"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 60,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.4834999999998217
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unknown_source cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "candidate_coverage_incomplete",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3069,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "candidate_coverage_incomplete",
+          "reply": "현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "unknown"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 62,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.107300000000123
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unknown_source cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "candidate_coverage_incomplete",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3069,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "candidate_coverage_incomplete",
+          "reply": "현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "unknown"
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 63,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.098399999999856
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unsupported_goal cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "unsupported_intent",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3225,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "unsupported_intent",
+          "reply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: OrdersAPI 매출 예측해줘",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "unsupported",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_applicable"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 65,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.328899999999976
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > unsupported_goal cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "unsupported_intent",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3225,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "unsupported_intent",
+          "reply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: OrdersAPI 매출 예측해줘",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "unsupported",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_applicable"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 66,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:ea574901a48ef1c74dd1731578e1497f2fabcd7a15521baeb1e35b5790b6ac7a",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.11429999999973
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > action cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3225,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "outside_slice",
+          "reply": "연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "action",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_applicable"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 68,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.1475000000000364
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > action cannot inherit a metadata goal/target from the sole source off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "scriptedFetches": 1,
+      "requestBytes": 3225,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "outside_slice",
+          "reply": "연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 1,
+          "assessment": {
+            "intent": "action",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_applicable"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 69,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.0282999999999447
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > missing dictionary remains noncompletion after one charged read on, zero reads off",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 71,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3626000000003842
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > missing dictionary remains noncompletion after one charged read on, zero reads off",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "metadata_unavailable",
+          "reply": "이 HTTP 엔드포인트의 등록된 필드 사전이 없습니다. 원격 데이터 스키마는 확인하지 않았습니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 72,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "metadataOperationResolution": {
+            "producer": "host_singleton",
+            "cause": "missing_metadata_operation_answer",
+            "questionRef": "metadataOperationRef",
+            "operationId": "http:orders:schema"
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.7604000000001179
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > cancel fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 57.32430000000022
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > cancel fences the delayed clean omission even when transport ignores abort",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 55.73749999999973
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > new_turn fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 57.47260000000006
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > new_turn fences the delayed clean omission even when transport ignores abort",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 56.639000000000124
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > connection fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 57.597999999999956
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > connection fences the delayed clean omission even when transport ignores abort",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 58.26350000000002
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > dictionary fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 57.55520000000024
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > dictionary fences the delayed clean omission even when transport ignores abort",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 57.82540000000017
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > policy_off fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 58.257300000000214
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > policy_off fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "fresh-off",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4670,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 87,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.1057999999998174
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > policy_off fences the delayed clean omission even when transport ignores abort",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [],
+      "forbiddenCalls": 0,
+      "elapsedMs": 56.41769999999997
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > policy_off fences the delayed clean omission even when transport ignores abort",
+      "flag": false,
+      "turnId": "fresh-off",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4670,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 89,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.0583999999998923
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > final real CAS conflict preserves the other writer and does not publish a metadata reply off/on",
+      "flag": false,
+      "turnId": "schema-turn",
+      "stop": "conflict",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "readerResults": [
+        {
+          "stop": "provider_failure",
+          "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "not_evaluated"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 91,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 0
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.2932000000000698
+    },
+    {
+      "case": "singleton schema recovery through real trusted IPC/store/service/adapter > final real CAS conflict preserves the other writer and does not publish a metadata reply off/on",
+      "flag": true,
+      "turnId": "schema-turn",
+      "stop": "conflict",
+      "taskCompleted": false,
+      "scriptedFetches": 2,
+      "requestBytes": 4674,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "readerResults": [
+        {
+          "stop": "answered",
+          "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+          "requestRevision": 1,
+          "evaluationPhases": 2,
+          "assessment": {
+            "intent": "schema",
+            "targetSourceRef": {
+              "state": "selected",
+              "sourceId": "http:orders",
+              "sourceRevision": 1
+            },
+            "metadataOperationRef": {
+              "state": "selected",
+              "operationId": "http:orders:schema"
+            },
+            "outputKind": "not_stated",
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 92,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              }
+            }
+          },
+          "metadataReadAttempts": 1,
+          "metadataOperationResolution": {
+            "producer": "host_singleton",
+            "cause": "missing_metadata_operation_answer",
+            "questionRef": "metadataOperationRef",
+            "operationId": "http:orders:schema"
+          },
+          "understanding": {
+            "version": 1,
+            "intent": "schema",
+            "targetSourceRef": "http:orders",
+            "metadataOperationRef": "http:orders:schema",
+            "outputKind": "readable_schema",
+            "needsGeneratedProse": false,
+            "provenance": {
+              "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+              "requestRevision": 1,
+              "sourceRevision": 1,
+              "catalogRevision": 1,
+              "policyRevision": 92,
+              "fieldAuthorities": {
+                "intent": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "targetSourceRef": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                },
+                "outputKind": {
+                  "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                  "requestRevision": 1
+                }
+              },
+              "selectedRefs": {
+                "intent": "schema",
+                "targetSourceRef": "source_0",
+                "outputKind": "not_stated",
+                "metadataOperationRef": "metadata_0"
+              },
+              "metadataOperationResolution": {
+                "producer": "host_singleton",
+                "cause": "missing_metadata_operation_answer",
+                "questionRef": "metadataOperationRef",
+                "operationId": "http:orders:schema"
+              }
+            }
+          }
+        }
+      ],
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3278000000000247
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import {
 interface OfflineInstallation {
   mode: 'offline_test';
   fetch: typeof fetch;
+  /** Internal default-off policy option; no renderer, UI or environment enablement. */
+  singletonSchemaSelectionRecovery?: boolean;
   onApprovedEvidence?: (evidence: SourceMetadataEvidence) => void;
 }
 interface Turn {
@@ -143,7 +145,8 @@ export async function runRegisteredHttpMetadataTurn(input: {
     const content = await runAxCommandChat({ requestId: input.requestId, workspaceSessionId: input.sessionId,
       harness: input.harness, commandService: input.commandService, decisionEngine: engine,
       messages: [], userMessage: input.userText, abortSignal: turn.controller.signal,
-      requestUnderstanding: { session: turn.session, onResult: result => { assertCurrent(turn); outcome = result; } },
+      requestUnderstanding: { session: turn.session, singletonSchemaSelectionRecovery: installed.singletonSchemaSelectionRecovery === true,
+        onResult: result => { assertCurrent(turn); outcome = result; } },
       onCommandResult: result => {
         assertCurrent(turn);
         installed.onApprovedEvidence?.(result.data as SourceMetadataEvidence);

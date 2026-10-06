@@ -63,13 +63,17 @@ export class JevDecisionError extends Error {
   readonly status?: number;
   readonly providerRequestCount?: number;
   readonly requestBytes?: number;
+  /** Host-parser provenance. Only a valid, empty answer map for a sole question qualifies. */
+  readonly failure?: Readonly<{ kind: 'missing_answer'; questionRef: string }>;
 
-  constructor(message: string, status?: number, providerRequestCount?: number, cause?: unknown, requestBytes?: number) {
+  constructor(message: string, status?: number, providerRequestCount?: number, cause?: unknown, requestBytes?: number,
+    failure?: { kind: 'missing_answer'; questionRef: string }) {
     super(message, cause === undefined ? undefined : { cause });
     this.name = 'JevDecisionError';
     this.status = status;
     this.providerRequestCount = providerRequestCount;
     this.requestBytes = requestBytes;
+    this.failure = failure && Object.freeze({ ...failure });
   }
 }
 
@@ -282,6 +286,7 @@ export class JevDecisionEngine implements DecisionEngine {
         providerRequestsStarted,
         error,
         providerRequestBytesStarted,
+        error instanceof JevDecisionError ? error.failure : undefined,
       );
     }
   }
@@ -483,10 +488,16 @@ export class JevDecisionEngine implements DecisionEngine {
       throw new JevDecisionError(`TypeSafe response did not match the expected Jev schema: ${parsed.error.message}`);
     }
     const parsedAnswers = parseAnswers(parsed.data.answers);
+    // A provider error/unknown envelope key cannot masquerade as a clean omission,
+    // even with HTTP 200. Ordinary successful-answer parsing stays unchanged.
+    const cleanOmission = Object.keys(request.questions).length === 1 && parsedAnswers.size === 0
+      && JevResponseSchema.strict().safeParse(rawBody).success;
 
     const answers = Object.fromEntries(entries.map(([id, question]) => {
       const rawAnswer = parsedAnswers.get(id);
-      if (!rawAnswer) throw new JevDecisionError(`TypeSafe response is missing answer ${id}.`);
+      if (!rawAnswer) throw new JevDecisionError(`TypeSafe response is missing answer ${id}.`,
+        undefined, undefined, undefined, undefined,
+        cleanOmission ? { kind: 'missing_answer', questionRef: id } : undefined);
       return [id, mapAnswer(id, question, rawAnswer)];
     }));
 
