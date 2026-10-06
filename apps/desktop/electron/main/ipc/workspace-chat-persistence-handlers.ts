@@ -3,6 +3,8 @@ import { getCore } from '../core-instance.js';
 import { normalizeChatMessages } from './chat-boundary.js';
 import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
 import { clearPendingCommand } from './workspace-chat-command-handlers/pending-command.js';
+import { clearHostChatSession } from './workspace-chat-command-handlers/host-state.js';
+import { notifyStateChanged } from '../state-broadcast.js';
 import { observeSavedWorkspaceTurn, registeredHttpMetadataAvailable } from './workspace-chat-command-handlers/metadata-turns.js';
 
 export function registerWorkspaceChatPersistenceHandlers() {
@@ -75,11 +77,16 @@ export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:deleteWorkspaceChat', async (_event, id: string) => {
     if (typeof id !== 'string' || !id.trim()) throw new Error('대화 id가 필요합니다.');
     const core = getCore();
+    // Delete first: a refusal (a PDF still being read) must leave the chat, its running turn and
+    // its pending input untouched. A turn that finishes afterwards cannot save into a deleted chat.
+    await core.workspaceSources.deleteSession(id);
     cancelWorkspaceChatSession(id);
     clearPendingCommand(id, true);
-    await core.workspaceSources.deleteSession(id);
+    clearHostChatSession(id);
     core.runtime.discardSessionToolDrafts(id);
     core.commandService.releaseWorkspaceSession(id);
+    // Runs that pointed at this chat changed; Activity must stop offering "결과 대화 보기".
+    notifyStateChanged();
     return { ok: true };
   });
 }

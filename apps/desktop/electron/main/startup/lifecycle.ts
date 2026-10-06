@@ -52,6 +52,8 @@ export function registerDesktopInstanceGuards(): void {
   }
 
   app.on('second-instance', () => showMainWindow());
+  // macOS: clicking the Dock icon brings back the hidden window (closing only hides it).
+  app.on('activate', () => showMainWindow());
 
   registerProcessCrashHandlers(() => setQuiting(true));
 }

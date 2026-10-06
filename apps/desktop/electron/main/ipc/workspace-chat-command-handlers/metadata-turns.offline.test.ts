@@ -14,7 +14,7 @@ import { installRegisteredHttpMetadataOffline } from './metadata-turns.js';
 const ipc = vi.hoisted(() => {
   const frame = { url: 'app://offline-fixture' };
   return { frame, handlers: new Map<string, (...args: any[]) => Promise<any>>(), getCore: vi.fn(),
-    window: { isDestroyed: () => false, webContents: { id: 42 } } };
+    window: { isDestroyed: () => false, webContents: { id: 42, send: () => undefined } } };
 });
 vi.mock('electron', () => ({ app: { isPackaged: true }, ipcMain: {
   removeHandler: (channel: string) => ipc.handlers.delete(channel),

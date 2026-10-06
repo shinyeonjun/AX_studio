@@ -60,6 +60,12 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       }
     } catch (err) {
       if (!ctx.isCurrentSession(epoch)) return;
+      // Never leave the previous conversation on screen as if it were this one: the next
+      // message would be sent into it. Show an empty conversation with the reason instead.
+      ctx.refs.workspaceSessionIdRef.current = undefined;
+      ctx.setWorkspaceSessionId(undefined);
+      publishWorkspaceTranscript(ctx, { messages: [] });
+      ctx.setWorkspaceSources([]);
       ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       if (ctx.isCurrentSession(epoch)) ctx.setBusy(false);

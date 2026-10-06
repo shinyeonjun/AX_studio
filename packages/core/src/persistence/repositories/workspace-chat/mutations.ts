@@ -195,7 +195,18 @@ export function upsertWorkspaceChatExecutionResult(
 }
 
 export function deleteWorkspaceChat(db: AppDatabase, id: string): void {
-  db.prepare('DELETE FROM workspace_chats WHERE id = ?').run(id);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('DELETE FROM workspace_chats WHERE id = ?').run(id);
+    // Runs and discovery sessions outlive the chat; they must not keep pointing at it
+    // (Activity would offer "결과 대화 보기" for a conversation that no longer exists).
+    db.prepare('UPDATE executions SET workspace_session_id = NULL WHERE workspace_session_id = ?').run(id);
+    db.prepare('UPDATE work_discovery_sessions SET workspace_session_id = NULL WHERE workspace_session_id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
   invalidateWorkspaceChatRevision(db, id);
   persistDatabase(db);
 }
