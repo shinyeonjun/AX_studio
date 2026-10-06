@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ConditionExprSchema } from '../../condition-expr/schema.js';
 import { preprocessConditionValue } from '../../condition-expr/normalize.js';
 import { PortBindingSchema } from '../../port-binding.js';
+import { RecurrenceSchema } from '../../schedule/recurrence.js';
 import {
   ActionInstanceSchema,
   parseBindingsRecord,
@@ -49,6 +50,7 @@ export const WorkflowCanvasDraftSchema = z.object({
     .optional(),
   triggerFilter: z.preprocess((value) => preprocessConditionValue(value), ConditionExprSchema.optional()),
   schedule: z.string().optional(),
+  recurrence: RecurrenceSchema.optional(),
   timezone: z.string().optional(),
   runAt: z.string().optional(),
   gmailAccount: z.string().optional(),

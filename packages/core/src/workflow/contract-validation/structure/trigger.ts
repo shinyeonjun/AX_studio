@@ -1,48 +1,63 @@
 import { isValidCronExpression, isValidTimeZone } from '../../cron.js';
+import { validateRecurrence } from '../../schedule/occurrences.js';
 import type { WorkflowIR } from '../../schema.js';
 import type { ContractValidationIssue } from '../types.js';
+
+/** One structured schedule form (repeat, days, times, start date, time zone); never a cron field. */
+const SCHEDULE_INPUT = {
+  name: 'recurrence',
+  label: '실행 일정',
+  question: '언제 반복할지 골라 주세요. 아래에서 다음 실행 날짜를 미리 볼 수 있습니다.',
+  target: 'trigger' as const,
+  inputType: 'schedule' as const,
+};
+
+function scheduleIssue(message: string): ContractValidationIssue {
+  return { code: 'invalid_workflow_schema', message, missingInputs: [SCHEDULE_INPUT] };
+}
+
+function scheduleTriggerIssues(trigger: Extract<NonNullable<WorkflowIR['trigger']>, { type: 'schedule' }>): ContractValidationIssue[] {
+  if (trigger.recurrence) {
+    const result = validateRecurrence(trigger.recurrence);
+    return result.ok ? [] : [scheduleIssue(`실행 일정을 확인해 주세요: ${result.issues.map((issue) => issue.message).join(' ')}`)];
+  }
+  const cron = trigger.schedule?.trim() ?? '';
+  if (!cron) return [scheduleIssue('반복 업무에 실행 일정이 필요합니다.')];
+  if (!isValidCronExpression(cron)) return [scheduleIssue('저장된 실행 일정을 이해하지 못했습니다. 일정을 다시 골라 주세요.')];
+  // A legacy cron with a missing or unknown zone is re-chosen through the same form.
+  if (!trigger.timezone.trim() || !isValidTimeZone(trigger.timezone)) {
+    return [scheduleIssue('실행 일정의 시간대를 확인하지 못했습니다. 일정을 다시 골라 주세요.')];
+  }
+  return [];
+}
 
 export function validateTriggerConfiguration(ir: WorkflowIR): ContractValidationIssue[] {
   const trigger = ir.trigger;
   if (!trigger) return [];
+  if (trigger.type === 'schedule') return scheduleTriggerIssues(trigger);
 
   const triggerInput = (field: string) => ({
     name: field,
-    label: trigger.type === 'schedule'
-      ? field === 'schedule' ? '실행 일정 (Cron)' : '시간대'
-      : field,
-    question: trigger.type === 'schedule'
-      ? field === 'schedule'
-        ? '실행 반복 시각을 cron 형식으로 입력해 주세요. 예: 매일 9시 = 0 9 * * *, 평일 9시 = 0 9 * * 1-5'
-        : '실행할 시간대를 입력해 주세요.'
-      : trigger.type + ' 트리거의 ' + field + ' 값을 입력해 주세요.',
+    label: field,
+    question: trigger.type + ' 트리거의 ' + field + ' 값을 입력해 주세요.',
     target: 'trigger' as const,
     parameterName: field,
-    ...(trigger.type === 'schedule' ? {
-      inputType: 'text' as const,
-      placeholder: field === 'schedule' ? '0 9 * * *' : 'Asia/Seoul',
-    } : {}),
   });
 
   const requiredFields: Array<[string, string | undefined]> =
-    trigger.type === 'schedule'
-      ? [
-          ['schedule', trigger.schedule],
-          ['timezone', trigger.timezone],
-        ]
-      : trigger.type === 'once'
-        ? [['runAt', trigger.runAt]]
-        : trigger.type === 'gmail.new_message'
-          ? [['accountId', trigger.accountId]]
-          : trigger.type === 'slack.new_message'
-            ? [['channel', trigger.channel]]
-            : trigger.type === 'local_folder.new_file'
-              ? [['folderId', trigger.folderId]]
-              : trigger.type === 'webhook.inbound'
-                ? [['path', trigger.path]]
-                : [];
+    trigger.type === 'once'
+      ? [['runAt', trigger.runAt]]
+      : trigger.type === 'gmail.new_message'
+        ? [['accountId', trigger.accountId]]
+        : trigger.type === 'slack.new_message'
+          ? [['channel', trigger.channel]]
+          : trigger.type === 'local_folder.new_file'
+            ? [['folderId', trigger.folderId]]
+            : trigger.type === 'webhook.inbound'
+              ? [['path', trigger.path]]
+              : [];
 
-  const issues: ContractValidationIssue[] = requiredFields.flatMap(([field, value]) =>
+  return requiredFields.flatMap(([field, value]) =>
     typeof value === 'string' && value.trim().length > 0
       ? []
       : [
@@ -53,27 +68,4 @@ export function validateTriggerConfiguration(ir: WorkflowIR): ContractValidation
           },
         ],
   );
-  if (
-    trigger.type === 'schedule' &&
-    trigger.schedule.trim() &&
-    !isValidCronExpression(trigger.schedule)
-  ) {
-    issues.push({
-      code: 'invalid_workflow_schema',
-      message: 'schedule cron 표현식이 올바르지 않습니다: ' + trigger.schedule,
-      missingInputs: [triggerInput('schedule')],
-    });
-  }
-  if (
-    trigger.type === 'schedule' &&
-    trigger.timezone.trim() &&
-    !isValidTimeZone(trigger.timezone)
-  ) {
-    issues.push({
-      code: 'invalid_workflow_schema',
-      message: 'schedule timezone이 올바르지 않습니다: ' + trigger.timezone,
-      missingInputs: [triggerInput('timezone')],
-    });
-  }
-  return issues;
 }

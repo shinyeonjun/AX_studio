@@ -45,6 +45,11 @@
       "import": "./dist/workflow/visual-display.js",
       "default": "./dist/workflow/visual-display.js"
     },
+    "./schedule": {
+      "types": "./dist/workflow/schedule/index.d.ts",
+      "import": "./dist/workflow/schedule/index.js",
+      "default": "./dist/workflow/schedule/index.js"
+    },
     "./tool-result": {
       "types": "./dist/contracts/tool-result.d.ts",
       "import": "./dist/contracts/tool-result.js",

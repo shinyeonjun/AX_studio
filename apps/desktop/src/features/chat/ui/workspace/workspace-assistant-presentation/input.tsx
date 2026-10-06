@@ -1,4 +1,5 @@
 import type { AxInputRequest, AxInputRequestOption } from '@ax-studio/core';
+import { ScheduleInputFields } from './schedule-input.js';
 
 export function InputRequestCard({
   request,
@@ -31,9 +32,21 @@ export function InputRequestCard({
   return (
     <div className="ax-workspace-presentation-input" data-testid={`input-request-${request.id}`}>
       <div className="ax-workspace-presentation-input-copy">
-        <label htmlFor={inputId}><strong>{request.label}</strong></label>
+        {request.type === 'schedule'
+          ? <strong id={inputId}>{request.label}</strong>
+          : <label htmlFor={inputId}><strong>{request.label}</strong></label>}
         {request.reason && <span id={reasonId}>{request.reason}</span>}
       </div>
+      {request.type === 'schedule' ? (
+        <div className="ax-workspace-presentation-input-schedule">
+          <ScheduleInputFields disabled={busy} labelledBy={inputId} describedBy={reasonId} onChange={onChange} />
+          {showSubmit && (
+            <button type="button" disabled={busy || (request.required && !value.trim())} onClick={submit}>
+              이 일정으로 입력
+            </button>
+          )}
+        </div>
+      ) : (
       <div className="ax-workspace-presentation-input-row">
         {options.length > 0 ? (
           <select
@@ -75,6 +88,7 @@ export function InputRequestCard({
           </button>
         )}
       </div>
+      )}
       {selectedOption?.description && (
         <span className="ax-workspace-presentation-option-description">{selectedOption.description}</span>
       )}

@@ -16,8 +16,9 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
   if (!ir.trigger) {
     slots.push({ slot: 'trigger', filled: false, ...CORE_QUESTIONS.trigger });
   } else if (ir.trigger.type === 'schedule') {
-    slots.push({ slot: 'trigger.schedule', filled: Boolean(ir.trigger.schedule), ...CORE_QUESTIONS['trigger.schedule'] });
-    slots.push({ slot: 'trigger.timezone', filled: Boolean(ir.trigger.timezone), ...CORE_QUESTIONS['trigger.timezone'] });
+    // One schedule slot: the time zone is chosen inside the same schedule form.
+    const filled = Boolean(ir.trigger.recurrence) || Boolean(ir.trigger.schedule?.trim() && ir.trigger.timezone?.trim());
+    slots.push({ slot: 'trigger.schedule', filled, ...CORE_QUESTIONS['trigger.schedule'] });
   } else if (ir.trigger.type === 'once') {
     slots.push({ slot: 'trigger.runAt', filled: Boolean(ir.trigger.runAt), ...CORE_QUESTIONS['trigger.runAt'] });
   }

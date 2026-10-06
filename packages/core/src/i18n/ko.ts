@@ -20,7 +20,7 @@ export const KO = {
   requiredness: {
     goal: { label: '지시 의도', question: '이 업무의 목적을 한 문장으로 말해주세요.' },
     trigger: { label: '트리거', question: '언제 이 업무를 실행할까요? (예: 새 메일, 매주 금요일)' },
-    'trigger.schedule': { label: '스케줄', question: '실행 스케줄을 알려주세요.' },
+    'trigger.schedule': { label: '실행 일정', question: '언제 반복할지 알려 주세요.' },
     'trigger.timezone': { label: '타임존', question: '시간대는 어디로 할까요?' },
     'trigger.runAt': { label: '예약 시각', question: '언제 한 번 실행할까요?' },
     action: { label: '실행 액션', question: '실행할 작업을 설명해주세요.' },
@@ -36,7 +36,7 @@ export const KO = {
   },
   workflowDocument: {
     triggerManual: '수동 실행',
-    triggerSchedule: (schedule: string, timezone: string) => `스케줄: ${schedule} (${timezone})`,
+    triggerSchedule: (description: string) => `일정: ${description || '미정'}`,
     triggerGmail: (accountId: string) => `Gmail 새 메일: ${accountId}`,
     triggerSlack: (channel: string) => `Slack 새 메시지: ${channel}`,
     triggerOnce: (runAt: string) => `1회 예약: ${runAt}`,

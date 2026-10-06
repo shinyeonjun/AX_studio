@@ -2,7 +2,7 @@ import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { WorkflowRuntime } from '../engine.js';
 import type { ExecutionResult } from '../types.js';
-import { findLatestCronMatch } from './cron.js';
+import { CompiledScheduleCache } from './schedule-match.js';
 
 function minuteKey(date = new Date()): string {
   return date.toISOString().slice(0, 16);
@@ -68,6 +68,7 @@ export class Scheduler {
   private lifecycleGeneration = 0;
   private tickInProgress = false;
   private activeTick?: Promise<void>;
+  private readonly schedules = new CompiledScheduleCache();
 
   constructor(
     private store: WorkflowStore,
@@ -179,7 +180,9 @@ export class Scheduler {
       : currentMinute;
     firstCatchUpMinute.setSeconds(0, 0);
 
-    for (const { id, workflow: ir } of this.store.listActiveWorkflowDefinitions()) {
+    const activeDefinitions = this.store.listActiveWorkflowDefinitions();
+    this.schedules.retain(new Set(activeDefinitions.map(({ id }) => id)));
+    for (const { id, workflow: ir } of activeDefinitions) {
       if (!ir?.trigger) continue;
 
       let due = false;
@@ -191,12 +194,7 @@ export class Scheduler {
         triggerType = 'once';
       } else if (ir.trigger.type === 'schedule') {
         // Coalesce missed sleep/restart intervals to the latest due minute.
-        const latestMatch = findLatestCronMatch(
-          ir.trigger.schedule,
-          firstCatchUpMinute,
-          currentMinute,
-          ir.trigger.timezone,
-        );
+        const latestMatch = this.schedules.get(id, ir.version, ir.trigger)(firstCatchUpMinute, currentMinute);
         if (!latestMatch) continue;
         occurrenceKey = minuteKey(latestMatch);
         due = !occurrenceAcknowledged(fired[id], occurrenceKey, now.getTime());

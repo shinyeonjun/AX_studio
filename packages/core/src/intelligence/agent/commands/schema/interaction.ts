@@ -6,6 +6,8 @@ export const AxInputRequestTypeSchema = z.enum([
   'email',
   'slack_channel',
   'folder',
+  /** Structured schedule form; the value is an encoded recurrence (see workflow/schedule/input-value). */
+  'schedule',
 ]);
 
 export const AxInputRequestOptionSchema = z.object({

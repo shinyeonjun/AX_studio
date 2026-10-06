@@ -9,6 +9,7 @@ import {
 import type { SideEffectLevel, WorkflowIR } from '../../../../workflow/schema.js';
 import { actionRefFor, resolveActionDefinition } from '../../../../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../../../../workflow/side-effect-resolve.js';
+import { describeSchedule, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
 
 const MAX_STEP_ITEMS = 20;
 const MAX_ITEM_CHARS = 500;
@@ -118,6 +119,13 @@ function autoSendNote(allowExternalAuto: boolean, hasExternal: boolean): string 
     : '자동 발송: 꺼짐(기본) — [외부] 표시 단계는 실행마다 승인이 필요합니다.';
 }
 
+/** Plain-Korean schedule plus a preview of the next actual runs, so the user confirms real dates. */
+function scheduleItems(schedule: ScheduleLike): string[] {
+  const preview = nextRunSentence(schedule, { count: 3 });
+  return [`일정: ${describeSchedule(schedule) || '미정'}`, ...(preview ? [preview] : [])]
+    .map((item) => item.slice(0, MAX_ITEM_CHARS));
+}
+
 function runNote(runOnceNow: boolean, hasExternal: boolean): string {
   if (!runOnceNow) return '지금은 실행하지 않고 시작 조건만 켭니다.';
   return hasExternal
@@ -169,7 +177,7 @@ export function confirmationPresentation(
         type: 'steps',
         title: '등록 내용',
         items: [
-          `스케줄: ${spec.cron} (${spec.timezone})`,
+          ...scheduleItems({ schedule: spec.cron, timezone: spec.timezone }),
           runNote(spec.runOnceNow, hasExternal),
         ],
       },
@@ -193,9 +201,13 @@ export function confirmationPresentation(
   };
 }
 
-function triggerSummary(trigger: WorkflowIR['trigger']): string {
+function triggerSummary(trigger: WorkflowIR['trigger']): string[] {
+  if (trigger?.type === 'schedule') return scheduleItems(trigger);
+  return [triggerLabel(trigger)];
+}
+
+function triggerLabel(trigger: WorkflowIR['trigger']): string {
   if (!trigger) return '수동 시작';
-  if (trigger.type === 'schedule') return `스케줄: ${trigger.schedule} (${trigger.timezone})`;
   if (trigger.type === 'gmail.new_message') return `Gmail 새 메일: ${trigger.accountId}`;
   if (trigger.type === 'slack.new_message') return `Slack 새 메시지: ${trigger.channel}`;
   if (trigger.type === 'local_folder.new_file') return `폴더 새 파일: ${trigger.folderId}`;
@@ -221,7 +233,7 @@ export function workflowConfirmationPresentation(
         type: 'steps',
         title: '등록 내용',
         items: [
-          triggerSummary(workflow.trigger),
+          ...triggerSummary(workflow.trigger),
           runNote(runOnceNow, hasExternal),
         ],
       },

@@ -6,6 +6,7 @@ import { actionRefFor } from '../../../../workflow/action-definition.js';
 import { AxExecutionEnqueueOnceArgsSchema, type AxCommand } from '../schema.js';
 import { AxWorkflowCreateArgsSchema, AxWorkflowUpdateArgsSchema } from '../schema/workflow-args.js';
 import { AxJobProposeArgsSchema, type AxJobProposeArgs } from '../job-registration/contract.js';
+import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 
 const JEV_ACTION_MAX_CHOICES = MAX_JEV_CHOICE_CANDIDATES;
 const SENSITIVE_PARAM = /(?:api[_-]?key|authorization|cookie|password|secret|token)/iu;
@@ -203,6 +204,15 @@ function applyTriggerInputValues(
 ): unknown {
   if (!trigger || typeof trigger !== 'object' || Array.isArray(trigger)) return trigger;
   const record = trigger as Record<string, unknown>;
+  if (record.type === 'schedule') {
+    // The schedule form replaces the whole schedule (cron or blank) with a validated recurrence.
+    const submitted = inputValues.filter((input) => input.target === 'trigger' && input.parameterName === 'recurrence');
+    const recurrence = submitted.length === 1 ? decodeScheduleInputValue(submitted[0]!.value) : undefined;
+    if (recurrence) {
+      const { schedule: _legacyCron, ...rest } = record;
+      return { ...rest, recurrence, timezone: recurrence.timezone };
+    }
+  }
   const updates = Object.fromEntries(inputValues.flatMap((input) =>
     input.target === 'trigger'
       && input.parameterName
