@@ -1,5 +1,5 @@
 import { realpathSync, statSync } from 'node:fs';
-import { isAbsolute, normalize, relative, resolve } from 'node:path';
+import { isAbsolute, normalize, relative, resolve, sep } from 'node:path';
 
 interface ResolvedFolderPath {
   ok: true;
@@ -23,7 +23,8 @@ function normalizeForCompare(path: string): string {
 /** Whether `targetReal` stays inside `rootReal` after normalization. */
 export function isPathContainedInRoot(rootReal: string, targetReal: string): boolean {
   const rel = relative(normalizeForCompare(rootReal), normalizeForCompare(targetReal));
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  // Only a leading `..` segment escapes; a child named `..archive` is inside.
+  return !(rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel));
 }
 
 export function resolveFolderRoot(folderPath: string): ResolveFolderPathResult {

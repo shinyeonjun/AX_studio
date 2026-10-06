@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../../db.js';
 import { readRows } from '../../db/types.js';
 import type { DiscoveryExampleRecord } from './contracts.js';
+import { mapRowsTolerant } from '../../tolerant-rows.js';
 import { parseArtifactIds } from './parsing.js';
 
 export function insertDiscoveryExample(
@@ -43,7 +44,7 @@ export function listDiscoveryExamples(db: AppDatabase, sessionId: string): Disco
   const rows = readRows<Record<string, unknown>>(db.prepare(
     'SELECT * FROM work_discovery_examples WHERE session_id = ? ORDER BY created_at ASC',
   ), sessionId);
-  return rows.map((row) => ({
+  return mapRowsTolerant(db, 'work_discovery_examples', rows, (row) => row.id, (row) => ({
     id: String(row.id),
     sessionId: String(row.session_id),
     label: row.label ? String(row.label) : undefined,

@@ -15,6 +15,10 @@ export {
   appLogFileName,
   disableAppFileLog,
   enableAppFileLog,
-  isAppFileLogEnabled,
+  flushAppLog,
+  flushAppLogSync,
+  redactLogText,
+  sortAppLogFilesNewestFirst,
   type AppLogLevel,
+  type AppLogRetention,
 } from './app-log.js';

@@ -12,6 +12,7 @@ import {
   parseStoredAgentScopedContext,
 } from '../../intelligence/agent/scoped-context.js';
 import * as settingsRepo from './settings-repository.js';
+import { mapRowsTolerant, recordCorruptRow } from '../tolerant-rows.js';
 
 export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: string; version: number } {
   const now = new Date().toISOString();
@@ -128,6 +129,7 @@ export function listWorkflowDefinitions(db: AppDatabase): Array<{
   active: boolean;
   latestVersion: number;
   workflow: WorkflowIR | null;
+  corrupted?: true;
 }> {
   const rows = readRows<{
     id: string;
@@ -143,18 +145,21 @@ export function listWorkflowDefinitions(db: AppDatabase): Array<{
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)`,
   ));
 
-  return rows.map(({ id, name, active, version, ir_json }) => ({
-    id,
-    name,
-    active: Boolean(active),
-    latestVersion: version ?? 0,
-    workflow: version === null || ir_json === null
-      ? null
-      : parseWorkflowVersion(id, version, ir_json),
-  }));
+  return rows.map(({ id, name, active, version, ir_json }) => {
+    const summary = { id, name, active: Boolean(active), latestVersion: version ?? 0 };
+    if (version === null || ir_json === null) return { ...summary, workflow: null };
+    try {
+      return { ...summary, workflow: parseWorkflowVersion(id, version, ir_json) };
+    } catch (error) {
+      // Keep the workflow listed so the user can see and delete or repair it.
+      recordCorruptRow(db, 'workflow_versions', `${id}@${version}`, error);
+      return { ...summary, workflow: null, corrupted: true as const };
+    }
+  });
 }
 
 // Scheduler and trigger scans share this batch read instead of querying each active workflow separately.
+// A corrupt workflow is skipped (and reported) so it cannot stop every other automation.
 export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: string; workflow: WorkflowIR }> {
   const rows = readRows<{ id: string; version: number; ir_json: string }>(db.prepare(
     `SELECT w.id, v.version, v.ir_json
@@ -164,7 +169,7 @@ export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: stri
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)
      WHERE w.active = 1`,
   ));
-  return rows.map(({ id, version, ir_json }) => ({
+  return mapRowsTolerant(db, 'workflow_versions', rows, (row) => `${row.id}@${row.version}`, ({ id, version, ir_json }) => ({
     id,
     workflow: parseWorkflowVersion(id, version, ir_json),
   }));

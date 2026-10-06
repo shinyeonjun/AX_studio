@@ -76,6 +76,26 @@ export function updateExecutionLog(db: AppDatabase, id: string, log: unknown[]) 
   db.prepare('UPDATE executions SET log_json = ? WHERE id = ?').run(JSON.stringify(log), id);
 }
 
+/**
+ * Appends entries to a stored JSON-array log without re-serializing the whole
+ * log in JS (updateExecutionLog is O(n) per call, O(n^2) per run). Returns false
+ * when the row is missing or its log is not a plain JSON array; callers then
+ * fall back to updateExecutionLog with the full log.
+ */
+export function appendExecutionLog(db: AppDatabase, id: string, entries: readonly unknown[]): boolean {
+  if (entries.length === 0) return true;
+  const fragment = entries.map((entry) => JSON.stringify(entry)).join(',');
+  const result = db.prepare(
+    `UPDATE executions
+     SET log_json = CASE
+       WHEN log_json = '[]' THEN '[' || ? || ']'
+       ELSE substr(log_json, 1, length(log_json) - 1) || ',' || ? || ']'
+     END
+     WHERE id = ? AND typeof(log_json) = 'text' AND substr(log_json, 1, 1) = '[' AND substr(log_json, -1, 1) = ']'`,
+  ).run(fragment, fragment, id);
+  return result.changes === 1;
+}
+
 export function hasPendingApprovalForWorkflow(db: AppDatabase, workflowId: string): boolean {
   const row = readRow<{ found: number }>(db.prepare(
     `SELECT 1 AS found
@@ -228,4 +248,11 @@ export function clearExecutions(db: AppDatabase): number {
     db.exec('ROLLBACK');
     throw error;
   }
+}
+
+/** Startup reconciliation: open executions that may have lost their live runner. */
+export function listUnfinishedExecutions(db: AppDatabase): Array<{ id: string; status: ExecutionStatus; workflowId: string | null }> {
+  return readRows<{ id: string; status: ExecutionStatus; workflow_id: string | null }>(db.prepare(
+    "SELECT id, status, workflow_id FROM executions WHERE status IN ('running', 'pending_approval')",
+  )).map((row) => ({ id: row.id, status: row.status, workflowId: row.workflow_id }));
 }

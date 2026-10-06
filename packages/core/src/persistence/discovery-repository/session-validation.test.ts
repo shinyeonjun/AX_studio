@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
 import {
   getDiscoverySession,
   listDiscoverySessions,
 } from '../repositories/work-discovery-repository.js';
+import { listCorruptRows } from '../tolerant-rows.js';
 
 describe('discovery session storage validation', () => {
   it('reports malformed session JSON with the affected session id', async () => {
@@ -18,9 +19,17 @@ describe('discovery session storage validation', () => {
     expect(() => getDiscoverySession(db, 'wd_corrupt')).toThrowError(
       expect.objectContaining({ code: 'invalid_discovery_session_json', sessionId: 'wd_corrupt' }),
     );
-    expect(() => listDiscoverySessions(db)).toThrowError(
-      expect.objectContaining({ code: 'invalid_discovery_session_json', sessionId: 'wd_corrupt' }),
-    );
+    // The list (read by the discovery service at startup) skips and reports the row.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      expect(listDiscoverySessions(db)).toEqual([]);
+      expect(listCorruptRows(db)).toEqual([
+        expect.objectContaining({ table: 'work_discovery_sessions', id: 'wd_corrupt', code: 'invalid_discovery_session_json' }),
+      ]);
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('월간 보고');
+    } finally {
+      warn.mockRestore();
+    }
     db.close?.();
   });
 

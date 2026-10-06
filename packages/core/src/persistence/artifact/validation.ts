@@ -51,7 +51,25 @@ export function safeFileName(fileName: string): string {
     .replace(/[<>:"|?*]/g, '_')
     .trim()
     .replace(/[. ]+$/g, '');
-  return sanitized && sanitized !== '.' && sanitized !== '..' ? sanitized.slice(0, 180) : 'artifact.bin';
+  if (!sanitized || sanitized === '.' || sanitized === '..') return 'artifact.bin';
+  return truncateFileName(sanitized, MAX_FILE_NAME_LENGTH);
+}
+
+// Stored as `${id}_${name}` under the data root; stays well inside NTFS's
+// 255-unit component limit and leaves headroom for deep data-root paths.
+const MAX_FILE_NAME_LENGTH = 120;
+
+/** Truncates by code point and keeps a short extension so type detection survives. */
+function truncateFileName(name: string, max: number): string {
+  const chars = Array.from(name);
+  if (chars.length <= max) return name;
+  const dot = name.lastIndexOf('.');
+  const extension = dot > 0 ? Array.from(name.slice(dot)) : [];
+  if (extension.length > 1 && extension.length <= 16) {
+    const stem = Array.from(name.slice(0, dot)).slice(0, max - extension.length).join('').replace(/[. ]+$/g, '');
+    return (stem || 'artifact') + extension.join('');
+  }
+  return chars.slice(0, max).join('').replace(/[. ]+$/g, '') || 'artifact.bin';
 }
 
 export { readJsonFile };

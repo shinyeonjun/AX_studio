@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AppDatabase } from '../db.js';
 import { readRow, readRows } from '../db/types.js';
 import type { WorkflowRepairProposalRow } from '../rows.js';
+import { mapRowsTolerant } from '../tolerant-rows.js';
 import {
   emptyRepairReplaySummary,
   RepairProposalSchema,
@@ -57,7 +58,7 @@ export function listWorkflowRepairProposals(
       : options.status
         ? readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals WHERE status = ? ORDER BY created_at ASC, id ASC'), options.status)
         : readRows<WorkflowRepairProposalRow>(db.prepare('SELECT * FROM workflow_repair_proposals ORDER BY created_at ASC, id ASC'));
-  return rows.map(mapRow);
+  return mapRowsTolerant(db, 'workflow_repair_proposals', rows, (row) => row.id, mapRow);
 }
 
 export function createWorkflowRepairProposal(

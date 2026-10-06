@@ -12,6 +12,32 @@ function renameColumnIfNeeded(db: AppDatabase, table: string, from: string, to: 
   }
 }
 
+/**
+ * Older writers could store the same (workflow_id, version) twice, which made
+ * the unique index below fail and blocked startup. Keep the latest row of each
+ * duplicate group (created_at, then rowid) so the index can be created.
+ */
+function dedupeWorkflowVersions(db: AppDatabase): void {
+  const duplicate = db.prepare(
+    'SELECT 1 AS found FROM workflow_versions GROUP BY workflow_id, version HAVING COUNT(*) > 1 LIMIT 1',
+  ).get();
+  if (!duplicate) return;
+  const newer = columnNames(db, 'workflow_versions').includes('created_at')
+    ? `(newer.created_at > workflow_versions.created_at
+           OR (newer.created_at = workflow_versions.created_at AND newer.rowid > workflow_versions.rowid))`
+    : 'newer.rowid > workflow_versions.rowid';
+  const result = db.prepare(
+    `DELETE FROM workflow_versions
+     WHERE EXISTS (
+       SELECT 1 FROM workflow_versions newer
+       WHERE newer.workflow_id = workflow_versions.workflow_id
+         AND newer.version = workflow_versions.version
+         AND ${newer}
+     )`,
+  ).run();
+  console.warn('[db] removed duplicate workflow versions before creating the unique index', { removed: result.changes });
+}
+
 export function applyLegacyMigrations(db: AppDatabase): void {
   renameColumnIfNeeded(db, 'executions', 'skill_id', 'workflow_id');
   renameColumnIfNeeded(db, 'executions', 'skill_version', 'workflow_version');
@@ -36,6 +62,7 @@ export function applyLegacyMigrations(db: AppDatabase): void {
   if (!columnNames(db, 'workspace_chats').includes('session_memo_json')) {
     db.exec("ALTER TABLE workspace_chats ADD COLUMN session_memo_json TEXT NOT NULL DEFAULT '{}'");
   }
+  dedupeWorkflowVersions(db);
   db.exec([
     // Keep existing stores aligned with the fresh-schema state-query index.
     'CREATE INDEX IF NOT EXISTS idx_approvals_status_created_at ON approvals(status, created_at DESC);',

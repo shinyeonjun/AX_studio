@@ -94,6 +94,9 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
+  // Bounded history retention; hosts repeat it periodically. Never fatal.
+  try { store.pruneHistory(); }
+  catch (error) { console.warn('[AX Studio] history retention failed', { code: (error as { code?: unknown } | null)?.code }); }
   const artifactStore = new ArtifactStore(paths.artifacts);
   const generatedArtifactStore = new ArtifactStore(paths.generated.reports);
   const generatedArtifactSink: ArtifactSink = {

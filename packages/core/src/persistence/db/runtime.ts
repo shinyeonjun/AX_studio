@@ -1,4 +1,5 @@
-import { applyMigrations } from './schema.js';
+import { applyMigrations, type ApplyMigrationsOptions } from './schema.js';
+import { writeMigrationBackup } from './backup.js';
 import type { AppDatabase } from './types.js';
 
 export interface DatabaseRuntimeDependencies {
@@ -12,7 +13,7 @@ export interface DatabaseRuntimeDependencies {
     all(sql: string, params?: unknown[]): Record<string, unknown>[];
     close(): void;
   }>;
-  applyMigrations?: (database: AppDatabase) => void;
+  applyMigrations?: (database: AppDatabase, options?: ApplyMigrationsOptions) => void;
 }
 
 function shouldUseSqlJsBackend(): boolean {
@@ -21,17 +22,40 @@ function shouldUseSqlJsBackend(): boolean {
 
 const loggedFallbacks = new Set<string>();
 
-function logDatabaseFallback(message: string, hint: string, error: unknown): void {
+export interface DatabaseBackendStatus {
+  backend: 'native' | 'sqljs';
+  /** True when native SQLite was wanted but unavailable (not an explicit AX_DB_BACKEND=sqljs). */
+  fallback: boolean;
+  reason?: string;
+}
+
+let backendStatus: DatabaseBackendStatus | undefined;
+
+/** Backend chosen by the most recent writable open; hosts surface `fallback` to the user. */
+export function getDatabaseBackendStatus(): DatabaseBackendStatus | undefined {
+  return backendStatus ? { ...backendStatus } : undefined;
+}
+
+function describeFallback(error: unknown): string {
   const rawDetail = error instanceof Error ? error.message : String(error);
-  const detail = /Could not locate the bindings file/.test(rawDetail)
+  return /Could not locate the bindings file/.test(rawDetail)
     ? 'native binding is not installed'
     : /compiled against a different Node\.js version|Module did not self-register/.test(rawDetail)
       ? 'native binding ABI is incompatible'
       : rawDetail;
+}
+
+function logDatabaseFallback(message: string, hint: string, detail: string): void {
   const key = `${message}:${detail}`;
   if (loggedFallbacks.has(key)) return;
   loggedFallbacks.add(key);
-  console.warn('[db] ' + message + '.' + hint + ' ' + detail);
+  // Loud and structured: sql.js keeps the whole database in memory and
+  // persists debounced full-file snapshots, which is a real durability downgrade.
+  console.warn('[db] ' + message + '.' + hint + ' ' + detail, {
+    event: 'database_backend_fallback',
+    backend: 'sqljs',
+    reason: detail,
+  });
 }
 
 function isNativeBackendUnavailable(error: unknown): boolean {
@@ -45,22 +69,25 @@ function isNativeBackendUnavailable(error: unknown): boolean {
     (/Cannot find module|Could not locate the bindings file|compiled against a different Node\.js version/).test(candidate.message);
 }
 
-/** @deprecated Use createDatabaseAsync(). sql.js init is async in all environments. */
-export function createDatabase(_path: string): AppDatabase {
-  throw new Error('Use createDatabaseAsync() — sync database init is no longer supported.');
-}
-
 export async function createDatabaseAsync(
   path: string,
   dependencies: DatabaseRuntimeDependencies = {},
 ): Promise<AppDatabase> {
+  let fallbackReason: string | undefined;
   if (!shouldUseSqlJsBackend()) {
     let adapter: AppDatabase | undefined;
     try {
       const createNativeDatabase = dependencies.createNativeDatabase
         ?? (await import('../db-native.js')).createNativeDatabase;
       adapter = createNativeDatabase(path);
-      (dependencies.applyMigrations ?? applyMigrations)(adapter);
+      const native = adapter;
+      (dependencies.applyMigrations ?? applyMigrations)(native, path === ':memory:' ? {} : {
+        // VACUUM INTO captures committed WAL content, unlike a raw file copy.
+        backup: (fromVersion) => writeMigrationBackup(path, fromVersion, (target) => {
+          native.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
+        }),
+      });
+      backendStatus = { backend: 'native', fallback: false };
       return adapter;
     } catch (error) {
       try {
@@ -73,12 +100,16 @@ export async function createDatabaseAsync(
         typeof process.versions.electron === 'string'
           ? ' If native SQLite is required, set AX_NATIVE_DB_BUILD=1 before running npm run ensure:native -w @ax-studio/desktop.'
           : '';
-      logDatabaseFallback('better-sqlite3 unavailable; using sql.js', hint, error);
+      const reason = describeFallback(error);
+      logDatabaseFallback('better-sqlite3 unavailable; using sql.js', hint, reason);
+      fallbackReason = reason;
     }
   }
   const createSqlJsDatabase = dependencies.createSqlJsDatabase
     ?? (await import('./sqljs.js')).createSqlJsDatabase;
-  return createSqlJsDatabase(path);
+  const database = await createSqlJsDatabase(path);
+  backendStatus = { backend: 'sqljs', fallback: fallbackReason !== undefined, ...(fallbackReason ? { reason: fallbackReason } : {}) };
+  return database;
 }
 
 export async function openReadonlySqlite(
@@ -99,7 +130,7 @@ export async function openReadonlySqlite(
         typeof process.versions.electron === 'string'
           ? ' If native SQLite is required, set AX_NATIVE_DB_BUILD=1 before running npm run ensure:native -w @ax-studio/desktop.'
           : '';
-      logDatabaseFallback('better-sqlite3 readonly open failed; using sql.js', hint, error);
+      logDatabaseFallback('better-sqlite3 readonly open failed; using sql.js', hint, describeFallback(error));
     }
   }
 
