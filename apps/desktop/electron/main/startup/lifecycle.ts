@@ -81,8 +81,10 @@ export function registerDesktopShutdown(): void {
           ? await drainDesktopCore(core, startupTask)
           : await drainWithin([() => startupTask], 5_000);
         if (!drained) {
-          // Do not close the shared DB underneath still-running callbacks.
+          // Do not close the shared DB underneath still-running callbacks, but write what is
+          // already committed: the sql.js fallback otherwise loses its debounced last second.
           console.error('[AX Studio] 종료 대기 초과: 미완료 작업은 재시작 시 확인이 필요합니다.');
+          try { core?.db.persistNow(); } catch { /* A transaction still open stays uncommitted. */ }
           flushAppLogSync();
           app.exit(1);
           return;
