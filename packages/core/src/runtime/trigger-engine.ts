@@ -103,6 +103,8 @@ export class TriggerEngine {
   }
 
   tick(): Promise<void> {
+    // Push events the runtime refused earlier (nothing ran) get another chance each tick.
+    if (this.acceptingEvents) this.events.replayPendingEvents();
     return this.poller.tick();
   }
 }
