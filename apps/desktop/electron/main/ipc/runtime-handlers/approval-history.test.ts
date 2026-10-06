@@ -26,7 +26,9 @@ import { registerRuntimeApprovalHandlers } from './approval.js';
 
 function trustedEvent() { return { sender: { id: 7, mainFrame: mocks.frame }, senderFrame: mocks.frame }; }
 
-describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidence (%s)', backend => {
+// Real-file DB integration (fsync on every write): well under 1 s locally, but Windows CI disks
+// have exceeded the 5 s default, so allow more time without hiding a hang.
+describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidence (%s)', { timeout: 30_000 }, backend => {
   let directory: string;
   let db: AppDatabase;
   let runtime: WorkflowRuntime | undefined;

@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron as electron, expect, test } from '@playwright/test';
-import { ArtifactStore } from '@ax-studio/core';
+import { ArtifactStore, buildAxDataPaths, createDatabaseAsync, ensureAxDataLayout, WorkflowStore } from '@ax-studio/core';
 import * as XLSX from 'xlsx';
 import { fixtureRuntime, isolatedFixtureEnv } from '../lib/isolated-fixture-env.mjs';
 
@@ -111,6 +111,34 @@ test('scripted order export result card downloads and saves XLSX through rendere
     { fileName: 'table.xlsx', mimeType },
   );
 
+  // Execution results are host-authored: a renderer-saved transcript cannot mint one (the host
+  // drops results it never recorded). Seed the conversation and its result through the host
+  // store, exactly like a finished run publishes it, before the app opens the database.
+  const transcript = [
+    { role: 'user' as const, content: scripted.results[0]!.prompt },
+    { role: 'assistant' as const, content: scripted.results[0]!.reply! },
+    { role: 'user' as const, content: scripted.results[1]!.prompt },
+    { role: 'assistant' as const, content: scripted.results[1]!.reply! },
+    { role: 'user' as const, content: scripted.results[2]!.prompt },
+    { role: 'assistant' as const, content: scripted.results[2]!.reply! },
+    { role: 'user' as const, content: execution.prompt },
+    { role: 'assistant' as const, content: execution.reply!, presentations: [plan] },
+  ];
+  const dataPaths = buildAxDataPaths(dataRoot);
+  ensureAxDataLayout(dataPaths);
+  const seedDb = await createDatabaseAsync(dataPaths.database);
+  const seedStore = new WorkflowStore(seedDb);
+  const session = seedStore.saveWorkspaceChat({ messages: transcript });
+  seedStore.upsertWorkspaceChatExecutionResult(session.id, {
+    role: 'assistant',
+    content: 'Scripted order export completed.',
+    kind: 'execution_result',
+    executionId: 'qa-scripted-export-' + Date.now(),
+    executionStatus: 'success',
+    generatedSpreadsheet: { artifactId: stored.id, fileName: stored.fileName, size: stored.size, mimeType },
+  });
+  seedDb.close?.();
+
   const mainEntry = join(repoRoot, 'apps/desktop/out/main/index.js');
   const env = {
     ...safeFixtureEnv,
@@ -184,32 +212,6 @@ test('scripted order export result card downloads and saves XLSX through rendere
       };
     });
 
-    const messages = [
-      { role: 'user' as const, content: scripted.results[0]!.prompt },
-      { role: 'assistant' as const, content: scripted.results[0]!.reply! },
-      { role: 'user' as const, content: scripted.results[1]!.prompt },
-      { role: 'assistant' as const, content: scripted.results[1]!.reply! },
-      { role: 'user' as const, content: scripted.results[2]!.prompt },
-      { role: 'assistant' as const, content: scripted.results[2]!.reply! },
-      { role: 'user' as const, content: execution.prompt },
-      { role: 'assistant' as const, content: execution.reply!, presentations: [plan] },
-      {
-        role: 'assistant' as const,
-        content: 'Scripted order export completed.',
-        kind: 'execution_result' as const,
-        executionId: 'qa-scripted-export-' + Date.now(),
-        executionStatus: 'success' as const,
-        generatedSpreadsheet: {
-          artifactId: stored.id,
-          fileName: stored.fileName,
-          size: stored.size,
-          mimeType,
-        },
-      },
-    ];
-    const session = await page.evaluate(async (transcript) => window.ax.saveWorkspaceChat(undefined, transcript), messages);
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
     const sessionButton = page.getByRole('button', { name: session.title, exact: true });
     await expect(sessionButton).toBeVisible({ timeout: 15_000 });
     await sessionButton.click();

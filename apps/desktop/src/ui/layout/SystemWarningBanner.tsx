@@ -37,7 +37,7 @@ export function corruptRowCount(state: AppState | null): number {
 function CorruptRowsNotice({ summary, onDismiss }: { summary: NonNullable<AppState['corruptRows']>; onDismiss: () => void }) {
   const hidden = summary.total - summary.rows.length;
   return (
-    <div className="state-banner state-banner--stale system-corrupt-rows" role="alert">
+    <div className="state-banner state-banner--stale system-corrupt-rows" role="status">
       <div className="system-corrupt-rows-body">
         <span>손상된 데이터 {summary.total}건이 건너뛰어졌습니다. 해당 항목은 목록과 실행에서 제외됩니다.</span>
         <details className="system-corrupt-rows-details">
@@ -75,7 +75,7 @@ export function SystemWarningBanner({ state }: { state: AppState | null }) {
   return (
     <>
       {visible.map((key) => (
-        <div key={key} className="state-banner state-banner--stale" role="alert">
+        <div key={key} className="state-banner state-banner--stale" role="status">
           <span>{SYSTEM_WARNING_COPY[key]}</span>
           <button
             type="button"

@@ -43,6 +43,7 @@ export type ScenarioAction =
   | { action: 'waitForAssistantReply'; timeoutMs?: number; optional?: boolean }
   | { action: 'startDiscoveryFixture'; artifact: string; folder: string; label?: string }
   | { action: 'waitForDiscovery'; status: string; timeoutMs?: number }
+  | { action: 'confirmDiscoveryRule' }
   | { action: 'publishDiscovery'; name?: string }
   | { action: 'switchSession'; label?: string; titleContains?: string }
   | { action: 'deleteSession'; titleContains?: string; label?: string }
