@@ -2029,6 +2029,40 @@
   cursor: pointer;
 }
 
+/* "이걸 반복 업무로 만들기" under a finished one-off result. */
+.ax-make-recurring {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.ax-make-recurring--open {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 12px;
+}
+
+.ax-make-recurring-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ax-make-recurring-hint {
+  margin: 0;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-make-recurring-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Structured schedule form (no rule syntax is ever shown). */
 .ax-workspace-presentation-input-schedule {
   display: grid;

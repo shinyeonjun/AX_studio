@@ -176,6 +176,7 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
     workflowRegistered,
     registerWorkflow: workflowActions.registerWorkflow,
     sendMessage: messageActions.sendMessage,
+    makeRecurring: messageActions.makeRecurring,
     approveChatApproval: workflowActions.approveChatApproval,
     rejectChatApproval: workflowActions.rejectChatApproval,
     confirmToolResult: workflowActions.confirmToolResult,

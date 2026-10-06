@@ -8,7 +8,16 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
   // Production context carries a single React state pair. Older isolated callers
   // capture their pair once here, before any refresh can advance the shared ref.
   const captured = ctx.transcriptSnapshot ?? transcriptSnapshot(ctx.chatMessages, ctx.refs.transcriptRevisionRef?.current);
-  const sendChat = async (text: string, metadataLane?: WorkspaceChatSaveOptions['metadataLane']) => {
+  /**
+   * One user turn: save the user line, get the reply, save the transcript. `reply` replaces the
+   * Jev chat call for host-built turns (e.g. a recurring-job draft) so they share every
+   * transcript-revision and session guard of an ordinary message.
+   */
+  const sendChat = async (
+    text: string,
+    metadataLane?: WorkspaceChatSaveOptions['metadataLane'],
+    reply?: (sessionId: string) => Promise<WorkspaceSendResponse>,
+  ) => {
     if (ctx.refs.busyRef.current) return;
     const epoch = ctx.refs.sessionEpochRef.current;
     const requestId = crypto.randomUUID();
@@ -49,13 +58,15 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         publishWorkspaceTranscript(ctx, initialSaved);
         ctx.setWorkspaceSessionId(initialSaved.id);
       }
-      const res = (await window.ax.sendCommandChat(
-        text,
-        requestId,
-        originWorkflowId,
-        initialSaved.id,
-        ...(metadataLane ? [{ metadataLane }] : []),
-      )) as WorkspaceSendResponse;
+      const res = reply
+        ? await reply(initialSaved.id)
+        : (await window.ax.sendCommandChat(
+          text,
+          requestId,
+          originWorkflowId,
+          initialSaved.id,
+          ...(metadataLane ? [{ metadataLane }] : []),
+        )) as WorkspaceSendResponse;
       responseReceived = true;
       if (res.persistedReply) {
         const receipt = res.persistedReply;
@@ -185,5 +196,19 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
     await sendChat(text, options?.metadataLane);
   };
 
-  return { sendMessage };
+  /**
+   * Turns a finished one-off run of this conversation into a recurring-job draft on the chosen
+   * schedule. The host reuses the steps that ran; the draft still needs "저장하고 켜기".
+   */
+  const makeRecurring = async (executionId: string, scheduleValue: string) => {
+    if (ctx.refs.busyRef.current || !executionId || !scheduleValue) return;
+    ctx.setError('');
+    await sendChat(
+      `이 작업을 반복 업무로 만들기: ${scheduleValue}`,
+      undefined,
+      (sessionId) => window.ax.proposeRecurringFromExecution(sessionId, executionId, scheduleValue) as Promise<WorkspaceSendResponse>,
+    );
+  };
+
+  return { sendMessage, makeRecurring };
 }

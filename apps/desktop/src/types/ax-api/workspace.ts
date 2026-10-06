@@ -10,6 +10,12 @@ import type {
 } from '@ax-studio/core';
 
 export interface AxWorkspaceApi {
+  /** Draft a recurring job from a finished one-off run of this conversation (confirmation card only). */
+  proposeRecurringFromExecution: (workspaceSessionId: string, executionId: string, scheduleValue: string) => Promise<{
+    role: 'assistant';
+    content: string;
+    presentations: AxUiPresentation[];
+  }>;
   sendCommandChat: (
     userMessage: string,
     requestId?: string,
