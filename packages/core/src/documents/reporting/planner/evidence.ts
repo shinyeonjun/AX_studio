@@ -293,14 +293,19 @@ type NumericEvidenceSummary = {
 };
 
 function numericEvidenceSummary(values: unknown[]): NumericEvidenceSummary | undefined {
-  const numbers = values.map(numericEvidenceValue).filter((value): value is number => value !== undefined);
-  if (numbers.length === 0) return undefined;
-  return {
-    count: numbers.length,
-    sum: numbers.reduce((total, value) => total + value, 0),
-    minimum: Math.min(...numbers),
-    maximum: Math.max(...numbers),
-  };
+  let count = 0;
+  let sum = 0;
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  for (const raw of values) {
+    const value = numericEvidenceValue(raw);
+    if (value === undefined) continue;
+    count += 1;
+    sum += value;
+    if (value < minimum) minimum = value;
+    if (value > maximum) maximum = value;
+  }
+  return count === 0 ? undefined : { count, sum, minimum, maximum };
 }
 
 /** Host-owned access to already-authorized, immutable example snapshots only. */

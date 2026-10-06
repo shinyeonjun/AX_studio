@@ -60,3 +60,17 @@ describe('historical execution state projection', () => {
     expect(buildExecutions(core)[0]).toMatchObject({ historyDiagnostics, currentStepId: undefined, currentStepStatus: undefined });
   });
 });
+
+describe('repeated state refreshes', () => {
+  it('follows a growing log of the same execution instead of reusing a stale summary', () => {
+    let logJson = JSON.stringify([{ at: '2026-09-01T00:00:00Z', level: 'info', code: 'step_started', message: 'Synthetic fetch', data: { stepId: 'fetch' } }]);
+    const core = { store: { listExecutions: () => [{ id: 'synthetic-growing', status: 'running', errorCode: null,
+      hasOutput: false, historyDiagnostics: [], logJson }] } } as unknown as AxCore;
+    expect(buildExecutions(core)[0]).toMatchObject({ currentStepId: 'fetch' });
+    logJson = JSON.stringify([
+      ...JSON.parse(logJson),
+      { at: '2026-09-01T00:00:01Z', level: 'info', code: 'step_started', message: 'Synthetic send', data: { stepId: 'send' } },
+    ]);
+    expect(buildExecutions(core)[0]).toMatchObject({ currentStepId: 'send' });
+  });
+});

@@ -36,6 +36,19 @@ function snapshotsForCandidate(expr: TransformExpr, snapshots: SnapshotTables): 
   return table ? { [sourceId]: table } : snapshots;
 }
 
+/** Replay results are stored with the session and only ever shown; keep them display-sized. */
+const MAX_PERSISTED_TEXT = 500;
+const MAX_PERSISTED_TABLE_ROWS = 200;
+
+export function persistableActual(actual: unknown): unknown {
+  if (typeof actual === 'string' && actual.length > MAX_PERSISTED_TEXT) return `${actual.slice(0, MAX_PERSISTED_TEXT)}…`;
+  if (actual && typeof actual === 'object' && Array.isArray((actual as { rows?: unknown }).rows)) {
+    const table = actual as { rows: unknown[]; columns?: unknown };
+    if (table.rows.length > MAX_PERSISTED_TABLE_ROWS) return { rowCount: table.rows.length, columns: table.columns };
+  }
+  return actual;
+}
+
 export function replayCandidates(params: {
   candidates: EnumeratedCandidate[];
   examples: ReplayExample[];
@@ -91,7 +104,7 @@ export function replayCandidates(params: {
       replayResults.push({
         exampleId: example.exampleId,
         expected: observation.value,
-        actual,
+        actual: persistableActual(actual),
         match,
         pass,
       });

@@ -29,6 +29,16 @@ describe('versioned schema migrations', () => {
     } finally { db.close?.(); }
   });
 
+  it('looks approvals up by execution through an index, not a table scan', async () => {
+    const db = await createDatabaseAsync(join(directory, 'plan.db'));
+    try {
+      const plan = db.prepare(
+        "EXPLAIN QUERY PLAN SELECT 1 FROM approvals WHERE execution_id = ? AND status IN ('pending', 'processing') LIMIT 1",
+      ).all('exec-1') as Array<{ detail: string }>;
+      expect(plan.map((row) => row.detail).join(' ')).toContain('idx_approvals_execution_status');
+    } finally { db.close?.(); }
+  });
+
   it('upgrades a pre-versioning native database, backs it up first and dedupes workflow versions', async () => {
     const filePath = join(directory, 'legacy.db');
     const legacy = new Database(filePath);
