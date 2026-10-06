@@ -5,6 +5,9 @@ import type {
   SlackNewMessagePollResult,
 } from './contracts.js';
 import { collectSlackHistory } from './history.js';
+
+/** New messages turned into events by one poll. */
+export const SLACK_POLL_BATCH = 1_000;
 import { toSlackNewMessageEvent } from './message.js';
 
 export async function pollSlackNewMessages(
@@ -57,9 +60,12 @@ export async function pollSlackNewMessages(
   }
 
   const lastTs = params.lastMessageTs ?? '0';
+  // A backlog (the app was off, a busy channel) is worked off oldest first in bounded batches;
+  // the cursor moves to the last message handled, so the next poll continues from there.
   const newMessages = messages
     .filter((message) => message.ts && message.ts > lastTs)
-    .sort((a, b) => (a.ts! < b.ts! ? -1 : 1));
+    .sort((a, b) => (a.ts! < b.ts! ? -1 : 1))
+    .slice(0, SLACK_POLL_BATCH);
   const events = newMessages.map((message) =>
     toSlackNewMessageEvent(message, params.channel, channelId),
   );

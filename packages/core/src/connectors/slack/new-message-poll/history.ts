@@ -9,6 +9,8 @@ function isUserMessage(message: { type?: string; subtype?: string; ts?: string; 
   return message.type === 'message' && !message.subtype && Boolean(message.ts);
 }
 
+export const SLACK_HISTORY_SCAN_LIMIT = 10_000;
+
 export async function collectSlackHistory(
   client: WebClient,
   channelId: string,
@@ -29,7 +31,8 @@ export async function collectSlackHistory(
     }), signal);
     for (const message of (history.messages ?? []).filter(isUserMessage)) {
       if (seenMessageTimestamps.has(message.ts!)) continue;
-      if (messages.length >= 1000) throw new Error('message_limit');
+      // Bounds one scan; a poll then handles the oldest messages first (see SLACK_POLL_BATCH).
+      if (messages.length >= SLACK_HISTORY_SCAN_LIMIT) throw new Error('message_limit');
       seenMessageTimestamps.add(message.ts!);
       messages.push(message);
     }
