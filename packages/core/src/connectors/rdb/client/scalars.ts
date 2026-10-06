@@ -42,7 +42,7 @@ export function assertSafeRdbScalars(rows: RdbRow[]): void {
 }
 
 /** Cumulative budget for one RDB page so a wide/large result cannot exhaust memory. */
-export const RDB_PAGE_MAX_BYTES = 32 * 1024 * 1024;
+const RDB_PAGE_MAX_BYTES = 32 * 1024 * 1024;
 /** A single cell larger than this is truncated with a visible marker. */
 export const RDB_CELL_MAX_BYTES = 1024 * 1024;
 export const RDB_TRUNCATED_CELL_MARKER = '…[truncated]';

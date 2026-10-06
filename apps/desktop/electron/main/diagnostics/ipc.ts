@@ -16,12 +16,12 @@ import {
   writeDiagnosticsReport,
 } from './export.js';
 
-export type DiagnosticsExportResult =
+type DiagnosticsExportResult =
   | { ok: true; path: string }
   | { ok: false; canceled: true }
   | { ok: false; error: string };
 
-export type OpenLogFolderResult = { ok: true } | { ok: false; error: string };
+type OpenLogFolderResult = { ok: true } | { ok: false; error: string };
 
 function safePath(read: () => string): string {
   try {

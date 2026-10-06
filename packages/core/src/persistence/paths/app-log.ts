@@ -19,7 +19,7 @@ export interface AppLogRetention {
   maxAgeDays: number;
 }
 
-export const DEFAULT_APP_LOG_RETENTION: AppLogRetention = Object.freeze({
+const DEFAULT_APP_LOG_RETENTION: AppLogRetention = Object.freeze({
   maxFileBytes: 5 * 1024 * 1024,
   maxFilesPerDay: 5,
   maxAgeDays: 14,
@@ -116,7 +116,7 @@ export interface AppLogFileInfo {
   index: number;
 }
 
-export function parseAppLogFileName(name: string): AppLogFileInfo | null {
+function parseAppLogFileName(name: string): AppLogFileInfo | null {
   const match = LOG_FILE_PATTERN.exec(name);
   if (!match) return null;
   return { name, day: match[1]!, index: match[2] ? Number(match[2]) : 0 };
@@ -204,7 +204,7 @@ function serializeExtra(extra: Record<string, unknown> | undefined): string {
   }
 }
 
-export function formatAppLogLine(
+function formatAppLogLine(
   level: AppLogLevel,
   message: string,
   extra?: Record<string, unknown>,

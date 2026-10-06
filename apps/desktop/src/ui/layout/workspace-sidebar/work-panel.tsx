@@ -23,6 +23,34 @@ interface SidebarWorkPanelProps {
   onDeleteWork: (workflowId: string, name: string) => void;
 }
 
+type WorkSummary = AppState['works'][number];
+
+/**
+ * Scheduler skips/failures and trigger events that exhausted their retries. Nothing is shown
+ * for a healthy workflow, so the row stays compact.
+ */
+export function WorkHealthNote({ work }: { work: Pick<WorkSummary, 'triggerDeadLetters' | 'lastOutcome'> }) {
+  const deadLetters = work.triggerDeadLetters ?? [];
+  const outcome = work.lastOutcome && work.lastOutcome.status !== 'success' ? work.lastOutcome : undefined;
+  if (deadLetters.length === 0 && !outcome) return null;
+  const latest = deadLetters[0];
+  return (
+    <span className="sidebar-work-health" role="status">
+      {outcome && (
+        <span title={outcome.reason ? executionErrorLabel(outcome.reason) ?? outcome.reason : undefined}>
+          최근 일정 {outcome.status === 'skipped' ? '건너뜀' : executionStatusLabel(outcome.status)} ·{' '}
+          {formatRelativeTime(outcome.at)}
+        </span>
+      )}
+      {latest && (
+        <span title={executionErrorLabel(latest.reason) ?? latest.reason}>
+          처리하지 못한 트리거 이벤트 {deadLetters.length}건 · {formatRelativeTime(latest.at)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function executionTitle(execution: ExecutionSummary, sessions: ChatSessionSummary[]): string {
   const sessionTitle = sessions.find((session) => session.id === execution.workspaceSessionId)?.title;
   if (sessionTitle?.trim()) return sessionTitle;
@@ -155,6 +183,7 @@ export function SidebarWorkPanel({
                         : '아직 실행 기록 없음'}
                     </span>
                   </span>
+                  <WorkHealthNote work={work} />
                 </button>
                 <div className="sidebar-work-actions">
                   <button
@@ -226,6 +255,7 @@ export function SidebarWorkPanel({
                               : '아직 실행 기록 없음'}
                           </span>
                         </span>
+                        <WorkHealthNote work={work} />
                       </button>
                       <div className="sidebar-work-actions">
                         <button

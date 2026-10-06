@@ -20,7 +20,7 @@ export interface InvocationRequest {
   abortSignal?: AbortSignal;
 }
 
-export interface ModelCall {
+interface ModelCall {
   system: string;
   images?: ModelImageInput[];
   temperature: number;

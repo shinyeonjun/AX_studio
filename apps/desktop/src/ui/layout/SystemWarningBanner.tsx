@@ -19,14 +19,58 @@ export function activeSystemWarnings(state: AppState | null): SystemWarningKey[]
   return warnings;
 }
 
+function formatDetectedAt(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('ko-KR');
+}
+
+/** Number of stored rows skipped because they could not be parsed (0 when unknown). */
+export function corruptRowCount(state: AppState | null): number {
+  const total = state?.corruptRows?.total;
+  return typeof total === 'number' && total > 0 ? total : 0;
+}
+
+/**
+ * Notice that some stored rows were unreadable and skipped. Only identifiers, error codes
+ * and detection times are listed; row payloads are never sent to the renderer.
+ */
+function CorruptRowsNotice({ summary, onDismiss }: { summary: NonNullable<AppState['corruptRows']>; onDismiss: () => void }) {
+  const hidden = summary.total - summary.rows.length;
+  return (
+    <div className="state-banner state-banner--stale system-corrupt-rows" role="alert">
+      <div className="system-corrupt-rows-body">
+        <span>손상된 데이터 {summary.total}건이 건너뛰어졌습니다. 해당 항목은 목록과 실행에서 제외됩니다.</span>
+        <details className="system-corrupt-rows-details">
+          <summary>자세히 보기</summary>
+          <ul>
+            {summary.rows.map((row) => (
+              <li key={`${row.table}:${row.id}`}>
+                <code>{row.table}</code> · <code>{row.id}</code> · {row.code} · {formatDetectedAt(row.detectedAt)}
+              </li>
+            ))}
+          </ul>
+          {hidden > 0 && <p>외 {hidden}건은 표시하지 않았습니다.</p>}
+        </details>
+      </div>
+      <button type="button" className="btn btn-sm btn-secondary" aria-label="손상된 데이터 알림 닫기" onClick={onDismiss}>
+        닫기
+      </button>
+    </div>
+  );
+}
+
 /**
  * Dismissible warnings about degraded storage. Dismissal lasts for this app session only,
  * so a persisting problem is shown again after restart.
  */
 export function SystemWarningBanner({ state }: { state: AppState | null }) {
   const [dismissed, setDismissed] = useState<ReadonlySet<SystemWarningKey>>(() => new Set());
+  // Dismissal remembers the count it hid, so newly detected corrupt rows show the notice again.
+  const [dismissedCorruptCount, setDismissedCorruptCount] = useState(0);
   const visible = activeSystemWarnings(state).filter((key) => !dismissed.has(key));
-  if (visible.length === 0) return null;
+  const corruptCount = corruptRowCount(state);
+  const showCorruptRows = corruptCount > dismissedCorruptCount && state?.corruptRows;
+  if (visible.length === 0 && !showCorruptRows) return null;
 
   return (
     <>
@@ -43,6 +87,9 @@ export function SystemWarningBanner({ state }: { state: AppState | null }) {
           </button>
         </div>
       ))}
+      {showCorruptRows && (
+        <CorruptRowsNotice summary={showCorruptRows} onDismiss={() => setDismissedCorruptCount(corruptCount)} />
+      )}
     </>
   );
 }

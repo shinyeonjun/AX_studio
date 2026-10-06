@@ -41,12 +41,11 @@ const TITLES: Readonly<Record<ConfirmedMutationName, string>> = {
   'repair.apply': 'repair를 적용할까요?',
 };
 
-export const PENDING_MUTATION_TTL_MS = 15 * 60 * 1000;
+const PENDING_MUTATION_TTL_MS = 15 * 60 * 1000;
 const MAX_PENDING_MUTATIONS = 128;
 const MAX_LABEL_CHARS = 200;
 const MutationCommitArgsSchema = z.object({}).strict();
 
-export type { PendingMutation } from '../contracts.js';
 
 /**
  * Option objects created by mutation.commit after a verified host confirmation.

@@ -6,7 +6,7 @@ export type MetadataIntent = (typeof METADATA_INTENTS)[number];
 export type RequestIntent = MetadataIntent | 'retrieval' | 'action' | 'ambiguous' | 'unsupported';
 export type MetadataOutputKind = 'readable_inventory' | 'readable_schema' | 'readable_status' | 'raw_debug';
 
-export const CandidateCoverageSchema = z.object({
+const CandidateCoverageSchema = z.object({
   knownTotal: z.number().int().nonnegative().nullable(),
   truncated: z.boolean(),
   overflow: z.boolean(),
@@ -81,7 +81,7 @@ export interface RequestFieldAuthority {
   readonly anchor: AuthoritativeRequestAnchor;
   readonly requestRevision: number;
 }
-export type RequestFieldProvenance = Readonly<Record<RequestUnderstandingField, {
+type RequestFieldProvenance = Readonly<Record<RequestUnderstandingField, {
   readonly requestDigest: string; readonly requestRevision: number;
 }>>;
 

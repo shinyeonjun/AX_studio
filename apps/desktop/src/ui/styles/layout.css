@@ -441,6 +441,21 @@
   min-width: 0;
 }
 
+.sidebar-work-health {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--amber);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.sidebar-work-health > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-work-actions {
   display: flex;
   align-items: center;

@@ -87,7 +87,7 @@ export function evaluateValue(expression: ReportValueExpression, row: ReportRow)
 }
 
 /** Ordering key: numeric-looking text is coerced so "1,200" sorts above "900". */
-export function comparable(value: unknown): string | number | boolean | null | undefined {
+function comparable(value: unknown): string | number | boolean | null | undefined {
   if (value == null || typeof value === 'boolean') return value;
   try {
     return numericValue(value);

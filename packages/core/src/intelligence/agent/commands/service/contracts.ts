@@ -18,7 +18,7 @@ import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
 import type { MetadataDispatchPermit } from '../../../decision/request-understanding/session.js';
 
 /** A host-confirmable mutation waiting for the user's confirmation card. */
-export interface PendingMutation {
+interface PendingMutation {
   token: string;
   command: AxCommand;
   workflowId?: string;

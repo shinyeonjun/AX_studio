@@ -2,7 +2,7 @@ import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 /** Pre-migration copies kept next to the database: `<db>.bak-v<old version>`. */
-export const KEPT_MIGRATION_BACKUPS = 2;
+const KEPT_MIGRATION_BACKUPS = 2;
 
 export function migrationBackupPath(dbPath: string, fromVersion: number): string {
   return `${dbPath}.bak-v${fromVersion}`;
