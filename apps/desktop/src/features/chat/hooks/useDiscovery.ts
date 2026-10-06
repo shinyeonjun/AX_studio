@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 import type { DiscoveryInspectView } from '@ax-studio/core';
-import { TERMINAL_STATUSES, commandError, unwrap } from './use-discovery/result.js';
+import { TERMINAL_STATUSES, WAITING_FOR_PERSON_STATUSES, commandError, unwrap } from './use-discovery/result.js';
 import { useDiscoveryActions } from './use-discovery/actions.js';
 import { CoalescedRefresh } from '../../../app/hooks/coalesced-refresh.js';
 
@@ -85,9 +85,12 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
     if (!activeSessionId) return;
     void refresh(activeSessionId, undefined, true);
     if (activeView && TERMINAL_STATUSES.has(activeView.status)) return;
+    // While it waits for the person (a question, or publish), only a chat turn moves it on:
+    // check now and then instead of every 1.5s for as long as the chat stays open.
+    const waiting = activeView !== null && WAITING_FOR_PERSON_STATUSES.has(activeView.status);
     const timer = window.setInterval(() => {
       void refresh(activeSessionId, undefined, true);
-    }, 1500);
+    }, waiting ? 10_000 : 1500);
     return () => window.clearInterval(timer);
   }, [activeSessionId, activeView?.status, refresh]);
 
