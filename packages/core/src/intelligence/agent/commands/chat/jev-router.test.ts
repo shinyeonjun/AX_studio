@@ -3127,7 +3127,7 @@ describe('routeChatWithJev', () => {
     });
   });
 
-  it('fails closed instead of escalating a read route when a write action is selected with execution intent', async () => {
+  it('plans a one-off run when a read route also selects a write with Jev-confirmed execution intent', async () => {
     const hints: JevReadOperationHint[] = [{
       key: 'op_0',
       capabilityId: 'http.request',
@@ -3162,7 +3162,11 @@ describe('routeChatWithJev', () => {
       userMessage: '스마트폰 재고 제일 없는 거 3개 찾아서 담당자한테 메일 등록해줘',
     });
 
-    expect(result).toMatchObject({ kind: 'fallback', reason: 'uncertain' });
+    // Escalated to execution planning (which still needs host confirmation and approval),
+    // never a direct capability read that silently drops or runs the write.
+    expect(result).not.toMatchObject({ kind: 'fallback', reason: 'uncertain' });
+    expect(result).not.toMatchObject({ route: 'capability_read' });
+    expect(JSON.stringify(result)).toContain('execution_enqueue_once');
   });
 
   it('allows read route with transform candidates without falling back to uncertain', async () => {

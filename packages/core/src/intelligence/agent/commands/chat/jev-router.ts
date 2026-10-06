@@ -74,11 +74,17 @@ function normalizeToolSelection(input: {
     if (requestPlan) requestPlan.response.llmRequired = true;
   };
   if (toolSelection?.kind === 'selected') {
-    if (hasWrites() && (route === 'capability_read'
+    if (hasWrites() && route === 'capability_read' && input.explicitAction?.choice === 'execute_now') {
+      // "Read X and send it to Slack": Jev picked a read route but also selected a write
+      // and explicitly confirmed execution intent. Plan it as a one-off run; the planner,
+      // the host confirmation card and external-send approval still gate every write.
+      route = 'execution_enqueue_once';
+      telemetry.update({ selectedRoute: route });
+    } else if (hasWrites() && (route === 'capability_read'
       || (route === 'answer' && input.explicitAction?.choice !== 'execute_now'))) {
-      // A read route never escalates to execution: writes are only dropped when Jev
-      // itself says not to execute (e.g. drafting text in chat), otherwise it fails
-      // closed. A conversational answer without Jev-confirmed intent stays in chat.
+      // Without Jev-confirmed execution intent a read route never executes writes: they
+      // are dropped when Jev says not to execute (e.g. drafting text in chat), otherwise
+      // it fails closed. A conversational answer without confirmed intent stays in chat.
       if (route === 'capability_read' && input.explicitAction?.choice !== 'do_not_execute') {
         return fallback('uncertain');
       }

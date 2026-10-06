@@ -68,7 +68,9 @@ export function inlineScriptHashes(html: string): string[] {
   const hashes: string[] = [];
   for (const match of html.matchAll(INLINE_SCRIPT_PATTERN)) {
     const attributes = match[1] ?? '';
-    const body = match[2] ?? '';
+    // The HTML parser normalizes CRLF/CR to LF before the browser hashes a script, so a
+    // Windows checkout (CRLF) must be hashed the same way or the script is blocked.
+    const body = (match[2] ?? '').replace(/\r\n?/g, '\n');
     if (/\bsrc\s*=/.test(attributes) || body.length === 0) continue;
     hashes.push(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`);
   }

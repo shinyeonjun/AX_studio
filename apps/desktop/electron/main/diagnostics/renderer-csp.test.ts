@@ -15,8 +15,16 @@ describe('renderer CSP', () => {
   it('pins the inline theme bootstrap by sha256 and ignores external scripts', () => {
     const body = /<script>([\s\S]*?)<\/script>/.exec(indexHtml)?.[1] ?? '';
     expect(body).toContain('ax-theme');
-    const expected = `'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`;
+    const expected = `'sha256-${createHash('sha256').update(body.replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`;
     expect(inlineScriptHashes(indexHtml)).toEqual([expected]);
+  });
+
+  it('hashes what the browser hashes: CRLF checkouts match the LF-normalized script', () => {
+    const lf = '<script>\n  var a = 1;\n</script>';
+    const crlf = lf.replace(/\n/g, '\r\n');
+    const browserHash = `'sha256-${createHash('sha256').update('\n  var a = 1;\n', 'utf8').digest('base64')}'`;
+    expect(inlineScriptHashes(crlf)).toEqual([browserHash]);
+    expect(inlineScriptHashes(lf)).toEqual([browserHash]);
   });
 
   it('is strict in production', () => {
