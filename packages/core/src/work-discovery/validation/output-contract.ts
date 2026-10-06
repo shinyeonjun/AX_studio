@@ -1,8 +1,14 @@
 import type { OutputContract, OutputContractField, OutputContractValueKind } from '../../contracts/output-contract.js';
 import type { OutputObservation, ObservationValue } from '../observation/schema.js';
 
-const DEFAULT_NUMERIC_TOLERANCE_RATIO = 0.2;
-const DEFAULT_ROW_COUNT_TOLERANCE_RATIO = 0.2;
+/**
+ * How far a later run may move from the examples before it is held as an anomaly. Two or three
+ * monthly examples say little about next month: sales growing 25% or a few more categories is
+ * normal. The guard is for values that are clearly wrong (a unit slip, double counting, wrong
+ * data), so the band is wide: up to the largest example plus 100% of it.
+ */
+const DEFAULT_NUMERIC_TOLERANCE_RATIO = 1;
+const DEFAULT_ROW_COUNT_TOLERANCE_RATIO = 1;
 
 function observationValuesForPath(
   observations: OutputObservation[],
