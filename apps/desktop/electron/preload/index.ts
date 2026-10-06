@@ -74,6 +74,10 @@ contextBridge.exposeInMainWorld('ax', {
     workspaceSessionId?: string,
     options?: Pick<WorkspaceChatSaveOptions, 'metadataLane'>,
   ) => ipcRenderer.invoke('ax:sendCommandChat', userMessage, requestId, workflowId, workspaceSessionId, options),
+  proposeRecurringFromExecution: (workspaceSessionId: string, executionId: string, scheduleValue: string) =>
+    ipcRenderer.invoke('ax:proposeRecurringFromExecution', workspaceSessionId, executionId, scheduleValue),
+  proposeRecurringFromRead: (workspaceSessionId: string, scheduleValue: string) =>
+    ipcRenderer.invoke('ax:proposeRecurringFromRead', workspaceSessionId, scheduleValue),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
   saveWorkspaceChat: (

@@ -43,6 +43,7 @@ function randomRule(random: () => number, dstFocus = false): Recurrence {
     anchor: iso(anchorDay),
     timezone: pick(dstFocus ? DST_ZONES : ZONES),
     ...(random() < 0.15 ? { until: iso(anchorDay + int(20, 700)) } : {}),
+    ...(random() < 0.25 ? { skipHolidays: 'KR' as const } : {}),
   };
   const freq = dstFocus ? pick(['daily', 'weekly', 'monthly'] as const) : pick(['minutely', 'hourly', 'daily', 'daily', 'weekly', 'weekly', 'monthly', 'monthly', 'monthly', 'yearly'] as const);
   const monthDays = () => sample([1, 2, 15, 28, 29, 30, 31, -1, -2, -3, int(1, 31)], int(1, 2));

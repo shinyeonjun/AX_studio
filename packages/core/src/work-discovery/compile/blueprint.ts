@@ -19,7 +19,7 @@ export function partitionKey(candidate: CandidateProgram): string {
   const aggregate = candidate.expr.op === 'aggregate'
     ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}`
     : candidate.expr.op === 'group'
-      ? `group:${candidate.expr.by}`
+      ? `group:${[candidate.expr.by, ...(candidate.expr.thenBy ?? []).map((entry) => entry.by)].join('+')}`
       : candidate.expr.op;
   // Rules that keep different rows are different rules, even with the same aggregate.
   const filter = filterSignature(candidate.expr);

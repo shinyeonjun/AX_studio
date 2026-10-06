@@ -42,7 +42,7 @@ type ComparisonOperator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq';
 
 export type JevTableTransformResult =
   | { status: 'export_xlsx'; model?: string; providerRequestCount?: number; usage?: { inputTokens?: number; outputTokens?: number } }
-  | { status: 'transformed'; table: TableArtifact; model?: string; providerRequestCount?: number; usage?: { inputTokens?: number; outputTokens?: number } }
+  | { status: 'transformed'; table: TableArtifact; expression: TransformExpr; model?: string; providerRequestCount?: number; usage?: { inputTokens?: number; outputTokens?: number } }
   | { status: 'clarify'; message: string; model?: string; providerRequestCount?: number; usage?: { inputTokens?: number; outputTokens?: number } }
   | { status: 'not_applicable'; model?: string; providerRequestCount?: number; usage?: { inputTokens?: number; outputTokens?: number } }
   | { status: 'unavailable'; providerRequestCount?: number };
@@ -528,6 +528,8 @@ export async function applyJevTableTransform(input: {
   return {
     status: 'transformed',
     table: result,
+    // Kept so the same shaping can be repeated on fresh data (a recurring job from this answer).
+    expression: parsedExpression.data,
     ...evaluationMetadata,
   };
 }

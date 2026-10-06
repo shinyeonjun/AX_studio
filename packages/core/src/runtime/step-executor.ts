@@ -28,8 +28,12 @@ export function resolveActionParamsForExecution(
   }
   assertWorkflowOutputBoundaries(ir, ctx.presentationVariableSources);
   // Interpret templates authored in the workflow once. Bound content is opaque
-  // data and must never become a second round of workflow instructions.
-  let params = resolveStepParams(step.params, ctx, stepResults);
+  // data and must never become a second round of workflow instructions. Literal
+  // params (structured DSL such as a transform expression) are not templates at all.
+  const literalNames = new Set(actionDefinition.params.filter((param) => param.literal).map((param) => param.name));
+  const literals = Object.fromEntries(Object.entries(step.params).filter(([name]) => literalNames.has(name)));
+  const templated = Object.fromEntries(Object.entries(step.params).filter(([name]) => !literalNames.has(name)));
+  let params = { ...resolveStepParams(templated, ctx, stepResults), ...literals };
   params = applyStepBindings(step, ir, params, stepResults, ctx.variables, ctx.outputs);
   if (actionDefinition.id === 'document.ingest') {
     const resolved = resolveDocumentIngestExecution(params, ctx);

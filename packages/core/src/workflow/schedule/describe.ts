@@ -99,7 +99,8 @@ export function describeRecurrence(rule: Recurrence, options: { viewerTimeZone?:
       break;
   }
   const zone = options.viewerTimeZone && options.viewerTimeZone !== rule.timezone ? ` (${rule.timezone} 기준)` : '';
-  return `${text}${untilLabel(rule.until)}${zone}`;
+  const holidays = rule.skipHolidays ? ' (공휴일 제외)' : '';
+  return `${text}${holidays}${untilLabel(rule.until)}${zone}`;
 }
 
 function scheduleRecurrence(value: ScheduleLike): Recurrence | undefined {

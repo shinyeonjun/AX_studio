@@ -111,6 +111,11 @@ function slackChannelOptions(value: unknown): AxInputRequestOption[] {
   });
 }
 
+/** `{ C0123: '#ops' }` from a Slack channel listing, for showing ids by name. */
+export function slackChannelLabels(value: unknown): Record<string, string> {
+  return Object.fromEntries(slackChannelOptions(value).map((option) => [option.value, option.label]));
+}
+
 export async function slackChannelInput(
   listSlackChannels?: ListSlackChannels,
   id = 'job-slack-channel',

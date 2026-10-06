@@ -1,4 +1,5 @@
-import { WorkspaceChatGeneratedSpreadsheetSchema } from '../../persistence/repositories/workspace-chat-repository.js';
+import { displayTable } from '../../contracts/artifacts/table-display.js';
+import { WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { formatApprovalTitle } from '../approval-display.js';
@@ -7,6 +8,16 @@ import { formatExecutionResultMessage, safeText } from './format.js';
 import type { WorkspaceChatChangedEvent } from './contracts.js';
 import { generatedPdfFromExecutionLog } from './generated-pdf.js';
 import { editableToolResult, toolResultReference } from '../tool-result-approval.js';
+
+/** The last table a successful run made (its visible part), shown with the result. */
+function resultTableFromLog(result: ExecutionResult) {
+  if (result.status !== 'success') return undefined;
+  const entry = [...result.log].reverse().find((candidate) => candidate.code === 'transform_table');
+  const table = entry?.data && typeof entry.data === 'object' ? (entry.data as { table?: unknown }).table : undefined;
+  const parsed = WorkspaceChatReadResultSchema.safeParse(table);
+  // The same main columns a chat answer shows; wide API records stay readable.
+  return parsed.success ? displayTable(parsed.data) : undefined;
+}
 
 function parseExecutionIr(irJson: string | null | undefined): WorkflowIR | null {
   if (!irJson) return null;
@@ -85,6 +96,7 @@ export function publishExecutionResultToWorkspaceChat(
   const generatedPdf = generatedPdfFromExecutionLog(result.log);
   const spreadsheetEntry = result.status === 'success' ? [...result.log].reverse().find(entry => entry.code === 'xlsx_generated') : undefined;
   const spreadsheet = WorkspaceChatGeneratedSpreadsheetSchema.safeParse(spreadsheetEntry?.data);
+  const resultTable = resultTableFromLog(result);
 
 
   const updated = store.upsertWorkspaceChatExecutionResult(target, {
@@ -101,6 +113,7 @@ export function publishExecutionResultToWorkspaceChat(
     ...(inlineApproval ? { approval: inlineApproval } : {}),
     ...(generatedPdf ? { generatedPdf } : {}),
     ...(spreadsheet.success ? { generatedSpreadsheet: spreadsheet.data } : {}),
+    ...(resultTable ? { readResult: resultTable } : {}),
   });
   if (!updated) return null;
   return {

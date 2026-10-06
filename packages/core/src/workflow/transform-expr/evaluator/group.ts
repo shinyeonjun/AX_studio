@@ -17,39 +17,63 @@ export function groupKeyOf(row: TableArtifact['rows'][number], column: string): 
   return key ? key : undefined;
 }
 
-/** Rows per distinct key, in first-appearance order. */
-export function groupRowsBy(
-  rows: TableArtifact['rows'],
-  column: string,
-): Map<string, TableArtifact['rows']> {
-  const groups = new Map<string, TableArtifact['rows']>();
+type GroupExpr = Extract<TransformExpr, { op: 'group' }>;
+
+/** Key columns of a group expression, outermost first, with their output headers. */
+export function groupKeySpecs(expr: Pick<GroupExpr, 'by' | 'keyAs' | 'thenBy'>): Array<{ by: string; as: string }> {
+  return [
+    { by: expr.by, as: expr.keyAs ?? expr.by },
+    ...(expr.thenBy ?? []).map((entry) => ({ by: entry.by, as: entry.keyAs ?? entry.by })),
+  ];
+}
+
+export interface RowGroup {
+  /** One trimmed key per key column. */
+  keys: string[];
+  rows: TableArtifact['rows'];
+}
+
+/**
+ * Rows per distinct key combination, in first-appearance order. A row with an empty key in any
+ * key column belongs to no group (as with a single key).
+ */
+export function groupRowsBy(rows: TableArtifact['rows'], columns: readonly string[]): Map<string, RowGroup> {
+  const groups = new Map<string, RowGroup>();
   for (const row of rows) {
-    const key = groupKeyOf(row, column);
-    if (key === undefined) continue;
-    const bucket = groups.get(key);
-    if (bucket) bucket.push(row);
-    else groups.set(key, [row]);
+    const keys: string[] = [];
+    for (const column of columns) {
+      const key = groupKeyOf(row, column);
+      if (key === undefined) break;
+      keys.push(key);
+    }
+    if (keys.length !== columns.length) continue;
+    const identity = columns.length === 1 ? keys[0]! : JSON.stringify(keys);
+    const group = groups.get(identity);
+    if (group) group.rows.push(row);
+    else groups.set(identity, { keys, rows: [row] });
   }
   return groups;
 }
 
 export function evaluateGroup(
-  expr: Extract<TransformExpr, { op: 'group' }>,
+  expr: GroupExpr,
   snapshots: SnapshotTables,
   evaluate: TransformEvaluator,
 ): TransformEvaluation {
   const table = requireCompleteTable(evaluate(expr.input, snapshots), 'group_input_not_table');
-  const headers = [expr.keyAs ?? expr.by, ...expr.aggregates.map((aggregate) => aggregate.as)];
+  const keySpecs = groupKeySpecs(expr);
+  const headers = [...keySpecs.map((spec) => spec.as), ...expr.aggregates.map((aggregate) => aggregate.as)];
   if (new Set(headers).size !== headers.length) throw new Error('group_duplicate_output_column');
   const matrix: unknown[][] = [];
-  for (const [key, rows] of groupRowsBy(table.rows, expr.by)) {
-    matrix.push([key, ...expr.aggregates.map((aggregate) => aggregateRows(rows, aggregate))]);
+  for (const { keys, rows } of groupRowsBy(table.rows, keySpecs.map((spec) => spec.by)).values()) {
+    matrix.push([...keys, ...expr.aggregates.map((aggregate) => aggregateRows(rows, aggregate))]);
   }
   if (expr.totalRow) {
-    matrix.push([expr.totalRow.label, ...expr.aggregates.map((aggregate) => aggregateRows(table.rows, aggregate))]);
+    const emptyKeys = keySpecs.slice(1).map(() => null);
+    matrix.push([expr.totalRow.label, ...emptyKeys, ...expr.aggregates.map((aggregate) => aggregateRows(table.rows, aggregate))]);
   }
   return buildTableArtifact({
-    id: `group:${expr.by}`,
+    id: `group:${keySpecs.map((spec) => spec.by).join('+')}`,
     headers,
     matrix,
     rowLimit: MAX_TABLE_ROW_LIMIT,

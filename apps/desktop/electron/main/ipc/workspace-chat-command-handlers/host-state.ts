@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AxContextUpdateConfirmation, AxUiPresentation, TableArtifact, WorkspaceChatMessage } from '@ax-studio/core';
+import type { AxContextUpdateConfirmation, AxUiPresentation, ChatReadRecipe, TableArtifact, WorkspaceChatMessage } from '@ax-studio/core';
 
 /**
  * Host-only per-session state that the renderer-saved transcript cannot forge.
@@ -19,6 +19,8 @@ interface PendingContextConfirmation {
 
 const contextConfirmations = new Map<string, Map<string, PendingContextConfirmation>>();
 const readResults = new Map<string, TableArtifact>();
+/** How the cached table was produced; kept only alongside that table. */
+const readRecipes = new Map<string, ChatReadRecipe>();
 
 function touchSession<T>(store: Map<string, T>, sessionId: string, value: T): void {
   store.delete(sessionId);
@@ -92,9 +94,11 @@ export function consumeContextConfirmation(
 }
 
 /** Remember the bounded table the host itself displayed for this session. */
-export function rememberHostReadResult(sessionId: string, table: TableArtifact | undefined): void {
+export function rememberHostReadResult(sessionId: string, table: TableArtifact | undefined, recipe?: ChatReadRecipe): void {
   if (table) touchSession(readResults, sessionId, structuredClone(table));
   else readResults.delete(sessionId);
+  if (table && recipe) touchSession(readRecipes, sessionId, structuredClone(recipe));
+  else readRecipes.delete(sessionId);
 }
 
 /**
@@ -112,7 +116,13 @@ export function hostReadResultFor(
   return latestShown?.id === cached.id ? cached : undefined;
 }
 
+/** The recipe of the table `hostReadResultFor` would return, under the same transcript check. */
+export function hostReadRecipeFor(sessionId: string, messages: WorkspaceChatMessage[]): ChatReadRecipe | undefined {
+  return hostReadResultFor(sessionId, messages) ? readRecipes.get(sessionId) : undefined;
+}
+
 export function clearHostChatStateForTests(): void {
   contextConfirmations.clear();
   readResults.clear();
+  readRecipes.clear();
 }

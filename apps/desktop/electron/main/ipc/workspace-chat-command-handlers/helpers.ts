@@ -42,7 +42,9 @@ function confirmationTokenFor(
   purpose: 'confirm_job' | 'confirm_mutation',
 ): string | undefined {
   const actionPrefix = `${purpose}:`;
-  for (const message of messages.slice(0, -1)) {
+  // Newest card first: the same confirmation (e.g. "지금 실행") can appear many times in one
+  // conversation, and only the latest card's token is still pending.
+  for (const message of messages.slice(0, -1).reverse()) {
     if (message.role !== 'assistant') continue;
     for (const presentation of message.presentations ?? []) {
       for (const action of presentation.actions) {

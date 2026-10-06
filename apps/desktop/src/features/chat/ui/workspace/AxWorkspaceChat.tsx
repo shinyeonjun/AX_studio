@@ -36,6 +36,7 @@ interface AxWorkspaceChatProps {
   onRejectApproval?: (approvalId: string) => Promise<void>;
   onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => Promise<void>;
   onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
@@ -54,6 +55,7 @@ interface WorkspaceMessageListProps {
   onRejectApproval?: (approvalId: string) => Promise<void>;
   onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
+  onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => Promise<void>;
 }
 
 const WorkspaceMessageList = memo(function WorkspaceMessageList({
@@ -65,7 +67,14 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
   onRejectApproval,
   onDownloadPdf,
   onSavePdfToFolder,
+  onMakeRecurring,
 }: WorkspaceMessageListProps) {
+  const latestReadIndex = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]!.role === 'assistant' && messages[index]!.readResult) return index;
+    }
+    return -1;
+  }, [messages]);
   return messages.map((message, index) => message.role === 'user' ? (
     <UserMessage key={'user-' + index} message={message} />
   ) : (
@@ -79,6 +88,8 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
       onRejectApproval={onRejectApproval}
       onDownloadPdf={onDownloadPdf}
       onSavePdfToFolder={onSavePdfToFolder}
+      onMakeRecurring={onMakeRecurring}
+      isLatestRead={index === latestReadIndex}
     />
   ));
 });
@@ -98,6 +109,7 @@ export function AxWorkspaceChat({
   onRejectApproval,
   onDownloadPdf,
   onSavePdfToFolder,
+  onMakeRecurring,
   onDismissError,
   onRegisterWorkflow,
   onAttachExample,
@@ -147,6 +159,7 @@ export function AxWorkspaceChat({
               onRejectApproval={onRejectApproval}
               onDownloadPdf={onDownloadPdf}
               onSavePdfToFolder={onSavePdfToFolder}
+              onMakeRecurring={onMakeRecurring}
             />
             {busy && <WorkspaceTypingState progress={progress} />}
             {error && <WorkspaceErrorState error={error} onDismissError={onDismissError} />}

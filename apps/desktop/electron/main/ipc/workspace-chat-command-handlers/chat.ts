@@ -15,7 +15,7 @@ import {
 } from '@ax-studio/core';
 import { app } from 'electron';
 import { performance } from 'node:perf_hooks';
-import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation } from '@ax-studio/core';
+import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation, ChatReadRecipe } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -49,7 +49,7 @@ import {
   mutationConfirmationToken as findMutationConfirmationToken,
   workflowIdsChanged,
 } from './helpers.js';
-import { bindContextConfirmations, hostReadResultFor, rememberHostReadResult } from './host-state.js';
+import { bindContextConfirmations, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
 
 type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
@@ -168,6 +168,7 @@ export function registerWorkspaceChatMessageHandler() {
     const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     // Rows come from the host cache of what it displayed, never from the renderer-saved transcript.
     const previousReadResult = hostReadResultFor(safeWorkspaceSessionId, requestMessages);
+    const previousReadRecipe = hostReadRecipeFor(safeWorkspaceSessionId, requestMessages);
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);
@@ -178,6 +179,7 @@ export function registerWorkspaceChatMessageHandler() {
     const presentations: AxUiPresentation[] = [];
     let readResult: TableArtifact | undefined;
     let readResultReported = false;
+    let readRecipe: ChatReadRecipe | undefined;
     let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
       request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor } | undefined;
     let acceptedRequestAnchor: AuthoritativeRequestAnchor | undefined;
@@ -274,6 +276,7 @@ export function registerWorkspaceChatMessageHandler() {
         messages: history,
         userMessage,
         ...(previousReadResult ? { previousReadResult } : {}),
+        ...(previousReadRecipe ? { previousReadRecipe } : {}),
         ...(pendingInput && pendingCommandClaim ? {
           decisionMessage: pendingCommandClaim.request,
           requestAnchor: pendingCommandClaim.requestAnchor,
@@ -369,12 +372,15 @@ export function registerWorkspaceChatMessageHandler() {
           const parsed = WorkspaceChatReadResultSchema.safeParse(table);
           readResult = parsed.success ? parsed.data : undefined;
         },
+        onReadRecipe: (recipe) => {
+          readRecipe = recipe;
+        },
         onProgress: ({ message }) => {
           event.sender.send('ax:chat-progress', { message, requestId: chatRequestId });
         },
       });
       outcome = 'success';
-      if (readResultReported) rememberHostReadResult(safeWorkspaceSessionId, readResult);
+      if (readResultReported) rememberHostReadResult(safeWorkspaceSessionId, readResult, readRecipe);
       return {
         role: 'assistant' as const,
         content: reply,

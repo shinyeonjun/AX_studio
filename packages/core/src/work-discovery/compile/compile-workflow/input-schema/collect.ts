@@ -71,7 +71,7 @@ export function collectInputColumns(
       return;
     case 'group': {
       const sourceIds = sourceIdsInExpr(expr.input);
-      addColumnsForSources(bucket, sourceIds, [expr.by], 'unknown');
+      addColumnsForSources(bucket, sourceIds, [expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)], 'unknown');
       for (const aggregate of expr.aggregates) {
         if (aggregate.column) addColumnsForSources(bucket, sourceIds, [aggregate.column], 'number');
       }

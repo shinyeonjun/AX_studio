@@ -14,16 +14,17 @@ import {
 } from '../../schema.js';
 import { issue, result } from '../../contract.js';
 import { previewWorkflowUpdate } from '../../workflow-gateway/mutations.js';
-import { workflowStepItems } from '../../job-registration/presentation.js';
+import { workflowHasExternalSteps, workflowStepItems, type TargetLabels } from '../../job-registration/presentation.js';
+import { httpEndpointsFromConnections } from '../../../../../connectors/http/connection.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 
 export type ConfirmedMutationName = 'workflow.run' | 'workflow.update' | 'workflow.delete' | 'repair.apply';
 
 /** Fixed user-visible replies sent by the host-rendered confirm_mutation action. */
 export const MUTATION_CONFIRM_VALUES: Readonly<Record<ConfirmedMutationName, string>> = {
-  'workflow.run': '현재 workflow를 지금 실행할게요',
-  'workflow.update': '이 workflow 변경을 적용할게요',
-  'workflow.delete': '현재 workflow를 삭제할게요',
+  'workflow.run': '이 업무를 지금 실행할게요',
+  'workflow.update': '이 업무 변경을 적용할게요',
+  'workflow.delete': '이 업무를 삭제할게요',
   'repair.apply': '이 repair를 적용할게요',
 };
 
@@ -35,9 +36,9 @@ const CONFIRM_LABELS: Readonly<Record<ConfirmedMutationName, string>> = {
 };
 
 const TITLES: Readonly<Record<ConfirmedMutationName, string>> = {
-  'workflow.run': '현재 workflow를 지금 실행할까요?',
+  'workflow.run': '이 업무를 지금 실행할까요?',
   'workflow.update': '이 변경을 적용할까요?',
-  'workflow.delete': '현재 workflow를 삭제할까요?',
+  'workflow.delete': '이 업무를 삭제할까요?',
   'repair.apply': 'repair를 적용할까요?',
 };
 
@@ -69,8 +70,21 @@ function bounded(value: string, max = MAX_LABEL_CHARS): string {
   return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
 }
 
-function workflowLabel(workflow: Pick<WorkflowIR, 'name'>, workflowId: string, version?: number): string {
-  return bounded(`${workflow.name} (${workflowId})${version === undefined ? '' : ` · 버전 ${version}`}`, 240);
+/**
+ * The job as people know it: its name. Ids and version numbers are internal, except that a short
+ * id tells apart jobs that share a name, so the card always names exactly one job.
+ */
+function workflowLabel(store: AxCommandServiceState['store'], workflow: Pick<WorkflowIR, 'name'>, workflowId: string): string {
+  const sameName = store.listWorkflows().filter((entry) => entry.name === workflow.name).length;
+  return bounded(sameName > 1 ? `${workflow.name} (#${workflowId.slice(0, 8)})` : workflow.name, 240);
+}
+
+/** Connection names for the step list, so no raw connection id reaches the card. */
+function stepLabels(store: AxCommandServiceState['store']): TargetLabels {
+  return {
+    connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections())
+      .map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
+  };
 }
 
 type Preview =
@@ -95,10 +109,10 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
       ok: true,
       workflowId,
       blocks: [
-        { type: 'decision', label: '대상 workflow', value: workflowLabel(current, workflowId, current.version) },
+        { type: 'decision', label: '대상 업무', value: workflowLabel(store, current, workflowId) },
         { type: 'steps', title: '요청한 변경', items: operations.slice(0, 20).map((item) => bounded(item, 500)) },
         ...(next.steps.length > 0
-          ? [{ type: 'steps' as const, title: '변경 후 단계별 연결·동작·대상', items: workflowStepItems(next) }]
+          ? [{ type: 'steps' as const, title: '변경 후 단계별 연결·동작·대상', items: workflowStepItems(next, stepLabels(store)) }]
           : []),
         {
           type: 'note',
@@ -126,8 +140,8 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
         ok: true,
         workflowId,
         blocks: [
-          { type: 'decision', label: '삭제할 workflow', value: workflowLabel(workflow, workflowId, workflow.version) },
-          { type: 'note', text: '삭제하면 저장된 workflow와 시작 조건이 제거되며 되돌릴 수 없습니다. 확인 전에는 아무것도 삭제하지 않았습니다.' },
+          { type: 'decision', label: '삭제할 업무', value: workflowLabel(store, workflow, workflowId) },
+          { type: 'note', text: '삭제하면 저장된 업무와 시작 조건이 제거되며 되돌릴 수 없습니다. 확인 전에는 아무것도 삭제하지 않았습니다.' },
         ],
       };
     }
@@ -135,15 +149,17 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
       ok: true,
       workflowId,
       blocks: [
-        { type: 'decision', label: '실행할 workflow', value: workflowLabel(workflow, workflowId, workflow.version) },
+        { type: 'decision', label: '실행할 업무', value: workflowLabel(store, workflow, workflowId) },
         ...(workflow.steps.length > 0
-          ? [{ type: 'steps' as const, title: '단계별 연결·동작·대상', items: workflowStepItems(workflow) }]
+          ? [{ type: 'steps' as const, title: '단계별 연결·동작·대상', items: workflowStepItems(workflow, stepLabels(store)) }]
           : []),
         {
           type: 'note',
-          text: workflow.allowExternalAuto
-            ? '이 workflow는 자동 발송이 켜져 있어 [외부] 단계가 실행마다 승인 없이 전송될 수 있습니다. 고위험 단계는 계속 승인이 필요합니다.'
-            : '[외부] 단계는 실행 중 별도 승인이 필요합니다. 확인 전에는 실행하지 않았습니다.',
+          text: !workflowHasExternalSteps(workflow)
+            ? '외부 전송 단계가 없습니다. 확인 전에는 실행하지 않았습니다.'
+            : workflow.allowExternalAuto
+              ? '이 업무는 자동 발송이 켜져 있어 [외부] 단계가 실행마다 승인 없이 전송될 수 있습니다. 고위험 단계는 계속 승인이 필요합니다.'
+              : '[외부] 단계는 실행 중 별도 승인이 필요합니다. 확인 전에는 실행하지 않았습니다.',
         },
       ],
     };
@@ -165,9 +181,9 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
     blocks: [
       {
         type: 'decision',
-        label: '대상 workflow',
+        label: '대상 업무',
         value: workflow
-          ? workflowLabel(workflow, proposal.workflowId, parsed.data.baseVersion)
+          ? workflowLabel(store, workflow, proposal.workflowId)
           : bounded(`${proposal.workflowId} · 버전 ${parsed.data.baseVersion}`, 240),
       },
       { type: 'decision', label: 'repair 후보', value: bounded(`${parsed.data.repairId} / ${parsed.data.candidateId}`, 240) },

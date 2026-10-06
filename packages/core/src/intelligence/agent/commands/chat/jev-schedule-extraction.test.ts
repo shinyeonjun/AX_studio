@@ -93,3 +93,45 @@ describe('schedule extraction through Jev choices', () => {
     }
   });
 });
+
+describe('a schedule picked in the host form', () => {
+  it('is used as chosen, without asking Jev', async () => {
+    const { encodeScheduleInputValue } = await import('../../../../workflow/schedule/input-value.js');
+    const picked = {
+      kind: 'recurrence' as const, freq: 'monthly' as const, interval: 1, byWeekday: [{ day: 'FR' as const, nth: -1 }],
+      times: [{ hour: 18, minute: 0 }], anchor: '2026-10-01', timezone: 'Asia/Seoul',
+    };
+    let asked = 0;
+    const extraction = await extractRecurrenceWithJev(
+      // The words say something else; the picked rule wins and is never re-interpreted.
+      `DummyJSON 재고 표 매일 아침에 — 이 작업을 반복 업무로 만들어줘. 일정: ${encodeScheduleInputValue(picked)}`,
+      { now: new Date('2026-10-06T00:00:00Z'), timeZone: 'Asia/Seoul' },
+      async () => { asked += 1; return { answers: {} }; },
+    );
+    expect(extraction).toEqual({ kind: 'recurrence', recurrence: picked });
+    expect(asked).toBe(0);
+  });
+
+  it('falls back to Jev when the token is malformed', async () => {
+    let asked = 0;
+    const extraction = await extractRecurrenceWithJev(
+      '매주 월요일 9시 ⟦일정:not-a-valid-token⟧',
+      { now: new Date('2026-10-06T00:00:00Z'), timeZone: 'Asia/Seoul' },
+      async () => { asked += 1; return { answers: {} }; },
+    );
+    expect(asked).toBeGreaterThan(0);
+    expect(extraction.kind).toBe('unclear');
+  });
+});
+
+describe('holidays in a spoken schedule', () => {
+  const weekdayNine = { schedule_pattern: pick('weekdays'), schedule_interval: pick('none'), ...time(9, 0) };
+
+  it('skips public holidays only on a confident yes', async () => {
+    for (const [probability, expected] of [[0.96, '평일 오전 9:00 (공휴일 제외)'], [0.5, '평일 오전 9:00'], [0.04, '평일 오전 9:00']] as const) {
+      const { evaluate } = fakeEvaluate({ ...weekdayNine, schedule_skip_holidays: yes(probability) });
+      const result = await extractRecurrenceWithJev('평일 9시, 공휴일은 빼고', context, evaluate);
+      expect(result.kind === 'recurrence' && describeRecurrence(result.recurrence)).toBe(expected);
+    }
+  });
+});

@@ -114,3 +114,20 @@ describe('schedule form', () => {
     expect(result.preview.length).toBeGreaterThan(0);
   });
 });
+
+describe('skipping public holidays in the schedule form', () => {
+  it('says so in plain words and carries it in the submitted value', () => {
+    const result = evaluateScheduleDraft({ ...base, repeat: 'monthly', monthlyMode: 'day', monthDay: 1, skipHolidays: true }, NOW);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.description).toContain('공휴일 제외');
+    expect(decodeScheduleInputValue(result.value)?.skipHolidays).toBe('KR');
+    // 2027-01-01 (신정) is skipped in the preview.
+    expect(result.preview.join(' ')).not.toContain('2027년 1월 1일');
+  });
+
+  it('leaves holidays alone unless asked', () => {
+    const result = evaluateScheduleDraft({ ...base, repeat: 'monthly', monthlyMode: 'day', monthDay: 1 }, NOW);
+    expect(result.ok && decodeScheduleInputValue(result.value)?.skipHolidays).toBeFalsy();
+  });
+});

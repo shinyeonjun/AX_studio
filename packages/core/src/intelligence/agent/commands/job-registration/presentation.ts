@@ -10,6 +10,8 @@ import type { SideEffectLevel, WorkflowIR } from '../../../../workflow/schema.js
 import { actionRefFor, resolveActionDefinition } from '../../../../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../../../../workflow/side-effect-resolve.js';
 import { describeSchedule, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
+import { describeShaping } from '../../../../workflow/transform-expr/describe.js';
+import { TransformExprSchema } from '../../../../workflow/transform-expr/dsl.js';
 
 const MAX_STEP_ITEMS = 20;
 const MAX_ITEM_CHARS = 500;
@@ -30,6 +32,17 @@ const SIDE_EFFECT_LABEL: Record<SideEffectLevel, string> = {
   EXTERNAL: '외부 전송',
   EXTERNAL_HIGH: '외부 전송(고위험)',
 };
+
+/**
+ * Display names for internal ids, per target parameter: `{ connectionId: { conn_1: 'DummyJSON' },
+ * channel: { C0123: '#ops' } }`. Ids without a name are shown as they are.
+ */
+export type TargetLabels = Readonly<Partial<Record<string, Readonly<Record<string, string>>>>>;
+
+function labelFor(labels: TargetLabels, key: string, value: string): string | undefined {
+  const byValue = labels[key];
+  return byValue && Object.hasOwn(byValue, value) ? byValue[value] : undefined;
+}
 
 type WorkflowActionStep = Extract<WorkflowIR['steps'][number], { type: 'action' }>;
 
@@ -65,7 +78,7 @@ function boundedValue(value: unknown): string | undefined {
 
 function stepTargets(
   step: WorkflowActionStep,
-  connectionLabels: Readonly<Record<string, string>>,
+  labels: TargetLabels,
   stepNumbers: ReadonlyMap<string, number>,
 ): string {
   const params = step.params ?? {};
@@ -75,9 +88,8 @@ function stepTargets(
     if (Object.hasOwn(params, key)) {
       const value = boundedValue(params[key]);
       if (!value) continue;
-      // Show the connection's name; the raw id is internal and means nothing to the user.
-      const label = key === 'connectionId' ? connectionLabels[value] : undefined;
-      targets.push(`${name} ${label ?? value}`);
+      // Show the connection's or channel's name; a raw id means nothing to the user.
+      targets.push(`${name} ${labelFor(labels, key, value) ?? value}`);
     } else if (step.bindings && Object.hasOwn(step.bindings, key)) {
       const binding = step.bindings[key] as { from?: unknown; output?: unknown } | undefined;
       const from = typeof binding?.from === 'string' ? stepNumbers.get(binding.from) : undefined;
@@ -87,18 +99,35 @@ function stepTargets(
   return targets.length > 0 ? targets.join(', ') : '지정된 대상 없음';
 }
 
+/** Built-in table steps described by what they do; they have no destination to show. */
+function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: ReadonlyMap<string, number>): string | undefined {
+  if (step.connector !== 'transform') return undefined;
+  const inputs = Object.values(step.bindings ?? {})
+    .map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
+    .filter((value): value is number => value !== undefined);
+  const using = inputs.length > 0 ? ` (${inputs.join('·')}단계 결과 사용)` : '';
+  if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 부작용 없음(조회)`;
+  if (step.action === 'evaluate') {
+    const expr = TransformExprSchema.safeParse(step.params?.expr);
+    return `${number} 표 정리${using} · 부작용 없음(조회) · ${expr.success ? describeShaping(expr.data) : '변환식 확인 필요'}`;
+  }
+  return undefined;
+}
+
 /** One line per step: connector, action, side-effect level and resolved destinations. */
 export function workflowStepItems(
   workflow: Pick<WorkflowIR, 'steps' | 'sideEffects'>,
-  connectionLabels: Readonly<Record<string, string>> = {},
+  labels: TargetLabels = {},
 ): string[] {
   const stepNumbers = new Map(workflow.steps.map((step, index) => [step.id, index + 1]));
   const items = workflow.steps.map((step, index) => {
     const number = `${index + 1}.`;
     if (step.type === 'action') {
+      const tableItem = tableStepItem(step, number, stepNumbers);
+      if (tableItem) return tableItem;
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
-      return `${marker}${number} ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, connectionLabels, stepNumbers)}`;
+      return `${marker}${number} ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
     }
     if (step.type === 'ai_decision') {
       const inputs = Object.values(step.bindings ?? {}).map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
@@ -166,6 +195,7 @@ export function confirmationPresentation(
   workflow: Pick<WorkflowIR, 'steps' | 'sideEffects'>,
   httpLabel?: string,
   confirmationToken?: string,
+  channelLabels: Readonly<Record<string, string>> = {},
 ): AxUiPresentation {
   const hasExternal = workflowHasExternalSteps(workflow);
   return {
@@ -184,7 +214,10 @@ export function confirmationPresentation(
       {
         type: 'steps',
         title: '단계별 연결·동작·대상',
-        items: workflowStepItems(workflow, httpLabel ? { [spec.connectionId]: httpLabel } : {}),
+        items: workflowStepItems(workflow, {
+          connectionId: httpLabel ? { [spec.connectionId]: httpLabel } : {},
+          channel: channelLabels,
+        }),
       },
       { type: 'note', text: autoSendNote(spec.allowExternalAuto, hasExternal) },
     ],
@@ -201,15 +234,15 @@ export function confirmationPresentation(
   };
 }
 
-function triggerSummary(trigger: WorkflowIR['trigger']): string[] {
+function triggerSummary(trigger: WorkflowIR['trigger'], labels: TargetLabels): string[] {
   if (trigger?.type === 'schedule') return scheduleItems(trigger);
-  return [triggerLabel(trigger)];
+  return [triggerLabel(trigger, labels)];
 }
 
-function triggerLabel(trigger: WorkflowIR['trigger']): string {
+function triggerLabel(trigger: WorkflowIR['trigger'], labels: TargetLabels): string {
   if (!trigger) return '수동 시작';
   if (trigger.type === 'gmail.new_message') return `Gmail 새 메일: ${trigger.accountId}`;
-  if (trigger.type === 'slack.new_message') return `Slack 새 메시지: ${trigger.channel}`;
+  if (trigger.type === 'slack.new_message') return `Slack 새 메시지: ${labelFor(labels, 'channel', trigger.channel) ?? trigger.channel}`;
   if (trigger.type === 'local_folder.new_file') return `폴더 새 파일: ${trigger.folderId}`;
   if (trigger.type === 'once') return `일회 실행: ${trigger.runAt}`;
   if (trigger.type === 'webhook.inbound') return `Webhook: ${trigger.path}`;
@@ -221,7 +254,7 @@ export function workflowConfirmationPresentation(
   runOnceNow: boolean,
   allowExternalAuto: boolean,
   confirmationToken?: string,
-  connectionLabels: Readonly<Record<string, string>> = {},
+  labels: TargetLabels = {},
 ): AxUiPresentation {
   const hasExternal = workflowHasExternalSteps(workflow);
   return {
@@ -233,14 +266,14 @@ export function workflowConfirmationPresentation(
         type: 'steps',
         title: '등록 내용',
         items: [
-          ...triggerSummary(workflow.trigger),
+          ...triggerSummary(workflow.trigger, labels),
           runNote(runOnceNow, hasExternal),
         ],
       },
       {
         type: 'steps',
         title: '단계별 연결·동작·대상',
-        items: workflow.steps.length > 0 ? workflowStepItems(workflow, connectionLabels) : ['단계 없음'],
+        items: workflow.steps.length > 0 ? workflowStepItems(workflow, labels) : ['단계 없음'],
       },
       { type: 'note', text: autoSendNote(allowExternalAuto, hasExternal) },
     ],

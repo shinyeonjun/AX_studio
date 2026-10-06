@@ -1,32 +1,8 @@
-import type { ConditionExpr, ConditionValue } from '../workflow/condition-expr/schema.js';
+import type { ConditionExpr } from '../workflow/condition-expr/schema.js';
+import { describeCondition } from '../workflow/condition-expr/describe.js';
 import type { TransformExpr } from '../workflow/transform-expr/dsl.js';
 
-const COMPARISON_SYMBOLS: Record<string, string> = {
-  eq: '=',
-  neq: '≠',
-  gt: '>',
-  gte: '≥',
-  lt: '<',
-  lte: '≤',
-  contains: '포함',
-};
-
-function describeValue(value: ConditionValue): string {
-  return 'ref' in value ? value.ref : String(value.lit);
-}
-
-export function describeCondition(condition: ConditionExpr): string {
-  switch (condition.op) {
-    case 'and':
-      return condition.args.map(describeCondition).join(' 그리고 ');
-    case 'or':
-      return condition.args.map(describeCondition).join(' 또는 ');
-    case 'not':
-      return `아님(${describeCondition(condition.arg)})`;
-    default:
-      return `${describeValue(condition.left)} ${COMPARISON_SYMBOLS[condition.op] ?? condition.op} ${describeValue(condition.right)}`;
-  }
-}
+export { describeCondition } from '../workflow/condition-expr/describe.js';
 
 /** Row conditions applied below an expression's input chain, outermost last. */
 export function rowConditions(expr: TransformExpr): ConditionExpr[] {
@@ -61,7 +37,8 @@ export function describeMapping(expr: TransformExpr): string {
       return withConditions(aggregateLabel(expr), expr.input);
     case 'group': {
       const measures = expr.aggregates.map((aggregate) => `${aggregate.as}=${aggregateLabel(aggregate)}`).join(', ');
-      const label = withConditions(`${expr.by}별 묶음: ${measures}`, expr.input);
+      const keys = [expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)].join(' → ');
+      const label = withConditions(`${keys}별 묶음: ${measures}`, expr.input);
       return expr.totalRow ? `${label} · 합계 줄 포함` : label;
     }
     case 'ratio': {

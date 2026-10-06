@@ -127,3 +127,34 @@ describe('host read result cache', () => {
     expect(hostReadResultFor('session-a', shown)).toBeUndefined();
   });
 });
+
+describe('repeated confirmation cards', () => {
+  const runCard = (token: string): AxUiPresentation => ({
+    title: '이 업무를 지금 실행할까요?', inputMode: 'individual', blocks: [], inputs: [],
+    actions: [{ id: `confirm_mutation:${token}`, label: '지금 실행', value: '이 업무를 지금 실행할게요', tone: 'primary', purpose: 'confirm_mutation' }],
+  });
+  const jobCard = (token: string): AxUiPresentation => ({
+    title: '이 업무를 저장할까요?', inputMode: 'individual', blocks: [], inputs: [],
+    actions: [{ id: `confirm_job:${token}`, label: '저장하고 켜기', value: '이 업무를 저장하고 스케줄을 켜줘', tone: 'primary', purpose: 'confirm_job' }],
+  });
+
+  it('confirms the newest run card when the same run was asked for again', () => {
+    const messages: WorkspaceChatMessage[] = [
+      { role: 'assistant', content: '첫 번째', presentations: [runCard('old')] },
+      { role: 'user', content: '이 업무를 지금 실행할게요' },
+      { role: 'assistant', content: '실행했습니다' },
+      { role: 'assistant', content: '두 번째', presentations: [runCard('new')] },
+      { role: 'user', content: '이 업무를 지금 실행할게요' },
+    ];
+    expect(mutationConfirmationToken(messages, '이 업무를 지금 실행할게요')).toBe('new');
+  });
+
+  it('confirms the newest job draft', () => {
+    const messages: WorkspaceChatMessage[] = [
+      { role: 'assistant', content: '초안 1', presentations: [jobCard('first')] },
+      { role: 'assistant', content: '초안 2', presentations: [jobCard('second')] },
+      { role: 'user', content: '이 업무를 저장하고 스케줄을 켜줘' },
+    ];
+    expect(isJobConfirmation(messages, '이 업무를 저장하고 스케줄을 켜줘')).toBe('second');
+  });
+});

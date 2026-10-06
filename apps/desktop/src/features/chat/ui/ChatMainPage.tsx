@@ -119,6 +119,8 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
         onRejectApproval={workspaceChat.rejectChatApproval}
         onDownloadPdf={workspaceChat.downloadGeneratedPdf}
         onSavePdfToFolder={workspaceChat.saveGeneratedPdfToFolder}
+        // A conversation tied to a saved job already repeats; offer this only for one-off runs.
+        onMakeRecurring={workspaceChat.workspaceWorkflowState ? undefined : workspaceChat.makeRecurring}
         onDismissError={() => {
           workspaceChat.dismissError();
           discovery.dismissError();

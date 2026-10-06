@@ -43,10 +43,15 @@ const GroupAggregateSchema = z.object({
 });
 export type GroupAggregate = z.infer<typeof GroupAggregateSchema>;
 
+/** Bounds the nesting of one group expression (region → category → ...), not a business rule. */
+export const MAX_GROUP_THEN_BY = 2;
+
 /**
  * Pivot-style grouping: one output row per distinct (trimmed, non-empty) value of `by`, in
  * first-appearance order, with the same aggregate semantics as `aggregate`. The key set comes
- * from the data at run time. `totalRow` appends one row aggregated over every input row.
+ * from the data at run time. `thenBy` nests further key columns (one row per distinct
+ * combination, e.g. region then category). `totalRow` appends one row aggregated over every
+ * input row, its label in the first key column and the other key columns left empty.
  */
 const GroupExprSchema = z.object({
   op: z.literal('group'),
@@ -54,6 +59,7 @@ const GroupExprSchema = z.object({
   by: z.string().min(1),
   /** Output header of the key column; defaults to `by`. */
   keyAs: z.string().min(1).optional(),
+  thenBy: z.array(z.object({ by: z.string().min(1), keyAs: z.string().min(1).optional() })).min(1).max(MAX_GROUP_THEN_BY).optional(),
   aggregates: z.array(GroupAggregateSchema).min(1).max(MAX_GROUP_AGGREGATES),
   totalRow: z.object({ label: z.string().min(1) }).optional(),
 });
@@ -118,6 +124,7 @@ export type TransformExpr =
     input: TransformExpr;
     by: string;
     keyAs?: string;
+    thenBy?: Array<{ by: string; keyAs?: string }>;
     aggregates: GroupAggregate[];
     totalRow?: { label: string };
   }

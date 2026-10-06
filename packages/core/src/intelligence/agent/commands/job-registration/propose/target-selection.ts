@@ -85,7 +85,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function cachedSlackChannelLister(listSlackChannels?: ListSlackChannels): ListSlackChannels | undefined {
+export function cachedSlackChannelLister(listSlackChannels?: ListSlackChannels): ListSlackChannels | undefined {
   if (!listSlackChannels) return undefined;
   let pending: Promise<JobProposeReadResult> | undefined;
   return () => {

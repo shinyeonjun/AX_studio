@@ -22,7 +22,9 @@ describe('SlackSocketModeListener lifecycle', () => {
       await listener.start('bot', 'app', () => undefined);
       let stopped = false;
       const stopping = listener.stop().then(() => { stopped = true; });
-      await vi.advanceTimersByTimeAsync(2_000);
+      // The bound is armed after stop's own awaits; keep advancing until it fires, so a busy
+      // runner cannot advance the clock before the timer exists.
+      for (let tick = 0; tick < 20 && !stopped; tick += 1) await vi.advanceTimersByTimeAsync(500);
       await stopping;
       expect(stopped).toBe(true);
       expect(client.disconnect).toHaveBeenCalledOnce();
