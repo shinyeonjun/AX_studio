@@ -7,11 +7,21 @@ import type {
 } from './contracts.js';
 import { ownCell, requireCompleteTable, toNumber } from './helpers.js';
 
-/** Half-up decimal rounding without binary float artifacts (1.005 -> 1.01). */
+/**
+ * Decimal rounding as spreadsheets do it (ROUND: halves away from zero, so -0.125 -> -0.13),
+ * without binary float artifacts (1.005 -> 1.01).
+ */
 function roundTo(value: number | null, digits: number | undefined): number | null {
   if (value == null || digits === undefined) return value;
-  const rounded = Number(`${Math.round(Number(`${value}e${digits}`))}e-${digits}`);
-  return Number.isFinite(rounded) ? rounded : value;
+  const sign = value < 0 ? -1 : 1;
+  const magnitude = Math.abs(value);
+  const text = String(magnitude);
+  // Exponent notation (1.234e-7, 1e21) cannot take the decimal-shift trick; toFixed is exact there.
+  const rounded = text.includes('e')
+    ? (magnitude < 1e21 ? Number(magnitude.toFixed(digits)) : magnitude)
+    : Number(`${Math.round(Number(`${text}e${digits}`))}e-${digits}`);
+  if (!Number.isFinite(rounded)) return value;
+  return rounded === 0 ? 0 : sign * rounded;
 }
 
 export interface AggregateSpec {
@@ -95,8 +105,9 @@ export function evaluateRatio(
   snapshots: SnapshotTables,
   evaluate: TransformEvaluator,
 ): TransformEvaluation {
-  const numerator = Number(evaluate(expr.numerator, snapshots));
-  const denominator = Number(evaluate(expr.denominator, snapshots));
-  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
+  // A missing side (no numeric values) makes the ratio unknown, never 0%.
+  const numerator = toNumber(evaluate(expr.numerator, snapshots) as never);
+  const denominator = toNumber(evaluate(expr.denominator, snapshots) as never);
+  if (numerator == null || denominator == null || !Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
   return roundTo((numerator / denominator) * (expr.multiplyBy ?? 1), expr.round);
 }

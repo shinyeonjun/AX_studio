@@ -16,15 +16,24 @@ export function compareScalar(left: ScalarValue, right: ScalarValue): boolean {
   return String(left) === String(right);
 }
 
+/**
+ * A cell as a number, the way people write money and amounts: thousands separators, a currency
+ * sign or 원, a percent sign (50% -> 50, as shown) and accounting negatives ((1,000) -> -1000).
+ * Hex and other non-decimal forms are not numbers.
+ */
 export function toNumber(value: ScalarValue): number | null {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const normalized = value.replace(/,/g, '').trim();
-    if (!normalized) return null;
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  let text = value.trim().replace(/,/g, '').replace(/^[₩$€£¥]\s*/u, '').replace(/\s*(원|%)$/u, '').trim();
+  let negative = false;
+  if (/^\(.*\)$/u.test(text)) {
+    negative = true;
+    text = text.slice(1, -1).trim();
   }
-  return null;
+  if (!/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/iu.test(text)) return null;
+  const parsed = Number(text);
+  if (!Number.isFinite(parsed)) return null;
+  return negative ? -parsed : parsed;
 }
 
 export function requireTable(input: TransformEvaluation, errorCode: string): TableArtifact {
