@@ -38,5 +38,8 @@ export function requireCompleteTable(input: TransformEvaluation, errorCode: stri
   const table = requireTable(input, errorCode);
   const status = table.completeness?.status ?? (table.truncated ? 'partial' : 'complete');
   if (table.truncated || status !== 'complete') throw new Error('incomplete_table_input');
+  // A DB page says whether the page is whole; coverage says whether the source is. A later page
+  // (offset > 0) is a whole page of a partial source: totals over it are not totals.
+  if (table.coverage?.source === 'partial') throw new Error('incomplete_table_input');
   return table;
 }

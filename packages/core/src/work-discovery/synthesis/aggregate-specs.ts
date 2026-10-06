@@ -13,7 +13,7 @@ export function numericSourceColumns(table: TableArtifact): string[] {
 
 export function isCompleteTable(table: TableArtifact): boolean {
   const status = table.completeness?.status ?? (table.truncated ? 'partial' : 'complete');
-  return !table.truncated && status === 'complete';
+  return !table.truncated && status === 'complete' && table.coverage?.source !== 'partial';
 }
 
 /** Exact up to binary float noise: constructive search must not accept "close enough" numbers. */

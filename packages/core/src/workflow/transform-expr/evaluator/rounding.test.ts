@@ -67,3 +67,12 @@ describe('aggregate and ratio rounding', () => {
     expect(candidates.map(({ expr }) => expr)).toContainEqual({ op: 'aggregate', input: source, fn: 'avg', column: '금액', round: 0 });
   });
 });
+
+describe('totals over part of a table', () => {
+  it('refuses to sum a later DB page as if it were the whole table', () => {
+    const page = { ...buildTableArtifact({ id: 'page', headers: ['금액'], matrix: [[10], [20]] }),
+      coverage: { schemaVersion: 1, page: 'complete', query: 'partial', source: 'partial', consistency: 'best_effort', reason: 'independent_offset_reads', observedRows: 2, hasMore: false } };
+    expect(() => evaluateTransformExpr({ op: 'aggregate', input: { op: 'source', sourceId: 'page' }, fn: 'sum', column: '금액' }, { page: page as never }))
+      .toThrow('incomplete_table_input');
+  });
+});
