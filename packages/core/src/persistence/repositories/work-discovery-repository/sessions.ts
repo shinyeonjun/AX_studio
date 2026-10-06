@@ -61,6 +61,24 @@ export function updateDiscoverySession(db: AppDatabase, state: DiscoverySessionS
   }
 }
 
+/**
+ * Records the workspace chat session that started a discovery session. The first owner
+ * wins and is never reassigned, so a later caller cannot take over another chat's session.
+ */
+export function bindDiscoverySessionWorkspace(db: AppDatabase, sessionId: string, workspaceSessionId: string): void {
+  db.prepare(
+    'UPDATE work_discovery_sessions SET workspace_session_id = ? WHERE id = ? AND workspace_session_id IS NULL',
+  ).run(workspaceSessionId, sessionId);
+}
+
+export function getDiscoverySessionWorkspace(db: AppDatabase, sessionId: string): string | undefined {
+  const row = readRow<{ workspace_session_id?: string | null }>(
+    db.prepare('SELECT workspace_session_id FROM work_discovery_sessions WHERE id = ?'),
+    sessionId,
+  );
+  return typeof row?.workspace_session_id === 'string' && row.workspace_session_id ? row.workspace_session_id : undefined;
+}
+
 export function getDiscoverySession(db: AppDatabase, sessionId: string): DiscoverySessionState | undefined {
   const row = readRow<{ state_json?: string }>(
     db.prepare('SELECT state_json FROM work_discovery_sessions WHERE id = ?'),

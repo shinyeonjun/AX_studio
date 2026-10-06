@@ -168,6 +168,7 @@ export default defineConfig({
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/intelligence/agent/settings/ai-catalog.ts'),
         '@ax-studio/core/tool-result': resolve('../../packages/core/src/contracts/tool-result.ts'),
+        '@ax-studio/core/gmail-scopes': resolve('../../packages/core/src/connectors/gmail/scopes.ts'),
       },
     },
     build: {

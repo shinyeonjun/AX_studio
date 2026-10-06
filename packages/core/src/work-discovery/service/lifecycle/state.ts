@@ -1,6 +1,6 @@
 import { observeArtifact } from '../../observation/observe-artifact.js';
 import type { DiscoveryRecoveryCheckpoint, DiscoverySessionState } from '../../schema.js';
-import { assertTransition } from '../../state-machine.js';
+import { assertTransition, isTerminalStatus } from '../../state-machine.js';
 import { AUTO_RESUME_STATUSES } from '../../view.js';
 import type {
   WorkDiscoveryRuntime,
@@ -42,7 +42,7 @@ export function createDiscoveryLifecycleStateOperations(
       },
       updatedAt: new Date().toISOString(),
     };
-    options.store.saveDiscoverySession(next);
+    options.store.saveDiscoverySession(next, state.revision);
     return next;
   };
 
@@ -62,7 +62,7 @@ export function createDiscoveryLifecycleStateOperations(
       errorMessage,
       updatedAt: new Date().toISOString(),
     };
-    options.store.saveDiscoverySession(next);
+    options.store.saveDiscoverySession(next, state.revision);
     return next;
   };
 
@@ -95,7 +95,7 @@ export function createDiscoveryLifecycleStateOperations(
       revision: state.revision + 1,
       updatedAt: new Date().toISOString(),
     };
-    options.store.saveDiscoverySession(next);
+    options.store.saveDiscoverySession(next, state.revision);
     return next;
   };
 
@@ -105,13 +105,21 @@ export function createDiscoveryLifecycleStateOperations(
   ): DiscoverySessionState => {
     const state = options.store.getDiscoverySessionState(sessionId);
     if (!state) throw new Error('session_not_found');
+    // A user cancel (or any terminal outcome) is final; the pipeline must not revive it.
+    if (isTerminalStatus(state.status)) {
+      throw Object.assign(new Error(`work discovery session ${sessionId} is ${state.status}`), {
+        code: 'discovery_revision_conflict',
+        sessionId,
+        currentRevision: state.revision,
+      });
+    }
     const next = {
       ...state,
       ...patch,
       revision: state.revision + 1,
       updatedAt: new Date().toISOString(),
     };
-    options.store.saveDiscoverySession(next);
+    options.store.saveDiscoverySession(next, state.revision);
     return next;
   };
 

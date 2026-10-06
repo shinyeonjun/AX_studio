@@ -4,6 +4,12 @@ import { issue } from './shared.js';
 
 const MAX_BINDINGS = 1_000;
 
+/** Durable owner record so a chat keeps access to its discovery sessions after a restart. */
+export interface DiscoverySessionOwnerStore {
+  bindDiscoverySessionWorkspace(sessionId: string, workspaceSessionId: string): void;
+  getDiscoverySessionWorkspace(sessionId: string): string | undefined;
+}
+
 function requestedSessionId(command: AxCommand): string | undefined {
   const value = command.args && typeof command.args === 'object'
     ? (command.args as { sessionId?: unknown }).sessionId
@@ -26,6 +32,8 @@ function callerSession(context: DiscoveryCommandContext): string | undefined {
 export class DiscoverySessionBindings {
   private readonly owners = new Map<string, string>();
 
+  constructor(private readonly ownerStore?: DiscoverySessionOwnerStore) {}
+
   record(result: DiscoveryCommandResult, context: DiscoveryCommandContext): DiscoveryCommandResult {
     const owner = callerSession(context);
     const data = result[1];
@@ -38,6 +46,14 @@ export class DiscoverySessionBindings {
         if (oldest !== undefined) this.owners.delete(oldest);
       }
       this.owners.set(sessionId, owner);
+      try {
+        this.ownerStore?.bindDiscoverySessionWorkspace(sessionId, owner);
+      } catch (error) {
+        // The in-memory binding still protects this process; only restart survival is lost.
+        console.warn('[discovery] could not persist the workspace binding', {
+          code: (error as { code?: unknown } | null)?.code,
+        });
+      }
     }
     return result;
   }
@@ -48,7 +64,19 @@ export class DiscoverySessionBindings {
     const sessionId = requestedSessionId(command);
     // Argument validation stays with the handler so missing ids keep their input request.
     if (!sessionId) return undefined;
-    if (this.owners.get(sessionId) === caller) return undefined;
+    if (this.ownerOf(sessionId) === caller) return undefined;
     return ['not_found', undefined, [issue('discovery_not_found', 'discovery session을 찾을 수 없습니다.')]];
+  }
+
+  private ownerOf(sessionId: string): string | undefined {
+    const known = this.owners.get(sessionId);
+    if (known !== undefined) return known;
+    let stored: string | undefined;
+    try {
+      stored = this.ownerStore?.getDiscoverySessionWorkspace(sessionId);
+    } catch {
+      return undefined; // Fail closed: an unreadable owner never grants access.
+    }
+    return stored;
   }
 }

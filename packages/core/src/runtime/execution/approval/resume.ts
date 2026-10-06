@@ -14,6 +14,7 @@ import {
 import type { ExecutionResult } from '../../types.js';
 import type { WorkflowExecutionHost, PendingError } from '../contracts.js';
 import { createConnectorContext } from '../context.js';
+import { createExecutionLogWriter } from '../log-writer.js';
 import { runSequence } from '../sequence.js';
 import { executeApprovedActions } from './approved-actions.js';
 import { restoreApprovalSnapshot } from './snapshot.js';
@@ -181,10 +182,7 @@ function createResumeState(
     execution.workflowId ?? undefined,
     { ...(checkpoint?.variables ?? {}) },
     host.config.store.getConnections(),
-    (entry) => {
-      log.push(entry);
-      host.config.store.updateExecutionLog(execution.id, log);
-    },
+    createExecutionLogWriter(host.config.store, execution.id, log),
     execution.workspaceSessionId,
     abortSignal,
   );

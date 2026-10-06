@@ -70,6 +70,8 @@ export * from './runtime/execution-result-message.js';
 export * from './runtime/scheduler.js';
 export * from './runtime/manual-workflow-run.js';
 export { setWebhookSecretResolver } from './triggers/webhook/secret-provider.js';
+export { DEAD_LETTER_SETTING, type TriggerDeadLetter } from './runtime/trigger-engine/receipts.js';
+export type { CorruptRowReport } from './persistence/tolerant-rows.js';
 export * from './triggers/types.js';
 export * from './triggers/push-state.js';
 export * from './triggers/registry.js';

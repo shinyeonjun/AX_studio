@@ -43,3 +43,28 @@ describe('DiscoverySessionBindings', () => {
     expect(bindings.reject(cancel('discovery-1'), { workspaceSessionId: 'chat-a' })?.[0]).toBe('not_found');
   });
 });
+
+describe('DiscoverySessionBindings persistence', () => {
+  it('keeps the owner across a restart through the owner store and never reassigns it', () => {
+    const owners = new Map<string, string>();
+    const ownerStore = {
+      bindDiscoverySessionWorkspace: (sessionId: string, owner: string) => {
+        if (!owners.has(sessionId)) owners.set(sessionId, owner);
+      },
+      getDiscoverySessionWorkspace: (sessionId: string) => owners.get(sessionId),
+    };
+    new DiscoverySessionBindings(ownerStore).record([...started], { workspaceSessionId: 'chat-a' });
+
+    const restarted = new DiscoverySessionBindings(ownerStore);
+    expect(restarted.reject(cancel('discovery-1'), { workspaceSessionId: 'chat-a' })).toBeUndefined();
+    expect(restarted.reject(cancel('discovery-1'), { workspaceSessionId: 'chat-b' })?.[0]).toBe('not_found');
+  });
+
+  it('fails closed when the owner store cannot be read', () => {
+    const bindings = new DiscoverySessionBindings({
+      bindDiscoverySessionWorkspace: () => undefined,
+      getDiscoverySessionWorkspace: () => { throw new Error('db closed'); },
+    });
+    expect(bindings.reject(cancel('discovery-1'), { workspaceSessionId: 'chat-a' })?.[0]).toBe('not_found');
+  });
+});

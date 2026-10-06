@@ -6,7 +6,12 @@ export interface HistoryRetentionPolicy {
   executionsPerWorkflow: number;
   /** Executions younger than this are always kept, whatever their rank. */
   executionMinAgeDays: number;
-  /** Completed trigger receipts older than this are removed. */
+  /**
+   * Completed trigger receipts older than this are removed. A receipt is the last
+   * guard against re-firing an event a poll sees again, and poll cursors are not
+   * comparable across connectors (seen-id lists, Slack ts, Gmail historyId, folder
+   * keys), so the window is deliberately long rather than cursor-relative.
+   */
   completedReceiptMaxAgeDays: number;
   /** Newest workflow versions kept per workflow. */
   workflowVersionsPerWorkflow: number;
@@ -15,7 +20,7 @@ export interface HistoryRetentionPolicy {
 export const DEFAULT_HISTORY_RETENTION: HistoryRetentionPolicy = {
   executionsPerWorkflow: 500,
   executionMinAgeDays: 90,
-  completedReceiptMaxAgeDays: 30,
+  completedReceiptMaxAgeDays: 180,
   workflowVersionsPerWorkflow: 50,
 };
 

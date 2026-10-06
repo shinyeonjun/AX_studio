@@ -1,6 +1,6 @@
 import type { AppDatabase } from './types.js';
 import { INITIAL_SCHEMA_SQL, SCHEMA_V2_INDEXES_SQL } from './schema/ddl.js';
-import { applyLegacyMigrations } from './schema/legacy.js';
+import { applyLegacyMigrations, addColumnIfMissing } from './schema/legacy.js';
 
 export interface SchemaMigration {
   version: number;
@@ -28,6 +28,15 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
     name: 'list-and-retention-indexes',
     up(db) {
       db.exec(SCHEMA_V2_INDEXES_SQL);
+    },
+  },
+  {
+    version: 3,
+    name: 'discovery-session-workspace-owner',
+    up(db) {
+      // Idempotent: the chat session that started a discovery session survives restarts.
+      addColumnIfMissing(db, 'work_discovery_sessions', 'workspace_session_id', 'TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_work_discovery_sessions_workspace ON work_discovery_sessions(workspace_session_id);');
     },
   },
 ];

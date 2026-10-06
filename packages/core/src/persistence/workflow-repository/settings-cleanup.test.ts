@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
+import { LAST_OUTCOME_SETTING_PREFIX } from '../../runtime/scheduler/service.js';
+import { DEAD_LETTER_SETTING } from '../../runtime/trigger-engine/receipts.js';
+import { PUSH_EVENT_JOURNAL_SETTING } from '../../runtime/trigger-engine/events.js';
 
 describe('workflow settings and cleanup persistence', () => {
   it('fails closed when the persisted global execution state is not boolean', async () => {
@@ -74,6 +77,40 @@ describe('workflow settings and cleanup persistence', () => {
     expect(store.getSetting<Record<string, unknown>>('trigger.cursors', {})).toEqual({ other: {} });
     const receipts = db.prepare('SELECT COUNT(*) AS count FROM trigger_receipts WHERE workflow_id = ?').get(workflowId) as { count: number };
     expect(receipts.count).toBe(0);
+  });
+
+  it('prunes per-workflow outcome, retry-attempt and dead-letter state but keeps other workflows', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const base = {
+      goal: '삭제 시 부속 상태 정리', version: 1, inputs: [], steps: [], permissions: {}, approval: [],
+      allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+    };
+    const { workflowId } = store.saveWorkflow({ ...base, id: 'wf-a', name: 'A' });
+    store.saveWorkflow({ ...base, id: 'wf-a-b', name: 'A-B' });
+    const deadKey = `${workflowId}:slack.new_message:1`;
+    const otherKey = 'wf-a-b:slack.new_message:1';
+    store.claimTriggerReceipt({ dedupeKey: deadKey, workflowId, triggerType: 'slack.new_message' });
+    store.claimTriggerReceipt({ dedupeKey: otherKey, workflowId: 'wf-a-b', triggerType: 'slack.new_message' });
+    store.setSetting(`${LAST_OUTCOME_SETTING_PREFIX}${encodeURIComponent(workflowId)}`, { status: 'failed' });
+    store.setSetting(`${LAST_OUTCOME_SETTING_PREFIX}wf-a-b`, { status: 'failed' });
+    store.setSetting(`trigger.receiptAttempt:${encodeURIComponent(deadKey)}`, { attempts: 1, nextAttemptAt: 0 });
+    store.setSetting(`trigger.receiptAttempt:${encodeURIComponent(otherKey)}`, { attempts: 1, nextAttemptAt: 0 });
+    store.setSetting(DEAD_LETTER_SETTING, [
+      { dedupeKey: deadKey, workflowId, attempts: 5, reason: 'max_attempts_exceeded', at: '2026-10-01T00:00:00.000Z' },
+      { dedupeKey: otherKey, workflowId: 'wf-a-b', attempts: 5, reason: 'max_attempts_exceeded', at: '2026-10-01T00:00:00.000Z' },
+    ]);
+    store.setSetting(PUSH_EVENT_JOURNAL_SETTING, [{ id: 'j1' }]);
+
+    expect(store.deleteWorkflow(workflowId)).toBe(true);
+
+    expect(store.getSetting(`${LAST_OUTCOME_SETTING_PREFIX}${encodeURIComponent(workflowId)}`, null)).toBeNull();
+    expect(store.getSetting(`${LAST_OUTCOME_SETTING_PREFIX}wf-a-b`, null)).not.toBeNull();
+    expect(store.getSetting(`trigger.receiptAttempt:${encodeURIComponent(deadKey)}`, null)).toBeNull();
+    expect(store.getSetting(`trigger.receiptAttempt:${encodeURIComponent(otherKey)}`, null)).not.toBeNull();
+    expect(store.getSetting<Array<{ workflowId: string }>>(DEAD_LETTER_SETTING, []).map((entry) => entry.workflowId)).toEqual(['wf-a-b']);
+    // Journal entries are per trigger type (not per workflow) and are left alone.
+    expect(store.getSetting(PUSH_EVENT_JOURNAL_SETTING, [])).toEqual([{ id: 'j1' }]);
   });
 
   it('refuses to delete a workflow with an active execution', async () => {

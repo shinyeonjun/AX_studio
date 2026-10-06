@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDatabaseAsync, type AppDatabase } from '../db.js';
 import { WorkflowStore } from '../workflow-store.js';
-import { pruneHistory } from './retention-repository.js';
+import { DEFAULT_HISTORY_RETENTION, pruneHistory } from './retention-repository.js';
 import { appendExecutionLog, getExecution } from './execution-repository.js';
 
 const NOW = new Date('2026-10-06T00:00:00.000Z');
@@ -57,6 +57,16 @@ describe('history retention', () => {
     expect(pruneHistory(db, policy, NOW).triggerReceipts).toBe(1);
     expect(db.prepare('SELECT dedupe_key FROM trigger_receipts ORDER BY dedupe_key').all().map((row) => row.dedupe_key))
       .toEqual(['new-done', 'old-failed', 'old-processing']);
+  });
+
+  it('keeps completed receipts for 180 days by default so a re-seen poll event cannot re-fire', () => {
+    const insert = db.prepare('INSERT INTO trigger_receipts (dedupe_key, workflow_id, trigger_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
+    insert.run('done-100d', 'wf', 'poll', 'completed', daysAgo(100), daysAgo(100));
+    insert.run('done-200d', 'wf', 'poll', 'completed', daysAgo(200), daysAgo(200));
+
+    expect(DEFAULT_HISTORY_RETENTION.completedReceiptMaxAgeDays).toBeGreaterThanOrEqual(180);
+    expect(pruneHistory(db, DEFAULT_HISTORY_RETENTION, NOW).triggerReceipts).toBe(1);
+    expect(db.prepare('SELECT dedupe_key FROM trigger_receipts').all().map((row) => row.dedupe_key)).toEqual(['done-100d']);
   });
 
   it('keeps the newest workflow versions plus versions still referenced by active work', () => {

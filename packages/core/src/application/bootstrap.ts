@@ -1,6 +1,6 @@
 import { createDatabaseAsync } from '../persistence/db.js';
 import { WorkflowStore } from '../persistence/workflow-store.js';
-import { WorkflowRuntime } from '../runtime/engine.js';
+import { DEFAULT_APPROVAL_TTL_MS, WorkflowRuntime } from '../runtime/engine.js';
 import { Scheduler } from '../runtime/scheduler.js';
 import { TriggerEngine } from '../runtime/trigger-engine.js';
 import { runSavedWorkflowById } from '../runtime/manual-workflow-run.js';
@@ -55,6 +55,11 @@ export interface AxStudioCoreOptions {
   onWorkspaceChatChanged?: (event: WorkspaceChatChangedEvent) => void;
   onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void;
   resolveConnectionConfig?: (connector: string, config: unknown) => Promise<unknown> | unknown;
+  /**
+   * Pending-approval lifetime. Defaults to DEFAULT_APPROVAL_TTL_MS (72h); tests with
+   * fixed historical fixtures may pass a longer TTL. Expiry cannot be disabled here.
+   */
+  approvalTtlMs?: number;
 }
 
 export interface AxStudioCore {
@@ -163,6 +168,14 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     workflowActive,
     connectors,
     artifactSink: generatedArtifactSink,
+    approvalTtlMs: resolveApprovalTtlMs(options.approvalTtlMs),
+    onEphemeralJobFailed: (jobId, error) => {
+      console.error('[AX Studio] ephemeral workflow job failed before an execution record was written', {
+        jobId,
+        code: (error as { code?: unknown } | null)?.code,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    },
     onExecutionStarted: options.onExecutionStarted,
     onExecutionProgress: options.onExecutionProgress,
     onExecutionFinished: (result) => {
@@ -235,4 +248,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   };
 
   return core;
+}
+
+function resolveApprovalTtlMs(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : DEFAULT_APPROVAL_TTL_MS;
 }

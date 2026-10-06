@@ -46,12 +46,7 @@ const MAX_PENDING_MUTATIONS = 128;
 const MAX_LABEL_CHARS = 200;
 const MutationCommitArgsSchema = z.object({}).strict();
 
-export interface PendingMutation {
-  token: string;
-  command: AxCommand;
-  workflowId?: string;
-  createdAt: number;
-}
+export type { PendingMutation } from '../contracts.js';
 
 /**
  * Option objects created by mutation.commit after a verified host confirmation.

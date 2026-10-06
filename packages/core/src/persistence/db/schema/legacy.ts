@@ -5,6 +5,13 @@ function columnNames(db: AppDatabase, table: string): string[] {
   return rows.map((row) => String(row.name ?? ''));
 }
 
+/** Adds a column when absent. Table/column/type are trusted constants (DDL cannot be parameterized). */
+export function addColumnIfMissing(db: AppDatabase, table: string, column: string, type: string): void {
+  if (!columnNames(db, table).includes(column)) {
+    db.exec('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + type);
+  }
+}
+
 function renameColumnIfNeeded(db: AppDatabase, table: string, from: string, to: string): void {
   const names = columnNames(db, table);
   if (names.includes(from) && !names.includes(to)) {

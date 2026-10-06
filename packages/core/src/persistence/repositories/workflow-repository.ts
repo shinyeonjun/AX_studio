@@ -189,12 +189,35 @@ export function isWorkflowActive(db: AppDatabase, workflowId: string): boolean {
 // Owners: runtime/scheduler.ts (lastFired) and triggers/types.ts (cursors).
 const WORKFLOW_KEYED_SETTINGS = ['scheduler.lastFired', 'trigger.cursors'];
 
-function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
+// Per-workflow settings stored under their own key (`<prefix><encodeURIComponent(id)>`).
+// Owners: runtime/scheduler/service.ts (LAST_FIRED_SETTING / LAST_OUTCOME_SETTING_PREFIX).
+export const WORKFLOW_SUFFIXED_SETTING_PREFIXES = ['scheduler.lastFired:', 'scheduler.lastOutcome:'];
+// Settings arrays whose entries carry a `workflowId`. Owner: runtime/trigger-engine/receipts.ts (DEAD_LETTER_SETTING).
+export const WORKFLOW_ENTRY_LIST_SETTINGS = ['trigger.deadLetters'];
+// Per-receipt retry state, keyed `<prefix><encodeURIComponent(dedupeKey)>`. Owner: runtime/trigger-engine/receipts.ts.
+export const TRIGGER_RECEIPT_ATTEMPT_PREFIX = 'trigger.receiptAttempt:';
+
+function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string, receiptKeys: readonly string[]): void {
   for (const key of WORKFLOW_KEYED_SETTINGS) {
     const value = settingsRepo.getSetting<Record<string, unknown>>(db, key, {});
     if (!value || typeof value !== 'object' || !(workflowId in value)) continue;
     const { [workflowId]: _removed, ...rest } = value;
     settingsRepo.setSetting(db, key, rest);
+  }
+  for (const prefix of WORKFLOW_SUFFIXED_SETTING_PREFIXES) {
+    settingsRepo.deleteSetting(db, `${prefix}${encodeURIComponent(workflowId)}`);
+  }
+  for (const key of WORKFLOW_ENTRY_LIST_SETTINGS) {
+    const value = settingsRepo.getSetting<unknown>(db, key, []);
+    if (!Array.isArray(value)) continue;
+    const kept = value.filter((entry) => !(entry && typeof entry === 'object'
+      && (entry as { workflowId?: unknown }).workflowId === workflowId));
+    if (kept.length !== value.length) settingsRepo.setSetting(db, key, kept);
+  }
+  // Exact keys from this workflow's own receipts; a prefix match on the encoded id could
+  // also hit another workflow whose id merely starts with this one.
+  for (const dedupeKey of receiptKeys) {
+    settingsRepo.deleteSetting(db, `${TRIGGER_RECEIPT_ATTEMPT_PREFIX}${encodeURIComponent(dedupeKey)}`);
   }
 }
 
@@ -221,10 +244,15 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
     db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
+    const receiptKeys = readRows<{ dedupe_key: string }>(
+      db.prepare('SELECT dedupe_key FROM trigger_receipts WHERE workflow_id = ?'),
+      workflowId,
+    ).map((row) => row.dedupe_key).filter((key): key is string => typeof key === 'string');
     db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
-    pruneWorkflowKeyedSettings(db, workflowId);
-    settingsRepo.deleteSetting(db, `scheduler.lastFired:${encodeURIComponent(workflowId)}`);
+    // The push journal is not pruned: its entries are per trigger type, may fan out to other
+    // workflows, and replay only matches workflows that still exist.
+    pruneWorkflowKeyedSettings(db, workflowId, receiptKeys);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

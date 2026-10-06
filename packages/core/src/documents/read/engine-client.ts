@@ -5,6 +5,9 @@ export type {
 export {
   defaultPythonPath,
   defaultWorkerScript,
+  documentEngineEnvOverridesAllowed,
+  setDocumentEngineEnvOverridesAllowed,
+  type DocumentEnginePathOptions,
 } from './engine-client/paths.js';
 export {
   getDocumentEngineClient,

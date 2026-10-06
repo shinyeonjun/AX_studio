@@ -45,6 +45,8 @@ type PendingOccurrence = {
   triggerSnapshot?: string;
 };
 
+export type SchedulerOccurrenceOutcome = OccurrenceOutcome;
+
 type OccurrenceOutcome = {
   occurrenceKey: string;
   status: ExecutionResult['status'] | 'skipped';

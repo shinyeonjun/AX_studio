@@ -3,6 +3,9 @@ export * from './paths.js';
 export {
   defaultPythonPath,
   defaultWorkerScript,
+  documentEngineEnvOverridesAllowed,
+  setDocumentEngineEnvOverridesAllowed,
+  type DocumentEnginePathOptions,
   getDocumentEngineClient,
   MockDocumentEngineClient,
   setDocumentEngineClient,

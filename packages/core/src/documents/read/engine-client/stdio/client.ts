@@ -48,8 +48,9 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
   private readonly workerCwd: string;
 
   constructor(options: DocumentEngineClientOptions = {}) {
-    this.workerScript = options.workerScript ?? defaultWorkerScript();
-    this.pythonPath = options.pythonPath ?? defaultPythonPath(this.workerScript);
+    const pathOptions = { allowEnvOverrides: options.allowEnvOverrides };
+    this.workerScript = options.workerScript ?? defaultWorkerScript(pathOptions);
+    this.pythonPath = options.pythonPath ?? defaultPythonPath(this.workerScript, pathOptions);
     this.artifactRoot = options.artifactRoot ?? defaultArtifactRoot();
     this.timeoutMs = options.timeoutMs ?? 180_000;
     this.workerCwd = options.workerCwd ?? defaultWorkerCwd(this.workerScript);

@@ -17,6 +17,8 @@ export interface DocumentEngineClientOptions {
   artifactRoot?: string;
   timeoutMs?: number;
   workerCwd?: string;
+  /** See DocumentEnginePathOptions; defaults to the host policy / packaged detection. */
+  allowEnvOverrides?: boolean;
 }
 
 export interface DocumentEngineClient {

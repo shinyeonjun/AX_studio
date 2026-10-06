@@ -12,10 +12,18 @@ import type { AxCommandExecutionContext } from '../access.js';
 import type { AxCommandReadContext, AxCommandReadGateway } from '../read-gateway.js';
 import type { DiscoveryCommandGateway } from '../discovery-gateway.js';
 import type { PendingJobDraft } from '../job-registration/contract.js';
-import type { PendingMutation } from './dispatch/mutation-confirmation.js';
+import type { AxCommand } from '../schema.js';
 import type { RepairCommandGateway } from '../repair-gateway.js';
 import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
 import type { MetadataDispatchPermit } from '../../../decision/request-understanding/session.js';
+
+/** A host-confirmable mutation waiting for the user's confirmation card. */
+export interface PendingMutation {
+  token: string;
+  command: AxCommand;
+  workflowId?: string;
+  createdAt: number;
+}
 
 export interface AxCommandServiceOptions {
   removeWorkflow?: (workflowId: string) => Promise<void> | void;

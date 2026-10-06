@@ -21,7 +21,7 @@ export function createDiscoveryCommandGateway(
     sourceReadsMax: options.sourceReadsMax,
     autoResume: options.autoResume,
   });
-  const bindings = new DiscoverySessionBindings();
+  const bindings = new DiscoverySessionBindings(store);
   const bound = (
     handler: (service: WorkDiscoveryService, command: AxCommand) => ReturnType<typeof inspect>,
   ) => (command: AxCommand, context: DiscoveryCommandContext = {}) =>

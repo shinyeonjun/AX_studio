@@ -1,8 +1,10 @@
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  flushAppLogSync,
   type DecisionEngine,
   setDocumentEngineClient,
+  setDocumentEngineEnvOverridesAllowed,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
 import { createMainWindow } from '../app-window';
@@ -63,6 +65,8 @@ export function registerDesktopReadyHandler(): void {
   const startup = app.whenReady().then(async () => {
     try {
       if (isDesktopShuttingDown()) return;
+      // Packaged builds always use the bundled document-engine worker and Python.
+      setDocumentEngineEnvOverridesAllowed(!app.isPackaged);
       const isE2E = isE2ERuntimeEnabled(app.isPackaged, process.env);
       const paths = initDesktopAxDataPaths();
       if (!isE2E) await migrateAxDataOrContinue(paths);
@@ -166,6 +170,8 @@ export function registerDesktopReadyHandler(): void {
         }
       }
       dialog.showErrorBox('AX Studio 시작 실패', `${detail}${logHint}`);
+      // app.exit skips async log writes; flush so the startup failure reaches the log file.
+      try { flushAppLogSync(); } catch { /* Exiting regardless. */ }
       app.exit(1);
     }
   });

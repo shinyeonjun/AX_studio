@@ -2,7 +2,7 @@ import type { ModelProvider, StructuredGenerateInput } from '../../intelligence/
 import type { WorkflowIR } from '../../workflow/schema.js';
 
 export class CloudSpyProvider implements ModelProvider {
-  readonly name = 'cursor-cli';
+  readonly name = 'openai-api';
   sawSecret = false;
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {

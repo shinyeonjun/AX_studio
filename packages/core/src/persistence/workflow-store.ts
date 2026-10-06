@@ -53,6 +53,28 @@ export class WorkflowStore {
     return true;
   }
 
+  /**
+   * Deletion claim for a workflow whose stored definition cannot be read (corrupt latest
+   * version JSON, or a workflow row without any version). It never applies to a readable
+   * workflow, which must use the version-checked claimWorkflowDeletion. The repository
+   * delete still refuses while an execution is running or awaiting approval.
+   */
+  workflowExists(workflowId: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM workflows WHERE id = ?').get(workflowId));
+  }
+
+  claimUnreadableWorkflowDeletion(workflowId: string): boolean {
+    if (this.deletingWorkflowIds.has(workflowId)) return false;
+    if (!this.workflowExists(workflowId)) return false;
+    try {
+      if (workflowRepo.getWorkflow(this.db, workflowId)) return false;
+    } catch (error) {
+      if ((error as { code?: unknown } | null)?.code !== 'invalid_workflow_json') throw error;
+    }
+    this.deletingWorkflowIds.add(workflowId);
+    return true;
+  }
+
   releaseWorkflowDeletion(workflowId: string): void {
     this.deletingWorkflowIds.delete(workflowId);
   }
@@ -263,6 +285,10 @@ export class WorkflowStore {
     discoveryRepo.insertDiscoverySession(this.db, state);
   }
   getDiscoverySessionState(id: string) { return discoveryRepo.getDiscoverySession(this.db, id); }
+  bindDiscoverySessionWorkspace(sessionId: string, workspaceSessionId: string) {
+    discoveryRepo.bindDiscoverySessionWorkspace(this.db, sessionId, workspaceSessionId);
+  }
+  getDiscoverySessionWorkspace(sessionId: string) { return discoveryRepo.getDiscoverySessionWorkspace(this.db, sessionId); }
   listDiscoverySessions() { return discoveryRepo.listDiscoverySessions(this.db); }
   insertDiscoveryExample(params: {
     sessionId: string;
