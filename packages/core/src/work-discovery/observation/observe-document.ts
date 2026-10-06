@@ -110,9 +110,10 @@ export function observeDocumentArtifact(exampleId: string, document: DocumentArt
     const observeMatch = (label: string, display: string, labeled: boolean): void => {
       const key = `${label}:${display}`;
       if (seen.has(key) || parseKoreanNumber(display) == null) return;
-      const ordinal = (labelOrdinals.get(label) ?? 0) + 1;
+      const path = slugifyLabel(label);
+      const ordinal = (labelOrdinals.get(path) ?? 0) + 1;
       const pagePart = segment.pageIndex == null ? 'document' : `page_${segment.pageIndex + 1}`;
-      labelOrdinals.set(label, ordinal);
+      labelOrdinals.set(path, ordinal);
       seen.add(key);
       matches.push({
         label,
@@ -131,11 +132,16 @@ export function observeDocumentArtifact(exampleId: string, document: DocumentArt
     }
   }
 
-  const labelCounts = new Map<string, number>();
-  for (const match of matches) labelCounts.set(match.label, (labelCounts.get(match.label) ?? 0) + 1);
+  // Counted by the path a label becomes, not the label text: "Sales" and "sales:" or "Total (KRW)"
+  // and "Total KRW" become one path, and two observations on one path overwrite each other.
+  const pathCounts = new Map<string, number>();
+  for (const match of matches) {
+    const path = slugifyLabel(match.label);
+    pathCounts.set(path, (pathCounts.get(path) ?? 0) + 1);
+  }
 
   return matches.flatMap((match) => {
-    const stableField = match.labeled && labelCounts.get(match.label) === 1;
+    const stableField = match.labeled && pathCounts.get(slugifyLabel(match.label)) === 1;
     const observation = observationFromNumber(
       exampleId,
       match.label,
