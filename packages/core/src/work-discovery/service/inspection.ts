@@ -4,7 +4,7 @@ import {
   type DiscoveryInspectView,
 } from '../schema.js';
 import { canPublish, sourceIdFromExpr } from '../compile/blueprint.js';
-import { formatMappingLabel, observationDisplay, progressLabel } from '../view.js';
+import { formatMappingLabel, observationDisplay, progressLabel, displayNumber } from '../view.js';
 import { SUPPORTED_OUTPUT_FORMATS } from '../observation/observe-artifact.js';
 import type { WorkDiscoveryRuntime } from './contracts.js';
 
@@ -34,7 +34,7 @@ export function inspectDiscovery(
         expectedDisplay: typeof entry.expected === 'object' && entry.expected && 'value' in (entry.expected as object)
           ? String((entry.expected as { value?: unknown }).value ?? '')
           : String(entry.expected ?? ''),
-        actualDisplay: String(entry.actual ?? ''),
+        actualDisplay: displayNumber(entry.actual),
         pass: entry.pass,
         match: entry.match,
       })) ?? [],

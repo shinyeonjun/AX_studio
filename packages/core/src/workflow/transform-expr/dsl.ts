@@ -24,6 +24,8 @@ const AggregateExprSchema = z.object({
   input: z.lazy(() => TransformExprSchema),
   fn: z.enum(['count', 'sum', 'avg', 'min', 'max']),
   column: z.string().optional(),
+  /** Round the result to this many decimal places (reports usually show rounded averages). */
+  round: z.number().int().min(0).max(6).optional(),
 });
 
 const RatioExprSchema = z.object({
@@ -78,8 +80,8 @@ export type TransformExpr =
   | z.infer<typeof SourceExprSchema>
   | { op: 'column'; input: TransformExpr; name: string }
   | { op: 'filter'; input: TransformExpr; where: z.infer<typeof ConditionExprSchema> }
-  | { op: 'aggregate'; input: TransformExpr; fn: 'count' | 'sum' | 'avg' | 'min' | 'max'; column?: string }
-  | { op: 'ratio'; numerator: TransformExpr; denominator: TransformExpr; multiplyBy?: number }
+  | { op: 'aggregate'; input: TransformExpr; fn: 'count' | 'sum' | 'avg' | 'min' | 'max'; column?: string; round?: number }
+  | { op: 'ratio'; numerator: TransformExpr; denominator: TransformExpr; multiplyBy?: number; round?: number }
   | { op: 'lookup'; input: TransformExpr; keyColumn: string; keyValue: z.infer<typeof ScalarValueSchema>; valueColumn: string }
   | { op: 'select'; input: TransformExpr; columns: string[] }
   | { op: 'sort'; input: TransformExpr; by: Array<{ column: string; direction: 'asc' | 'desc' }> }

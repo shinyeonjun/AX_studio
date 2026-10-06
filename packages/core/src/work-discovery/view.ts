@@ -10,19 +10,27 @@ export const AUTO_RESUME_STATUSES: ReadonlySet<DiscoverySessionState['status']> 
   'validating',
 ]);
 
+/** Numbers without the report's own formatting get thousands separators (10479300 -> 10,479,300). */
+export function displayNumber(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value.toLocaleString('ko-KR', { maximumFractionDigits: 6 })
+    : String(value ?? '');
+}
+
 export function observationDisplay(observation: OutputObservation): string {
   if (observation.value.kind === 'number') {
-    return observation.value.display ?? String(observation.value.value);
+    return observation.value.display ?? displayNumber(observation.value.value);
   }
   if (observation.value.kind === 'text') return observation.value.value;
   return JSON.stringify(observation.value);
 }
 
-export function formatMappingLabel(candidate: { expr: { op: string; fn?: string; column?: string; name?: string } }): string {
+export function formatMappingLabel(candidate: { expr: { op: string; fn?: string; column?: string; name?: string; round?: number } }): string {
+  const rounding = candidate.expr.round !== undefined ? ` 반올림(소수 ${candidate.expr.round}자리)` : '';
   if (candidate.expr.op === 'aggregate') {
-    return `${candidate.expr.fn?.toUpperCase() ?? 'AGG'}(${candidate.expr.column ?? 'rows'})`;
+    return `${candidate.expr.fn?.toUpperCase() ?? 'AGG'}(${candidate.expr.column ?? 'rows'})${rounding}`;
   }
-  if (candidate.expr.op === 'ratio') return 'RATIO(%)';
+  if (candidate.expr.op === 'ratio') return `RATIO(%)${rounding}`;
   if (candidate.expr.op === 'column') return `COLUMN(${candidate.expr.name})`;
   return candidate.expr.op;
 }

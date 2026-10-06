@@ -12,14 +12,17 @@ function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] 
 
 function partitionKey(candidate: CandidateProgram): string {
   const sourceId = sourceIdFromExpr(candidate.expr) ?? 'unknown';
-  const aggregate = candidate.expr.op === 'aggregate' ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}` : candidate.expr.op;
+  const aggregate = candidate.expr.op === 'aggregate'
+    ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}:${candidate.expr.round ?? ''}`
+    : candidate.expr.op;
   return `${candidate.observationPath}|${sourceId}|${aggregate}`;
 }
 
 function labelForCandidate(candidate: CandidateProgram): string {
   if (candidate.expr.op === 'aggregate') {
     const column = candidate.expr.column ?? '전체';
-    return `${candidate.expr.fn.toUpperCase()}(${column})`;
+    const rounding = candidate.expr.round !== undefined ? ` 반올림(소수 ${candidate.expr.round}자리)` : '';
+    return `${candidate.expr.fn.toUpperCase()}(${column})${rounding}`;
   }
   if (candidate.expr.op === 'column') {
     return `${candidate.expr.name} 값`;
