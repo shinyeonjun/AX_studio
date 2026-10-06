@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "kind": "local_aggregate_publication_validation",
+  "date": "2026-10-03",
+  "baseCommit": "079a8c9fbc4b51812802e971971b101db682444d",
+  "reviewedCodeCommit": "68826edb0a78ba53e91369ac49b72c7d8c447765",
+  "reviewedCodeTree": "14120d10aa5ac7e5603216445438a2105b6ebb09",
+  "independentReviewEvidence": "98946ac219c7560287195c90453b34bb33e115cb",
+  "sourceChangedSinceReview": false,
+  "runtime": {
+    "platform": "Windows",
+    "node": "22.23.2",
+    "python": "3.12.14",
+    "vitestConfigLoader": "native",
+    "liveJevTestEnabled": false,
+    "successfulDependencyInstallations": 0,
+    "nativeDependencyRebuilds": 0,
+    "productionFeatureActivated": false
+  },
+  "finalChecks": {
+    "core": {
+      "success": true,
+      "files": {
+        "total": 486,
+        "passed": 484,
+        "failed": 0,
+        "skipped": 2
+      },
+      "tests": {
+        "total": 2692,
+        "passed": 2681,
+        "failed": 0,
+        "skipped": 11
+      },
+      "command": "node node_modules/vitest/vitest.mjs run --configLoader native",
+      "cwd": "packages/core",
+      "dbBackend": "CI default (AX_DB_BACKEND unset)"
+    },
+    "desktop": {
+      "success": true,
+      "files": {
+        "total": 54,
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tests": {
+        "total": 340,
+        "passed": 340,
+        "failed": 0,
+        "skipped": 0
+      },
+      "command": "node node_modules/vitest/vitest.mjs run electron src --configLoader native",
+      "cwd": "apps/desktop",
+      "dbBackend": "CI default (AX_DB_BACKEND unset)"
+    },
+    "coreEvaluation": {
+      "success": true,
+      "files": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "tests": {
+        "total": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0
+      },
+      "command": "node node_modules/vitest/vitest.mjs run --config vitest.eval.config.ts --configLoader native",
+      "cwd": "packages/core"
+    },
+    "dependencySecurity": {
+      "passed": 5,
+      "failed": 0,
+      "command": "node --test scripts/dependency-security.test.mjs"
+    },
+    "webhookSecurity": {
+      "passed": 3,
+      "failed": 0,
+      "command": "node --test test/manual/webhook.test.mjs"
+    },
+    "rendererImport": {
+      "passed": 2,
+      "failed": 0,
+      "command": "node --test scripts/desktop-renderer-import.test.mjs",
+      "execution": "approved unrestricted test execution after sandbox denied config-bundler ancestor read"
+    },
+    "packaging": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 5,
+      "command": "node --test scripts/lib/package-platform.test.mjs apps/desktop/scripts/appimage-policy.test.mjs"
+    },
+    "documentEngine": {
+      "passed": 90,
+      "failed": 0,
+      "command": "python -B -m unittest discover -s packages/document-engine/src -p *_test.py",
+      "execution": "existing interpreter read only; PYTHONDONTWRITEBYTECODE=1; HF_HUB_OFFLINE=1; TRANSFORMERS_OFFLINE=1"
+    },
+    "types": {
+      "coreProductionExit": 0,
+      "coreTestsExit": 0,
+      "desktopExit": 0,
+      "commands": [
+        "tsc --noEmit -p packages/core/tsconfig.json",
+        "tsc --noEmit -p packages/core/tsconfig.test.json",
+        "tsc --noEmit -p apps/desktop/tsconfig.json"
+      ]
+    },
+    "build": {
+      "coreExit": 0,
+      "desktopExit": 0,
+      "commands": [
+        "tsc -p packages/core/tsconfig.json",
+        "electron-vite build"
+      ],
+      "desktopExecution": "approved unrestricted build due config-bundler ancestor read; OAuth environment removed; no environment file",
+      "skillGeneratorProbe": "Existing generator completed but changed tracked embedded output bytes; generated file restored to the exact reviewed blob and Core recompiled. Generated changes are excluded from publication."
+    },
+    "architecture": {
+      "exit": 0,
+      "modules": 1338,
+      "dependencies": 5099,
+      "command": "depcruise packages/core/src --config .dependency-cruiser.cjs --output-type err"
+    },
+    "canonicalSentinels": {
+      "checked": 5,
+      "unchanged": true
+    }
+  },
+  "earlierRunnerFailures": [
+    {
+      "kind": "forced_sqljs_whole_core",
+      "success": false,
+      "files": {
+        "total": 486,
+        "passed": 480,
+        "failed": 4,
+        "skipped": 2
+      },
+      "tests": {
+        "total": 2692,
+        "passed": 2675,
+        "failed": 6,
+        "skipped": 11
+      },
+      "cause": "Two tests require the native factory branch; four bootstrap fixtures require the native branch data-directory setup. The failed tests and DB/bootstrap helpers exactly match base.",
+      "resolution": "Unset test-only AX_DB_BACKEND and run the unchanged whole suite with CI-default backend."
+    },
+    {
+      "kind": "owned_electron_binary_absent",
+      "success": false,
+      "files": {
+        "total": 54,
+        "passed": 53,
+        "failed": 1,
+        "skipped": 0
+      },
+      "tests": {
+        "total": 339,
+        "passed": 339,
+        "failed": 0,
+        "skipped": 0
+      },
+      "cause": "Electron import invoked its automatic installer because the private dependency copy omitted dist/path.txt; download failed under network restriction.",
+      "installerAttempted": true,
+      "installationSucceeded": false,
+      "resolution": "Regular read-only copy of existing binary files into the owned workspace; no installer or Electron launch."
+    },
+    {
+      "kind": "overbroad_desktop_test_collection",
+      "success": false,
+      "files": {
+        "total": 55,
+        "passed": 54,
+        "failed": 1,
+        "skipped": 0
+      },
+      "tests": {
+        "total": 340,
+        "passed": 340,
+        "failed": 0,
+        "skipped": 0
+      },
+      "cause": "Default Vitest discovery included a Node-test file with no Vitest suite.",
+      "resolution": "Use the unchanged package test scope: electron src."
+    },
+    {
+      "kind": "sandbox_config_ancestor_read",
+      "passed": 8,
+      "failed": 2,
+      "cause": "esbuild could not read an ancestor directory while loading the unchanged renderer test configuration.",
+      "resolution": "The two exact tests passed with approved unrestricted execution; tests and security configuration unchanged."
+    }
+  ],
+  "remainingLocalGaps": [
+    "Linux deterministic product GUI smoke",
+    "Windows packaged application smoke"
+  ],
+  "remoteCIClaim": "No remote CI result is asserted by these pre-publication artifacts.",
+  "publicationPrivacy": {
+    "fullRunnerLogsExcluded": true,
+    "absoluteMachinePathsExcluded": true,
+    "privateCredentialsExcluded": true,
+    "canonicalSentinelDetailsExcluded": true,
+    "unrelatedHistoricalBillingLedgerExcluded": true,
+    "syntheticObservationBytesPreserved": true
+  }
+}

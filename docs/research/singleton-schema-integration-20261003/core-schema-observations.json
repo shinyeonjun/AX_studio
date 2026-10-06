@@ -1,0 +1,4683 @@
+{
+  "fixtureKind": "synthetic_scripted_offline_integration",
+  "liveProviderCalls": 0,
+  "episodes": 96,
+  "completions": 5,
+  "noncompletions": 91,
+  "observations": [
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-01 paired clean omission completes only when enabled",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 21.05079999999998
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-01 paired clean omission completes only when enabled",
+      "flag": true,
+      "stop": "answered",
+      "taskCompleted": true,
+      "readerResult": {
+        "stop": "answered",
+        "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        },
+        "understanding": {
+          "version": 1,
+          "intent": "schema",
+          "targetSourceRef": "http:orders",
+          "metadataOperationRef": "http:orders:schema",
+          "outputKind": "readable_schema",
+          "needsGeneratedProse": false,
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "sourceRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            },
+            "selectedRefs": {
+              "intent": "schema",
+              "targetSourceRef": "source_0",
+              "outputKind": "not_stated",
+              "metadataOperationRef": "metadata_0"
+            },
+            "metadataOperationResolution": {
+              "producer": "host_singleton",
+              "cause": "missing_metadata_operation_answer",
+              "questionRef": "metadataOperationRef",
+              "operationId": "http:orders:schema"
+            }
+          }
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "forbiddenCalls": 0,
+      "elapsedMs": 8.522899999999936
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-02 paired clean omission completes only when enabled",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4619,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.4506000000001222
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-02 paired clean omission completes only when enabled",
+      "flag": true,
+      "stop": "answered",
+      "taskCompleted": true,
+      "readerResult": {
+        "stop": "answered",
+        "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        },
+        "understanding": {
+          "version": 1,
+          "intent": "schema",
+          "targetSourceRef": "http:orders",
+          "metadataOperationRef": "http:orders:schema",
+          "outputKind": "readable_schema",
+          "needsGeneratedProse": false,
+          "provenance": {
+            "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+            "requestRevision": 1,
+            "sourceRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:587ff8ca24d95cbe14ae9dc6f7579fa4574b0101cb962dde75936d527e28d79b",
+                "requestRevision": 1
+              }
+            },
+            "selectedRefs": {
+              "intent": "schema",
+              "targetSourceRef": "source_0",
+              "outputKind": "not_stated",
+              "metadataOperationRef": "metadata_0"
+            },
+            "metadataOperationResolution": {
+              "producer": "host_singleton",
+              "cause": "missing_metadata_operation_answer",
+              "questionRef": "metadataOperationRef",
+              "operationId": "http:orders:schema"
+            }
+          }
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4619,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.552400000000034
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-03 paired clean omission completes only when enabled",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4652,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.906699999999546
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > SCHEMA-03 paired clean omission completes only when enabled",
+      "flag": true,
+      "stop": "answered",
+      "taskCompleted": true,
+      "readerResult": {
+        "stop": "answered",
+        "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        },
+        "understanding": {
+          "version": 1,
+          "intent": "schema",
+          "targetSourceRef": "http:orders",
+          "metadataOperationRef": "http:orders:schema",
+          "outputKind": "readable_schema",
+          "needsGeneratedProse": false,
+          "provenance": {
+            "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+            "requestRevision": 1,
+            "sourceRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:2dc6e63b30aec0fcf07a8f3ca4543616b692331c87f38227c4bfb1a0f84ff707",
+                "requestRevision": 1
+              }
+            },
+            "selectedRefs": {
+              "intent": "schema",
+              "targetSourceRef": "source_0",
+              "outputKind": "not_stated",
+              "metadataOperationRef": "metadata_0"
+            },
+            "metadataOperationResolution": {
+              "producer": "host_singleton",
+              "cause": "missing_metadata_operation_answer",
+              "questionRef": "metadataOperationRef",
+              "operationId": "http:orders:schema"
+            }
+          }
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4652,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.55619999999999
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > absent flag retains the old omission stop; ordinary valid selection is unchanged off/on",
+      "flag": "absent",
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.1925999999998567
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > absent flag retains the old omission stop; ordinary valid selection is unchanged off/on",
+      "flag": false,
+      "stop": "answered",
+      "taskCompleted": true,
+      "readerResult": {
+        "stop": "answered",
+        "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "understanding": {
+          "version": 1,
+          "intent": "schema",
+          "targetSourceRef": "http:orders",
+          "metadataOperationRef": "http:orders:schema",
+          "outputKind": "readable_schema",
+          "needsGeneratedProse": false,
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "sourceRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            },
+            "selectedRefs": {
+              "intent": "schema",
+              "targetSourceRef": "source_0",
+              "outputKind": "not_stated",
+              "metadataOperationRef": "metadata_0"
+            }
+          }
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.4646999999999935
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > absent flag retains the old omission stop; ordinary valid selection is unchanged off/on",
+      "flag": true,
+      "stop": "answered",
+      "taskCompleted": true,
+      "readerResult": {
+        "stop": "answered",
+        "reply": "OrdersAPI 등록된 필드 사전:\n- orderId: orderId (string, 필수: 예)\n- quantity: quantity (형식: 알 수 없음, 필수: 알 수 없음)\n현재 등록된 메타데이터 범위입니다. 실제 레코드는 조회하지 않았습니다.\n사용자가 유지하는 등록된 필드 사전입니다. 원격 데이터 스키마를 확인한 것이 아닙니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "understanding": {
+          "version": 1,
+          "intent": "schema",
+          "targetSourceRef": "http:orders",
+          "metadataOperationRef": "http:orders:schema",
+          "outputKind": "readable_schema",
+          "needsGeneratedProse": false,
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "sourceRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            },
+            "selectedRefs": {
+              "intent": "schema",
+              "targetSourceRef": "source_0",
+              "outputKind": "not_stated",
+              "metadataOperationRef": "metadata_0"
+            }
+          }
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 1,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5871000000001914
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > wrong_question is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.140100000000075
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > wrong_question is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9106000000001586
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > provider_error_with_http_200 is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 2.157600000000002
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > provider_error_with_http_200 is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3883999999998196
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_container is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8840000000000146
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_container is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.036200000000008
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > array_container is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.084100000000035
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > array_container is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9203999999999724
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > malformed_answer is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5596000000000458
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > malformed_answer is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.5322000000001026
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > malformed_envelope is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.125
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > malformed_envelope is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.2112999999999374
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > http_error is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.208599999999933
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > http_error is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.946100000000115
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > transport_error is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6096999999999753
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > transport_error is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.253099999999904
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > tie is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "invalid_decision",
+        "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8395000000000437
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > tie is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "invalid_decision",
+        "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.0938000000001011
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > subthreshold is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "invalid_decision",
+        "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8804000000000087
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > subthreshold is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "invalid_decision",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "invalid_decision",
+        "reply": "메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6354000000001179
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > none is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "none"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7617000000000189
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > none is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "none"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8703000000000429
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7258999999999105
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unknown"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7076000000001841
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unsupported is ineligible with the flag off/on",
+      "flag": false,
+      "stop": "unsupported_operation",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "unsupported_operation",
+        "reply": "선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unsupported"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7692999999999302
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unsupported is ineligible with the flag off/on",
+      "flag": true,
+      "stop": "unsupported_operation",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "unsupported_operation",
+        "reply": "선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "unsupported"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3559000000000196
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > goal_absent cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "ambiguous_intent",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "ambiguous_intent",
+        "reply": "데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "ambiguous",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3158,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6454000000003361
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > goal_absent cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "ambiguous_intent",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "ambiguous_intent",
+        "reply": "데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "ambiguous",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:c8e290861aaf338a7776e991349c67db655d744b499ca8099bd32760ec43f6b3",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3158,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5747000000001208
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > target_absent cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "source_required",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "source_required",
+        "reply": "메타데이터를 확인할 등록된 소스 이름을 알려 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "none"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3025,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5415000000002692
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > target_absent cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "source_required",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "source_required",
+        "reply": "메타데이터를 확인할 등록된 소스 이름을 알려 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "none"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:4f2d38c617a30de57420a7d731d67aa016aec7d22325df785b6ec73e340b35fa",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3025,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7182000000002517
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unresolved_pronoun cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "source_ambiguous",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "source_ambiguous",
+        "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "ambiguous"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3039,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5794000000000779
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unresolved_pronoun cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "source_ambiguous",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "source_ambiguous",
+        "reply": "어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "ambiguous"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:22fac7418df319e2086c9a30f59c2760ce1041e845dddbf8b6d3185dc8c6a045",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3039,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6648000000000138
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown_source cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "candidate_coverage_incomplete",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "candidate_coverage_incomplete",
+        "reply": "현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "unknown"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3043,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7735000000002401
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown_source cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "candidate_coverage_incomplete",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "candidate_coverage_incomplete",
+        "reply": "현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "unknown"
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:247a95084e86b8bf97e15bb1b512e8f371ef545d2e5bb66f85fc85db36531973",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3043,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5446999999999207
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unsupported_goal cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "unsupported_intent",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "unsupported_intent",
+        "reply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: OrdersAPI 내일 매출 예측해줘",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "unsupported",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3213,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5740000000000691
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unsupported_goal cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "unsupported_intent",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "unsupported_intent",
+        "reply": "이 메타데이터 범위에서는 지원하지 않는 요청입니다: OrdersAPI 내일 매출 예측해줘",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "unsupported",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:459147ffe63cc3eb38cc58366b1d7fee3446c5b58b3dc3b668fb4281aee1b942",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3213,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.4554000000002816
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > retrieval cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "outside_slice",
+        "reply": "실제 레코드 조회 요청입니다. 이 메타데이터 경로에서는 레코드를 읽지 않습니다. 별도의 승인된 조회 경로가 필요합니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "retrieval",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3213,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.4473000000002685
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > retrieval cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "outside_slice",
+        "reply": "실제 레코드 조회 요청입니다. 이 메타데이터 경로에서는 레코드를 읽지 않습니다. 별도의 승인된 조회 경로가 필요합니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "retrieval",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:8240e6ae6acac70708f535619d46e98516f28fbaac3d072f28d7192b1f7f6b87",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3213,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.45839999999998327
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > action cannot gain user authority from source availability off/on",
+      "flag": false,
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "outside_slice",
+        "reply": "연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "action",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3199,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5277999999998428
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > action cannot gain user authority from source availability off/on",
+      "flag": true,
+      "stop": "outside_slice",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "outside_slice",
+        "reply": "연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 1,
+        "assessment": {
+          "intent": "action",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_applicable"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:549e2d5f777038c2b95e539f96be66b78511f7a57261e55746a1b46f7ad24aa5",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3199,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.4741999999996551
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > nonlocal fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.853099999999813
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > nonlocal fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.0045000000000073
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_host_currentness_producer fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7885000000001128
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_host_currentness_producer fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.618199999999888
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > raw fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "raw_debug",
+          "provenance": {
+            "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4607,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3850999999999658
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > raw fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "raw_debug",
+          "provenance": {
+            "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:71c06362ddc5286861f30f695878519266bfd3b91ae82b464379f5e60adeac20",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4607,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.0871000000001914
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > inventory fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "inventory",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4638,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7568999999998596
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > inventory fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "inventory",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4638,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7937999999999192
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > status fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "connection_status",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4667,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6476999999999862
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > status fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "connection_status",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4667,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6621000000000095
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > denied fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7204999999999018
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > denied fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6603000000000065
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > two_schema_operations_including_denied fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4866,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7146999999999935
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > two_schema_operations_including_denied fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4866,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7683999999999287
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > source_truncation fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4621,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8353000000001884
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > source_truncation fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4621,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6895999999997002
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > operation_overflow fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4624,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7209000000002561
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > operation_overflow fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4624,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8915000000001783
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown_operation_total fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4624,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9445999999998094
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > unknown_operation_total fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4624,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7653000000000247
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > non_http_asset_binding fails the session singleton predicate off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4623,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.631800000000112
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > non_http_asset_binding fails the session singleton predicate off/on",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4623,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7006000000001222
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > a valid explicitly selected denied operation keeps permission_denied off/on",
+      "flag": false,
+      "stop": "permission_denied",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "permission_denied",
+        "reply": "선택한 소스의 메타데이터 조회 권한이 확인되지 않거나 거부되었습니다. 필요한 권한을 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6204000000002452
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > a valid explicitly selected denied operation keeps permission_denied off/on",
+      "flag": true,
+      "stop": "permission_denied",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "permission_denied",
+        "reply": "선택한 소스의 메타데이터 조회 권한이 확인되지 않거나 거부되었습니다. 필요한 권한을 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5648000000001048
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_dictionary charges the one failed first read and does not retry off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6523000000001957
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > missing_dictionary charges the one failed first read and does not retry off/on",
+      "flag": true,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "이 HTTP 엔드포인트의 등록된 필드 사전이 없습니다. 원격 데이터 스키마는 확인하지 않았습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.1183999999998377
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > wrong_revision charges the one failed first read and does not retry off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6524999999996908
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > wrong_revision charges the one failed first read and does not retry off/on",
+      "flag": true,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스와 일치하는 메타데이터 근거를 확인하지 못했습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.3523999999997613
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > bad_shape charges the one failed first read and does not retry off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.673200000000179
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > bad_shape charges the one failed first read and does not retry off/on",
+      "flag": true,
+      "stop": "metadata_unavailable",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_unavailable",
+        "reply": "선택한 소스와 일치하는 메타데이터 근거를 확인하지 못했습니다.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.1536999999998443
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > oversized charges the one failed first read and does not retry off/on",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7136000000000422
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > oversized charges the one failed first read and does not retry off/on",
+      "flag": true,
+      "stop": "metadata_budget_exhausted",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "metadata_budget_exhausted",
+        "reply": "메타데이터 결과가 표시 한도를 넘었습니다. 확인할 소스 범위를 좁혀 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "selected",
+            "operationId": "http:orders:schema"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 1,
+        "metadataOperationResolution": {
+          "producer": "host_singleton",
+          "cause": "missing_metadata_operation_answer",
+          "questionRef": "metadataOperationRef",
+          "operationId": "http:orders:schema"
+        }
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.2630999999996675
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > cancel before the omitted answer prevents dispatch and publication",
+      "flag": false,
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6226000000001477
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > cancel before the omitted answer prevents dispatch and publication",
+      "flag": true,
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.7885999999998603
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > correction before the omitted answer prevents dispatch and publication",
+      "flag": false,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9589000000000851
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > correction before the omitted answer prevents dispatch and publication",
+      "flag": true,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.776299999999992
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > catalog before the omitted answer prevents dispatch and publication",
+      "flag": false,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.049199999999928
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > catalog before the omitted answer prevents dispatch and publication",
+      "flag": true,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9002000000000407
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > connection before the omitted answer prevents dispatch and publication",
+      "flag": false,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8042000000000371
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > connection before the omitted answer prevents dispatch and publication",
+      "flag": true,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.8060999999997875
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > dictionary before the omitted answer prevents dispatch and publication",
+      "flag": false,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6221999999997934
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > dictionary before the omitted answer prevents dispatch and publication",
+      "flag": true,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6756999999997788
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > cancel after the actual first read suppresses publication without retry",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.9479000000001179
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > cancel after the actual first read suppresses publication without retry",
+      "flag": true,
+      "stop": "cancelled",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 1.6925999999998567
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > dictionary after the actual first read suppresses publication without retry",
+      "flag": false,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.6909999999998035
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > dictionary after the actual first read suppresses publication without retry",
+      "flag": true,
+      "stop": "superseded",
+      "taskCompleted": false,
+      "readerResult": null,
+      "scriptedFetches": 2,
+      "requestBytes": 4622,
+      "metadataServiceAttempts": 1,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.884900000000016
+    },
+    {
+      "case": "default-off singleton schema selection with real Jev/session/service/local adapter > a plain error with the same human message never qualifies",
+      "flag": true,
+      "stop": "provider_failure",
+      "taskCompleted": false,
+      "readerResult": {
+        "stop": "provider_failure",
+        "reply": "판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.",
+        "requestRevision": 1,
+        "evaluationPhases": 2,
+        "assessment": {
+          "intent": "schema",
+          "targetSourceRef": {
+            "state": "selected",
+            "sourceId": "http:orders",
+            "sourceRevision": 1
+          },
+          "metadataOperationRef": {
+            "state": "not_evaluated"
+          },
+          "outputKind": "not_stated",
+          "provenance": {
+            "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+            "requestRevision": 1,
+            "catalogRevision": 1,
+            "policyRevision": 1,
+            "fieldAuthorities": {
+              "intent": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "targetSourceRef": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              },
+              "outputKind": {
+                "requestDigest": "sha256:d93043ab218ed6b601880b347cda2f35883553664595e30c2fbd83f438a4575e",
+                "requestRevision": 1
+              }
+            }
+          }
+        },
+        "metadataReadAttempts": 0
+      },
+      "scriptedFetches": 1,
+      "requestBytes": 3233,
+      "metadataServiceAttempts": 0,
+      "approvedEvidence": 0,
+      "forbiddenCalls": 0,
+      "elapsedMs": 0.5738000000001193
+    }
+  ]
+}

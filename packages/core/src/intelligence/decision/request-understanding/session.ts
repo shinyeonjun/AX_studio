@@ -5,6 +5,7 @@ import {
   type MetadataCatalog, type AcceptedMetadataCatalog, type ActiveRequestSnapshot,
   type RegisteredMetadataOperation, type RegisteredMetadataSource, type RequestUnderstanding,
   type MetadataIntent,
+  type RequestUnderstandingAssessment,
 } from '../../../contracts/request-understanding.js';
 import type { AuthoritativeRequestAnchor } from '../../../contracts/request-anchor.js';
 import { createAuthoritativeRequestAnchor } from '../request-anchor.js';
@@ -143,6 +144,35 @@ export class RequestUnderstandingSession {
           requestRevision: authority.requestRevision }];
       }),
     }));
+  }
+
+  /** Eligibility only; the existing permit remains the sole dispatch authority. */
+  singletonLocalSchemaOperation(snapshot: ActiveRequestSnapshot,
+    assessment: RequestUnderstandingAssessment): RegisteredMetadataOperation | undefined {
+    this.assertCurrent(snapshot);
+    if (!this.assertHostCurrent || this.metadataAdapter?.kind !== 'registered_http_metadata'
+      || snapshot.fieldAuthorities !== this.fieldAuthorities || snapshot.signal !== this.controller.signal
+      || assessment.intent !== 'schema' || assessment.outputKind !== 'readable_schema'
+      || assessment.targetSourceRef.state !== 'selected' || assessment.metadataOperationRef.state !== 'not_evaluated') return undefined;
+    const provenance = assessment.provenance;
+    if (provenance.requestDigest !== snapshot.anchor.digest || provenance.requestRevision !== snapshot.requestRevision
+      || provenance.catalogRevision !== snapshot.catalogRevision || provenance.policyRevision !== snapshot.policyRevision
+      || REQUEST_UNDERSTANDING_FIELDS.some(field => provenance.fieldAuthorities[field].requestDigest !== snapshot.fieldAuthorities[field].anchor.digest
+        || provenance.fieldAuthorities[field].requestRevision !== snapshot.fieldAuthorities[field].requestRevision)) return undefined;
+    const target = assessment.targetSourceRef;
+    const selectedSource = this.catalog.sources.find(entry => entry.id === target.sourceId);
+    const full = (coverage: AcceptedMetadataCatalog['coverage'], count: number) =>
+      !coverage.truncated && !coverage.overflow && coverage.knownTotal === count;
+    if (!selectedSource || selectedSource.revision !== assessment.targetSourceRef.sourceRevision
+      || !selectedSource.id.startsWith('http:') || selectedSource.assetId !== selectedSource.id
+      || !full(this.catalog.coverage, this.catalog.sources.length)
+      || !full(selectedSource.operationCoverage, selectedSource.operations.length)) return undefined;
+    // Count before permission filtering: one denied sibling must not create a singleton.
+    const operations = selectedSource.operations.filter(operation => operation.intent === 'schema');
+    const operation = operations.length === 1 ? operations[0] : undefined;
+    if (!operation?.allowed || operation.command.name !== 'discovery.describe'
+      || operation.command.args.assetId !== selectedSource.id || operation.command.args.depth !== 'schema') return undefined;
+    return operation;
   }
 
   permit(snapshot: ActiveRequestSnapshot, understanding: RequestUnderstanding,
