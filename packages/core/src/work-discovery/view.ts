@@ -24,6 +24,10 @@ export function displayValue(value: unknown): string {
   if (value && typeof value === 'object' && Array.isArray((value as { rows?: unknown }).rows)) {
     return `${(value as { rows: unknown[] }).rows.length}행 표`;
   }
+  // Large replayed tables are persisted as a row count only.
+  if (value && typeof value === 'object' && typeof (value as { rowCount?: unknown }).rowCount === 'number') {
+    return `${(value as { rowCount: number }).rowCount}행 표`;
+  }
   return displayNumber(value);
 }
 

@@ -257,24 +257,24 @@ function enumerateUnfilteredScalarCandidates(
       if (!table) continue;
 
       candidates.push({
-        id: `cand_${randomUUID().replace(/-/g, '').slice(0, 12)}`,
+        id: candidateId(),
         observationPath: observation.path,
         expr: aggregateExpr(source.id, 'count'),
         simplicity: 0.65,
       });
 
-      for (const column of numericColumns(table)) {
-        const direct: TransformExpr = {
-          op: 'column',
-          input: { op: 'source', sourceId: source.id },
-          name: column.name,
-        };
-        candidates.push({
-          id: `cand_${randomUUID().replace(/-/g, '').slice(0, 12)}`,
-          observationPath: observation.path,
-          expr: direct,
-          simplicity: 0.8,
-        });
+      const columns = numericColumns(table);
+      for (const column of columns) {
+        // A column is one number only when the table has one row; on a longer table it is a list
+        // that can never equal a number, and replaying it would persist every value of the column.
+        if (table.rows.length === 1) {
+          candidates.push({
+            id: candidateId(),
+            observationPath: observation.path,
+            expr: { op: 'column', input: { op: 'source', sourceId: source.id }, name: column.name },
+            simplicity: 0.8,
+          });
+        }
 
         for (const fn of ['sum', 'avg'] as const) {
           candidates.push({
@@ -295,7 +295,7 @@ function enumerateUnfilteredScalarCandidates(
         }
       }
 
-      candidates.push(...ratioCandidates(observation, source.id, numericColumns(table), decimals));
+      candidates.push(...ratioCandidates(observation, source.id, columns, decimals));
     }
   }
 

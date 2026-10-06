@@ -35,7 +35,25 @@ function distinctValues(table: TableArtifact, column: string): Map<string, strin
  * values repeat (categorical), fewest distinct values first. Filters that keep every row, no row,
  * or exactly the same rows as an earlier filter are dropped (the evidence cannot tell them apart).
  */
-export function candidateRowFilters(table: TableArtifact, excludeColumns: ReadonlySet<string>): RowFilter[] {
+export function candidateRowFilters(table: TableArtifact, excludeColumns: ReadonlySet<string>): readonly RowFilter[] {
+  // Every numeric field and every report table asks for the same filters; build them once per table,
+  // and hand out the same row arrays so the per-rows aggregate cache is shared too.
+  const key = JSON.stringify([...excludeColumns].sort());
+  let byExclusion = filtersByTable.get(table);
+  if (!byExclusion) {
+    byExclusion = new Map();
+    filtersByTable.set(table, byExclusion);
+  }
+  const cached = byExclusion.get(key);
+  if (cached) return cached;
+  const filters = buildRowFilters(table, excludeColumns);
+  byExclusion.set(key, filters);
+  return filters;
+}
+
+const filtersByTable = new WeakMap<TableArtifact, Map<string, readonly RowFilter[]>>();
+
+function buildRowFilters(table: TableArtifact, excludeColumns: ReadonlySet<string>): RowFilter[] {
   const rowCount = table.rows.length;
   const dimensions = table.columns
     .filter((column) => !excludeColumns.has(column.name))
