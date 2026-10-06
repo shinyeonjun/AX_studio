@@ -2206,7 +2206,7 @@ describe('runAxCommandChat command loop', () => {
       onCommandResult: (result) => commandResults.push(result.command),
     });
 
-    expect(reply).toBe('현재 workflow를 삭제했습니다.');
+    expect(reply).toBe('업무를 삭제했습니다.');
     expect(commandResults).toEqual(['workflow.delete', 'workflow.delete']);
     expect(removeWorkflow).toHaveBeenCalledExactlyOnceWith(saved.workflowId);
     expect(store.getWorkflow(saved.workflowId)).toBeNull();
@@ -2347,7 +2347,7 @@ describe('runAxCommandChat command loop', () => {
       mutationConfirmationToken: mutationTokenFrom(presentations),
     });
 
-    expect(reply).toBe('workflow를 수정했습니다.');
+    expect(reply).toBe('업무를 수정했습니다.');
     expect(store.getWorkflow(saved.workflowId)).toMatchObject({
       name: '주간 재고 요약',
       version: workflow.version + 1,
@@ -2456,7 +2456,7 @@ describe('runAxCommandChat command loop', () => {
       mutationConfirmationToken: mutationTokenFrom(presentations),
     });
 
-    expect(reply).toContain('자동 실행을 중지');
+    expect(reply).toContain('자동 실행을 멈췄');
     expect(evaluations).toBe(2);
     expect(execute).toHaveBeenCalledTimes(2);
     expect(execute.mock.calls[0]?.[0]).toMatchObject({

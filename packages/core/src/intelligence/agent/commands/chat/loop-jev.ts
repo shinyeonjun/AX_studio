@@ -22,6 +22,8 @@ import {
   PARTIAL_PREVIOUS_RESULT_NOTE,
   presentHttpEndpointSelection,
   readOperationIdentity,
+  WORKFLOW_DELETED_REPLY,
+  workflowRunReply,
   workflowUpdateSuccessMessage,
   type CommandChatLoopContext,
 } from './loop-shared.js';
@@ -265,11 +267,11 @@ async function parameterizedRoute(turn: JevTurn, route: JevRoute<'parameterized'
 function lifecycleCommandReply(route: JevRoute<'command'>, result: AxCommandResult): string | undefined {
   const name = route.command.name;
   if (route.route === 'context_remember') return hostFacingMessage(result, '저장할 내용을 확인해 주세요. 아직 저장하지 않았습니다.');
-  if (name === 'workflow.run') return hostFacingMessage(result, '워크플로우 실행 요청을 처리하지 못했습니다.');
-  if (name === 'workflow.delete' && result.status === 'ok') return '현재 workflow를 삭제했습니다.';
+  if (name === 'workflow.run') return workflowRunReply(result);
+  if (name === 'workflow.delete' && result.status === 'ok') return WORKFLOW_DELETED_REPLY;
   if (name === 'workflow.update' && result.status === 'ok') return workflowUpdateSuccessMessage(result);
   if (name === 'job.propose') return hostFacingMessage(result, '업무 초안을 처리하지 못했습니다.');
-  if (name === 'workflow.create' && result.status === 'ok') return '수동 workflow를 저장했습니다. 자동 실행은 활성화되지 않았습니다.';
+  if (name === 'workflow.create' && result.status === 'ok') return '업무를 저장했습니다. 직접 실행할 때만 돌아가며 자동 실행은 켜지 않았습니다.';
   if (name === 'execution.enqueue_once' && (result.status === 'ok' || result.status === 'queued')) {
     return hostFacingMessage(result, '일회 실행을 큐에 등록했습니다. 실행 상태에서 진행 상황을 확인해 주세요.');
   }

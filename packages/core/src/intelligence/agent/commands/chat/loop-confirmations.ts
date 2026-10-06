@@ -4,15 +4,17 @@ import { hostFacingMessage } from './result.js';
 import { applyJevCommandInputValuesToCommand } from './jev-action-catalog.js';
 import {
   executeChatCommand,
+  WORKFLOW_DELETED_REPLY,
+  workflowRunReply,
   workflowUpdateSuccessMessage,
   type CommandChatLoopContext,
 } from './loop-shared.js';
 
 /** Deterministic reply for a host-confirmed mutation; the result carries the executed command name. */
 function confirmedMutationReply(result: AxCommandResult): string {
-  if (result.status === 'ok' && result.command === 'workflow.delete') return '현재 workflow를 삭제했습니다.';
+  if (result.status === 'ok' && result.command === 'workflow.delete') return WORKFLOW_DELETED_REPLY;
   if (result.status === 'ok' && result.command === 'workflow.update') return workflowUpdateSuccessMessage(result);
-  if (result.command === 'workflow.run') return hostFacingMessage(result, '워크플로우 실행 요청을 처리하지 못했습니다.');
+  if (result.command === 'workflow.run') return workflowRunReply(result);
   return hostFacingMessage(result, '확인한 변경을 적용하지 못했습니다.');
 }
 

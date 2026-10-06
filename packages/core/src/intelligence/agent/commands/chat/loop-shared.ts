@@ -77,13 +77,23 @@ export function readOperationIdentity(capabilityId: string, params: unknown): st
   }
 }
 
+/** A run that was accepted carries no message of its own; never word it as a failure. */
+export function workflowRunReply(result: AxCommandResult): string {
+  if (result.status === 'ok' || result.status === 'queued') {
+    return '업무 실행을 시작했습니다. 결과는 끝나는 대로 이 대화에 표시됩니다.';
+  }
+  return hostFacingMessage(result, '업무를 실행하지 못했습니다.');
+}
+
+export const WORKFLOW_DELETED_REPLY = '업무를 삭제했습니다.';
+
 export function workflowUpdateSuccessMessage(result: AxCommandResult): string {
   const data = result.data;
   const reauthorizationRequired = data && typeof data === 'object'
     && (data as Record<string, unknown>).reauthorizationRequired === true;
   return reauthorizationRequired
-    ? 'workflow를 수정했습니다. 실행 가능한 내용이 바뀌어 자동 실행을 중지했으니 다시 활성화하기 전에 검토해 주세요.'
-    : 'workflow를 수정했습니다.';
+    ? '업무를 수정했습니다. 실행 내용이 바뀌어 자동 실행을 멈췄으니 다시 켜기 전에 검토해 주세요.'
+    : '업무를 수정했습니다.';
 }
 
 export function isRecoverableReadFailure(
