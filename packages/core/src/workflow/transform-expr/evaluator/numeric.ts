@@ -29,19 +29,29 @@ function unroundedAggregate(rows: TableArtifact['rows'], spec: AggregateSpec): n
   if (spec.fn === 'count') return rows.length;
   const column = spec.column;
   if (!column) throw new Error('aggregate_column_required');
-  const numbers = rows
-    .map((row) => toNumber(ownCell(row.values, column)))
-    .filter((value): value is number => value != null);
-  if (numbers.length === 0) return null;
+  // One pass, no intermediate arrays; Math.min(...values) would also overflow the stack on large tables.
+  let count = 0;
+  let sum = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const row of rows) {
+    const value = toNumber(ownCell(row.values, column));
+    if (value == null) continue;
+    count += 1;
+    sum += value;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  if (count === 0) return null;
   switch (spec.fn) {
     case 'sum':
-      return numbers.reduce((sum, value) => sum + value, 0);
+      return sum;
     case 'avg':
-      return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+      return sum / count;
     case 'min':
-      return Math.min(...numbers);
+      return min;
     case 'max':
-      return Math.max(...numbers);
+      return max;
     default:
       return null;
   }

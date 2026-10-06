@@ -39,6 +39,15 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       db.exec('CREATE INDEX IF NOT EXISTS idx_work_discovery_sessions_workspace ON work_discovery_sessions(workspace_session_id);');
     },
   },
+  {
+    version: 4,
+    name: 'approvals-execution-index',
+    up(db) {
+      // Pending-approval checks, execution deletes and the retention scan look approvals up by execution;
+      // without this each lookup scanned the whole table (retention was executions x approvals).
+      db.exec('CREATE INDEX IF NOT EXISTS idx_approvals_execution_status ON approvals(execution_id, status);');
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = SCHEMA_MIGRATIONS[SCHEMA_MIGRATIONS.length - 1]!.version;
