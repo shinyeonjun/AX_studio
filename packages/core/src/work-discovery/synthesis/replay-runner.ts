@@ -13,7 +13,7 @@ export interface ReplayExample {
 }
 
 function isAggregateExpr(expr: TransformExpr): boolean {
-  return expr.op === 'aggregate' || expr.op === 'ratio';
+  return expr.op === 'aggregate' || expr.op === 'ratio' || expr.op === 'group';
 }
 
 function usesTruncatedSnapshot(expr: TransformExpr, snapshots: SnapshotTables): boolean {

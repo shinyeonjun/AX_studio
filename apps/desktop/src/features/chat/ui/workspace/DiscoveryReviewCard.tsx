@@ -17,7 +17,23 @@ const CANCELLABLE_STATUSES = new Set<DiscoveryInspectView['status']>([
   'ready_to_publish',
 ]);
 
+/** "sheet:<folder>:D%3A%5C...%5C주문내역.xlsx" -> "주문내역.xlsx"; other ids stay as they are. */
+export function discoverySourceLabel(sourceId: string): string {
+  const match = /^(?:sheet|file|doc):[^:]*:(.+)$/u.exec(sourceId);
+  if (!match) return sourceId.replace(/^(rdb|sheet):/u, '');
+  let path = match[1]!;
+  try { path = decodeURIComponent(path); } catch { /* keep the raw value */ }
+  return path.split(/[\\/]/u).filter(Boolean).at(-1) ?? path;
+}
+
 export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel, onRetry }: DiscoveryReviewCardProps) {
+  // Internal example ids mean nothing to users; number them in the order they first appear.
+  const exampleNumbers = new Map<string, number>();
+  for (const field of view.fieldReviews) {
+    for (const entry of field.replayByExample) {
+      if (!exampleNumbers.has(entry.exampleId)) exampleNumbers.set(entry.exampleId, exampleNumbers.size + 1);
+    }
+  }
   return (
     <div className="ax-discovery-review" data-discovery-status={view.status}>
       <h3>찾은 방법</h3>
@@ -30,7 +46,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
               <li key={field.outputPath}>
                 <strong>{field.label ?? field.outputPath}</strong>
                 {field.display && <div>관찰값: {field.display}</div>}
-                {field.sourceId && <div>데이터 출처: {field.sourceId}</div>}
+                {field.sourceId && <div>데이터 출처: {discoverySourceLabel(field.sourceId)}</div>}
                 {field.mappingLabel && <div>학습한 규칙: {field.mappingLabel}</div>}
                 {field.replayByExample.length > 0 && (
                   <div>
@@ -38,7 +54,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
                     <ul>
                       {field.replayByExample.map((entry) => (
                         <li key={entry.exampleId}>
-                          {entry.exampleId} {entry.pass ? '✓' : '✗'} ({entry.actualDisplay})
+                          예시 {exampleNumbers.get(entry.exampleId)} {entry.pass ? '✓' : '✗'} ({entry.actualDisplay})
                         </li>
                       ))}
                     </ul>

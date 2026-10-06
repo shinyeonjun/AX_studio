@@ -67,6 +67,26 @@ export function renameExpr(
         changed: input.changed || (inScope && expr.column === candidate.from),
       };
     }
+    case 'group': {
+      // `by`/`column` name source columns; `keyAs`/`as` are output headers and never rename.
+      const input = renameExpr(expr.input, candidate);
+      const by = rename(expr.by);
+      const aggregates = expr.aggregates.map((aggregate) => aggregate.column === undefined
+        ? aggregate
+        : { ...aggregate, column: rename(aggregate.column).value });
+      const changed = by.changed || aggregates.some((aggregate, index) => aggregate.column !== expr.aggregates[index]?.column);
+      return {
+        expr: {
+          ...expr,
+          input: input.expr,
+          by: by.value,
+          // The output key header defaulted to `by`; keep the published header stable.
+          ...(by.changed && expr.keyAs === undefined ? { keyAs: expr.by } : {}),
+          aggregates,
+        },
+        changed: input.changed || changed,
+      };
+    }
     case 'ratio': {
       const numerator = renameExpr(expr.numerator, candidate);
       const denominator = renameExpr(expr.denominator, candidate);

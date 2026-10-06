@@ -2,6 +2,7 @@ import { IncomingMessage } from 'node:http';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebhookInboundListener } from '../../listener.js';
+import { findFreePort } from '../../../../runtime/trigger-engine/push/fixtures.js';
 
 const listeners: WebhookInboundListener[] = [];
 
@@ -15,7 +16,7 @@ describe('WebhookInboundListener path and secret rejection', () => {
   it('rejects malformed URL encoding in webhook paths', async () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
-    const port = 38_907;
+    const port = await findFreePort();
 
     await listener.start({ port, secret: 'hook-secret' }, () => undefined);
     const response = await fetch(`http://127.0.0.1:${port}/hooks/%E0%A4%A`, {
@@ -29,10 +30,11 @@ describe('WebhookInboundListener path and secret rejection', () => {
   });
 
   it.each([
-    { port: 38_908, path: '/hooks/test', method: 'PUT', status: 405 },
-    { port: 38_909, path: '/unknown', method: 'POST', status: 404 },
-    { port: 38_910, path: '/hooks/%E0%A4%A', method: 'POST', status: 400 },
-  ])('drains rejected $status request bodies', async ({ port, path, method, status }) => {
+    { path: '/hooks/test', method: 'PUT', status: 405 },
+    { path: '/unknown', method: 'POST', status: 404 },
+    { path: '/hooks/%E0%A4%A', method: 'POST', status: 400 },
+  ])('drains rejected $status request bodies', async ({ path, method, status }) => {
+    const port = await findFreePort();
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const resume = vi.spyOn(IncomingMessage.prototype, 'resume');
@@ -50,7 +52,7 @@ describe('WebhookInboundListener path and secret rejection', () => {
   it('rejects requests without valid secret', async () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
-    const port = 38_902;
+    const port = await findFreePort();
 
     await listener.start({ port, secret: 'hook-secret' }, () => undefined);
     const response = await fetch(`http://127.0.0.1:${port}/hooks/test`, {
@@ -63,7 +65,7 @@ describe('WebhookInboundListener path and secret rejection', () => {
   it('backs off a client after repeated failed authentication attempts', async () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
-    const port = 38_915;
+    const port = await findFreePort();
     await listener.start({ port, secret: 'hook-secret' }, () => undefined);
     const attempt = (secret: string) => fetch(`http://127.0.0.1:${port}/hooks/test`, {
       method: 'POST',
@@ -82,7 +84,7 @@ describe('WebhookInboundListener path and secret rejection', () => {
   it('rejects a stale timestamp in shared-secret mode', async () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
-    const port = 38_916;
+    const port = await findFreePort();
     await listener.start({ port, secret: 'hook-secret' }, () => undefined);
     const stale = String(Math.floor(Date.now() / 1_000) - 3_600);
     const response = await fetch(`http://127.0.0.1:${port}/hooks/test`, {

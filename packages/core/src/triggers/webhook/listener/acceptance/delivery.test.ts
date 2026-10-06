@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebhookInboundListener } from '../../listener.js';
 import { webhookSignaturePayload } from '../../security.js';
+import { findFreePort } from '../../../../runtime/trigger-engine/push/fixtures.js';
 
 const listeners: WebhookInboundListener[] = [];
 
@@ -16,7 +17,7 @@ describe('WebhookInboundListener acceptance', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: Array<{ payload: Record<string, unknown> }> = [];
-    const port = 38_912;
+    const port = await findFreePort();
 
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
@@ -44,7 +45,7 @@ describe('WebhookInboundListener acceptance', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: Array<{ payload: Record<string, unknown> }> = [];
-    const port = 38_913;
+    const port = await findFreePort();
 
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
@@ -68,7 +69,7 @@ describe('WebhookInboundListener acceptance', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: Array<{ payload: Record<string, unknown> }> = [];
-    const port = 38_906;
+    const port = await findFreePort();
 
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
@@ -87,7 +88,7 @@ describe('WebhookInboundListener acceptance', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const onEvent = vi.fn(async () => true).mockResolvedValueOnce(false);
-    const port = 39_106;
+    const port = await findFreePort();
     const body = '{"id":1}';
     const timestamp = String(Math.floor(Date.now() / 1_000));
     const context = { method: 'POST', path: 'signed-retry', eventId: 'signed-event-1', timestamp };

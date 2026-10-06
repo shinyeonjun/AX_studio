@@ -1,0 +1,33 @@
+{
+  "id": "demo-monthly-sales-discovery",
+  "name": "데모: 지난달 월간 매출 요약에서 방법 학습 후 업무 저장",
+  "description": "주문내역 엑셀(연결 폴더)과 손으로 만든 지난달 월간 매출 요약(요약 + 카테고리별 표)을 보여주면, 취소 주문을 뺀 주문건수·총매출·평균주문금액과 카테고리별 묶음 표의 계산 방법을 학습하고 반복 업무로 저장합니다.",
+  "mode": "deterministic",
+  "tags": ["discovery", "demo", "deterministic"],
+  "covers": ["command:discovery.start", "discovery:explain"],
+  "timeoutMs": 120000,
+  "steps": [
+    { "action": "openTab", "tab": "work" },
+    { "action": "newChat", "label": "demo" },
+    {
+      "action": "startDiscoveryFixture",
+      "artifact": "demo/monthly-sales/output/월간매출요약_2026-08.xlsx",
+      "folder": "demo/monthly-sales/input"
+    },
+    { "action": "waitForDiscovery", "status": "needs_clarification", "timeoutMs": 45000 },
+    { "action": "screenshot", "name": "demo-learned" },
+    { "check": "visibleTextContains", "text": "총매출", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "주문건수", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "평균주문금액", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "카테고리별 묶음: 주문건수=COUNT, 매출=SUM(금액)", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "조건: 상태 ≠ 취소", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "합계 줄 포함", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "5행 표", "severity": "critical" },
+    { "action": "confirmDiscoveryRule" },
+    { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
+    { "action": "screenshot", "name": "demo-ready" },
+    { "action": "publishDiscovery" },
+    { "check": "workflowPresent", "text": "지난 결과물과 같은 방식으로", "severity": "critical" },
+    { "check": "appAlive", "severity": "critical" }
+  ]
+}

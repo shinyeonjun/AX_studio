@@ -3,6 +3,7 @@ import type { CandidateProgram, DiscoveryBlueprint, DiscoverySessionState } from
 import type { OutputObservation } from '../observation/schema.js';
 import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 import { buildOutputContract } from '../validation/output-contract.js';
+import { filterSignature } from '../describe-expr.js';
 
 export function sourceIdFromExpr(expr: TransformExpr): string | undefined {
   if (expr.op === 'source') return expr.sourceId;
@@ -17,10 +18,12 @@ export function partitionKey(candidate: CandidateProgram): string {
   const sourceId = sourceIdFromExpr(candidate.expr) ?? 'unknown';
   const aggregate = candidate.expr.op === 'aggregate'
     ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}`
-    : candidate.expr.op === 'ratio'
-      ? 'ratio'
+    : candidate.expr.op === 'group'
+      ? `group:${candidate.expr.by}`
       : candidate.expr.op;
-  return `${candidate.observationPath}|${sourceId}|${aggregate}`;
+  // Rules that keep different rows are different rules, even with the same aggregate.
+  const filter = filterSignature(candidate.expr);
+  return `${candidate.observationPath}|${sourceId}|${aggregate}${filter ? `|${filter}` : ''}`;
 }
 
 function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] {

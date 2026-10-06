@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { CandidateProgram } from '../schema.js';
 import type { ClarificationQuestion } from './types.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';
+import { describeMapping, filterSignature } from '../describe-expr.js';
 
 function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] {
   return candidates.filter((candidate) =>
@@ -12,17 +13,22 @@ function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] 
 
 function partitionKey(candidate: CandidateProgram): string {
   const sourceId = sourceIdFromExpr(candidate.expr) ?? 'unknown';
-  const aggregate = candidate.expr.op === 'aggregate' ? `${candidate.expr.fn}:${candidate.expr.column ?? '*'}` : candidate.expr.op;
-  return `${candidate.observationPath}|${sourceId}|${aggregate}`;
+  const expr = candidate.expr;
+  const shape = expr.op === 'aggregate'
+    ? `${expr.fn}:${expr.column ?? '*'}:${expr.round ?? ''}`
+    : expr.op === 'group'
+      ? `group:${expr.by}`
+      : expr.op;
+  const filter = filterSignature(expr);
+  return `${candidate.observationPath}|${sourceId}|${shape}${filter ? `|${filter}` : ''}`;
 }
 
 function labelForCandidate(candidate: CandidateProgram): string {
-  if (candidate.expr.op === 'aggregate') {
-    const column = candidate.expr.column ?? '전체';
-    return `${candidate.expr.fn.toUpperCase()}(${column})`;
-  }
   if (candidate.expr.op === 'column') {
     return `${candidate.expr.name} 값`;
+  }
+  if (candidate.expr.op === 'aggregate' || candidate.expr.op === 'group' || candidate.expr.op === 'ratio') {
+    return describeMapping(candidate.expr);
   }
   const sourceId = sourceIdFromExpr(candidate.expr);
   return (sourceId ?? 'unknown').replace(/^(rdb|sheet):/, '');
