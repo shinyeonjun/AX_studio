@@ -9,6 +9,7 @@ import {
 import { isTerminalStatus } from '../state-machine.js';
 import type { DiscoveryRevisionConflict, WorkDiscoveryRuntime } from './contracts.js';
 import { isDiscoveryRevisionConflict } from './lifecycle/runner.js';
+import { loadPersistedSnapshotTables } from '../snapshot.js';
 
 export function startDiscovery(
   runtime: WorkDiscoveryRuntime,
@@ -113,8 +114,12 @@ export function retryDiscovery(
   const checkpoint = state.recoveryCheckpoint;
   if (!checkpoint) return { error: 'discovery_checkpoint_missing' };
 
+  // Resuming needs the snapshots saved at the checkpoint. When they are gone, retrying the same
+  // checkpoint fails the same way every time; observing the examples again is the way forward.
+  const resumable = (checkpoint === 'synthesizing' || checkpoint === 'validating')
+    && loadPersistedSnapshotTables(runtime.store, state, runtime.store.listDiscoveryExamples(sessionId).map((example) => example.id)) !== undefined;
   let next: DiscoverySessionState;
-  if (checkpoint === 'synthesizing' || checkpoint === 'validating') {
+  if (resumable) {
     next = {
       ...state,
       status: checkpoint,
