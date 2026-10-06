@@ -35,11 +35,15 @@ describe('agent workflow mutation confirmation', () => {
 
     expect(proposed).toMatchObject({ command: 'workflow.delete', status: 'needs_input', data: { confirmationRequired: true, pending: true } });
     const presentation = (proposed.data as { presentation: AxUiPresentation }).presentation;
-    expect(presentation.title).toBe('현재 workflow를 삭제할까요?');
+    expect(presentation.title).toBe('이 업무를 삭제할까요?');
     expect(presentation.actions).toEqual([expect.objectContaining({
       tone: 'danger', purpose: 'confirm_mutation', value: MUTATION_CONFIRM_VALUES['workflow.delete'],
     })]);
-    expect(JSON.stringify(presentation.blocks)).toContain(workflowId);
+    // People see the job's name, not internal ids or version numbers.
+    const blocks = JSON.stringify(presentation.blocks);
+    expect(blocks).toContain(store.getWorkflow(workflowId)!.name);
+    expect(blocks).not.toContain(workflowId);
+    expect(blocks).not.toMatch(/workflow|버전/u);
     expect(store.getWorkflow(workflowId)).toBeDefined();
   });
 
@@ -54,6 +58,15 @@ describe('agent workflow mutation confirmation', () => {
 
     const replay = await service.execute({ name: 'mutation.commit', args: {} }, { ...options, mutationConfirmationToken: token });
     expect(replay).toMatchObject({ command: 'mutation.commit', status: 'not_found' });
+  });
+
+  it('tells apart jobs that share a name', async () => {
+    const { store, service, workflowId, options } = await fixture();
+    const twin = store.saveWorkflow({ ...store.getWorkflow(workflowId)!, id: undefined } as never);
+    const proposed = await service.execute({ name: 'workflow.delete', args: { workflowId, baseVersion: 1 } }, options);
+    const blocks = JSON.stringify((proposed.data as { presentation: AxUiPresentation }).presentation.blocks);
+    expect(blocks).toContain(`#${workflowId.slice(0, 8)}`);
+    expect(blocks).not.toContain(twin.workflowId.slice(0, 8));
   });
 
   it('refuses a wrong or missing token and keeps the workflow', async () => {

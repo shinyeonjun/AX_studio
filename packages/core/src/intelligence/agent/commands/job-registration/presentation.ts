@@ -10,6 +10,8 @@ import type { SideEffectLevel, WorkflowIR } from '../../../../workflow/schema.js
 import { actionRefFor, resolveActionDefinition } from '../../../../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../../../../workflow/side-effect-resolve.js';
 import { describeSchedule, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
+import { describeShaping } from '../../../../workflow/transform-expr/describe.js';
+import { TransformExprSchema } from '../../../../workflow/transform-expr/dsl.js';
 
 const MAX_STEP_ITEMS = 20;
 const MAX_ITEM_CHARS = 500;
@@ -97,6 +99,21 @@ function stepTargets(
   return targets.length > 0 ? targets.join(', ') : '지정된 대상 없음';
 }
 
+/** Built-in table steps described by what they do; they have no destination to show. */
+function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: ReadonlyMap<string, number>): string | undefined {
+  if (step.connector !== 'transform') return undefined;
+  const inputs = Object.values(step.bindings ?? {})
+    .map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
+    .filter((value): value is number => value !== undefined);
+  const using = inputs.length > 0 ? ` (${inputs.join('·')}단계 결과 사용)` : '';
+  if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 부작용 없음(조회)`;
+  if (step.action === 'evaluate') {
+    const expr = TransformExprSchema.safeParse(step.params?.expr);
+    return `${number} 표 정리${using} · 부작용 없음(조회) · ${expr.success ? describeShaping(expr.data) : '변환식 확인 필요'}`;
+  }
+  return undefined;
+}
+
 /** One line per step: connector, action, side-effect level and resolved destinations. */
 export function workflowStepItems(
   workflow: Pick<WorkflowIR, 'steps' | 'sideEffects'>,
@@ -106,6 +123,8 @@ export function workflowStepItems(
   const items = workflow.steps.map((step, index) => {
     const number = `${index + 1}.`;
     if (step.type === 'action') {
+      const tableItem = tableStepItem(step, number, stepNumbers);
+      if (tableItem) return tableItem;
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
       return `${marker}${number} ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
