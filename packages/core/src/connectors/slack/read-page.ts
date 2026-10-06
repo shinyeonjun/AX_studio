@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import { resolveSlackChannelId } from './channel-resolve.js';
 import { nextSlackHistoryPage } from './pagination.js';
-import { slackRequest } from './request.js';
+import { slackRead } from './request.js';
 
 const cursor = z.string().min(1).max(4096).optional();
 const limit = (max: number, fallback: number) => z.coerce.number().finite()
@@ -31,7 +31,7 @@ function pageCompleteness(partial: boolean, hasMore: boolean, observedCount: num
 
 export async function listSlackChannelPage(client: WebClient, params: Record<string, unknown>, signal?: AbortSignal) {
   const options = ChannelsParams.parse(params);
-  const response = await slackRequest(() => client.conversations.list({
+  const response = await slackRead(() => client.conversations.list({
     types: 'public_channel,private_channel', ...options,
   }), signal);
   checkPageSize(response.channels?.length ?? 0, options.limit);
@@ -50,7 +50,7 @@ export async function listSlackChannelPage(client: WebClient, params: Record<str
 
 export async function searchSlackMessagePage(client: WebClient, params: Record<string, unknown>, signal?: AbortSignal) {
   const options = SearchParams.parse(params);
-  const response = await slackRequest(() => client.search.messages({
+  const response = await slackRead(() => client.search.messages({
     query: options.query, count: options.limit,
     ...(options.page === undefined ? { cursor: options.cursor ?? '*' } : { page: options.page }),
   }), signal);
@@ -91,7 +91,7 @@ export async function readSlackMessagePage(client: WebClient, params: Record<str
   const options = HistoryParams.parse(params);
   const channelId = await resolveSlackChannelId(client, options.channel, signal);
   if (!channelId) throw new Error('channel_not_found');
-  const response = await slackRequest(() => client.conversations.history({
+  const response = await slackRead(() => client.conversations.history({
     channel: channelId, limit: options.limit, cursor: options.cursor,
     ...(options.latest ? { latest: options.latest } : {}),
   }), signal);

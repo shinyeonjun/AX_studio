@@ -45,7 +45,7 @@ describe('Slack SDK transport', () => {
     expect(transport.options).toMatchObject({ timeout: 30_000, retryConfig: { retries: 0 }, rejectRateLimitedCalls: true });
   });
 
-  it('surfaces rate limiting immediately without waiting or retrying', async () => {
+  it('fails a long rate limit now instead of stalling the run', async () => {
     const requestHandler: RequestListener = (_req, res) => {
       res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
       res.end(JSON.stringify({ ok: false, error: 'ratelimited' }));
@@ -54,6 +54,23 @@ describe('Slack SDK transport', () => {
     const connector = await useLoopback(request);
     expect(await connector.execute('messages.search', { query: 'test' }, context)).toMatchObject({ ok: false, errorCode: 'slack_error' });
     expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('waits out a short rate limit on a read and finishes it', async () => {
+    let calls = 0;
+    const request = vi.fn<RequestListener>((_req, res) => {
+      calls += 1;
+      if (calls === 1) {
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '1' });
+        res.end(JSON.stringify({ ok: false, error: 'ratelimited' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, messages: { matches: [], paging: { pages: 1, page: 1 } } }));
+    });
+    const connector = await useLoopback(request);
+    expect(await connector.execute('messages.search', { query: 'test' }, context)).toMatchObject({ ok: true });
+    expect(request).toHaveBeenCalledTimes(2);
   });
 
   it('reports the required user-token scope when global search rejects a bot token', async () => {
