@@ -21,8 +21,6 @@ import {
   WorkspaceTypingState,
 } from './ax-workspace-chat/states';
 
-export type { WorkspaceChatMessage } from '@ax-studio/core';
-
 interface AxWorkspaceChatProps {
   messages: WorkspaceChatMessage[];
   busy: boolean;

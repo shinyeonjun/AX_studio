@@ -24,7 +24,8 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
         <div className="connection-hub">
           {MESSAGING_CONNECTOR_IDS.map((id) => {
             const meta = CONNECTOR_UI_CATALOG[id];
-            const connected = state?.connections?.find((connection) => connection.connector === id)?.connected;
+            const entry = connectionEntry(state, id);
+            const connected = entry?.connected;
             const slackStatus = id === 'slack' ? slackCapabilityStatus(state) : undefined;
             const badge = slackStatus
               ? { label: slackStatus.badge, className: slackStatus.badgeClass }
@@ -40,6 +41,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 emojiIcon={meta.emojiIcon}
                 badge={badge.label}
                 badgeClass={badge.className}
+                error={id === 'slack' ? undefined : entry?.lastError}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />
             );
@@ -61,6 +63,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? `${count}개 연결` : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
+                error={connectionEntry(state, id)?.lastError}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />
             );
@@ -96,6 +99,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 emojiIcon={meta.emojiIcon}
                 badge={badge}
                 badgeClass={connected ? 'connected' : ''}
+                error={entry?.lastError}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />
             );
@@ -121,6 +125,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? '연결됨' : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
+                error={entry?.lastError}
                 onClick={() => onOpenScreen(meta.settingsScreen)}
               />
             );

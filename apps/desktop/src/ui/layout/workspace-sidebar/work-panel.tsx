@@ -58,7 +58,11 @@ export function SidebarWorkPanel({
   onToggleWorkActive,
   onDeleteWork,
 }: SidebarWorkPanelProps) {
-  const works = state?.works ?? [];
+  const allWorks = state?.works ?? [];
+  // A corrupted workflow has no readable definition (no trigger), so it must not be
+  // classified or opened like a normal one; it is listed separately for deletion.
+  const corruptedWorks = allWorks.filter((work) => work.corrupted);
+  const works = allWorks.filter((work) => !work.corrupted);
   const recurringWorks = works.filter((work) => isPersistentWork(work.trigger));
   const oneOffWorks = works.filter((work) => isEphemeralWork(work.trigger));
   const singleExecutions = (state?.executions ?? [])
@@ -68,6 +72,48 @@ export function SidebarWorkPanel({
 
   return (
     <div className="sidebar-panel-section sidebar-work-overview">
+      {corruptedWorks.length > 0 && (
+        <section className="sidebar-work-group" aria-labelledby="sidebar-corrupted-work-title">
+          <div className="sidebar-work-group-header">
+            <div>
+              <h2 id="sidebar-corrupted-work-title" className="sidebar-section-title">
+                손상된 업무
+              </h2>
+              <p className="sidebar-work-group-subtitle">
+                저장된 정의를 읽지 못해 실행되지 않습니다. 삭제한 뒤 다시 만들어 주세요.
+              </p>
+            </div>
+            <span className="sidebar-work-count" aria-label={`손상된 업무 ${corruptedWorks.length}개`}>
+              {corruptedWorks.length}
+            </span>
+          </div>
+          <ul className="sidebar-work-list">
+            {corruptedWorks.map((work) => {
+              const name = work.name?.trim() || work.id;
+              return (
+                <li key={work.id} className="sidebar-work-row paused">
+                  <div className="sidebar-work-item sidebar-work-item--static">
+                    <span className="sidebar-work-name">{name}</span>
+                    <span className="sidebar-work-trigger">손상된 업무 · 열 수 없음</span>
+                  </div>
+                  <div className="sidebar-work-actions">
+                    <button
+                      type="button"
+                      className="sidebar-session-delete"
+                      onClick={() => onDeleteWork(work.id, name)}
+                      aria-label={name + ' 손상된 업무 삭제'}
+                      title="손상된 업무 삭제"
+                    >
+                      <IconTrash />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section className="sidebar-work-group" aria-labelledby="sidebar-recurring-work-title">
         <div className="sidebar-work-group-header">
           <div>

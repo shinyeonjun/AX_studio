@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
 interface JevDecisionPlaneFormProps {
   onRefresh: () => Promise<void>;
@@ -31,7 +32,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       })
       .catch((error) => {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : 'Jev 설정을 읽지 못했습니다.');
+          setMessage(ipcErrorMessage(error, 'Jev 설정을 읽지 못했습니다.'));
           setMessageIsError(true);
         }
       })
@@ -69,7 +70,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       setMessage(`연결되었습니다. 모델: ${result.model}`);
       await onRefresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Jev 연결 테스트에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Jev 연결 테스트에 실패했습니다.'));
       setMessageIsError(true);
     } finally {
       setTesting(false);
@@ -101,7 +102,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         : '저장되었습니다. Jev Decision Plane이 꺼져 있습니다.');
       await onRefresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Jev 설정 저장에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Jev 설정 저장에 실패했습니다.'));
       setMessageIsError(true);
     } finally {
       setSaving(false);

@@ -42,7 +42,6 @@ export function AiBrandDetail({ brand, state, detecting, onRefresh, detection }:
       testingCli={panel.testingCli}
       message={panel.message}
       canSave={panel.canSave}
-      isActive={panel.isActive}
       onModeChange={panel.selectMode}
       onModelChange={panel.setModel}
       onApiKeyChange={panel.setApiKeyDraft}

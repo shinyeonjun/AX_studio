@@ -33,6 +33,6 @@ export interface AxConnectorApi {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<unknown>;
+  }) => Promise<{ ok: boolean; warning?: string }>;
   disconnectRdb: () => Promise<unknown>;
 }

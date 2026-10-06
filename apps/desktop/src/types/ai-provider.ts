@@ -16,7 +16,7 @@ export interface AiSecretStatus {
   masked?: string;
 }
 
-export interface AiBrandTomlPrefs {
+interface AiBrandTomlPrefs {
   mode?: import('@ax-studio/core').AiConnectionMode;
   model?: string;
 }

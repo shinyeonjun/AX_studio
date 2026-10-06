@@ -888,17 +888,6 @@
   opacity: 1;
 }
 
-.ax-run-result-card {
-  margin-top: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: #effaf4;
-  border: 1px solid #ccebd9;
-  color: #2d6249;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .chat-main-page {
   background: var(--bg-chat);
   border: none;
@@ -967,12 +956,6 @@
   background: rgba(180, 63, 74, 0.16);
   border-color: rgba(255, 130, 130, 0.35);
   color: #ffb0b0;
-}
-
-[data-theme='dark'] .ax-run-result-card {
-  background: rgba(45, 98, 73, 0.2);
-  border-color: rgba(90, 180, 140, 0.35);
-  color: #9fd8bb;
 }
 
 [data-theme='dark'] .ax-workspace-run-card {
@@ -1771,6 +1754,26 @@
   margin-top: 3px;
 }
 
+/* Long workflow ids, URLs and recipient lists must wrap inside the card. */
+.ax-workspace-presentation-decision strong,
+.ax-workspace-presentation-steps li,
+.ax-workspace-presentation-note {
+  overflow-wrap: anywhere;
+}
+
+.ax-workspace-presentation-external {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid #f0b5b5;
+  border-radius: 6px;
+  background: #fff4f4;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  vertical-align: 1px;
+}
+
 .ax-workspace-presentation-input {
   padding: 12px;
   border: 1px solid var(--ax-chat-composer-border);
@@ -1932,6 +1935,7 @@
   color: #c9bfff;
 }
 
+[data-theme='dark'] .ax-workspace-presentation-external,
 [data-theme='dark'] .ax-workspace-presentation-action--danger {
   border-color: rgba(255, 130, 130, 0.42);
   background: rgba(160, 44, 44, 0.16);
@@ -1988,8 +1992,7 @@
 
 }
 
-.ax-workspace-attach-btn,
-.ax-discovery-review-primary {
+.ax-workspace-attach-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2011,21 +2014,7 @@
   background: var(--surface, #fff);
 }
 
-.ax-discovery-review-header h3 {
-  margin: 4px 0 0;
-}
-
-.ax-discovery-review-block {
-  margin-top: 14px;
-}
-
-.ax-discovery-review-block ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
-}
-
-.ax-discovery-review-actions,
-.ax-discovery-review-footer {
+.ax-discovery-review-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

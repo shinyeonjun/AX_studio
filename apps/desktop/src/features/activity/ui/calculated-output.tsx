@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ExecutionOutput } from '@ax-studio/core';
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 
 /** Result bodies are requested only on demand, never broadcast with application state. */
 export function CalculatedOutput({ executionId }: { executionId: string }) {
@@ -15,7 +16,7 @@ export function CalculatedOutput({ executionId }: { executionId: string }) {
     void window.ax.getExecutionOutput(executionId).then(result => {
       if (current) setOutput(result);
     }).catch((reason: unknown) => {
-      if (current) setError(reason instanceof Error ? reason.message : '계산 결과를 불러오지 못했습니다.');
+      if (current) setError(ipcErrorMessage(reason, '계산 결과를 불러오지 못했습니다.'));
     }).finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
   }, [attempt, executionId]);

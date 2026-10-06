@@ -25,7 +25,6 @@ export function AiBrandForm({
   testingCli,
   message,
   canSave,
-  isActive,
   onModeChange,
   onModelChange,
   onApiKeyChange,
@@ -38,11 +37,7 @@ export function AiBrandForm({
   const cliConnected = Boolean(cliOption?.installed || cliVerified);
   const apiConnected = Boolean(apiKeyConfigured || apiVerified);
 
-  const cliBadge = cliConnected
-    ? cliOption?.installed || cliVerified
-      ? '연결됨'
-      : 'API 키 필요'
-    : '미설치';
+  const cliBadge = cliConnected ? '연결됨' : '미설치';
 
   return (
     <div className={embedded ? 'connection-form-embedded' : 'connection-detail'}>
@@ -95,7 +90,7 @@ export function AiBrandForm({
 
         <div className="connection-form-footer">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={!canSave || saving}>
-            {saving ? '저장 중...' : isActive ? '저장하기' : '저장하기'}
+            {saving ? '저장 중...' : '저장하기'}
           </button>
         </div>
 

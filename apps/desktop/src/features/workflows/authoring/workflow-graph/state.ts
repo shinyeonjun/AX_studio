@@ -57,7 +57,11 @@ export function useWorkflowGraphState({
       if (!prevNodeIdsRef.current.has(id)) entering.add(id);
     }
     prevNodeIdsRef.current = currentIds;
-    if (entering.size === 0) return;
+    if (entering.size === 0) {
+      // A cleanup may have cancelled the previous reset timer; never leave stale enter classes behind.
+      setEnteringIds((prev) => (prev.size === 0 ? prev : new Set()));
+      return;
+    }
 
     setEnteringIds((prev) => {
       if (prev.size === entering.size) {

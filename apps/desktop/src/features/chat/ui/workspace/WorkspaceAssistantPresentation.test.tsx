@@ -112,4 +112,29 @@ describe('WorkspaceAssistantPresentation', () => {
     expect(markup).not.toContain('추가 정보가 필요합니다');
     expect(markup).not.toContain('입력값으로 계속');
   });
+  it('marks external steps with a badge and renders confirm_mutation danger actions', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceAssistantPresentation
+        presentations={[{
+          title: '현재 workflow를 삭제할까요?', inputMode: 'individual', inputs: [],
+          blocks: [
+            { type: 'decision', label: '삭제할 workflow', value: '주간 보고 (wf_123) · 버전 2' },
+            { type: 'steps', title: '단계별 연결·동작·대상', items: [
+              '[외부] send: slack / postMessage · 외부 전송 · 대상: channel=#general',
+              'read: gmail / search · 부작용 없음(조회) · 대상: 지정된 대상 없음',
+            ] },
+          ],
+          actions: [{ id: 'confirm_mutation:tok', label: '삭제 확인', value: '현재 workflow를 삭제할게요', tone: 'danger', purpose: 'confirm_mutation' }],
+        }]}
+        busy={false}
+        interactive
+        onSend={async () => undefined}
+      />,
+    );
+    expect(markup).toContain('<span class="ax-workspace-presentation-external">외부</span> send: slack / postMessage');
+    expect(markup).not.toContain('[외부]');
+    expect(markup).toContain('<li>read: gmail / search');
+    expect(markup).toContain('ax-workspace-presentation-action--danger');
+    expect(markup).toContain('삭제 확인');
+  });
 });

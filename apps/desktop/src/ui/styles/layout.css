@@ -372,6 +372,15 @@
   background: var(--bg-hover);
 }
 
+/* Non-interactive row body (corrupted workflows cannot be opened). */
+.sidebar-work-item.sidebar-work-item--static {
+  cursor: default;
+}
+
+.sidebar-work-item.sidebar-work-item--static:hover {
+  background: transparent;
+}
+
 .sidebar-work-name {
   font-size: 13px;
   font-weight: 500;
@@ -887,7 +896,6 @@
   background: transparent;
 }
 
-.main--chat,
 .main--workspace {
   display: flex;
   flex-direction: column;
@@ -951,13 +959,6 @@
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
-}
-
-.chat-main-page--solo .work-conversation-chat {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 .chat-main-header {

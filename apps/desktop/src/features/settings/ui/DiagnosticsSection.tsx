@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SettingsCategory } from './SettingsCategory';
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 
 /** Support entry: export a redacted diagnostics bundle or open the log folder. */
 export function DiagnosticsSection() {
@@ -14,7 +15,7 @@ export function DiagnosticsSection() {
       if (result.ok) setMessage(`저장했습니다: ${result.path}`);
       else if ('error' in result) setMessage(`내보내기 실패: ${result.error}`);
     } catch (err) {
-      setMessage(`내보내기 실패: ${err instanceof Error ? err.message : String(err)}`);
+      setMessage(`내보내기 실패: ${ipcErrorMessage(err)}`);
     } finally {
       setBusy(false);
     }
@@ -26,7 +27,7 @@ export function DiagnosticsSection() {
       const result = await window.ax.openLogFolder();
       if (!result.ok) setMessage(`로그 폴더를 열지 못했습니다: ${result.error}`);
     } catch (err) {
-      setMessage(`로그 폴더를 열지 못했습니다: ${err instanceof Error ? err.message : String(err)}`);
+      setMessage(`로그 폴더를 열지 못했습니다: ${ipcErrorMessage(err)}`);
     }
   };
 

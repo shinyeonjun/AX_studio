@@ -138,14 +138,6 @@
   box-shadow: 0 0 0 3px rgba(105, 65, 198, 0.12);
 }
 
-.tool-result-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  flex-wrap: wrap;
-}
-
 /* Slack Channel Bar matching Image 4 */
 .tool-result-slack-channel-bar {
   display: flex;
@@ -378,15 +370,6 @@
   background: #4d2cc4;
   border-color: #4d2cc4;
   box-shadow: 0 3px 8px rgba(91, 54, 214, 0.38);
-}
-
-.tool-result-primary-arrow {
-  font-size: 15px;
-  transition: transform 0.15s ease;
-}
-
-.tool-result-actions .tool-result-primary:hover .tool-result-primary-arrow {
-  transform: translateX(3px);
 }
 
 .tool-result-actions button:disabled {

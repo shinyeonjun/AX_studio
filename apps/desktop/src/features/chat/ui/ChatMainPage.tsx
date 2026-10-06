@@ -39,7 +39,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const toolResult = selectedIndex >= 0 ? results[selectedIndex] : results.at(-1);
   useEffect(() => { setSelectedResult(undefined); }, [workspaceChat.workspaceContextKey]);
   useEffect(() => { setShowContext(false); }, [workspaceChat.workspaceContextKey, toolResult?.approval?.id, toolResult?.readResult?.id]);
-  const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
+  const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, onSplitterKeyDown, resetWidth } =
     useWorkflowPanelWidth();
 
   const handleSelectNode = useCallback((node: Node<WorkflowVisualNodeData> | null) => {
@@ -146,6 +146,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         isResizing={isResizing}
         onSplitterPointerDown={onSplitterPointerDown}
         onSplitterDoubleClick={resetWidth}
+        onSplitterKeyDown={onSplitterKeyDown}
         resultVisible={Boolean(toolResult)}
         chat={chatBlock}
         panel={

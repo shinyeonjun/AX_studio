@@ -6,7 +6,7 @@ import type {
   DetectedAiCli,
 } from '../ai-provider.js';
 
-export interface JevDecisionConfigSnapshot {
+interface JevDecisionConfigSnapshot {
   enabled: boolean;
   model: string;
   baseURL: string;
@@ -14,7 +14,7 @@ export interface JevDecisionConfigSnapshot {
   apiKeyMasked?: string;
 }
 
-export interface JevDecisionConfigInput {
+interface JevDecisionConfigInput {
   enabled?: boolean;
   model?: string;
   baseURL?: string;

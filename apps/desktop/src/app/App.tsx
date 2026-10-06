@@ -8,6 +8,7 @@ import { useAiHub } from '../features/settings/hooks/useAiHub';
 import { useTheme } from '../ui/hooks/useTheme';
 import { WorkspaceSidebar } from '../ui/layout/WorkspaceSidebar';
 import { StateBanner } from '../ui/layout/StateBanner';
+import { SystemWarningBanner } from '../ui/layout/SystemWarningBanner';
 import { createAppActions, retryFailedAppSources } from './actions';
 import { AppMainContent } from './main-content';
 
@@ -132,6 +133,7 @@ export default function App() {
           }}
           onDismiss={actionError ? () => setActionError('') : undefined}
         />
+        <SystemWarningBanner state={state} />
         {mainContent}
       </main>
     </div>

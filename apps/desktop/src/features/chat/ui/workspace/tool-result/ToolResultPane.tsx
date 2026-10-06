@@ -17,11 +17,7 @@ export function toolResultMessages(messages: WorkspaceChatMessage[]): WorkspaceC
   return messages.filter(message => message.role === 'assistant' && (message.approval?.toolResult || message.readResult?.readScope || message.toolSendOutcome));
 }
 
-export function latestToolResult(messages: WorkspaceChatMessage[]): WorkspaceChatMessage | undefined {
-  return toolResultMessages(messages).at(-1);
-}
-
-export function GmailBrandIcon() {
+function GmailBrandIcon() {
   return (
     <svg className="tool-result-brand-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" aria-hidden="true">
       <path d="M2.25 6.75C2.25 5.507 3.257 4.5 4.5 4.5h1.5l6 4.5 6-4.5h1.5c1.243 0 2.25 1.007 2.25 2.25v10.5a2.25 2.25 0 01-2.25 2.25h-3v-7.5l-4.5 3.375L7.5 12V19.5h-3A2.25 2.25 0 012.25 17.25V6.75z" fill="#4285F4"/>
@@ -32,7 +28,7 @@ export function GmailBrandIcon() {
   );
 }
 
-export function SlackBrandIcon() {
+function SlackBrandIcon() {
   return (
     <svg className="tool-result-brand-icon" viewBox="0 0 127 127" width="28" height="28" aria-hidden="true">
       <path d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z" fill="#E01E5A"/>

@@ -102,5 +102,17 @@ export function useWorkflowPanelWidth() {
     setWidth(WORKFLOW_PANEL_DEFAULT_WIDTH);
   }, []);
 
-  return { width, isResizing, onSplitterPointerDown, resetWidth };
+  /** Keyboard resizing for the focusable separator; the panel sits on the right. */
+  const onSplitterKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 40 : 16;
+    if (event.key === 'ArrowLeft') setWidth((current) => clampWidth(current + step));
+    else if (event.key === 'ArrowRight') setWidth((current) => clampWidth(current - step));
+    else if (event.key === 'Home') setWidth(WORKFLOW_PANEL_MIN_WIDTH);
+    else if (event.key === 'End') setWidth(WORKFLOW_PANEL_MAX_WIDTH);
+    else if (event.key === 'Enter') setWidth(WORKFLOW_PANEL_DEFAULT_WIDTH);
+    else return;
+    event.preventDefault();
+  }, []);
+
+  return { width, isResizing, onSplitterPointerDown, onSplitterKeyDown, resetWidth };
 }

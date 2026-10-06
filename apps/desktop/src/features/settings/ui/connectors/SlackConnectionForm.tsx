@@ -108,7 +108,6 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
       {!embedded && (
         <ConnectionGuide
           guideKey="slack"
-          placeholderName="slack-guide.png"
           steps={[
             'Slack 앱을 만들고 Socket Mode를 켭니다.',
             'Bot Token Scopes와 App Token(connections:write)을 발급합니다.',

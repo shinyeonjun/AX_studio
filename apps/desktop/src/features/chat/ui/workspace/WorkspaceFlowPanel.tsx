@@ -16,7 +16,6 @@ import {
 import { executionStatusLabel } from '../../../../ui/lib/work-display';
 import { resolveWorkspaceExecutionStatus } from './WorkspaceRunResultCard';
 
-export type { WorkspaceFlowPanelProps, WorkspaceFlowPresentation } from './workspace-flow/model';
 export {
   latestWorkspaceExecutionResult,
   resolveWorkspaceFlowPresentation,
@@ -88,7 +87,7 @@ export function WorkspaceFlowPanel({
           <span>{methodDetail(workflow)}</span>
           {replay && replay.total > 0 && (
             <em className={replay.failed > 0 ? 'workspace-flow-validation--warning' : 'workspace-flow-validation'}>
-              검증 {replay.passed}건 중 {replay.total}건 통과
+              검증 {replay.total}건 중 {replay.passed}건 통과
             </em>
           )}
         </section>
