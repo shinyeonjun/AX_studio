@@ -1,4 +1,5 @@
 import { authoritativeRequestClarification, createAuthoritativeRequestAnchor, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
+import { resolveHttpCollectionPath } from '../../../decision/read-operation-catalog.js';
 import { planPreviousTableExport } from './jev-table-export.js';
 import type { ChatMessage } from '../../model/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../connectors/failure-kind.js';
@@ -26,6 +27,7 @@ import {
   deterministicMetadataChatReply,
   deterministicWorkflowListChatReply,
   boundedChatReadResult,
+  compactSummaryTable,
   formatTableArtifact,
   hostFacingMessage,
   selectedColumnsFromHttpPath,
@@ -82,6 +84,37 @@ function isRecoverableReadFailure(
   if (result.issues.length === 0) return result.status === 'not_found';
   return result.issues.every((item) => item.failureKind !== undefined
     && isRecoverableConnectorFailure(item.failureKind));
+}
+
+function shouldAttemptHttpCategoryRecovery(
+  command: AxCommand,
+  result: AxCommandResult,
+  userMessage: string,
+): string | undefined {
+  if (command.name !== 'capability.invoke' || result.status !== 'ok') return undefined;
+  const args = AxCapabilityInvokeArgsSchema.safeParse(command.args);
+  if (!args.success || args.data.id !== 'http.request') return undefined;
+  const params = args.data.params;
+  const rawPath = typeof params.path === 'string' ? params.path.trim() : '';
+  if (!rawPath) return undefined;
+
+  const resolved = resolveHttpCollectionPath(rawPath, userMessage);
+  if (resolved !== rawPath) {
+    const table = tableForJevTransform(command, result);
+    if (!table || table.rows.length === 0) return resolved;
+    const categoryCol = table.columns.find((col) => col.name.toLowerCase() === 'category');
+    if (categoryCol) {
+      const targetCategory = resolved.includes('/category/') ? resolved.split('/category/')[1]?.toLowerCase() : undefined;
+      if (targetCategory) {
+        const hasMatchingRows = table.rows.some((row) =>
+          String(row.values[categoryCol.name] ?? '').toLowerCase().includes(targetCategory));
+        if (!hasMatchingRows) {
+          return resolved;
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
 function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
@@ -386,10 +419,17 @@ export async function runCommandChatLoop({
       options.onReadResult?.(table ? boundedChatReadResult(table) : undefined);
     }
     if (readResultStyle === 'summary') {
-      if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;
-      const summaryResult = transformOutcome && 'table' in transformOutcome
+      const baseTable = tableForJevTransform(command, result);
+      const summaryTable = transformOutcome && 'table' in transformOutcome
+        ? transformOutcome.table
+        : baseTable;
+      if (!summaryTable && transformOutcome && 'reply' in transformOutcome) {
+        return transformOutcome.reply;
+      }
+      const compacted = summaryTable ? compactSummaryTable(summaryTable) : undefined;
+      const summaryResult = compacted
         && result.data && typeof result.data === 'object' && !Array.isArray(result.data)
-        ? { ...result, data: { ...result.data, data: transformOutcome.table } }
+        ? { ...result, data: { ...result.data, data: compacted } }
         : result;
       const evidence = resultMessage(summaryResult);
       const commandMessage: ChatMessage = {
@@ -826,6 +866,32 @@ export async function runCommandChatLoop({
       }
       if (completedResult.status !== 'ok') {
         return hostFacingMessage(completedResult, '요청을 처리하지 못했습니다.');
+      }
+      if (initialRead && completedCommand.name === 'capability.invoke' && completedCommand.args.id === 'http.request') {
+        const recoveryPath = shouldAttemptHttpCategoryRecovery(completedCommand, completedResult, options.userMessage);
+        if (recoveryPath) {
+          const recoveredArgs = {
+            ...completedCommand.args,
+            params: {
+              ...(completedCommand.args.params as Record<string, unknown>),
+              path: recoveryPath,
+            },
+          };
+          const recoveredCommand: AxCommand = { ...completedCommand, args: recoveredArgs };
+          const recoveredAuth = readAuthorizationFor(recoveredCommand);
+          if (recoveredAuth) {
+            const recoveredResult = await executeScopedChatCommand(recoveredCommand, recoveredAuth);
+            if (recoveredResult.status === 'ok') {
+              completedCommand = recoveredCommand;
+              completedResult = publishResult(recoveredCommand.name, recoveredResult, recoveredCommand);
+              appendAppLog('info', 'Active category recovery completed for HTTP read.', {
+                ...requestContext,
+                event: 'http_active_category_recovery',
+                recoveredPath: recoveryPath,
+              });
+            }
+          }
+        }
       }
       return successfulCommandReply(
         completedCommand,

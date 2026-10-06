@@ -154,10 +154,10 @@ export function registerWorkspaceChatMessageHandler() {
     const jobCommitConfirmed = Boolean(jobCommitConfirmationToken);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
     const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
-    const immediatelyPreviousAssistant = requestMessages.at(-2);
-    const previousReadResult = immediatelyPreviousAssistant?.role === 'assistant'
-      ? immediatelyPreviousAssistant.readResult
-      : undefined;
+    const latestAssistantWithReadResult = [...requestMessages].reverse().find(
+      (msg) => msg.role === 'assistant' && Boolean(msg.readResult),
+    );
+    const previousReadResult = latestAssistantWithReadResult?.readResult;
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);

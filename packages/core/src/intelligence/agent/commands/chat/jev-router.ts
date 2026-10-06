@@ -11,6 +11,7 @@ import { choiceAnswerConfidence } from '../../../decision/confidence.js';
 import { AxCapabilityInvokeArgsSchema, type AxCommand } from '../schema.js';
 import { availableCapabilities } from '../../../../catalog/capability-graph.js';
 import {
+  operationQueryTokens,
   selectJevReadOperationHints,
   type JevReadOperationHint,
 } from '../../../decision/read-operation-catalog.js';
@@ -47,6 +48,46 @@ import {
   tableTransformRequest,
 } from './jev-router-command.js';
 import { handleJevWorkflowRoute } from './jev-router-workflows.js';
+import { explicitHttpPath } from './jev-http-endpoint.js';
+
+export function rankReadHintsByRelevance(
+  hints: readonly JevReadOperationHint[],
+  userMessage: string,
+): JevReadOperationHint[] {
+  if (hints.length <= 1) return [...hints];
+  const tokens = operationQueryTokens(userMessage);
+
+  const scored = hints.map((hint, originalIndex) => {
+    let score = 0;
+    const hintText = [
+      hint.label,
+      hint.description,
+      hint.sourceLabel ?? '',
+      hint.capabilityId,
+      typeof hint.params?.path === 'string' ? hint.params.path : '',
+    ].join(' ').toLowerCase();
+
+    // Heavy penalty for schema inspection when user did not explicitly ask for schema
+    const isSchemaInspection = hint.capabilityId === 'rdb.schema.describe'
+      || /(?:schema\.describe|테이블\s*목록\s*조회|스키마\s*구조\s*조회)/iu.test(hint.description);
+    const mentionsSchemaInQuery = /(?:스키마|schema|테이블\s*목록|테이블\s*구조)/iu.test(userMessage);
+    if (isSchemaInspection && !mentionsSchemaInQuery) {
+      score -= 50;
+    }
+
+    // Score token matches
+    for (const token of tokens) {
+      if (hintText.includes(token.toLowerCase())) {
+        score += 10;
+      }
+    }
+
+    return { hint, score, originalIndex };
+  });
+
+  scored.sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex);
+  return scored.map(({ hint }) => hint);
+}
 
 /**
  * Uses Jev only to select a closed-set read/action route. The caller owns the
@@ -287,12 +328,29 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         response: { llmRequired: toolSelection.needsNaturalLanguageAnswer },
         operationDecisions: toolSelection.operationDecisions,
       };
-      const selectedToolIds = new Set(toolSelection.operationDecisions
-        .filter(({ selected }) => selected)
-        .map(({ id }) => id));
-      if (selectedRoute === 'capability_read'
-        && [...selectedToolIds].some((id) => !id.startsWith('read:'))) {
-        return withTelemetry(fallback('uncertain'));
+    }
+    const selectedToolIds = new Set(toolSelection?.kind === 'selected'
+      ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
+      : []);
+    if (toolSelection?.kind === 'selected') {
+      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
+      if (selectedRoute === 'capability_read' || selectedRoute === 'answer') {
+        if (hasWriteTools) {
+          const isDraftingIntent = /(?:써줘|작성해줘|초안|내용\s*만들어줘|텍스트로\s*써줘|형태로\s*써줘|답장\s*써줘)/iu.test(input.userMessage)
+            && !/(?:보내줘|발송해줘|전송해줘|지금\s*보내|큐에\s*등록|전송\s*실행)/iu.test(input.userMessage);
+          if (explicitAction?.choice === 'execute_now' && !isDraftingIntent) {
+            selectedRoute = 'execution_enqueue_once';
+            if (telemetry) telemetry = { ...telemetry, selectedRoute };
+          } else {
+            for (const id of [...selectedToolIds]) {
+              if (id.startsWith('write:')) selectedToolIds.delete(id);
+            }
+            toolSelection.needsNaturalLanguageAnswer = true;
+            if (requestPlan) {
+              requestPlan.response.llmRequired = true;
+            }
+          }
+        }
       }
       if (telemetry) {
         telemetry = {
@@ -302,9 +360,52 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         };
       }
     }
-    const selectedToolIds = new Set(toolSelection?.kind === 'selected'
-      ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
-      : []);
+    const hasPriorAssistantTurn = (input.conversationHistory ?? []).some(({ role }) => role === 'assistant');
+    const isAnaphoricContextReference = /(?:^|\s)(?:이|그|방금|앞의|위의)\s*(?:가구|상품|제품|데이터|자료|표|목록|결과|것|애들|들)(?:들|에서|의|중|중에)?/u.test(input.userMessage)
+      || /(?:여기서|이\s*중(?:에서)?|그\s*중(?:에서)?|방금\s*결과)/u.test(input.userMessage);
+    const isCalculationOrSummaryIntent = /(?:계산|합계|총|평균|몇\s*개|얼마|요약|설명|알려줘|분석|정리)/iu.test(input.userMessage)
+      && !/(?:표로|목록으로|다시\s*조회|새로\s*조회|가져와|뽑아줘|불러와)/iu.test(input.userMessage);
+
+    if (hasPriorAssistantTurn && isAnaphoricContextReference && isCalculationOrSummaryIntent) {
+      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
+      if (!hasWriteTools) {
+        selectedToolIds.clear();
+        selectedRoute = 'answer';
+        if (toolSelection && toolSelection.kind === 'selected') {
+          toolSelection.needsNaturalLanguageAnswer = true;
+        }
+        if (requestPlan) {
+          requestPlan.response.llmRequired = true;
+        }
+        if (telemetry) {
+          telemetry = {
+            ...telemetry,
+            selectedRoute: 'answer',
+            selectedToolCount: 0,
+            actionCandidateSelected: false,
+          };
+        }
+      }
+    }
+
+    const isTableTransformIntent = Boolean(input.previousReadResult)
+      && (/(?:정렬|순으로|높은\s*순|낮은\s*순|많은\s*순|적은\s*순|필터|남겨줘|추려줘|제외해줘|빼줘|엑셀|xlsx)/iu.test(input.userMessage));
+
+    if (input.previousReadResult && isTableTransformIntent) {
+      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
+      if (!hasWriteTools && !/(?:새로\s*조회|다시\s*조회|새로\s*가져와|새로\s*불러와)/iu.test(input.userMessage)) {
+        selectedToolIds.clear();
+        selectedRoute = 'previous_result';
+        if (telemetry) {
+          telemetry = {
+            ...telemetry,
+            selectedRoute: 'previous_result',
+            selectedToolCount: 0,
+            actionCandidateSelected: false,
+          };
+        }
+      }
+    }
     const selectedReadHints = operationHints.filter((hint) => selectedToolIds.has(`read:${hint.key}`));
     const selectedActionHints = [
       ...actionSelection.hints.filter(({ key }) => selectedToolIds.has(`write:${key}`)),
@@ -317,13 +418,15 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       selectedRoute = 'answer';
       if (telemetry) telemetry = { ...telemetry, selectedRoute };
     }
+    const isMultiReadComposition = /(?:그리고\s*(?:또|다시)?|후에|다음에|동시에|둘\s*다|모두\s*조회|각각\s*조회|비교|합쳐|연계|하고\s*도?|함께\s*조회)/iu.test(input.userMessage);
     if (selectedRoute === 'answer') {
       if (selectedToolIds.size === 0) {
         return withTelemetry({ kind: 'reply', route: 'answer', confidence: selectedConfidence });
       }
-      selectedRoute = selectedToolIds.size === 1 && selectedReadHints.length === 1
+      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
+      selectedRoute = !hasWriteTools && !isMultiReadComposition && selectedReadHints.length >= 1
         ? 'capability_read'
-        : 'execution_enqueue_once';
+        : (selectedToolIds.size === 1 && selectedReadHints.length === 1 ? 'capability_read' : 'execution_enqueue_once');
       if (telemetry) telemetry = { ...telemetry, selectedRoute };
     }
     if (selectedRoute === 'capability_read' && selectedReadHints.length === 0) {
@@ -479,7 +582,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     if (workflowRouteResult) return workflowRouteResult;
     if (selectedRoute === 'execution_enqueue_once') {
       if (toolSelection?.kind !== 'selected') return withTelemetry(fallback('uncertain'));
-      if (selectedActionHints.length > 0 && explicitAction?.choice !== 'execute_now') {
+      if (selectedActionHints.some((h) => h.capability.kind === 'write') && explicitAction?.choice !== 'execute_now') {
         return withTelemetry({
           kind: 'clarify',
           route: selectedRoute,
@@ -511,7 +614,12 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     }
     const readAnswers = evaluation.answers;
     let command: AxCommand | JevChatRouterResult;
-    if (selectedRoute === 'capability_read' && selectedReadHints.length > 1) {
+    const effectiveReadHints = isMultiReadComposition
+      ? selectedReadHints
+      : rankReadHintsByRelevance(selectedReadHints, input.userMessage);
+
+    if (selectedRoute === 'capability_read' && isMultiReadComposition && effectiveReadHints.length > 1
+      && !(toolSelection?.kind === 'selected' && toolSelection.needsNaturalLanguageAnswer)) {
       const plan = await planJevSelectedTools({
         decisionEngine: input.decisionEngine,
         request: input.userMessage,
@@ -519,7 +627,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         requestBudget: input.requestBudget,
         mode: 'one_shot',
         connectedConnectors,
-        readOperationHints: selectedReadHints,
+        readOperationHints: effectiveReadHints,
         actionHints: [],
         requestPlan,
         sessionMemo: input.sessionMemo,
@@ -529,9 +637,19 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       return workflowPlanResult(plan, 'execution_enqueue_once');
     }
     if (selectedRoute === 'capability_read') {
-      const hint = selectedReadHints[0];
+      const hint = effectiveReadHints[0];
       if (!hint) return withTelemetry(fallback('missing_context'));
-      const resolvedHint = await resolveReadParameterChoices(hint);
+      const explicitPath = hint.connector === 'http' ? explicitHttpPath(input.userMessage) : undefined;
+      const hintForResolution = explicitPath
+        ? {
+            ...hint,
+            params: {
+              ...hint.params,
+              path: explicitPath,
+            },
+          }
+        : hint;
+      const resolvedHint = await resolveReadParameterChoices(hintForResolution);
       command = capabilityReadCommandForHint(resolvedHint, selectedConfidence);
     } else {
       command = commandForRoute(selectedRoute, input, readAnswers, requestFeatures);

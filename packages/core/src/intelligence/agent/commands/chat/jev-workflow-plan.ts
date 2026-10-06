@@ -713,7 +713,7 @@ export async function planJevSelectedTools(input: {
     const ordered = checked.ordered;
     telemetry.plannedStepCount = ordered.length;
     const review = await resolve('final_review', {
-      requirements: { type: 'choice', instructions: 'Does this typed plan meet all requested requirements, conditional on listed host input forms? Missing operations cannot be invented. Choose unclear when metadata cannot establish adequacy.', criteria: { met: 'All requirements represented', missing: 'A requirement is missing', unclear: 'Cannot determine' } },
+      requirements: { type: 'choice', instructions: 'Does this typed plan meet all requested requirements, conditional on listed host input forms? When the user asks to summarize, draft, send, or notify via a messaging tool (e.g. Slack, Gmail) and the corresponding messaging operation step is included, treat listed host input fields (e.g. channel, text, recipient) as fulfilling the requirement via host UI composer. Missing operations cannot be invented. Choose unclear when metadata cannot establish adequacy.', criteria: { met: 'All requirements represented', missing: 'A requirement is missing', unclear: 'Cannot determine' } },
       scope: { type: 'choice', instructions: 'Does this plan preserve the user scope without adding actions, destinations or permissions? Model agreement never authorizes execution.', criteria: { preserved: 'Only requested scope', expanded: 'Unrequested scope added', unclear: 'Cannot determine' } },
     }, {
       request: safeRequest, policy: decisionPolicy,

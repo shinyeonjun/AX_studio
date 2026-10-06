@@ -92,12 +92,50 @@ export function selectedColumnsFromHttpPath(params: unknown): string[] | undefin
   return [...new Set(columns)];
 }
 
+const TABLE_PRUNED_COLUMNS = new Set([
+  'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',
+  'reviews', 'dimensions', 'meta',
+  'warrantyinformation', 'shippinginformation', 'returnpolicy',
+  'minimumorderquantity', 'sku', 'barcode', 'qrcode', 'weight',
+  'depth', 'width', 'height', 'createdat', 'updatedat', 'deletedat',
+  'tags', 'slug', 'description',
+]);
+
+const HIGH_PRIORITY_COLUMNS = [
+  'id', 'title', 'name', 'label', 'category', 'type', 'rating', 'score',
+  'price', 'cost', 'amount', 'stock', 'quantity', 'brand', 'status', 'state',
+];
+
 function selectAvailableColumns(
   headers: readonly string[],
   requested?: readonly string[],
 ): string[] {
   const selected = [...new Set(requested ?? [])].filter((header) => headers.includes(header));
-  return selected.length > 0 ? selected : [...headers];
+  if (selected.length > 0) return selected;
+  if (headers.length <= 6) return [...headers];
+
+  const hasHighPriority = headers.some((h) => HIGH_PRIORITY_COLUMNS.includes(h.toLowerCase()));
+  const hasPruned = headers.some((h) => TABLE_PRUNED_COLUMNS.has(h.toLowerCase().replace(/[-_]/g, '')));
+
+  if (hasHighPriority || hasPruned) {
+    const filtered = headers.filter((h) => {
+      const norm = h.toLowerCase().replace(/[-_]/g, '');
+      return !TABLE_PRUNED_COLUMNS.has(norm);
+    });
+
+    const base = filtered.length >= 3 ? filtered : headers;
+    const prioritized = base.slice().sort((a, b) => {
+      const idxA = HIGH_PRIORITY_COLUMNS.indexOf(a.toLowerCase());
+      const idxB = HIGH_PRIORITY_COLUMNS.indexOf(b.toLowerCase());
+      const rankA = idxA >= 0 ? idxA : 99;
+      const rankB = idxB >= 0 ? idxB : 99;
+      return rankA - rankB;
+    });
+
+    return prioritized.slice(0, 6);
+  }
+
+  return [...headers];
 }
 
 const MAX_CHAT_TABLE_ROWS = 100;
@@ -166,6 +204,56 @@ export function boundedChatReadResult(table: TableArtifact): TableArtifact | und
     ...(table.coverage ? { coverage: table.coverage } : {}),
   };
   return new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 64_000 ? bounded : undefined;
+}
+
+const SUMMARY_BOILERPLATE_COLUMNS = new Set([
+  'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',
+  'reviews', 'dimensions', 'meta',
+  'warrantyinformation', 'shippinginformation', 'returnpolicy',
+  'minimumorderquantity', 'sku', 'barcode', 'qrcode', 'weight',
+  'depth', 'width', 'height', 'createdat', 'updatedat', 'deletedat',
+]);
+
+/** Compact table artifact for LLM summary evidence, removing heavy nested columns and shortening long strings. */
+export function compactSummaryTable(table: TableArtifact): TableArtifact {
+  const hasScalarColumns = table.columns.some((col) =>
+    ['string', 'number', 'integer', 'boolean', 'currency', 'percentage'].includes(col.type));
+
+  let preservedColumns = table.columns;
+  if (hasScalarColumns) {
+    preservedColumns = table.columns.filter((col) => {
+      const normalized = col.name.toLowerCase().replace(/[-_]/g, '');
+      if (table.columns.length > 5 && SUMMARY_BOILERPLATE_COLUMNS.has(normalized)) {
+        return false;
+      }
+      return !['images', 'thumbnail', 'reviews', 'dimensions', 'meta'].includes(normalized);
+    });
+  }
+
+  const compactRows = table.rows.map((row) => {
+    const newValues: TableArtifact['rows'][number]['values'] = {};
+    for (const col of preservedColumns) {
+      let val = row.values[col.name];
+      if (typeof val === 'string') {
+        const limit = preservedColumns.length > 6 ? 120 : 160;
+        if (val.length > limit) {
+          val = `${val.slice(0, limit)}...`;
+        }
+      }
+      if (val === null || typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+        newValues[col.name] = val;
+      } else {
+        newValues[col.name] = null;
+      }
+    }
+    return { ...row, values: newValues };
+  });
+
+  return {
+    ...table,
+    columns: preservedColumns,
+    rows: compactRows,
+  };
 }
 
 function httpTableForTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {

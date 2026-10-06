@@ -6,6 +6,7 @@ import {
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
 } from '../../../decision/context.js';
 import {
+  resolveHttpCollectionPath,
   type JevReadOperationHint,
 } from '../../../decision/read-operation-catalog.js';
 import type { ConnectorFailureKind } from '../../../../connectors/types.js';
@@ -84,11 +85,11 @@ function explicitExecutionIntentQuestion(): DecisionQuestion {
     type: 'choice',
     instructions: {
       question: 'What execution intent did the user express for this request?',
-      focus: 'Choose execute_now only for an explicit request to perform the connected action now. Questions, hypotheticals, negations, plans, previews, and requests to wait are not immediate execution. Drafting message text in chat is not the same as asking a connected service to create or send it; explicitly asking to create a connected draft is an action.',
+      focus: 'Choose execute_now only for an explicit request to perform or send the connected action now (such as sending an email or dispatching a message). Asking to draft, write, or compose message text in chat (such as "메일 써줘", "초안 작성해줘") is drafting in chat (do_not_execute), NOT immediate execution. Explicitly asking to create a connected draft in a service is an action.',
     },
     criteria: {
       execute_now: 'The user explicitly asks AX to perform a connected action now, including creating a draft in a connected service.',
-      do_not_execute: 'The user asks only for information, a preview, or message text drafted in chat; explicitly says not to perform a connected action; or asks to wait or plan.',
+      do_not_execute: 'The user asks only for information, a preview, or message text drafted in chat (such as writing or drafting email copy in chat); explicitly says not to perform a connected action; or asks to wait or plan.',
       unclear: 'The user’s intent to perform the connected action now cannot be determined from the request.',
     },
   };
@@ -120,7 +121,22 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
   if (!hasReadOperationCatalog) {
     delete routeCriteria.capability_read;
   }
-  if (!input.previousReadResult || input.readRecoveryContext) delete routeCriteria.previous_result;
+  if (!input.previousReadResult || input.readRecoveryContext) {
+    delete routeCriteria.previous_result;
+  } else {
+    const prevCategories = new Set(
+      input.previousReadResult.rows
+        .map((row) => String(row.values.category ?? '').toLowerCase())
+        .filter(Boolean),
+    );
+    const requestedPath = resolveHttpCollectionPath('products', input.userMessage);
+    const requestedCategory = requestedPath.startsWith('products/category/')
+      ? requestedPath.replace('products/category/', '').toLowerCase()
+      : undefined;
+    if (requestedCategory && prevCategories.size > 0 && !prevCategories.has(requestedCategory)) {
+      delete routeCriteria.previous_result;
+    }
+  }
 
   const state = {
     request: input.userMessage,

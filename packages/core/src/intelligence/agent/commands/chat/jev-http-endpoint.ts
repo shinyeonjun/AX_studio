@@ -31,6 +31,8 @@ export function explicitHttpPath(message: string): string | undefined {
     /(?:GET|HEAD|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
     /(?:^|[\s(])(?:GET|HEAD|겟)\s+([^\s"'`<>]+)/iu,
     /(?:경로|path)\s*[:：]\s*([^\s"'`<>]+)/iu,
+    /(?:^|[\s(])(\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*(?:\?[^\s"'`<>]*)?)/u,
+    /(?:^|[\s(])([A-Za-z][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_.-]+)+(?:\?[^\s"'`<>]*)?)/u,
   ];
   for (const pattern of patterns) {
     const path = normalizeHttpPath(message.match(pattern)?.[1]);

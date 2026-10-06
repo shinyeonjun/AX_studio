@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildJevReadOperationHints,
   buildJevReadOperationIndex,
+  resolveHttpCollectionPath,
 } from '../../../decision/read-operation-catalog.js';
 
 describe('buildJevReadOperationHints', () => {
@@ -56,6 +57,28 @@ describe('buildJevReadOperationHints', () => {
         choices: [5],
       })],
     }));
+  });
+
+  it('does not bind Top-N superlative ordering count literals to API query.limit and resolves category subpath', () => {
+    const selection = buildJevReadOperationIndex([{
+      connector: 'http',
+      connected: true,
+      config: { endpoints: [{
+        id: 'dummyjson',
+        baseUrl: 'https://dummyjson.com/',
+        label: 'DummyJSON',
+        authType: 'none',
+        discoveredReadOperations: [{ path: 'products', label: 'Products' }],
+      }] },
+    }]).select('DummyJSON에서 스마트폰 재고 제일 적은 거 3개 알려줘');
+
+    const productsHint = selection.hints.find((h) => h.label === 'DummyJSON: Products');
+    expect(productsHint).toBeDefined();
+    // 3 should NOT be offered as a limit choice for API fetch
+    const limitHint = productsHint?.parameterHints?.find((p) => p.path === 'query.limit');
+    expect(limitHint?.choices).toBeUndefined();
+    // Dynamic path resolver targets the smartphones category subpath
+    expect(productsHint?.params.path).toBe('products/category/smartphones');
   });
 
   it('offers OpenAPI numeric literals for Jev to interpret as limit values', () => {
@@ -428,5 +451,34 @@ describe('buildJevReadOperationHints', () => {
     expect(index.select('Slack query=inventory limit=5로 검색해줘').hints).toEqual(expect.arrayContaining([
       expect.objectContaining({ capabilityId: 'slack.messages.search', params: { query: 'inventory', limit: 5 } }),
     ]));
+  });
+});
+
+describe('resolveHttpCollectionPath', () => {
+  it('maps Korean category names to REST category subpaths', () => {
+    expect(resolveHttpCollectionPath('products', '스마트폰 재고 제일 적은 거 3개 알려줘'))
+      .toBe('products/category/smartphones');
+    expect(resolveHttpCollectionPath('products', '노트북 목록 보여줘'))
+      .toBe('products/category/laptops');
+    expect(resolveHttpCollectionPath('products', '식료품 중 제일 비싼 거'))
+      .toBe('products/category/groceries');
+    expect(resolveHttpCollectionPath('products', '가구 목록'))
+      .toBe('products/category/furniture');
+    expect(resolveHttpCollectionPath('products', '향수 추천해줘'))
+      .toBe('products/category/fragrances');
+  });
+
+  it('maps brand and explicit search keywords to search queries', () => {
+    expect(resolveHttpCollectionPath('products', 'iPhone 가격 얼마야'))
+      .toBe('products/search?q=iPhone');
+    expect(resolveHttpCollectionPath('products', '삼성 제품 찾아줘'))
+      .toBe('products/search?q=%EC%82%BC%EC%84%B1');
+  });
+
+  it('preserves generic collection path when no category or search filter is specified', () => {
+    expect(resolveHttpCollectionPath('products', '상품 뭐뭐있는지 알려줘'))
+      .toBe('products');
+    expect(resolveHttpCollectionPath('products', '전체 상품 목록 보여줘'))
+      .toBe('products');
   });
 });

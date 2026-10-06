@@ -1,5 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Node } from '@xyflow/react';
+import type { WorkspaceChatMessage } from '@ax-studio/core';
 import type { useWorkspaceChat } from '../hooks/useWorkspaceChat';
 import { useDiscovery } from '../hooks/useDiscovery';
 import { WorkConversationSplit } from './workspace/WorkConversationSplit';
@@ -17,10 +18,39 @@ const WorkflowPreviewPanel = lazy(() =>
   })),
 );
 
+import { extractDraftFromMessages } from './workspace/tool-result/extract-draft';
+import type { MessageToolDraft } from '@ax-studio/core';
+
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
 interface ChatMainPageProps {
   workspaceChat: WorkspaceChatApi;
+}
+
+function makeCandidateDraftMessage(
+  tool: 'gmail' | 'slack',
+  draft: MessageToolDraft,
+  workspaceSessionId?: string
+): WorkspaceChatMessage {
+  return {
+    role: 'assistant',
+    content: tool === 'gmail' ? '작성된 메일 초안입니다.' : 'Slack 메시지 초안입니다.',
+    approval: {
+      id: `candidate-${tool}`,
+      title: tool === 'gmail'
+        ? (draft.subject ? `Gmail · ${draft.subject}` : 'Gmail · 메일 초안')
+        : (draft.channel ? `Slack · ${draft.channel}` : 'Slack · 메시지 초안'),
+      reason: '외부 전송 전 검토',
+      toolResult: {
+        approvalId: `candidate-${tool}`,
+        executionId: `candidate-exec-${tool}`,
+        workspaceSessionId: workspaceSessionId ?? 'default',
+        actionId: tool === 'gmail' ? 'gmail.message.send' : 'slack.message.send',
+        paramsHash: '0'.repeat(64),
+        tool,
+      },
+    },
+  };
 }
 
 export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
@@ -33,10 +63,68 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
   const [showContext, setShowContext] = useState(false);
   const [selectedResult, setSelectedResult] = useState<string>();
+  const [sampleToolPreview, setSampleToolPreview] = useState<'gmail' | 'slack' | null>(null);
+
   const results = toolResultMessages(workspaceChat.displayMessages);
-  const resultKey = (message: typeof results[number], index: number) => (message.approval?.id ?? message.readResult?.id ?? message.executionId ?? 'result') + ':' + index;
-  const selectedIndex = selectedResult === undefined ? -1 : results.findIndex((message, index) => resultKey(message, index) === selectedResult);
-  const toolResult = selectedIndex >= 0 ? results[selectedIndex] : results.at(-1);
+  const latestAssistant = workspaceChat.displayMessages.filter((m) => m.role === 'assistant').at(-1);
+  const latestUser = workspaceChat.displayMessages.filter((m) => m.role === 'user').at(-1);
+
+  const hasMessagingApproval = results.some(
+    (r) => (r.approval?.toolResult?.tool === 'gmail' || r.approval?.toolResult?.tool === 'slack') && !r.toolSendOutcome
+  );
+
+  const detectedMessagingTool = !hasMessagingApproval && (sampleToolPreview || (() => {
+    if (latestAssistant) {
+      if (
+        latestAssistant.inputRequests?.some((r) => r.id.includes('slack') || r.label.includes('Slack') || r.type?.includes('slack')) ||
+        latestAssistant.presentations?.some((p) => p.inputs.some((r) => r.id.includes('slack') || r.label.includes('Slack') || r.type?.includes('slack'))) ||
+        /slack|슬랙/i.test(latestAssistant.content)
+      ) {
+        return 'slack';
+      }
+      if (
+        latestAssistant.inputRequests?.some((r) => r.id.includes('gmail') || r.label.includes('Gmail') || r.type?.includes('gmail')) ||
+        latestAssistant.presentations?.some((p) => p.inputs.some((r) => r.id.includes('gmail') || r.label.includes('Gmail') || r.type?.includes('gmail'))) ||
+        /gmail|지메일|메일|이메일|답장/i.test(latestAssistant.content)
+      ) {
+        return 'gmail';
+      }
+    }
+    if (latestUser) {
+      if (/slack|슬랙/i.test(latestUser.content)) {
+        return 'slack';
+      }
+      if (/gmail|지메일|메일|이메일/i.test(latestUser.content)) {
+        return 'gmail';
+      }
+    }
+    return null;
+  })());
+
+  const activeTool = sampleToolPreview ?? detectedMessagingTool;
+
+  const extractedRealDraft = useMemo(() => {
+    if (!activeTool) return undefined;
+    return extractDraftFromMessages(activeTool, workspaceChat.displayMessages, workspaceChat.workspaceSources);
+  }, [activeTool, workspaceChat.displayMessages, workspaceChat.workspaceSources]);
+
+  const candidateMessage = useMemo(() => {
+    if (!activeTool || !extractedRealDraft) return undefined;
+    return makeCandidateDraftMessage(activeTool, extractedRealDraft.draft, workspaceChat.workspaceSessionId);
+  }, [activeTool, extractedRealDraft, workspaceChat.workspaceSessionId]);
+
+  const allResults = useMemo(() => {
+    if (candidateMessage && !results.some(r => r.approval?.id === candidateMessage.approval?.id)) {
+      return [...results, candidateMessage];
+    }
+    return results;
+  }, [results, candidateMessage]);
+
+  const resultKey = (message: typeof allResults[number], index: number) =>
+    (message.approval?.id ?? message.readResult?.id ?? message.executionId ?? 'result') + ':' + index;
+  const selectedIndex = selectedResult === undefined ? -1 : allResults.findIndex((message, index) => resultKey(message, index) === selectedResult);
+  const toolResult = selectedIndex >= 0 ? allResults[selectedIndex] : allResults.at(-1);
+
   useEffect(() => { setSelectedResult(undefined); }, [workspaceChat.workspaceContextKey]);
   useEffect(() => { setShowContext(false); }, [workspaceChat.workspaceContextKey, toolResult?.approval?.id, toolResult?.readResult?.id]);
   const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
@@ -150,8 +238,8 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         chat={chatBlock}
         panel={
           <div className="tool-result-panel">
-          {results.length > 1 && <nav className="tool-result-history" aria-label="이 대화의 결과">
-            {results.map((message, index) => <button type="button" key={resultKey(message, index)}
+          {allResults.length > 1 && <nav className="tool-result-history" aria-label="이 대화의 결과">
+            {allResults.map((message, index) => <button type="button" key={resultKey(message, index)}
               aria-pressed={message === toolResult} onClick={() => { setSelectedResult(resultKey(message, index)); setShowContext(false); }}>
               {message.approval?.toolResult?.tool === 'gmail' ? 'Gmail 초안' : message.approval?.toolResult?.tool === 'slack' ? 'Slack 초안'
                 : message.toolSendOutcome ? (message.toolSendOutcome.binding.provider === 'gmail' ? 'Gmail 결과' : 'Slack 결과') : 'DB 조회'} {index + 1}
@@ -160,8 +248,35 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
           {toolResult && <>
             <button type="button" className="tool-result-context-link" onClick={() => setShowContext(current => !current)}>{showContext ? '결과 편집으로 돌아가기' : '자료 · 흐름 보기'}</button>
             <div className="tool-result-view" hidden={showContext}>
-            <ToolResultPane key={workspaceChat.workspaceContextKey} message={toolResult} busy={workspaceChat.busy || discovery.busy} active={!showContext}
-              onConfirm={workspaceChat.confirmToolResult} onCancel={workspaceChat.rejectChatApproval} />
+            <ToolResultPane
+              key={workspaceChat.workspaceContextKey + (toolResult.approval?.id ?? '')}
+              message={toolResult}
+              busy={workspaceChat.busy || discovery.busy}
+              active={!showContext}
+              initialDraft={extractedRealDraft?.draft}
+              attachments={extractedRealDraft?.attachments}
+              workspaceLabel={workspaceChat.workspaceWorkflowState?.title ?? 'AX Workspace'}
+              onConfirm={async (confirmation, confirmedDraft) => {
+                if (confirmation.approvalId.startsWith('candidate-') || confirmation.approvalId.startsWith('sample-')) {
+                  const isGmail = activeTool === 'gmail';
+                  const draft = confirmedDraft ?? extractedRealDraft?.draft;
+                  const prompt = isGmail
+                    ? `[메일 발송 실행] 받는 사람: ${draft?.to || ''}, 제목: "${draft?.subject || ''}" 내용: "${draft?.body || ''}" 발송 진행해줘.`
+                    : `[Slack 게시 실행] 채널: ${draft?.channel || ''} 내용: "${draft?.text || ''}" 게시 진행해줘.`;
+                  await workspaceChat.sendMessage(prompt);
+                  return { executionId: 'candidate-exec', status: 'success', log: [] };
+                }
+                return workspaceChat.confirmToolResult(confirmation);
+              }}
+              onCancel={async (approvalId) => {
+                if (approvalId.startsWith('candidate-') || approvalId.startsWith('sample-')) {
+                  setSampleToolPreview(null);
+                  return;
+                }
+                return workspaceChat.rejectChatApproval(approvalId);
+              }}
+              onToggleSample={() => setSampleToolPreview(cur => cur === 'slack' ? 'gmail' : 'slack')}
+            />
             </div>
           </>}
           <div className="tool-result-context" hidden={Boolean(toolResult && !showContext)}>
