@@ -82,6 +82,12 @@ body.work-resizing * {
   font-size: 13px;
 }
 
+/* Blocking setup message: body-text contrast instead of the soft hint tint. */
+.chat-setup-notice {
+  margin-top: 12px;
+  color: var(--text);
+}
+
 .wf-preview {
   min-height: 0;
   min-width: 0;

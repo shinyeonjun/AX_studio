@@ -80,6 +80,7 @@ export default function App() {
       settingsPage={settingsPage}
       onApprove={appActions.handleApprove}
       onReject={appActions.handleReject}
+      onOpenJevSettings={() => openSettings('ai-jev')}
     />
   );
 

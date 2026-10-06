@@ -8,9 +8,6 @@ export const KO = {
     cause: (message: string) => `원인: ${message}`,
     detail: (detail: string) => `상세: ${detail}`,
     recommendedAction: '권장 조치: 연결 상태와 워크플로우 활성화를 확인하세요.',
-    statusAt: (startedAt: string, status: string) => `${startedAt} 실행은 ${status} 상태입니다.`,
-    recent: (startedAt: string, status: string, errorCode?: string | null) =>
-      `최근 실행: ${startedAt}, 상태: ${status}${errorCode ? `, 코드: ${errorCode}` : ''}`,
     errorMessages: {
       oauth_refresh_failed: 'Google OAuth 토큰이 만료되었습니다. Gmail을 다시 연결하세요.',
       file_not_found: '필요한 파일을 찾지 못했습니다. 경로를 확인하세요.',

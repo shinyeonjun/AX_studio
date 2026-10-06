@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { WorkspaceMarkdown } from './WorkspaceMarkdown';
+import { splitAutolinkLiteral, WorkspaceMarkdown } from './WorkspaceMarkdown';
 
 describe('WorkspaceMarkdown', () => {
   it('wraps Markdown tables in a horizontally scrollable container', () => {
@@ -33,5 +33,15 @@ describe('WorkspaceMarkdown', () => {
     expect(html).not.toContain('file:');
     expect(html).toContain('insecure');
     expect(html).toContain('script');
+  });
+
+  it('ends a bare URL at JSON punctuation or Korean text instead of linking all of it', () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceMarkdown content={'응답은 https://docs.github.com/rest","status":"404"}입니다'} />,
+    );
+    expect(html).toContain('<a href="https://docs.github.com/rest" target="_blank" rel="noopener noreferrer">https://docs.github.com/rest</a>');
+    expect(html).toContain('&quot;,&quot;status&quot;:&quot;404&quot;}입니다');
+    expect(splitAutolinkLiteral('https://example.test/a.')).toEqual({ url: 'https://example.test/a', rest: '.' });
+    expect(splitAutolinkLiteral('https://example.test/a')).toBeUndefined();
   });
 });
