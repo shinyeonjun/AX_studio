@@ -11,6 +11,19 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
+const DISPLAY_UNIT_SCALE: Record<string, number> = { '억': 100_000_000, '만': 10_000, '천': 1_000, '%': 1 };
+
+/**
+ * How finely the example shows a number: one unit in its last displayed place, in the value's own
+ * scale ("12.3%" -> 0.1, "12%" -> 1, "1.2억" -> 10,000,000, "1,234" -> 1). A computed value
+ * matches when it would be shown the same way, no looser: "12.3%" is not "12.7%".
+ */
+function displayStep(display: string | undefined): number | undefined {
+  const match = display?.replace(/,/g, '').trim().match(/^[+-]?\d*(?:\.(\d+))?\s*(억|만|천|%)?$/u);
+  if (!match || !/\d/u.test(match[0])) return undefined;
+  return 10 ** -(match[1]?.length ?? 0) * (match[2] ? DISPLAY_UNIT_SCALE[match[2]]! : 1);
+}
+
 function normalizeText(value: unknown): string {
   return String(value ?? '').trim().replace(/\s+/g, ' ');
 }
@@ -23,6 +36,11 @@ export function compareObservationValue(
     const expectedNumber = expected.value;
     const actualNumber = toNumber(actual);
     if (actualNumber == null) return 0;
+    const step = displayStep(expected.display);
+    if (step !== undefined) {
+      const noise = 1e-9 * Math.max(1, Math.abs(expectedNumber));
+      return Math.abs(expectedNumber - actualNumber) <= step / 2 + noise ? 1 : 0;
+    }
     if (expected.unit === '%' || expected.display?.includes('%')) {
       const delta = Math.abs(expectedNumber - actualNumber);
       if (delta <= 0.05) return 1;
