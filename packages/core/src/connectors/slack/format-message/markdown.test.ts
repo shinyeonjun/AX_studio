@@ -28,3 +28,12 @@ describe('parseMarkdownSections', () => {
     ]);
   });
 });
+
+describe('text that looks like Slack markup', () => {
+  it('is sent as text: no mention, broadcast or link is created from data', async () => {
+    const { markdownToSlackMrkdwn } = await import('./markdown.js');
+    const out = markdownToSlackMrkdwn('주문자: <!channel> <@U123> 재고 a<b>c & <http://x|클릭>');
+    expect(out).toBe('주문자: &lt;!channel&gt; &lt;@U123&gt; 재고 a&lt;b&gt;c &amp; &lt;http://x|클릭&gt;');
+    expect(markdownToSlackMrkdwn('**합계** 1,000')).toBe('*합계* 1,000');
+  });
+});
