@@ -1,3 +1,5 @@
+import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
+import { boundedDisplayTable } from '../../../contracts/artifacts/table-bounds.js';
 import { tableToXlsx } from './xlsx.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
 import {
@@ -101,6 +103,13 @@ export async function executeTransformAction(
         };
       }
       const outputPath = typeof params.outputPath === 'string' ? params.outputPath : 'result';
+      // A table result is what people asked to see; record its visible part for the run result.
+      const resultTable = TableArtifactSchema.safeParse(value);
+      const shown = resultTable.success ? boundedDisplayTable(resultTable.data) : undefined;
+      if (resultTable.success && shown) {
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'transform_table',
+          message: `표를 만들었습니다 (${resultTable.data.rows.length}행).`, data: { outputPath, table: shown } });
+      }
       ctx.variables[outputPath] = value;
       ctx.variables.discoveryFields ??= {};
       (ctx.variables.discoveryFields as Record<string, unknown>)[outputPath] = value;

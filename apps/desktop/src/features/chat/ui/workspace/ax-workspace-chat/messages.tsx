@@ -6,6 +6,7 @@ import { axStudioLogo } from '../../../../../ui/constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from '../WorkspaceRunResultCard';
 import { WorkspaceAssistantPresentation } from '../WorkspaceAssistantPresentation';
 import { MakeRecurringOffer } from '../MakeRecurringOffer';
+import { RunResultTable } from '../RunResultTable';
 
 const WorkspaceMarkdown = lazy(() =>
   import('../WorkspaceMarkdown').then(({ WorkspaceMarkdown }) => ({ default: WorkspaceMarkdown })),
@@ -83,6 +84,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       <img src={axStudioLogo} alt="" className="ax-workspace-avatar ax-workspace-avatar--assistant" aria-hidden="true" />
       <div className="ax-workspace-bubble ax-workspace-bubble--assistant">
         {content}
+        {isRunResultMessage(message) && message.readResult && <RunResultTable table={message.readResult} />}
         {makeRecurring && <MakeRecurringOffer busy={busy} onSubmit={makeRecurring} />}
         <WorkspaceAssistantPresentation
           presentations={message.presentations}

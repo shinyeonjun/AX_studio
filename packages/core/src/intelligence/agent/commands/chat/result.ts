@@ -1,3 +1,4 @@
+import { boundedDisplayTable, MAX_DISPLAY_TABLE_COLUMNS, MAX_DISPLAY_TABLE_ROWS } from '../../../../contracts/artifacts/table-bounds.js';
 import type { AgentScopedContextMap } from '../../scoped-context.js';
 import {
   AxUiPresentationSchema,
@@ -142,8 +143,8 @@ function selectAvailableColumns(
   return [...headers];
 }
 
-const MAX_CHAT_TABLE_ROWS = 100;
-const MAX_CHAT_TABLE_COLUMNS = 50;
+const MAX_CHAT_TABLE_ROWS = MAX_DISPLAY_TABLE_ROWS;
+const MAX_CHAT_TABLE_COLUMNS = MAX_DISPLAY_TABLE_COLUMNS;
 
 function rdbPageWarning(table: TableArtifact): string | undefined {
   return table.readScope || table.coverage
@@ -191,30 +192,7 @@ export function formatTableArtifact(table: TableArtifact): string {
 }
 
 /** Keep only the bounded, visible table needed for an immediate follow-up. */
-export function boundedChatReadResult(table: TableArtifact): TableArtifact | undefined {
-  const columns = table.columns.slice(0, MAX_CHAT_TABLE_COLUMNS);
-  const names = columns.map(({ name }) => name);
-  const rows = table.rows.slice(0, MAX_CHAT_TABLE_ROWS).map((row) => ({
-    ...row,
-    values: Object.fromEntries(names.flatMap((name) =>
-      Object.hasOwn(row.values, name) ? [[name, row.values[name]]] : [],
-    )),
-  }));
-  const bounded: TableArtifact = {
-    id: table.id,
-    kind: 'table',
-    ...(table.name ? { name: table.name } : {}),
-    columns,
-    rows,
-    truncated: table.truncated || columns.length < table.columns.length || rows.length < table.rows.length,
-    ...(table.completeness ? { completeness: table.completeness } : {}),
-    ...(table.offset === undefined ? {} : { offset: table.offset }),
-    ...(table.nextOffset === undefined ? {} : { nextOffset: table.nextOffset }),
-    ...(table.readScope ? { readScope: table.readScope } : {}),
-    ...(table.coverage ? { coverage: table.coverage } : {}),
-  };
-  return new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 64_000 ? bounded : undefined;
-}
+export const boundedChatReadResult = boundedDisplayTable;
 
 const SUMMARY_BOILERPLATE_COLUMNS = new Set([
   'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',

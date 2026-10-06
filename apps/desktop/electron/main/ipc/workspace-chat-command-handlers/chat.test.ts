@@ -423,7 +423,7 @@ describe('Desktop workspace chat Jev routing', () => {
       expect(store.isWorkflowActive(workflow.id!)).toBe(true);
       const reply = await confirmMutation(handler, event, store, chat.id, userMessage, proposal);
 
-      expect(reply.content).toContain('자동 실행을 중지');
+      expect(reply.content).toContain('자동 실행을 멈췄');
       expect(execute).toHaveBeenCalledWith(expect.objectContaining({
         name: 'workflow.update',
         args: expect.objectContaining({
@@ -565,8 +565,8 @@ describe('Desktop workspace chat Jev routing', () => {
       expect(store.getWorkflow(workflow.id!)?.version).toBe(1);
       const continuation = await confirmMutation(handler, event, store, continuedChat.id, continuedMessage, proposal);
 
-      expect(continuation.content).toContain('workflow를 수정했습니다');
-      expect(continuation.content).toContain('자동 실행을 중지');
+      expect(continuation.content).toContain('업무를 수정했습니다');
+      expect(continuation.content).toContain('자동 실행을 멈췄');
       expect(requestBodies).toHaveLength(jevCallsBeforeResume);
       expect(fetchImpl).toHaveBeenCalledTimes(jevCallsBeforeResume);
       expect(agentHarness.runText).not.toHaveBeenCalled();

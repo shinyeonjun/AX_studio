@@ -64,7 +64,7 @@ function chatTable(command: AxCommand, result: AxCommandResult, expression: Tran
 /** The table a saved job builds from the same response with the recipe's own steps. */
 async function jobTable(args: Record<string, unknown>, response: unknown): Promise<TableArtifact> {
   const steps = args.steps as Array<{ id: string; action: string; params: Record<string, unknown> }>;
-  const ctx = { variables: {} } as never;
+  const ctx = { variables: {}, log: () => {} } as never;
   const toTable = steps.find((step) => step.id === 'to_table')!;
   const converted = await executeTransformAction('http_to_table', { ...toTable.params, response }, ctx);
   expect(converted.ok).toBe(true);
