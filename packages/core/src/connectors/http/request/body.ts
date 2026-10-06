@@ -1,3 +1,5 @@
+import { TextDecoder } from 'node:util';
+
 export async function readBodyWithLimit(
   response: Response,
   maxBytes: number,
@@ -42,8 +44,20 @@ export async function readBodyWithLimit(
   }
 
   const bytes = Buffer.concat(chunks);
-  const body = truncated
-    ? new TextDecoder().decode(bytes, { stream: true })
-    : bytes.toString('utf8');
+  // The declared charset (Korean public APIs often answer in EUC-KR); a byte-order mark is dropped,
+  // so JSON with a UTF-8 BOM still parses. `stream` keeps a cut multi-byte character out of the text.
+  const body = responseDecoder(response.headers.get('content-type')).decode(bytes, { stream: truncated });
   return { body, truncated };
+}
+
+function responseDecoder(contentType: string | null): TextDecoder {
+  const charset = /charset\s*=\s*"?([^";\s]+)"?/i.exec(contentType ?? '')?.[1];
+  if (charset) {
+    try {
+      return new TextDecoder(charset);
+    } catch {
+      // Unknown label: read as UTF-8.
+    }
+  }
+  return new TextDecoder('utf-8');
 }
