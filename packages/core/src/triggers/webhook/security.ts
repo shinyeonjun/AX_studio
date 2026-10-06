@@ -51,12 +51,14 @@ export function webhookSignaturePayload(context: WebhookSignatureContext, rawBod
 export class WebhookReplayCache {
   private readonly entries = new Map<string, number>();
 
-  constructor(
-    private readonly maxEntries = 4_096,
-    private readonly ttlMs = WEBHOOK_SIGNATURE_MAX_SKEW_MS,
-  ) {}
+  constructor(private readonly maxEntries = 4_096) {}
 
-  claim(key: string, now = Date.now()): boolean {
+  /**
+   * Claims a signed request once. It is remembered until its timestamp is no longer accepted
+   * (timestamp + skew): a request signed up to the skew ahead of our clock stays valid for twice
+   * the skew after it first arrives, so a fixed TTL from arrival would let it be replayed.
+   */
+  claim(key: string, timestamp: string, now = Date.now()): boolean {
     for (const [entry, expiresAt] of this.entries) {
       if (expiresAt <= now) this.entries.delete(entry);
     }
@@ -65,7 +67,9 @@ export class WebhookReplayCache {
       const oldest = this.entries.keys().next().value;
       if (oldest) this.entries.delete(oldest);
     }
-    this.entries.set(key, now + this.ttlMs);
+    const signedAt = Number(timestamp) * 1_000;
+    const expiresAt = Number.isFinite(signedAt) ? signedAt + WEBHOOK_SIGNATURE_MAX_SKEW_MS : now + 2 * WEBHOOK_SIGNATURE_MAX_SKEW_MS;
+    this.entries.set(key, Math.max(expiresAt, now + 1));
     return true;
   }
 
