@@ -12,6 +12,7 @@ import {
   isExternalAction,
 } from './contracts.js';
 import { recordRepairProposal, reportStepProgress } from './progress.js';
+import { withStepDeadline } from './deadline.js';
 
 export async function runSequence(
   host: WorkflowExecutionHost,
@@ -32,7 +33,7 @@ export async function runSequence(
         const output = validateOutputContract(ir.outputContract, ctx.variables, stepResults);
         if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
       }
-      await executeStep(
+      const execute = () => executeStep(
         step,
         ir,
         ctx,
@@ -54,6 +55,9 @@ export async function runSequence(
         approvedActionIds,
         host.config.decisionEngine,
       );
+      // Branch steps only select children; each child step carries its own deadline.
+      if (step.type === 'action' || step.type === 'ai_decision') await withStepDeadline(host, ctx, step.id, execute);
+      else await execute();
       if (ir.outputContract && step.type === 'action') {
         const input = validateInputSchema(ir.outputContract, step.id, stepResults[step.id]);
         if (!input.ok) {

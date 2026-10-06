@@ -1,6 +1,5 @@
-/** Workflow canvas schema, compiler, validation, and presentation helpers. */
+/** Workflow canvas schema, validation, and presentation helpers. */
 
-export { buildIRFromWorkflow, UnknownCapabilityError } from './compile/builder.js';
 export { GMAIL_READ_WORKFLOW_NODE_ID } from './compile/constants.js';
 
 export {
@@ -30,6 +29,5 @@ export {
   panelFieldsForSource,
   type PanelField,
 } from './presentation/panel-fields.js';
-export { renderWorkflowDocument } from './presentation/workflow-document.js';
 
 export { explainExecution } from './revision/revision.js';

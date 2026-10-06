@@ -8,6 +8,35 @@ function minuteKey(date = new Date()): string {
   return date.toISOString().slice(0, 16);
 }
 
+/** Occurrence keys are UTC minutes (`YYYY-MM-DDTHH:MM`); compare them as instants. */
+function occurrenceTime(key: string): number | undefined {
+  const timestamp = Date.parse(`${key}:00Z`);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+/**
+ * True when the durable checkpoint already covers this occurrence. A checkpoint
+ * in the future (the wall clock was set backwards) only suppresses its exact
+ * occurrence, so schedules resume instead of stalling until the clock catches up.
+ */
+function occurrenceAcknowledged(fired: string | undefined, occurrenceKey: string, now: number): boolean {
+  if (!fired) return false;
+  if (fired === occurrenceKey) return true;
+  const firedAt = occurrenceTime(fired);
+  const occurrenceAt = occurrenceTime(occurrenceKey);
+  if (firedAt === undefined || occurrenceAt === undefined) return false;
+  if (firedAt > now + 60_000) return false;
+  return firedAt >= occurrenceAt;
+}
+
+/** Runtime refusals that are raised before any step runs, so the occurrence may be retried. */
+const NOT_STARTED_ERRORS = new Set([
+  'runtime_stopping', 'workflow_removed', 'workflow_run_queue_full', 'workflow_already_running',
+]);
+
+/** A one-time job this late is skipped (and recorded) instead of running unexpectedly. */
+export const ONCE_MAX_LATENESS_MS = 24 * 60 * 60 * 1_000;
+
 type PendingOccurrence = {
   workflowId: string;
   occurrenceKey: string;
@@ -16,10 +45,20 @@ type PendingOccurrence = {
   triggerSnapshot?: string;
 };
 
+type OccurrenceOutcome = {
+  occurrenceKey: string;
+  status: ExecutionResult['status'] | 'skipped';
+  reason?: string;
+  executionId?: string;
+  at: string;
+};
+
 const PENDING_OCCURRENCES_SETTING = 'scheduler.pendingOccurrences';
 const LAST_OBSERVED_SETTING = 'scheduler.lastObservedAt';
 const LAST_FIRED_SETTING = 'scheduler.lastFired';
 const LAST_FIRED_SETTING_PREFIX = `${LAST_FIRED_SETTING}:`;
+/** Last failed/skipped occurrence per workflow, kept apart from the fired checkpoint. */
+export const LAST_OUTCOME_SETTING_PREFIX = 'scheduler.lastOutcome:';
 
 export class Scheduler {
   private timer?: ReturnType<typeof setInterval>;
@@ -85,6 +124,23 @@ export class Scheduler {
     this.store.setSetting(`${LAST_FIRED_SETTING_PREFIX}${encodeURIComponent(workflowId)}`, occurrenceKey);
   }
 
+  /** Re-arms a one-time job so reactivating (or a replaced trigger) can fire it again. */
+  private clearFired(fired: Record<string, string>, workflowId: string) {
+    delete fired[workflowId];
+    this.store.deleteSetting(`${LAST_FIRED_SETTING_PREFIX}${encodeURIComponent(workflowId)}`);
+  }
+
+  private recordOutcome(workflowId: string, outcome: Omit<OccurrenceOutcome, 'at'>): void {
+    try {
+      this.store.setSetting(`${LAST_OUTCOME_SETTING_PREFIX}${encodeURIComponent(workflowId)}`, {
+        ...outcome,
+        at: new Date().toISOString(),
+      } satisfies OccurrenceOutcome);
+    } catch (error) {
+      console.error(`[scheduler] failed to record outcome for workflow ${workflowId}:`, error);
+    }
+  }
+
   private pendingOccurrences(): PendingOccurrence[] {
     const stored = this.store.getSetting<unknown>(PENDING_OCCURRENCES_SETTING, []);
     if (!Array.isArray(stored)) return [];
@@ -133,8 +189,6 @@ export class Scheduler {
         triggerType = 'once';
       } else if (ir.trigger.type === 'schedule') {
         // Coalesce missed sleep/restart intervals to the latest due minute.
-        // The current minute is always examined so a failed occurrence can
-        // still be retried without waiting for another matching minute.
         const latestMatch = findLatestCronMatch(
           ir.trigger.schedule,
           firstCatchUpMinute,
@@ -143,8 +197,7 @@ export class Scheduler {
         );
         if (!latestMatch) continue;
         occurrenceKey = minuteKey(latestMatch);
-        due = true;
-        due = due && fired[id] !== occurrenceKey;
+        due = !occurrenceAcknowledged(fired[id], occurrenceKey, now.getTime());
         triggerType = 'schedule';
       }
 
@@ -167,12 +220,13 @@ export class Scheduler {
   private async executeScheduledWorkflow(
     ir: WorkflowIR,
     triggerType: 'once' | 'schedule',
-  ): Promise<ExecutionResult | null> {
+  ): Promise<{ result: ExecutionResult } | { error: unknown; notStarted: boolean }> {
     try {
-      return await this.runtime.executeWorkflow(ir, { triggerType });
+      return { result: await this.runtime.executeWorkflow(ir, { triggerType }) };
     } catch (error) {
       console.error(`[scheduler] execution failed for workflow ${ir.id}:`, error);
-      return null;
+      const code = (error as { code?: unknown })?.code ?? (error instanceof Error ? error.message : undefined);
+      return { error, notStarted: typeof code === 'string' && NOT_STARTED_ERRORS.has(code) };
     }
   }
 
@@ -188,15 +242,33 @@ export class Scheduler {
     }
   }
 
+  /** Periodic approval TTL sweep; harmless while execution is globally paused. */
+  private expireStaleApprovals(): void {
+    if (typeof this.runtime.expireStaleApprovals !== 'function') return;
+    this.runtime.expireStaleApprovals();
+  }
+
+  /** Deactivates a one-time job after a terminal non-success so it is never retried every tick. */
+  private retireOnceJob(fired: Record<string, string>, workflowId: string): void {
+    this.store.setWorkflowActive(workflowId, false);
+    this.clearFired(fired, workflowId);
+  }
+
   private async runTick() {
     const generation = this.lifecycleGeneration;
+    this.expireStaleApprovals();
     const globalActive = this.store.getGlobalActive();
     if (!globalActive) return;
 
-    const { pending: scheduledPending, fired } = this.enqueueDueOccurrences(new Date());
+    const now = new Date();
+    const { pending: scheduledPending, fired } = this.enqueueDueOccurrences(now);
     const removedPendingKeys = new Set<string>();
     const processedPendingKeys = new Set<string>();
     let pendingChanged = false;
+    const drop = (pendingKey: string) => {
+      removedPendingKeys.add(pendingKey);
+      pendingChanged = true;
+    };
     for (const occurrence of scheduledPending) {
       if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
       const pendingKey = JSON.stringify([occurrence.workflowId, occurrence.occurrenceKey]);
@@ -204,46 +276,90 @@ export class Scheduler {
       processedPendingKeys.add(pendingKey);
       // lastFired is the durable acknowledgement; a crash may leave its pending
       // row behind, so discard any occurrence at or below that checkpoint.
-      if (fired[occurrence.workflowId] && fired[occurrence.workflowId]! >= occurrence.occurrenceKey) {
-        removedPendingKeys.add(pendingKey);
-        pendingChanged = true;
+      if (occurrenceAcknowledged(fired[occurrence.workflowId], occurrence.occurrenceKey, now.getTime())) {
+        drop(pendingKey);
         continue;
       }
       const active = this.store.isWorkflowActive(occurrence.workflowId);
       if (!active) {
-        removedPendingKeys.add(pendingKey);
-        pendingChanged = true;
+        drop(pendingKey);
         continue;
       }
       const ir = this.store.getWorkflow(occurrence.workflowId);
       if (!ir?.trigger || ir.trigger.type !== occurrence.triggerType ||
         (occurrence.workflowVersion !== undefined && occurrence.workflowVersion !== ir.version) ||
         (occurrence.triggerSnapshot !== undefined && occurrence.triggerSnapshot !== JSON.stringify(ir.trigger))) {
-        removedPendingKeys.add(pendingKey);
-        pendingChanged = true;
+        drop(pendingKey);
         continue;
       }
 
-      const result = await this.executeScheduledWorkflow(ir, occurrence.triggerType);
-      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
-      if (!result) {
-        removedPendingKeys.add(pendingKey);
-        pendingChanged = true;
+      if (ir.trigger.type === 'once') {
+        const lateness = now.getTime() - Date.parse(ir.trigger.runAt);
+        if (lateness > ONCE_MAX_LATENESS_MS) {
+          console.warn(`[scheduler] skipped one-time workflow ${occurrence.workflowId}: ${Math.round(lateness / 60_000)} minutes late`);
+          this.retireOnceJob(fired, occurrence.workflowId);
+          this.recordOutcome(occurrence.workflowId, {
+            occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'max_lateness_exceeded',
+          });
+          drop(pendingKey);
+          continue;
+        }
+      }
+
+      // Do not stack runs behind an unanswered approval of the same workflow.
+      if (this.store.hasPendingApprovalForWorkflow(occurrence.workflowId)) {
+        if (occurrence.triggerType === 'schedule') {
+          console.info(`[scheduler] skipped occurrence ${occurrence.occurrenceKey} of workflow ${occurrence.workflowId}: approval pending`);
+          this.markFired(fired, occurrence.workflowId, occurrence.occurrenceKey);
+          this.recordOutcome(occurrence.workflowId, {
+            occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'approval_pending',
+          });
+          drop(pendingKey);
+        }
+        // A one-time job waits (without retrying side effects) until the approval is answered.
         continue;
       }
-      // Stopping prevents new work; it must not erase acknowledgement of work already completed.
-      const current = this.store.getWorkflow(occurrence.workflowId);
-      const unchanged = current?.version === ir.version && JSON.stringify(current.trigger) === JSON.stringify(ir.trigger);
-      if (occurrence.triggerType === 'once') {
-        if (result.status === 'pending_approval' && unchanged) {
-          // Deactivate without marking lastFired so reactivating the job can
-          // fire it again; the paused execution resumes through approval.
-          this.store.setWorkflowActive(occurrence.workflowId, false);
+
+      // Acknowledge before starting: once an execution may have produced side
+      // effects, a failure, crash or stop must never run this occurrence again.
+      const previousFired = fired[occurrence.workflowId];
+      this.markFired(fired, occurrence.workflowId, occurrence.occurrenceKey);
+      const outcome = await this.executeScheduledWorkflow(ir, occurrence.triggerType);
+      if ('error' in outcome) {
+        if (outcome.notStarted) {
+          // The runtime refused before any step ran; re-arm the occurrence.
+          if (previousFired === undefined) this.clearFired(fired, occurrence.workflowId);
+          else this.markFired(fired, occurrence.workflowId, previousFired);
+        } else {
+          // The run may have reached a side effect before failing; never retry it.
+          this.recordOutcome(occurrence.workflowId, {
+            occurrenceKey: occurrence.occurrenceKey, status: 'failed', reason: 'execution_error',
+          });
+          if (occurrence.triggerType === 'once') this.retireOnceJob(fired, occurrence.workflowId);
         }
-        if (result.status === 'success' && unchanged) {
-          if (this.store.claimWorkflowDeletion(occurrence.workflowId, ir.version)) {
+        drop(pendingKey);
+        continue;
+      }
+      const { result } = outcome;
+      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
+      const current = this.store.getWorkflow(occurrence.workflowId);
+      const triggerUnchanged = JSON.stringify(current?.trigger) === JSON.stringify(ir.trigger);
+      const unchanged = current?.version === ir.version && triggerUnchanged;
+      if (result.status !== 'success' && result.status !== 'pending_approval') {
+        console.warn(`[scheduler] ${occurrence.triggerType} occurrence ${occurrence.occurrenceKey} of workflow ${occurrence.workflowId} ended as ${result.status}${result.errorCode ? ` (${result.errorCode})` : ''}; not retrying`);
+        this.recordOutcome(occurrence.workflowId, {
+          occurrenceKey: occurrence.occurrenceKey, status: result.status,
+          ...(result.errorCode ? { reason: result.errorCode } : {}), executionId: result.executionId,
+        });
+      }
+      if (!triggerUnchanged) {
+        // The trigger was replaced during the run; its new schedule must still fire.
+        // (A version bump alone keeps the acknowledgement so nothing re-runs.)
+        this.clearFired(fired, occurrence.workflowId);
+      } else if (occurrence.triggerType === 'once') {
+        if (result.status === 'success') {
+          if (unchanged && this.store.claimWorkflowDeletion(occurrence.workflowId, ir.version)) {
             try {
-              this.markFired(fired, occurrence.workflowId, occurrence.occurrenceKey);
               this.store.setWorkflowActive(occurrence.workflowId, false);
               await this.runtime.removeWorkflow(occurrence.workflowId);
               this.store.deleteWorkflow(occurrence.workflowId);
@@ -251,13 +367,14 @@ export class Scheduler {
               this.store.releaseWorkflowDeletion(occurrence.workflowId);
             }
           }
+        } else {
+          // Pending approval resumes through the approval; failures surface in
+          // history. Either way deactivate so reactivating can fire it again.
+          this.retireOnceJob(fired, occurrence.workflowId);
         }
-      } else if (result.status !== 'failed' && unchanged) {
-        this.markFired(fired, occurrence.workflowId, occurrence.occurrenceKey);
       }
 
-      removedPendingKeys.add(pendingKey);
-      pendingChanged = true;
+      drop(pendingKey);
       this.onScheduledRun?.(occurrence.workflowId, result);
     }
     if (pendingChanged) {
@@ -265,17 +382,5 @@ export class Scheduler {
         !removedPendingKeys.has(JSON.stringify([occurrence.workflowId, occurrence.occurrenceKey])),
       ));
     }
-  }
-
-  async runWorkflowNow(workflowId: string): Promise<unknown> {
-    const ir = this.store.getWorkflow(workflowId);
-    if (!ir) throw new Error('Workflow not found');
-    return this.runtime.executeWorkflow(ir, { triggerType: 'manual' });
-  }
-
-  persistWorkflowFromEphemeral(ir: WorkflowIR, trigger?: WorkflowIR['trigger']): string {
-    const withTrigger = { ...ir, trigger: trigger ?? ir.trigger };
-    const { workflowId } = this.store.saveWorkflow(withTrigger);
-    return workflowId;
   }
 }

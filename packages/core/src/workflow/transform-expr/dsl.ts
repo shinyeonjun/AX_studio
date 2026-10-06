@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConditionExprSchema } from '../condition-expr/schema.js';
+import { ConditionExprSchema, depthLimited } from '../condition-expr/schema.js';
 import { ScalarValueSchema } from '../../contracts/artifacts/table.js';
 
 const SourceExprSchema = z.object({
@@ -62,7 +62,7 @@ const LimitExprSchema = z.object({
   count: z.number().int().positive().max(500),
 });
 
-export const TransformExprSchema: z.ZodType<TransformExpr> = z.discriminatedUnion('op', [
+export const TransformExprSchema: z.ZodType<TransformExpr> = depthLimited(z.discriminatedUnion('op', [
   SourceExprSchema,
   ColumnExprSchema,
   FilterExprSchema,
@@ -72,7 +72,7 @@ export const TransformExprSchema: z.ZodType<TransformExpr> = z.discriminatedUnio
   SelectExprSchema,
   SortExprSchema,
   LimitExprSchema,
-]);
+]), 'TransformExpr');
 
 export type TransformExpr =
   | z.infer<typeof SourceExprSchema>

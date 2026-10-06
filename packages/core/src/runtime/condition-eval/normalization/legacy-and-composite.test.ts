@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateLegacyCondition, normalizeCondition } from '../../condition-expr.js';
+import { evaluateCondition, migrateLegacyCondition, normalizeCondition } from '../../condition-expr.js';
 
 describe('evaluateCondition normalization', () => {
   it('migrates legacy string conditions', () => {
@@ -22,6 +22,15 @@ describe('evaluateCondition normalization', () => {
       left: { ref: 'classify.riskLevel' },
       right: { lit: 'critical' },
     });
+  });
+
+  it('maps legacy loose == with JS string/number coercion instead of strict equality', () => {
+    const numberLiteral = migrateLegacyCondition('order.count == 5')!;
+    const stringLiteral = migrateLegacyCondition("order.code == '05'")!;
+    const check = (expr: typeof numberLiteral, value: unknown) => evaluateCondition(expr, {}, { order: { count: value, code: value } });
+    expect([5, '5', '05', 6, '6', null].map((value) => check(numberLiteral, value)))
+      .toEqual([true, true, true, false, false, false]);
+    expect([5, '05', '5'].map((value) => check(stringLiteral, value))).toEqual([true, true, false]);
   });
 
   it('coerces and/or with left-right into args', () => {

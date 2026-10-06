@@ -1,4 +1,5 @@
 import type { ConditionExpr, ConditionValue } from '../../workflow/condition-expr/schema.js';
+import { readOwnPath, readTriggerPath } from '../../workflow/value-path.js';
 
 function resolveRef(
   ref: string,
@@ -6,26 +7,18 @@ function resolveRef(
   stepResults: Record<string, unknown>,
   outputs?: Record<string, Record<string, unknown>>,
 ): unknown {
-  const path = ref.startsWith('trigger.') ? ref.slice('trigger.'.length) : ref;
-  const [root, ...rest] = path.split('.');
+  // Match parameter templates: `trigger.x` reads trigger variables only.
+  if (ref.startsWith('trigger.')) return readTriggerPath(variables, ref.slice('trigger.'.length));
+  const [root, ...rest] = ref.split('.');
   const [outputPort, ...nestedPath] = rest;
-  const typedOutput = outputPort && outputs?.[root]?.[outputPort];
-  let current: unknown;
-  if (typedOutput !== undefined) {
-    current = typedOutput;
-    for (const key of nestedPath) {
-      if (current == null || typeof current !== 'object') return undefined;
-      current = (current as Record<string, unknown>)[key];
-    }
-    return current;
+  const stepOutputs = outputs && Object.hasOwn(outputs, root) ? outputs[root] : undefined;
+  if (outputPort && stepOutputs && Object.hasOwn(stepOutputs, outputPort) && stepOutputs[outputPort] !== undefined) {
+    return readOwnPath(stepOutputs[outputPort], nestedPath);
   }
-
-  current = Object.hasOwn(stepResults, root) ? stepResults[root] : variables[root];
-  for (const key of rest) {
-    if (current == null || typeof current !== 'object') return undefined;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return current;
+  const base = Object.hasOwn(stepResults, root)
+    ? stepResults[root]
+    : Object.hasOwn(variables, root) ? variables[root] : undefined;
+  return readOwnPath(base, rest);
 }
 
 function resolveValue(
@@ -35,7 +28,16 @@ function resolveValue(
   outputs?: Record<string, Record<string, unknown>>,
 ): unknown {
   if ('lit' in value) return value.lit;
-  return resolveRef(value.ref, variables, stepResults, outputs);
+  const resolved = resolveRef(value.ref, variables, stepResults, outputs);
+  // A missing reference is not a comparable value: `neq` must not become true
+  // merely because an upstream field was absent. Fail the condition loudly.
+  if (resolved === undefined) {
+    throw Object.assign(new Error(`조건식 참조를 해석할 수 없습니다: ${value.ref}`), {
+      code: 'condition_ref_missing',
+      reference: value.ref,
+    });
+  }
+  return resolved;
 }
 
 function compareValues(left: unknown, right: unknown): number | null {
@@ -50,6 +52,11 @@ function compareValues(left: unknown, right: unknown): number | null {
   return leftNum == null || rightNum == null ? null : leftNum - rightNum;
 }
 
+/**
+ * Evaluate a declarative condition. Throws `condition_ref_missing` when a
+ * compared reference does not resolve; callers that must not throw (trigger
+ * filters) treat that as a non-match.
+ */
 export function evaluateCondition(
   expr: ConditionExpr,
   variables: Record<string, unknown>,

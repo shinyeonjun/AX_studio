@@ -280,7 +280,7 @@ describe('Scheduler scheduled jobs', () => {
     vi.useRealTimers();
   });
 
-  it('retries a failed scheduled job without running it again after success', async () => {
+  it('does not re-run a failed scheduled occurrence in the same minute', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
     const db = await createDatabaseAsync(':memory:');
@@ -311,14 +311,72 @@ describe('Scheduler scheduled jobs', () => {
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
-    expect(store.getSetting('scheduler.lastFired:scheduled-retry', null)).toBeNull();
+    // Acknowledged once started: a failed run may already have had side effects.
+    expect(store.getSetting('scheduler.lastFired:scheduled-retry', null)).toBe('2026-01-01T00:30');
+    expect(store.getSetting('scheduler.lastOutcome:scheduled-retry', null)).toMatchObject({
+      occurrenceKey: '2026-01-01T00:30', status: 'failed',
+    });
 
     await tick();
-    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
-    expect(store.getSetting('scheduler.lastFired:scheduled-retry', null)).toEqual(expect.any(String));
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+  });
 
-    await tick();
-    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+  it('skips an occurrence while the workflow has a pending approval', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:30:00.000Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'scheduled-pending', name: '승인 대기 중 예약', goal: '승인 대기 중에는 예약 실행을 건너뜀', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '30 9 * * *', timezone: 'Asia/Seoul' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+    });
+    store.setWorkflowActive('scheduled-pending', true);
+    const executionId = store.createExecution({ workflowId: 'scheduled-pending', workflowVersion: 1, ephemeral: false });
+    store.createApproval({ executionId, actionIds: ['send'], reason: 'pending' });
+    store.markExecutionPending(executionId);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    try {
+      await tick();
+      await tick();
+      expect(runtime.executeWorkflow).not.toHaveBeenCalled();
+      expect(store.getSetting('scheduler.lastOutcome:scheduled-pending', null))
+        .toMatchObject({ status: 'skipped', reason: 'approval_pending' });
+    } finally {
+      info.mockRestore();
+      db.close?.();
+    }
+  });
+
+  it('resumes a schedule after the clock is set backwards', async () => {
+    vi.useFakeTimers();
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'clock-back', name: '시계 되돌림', goal: '시계가 되돌아가도 예약 실행 유지', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '* * * * *', timezone: 'UTC' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+    });
+    store.setWorkflowActive('clock-back', true);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    try {
+      vi.setSystemTime(new Date('2026-01-01T10:00:00.000Z'));
+      await tick();
+      vi.setSystemTime(new Date('2026-01-01T09:00:00.000Z'));
+      await tick();
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+      await tick();
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+    } finally {
+      db.close?.();
+    }
   });
 
   it('ignores invalid persisted last-fired entries without stopping scheduled jobs', async () => {

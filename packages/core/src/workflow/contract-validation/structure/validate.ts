@@ -9,7 +9,7 @@ import {
   validateStepControlFlow,
 } from './control-flow.js';
 import { validateNotificationBranching } from './notifications.js';
-import { validateWorkflowReferences } from './references-validation.js';
+import { validateReferenceOrdering, validateWorkflowReferences } from './references-validation.js';
 import { decisionOutputContractErrors } from '../../ai-output-contract.js';
 
 export function validateWorkflowStructure(
@@ -34,5 +34,6 @@ export function validateWorkflowStructure(
   issues.push(...validateApprovalBranchOwnership(ir.steps));
   issues.push(...validateNotificationBranching(ir));
   issues.push(...validateWorkflowReferences(ir, byId));
+  issues.push(...validateReferenceOrdering(ir, byId));
   return issues;
 }

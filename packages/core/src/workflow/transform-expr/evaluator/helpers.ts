@@ -1,8 +1,13 @@
 import type { ScalarValue, TableArtifact } from '../../../contracts/artifacts/table.js';
 import type { TransformEvaluation } from './contracts.js';
 
+/** Own-property cell read: user-chosen column names never reach Object.prototype. */
+export function ownCell<T>(values: Readonly<Record<string, T>> | undefined, column: string): T | null {
+  return values && Object.hasOwn(values, column) ? values[column] ?? null : null;
+}
+
 export function rowValue(row: TableArtifact['rows'][number], column: string): ScalarValue {
-  return row.values[column] ?? null;
+  return ownCell(row.values, column);
 }
 
 export function compareScalar(left: ScalarValue, right: ScalarValue): boolean {

@@ -4,7 +4,7 @@ import type {
   TransformEvaluation,
   TransformEvaluator,
 } from './contracts.js';
-import { requireCompleteTable, toNumber } from './helpers.js';
+import { ownCell, requireCompleteTable, toNumber } from './helpers.js';
 
 export function evaluateAggregate(
   expr: Extract<TransformExpr, { op: 'aggregate' }>,
@@ -16,7 +16,7 @@ export function evaluateAggregate(
   if (expr.fn === 'count') return table.rows.length;
   if (!column) throw new Error('aggregate_column_required');
   const numbers = table.rows
-    .map((row) => toNumber(row.values[column] ?? null))
+    .map((row) => toNumber(ownCell(row.values, column)))
     .filter((value): value is number => value != null);
   if (numbers.length === 0) return null;
   switch (expr.fn) {

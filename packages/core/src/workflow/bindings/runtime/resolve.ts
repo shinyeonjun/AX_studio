@@ -2,6 +2,7 @@ import { fileRefFromExecutionVariables, fileRefFromTriggerPayload } from '../../
 import { resolveCapability } from '../../../catalog/capability-graph.js';
 import type { PortBinding } from '../../port-binding.js';
 import type { Step, WorkflowIR } from '../../schema.js';
+import { readOwnPath } from '../../value-path.js';
 
 function textFromBoundValue(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim()) return value;
@@ -77,7 +78,7 @@ export function resolveTriggerOutput(
       snippet: variables.snippet,
     };
   }
-  return variables[outputPort];
+  return readOwnPath(variables, [outputPort]);
 }
 
 export function extractStepOutput(
@@ -89,7 +90,7 @@ export function extractStepOutput(
 
   const cap = resolveCapability(step.connector, step.action);
   const outputs = cap?.io?.outputs;
-  if (!outputs || !(outputPort in outputs)) {
+  if (!outputs || !Object.hasOwn(outputs, outputPort)) {
     return data;
   }
 
@@ -100,20 +101,23 @@ export function extractStepOutput(
     }
   }
 
-  if (outputPort === 'text' && typeof data === 'object' && data !== null && 'text' in data) {
+  if (outputPort === 'text' && typeof data === 'object' && data !== null && Object.hasOwn(data, 'text')) {
     return (data as Record<string, unknown>).text;
   }
-  if (outputPort === 'body' && typeof data === 'object' && data !== null && 'body' in data) {
+  if (outputPort === 'body' && typeof data === 'object' && data !== null && Object.hasOwn(data, 'body')) {
     return (data as Record<string, unknown>).body;
   }
   if (outputPort === 'rows' && Array.isArray(data)) return data;
   if (outputPort === 'sheet' && Array.isArray(data)) return data;
   if (outputPort === 'document' || outputPort === 'table' || outputPort === 'file') return data;
 
-  if (typeof data === 'object' && outputPort in (data as Record<string, unknown>)) {
+  if (typeof data === 'object' && Object.hasOwn(data as Record<string, unknown>, outputPort)) {
     return (data as Record<string, unknown>)[outputPort];
   }
 
+  // A record without the declared port is unresolved; passing the whole
+  // envelope would bind unrelated fields to the downstream input.
+  if (typeof data === 'object' && !Array.isArray(data)) return undefined;
   return data;
 }
 
@@ -129,14 +133,14 @@ export function resolveBindingValue(
   }
 
   const step = ir.steps.find((candidate) => candidate.id === binding.from);
-  const typedOutput = outputs?.[binding.from]?.[binding.output];
+  const typedOutput = readOwnPath(outputs, [binding.from, binding.output]);
   if (typedOutput !== undefined) return typedOutput;
-  const data = stepResults[binding.from];
+  const data = readOwnPath(stepResults, [binding.from]);
   if (!step) return data;
   if (step.type === 'ai_decision') {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
     const record = data as Record<string, unknown>;
-    if (binding.output in record) return record[binding.output];
+    if (Object.hasOwn(record, binding.output)) return record[binding.output];
     if (binding.output === 'result') return record.result ?? record;
     return undefined;
   }

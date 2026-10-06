@@ -59,4 +59,37 @@ describe('WebhookInboundListener path and secret rejection', () => {
     });
     expect(response.status).toBe(401);
   });
+
+  it('backs off a client after repeated failed authentication attempts', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const port = 38_915;
+    await listener.start({ port, secret: 'hook-secret' }, () => undefined);
+    const attempt = (secret: string) => fetch(`http://127.0.0.1:${port}/hooks/test`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': secret },
+      body: '{}',
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+      expect((await attempt('wrong')).status).toBe(401);
+    }
+    const blocked = await attempt('hook-secret');
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+  });
+
+  it('rejects a stale timestamp in shared-secret mode', async () => {
+    const listener = new WebhookInboundListener();
+    listeners.push(listener);
+    const port = 38_916;
+    await listener.start({ port, secret: 'hook-secret' }, () => undefined);
+    const stale = String(Math.floor(Date.now() / 1_000) - 3_600);
+    const response = await fetch(`http://127.0.0.1:${port}/hooks/test`, {
+      method: 'POST',
+      headers: { 'x-ax-webhook-secret': 'hook-secret', 'x-ax-timestamp': stale },
+      body: '{}',
+    });
+    expect(response.status).toBe(401);
+  });
 });

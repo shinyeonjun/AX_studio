@@ -92,4 +92,21 @@ describe('runtime output seam', () => {
       ).text,
     ).toBe('{"ok":true}');
   });
+
+  it('rejects objects interpolated into mixed text templates instead of sending [object Object]', () => {
+    const ctx = { executionId: 'e', variables: {}, log: () => undefined };
+    expect(() => resolveStepParams({ text: 'Result: {{fetch.data}}' }, ctx, { fetch: { data: { a: 1 } } }))
+      .toThrow(expect.objectContaining({ code: 'template_non_primitive', reference: 'fetch.data' }));
+    expect(resolveStepParams({ payload: '{{fetch.data}}' }, ctx, { fetch: { data: { a: 1 } } }))
+      .toEqual({ payload: { a: 1 } });
+  });
+
+  it('leaves a declared port unresolved when the step result record lacks it', () => {
+    expect(resolveBindingValue({ from: 'fetch', output: 'body' }, ir, { fetch: { status: 500 } }, {})).toBeUndefined();
+  });
+
+  it('resolves nested trigger template paths through trigger variables', () => {
+    const ctx = { executionId: 'e', variables: { payload: { subject: 'Hi' } }, log: () => undefined };
+    expect(resolveStepParams({ text: 'S: {{trigger.payload.subject}}' }, ctx, {})).toEqual({ text: 'S: Hi' });
+  });
 });

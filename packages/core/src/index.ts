@@ -3,7 +3,6 @@ export { triggerOutputPorts, stepOutputPorts, aiDecisionOutputPorts } from './wo
 export * from './workflow/workflow-view.js';
 export * from './workflow/approval.js';
 export * from './workflow/contract-validator.js';
-export * from './workflow/contract-adapters.js';
 export * from './contracts/index.js';
 export * from './catalog/index.js';
 export * from './connectors/index.js';

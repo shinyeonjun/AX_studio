@@ -64,7 +64,9 @@ export const slackModulePackage: ModulePackage = {
       });
     },
     dedupeKey(workflowId, event) {
-      return `${workflowId}:${String(event.payload.ts ?? event.payload.messageId ?? '')}`;
+      // Must match the poll receipt key (runtime/trigger-engine/helpers.ts eventDedupeKey)
+      // so a message delivered by Socket Mode is never re-run by the poll fallback.
+      return `${workflowId}:slack.new_message:${String(event.payload.messageId ?? event.payload.ts ?? '')}`;
     },
   },
 };

@@ -62,12 +62,45 @@ export function triggerRunWasAccepted(result: unknown): boolean {
   return status === 'success' || status === 'pending_approval';
 }
 
+/**
+ * Canonical receipt key shared by poll and push deliveries of the same event
+ * (`<workflowId>:<triggerType>:<eventId>`), so either path dedupes the other.
+ */
 export function eventDedupeKey(workflowId: string, event: TriggerEvent): string | undefined {
   const payload = event.payload;
   const eventId = [payload.messageId, payload.filePath, payload.ts].find(
     (value): value is string => typeof value === 'string' && value.length > 0,
   );
   return eventId ? `${workflowId}:${event.type}:${eventId}` : undefined;
+}
+
+/** Keys written by older Slack Socket Mode deliveries (`<workflowId>:<ts>`); read-only compatibility. */
+export function legacyEventDedupeKeys(workflowId: string, event: TriggerEvent): string[] {
+  if (event.type !== 'slack.new_message') return [];
+  const ts = event.payload.ts ?? event.payload.messageId;
+  return typeof ts === 'string' && ts.length > 0 ? [`${workflowId}:${ts}`] : [];
+}
+
+function slackTsValue(ts: string | undefined): number | undefined {
+  if (!ts) return undefined;
+  const value = Number(ts);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Advances a poll cursor from a push-delivered event so a later poll fallback
+ * does not rediscover it. The message timestamp only moves forward, and only
+ * on an initialized cursor (the poll baseline owns initialization).
+ */
+export function cursorAfterPushedEvent(cursor: TriggerCursor, event: TriggerEvent): TriggerCursor {
+  const next = cursorAfterEvent(cursor, event);
+  const pushed = slackTsValue(typeof event.payload.ts === 'string' ? event.payload.ts : undefined);
+  const previous = slackTsValue(cursor.lastMessageTs);
+  if (!cursor.initialized || pushed === undefined || (previous !== undefined && pushed <= previous)) {
+    if (cursor.lastMessageTs === undefined) delete next.lastMessageTs;
+    else next.lastMessageTs = cursor.lastMessageTs;
+  }
+  return next;
 }
 
 export function cursorAfterEvent(
