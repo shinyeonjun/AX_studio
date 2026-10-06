@@ -44,4 +44,26 @@ describe('htmlRender', () => {
     expect(result.ok).toBe(true);
     expect(ctx.variables.documentHtml).toBe('<html><body>명시적 템플릿</body></html>');
   });
+
+  it('never exposes workflow variables that were not passed as data', async () => {
+    const ctx = context({ apiToken: 'secret-token' });
+    const defaultResult = await htmlRender({ title: 'T' }, ctx);
+    expect(defaultResult.ok).toBe(true);
+    expect(String(ctx.variables.documentHtml)).not.toContain('secret-token');
+
+    const templated = await htmlRender({ template: '{{apiToken}}', data: {} }, context({ apiToken: 'secret-token' }));
+    expect(templated).toMatchObject({ ok: false, errorCode: 'invalid_params' });
+  });
+
+  it('renders explicit data fields escaped in the default template', async () => {
+    const ctx = context({});
+    await htmlRender({ title: 'T', data: { 금액: '<b>1</b>', count: 2 } }, ctx);
+    expect(ctx.variables.documentHtml).toContain('<h2>금액</h2><p>&lt;b&gt;1&lt;/b&gt;</p>');
+    expect(ctx.variables.documentHtml).toContain('<h2>count</h2><p>2</p>');
+  });
+
+  it('rejects unknown helpers', async () => {
+    const result = await htmlRender({ template: '{{custom value}}', data: { value: 1 } }, context({}));
+    expect(result).toMatchObject({ ok: false, errorCode: 'invalid_params' });
+  });
 });

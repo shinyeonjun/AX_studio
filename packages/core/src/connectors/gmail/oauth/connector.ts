@@ -31,3 +31,14 @@ export async function fetchGmailProfileEmail(config: GmailConnectorConfig): Prom
   const profile = await gmail.users.getProfile({ userId: 'me' });
   return profile.data.emailAddress ?? undefined;
 }
+
+/** Revoke a refresh token at Google. Revocation removes the whole grant for that account and client. */
+export async function revokeGmailRefreshToken(params: {
+  clientId: string;
+  clientSecret?: string;
+  refreshToken: string;
+}): Promise<void> {
+  const { google } = await import('googleapis');
+  const oauth2 = new google.auth.OAuth2(params.clientId, params.clientSecret);
+  await oauth2.revokeToken(params.refreshToken);
+}

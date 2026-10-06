@@ -6,7 +6,7 @@ import {
 } from '@ax-studio/core';
 import { getRdbConnectionString, saveRdbConnectionString } from './secrets.js';
 import { persistedRdbConfig } from './config.js';
-import { rdbProbeErrorMessage } from './probe-message.js';
+import { rdbProbeErrorMessage, rdbProbeWarningMessage } from './probe-message.js';
 
 export async function validateAndConnectRdb(
   store: WorkflowStore,
@@ -20,7 +20,7 @@ export async function validateAndConnectRdb(
     rowLimit?: number;
     label?: string;
   },
-): Promise<void> {
+): Promise<{ warning?: string }> {
   const type = payload.type;
   const config =
     type === 'sqlite'
@@ -68,4 +68,5 @@ export async function validateAndConnectRdb(
     lastError: undefined,
   });
   runtime.setConnector('rdb', new RdbConnector(config));
+  return probe.warning ? { warning: rdbProbeWarningMessage(probe.warning) } : {};
 }

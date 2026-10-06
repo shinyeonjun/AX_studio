@@ -15,6 +15,8 @@ from typing import Any, Iterator
 import pypdfium2 as pdfium
 from pypdf import PdfReader
 
+from engine_limits import clamp_render_scale
+
 
 @contextmanager
 def open_pdf(source: str | Path | bytes) -> Iterator[Any]:
@@ -39,8 +41,13 @@ def page_text(page: Any, rect: tuple[float, float, float, float] | None = None,
         text.close()
 
 
+def page_render_scale(page: Any, requested: float = 2.0) -> float:
+    width, height = page.get_size()
+    return clamp_render_scale(width, height, requested)
+
+
 def render_page(page: Any, *, scale: float = 2.0) -> Any:
-    bitmap = page.render(scale=scale, draw_annots=True)
+    bitmap = page.render(scale=page_render_scale(page, scale), draw_annots=True)
     try:
         return bitmap.to_pil().copy()
     finally:
@@ -57,10 +64,11 @@ def render_region(page: Any, rect: tuple[float, float, float, float],
         x0, y0, x1, y1 = width - x1, height - y1, width - x0, height - y0
     elif rotation == 270:
         x0, y0, x1, y1 = y0, width - x1, y1, width - x0
-    image = render_page(page)
+    scale = page_render_scale(page)
+    image = render_page(page, scale=scale)
     try:
-        clipped = image.crop((max(0, round(x0 * 2)), max(0, round(y0 * 2)),
-                              min(image.width, round(x1 * 2)), min(image.height, round(y1 * 2))))
+        clipped = image.crop((max(0, round(x0 * scale)), max(0, round(y0 * scale)),
+                              min(image.width, round(x1 * scale)), min(image.height, round(y1 * scale))))
         try:
             return clipped.tobytes()
         finally:

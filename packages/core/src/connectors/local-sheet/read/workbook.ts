@@ -17,7 +17,7 @@ export async function readWorkbookFromPath(path: string, options: { rowLimit?: n
   const file = fileRefForPath(path);
   const input = { path, rowLimit, workbookId, file, data };
 
-  if (ext === '.csv') return readCsvWorkbook(input);
+  if (ext === '.csv' || ext === '.tsv') return readCsvWorkbook(input);
   const { readXlsxWorkbook } = await import('./xlsx.js');
   return readXlsxWorkbook(input);
 }

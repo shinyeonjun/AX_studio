@@ -650,7 +650,7 @@ describe('ReportGenerationService', () => {
     if (resume) expect(logs).toContainEqual(expect.objectContaining({ code: 'report_stage_resumed', data: { phase: 'example_capture' } }));
     expect(documentEngine.pdfFormFill).toHaveBeenCalledTimes(1);
     expect(putBytes).toHaveBeenCalledWith(
-      readFileSync(join(root, 'output', '2026-09-report.pdf')),
+      readFileSync(join(root, 'output', 'report.pdf')),
       { fileName: '2026-09-report.pdf', mimeType: 'application/pdf' },
     );
     expect(logs).toContainEqual(expect.objectContaining({ code: 'report_example_replay_passed' }));

@@ -49,6 +49,9 @@ def main() -> int:
         "params": {
             "path": str(args.path.resolve()),
             "artifactRoot": str(args.artifact_root.resolve()),
+            # The worker only touches paths/roots the host explicitly allows.
+            "allowedPaths": [str(args.path.resolve())],
+            "allowedRoots": [str(args.artifact_root.resolve())],
             "options": {"engine": args.engine, "ocr": args.ocr},
         },
     }

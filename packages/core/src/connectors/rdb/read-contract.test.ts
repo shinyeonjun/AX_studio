@@ -5,7 +5,12 @@ import { tmpdir } from 'node:os';
 import initSqlJs from 'sql.js';
 import Database from 'better-sqlite3';
 import { RdbConnector } from './connector.js';
-import { assertSafeRdbScalars, prepareRdbRows } from './client/scalars.js';
+import {
+  assertSafeRdbScalars,
+  prepareRdbRows,
+  RDB_CELL_MAX_BYTES,
+  RDB_TRUNCATED_CELL_MARKER,
+} from './client/scalars.js';
 import { TableArtifactSchema } from '../../contracts/artifacts/table.js';
 import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
 import { captureReportSources } from '../../documents/reporting/source/capture.js';
@@ -209,6 +214,15 @@ describe('RDB scalar precision guard', () => {
     const [prepared] = prepareRdbRows([row]);
     expect(prepared).toEqual({ ...row, instant: '2026-09-29T16:00:00.000Z', bigint: '12' });
     expect(() => JSON.stringify(prepared)).not.toThrow();
+  });
+  it('truncates oversized cells with a marker and stops at the page byte budget', () => {
+    const big = 'x'.repeat(RDB_CELL_MAX_BYTES + 10);
+    const [prepared] = prepareRdbRows([{ big }]);
+    expect(String(prepared!.big).endsWith(RDB_TRUNCATED_CELL_MARKER)).toBe(true);
+    expect(String(prepared!.big).length).toBe(RDB_CELL_MAX_BYTES + RDB_TRUNCATED_CELL_MARKER.length);
+    const rows = Array.from({ length: 10 }, () => ({ text: 'y'.repeat(100) }));
+    expect(prepareRdbRows(rows, 350)).toHaveLength(3);
+    expect(prepareRdbRows(rows, 1)).toHaveLength(1);
   });
   it.each([Number.POSITIVE_INFINITY, Number.NaN])('refuses non-finite provider numbers %s', value => {
     expect(() => assertSafeRdbScalars([{ value }])).toThrow('rdb_non_finite_number');

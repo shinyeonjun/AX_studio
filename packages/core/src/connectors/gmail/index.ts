@@ -11,7 +11,9 @@ export {
   fetchGmailProfileEmail,
   buildGmailConnectorConfig,
   createOAuthState,
+  grantedScopes,
   oauthCallbackStateMatches,
+  revokeGmailRefreshToken,
   type GmailOAuthOptions,
   type GmailOAuthResult,
 } from './oauth.js';

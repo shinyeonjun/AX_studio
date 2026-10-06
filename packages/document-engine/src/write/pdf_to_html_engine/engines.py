@@ -4,6 +4,8 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+from engine_limits import MAX_SOURCE_BYTES, MAX_SOURCE_PAGES
+
 from .roundtrip import _roundtrip_html
 
 
@@ -27,7 +29,11 @@ def _docling_pdf_to_html(source_path: Path, ocr_mode: str) -> tuple[str, int]:
 
     adapter = DoclingAdapter()
     converter = adapter._build_converter(ocr_mode)
-    result = converter.convert(str(source_path))
+    result = converter.convert(
+        str(source_path),
+        max_num_pages=MAX_SOURCE_PAGES,
+        max_file_size=MAX_SOURCE_BYTES,
+    )
     doc = result.document
     # The source PDF is the authority for page count. Docling can omit an
     # image-only/blank page from its document page map even though that page

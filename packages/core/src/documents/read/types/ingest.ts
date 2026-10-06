@@ -48,6 +48,10 @@ export interface IngestDocumentResult {
   pages?: AxDocumentPageDetail[];
   images?: AxDocumentImageRef[];
   tables?: AxDocumentTableRef[];
+  /** Top-level text was dropped because pages already carry it (oversized response). */
+  textOmitted?: boolean;
+  /** Some page/OCR/table text was cut to keep the response bounded; full text stays in the artifact. */
+  truncated?: boolean;
 }
 
 export interface DocumentChunkHit {

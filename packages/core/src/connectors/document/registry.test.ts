@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConnectorContext } from '../types.js';
 import { DocumentConnector } from './connector.js';
-import { listDocumentActions } from './registry.js';
+import { getDocumentHandler, listDocumentActions } from './registry.js';
 
 describe('document action registry', () => {
   it('preserves the registered read and write action list', () => {
@@ -46,4 +46,11 @@ describe('document action registry', () => {
       });
     }
   });
+
+  it.each(['constructor', '__proto__', 'toString', 'pdf.constructor', 'html.__proto__', 'docx.hasOwnProperty'])(
+    'does not resolve prototype member %s as an action',
+    async (action) => {
+      await expect(getDocumentHandler(action)).resolves.toBeUndefined();
+    },
+  );
 });

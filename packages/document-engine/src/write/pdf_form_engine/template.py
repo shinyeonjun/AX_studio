@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 from typing import Any, Mapping
 
-from artifact_store import artifact_dir, sha256_file
+from artifact_store import artifact_dir, atomic_copy_file, atomic_write_text, sha256_file
 from ax_paths import default_template_root
 
 from .analysis import analyze_pdf_form
@@ -22,11 +21,11 @@ def persist_pdf_form_template(
     original_pdf = root / "original.pdf"
     template_path = root / "template.json"
     if not original_pdf.exists() or sha256_file(original_pdf) != template["sourceHash"]:
-        shutil.copy2(source_path, original_pdf)
+        atomic_copy_file(source_path, original_pdf)
     template["artifactPath"] = str(root)
     template["originalPdfPath"] = str(original_pdf)
     template["templatePath"] = str(template_path)
-    template_path.write_text(json.dumps(template, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_text(template_path, json.dumps(template, ensure_ascii=False, indent=2))
     return template
 
 def _load_template(template: Mapping[str, Any] | str | Path) -> dict[str, Any]:

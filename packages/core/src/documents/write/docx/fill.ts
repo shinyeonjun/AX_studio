@@ -2,6 +2,7 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { readFileSync, statSync } from 'node:fs';
 import type { DocxFillInput, DocxFillResult } from '../types.js';
+import { assertZipEntriesInflateToDeclaredSize } from '../../zip-guard.js';
 
 const MAX_DOCX_TEMPLATE_BYTES = 50 * 1024 * 1024;
 const MAX_DOCX_ZIP_ENTRIES = 10_000;
@@ -56,6 +57,7 @@ export function fillDocx(input: DocxFillInput): DocxFillResult {
   if (statSync(input.templatePath).size > MAX_DOCX_TEMPLATE_BYTES) throw new Error('docx_template_too_large');
   const content = readFileSync(input.templatePath);
   validateDocxZip(content);
+  assertZipEntriesInflateToDeclaredSize(content, 'docx');
   const zip = new PizZip(content);
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
   doc.render(input.data);

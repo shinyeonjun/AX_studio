@@ -3,13 +3,15 @@
 import json
 import sys
 
+from engine_limits import configure_image_limits
 from protocol import EngineRequest, EngineResponse
 from worker_engine.dispatch import handle_request
-from worker_engine.stdio import _configure_stdio, _write_json_response
+from worker_engine.stdio import _configure_stdio, _write_json_response, capture_stderr_tail
 
 
 def main() -> None:
     _configure_stdio()
+    configure_image_limits()
     raw = sys.stdin.read()
     if not raw.strip():
         response = EngineResponse(id="", ok=False, error="empty_request")
@@ -27,7 +29,8 @@ def main() -> None:
         _write_json_response(response)
         sys.exit(1)
     request = EngineRequest.from_dict(payload)
-    response = handle_request(request)
+    with capture_stderr_tail():
+        response = handle_request(request)
     _write_json_response(response)
     sys.exit(0 if response.ok else 1)
 

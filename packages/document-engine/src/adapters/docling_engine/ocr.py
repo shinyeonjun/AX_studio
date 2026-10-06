@@ -17,9 +17,9 @@ def _looks_like_garbage_ocr(text: str) -> bool:
         return True
     # Latin-only native text is valid text, not failed Korean OCR. The ratio
     # check is only meaningful when the page actually contains Hangul.
-    if not re.search(r"[��-�R]", stripped):
+    if not re.search(r"[가-힣]", stripped):
         return False
-    hangul = len(re.findall(r"[��-�R]", stripped))
+    hangul = len(re.findall(r"[가-힣]", stripped))
     return hangul < max(3, len(stripped) // 8) and len(stripped) > 20
 
 def _table_like_ocr_excerpt(ocr_text: str) -> str:
@@ -29,7 +29,7 @@ def _table_like_ocr_excerpt(ocr_text: str) -> str:
 
     start = 0
     for index, line in enumerate(lines):
-        if re.search(r"(CloudOps|���꼭)", line):
+        if re.search(r"(CloudOps|정산서)", line):
             start = index
             break
 
@@ -50,7 +50,7 @@ def _table_like_ocr_excerpt(ocr_text: str) -> str:
         label = scoped[index - 1]
         if label in seen:
             continue
-        if len(label) > 48 or re.search(r"(�޸�|Ȯ��|�׽�Ʈ|����)", label):
+        if len(label) > 48 or re.search(r"(메모|확인|테스트|질문)", label):
             continue
         if _AMOUNT_LINE_RE.search(label):
             continue

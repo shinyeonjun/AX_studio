@@ -168,10 +168,14 @@ function parseParams(params: Record<string, unknown>): ReportGenerateParams {
   return { goal, templateSourceId, exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) };
 }
 
+const MAX_REPORT_BASE_NAME_CHARS = 120;
+
 function safePdfFileName(value: string): string {
-  const name = basename(value).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
-  if (!name || name === '.pdf') return 'generated-report.pdf';
-  return name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`;
+  const name = basename(value.normalize('NFC')).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
+  // Windows rejects trailing dots/spaces; long names would also exceed MAX_PATH downstream.
+  const base = name.replace(/\.pdf$/i, '').slice(0, MAX_REPORT_BASE_NAME_CHARS).replace(/[.\s]+$/, '');
+  if (!base) return 'generated-report.pdf';
+  return `${base}.pdf`;
 }
 
 function httpConnectionSummaries(ctx: ConnectorContext): ReportHttpConnectionSummary[] {
@@ -693,7 +697,9 @@ export class ReportGenerationService {
       outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
       mkdirSync(outputDirectory, { recursive: true });
       const fileName = safePdfFileName(outputFileName);
-      const outputPath = join(outputDirectory, fileName);
+      // A short fixed name keeps the engine's temp path well under Windows MAX_PATH;
+      // the display name only travels as artifact metadata.
+      const outputPath = join(outputDirectory, 'report.pdf');
       phase = 'pdf_render';
       const filled = await this.dependencies.documentEngine.pdfFormFill(template.artifact.storedPath, {
         template: targetLayout.template,

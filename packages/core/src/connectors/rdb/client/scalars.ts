@@ -41,11 +41,59 @@ export function assertSafeRdbScalars(rows: RdbRow[]): void {
   }
 }
 
-/** Convert only JSON-incompatible driver scalars; never coerce provider text. */
-export function prepareRdbRows(rows: RdbRow[]): RdbRow[] {
+/** Cumulative budget for one RDB page so a wide/large result cannot exhaust memory. */
+export const RDB_PAGE_MAX_BYTES = 32 * 1024 * 1024;
+/** A single cell larger than this is truncated with a visible marker. */
+export const RDB_CELL_MAX_BYTES = 1024 * 1024;
+export const RDB_TRUNCATED_CELL_MARKER = '…[truncated]';
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  const encoded = Buffer.from(value, 'utf8');
+  if (encoded.length <= maxBytes) return value;
+  // Decoding a cut buffer can leave a partial code point; drop the replacement char.
+  return `${encoded.subarray(0, maxBytes).toString('utf8').replace(/\uFFFD$/u, '')}${RDB_TRUNCATED_CELL_MARKER}`;
+}
+
+function prepareCell(value: unknown): { value: unknown; bytes: number } {
+  if (typeof value === 'bigint') {
+    const text = String(value);
+    return { value: text, bytes: text.length };
+  }
+  if (value instanceof Date) return { value: value.toISOString(), bytes: 24 };
+  if (typeof value === 'string') {
+    const bytes = Buffer.byteLength(value, 'utf8');
+    if (bytes <= RDB_CELL_MAX_BYTES) return { value, bytes };
+    const truncated = truncateUtf8(value, RDB_CELL_MAX_BYTES);
+    return { value: truncated, bytes: RDB_CELL_MAX_BYTES };
+  }
+  if (value instanceof Uint8Array) {
+    if (value.byteLength <= RDB_CELL_MAX_BYTES) return { value, bytes: value.byteLength * 4 };
+    const marker = `[binary ${value.byteLength} bytes]${RDB_TRUNCATED_CELL_MARKER}`;
+    return { value: marker, bytes: marker.length };
+  }
+  return { value, bytes: 16 };
+}
+
+/**
+ * Convert only JSON-incompatible driver scalars; never coerce provider text.
+ * Oversized cells are truncated with a marker, and rows stop once the page
+ * byte budget is spent (at least one row is always kept). Callers detect the
+ * budget stop by comparing the returned length with the input length.
+ */
+export function prepareRdbRows(rows: RdbRow[], maxBytes = RDB_PAGE_MAX_BYTES): RdbRow[] {
   assertSafeRdbScalars(rows);
-  return rows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key,
-    typeof value === 'bigint' ? String(value)
-      : value instanceof Date ? value.toISOString() : value,
-  ])));
+  const prepared: RdbRow[] = [];
+  let total = 0;
+  for (const row of rows) {
+    let rowBytes = 0;
+    const entries = Object.entries(row).map(([key, value]) => {
+      const cell = prepareCell(value);
+      rowBytes += cell.bytes + key.length;
+      return [key, cell.value] as const;
+    });
+    if (prepared.length > 0 && total + rowBytes > maxBytes) break;
+    total += rowBytes;
+    prepared.push(Object.fromEntries(entries));
+  }
+  return prepared;
 }

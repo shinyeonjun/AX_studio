@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 export interface ResolvedHttpUrl {
   url: string;
   origin: string;
@@ -7,22 +9,105 @@ export type ResolveHttpUrlResult =
   | { ok: true; value: ResolvedHttpUrl }
   | { ok: false; error: string; errorCode: string };
 
-export function isPrivateHttpHostname(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase().replace(/^\[/u, '').replace(/\]$/u, '');
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true;
-  const ipv4 = host.split('.').map((part) => Number(part));
-  if (ipv4.length === 4 && ipv4.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
-    return ipv4[0] === 10
-      || ipv4[0] === 127
-      || (ipv4[0] === 169 && ipv4[1] === 254)
-      || (ipv4[0] === 172 && ipv4[1] >= 16 && ipv4[1] <= 31)
-      || (ipv4[0] === 192 && ipv4[1] === 168)
-      || ipv4[0] === 0;
+const PRIVATE_HOST_SUFFIXES = ['.localhost', '.local', '.internal'];
+
+/** IPv4 special-purpose ranges as [network as uint32, prefix length]. */
+const PRIVATE_IPV4_CIDRS: ReadonlyArray<readonly [number, number]> = [
+  [ipv4ToInt(0, 0, 0, 0), 8],
+  [ipv4ToInt(10, 0, 0, 0), 8],
+  [ipv4ToInt(100, 64, 0, 0), 10],
+  [ipv4ToInt(127, 0, 0, 0), 8],
+  [ipv4ToInt(169, 254, 0, 0), 16],
+  [ipv4ToInt(172, 16, 0, 0), 12],
+  [ipv4ToInt(192, 0, 0, 0), 24],
+  [ipv4ToInt(192, 168, 0, 0), 16],
+  [ipv4ToInt(198, 18, 0, 0), 15],
+  [ipv4ToInt(224, 0, 0, 0), 4],
+  [ipv4ToInt(240, 0, 0, 0), 4],
+];
+
+function ipv4ToInt(a: number, b: number, c: number, d: number): number {
+  return (((a << 24) >>> 0) + (b << 16) + (c << 8) + d) >>> 0;
+}
+
+function isPrivateIpv4Int(value: number): boolean {
+  return PRIVATE_IPV4_CIDRS.some(([network, prefix]) => {
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return ((value & mask) >>> 0) === network;
+  });
+}
+
+function parseIpv4(host: string): number | null {
+  if (isIP(host) !== 4) return null;
+  const [a, b, c, d] = host.split('.').map((part) => Number(part));
+  return ipv4ToInt(a!, b!, c!, d!);
+}
+
+/** Expand an IPv6 literal into eight 16-bit groups. Returns null when the literal is malformed. */
+function parseIpv6(host: string): number[] | null {
+  if (isIP(host) !== 6) return null;
+  let text = host;
+  const tail: number[] = [];
+  const dotted = text.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/u);
+  if (dotted) {
+    const ipv4 = parseIpv4(dotted[2]!);
+    if (ipv4 === null) return null;
+    tail.push(ipv4 >>> 16, ipv4 & 0xffff);
+    text = dotted[1]!.endsWith('::') ? dotted[1]! : dotted[1]!.slice(0, -1);
   }
-  const mappedIpv4 = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/u)?.[1];
-  if (mappedIpv4 && isPrivateHttpHostname(mappedIpv4)) return true;
-  return host === '::' || host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe8')
-    || host.startsWith('fe9') || host.startsWith('fea') || host.startsWith('feb');
+  const [head, rest] = text.split('::');
+  const parseGroups = (part: string | undefined): number[] =>
+    part ? part.split(':').filter((group) => group.length > 0).map((group) => Number.parseInt(group, 16)) : [];
+  const headGroups = parseGroups(head);
+  const restGroups = [...parseGroups(rest), ...tail];
+  if (rest === undefined) {
+    const groups = [...headGroups, ...tail];
+    return groups.length === 8 ? groups : null;
+  }
+  const missing = 8 - headGroups.length - restGroups.length;
+  if (missing < 0) return null;
+  return [...headGroups, ...new Array<number>(missing).fill(0), ...restGroups];
+}
+
+function isPrivateIpv6Groups(groups: number[]): boolean {
+  const first = groups[0]!;
+  const embeddedIpv4 = ((groups[6]! << 16) >>> 0) + groups[7]!;
+  const leadingZero = groups.slice(0, 5).every((group) => group === 0);
+  // :: and ::1
+  if (groups.slice(0, 7).every((group) => group === 0) && groups[7]! <= 1) return true;
+  // IPv4-mapped ::ffff:a.b.c.d and deprecated IPv4-compatible ::a.b.c.d (any notation).
+  if (leadingZero && (groups[5] === 0xffff || groups[5] === 0)) return isPrivateIpv4Int(embeddedIpv4);
+  // NAT64 well-known prefix 64:ff9b::/96 (RFC 6052) and local-use 64:ff9b:1::/48 (RFC 8215).
+  if (first === 0x64 && groups[1] === 0xff9b) {
+    if (groups.slice(2, 6).every((group) => group === 0)) return isPrivateIpv4Int(embeddedIpv4);
+    if (groups[2] === 1) return true;
+  }
+  // 6to4 2002:WWXX:YYZZ::/48 embeds an IPv4 address in groups 1-2.
+  if (first === 0x2002) return isPrivateIpv4Int(((groups[1]! << 16) >>> 0) + groups[2]!);
+  return (first & 0xfe00) === 0xfc00 // fc00::/7 unique local
+    || (first & 0xffc0) === 0xfe80 // fe80::/10 link-local
+    || (first & 0xffc0) === 0xfec0 // fec0::/10 deprecated site-local
+    || (first & 0xff00) === 0xff00; // ff00::/8 multicast
+}
+
+/**
+ * True when the hostname is a local name or an IP literal in a special-purpose
+ * (non-globally-routable) range. Also used on DNS answers before connecting.
+ */
+export function isPrivateHttpHostname(hostname: string): boolean {
+  let host = hostname.trim().toLowerCase().replace(/^\[/u, '').replace(/\]$/u, '').replace(/\.$/u, '');
+  const zoneIndex = host.indexOf('%');
+  if (zoneIndex !== -1) host = host.slice(0, zoneIndex);
+  if (!host) return true;
+  if (host === 'localhost' || PRIVATE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix))) return true;
+  const family = isIP(host);
+  if (family === 4) return isPrivateIpv4Int(parseIpv4(host)!);
+  if (family === 6) {
+    const groups = parseIpv6(host);
+    // Fail closed on IPv6 literals we cannot expand.
+    return groups === null || isPrivateIpv6Groups(groups);
+  }
+  return false;
 }
 
 function normalizeBasePath(pathname: string): string {

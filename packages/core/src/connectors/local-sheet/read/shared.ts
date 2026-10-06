@@ -3,6 +3,7 @@ import { basename, extname } from 'node:path';
 import type { FileRef } from '../../../contracts/artifacts/file-ref.js';
 import { fileRefFromLocalScan } from '../../../contracts/artifacts/file-ref.js';
 import { MAX_WORKBOOK_BYTES } from '../profile.js';
+import { assertZipEntriesInflateToDeclaredSize } from '../../../documents/zip-guard.js';
 
 const ZIP_LOCAL_FILE_SIGNATURE = 0x04034b50;
 const ZIP_CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
@@ -119,6 +120,8 @@ export function assertXlsxArchiveSafety(data: Uint8Array): void {
   if (zip64RecordOffset >= 0 && bytes.readUInt32LE(zip64RecordOffset) === ZIP64_END_OF_CENTRAL_DIRECTORY_SIGNATURE) {
     throw new Error('xlsx_zip64_or_multidisk_not_supported');
   }
+  // Declared sizes are attacker-controlled; confirm the real inflated sizes.
+  assertZipEntriesInflateToDeclaredSize(data, 'xlsx');
 }
 
 export function fileRefForPath(path: string): FileRef {

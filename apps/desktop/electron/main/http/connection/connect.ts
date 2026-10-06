@@ -11,11 +11,20 @@ import {
 } from '@ax-studio/core';
 import { randomUUID } from 'node:crypto';
 import { applyHttpConnector } from './apply.js';
+import { withHttpConnectionLock } from './lock.js';
 import { buildHttpAuth, type HttpConnectionPayload } from './auth.js';
 import { httpProbeErrorMessage } from './probe-message.js';
 import { readHttpSecrets, writeHttpSecrets } from './secrets.js';
 
-export async function validateAndConnectHttp(
+export function validateAndConnectHttp(
+  store: WorkflowStore,
+  runtime: WorkflowRuntime,
+  payload: HttpConnectionPayload,
+): Promise<void> {
+  return withHttpConnectionLock(() => connectHttpLocked(store, runtime, payload));
+}
+
+async function connectHttpLocked(
   store: WorkflowStore,
   runtime: WorkflowRuntime,
   payload: HttpConnectionPayload,
@@ -59,7 +68,9 @@ export async function validateAndConnectHttp(
   }
   await writeHttpSecrets(nextSecrets);
 
-  const next = upsertHttpEndpoint(connection?.config, {
+  // Re-read after the awaits above; hydration may have persisted discovery results.
+  const latest = store.getConnections().find((entry) => entry.connector === 'http');
+  const next = upsertHttpEndpoint(latest?.config, {
     id: endpointId,
     baseUrl,
     label: payload.label?.trim() || undefined,

@@ -17,6 +17,9 @@ from .primitives import _object
 from .primitives.constants import _PLACEHOLDER_RE
 
 _IDENTITY = (1., 0., 0., 1., 0., 0.)
+# Each Form XObject invocation is rewritten separately, so nested reuse fans out
+# multiplicatively (N uses per level ** depth). Bound total rewrites per page.
+_MAX_CONTENT_REWRITES = 2_000
 
 
 def _multiply(a: tuple, b: tuple) -> tuple:
@@ -51,10 +54,14 @@ class _Glyph:
 def remove_placeholders(page: Any, writer: Any, fields: list[Mapping[str, Any]]) -> None:
     pending = list(fields)
     height = float(page.mediabox.height)
+    rewrites = [0]
 
     def rewrite(source: Any, resources: Any, initial: _State, ancestors: set[int]) -> ContentStream:
         if id(source) in ancestors or len(ancestors) >= 32:
             raise ValueError("cyclic_pdf_content")
+        rewrites[0] += 1
+        if rewrites[0] > _MAX_CONTENT_REWRITES:
+            raise ValueError("pdf_content_too_complex")
         ancestors = ancestors | {id(source)}
         stream = ContentStream(source, writer, "bytes")
         state = replace(initial)

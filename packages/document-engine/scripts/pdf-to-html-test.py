@@ -24,11 +24,15 @@ def main() -> int:
         "command": "pdf_to_html",
         "params": {
             "path": str(Path(args.path).resolve()),
+            # The worker only touches paths/roots the host explicitly allows.
+            "allowedPaths": [str(Path(args.path).resolve())],
             "options": {"engine": args.engine, "ocr": args.ocr},
         },
     }
     if args.template_root:
-        payload["params"]["templateRoot"] = str(Path(args.template_root).resolve())
+        template_root = str(Path(args.template_root).resolve())
+        payload["params"]["templateRoot"] = template_root
+        payload["params"]["allowedRoots"] = [template_root]
 
     python = sys.executable
     venv_python = worker.parents[1] / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")

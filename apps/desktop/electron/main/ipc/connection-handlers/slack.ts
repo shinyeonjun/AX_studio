@@ -58,6 +58,12 @@ export function registerSlackConnectionHandlers() {
 
       const validation = await validateSlackBotToken(token);
       if (!validation.ok) {
+        if (existingConnection?.connected) {
+          // A rejected replacement token must not tear down a working connection.
+          core.store.setConnection('slack', true, { ...(existingConnection.config ?? {}), lastError: validation.error });
+          notifyStateChanged();
+          throw new Error(validation.error ?? 'Slack 연결에 실패했습니다.');
+        }
         core.store.setConnection('slack', false, {
           team: existing?.team,
           botUser: existing?.botUser,
