@@ -375,11 +375,11 @@ describe('Scheduler lifecycle', () => {
       await stopping;
       await vi.advanceTimersByTimeAsync(0);
 
-      // The occurrence was acknowledged before it started, so a restart drops
-      // the leftover pending row instead of repeating its side effects.
+      // The occurrence was acknowledged before it started; stop waits for it and clears its
+      // queue entry, so a restart has nothing to repeat.
       expect(store.getSetting('scheduler.lastFired:scheduled-stop', null)).toBe('2026-09-12T00:00');
       expect(store.getWorkflow('scheduled-stop')).not.toBeNull();
-      expect(store.getSetting<{ workflowId: string }[]>('scheduler.pendingOccurrences', [])).toHaveLength(1);
+      expect(store.getSetting<{ workflowId: string }[]>('scheduler.pendingOccurrences', [])).toHaveLength(0);
 
       scheduler.start();
       await vi.advanceTimersByTimeAsync(0);
