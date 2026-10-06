@@ -22,7 +22,7 @@ describe('AxCommandService saved execution', () => {
     }, commandChatContext);
     const workflowId = (created.data as { workflowId: string }).workflowId;
 
-    const run = await executeConfirmedMutation(service, 
+    const run = await executeConfirmedMutation(service,
       { name: 'workflow.run', args: { workflowId } },
       { ...commandChatContext, currentWorkflowId: workflowId },
     );
@@ -72,7 +72,7 @@ describe('AxCommandService saved execution', () => {
       commandChatContext,
     );
     const workflowId = (created.data as { workflowId: string }).workflowId;
-    const run = await executeConfirmedMutation(service, 
+    const run = await executeConfirmedMutation(service,
       { name: 'workflow.run', args: { workflowId } },
       { ...commandChatContext, currentWorkflowId: workflowId },
     );
