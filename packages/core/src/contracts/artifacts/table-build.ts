@@ -30,8 +30,41 @@ function uniqueHeaders(headers: string[]): string[] {
   });
 }
 
+const pad = (value: number, width = 2) => String(value).padStart(width, '0');
+
+/**
+ * A spreadsheet date as the person typed it. Readers build dates at local midnight, so local
+ * parts are the calendar date; JSON (UTC) would print the previous day east of Greenwich.
+ */
+function localDateText(date: Date): string | null {
+  if (Number.isNaN(date.getTime())) return null;
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  if (date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0) return day;
+  return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/** Digits beyond this cannot round-trip through a JS number; such values are identifiers, kept as text. */
+const MAX_EXACT_DIGITS = 15;
+
+/**
+ * The number a text cell holds, or undefined when it is not plain numeric text or is an
+ * identifier that only looks numeric: a leading zero ("01234", phone numbers) or more digits
+ * than a number keeps exactly (account and card numbers).
+ */
+export function numericText(text: string): number | undefined {
+  const plain = text.replace(/,/g, '');
+  if (!/^-?\d+(\.\d+)?$/.test(plain)) return undefined;
+  const integerPart = plain.replace(/^-/, '').split('.')[0]!;
+  if (integerPart.length > 1 && integerPart.startsWith('0')) return undefined;
+  if (plain.replace(/[-.]/g, '').length > MAX_EXACT_DIGITS) return undefined;
+  const value = Number(plain);
+  return Number.isFinite(value) ? value : undefined;
+}
+
 export function inferColumnType(values: unknown[], options: { numericStrings?: boolean } = {}): TableColumnType {
-  const nonNull = values.filter((value) => value != null && `${value}`.trim() !== '');
+  const nonNull = values
+    .map((value) => value instanceof Date ? localDateText(value) : value)
+    .filter((value) => value != null && `${value}`.trim() !== '');
   if (nonNull.length === 0) return 'unknown';
   if (nonNull.every((value) => typeof value === 'boolean')) return 'boolean';
   if (nonNull.every((value) => typeof value === 'number' && Number.isInteger(value))) return 'integer';
@@ -41,7 +74,7 @@ export function inferColumnType(values: unknown[], options: { numericStrings?: b
   if (asString.every((value) => /^\d{4}-\d{2}-\d{2}[T ]/.test(value))) return 'datetime';
   if (asString.every((value) => value.endsWith('%'))) return 'percentage';
   if (options.numericStrings !== false
-    && asString.every((value) => /^-?\d[\d,]*(\.\d+)?$/.test(value.replace(/[₩$€,]/g, '')))) return 'number';
+    && asString.every((value) => numericText(value.replace(/[₩$€]/g, '')) !== undefined)) return 'number';
   return 'string';
 }
 
@@ -49,6 +82,7 @@ export function normalizeScalar(value: unknown): ScalarValue {
   if (value == null || value === '') return null;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return localDateText(value);
   let text: string;
   if (typeof value === 'object') {
     try {
@@ -61,9 +95,7 @@ export function normalizeScalar(value: unknown): ScalarValue {
   }
   text = text.trim();
   if (!text) return null;
-  const numeric = Number(text.replace(/,/g, ''));
-  if (!Number.isNaN(numeric) && /^-?\d[\d,]*(\.\d+)?$/.test(text.replace(/,/g, ''))) return numeric;
-  return text;
+  return numericText(text) ?? text;
 }
 
 /** Keep source strings untrimmed and uncoerced; serialize only non-scalar values. */
@@ -71,6 +103,7 @@ function rawScalar(value: unknown): ScalarValue {
   if (value == null) return null;
   if (typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return localDateText(value);
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value) ?? '';

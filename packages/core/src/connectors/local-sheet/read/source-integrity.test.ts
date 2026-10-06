@@ -47,7 +47,7 @@ describe('XLSX source integrity', () => {
     }]);
     const table = firstTable(data);
     expect(table.rows[0]?.values).toEqual({
-      id: 123, amount: 1234.5, literalNA: 'NA', literalNULL: 'NULL',
+      id: '00123', amount: 1234.5, literalNA: 'NA', literalNULL: 'NULL',
       note: 'keep both spaces', empty: null, missing: null,
     });
     expect(table.rows[0]?.rawValues).toEqual({

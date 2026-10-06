@@ -81,7 +81,7 @@ describe('RDB bounded read contract', () => {
     });
     expect(table.rows[1].values.text_value).toBe('');
     expect(table.columns.find(column => column.name === 'identifier')?.type).toBe('string');
-    expect(tableArtifactFromRows([{ identifier: '001' }], { id: 'legacy' })?.rows[0].values.identifier).toBe(1);
+    expect(tableArtifactFromRows([{ identifier: '001' }], { id: 'legacy' })?.rows[0].values.identifier).toBe('001');
     expect(() => JSON.stringify(result)).not.toThrow();
   });
 
