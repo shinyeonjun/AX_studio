@@ -1,3 +1,4 @@
+import { isMessageWithText } from './person-message.js';
 import type { WebClient } from '@slack/web-api';
 import type { SearchHit } from '../../platform/knowledge.js';
 import { resolveSlackChannelId } from './channel-resolve.js';
@@ -129,7 +130,7 @@ export async function readSlackChannelMessages(
       ...(page?.latest ? { latest: page.latest } : {}),
     }), signal);
     for (const message of response.messages ?? []) {
-      if (message.type !== 'message' || message.subtype) continue;
+      if (!isMessageWithText(message)) continue;
       if (message.ts && seenMessageTimestamps.has(message.ts)) continue;
       if (message.ts) seenMessageTimestamps.add(message.ts);
       messages.push({

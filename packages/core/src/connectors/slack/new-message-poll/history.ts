@@ -1,3 +1,4 @@
+import { isMessageWithText } from '../person-message.js';
 import type { WebClient } from '@slack/web-api';
 import { nextSlackHistoryPage } from '../pagination.js';
 import { slackRequest } from '../request.js';
@@ -6,7 +7,7 @@ type SlackHistoryResponse = Awaited<ReturnType<WebClient['conversations']['histo
 export type SlackHistoryMessage = NonNullable<SlackHistoryResponse['messages']>[number];
 
 function isUserMessage(message: { type?: string; subtype?: string; ts?: string; text?: string; user?: string }) {
-  return message.type === 'message' && !message.subtype && Boolean(message.ts);
+  return isMessageWithText(message) && Boolean(message.ts);
 }
 
 export const SLACK_HISTORY_SCAN_LIMIT = 10_000;

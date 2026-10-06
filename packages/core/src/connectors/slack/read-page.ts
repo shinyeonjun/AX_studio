@@ -1,3 +1,4 @@
+import { isMessageWithText } from './person-message.js';
 import type { WebClient } from '@slack/web-api';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
@@ -97,7 +98,7 @@ export async function readSlackMessagePage(client: WebClient, params: Record<str
   checkPageSize(response.messages?.length ?? 0, options.limit);
   const seen = new Set<string>();
   const messages = (response.messages ?? []).filter((message) => {
-    if (message.type !== 'message' || message.subtype || !message.ts || seen.has(message.ts)) return false;
+    if (!isMessageWithText(message) || !message.ts || seen.has(message.ts)) return false;
     seen.add(message.ts);
     return true;
   }).map((message) => ({ ts: message.ts!, text: message.text, user: message.user, threadTs: message.thread_ts }));
