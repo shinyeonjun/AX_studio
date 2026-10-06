@@ -4,7 +4,7 @@ import { cliFailureMessage } from './output.js';
 
 describe('codex cli adapter', () => {
   it('uses current codex exec flags', () => {
-    const args = codexExecArgs('gpt-5.4', 'hello', ['-o', '/tmp/out.txt'], '/tmp/ax-cli');
+    const args = codexExecArgs('gpt-5.4', ['-o', '/tmp/out.txt'], { workDir: '/tmp/ax-cli', ignoreUserConfig: true });
     expect(args).toContain('--json');
     expect(args).toContain('-s');
     expect(args).toContain('read-only');
@@ -14,7 +14,16 @@ describe('codex cli adapter', () => {
     expect(args).toContain('model_reasoning_effort=high');
     expect(args).not.toContain('--ask-for-approval');
     expect(args.at(-1)).toBe('-');
-    expect(args).not.toContain('hello');
+  });
+
+  it('disables agent tools and user config for untrusted prompts', () => {
+    const args = codexExecArgs('gpt-5.4', [], { ignoreUserConfig: true });
+    expect(args).toContain('--ignore-user-config');
+    expect(args).toContain('--ephemeral');
+    for (const feature of ['shell_tool', 'plugins', 'apps', 'hooks', 'computer_use']) {
+      expect(args).toContain(`features.${feature}=false`);
+    }
+    expect(codexExecArgs('gpt-5.4')).not.toContain('--ignore-user-config');
   });
 
   it('extracts quoted message from truncated codex ERROR json', () => {

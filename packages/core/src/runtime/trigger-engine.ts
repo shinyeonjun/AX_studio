@@ -49,6 +49,8 @@ export class TriggerEngine {
     if (!this.timer) {
       this.lifecycleGeneration += 1;
       this.acceptingEvents = true;
+      // Push events ACKed by a previous process but never handled.
+      this.events.replayPendingEvents();
       this.timer = setInterval(() => {
         this.startPollTick();
       }, this.tickMs);

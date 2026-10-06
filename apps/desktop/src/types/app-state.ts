@@ -19,6 +19,57 @@ export interface WorkSummary {
   connectors?: string[];
   lastRunAt?: string;
   lastStatus?: string;
+  /** The latest stored version could not be parsed; the row is listed so it can be deleted. */
+  corrupted?: true;
+  /** Trigger events that exhausted their retries, newest first (at most 10). */
+  triggerDeadLetters?: TriggerDeadLetterSummary[];
+  /** Last failed/skipped scheduled occurrence, if any. */
+  lastOutcome?: SchedulerOccurrenceOutcomeSummary;
+}
+
+/** Mirrors core `TriggerDeadLetter` without `workflowId` (see diagnostics-state.ts). */
+export interface TriggerDeadLetterSummary {
+  dedupeKey: string;
+  attempts: number;
+  reason: string;
+  executionId?: string;
+  at: string;
+}
+
+/** Mirrors core `SchedulerOccurrenceOutcome`. */
+export interface SchedulerOccurrenceOutcomeSummary {
+  occurrenceKey: string;
+  /** An execution status (`success`, `failed`, ...) or `skipped`. */
+  status: string;
+  reason?: string;
+  executionId?: string;
+  at: string;
+}
+
+/** Mirrors core `CorruptRowReport`: identifiers and error codes only, never row payloads. */
+export interface CorruptRowEntry {
+  table: string;
+  id: string;
+  code: string;
+  detectedAt: string;
+}
+
+export interface CorruptRowSummary {
+  total: number;
+  byTable: Record<string, number>;
+  /** Newest first, at most 50. */
+  rows: CorruptRowEntry[];
+}
+
+/** Display copy of one gated action, as stored on the approval payload. */
+interface ApprovalActionSnapshot {
+  actionId?: string;
+  actionRef?: string;
+  params?: Record<string, unknown>;
+  /** Some display fields were shortened; the full values exist only in the stored execution. */
+  truncated?: true;
+  truncatedFields?: Array<{ path: string; originalLength: number }>;
+  paramsHash?: string;
 }
 
 export interface AppState {
@@ -44,6 +95,10 @@ export interface AppState {
   slackSocketStatus?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
   slackConnectionMode?: 'disconnected' | 'poll' | 'socket';
   slackLastError?: string;
+  /** Linux only: the OS keyring is unavailable and secrets use an obfuscated (not encrypted) store. */
+  credentialStorageWarning?: 'basic_text_backend';
+  /** The native SQLite backend failed to load; the in-memory sql.js fallback persists less safely. */
+  databaseBackendFallback?: boolean;
   localFolders?: LocalFolderEntry[];
   works: WorkSummary[];
   connections: ConnectionEntry[];
@@ -54,7 +109,10 @@ export interface AppState {
     title?: string;
     createdAt: string;
     actionIds: string[];
+    payload?: { actionSnapshots?: ApprovalActionSnapshot[] } | null;
   }>;
+  /** Stored rows that could not be parsed and were skipped at load time. */
+  corruptRows?: CorruptRowSummary;
   executions: Array<{
     id: string;
     workflowId?: string | null;

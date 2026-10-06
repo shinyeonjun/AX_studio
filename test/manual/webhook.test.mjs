@@ -109,9 +109,14 @@ test('direct loopback delivery still supports shared-secret and HMAC authenticat
     assert.equal(requests[0].headers['x-ax-signature'], undefined);
     assert.equal(requests[1].headers['idempotency-key'], 'event-hmac');
     assert.equal(requests[1].headers['x-ax-webhook-secret'], undefined);
+    // Same payload the server verifies: METHOD, hook path, event id, timestamp, body.
+    const timestamp = requests[1].headers['x-ax-timestamp'];
+    assert.match(timestamp, /^\d+$/);
+    assert(Math.abs(Date.now() / 1_000 - Number(timestamp)) < 300);
+    const signedPayload = ['POST', 'direct', 'event-hmac', timestamp, body].join('\n');
     assert.equal(
       requests[1].headers['x-ax-signature'],
-      `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`,
+      `sha256=${createHmac('sha256', secret).update(signedPayload).digest('hex')}`,
     );
   } finally {
     await close(server);

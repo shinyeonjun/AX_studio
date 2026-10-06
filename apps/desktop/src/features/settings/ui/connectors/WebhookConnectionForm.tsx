@@ -2,6 +2,7 @@ import { ConnectionGuide } from '../ConnectionGuide';
 import { ConnectedServiceList } from '../ConnectedServiceList';
 import {
   useWebhookConnectionForm,
+  WEBHOOK_MIN_SECRET_LENGTH,
   type WebhookConnectionFormProps,
 } from './webhook-connection/use-webhook-connection-form';
 
@@ -18,6 +19,10 @@ export function WebhookConnectionForm({
     setPort,
     secret,
     setSecret,
+    secretVisible,
+    setSecretVisible,
+    generateSecret,
+    secretError,
     label,
     setLabel,
     tunnelUrl,
@@ -58,14 +63,37 @@ export function WebhookConnectionForm({
         />
 
         <label htmlFor="webhook-secret">공유 비밀</label>
-        <input
-          id="webhook-secret"
-          type="password"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder={connected ? '변경 시에만 입력' : 'X-AX-Webhook-Secret 헤더 값'}
-          disabled={busy}
-        />
+        <div className="webhook-secret-row">
+          <input
+            id="webhook-secret"
+            type={secretVisible ? 'text' : 'password'}
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            placeholder={connected ? '변경 시에만 입력' : `X-AX-Webhook-Secret 헤더 값 (${WEBHOOK_MIN_SECRET_LENGTH}자 이상)`}
+            autoComplete="off"
+            spellCheck={false}
+            aria-invalid={secretError ? true : undefined}
+            aria-describedby="webhook-secret-hint"
+            disabled={busy}
+          />
+          <button type="button" className="btn btn-secondary" onClick={generateSecret} disabled={busy}>
+            무작위 생성
+          </button>
+          {secret && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setSecretVisible(!secretVisible)}
+              disabled={busy}
+            >
+              {secretVisible ? '숨기기' : '보기'}
+            </button>
+          )}
+        </div>
+        <p id="webhook-secret-hint" className={`connection-form-hint${secretError ? ' error' : ''}`}>
+          {secretError
+            ?? `최소 ${WEBHOOK_MIN_SECRET_LENGTH}자 이상이어야 합니다. 무작위 생성으로 만든 값을 보내는 쪽 서비스에도 그대로 입력하세요.`}
+        </p>
 
         <label htmlFor="webhook-label">표시 이름 (선택)</label>
         <input
@@ -103,8 +131,8 @@ export function WebhookConnectionForm({
           )}
         </div>
 
-        {(message || (!connected && lastError)) && (
-          <p className={`connection-form-message ${!message && lastError ? 'error' : ''}`}>
+        {(message || lastError) && (
+          <p className={`connection-form-message ${!message && lastError ? 'error' : ''}`} role="status">
             {message || lastError}
           </p>
         )}

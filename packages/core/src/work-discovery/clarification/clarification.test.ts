@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildClarificationQuestion, detectCandidateAmbiguity } from './question.js';
+import { buildClarificationQuestion, buildConfirmationQuestion, detectCandidateAmbiguity } from './question.js';
 import { applyClarificationAnswer } from './answer-apply.js';
 import type { CandidateProgram, DiscoverySessionState } from '../schema.js';
 
@@ -65,5 +65,23 @@ describe('clarification', () => {
     expect(answered.pendingQuestion).toBeUndefined();
     expect(answered.candidates.filter((entry) => entry.status === 'accepted')).toHaveLength(1);
     expect(answered.blueprint?.publishable).toBe(true);
+  });
+
+  it('asks a person to confirm an unambiguous single-example mapping before it becomes publishable', () => {
+    const candidates = [candidate('c1', 'field.total', 'rdb:sales')];
+    const session = baseSession(candidates);
+    const question = buildConfirmationQuestion({ sessionId: session.id, candidates })!;
+    expect(question.kind).toBe('confirm_rule');
+
+    const confirmed = applyClarificationAnswer(session, question, 'opt_confirm');
+    expect(confirmed.status).toBe('ready_to_publish');
+    expect(confirmed.humanConfirmedAt).toEqual(expect.any(String));
+    expect(confirmed.blueprint?.publishable).toBe(true);
+
+    const rejected = applyClarificationAnswer(session, question, 'opt_reject');
+    expect(rejected.status).toBe('failed');
+    expect(rejected.errorCode).toBe('human_rejected_mapping');
+    expect(rejected.blueprint).toBeUndefined();
+    expect(rejected.candidates.every((entry) => entry.status === 'rejected')).toBe(true);
   });
 });

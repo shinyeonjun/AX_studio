@@ -12,6 +12,7 @@ import {
   parseStoredAgentScopedContext,
 } from '../../intelligence/agent/scoped-context.js';
 import * as settingsRepo from './settings-repository.js';
+import { mapRowsTolerant, recordCorruptRow } from '../tolerant-rows.js';
 
 export function saveWorkflow(db: AppDatabase, ir: WorkflowIR): { workflowId: string; version: number } {
   const now = new Date().toISOString();
@@ -128,6 +129,7 @@ export function listWorkflowDefinitions(db: AppDatabase): Array<{
   active: boolean;
   latestVersion: number;
   workflow: WorkflowIR | null;
+  corrupted?: true;
 }> {
   const rows = readRows<{
     id: string;
@@ -143,18 +145,21 @@ export function listWorkflowDefinitions(db: AppDatabase): Array<{
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)`,
   ));
 
-  return rows.map(({ id, name, active, version, ir_json }) => ({
-    id,
-    name,
-    active: Boolean(active),
-    latestVersion: version ?? 0,
-    workflow: version === null || ir_json === null
-      ? null
-      : parseWorkflowVersion(id, version, ir_json),
-  }));
+  return rows.map(({ id, name, active, version, ir_json }) => {
+    const summary = { id, name, active: Boolean(active), latestVersion: version ?? 0 };
+    if (version === null || ir_json === null) return { ...summary, workflow: null };
+    try {
+      return { ...summary, workflow: parseWorkflowVersion(id, version, ir_json) };
+    } catch (error) {
+      // Keep the workflow listed so the user can see and delete or repair it.
+      recordCorruptRow(db, 'workflow_versions', `${id}@${version}`, error);
+      return { ...summary, workflow: null, corrupted: true as const };
+    }
+  });
 }
 
 // Scheduler and trigger scans share this batch read instead of querying each active workflow separately.
+// A corrupt workflow is skipped (and reported) so it cannot stop every other automation.
 export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: string; workflow: WorkflowIR }> {
   const rows = readRows<{ id: string; version: number; ir_json: string }>(db.prepare(
     `SELECT w.id, v.version, v.ir_json
@@ -164,7 +169,7 @@ export function listActiveWorkflowDefinitions(db: AppDatabase): Array<{ id: stri
        AND v.version = (SELECT MAX(version) FROM workflow_versions WHERE workflow_id = w.id)
      WHERE w.active = 1`,
   ));
-  return rows.map(({ id, version, ir_json }) => ({
+  return mapRowsTolerant(db, 'workflow_versions', rows, (row) => `${row.id}@${row.version}`, ({ id, version, ir_json }) => ({
     id,
     workflow: parseWorkflowVersion(id, version, ir_json),
   }));
@@ -184,12 +189,35 @@ export function isWorkflowActive(db: AppDatabase, workflowId: string): boolean {
 // Owners: runtime/scheduler.ts (lastFired) and triggers/types.ts (cursors).
 const WORKFLOW_KEYED_SETTINGS = ['scheduler.lastFired', 'trigger.cursors'];
 
-function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string): void {
+// Per-workflow settings stored under their own key (`<prefix><encodeURIComponent(id)>`).
+// Owners: runtime/scheduler/service.ts (LAST_FIRED_SETTING / LAST_OUTCOME_SETTING_PREFIX).
+export const WORKFLOW_SUFFIXED_SETTING_PREFIXES = ['scheduler.lastFired:', 'scheduler.lastOutcome:'];
+// Settings arrays whose entries carry a `workflowId`. Owner: runtime/trigger-engine/receipts.ts (DEAD_LETTER_SETTING).
+export const WORKFLOW_ENTRY_LIST_SETTINGS = ['trigger.deadLetters'];
+// Per-receipt retry state, keyed `<prefix><encodeURIComponent(dedupeKey)>`. Owner: runtime/trigger-engine/receipts.ts.
+export const TRIGGER_RECEIPT_ATTEMPT_PREFIX = 'trigger.receiptAttempt:';
+
+function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string, receiptKeys: readonly string[]): void {
   for (const key of WORKFLOW_KEYED_SETTINGS) {
     const value = settingsRepo.getSetting<Record<string, unknown>>(db, key, {});
     if (!value || typeof value !== 'object' || !(workflowId in value)) continue;
     const { [workflowId]: _removed, ...rest } = value;
     settingsRepo.setSetting(db, key, rest);
+  }
+  for (const prefix of WORKFLOW_SUFFIXED_SETTING_PREFIXES) {
+    settingsRepo.deleteSetting(db, `${prefix}${encodeURIComponent(workflowId)}`);
+  }
+  for (const key of WORKFLOW_ENTRY_LIST_SETTINGS) {
+    const value = settingsRepo.getSetting<unknown>(db, key, []);
+    if (!Array.isArray(value)) continue;
+    const kept = value.filter((entry) => !(entry && typeof entry === 'object'
+      && (entry as { workflowId?: unknown }).workflowId === workflowId));
+    if (kept.length !== value.length) settingsRepo.setSetting(db, key, kept);
+  }
+  // Exact keys from this workflow's own receipts; a prefix match on the encoded id could
+  // also hit another workflow whose id merely starts with this one.
+  for (const dedupeKey of receiptKeys) {
+    settingsRepo.deleteSetting(db, `${TRIGGER_RECEIPT_ATTEMPT_PREFIX}${encodeURIComponent(dedupeKey)}`);
   }
 }
 
@@ -216,10 +244,15 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
     db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
+    const receiptKeys = readRows<{ dedupe_key: string }>(
+      db.prepare('SELECT dedupe_key FROM trigger_receipts WHERE workflow_id = ?'),
+      workflowId,
+    ).map((row) => row.dedupe_key).filter((key): key is string => typeof key === 'string');
     db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
-    pruneWorkflowKeyedSettings(db, workflowId);
-    settingsRepo.deleteSetting(db, `scheduler.lastFired:${encodeURIComponent(workflowId)}`);
+    // The push journal is not pruned: its entries are per trigger type, may fan out to other
+    // workflows, and replay only matches workflows that still exist.
+    pruneWorkflowKeyedSettings(db, workflowId, receiptKeys);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

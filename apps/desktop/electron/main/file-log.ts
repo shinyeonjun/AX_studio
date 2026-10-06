@@ -1,5 +1,4 @@
 import { inspect } from 'node:util';
-import { mkdirSync } from 'node:fs';
 import { app } from 'electron';
 import {
   appendAppLog,
@@ -9,6 +8,8 @@ import {
   type AppLogLevel,
 } from '@ax-studio/core';
 import { resolveDesktopDataRoot } from './data-paths.js';
+
+let logDirectory: string | undefined;
 
 function formatConsoleArgs(args: unknown[]): string {
   return args
@@ -30,12 +31,15 @@ function wrapConsole(level: AppLogLevel, original: (...args: unknown[]) => void)
   };
 }
 
-/** Tee main-process console and app logs into `<dataRoot>/logs/ax-studio-YYYY-MM-DD.log`. */
+/**
+ * Tee main-process console and app logs into `<dataRoot>/logs/ax-studio-<UTC date>.log`.
+ * Writes are buffered, redacted, size-rotated and age-pruned by the core app log.
+ */
 export function installDesktopFileLog(): string {
   const paths = buildAxDataPaths(resolveDesktopDataRoot());
-  mkdirSync(paths.logs, { recursive: true });
   setAxDataPaths(paths);
   enableAppFileLog();
+  logDirectory = paths.logs;
 
   console.log = wrapConsole('info', console.log.bind(console)) as typeof console.log;
   console.info = wrapConsole('info', console.info.bind(console)) as typeof console.info;
@@ -44,8 +48,16 @@ export function installDesktopFileLog(): string {
 
   appendAppLog('info', 'desktop start', {
     packaged: app.isPackaged,
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    platform: `${process.platform}-${process.arch}`,
     pid: process.pid,
     logs: paths.logs,
   });
   return paths.logs;
+}
+
+/** Log folder chosen at startup (falls back to the data-root default before install). */
+export function getDesktopLogDirectory(): string {
+  return logDirectory ?? buildAxDataPaths(resolveDesktopDataRoot()).logs;
 }

@@ -42,6 +42,6 @@ export interface SettingsPageProps {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<void>;
+  }) => Promise<{ warning?: string } | void>;
   onDisconnectRdb: () => Promise<void>;
 }

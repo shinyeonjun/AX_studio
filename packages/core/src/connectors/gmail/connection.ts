@@ -1,10 +1,11 @@
 import type { CredentialRef } from '../../persistence/credentials/types.js';
 
-export const GMAIL_OAUTH_SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.compose',
-  'https://www.googleapis.com/auth/gmail.send',
-] as const;
+export {
+  GMAIL_CAPABILITY_SCOPES,
+  GMAIL_OAUTH_SCOPES,
+  gmailCapabilityGranted,
+  type GmailCapabilityId,
+} from './scopes.js';
 
 export interface GmailConnectionRecord {
   id: string;

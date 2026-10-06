@@ -6,14 +6,25 @@ import {
   type GmailConnectionFormProps,
 } from './gmail-connection/use-gmail-connection-form';
 
+/**
+ * Each capability lists every scope that grants it. `gmail.compose` also permits sending,
+ * so connections granted without the separate `gmail.send` scope still show sending as allowed.
+ */
 const GMAIL_CAPABILITY_LABELS = [
-  { scope: 'gmail.readonly', label: '메일 읽기 및 검색' },
-  { scope: 'gmail.compose', label: '초안 작성' },
-  { scope: 'gmail.send', label: '승인된 메일 발송' },
+  { id: 'read', scopes: ['gmail.readonly', 'gmail.modify'], label: '메일 읽기 및 검색' },
+  { id: 'compose', scopes: ['gmail.compose', 'gmail.modify'], label: '초안 작성' },
+  { id: 'send', scopes: ['gmail.send', 'gmail.compose', 'gmail.modify'], label: '승인된 메일 발송' },
 ] as const;
 
-function hasScope(scopes: string[] | undefined, token: string): boolean {
-  return scopes?.some((scope) => scope.includes(token)) ?? false;
+const FULL_MAIL_SCOPE = 'https://mail.google.com/';
+
+/** True when any granted OAuth scope (full URL or short name) is one of the accepted scopes. */
+function hasAnyGmailScope(granted: string[] | undefined, accepted: readonly string[]): boolean {
+  return granted?.some((scope) => {
+    if (scope === FULL_MAIL_SCOPE) return true;
+    const short = scope.replace(/^https:\/\/www\.googleapis\.com\/auth\//u, '');
+    return accepted.includes(short);
+  }) ?? false;
 }
 
 export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
@@ -52,9 +63,9 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
                 허용된 기능
               </div>
               <ul className="connection-capability-list">
-                {GMAIL_CAPABILITY_LABELS.map(({ scope, label }) => (
-                  <li key={scope}>
-                    {hasScope(scopes, scope) ? '✓' : '·'} {label}
+                {GMAIL_CAPABILITY_LABELS.map(({ id, scopes: accepted, label }) => (
+                  <li key={id}>
+                    {hasAnyGmailScope(scopes, accepted) ? '✓' : '·'} {label}
                   </li>
                 ))}
               </ul>
@@ -113,7 +124,6 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
       {!embedded && (
         <ConnectionGuide
           guideKey="gmail"
-          placeholderName="gmail-guide.png"
           steps="Gmail 연결하기 → 브라우저에서 Google 로그인 → 권한 허용 → AX Studio로 돌아오기"
         />
       )}

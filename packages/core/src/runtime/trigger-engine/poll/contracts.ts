@@ -14,5 +14,6 @@ export interface TriggerPollerOptions {
 
 export interface TriggerPollState {
   cursors: TriggerCursorStore;
-  cursorsChanged: boolean;
+  /** Workflows whose cursor changed but has not been persisted yet. */
+  dirtyWorkflowIds: Set<string>;
 }

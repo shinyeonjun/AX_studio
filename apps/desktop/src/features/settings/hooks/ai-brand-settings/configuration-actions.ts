@@ -1,5 +1,6 @@
 import { isBrandReady } from '../../lib/ai-settings/brand-readiness';
 import type { AiProviderState, AiBrandConfigurationActionsInput } from './contracts';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
 export function createAiBrandConfigurationActions({
   brand,
@@ -45,7 +46,7 @@ export function createAiBrandConfigurationActions({
       await onRefresh();
       await refreshDetection();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '저장에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '저장에 실패했습니다.'));
     } finally {
       setSaving(false);
     }

@@ -59,10 +59,10 @@ function parseSummary(value: unknown): WorkspaceSourceSummary | undefined {
 }
 
 function toRecord(row: Record<string, unknown>): WorkspaceSourceRecord {
-  const status = String(row.status) as WorkspaceSourceStatus;
-  if (status !== 'processing' && status !== 'ready' && status !== 'failed') {
-    throw new Error(`invalid_workspace_source_status:${status}`);
-  }
+  const rawStatus = String(row.status);
+  const knownStatus = rawStatus === 'processing' || rawStatus === 'ready' || rawStatus === 'failed';
+  // A schema-drifted status surfaces as a failed source instead of breaking the whole chat.
+  const status: WorkspaceSourceStatus = knownStatus ? rawStatus : 'failed';
   const optional = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
   const summary = parseSummary(row.summary_json);
   return {
@@ -75,8 +75,12 @@ function toRecord(row: Record<string, unknown>): WorkspaceSourceRecord {
     ...(optional(row.engine) ? { engine: optional(row.engine) } : {}),
     ...(optional(row.document_artifact_id) ? { documentArtifactId: optional(row.document_artifact_id) } : {}),
     ...(summary ? { summary } : {}),
-    ...(optional(row.error_code) ? { errorCode: optional(row.error_code) } : {}),
-    ...(optional(row.error_message) ? { errorMessage: optional(row.error_message) } : {}),
+    ...(knownStatus
+      ? {
+        ...(optional(row.error_code) ? { errorCode: optional(row.error_code) } : {}),
+        ...(optional(row.error_message) ? { errorMessage: optional(row.error_message) } : {}),
+      }
+      : { errorCode: 'invalid_workspace_source_status' }),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

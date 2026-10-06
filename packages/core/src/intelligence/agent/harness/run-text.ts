@@ -1,151 +1,29 @@
-import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import type { ModelProvider } from '../model/provider.js';
-import { buildInvestigatePrompt, composeAgentSystemPrompt } from '../prompt/index.js';
-import { getRoleDefinition } from '../types.js';
-import type { AgentTextResult, AgentTextRun } from '../types.js';
-import { isCloudProvider, redactUntrustedContext } from './policy.js';
+import { buildInvestigatePrompt } from '../prompt/index.js';
+import type { AgentContext, AgentTextResult, AgentTextRun } from '../types.js';
+import { invokeAgent } from './invoke.js';
 
-export async function runTextAgent(
-  model: ModelProvider,
-  request: AgentTextRun,
-): Promise<AgentTextResult> {
-  const definition = getRoleDefinition(request.role);
-  const logs: AgentTextResult['logs'] = [];
-  const started = Date.now();
-  const controller = new AbortController();
-  let usage: AgentTextResult['usage'];
-  let measurements: Record<string, unknown> = {
-    requestId: request.requestId,
-    role: request.role,
-    phase: request.logContext,
-    provider: model.name,
-    timeoutMs: definition.policy.timeoutMs,
-  };
-  const timer = setTimeout(() => controller.abort(), definition.policy.timeoutMs);
-  const abortExternal = () => controller.abort();
-  if (request.abortSignal?.aborted) {
-    abortExternal();
-  } else {
-    request.abortSignal?.addEventListener('abort', abortExternal, { once: true });
-  }
+const PLAIN_TEXT_PROMPT =
+  'Return a concise plain-text response. Do not emit JSON, commands, tool calls, or internal protocol details.';
 
-  logs.push({
-    level: 'info',
-    message: `role=${request.role} agentSkill=${definition.agentSkillId} provider=${model.name} timeoutMs=${definition.policy.timeoutMs}${request.logContext ? ` phase=${request.logContext}` : ''}`,
-  });
-
-  const allowCloud = request.cloudAllowed ?? true;
-  let context = request.context;
-  let images = request.images;
-  if (!allowCloud && isCloudProvider(model.name) && context) {
-    context = redactUntrustedContext(context);
-    images = undefined;
-    logs.push({ level: 'info', message: 'dataPolicy: redacted untrusted data for cloud backend' });
-  }
-
-  try {
-    if (images?.length && model.supportsVision !== true) {
-      throw Object.assign(new Error(`${model.name} Provider는 이미지 입력을 지원하지 않습니다.`), {
-        code: 'vision_unavailable',
-      });
-    }
-
-    const rolePrompt = request.systemPrompt ?? (
+export async function runTextAgent(model: ModelProvider, request: AgentTextRun): Promise<AgentTextResult> {
+  return invokeAgent(model, request, {
+    label: 'Agent text',
+    cloudAllowedByDefault: true,
+    rolePrompt: context => request.systemPrompt ?? (
       request.role === 'investigate'
-        ? buildInvestigatePrompt(request.role, context ?? request.context)
-        : 'Return a concise plain-text response. Do not emit JSON, commands, tool calls, or internal protocol details.'
-    );
-    const system = composeAgentSystemPrompt(rolePrompt);
-    const temperature = request.temperature ?? definition.temperature;
-    const promptChars = system.length + (request.messages?.reduce((sum, message) => sum + message.content.length, 0) ?? request.user?.length ?? 0);
-    measurements = {
-      requestId: request.requestId,
-      role: request.role,
-      phase: request.logContext,
-      provider: model.name,
-      promptChars,
-      imageCount: images?.length ?? 0,
-      imageBytes: images?.reduce((sum, image) => sum + image.data.byteLength, 0) ?? 0,
-      timeoutMs: definition.policy.timeoutMs,
-    };
-    appendAppLog('info', 'Agent text invocation started', measurements);
-
-    if (request.abortSignal?.aborted) {
-      throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
-    }
-    const raw = await model.generateText({
-      system,
+        ? buildInvestigatePrompt(request.role, (context ?? request.context) as AgentContext)
+        : PLAIN_TEXT_PROMPT
+    ),
+    call: (provider, call) => provider.generateText({
+      ...call,
       messages: request.messages,
       user: request.user,
-      images,
-      temperature,
       maxOutputTokens: 768,
-      timeoutMs: definition.policy.timeoutMs,
       sessionId: request.sessionId,
-      abortSignal: controller.signal,
       onProgress: request.onProgress,
-      onUsage: reported => { usage = reported; },
       maxTurns: 1,
-    });
-    if (controller.signal.aborted) throw new Error('agent_result_after_abort');
-    const output = String(raw ?? '').trim();
-    const durationMs = Date.now() - started;
-    appendAppLog('info', 'Agent text invocation completed', {
-      ...measurements, durationMs, providerUsageAvailable: Boolean(usage), ...(usage ? { usage } : {}),
-    });
-    logs.push({
-      level: 'info',
-      message: `provider=${model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
-    });
-    return {
-      output,
-      role: request.role,
-      provider: model.name,
-      durationMs,
-      promptChars,
-      ...(usage ? { usage } : {}),
-      policy: definition.policy,
-      logs,
-    };
-  } catch (error) {
-    const errorCode = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
-      ? error.code
-      : undefined;
-    const failureTelemetry = {
-      ...measurements,
-      durationMs: Date.now() - started,
-      providerUsageAvailable: Boolean(usage),
-      ...(usage ? { usage } : {}),
-    };
-    if (request.abortSignal?.aborted) {
-      appendAppLog('info', 'Agent text invocation cancelled', failureTelemetry);
-      throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
-    }
-    if (controller.signal.aborted) {
-      const timeoutError = Object.assign(
-        new Error(`Agent timed out after ${definition.policy.timeoutMs}ms`),
-        { code: 'agent_timeout', phase: request.logContext },
-      );
-      appendAppLog('error', timeoutError.message, {
-        ...failureTelemetry,
-        code: 'agent_timeout',
-        role: request.role,
-        phase: request.logContext,
-      });
-      throw timeoutError;
-    }
-    appendAppLog('error', 'Agent text invocation failed', {
-      ...failureTelemetry,
-      errorName: error instanceof Error ? error.name : 'unknown',
-      ...(errorCode ? { errorCode } : {}),
-    });
-    logs.push({ level: 'error', message: error instanceof Error ? error.message : String(error) });
-    if (error instanceof Error && !(error as Error & { code?: string }).code) {
-      throw Object.assign(error, { code: 'agent_invoke_failed' });
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-    request.abortSignal?.removeEventListener('abort', abortExternal);
-  }
+    }),
+    finalize: raw => String(raw ?? '').trim(),
+  });
 }

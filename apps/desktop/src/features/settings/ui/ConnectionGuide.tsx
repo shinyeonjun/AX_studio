@@ -4,8 +4,6 @@ interface ConnectionGuideProps {
   title?: string;
   steps: string | string[];
   guideKey?: string;
-  /** @deprecated Guide images render only when packaged assets exist. */
-  placeholderName?: string;
 }
 
 function renderSteps(steps: string | string[]) {

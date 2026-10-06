@@ -96,9 +96,12 @@ describe('live Jev exact-authority path', () => {
       return result;
     };
     const host = commandService();
-    await runAxCommandChat({ harness: harness(), commandService: host.service, decisionEngine: engine,
+    const reply = await runAxCommandChat({ harness: harness(), commandService: host.service, decisionEngine: engine,
       messages: [], userMessage: lateRequest, connectedConnectors: ['gmail', 'test'], readOperationHints: [hint] });
     expect(seen.some(({ questions }) => Boolean(questions.scope))).toBe(true); expect(host.execute).not.toHaveBeenCalled();
+    // The rejection explains itself and asks for specifics instead of a bare refusal.
+    expect(reply).toContain('요청하지 않은 동작이나 대상이 계획에 들어갔습니다');
+    expect(reply).toContain('더 구체적으로 알려주세요');
   });
   it.each(['a'.repeat(8_193), '한'.repeat(2_731)])('rejects raw overflow before decisions, catalog/read/queue/prose', async (text) => {
     const evaluate = vi.fn(async () => ({ answers: {} })); const readCatalog = vi.fn(); const model = harness(); const host = commandService();

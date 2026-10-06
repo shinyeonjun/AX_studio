@@ -5,6 +5,7 @@ import { isBrandReady, resolveBrandModel } from '../lib/ai-settings/brand-readin
 import type { useAiDetection } from './ai-settings/useAiDetection';
 import type { AiBrand, AiConnectionMode } from '../../../types/ai-provider';
 import type { AppState } from '../../../types/app-state';
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 
 type AiDetection = ReturnType<typeof useAiDetection>;
 
@@ -63,7 +64,7 @@ export function useAiHub(
       await refreshDetection();
       setHubMessage(`${AI_PROVIDER_UI_CATALOG[target].title}로 전환되었습니다.`);
     } catch (error) {
-      setHubMessage(error instanceof Error ? error.message : 'AI 전환에 실패했습니다.');
+      setHubMessage(ipcErrorMessage(error, 'AI 전환에 실패했습니다.'));
     } finally {
       setModeSaving(false);
     }
@@ -93,7 +94,7 @@ export function useAiHub(
       await onRefresh();
       await refreshDetection();
     } catch (error) {
-      const text = error instanceof Error ? error.message : '연결 방식 저장에 실패했습니다.';
+      const text = ipcErrorMessage(error, '연결 방식 저장에 실패했습니다.');
       setHubMessage(text);
     } finally {
       setModeSaving(false);

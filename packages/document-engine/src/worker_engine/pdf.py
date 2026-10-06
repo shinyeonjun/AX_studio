@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from artifact_store import sha256_file
+from engine_limits import assert_source_within_limits
 from ax_paths import (
     default_document_root,
     default_template_root,
@@ -16,6 +17,19 @@ def _managed_path(path_value: object, label: str, allowed_paths: set[Path]) -> P
     return managed_request_path(path_value, label, allowed_paths)
 
 
+def _managed_source(path_value: object, label: str, allowed_paths: set[Path]) -> Path:
+    """Resolve a source document and enforce the shared size/page limits."""
+    source_path = managed_request_path(path_value, label, allowed_paths)
+    if not source_path.is_file():
+        raise FileNotFoundError("file_not_found")
+    assert_source_within_limits(source_path)
+    return source_path
+
+
+# Templates with embedded page images can exceed the stdio response cap.
+PDF_HTML_INLINE_MAX_CHARS = 2 * 1024 * 1024
+
+
 def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
     from write.pdf_to_html import convert_pdf_to_html
 
@@ -23,9 +37,7 @@ def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
     allowed_paths = request_allowed_paths(request.params)
-    source_path = _managed_path(source, "pdf", allowed_paths)
-    if not source_path.is_file():
-        return EngineResponse(id=request.id, ok=False, error="file_not_found")
+    source_path = _managed_source(source, "pdf", allowed_paths)
 
     template_root = managed_request_root(
         request.params.get("templateRoot"),
@@ -35,6 +47,7 @@ def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
     )
     options = dict(request.params.get("options") or {})
     result = convert_pdf_to_html(source_path, template_root, options)
+    inline_html = len(result.html) <= PDF_HTML_INLINE_MAX_CHARS
     return EngineResponse(
         id=request.id,
         ok=True,
@@ -47,7 +60,8 @@ def _handle_pdf_to_html(request: EngineRequest) -> EngineResponse:
             "metaPath": result.meta_path,
             "engine": result.engine,
             "pageCount": result.page_count,
-            "html": result.html,
+            # Omitted when large: the host reads the same content from htmlPath.
+            **({"html": result.html} if inline_html else {"htmlOmitted": True}),
             "cached": result.cached,
         },
     )
@@ -60,9 +74,7 @@ def _handle_pdf_form_analyze(request: EngineRequest) -> EngineResponse:
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
     allowed_paths = request_allowed_paths(request.params)
-    source_path = _managed_path(source, "pdf", allowed_paths)
-    if not source_path.is_file():
-        return EngineResponse(id=request.id, ok=False, error="file_not_found")
+    source_path = _managed_source(source, "pdf", allowed_paths)
     template_root = managed_request_root(
         request.params.get("templateRoot"),
         default_template_root(),
@@ -81,9 +93,7 @@ def _handle_pdf_form_fill(request: EngineRequest) -> EngineResponse:
     if not source:
         return EngineResponse(id=request.id, ok=False, error="path_required")
     allowed_paths = request_allowed_paths(request.params)
-    source_path = _managed_path(source, "pdf", allowed_paths)
-    if not source_path.is_file():
-        return EngineResponse(id=request.id, ok=False, error="file_not_found")
+    source_path = _managed_source(source, "pdf", allowed_paths)
     values = request.params.get("values")
     if not isinstance(values, dict):
         return EngineResponse(id=request.id, ok=False, error="values_object_required")
@@ -128,6 +138,8 @@ def _handle_pdf_report_analyze(request: EngineRequest) -> EngineResponse:
     example_path = _managed_path(example, "example", allowed_paths)
     if not template_path.is_file() or not example_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="report_pair_file_not_found")
+    assert_source_within_limits(template_path)
+    assert_source_within_limits(example_path)
     artifact_root = managed_request_root(
         request.params.get("artifactRoot"),
         default_document_root(),

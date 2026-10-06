@@ -4,7 +4,8 @@ export type {
   SqlStatement,
 } from './db/types.js';
 export {
-  createDatabase,
   createDatabaseAsync,
+  getDatabaseBackendStatus,
   openReadonlySqlite,
+  type DatabaseBackendStatus,
 } from './db/runtime.js';

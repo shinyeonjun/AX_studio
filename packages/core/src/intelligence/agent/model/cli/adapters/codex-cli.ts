@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { decodeCodexOutput } from '../../cli-json/schema/decode-codex.js';
@@ -12,28 +12,43 @@ import {
 import { zodToCodexJsonSchema } from '../../cli-json.js';
 import { runCommand } from '../../cli-process.js';
 import { composedPrompt, requiredBinary, withTempDir } from '../shared.js';
-import { parseStructuredFromCliResult } from '../output.js';
+import { cliFailureMessage, parseStructuredFromCliResult } from '../output.js';
+import { supportedCliFlags } from '../capabilities.js';
 
-/** Codex CLI 0.147+ removed --ask-for-approval; clamp reasoning effort for structured exec. */
-export function codexExecArgs(
-  model: string,
-  _prompt: string,
-  extras: string[] = [],
-  workDir?: string,
-  reasoningEffort: 'low' | 'medium' | 'high' = 'high',
-): string[] {
+const FAILURE_MESSAGE = 'Codex CLI 호출에 실패했습니다.';
+
+/** Features that give the agent tools beyond producing an answer; unknown keys are ignored. */
+const DISABLED_CODEX_FEATURES = [
+  'shell_tool', 'apps', 'plugins', 'hooks', 'browser_use', 'browser_use_external',
+  'computer_use', 'in_app_browser', 'image_generation', 'skill_mcp_dependency_install',
+] as const;
+
+export interface CodexExecOptions {
+  workDir?: string;
+  reasoningEffort?: 'low' | 'medium' | 'high';
+  /** Skips `$CODEX_HOME/config.toml` (MCP servers, profiles) while keeping its auth. */
+  ignoreUserConfig?: boolean;
+}
+
+/**
+ * Codex CLI 0.147+ removed --ask-for-approval. Prompts carry untrusted mail/document text,
+ * so runs are read-only, ephemeral and tool-less.
+ */
+export function codexExecArgs(model: string, extras: string[] = [], options: CodexExecOptions = {}): string[] {
   return [
     'exec',
     '--json',
     '--skip-git-repo-check',
-    ...(workDir ? ['-C', workDir] : []),
+    ...(options.workDir ? ['-C', options.workDir] : []),
+    ...(options.ignoreUserConfig ? ['--ignore-user-config'] : []),
     '-s',
     'read-only',
     '--ephemeral',
     '--color',
     'never',
     '-c',
-    `model_reasoning_effort=${reasoningEffort}`,
+    `model_reasoning_effort=${options.reasoningEffort ?? 'high'}`,
+    ...DISABLED_CODEX_FEATURES.flatMap((feature) => ['-c', `features.${feature}=false`]),
     '-m',
     model,
     ...extras,
@@ -43,6 +58,12 @@ export function codexExecArgs(
     // rejects large command lines with ENAMETOOLONG.
     '-',
   ];
+}
+
+async function codexCommand(): Promise<{ command: string; ignoreUserConfig: boolean }> {
+  const command = await requiredBinary('codex-cli');
+  const supported = await supportedCliFlags(command, ['exec', '--help'], ['--ignore-user-config']);
+  return { command, ignoreUserConfig: supported.has('--ignore-user-config') };
 }
 
 function reportCodexUsage(line: string, input: Pick<TextGenerateInput, 'onUsage'>): void {
@@ -90,13 +111,13 @@ export class CodexCliProvider implements ModelProvider {
   constructor(readonly model: string) {}
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    const command = requiredBinary('codex-cli');
+    const { command, ignoreUserConfig } = await codexCommand();
     const prompt = composedPrompt(input);
     return withTempDir(async (dir) => {
       const outPath = join(dir, 'last.txt');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, prompt, [...await imageArgs(dir, input.images), '-o', outPath], dir),
+        codexExecArgs(this.model, [...await imageArgs(dir, input.images), '-o', outPath], { workDir: dir, ignoreUserConfig }),
         {
           input: prompt,
           timeoutMs: input.timeoutMs ?? 180_000,
@@ -106,19 +127,17 @@ export class CodexCliProvider implements ModelProvider {
           onStdoutLine: line => reportCodexUsage(line, input),
         },
       );
-      try {
-        return (await readFile(outPath, 'utf8')).trim();
-      } catch {
-        if (result.exitCode !== 0) {
-          throw new Error(result.stderr.trim() || 'Codex CLI 호출에 실패했습니다.');
-        }
-        return result.stdout.trim() || result.stderr.trim();
-      }
+      const failure = cliFailureMessage(result, FAILURE_MESSAGE);
+      if (failure) throw new Error(failure);
+      const text = (await readFile(outPath, 'utf8').catch(() => '')).trim() || result.stdout.trim();
+      // stderr carries progress and diagnostics, never the answer.
+      if (!text) throw new Error(FAILURE_MESSAGE);
+      return text;
     });
   }
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    const command = requiredBinary('codex-cli');
+    const { command, ignoreUserConfig } = await codexCommand();
     const prompt = composedPrompt(input);
     const schema = zodToCodexJsonSchema(input.schema);
     const reasoningEffort = input.codexReasoningEffort ?? 'high';
@@ -128,13 +147,13 @@ export class CodexCliProvider implements ModelProvider {
       await writeFile(schemaPath, JSON.stringify(schema), 'utf8');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, prompt, [
+        codexExecArgs(this.model, [
           ...await imageArgs(dir, input.images),
           '--output-schema',
           schemaPath,
           '-o',
           outPath,
-        ], dir, reasoningEffort),
+        ], { workDir: dir, reasoningEffort, ignoreUserConfig }),
         {
           input: prompt,
           timeoutMs: input.timeoutMs ?? 180_000,
@@ -154,14 +173,9 @@ export class CodexCliProvider implements ModelProvider {
         return result;
       }
     });
-    const debugRawDir = process.env.AX_REPORT_DEBUG_RAW_DIR;
-    if (debugRawDir) {
-      await mkdir(debugRawDir, { recursive: true });
-      await writeFile(join(debugRawDir, `${Date.now()}-${input.logContext ?? 'structured'}.json`), JSON.stringify(raw), 'utf8');
-    }
     const responseSchema = z.preprocess(
       (value) => decodeCodexOutput(value, input.schema), input.schema,
     ) as typeof input.schema;
-    return parseStructuredFromCliResult(raw, responseSchema, 'Codex CLI 호출에 실패했습니다.', true);
+    return parseStructuredFromCliResult(raw, responseSchema, FAILURE_MESSAGE, true);
   }
 }

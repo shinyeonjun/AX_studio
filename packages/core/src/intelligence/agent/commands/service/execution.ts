@@ -9,7 +9,7 @@ import {
   issue,
   qualityIssuesFromLog,
 } from '../contract.js';
-import type { AxCommandServiceState } from './contracts.js';
+import type { AxCommandExecuteOptions, AxCommandServiceState } from './contracts.js';
 
 type CommandResultTuple = [
   AxCommandResult['status'],
@@ -20,11 +20,19 @@ type CommandResultTuple = [
 export function explainExecution(
   state: AxCommandServiceState,
   command: AxCommand,
+  options: Pick<AxCommandExecuteOptions, 'executionContext' | 'workspaceSessionId' | 'currentWorkflowId'> = {},
 ): CommandResultTuple {
   const parsed = AxExecutionExplainArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
   const execution = state.store.getExecution(parsed.data.executionId);
-  if (!execution) {
+  // An agent may only explain runs of the current chat session or its bound workflow.
+  // Unrelated ids answer like unknown ids so execution ids cannot be probed.
+  const sessionId = options.workspaceSessionId?.trim();
+  const workflowId = options.currentWorkflowId?.trim();
+  const boundToCaller = !execution || options.executionContext?.origin !== 'agent'
+    || Boolean(sessionId && execution.workspaceSessionId === sessionId)
+    || Boolean(workflowId && execution.workflowId === workflowId);
+  if (!execution || !boundToCaller) {
     return ['not_found', undefined, [issue('execution_not_found', '실행을 찾을 수 없습니다.', 'args.executionId')]];
   }
 

@@ -1,3 +1,5 @@
 -r requirements.txt
 docling[rapidocr]>=2.0
-rapidocr-onnxruntime>=1.4.0
+# The code imports `rapidocr` (v3 API: EngineType/LangRec/OCRVersion); the legacy
+# `rapidocr-onnxruntime` 1.x distribution exposes a different module.
+rapidocr>=3.0,<4

@@ -14,6 +14,9 @@ describe('runAiDecision evidence and binding', () => {
     const directory = await mkdtemp(join(tmpdir(), 'ax-vision-test-'));
     const imagePath = join(directory, 'page-0.png');
     await writeFile(imagePath, Buffer.from([137, 80, 78, 71, 1, 2, 3]));
+    const previousRoot = process.env.AX_DOCUMENT_ARTIFACT_ROOT;
+    // Vision reads are confined to the document artifact root.
+    process.env.AX_DOCUMENT_ARTIFACT_ROOT = directory;
     try {
       const model = new VisionCaptureProvider();
       await runAiDecision(
@@ -40,6 +43,8 @@ describe('runAiDecision evidence and binding', () => {
       });
       expect(Array.from(model.captured?.images?.[0]?.data ?? [])).toEqual([137, 80, 78, 71, 1, 2, 3]);
     } finally {
+      if (previousRoot === undefined) delete process.env.AX_DOCUMENT_ARTIFACT_ROOT;
+      else process.env.AX_DOCUMENT_ARTIFACT_ROOT = previousRoot;
       await rm(directory, { recursive: true, force: true });
     }
   });

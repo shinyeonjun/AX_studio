@@ -59,4 +59,14 @@ describe('HTTP exact selection and completeness', () => {
       ok: true, data: { truncated: false, completeness: { status: 'complete' } },
     });
   });
+
+  it('logs only the request pathname, never the query string', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('[]')));
+    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/api/' });
+    const ctx = context();
+    await connector.execute('request', { path: 'items?token=secret-value' }, ctx);
+    const logged = JSON.stringify(ctx.log.mock.calls);
+    expect(logged).toContain('/api/items');
+    expect(logged).not.toContain('secret-value');
+  });
 });

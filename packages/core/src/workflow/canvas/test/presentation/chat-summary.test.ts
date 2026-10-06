@@ -1,82 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { renderChatSummary } from '../../presentation/chat-summary.js';
-import { buildIRFromWorkflow } from '../../compile/builder.js';
+import type { WorkflowIR } from '../../../schema.js';
+
+const sendMail = (params: Record<string, unknown>): Partial<WorkflowIR> => ({
+  name: '테스트 메일 발송',
+  goal: 'plosind@naver.com으로 테스트 메일을 보낸다',
+  trigger: { type: 'once', runAt: '2026-08-19T10:00:00.000Z' },
+  steps: [{
+    type: 'action', id: 'send_mail', connector: 'gmail', action: 'message.send',
+    actionRef: 'gmail.message.send@1', params, sideEffect: 'EXTERNAL_HIGH',
+  }],
+});
 
 describe('renderChatSummary', () => {
   it('returns plain Korean summary instead of YAML document', () => {
-    const ir = buildIRFromWorkflow({
-      name: '테스트 메일 발송',
-      goal: 'plosind@naver.com으로 테스트 메일을 보낸다',
-      triggerType: 'once',
-      runAt: '2026-08-19T10:00:00.000Z',
-      assumptions: [],
-      nodes: [
-        {
-          type: 'action',
-          id: 'send_mail',
-          connector: 'gmail',
-          action: 'send',
-          params: { to: 'plosind@naver.com', subject: '테스트 메일', body: '테스트입니다.' },
-        },
-      ],
-    });
-    const summary = renderChatSummary(ir);
+    const summary = renderChatSummary(sendMail({ to: 'plosind@naver.com', subject: '테스트 메일', body: '테스트입니다.' }));
     expect(summary).toContain('테스트 메일 발송');
     expect(summary).toContain('plosind@naver.com');
     expect(summary).not.toContain('---');
     expect(summary).not.toContain('human_approval');
   });
-});
 
-describe('workflow builder approvals', () => {
-  it('leaves approval ownership to action execution', () => {
-    const ir = buildIRFromWorkflow({
-      name: '테스트 메일 발송',
-      goal: '보내기',
-      triggerType: 'once',
-      runAt: '2026-08-19T10:00:00.000Z',
-      assumptions: [],
-      nodes: [
-        { type: 'human_approval', id: 'approve_generic', reason: '실행 전 승인', forActionIds: [] },
-        {
-          type: 'action',
-          id: 'send_mail',
-          connector: 'gmail',
-          action: 'send',
-          params: { to: 'plosind@naver.com' },
-        },
-      ],
-    });
-    const approvals = ir.steps?.filter((step) => step.type === 'human_approval') ?? [];
-    expect(approvals).toHaveLength(0);
-    expect(renderChatSummary(ir)).toContain('외부 작업은 승인 후 실행됩니다.');
-  });
-});
-
-describe('workflow trigger filters', () => {
-  it('stores the agent-provided filter on the trigger', () => {
-    const ir = buildIRFromWorkflow({
-      name: '조건부 알림',
-      goal: '특정 발신자 메일 알림',
-      triggerType: 'gmail.new_message',
-      gmailAccount: 'primary',
-      triggerFilter: {
-        op: 'eq',
-        left: { ref: 'from' },
-        right: { lit: 'sender@example.com' },
-      },
-      assumptions: [],
-      nodes: [],
-    });
-
-    expect(ir.trigger).toMatchObject({
-      type: 'gmail.new_message',
-      accountId: 'primary',
-      filter: {
-        op: 'eq',
-        left: { ref: 'from' },
-        right: { lit: 'sender@example.com' },
-      },
-    });
+  it('tells the user that external actions run after approval', () => {
+    expect(renderChatSummary(sendMail({ to: 'plosind@naver.com' }))).toContain('외부 작업은 승인 후 실행됩니다.');
   });
 });

@@ -11,6 +11,7 @@ import {
 } from '../output-contract.js';
 import type { WorkflowExecutionHost, PendingError } from './contracts.js';
 import { createConnectorContext } from './context.js';
+import { createExecutionLogWriter } from './log-writer.js';
 import { recordPreflightResult } from './preflight.js';
 import { runSequence } from './sequence.js';
 
@@ -100,10 +101,7 @@ export async function executeWorkflow(
   host.notifyExecutionStarted(executionId);
 
   const log: ExecutionLogEntry[] = [];
-  const appendLog = (entry: ExecutionLogEntry) => {
-    log.push(entry);
-    host.config.store.updateExecutionLog(executionId, log);
-  };
+  const appendLog = createExecutionLogWriter(host.config.store, executionId, log);
   const connections = host.config.store.getConnections();
   const input = { ...discoverySourceInputs(workflowIr), ...options.input };
   if (options.jobId) appendLog({ at: new Date().toISOString(), level: 'info', code: 'execution_dequeued',

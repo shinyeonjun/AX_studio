@@ -333,7 +333,7 @@ describe('Scheduler lifecycle', () => {
     }
   });
 
-  it('waits for an in-flight tick and skips acknowledgement writes after stop', async () => {
+  it('waits for an in-flight tick and never re-runs an occurrence that started before stop', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
     const db = await createDatabaseAsync(':memory:');
@@ -375,9 +375,16 @@ describe('Scheduler lifecycle', () => {
       await stopping;
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(store.getSetting('scheduler.lastFired:scheduled-stop', null)).toBeNull();
+      // The occurrence was acknowledged before it started, so a restart drops
+      // the leftover pending row instead of repeating its side effects.
+      expect(store.getSetting('scheduler.lastFired:scheduled-stop', null)).toBe('2026-09-12T00:00');
       expect(store.getWorkflow('scheduled-stop')).not.toBeNull();
       expect(store.getSetting<{ workflowId: string }[]>('scheduler.pendingOccurrences', [])).toHaveLength(1);
+
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+      expect(store.getSetting<{ workflowId: string }[]>('scheduler.pendingOccurrences', [])).toHaveLength(0);
     } finally {
       release();
       await scheduler.stop();

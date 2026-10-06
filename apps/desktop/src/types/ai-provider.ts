@@ -1,12 +1,10 @@
 export type { AiBrand, AiConnectionMode, CliModelOption } from '@ax-studio/core';
 
 export interface DetectedAiCli {
-  id: 'codex-cli' | 'claude-cli' | 'cursor-cli';
+  id: import('@ax-studio/core').CliProviderId;
   label: string;
   description: string;
   installed: boolean;
-  binaryFound?: boolean;
-  apiKeyConfigured?: boolean;
   command?: string;
   version?: string;
   models: import('@ax-studio/core').CliModelOption[];
@@ -18,7 +16,7 @@ export interface AiSecretStatus {
   masked?: string;
 }
 
-export interface AiBrandTomlPrefs {
+interface AiBrandTomlPrefs {
   mode?: import('@ax-studio/core').AiConnectionMode;
   model?: string;
 }

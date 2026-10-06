@@ -121,6 +121,11 @@ export async function waitForDiscoveryStatus(page: Page, status: string, timeout
   );
 }
 
+/** Single-example discoveries ask the user to confirm the found rule before publishing. */
+export async function confirmDiscoveryRule(page: Page): Promise<void> {
+  await page.locator('.ax-discovery-review').getByRole('button', { name: '이 방법으로 확정', exact: true }).click();
+}
+
 export async function publishDiscovery(page: Page): Promise<void> {
   await page.getByRole('button', { name: '이대로 맡기기', exact: true }).click();
   await page.locator('.ax-discovery-review').waitFor({ state: 'detached', timeout: 20_000 });

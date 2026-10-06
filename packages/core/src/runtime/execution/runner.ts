@@ -19,7 +19,11 @@ export class WorkflowExecutionRunner {
     return executeWorkflow(this.host, ir, options);
   }
 
-  continueAfterApproval(approvalId: string, confirmation?: ToolResultConfirmation): Promise<ExecutionResult> {
-    return continueWorkflowAfterApproval(this.host, approvalId, confirmation);
+  continueAfterApproval(
+    approvalId: string,
+    confirmation?: ToolResultConfirmation,
+    abortSignal?: AbortSignal,
+  ): Promise<ExecutionResult> {
+    return continueWorkflowAfterApproval(this.host, approvalId, confirmation, abortSignal);
   }
 }

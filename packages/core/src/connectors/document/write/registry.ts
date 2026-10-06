@@ -19,7 +19,9 @@ export async function getDocumentWriteHandler(action: string): Promise<import('.
   const separator = action.indexOf('.');
   if (separator < 1) return undefined;
   const module = await writeModuleLoaders.get(action.slice(0, separator))?.();
-  return module?.actions[action.slice(separator + 1)];
+  const name = action.slice(separator + 1);
+  // Own properties only: `pdf.constructor` must not resolve to Object.prototype.constructor.
+  return module && Object.hasOwn(module.actions, name) ? module.actions[name] : undefined;
 }
 
 export function listDocumentWriteActions(): string[] {

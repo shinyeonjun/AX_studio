@@ -37,6 +37,8 @@ export function addNode(
   data: WorkflowVisualNodeData,
   size?: { width: number; height: number },
 ): void {
+  // A step referenced from more than one branch is drawn once; duplicate ids break React Flow keys.
+  if (ctx.nodes.some((node) => node.id === id)) return;
   ctx.nodes.push({
     id,
     type: 'workflowStep',
@@ -59,8 +61,10 @@ export function addEdge(
   target: string,
   label?: string,
 ): void {
+  const id = source + '->' + target + (label ? ':' + label : '');
+  if (ctx.edges.some((edge) => edge.id === id)) return;
   ctx.edges.push({
-    id: source + '->' + target + (label ? ':' + label : ''),
+    id,
     source,
     target,
     label,

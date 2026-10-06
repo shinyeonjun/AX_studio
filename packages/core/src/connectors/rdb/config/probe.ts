@@ -1,7 +1,7 @@
 import { openRdbSqlClient } from '../client.js';
 import type { RdbConnectionConfig } from '../connector.js';
 import type { RdbConnectionProbeResult } from './contracts.js';
-import { validateRdbConnectionString } from './validate.js';
+import { rdbTransportWarning, validateRdbConnectionString } from './validate.js';
 
 function safeProbeError(error: unknown): string | undefined {
   const message = error instanceof Error ? error.message : String(error);
@@ -36,6 +36,11 @@ export async function probeRdbConnection(config: RdbConnectionConfig): Promise<R
     try {
       client = await openRdbSqlClient(config);
       await client.query('SELECT 1');
+      const warning = rdbTransportWarning(config.type, config.connectionString);
+      if (warning) {
+        console.warn('[rdb] connected to a non-local database without TLS; credentials and rows travel in plaintext.');
+        return { ok: true, warning };
+      }
       return { ok: true };
     } catch (error) {
       return {

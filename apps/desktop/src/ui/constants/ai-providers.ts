@@ -1,5 +1,6 @@
 import type { AiBrand, AiConnectionMode } from '../../types/ai-provider';
 import type { CliModelOption } from '../../types/ai-provider';
+import type { CliProviderId } from '@ax-studio/core/ai-catalog';
 import {
   AI_BRAND_CATALOG,
   ENABLED_AI_BRANDS,
@@ -17,7 +18,7 @@ export interface AiProviderUiMeta {
   description: string;
   icon: string;
   envKey: string;
-  cliProviderId: 'claude-cli' | 'codex-cli' | 'cursor-cli';
+  cliProviderId: CliProviderId;
   cliModeLabel: string;
   cliLabel: string;
   apiModels: CliModelOption[];
@@ -41,11 +42,6 @@ const UI_OVERLAY: Record<
     cliModeLabel: 'Codex',
     cliLabel: 'Codex CLI',
     description: 'OpenAI GPT · Codex CLI 또는 API',
-  },
-  grok: {
-    icon: openaiIcon,
-    cliModeLabel: 'CLI',
-    cliLabel: 'agent CLI',
   },
   ollama: {
     icon: openaiIcon,

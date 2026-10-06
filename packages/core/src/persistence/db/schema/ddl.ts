@@ -158,3 +158,14 @@ export const INITIAL_SCHEMA_SQL = [
   ");",
   "CREATE INDEX IF NOT EXISTS idx_workflow_repair_proposals_workflow ON workflow_repair_proposals(workflow_id, created_at);",
 ].join('\n');
+
+/** Schema v2: list ordering, discovery child lookups and history retention scans. */
+export const SCHEMA_V2_INDEXES_SQL = [
+  'CREATE INDEX IF NOT EXISTS idx_workspace_chats_updated_at ON workspace_chats(updated_at DESC);',
+  'CREATE INDEX IF NOT EXISTS idx_workspace_chats_workflow_updated_at ON workspace_chats(workflow_id, updated_at DESC);',
+  'CREATE INDEX IF NOT EXISTS idx_work_discovery_examples_session_id ON work_discovery_examples(session_id);',
+  'CREATE INDEX IF NOT EXISTS idx_work_discovery_snapshots_session_id ON work_discovery_snapshots(session_id);',
+  'CREATE INDEX IF NOT EXISTS idx_work_discovery_replay_cases_session_id ON work_discovery_replay_cases(session_id);',
+  'CREATE INDEX IF NOT EXISTS idx_executions_workflow_started_at ON executions(workflow_id, started_at DESC);',
+  'CREATE INDEX IF NOT EXISTS idx_trigger_receipts_status_updated_at ON trigger_receipts(status, updated_at);',
+].join('\n');

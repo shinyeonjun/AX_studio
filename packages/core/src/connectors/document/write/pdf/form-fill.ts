@@ -1,4 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { getDocumentEngineClient } from '../../../../documents/read/engine-client.js';
 import type { PdfFormFillOptions } from '../../../../documents/read/types.js';
 import type { ArtifactReference, ConnectorContext, ConnectorResult } from '../../../types.js';
@@ -23,6 +25,10 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
   const template = params.template ?? params.templatePath ?? ctx.variables.pdfFormTemplate ?? ctx.variables.pdfFormTemplatePath;
   if (!template) return { ok: false, error: 'PDF 양식 템플릿이 필요합니다.', errorCode: 'pdf_form_template_required' };
 
+  // With an artifact store the PDF only needs to live until putBytes. A unique
+  // per-run directory keeps concurrent fills of the same source from reading
+  // each other's shared `filled.pdf`.
+  const scratchDir = ctx.artifactSink ? mkdtempSync(join(tmpdir(), 'ax-form-fill-')) : undefined;
   try {
     let templatePath: string | undefined;
     if (typeof template === 'string') {
@@ -45,10 +51,12 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
       ...(templatePath ? { templatePath } : {}),
       ...(template && typeof template === 'object' ? { template: template as PdfFormFillOptions['template'] } : {}),
       ...(fontPath ? { fontPath } : {}),
+      ...(scratchDir ? { outputPath: join(scratchDir, 'filled.pdf') } : {}),
     };
     const result = await getDocumentEngineClient().pdfFormFill(resolvedPath.path, options);
     ctx.variables.pdfFormFillResult = result;
-    ctx.variables.pdfFormOutputPath = result.outputPath;
+    // The scratch file is deleted below; only expose a path that stays valid.
+    if (!scratchDir) ctx.variables.pdfFormOutputPath = result.outputPath;
 
     let artifact: ArtifactReference | undefined;
     if (ctx.artifactSink && existsSync(result.outputPath)) {
@@ -80,5 +88,7 @@ export const pdfFormFill: DocumentActionHandler = async (params, ctx): Promise<C
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: message, errorCode: 'pdf_form_fill_failed' };
+  } finally {
+    if (scratchDir) rmSync(scratchDir, { recursive: true, force: true });
   }
 };

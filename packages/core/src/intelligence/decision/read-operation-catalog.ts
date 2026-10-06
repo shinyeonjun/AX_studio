@@ -11,7 +11,7 @@ import { MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
 import { requestLimitCandidates } from './request-limit.js';
 
 // Reserve one provider choice for `none` so each operation question stays valid.
-export const JEV_READ_OPERATION_MAX_CHOICES = MAX_DECISION_CHOICE_CRITERIA - 1;
+const JEV_READ_OPERATION_MAX_CHOICES = MAX_DECISION_CHOICE_CRITERIA - 1;
 const MAX_TEXT_CHARS = 320;
 const MAX_EXPLICIT_PARAMETER_CHARS = 500;
 const NATURAL_LIMIT_PARAMETER_NAMES = new Set([
@@ -72,7 +72,7 @@ const OPERATION_QUERY_STOP_WORDS = new Set([
 ]);
 const KOREAN_REQUEST_SUFFIX = /(?:해주세요|해줘|해봐|할래|할까|으로|에서|에게|부터|까지|을|를|이|가|은|는|에|로|와|과|도|만|의|랑|이나|나|해|줘)$/u;
 
-function operationQueryTokens(message: string): string[] {
+export function operationQueryTokens(message: string): string[] {
   return [...message.toLocaleLowerCase().matchAll(/[\p{L}\p{N}][\p{L}\p{N}_-]*/gu)]
     .map(([token]) => token.replace(KOREAN_REQUEST_SUFFIX, ''))
     .filter((token) => token.length >= 2 && !/^\d+$/u.test(token) && !OPERATION_QUERY_STOP_WORDS.has(token));
@@ -159,12 +159,30 @@ function parameterValue(message: string, parameter: OpenApiParameter): string | 
   return value !== undefined && parameter.enum && !parameter.enum.includes(value) ? undefined : value;
 }
 
+function isTopNLimitCandidate(value: number, message: string): boolean {
+  const pattern = new RegExp(
+    `(?:` +
+      `(?:제일|가장|최저|최고|상위|하위)\\s*(?:\\S+\\s*)?${value}\\s*(?:개|건|명|개만|항목)?` +
+      `|` +
+      `(?:적은|많은|높은|낮은|비싼|저렴한|싼|큰|작은)\\s*(?:것|거|상품|항목|데이터)?\\s*${value}\\s*(?:개|건|명|개만|항목)?` +
+      `|` +
+      `${value}\\s*(?:개|건|명)?\\s*(?:제일|가장|최저|최고)` +
+      `|` +
+      `\\b(?:top|bottom)\\s*${value}\\b` +
+      `|` +
+      `순(?:으로)?\\s*${value}\\s*(?:개|건|명|항목)?` +
+    `)`,
+    'iu',
+  );
+  return pattern.test(message);
+}
+
 function naturalLimitChoices(name: string, type: string | undefined, message: string): readonly number[] | undefined {
   if (!NATURAL_LIMIT_PARAMETER_NAMES.has(name.toLowerCase()) || !['integer', 'number'].includes(type ?? '')) {
     return undefined;
   }
   const choices = requestLimitCandidates(message).filter((value) =>
-    type !== 'integer' || Number.isInteger(value),
+    (type !== 'integer' || Number.isInteger(value)) && !isTopNLimitCandidate(value, message),
   );
   return choices.length > 0 ? choices : undefined;
 }
@@ -296,6 +314,9 @@ function addHttpOperations(
     if (endpoint.auth?.type !== 'none' && endpoint.authStored !== true) continue;
     const sourceLabel = text(endpoint.label, 100);
     for (const operation of endpoint.discoveredReadOperations ?? []) {
+      // Only paths the connected service itself advertised become operations. A
+      // `/search` collection exposes its query as a host-resolved parameter.
+      const searchPath = /(?:^|\/)search$/iu.test(operation.path.replace(/[?#].*$/u, '').replace(/\/+$/u, ''));
       addIndexedOperation(operations, {
         capabilityId: 'http.request',
         connector: 'http',
@@ -304,21 +325,32 @@ function addHttpOperations(
         description: text(`${sourceLabel ? `${sourceLabel}: ` : ''}GET ${operation.path} — ${operation.label}`, MAX_TEXT_CHARS)
           ?? `GET ${operation.path}`,
       }, (userMessage) => {
+        const query = searchPath ? explicitSearchQuery(userMessage) : undefined;
         return {
           params: {
             method: 'GET',
             path: operation.path,
             connectionId: endpoint.id,
+            ...(query ? { query: { q: query } } : {}),
           },
-          parameterHints: [{
-            path: 'query.limit',
-            type: 'integer',
-            description: 'Maximum number of collection items to return.',
-            required: false,
-            ...(naturalLimitChoices('limit', 'integer', userMessage)
-              ? { choices: naturalLimitChoices('limit', 'integer', userMessage) }
-              : {}),
-          }],
+          parameterHints: [
+            ...(searchPath ? [{
+              path: 'query.q',
+              type: 'string',
+              description: 'Search text explicitly provided by the user.',
+              required: true,
+            }] : []),
+            {
+              path: 'query.limit',
+              type: 'integer',
+              description: 'Maximum number of collection items to return.',
+              required: false,
+              ...(naturalLimitChoices('limit', 'integer', userMessage)
+                ? { choices: naturalLimitChoices('limit', 'integer', userMessage) }
+                : {}),
+            },
+          ],
+          ...(searchPath && !query ? { missingParameterPaths: ['query.q'] } : {}),
         };
       });
     }
@@ -341,7 +373,9 @@ function addRdbOperations(
       connector: 'rdb',
       ...(connectionLabel ? { sourceLabel: connectionLabel } : {}),
       label: connectionLabel ? `${connectionLabel} 스키마` : 'DB 스키마',
-      description: connectionLabel ? `${connectionLabel}의 허용된 테이블 목록 조회` : '허용된 DB 테이블 목록 조회',
+      description: connectionLabel
+        ? `${connectionLabel}의 허용된 테이블 목록 및 DB 스키마 구조 조회 (테이블 구조 확인 전용)`
+        : '허용된 DB 테이블 목록 및 스키마 구조 조회 (테이블 구조 확인 전용)',
     }, () => ({ params: {} }));
   }
   for (const table of tables) {

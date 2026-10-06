@@ -24,6 +24,8 @@ import * as settingsRepo from './repositories/settings-repository.js';
 import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
 import * as workflowRepo from './repositories/workflow-repository.js';
 import * as discoveryMetadata from './repositories/discovery-metadata-repository.js';
+import * as retentionRepo from './repositories/retention-repository.js';
+import { listCorruptRows } from './tolerant-rows.js';
 
 export class WorkflowStore {
   // Main-process writers share this store; hold the id while async runtime cleanup drains.
@@ -47,6 +49,28 @@ export class WorkflowStore {
   claimWorkflowDeletion(workflowId: string, expectedVersion: number): boolean {
     if (this.deletingWorkflowIds.has(workflowId)) return false;
     if (workflowRepo.getWorkflow(this.db, workflowId)?.version !== expectedVersion) return false;
+    this.deletingWorkflowIds.add(workflowId);
+    return true;
+  }
+
+  /**
+   * Deletion claim for a workflow whose stored definition cannot be read (corrupt latest
+   * version JSON, or a workflow row without any version). It never applies to a readable
+   * workflow, which must use the version-checked claimWorkflowDeletion. The repository
+   * delete still refuses while an execution is running or awaiting approval.
+   */
+  workflowExists(workflowId: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM workflows WHERE id = ?').get(workflowId));
+  }
+
+  claimUnreadableWorkflowDeletion(workflowId: string): boolean {
+    if (this.deletingWorkflowIds.has(workflowId)) return false;
+    if (!this.workflowExists(workflowId)) return false;
+    try {
+      if (workflowRepo.getWorkflow(this.db, workflowId)) return false;
+    } catch (error) {
+      if ((error as { code?: unknown } | null)?.code !== 'invalid_workflow_json') throw error;
+    }
     this.deletingWorkflowIds.add(workflowId);
     return true;
   }
@@ -164,10 +188,18 @@ export class WorkflowStore {
     executionRepo.markExecutionPending(this.db, id, errorCode, log);
   }
   updateExecutionLog(id: string, log: unknown[]) { executionRepo.updateExecutionLog(this.db, id, log); }
+  appendExecutionLog(id: string, entries: readonly unknown[]) { return executionRepo.appendExecutionLog(this.db, id, entries); }
+  /** Bounded history retention; never touches active/pending executions or open approvals. */
+  pruneHistory(policy?: retentionRepo.HistoryRetentionPolicy, now?: Date) {
+    return retentionRepo.pruneHistory(this.db, policy, now);
+  }
+  /** Rows skipped by tolerant list reads (ids and error codes only). */
+  listCorruptRows() { return listCorruptRows(this.db); }
   hasPendingApprovalForWorkflow(workflowId: string) {
     return executionRepo.hasPendingApprovalForWorkflow(this.db, workflowId);
   }
   getExecution(id: string) { return executionRepo.getExecution(this.db, id); }
+  listUnfinishedExecutions() { return executionRepo.listUnfinishedExecutions(this.db); }
   getExecutionOutput(id: string) { return executionRepo.getExecutionOutput(this.db, id); }
   listExecutions(limit = 50, includeOutput = false) { return executionRepo.listExecutions(this.db, limit, includeOutput); }
   deleteExecution(id: string) { return executionRepo.deleteExecution(this.db, id); }
@@ -235,19 +267,28 @@ export class WorkflowStore {
     triggerReceiptRepo.completeTriggerReceipt(this.db, dedupeKey, executionId);
   }
   failTriggerReceipt(dedupeKey: string) { triggerReceiptRepo.failTriggerReceipt(this.db, dedupeKey); }
+  deadLetterTriggerReceipt(dedupeKey: string, executionId?: string) {
+    triggerReceiptRepo.deadLetterTriggerReceipt(this.db, dedupeKey, executionId);
+  }
+  deadLetterProcessingTriggerReceipts() { return triggerReceiptRepo.deadLetterProcessingTriggerReceipts(this.db); }
   isTriggerReceiptCompleted(dedupeKey: string) {
     return triggerReceiptRepo.isTriggerReceiptCompleted(this.db, dedupeKey);
   }
 
-  saveDiscoverySession(state: DiscoverySessionState) {
-    const existing = discoveryRepo.getDiscoverySession(this.db, state.id);
-    if (existing) {
-      discoveryRepo.updateDiscoverySession(this.db, state);
+  /** Pass `expectedRevision` (the revision the caller read) for a strict compare-and-swap. */
+  saveDiscoverySession(state: DiscoverySessionState, expectedRevision?: number) {
+    // Existence only: a corrupt stored state must still be overwritable by a valid one.
+    if (this.db.prepare('SELECT 1 FROM work_discovery_sessions WHERE id = ?').get(state.id)) {
+      discoveryRepo.updateDiscoverySession(this.db, state, expectedRevision);
       return;
     }
     discoveryRepo.insertDiscoverySession(this.db, state);
   }
   getDiscoverySessionState(id: string) { return discoveryRepo.getDiscoverySession(this.db, id); }
+  bindDiscoverySessionWorkspace(sessionId: string, workspaceSessionId: string) {
+    discoveryRepo.bindDiscoverySessionWorkspace(this.db, sessionId, workspaceSessionId);
+  }
+  getDiscoverySessionWorkspace(sessionId: string) { return discoveryRepo.getDiscoverySessionWorkspace(this.db, sessionId); }
   listDiscoverySessions() { return discoveryRepo.listDiscoverySessions(this.db); }
   insertDiscoveryExample(params: {
     sessionId: string;

@@ -32,4 +32,19 @@ describe('work display classification', () => {
     expect(message).toContain('AX_DOCUMENT_ENGINE_PYTHON');
     expect(message).toContain('npm run document-engine:setup');
   });
+
+  it('maps runtime hardening error codes to Korean messages', () => {
+    for (const code of [
+      'workflow_already_running',
+      'approval_expired',
+      'template_non_primitive',
+      'condition_ref_missing',
+      'step_timeout',
+    ]) {
+      const message = executionErrorLabel(code);
+      expect(message).not.toBe(code);
+      expect(message).toMatch(/[가-힣]/u);
+    }
+    expect(executionErrorLabel('step_timeout')).toContain('확인');
+  });
 });

@@ -7,6 +7,8 @@ const gmailState = vi.hoisted(() => ({
   profile: vi.fn(),
   getCredential: vi.fn(),
   setCredential: vi.fn(),
+  deleteCredential: vi.fn(),
+  revoke: vi.fn(async () => undefined),
   parseConfig: vi.fn((_: unknown): unknown => null),
   GmailConnector: vi.fn(function (config: unknown) {
     return { config };
@@ -25,10 +27,15 @@ vi.mock('@ax-studio/core', () => ({
   fetchGmailProfileEmail: gmailState.profile,
   isLegacyGmailTokenConfig: vi.fn(() => false),
   parseGmailConnectionConfig: gmailState.parseConfig,
+  revokeGmailRefreshToken: gmailState.revoke,
 }));
 
 vi.mock('../credential-store.js', () => ({
-  getCredentialStore: () => ({ get: gmailState.getCredential, set: gmailState.setCredential }),
+  getCredentialStore: () => ({
+    get: gmailState.getCredential,
+    set: gmailState.setCredential,
+    delete: gmailState.deleteCredential,
+  }),
 }));
 
 vi.mock('./oauth.js', () => ({
@@ -102,5 +109,30 @@ describe('desktop Gmail OAuth connection', () => {
       { connector: 'gmail', connectionId: 'gmail-1' },
       { refreshToken: 'rotated-refresh' },
     );
+  });
+
+  it.each([
+    { previousAccount: 'user@example.com', revoked: false },
+    { previousAccount: 'old@example.com', revoked: true },
+  ])('removes the replaced credential on reconnect (revoke: $revoked)', async ({ previousAccount, revoked }) => {
+    gmailState.credentials.mockReturnValue({ clientId: 'client', clientSecret: 'secret' });
+    gmailState.connect.mockResolvedValue({ accessToken: 'a', refreshToken: 'new-refresh', scopes: ['s'] });
+    gmailState.profile.mockResolvedValue('user@example.com');
+    const previousRef = { connector: 'gmail', connectionId: 'old-connection' };
+    gmailState.parseConfig.mockReturnValue({ credentialRef: previousRef, account: previousAccount });
+    gmailState.getCredential.mockResolvedValue({ refreshToken: 'old-refresh' });
+    const store = {
+      getConnections: () => [{ connector: 'gmail', connected: true, config: {} }],
+      setConnection: vi.fn(),
+    };
+
+    await connectGmailOAuth(store as never, { connectors: {} } as never);
+
+    expect(gmailState.deleteCredential).toHaveBeenCalledWith(previousRef);
+    if (revoked) {
+      expect(gmailState.revoke).toHaveBeenCalledWith(expect.objectContaining({ refreshToken: 'old-refresh' }));
+    } else {
+      expect(gmailState.revoke).not.toHaveBeenCalled();
+    }
   });
 });

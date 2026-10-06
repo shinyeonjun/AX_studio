@@ -14,6 +14,9 @@
       "artifact": "discovery/output.csv",
       "folder": "discovery/input"
     },
+    { "action": "waitForDiscovery", "status": "needs_clarification", "timeoutMs": 30000 },
+    { "check": "visibleTextContains", "text": "예시가 하나뿐이라", "severity": "critical" },
+    { "action": "confirmDiscoveryRule" },
     { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
     { "check": "discoveryCardPresent", "severity": "critical" },
     { "check": "visibleTextContains", "text": "이대로 맡기기", "severity": "critical" },
@@ -29,6 +32,9 @@
       "artifact": "discovery/output.csv",
       "folder": "discovery/input"
     },
+    { "action": "waitForDiscovery", "status": "needs_clarification", "timeoutMs": 30000 },
+    { "check": "visibleTextContains", "text": "예시가 하나뿐이라", "severity": "critical" },
+    { "action": "confirmDiscoveryRule" },
     { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
     { "action": "publishDiscovery" },
     { "check": "workflowPresent", "text": "지난 결과물과 같은 방식으로", "severity": "critical" },

@@ -1,10 +1,12 @@
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from './provider.js';
 
-function ollamaBaseUrl(): string {
+/** OpenAI-compatible endpoint; accepts `host:port`, `http://host:port`, and `.../v1` forms. */
+export function ollamaApiBaseUrl(): string {
   const configured = process.env.OLLAMA_BASE_URL?.trim() || process.env.OLLAMA_HOST?.trim();
-  const base = configured || 'http://localhost:11434';
-  return `${base.replace(/\/$/, '')}${base.endsWith('/v1') ? '' : '/v1'}`;
+  const base = (configured || 'http://localhost:11434').replace(/\/+$/, '');
+  const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(base) ? base : `http://${base}`;
+  return withScheme.endsWith('/v1') ? withScheme : `${withScheme}/v1`;
 }
 
 /** Ollama's local OpenAI-compatible `/v1` API. No API key is required. */
@@ -17,7 +19,7 @@ export class OllamaApiProvider implements ModelProvider {
   constructor(model: string) {
     this.model = model;
     this.inner = new OpenAICompatibleProvider({
-      baseURL: ollamaBaseUrl(),
+      baseURL: ollamaApiBaseUrl(),
       apiKey: process.env.OLLAMA_API_KEY?.trim() || 'ollama',
       model,
     });
@@ -30,8 +32,4 @@ export class OllamaApiProvider implements ModelProvider {
   async generateText(input: TextGenerateInput): Promise<string> {
     return this.inner.generateText(input);
   }
-}
-
-export function ollamaApiBaseUrl(): string {
-  return ollamaBaseUrl();
 }

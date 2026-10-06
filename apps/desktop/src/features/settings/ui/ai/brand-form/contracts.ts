@@ -19,7 +19,6 @@ export interface AiBrandFormProps {
   testingCli: boolean;
   message: string;
   canSave: boolean;
-  isActive: boolean;
   onModeChange: (mode: AiConnectionMode) => void;
   onModelChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;

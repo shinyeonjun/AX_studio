@@ -26,6 +26,12 @@ export interface AxRuntimeApi {
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;
   onStateChanged: (listener: () => void) => () => void;
+  exportDiagnostics: () => Promise<
+    | { ok: true; path: string }
+    | { ok: false; canceled: true }
+    | { ok: false; error: string }
+  >;
+  openLogFolder: () => Promise<{ ok: true } | { ok: false; error: string }>;
   importArtifact: () => Promise<
     | { ok: true; artifact: { id: string; fileName: string; storedPath: string; sha256: string; size: number; createdAt: string } }
     | { ok: false; canceled: true }

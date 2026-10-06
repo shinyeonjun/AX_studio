@@ -2,6 +2,7 @@ import type { ExecutionLogEntry } from '../../connectors/types.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { ExecutionResult, WorkflowExecutionOptions } from '../types.js';
 import type { WorkflowExecutionHost } from './contracts.js';
+import { createExecutionLogWriter } from './log-writer.js';
 
 export function recordPreflightResult(
   host: WorkflowExecutionHost,
@@ -38,9 +39,9 @@ export function recordPreflightResult(
   }];
   host.config.store.finishExecution(executionId, status, errorCode, log);
   if (options.jobId) {
-    log.push({ at: new Date().toISOString(), level: 'info', code: 'execution_dequeued',
-      message: '접수한 작업의 실행 전 검사가 종료되었습니다.', data: { jobId: options.jobId, executionId } });
-    host.config.store.updateExecutionLog(executionId, log);
+    // finishExecution just stored exactly `log`, so only the new entry is appended.
+    createExecutionLogWriter(host.config.store, executionId, log, log.length)({ at: new Date().toISOString(), level: 'info',
+      code: 'execution_dequeued', message: '접수한 작업의 실행 전 검사가 종료되었습니다.', data: { jobId: options.jobId, executionId } });
   }
   const result: ExecutionResult = { executionId, status, errorCode, log };
   host.notifyExecutionFinished(result);

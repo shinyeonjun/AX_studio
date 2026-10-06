@@ -1,5 +1,6 @@
 import { AI_PROVIDER_UI_CATALOG } from '../../../../ui/constants/ai-providers';
 import type { AiBrandVerificationActionsInput } from './contracts';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
 export function createAiBrandVerificationActions({
   brand,
@@ -27,7 +28,7 @@ export function createAiBrandVerificationActions({
       setMessage(`${meta.cliLabel} 확인됨: ${result.command}${version}`);
       await refreshDetection();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'CLI 확인에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'CLI 확인에 실패했습니다.'));
     } finally {
       setTestingCli(false);
     }
@@ -49,7 +50,7 @@ export function createAiBrandVerificationActions({
       await refreshDetection();
       await onRefresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'API 연결 테스트에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'API 연결 테스트에 실패했습니다.'));
     } finally {
       setTesting(false);
     }

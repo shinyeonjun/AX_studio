@@ -7,8 +7,11 @@ import {
   deterministicHttpConnectionListChatReply,
   deterministicMetadataChatReply,
   deterministicWorkflowListChatReply,
+  compactSummaryTable,
+  formatTableArtifact,
   selectedColumnsFromHttpPath,
 } from './result.js';
+import { buildTableArtifact } from '../../../../contracts/artifacts/table-build.js';
 import { resultMessage } from './protocol.js';
 
 const httpGetCommand: AxCommand = {
@@ -380,5 +383,82 @@ describe('deterministicHttpConnectionListChatReply', () => {
       issues: [], inputRequests: [],
     }, 'HTTP 연결 중 missing을 찾아줘');
     expect(reply).toBe('조건에 맞는 HTTP 연결이 없습니다.');
+  });
+});
+
+describe('compactSummaryTable', () => {
+  it('prunes heavy columns and shortens long cell text to fit in summary evidence', () => {
+    const table = buildTableArtifact({
+      id: 'products',
+      headers: ['id', 'title', 'description', 'images', 'reviews', 'price', 'stock'],
+      matrix: [
+        [1, 'Product A', 'A'.repeat(300), ['https://img.example.test/1.png'], [{ rating: 5 }], 10, 99],
+        [2, 'Product B', 'Short description', ['https://img.example.test/2.png'], [], 20, 5],
+      ],
+    });
+
+    const compacted = compactSummaryTable(table);
+    const colNames = compacted.columns.map((c) => c.name);
+    expect(colNames).toContain('id');
+    expect(colNames).toContain('title');
+    expect(colNames).toContain('description');
+    expect(colNames).toContain('price');
+    expect(colNames).toContain('stock');
+    expect(colNames).not.toContain('images');
+    expect(colNames).not.toContain('reviews');
+
+    expect(String(compacted.rows[0]?.values.description)).toHaveLength(163); // 160 + '...'
+    expect(compacted.rows[0]?.values.description).toContain('...');
+    expect(compacted.rows[1]?.values.description).toBe('Short description');
+  });
+
+  it('applies column tiering to prune boilerplate columns when table has more than 5 columns', () => {
+    const table = buildTableArtifact({
+      id: 'products_wide',
+      headers: [
+        'id', 'title', 'category', 'price', 'discountPercentage', 'rating', 'stock',
+        'brand', 'sku', 'weight', 'warrantyInformation', 'shippingInformation',
+        'availabilityStatus', 'returnPolicy', 'minimumOrderQuantity',
+      ],
+      matrix: [
+        [1, 'Product 1', 'beauty', 9.99, 7.17, 4.94, 5, 'Essence', 'SKU1', 2, '1 month', 'Ships fast', 'In Stock', '30 days', 24],
+      ],
+    });
+
+    const compacted = compactSummaryTable(table);
+    const colNames = compacted.columns.map((c) => c.name);
+    expect(colNames).toContain('id');
+    expect(colNames).toContain('title');
+    expect(colNames).toContain('category');
+    expect(colNames).toContain('price');
+    expect(colNames).toContain('stock');
+    expect(colNames).toContain('brand');
+    expect(colNames).toContain('availabilityStatus');
+    expect(colNames).not.toContain('warrantyInformation');
+    expect(colNames).not.toContain('shippingInformation');
+    expect(colNames).not.toContain('returnPolicy');
+    expect(colNames).not.toContain('minimumOrderQuantity');
+    expect(colNames).not.toContain('sku');
+    expect(colNames).not.toContain('weight');
+  });
+
+  it('projects high-priority columns and drops boilerplate/description when formatting wide table', () => {
+    const table = buildTableArtifact({
+      id: 'products_wide',
+      headers: [
+        'id', 'title', 'description', 'category', 'price', 'discountPercentage',
+        'rating', 'stock', 'brand', 'sku', 'weight', 'warrantyInformation',
+      ],
+      matrix: [
+        [3, 'Powder Canister', 'The Powder Canister is a setting powder...', 'beauty', 14.99, 10.5, 4.79, 87, 'Essence', 'SKU3', 1, '1 month'],
+      ],
+    });
+
+    const markdown = formatTableArtifact(table);
+    expect(markdown).toContain('| id | title | category | rating | price | stock |');
+    expect(markdown).toContain('| 3 | Powder Canister | beauty | 4.79 | 14.99 | 87 |');
+    expect(markdown).not.toContain('description');
+    expect(markdown).not.toContain('warrantyInformation');
+    expect(markdown).not.toContain('SKU3');
   });
 });

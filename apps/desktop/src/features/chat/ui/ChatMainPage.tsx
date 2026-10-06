@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { Node } from '@xyflow/react';
 import type { useWorkspaceChat } from '../hooks/useWorkspaceChat';
 import { useDiscovery } from '../hooks/useDiscovery';
@@ -21,9 +21,11 @@ type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
 interface ChatMainPageProps {
   workspaceChat: WorkspaceChatApi;
+  /** Host-level setup notice (e.g. Jev not connected) shown above the conversation. */
+  setupNotice?: ReactNode;
 }
 
-export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
+export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) {
   const discovery = useDiscovery({
     workspaceContextKey: workspaceChat.workspaceContextKey,
     onPublished: async () => {
@@ -39,7 +41,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
   const toolResult = selectedIndex >= 0 ? results[selectedIndex] : results.at(-1);
   useEffect(() => { setSelectedResult(undefined); }, [workspaceChat.workspaceContextKey]);
   useEffect(() => { setShowContext(false); }, [workspaceChat.workspaceContextKey, toolResult?.approval?.id, toolResult?.readResult?.id]);
-  const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, resetWidth } =
+  const { width: workflowPanelWidth, isResizing, onSplitterPointerDown, onSplitterKeyDown, resetWidth } =
     useWorkflowPanelWidth();
 
   const handleSelectNode = useCallback((node: Node<WorkflowVisualNodeData> | null) => {
@@ -90,6 +92,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
 
   const chatBlock = (
     <div className="work-conversation-chat">
+      {setupNotice}
       {workspaceChat.editHint && (
         <div className="chat-edit-hint">
           <span>{workspaceChat.editHint}</span>
@@ -146,6 +149,7 @@ export function ChatMainPage({ workspaceChat }: ChatMainPageProps) {
         isResizing={isResizing}
         onSplitterPointerDown={onSplitterPointerDown}
         onSplitterDoubleClick={resetWidth}
+        onSplitterKeyDown={onSplitterKeyDown}
         resultVisible={Boolean(toolResult)}
         chat={chatBlock}
         panel={

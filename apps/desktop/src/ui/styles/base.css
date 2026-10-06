@@ -61,7 +61,6 @@
 }
 
 .scrollbar-overlay,
-.chat-thread,
 .page-content,
 .workspace-sidebar-panel,
 .sidebar-session-list {
@@ -70,7 +69,6 @@
 }
 
 .scrollbar-overlay:hover,
-.chat-thread:hover,
 .page-content:hover,
 .workspace-sidebar-panel:hover,
 .sidebar-session-list:hover {
@@ -78,7 +76,6 @@
 }
 
 .scrollbar-overlay::-webkit-scrollbar,
-.chat-thread::-webkit-scrollbar,
 .page-content::-webkit-scrollbar,
 .workspace-sidebar-panel::-webkit-scrollbar,
 .sidebar-session-list::-webkit-scrollbar {
@@ -87,7 +84,6 @@
 }
 
 .scrollbar-overlay::-webkit-scrollbar-thumb,
-.chat-thread::-webkit-scrollbar-thumb,
 .page-content::-webkit-scrollbar-thumb,
 .workspace-sidebar-panel::-webkit-scrollbar-thumb,
 .sidebar-session-list::-webkit-scrollbar-thumb {
@@ -96,7 +92,6 @@
 }
 
 .scrollbar-overlay:hover::-webkit-scrollbar-thumb,
-.chat-thread:hover::-webkit-scrollbar-thumb,
 .page-content:hover::-webkit-scrollbar-thumb,
 .workspace-sidebar-panel:hover::-webkit-scrollbar-thumb,
 .sidebar-session-list:hover::-webkit-scrollbar-thumb {

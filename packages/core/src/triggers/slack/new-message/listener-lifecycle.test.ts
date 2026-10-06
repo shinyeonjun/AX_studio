@@ -10,6 +10,27 @@ vi.mock('@slack/web-api', () => ({
 }));
 
 describe('SlackSocketModeListener lifecycle', () => {
+  it('finishes stop even when the Slack SDK never completes disconnect', async () => {
+    vi.useFakeTimers();
+    try {
+      const client = Object.assign(new EventEmitter(), {
+        start: vi.fn(async () => undefined),
+        disconnect: vi.fn(() => new Promise<void>(() => {})),
+        websocket: { isActive: () => true },
+      });
+      const listener = new SlackSocketModeListener({ createClient: () => client as unknown as SocketModeClient });
+      await listener.start('bot', 'app', () => undefined);
+      let stopped = false;
+      const stopping = listener.stop().then(() => { stopped = true; });
+      await vi.advanceTimersByTimeAsync(2_000);
+      await stopping;
+      expect(stopped).toBe(true);
+      expect(client.disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('preserves the newest connection when an older disconnect finishes late', async () => {
     let finishDisconnect!: () => void;
     const clients: EventEmitter[] = [];

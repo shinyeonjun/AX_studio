@@ -1,4 +1,4 @@
-import type { AiBrand, AiConnectionMode, AiProviderId } from './ai-provider-id.js';
+import { isAiProviderId, type AiBrand, type AiConnectionMode } from './ai-provider-id.js';
 import {
   getBrandApiModels,
   getBrandCliFallbackModels,
@@ -17,22 +17,12 @@ export {
   type CliModelOption,
 } from './catalog.js';
 export { resolveClaudeCliModelId } from './providers/claude/meta.js';
-export type { AiBrand, AiConnectionMode, AiProviderId } from './ai-provider-id.js';
-
-const KNOWN_PROVIDERS = [
-  'codex-cli',
-  'claude-cli',
-  'cursor-cli',
-  'openai-api',
-  'anthropic-api',
-  'grok-api',
-  'ollama-api',
-] as const;
+export type { AiBrand, AiConnectionMode, AiProviderId, CliProviderId } from './ai-provider-id.js';
 
 export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand | null {
   if (brand) return brand;
-  if (!provider || !(KNOWN_PROVIDERS as readonly string[]).includes(provider)) return null;
-  return resolveAiBrand({ provider: provider as AiProviderId });
+  if (!isAiProviderId(provider)) return null;
+  return resolveAiBrand({ provider });
 }
 
 export function modelsForBrand(

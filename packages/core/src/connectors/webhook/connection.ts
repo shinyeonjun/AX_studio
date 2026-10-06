@@ -66,3 +66,5 @@ export function getWebhookConnectionStatus(config: unknown, connected: boolean):
     lastError: parsed.lastError,
   };
 }
+
+export { WEBHOOK_MIN_SECRET_LENGTH, isWebhookSecretStrong } from '../../triggers/webhook/security.js';

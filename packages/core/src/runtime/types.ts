@@ -16,6 +16,15 @@ export interface RuntimeConfig {
   onExecutionStarted?: (executionId: string) => void;
   onExecutionProgress?: (progress: ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;
+  /** An ephemeral job failed before any execution record could be written. */
+  onEphemeralJobFailed?: (jobId: string, error: unknown) => void;
+  /**
+   * Pending approvals older than this expire and can no longer be approved.
+   * The host passes DEFAULT_APPROVAL_TTL_MS (72h); undefined disables expiry.
+   */
+  approvalTtlMs?: number;
+  /** Per-step deadline for connector/AI steps (default DEFAULT_STEP_TIMEOUT_MS, 10 min). */
+  stepTimeoutMs?: number;
 }
 
 export type ExecutionProgressStatus =

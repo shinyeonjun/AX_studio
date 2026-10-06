@@ -3,6 +3,7 @@ import type { AppState } from '../types/app-state';
 import type { SidebarTab } from '../types/navigation';
 import type { useWorkspaceChat } from '../features/chat/hooks/useWorkspaceChat';
 import { ChatMainPage } from '../features/chat/ui/ChatMainPage';
+import { JevSetupNotice } from '../features/chat/ui/workspace/JevSetupNotice';
 
 const ActivityPage = lazy(() =>
   import('../features/activity/ui/ActivityPage').then(({ ActivityPage }) => ({ default: ActivityPage })),
@@ -22,6 +23,7 @@ interface AppMainContentProps {
   settingsPage: ReactNode;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
+  onOpenJevSettings: () => void;
 }
 
 export function AppMainContent({
@@ -33,6 +35,7 @@ export function AppMainContent({
   settingsPage,
   onApprove,
   onReject,
+  onOpenJevSettings,
 }: AppMainContentProps) {
   if (tab === 'activity') {
     return (
@@ -69,5 +72,10 @@ export function AppMainContent({
       )
     );
   }
-  return <ChatMainPage workspaceChat={workspaceChat} />;
+  return (
+    <ChatMainPage
+      workspaceChat={workspaceChat}
+      setupNotice={<JevSetupNotice state={state} onOpenJevSettings={onOpenJevSettings} />}
+    />
+  );
 }

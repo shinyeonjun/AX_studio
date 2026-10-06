@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmRemoveLocalFolder } from '../../../../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 export interface LocalFolderConnectionFormProps {
   state: AppState | null;
@@ -45,7 +46,7 @@ export function useLocalFolderConnectionForm({
         setLabelDraft(parts[parts.length - 1] ?? result.path);
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '폴더 선택에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '폴더 선택에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -64,7 +65,7 @@ export function useLocalFolderConnectionForm({
       setSelectedPath('');
       setLabelDraft('');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '폴더 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '폴더 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -81,7 +82,7 @@ export function useLocalFolderConnectionForm({
       await onRemoveFolder(folderId);
       setMessage('폴더 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '폴더 연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '폴더 연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }

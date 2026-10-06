@@ -21,20 +21,50 @@ export function approvalParamsHash(params: Record<string, unknown>): string {
     .digest('hex');
 }
 
-function redact(value: unknown, key?: string, depth = 0): unknown {
+/** A display field shortened for the approval snapshot; the hash still covers the full value. */
+export interface ApprovalSnapshotTruncation {
+  path: string;
+  /** Original string length, array item count, or object key count. */
+  originalLength: number;
+}
+
+function redact(value: unknown, truncations: ApprovalSnapshotTruncation[], path: string, key?: string, depth = 0): unknown {
   if (key && SENSITIVE_KEY.test(key)) return '[redacted]';
   if (typeof value === 'string') {
-    return value.length > MAX_SNAPSHOT_STRING ? `${value.slice(0, MAX_SNAPSHOT_STRING)}…` : value;
+    if (value.length <= MAX_SNAPSHOT_STRING) return value;
+    truncations.push({ path, originalLength: value.length });
+    return `${value.slice(0, MAX_SNAPSHOT_STRING)}…`;
   }
   if (value === null || typeof value !== 'object' || depth >= 4) return value;
-  if (Array.isArray(value)) return value.slice(0, MAX_SNAPSHOT_ITEMS).map((item) => redact(item, undefined, depth + 1));
+  if (Array.isArray(value)) {
+    if (value.length > MAX_SNAPSHOT_ITEMS) truncations.push({ path, originalLength: value.length });
+    return value.slice(0, MAX_SNAPSHOT_ITEMS).map((item, index) => redact(item, truncations, `${path}[${index}]`, undefined, depth + 1));
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length > MAX_SNAPSHOT_KEYS) truncations.push({ path, originalLength: entries.length });
   return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
+    entries
       .slice(0, MAX_SNAPSHOT_KEYS)
-      .map(([entryKey, entry]) => [entryKey, redact(entry, entryKey, depth + 1)]),
+      .map(([entryKey, entry]) => [entryKey, redact(entry, truncations, path ? `${path}.${entryKey}` : entryKey, entryKey, depth + 1)]),
   );
 }
 
 export function redactedApprovalParams(params: Record<string, unknown>): Record<string, unknown> {
-  return redact(params) as Record<string, unknown>;
+  return redactedApprovalSnapshot(params).params;
+}
+
+/**
+ * Display copy of approval params. Shortened fields are reported explicitly so a
+ * reviewer is never shown a silently cut payload while paramsHash covers all of it.
+ */
+export function redactedApprovalSnapshot(params: Record<string, unknown>): {
+  params: Record<string, unknown>;
+  truncated?: true;
+  truncatedFields?: ApprovalSnapshotTruncation[];
+} {
+  const truncations: ApprovalSnapshotTruncation[] = [];
+  const redacted = redact(params, truncations, '') as Record<string, unknown>;
+  return truncations.length > 0
+    ? { params: redacted, truncated: true, truncatedFields: truncations }
+    : { params: redacted };
 }

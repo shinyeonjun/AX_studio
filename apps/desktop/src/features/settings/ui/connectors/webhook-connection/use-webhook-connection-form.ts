@@ -2,8 +2,31 @@ import { useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { connectionEntry } from '../../../../../ui/lib/connection-display';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 const DEFAULT_WEBHOOK_PORT = '18789';
+/** Mirrors core WEBHOOK_MIN_SECRET_LENGTH; the main process enforces it again. */
+export const WEBHOOK_MIN_SECRET_LENGTH = 32;
+const RANDOM_SECRET_BYTES = 32;
+
+/** 32 random bytes from the Web Crypto CSPRNG, base64url-encoded (43 chars, no padding). */
+export function generateWebhookSecret(): string {
+  const bytes = new Uint8Array(RANDOM_SECRET_BYTES);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
+}
+
+/** Client-side check matching the main-process rule; empty is allowed only to keep a stored secret. */
+export function webhookSecretError(secret: string, connected: boolean): string | undefined {
+  const trimmed = secret.trim();
+  if (!trimmed) return connected ? undefined : '공유 비밀을 입력하거나 무작위 생성 버튼을 눌러 주세요.';
+  if (trimmed.length < WEBHOOK_MIN_SECRET_LENGTH) {
+    return `공유 비밀은 최소 ${WEBHOOK_MIN_SECRET_LENGTH}자 이상이어야 합니다. (현재 ${trimmed.length}자)`;
+  }
+  return undefined;
+}
 
 export interface WebhookConnectionFormProps {
   state: AppState | null;
@@ -28,6 +51,7 @@ export function useWebhookConnectionForm({
   const [tunnelUrl, setTunnelUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [secretVisible, setSecretVisible] = useState(false);
 
   const loadFromConnection = () => {
     if (!webhookEntry?.connected) return;
@@ -35,6 +59,7 @@ export function useWebhookConnectionForm({
     setLabel(webhookEntry.label ?? '');
     setTunnelUrl(webhookEntry.tunnelUrl ?? '');
     setSecret('');
+    setSecretVisible(false);
     setMessage('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -57,6 +82,11 @@ export function useWebhookConnectionForm({
       setMessage('포트 번호가 올바르지 않습니다.');
       return;
     }
+    const secretProblem = webhookSecretError(secret, connected);
+    if (secretProblem) {
+      setMessage(secretProblem);
+      return;
+    }
     setBusy(true);
     setMessage('');
     try {
@@ -68,8 +98,9 @@ export function useWebhookConnectionForm({
       });
       setMessage('Webhook 리스너가 시작되었습니다.');
       setSecret('');
+      setSecretVisible(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Webhook 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Webhook 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -83,10 +114,17 @@ export function useWebhookConnectionForm({
       await onDisconnect();
       setMessage('Webhook 리스너가 중지되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
+  };
+
+  const generateSecret = () => {
+    setSecret(generateWebhookSecret());
+    // Show the generated value once so it can be copied into the sending service.
+    setSecretVisible(true);
+    setMessage('');
   };
 
   return {
@@ -96,6 +134,10 @@ export function useWebhookConnectionForm({
     setPort,
     secret,
     setSecret,
+    secretVisible,
+    setSecretVisible,
+    generateSecret,
+    secretError: secret.trim() ? webhookSecretError(secret, connected) : undefined,
     label,
     setLabel,
     tunnelUrl,

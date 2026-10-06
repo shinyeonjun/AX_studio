@@ -23,9 +23,13 @@ export function presentationFromResult(
   commandName: string,
   result: AxCommandResult,
 ): AxUiPresentation | undefined {
-  if (commandName !== 'ui.present' && commandName !== 'job.propose' && commandName !== 'execution.enqueue_once') {
+  const confirmedMutation = commandName === 'workflow.run' || commandName === 'workflow.update'
+    || commandName === 'workflow.delete' || commandName === 'repair.apply';
+  if (commandName !== 'ui.present' && commandName !== 'job.propose' && commandName !== 'execution.enqueue_once'
+    && !confirmedMutation) {
     return undefined;
   }
+  if (confirmedMutation && result.status !== 'needs_input') return undefined;
   if (commandName === 'ui.present' && result.status !== 'ok') return undefined;
   if (commandName === 'job.propose' && result.status !== 'ok' && result.status !== 'needs_input') return undefined;
   if (commandName === 'execution.enqueue_once' && result.status !== 'needs_input') return undefined;
@@ -92,12 +96,50 @@ export function selectedColumnsFromHttpPath(params: unknown): string[] | undefin
   return [...new Set(columns)];
 }
 
+const TABLE_PRUNED_COLUMNS = new Set([
+  'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',
+  'reviews', 'dimensions', 'meta',
+  'warrantyinformation', 'shippinginformation', 'returnpolicy',
+  'minimumorderquantity', 'sku', 'barcode', 'qrcode', 'weight',
+  'depth', 'width', 'height', 'createdat', 'updatedat', 'deletedat',
+  'tags', 'slug', 'description',
+]);
+
+const HIGH_PRIORITY_COLUMNS = [
+  'id', 'title', 'name', 'label', 'category', 'type', 'rating', 'score',
+  'price', 'cost', 'amount', 'stock', 'quantity', 'brand', 'status', 'state',
+];
+
 function selectAvailableColumns(
   headers: readonly string[],
   requested?: readonly string[],
 ): string[] {
   const selected = [...new Set(requested ?? [])].filter((header) => headers.includes(header));
-  return selected.length > 0 ? selected : [...headers];
+  if (selected.length > 0) return selected;
+  if (headers.length <= 6) return [...headers];
+
+  const hasHighPriority = headers.some((h) => HIGH_PRIORITY_COLUMNS.includes(h.toLowerCase()));
+  const hasPruned = headers.some((h) => TABLE_PRUNED_COLUMNS.has(h.toLowerCase().replace(/[-_]/g, '')));
+
+  if (hasHighPriority || hasPruned) {
+    const filtered = headers.filter((h) => {
+      const norm = h.toLowerCase().replace(/[-_]/g, '');
+      return !TABLE_PRUNED_COLUMNS.has(norm);
+    });
+
+    const base = filtered.length >= 3 ? filtered : headers;
+    const prioritized = base.slice().sort((a, b) => {
+      const idxA = HIGH_PRIORITY_COLUMNS.indexOf(a.toLowerCase());
+      const idxB = HIGH_PRIORITY_COLUMNS.indexOf(b.toLowerCase());
+      const rankA = idxA >= 0 ? idxA : 99;
+      const rankB = idxB >= 0 ? idxB : 99;
+      return rankA - rankB;
+    });
+
+    return prioritized.slice(0, 6);
+  }
+
+  return [...headers];
 }
 
 const MAX_CHAT_TABLE_ROWS = 100;
@@ -127,11 +169,17 @@ function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly strin
   ];
   if (headers.length < allHeaders.length) {
     lines.push('', `화면에는 전체 ${allHeaders.length}열 중 처음 ${headers.length}열만 표시했습니다.`);
+  } else if (!requestedColumns?.length && headers.length < table.columns.length) {
+    // Columns pruned for readability are disclosed so follow-ups never treat the view as complete.
+    lines.push('', `화면에는 전체 ${table.columns.length}열 중 주요 ${headers.length}열만 표시했습니다.`);
   }
   if (rows.length < table.rows.length) {
     lines.push('', `화면에는 전체 ${table.rows.length}행 중 처음 ${rows.length}행만 표시했습니다.`);
   }
-  if (table.truncated || table.completeness?.status !== 'complete') {
+  if (table.completeness?.reason === 'provider_limit') {
+    const page = table.completeness.observedCount;
+    lines.push('', `API가 전체 데이터 중 한 페이지${page ? `(${page}행)` : ''}만 돌려줬습니다. 정렬·순위는 이 페이지 안에서만 계산한 결과입니다.`);
+  } else if (table.truncated || table.completeness?.status !== 'complete') {
     lines.push('', '응답이 일부만 포함되어 있습니다.');
   }
   if (coverageWarning) lines.push('', coverageWarning);
@@ -166,6 +214,56 @@ export function boundedChatReadResult(table: TableArtifact): TableArtifact | und
     ...(table.coverage ? { coverage: table.coverage } : {}),
   };
   return new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 64_000 ? bounded : undefined;
+}
+
+const SUMMARY_BOILERPLATE_COLUMNS = new Set([
+  'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',
+  'reviews', 'dimensions', 'meta',
+  'warrantyinformation', 'shippinginformation', 'returnpolicy',
+  'minimumorderquantity', 'sku', 'barcode', 'qrcode', 'weight',
+  'depth', 'width', 'height', 'createdat', 'updatedat', 'deletedat',
+]);
+
+/** Compact table artifact for LLM summary evidence, removing heavy nested columns and shortening long strings. */
+export function compactSummaryTable(table: TableArtifact): TableArtifact {
+  const hasScalarColumns = table.columns.some((col) =>
+    ['string', 'number', 'integer', 'boolean', 'currency', 'percentage'].includes(col.type));
+
+  let preservedColumns = table.columns;
+  if (hasScalarColumns) {
+    preservedColumns = table.columns.filter((col) => {
+      const normalized = col.name.toLowerCase().replace(/[-_]/g, '');
+      if (table.columns.length > 5 && SUMMARY_BOILERPLATE_COLUMNS.has(normalized)) {
+        return false;
+      }
+      return !['images', 'thumbnail', 'reviews', 'dimensions', 'meta'].includes(normalized);
+    });
+  }
+
+  const compactRows = table.rows.map((row) => {
+    const newValues: TableArtifact['rows'][number]['values'] = {};
+    for (const col of preservedColumns) {
+      let val = row.values[col.name];
+      if (typeof val === 'string') {
+        const limit = preservedColumns.length > 6 ? 120 : 160;
+        if (val.length > limit) {
+          val = `${val.slice(0, limit)}...`;
+        }
+      }
+      if (val === null || typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+        newValues[col.name] = val;
+      } else {
+        newValues[col.name] = null;
+      }
+    }
+    return { ...row, values: newValues };
+  });
+
+  return {
+    ...table,
+    columns: preservedColumns,
+    rows: compactRows,
+  };
 }
 
 function httpTableForTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {

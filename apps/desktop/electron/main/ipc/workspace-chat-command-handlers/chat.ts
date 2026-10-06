@@ -42,7 +42,14 @@ import {
   replaceClaimedPendingCommand,
   type PendingCommandInputValue,
 } from './pending-command.js';
-import { contextUpdateConfirmation as findContextUpdateConfirmation, isJobConfirmation, workflowIdsChanged } from './helpers.js';
+import {
+  contextUpdateConfirmation as findContextUpdateConfirmation,
+  hasContextConfirmation,
+  isJobConfirmation,
+  mutationConfirmationToken as findMutationConfirmationToken,
+  workflowIdsChanged,
+} from './helpers.js';
+import { bindContextConfirmations, hostReadResultFor, rememberHostReadResult } from './host-state.js';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
 
 type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
@@ -106,7 +113,8 @@ export function registerWorkspaceChatMessageHandler() {
     if (metadataLane) {
       const metadataRequestId = requestId as string;
       if (pendingInput || requestMessages.at(-2)?.inputContinuation === 'command'
-        || findContextUpdateConfirmation(requestMessages, userMessage) || isJobConfirmation(requestMessages, userMessage)) {
+        || hasContextConfirmation(requestMessages, userMessage) || isJobConfirmation(requestMessages, userMessage)
+        || findMutationConfirmationToken(requestMessages, userMessage)) {
         return metadataTerminalReply(metadataRequestId, 'continuation_not_supported', '입력 또는 명령 확인 이어가기는 이 메타데이터 경로에서 지원하지 않습니다. 새 요청을 저장해 주세요.');
       }
       return runRegisteredHttpMetadataTurn({ store: core.store, commandService: core.commandService, harness: core.agentHarness,
@@ -149,15 +157,17 @@ export function registerWorkspaceChatMessageHandler() {
         return outputs.map(({ from, port, type }) => ({ from, output: port, type, capabilityId }));
       }),
     ] : undefined;
-    const confirmedContextUpdate = findContextUpdateConfirmation(requestMessages, userMessage);
+    // Confirmation payloads and tokens are verified host-side; the transcript only names them.
+    const confirmedContextUpdate = findContextUpdateConfirmation(requestMessages, userMessage, safeWorkspaceSessionId);
     const jobCommitConfirmationToken = isJobConfirmation(requestMessages, userMessage);
     const jobCommitConfirmed = Boolean(jobCommitConfirmationToken);
+    const mutationConfirmationToken = jobCommitConfirmed
+      ? undefined
+      : findMutationConfirmationToken(requestMessages, userMessage);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
     const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
-    const immediatelyPreviousAssistant = requestMessages.at(-2);
-    const previousReadResult = immediatelyPreviousAssistant?.role === 'assistant'
-      ? immediatelyPreviousAssistant.readResult
-      : undefined;
+    // Rows come from the host cache of what it displayed, never from the renderer-saved transcript.
+    const previousReadResult = hostReadResultFor(safeWorkspaceSessionId, requestMessages);
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);
@@ -167,6 +177,7 @@ export function registerWorkspaceChatMessageHandler() {
     let inputRequests: AxInputRequest[] = [];
     const presentations: AxUiPresentation[] = [];
     let readResult: TableArtifact | undefined;
+    let readResultReported = false;
     let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
       request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor } | undefined;
     let acceptedRequestAnchor: AuthoritativeRequestAnchor | undefined;
@@ -282,6 +293,7 @@ export function registerWorkspaceChatMessageHandler() {
         contextUpdateConfirmation: confirmedContextUpdate,
         allowJobCommit: jobCommitConfirmed,
         jobCommitConfirmationToken,
+        ...(mutationConfirmationToken ? { mutationConfirmationToken } : {}),
         workspaceSessionId: safeWorkspaceSessionId,
         resolveWorkspaceSources: () => safeWorkspaceSessionId
           ? core.workspaceSources.list(safeWorkspaceSessionId)
@@ -349,6 +361,7 @@ export function registerWorkspaceChatMessageHandler() {
           }
         },
         onReadResult: (table) => {
+          readResultReported = true;
           if (!table) {
             readResult = undefined;
             return;
@@ -361,6 +374,7 @@ export function registerWorkspaceChatMessageHandler() {
         },
       });
       outcome = 'success';
+      if (readResultReported) rememberHostReadResult(safeWorkspaceSessionId, readResult);
       return {
         role: 'assistant' as const,
         content: reply,
@@ -370,7 +384,7 @@ export function registerWorkspaceChatMessageHandler() {
         ...(pendingInputRequestToken ? { inputContinuation: 'command' as const } : {}),
         ...(readResult ? { readResult } : {}),
         inputRequests,
-        presentations,
+        presentations: bindContextConfirmations(safeWorkspaceSessionId, presentations),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message.trim() : String(error);

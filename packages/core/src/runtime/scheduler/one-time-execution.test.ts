@@ -8,7 +8,7 @@ describe('Scheduler', () => {
     vi.useRealTimers();
   });
 
-  it('does not consume a one-time job when its execution fails', async () => {
+  it('deactivates a failed one-time job instead of retrying it every tick', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     store.saveWorkflow({
@@ -41,14 +41,46 @@ describe('Scheduler', () => {
 
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+    // Re-armed but inactive: only an explicit reactivation runs it again.
     expect(store.getSetting('scheduler.lastFired:once-workflow', null)).toBeNull();
-    expect(store.listWorkflows()[0]?.active).toBe(true);
+    expect(store.listWorkflows()[0]?.active).toBe(false);
+    expect(store.getSetting('scheduler.lastOutcome:once-workflow', null)).toMatchObject({ status: 'failed' });
 
+    await tick();
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+
+    store.setWorkflowActive('once-workflow', true);
     await tick();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
     // deleteWorkflow prunes the workflow-keyed scheduler/trigger settings.
     expect(store.getSetting('scheduler.lastFired:once-workflow', null)).toBeNull();
     expect(store.getWorkflow('once-workflow')).toBeNull();
+  });
+
+  it('skips a one-time job that is more than 24 hours late', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({
+      id: 'once-stale', name: '오래된 예약', goal: '너무 늦은 일회성 작업은 건너뜀', version: 1, inputs: [],
+      trigger: { type: 'once', runAt: new Date(Date.now() - 25 * 60 * 60 * 1_000).toISOString() },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+    });
+    store.setWorkflowActive('once-stale', true);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })), removeWorkflow: vi.fn() };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const scheduler = new Scheduler(store, runtime as never);
+    const tick = (scheduler as unknown as { tick(): Promise<void> }).tick.bind(scheduler);
+
+    try {
+      await tick();
+      expect(runtime.executeWorkflow).not.toHaveBeenCalled();
+      expect(store.listWorkflows()[0]?.active).toBe(false);
+      expect(store.getSetting('scheduler.lastOutcome:once-stale', null))
+        .toMatchObject({ status: 'skipped', reason: 'max_lateness_exceeded' });
+    } finally {
+      warn.mockRestore();
+      db.close?.();
+    }
   });
 
   it('does not start the same one-time job from overlapping ticks', async () => {
@@ -90,7 +122,9 @@ describe('Scheduler', () => {
     finishExecution({ status: 'failed' });
     await firstTick;
     await tick();
-    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+    // A failed one-time run is surfaced and deactivated, never retried automatically.
+    expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+    expect(store.listWorkflows()[0]?.active).toBe(false);
   });
 
   it('blocks workflow writes while removing a completed one-time workflow', async () => {

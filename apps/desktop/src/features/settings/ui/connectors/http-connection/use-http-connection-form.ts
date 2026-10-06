@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 import { httpConnectedItemsFor, httpEndpointsFor } from './model';
 import type { HttpAuthType, HttpConnectedItem } from './model';
 
-export type { HttpAuthType, HttpConnectedItem, HttpEndpoint } from './model';
+export type { HttpAuthType } from './model';
 
 export interface HttpConnectionFormProps {
   state: AppState | null;
@@ -88,7 +89,7 @@ export function useHttpConnectionForm({
       setMessage(endpointId ? 'HTTP API를 수정했습니다.' : 'HTTP API가 연결되었습니다.');
       resetForm();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'HTTP 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'HTTP 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -104,7 +105,7 @@ export function useHttpConnectionForm({
       setMessage('HTTP 연결이 해제되었습니다.');
       if (!id || id === endpointId) resetForm();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }

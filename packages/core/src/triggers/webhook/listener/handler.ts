@@ -3,12 +3,15 @@ import { randomUUID } from 'node:crypto';
 import type { TriggerEvent } from '../../types.js';
 import {
   WEBHOOK_MAX_PAYLOAD_BYTES,
+  WebhookAuthFailureLimiter,
   WebhookReplayCache,
+  isWebhookTimestampFresh,
   normalizeWebhookPath,
   verifyWebhookAuth,
 } from '../security.js';
 import type { WebhookEventHandler, WebhookListenerOptions } from './contracts.js';
 import {
+  authClientKey,
   forwardedHeaders,
   providerEventId,
   readRequestBody,
@@ -24,6 +27,7 @@ export async function handleWebhookRequest(
   onEvent: WebhookEventHandler,
   abortSignal?: AbortSignal,
   replayCache?: WebhookReplayCache,
+  authLimiter?: WebhookAuthFailureLimiter,
 ): Promise<void> {
   try {
     if (abortSignal?.aborted) return;
@@ -58,6 +62,14 @@ export async function handleWebhookRequest(
       return;
     }
 
+    const clientKey = authClientKey(req);
+    const retryAfterMs = authLimiter?.retryAfterMs(clientKey) ?? 0;
+    if (retryAfterMs > 0) {
+      res.setHeader('retry-after', String(Math.ceil(retryAfterMs / 1_000)));
+      rejectRequest(req, res, 429, 'too_many_failed_attempts');
+      return;
+    }
+
     const contentLength = Number(req.headers['content-length']);
     if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_PAYLOAD_BYTES) {
       rejectRequest(req, res, 413, 'payload_too_large');
@@ -69,8 +81,18 @@ export async function handleWebhookRequest(
     const requestId = providerEventId(req) ?? randomUUID();
     const timestamp = typeof req.headers['x-ax-timestamp'] === 'string' ? req.headers['x-ax-timestamp'] : undefined;
     const signature = typeof req.headers['x-ax-signature'] === 'string' ? req.headers['x-ax-signature'] : undefined;
-    if (signature && (!timestamp || !providerEventId(req))) {
+    const unauthorized = () => {
+      authLimiter?.recordFailure(clientKey);
       respond(res, 401, 'unauthorized');
+    };
+    if (signature && (!timestamp || !providerEventId(req))) {
+      unauthorized();
+      return;
+    }
+    // Static shared-secret mode (deprecated in favour of HMAC) cannot prove
+    // freshness, but a caller that sends a timestamp must send a fresh one.
+    if (!signature && timestamp !== undefined && !isWebhookTimestampFresh(timestamp)) {
+      unauthorized();
       return;
     }
     if (!verifyWebhookAuth(requestHeaders(req), options.secret, rawBody, signature ? {
@@ -79,9 +101,10 @@ export async function handleWebhookRequest(
       eventId: requestId,
       timestamp: timestamp!,
     } : undefined)) {
-      respond(res, 401, 'unauthorized');
+      unauthorized();
       return;
     }
+    authLimiter?.recordSuccess(clientKey);
 
     const replayKey = signature && replayCache ? `${requestId}:${signature}` : undefined;
     if (replayKey && !replayCache!.claim(replayKey)) {

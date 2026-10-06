@@ -12,6 +12,20 @@ import type {
 import { WorkflowExecutionRunner } from './execution/runner.js';
 import { ToolSendOutcomeSchema, type ToolDraftUpdate, type ToolReviewRequest, type ToolResultConfirmation } from '../contracts/tool-result.js';
 import { ToolResultApprovals, requiresToolResultReview } from './tool-result-approval.js';
+import { expireStaleApprovals, reconcileInterruptedExecutions } from './recovery.js';
+
+export { DEFAULT_APPROVAL_TTL_MS } from './recovery.js';
+export { DEFAULT_STEP_TIMEOUT_MS } from './execution/deadline.js';
+
+/** Trigger runs that wait behind an active run of the same workflow. Beyond this they are rejected. */
+export const MAX_QUEUED_RUNS_PER_WORKFLOW = 32;
+
+function workflowRunError(code: 'workflow_already_running' | 'workflow_run_queue_full'): Error {
+  const message = code === 'workflow_already_running'
+    ? '이 워크플로우는 이미 실행 중입니다. 현재 실행이 끝난 뒤 다시 시도하세요.'
+    : '이 워크플로우의 대기 중인 실행이 너무 많아 새 실행을 건너뜁니다.';
+  return Object.assign(new Error(message), { code });
+}
 
 /**
  * Public lifecycle facade for workflow execution.
@@ -27,6 +41,8 @@ export class WorkflowRuntime {
   private accepting = true;
   private idleWaiters: Array<() => void> = [];
   private readonly activeWorkflowRuns = new Map<string, Set<AbortController>>();
+  /** At most one run (including approval continuations) per saved workflow. */
+  private readonly workflowRunSlots = new Map<string, { waiters: Array<() => void> }>();
   private readonly workflowIdleWaiters = new Map<string, Array<() => void>>();
   private readonly removedWorkflowIds = new Map<string, undefined>();
   private ephemeralQueueTail: Promise<void> = Promise.resolve();
@@ -44,45 +60,118 @@ export class WorkflowRuntime {
       notifyExecutionProgress: (progress) => this.notifyExecutionProgress(progress),
       notifyExecutionFinished: (result) => this.notifyExecutionFinished(result),
     });
+    // No run is live yet: anything still open belongs to a previous process.
+    try {
+      reconcileInterruptedExecutions(config.store);
+    } catch (error) {
+      console.error('[runtime] startup reconciliation failed:', error);
+    }
+    this.expireStaleApprovals();
+  }
+
+  /** Expires pending approvals past their TTL. Called at startup and periodically by the scheduler. */
+  expireStaleApprovals(now = Date.now()): ExecutionResult[] {
+    const ttlMs = this.config.approvalTtlMs;
+    if (ttlMs === undefined) return [];
+    let expired: ReturnType<typeof expireStaleApprovals> = [];
+    try {
+      expired = expireStaleApprovals(this.config.store, ttlMs, now);
+    } catch (error) {
+      console.error('[runtime] approval expiry failed:', error);
+    }
+    for (const { approvalId, result } of expired) {
+      this.toolResults.discard(approvalId);
+      this.notifyExecutionFinished(result);
+    }
+    return expired.map(({ result }) => result);
+  }
+
+  /** True while a run or approval continuation of this workflow is in flight. */
+  isWorkflowRunning(workflowId: string): boolean {
+    return this.workflowRunSlots.has(workflowId);
+  }
+
+  private async acquireWorkflowRunSlot(workflowId: string, queue: boolean): Promise<() => void> {
+    const existing = this.workflowRunSlots.get(workflowId);
+    if (existing) {
+      if (!queue) throw workflowRunError('workflow_already_running');
+      if (existing.waiters.length >= MAX_QUEUED_RUNS_PER_WORKFLOW) {
+        console.warn(`[runtime] skipped run for workflow ${workflowId}: run queue is full`);
+        throw workflowRunError('workflow_run_queue_full');
+      }
+      // Ownership is handed over directly by the releasing run.
+      await new Promise<void>((resolve) => existing.waiters.push(resolve));
+    } else {
+      this.workflowRunSlots.set(workflowId, { waiters: [] });
+    }
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const slot = this.workflowRunSlots.get(workflowId);
+      const next = slot?.waiters.shift();
+      if (next) next();
+      else this.workflowRunSlots.delete(workflowId);
+    };
+  }
+
+  private registerWorkflowRun(workflowId: string | undefined, controller: AbortController): () => void {
+    if (!workflowId) return () => undefined;
+    const runs = this.activeWorkflowRuns.get(workflowId) ?? new Set<AbortController>();
+    runs.add(controller);
+    this.activeWorkflowRuns.set(workflowId, runs);
+    return () => {
+      const current = this.activeWorkflowRuns.get(workflowId);
+      current?.delete(controller);
+      if (!current || current.size === 0) {
+        this.activeWorkflowRuns.delete(workflowId);
+        const waiters = this.workflowIdleWaiters.get(workflowId);
+        if (waiters) {
+          this.workflowIdleWaiters.delete(workflowId);
+          waiters.forEach((resolve) => resolve());
+        }
+      }
+    };
+  }
+
+  private assertCanStart(workflowId: string | undefined): void {
+    if (!this.accepting) throw new Error('runtime_stopping');
+    if (workflowId && this.removedWorkflowIds.has(workflowId)) {
+      throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
+    }
   }
 
   async executeWorkflow(
     ir: import('../workflow/schema.js').WorkflowIR,
     options: WorkflowExecutionOptions = {},
   ): Promise<ExecutionResult> {
-    if (!this.accepting) throw new Error('runtime_stopping');
-    if (ir.id && this.removedWorkflowIds.has(ir.id)) {
-      throw Object.assign(new Error('workflow_removed'), { code: 'workflow_removed' });
-    }
-    const controller = new AbortController();
-    const abortExternal = () => controller.abort(options.abortSignal?.reason);
-    if (options.abortSignal?.aborted) abortExternal();
-    options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
-    const workflowId = ir.id;
-    if (workflowId) {
-      const runs = this.activeWorkflowRuns.get(workflowId) ?? new Set<AbortController>();
-      runs.add(controller);
-      this.activeWorkflowRuns.set(workflowId, runs);
-    }
+    this.assertCanStart(ir.id);
+    const workflowId = ir.id || undefined;
+    // Manual runs fail fast with a clear error; trigger/scheduled runs wait
+    // (bounded) behind the active run of the same workflow.
+    const manual = options.forceManual === true || options.triggerType === 'manual' || options.triggerType === undefined;
+    const releaseSlot = workflowId && !options.ephemeral
+      ? await this.acquireWorkflowRunSlot(workflowId, !manual)
+      : () => undefined;
     try {
-      return await this.trackExecution(() => this.executionRunner.execute(ir, {
-        ...options,
-        abortSignal: controller.signal,
-      }));
-    } finally {
-      options.abortSignal?.removeEventListener('abort', abortExternal);
-      if (workflowId) {
-        const runs = this.activeWorkflowRuns.get(workflowId);
-        runs?.delete(controller);
-        if (!runs || runs.size === 0) {
-          this.activeWorkflowRuns.delete(workflowId);
-          const waiters = this.workflowIdleWaiters.get(workflowId);
-          if (waiters) {
-            this.workflowIdleWaiters.delete(workflowId);
-            waiters.forEach((resolve) => resolve());
-          }
-        }
+      // The runtime may have stopped or removed the workflow while this run waited.
+      this.assertCanStart(ir.id);
+      const controller = new AbortController();
+      const abortExternal = () => controller.abort(options.abortSignal?.reason);
+      if (options.abortSignal?.aborted) abortExternal();
+      options.abortSignal?.addEventListener('abort', abortExternal, { once: true });
+      const unregister = this.registerWorkflowRun(workflowId, controller);
+      try {
+        return await this.trackExecution(() => this.executionRunner.execute(ir, {
+          ...options,
+          abortSignal: controller.signal,
+        }));
+      } finally {
+        options.abortSignal?.removeEventListener('abort', abortExternal);
+        unregister();
       }
+    } finally {
+      releaseSlot();
     }
   }
 
@@ -120,7 +209,16 @@ export class WorkflowRuntime {
       () => { this.queuedExecutionCount -= 1; },
       () => { this.queuedExecutionCount -= 1; },
     );
-    void run.catch(() => undefined);
+    void run.catch((error: unknown) => {
+      // The runner records ordinary failures itself; this is a failure before an
+      // execution record existed (e.g. createExecution). Keep it observable.
+      console.error(`[runtime] ephemeral job ${jobId} failed before producing a result:`, error);
+      try {
+        this.config.onEphemeralJobFailed?.(jobId, error);
+      } catch {
+        // Observers must not change execution outcomes.
+      }
+    });
     return { jobId };
   }
 
@@ -220,9 +318,26 @@ export class WorkflowRuntime {
     this.config.decisionEngine = decisionEngine;
   }
 
-  continueAfterApproval(approvalId: string, confirmation?: ToolResultConfirmation): Promise<ExecutionResult> {
-    if (!this.accepting) return Promise.reject(new Error('runtime_stopping'));
-    return this.trackExecution(() => this.executionRunner.continueAfterApproval(approvalId, confirmation));
+  async continueAfterApproval(approvalId: string, confirmation?: ToolResultConfirmation): Promise<ExecutionResult> {
+    if (!this.accepting) throw new Error('runtime_stopping');
+    const approval = this.config.store.getApproval(approvalId);
+    const execution = approval ? this.config.store.getExecution(approval.executionId) : undefined;
+    const workflowId = execution && !execution.ephemeral ? execution.workflowId ?? undefined : undefined;
+    // A continuation is a run of its workflow: it waits for an in-flight trigger run.
+    const releaseSlot = workflowId ? await this.acquireWorkflowRunSlot(workflowId, true) : () => undefined;
+    try {
+      if (!this.accepting) throw new Error('runtime_stopping');
+      const controller = new AbortController();
+      const unregister = this.registerWorkflowRun(workflowId, controller);
+      try {
+        return await this.trackExecution(() =>
+          this.executionRunner.continueAfterApproval(approvalId, confirmation, controller.signal));
+      } finally {
+        unregister();
+      }
+    } finally {
+      releaseSlot();
+    }
   }
 
   getToolResult(approvalId: string) { return this.toolResults.read(approvalId); }

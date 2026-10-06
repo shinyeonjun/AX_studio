@@ -46,12 +46,35 @@ export function replayGateSummary(session: DiscoverySessionState): DiscoveryBlue
   };
 }
 
+/** Distinct example documents that produced this session's observations. */
+export function discoveryExampleCount(session: Pick<DiscoverySessionState, 'exampleIds' | 'observations'>): number {
+  return new Set([
+    ...session.exampleIds,
+    ...session.observations.map((observation) => observation.exampleId),
+  ]).size;
+}
+
+/**
+ * A mapping replayed against a single example is a guess about the rule; publishing it
+ * needs a second example or an explicit human confirmation.
+ */
+export const DISCOVERY_MIN_EXAMPLES_FOR_AUTO_PUBLISH = 2;
+
+export function needsHumanConfirmation(
+  session: Pick<DiscoverySessionState, 'exampleIds' | 'observations' | 'humanConfirmedAt'>,
+): boolean {
+  return !session.humanConfirmedAt && discoveryExampleCount(session) < DISCOVERY_MIN_EXAMPLES_FOR_AUTO_PUBLISH;
+}
+
 export function canPublish(session: DiscoverySessionState): { ok: true } | { ok: false; reason: string } {
   if (session.status !== 'ready_to_publish') {
     return { ok: false, reason: 'session_not_ready' };
   }
   if (session.pendingQuestion) {
     return { ok: false, reason: 'pending_clarification' };
+  }
+  if (needsHumanConfirmation(session)) {
+    return { ok: false, reason: 'human_confirmation_required' };
   }
   const winners = acceptedCandidates(session.candidates);
   const requiredPaths = requiredObservationPaths(session.observations);

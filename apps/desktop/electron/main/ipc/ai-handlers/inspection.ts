@@ -1,5 +1,5 @@
 import { ipcHandle } from '../ipc-handle.js';
-import { detectAiCliProviders, type AiBrand } from '@ax-studio/core';
+import { AI_BRANDS, CLI_PROVIDER_META, CLI_PROVIDER_IDS, detectAiCliProviders, resolveBinaryAsync } from '@ax-studio/core';
 import {
   getAiConfigPath,
   getSecretForBrand,
@@ -7,13 +7,11 @@ import {
 } from '../../ai/config-file.js';
 import { maskSecret } from '../../env-file.js';
 
-const UI_AI_BRANDS: AiBrand[] = ['claude', 'gpt', 'ollama'];
-
 export function registerAiInspectionHandlers(): void {
-  ipcHandle('ax:detectAiCli', async () => {
-    const detected = await detectAiCliProviders();
-    return detected.filter((item) => item.id !== 'cursor-cli');
-  });
+  // Warm the binary cache off the IPC path so the first state snapshot sees installed CLIs.
+  for (const id of CLI_PROVIDER_IDS) void resolveBinaryAsync(CLI_PROVIDER_META[id].binaries).catch(() => undefined);
+
+  ipcHandle('ax:detectAiCli', async () => detectAiCliProviders());
 
   ipcHandle('ax:getAiConfig', async () => {
     const config = await readAiToml();
@@ -23,8 +21,8 @@ export function registerAiInspectionHandlers(): void {
       providers: config.providers,
       secrets: Object.fromEntries(
         await Promise.all(
-          UI_AI_BRANDS.map(async (brand) => {
-            const val = await getSecretForBrand(brand, config.providers[brand]?.mode);
+          AI_BRANDS.map(async (brand) => {
+            const val = await getSecretForBrand(brand);
             return [brand, { configured: Boolean(val), masked: val ? maskSecret(val) : undefined }];
           }),
         ),

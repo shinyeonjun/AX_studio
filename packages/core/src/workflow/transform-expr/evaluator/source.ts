@@ -5,7 +5,7 @@ export function evaluateSource(
   expr: Extract<TransformExpr, { op: 'source' }>,
   snapshots: SnapshotTables,
 ): TransformEvaluation {
-  const table = snapshots[expr.sourceId];
+  const table = Object.hasOwn(snapshots, expr.sourceId) ? snapshots[expr.sourceId] : undefined;
   if (!table) throw new Error(`snapshot_not_found:${expr.sourceId}`);
   return table;
 }

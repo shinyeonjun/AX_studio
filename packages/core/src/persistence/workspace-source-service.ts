@@ -1,8 +1,9 @@
-import { extname } from 'node:path';
+import { basename, extname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import type { DocumentArtifact } from '../contracts/artifacts/document.js';
 import type { WorkflowStore } from './workflow-store.js';
 import { ArtifactStore } from './artifact-store.js';
+import { safeFileName } from './artifact/validation.js';
 import { WorkspaceSourceIngestQueue } from './workspace-source-ingest-queue.js';
 import { appendAppLog } from './paths/app-log.js';
 import {
@@ -75,7 +76,9 @@ export class WorkspaceSourceService {
       id,
       sessionId: safeSessionId,
       artifactId: stored.id,
-      fileName: stored.fileName,
+      // Content dedup may return an artifact imported under another name; the
+      // source keeps the name the user attached it with.
+      fileName: safeFileName(basename(filePath)),
       ...(stored.mimeType ? { mimeType: stored.mimeType } : {}),
       status: 'processing',
       createdAt: now,

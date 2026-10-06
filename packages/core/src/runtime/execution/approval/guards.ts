@@ -2,6 +2,7 @@ import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import type { ExecutionResult } from '../../types.js';
 import type { WorkflowExecutionHost } from '../contracts.js';
 import type { ToolSendOutcome } from '../../../contracts/tool-result.js';
+import { expireApproval, isApprovalExpired } from '../../recovery.js';
 
 type Approval = NonNullable<ReturnType<WorkflowStore['getApproval']>>;
 type Execution = NonNullable<ReturnType<WorkflowStore['getExecution']>>;
@@ -30,6 +31,21 @@ export function prepareApprovalResume(
         status: 'failed',
         errorCode: approval.status === 'processing' ? 'approval_in_progress' : 'approval_already_resolved',
         log: [],
+      },
+    };
+  }
+  // An expired approval can never be approved; expire it now if the periodic sweep has not.
+  const ttlMs = host.config.approvalTtlMs;
+  if (ttlMs !== undefined && isApprovalExpired(approval, ttlMs)) {
+    const expired = expireApproval(host.config.store, approval);
+    if (expired) {
+      host.toolResults?.discard(approvalId);
+      host.notifyExecutionFinished(expired);
+    }
+    return {
+      ok: false,
+      result: expired ?? {
+        executionId: approval.executionId, status: 'failed', errorCode: 'approval_in_progress', log: [],
       },
     };
   }

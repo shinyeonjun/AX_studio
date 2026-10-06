@@ -26,7 +26,7 @@ import { buildDesignToolContext } from '../../../design-tools/context.js';
 import { buildJevReadOperationIndex } from '../../../decision/read-operation-catalog.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import { httpEndpointSelectionValue } from './connection-selection/http-endpoint-selection.js';
-import type { AxCommand, AxInputRequest } from '../schema.js';
+import type { AxCommand, AxInputRequest, AxUiPresentation } from '../schema.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 
@@ -42,6 +42,13 @@ function answerOnlyAnswers(request: Parameters<DecisionEngine['evaluate']>[0]) {
 
 vi.mock('../../../../persistence/paths/app-log.js', () => ({ appendAppLog: vi.fn() }));
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
+
+/** Token from the host-rendered confirm_mutation action, as the desktop host extracts it. */
+function mutationTokenFrom(presentations: readonly AxUiPresentation[]): string {
+  const action = presentations.flatMap(({ actions }) => actions).find(({ purpose }) => purpose === 'confirm_mutation');
+  if (!action?.id.startsWith('confirm_mutation:')) throw new Error('confirmation card was not rendered');
+  return action.id.slice('confirm_mutation:'.length);
+}
 
 describe('runAxCommandChat command loop', () => {
   it('lets Jev transform the immediately previous table without another connector call', async () => {
@@ -2163,23 +2170,44 @@ describe('runAxCommandChat command loop', () => {
       }),
     };
 
+    const presentations: AxUiPresentation[] = [];
+    const proposed = await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      workspaceSessionId: 'mutation-session',
+      currentWorkflowId: saved.workflowId,
+      currentWorkflowVersion: workflow.version,
+      userMessage: '현재 workflow를 삭제해줘',
+      onCommandResult: (result) => commandResults.push(result.command),
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+
+    // Jev's delete decision alone never deletes: the host renders a confirmation card first.
+    expect(proposed).toContain('확인');
+    expect(removeWorkflow).not.toHaveBeenCalled();
+    expect(store.getWorkflow(saved.workflowId)).not.toBeNull();
+    expect(execute.mock.calls[0]?.[0]).toMatchObject({
+      name: 'workflow.delete',
+      args: { workflowId: saved.workflowId, baseVersion: workflow.version },
+    });
+
     const reply = await runAxCommandChat({
       harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
       decisionEngine,
       messages: [],
+      workspaceSessionId: 'mutation-session',
       currentWorkflowId: saved.workflowId,
       currentWorkflowVersion: workflow.version,
-      userMessage: '현재 workflow를 삭제해줘',
+      userMessage: '현재 workflow를 삭제할게요',
+      mutationConfirmationToken: mutationTokenFrom(presentations),
       onCommandResult: (result) => commandResults.push(result.command),
     });
 
     expect(reply).toBe('현재 workflow를 삭제했습니다.');
-    expect(commandResults).toEqual(['workflow.delete']);
-    expect(execute.mock.calls[0]?.[0]).toMatchObject({
-      name: 'workflow.delete',
-      args: { workflowId: saved.workflowId, baseVersion: workflow.version },
-    });
+    expect(commandResults).toEqual(['workflow.delete', 'workflow.delete']);
     expect(removeWorkflow).toHaveBeenCalledExactlyOnceWith(saved.workflowId);
     expect(store.getWorkflow(saved.workflowId)).toBeNull();
     expect(structuredCalls).toHaveLength(0);
@@ -2224,17 +2252,32 @@ describe('runAxCommandChat command loop', () => {
       },
     };
 
+    const presentations: AxUiPresentation[] = [];
     await runAxCommandChat({
       harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
       decisionEngine,
       messages: [],
+      workspaceSessionId: 'mutation-session',
       currentWorkflowId: saved.workflowId,
       userMessage: '아까 정한 업무, 이제 진행하자.',
+      onPresentation: (presentation) => presentations.push(presentation),
     });
 
     expect(execute.mock.calls[0]?.[0]).toEqual({
       name: 'workflow.run', args: { workflowId: saved.workflowId },
+    });
+    expect(runWorkflow).not.toHaveBeenCalled();
+
+    await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      workspaceSessionId: 'mutation-session',
+      currentWorkflowId: saved.workflowId,
+      userMessage: '현재 workflow를 지금 실행할게요',
+      mutationConfirmationToken: mutationTokenFrom(presentations),
     });
     expect(runWorkflow).toHaveBeenCalledExactlyOnceWith(saved.workflowId);
     expect(structuredCalls).toHaveLength(0);
@@ -2278,14 +2321,30 @@ describe('runAxCommandChat command loop', () => {
       }),
     };
 
+    const presentations: AxUiPresentation[] = [];
+    await runAxCommandChat({
+      harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
+      commandService: service,
+      decisionEngine,
+      messages: [],
+      workspaceSessionId: 'mutation-session',
+      currentWorkflowId: saved.workflowId,
+      currentWorkflowVersion: workflow.version,
+      userMessage: '현재 workflow 이름을 "주간 재고 요약"으로 바꿔줘',
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+    expect(store.getWorkflow(saved.workflowId)).toMatchObject({ name: '기존 이름', version: workflow.version });
+
     const reply = await runAxCommandChat({
       harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
       decisionEngine,
       messages: [],
+      workspaceSessionId: 'mutation-session',
       currentWorkflowId: saved.workflowId,
       currentWorkflowVersion: workflow.version,
-      userMessage: '현재 workflow 이름을 "주간 재고 요약"으로 바꿔줘',
+      userMessage: '이 workflow 변경을 적용할게요',
+      mutationConfirmationToken: mutationTokenFrom(presentations),
     });
 
     expect(reply).toBe('workflow를 수정했습니다.');
@@ -2293,7 +2352,7 @@ describe('runAxCommandChat command loop', () => {
       name: '주간 재고 요약',
       version: workflow.version + 1,
     });
-    expect(execute).toHaveBeenCalledExactlyOnceWith(
+    expect(execute).toHaveBeenNthCalledWith(1,
       expect.objectContaining({
         name: 'workflow.update',
         args: {
@@ -2370,11 +2429,13 @@ describe('runAxCommandChat command loop', () => {
       },
     };
 
-    const reply = await runAxCommandChat({
+    const presentations: AxUiPresentation[] = [];
+    const chatOptions = {
       harness: new AgentHarness(scriptedModel([], structuredCalls, 'test-provider', [], textCalls)),
       commandService: service,
       decisionEngine,
       messages: [],
+      workspaceSessionId: 'mutation-session',
       currentWorkflowId: createdData.workflowId,
       currentWorkflowVersion: workflow.version,
       currentWorkflowSteps: workflow.steps.map((step) => ({
@@ -2382,12 +2443,22 @@ describe('runAxCommandChat command loop', () => {
         type: step.type,
         label: step.type === 'action' ? `${step.connector} / ${step.action}` : step.type,
       })),
+    };
+    await runAxCommandChat({
+      ...chatOptions,
       userMessage: '현재 workflow의 Slack 알림은 더 이상 필요 없어',
+      onPresentation: (presentation) => presentations.push(presentation),
+    });
+    expect(store.isWorkflowActive(createdData.workflowId)).toBe(true);
+    const reply = await runAxCommandChat({
+      ...chatOptions,
+      userMessage: '이 workflow 변경을 적용할게요',
+      mutationConfirmationToken: mutationTokenFrom(presentations),
     });
 
     expect(reply).toContain('자동 실행을 중지');
     expect(evaluations).toBe(2);
-    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledTimes(2);
     expect(execute.mock.calls[0]?.[0]).toMatchObject({
       name: 'workflow.update',
       args: {

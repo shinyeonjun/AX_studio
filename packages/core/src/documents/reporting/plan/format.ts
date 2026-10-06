@@ -11,7 +11,8 @@ export function formatReportValue(value: ReportPrimitive, format?: ReportFormat)
       display = String(value);
       break;
     case 'integer':
-      display = Math.round(numericValue(value, 'format.integer')).toLocaleString('en-US');
+      // Same half-away-from-zero rounding as the decimal style (Math.round(-2.5) would give -2).
+      display = numericValue(value, 'format.integer').toLocaleString('en-US', { maximumFractionDigits: 0 });
       break;
     case 'decimal':
       display = numericValue(value, 'format.decimal').toLocaleString('en-US', {

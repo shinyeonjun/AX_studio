@@ -1,5 +1,18 @@
 import type { AxUiPresentation } from '@ax-studio/core';
 
+/** Core marks steps that send data outside the app with this prefix. */
+const EXTERNAL_STEP_MARKER = '[외부] ';
+
+function StepItem({ item }: { item: string }) {
+  if (!item.startsWith(EXTERNAL_STEP_MARKER)) return <>{item}</>;
+  return (
+    <>
+      <span className="ax-workspace-presentation-external">외부</span>{' '}
+      {item.slice(EXTERNAL_STEP_MARKER.length)}
+    </>
+  );
+}
+
 export function PresentationBlock({ block }: { block: AxUiPresentation['blocks'][number] }) {
   switch (block.type) {
     case 'source':
@@ -23,7 +36,7 @@ export function PresentationBlock({ block }: { block: AxUiPresentation['blocks']
         <div className="ax-workspace-presentation-steps">
           {block.title && <strong>{block.title}</strong>}
           <ol>
-            {block.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
+            {block.items.map((item, index) => <li key={`${index}-${item}`}><StepItem item={item} /></li>)}
           </ol>
         </div>
       );

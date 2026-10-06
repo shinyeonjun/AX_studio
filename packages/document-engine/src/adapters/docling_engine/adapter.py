@@ -5,6 +5,7 @@ from typing import Any
 
 from adapters.base import DocumentParserAdapter, IngestResult
 from artifact_store import artifact_dir, sha256_file, utc_now_iso, write_manifest
+from engine_limits import MAX_SOURCE_BYTES, MAX_SOURCE_PAGES
 from ingest_options import normalize_ocr
 from korean_ocr import build_docling_korean_ocr_options
 from parser_config import parser_cache_fingerprint
@@ -43,7 +44,11 @@ class DoclingAdapter(DocumentParserAdapter):
         document_id = sha256_file(source_path)
         ocr_mode = normalize_ocr(options.get("ocr"))
         converter = self._build_converter(ocr_mode)
-        result = converter.convert(str(source_path))
+        result = converter.convert(
+            str(source_path),
+            max_num_pages=MAX_SOURCE_PAGES,
+            max_file_size=MAX_SOURCE_BYTES,
+        )
         doc = result.document
         images_dir = artifact_dir(artifact_root, document_id) / "images"
 

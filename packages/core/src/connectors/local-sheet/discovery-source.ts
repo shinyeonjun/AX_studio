@@ -12,7 +12,7 @@ import { scanFolderCheckedAsync } from '../../platform/local-folder-scan-async.j
 import type { ScannedFile } from '../../platform/local-folder-scan.js';
 import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from '../../contracts/discovery-source.js';
 
-const SHEET_EXTENSIONS = ['csv', 'xlsx', 'xls'];
+const SHEET_EXTENSIONS = ['csv', 'tsv', 'xlsx', 'xls'];
 const SOURCE_PREFIX = 'sheet:';
 
 function fingerprintWorkbook(path: string, sheetName: string, table: { columns: Array<{ name: string }>; rows: unknown[] }): string {
@@ -102,6 +102,9 @@ export const localSheetDiscoverySource: DiscoverySourceProvider = {
     let workbook: Awaited<ReturnType<typeof readWorkbookFromPath>>;
     try {
       if ((ext === '.xlsx' || ext === '.xls') && statSync(resolved.path).size === 0) return null;
+      // Count the attempt before reading: failing/corrupt files cost a full
+      // parse too and must not let discovery bypass its read budget.
+      ctx.budget.sourceReadsUsed += 1;
       workbook = await readWorkbookFromPath(resolved.path);
     } catch {
       return null;
@@ -110,7 +113,6 @@ export const localSheetDiscoverySource: DiscoverySourceProvider = {
     const table = firstTableId ? workbook.tables[firstTableId] : undefined;
     if (!table) return null;
 
-    ctx.budget.sourceReadsUsed += 1;
     const sheetName = workbook.workbook.sheets[0]?.name ?? 'sheet1';
     const query = { path: resolved.path, sheetName, folderId: folder.id };
     return {

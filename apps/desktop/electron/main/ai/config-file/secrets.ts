@@ -1,20 +1,11 @@
-import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
+import type { AiBrand } from '@ax-studio/core';
 import { getOsSecret, setOsSecret } from '../../credential-store.js';
 import { readEnvFile } from '../../env-file.js';
-import { readAiToml, writeAiToml } from './storage.js';
-import {
-  BRAND_ENV_KEYS,
-  GROK_API_ENV_KEY,
-  JEV_API_ENV_KEY,
-} from './contracts.js';
+import { readAiToml, updateAiToml } from './storage.js';
+import { BRAND_ENV_KEYS, JEV_API_ENV_KEY } from './contracts.js';
 
-function envKeyForBrand(brand: AiBrand, mode?: AiConnectionMode): string {
-  if (brand === 'grok' && mode === 'api') return GROK_API_ENV_KEY;
-  return BRAND_ENV_KEYS[brand];
-}
-
-export async function setBrandSecret(brand: AiBrand, value: string, mode?: AiConnectionMode): Promise<void> {
-  const envKey = envKeyForBrand(brand, mode);
+export async function setBrandSecret(brand: AiBrand, value: string): Promise<void> {
+  const envKey = BRAND_ENV_KEYS[brand];
   await setOsSecret(envKey, value);
   process.env[envKey] = value;
 }
@@ -28,13 +19,13 @@ export async function getJevSecret(): Promise<string> {
   return (await getOsSecret(JEV_API_ENV_KEY)) ?? '';
 }
 
-export async function getSecretForBrand(brand: AiBrand, mode?: AiConnectionMode): Promise<string> {
-  const envKey = envKeyForBrand(brand, mode);
+export async function getSecretForBrand(brand: AiBrand): Promise<string> {
+  const envKey = BRAND_ENV_KEYS[brand];
   return (await getOsSecret(envKey))?.trim() ?? '';
 }
 
 async function loadAiSecretsIntoEnv(): Promise<void> {
-  const keys = [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY, JEV_API_ENV_KEY];
+  const keys = [...Object.values(BRAND_ENV_KEYS), JEV_API_ENV_KEY];
   for (const envKey of keys) {
     const rawStored = await getOsSecret(envKey);
     const stored = envKey === JEV_API_ENV_KEY ? rawStored : rawStored?.trim();
@@ -50,7 +41,7 @@ export async function loadAiTomlIntoEnv() {
 export async function migrateAiSecretsToOsStore(): Promise<void> {
   const config = await readAiToml();
   const envFile = await readEnvFile();
-  for (const envKey of [...Object.values(BRAND_ENV_KEYS), GROK_API_ENV_KEY, JEV_API_ENV_KEY]) {
+  for (const envKey of [...Object.values(BRAND_ENV_KEYS), JEV_API_ENV_KEY]) {
     const rawExisting = await getOsSecret(envKey);
     const existing = envKey === JEV_API_ENV_KEY ? rawExisting : rawExisting?.trim();
     if (existing) continue;
@@ -62,7 +53,6 @@ export async function migrateAiSecretsToOsStore(): Promise<void> {
     if (value) await setOsSecret(envKey, value);
   }
   if (Object.keys(config.secrets).length > 0) {
-    config.secrets = {};
-    await writeAiToml(config);
+    await updateAiToml((latest) => { latest.secrets = {}; });
   }
 }

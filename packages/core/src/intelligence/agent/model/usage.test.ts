@@ -41,6 +41,7 @@ describe('provider token usage', () => {
         inputTokens: 100,
         outputTokens: 20,
         cachedInputTokens: 10,
+        cacheWriteInputTokens: 5,
         totalTokens: 135,
       });
     } finally {

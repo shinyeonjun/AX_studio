@@ -82,4 +82,27 @@ describe('evaluateCondition', () => {
       ),
     ).toBe(true);
   });
+
+  it('throws for comparisons on a missing reference instead of treating neq as true', () => {
+    for (const op of ['eq', 'neq', 'contains', 'gt'] as const) {
+      expect(() => evaluateCondition(
+        { op, left: { ref: 'classify.category' }, right: { lit: 'x' } },
+        {},
+        { classify: {} },
+      )).toThrow(expect.objectContaining({ code: 'condition_ref_missing' }));
+    }
+  });
+
+  it('resolves trigger refs from trigger variables only and ignores prototype members', () => {
+    expect(evaluateCondition(
+      { op: 'eq', left: { ref: 'trigger.sender' }, right: { lit: 'a@b.c' } },
+      { sender: 'a@b.c' },
+      { sender: 'step-value' },
+    )).toBe(true);
+    expect(() => evaluateCondition(
+      { op: 'eq', left: { ref: 'classify.constructor' }, right: { lit: 'x' } },
+      {},
+      { classify: {} },
+    )).toThrow(expect.objectContaining({ code: 'condition_ref_missing' }));
+  });
 });

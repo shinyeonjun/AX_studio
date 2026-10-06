@@ -10,7 +10,7 @@ export function listCommands(
   executionContext: AxCommandExecutionContext = HOST_COMMAND_CONTEXT,
 ): readonly AxCommandDefinition[] {
   return COMMAND_DEFINITIONS.filter((entry) => {
-    if (entry.name === 'job.commit') return false;
+    if (entry.name === 'job.commit' || entry.name === 'mutation.commit') return false;
     return commandAccess(entry, executionContext).allowed;
   });
 }

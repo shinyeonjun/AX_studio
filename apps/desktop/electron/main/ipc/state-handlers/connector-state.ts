@@ -1,5 +1,6 @@
 import {
   getAiProviderDisplay,
+  getDatabaseBackendStatus,
   getLocalFolderConnectionStatus,
   getSlackConnectionStatus,
   isAiProviderReady,
@@ -12,11 +13,19 @@ import { getAiConfigPath, getJevSecret, readAiToml } from '../../ai/config-file.
 import { isGoogleOAuthConfigured } from '../../gmail/oauth.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 import { summarizeConnections } from '../connection-state-summary.js';
+import { getCredentialStorageWarning } from '../../credential-store.js';
 
 export async function buildConnectorState(core: AxCore) {
   const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider', undefined));
   const connections = core.store.getConnections();
-  const [aiToml, jevSecret] = await Promise.all([readAiToml(), getJevSecret()]);
+  // One unreadable stored secret must never make the whole state request reject.
+  const [aiToml, jevSecret] = await Promise.all([
+    readAiToml(),
+    getJevSecret().catch((error: unknown) => {
+      console.warn('[AX Studio] JEV secret unavailable', { code: (error as { code?: unknown } | null)?.code });
+      return '';
+    }),
+  ]);
   const gmailConn = connections.find((connection) => connection.connector === 'gmail');
   const gmailRecord = parseGmailConnectionConfig(gmailConn?.config);
   const slackConn = connections.find((connection) => connection.connector === 'slack');
@@ -55,6 +64,9 @@ export async function buildConnectorState(core: AxCore) {
     slackConnectionMode: slackStatus.mode,
     slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
     localFolders: localFolderStatus.folders,
+    credentialStorageWarning: getCredentialStorageWarning(),
+    // sql.js fallback = whole-image, debounced persistence; surface it instead of failing silently.
+    databaseBackendFallback: getDatabaseBackendStatus()?.fallback === true,
     connections: await summarizeConnections(connections, { webhookTransport }),
   };
 }

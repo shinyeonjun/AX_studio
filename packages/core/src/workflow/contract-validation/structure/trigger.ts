@@ -13,14 +13,14 @@ export function validateTriggerConfiguration(ir: WorkflowIR): ContractValidation
       : field,
     question: trigger.type === 'schedule'
       ? field === 'schedule'
-        ? '실행 반복 시각을 cron 형식으로 입력해 주세요.'
+        ? '실행 반복 시각을 cron 형식으로 입력해 주세요. 예: 매일 9시 = 0 9 * * *, 평일 9시 = 0 9 * * 1-5'
         : '실행할 시간대를 입력해 주세요.'
       : trigger.type + ' 트리거의 ' + field + ' 값을 입력해 주세요.',
     target: 'trigger' as const,
     parameterName: field,
     ...(trigger.type === 'schedule' ? {
       inputType: 'text' as const,
-      placeholder: field === 'schedule' ? '0 9 * * 1-5' : 'Asia/Seoul',
+      placeholder: field === 'schedule' ? '0 9 * * *' : 'Asia/Seoul',
     } : {}),
   });
 

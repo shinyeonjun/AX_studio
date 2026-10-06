@@ -9,7 +9,7 @@ export interface ActivityActionsInput {
 }
 
 export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
-  const [explainQ, setExplainQ] = useState('실행이 멈췄거나 실패한 이유를 물어보세요');
+  const [explainQ, setExplainQ] = useState('');
   const [explainA, setExplainA] = useState('');
   const [explainError, setExplainError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const canExplain = executions.length > 0;
 
   const askExplain = async () => {
-    if (!canExplain) return;
+    if (!canExplain || explaining || !explainQ.trim()) return;
     setExplaining(true);
     setExplainError('');
     try {
@@ -42,11 +42,12 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const deleteExecution = async (executionId: string) => {
     if (!confirmDeleteExecution()) return;
     setBusyId(executionId);
+    setClearError('');
     try {
       await window.ax.deleteExecution(executionId);
       await onRefresh();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : '기록을 삭제하지 못했습니다.');
+      setClearError(ipcErrorMessage(err, '기록을 삭제하지 못했습니다.'));
     } finally {
       setBusyId(null);
     }

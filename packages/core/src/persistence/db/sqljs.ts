@@ -1,6 +1,7 @@
 import type { Database as SqlJsRawDatabase, SqlJsStatic } from 'sql.js';
 import { backup, DatabaseSync } from 'node:sqlite';
 import {
+  copyFileSync,
   existsSync,
   openSync,
   closeSync,
@@ -15,6 +16,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { applyMigrations } from './schema.js';
+import { writeMigrationBackup } from './backup.js';
 import type { AppDatabase, SqlStatement } from './types.js';
 import { assertReadSnapshotSql } from './read-snapshot-sql.js';
 import { assertReadonlySqliteQuery } from './readonly-query.js';
@@ -403,7 +405,11 @@ export async function createSqlJsDatabase(path: string): Promise<AppDatabase> {
   try {
     db.run('PRAGMA foreign_keys = ON');
     // Do not attach persistence timers until all initialization has succeeded.
-    applyMigrations(new SqlJsDatabaseAdapter(db));
+    const persistedFile = path !== ':memory:' && existsSync(path);
+    applyMigrations(new SqlJsDatabaseAdapter(db), persistedFile ? {
+      // sql.js has not written anything yet, so the file on disk is the pre-migration image.
+      backup: (fromVersion) => writeMigrationBackup(path, fromVersion, (target) => copyFileSync(path, target)),
+    } : {});
     adapter = new SqlJsDatabaseAdapter(db, path === ':memory:' ? undefined : path);
     adapter.exec('PRAGMA foreign_keys = ON');
     adapter.persistNow();

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { connectionEntry, rdbTypeLabel } from '../../../../../ui/lib/connection-display';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 export type RdbConnectionType = 'sqlite' | 'postgres' | 'mysql';
 
@@ -17,7 +18,7 @@ export interface RdbConnectionFormProps {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<void>;
+  }) => Promise<{ warning?: string } | void>;
   onDisconnect: () => Promise<void>;
 }
 
@@ -41,6 +42,8 @@ export function useRdbConnectionForm({
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  /** Non-blocking advice from the main process (e.g. a remote DB without TLS). */
+  const [warning, setWarning] = useState('');
 
   const loadFromConnection = () => {
     if (!rdbEntry?.connected || !rdbEntry.dbType) return;
@@ -57,6 +60,7 @@ export function useRdbConnectionForm({
       setFilePath('');
     }
     setMessage('');
+    setWarning('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -79,15 +83,20 @@ export function useRdbConnectionForm({
       : [];
 
   const handlePickFile = async () => {
-    const result = await onPickSqliteFile();
-    if (result.ok && result.path) setFilePath(result.path);
+    try {
+      const result = await onPickSqliteFile();
+      if (result.ok && result.path) setFilePath(result.path);
+    } catch (error) {
+      setMessage(ipcErrorMessage(error, 'SQLite 파일을 선택하지 못했습니다.'));
+    }
   };
 
   const handleConnect = async () => {
     setBusy(true);
     setMessage('');
+    setWarning('');
     try {
-      await onConnect({
+      const result = await onConnect({
         type,
         filePath: type === 'sqlite' ? filePath : undefined,
         connectionString: type === 'postgres' || type === 'mysql' ? connectionString : undefined,
@@ -106,8 +115,9 @@ export function useRdbConnectionForm({
         label: label.trim() || undefined,
       });
       setMessage('데이터베이스가 연결되었습니다.');
+      if (result?.warning) setWarning(result.warning);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'DB 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'DB 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -117,11 +127,12 @@ export function useRdbConnectionForm({
     if (!confirmDisconnectConnector('데이터베이스')) return;
     setBusy(true);
     setMessage('');
+    setWarning('');
     try {
       await onDisconnect();
       setMessage('DB 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -146,6 +157,7 @@ export function useRdbConnectionForm({
     setLabel,
     busy,
     message,
+    warning,
     connectedItems,
     loadFromConnection,
     handlePickFile,

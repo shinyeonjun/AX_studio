@@ -1,5 +1,6 @@
 import { defaultArtifactRoot, defaultTemplateRoot } from '../../paths.js';
-import { statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { relative, isAbsolute } from 'node:path';
 import {
   defaultPythonPath,
   defaultWorkerCwd,
@@ -30,6 +31,15 @@ import {
 
 const MAX_DOCUMENT_SOURCE_BYTES = 100 * 1024 * 1024;
 
+/** Read an engine-written template, refusing any path outside the template root. */
+export function readTemplateHtml(htmlPath: unknown, templateRoot: string): string {
+  if (typeof htmlPath !== 'string' || !htmlPath) throw new Error('pdf_to_html_missing_html');
+  const resolved = realpathSync(htmlPath);
+  const offset = relative(realpathSync(templateRoot), resolved);
+  if (!offset || offset.startsWith('..') || isAbsolute(offset)) throw new Error('pdf_to_html_path_outside_root');
+  return readFileSync(resolved, 'utf8');
+}
+
 export class StdioDocumentEngineClient implements DocumentEngineClient {
   private readonly pythonPath: string;
   private readonly workerScript: string;
@@ -38,8 +48,9 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
   private readonly workerCwd: string;
 
   constructor(options: DocumentEngineClientOptions = {}) {
-    this.workerScript = options.workerScript ?? defaultWorkerScript();
-    this.pythonPath = options.pythonPath ?? defaultPythonPath(this.workerScript);
+    const pathOptions = { allowEnvOverrides: options.allowEnvOverrides };
+    this.workerScript = options.workerScript ?? defaultWorkerScript(pathOptions);
+    this.pythonPath = options.pythonPath ?? defaultPythonPath(this.workerScript, pathOptions);
     this.artifactRoot = options.artifactRoot ?? defaultArtifactRoot();
     this.timeoutMs = options.timeoutMs ?? 180_000;
     this.workerCwd = options.workerCwd ?? defaultWorkerCwd(this.workerScript);
@@ -78,7 +89,11 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_to_html_failed');
     }
-    return response.data;
+    const data = response.data as PdfToHtmlResult & { htmlOmitted?: boolean };
+    if (typeof data.html === 'string') return data;
+    // Large templates come back by path to stay under the stdio response cap.
+    const { htmlOmitted: _omitted, ...rest } = data;
+    return { ...rest, html: readTemplateHtml(data.htmlPath, defaultTemplateRoot()) };
   }
 
   async pdfFormAnalyze(path: string, options: PdfFormAnalyzeOptions = {}): Promise<PdfFormTemplate> {

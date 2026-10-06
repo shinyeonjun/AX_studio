@@ -5,7 +5,7 @@ import type {
   TransformEvaluator,
 } from './contracts.js';
 import { evaluateConditionOnRow } from './conditions.js';
-import { requireTable } from './helpers.js';
+import { ownCell, requireTable } from './helpers.js';
 
 function compareValues(left: unknown, right: unknown): number {
   if (left === right) return 0;
@@ -21,7 +21,7 @@ export function evaluateColumn(
   evaluate: TransformEvaluator,
 ): TransformEvaluation {
   const table = requireTable(evaluate(expr.input, snapshots), 'column_input_not_table');
-  const values = table.rows.map((row) => row.values[expr.name] ?? null);
+  const values = table.rows.map((row) => ownCell(row.values, expr.name));
   return values.length === 1 ? (values[0] ?? null) : JSON.stringify(values);
 }
 
@@ -49,9 +49,9 @@ export function evaluateSelect(
     rows: table.rows.map((row, index) => ({
       ...row,
       index,
-      values: Object.fromEntries(expr.columns.map((name) => [name, row.values[name] ?? null])),
+      values: Object.fromEntries(expr.columns.map((name) => [name, ownCell(row.values, name)])),
       ...(row.rawValues ? {
-        rawValues: Object.fromEntries(expr.columns.map((name) => [name, row.rawValues![name] ?? null])),
+        rawValues: Object.fromEntries(expr.columns.map((name) => [name, ownCell(row.rawValues, name)])),
       } : {}),
     })),
   };
@@ -65,7 +65,7 @@ export function evaluateSort(
   const table = requireTable(evaluate(expr.input, snapshots), 'sort_input_not_table');
   const sorted = [...table.rows].sort((left, right) => {
     for (const key of expr.by) {
-      const comparison = compareValues(left.values[key.column], right.values[key.column]);
+      const comparison = compareValues(ownCell(left.values, key.column), ownCell(right.values, key.column));
       if (comparison === 0) continue;
       const direction = key.direction === 'desc' ? -1 : 1;
       return comparison * direction;

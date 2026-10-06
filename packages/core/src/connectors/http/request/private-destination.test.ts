@@ -55,4 +55,22 @@ describe('publicOnlyLookup', () => {
 
     expect(callback).toHaveBeenCalledWith(null, addresses);
   });
+
+  it.each(['::ffff:7f00:1', '64:ff9b::a00:1', '100.64.0.1', 'fe80::1'])(
+    'rejects resolved special-purpose addresses: %s',
+    (address) => {
+      lookupMock.mockImplementation((_hostname, _options, callback) => {
+        callback(null, [{ address, family: address.includes(':') ? 6 : 4 }]);
+      });
+      const callback = vi.fn();
+
+      publicOnlyLookup('api.example.com', {}, callback);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({ code: PRIVATE_DESTINATION_ERROR_CODE }),
+        '',
+        0,
+      );
+    },
+  );
 });

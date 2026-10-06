@@ -86,43 +86,63 @@ function collectTextSegments(document: DocumentArtifact): Array<{ text: string; 
   return segments;
 }
 
+/**
+ * Extracts numeric observations from a document.
+ *
+ * Only an explicitly labeled value (`라벨: 값`) whose label occurs once in the document gets a
+ * stable label-based path and becomes a required output field. Loosely matched numbers and
+ * repeated labels keep positional paths for evidence but are optional, so a discovery is not
+ * forced to explain every number in an example.
+ */
 export function observeDocumentArtifact(exampleId: string, document: DocumentArtifact): OutputObservation[] {
-  const observations: OutputObservation[] = [];
+  const matches: Array<{
+    label: string;
+    display: string;
+    labeled: boolean;
+    pageIndex?: number;
+    semanticLocation: string;
+  }> = [];
   const seen = new Set<string>();
 
   for (const [segmentIndex, segment] of collectTextSegments(document).entries()) {
     const text = segment.text;
     const labelOrdinals = new Map<string, number>();
-    const observeMatch = (label: string, display: string): void => {
+    const observeMatch = (label: string, display: string, labeled: boolean): void => {
       const key = `${label}:${display}`;
-      if (seen.has(key)) return;
+      if (seen.has(key) || parseKoreanNumber(display) == null) return;
       const ordinal = (labelOrdinals.get(label) ?? 0) + 1;
       const pagePart = segment.pageIndex == null ? 'document' : `page_${segment.pageIndex + 1}`;
-      const semanticLocation = `${pagePart}.segment_${segmentIndex + 1}.value_${ordinal}`;
-      const observation = observationFromNumber(
-        exampleId,
-        label,
-        display,
-        segment.pageIndex,
-        semanticLocation,
-      );
-      if (!observation) return;
       labelOrdinals.set(label, ordinal);
       seen.add(key);
-      observations.push(observation);
+      matches.push({
+        label,
+        display,
+        labeled,
+        pageIndex: segment.pageIndex,
+        semanticLocation: `${pagePart}.segment_${segmentIndex + 1}.value_${ordinal}`,
+      });
     };
 
     for (const match of text.matchAll(LABEL_VALUE_RE)) {
-      const label = match[1]!.trim();
-      const display = match[2]!.trim();
-      observeMatch(label, display);
+      observeMatch(match[1]!.trim(), match[2]!.trim(), true);
     }
     for (const match of text.matchAll(NUMBER_WITH_LABEL_RE)) {
-      const label = match[1]!.trim();
-      const display = match[2]!.trim();
-      observeMatch(label, display);
+      observeMatch(match[1]!.trim(), match[2]!.trim(), false);
     }
   }
 
-  return observations;
+  const labelCounts = new Map<string, number>();
+  for (const match of matches) labelCounts.set(match.label, (labelCounts.get(match.label) ?? 0) + 1);
+
+  return matches.flatMap((match) => {
+    const stableField = match.labeled && labelCounts.get(match.label) === 1;
+    const observation = observationFromNumber(
+      exampleId,
+      match.label,
+      match.display,
+      match.pageIndex,
+      stableField ? undefined : match.semanticLocation,
+    );
+    return observation ? [{ ...observation, required: stableField }] : [];
+  });
 }

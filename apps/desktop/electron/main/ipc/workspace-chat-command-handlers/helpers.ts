@@ -1,4 +1,5 @@
 import type { AxContextUpdateConfirmation, WorkspaceChatMessage } from '@ax-studio/core';
+import { consumeContextConfirmation, findContextConfirmationNonce } from './host-state.js';
 
 export function workflowIdsChanged(result: { command: string; data?: unknown }): {
   changed?: string;
@@ -16,30 +17,38 @@ export function workflowIdsChanged(result: { command: string; data?: unknown }):
   return {};
 }
 
+/**
+ * The exact proposal bound to the selected confirm_context action. The proposal comes from
+ * the host store keyed by the action's nonce, never from the renderer-saved transcript, and
+ * is consumed so one confirmation saves at most once.
+ */
 export function contextUpdateConfirmation(
   messages: WorkspaceChatMessage[],
   userMessage: string,
+  workspaceSessionId: string,
 ): AxContextUpdateConfirmation | undefined {
-  for (const message of messages.slice(0, -1).reverse()) {
-    if (message.role !== 'assistant') continue;
-    for (const presentation of [...(message.presentations ?? [])].reverse()) {
-      for (const action of [...presentation.actions].reverse()) {
-        if (action.purpose === 'confirm_context' && action.value === userMessage && action.contextUpdate) {
-          return action.contextUpdate;
-        }
-      }
-    }
-  }
-  return undefined;
+  const nonce = findContextConfirmationNonce(messages, userMessage);
+  return nonce ? consumeContextConfirmation(workspaceSessionId, nonce) : undefined;
 }
 
-export function isJobConfirmation(messages: WorkspaceChatMessage[], userMessage: string): string | undefined {
-  const actionPrefix = 'confirm_job:';
+/** Non-consuming check used where a confirmation must only be detected and refused. */
+export function hasContextConfirmation(messages: WorkspaceChatMessage[], userMessage: string): boolean {
+  return Boolean(findContextConfirmationNonce(messages, userMessage));
+}
+
+function confirmationTokenFor(
+  messages: WorkspaceChatMessage[],
+  userMessage: string,
+  purpose: 'confirm_job' | 'confirm_mutation',
+): string | undefined {
+  const actionPrefix = `${purpose}:`;
   for (const message of messages.slice(0, -1)) {
     if (message.role !== 'assistant') continue;
     for (const presentation of message.presentations ?? []) {
       for (const action of presentation.actions) {
-        if (action.purpose !== 'confirm_job' || action.value !== userMessage) continue;
+        // Widened so this compiles before every core build exposes `confirm_mutation`.
+        const actionPurpose: string = action.purpose;
+        if (actionPurpose !== purpose || action.value !== userMessage) continue;
         if (!action.id.startsWith(actionPrefix)) continue;
         const token = action.id.slice(actionPrefix.length).trim();
         if (token) return token;
@@ -47,4 +56,13 @@ export function isJobConfirmation(messages: WorkspaceChatMessage[], userMessage:
     }
   }
   return undefined;
+}
+
+export function isJobConfirmation(messages: WorkspaceChatMessage[], userMessage: string): string | undefined {
+  return confirmationTokenFor(messages, userMessage, 'confirm_job');
+}
+
+/** Token of a host-rendered workflow mutation confirmation; core verifies it against its pending store. */
+export function mutationConfirmationToken(messages: WorkspaceChatMessage[], userMessage: string): string | undefined {
+  return confirmationTokenFor(messages, userMessage, 'confirm_mutation');
 }

@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import type { WebhookEventHandler, WebhookListenerOptions } from './listener/contracts.js';
 import { handleWebhookRequest } from './listener/handler.js';
-import { WebhookReplayCache } from './security.js';
+import { WebhookAuthFailureLimiter, WebhookReplayCache } from './security.js';
 
 const WEBHOOK_MAX_ACTIVE_REQUESTS = 64;
 const WEBHOOK_REQUEST_TIMEOUT_MS = 15_000;
@@ -32,6 +32,7 @@ export class WebhookInboundListener {
     const controller = new AbortController();
     this.controller = controller;
     const replayCache = new WebhookReplayCache();
+    const authLimiter = new WebhookAuthFailureLimiter();
     const server = createServer((req, res) => {
       if (this.activeRequests >= WEBHOOK_MAX_ACTIVE_REQUESTS) {
         res.statusCode = 503;
@@ -40,7 +41,7 @@ export class WebhookInboundListener {
         return;
       }
       this.activeRequests += 1;
-      void handleWebhookRequest(req, res, options, onEvent, controller.signal, replayCache)
+      void handleWebhookRequest(req, res, options, onEvent, controller.signal, replayCache, authLimiter)
         .finally(() => { this.activeRequests -= 1; });
     });
     server.headersTimeout = 10_000;

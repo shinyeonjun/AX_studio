@@ -77,13 +77,30 @@ function parseRepeat(value) {
   return repeat;
 }
 
-function buildHeaders(auth, secret, eventId, body) {
+/** Hook path exactly as the server signs it (packages/core/src/triggers/webhook/listener/handler.ts). */
+function signedHookPath(url) {
+  const decoded = decodeURIComponent(url.pathname.slice('/hooks/'.length));
+  return decoded.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+/**
+ * Mirrors webhookSignaturePayload in packages/core/src/triggers/webhook/security.ts:
+ * METHOD, hook path, event id, unix-seconds timestamp and raw body, joined by newlines.
+ */
+function webhookSignature(secret, { method, path, eventId, timestamp }, body) {
+  const payload = [method.trim().toUpperCase(), path, eventId, timestamp, body].join('\n');
+  return `sha256=${createHmac('sha256', secret).update(payload).digest('hex')}`;
+}
+
+function buildHeaders(auth, secret, eventId, body, url, now = Date.now()) {
   const headers = {
     'content-type': 'application/json',
     'idempotency-key': eventId,
   };
   if (auth === 'hmac') {
-    headers['x-ax-signature'] = `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
+    const timestamp = String(Math.floor(now / 1_000));
+    headers['x-ax-timestamp'] = timestamp;
+    headers['x-ax-signature'] = webhookSignature(secret, { method: 'POST', path: signedHookPath(url), eventId, timestamp }, body);
     return headers;
   }
   if (auth !== 'secret') throw new Error('--auth는 secret 또는 hmac이어야 합니다.');
@@ -106,14 +123,14 @@ async function main() {
   const body = String(args.body ?? DEFAULT_BODY);
   const auth = String(args.auth ?? 'secret').toLowerCase();
   const repeat = parseRepeat(args.repeat);
-  buildHeaders(auth, secret, eventId, body);
+  buildHeaders(auth, secret, eventId, body, url);
 
   if (args.check) {
     console.log(`[webhook] helper OK: ${url.pathname}, loopback-only, ${auth} auth`);
     return;
   }
 
-  const headers = buildHeaders(auth, secret, eventId, body);
+  const headers = buildHeaders(auth, secret, eventId, body, url);
   console.log(`[webhook] sending ${repeat} delivery(ies) to ${url.origin}${url.pathname} with event id ${eventId}`);
   for (let attempt = 1; attempt <= repeat; attempt += 1) {
     const response = await fetch(url, {

@@ -493,4 +493,39 @@ describe('applyJevTableTransform', () => {
       abortSignal: controller.signal,
     })).rejects.toThrow('ax_command_chat_timeout');
   });
+
+  it('applies Top-N row limit when sorting with count wording', async () => {
+    const engine: DecisionEngine = {
+      evaluate: async () => ({
+        answers: {
+          table_transform: { type: 'choice', choice: 'sort', probabilities: { sort: 0.99 }, confidence: 0.99 },
+          sort_column: { type: 'choice', choice: 'column_1', probabilities: { column_1: 0.99 }, confidence: 0.99 },
+          sort_direction: { type: 'choice', choice: 'asc', probabilities: { asc: 0.99 }, confidence: 0.99 },
+        },
+      }),
+    };
+    const input = buildTableArtifact({
+      id: 'products',
+      headers: ['title', 'stock'],
+      matrix: [
+        ['Phone A', 50],
+        ['Phone B', 2],
+        ['Phone C', 10],
+        ['Phone D', 0],
+        ['Phone E', 100],
+      ],
+    });
+
+    const output = await applyJevTableTransform({
+      decisionEngine: engine,
+      table: input,
+      userMessage: '스마트폰 재고 제일 적은 거 3개 알려줘',
+      mode: 'auto',
+    });
+
+    expect(output).toMatchObject({ status: 'transformed' });
+    if (output?.status !== 'transformed') return;
+    expect(output.table.rows.map((row) => row.values.title)).toEqual(['Phone D', 'Phone B', 'Phone C']);
+    expect(output.table.rows.map((row) => row.values.stock)).toEqual([0, 2, 10]);
+  });
 });

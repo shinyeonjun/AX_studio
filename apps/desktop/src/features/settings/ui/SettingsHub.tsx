@@ -9,6 +9,7 @@ import { SettingsCategory } from './SettingsCategory';
 import { ConnectionCard } from './ConnectionCard';
 import { AiHubCards } from './ai/AiHubCards';
 import { SettingsConnectorSections } from './settings-hub/connector-sections';
+import { DiagnosticsSection } from './DiagnosticsSection';
 
 type AiDetection = ReturnType<typeof useAiDetection>;
 
@@ -61,6 +62,8 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
       </SettingsCategory>
 
       <SettingsConnectorSections state={state} onOpenScreen={onOpenScreen} />
+
+      <DiagnosticsSection />
     </div>
   );
 }

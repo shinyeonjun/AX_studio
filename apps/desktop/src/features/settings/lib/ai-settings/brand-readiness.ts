@@ -33,6 +33,6 @@ export function isBrandReady(
   const cli = cliProviders.find((item) => item.id === meta.cliProviderId);
   const hasApi = target === 'ollama' ? Boolean(verifiedApi[target]) : Boolean(brandSecrets[target]?.configured || verifiedApi[target]);
   if (mode === 'api') return hasApi;
-  const hasCliBinary = Boolean(cli?.binaryFound ?? cli?.command);
+  const hasCliBinary = Boolean(cli?.command);
   return Boolean(cli?.installed || (hasCliBinary && verifiedCli[target]));
 }

@@ -36,7 +36,8 @@ commit:
 - `service/resources.ts` reports persisted connection/always-on state and
   catalog connectability. These do not prove present authentication or permission.
 - The full authoritative request anchor already rejects overflow and mismatch.
-  The read-controller README explicitly describes an unwired core.
+  The unwired read-controller core it referred to has since been removed
+  (`intelligence/decision/read-controller` no longer exists).
 
 The screenshot's causal trace is unknown: matching probabilities, build and
 execution trace were unavailable. This slice does not claim to explain it.

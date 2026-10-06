@@ -8,7 +8,7 @@ import type {
   ReportSourceSnapshot,
 } from '../plan/schema.js';
 import type { ReportSourceCapturePlan } from '../source/schema.js';
-import { comparable, fieldPaths, isRecordValue, valueAtPath } from '../plan/value.js';
+import { fieldPaths, isRecordValue, reportJoinKey, valueAtPath } from '../plan/value.js';
 import { normalizeReportText } from '../plan/reusability.js';
 import { formatFromExampleText } from './replay-repair.js';
 
@@ -474,10 +474,9 @@ function rowFieldValue(row: Record<string, unknown>, path: string): unknown {
   return valueAtPath(row, path);
 }
 
-function joinKey(value: unknown): string | number | boolean | undefined {
-  const normalized = comparable(value);
-  if (normalized === null || normalized === undefined || normalized === '') return undefined;
-  return normalized;
+function joinKey(value: unknown): string | undefined {
+  // Must match the executor's join identity or an inferred join would not match at run time.
+  return reportJoinKey(value) ?? undefined;
 }
 
 function inferMissingJoin(

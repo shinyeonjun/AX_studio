@@ -26,4 +26,15 @@ describe('local sheet discovery unavailable inputs', () => {
     expect(corruptSource).toBeTruthy();
     await expect(localSheetDiscoverySource.profileSource(context, corruptSource!.id)).resolves.toBeNull();
   });
+
+  it('counts a failed workbook read toward the discovery read budget', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-sheet-discovery-'));
+    const corruptPath = join(root, 'broken.xlsx');
+    writeFileSync(corruptPath, Buffer.from('not a zip archive at all'));
+    const { context } = await buildContext(root);
+    const [source] = await localSheetDiscoverySource.listSources(context);
+
+    await expect(localSheetDiscoverySource.profileSource(context, source!.id)).resolves.toBeNull();
+    expect(context.budget.sourceReadsUsed).toBe(1);
+  });
 });

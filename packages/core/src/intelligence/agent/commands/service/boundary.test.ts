@@ -7,6 +7,16 @@ import { commandChatContext } from './fixtures.js';
 
 describe('AxCommandService host and context boundaries', () => {
 
+  it('marks always-on built-in tools so they are not reported as connected services', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const service = new AxCommandService(new WorkflowStore(db));
+    const listed = await service.execute({ name: 'resource.list', args: {} }, commandChatContext);
+    const resources = (listed.data as { resources: Array<{ id: string; connected: boolean; availability?: string }> }).resources;
+    expect(resources.find(({ id }) => id === 'transform')).toMatchObject({ connected: true, availability: 'built_in' });
+    expect(resources.find(({ id }) => id === 'slack')).toMatchObject({ connected: false });
+    expect(resources.find(({ id }) => id === 'slack')).not.toHaveProperty('availability');
+  });
+
   it('blocks workflow and runtime side effects at the direct host boundary', async () => {
     const db = await createDatabaseAsync(':memory:');
     const service = new AxCommandService(new WorkflowStore(db));

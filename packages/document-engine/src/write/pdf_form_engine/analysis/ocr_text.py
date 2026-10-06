@@ -17,8 +17,12 @@ def _render_page(source_path: Path, page_index: int, scale: float = 2.0) -> Any:
 
     document = pdfium.PdfDocument(str(source_path))
     try:
+        from engine_limits import clamp_render_scale
+
         page = document[page_index]
-        bitmap = page.render(scale=scale)
+        width, height = page.get_size()
+        # Defensive clamp for direct callers; analysis.ocr passes an already-clamped scale.
+        bitmap = page.render(scale=clamp_render_scale(width, height, scale))
         image = bitmap.to_pil()
         return image.copy()
     finally:

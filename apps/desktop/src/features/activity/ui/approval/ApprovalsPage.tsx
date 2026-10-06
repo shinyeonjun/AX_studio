@@ -27,9 +27,16 @@ export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: Approva
     try {
       if (action === 'approve') await onApprove(id);
       else await onReject(id);
-      await onRefresh();
     } catch (error) {
       setActionError(ipcErrorMessage(error, '승인 처리에 실패했습니다.'));
+      setBusyId(null);
+      return;
+    }
+    // The action already committed; a failed refresh must not be reported as a failed approval.
+    try {
+      await onRefresh();
+    } catch {
+      setActionError('처리는 완료됐지만 최신 상태를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.');
     } finally {
       setBusyId(null);
     }

@@ -1,4 +1,5 @@
 import type { AxCore } from '../../core-instance.js';
+import { buildWorkflowAutomationHealth } from './diagnostics-state.js';
 
 export function buildWorkflowSummaries(
   core: AxCore,
@@ -11,7 +12,9 @@ export function buildWorkflowSummaries(
     }
   }
 
-  return core.store.listWorkflowDefinitions().map(({ workflow, ...summary }) => {
+  const definitions = core.store.listWorkflowDefinitions();
+  const health = buildWorkflowAutomationHealth(core, definitions.map((definition) => definition.id));
+  return definitions.map(({ workflow, ...summary }) => {
     const connectors = new Set<string>();
     for (const step of workflow?.steps ?? []) {
       if (step.type === 'action') connectors.add(step.connector);
@@ -24,6 +27,8 @@ export function buildWorkflowSummaries(
       connectors: [...connectors],
       lastRunAt: lastExecution?.startedAt,
       lastStatus: lastExecution?.status,
+      triggerDeadLetters: health.get(summary.id)?.triggerDeadLetters ?? [],
+      lastOutcome: health.get(summary.id)?.lastOutcome,
     };
   });
 }

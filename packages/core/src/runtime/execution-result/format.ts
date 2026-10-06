@@ -11,10 +11,16 @@ const OUTPUT_FIELD_LABELS: Record<string, string> = {
   summary: '요약',
   category: '분류',
   riskLevel: '위험도',
-  confidence: '신뢰도',
-  needMore: '추가 조회 필요',
   reason: '판단 이유',
 };
+
+/** Model confidence (0..1) as a coarse user-facing level; raw numbers read as internals. */
+function confidenceLabel(value: unknown): string | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  if (value >= 0.8) return '높음';
+  if (value >= 0.5) return '보통';
+  return '낮음';
+}
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -108,6 +114,9 @@ export function formatExecutionResultMessage(
       const value = safeText(preview[field]);
       if (value) lines.push(`${label}: ${value}`);
     }
+    const confidence = confidenceLabel(preview.confidence);
+    if (confidence) lines.push(`AI 판단 확신도: ${confidence}`);
+    if (preview.needMore === true) lines.push('더 많은 자료를 확인해야 정확한 결론을 낼 수 있습니다.');
   }
 
   if (result.status === 'failed' && result.errorCode) {

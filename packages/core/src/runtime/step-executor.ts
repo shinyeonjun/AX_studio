@@ -11,7 +11,7 @@ import { applyStepBindings } from '../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
-import { approvalParamsHash, redactedApprovalParams } from './approval-snapshot.js';
+import { approvalParamsHash, redactedApprovalSnapshot } from './approval-snapshot.js';
 import { messageTool, messageToolDraft } from '../contracts/tool-result.js';
 import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
 
@@ -83,7 +83,7 @@ export async function executeStep(
             actionSnapshots: [{
               actionId: step.id,
               actionRef: actionDefinition.id,
-              params: redactedApprovalParams(params),
+              ...redactedApprovalSnapshot(params),
               paramsHash: approvalParamsHash(params),
             }],
           },
@@ -159,7 +159,7 @@ export async function executeStep(
             return {
               actionId,
               actionRef: resolved.actionDefinition.id,
-              params: redactedApprovalParams(resolved.params),
+              ...redactedApprovalSnapshot(resolved.params),
               paramsHash: approvalParamsHash(resolved.params),
             };
           }),

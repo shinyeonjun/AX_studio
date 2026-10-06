@@ -32,7 +32,7 @@ describe('validateWorkflowContracts', () => {
     const requests = issues.flatMap((issue) => issue.missingInputs ?? []);
 
     expect(requests).toMatchObject([
-      { name: 'schedule', target: 'trigger', inputType: 'text', placeholder: '0 9 * * 1-5' },
+      { name: 'schedule', target: 'trigger', inputType: 'text', placeholder: '0 9 * * *' },
       { name: 'timezone', target: 'trigger', inputType: 'text', placeholder: 'Asia/Seoul' },
     ]);
   });
