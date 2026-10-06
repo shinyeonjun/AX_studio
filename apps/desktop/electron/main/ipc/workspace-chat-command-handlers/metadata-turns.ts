@@ -79,6 +79,15 @@ export function observeSavedWorkspaceTurn(store: WorkflowStore, before: readonly
   if (turn.eligible) admittedTurns.add(turn);
 }
 
+/** Forget a deleted conversation's turns; a turn still running is invalidated and stops. */
+export function forgetWorkspaceSessionTurns(store: WorkflowStore, sessionId: string): void {
+  const held = owner(store);
+  const turn = held.turns.get(sessionId);
+  if (turn) invalidate(turn);
+  held.turns.delete(sessionId);
+  held.generations.delete(sessionId);
+}
+
 function assertCurrent(turn: Turn): void {
   const held = owner(turn.store);
   if (held.turns.get(turn.sessionId) !== turn || held.generations.get(turn.sessionId) !== turn.generation

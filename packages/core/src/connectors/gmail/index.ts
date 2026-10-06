@@ -10,6 +10,7 @@ export {
   isLegacyGmailTokenConfig,
 } from './connection.js';
 export {
+  cancelGmailOAuth,
   connectGmailViaLoopback,
   fetchGmailProfileEmail,
   buildGmailConnectorConfig,

@@ -53,8 +53,13 @@ export class WebhookInboundListener {
     try {
       await new Promise<void>((resolve, reject) => {
         server.once('error', reject);
-        server.listen(options.port, host, () => resolve());
+        server.listen(options.port, host, () => {
+          server.off('error', reject);
+          resolve();
+        });
       });
+      // A server error after start (e.g. a socket-level failure) is logged, never an uncaught crash.
+      server.on('error', (error) => console.warn('[webhook] server error:', error.message));
     } catch (error) {
       controller.abort();
       this.controller = undefined;

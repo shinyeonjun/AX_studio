@@ -5,7 +5,7 @@ import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
 import { clearPendingCommand } from './workspace-chat-command-handlers/pending-command.js';
 import { clearHostChatSession } from './workspace-chat-command-handlers/host-state.js';
 import { notifyStateChanged } from '../state-broadcast.js';
-import { observeSavedWorkspaceTurn, registeredHttpMetadataAvailable } from './workspace-chat-command-handlers/metadata-turns.js';
+import { forgetWorkspaceSessionTurns, observeSavedWorkspaceTurn, registeredHttpMetadataAvailable } from './workspace-chat-command-handlers/metadata-turns.js';
 
 export function registerWorkspaceChatPersistenceHandlers() {
   ipcHandle('ax:listChatSessions', async () => {
@@ -83,6 +83,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
     cancelWorkspaceChatSession(id);
     clearPendingCommand(id, true);
     clearHostChatSession(id);
+    forgetWorkspaceSessionTurns(core.store, id);
     core.runtime.discardSessionToolDrafts(id);
     core.commandService.releaseWorkspaceSession(id);
     // Runs that pointed at this chat changed; Activity must stop offering "결과 대화 보기".

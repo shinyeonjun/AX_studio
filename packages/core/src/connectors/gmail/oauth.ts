@@ -1,4 +1,5 @@
 export {
+  cancelGmailOAuth,
   connectGmailViaLoopback,
   createOAuthState,
   grantedScopes,

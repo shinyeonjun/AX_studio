@@ -37,6 +37,9 @@ export async function openRdbSqlClient(config: RdbConnectionConfig, abortSignal?
     const client = new pg.default.Client({ connectionString: config.connectionString, types,
       ...(abortSignal ? { stream: () => new Socket({ signal: abortSignal }) } : {}),
       connectionTimeoutMillis: 10_000, statement_timeout: 30_000, query_timeout: 30_000 });
+    // An idle connection the server drops emits 'error' between queries; unhandled it would crash
+    // the app. The next query (if any) still fails with its own error.
+    client.on('error', (error) => console.warn('[rdb] postgres connection error:', error.message));
     let closing: Promise<void> | undefined;
     const close = () => closing ??= client.end();
     const cancel = () => { void close().catch(() => undefined); };
@@ -61,6 +64,7 @@ export async function openRdbSqlClient(config: RdbConnectionConfig, abortSignal?
     const mysql = await import('mysql2');
     abortSignal?.throwIfAborted();
     const raw = mysql.createConnection(config.connectionString);
+    raw.on('error', (error: Error) => console.warn('[rdb] mysql connection error:', error.message));
     const connection = raw.promise();
     let destroyed = false;
     const cancel = () => { destroyed = true; raw.destroy(); };

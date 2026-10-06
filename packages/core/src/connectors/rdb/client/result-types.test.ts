@@ -15,6 +15,7 @@ const pgMock = vi.hoisted(() => {
   class FakeClient {
     constructor(config: typeof clientConfig) { clientConfig = config; }
     async connect(): Promise<void> {}
+    on(): void {}
     async query(): Promise<{ rows: Array<Record<string, unknown>> }> {
       const dateParser = clientConfig?.types?.getTypeParser(1082, 'text') ?? ((value: string) => new Date(`${value}T00:00:00`));
       const timestampParser = clientConfig?.types?.getTypeParser(1114, 'text') ?? defaultTimestampParser;

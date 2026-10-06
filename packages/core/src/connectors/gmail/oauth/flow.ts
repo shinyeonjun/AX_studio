@@ -30,6 +30,14 @@ export function grantedScopes(scope: string | null | undefined, requested: reado
   return granted.length > 0 ? granted : [...requested];
 }
 
+/** The sign-in waiting for its browser callback; a new one replaces it (one loopback server at a time). */
+let activeSignIn: { cancel: () => void } | undefined;
+
+/** Ends a pending sign-in (e.g. at quit) and closes its loopback server. */
+export function cancelGmailOAuth(): void {
+  activeSignIn?.cancel();
+}
+
 export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promise<GmailOAuthResult> {
   const [{ google }, { CodeChallengeMethod }] = await Promise.all([
     import('googleapis'),
@@ -50,9 +58,16 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       settled = true;
       if (timer) clearTimeout(timer);
       if (server.listening) server.close();
+      if (activeSignIn === signIn) activeSignIn = undefined;
       if ('error' in result) reject(result.error);
       else resolve(result.code);
     };
+    // Clicking Connect again starts over instead of leaving the earlier server waiting 5 minutes.
+    const signIn = {
+      cancel: () => settle({ error: Object.assign(new Error('Gmail sign-in was replaced or cancelled'), { code: 'oauth_cancelled' }) }),
+    };
+    activeSignIn?.cancel();
+    activeSignIn = signIn;
 
     const server = createServer((req, res) => {
       const address = server.address();
