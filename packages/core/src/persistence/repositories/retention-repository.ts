@@ -15,6 +15,12 @@ export interface HistoryRetentionPolicy {
   completedReceiptMaxAgeDays: number;
   /** Newest workflow versions kept per workflow. */
   workflowVersionsPerWorkflow: number;
+  /**
+   * Failed or cancelled work discoveries untouched this long are removed with their examples,
+   * snapshots and replay cases. Their snapshots are copies of the user's data and nothing reads
+   * them again; published discoveries keep theirs for repair.
+   */
+  abandonedDiscoveryMaxAgeDays: number;
 }
 
 export const DEFAULT_HISTORY_RETENTION: HistoryRetentionPolicy = {
@@ -22,6 +28,7 @@ export const DEFAULT_HISTORY_RETENTION: HistoryRetentionPolicy = {
   executionMinAgeDays: 90,
   completedReceiptMaxAgeDays: 180,
   workflowVersionsPerWorkflow: 50,
+  abandonedDiscoveryMaxAgeDays: 30,
 };
 
 export interface HistoryPruneResult {
@@ -30,6 +37,7 @@ export interface HistoryPruneResult {
   workflowVersions: number;
   /** Retry-state settings left behind by receipts that are settled or gone. */
   receiptAttempts: number;
+  discoverySessions: number;
 }
 
 const RECEIPT_ATTEMPT_PREFIX = 'trigger.receiptAttempt:';
@@ -78,6 +86,7 @@ export function pruneHistory(
 ): HistoryPruneResult {
   const executionCutoff = new Date(now.getTime() - policy.executionMinAgeDays * DAY_MS).toISOString();
   const receiptCutoff = new Date(now.getTime() - policy.completedReceiptMaxAgeDays * DAY_MS).toISOString();
+  const discoveryCutoff = new Date(now.getTime() - policy.abandonedDiscoveryMaxAgeDays * DAY_MS).toISOString();
 
   db.exec('BEGIN IMMEDIATE');
   let result: HistoryPruneResult;
@@ -125,12 +134,20 @@ export function pruneHistory(
     ), policy.workflowVersionsPerWorkflow).map((row) => row.id);
     const workflowVersions = deleteByIds(db, 'DELETE FROM workflow_versions WHERE id IN', versionIds);
 
+    const discoveryIds = readRows<{ id: string }>(db.prepare(
+      "SELECT id FROM work_discovery_sessions WHERE status IN ('failed', 'cancelled') AND updated_at < ?",
+    ), discoveryCutoff).map((row) => row.id);
+    for (const table of ['work_discovery_replay_cases', 'work_discovery_snapshots', 'work_discovery_examples']) {
+      deleteByIds(db, `DELETE FROM ${table} WHERE session_id IN`, discoveryIds);
+    }
+    const discoverySessions = deleteByIds(db, 'DELETE FROM work_discovery_sessions WHERE id IN', discoveryIds);
+
     db.exec('COMMIT');
-    result = { executions, triggerReceipts, workflowVersions, receiptAttempts };
+    result = { executions, triggerReceipts, workflowVersions, receiptAttempts, discoverySessions };
   } catch (error) {
     try { db.exec('ROLLBACK'); } catch { /* Preserve the retention error. */ }
     throw error;
   }
-  if (result.executions + result.triggerReceipts + result.workflowVersions + result.receiptAttempts > 0) persistDatabase(db);
+  if (Object.values(result).some((count) => count > 0)) persistDatabase(db);
   return result;
 }

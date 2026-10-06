@@ -88,6 +88,10 @@ export function getDiscoverySession(db: AppDatabase, sessionId: string): Discove
   return parseDiscoverySessionState(row.state_json, sessionId);
 }
 
+export function listDiscoverySessionIds(db: AppDatabase): string[] {
+  return readRows<{ id: string }>(db.prepare('SELECT id FROM work_discovery_sessions')).map((row) => row.id);
+}
+
 export function listDiscoverySessions(db: AppDatabase): DiscoverySessionState[] {
   const rows = readRows<{ id: string; state_json?: string }>(db.prepare(
     'SELECT id, state_json FROM work_discovery_sessions ORDER BY updated_at ASC, id ASC',

@@ -305,6 +305,7 @@ export class WorkflowStore {
   }
   getDiscoverySessionWorkspace(sessionId: string) { return discoveryRepo.getDiscoverySessionWorkspace(this.db, sessionId); }
   listDiscoverySessions() { return discoveryRepo.listDiscoverySessions(this.db); }
+  listDiscoverySessionIds() { return discoveryRepo.listDiscoverySessionIds(this.db); }
   insertDiscoveryExample(params: {
     sessionId: string;
     label?: string;

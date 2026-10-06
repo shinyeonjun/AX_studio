@@ -1,6 +1,7 @@
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { getAxDataPaths } from '../persistence/paths/ax-data.js';
 import { join } from 'node:path';
+import { sweepOrphanSnapshotDirs } from './snapshot-retention.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import { createDefaultDiscoverySourceRegistry } from './sources/index.js';
 import type { DiscoverySourceRegistry } from './sources/registry.js';
@@ -48,6 +49,7 @@ export class WorkDiscoveryService {
       materializeWorkbook,
       resolveConnectionConfig: options.resolveConnectionConfig,
     });
+    sweepOrphanSnapshotDirs(snapshotDir, new Set(options.store.listDiscoverySessionIds()));
     if (options.autoResume) this.runtime.resumePendingSessions();
   }
 
