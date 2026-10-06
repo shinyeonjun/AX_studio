@@ -71,10 +71,21 @@ export function renameExpr(
       // `by`/`column` name source columns; `keyAs`/`as` are output headers and never rename.
       const input = renameExpr(expr.input, candidate);
       const by = rename(expr.by);
+      // Nested keys rename like `by`; a defaulted header keeps its published name.
+      const thenBy = expr.thenBy?.map((entry) => {
+        const renamed = rename(entry.by);
+        return {
+          ...entry,
+          by: renamed.value,
+          ...(renamed.changed && entry.keyAs === undefined ? { keyAs: entry.by } : {}),
+        };
+      });
       const aggregates = expr.aggregates.map((aggregate) => aggregate.column === undefined
         ? aggregate
         : { ...aggregate, column: rename(aggregate.column).value });
-      const changed = by.changed || aggregates.some((aggregate, index) => aggregate.column !== expr.aggregates[index]?.column);
+      const changed = by.changed
+        || (thenBy ?? []).some((entry, index) => entry.by !== expr.thenBy?.[index]?.by)
+        || aggregates.some((aggregate, index) => aggregate.column !== expr.aggregates[index]?.column);
       return {
         expr: {
           ...expr,
@@ -82,6 +93,7 @@ export function renameExpr(
           by: by.value,
           // The output key header defaulted to `by`; keep the published header stable.
           ...(by.changed && expr.keyAs === undefined ? { keyAs: expr.by } : {}),
+          ...(thenBy ? { thenBy } : {}),
           aggregates,
         },
         changed: input.changed || changed,

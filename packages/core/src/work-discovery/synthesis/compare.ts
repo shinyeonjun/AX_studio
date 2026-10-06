@@ -1,6 +1,6 @@
 import type { ObservationValue } from '../observation/schema.js';
 import type { ScalarValue } from '../../contracts/artifacts/table.js';
-import { tableKeyColumn } from '../observation/table-key.js';
+import { tableKeyColumns, tableRowKey } from '../observation/table-key.js';
 
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -95,7 +95,7 @@ function compareCell(expected: TableCell, actual: TableCell): number {
 }
 
 /**
- * Same headers, rows matched by the expected key column (order-insensitive, one-to-one), every
+ * Same headers, rows matched by the expected key columns (order-insensitive, one-to-one), every
  * cell compared like a scalar. Any structural mismatch scores 0; otherwise the weakest cell wins.
  */
 function compareTable(expected: ExpectedTable, actual: unknown): number {
@@ -104,20 +104,20 @@ function compareTable(expected: ExpectedTable, actual: unknown): number {
   const expectedColumns = new Set(expected.columns);
   if (table.columns.length !== expectedColumns.size || !table.columns.every((column) => expectedColumns.has(column))) return 0;
   if (table.rows.length !== expected.rows.length) return 0;
-  const keyColumn = tableKeyColumn(expected);
-  if (!keyColumn) return 0;
+  const keyColumns = tableKeyColumns(expected);
+  if (!keyColumns) return 0;
   const actualByKey = new Map<string, Record<string, TableCell>>();
   for (const row of table.rows) {
-    const key = normalizeText(cellOf(row, keyColumn));
+    const key = tableRowKey(row, keyColumns);
     if (actualByKey.has(key)) return 0;
     actualByKey.set(key, row);
   }
   let score = 1;
   for (const expectedRow of expected.rows) {
-    const actualRow = actualByKey.get(normalizeText(cellOf(expectedRow, keyColumn)));
+    const actualRow = actualByKey.get(tableRowKey(expectedRow, keyColumns));
     if (!actualRow) return 0;
     for (const column of expected.columns) {
-      if (column === keyColumn) continue;
+      if (keyColumns.includes(column)) continue;
       score = Math.min(score, compareCell(cellOf(expectedRow, column), cellOf(actualRow, column)));
       if (score === 0) return 0;
     }

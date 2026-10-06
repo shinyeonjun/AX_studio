@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { OutputObservation } from './schema.js';
 import { observationFromNumber, slugifyLabel } from './observe-document.js';
-import { tableKeyColumn } from './table-key.js';
+import { tableKeyColumns } from './table-key.js';
 
 type TableCell = string | number | boolean | null;
 
@@ -11,8 +11,9 @@ function isNumericColumn(column: TableArtifact['columns'][number]): boolean {
 }
 
 /**
- * A multi-row table whose rows are identified by a distinct text column is one report table
- * (e.g. one row per category): observe it whole instead of as colliding per-cell numbers.
+ * A multi-row table whose rows are identified by text columns is one report table (one row per
+ * category, or per category within each region): observe it whole instead of as colliding
+ * per-cell numbers.
  */
 function observeWholeTable(exampleId: string, table: TableArtifact): OutputObservation | undefined {
   const columns = table.columns.map((column) => column.name);
@@ -24,7 +25,7 @@ function observeWholeTable(exampleId: string, table: TableArtifact): OutputObser
     }))
     .map((row) => Object.fromEntries(columns.map((column) => [column, (row.values[column] ?? null) as TableCell])));
   if (rows.length < 2 || !table.columns.some(isNumericColumn)) return undefined;
-  if (!tableKeyColumn({ columns, rows })) return undefined;
+  if (!tableKeyColumns({ columns, rows })) return undefined;
   const label = table.name?.trim() || table.id;
   return {
     id: `obs_${randomUUID().replace(/-/g, '').slice(0, 12)}`,

@@ -17,7 +17,7 @@ function partitionKey(candidate: CandidateProgram): string {
   const shape = expr.op === 'aggregate'
     ? `${expr.fn}:${expr.column ?? '*'}:${expr.round ?? ''}`
     : expr.op === 'group'
-      ? `group:${expr.by}`
+      ? `group:${[expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)].join('+')}`
       : expr.op;
   const filter = filterSignature(expr);
   return `${candidate.observationPath}|${sourceId}|${shape}${filter ? `|${filter}` : ''}`;

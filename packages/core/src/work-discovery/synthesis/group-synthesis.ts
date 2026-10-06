@@ -3,7 +3,7 @@ import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 import { groupKeyOf, groupRowsBy } from '../../workflow/transform-expr/evaluator/group.js';
 import { aggregateRows, type AggregateSpec } from '../../workflow/transform-expr/evaluator/numeric.js';
 import type { ObservationValue } from '../observation/schema.js';
-import { normalizeCellText } from '../observation/table-key.js';
+import { nonNumericKeyColumns, normalizeCellText, tableRowKey } from '../observation/table-key.js';
 import type { SourceDescriptor } from '../schema.js';
 import {
   aggregateSpecs,
@@ -28,15 +28,6 @@ function cell(row: ReportRow, column: string): unknown {
   return Object.hasOwn(row, column) ? row[column] : null;
 }
 
-/** Report columns whose every value is distinct non-empty text: possible group keys. */
-function keyColumns(expected: ExpectedTable): string[] {
-  return expected.columns.filter((column) => {
-    const values = expected.rows.map((row) => cell(row, column));
-    if (!values.every((value) => typeof value === 'string' && normalizeCellText(value) !== '')) return false;
-    return new Set(values.map(normalizeCellText)).size === values.length;
-  });
-}
-
 function numericValues(expected: ExpectedTable, column: string): number[] | undefined {
   const values = expected.rows.map((row) => cell(row, column));
   return values.every((value): value is number => typeof value === 'number' && Number.isFinite(value))
@@ -49,7 +40,7 @@ interface Measure {
   specs: AggregateSpec[];
 }
 
-/** The report's group rows split from at most one row whose label is not a source value. */
+/** The report's group rows split from at most one row whose key is not a source key. */
 interface KeyAlignment {
   byKey: Map<string, ReportRow>;
   leftover?: ReportRow;
@@ -57,13 +48,13 @@ interface KeyAlignment {
 
 function alignKeys(
   expected: ExpectedTable,
-  keyColumn: string,
+  keyColumns: readonly string[],
   sourceKeys: ReadonlySet<string>,
 ): KeyAlignment | undefined {
   const byKey = new Map<string, ReportRow>();
   let leftover: ReportRow | undefined;
   for (const row of expected.rows) {
-    const key = normalizeCellText(cell(row, keyColumn));
+    const key = tableRowKey(row, keyColumns);
     if (sourceKeys.has(key)) {
       byKey.set(key, row);
       continue;
@@ -75,13 +66,52 @@ function alignKeys(
   return byKey.size > 0 ? { byKey, leftover } : undefined;
 }
 
-function sourceKeySet(rows: TableArtifact['rows'], column: string): Set<string> {
-  const keys = new Set<string>();
+function sourceValueSet(rows: TableArtifact['rows'], column: string): Set<string> {
+  const values = new Set<string>();
   for (const row of rows) {
-    const key = groupKeyOf(row, column);
-    if (key !== undefined) keys.add(normalizeCellText(key));
+    const value = groupKeyOf(row, column);
+    if (value !== undefined) values.add(normalizeCellText(value));
   }
-  return keys;
+  return values;
+}
+
+/**
+ * Source columns that can hold one report key column: every non-empty report value is a value of
+ * the source column, except at most one (a total row's label).
+ */
+function sourceColumnsFor(expected: ExpectedTable, keyColumn: string, table: TableArtifact): string[] {
+  const reportValues = new Set(expected.rows
+    .map((row) => normalizeCellText(cell(row, keyColumn)))
+    .filter((value) => value !== ''));
+  return table.columns.map((column) => column.name).filter((column) => {
+    const values = sourceValueSet(table.rows, column);
+    let missing = 0;
+    for (const value of reportValues) {
+      if (!values.has(value)) missing += 1;
+      if (missing > 1) return false;
+    }
+    return missing < reportValues.size;
+  });
+}
+
+/** Search bound, not semantics: source-column assignments tried per report key. */
+const MAX_KEY_ASSIGNMENTS = 16;
+
+/** Distinct source columns for each report key column, outermost first. */
+function keyAssignments(options: readonly string[][]): string[][] {
+  const assignments: string[][] = [];
+  const extend = (prefix: string[], depth: number): void => {
+    if (assignments.length >= MAX_KEY_ASSIGNMENTS) return;
+    if (depth === options.length) {
+      assignments.push(prefix);
+      return;
+    }
+    for (const column of options[depth]!) {
+      if (!prefix.includes(column)) extend([...prefix, column], depth + 1);
+    }
+  };
+  extend([], 0);
+  return assignments;
 }
 
 /**
@@ -101,46 +131,54 @@ function findSpec(
 
 function trySynthesize(params: {
   expected: ExpectedTable;
-  keyColumn: string;
+  keyColumns: readonly string[];
   measures: Measure[];
   sourceId: string;
-  groupColumn: string;
+  groupColumns: readonly string[];
   filter: RowFilter | undefined;
   rows: TableArtifact['rows'];
 }): GroupCandidate | undefined {
-  const { expected, keyColumn, measures, groupColumn, rows } = params;
-  const grouped = groupRowsBy(rows, groupColumn);
+  const { expected, keyColumns, measures, groupColumns, rows } = params;
   const groupsByKey = new Map<string, TableArtifact['rows']>();
-  for (const [key, groupRows] of grouped) groupsByKey.set(normalizeCellText(key), groupRows);
-  const alignment = alignKeys(expected, keyColumn, new Set(groupsByKey.keys()));
+  for (const group of groupRowsBy(rows, groupColumns).values()) {
+    const normalized = group.keys.map(normalizeCellText);
+    groupsByKey.set(normalized.length === 1 ? normalized[0]! : JSON.stringify(normalized), group.rows);
+  }
+  const alignment = alignKeys(expected, keyColumns, new Set(groupsByKey.keys()));
   // Every group the rule would output must be a report row, and every other report row but one must be a group.
   if (!alignment || alignment.byKey.size !== groupsByKey.size) return undefined;
+  const leftover = alignment.leftover;
+  // A total row carries its label in the first key column; nested key columns stay empty.
+  if (leftover) {
+    if (normalizeCellText(cell(leftover, keyColumns[0]!)) === '') return undefined;
+    if (keyColumns.slice(1).some((column) => normalizeCellText(cell(leftover, column)) !== '')) return undefined;
+  }
   const aggregates: Extract<TransformExpr, { op: 'group' }>['aggregates'] = [];
   for (const measure of measures) {
     const groups = [...alignment.byKey].map(([key, row]) => ({
       rows: groupsByKey.get(key)!,
       expected: cell(row, measure.column) as number,
     }));
-    const total = alignment.leftover
-      ? { rows, expected: cell(alignment.leftover, measure.column) as number }
-      : undefined;
+    const total = leftover ? { rows, expected: cell(leftover, measure.column) as number } : undefined;
     const spec = findSpec(measure, groups, total);
     if (!spec) return undefined;
     aggregates.push({ as: measure.column, ...spec });
   }
   const source: TransformExpr = { op: 'source', sourceId: params.sourceId };
   const input: TransformExpr = params.filter ? { op: 'filter', input: source, where: params.filter.where } : source;
-  const totalLabel = alignment.leftover ? String(cell(alignment.leftover, keyColumn)) : undefined;
   return {
     sourceId: params.sourceId,
     filterKey: params.filter?.key ?? '',
     expr: {
       op: 'group',
       input,
-      by: groupColumn,
-      keyAs: keyColumn,
+      by: groupColumns[0]!,
+      keyAs: keyColumns[0]!,
+      ...(groupColumns.length > 1
+        ? { thenBy: groupColumns.slice(1).map((by, index) => ({ by, keyAs: keyColumns[index + 1]! })) }
+        : {}),
       aggregates,
-      ...(totalLabel !== undefined ? { totalRow: { label: totalLabel } } : {}),
+      ...(leftover ? { totalRow: { label: String(cell(leftover, keyColumns[0]!)) } } : {}),
     },
   };
 }
@@ -148,8 +186,9 @@ function trySynthesize(params: {
 /**
  * Constructs group-by rules that reproduce a report table from one source table, verified
  * against the example's own snapshot before they become candidates. Everything is decided
- * from data: which report column holds keys, which source column's values those keys are,
- * which rows a filter keeps, and which aggregate explains each measure.
+ * from data: which report columns hold keys (one, or a combination such as region + category),
+ * which source column's values each key column holds, which rows a filter keeps, and which
+ * aggregate explains each measure.
  */
 export function synthesizeGroupCandidates(
   expected: ExpectedTable,
@@ -157,37 +196,38 @@ export function synthesizeGroupCandidates(
   snapshots: Record<string, TableArtifact>,
 ): GroupCandidate[] {
   const candidates: GroupCandidate[] = [];
-  for (const keyColumn of keyColumns(expected)) {
-    const measureColumns = expected.columns.filter((column) => column !== keyColumn);
-    if (measureColumns.length === 0) continue;
-    const measureValues = measureColumns.map((column) => numericValues(expected, column));
-    // A non-numeric non-key column cannot be produced by a group rule.
-    if (measureValues.some((values) => !values)) continue;
-    for (const source of sources) {
-      const table = Object.hasOwn(snapshots, source.id) ? snapshots[source.id] : undefined;
-      if (!table || !isCompleteTable(table)) continue;
-      const numericColumns = numericSourceColumns(table);
-      const measures: Measure[] = measureColumns.map((column, index) => {
-        const decimals = Math.max(0, ...measureValues[index]!.map(decimalsOf));
-        return { column, specs: aggregateSpecs(numericColumns, decimals) };
-      });
-      for (const column of table.columns) {
-        // Filters only remove groups, so the unfiltered key set must already cover the report.
-        if (!alignKeys(expected, keyColumn, sourceKeySet(table.rows, column.name))) continue;
-        const filters: Array<RowFilter | undefined> = [undefined, ...candidateRowFilters(table, new Set([column.name]))];
-        for (const filter of filters) {
-          const candidate = trySynthesize({
-            expected,
-            keyColumn,
-            measures,
-            sourceId: source.id,
-            groupColumn: column.name,
-            filter,
-            rows: filter ? filter.rows : table.rows,
-          });
-          // Every filter that explains every cell; the caller picks among them by cross-field consistency.
-          if (candidate) candidates.push(candidate);
-        }
+  // A grouped table is its key columns plus aggregates, so every non-numeric column is a key, and a
+  // column the example happens to make unique on its own still nests (region, then category).
+  const keyColumns = nonNumericKeyColumns(expected);
+  if (!keyColumns) return candidates;
+  const measureColumns = expected.columns.filter((column) => !keyColumns.includes(column));
+  if (measureColumns.length === 0) return candidates;
+  const measureValues = measureColumns.map((column) => numericValues(expected, column));
+  if (measureValues.some((values) => !values)) return candidates;
+  for (const source of sources) {
+    const table = Object.hasOwn(snapshots, source.id) ? snapshots[source.id] : undefined;
+    if (!table || !isCompleteTable(table)) continue;
+    const numericColumns = numericSourceColumns(table);
+    const measures: Measure[] = measureColumns.map((column, index) => {
+      const decimals = Math.max(0, ...measureValues[index]!.map(decimalsOf));
+      return { column, specs: aggregateSpecs(numericColumns, decimals) };
+    });
+    const options = keyColumns.map((keyColumn) => sourceColumnsFor(expected, keyColumn, table));
+    for (const groupColumns of keyAssignments(options)) {
+      // Filters only remove groups, so the unfiltered key set must already cover the report.
+      const filters: Array<RowFilter | undefined> = [undefined, ...candidateRowFilters(table, new Set(groupColumns))];
+      for (const filter of filters) {
+        const candidate = trySynthesize({
+          expected,
+          keyColumns,
+          measures,
+          sourceId: source.id,
+          groupColumns,
+          filter,
+          rows: filter ? filter.rows : table.rows,
+        });
+        // Every filter that explains every cell; the caller picks among them by cross-field consistency.
+        if (candidate) candidates.push(candidate);
       }
     }
   }
