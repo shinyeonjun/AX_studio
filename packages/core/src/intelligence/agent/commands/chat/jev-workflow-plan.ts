@@ -391,7 +391,7 @@ export async function planJevSelectedTools(input: {
     telemetry.durationMs = Date.now() - startedAt;
     telemetry.models = [...models];
     if (!presentation && result.kind === 'clarify') presentation = {
-      title: '실행 전 계획 검사', inputMode: 'individual', inputs: [], actions: [],
+      title: '실행 전 계획 검사', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
       blocks: [
         { type: 'decision', label: '계획 상태', value: '미확정 · 중단' },
         { type: 'note', text: noCommitMessage },
@@ -725,7 +725,7 @@ export async function planJevSelectedTools(input: {
     const accepted = review.requirements?.type === 'choice' && review.requirements.choice === 'met'
       && review.scope?.type === 'choice' && review.scope.choice === 'preserved';
     presentation = {
-      title: '실행 전 계획 검사', inputMode: 'individual', inputs: [], actions: [],
+      title: '실행 전 계획 검사', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
       blocks: [
         { type: 'decision', label: '타입·의존 관계', value: 'Host 검사 통과' },
         { type: 'decision', label: '요구 충족·범위 보존', value: accepted ? 'Jev 검토 통과' : '추가 확인 필요' },

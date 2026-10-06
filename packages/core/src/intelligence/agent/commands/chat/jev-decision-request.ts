@@ -6,7 +6,6 @@ import {
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
 } from '../../../decision/context.js';
 import {
-  resolveHttpCollectionPath,
   type JevReadOperationHint,
 } from '../../../decision/read-operation-catalog.js';
 import type { ConnectorFailureKind } from '../../../../connectors/types.js';
@@ -121,22 +120,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
   if (!hasReadOperationCatalog) {
     delete routeCriteria.capability_read;
   }
-  if (!input.previousReadResult || input.readRecoveryContext) {
-    delete routeCriteria.previous_result;
-  } else {
-    const prevCategories = new Set(
-      input.previousReadResult.rows
-        .map((row) => String(row.values.category ?? '').toLowerCase())
-        .filter(Boolean),
-    );
-    const requestedPath = resolveHttpCollectionPath('products', input.userMessage);
-    const requestedCategory = requestedPath.startsWith('products/category/')
-      ? requestedPath.replace('products/category/', '').toLowerCase()
-      : undefined;
-    if (requestedCategory && prevCategories.size > 0 && !prevCategories.has(requestedCategory)) {
-      delete routeCriteria.previous_result;
-    }
-  }
+  if (!input.previousReadResult || input.readRecoveryContext) delete routeCriteria.previous_result;
 
   const state = {
     request: input.userMessage,

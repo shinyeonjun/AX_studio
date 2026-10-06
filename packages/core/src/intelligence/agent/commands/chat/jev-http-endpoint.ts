@@ -26,19 +26,38 @@ function normalizeHttpPath(value: string | undefined): string | undefined {
   return candidate;
 }
 
+const HTTP_REQUEST_CUE = /(?:\b(?:HTTP|API|URL|REST|endpoint)\b|엔드포인트)/iu;
+const LEADING_SLASH_PATH = /(?:^|[\s(])(\/[A-Za-z0-9_.~-]+(?:\/[A-Za-z0-9_.~-]+)*(?:\?[^\s"'`<>]*)?)/u;
+const BARE_SEGMENTED_PATH = /(?:^|[\s(])([A-Za-z][A-Za-z0-9_.~-]*(?:\/[A-Za-z0-9_.~-]+)+(?:\?[^\s"'`<>]*)?)/u;
+
+/** Path-like only when every segment is a plausible URL segment and one is a real word. */
+function isPathLike(path: string): boolean {
+  const segments = path.split(/[?#]/u, 1)[0]!.split('/').filter(Boolean);
+  return segments.length > 0
+    && segments.every((segment) => /^[A-Za-z0-9_.~-]+$/u.test(segment))
+    && segments.some((segment) => /[A-Za-z]{2,}/u.test(segment));
+}
+
+/**
+ * Returns a path only with an explicit cue: a GET/HEAD/path label, a leading-slash
+ * path, or a bare `a/b` path accompanied by an HTTP/API/URL cue. Ordinary text such
+ * as "I/O" or "A/B 테스트" is never treated as a path.
+ */
 export function explicitHttpPath(message: string): string | undefined {
-  const patterns = [
+  const labeled = [
     /(?:GET|HEAD|겟)\s*(?:경로|path)\s*(?:를)?[^:\n]{0,100}[:：]\s*([^\s"'`<>]+)/iu,
     /(?:^|[\s(])(?:GET|HEAD|겟)\s+([^\s"'`<>]+)/iu,
     /(?:경로|path)\s*[:：]\s*([^\s"'`<>]+)/iu,
-    /(?:^|[\s(])(\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*(?:\?[^\s"'`<>]*)?)/u,
-    /(?:^|[\s(])([A-Za-z][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_.-]+)+(?:\?[^\s"'`<>]*)?)/u,
   ];
-  for (const pattern of patterns) {
+  for (const pattern of labeled) {
     const path = normalizeHttpPath(message.match(pattern)?.[1]);
     if (path) return path;
   }
-  return undefined;
+  const slashPath = normalizeHttpPath(message.match(LEADING_SLASH_PATH)?.[1]);
+  if (slashPath && isPathLike(slashPath)) return slashPath;
+  if (!HTTP_REQUEST_CUE.test(message)) return undefined;
+  const barePath = normalizeHttpPath(message.match(BARE_SEGMENTED_PATH)?.[1]);
+  return barePath && isPathLike(barePath) ? barePath : undefined;
 }
 
 function endpointMentioned(message: string, value: string | undefined): boolean {

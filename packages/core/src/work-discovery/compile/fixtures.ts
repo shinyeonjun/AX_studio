@@ -5,6 +5,8 @@ export const session: DiscoverySessionState = {
   revision: 2,
   userGoal: '월간 매출 보고',
   exampleIds: ['ex_1'],
+  // A person confirmed the single-example mapping; see publish-gate.test.ts for the unconfirmed case.
+  humanConfirmedAt: new Date().toISOString(),
   sourceInventory: [],
   observations: [{
     id: 'obs_1',

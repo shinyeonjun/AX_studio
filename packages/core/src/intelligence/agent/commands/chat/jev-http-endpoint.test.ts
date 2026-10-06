@@ -7,6 +7,16 @@ describe('explicitHttpPath', () => {
       .toBe('products?limit=2');
   });
 
+  it('requires an explicit cue before treating slash-separated text as a path', () => {
+    expect(explicitHttpPath('I/O 성능 요약해줘')).toBeUndefined();
+    expect(explicitHttpPath('A/B 테스트 결과 알려줘')).toBeUndefined();
+    expect(explicitHttpPath('상품/재고 현황 정리해줘')).toBeUndefined();
+    expect(explicitHttpPath('products/category 보여줘')).toBeUndefined();
+    expect(explicitHttpPath('API에서 products/category 보여줘')).toBe('products/category');
+    expect(explicitHttpPath('DummyJSON에서 /products/search?q=phone 조회')).toBe('/products/search?q=phone');
+    expect(explicitHttpPath('경로: products/1')).toBe('products/1');
+  });
+
   it('rejects absolute URLs and protocol-relative paths', () => {
     expect(explicitHttpPath('GET https://example.test/products')).toBeUndefined();
     expect(explicitHttpPath('GET //example.test/products')).toBeUndefined();

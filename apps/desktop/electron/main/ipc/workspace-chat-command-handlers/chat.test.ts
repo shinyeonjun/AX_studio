@@ -5,6 +5,7 @@ import {
   JevDecisionEngine,
   WorkflowStore,
   type AxInputRequest,
+  type AxUiPresentation,
   type WorkflowIR,
 } from '@ax-studio/core';
 import * as axCore from '@ax-studio/core';
@@ -88,6 +89,35 @@ vi.mock('../design-tool-context.js', () => ({ buildDesktopDesignToolContext: () 
 vi.mock('../../e2e-test-seam.js', () => ({ runE2EChat: vi.fn() }));
 
 import { registerWorkspaceChatMessageHandler } from './chat.js';
+
+type ChatHandler = (
+  event: unknown, message: string, requestId: string, workflowId: undefined, sessionId: string,
+) => Promise<{ content: string; presentations?: AxUiPresentation[] }>;
+
+/** Clicks the host-rendered confirm_mutation action the way the renderer does: its value becomes the next user turn. */
+async function confirmMutation(
+  handler: ChatHandler,
+  event: unknown,
+  store: WorkflowStore,
+  sessionId: string,
+  previousUserMessage: string,
+  proposal: { content: string; presentations?: AxUiPresentation[] },
+) {
+  const action = proposal.presentations?.flatMap(({ actions }) => actions)
+    .find((candidate) => (candidate.purpose as string) === 'confirm_mutation');
+  expect(action?.id).toMatch(/^confirm_mutation:/u);
+  const stored = store.getWorkspaceChat(sessionId)!;
+  store.saveWorkspaceChat({
+    id: sessionId,
+    messages: [
+      ...stored.messages.filter((message) => message.content !== previousUserMessage || message.role !== 'user'),
+      { role: 'user', content: previousUserMessage },
+      { role: 'assistant', content: proposal.content, presentations: proposal.presentations },
+      { role: 'user', content: action!.value },
+    ],
+  });
+  return handler(event, action!.value, `confirm-${sessionId}`, undefined, sessionId);
+}
 
 describe('Desktop workspace chat Jev routing', () => {
   afterEach(() => {
@@ -382,12 +412,16 @@ describe('Desktop workspace chat Jev routing', () => {
       registerWorkspaceChatMessageHandler();
       const handler = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as (
         event: unknown, message: string, requestId: string, workflowId: undefined, sessionId: string,
-      ) => Promise<{ content: string }>;
+      ) => Promise<{ content: string; presentations?: AxUiPresentation[] }>;
       const event = {
         sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() },
         senderFrame: ipcMocks.mainFrame,
       };
-      const reply = await handler(event, userMessage, 'request-workflow-step-add', undefined, chat.id);
+      const proposal = await handler(event, userMessage, 'request-workflow-step-add', undefined, chat.id);
+      // The Jev-compiled update waits for the host-rendered confirmation card.
+      expect(store.getWorkflow(workflow.id!)?.version).toBe(1);
+      expect(store.isWorkflowActive(workflow.id!)).toBe(true);
+      const reply = await confirmMutation(handler, event, store, chat.id, userMessage, proposal);
 
       expect(reply.content).toContain('자동 실행을 중지');
       expect(execute).toHaveBeenCalledWith(expect.objectContaining({
@@ -409,6 +443,7 @@ describe('Desktop workspace chat Jev routing', () => {
       }), expect.anything());
       expect(store.getWorkflow(workflow.id!, 2)?.steps).toHaveLength(2);
       expect(store.isWorkflowActive(workflow.id!)).toBe(false);
+      expect(store.getWorkflow(workflow.id!)?.allowExternalAuto).toBe(false);
       expect(requestBodies).toHaveLength(2);
       expect(requestBodies.every((body) => !body.includes('PRIVATE_CHANNEL_ID_123'))).toBe(true);
       expect(agentHarness.runText).not.toHaveBeenCalled();
@@ -490,6 +525,7 @@ describe('Desktop workspace chat Jev routing', () => {
         content: string;
         inputContinuation?: 'command';
         inputRequests?: AxInputRequest[];
+        presentations?: AxUiPresentation[];
       }>;
       const event = {
         sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() },
@@ -523,16 +559,19 @@ describe('Desktop workspace chat Jev routing', () => {
       });
       expect(commandInputContinuation(continuedChat.messages)).toMatchObject({ request: userMessage });
       expect(claimPendingCommand(chat.id, '다른 요청', [], [])).toEqual({ kind: 'mismatch' });
-      const continuation = await handler(
+      const proposal = await handler(
         event, continuedMessage, 'request-workflow-step-input-resume', undefined, continuedChat.id,
       );
+      expect(store.getWorkflow(workflow.id!)?.version).toBe(1);
+      const continuation = await confirmMutation(handler, event, store, continuedChat.id, continuedMessage, proposal);
 
       expect(continuation.content).toContain('workflow를 수정했습니다');
       expect(continuation.content).toContain('자동 실행을 중지');
       expect(requestBodies).toHaveLength(jevCallsBeforeResume);
       expect(fetchImpl).toHaveBeenCalledTimes(jevCallsBeforeResume);
       expect(agentHarness.runText).not.toHaveBeenCalled();
-      expect(execute).toHaveBeenCalledTimes(2);
+      expect(execute).toHaveBeenCalledTimes(3);
+      expect(execute.mock.calls[2]?.[0]).toMatchObject({ name: 'mutation.commit' });
       expect(execute.mock.calls[1]?.[0]).toMatchObject({
         name: 'workflow.update',
         args: expect.objectContaining({

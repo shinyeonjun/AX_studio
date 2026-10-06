@@ -115,8 +115,10 @@ export const AxJobProposeArgsSchema = z.object({
   steps: z.array(AxWorkflowStepInputSchema).max(200).optional(),
   success: z.string().max(2_000).optional(),
   assumptions: z.array(z.string().max(2_000)).max(200).optional(),
-  runOnceNow: z.boolean().default(true),
-  allowExternalAuto: z.boolean().default(true),
+  /** Explicit opt-in only; when omitted the host runs immediately only if no step sends externally. */
+  runOnceNow: z.boolean().optional(),
+  /** Auto-send without per-run approval is a separate explicit opt-in, never a default. */
+  allowExternalAuto: z.boolean().default(false),
 }).superRefine((data, context) => {
   if (!data.requestAnchor && data.goal.length > 2_000) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['goal'], message: 'Legacy job goals are limited to 2000 characters.' });

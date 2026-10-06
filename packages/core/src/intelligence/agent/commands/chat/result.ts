@@ -23,9 +23,13 @@ export function presentationFromResult(
   commandName: string,
   result: AxCommandResult,
 ): AxUiPresentation | undefined {
-  if (commandName !== 'ui.present' && commandName !== 'job.propose' && commandName !== 'execution.enqueue_once') {
+  const confirmedMutation = commandName === 'workflow.run' || commandName === 'workflow.update'
+    || commandName === 'workflow.delete' || commandName === 'repair.apply';
+  if (commandName !== 'ui.present' && commandName !== 'job.propose' && commandName !== 'execution.enqueue_once'
+    && !confirmedMutation) {
     return undefined;
   }
+  if (confirmedMutation && result.status !== 'needs_input') return undefined;
   if (commandName === 'ui.present' && result.status !== 'ok') return undefined;
   if (commandName === 'job.propose' && result.status !== 'ok' && result.status !== 'needs_input') return undefined;
   if (commandName === 'execution.enqueue_once' && result.status !== 'needs_input') return undefined;
@@ -165,6 +169,9 @@ function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly strin
   ];
   if (headers.length < allHeaders.length) {
     lines.push('', `화면에는 전체 ${allHeaders.length}열 중 처음 ${headers.length}열만 표시했습니다.`);
+  } else if (!requestedColumns?.length && headers.length < table.columns.length) {
+    // Columns pruned for readability are disclosed so follow-ups never treat the view as complete.
+    lines.push('', `화면에는 전체 ${table.columns.length}열 중 주요 ${headers.length}열만 표시했습니다.`);
   }
   if (rows.length < table.rows.length) {
     lines.push('', `화면에는 전체 ${table.rows.length}행 중 처음 ${rows.length}행만 표시했습니다.`);

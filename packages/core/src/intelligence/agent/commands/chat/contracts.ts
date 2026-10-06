@@ -77,6 +77,8 @@ export interface AxCommandChatOptions {
   allowJobCommit?: boolean;
   /** Opaque token from the exact host-rendered job confirmation action. */
   jobCommitConfirmationToken?: string;
+  /** Opaque token from the exact host-rendered workflow mutation confirmation action. */
+  mutationConfirmationToken?: string;
   onRequestAnchor?: (anchor: AuthoritativeRequestAnchor) => void;
   onRequestRejected?: (failure: AuthoritativeRequestFailure) => void;
   onProgress?: (event: { message: string }) => void;

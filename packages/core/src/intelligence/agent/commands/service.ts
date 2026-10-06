@@ -51,6 +51,7 @@ export class AxCommandService {
 
   releaseWorkspaceSession(sessionId: string): void {
     this.state.pendingJobs.delete(sessionId.trim());
+    this.state.pendingMutations.delete(sessionId.trim());
   }
 
   /**

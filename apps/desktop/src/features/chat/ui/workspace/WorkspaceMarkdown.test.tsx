@@ -12,4 +12,26 @@ describe('WorkspaceMarkdown', () => {
     expect(html).toContain('<table>');
     expect(html).toContain('<td>First</td>');
   });
+
+  it('never loads remote images and keeps only inline local image data', () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceMarkdown content={'![tracker](https://example.test/pixel.png) ![plain](http://example.test/a.png) ![local](data:image/png;base64,AAAA)'} />,
+    );
+    expect(html).not.toContain('example.test');
+    expect(html).toContain('[이미지: tracker]');
+    expect(html).toContain('[이미지: plain]');
+    expect(html).toContain('src="data:image/png;base64,AAAA"');
+  });
+
+  it('renders only https links as new-window anchors and everything else as text', () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceMarkdown content={'[safe](https://example.test/doc) [insecure](http://example.test) [script](javascript:alert(1)) [file](file:///C:/x)'} />,
+    );
+    expect(html).toContain('<a href="https://example.test/doc" target="_blank" rel="noopener noreferrer">safe</a>');
+    expect(html).not.toContain('href="http://');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('file:');
+    expect(html).toContain('insecure');
+    expect(html).toContain('script');
+  });
 });

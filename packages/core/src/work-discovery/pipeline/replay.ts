@@ -1,8 +1,8 @@
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { OutputObservation } from '../observation/schema.js';
 import type { DiscoverySessionState } from '../schema.js';
-import { buildClarificationQuestion } from '../clarification/question.js';
-import { buildDiscoveryBlueprint } from '../compile/blueprint.js';
+import { buildClarificationQuestion, buildConfirmationQuestion } from '../clarification/question.js';
+import { buildDiscoveryBlueprint, needsHumanConfirmation } from '../compile/blueprint.js';
 import { DiscoveryRecoverableError } from '../recovery/error.js';
 import { enumerateCandidates, replayCandidates, resolveReplayWinners } from '../synthesis/index.js';
 import { judgeReplayAmbiguity } from '../synthesis/decision-judge.js';
@@ -81,9 +81,12 @@ export async function completeDiscoveryReplay(context: DiscoveryReplayContext): 
     throw new DiscoveryRecoverableError('no_matching_candidate', errorMessage);
   }
 
+  // Too few examples cannot establish the rule on their own; ask a person to confirm.
   const question = judged.remainingAmbiguousPaths.length > 0
     ? buildClarificationQuestion({ sessionId, candidates: replayed })
-    : undefined;
+    : needsHumanConfirmation({ ...state, observations })
+      ? buildConfirmationQuestion({ sessionId, candidates: replayed })
+      : undefined;
   const nextStatus = question ? 'needs_clarification' : 'ready_to_publish';
   const blueprint = !question
     ? buildDiscoveryBlueprint({ ...state, candidates: replayed })

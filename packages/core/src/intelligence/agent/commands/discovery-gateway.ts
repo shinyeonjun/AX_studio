@@ -1,4 +1,5 @@
 export type {
+  DiscoveryCommandContext,
   DiscoveryCommandResult,
   DiscoveryCommandGateway,
   DiscoveryGatewayOptions,

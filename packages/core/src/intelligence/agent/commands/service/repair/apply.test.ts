@@ -6,8 +6,7 @@ import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { AxCommandService } from '../../service.js';
 import { repairCommandCandidate, repairCommandWorkflow } from './fixtures.js';
-
-const commandChatContext = { executionContext: { origin: 'agent' as const } };
+import { commandChatContext, executeConfirmedMutation } from '../fixtures.js';
 
 describe('AxCommandService repair apply', () => {
   it('inspects and applies a replay-passing repair as a new reversible workflow version', async () => {
@@ -87,7 +86,7 @@ describe('AxCommandService repair apply', () => {
     });
     expect(JSON.stringify(inspected)).not.toContain('"value":42');
 
-    const applied = await service.execute({
+    const applied = await executeConfirmedMutation(service, {
       name: 'repair.apply',
       args: { repairId: proposal.id, candidateId: repairCommandCandidate.id, baseVersion: 1 },
     }, { ...commandChatContext, currentWorkflowId: workflow.id });

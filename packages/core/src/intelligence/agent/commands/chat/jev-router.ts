@@ -1,92 +1,112 @@
 import { AuthoritativeRequestError, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import {
-  decisionProviderRequestBytesFromError,
   decisionProviderRequestCountFromError,
+  type ChoiceDecisionAnswer,
+  type DecisionAnswer,
   type DecisionInstruction,
-  type DecisionEngine,
   type DecisionQuestion,
 } from '../../../../contracts/decision.js';
-import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
+import { boundDecisionString } from '../../../decision/context.js';
 import { choiceAnswerConfidence } from '../../../decision/confidence.js';
-import { AxCapabilityInvokeArgsSchema, type AxCommand } from '../schema.js';
 import { availableCapabilities } from '../../../../catalog/capability-graph.js';
-import {
-  operationQueryTokens,
-  selectJevReadOperationHints,
-  type JevReadOperationHint,
-} from '../../../decision/read-operation-catalog.js';
+import { selectJevReadOperationHints } from '../../../decision/read-operation-catalog.js';
 import { selectJevWorkflowTriggerHints } from './jev-workflow-proposal.js';
-import {
-  selectJevActionHints,
-} from './jev-action-catalog.js';
-import { planJevSelectedTools, type JevWorkflowPlanResult } from './jev-workflow-plan.js';
-import { contextProposalCommand } from './context/proposal.js';
-import { reportCommand, reportSourceQuestions, reportSources } from './jev-report-selection.js';
-import {
-  buildJevDecisionRequest,
-} from './jev-decision-request.js';
-import { resolveJevReadOperationParameters } from './jev-read-parameters.js';
+import { selectJevActionHints } from './jev-action-catalog.js';
+import { buildJevDecisionRequest } from './jev-decision-request.js';
 import { JEV_CHAT_ROUTE_CRITERIA, type JevChatRouteName } from './jev-route-criteria.js';
-import { deriveJevRequestFeatures } from './request-features.js';
+import { deriveJevRequestFeatures, type JevRequestFeatures } from './request-features.js';
 import {
   parseParallelToolSelection,
   type JevParallelToolSelection,
 } from './jev-parallel-tool-selection.js';
-import type { JevChatRequestPlan, JevCommandPlan } from './jev-request-plan.js';
-import type {
-  JevChatRouterInput,
-  JevChatRouterResult,
-  JevChatRouterTelemetry,
-} from './jev-router-contract.js';
+import type { JevChatRequestPlan } from './jev-request-plan.js';
+import type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
 export type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
-import {
-  capabilityReadCommandForHint,
-  choiceAnswer,
-  commandForRoute,
-  fallback,
-  tableProjectionRequest,
-  tableTransformRequest,
-} from './jev-router-command.js';
-import { handleJevWorkflowRoute } from './jev-router-workflows.js';
-import { explicitHttpPath } from './jev-http-endpoint.js';
+import { choiceAnswer, fallback } from './jev-router-command.js';
+import { JevRouterTelemetryTracker } from './jev-router-telemetry.js';
+import { dispatchJevRoute, type JevFollowupEvaluator } from './jev-router-routes.js';
+export { rankReadHintsByRelevance } from './jev-router-routes.js';
 
-export function rankReadHintsByRelevance(
-  hints: readonly JevReadOperationHint[],
-  userMessage: string,
-): JevReadOperationHint[] {
-  if (hints.length <= 1) return [...hints];
-  const tokens = operationQueryTokens(userMessage);
+/** Lexical request cues may only break ties below this Jev route confidence. */
+const JEV_ROUTE_TIE_BREAK_MAX_CONFIDENCE = 0.6;
 
-  const scored = hints.map((hint, originalIndex) => {
-    let score = 0;
-    const hintText = [
-      hint.label,
-      hint.description,
-      hint.sourceLabel ?? '',
-      hint.capabilityId,
-      typeof hint.params?.path === 'string' ? hint.params.path : '',
-    ].join(' ').toLowerCase();
+const TOOL_SELECTION_ROUTES = new Set<JevChatRouteName>([
+  'answer', 'capability_read', 'execution_enqueue_once', 'workflow_create', 'job_propose',
+]);
 
-    // Heavy penalty for schema inspection when user did not explicitly ask for schema
-    const isSchemaInspection = hint.capabilityId === 'rdb.schema.describe'
-      || /(?:schema\.describe|테이블\s*목록\s*조회|스키마\s*구조\s*조회)/iu.test(hint.description);
-    const mentionsSchemaInQuery = /(?:스키마|schema|테이블\s*목록|테이블\s*구조)/iu.test(userMessage);
-    if (isSchemaInspection && !mentionsSchemaInQuery) {
-      score -= 50;
-    }
+/** Destructive routes require Jev's chosen route to also be its most probable one. */
+function isDominantRouteChoice(answer: ChoiceDecisionAnswer, route: string): boolean {
+  const chosen = answer.probabilities[route];
+  if (chosen === undefined) return choiceAnswerConfidence(answer, route) >= 0.5;
+  return Number.isFinite(chosen) && chosen >= 0.5
+    && Object.entries(answer.probabilities).every(([choice, probability]) => choice === route || !(probability >= chosen));
+}
 
-    // Score token matches
-    for (const token of tokens) {
-      if (hintText.includes(token.toLowerCase())) {
-        score += 10;
+interface ToolSelectionState {
+  route: JevChatRouteName;
+  selectedToolIds: Set<string>;
+  hasSelectedWriteTools: boolean;
+}
+
+/**
+ * Host normalization of Jev's parallel tool selection. It may only remove tools
+ * or keep work in chat; it never adds a tool, escalates a read to execution, or
+ * replaces a confident Jev route. Returns a fallback when the selection contradicts the route.
+ */
+function normalizeToolSelection(input: {
+  route: JevChatRouteName;
+  confidence: number;
+  routerInput: JevChatRouterInput;
+  requestFeatures: JevRequestFeatures;
+  explicitAction?: ChoiceDecisionAnswer;
+  toolSelection?: JevParallelToolSelection;
+  requestPlan?: JevChatRequestPlan;
+  telemetry: JevRouterTelemetryTracker;
+}): ToolSelectionState | JevChatRouterResult {
+  const { toolSelection, requestPlan, telemetry, requestFeatures } = input;
+  let route = input.route;
+  const selectedToolIds = new Set(toolSelection?.kind === 'selected'
+    ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
+    : []);
+  const hasWrites = () => [...selectedToolIds].some((id) => id.startsWith('write:'));
+  const keepReplyInChat = () => {
+    if (toolSelection?.kind === 'selected') toolSelection.needsNaturalLanguageAnswer = true;
+    if (requestPlan) requestPlan.response.llmRequired = true;
+  };
+  if (toolSelection?.kind === 'selected') {
+    if (hasWrites() && (route === 'capability_read'
+      || (route === 'answer' && input.explicitAction?.choice !== 'execute_now'))) {
+      // A read route never escalates to execution: writes are only dropped when Jev
+      // itself says not to execute (e.g. drafting text in chat), otherwise it fails
+      // closed. A conversational answer without Jev-confirmed intent stays in chat.
+      if (route === 'capability_read' && input.explicitAction?.choice !== 'do_not_execute') {
+        return fallback('uncertain');
       }
+      for (const id of [...selectedToolIds]) {
+        if (id.startsWith('write:')) selectedToolIds.delete(id);
+      }
+      keepReplyInChat();
     }
-
-    return { hint, score, originalIndex };
-  });
-
-  scored.sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex);
-  return scored.map(({ hint }) => hint);
+    telemetry.update({ selectedToolCount: selectedToolIds.size, actionCandidateSelected: hasWrites() });
+  }
+  const hasSelectedWriteTools = hasWrites();
+  // Lexical cues were already sent to Jev as request features; here they only break ties.
+  if (route === 'answer' && !hasSelectedWriteTools && selectedToolIds.size > 0
+    && requestFeatures.previous_context_reference_cue && requestFeatures.calculation_or_summary_cue
+    && (input.routerInput.conversationHistory ?? []).some(({ role }) => role === 'assistant')) {
+    // Jev chose a conversational answer about earlier results; do not re-read sources.
+    selectedToolIds.clear();
+    keepReplyInChat();
+    telemetry.update({ selectedToolCount: 0, actionCandidateSelected: false });
+  }
+  if (input.confidence < JEV_ROUTE_TIE_BREAK_MAX_CONFIDENCE && input.routerInput.previousReadResult
+    && !hasSelectedWriteTools && requestFeatures.table_transform_cue && !requestFeatures.fresh_read_cue
+    && (route === 'answer' || route === 'capability_read')) {
+    selectedToolIds.clear();
+    route = 'previous_result';
+    telemetry.update({ selectedRoute: route, selectedToolCount: 0, actionCandidateSelected: false });
+  }
+  return { route, selectedToolIds, hasSelectedWriteTools };
 }
 
 /**
@@ -116,7 +136,6 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   const operationCatalogSize = input.readOperationCatalogSize ?? input.readOperationHints?.length ?? 0;
   const operationCatalogMayBeBounded = input.readOperationCatalogMayBeBounded
     ?? operationCatalogSize > operationHints.length;
-  const operationSelectionMode = input.readOperationSelectionMode;
   const readRecovery = input.readRecoveryContext !== undefined;
   // Recovery is intentionally limited to reads; do not expose write or workflow choices.
   const connectedConnectors = input.connectedConnectors ?? [];
@@ -135,8 +154,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     ? { answer: JEV_CHAT_ROUTE_CRITERIA.answer, capability_read: JEV_CHAT_ROUTE_CRITERIA.capability_read }
     : { ...JEV_CHAT_ROUTE_CRITERIA };
   if (!input.previousReadResult || readRecovery) delete routeCatalog.previous_result;
-  let telemetry: JevChatRouterTelemetry | undefined;
-  let evaluationCalls = 0;
+  let telemetry: JevRouterTelemetryTracker | undefined;
   try {
     const {
       state,
@@ -165,103 +183,48 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       readRecoveryContext: input.readRecoveryContext,
       previousReadResult: input.previousReadResult,
     });
-    evaluationCalls += 1;
+    const tracker = new JevRouterTelemetryTracker({
+      questions,
+      routeCandidateCount: Object.keys(routeCriteria).length,
+      operationCandidateCount,
+      operationCatalogSize,
+      operationCatalogMayBeBounded,
+      actionCandidateCount: actionSelection.hints.length,
+      actionCatalogSize: actionSelection.catalogSize,
+      actionCatalogMayBeBounded: actionSelection.catalogMayBeBounded,
+      operationSelectionMode: input.readOperationSelectionMode,
+      operationLexicalMatchedOperationCount: input.readOperationLexicalMatchedOperationCount,
+      operationLexicalTopScore: input.readOperationLexicalTopScore,
+    });
+    telemetry = tracker;
+    tracker.evaluationCalls += 1;
     const evaluation = await input.decisionEngine.evaluate({
       state,
       questions,
       signal: input.abortSignal,
     });
     input.abortSignal?.throwIfAborted();
-    telemetry = evaluation.model || evaluation.usage || evaluation.providerRequestCount !== undefined
-      || evaluation.requestBytes !== undefined
-      ? {
-          ...(evaluation.model ? { model: evaluation.model } : {}),
-          ...(evaluation.usage?.inputTokens === undefined ? {} : { inputTokens: evaluation.usage.inputTokens }),
-          ...(evaluation.usage?.outputTokens === undefined ? {} : { outputTokens: evaluation.usage.outputTokens }),
-          questionIds: Object.keys(questions),
-          routeCandidateCount: Object.keys(routeCriteria).length,
-          operationCandidateCount,
-          operationCatalogSize,
-          operationCatalogMayBeBounded,
-          actionCandidateCount: actionSelection.hints.length,
-          actionCatalogSize: actionSelection.catalogSize,
-          actionCatalogMayBeBounded: actionSelection.catalogMayBeBounded,
-          ...(operationSelectionMode === undefined ? {} : { operationSelectionMode }),
-          ...(input.readOperationLexicalMatchedOperationCount === undefined ? {} : {
-            operationLexicalMatchedOperationCount: input.readOperationLexicalMatchedOperationCount,
-          }),
-          ...(input.readOperationLexicalTopScore === undefined ? {} : {
-            operationLexicalTopScore: input.readOperationLexicalTopScore,
-          }),
-          estimatedRequestBytes: evaluation.requestBytes
-            ?? new TextEncoder().encode(JSON.stringify({ state, questions })).byteLength,
-          evaluationCalls,
-          providerRequestCount: evaluation.providerRequestCount ?? 1,
-        }
-      : undefined;
+    tracker.recordInitial(evaluation, state);
     let requestPlan: JevChatRequestPlan | undefined;
     const withTelemetry = (result: JevChatRouterResult): JevChatRouterResult => ({
       ...result,
       ...(requestPlan ? { requestPlan } : {}),
-      ...(telemetry ? { telemetry } : {}),
+      ...(tracker.telemetry ? { telemetry: tracker.telemetry } : {}),
     });
-    const requestBytes = (requestState: unknown, requestQuestions: Record<string, DecisionQuestion>) =>
-      new TextEncoder().encode(JSON.stringify({ state: requestState, questions: requestQuestions })).byteLength;
-    const recordFollowupTelemetry = (
-      followup: Awaited<ReturnType<DecisionEngine['evaluate']>>,
+    const evaluateFollowup: JevFollowupEvaluator = async (
       followupState: unknown,
       followupQuestions: Record<string, DecisionQuestion>,
     ) => {
-      const previous = telemetry ?? {
-        questionIds: Object.keys(questions),
-        routeCandidateCount: Object.keys(routeCriteria).length,
-        operationCandidateCount,
-        operationCatalogSize,
-        operationCatalogMayBeBounded,
-        actionCandidateCount: 0,
-        actionCatalogSize: actionSelection.catalogSize,
-        actionCatalogMayBeBounded: actionSelection.catalogMayBeBounded,
-        ...(operationSelectionMode === undefined ? {} : { operationSelectionMode }),
-        providerRequestCount: 1,
-        estimatedRequestBytes: evaluation.requestBytes ?? requestBytes(state, questions),
-        evaluationCalls: 1,
-      };
-      telemetry = {
-        ...previous,
-        ...(followup.model ? { model: followup.model } : {}),
-        ...((previous.inputTokens !== undefined || followup.usage?.inputTokens !== undefined)
-          ? { inputTokens: (previous.inputTokens ?? 0) + (followup.usage?.inputTokens ?? 0) }
-          : {}),
-        ...((previous.outputTokens !== undefined || followup.usage?.outputTokens !== undefined)
-          ? { outputTokens: (previous.outputTokens ?? 0) + (followup.usage?.outputTokens ?? 0) }
-          : {}),
-        questionIds: [...previous.questionIds, ...Object.keys(followupQuestions)],
-        estimatedRequestBytes: previous.estimatedRequestBytes
-          + (followup.requestBytes ?? requestBytes(followupState, followupQuestions)),
-        evaluationCalls,
-        providerRequestCount: (previous.providerRequestCount ?? previous.evaluationCalls ?? 1)
-          + (followup.providerRequestCount ?? 1),
-      };
-    };
-    const evaluateFollowup = async (
-      followupState: unknown,
-      followupQuestions: Record<string, DecisionQuestion>,
-    ): Promise<Awaited<ReturnType<DecisionEngine['evaluate']>>> => {
       input.abortSignal?.throwIfAborted();
-      evaluationCalls += 1;
+      tracker.evaluationCalls += 1;
       const followup = await input.decisionEngine.evaluate({
         state: followupState,
         questions: followupQuestions,
         signal: input.abortSignal,
       });
       input.abortSignal?.throwIfAborted();
-      recordFollowupTelemetry(followup, followupState, followupQuestions);
+      tracker.recordFollowup(followup, followupState, followupQuestions);
       return followup;
-    };
-    const resolveReadParameterChoices = async (
-      hint: JevReadOperationHint,
-    ): Promise<JevReadOperationHint> => {
-      return resolveJevReadOperationParameters(hint, input.userMessage, evaluateFollowup, requestPlan);
     };
 
     const routeAnswer = choiceAnswer(evaluation.answers.route);
@@ -270,45 +233,33 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     }
     const route = routeAnswer.choice as JevChatRouteName;
     const confidence = choiceAnswerConfidence(routeAnswer, route);
-    if (telemetry) telemetry = { ...telemetry, selectedRoute: route, routeConfidence: confidence };
-    const explicitRun = choiceAnswer(evaluation.answers.explicit_workflow_run);
+    tracker.update({ selectedRoute: route, routeConfidence: confidence });
     const explicitAction = choiceAnswer(evaluation.answers.explicit_execution_now);
-    const explicitWorkflowCreate = choiceAnswer(evaluation.answers.explicit_workflow_create);
-    const explicitWorkflowDelete = choiceAnswer(evaluation.answers.explicit_workflow_delete);
-    const explicitWorkflowUpdate = choiceAnswer(evaluation.answers.explicit_workflow_update);
-    let selectedRoute = route;
-    const selectedConfidence = confidence;
-    let toolSelection: JevParallelToolSelection | undefined;
     const updateAddsSteps = choiceAnswer(evaluation.answers.explicit_workflow_step_addition)?.choice === 'add_now';
-    const selectionRoute = selectedRoute === 'answer'
-      || selectedRoute === 'capability_read'
-      || selectedRoute === 'execution_enqueue_once'
-      || selectedRoute === 'workflow_create'
-      || selectedRoute === 'job_propose'
-      || (selectedRoute === 'workflow_update' && updateAddsSteps);
-    if (selectionRoute) {
+    let toolSelection: JevParallelToolSelection | undefined;
+    if (TOOL_SELECTION_ROUTES.has(route) || (route === 'workflow_update' && updateAddsSteps)) {
       toolSelection = parseParallelToolSelection({
         candidates: parallelToolCandidates,
         answers: evaluation.answers,
         telemetry: {
           evaluationCalls: 1,
           providerRequestCount: evaluation.providerRequestCount ?? 1,
-          estimatedRequestBytes: evaluation.requestBytes
-            ?? new TextEncoder().encode(JSON.stringify({ state, questions })).byteLength,
+          estimatedRequestBytes: tracker.firstPassRequestBytes,
           candidateCount: parallelToolCandidates.length,
         },
       });
       if (toolSelection.kind === 'clarify') {
-        const message = '요청에 필요한 도구나 자연어 답변 여부를 확실히 판단하지 못했습니다. 원하는 결과와 대상을 조금 더 구체적으로 알려 주세요.';
-        if (selectedRoute === 'answer' || selectedRoute === 'capability_read') {
-          if (selectedRoute === 'capability_read' && toolSelection.reason === 'no_answer_or_tool') {
-            return withTelemetry(fallback('missing_context'));
-          }
-          return withTelemetry(fallback('uncertain'));
+        if (route === 'capability_read' && toolSelection.reason === 'no_answer_or_tool') {
+          return withTelemetry(fallback('missing_context'));
         }
-        if (selectedRoute === 'execution_enqueue_once' || selectedRoute === 'workflow_create'
-          || selectedRoute === 'workflow_update' || selectedRoute === 'job_propose') {
-          return withTelemetry({ kind: 'clarify', route: selectedRoute, message, confidence: selectedConfidence });
+        if (route === 'execution_enqueue_once' || route === 'workflow_create'
+          || route === 'workflow_update' || route === 'job_propose') {
+          return withTelemetry({
+            kind: 'clarify',
+            route,
+            message: '요청에 필요한 도구나 자연어 답변 여부를 확실히 판단하지 못했습니다. 원하는 결과와 대상을 조금 더 구체적으로 알려 주세요.',
+            confidence,
+          });
         }
         return withTelemetry(fallback('uncertain'));
       }
@@ -329,83 +280,12 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
         operationDecisions: toolSelection.operationDecisions,
       };
     }
-    const selectedToolIds = new Set(toolSelection?.kind === 'selected'
-      ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
-      : []);
-    if (toolSelection?.kind === 'selected') {
-      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
-      if (selectedRoute === 'capability_read' || selectedRoute === 'answer') {
-        if (hasWriteTools) {
-          const isDraftingIntent = /(?:써줘|작성해줘|초안|내용\s*만들어줘|텍스트로\s*써줘|형태로\s*써줘|답장\s*써줘)/iu.test(input.userMessage)
-            && !/(?:보내줘|발송해줘|전송해줘|지금\s*보내|큐에\s*등록|전송\s*실행)/iu.test(input.userMessage);
-          if (explicitAction?.choice === 'execute_now' && !isDraftingIntent) {
-            selectedRoute = 'execution_enqueue_once';
-            if (telemetry) telemetry = { ...telemetry, selectedRoute };
-          } else {
-            for (const id of [...selectedToolIds]) {
-              if (id.startsWith('write:')) selectedToolIds.delete(id);
-            }
-            toolSelection.needsNaturalLanguageAnswer = true;
-            if (requestPlan) {
-              requestPlan.response.llmRequired = true;
-            }
-          }
-        }
-      }
-      if (telemetry) {
-        telemetry = {
-          ...telemetry,
-          selectedToolCount: selectedToolIds.size,
-          actionCandidateSelected: [...selectedToolIds].some((id) => id.startsWith('write:')),
-        };
-      }
-    }
-    const hasPriorAssistantTurn = (input.conversationHistory ?? []).some(({ role }) => role === 'assistant');
-    const isAnaphoricContextReference = /(?:^|\s)(?:이|그|방금|앞의|위의)\s*(?:가구|상품|제품|데이터|자료|표|목록|결과|것|애들|들)(?:들|에서|의|중|중에)?/u.test(input.userMessage)
-      || /(?:여기서|이\s*중(?:에서)?|그\s*중(?:에서)?|방금\s*결과)/u.test(input.userMessage);
-    const isCalculationOrSummaryIntent = /(?:계산|합계|총|평균|몇\s*개|얼마|요약|설명|알려줘|분석|정리)/iu.test(input.userMessage)
-      && !/(?:표로|목록으로|다시\s*조회|새로\s*조회|가져와|뽑아줘|불러와)/iu.test(input.userMessage);
-
-    if (hasPriorAssistantTurn && isAnaphoricContextReference && isCalculationOrSummaryIntent) {
-      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
-      if (!hasWriteTools) {
-        selectedToolIds.clear();
-        selectedRoute = 'answer';
-        if (toolSelection && toolSelection.kind === 'selected') {
-          toolSelection.needsNaturalLanguageAnswer = true;
-        }
-        if (requestPlan) {
-          requestPlan.response.llmRequired = true;
-        }
-        if (telemetry) {
-          telemetry = {
-            ...telemetry,
-            selectedRoute: 'answer',
-            selectedToolCount: 0,
-            actionCandidateSelected: false,
-          };
-        }
-      }
-    }
-
-    const isTableTransformIntent = Boolean(input.previousReadResult)
-      && (/(?:정렬|순으로|높은\s*순|낮은\s*순|많은\s*순|적은\s*순|필터|남겨줘|추려줘|제외해줘|빼줘|엑셀|xlsx)/iu.test(input.userMessage));
-
-    if (input.previousReadResult && isTableTransformIntent) {
-      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
-      if (!hasWriteTools && !/(?:새로\s*조회|다시\s*조회|새로\s*가져와|새로\s*불러와)/iu.test(input.userMessage)) {
-        selectedToolIds.clear();
-        selectedRoute = 'previous_result';
-        if (telemetry) {
-          telemetry = {
-            ...telemetry,
-            selectedRoute: 'previous_result',
-            selectedToolCount: 0,
-            actionCandidateSelected: false,
-          };
-        }
-      }
-    }
+    const normalized = normalizeToolSelection({
+      route, confidence, routerInput: input, requestFeatures, explicitAction, toolSelection, requestPlan, telemetry: tracker,
+    });
+    if ('kind' in normalized) return withTelemetry(normalized);
+    const { selectedToolIds, hasSelectedWriteTools } = normalized;
+    let selectedRoute = normalized.route;
     const selectedReadHints = operationHints.filter((hint) => selectedToolIds.has(`read:${hint.key}`));
     const selectedActionHints = [
       ...actionSelection.hints.filter(({ key }) => selectedToolIds.has(`write:${key}`)),
@@ -416,309 +296,99 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     if (selectedRoute === 'capability_read' && selectedToolIds.size === 0
       && toolSelection?.kind === 'selected' && toolSelection.needsNaturalLanguageAnswer) {
       selectedRoute = 'answer';
-      if (telemetry) telemetry = { ...telemetry, selectedRoute };
+      tracker.update({ selectedRoute });
     }
-    const isMultiReadComposition = /(?:그리고\s*(?:또|다시)?|후에|다음에|동시에|둘\s*다|모두\s*조회|각각\s*조회|비교|합쳐|연계|하고\s*도?|함께\s*조회)/iu.test(input.userMessage);
     if (selectedRoute === 'answer') {
       if (selectedToolIds.size === 0) {
-        return withTelemetry({ kind: 'reply', route: 'answer', confidence: selectedConfidence });
+        return withTelemetry({ kind: 'reply', route: 'answer', confidence });
       }
-      const hasWriteTools = [...selectedToolIds].some((id) => id.startsWith('write:'));
-      selectedRoute = !hasWriteTools && !isMultiReadComposition && selectedReadHints.length >= 1
+      selectedRoute = !hasSelectedWriteTools && selectedReadHints.length >= 1
         ? 'capability_read'
         : (selectedToolIds.size === 1 && selectedReadHints.length === 1 ? 'capability_read' : 'execution_enqueue_once');
-      if (telemetry) telemetry = { ...telemetry, selectedRoute };
+      tracker.update({ selectedRoute });
     }
     if (selectedRoute === 'capability_read' && selectedReadHints.length === 0) {
       return withTelemetry(fallback('missing_context'));
     }
+    const intentGate = mutationIntentGate(selectedRoute, input, evaluation.answers, routeAnswer, route, confidence);
+    if (intentGate) return withTelemetry(intentGate);
 
-    if (
-      (selectedRoute === 'workflow_update' || selectedRoute === 'workflow_delete')
-      && !input.currentWorkflowId?.trim()
-    ) {
-      return withTelemetry(fallback('missing_context'));
-    }
-    if (selectedRoute === 'workflow_create' && !input.hasWorkspaceSession) {
-      return withTelemetry({
-        kind: 'clarify',
-        route: selectedRoute,
-        message: 'workflow를 저장할 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.',
-        confidence: selectedConfidence,
-      });
-    }
-
-    if (selectedRoute === 'workflow_run' && explicitRun?.choice !== 'run_now') {
-      return withTelemetry(fallback('uncertain'));
-    } else if (selectedRoute === 'workflow_create' && explicitWorkflowCreate?.choice !== 'create_now') {
-      return withTelemetry({
-        kind: 'clarify',
-        route: selectedRoute,
-        message: '새 workflow를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 workflow를 명시해 주세요.',
-        confidence: selectedConfidence,
-      });
-    } else if (selectedRoute === 'workflow_delete' && explicitWorkflowDelete?.choice !== 'delete_now') {
-      return withTelemetry({
-        kind: 'clarify',
-        route: selectedRoute,
-        message: '현재 workflow를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다.',
-        confidence: selectedConfidence,
-      });
-    } else if (selectedRoute === 'workflow_update' && explicitWorkflowUpdate?.choice !== 'update_now') {
-      return withTelemetry({
-        kind: 'clarify',
-        route: selectedRoute,
-        message: '현재 workflow를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다.',
-        confidence: selectedConfidence,
-      });
-    }
-
-    if (selectedRoute === 'report_generate') {
-      if (!input.hasWorkspaceSession) {
-        return withTelemetry({
-          kind: 'clarify',
-          route: selectedRoute,
-          message: '보고서를 만들려면 현재 대화에 빈 PDF 템플릿과 완성된 보고서 예시를 각각 첨부해 주세요.',
-          confidence: selectedConfidence,
-        });
-      }
-      const reportSelection = reportSources(input.resolveWorkspaceSources?.() ?? input.workspaceSources);
-      if (reportSelection.catalogSize < 2) {
-        return withTelemetry({
-          kind: 'clarify',
-          route: selectedRoute,
-          message: '보고서를 만들려면 현재 대화에 빈 PDF 템플릿과 완성된 보고서 예시를 각각 첨부해 주세요.',
-          confidence: selectedConfidence,
-        });
-      }
-      const sourceState = {
-        request: input.requestAnchor!.text,
-        context: { ready_pdf_candidate_count: reportSelection.catalogSize },
-        policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
-      };
-      const sourceQuestions = reportSourceQuestions(reportSelection.candidates);
-      const sourceEvaluation = await evaluateFollowup(sourceState, sourceQuestions);
-      const command = reportCommand({
-        hasWorkspaceSession: input.hasWorkspaceSession,
-        userMessage: input.userMessage,
-        requestAnchor: input.requestAnchor,
-        requestBudget: input.requestBudget,
-        answers: sourceEvaluation.answers,
-        candidates: reportSelection.candidates,
-      });
-      if ('kind' in command) return withTelemetry(command);
-      return withTelemetry({ kind: 'command', command, route: selectedRoute, confidence: selectedConfidence });
-    }
-
-    const workflowPlanResult = (
-      plan: JevWorkflowPlanResult,
-      route: 'workflow_create' | 'workflow_update' | 'execution_enqueue_once' | 'job_propose',
-    ): JevChatRouterResult => {
-      const baseTelemetry = telemetry ?? {
-        questionIds: Object.keys(questions),
-        routeCandidateCount: Object.keys(routeCriteria).length,
-        operationCandidateCount,
-        operationCatalogSize,
-        operationCatalogMayBeBounded,
-        actionCandidateCount: actionSelection.hints.length,
-        actionCatalogSize: actionSelection.catalogSize,
-        actionCatalogMayBeBounded: actionSelection.catalogMayBeBounded,
-        estimatedRequestBytes: evaluation.requestBytes
-          ?? new TextEncoder().encode(JSON.stringify({ state, questions })).byteLength,
-        providerRequestCount: 1,
-      };
-      const planTelemetry: JevChatRouterTelemetry = {
-        ...baseTelemetry,
-        estimatedRequestBytes: baseTelemetry.estimatedRequestBytes + plan.telemetry.estimatedRequestBytes,
-        inputTokens: baseTelemetry.inputTokens === undefined && plan.telemetry.inputTokens === undefined ? undefined : (baseTelemetry.inputTokens ?? 0) + (plan.telemetry.inputTokens ?? 0),
-        outputTokens: baseTelemetry.outputTokens === undefined && plan.telemetry.outputTokens === undefined ? undefined : (baseTelemetry.outputTokens ?? 0) + (plan.telemetry.outputTokens ?? 0),
-        evaluationCalls: (telemetry?.evaluationCalls ?? 1) + plan.telemetry.calls,
-        providerRequestCount: (telemetry?.providerRequestCount ?? telemetry?.evaluationCalls ?? 1)
-          + plan.telemetry.providerRequestCount,
-        planningCalls: plan.telemetry.calls,
-        planningProviderRequestCount: plan.telemetry.providerRequestCount,
-        planningDurationMs: plan.telemetry.durationMs,
-        planningStepCount: plan.telemetry.plannedStepCount,
-        planningCandidateCount: plan.telemetry.candidateCount,
-        planningCandidateCatalogMayBeBounded: plan.telemetry.candidateCatalogMayBeBounded,
-        planningEstimatedRequestBytes: plan.telemetry.estimatedRequestBytes,
-        planningInputTokens: plan.telemetry.inputTokens,
-        planningOutputTokens: plan.telemetry.outputTokens,
-        planningModels: plan.telemetry.models,
-      };
-      if (plan.kind === 'clarify' && plan.requestFailure) {
-        return { kind: 'request_rejected', failure: plan.requestFailure, telemetry: planTelemetry };
-      }
-      const result: JevChatRouterResult = plan.kind === 'clarify'
-        ? { kind: 'clarify', route, message: plan.message, confidence: selectedConfidence }
-        : {
-            kind: 'command', route, command: plan.command, confidence: selectedConfidence,
-            ...(plan.commandPlan ? { commandPlan: plan.commandPlan } : {}),
-          };
-      return {
-        ...result,
-        ...(requestPlan ? { requestPlan } : {}),
-        telemetry: planTelemetry,
-        ...(plan.presentation ? { presentation: plan.presentation } : {}),
-      };
-    };
-
-    if (selectedRoute === 'previous_result') {
-      return withTelemetry({ kind: 'previous_result', route: selectedRoute, confidence: selectedConfidence });
-    }
-    const workflowRouteResult = await handleJevWorkflowRoute({
+    return await dispatchJevRoute({
       input,
       route: selectedRoute,
-      confidence: selectedConfidence,
+      confidence,
       answers: evaluation.answers,
+      explicitAction,
+      requestFeatures,
+      toolSelection,
+      get requestPlan() { return requestPlan; },
+      connectedConnectors,
       selectedReadHints,
       selectedActionHints,
-      requestPlan,
       workflowTriggerHints,
       withTelemetry,
       evaluateFollowup,
-      workflowPlanResult,
-    });
-    if (workflowRouteResult) return workflowRouteResult;
-    if (selectedRoute === 'execution_enqueue_once') {
-      if (toolSelection?.kind !== 'selected') return withTelemetry(fallback('uncertain'));
-      if (selectedActionHints.some((h) => h.capability.kind === 'write') && explicitAction?.choice !== 'execute_now') {
-        return withTelemetry({
-          kind: 'clarify',
-          route: selectedRoute,
-          message: '연결된 작업을 지금 실행하라는 요청인지 확실하지 않아 실행하지 않았습니다. 실행할 작업을 명시해 주세요.',
-          confidence: selectedConfidence,
-        });
-      }
-      const plan = await planJevSelectedTools({
-        decisionEngine: input.decisionEngine,
-        request: input.userMessage,
-        requestAnchor: input.requestAnchor,
-        requestBudget: input.requestBudget,
-        mode: 'one_shot',
-        connectedConnectors,
-        readOperationHints: selectedReadHints,
-        actionHints: selectedActionHints,
-        actionInputValues: input.actionInputValues,
-        requestPlan,
-        sessionMemo: input.sessionMemo,
-        workflowPolicy: input.workflowPolicy,
-        signal: input.abortSignal,
-      });
-      return workflowPlanResult(plan, selectedRoute);
-    }
-    if (selectedRoute === 'context_remember') {
-      const command = contextProposalCommand(input);
-      if ('kind' in command) return withTelemetry(command);
-      return withTelemetry({ kind: 'command', command, route: selectedRoute, confidence: selectedConfidence });
-    }
-    const readAnswers = evaluation.answers;
-    let command: AxCommand | JevChatRouterResult;
-    const effectiveReadHints = isMultiReadComposition
-      ? selectedReadHints
-      : rankReadHintsByRelevance(selectedReadHints, input.userMessage);
-
-    if (selectedRoute === 'capability_read' && isMultiReadComposition && effectiveReadHints.length > 1
-      && !(toolSelection?.kind === 'selected' && toolSelection.needsNaturalLanguageAnswer)) {
-      const plan = await planJevSelectedTools({
-        decisionEngine: input.decisionEngine,
-        request: input.userMessage,
-        requestAnchor: input.requestAnchor,
-        requestBudget: input.requestBudget,
-        mode: 'one_shot',
-        connectedConnectors,
-        readOperationHints: effectiveReadHints,
-        actionHints: [],
-        requestPlan,
-        sessionMemo: input.sessionMemo,
-        workflowPolicy: input.workflowPolicy,
-        signal: input.abortSignal,
-      });
-      return workflowPlanResult(plan, 'execution_enqueue_once');
-    }
-    if (selectedRoute === 'capability_read') {
-      const hint = effectiveReadHints[0];
-      if (!hint) return withTelemetry(fallback('missing_context'));
-      const explicitPath = hint.connector === 'http' ? explicitHttpPath(input.userMessage) : undefined;
-      const hintForResolution = explicitPath
-        ? {
-            ...hint,
-            params: {
-              ...hint.params,
-              path: explicitPath,
-            },
-          }
-        : hint;
-      const resolvedHint = await resolveReadParameterChoices(hintForResolution);
-      command = capabilityReadCommandForHint(resolvedHint, selectedConfidence);
-    } else {
-      command = commandForRoute(selectedRoute, input, readAnswers, requestFeatures);
-    }
-    if ('kind' in command) return withTelemetry(command);
-    let commandPlan: JevCommandPlan | undefined;
-    if (selectedRoute === 'capability_read' && toolSelection?.kind === 'selected'
-      && command.name === 'capability.invoke') {
-      const parsed = AxCapabilityInvokeArgsSchema.safeParse(command.args);
-      if (parsed.success) {
-        commandPlan = {
-          commands: [{
-            id: 'operation_1',
-            operationId: parsed.data.id,
-            input: { ...parsed.data.params },
-            dependsOn: [],
-          }],
+      workflowPlanResult: (plan, planRoute) => {
+        const planTelemetry = tracker.withPlan(plan);
+        if (plan.kind === 'clarify' && plan.requestFailure) {
+          return { kind: 'request_rejected', failure: plan.requestFailure, telemetry: planTelemetry };
+        }
+        const result: JevChatRouterResult = plan.kind === 'clarify'
+          ? { kind: 'clarify', route: planRoute, message: plan.message, confidence }
+          : {
+              kind: 'command', route: planRoute, command: plan.command, confidence,
+              ...(plan.commandPlan ? { commandPlan: plan.commandPlan } : {}),
+            };
+        return {
+          ...result,
+          ...(requestPlan ? { requestPlan } : {}),
+          telemetry: planTelemetry,
+          ...(plan.presentation ? { presentation: plan.presentation } : {}),
         };
-      }
-    }
-    const isReadRoute = selectedRoute === 'capability_read' || selectedRoute === 'http_read';
-    const transformRequest = isReadRoute
-      ? tableTransformRequest(readAnswers.table_transform)
-      : undefined;
-    const projectionRequest = isReadRoute
-      ? tableProjectionRequest(readAnswers.table_projection)
-      : undefined;
-    const naturalAnswer = evaluation.answers.needs_natural_language_answer;
-    const needsNaturalLanguageAnswer = toolSelection?.kind === 'selected'
-      ? toolSelection.needsNaturalLanguageAnswer
-      : selectedRoute === 'http_read' && naturalAnswer?.type === 'boolean'
-        && Number.isFinite(naturalAnswer.probability)
-        && naturalAnswer.probability > 0.5 && naturalAnswer.probability <= 1;
-    const readResultStyle = isReadRoute && needsNaturalLanguageAnswer ? 'summary' : undefined;
-    return withTelemetry({
-      kind: 'command', command, route: selectedRoute, confidence: selectedConfidence,
-      ...(commandPlan ? { commandPlan } : {}),
-      ...(transformRequest ? { tableTransform: transformRequest } : {}),
-      ...(projectionRequest ? { tableProjection: projectionRequest } : {}),
-      ...(readResultStyle ? { readResultStyle } : {}),
+      },
     });
   } catch (error) {
     if (input.abortSignal?.aborted) throw error;
     if (error instanceof AuthoritativeRequestError) return { kind: 'request_rejected', failure: error.failure };
+    if (telemetry) return telemetry.serviceFailure(error);
     const failedProviderRequestCount = decisionProviderRequestCountFromError(error);
-    const failedProviderRequestBytes = decisionProviderRequestBytesFromError(error);
-    if (telemetry) {
-      return {
-        ...fallback('service_error'),
-        telemetry: {
-          ...telemetry,
-          evaluationCalls,
-          ...(failedProviderRequestCount === undefined ? {} : {
-            providerRequestCount: (telemetry.providerRequestCount ?? 0) + failedProviderRequestCount,
-          }),
-          ...(failedProviderRequestBytes === undefined ? {} : {
-            estimatedRequestBytes: telemetry.estimatedRequestBytes + failedProviderRequestBytes,
-          }),
-        },
-      };
-    }
-    if (failedProviderRequestCount !== undefined) {
-      return {
-        kind: 'fallback',
-        reason: 'service_error',
-        evaluationCalls,
-        providerRequestCount: failedProviderRequestCount,
-      };
-    }
-    return fallback('service_error');
+    return failedProviderRequestCount === undefined
+      ? fallback('service_error')
+      : { kind: 'fallback', reason: 'service_error', evaluationCalls: 0, providerRequestCount: failedProviderRequestCount };
   }
+}
+
+/** Workflow lifecycle routes need the current workflow and Jev's explicit intent answer. */
+function mutationIntentGate(
+  selectedRoute: JevChatRouteName,
+  input: JevChatRouterInput,
+  answers: Record<string, DecisionAnswer>,
+  routeAnswer: ChoiceDecisionAnswer,
+  route: JevChatRouteName,
+  confidence: number,
+): JevChatRouterResult | undefined {
+  if ((selectedRoute === 'workflow_update' || selectedRoute === 'workflow_delete') && !input.currentWorkflowId?.trim()) {
+    return fallback('missing_context');
+  }
+  const clarify = (message: string): JevChatRouterResult => ({
+    kind: 'clarify', route: selectedRoute as 'workflow_create', message, confidence,
+  });
+  if (selectedRoute === 'workflow_create' && !input.hasWorkspaceSession) {
+    return clarify('workflow를 저장할 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.');
+  }
+  if (selectedRoute === 'workflow_run'
+    && (choiceAnswer(answers.explicit_workflow_run)?.choice !== 'run_now' || !isDominantRouteChoice(routeAnswer, route))) {
+    return fallback('uncertain');
+  }
+  if (selectedRoute === 'workflow_create' && choiceAnswer(answers.explicit_workflow_create)?.choice !== 'create_now') {
+    return clarify('새 workflow를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 workflow를 명시해 주세요.');
+  }
+  if (selectedRoute === 'workflow_delete'
+    && (choiceAnswer(answers.explicit_workflow_delete)?.choice !== 'delete_now' || !isDominantRouteChoice(routeAnswer, route))) {
+    return clarify('현재 workflow를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다.');
+  }
+  if (selectedRoute === 'workflow_update' && choiceAnswer(answers.explicit_workflow_update)?.choice !== 'update_now') {
+    return clarify('현재 workflow를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다.');
+  }
+  return undefined;
 }

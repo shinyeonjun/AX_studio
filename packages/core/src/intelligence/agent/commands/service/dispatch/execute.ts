@@ -3,6 +3,7 @@ import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contract
 import { executeContextCommand } from './context.js';
 import { executeDiscoveryCommand } from './discovery.js';
 import { executeJobCommand } from './jobs.js';
+import { commitPendingMutation } from './mutation-confirmation.js';
 import { executeReadCommand } from './read.js';
 import { executeRepairCommand } from './repair.js';
 import { executeReportCommand } from './report.js';
@@ -47,6 +48,8 @@ export async function executeCommand(
     case 'job.propose':
     case 'job.commit':
       return executeJobCommand(state, command, options);
+    case 'mutation.commit':
+      return commitPendingMutation(state, command, options, executeCommand);
     case 'context.update':
     case 'ui.present':
       return executeContextCommand(state, command, options);
@@ -58,6 +61,6 @@ export async function executeCommand(
     case 'discovery.retry':
     case 'discovery.answer':
     case 'discovery.publish':
-      return executeDiscoveryCommand(state, command);
+      return executeDiscoveryCommand(state, command, options);
   }
 }

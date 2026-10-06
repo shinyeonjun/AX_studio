@@ -11,7 +11,7 @@ import { MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
 import { requestLimitCandidates } from './request-limit.js';
 
 // Reserve one provider choice for `none` so each operation question stays valid.
-export const JEV_READ_OPERATION_MAX_CHOICES = MAX_DECISION_CHOICE_CRITERIA - 1;
+const JEV_READ_OPERATION_MAX_CHOICES = MAX_DECISION_CHOICE_CRITERIA - 1;
 const MAX_TEXT_CHARS = 320;
 const MAX_EXPLICIT_PARAMETER_CHARS = 500;
 const NATURAL_LIMIT_PARAMETER_NAMES = new Set([
@@ -306,85 +306,6 @@ function addOpenApiOperations(
   }
 }
 
-export const PRODUCT_CATEGORY_MAP: Readonly<Record<string, string>> = {
-  스마트폰: 'smartphones',
-  휴대폰: 'smartphones',
-  핸드폰: 'smartphones',
-  smartphone: 'smartphones',
-  smartphones: 'smartphones',
-  노트북: 'laptops',
-  랩탑: 'laptops',
-  laptop: 'laptops',
-  laptops: 'laptops',
-  태블릿: 'tablets',
-  아이패드: 'tablets',
-  tablet: 'tablets',
-  tablets: 'tablets',
-  화장품: 'beauty',
-  뷰티: 'beauty',
-  beauty: 'beauty',
-  향수: 'fragrances',
-  fragrance: 'fragrances',
-  fragrances: 'fragrances',
-  perfume: 'fragrances',
-  가구: 'furniture',
-  furniture: 'furniture',
-  소파: 'furniture',
-  침대: 'furniture',
-  식료품: 'groceries',
-  식품: 'groceries',
-  식자재: 'groceries',
-  groceries: 'groceries',
-  grocery: 'groceries',
-  인테리어: 'home-decoration',
-  홈데코: 'home-decoration',
-  주방: 'kitchen-accessories',
-  주방용품: 'kitchen-accessories',
-  남성의류: 'mens-shirts',
-  셔츠: 'mens-shirts',
-  신발: 'mens-shoes',
-  시계: 'mens-watches',
-  가방: 'womens-bags',
-  원피스: 'womens-dresses',
-  드레스: 'womens-dresses',
-  보석: 'womens-jewellery',
-  주얼리: 'womens-jewellery',
-  선글라스: 'sunglasses',
-  스킨케어: 'skin-care',
-  자동차: 'vehicle',
-  차량: 'vehicle',
-  오토바이: 'motorcycle',
-};
-
-export function resolveHttpCollectionPath(basePath: string, userMessage: string): string {
-  const normalizedBase = basePath.replace(/^\/+|\/+$/g, '').toLowerCase();
-
-  if (normalizedBase === 'products') {
-    const lower = userMessage.toLowerCase();
-    for (const [key, slug] of Object.entries(PRODUCT_CATEGORY_MAP)) {
-      if (lower.includes(key.toLowerCase())) {
-        return `products/category/${slug}`;
-      }
-    }
-    const query = explicitSearchQuery(userMessage);
-    if (query) {
-      return `products/search?q=${encodeURIComponent(query)}`;
-    }
-    const brandMatch = userMessage.match(/\b(iphone|samsung|galaxy|apple|dell|lenovo|macbook|ipad|rolex|prada|gucci|dior|chanel|loreal|maybelline)\b/iu)
-      || userMessage.match(/(아이폰|갤럭시|애플|삼성|맥북|아이패드|롤렉스|샤넬|디올|프라다|구찌)/u);
-    if (brandMatch) {
-      return `products/search?q=${encodeURIComponent(brandMatch[0])}`;
-    }
-  } else if (['users', 'posts', 'recipes', 'quotes'].includes(normalizedBase)) {
-    const query = explicitSearchQuery(userMessage);
-    if (query) {
-      return `${normalizedBase}/search?q=${encodeURIComponent(query)}`;
-    }
-  }
-
-  return basePath;
-}
-
 function addHttpOperations(
   operations: IndexedReadOperation[],
   connection: SourceListingConnection,
@@ -393,32 +314,43 @@ function addHttpOperations(
     if (endpoint.auth?.type !== 'none' && endpoint.authStored !== true) continue;
     const sourceLabel = text(endpoint.label, 100);
     for (const operation of endpoint.discoveredReadOperations ?? []) {
-      const isProductCollection = operation.path.toLowerCase().replace(/^\/+|\/+$/g, '') === 'products';
-      const extraTerms = isProductCollection ? ' 상품 제품 물품 재고 스마트폰 노트북 가구 식료품 화장품 향수 stock inventory' : '';
+      // Only paths the connected service itself advertised become operations. A
+      // `/search` collection exposes its query as a host-resolved parameter.
+      const searchPath = /(?:^|\/)search$/iu.test(operation.path.replace(/[?#].*$/u, '').replace(/\/+$/u, ''));
       addIndexedOperation(operations, {
         capabilityId: 'http.request',
         connector: 'http',
         ...(sourceLabel ? { sourceLabel } : {}),
         label: text(`${sourceLabel ? `${sourceLabel}: ` : ''}${operation.label}`, 160) ?? operation.label,
-        description: text(`${sourceLabel ? `${sourceLabel}: ` : ''}GET ${operation.path} — ${operation.label}${extraTerms}`, MAX_TEXT_CHARS)
+        description: text(`${sourceLabel ? `${sourceLabel}: ` : ''}GET ${operation.path} — ${operation.label}`, MAX_TEXT_CHARS)
           ?? `GET ${operation.path}`,
       }, (userMessage) => {
-        const resolvedPath = resolveHttpCollectionPath(operation.path, userMessage);
+        const query = searchPath ? explicitSearchQuery(userMessage) : undefined;
         return {
           params: {
             method: 'GET',
-            path: resolvedPath,
+            path: operation.path,
             connectionId: endpoint.id,
+            ...(query ? { query: { q: query } } : {}),
           },
-          parameterHints: [{
-            path: 'query.limit',
-            type: 'integer',
-            description: 'Maximum number of collection items to return.',
-            required: false,
-            ...(naturalLimitChoices('limit', 'integer', userMessage)
-              ? { choices: naturalLimitChoices('limit', 'integer', userMessage) }
-              : {}),
-          }],
+          parameterHints: [
+            ...(searchPath ? [{
+              path: 'query.q',
+              type: 'string',
+              description: 'Search text explicitly provided by the user.',
+              required: true,
+            }] : []),
+            {
+              path: 'query.limit',
+              type: 'integer',
+              description: 'Maximum number of collection items to return.',
+              required: false,
+              ...(naturalLimitChoices('limit', 'integer', userMessage)
+                ? { choices: naturalLimitChoices('limit', 'integer', userMessage) }
+                : {}),
+            },
+          ],
+          ...(searchPath && !query ? { missingParameterPaths: ['query.q'] } : {}),
         };
       });
     }

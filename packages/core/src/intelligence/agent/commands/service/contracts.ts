@@ -12,6 +12,7 @@ import type { AxCommandExecutionContext } from '../access.js';
 import type { AxCommandReadContext, AxCommandReadGateway } from '../read-gateway.js';
 import type { DiscoveryCommandGateway } from '../discovery-gateway.js';
 import type { PendingJobDraft } from '../job-registration/contract.js';
+import type { PendingMutation } from './dispatch/mutation-confirmation.js';
 import type { RepairCommandGateway } from '../repair-gateway.js';
 import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
 import type { MetadataDispatchPermit } from '../../../decision/request-understanding/session.js';
@@ -52,6 +53,8 @@ export interface AxCommandExecuteOptions {
   allowJobCommit?: boolean;
   /** Opaque token from the exact host-rendered confirm_job action. */
   jobCommitConfirmationToken?: string;
+  /** Opaque token from the exact host-rendered confirm_mutation action. */
+  mutationConfirmationToken?: string;
   /** Host/Jev-owned snapshot for an agent capability read. */
   readAuthorization?: {
     capabilityId: string;
@@ -67,4 +70,6 @@ export interface AxCommandServiceState {
   discoveryGateway: DiscoveryCommandGateway;
   repairGateway: RepairCommandGateway;
   pendingJobs: Map<string, PendingJobDraft>;
+  /** Agent-proposed workflow run/update/delete or repair apply awaiting host confirmation, by session. */
+  pendingMutations: Map<string, PendingMutation>;
 }

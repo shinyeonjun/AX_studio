@@ -53,6 +53,20 @@ describe('tool result renderers', () => {
     expect(html).not.toContain('<script>');
     expect(html).not.toContain('contenteditable');
   });
+  it.each(['gmail', 'slack'] as const)('renders no sample filler, inert formatting controls or unsendable attachment chips for a real %s approval', tool => {
+    const html = markup(controller(source(tool)));
+    expect(html).not.toContain('예시 데이터');
+    expect(html).not.toContain('role="button"');
+    expect(html).not.toContain('role="toolbar"');
+    expect(html).not.toContain('참조');
+    expect(html).not.toContain('파일 추가');
+    expect(html).not.toContain('근거 보기');
+    expect(html).not.toContain('저장됨');
+    expect(html).not.toContain('tool-result-attachment-chip');
+    // Every rendered button is a real host action.
+    const buttons = [...html.matchAll(/<button[^>]*>([^<]*)</g)].map(match => match[1]);
+    expect(buttons).toEqual(['요청 취소', tool === 'gmail' ? '발송 전 확인' : '게시 전 확인']);
+  });
   it('review displays the verified account, exact destination and explicit confirm/back actions', async () => {
     const draft = controller();
     await draft.review();

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import {
   MAX_CLOUD_SNIPPET_CHARS,
 } from './snippet-policy.js';
 import { searchLocalFolder } from './search.js';
+import { clearRetrievalCacheForTests, retrievalCacheStatsForTests } from './indexer.js';
 
 describe('local retrieval index', () => {
   const roots: string[] = [];
@@ -15,7 +16,46 @@ describe('local retrieval index', () => {
     roots.push(path);
     return path;
   };
-  afterEach(() => { for (const path of roots.splice(0)) rmSync(path, { recursive: true, force: true }); });
+  afterEach(() => {
+    for (const path of roots.splice(0)) rmSync(path, { recursive: true, force: true });
+    clearRetrievalCacheForTests();
+  });
+
+  it('reuses cached file text until the file mtime or size changes', () => {
+    clearRetrievalCacheForTests();
+    const dir = temporaryFolder('ax-retrieval-cache-');
+    const folder = { id: 'cache', label: 'Docs', path: dir, addedAt: '2026-01-01' };
+    const target = join(dir, 'notes.txt');
+    writeFileSync(target, 'alpha needle');
+    writeFileSync(join(dir, 'other.txt'), 'beta');
+
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(1);
+    expect(retrievalCacheStatsForTests().reads).toBe(2);
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(1);
+    expect(retrievalCacheStatsForTests().reads).toBe(2);
+
+    // Same size, new content and a new mtime: the cached text must not be reused.
+    writeFileSync(target, 'gamma thread');
+    const later = new Date(Date.now() + 60_000);
+    utimesSync(target, later, later);
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(0);
+    expect(searchLocalFolder(folder, 'thread')).toHaveLength(1);
+    expect(retrievalCacheStatsForTests().reads).toBe(3);
+  });
+
+  it('evicts cached text for files that were deleted', () => {
+    clearRetrievalCacheForTests();
+    const dir = temporaryFolder('ax-retrieval-cache-delete-');
+    const folder = { id: 'cache-delete', label: 'Docs', path: dir, addedAt: '2026-01-01' };
+    const target = join(dir, 'gone.txt');
+    writeFileSync(target, 'needle');
+    writeFileSync(join(dir, 'kept.txt'), 'kept');
+    searchLocalFolder(folder, 'needle');
+    expect(retrievalCacheStatsForTests().files).toBe(2);
+    unlinkSync(target);
+    expect(searchLocalFolder(folder, 'needle')).toHaveLength(0);
+    expect(retrievalCacheStatsForTests().files).toBe(1);
+  });
 
   it('keeps only the highest-scored hits and handles invalid limits without retaining all rows', () => {
     const dir = temporaryFolder('ax-retrieval-top-');

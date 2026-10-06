@@ -350,7 +350,7 @@ describe('routeChatWithJev', () => {
         request: {
           anchor: createAuthoritativeRequestAnchor('workflow와 일회 실행의 차이를 설명해줘'),
           message: 'workflow와 일회 실행의 차이를 설명해줘',
-          features: {},
+          features: { calculation_or_summary_cue: true },
           context: { recentTurns: [] },
         },
         response: { llmRequired: true },
@@ -2396,7 +2396,7 @@ describe('routeChatWithJev', () => {
         request: {
           anchor: createAuthoritativeRequestAnchor('상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.'),
           message: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
-          features: { result_limit_candidates: [5] },
+          features: { result_limit_candidates: [5], calculation_or_summary_cue: true },
           context: { recentTurns: [] },
         },
         response: { llmRequired: true },
@@ -2432,7 +2432,31 @@ describe('routeChatWithJev', () => {
     expect(result.message).toContain('확실하지 않아 실행하지 않았습니다');
   });
 
-  it('treats conversational email drafting as answer instead of promoting to execution_enqueue_once', async () => {
+  it('keeps chat drafting as an answer when Jev says not to execute, and sends the drafting cue to Jev', async () => {
+    let routeState: unknown;
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          routeState ??= request.state;
+          return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              needsNaturalLanguageAnswer: true,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
+            explicit_execution_now: { type: 'choice', choice: 'do_not_execute', probabilities: { do_not_execute: 0.99 }, confidence: 0.99 },
+          } };
+        },
+      },
+      userMessage: '담당자한테 보낼 메일 써줘.',
+      connectedConnectors: ['gmail'],
+    });
+
+    expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
+    expect(routeState).toMatchObject({ request_features: { drafting_cue: true } });
+  });
+
+  it('does not let a drafting cue override Jev-confirmed execution intent; enqueue checks still apply', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async (request): Promise<DecisionEvaluationResult> => {
@@ -2450,7 +2474,8 @@ describe('routeChatWithJev', () => {
       connectedConnectors: ['gmail'],
     });
 
-    expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
+    expect(result).toMatchObject({ route: 'execution_enqueue_once' });
+    expect(result.kind).not.toBe('reply');
   });
 
   it('selects a no-input action in the same first-pass evaluation', async () => {
@@ -2609,7 +2634,7 @@ describe('routeChatWithJev', () => {
     expect(result).not.toHaveProperty('command');
   });
 
-  it('compiles an explicit delete against the host-provided current workflow version', async () => {
+  it('does not compile a delete when Jev rates another route as more likely than delete', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async () => ({
@@ -2617,6 +2642,28 @@ describe('routeChatWithJev', () => {
             route: {
               type: 'choice', choice: 'workflow_delete',
               probabilities: { workflow_delete: 0.4, answer: 0.6 }, confidence: 0.4,
+            },
+            explicit_workflow_delete: { type: 'choice', choice: 'delete_now', probabilities: { delete_now: 0.99 }, confidence: 0.99 },
+          },
+        }),
+      },
+      currentWorkflowId: 'workflow-current',
+      currentWorkflowVersion: 4,
+      userMessage: '현재 workflow를 삭제해줘',
+    });
+
+    expect(result).toMatchObject({ kind: 'clarify', route: 'workflow_delete' });
+    expect(result).not.toHaveProperty('command');
+  });
+
+  it('compiles an explicit delete against the host-provided current workflow version', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async () => ({
+          answers: {
+            route: {
+              type: 'choice', choice: 'workflow_delete',
+              probabilities: { workflow_delete: 0.9, answer: 0.1 }, confidence: 0.9,
             },
             explicit_workflow_delete: { type: 'choice', choice: 'delete_now', probabilities: { delete_now: 0.99 }, confidence: 0.99 },
           },
@@ -3080,7 +3127,7 @@ describe('routeChatWithJev', () => {
     });
   });
 
-  it('promotes capability_read to execution_enqueue_once when write action is explicitly requested now', async () => {
+  it('fails closed instead of escalating a read route when a write action is selected with execution intent', async () => {
     const hints: JevReadOperationHint[] = [{
       key: 'op_0',
       capabilityId: 'http.request',
@@ -3115,7 +3162,7 @@ describe('routeChatWithJev', () => {
       userMessage: '스마트폰 재고 제일 없는 거 3개 찾아서 담당자한테 메일 등록해줘',
     });
 
-    expect(result).toMatchObject({ route: 'execution_enqueue_once' });
+    expect(result).toMatchObject({ kind: 'fallback', reason: 'uncertain' });
   });
 
   it('allows read route with transform candidates without falling back to uncertain', async () => {
@@ -3190,6 +3237,7 @@ describe('routeChatWithJev', () => {
           answers: {
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
             ...parallelAnswers,
+            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
           },
         };
@@ -3209,6 +3257,39 @@ describe('routeChatWithJev', () => {
       command: { name: 'capability.invoke', args: { id: 'http.request' } },
       readResultStyle: 'summary',
     });
+  });
+
+  it('plans a multi-read one-shot instead of dropping reads when Jev says several selected reads are needed', async () => {
+    const hints: JevReadOperationHint[] = [
+      { key: 'op_0', capabilityId: 'http.request', connector: 'http', label: 'Products', description: 'Fetch products', params: { path: 'products' } },
+      { key: 'op_1', capabilityId: 'rdb.query.read', connector: 'rdb', label: 'public.account_managers', description: 'Account managers', params: { table: 'public.account_managers' } },
+    ];
+    const questionSets: string[][] = [];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        questionSets.push(Object.keys(request.questions));
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            ...parallelToolAnswersForTest(request, {
+              needsNaturalLanguageAnswer: true,
+              select: (candidate) => candidate.id === 'read:op_0' || candidate.id === 'read:op_1',
+            }),
+            primary_read_operation: { type: 'choice', choice: 'several_needed', probabilities: { several_needed: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'rdb'],
+      readOperationHints: hints,
+      userMessage: '상품 목록과 담당자 목록을 비교해줘',
+    });
+
+    expect(questionSets.some((ids) => ids.includes('primary_read_operation'))).toBe(true);
+    expect(result).not.toMatchObject({ kind: 'command', route: 'capability_read' });
   });
 
   describe('rankReadHintsByRelevance', () => {
@@ -3273,6 +3354,7 @@ describe('routeChatWithJev', () => {
           answers: {
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
             ...parallelAnswers,
+            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
             table_transform: { type: 'choice', choice: 'filter', probabilities: { filter: 0.99 }, confidence: 0.99 },
             table_projection: { type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.99 }, confidence: 0.99 },
           },
@@ -3344,6 +3426,60 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({
       kind: 'reply',
       route: 'answer',
+    });
+  });
+
+  describe('lexical cues as tie-breakers only', () => {
+    const table = buildTableArtifact({
+      id: 'products',
+      headers: ['title', 'rating'],
+      matrix: [['A', 4.1], ['B', 3.2]],
+    });
+    const hints: JevReadOperationHint[] = [{
+      key: 'op_0', capabilityId: 'http.request', connector: 'http', label: 'Products', description: 'Fetch products',
+      params: { method: 'GET', path: 'products', connectionId: 'catalog' },
+    }];
+    const engineWith = (confidence: number): DecisionEngine => ({
+      evaluate: async (request): Promise<DecisionEvaluationResult> => ({
+        answers: {
+          route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
+          ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false, select: (candidate) => candidate.id === 'read:op_0' }),
+          table_transform: { type: 'choice', choice: 'sort', probabilities: { sort: 0.9 }, confidence: 0.9 },
+        },
+      }),
+    });
+
+    it('never replaces a confident Jev read route with previous_result because of sort wording', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.95),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        previousReadResult: table,
+        userMessage: '평점 높은 순으로 정렬해줘',
+      });
+      expect(result).toMatchObject({ kind: 'command', route: 'capability_read' });
+    });
+
+    it('uses the sort cue to prefer the previous table only when Jev is uncertain', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.4),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        previousReadResult: table,
+        userMessage: '평점 높은 순으로 정렬해줘',
+      });
+      expect(result).toMatchObject({ kind: 'previous_result', route: 'previous_result' });
+    });
+
+    it('does not turn a confident read route into an answer because of anaphoric calculation wording', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.95),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        userMessage: '이 상품들의 평균 평점 계산해줘',
+        conversationHistory: [{ role: 'user', content: '상품 보여줘' }, { role: 'assistant', content: '| title |' }],
+      });
+      expect(result).toMatchObject({ kind: 'command', route: 'capability_read' });
     });
   });
 

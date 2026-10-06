@@ -9,14 +9,19 @@ import type { AxCommand, AxCommandIssue, AxCommandResult } from '../schema.js';
 
 export type DiscoveryCommandResult = [AxCommandResult['status'], unknown, AxCommandIssue[]?];
 
+/** Caller boundary for discovery commands; a chat caller always supplies its workspace session. */
+export interface DiscoveryCommandContext {
+  workspaceSessionId?: string;
+}
+
 export interface DiscoveryCommandGateway {
   setDecisionEngine(decisionEngine?: DecisionEngine): void;
-  start(command: AxCommand): DiscoveryCommandResult;
-  inspect(command: AxCommand): DiscoveryCommandResult;
-  cancel(command: AxCommand): DiscoveryCommandResult;
-  retry(command: AxCommand): DiscoveryCommandResult;
-  answer(command: AxCommand): DiscoveryCommandResult;
-  publish(command: AxCommand): DiscoveryCommandResult;
+  start(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
+  inspect(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
+  cancel(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
+  retry(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
+  answer(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
+  publish(command: AxCommand, context?: DiscoveryCommandContext): DiscoveryCommandResult;
 }
 
 export interface DiscoveryGatewayOptions {

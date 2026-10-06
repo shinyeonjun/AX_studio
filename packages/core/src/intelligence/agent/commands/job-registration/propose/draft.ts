@@ -14,6 +14,7 @@ import { candidateFromCreateCommand } from '../../workflow-gateway/steps.js';
 import {
   confirmationPresentation,
   workflowConfirmationPresentation,
+  workflowHasExternalSteps,
 } from '../presentation.js';
 import {
   compileScheduledHttpSlackJob,
@@ -53,7 +54,8 @@ export function createPendingJob(options: {
     interpretGoal: data.interpret?.goal?.trim() || data.goal,
     channel: targets.channel,
     skipIfEmpty: data.notify?.skipIfEmpty ?? true,
-    runOnceNow: data.runOnceNow,
+    // HTTP→Slack jobs always end in an external send, so running now is explicit opt-in only.
+    runOnceNow: data.runOnceNow ?? false,
     allowExternalAuto: data.allowExternalAuto,
   };
 
@@ -75,7 +77,7 @@ export function createPendingJob(options: {
 
   const confirmationToken = randomUUID();
   pending.set(sessionId, { spec, ir, confirmationToken });
-  const presentation = confirmationPresentation(spec, spec.httpLabel, confirmationToken);
+  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken);
   return ['ok', {
     saved: false,
     pending: true,
@@ -135,9 +137,10 @@ function createPendingGenericJob(
     return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
   }
 
+  const runOnceNow = data.runOnceNow ?? !workflowHasExternalSteps(parsed.value);
   const confirmationToken = randomUUID();
   pending.set(sessionId, {
-    spec: { name: data.name, runOnceNow: data.runOnceNow },
+    spec: { name: data.name, runOnceNow },
     ir: parsed.value,
     confirmationToken,
   });
@@ -146,7 +149,7 @@ function createPendingGenericJob(
     pending: true,
     presentation: workflowConfirmationPresentation(
       parsed.value,
-      data.runOnceNow,
+      runOnceNow,
       data.allowExternalAuto,
       confirmationToken,
     ),
@@ -155,7 +158,7 @@ function createPendingGenericJob(
       name: data.name,
       trigger: parsed.value.trigger,
       steps: parsed.value.steps.map((step) => step.id),
-      runOnceNow: data.runOnceNow,
+      runOnceNow,
       allowExternalAuto: data.allowExternalAuto,
     },
   }];

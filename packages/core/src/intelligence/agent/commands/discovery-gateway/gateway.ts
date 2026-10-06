@@ -1,7 +1,8 @@
 import { WorkDiscoveryService } from '../../../../work-discovery/service.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type { AxCommand } from '../schema.js';
-import type { DiscoveryCommandGateway, DiscoveryGatewayOptions } from './contracts.js';
+import type { DiscoveryCommandContext, DiscoveryCommandGateway, DiscoveryGatewayOptions } from './contracts.js';
+import { DiscoverySessionBindings } from './bindings.js';
 import { answer, cancel, inspect, publish, retry, start } from './handlers.js';
 
 export function createDiscoveryCommandGateway(
@@ -20,13 +21,19 @@ export function createDiscoveryCommandGateway(
     sourceReadsMax: options.sourceReadsMax,
     autoResume: options.autoResume,
   });
+  const bindings = new DiscoverySessionBindings();
+  const bound = (
+    handler: (service: WorkDiscoveryService, command: AxCommand) => ReturnType<typeof inspect>,
+  ) => (command: AxCommand, context: DiscoveryCommandContext = {}) =>
+    bindings.reject(command, context) ?? handler(service, command);
   return {
     setDecisionEngine: (decisionEngine) => service.setDecisionEngine(decisionEngine),
-    start: (command: AxCommand) => start(service, command),
-    inspect: (command: AxCommand) => inspect(service, command),
-    cancel: (command: AxCommand) => cancel(service, command),
-    retry: (command: AxCommand) => retry(service, command),
-    answer: (command: AxCommand) => answer(service, command),
-    publish: (command: AxCommand) => publish(service, command),
+    start: (command: AxCommand, context: DiscoveryCommandContext = {}) =>
+      bindings.record(start(service, command), context),
+    inspect: bound(inspect),
+    cancel: bound(cancel),
+    retry: bound(retry),
+    answer: bound(answer),
+    publish: bound(publish),
   };
 }
