@@ -25,6 +25,17 @@ describe('numeric transform conditions', () => {
     });
   });
 
+  it('keeps no row for an empty search term', () => {
+    const table = buildTableArtifact({ id: 'mail', headers: ['subject', 'keyword'], matrix: [['견적 요청', ''], ['회의', '회의']] });
+    const filtered = (right: { lit: string } | { ref: string }) => evaluateTransformExpr({
+      op: 'filter', input: { op: 'source', sourceId: 'mail' }, where: { op: 'contains', left: { ref: 'subject' }, right },
+    }, { mail: table }) as { rows: unknown[] };
+    expect(filtered({ lit: '' }).rows).toHaveLength(0);
+    expect(filtered({ lit: '  ' }).rows).toHaveLength(0);
+    expect(filtered({ ref: 'keyword' }).rows).toHaveLength(1);
+    expect(filtered({ lit: '견적' }).rows).toHaveLength(1);
+  });
+
   it('reads only own column and snapshot names', () => {
     const table = buildTableArtifact({ id: 'inventory', headers: ['stock'], matrix: [[1]] });
     expect(evaluateTransformExpr({ op: 'column', input: { op: 'source', sourceId: 'inventory' }, name: 'constructor' },

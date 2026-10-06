@@ -106,3 +106,12 @@ describe('evaluateCondition', () => {
     )).toThrow(expect.objectContaining({ code: 'condition_ref_missing' }));
   });
 });
+
+describe('contains with nothing to look for', () => {
+  it('matches nothing, so a blank keyword cannot make a trigger fire on every message', () => {
+    const steps = { mail: { subject: '견적 요청', keyword: '' } };
+    expect(evaluateCondition({ op: 'contains', left: { ref: 'mail.subject' }, right: { ref: 'mail.keyword' } }, {}, steps)).toBe(false);
+    expect(evaluateCondition({ op: 'contains', left: { ref: 'mail.subject' }, right: { lit: ' ' } }, {}, steps)).toBe(false);
+    expect(evaluateCondition({ op: 'contains', left: { ref: 'mail.subject' }, right: { lit: '견적' } }, {}, steps)).toBe(true);
+  });
+});

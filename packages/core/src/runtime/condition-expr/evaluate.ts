@@ -71,7 +71,9 @@ export function evaluateCondition(
     case 'contains': {
       const left = resolveValue(expr.left, variables, stepResults, outputs);
       const right = resolveValue(expr.right, variables, stepResults, outputs);
-      if (left == null || right == null) return false;
+      // An empty search term is contained in everything: a keyword that came out blank would make
+      // a filter or a trigger match every message. Nothing to look for matches nothing.
+      if (left == null || right == null || String(right).trim() === '') return false;
       return String(left).includes(String(right));
     }
     case 'gt':
