@@ -34,7 +34,7 @@ export const ingest: DocumentActionHandler = async (params, ctx): Promise<Connec
     const result = await client.ingest(resolvedPath.path, {
       ocr: (params.ocr as 'auto' | 'off' | 'force' | undefined) ?? 'auto',
       engine: (params.engine as 'auto' | 'basic' | 'docling' | undefined) ?? 'auto',
-    });
+    }, ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {});
 
     ctx.variables.documentId = result.documentId;
     ctx.variables.documentArtifactPath = result.artifactPath;

@@ -15,7 +15,9 @@ export function readStepForSource(
       action: 'read',
       params: {
         path: `{{${pathInput}}}`,
-        ...(typeof folderId === 'string' && folderId.trim() ? { folderId: folderId.trim() } : {}),
+        // From a connected folder, each run reads the newest file named like the example
+        // (next month's export), not the example file again.
+        ...(typeof folderId === 'string' && folderId.trim() ? { folderId: folderId.trim(), followNewest: true } : {}),
       },
       sideEffect: 'NONE',
     };

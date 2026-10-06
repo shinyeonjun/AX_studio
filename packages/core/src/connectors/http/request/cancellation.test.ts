@@ -32,7 +32,7 @@ describe('HTTP host cancellation', () => {
     await once(server, 'listening');
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('missing_test_port');
-    const connector = new HttpConnector({ baseUrl: `http://127.0.0.1:${address.port}/` });
+    const connector = new HttpConnector({ baseUrl: `http://127.0.0.1:${address.port}/` }, { allowPrivateNetwork: true });
     let timer: ReturnType<typeof setTimeout> | undefined;
     let settleWatchdog!: (value: string) => void;
     try {

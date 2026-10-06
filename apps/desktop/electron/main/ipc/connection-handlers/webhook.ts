@@ -24,7 +24,7 @@ export function registerWebhookConnectionHandlers() {
           tunnelUrl: typeof record.tunnelUrl === 'string' ? record.tunnelUrl : undefined,
         },
         async () => {
-          await core.triggerEngine.refreshPushTransports();
+          await core.triggerEngine.refreshPushTransports(undefined, undefined, ['webhook']);
           const status = core.triggerEngine.pushTransportStatus('webhook.inbound');
           if (status?.phase !== 'connected' || !core.triggerEngine.pushTransportActive('webhook.inbound')) {
             throw new Error(status?.error ?? 'Webhook 리스너를 시작하지 못했습니다.');
@@ -41,7 +41,7 @@ export function registerWebhookConnectionHandlers() {
 
   ipcHandle('ax:disconnectWebhook', async () => {
     const core = getCore();
-    await disconnectWebhook(core.store, () => core.triggerEngine.refreshPushTransports());
+    await disconnectWebhook(core.store, () => core.triggerEngine.refreshPushTransports(undefined, undefined, ['webhook']));
     notifyStateChanged();
     return { ok: true };
   });

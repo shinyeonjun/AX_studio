@@ -7,9 +7,9 @@ const clients = vi.hoisted(() => ({
   mysqlEnd: vi.fn(async () => undefined), mysqlDestroy: vi.fn(),
 }));
 vi.mock('pg', () => ({ default: { types: { builtins: { DATE: 1082 }, getTypeParser: vi.fn() },
-  Client: class { connect = vi.fn(async () => undefined); query = clients.pgQuery; end = clients.pgEnd; } } }));
+  Client: class { connect = vi.fn(async () => undefined); query = clients.pgQuery; end = clients.pgEnd; on = vi.fn(); } } }));
 vi.mock('mysql2', () => ({ createConnection: () => ({
-  connect: (done: (error?: Error) => void) => done(), destroy: clients.mysqlDestroy,
+  connect: (done: (error?: Error) => void) => done(), destroy: clients.mysqlDestroy, on: vi.fn(),
   promise: () => ({ query: clients.mysqlQuery, execute: clients.mysqlExecute, end: clients.mysqlEnd }),
 }) }));
 import { openRdbSqlClient } from './drivers.js';

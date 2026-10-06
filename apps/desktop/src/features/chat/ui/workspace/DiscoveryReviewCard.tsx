@@ -106,6 +106,9 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
           </div>
         </section>
       )}
+      {view.publishable && view.sourceNotice && (
+        <p className="ax-discovery-source-notice" role="note">{view.sourceNotice}</p>
+      )}
       {view.publishable && (
         <button type="button" className="btn btn-primary" disabled={busy || view.status === 'published'} onClick={() => void onPublish()}>
           {view.status === 'published' ? '맡기기 완료' : '이대로 맡기기'}

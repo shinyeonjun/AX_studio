@@ -17,7 +17,7 @@ export function inspectRepairProposal(
   const proposal = store.getRepairProposal(parsed.data.repairId);
   if (!proposal) return ['not_found', undefined, [issue('repair_not_found', 'repair 제안을 찾을 수 없습니다.', 'args.repairId')]];
   const workflow = store.getWorkflow(proposal.workflowId, proposal.baseVersion);
-  if (!workflow) return ['not_found', undefined, [issue('workflow_version_not_found', 'repair 기준 workflow 버전을 찾을 수 없습니다.')]];
+  if (!workflow) return ['not_found', undefined, [issue('workflow_version_not_found', 'repair 기준 업무 버전을 찾을 수 없습니다.')]];
   const candidateReplays = proposal.status === 'proposed'
     ? proposal.candidates.map((candidate) => ({
       candidateId: candidate.id,

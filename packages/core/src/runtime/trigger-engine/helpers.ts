@@ -68,10 +68,22 @@ export function triggerRunWasAccepted(result: unknown): boolean {
  */
 export function eventDedupeKey(workflowId: string, event: TriggerEvent): string | undefined {
   const payload = event.payload;
-  const eventId = [payload.messageId, payload.filePath, payload.ts].find(
+  const eventId = [payload.messageId, fileEventId(payload), payload.ts].find(
     (value): value is string => typeof value === 'string' && value.length > 0,
   );
   return eventId ? `${workflowId}:${event.type}:${eventId}` : undefined;
+}
+
+/**
+ * A file is identified by its path and its modification time: a report deleted and dropped in
+ * again under the same name is a new file and must trigger again, while a repeated delivery of
+ * the same file keeps its key.
+ */
+function fileEventId(payload: TriggerEvent['payload']): string | undefined {
+  if (typeof payload.filePath !== 'string' || !payload.filePath) return undefined;
+  return typeof payload.modifiedAt === 'string' && payload.modifiedAt
+    ? `${payload.filePath}@${payload.modifiedAt}`
+    : payload.filePath;
 }
 
 /** Keys written by older Slack Socket Mode deliveries (`<workflowId>:<ts>`); read-only compatibility. */

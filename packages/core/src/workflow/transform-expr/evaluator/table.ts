@@ -5,15 +5,26 @@ import type {
   TransformEvaluator,
 } from './contracts.js';
 import { evaluateConditionOnRow } from './conditions.js';
-import { ownCell, requireTable } from './helpers.js';
+import { ownCell, requireTable, toNumber } from './helpers.js';
 
-function compareValues(left: unknown, right: unknown): number {
-  if (left === right) return 0;
-  if (left == null) return 1;
-  if (right == null) return -1;
-  if (typeof left === 'number' && typeof right === 'number') return left - right;
-  return String(left) < String(right) ? -1 : 1;
+/** A sortable reading of a cell: numbers (including numeric text such as DB decimals) or text. */
+function sortKey(value: unknown): { kind: 0; number: number } | { kind: 1; text: string } {
+  const number = typeof value === 'number' ? value : typeof value === 'string' ? toNumber(value) : null;
+  return number != null && Number.isFinite(number) ? { kind: 0, number } : { kind: 1, text: String(value) };
 }
+
+/** Ascending order for present values: numbers by value, then text; a total order across types. */
+function compareValues(left: unknown, right: unknown): number {
+  const a = sortKey(left);
+  const b = sortKey(right);
+  if (a.kind !== b.kind) return a.kind - b.kind;
+  if (a.kind === 0 && b.kind === 0) return a.number - b.number;
+  const leftText = (a as { text: string }).text;
+  const rightText = (b as { text: string }).text;
+  return leftText === rightText ? 0 : leftText < rightText ? -1 : 1;
+}
+
+const isBlank = (value: unknown) => value == null || (typeof value === 'string' && value.trim() === '');
 
 export function evaluateColumn(
   expr: Extract<TransformExpr, { op: 'column' }>,
@@ -65,10 +76,18 @@ export function evaluateSort(
   const table = requireTable(evaluate(expr.input, snapshots), 'sort_input_not_table');
   const sorted = [...table.rows].sort((left, right) => {
     for (const key of expr.by) {
-      const comparison = compareValues(ownCell(left.values, key.column), ownCell(right.values, key.column));
+      const leftValue = ownCell(left.values, key.column);
+      const rightValue = ownCell(right.values, key.column);
+      // Blank cells go last in either direction: "top 5 by revenue" never starts with missing revenue.
+      const leftBlank = isBlank(leftValue);
+      const rightBlank = isBlank(rightValue);
+      if (leftBlank || rightBlank) {
+        if (leftBlank && rightBlank) continue;
+        return leftBlank ? 1 : -1;
+      }
+      const comparison = compareValues(leftValue, rightValue);
       if (comparison === 0) continue;
-      const direction = key.direction === 'desc' ? -1 : 1;
-      return comparison * direction;
+      return key.direction === 'desc' ? -comparison : comparison;
     }
     return 0;
   });

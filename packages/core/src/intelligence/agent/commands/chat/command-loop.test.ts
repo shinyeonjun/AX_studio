@@ -224,12 +224,12 @@ describe('runAxCommandChat command loop', () => {
       resolveReadOperationSelection,
       messages: [],
       requestId: 'chat-request-17',
-      userMessage: '저장된 workflow 목록을 보여줘',
-    })).resolves.toBe('저장된 workflow가 없습니다.');
+      userMessage: '저장된 업무 목록을 보여줘',
+    })).resolves.toBe('저장된 업무가 없습니다.');
 
     expect(execute).toHaveBeenCalledWith(
       { name: 'workflow.list', args: {} },
-      expect.objectContaining({ userMessage: '저장된 workflow 목록을 보여줘' }),
+      expect.objectContaining({ userMessage: '저장된 업무 목록을 보여줘' }),
     );
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
@@ -1041,7 +1041,7 @@ describe('runAxCommandChat command loop', () => {
         decisionEngine,
         requestId: 'chat-command-execution-threw',
         messages: [],
-        userMessage: '저장된 workflow 목록을 보여줘',
+        userMessage: '저장된 업무 목록을 보여줘',
       })).rejects.toThrow('simulated execution failure');
 
       const executionTiming = vi.mocked(appendAppLog).mock.calls

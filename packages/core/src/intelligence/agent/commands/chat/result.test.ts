@@ -259,9 +259,9 @@ describe('deterministicWorkflowListChatReply', () => {
       data: { workflows: [{ id: 'daily-1', name: 'Daily report', active: true, latestVersion: 3 }] },
       issues: [],
       inputRequests: [],
-    }, '저장된 workflow 목록을 보여줘');
+    }, '저장된 업무 목록을 보여줘');
 
-    expect(reply).toBe('저장된 workflow (1개):\n- "Daily report" — 활성, v3 (ID: "daily-1")');
+    expect(reply).toBe('저장된 업무 (1개):\n- "Daily report" — 활성, v3 (ID: "daily-1")');
   });
 
   it('escapes multiline user-controlled names and leaves semantic requests to the model', () => {
@@ -274,9 +274,9 @@ describe('deterministicWorkflowListChatReply', () => {
       inputRequests: [],
     };
 
-    expect(deterministicWorkflowListChatReply(command, result, '저장된 workflow 목록을 보여줘'))
+    expect(deterministicWorkflowListChatReply(command, result, '저장된 업무 목록을 보여줘'))
       .toContain('"Daily\\n- injected"');
-    expect(deterministicWorkflowListChatReply(command, result, '저장된 workflow 목록을 설명해줘')).toBeUndefined();
+    expect(deterministicWorkflowListChatReply(command, result, '저장된 업무 목록을 설명해줘')).toBeUndefined();
   });
 
   it('renders an empty list without inventing an entry', () => {
@@ -286,7 +286,7 @@ describe('deterministicWorkflowListChatReply', () => {
       data: { workflows: [] },
       issues: [],
       inputRequests: [],
-    }, '저장된 workflow 목록을 보여줘')).toBe('저장된 workflow가 없습니다.');
+    }, '저장된 업무 목록을 보여줘')).toBe('저장된 업무가 없습니다.');
   });
 });
 

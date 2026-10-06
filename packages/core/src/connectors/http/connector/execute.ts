@@ -23,11 +23,20 @@ function safeResponseHeaders(headers: Record<string, string>): Record<string, st
   );
 }
 
+export interface HttpConnectorOptions {
+  /**
+   * Allow loopback/private addresses. Registration refuses them, so production connectors never
+   * set this; it exists for an explicitly local endpoint (and for tests against a local server).
+   */
+  allowPrivateNetwork?: boolean;
+}
+
 export async function executeHttpAction(
   endpoints: readonly HttpEndpoint[],
   action: string,
   params: Record<string, unknown>,
   ctx: ConnectorContext,
+  options: HttpConnectorOptions = {},
 ): Promise<ConnectorResult> {
   if (action !== 'request' && action !== 'post') {
     return { ok: false, error: `Unknown http action: ${action}`, errorCode: 'unknown_action' };
@@ -82,6 +91,9 @@ export async function executeHttpAction(
     body: serializedBody.body,
     auth: endpoint.auth,
     abortSignal: ctx.abortSignal,
+    // Same rule as at registration, checked on every resolved address: a host that later
+    // resolves to loopback or a private/metadata address (DNS rebinding) is refused.
+    rejectPrivateDestination: options.allowPrivateNetwork !== true,
   });
   const durationMs = Date.now() - requestStartedAt;
 

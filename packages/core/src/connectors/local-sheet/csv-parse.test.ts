@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertCsvShape, decodeCsvBytes, parseCsvMatrix, sniffCsvDelimiter } from './csv-parse.js';
+import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 
 describe('parseCsvMatrix', () => {
   it('ignores a UTF-8 BOM before plain or quoted headers', () => {
@@ -91,5 +92,19 @@ describe('decodeCsvBytes', () => {
     const utf8 = new TextEncoder().encode('이름,금액');
     expect(decodeCsvBytes(utf8)).toBe('이름,금액');
     expect(decodeCsvBytes(new Uint8Array([0xef, 0xbb, 0xbf, ...utf8]))).toBe('이름,금액');
+  });
+});
+
+describe('a row longer than the header', () => {
+  it('keeps its extra cells as unnamed columns instead of dropping them', () => {
+    const { headers, matrix } = parseCsvMatrix('이름,금액\n홍길동,1,000\n김철수,500');
+    expect(headers).toEqual(['이름', '금액', '']);
+    expect(matrix).toEqual([['홍길동', '1', '000'], ['김철수', '500', '']]);
+    const table = buildTableArtifact({ id: 't', headers, matrix });
+    expect(table.columns.map((column) => column.name)).toEqual(['이름', '금액', 'column_3']);
+  });
+
+  it('adds no column for trailing empty cells', () => {
+    expect(parseCsvMatrix('a,b\n1,2,,\n3,4,').headers).toEqual(['a', 'b']);
   });
 });

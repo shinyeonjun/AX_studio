@@ -107,7 +107,7 @@ export async function handleWebhookRequest(
     authLimiter?.recordSuccess(clientKey);
 
     const replayKey = signature && replayCache ? `${requestId}:${signature}` : undefined;
-    if (replayKey && !replayCache!.claim(replayKey)) {
+    if (replayKey && !replayCache!.claim(replayKey, timestamp!)) {
       respond(res, 409, 'replayed_request');
       return;
     }

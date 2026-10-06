@@ -22,7 +22,20 @@ describe('workspace chat deletion', () => {
     expect(store.listWorkspaceSources(chat.id)).toEqual([]);
   });
 
-  it('keeps the chat and its sources when cascading deletion fails', async () => {
+  it('leaves no run pointing at a deleted chat, and keeps runs of other chats', async () => {
+    const store = new WorkflowStore(await createDatabaseAsync(':memory:'));
+    const deleted = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '한 번만 실행해줘' }] });
+    const kept = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '다른 대화' }] });
+    const orphan = store.createExecution({ ephemeral: true, workspaceSessionId: deleted.id });
+    const other = store.createExecution({ ephemeral: true, workspaceSessionId: kept.id });
+
+    store.deleteWorkspaceChat(deleted.id);
+
+    expect(store.getExecution(orphan)?.workspaceSessionId).toBeUndefined();
+    expect(store.getExecution(other)?.workspaceSessionId).toBe(kept.id);
+  });
+
+  it('keeps the chat, its sources and its runs when cascading deletion fails', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '자료를 지워줘' }] });
@@ -43,9 +56,11 @@ describe('workspace chat deletion', () => {
       END
     `);
 
+    const run = store.createExecution({ ephemeral: true, workspaceSessionId: chat.id });
     expect(() => store.deleteWorkspaceChat(chat.id)).toThrow(/source_delete_rejected/);
 
     expect(store.getWorkspaceChat(chat.id)).not.toBeNull();
+    expect(store.getExecution(run)?.workspaceSessionId).toBe(chat.id);
     expect(store.listWorkspaceSources(chat.id)).toHaveLength(1);
   });
 

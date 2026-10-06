@@ -10,6 +10,7 @@ export {
   bindDiscoverySessionWorkspace,
   getDiscoverySessionWorkspace,
   listDiscoverySessions,
+  listDiscoverySessionIds,
 } from './work-discovery-repository/sessions.js';
 export {
   insertDiscoveryExample,

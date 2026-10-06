@@ -1,3 +1,4 @@
+import { isMessageWithText } from '../../../../connectors/slack/person-message.js';
 import type { SocketModeClient, SocketModeOptions } from '@slack/socket-mode';
 import type { WebClient } from '@slack/web-api';
 import type { PushTransportState, PushTransportStateHandler } from '../../../push-state.js';
@@ -36,8 +37,7 @@ type CachedChannelLabel = {
 };
 
 function isUserMessage(event: Record<string, unknown>): boolean {
-  if (event.type !== 'message') return false;
-  if (event.subtype) return false;
+  if (!isMessageWithText(event)) return false;
   if (event.bot_id) return false;
   return Boolean(event.ts && event.channel);
 }

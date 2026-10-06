@@ -56,11 +56,11 @@ export function updateContext(
   }
 
   if (!options.currentWorkflowId?.trim()) {
-    return ['invalid', undefined, [issue('workflow_required', 'workflow policy를 저장하려면 현재 workflow가 필요합니다.')]];
+    return ['invalid', undefined, [issue('workflow_required', '업무 규칙을 저장하려면 현재 업무가 필요합니다.')]];
   }
   const policy = state.store.updateWorkflowPolicy(options.currentWorkflowId.trim(), parsed.data);
   if (!policy) {
-    return ['not_found', undefined, [issue('workflow_not_found', '현재 workflow를 찾을 수 없습니다.')]];
+    return ['not_found', undefined, [issue('workflow_not_found', '현재 업무를 찾을 수 없습니다.')]];
   }
   return ['ok', { scope: 'workflow', workflowId: options.currentWorkflowId.trim(), context: policy }];
 }

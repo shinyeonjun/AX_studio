@@ -49,7 +49,7 @@ import {
   mutationConfirmationToken as findMutationConfirmationToken,
   workflowIdsChanged,
 } from './helpers.js';
-import { bindContextConfirmations, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
+import { bindContextConfirmations, clearHostChatSession, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
 
 type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
@@ -415,6 +415,11 @@ export function registerWorkspaceChatMessageHandler() {
         hasWorkspaceSession: Boolean(safeWorkspaceSessionId),
       });
       releaseWorkspaceChat(chatRequestId, controller);
+      // A turn that finished after its chat was deleted must not leave state behind for it.
+      if (!core.store.getWorkspaceChat(safeWorkspaceSessionId)) {
+        clearPendingCommand(safeWorkspaceSessionId, true);
+        clearHostChatSession(safeWorkspaceSessionId);
+      }
     }
   });
 }

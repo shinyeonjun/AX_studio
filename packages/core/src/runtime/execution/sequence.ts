@@ -13,6 +13,7 @@ import {
 } from './contracts.js';
 import { recordRepairProposal, reportStepProgress } from './progress.js';
 import { withStepDeadline } from './deadline.js';
+import type { ApprovedActionSnapshots } from '../approval-snapshot.js';
 
 export async function runSequence(
   host: WorkflowExecutionHost,
@@ -23,6 +24,7 @@ export async function runSequence(
   afterSequenceStepIds: string[] = [],
   approvedActionIds: ReadonlySet<string> = new Set(),
   executeAfterSequence = true,
+  approvalSnapshots?: ApprovedActionSnapshots,
 ): Promise<void> {
   for (let index = 0; index < sequence.length; index++) {
     const step = sequence[index];
@@ -51,9 +53,11 @@ export async function runSequence(
             sequence.slice(index + 1).map((item) => item.id),
             approvedActionIds,
             false,
+            approvalSnapshots,
         ),
         approvedActionIds,
         host.config.decisionEngine,
+        approvalSnapshots,
       );
       // Branch steps only select children; each child step carries its own deadline.
       if (step.type === 'action' || step.type === 'ai_decision') await withStepDeadline(host, ctx, step.id, execute);
@@ -108,6 +112,8 @@ export async function runSequence(
       stepResults,
       [],
       approvedActionIds,
+      true,
+      approvalSnapshots,
     );
   }
 }

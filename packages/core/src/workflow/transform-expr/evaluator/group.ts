@@ -9,11 +9,14 @@ import type {
 import { ownCell, requireCompleteTable } from './helpers.js';
 import { aggregateRows } from './numeric.js';
 
-/** Group key of one row: trimmed text of the cell; empty keys do not form a group. */
+/**
+ * Group key of one row: trimmed text of the cell; empty keys do not form a group. Text is NFC so
+ * that a name typed on Windows and the same name from a Mac file (decomposed 한글) are one group.
+ */
 export function groupKeyOf(row: TableArtifact['rows'][number], column: string): string | undefined {
   const value = ownCell(row.values, column);
   if (value == null) return undefined;
-  const key = String(value).trim();
+  const key = String(value).normalize('NFC').trim();
   return key ? key : undefined;
 }
 

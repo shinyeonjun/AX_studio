@@ -68,6 +68,8 @@ export class Scheduler {
   private lifecycleGeneration = 0;
   private tickInProgress = false;
   private activeTick?: Promise<void>;
+  /** Runs started by a tick, per workflow; a tick never waits on them. */
+  private readonly inFlight = new Map<string, Promise<void>>();
   private readonly schedules = new CompiledScheduleCache();
 
   constructor(
@@ -88,11 +90,13 @@ export class Scheduler {
     clearInterval(this.timer);
     this.timer = undefined;
     await this.activeTick;
+    await Promise.allSettled([...this.inFlight.values()]);
+    this.flushSettled();
   }
 
   private beginTick(): void {
     if (this.tickInProgress) return;
-    const tick = this.tick();
+    const tick = this.tick(false);
     this.activeTick = tick;
     void tick.finally(() => {
       if (this.activeTick === tick) this.activeTick = undefined;
@@ -220,26 +224,38 @@ export class Scheduler {
   private async executeScheduledWorkflow(
     ir: WorkflowIR,
     triggerType: 'once' | 'schedule',
-  ): Promise<{ result: ExecutionResult } | { error: unknown; notStarted: boolean }> {
+  ): Promise<{ result: ExecutionResult } | { error: unknown; notStarted: boolean; code?: string }> {
     try {
       return { result: await this.runtime.executeWorkflow(ir, { triggerType }) };
     } catch (error) {
       console.error(`[scheduler] execution failed for workflow ${ir.id}:`, error);
       const code = (error as { code?: unknown })?.code ?? (error instanceof Error ? error.message : undefined);
-      return { error, notStarted: typeof code === 'string' && NOT_STARTED_ERRORS.has(code) };
+      return {
+        error,
+        notStarted: typeof code === 'string' && NOT_STARTED_ERRORS.has(code),
+        ...(typeof code === 'string' ? { code } : {}),
+      };
     }
   }
 
-  private async tick() {
+  /**
+   * One scheduling pass. The pass itself is exclusive, but the runs it starts are not: the timer
+   * moves on while they execute. `waitForRuns` (the default, used by direct callers) also waits for
+   * the runs this pass started.
+   */
+  private async tick(waitForRuns = true) {
     if (this.tickInProgress) return;
     this.tickInProgress = true;
+    let started: Promise<void>[] = [];
     try {
-      await this.runTick();
+      started = await this.runTick();
     } catch (error) {
       console.error('[scheduler] tick failed:', error);
     } finally {
       this.tickInProgress = false;
     }
+    if (waitForRuns) await Promise.allSettled(started);
+    this.flushSettled();
   }
 
   /** Periodic approval TTL sweep; harmless while execution is globally paused. */
@@ -254,42 +270,104 @@ export class Scheduler {
     this.clearFired(fired, workflowId);
   }
 
-  private async runTick() {
+  /**
+   * While execution is switched off (퇴근), schedules do not accumulate: the observation window
+   * keeps moving and queued schedule occurrences are recorded as skipped, so switching back on
+   * does not fire the morning's runs in the evening. One-time jobs keep their own lateness rule.
+   */
+  private skipWhilePaused(now: Date): void {
+    const currentMinute = new Date(now);
+    currentMinute.setSeconds(0, 0);
+    this.store.setSetting(LAST_OBSERVED_SETTING, currentMinute.toISOString());
+    const skipped = this.pendingOccurrences().filter((occurrence) =>
+      occurrence.triggerType === 'schedule' && !this.inFlight.has(occurrence.workflowId));
+    for (const occurrence of skipped) {
+      this.recordOutcome(occurrence.workflowId, {
+        occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'execution_paused',
+      });
+    }
+    this.removePending(new Set(skipped.map(pendingKeyOf)));
+  }
+
+  /** Read-modify-write of the durable queue; synchronous, so ticks and finishing runs never clobber each other. */
+  private removePending(keys: ReadonlySet<string>): void {
+    if (keys.size === 0) return;
+    this.savePendingOccurrences(this.pendingOccurrences().filter((occurrence) => !keys.has(pendingKeyOf(occurrence))));
+  }
+
+  /**
+   * Queue entries that are finished (run settled, or dropped by a pass), removed in one write.
+   * Until flushed an entry is harmless: its occurrence is already acknowledged in lastFired.
+   */
+  private readonly settledKeys = new Set<string>();
+
+  private flushTimer?: ReturnType<typeof setTimeout>;
+
+  /** Runs finishing together are cleaned up in one write, right after they settle. */
+  private scheduleFlush(): void {
+    if (this.flushTimer) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = undefined;
+      this.flushSettled();
+    }, 0);
+    this.flushTimer.unref?.();
+  }
+
+  private flushSettled(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = undefined;
+    }
+    if (this.settledKeys.size === 0) return;
+    const keys = new Set(this.settledKeys);
+    this.settledKeys.clear();
+    this.removePending(keys);
+  }
+
+  private async runTick(): Promise<Promise<void>[]> {
     const generation = this.lifecycleGeneration;
     this.expireStaleApprovals();
-    const globalActive = this.store.getGlobalActive();
-    if (!globalActive) return;
-
     const now = new Date();
+    const started: Promise<void>[] = [];
+    // Runs that finished since the last pass leave the queue before it is read again.
+    this.flushSettled();
+    if (!this.store.getGlobalActive()) {
+      this.skipWhilePaused(now);
+      return started;
+    }
+
     const { pending: scheduledPending, fired } = this.enqueueDueOccurrences(now);
-    const removedPendingKeys = new Set<string>();
-    const processedPendingKeys = new Set<string>();
-    let pendingChanged = false;
-    const drop = (pendingKey: string) => {
-      removedPendingKeys.add(pendingKey);
-      pendingChanged = true;
-    };
+    const dropped = this.settledKeys;
+    const seen = new Set<string>();
     for (const occurrence of scheduledPending) {
-      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
-      const pendingKey = JSON.stringify([occurrence.workflowId, occurrence.occurrenceKey]);
-      if (processedPendingKeys.has(pendingKey)) continue;
-      processedPendingKeys.add(pendingKey);
+      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) break;
+      const pendingKey = pendingKeyOf(occurrence);
+      if (seen.has(pendingKey)) continue;
+      seen.add(pendingKey);
+      // A workflow already running keeps its later occurrences queued; they are looked at again
+      // once it finishes, without holding up other workflows' schedules.
+      if (this.inFlight.has(occurrence.workflowId)) continue;
       // lastFired is the durable acknowledgement; a crash may leave its pending
       // row behind, so discard any occurrence at or below that checkpoint.
       if (occurrenceAcknowledged(fired[occurrence.workflowId], occurrence.occurrenceKey, now.getTime())) {
-        drop(pendingKey);
+        dropped.add(pendingKey);
         continue;
       }
-      const active = this.store.isWorkflowActive(occurrence.workflowId);
-      if (!active) {
-        drop(pendingKey);
+      if (!this.store.isWorkflowActive(occurrence.workflowId)) {
+        dropped.add(pendingKey);
         continue;
       }
       const ir = this.store.getWorkflow(occurrence.workflowId);
+      // The occurrence belongs to the schedule: edited steps (a new version) still run at this
+      // slot, but a replaced trigger means this slot is no longer wanted.
       if (!ir?.trigger || ir.trigger.type !== occurrence.triggerType ||
-        (occurrence.workflowVersion !== undefined && occurrence.workflowVersion !== ir.version) ||
         (occurrence.triggerSnapshot !== undefined && occurrence.triggerSnapshot !== JSON.stringify(ir.trigger))) {
-        drop(pendingKey);
+        if (ir) {
+          this.recordOutcome(occurrence.workflowId, {
+            occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'schedule_changed',
+          });
+        }
+        dropped.add(pendingKey);
         continue;
       }
 
@@ -301,7 +379,7 @@ export class Scheduler {
           this.recordOutcome(occurrence.workflowId, {
             occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'max_lateness_exceeded',
           });
-          drop(pendingKey);
+          dropped.add(pendingKey);
           continue;
         }
       }
@@ -314,7 +392,7 @@ export class Scheduler {
           this.recordOutcome(occurrence.workflowId, {
             occurrenceKey: occurrence.occurrenceKey, status: 'skipped', reason: 'approval_pending',
           });
-          drop(pendingKey);
+          dropped.add(pendingKey);
         }
         // A one-time job waits (without retrying side effects) until the approval is answered.
         continue;
@@ -324,12 +402,37 @@ export class Scheduler {
       // effects, a failure, crash or stop must never run this occurrence again.
       const previousFired = fired[occurrence.workflowId];
       this.markFired(fired, occurrence.workflowId, occurrence.occurrenceKey);
+      const run = this.runOccurrence(occurrence, ir, fired, previousFired, generation);
+      this.inFlight.set(occurrence.workflowId, run);
+      started.push(run);
+      void run.finally(() => {
+        if (this.inFlight.get(occurrence.workflowId) === run) this.inFlight.delete(occurrence.workflowId);
+        this.scheduleFlush();
+      });
+    }
+    // Entries the pass dropped leave the queue now (one write, shared with runs that already settled).
+    if (started.length === 0) this.flushSettled();
+    return started;
+  }
+
+  /** Runs one acknowledged occurrence to its end and settles its queue entry and checkpoint. */
+  private async runOccurrence(
+    occurrence: PendingOccurrence,
+    ir: WorkflowIR,
+    fired: Record<string, string>,
+    previousFired: string | undefined,
+    generation: number,
+  ): Promise<void> {
+    const pendingKey = pendingKeyOf(occurrence);
+    try {
       const outcome = await this.executeScheduledWorkflow(ir, occurrence.triggerType);
       if ('error' in outcome) {
         if (outcome.notStarted) {
-          // The runtime refused before any step ran; re-arm the occurrence.
+          // The runtime refused before any step ran; re-arm the occurrence and keep it queued so
+          // a later tick (or the next app start) runs it. A removed workflow has nothing to run.
           if (previousFired === undefined) this.clearFired(fired, occurrence.workflowId);
           else this.markFired(fired, occurrence.workflowId, previousFired);
+          if (outcome.code !== 'workflow_removed') return;
         } else {
           // The run may have reached a side effect before failing; never retry it.
           this.recordOutcome(occurrence.workflowId, {
@@ -337,11 +440,12 @@ export class Scheduler {
           });
           if (occurrence.triggerType === 'once') this.retireOnceJob(fired, occurrence.workflowId);
         }
-        drop(pendingKey);
-        continue;
+        this.settledKeys.add(pendingKey);
+        return;
       }
       const { result } = outcome;
-      if (generation !== this.lifecycleGeneration || !this.store.getGlobalActive()) return;
+      this.settledKeys.add(pendingKey);
+      if (generation !== this.lifecycleGeneration) return;
       const current = this.store.getWorkflow(occurrence.workflowId);
       const triggerUnchanged = JSON.stringify(current?.trigger) === JSON.stringify(ir.trigger);
       const unchanged = current?.version === ir.version && triggerUnchanged;
@@ -373,14 +477,13 @@ export class Scheduler {
           this.retireOnceJob(fired, occurrence.workflowId);
         }
       }
-
-      drop(pendingKey);
       this.onScheduledRun?.(occurrence.workflowId, result);
-    }
-    if (pendingChanged) {
-      this.savePendingOccurrences(scheduledPending.filter((occurrence) =>
-        !removedPendingKeys.has(JSON.stringify([occurrence.workflowId, occurrence.occurrenceKey])),
-      ));
+    } catch (error) {
+      console.error(`[scheduler] settling occurrence ${occurrence.occurrenceKey} of workflow ${occurrence.workflowId} failed:`, error);
     }
   }
+}
+
+function pendingKeyOf(occurrence: Pick<PendingOccurrence, 'workflowId' | 'occurrenceKey'>): string {
+  return JSON.stringify([occurrence.workflowId, occurrence.occurrenceKey]);
 }

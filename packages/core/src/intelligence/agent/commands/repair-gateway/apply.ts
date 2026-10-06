@@ -26,9 +26,9 @@ export function applyRepairProposal(
     return ['conflict', { baseVersion: proposal.baseVersion }, [issue('repair_base_version_mismatch', 'repair 제안의 기준 버전과 일치하지 않습니다.', 'args.baseVersion')]];
   }
   const workflow = store.getWorkflow(proposal.workflowId);
-  if (!workflow) return ['not_found', undefined, [issue('workflow_not_found', 'workflow를 찾을 수 없습니다.')]];
+  if (!workflow) return ['not_found', undefined, [issue('workflow_not_found', '업무를 찾을 수 없습니다.')]];
   if (workflow.version !== parsed.data.baseVersion) {
-    return ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', 'workflow가 최신 버전으로 변경되었습니다.', 'args.baseVersion')]];
+    return ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '업무가 최신 버전으로 변경되었습니다.', 'args.baseVersion')]];
   }
   const candidate = proposal.candidates.find((entry) => entry.id === parsed.data.candidateId);
   if (!candidate) return ['not_found', undefined, [issue('repair_candidate_not_found', 'repair 후보를 찾을 수 없습니다.', 'args.candidateId')]];

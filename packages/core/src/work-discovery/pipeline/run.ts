@@ -10,13 +10,19 @@ export type { DiscoveryPipelineHost } from './contracts.js';
 export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionId: string): Promise<void> {
   if (host.running.has(sessionId)) return;
   host.running.add(sessionId);
+  try {
+    await runOnce(host, sessionId);
+  } finally {
+    // Every exit, including a cancel part way, so a later retry of the session is not ignored.
+    host.running.delete(sessionId);
+  }
+}
+
+async function runOnce(host: DiscoveryPipelineHost, sessionId: string): Promise<void> {
   const started = Date.now();
 
   let state = host.store.getDiscoverySessionState(sessionId);
-  if (!state || state.status === 'cancelled') {
-    host.running.delete(sessionId);
-    return;
-  }
+  if (!state || state.status === 'cancelled') return;
 
   const examples: DiscoveryPipelineExample[] = host.store.listDiscoveryExamples(sessionId);
   let observations = state.observations;
@@ -26,6 +32,8 @@ export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionI
   const persistedSnapshots = host.loadPersistedSnapshotTables(state, examples.map((example) => example.id));
   const checkpointStatus = state.status === 'synthesizing' || state.status === 'validating';
   if (checkpointStatus && persistedSnapshots === undefined) {
+    // A retry by the person starts over instead (see retryDiscovery); automatic recovery must
+    // not throw away what was observed.
     throw new Error('discovery_checkpoint_unavailable');
   }
   const resumeFromCheckpoint = checkpointStatus && persistedSnapshots !== undefined;
@@ -128,5 +136,4 @@ export async function runDiscoveryPipeline(host: DiscoveryPipelineHost, sessionI
     snapshotsByExample,
     startedAt: started,
   });
-  host.running.delete(sessionId);
 }

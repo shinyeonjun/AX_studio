@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './paths.js';
+export { sweepEngineTempFiles } from './engine-temp-sweep.js';
 export {
   defaultPythonPath,
   defaultWorkerScript,

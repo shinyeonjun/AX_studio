@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
 import {
   WebhookAuthFailureLimiter,
+  WebhookReplayCache,
   buildWebhookLocalUrl,
   isWebhookSecretStrong,
   normalizeWebhookPath,
   verifyWebhookAuth,
   webhookSignaturePayload,
 } from './security.js';
+import { authClientKey } from './listener/transport.js';
 
 describe('webhook security', () => {
   const secret = 'shared-secret';
@@ -80,5 +82,37 @@ describe('webhook security', () => {
     }
     expect(limiter.retryAfterMs('a', 0)).toBe(0);
     expect(limiter.retryAfterMs('c', 0)).toBeGreaterThan(0);
+  });
+});
+
+describe('a signed request is accepted once', () => {
+  const skew = 5 * 60_000;
+
+  it('stays refused for as long as its timestamp is still accepted', () => {
+    const cache = new WebhookReplayCache();
+    const arrivedAt = 1_000_000_000_000;
+    const signedAhead = String((arrivedAt + skew - 1_000) / 1_000);
+    expect(cache.claim('e1:sig', signedAhead, arrivedAt)).toBe(true);
+    // Still a fresh timestamp nine minutes later, so still a replay.
+    expect(cache.claim('e1:sig', signedAhead, arrivedAt + 9 * 60_000)).toBe(false);
+    expect(cache.claim('e1:sig', signedAhead, arrivedAt + 2 * skew)).toBe(true);
+  });
+});
+
+describe('the address failed sign-ins are counted against', () => {
+  const request = (remoteAddress: string, headers: Record<string, string | string[]>) =>
+    ({ socket: { remoteAddress }, headers }) as never;
+
+  it('behind a tunnel, is the hop the tunnel appended, not one the caller chose', () => {
+    const viaTunnel = (spoofed: string) => authClientKey(request('127.0.0.1', {
+      'cf-connecting-ip': spoofed,
+      'x-forwarded-for': `${spoofed}, 203.0.113.9`,
+    }));
+    expect(viaTunnel('198.51.100.1')).toBe(viaTunnel('198.51.100.2'));
+    expect(viaTunnel('198.51.100.1')).toContain('203.0.113.9');
+  });
+
+  it('ignores forwarded headers from a direct client', () => {
+    expect(authClientKey(request('203.0.113.5', { 'x-forwarded-for': '198.51.100.1' }))).toBe('203.0.113.5');
   });
 });

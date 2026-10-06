@@ -106,7 +106,7 @@ describe('TableArtifact', () => {
     expect(buildTableArtifact(input).rows[0]).not.toHaveProperty('rawValues');
     const artifact = TableArtifactSchema.parse(buildTableArtifact({ ...input, preserveRawValues: true }));
     expect(artifact.rows[0]?.rawValues).toEqual({ id: '00123', amount: 123, empty: '', blank: '  ', boolean: false });
-    expect(artifact.rows[0]?.values).toEqual({ id: 123, amount: 123, empty: null, blank: null, boolean: false });
+    expect(artifact.rows[0]?.values).toEqual({ id: '00123', amount: 123, empty: null, blank: null, boolean: false });
   });
 
   it('retains raw values for duplicate headers using the same unique column names', () => {
@@ -166,5 +166,29 @@ describe('TableArtifact', () => {
     ).columns.value;
     expect(nonFinite).toMatchObject({ distinctCount: 1, min: Number.NEGATIVE_INFINITY, max: Number.POSITIVE_INFINITY });
     expect(Number.isNaN(nonFinite.mean)).toBe(true);
+  });
+});
+
+describe('cell values people did not mean as numbers', () => {
+  it('keeps identifiers with a leading zero or too many digits as text', () => {
+    const table = buildTableArtifact({
+      id: 'ids', headers: ['zip', 'phone', 'card', 'amount', 'ratio', 'negative', 'zero'],
+      matrix: [['01234', '01012345678', '12345678901234567890', '1,234', '0.5', '-12', '0']],
+    });
+    expect(table.rows[0]!.values).toEqual({
+      zip: '01234', phone: '01012345678', card: '12345678901234567890', amount: 1234, ratio: 0.5, negative: -12, zero: 0,
+    });
+    expect(table.columns.find((column) => column.name === 'zip')?.type).toBe('string');
+    expect(table.columns.find((column) => column.name === 'amount')?.type).toBe('number');
+  });
+
+  it('reads spreadsheet dates as the calendar date that was typed', () => {
+    // Readers create dates at local midnight; the day must not shift in time zones east of UTC.
+    const table = buildTableArtifact({
+      id: 'dates', headers: ['day', 'at'],
+      matrix: [[new Date(2024, 0, 1), new Date(2024, 0, 1, 9, 30, 0)]],
+    });
+    expect(table.rows[0]!.values).toEqual({ day: '2024-01-01', at: '2024-01-01 09:30:00' });
+    expect(table.columns.find((column) => column.name === 'day')?.type).toBe('date');
   });
 });

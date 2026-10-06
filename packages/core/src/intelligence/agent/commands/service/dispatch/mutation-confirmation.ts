@@ -117,7 +117,7 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
         {
           type: 'note',
           text: executableChange
-            ? '실행 내용이 바뀌므로 자동 발송은 꺼지고, 활성 workflow는 다시 켜기 전까지 중지됩니다. 확인 전에는 아무것도 저장하지 않았습니다.'
+            ? '실행 내용이 바뀌므로 자동 발송은 꺼지고, 활성 업무는 다시 켜기 전까지 중지됩니다. 확인 전에는 아무것도 저장하지 않았습니다.'
             : '확인 전에는 아무것도 저장하지 않았습니다.',
         },
       ],
@@ -129,12 +129,12 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
     const workflowId = parsed.data.workflowId;
     const workflow = store.getWorkflow(workflowId);
     if (!workflow) {
-      return failed(command, ['not_found', undefined, [issue('workflow_not_found', `workflow를 찾을 수 없습니다: ${workflowId}`, 'args.workflowId')]]);
+      return failed(command, ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${workflowId}`, 'args.workflowId')]]);
     }
     if (name === 'workflow.delete') {
       const baseVersion = (parsed.data as z.infer<typeof AxWorkflowDeleteArgsSchema>).baseVersion;
       if (workflow.version !== baseVersion) {
-        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '최신 workflow 버전과 일치하지 않습니다.', 'baseVersion')]]);
+        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '최신 업무 버전과 일치하지 않습니다.', 'baseVersion')]]);
       }
       return {
         ok: true,
@@ -187,7 +187,7 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
           : bounded(`${proposal.workflowId} · 버전 ${parsed.data.baseVersion}`, 240),
       },
       { type: 'decision', label: 'repair 후보', value: bounded(`${parsed.data.repairId} / ${parsed.data.candidateId}`, 240) },
-      { type: 'note', text: '모든 과거 replay가 통과한 경우에만 새 workflow 버전으로 적용됩니다. 확인 전에는 적용하지 않았습니다.' },
+      { type: 'note', text: '모든 과거 replay가 통과한 경우에만 새 업무 버전으로 적용됩니다. 확인 전에는 적용하지 않았습니다.' },
     ],
   };
 }
@@ -294,7 +294,7 @@ export async function commitPendingMutation(
   if (currentWorkflowId && pending.workflowId && pending.workflowId !== currentWorkflowId) {
     return result(command.name, 'forbidden', undefined, [issue(
       'workflow_target_mismatch',
-      '확인한 변경의 workflow가 현재 대화의 workflow와 다릅니다. 해당 workflow에서 다시 요청해 주세요.',
+      '확인한 변경의 업무가 현재 대화의 업무와 다릅니다. 해당 업무에서 다시 요청해 주세요.',
     )]);
   }
   // One-shot: consume before executing so a retry or replay cannot run it twice.

@@ -6,7 +6,7 @@ import { appendExecutionLog, getExecution } from './execution-repository.js';
 
 const NOW = new Date('2026-10-06T00:00:00.000Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString();
-const policy = { executionsPerWorkflow: 2, executionMinAgeDays: 90, completedReceiptMaxAgeDays: 30, workflowVersionsPerWorkflow: 2 };
+const policy = { executionsPerWorkflow: 2, executionMinAgeDays: 90, completedReceiptMaxAgeDays: 30, workflowVersionsPerWorkflow: 2, abandonedDiscoveryMaxAgeDays: 30 };
 
 describe('history retention', () => {
   let db: AppDatabase;
@@ -59,6 +59,21 @@ describe('history retention', () => {
       .toEqual(['new-done', 'old-failed', 'old-processing']);
   });
 
+  it('ages out dead letters like completed receipts, and drops retry state of settled events', () => {
+    const insert = db.prepare('INSERT INTO trigger_receipts (dedupe_key, workflow_id, trigger_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
+    insert.run('old-dead', 'wf', 'poll', 'dead', daysAgo(40), daysAgo(40));
+    insert.run('new-dead', 'wf', 'poll', 'dead', daysAgo(5), daysAgo(5));
+    insert.run('retrying', 'wf', 'poll', 'failed', daysAgo(1), daysAgo(1));
+    const attempt = (key: string) => `trigger.receiptAttempt:${encodeURIComponent(key)}`;
+    for (const key of ['old-dead', 'new-dead', 'retrying', 'gone']) store.setSetting(attempt(key), { attempts: 2, nextAttemptAt: 0 });
+
+    const result = pruneHistory(db, policy, NOW);
+    expect(result.triggerReceipts).toBe(1);
+    expect(result.receiptAttempts).toBe(3);
+    expect(store.getSetting(attempt('retrying'), null)).not.toBeNull();
+    for (const key of ['old-dead', 'new-dead', 'gone']) expect(store.getSetting(attempt(key), null)).toBeNull();
+  });
+
   it('keeps completed receipts for 180 days by default so a re-seen poll event cannot re-fire', () => {
     const insert = db.prepare('INSERT INTO trigger_receipts (dedupe_key, workflow_id, trigger_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
     insert.run('done-100d', 'wf', 'poll', 'completed', daysAgo(100), daysAgo(100));
@@ -67,6 +82,22 @@ describe('history retention', () => {
     expect(DEFAULT_HISTORY_RETENTION.completedReceiptMaxAgeDays).toBeGreaterThanOrEqual(180);
     expect(pruneHistory(db, DEFAULT_HISTORY_RETENTION, NOW).triggerReceipts).toBe(1);
     expect(db.prepare('SELECT dedupe_key FROM trigger_receipts').all().map((row) => row.dedupe_key)).toEqual(['done-100d']);
+  });
+
+  it('removes failed or cancelled discoveries after a month, with their examples and snapshots', () => {
+    const session = db.prepare('INSERT INTO work_discovery_sessions (id, status, user_goal, state_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
+    session.run('old-failed', 'failed', 'g', '{}', daysAgo(60), daysAgo(60));
+    session.run('old-cancelled', 'cancelled', 'g', '{}', daysAgo(60), daysAgo(60));
+    session.run('recent-failed', 'failed', 'g', '{}', daysAgo(5), daysAgo(5));
+    session.run('old-published', 'published', 'g', '{}', daysAgo(400), daysAgo(400));
+    session.run('old-waiting', 'needs_clarification', 'g', '{}', daysAgo(400), daysAgo(400));
+    db.prepare("INSERT INTO work_discovery_examples (id, session_id, output_artifact_ids_json, input_artifact_ids_json, created_at) VALUES ('ex', 'old-failed', '[]', '[]', ?)").run(daysAgo(60));
+    db.prepare("INSERT INTO work_discovery_snapshots (id, session_id, example_id, source_id, kind, fingerprint, captured_at) VALUES ('snap', 'old-failed', 'ex', 's', 'table', 'f', ?)").run(daysAgo(60));
+
+    expect(pruneHistory(db, policy, NOW).discoverySessions).toBe(2);
+    expect(store.listDiscoverySessionIds().sort()).toEqual(['old-published', 'old-waiting', 'recent-failed']);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM work_discovery_snapshots').get()?.n).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM work_discovery_examples').get()?.n).toBe(0);
   });
 
   it('keeps the newest workflow versions plus versions still referenced by active work', () => {

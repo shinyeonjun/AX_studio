@@ -13,6 +13,7 @@ export const LOCAL_SHEET_CAPABILITIES: ConnectorCapability[] = [
       { name: 'path', label: '파일 경로', question: '연결된 폴더 안의 파일 경로를 알려주세요.', required: true },
       { name: 'folderId', label: '폴더', question: '연결된 폴더 id를 알려주세요.', required: false },
       { name: 'sheet', label: '시트 이름', question: '읽을 시트 이름을 알려주세요.', required: false },
+      { name: 'followNewest', label: '최신 파일 따라가기', question: '같은 이름 형식의 가장 최근 파일을 읽을까요?', required: false },
     ],
     io: { inputs: {}, outputs: { sheet: 'TableArtifact' } },
   },

@@ -68,3 +68,21 @@ export function redactedApprovalSnapshot(params: Record<string, unknown>): {
     ? { params: redacted, truncated: true, truncatedFields: truncations }
     : { params: redacted };
 }
+
+/** What a person approved for one action: which action, and a hash of its exact params. */
+export type ApprovedActionSnapshots = ReadonlyMap<string, { actionRef: string; paramsHash: string }>;
+
+/**
+ * True when the params about to run are the ones that were approved. An approval with no
+ * snapshot for this action (e.g. its content was not known yet) never matches.
+ */
+export function matchesApprovedSnapshot(
+  snapshots: ApprovedActionSnapshots | undefined,
+  actionId: string,
+  actionRef: string,
+  params: Record<string, unknown>,
+): boolean {
+  if (!snapshots) return true;
+  const expected = snapshots.get(actionId);
+  return Boolean(expected && expected.actionRef === actionRef && expected.paramsHash === approvalParamsHash(params));
+}

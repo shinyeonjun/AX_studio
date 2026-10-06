@@ -221,13 +221,22 @@ export function repairReportLayoutBindings(
   return { ...layout, tableBindings };
 }
 
+function ranksByMeasure(table: Extract<ReportPlan['tables'][number], { kind: 'aggregate' }>): boolean {
+  const first = table.sort?.[0];
+  if (!first) return false;
+  const column = table.columns.find((candidate) => candidate.id === first.columnId);
+  return column !== undefined && column.value.kind !== 'group_key';
+}
+
 /**
  * A completed example can fit a template while a later period contains more
  * groups. The example row count is presentation geometry, never a default
  * business limit. A model limit that exactly matches the bound capacity and
  * has no aggregate `having` predicate is therefore treated as a copied layout
- * cap and removed. Smaller limits and limits backed by an aggregate predicate
- * remain semantic constraints; they must not be widened by the host.
+ * cap and removed. Smaller limits, limits backed by an aggregate predicate and
+ * limits on a ranking (first sorted by a measure, not a group key: "top 5 by
+ * sales" whose example happened to fill 5 rows) remain semantic constraints;
+ * they must not be widened by the host.
  */
 export function repairReportTableCapacities(
   plan: ReportPlan,
@@ -249,6 +258,7 @@ export function repairReportTableCapacities(
     const capacity = capacities.get(table.id);
     if (capacity === undefined) return table;
     if (table.kind !== 'aggregate' || table.limit !== capacity || table.having !== undefined) return table;
+    if (ranksByMeasure(table)) return table;
     changed = true;
     const { limit: _layoutLimit, ...withoutLayoutLimit } = table;
     return withoutLayoutLimit;

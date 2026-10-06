@@ -20,7 +20,9 @@ export function evaluateConditionOnRow(
     case 'contains': {
       const left = 'lit' in expr.left ? expr.left.lit : rowValue(row, expr.left.ref);
       const right = 'lit' in expr.right ? expr.right.lit : rowValue(row, expr.right.ref);
-      return String(left ?? '').includes(String(right ?? ''));
+      // Same rule as step conditions: an empty search term would keep every row.
+      const needle = String(right ?? '');
+      return needle.trim() !== '' && String(left ?? '').includes(needle);
     }
     case 'gt':
     case 'gte':

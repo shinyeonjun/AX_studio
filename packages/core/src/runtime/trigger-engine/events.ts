@@ -33,7 +33,12 @@ interface PushJournalEntry {
   /** `started` entries left behind by a crash are not replayed: a run may have begun. */
   state: 'queued' | 'started';
   at: string;
+  /** Times the runtime refused to start it (shutting down, queue full); it is retried a few times. */
+  attempts?: number;
 }
+
+/** An event the runtime refused before any step ran is retried this many times, then dropped. */
+const MAX_PUSH_EVENT_RETRIES = 5;
 
 function isJournalEntry(value: unknown): value is PushJournalEntry {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -215,17 +220,34 @@ export class TriggerEventCoordinator {
         console.error('[trigger-engine] push event journal update failed:', error);
       }
     }
+    let retry = false;
     try {
-      await this.processPushEvent(driver, event);
+      retry = await this.processPushEvent(driver, event);
     } finally {
       if (journalId) {
         try {
-          this.removeJournal(journalId);
+          // A refused event (nothing ran) stays journaled and is replayed by a later poll tick or the
+          // next start; webhooks have no poll fallback, so dropping it would lose it for good.
+          if (!retry || !this.requeueJournal(journalId)) this.removeJournal(journalId);
         } catch (error) {
           console.error('[trigger-engine] push event journal cleanup failed:', error);
         }
       }
     }
+  }
+
+  /** Puts a refused event back in the journal for a later replay; false once it ran out of retries. */
+  private requeueJournal(id: string): boolean {
+    const entry = this.readJournal().find((candidate) => candidate.id === id);
+    const attempts = (entry?.attempts ?? 0) + 1;
+    if (!entry || attempts > MAX_PUSH_EVENT_RETRIES) {
+      if (entry) console.warn(`[trigger-engine] dropped push event ${id} (${entry.triggerType}) after ${MAX_PUSH_EVENT_RETRIES} refused starts`);
+      return false;
+    }
+    this.store.setSetting(PUSH_EVENT_JOURNAL_SETTING, this.readJournal().map((candidate) =>
+      candidate.id === id ? { ...candidate, state: 'queued' as const, attempts } : candidate));
+    this.liveJournalIds.delete(id);
+    return true;
   }
 
   private receiptCompleted(workflowId: string, event: TriggerEvent, dedupeKey: string): boolean {
@@ -243,12 +265,14 @@ export class TriggerEventCoordinator {
     }
   }
 
+  /** True when some matching workflow's run was refused before it started (worth retrying). */
   private async processPushEvent(
     driver: PushTriggerDriver,
     event: TriggerEvent,
-  ): Promise<void> {
-    if (event.type !== driver.triggerType) return;
-    if (!this.store.getGlobalActive()) return;
+  ): Promise<boolean> {
+    if (event.type !== driver.triggerType) return false;
+    if (!this.store.getGlobalActive()) return false;
+    let retry = false;
 
     for (const { id: workflowId, workflow: ir } of this.store.listActiveWorkflowDefinitions()) {
       const trigger = ir?.trigger;
@@ -277,11 +301,12 @@ export class TriggerEventCoordinator {
 
       this.inFlightEvents.add(dedupeKey);
       try {
-        await this.runClaimedEvent(workflowId, ir, trigger.type, event, dedupeKey);
+        if (await this.runClaimedEvent(workflowId, ir, trigger.type, event, dedupeKey) === 'not_started') retry = true;
       } finally {
         this.inFlightEvents.delete(dedupeKey);
       }
     }
+    return retry;
   }
 
   private async runClaimedEvent(
@@ -290,7 +315,7 @@ export class TriggerEventCoordinator {
     triggerType: string,
     event: TriggerEvent,
     dedupeKey: string,
-  ): Promise<void> {
+  ): Promise<'done' | 'not_started'> {
     let result: unknown;
     try {
       result = await this.runtime.executeWorkflow(ir, {
@@ -301,24 +326,25 @@ export class TriggerEventCoordinator {
       console.error(`[trigger-engine] push failed for skill ${workflowId}:`, err);
       if (triggerErrorNotStarted(err)) {
         this.store.failTriggerReceipt(dedupeKey);
-        return;
+        return 'not_started';
       }
       if (recordTriggerFailure(this.store, {
         dedupeKey, workflowId, workflow: ir, reason: err instanceof Error ? err.message : String(err),
       }) === 'dead') this.advancePollCursor(workflowId, event);
-      return;
+      return 'done';
     }
     if (!triggerRunWasAccepted(result)) {
       const status = (result as Partial<ExecutionResult> | null)?.status ?? 'unknown';
       if (recordTriggerFailure(this.store, {
         dedupeKey, workflowId, workflow: ir, result: result as Partial<ExecutionResult>, reason: status,
       }) === 'dead') this.advancePollCursor(workflowId, event);
-      return;
+      return 'done';
     }
     this.store.completeTriggerReceipt(dedupeKey, (result as ExecutionResult).executionId);
     clearTriggerAttempts(this.store, dedupeKey);
     this.rememberEvent(dedupeKey);
     this.advancePollCursor(workflowId, event);
     this.onTriggeredRun?.(workflowId, result);
+    return 'done';
   }
 }

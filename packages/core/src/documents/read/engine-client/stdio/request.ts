@@ -13,6 +13,8 @@ export interface DocumentEngineTransportOptions {
   artifactRoot: string;
   timeoutMs: number;
   workerCwd: string;
+  /** Stops the worker process when the run that asked for it is cancelled. */
+  abortSignal?: AbortSignal;
 }
 
 export function normalizeDocumentEngineError(message: string): string {
@@ -52,6 +54,7 @@ export async function requestDocumentEngine<T>(
     cwd: options.workerCwd,
     input: JSON.stringify(payload),
     env: documentEngineEnv(),
+    ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
   });
 
   const stdout = result.stdout.trim();

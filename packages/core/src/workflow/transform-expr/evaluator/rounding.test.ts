@@ -67,3 +67,42 @@ describe('aggregate and ratio rounding', () => {
     expect(candidates.map(({ expr }) => expr)).toContainEqual({ op: 'aggregate', input: source, fn: 'avg', column: '금액', round: 0 });
   });
 });
+
+describe('totals over part of a table', () => {
+  it('refuses to sum a later DB page as if it were the whole table', () => {
+    const page = { ...buildTableArtifact({ id: 'page', headers: ['금액'], matrix: [[10], [20]] }),
+      coverage: { schemaVersion: 1, page: 'complete', query: 'partial', source: 'partial', consistency: 'best_effort', reason: 'independent_offset_reads', observedRows: 2, hasMore: false } };
+    expect(() => evaluateTransformExpr({ op: 'aggregate', input: { op: 'source', sourceId: 'page' }, fn: 'sum', column: '금액' }, { page: page as never }))
+      .toThrow('incomplete_table_input');
+  });
+});
+
+describe('numbers as people write them', () => {
+  const sum = (values: unknown[], round?: number) => {
+    const table = buildTableArtifact({ id: 't', headers: ['v'], matrix: values.map((value) => [value]), scalarPolicy: 'preserve' });
+    return evaluateTransformExpr({ op: 'aggregate', input: { op: 'source', sourceId: 't' }, fn: 'sum', column: 'v', ...(round !== undefined ? { round } : {}) }, { t: table });
+  };
+
+  it('reads currency, 원, percent and accounting negatives; not hex', () => {
+    expect(sum(['₩1,000', '2,000원', '(500)', '1.5e3'])).toBe(4000);
+    expect(sum(['50%', '12.5%'])).toBe(62.5);
+    expect(sum(['0x1F', 'abc'])).toBeNull();
+  });
+
+  it('rounds halves away from zero like spreadsheets, also for tiny values', () => {
+    expect(sum([-0.125], 2)).toBe(-0.13);
+    expect(sum([0.125], 2)).toBe(0.13);
+    expect(sum([1.234e-7], 2)).toBe(0);
+    expect(sum([-1.234e-7], 2)).toBe(0);
+  });
+
+  it('gives no ratio when a side has no numbers', () => {
+    const table = buildTableArtifact({ id: 'r', headers: ['a', 'b'], matrix: [[null, 10], ['', 20]], scalarPolicy: 'preserve' });
+    const source = { op: 'source', sourceId: 'r' } as const;
+    expect(evaluateTransformExpr({
+      op: 'ratio', multiplyBy: 100,
+      numerator: { op: 'aggregate', input: source, fn: 'sum', column: 'a' },
+      denominator: { op: 'aggregate', input: source, fn: 'sum', column: 'b' },
+    }, { r: table })).toBeNull();
+  });
+});

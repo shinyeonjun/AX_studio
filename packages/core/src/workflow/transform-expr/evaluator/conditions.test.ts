@@ -25,6 +25,17 @@ describe('numeric transform conditions', () => {
     });
   });
 
+  it('keeps no row for an empty search term', () => {
+    const table = buildTableArtifact({ id: 'mail', headers: ['subject', 'keyword'], matrix: [['견적 요청', ''], ['회의', '회의']] });
+    const filtered = (right: { lit: string } | { ref: string }) => evaluateTransformExpr({
+      op: 'filter', input: { op: 'source', sourceId: 'mail' }, where: { op: 'contains', left: { ref: 'subject' }, right },
+    }, { mail: table }) as { rows: unknown[] };
+    expect(filtered({ lit: '' }).rows).toHaveLength(0);
+    expect(filtered({ lit: '  ' }).rows).toHaveLength(0);
+    expect(filtered({ ref: 'keyword' }).rows).toHaveLength(1);
+    expect(filtered({ lit: '견적' }).rows).toHaveLength(1);
+  });
+
   it('reads only own column and snapshot names', () => {
     const table = buildTableArtifact({ id: 'inventory', headers: ['stock'], matrix: [[1]] });
     expect(evaluateTransformExpr({ op: 'column', input: { op: 'source', sourceId: 'inventory' }, name: 'constructor' },
@@ -41,5 +52,24 @@ describe('numeric transform conditions', () => {
     for (let index = 0; index < 100; index++) condition = { op: 'not', arg: condition };
     expect(ConditionExprSchema.safeParse(condition).success).toBe(false);
     expect(TransformExprSchema.safeParse({ op: 'limit', input: { op: 'source', sourceId: 'x' }, count: 1 }).success).toBe(true);
+  });
+});
+
+describe('sorting', () => {
+  it('puts blank cells last in both directions and orders numeric text by value', async () => {
+    const { evaluateTransformExpr } = await import('../evaluator.js');
+    const { buildTableArtifact } = await import('../../../contracts/artifacts/table-build.js');
+    const table = buildTableArtifact({
+      id: 't', headers: ['name', 'revenue'], scalarPolicy: 'preserve',
+      // DB decimals arrive as text; blanks are missing revenue.
+      matrix: [['a', '9.50'], ['b', null], ['c', '100.00'], ['d', ''], ['e', 20]],
+    });
+    const order = (direction: 'asc' | 'desc') => (evaluateTransformExpr(
+      { op: 'sort', input: { op: 'source', sourceId: 't' }, by: [{ column: 'revenue', direction }] }, { t: table },
+    ) as typeof table).rows.map((row) => row.values.name);
+    expect(order('desc').slice(0, 3)).toEqual(['c', 'e', 'a']);
+    expect(order('asc').slice(0, 3)).toEqual(['a', 'e', 'c']);
+    expect(order('desc').slice(3).sort()).toEqual(['b', 'd']);
+    expect(order('asc').slice(3).sort()).toEqual(['b', 'd']);
   });
 });

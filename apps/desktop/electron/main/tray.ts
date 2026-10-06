@@ -4,6 +4,7 @@ import appIconPath from '../../build/icon.png?asset';
 import { getCore } from './core-instance';
 import { setQuiting, showMainWindow } from './app-window';
 import { desktopAppDisplayName } from './data-paths.js';
+import { notifyStateChanged } from './state-broadcast.js';
 
 let tray: Tray | null = null;
 
@@ -29,6 +30,7 @@ export function createTray() {
         const core = getCore();
         core.store.setSetting('globalActive', true);
         core.runtime.setGlobalActive(true);
+        notifyStateChanged();
       },
     },
     {
@@ -37,6 +39,7 @@ export function createTray() {
         const core = getCore();
         core.store.setSetting('globalActive', false);
         core.runtime.setGlobalActive(false);
+        notifyStateChanged();
       },
     },
     {

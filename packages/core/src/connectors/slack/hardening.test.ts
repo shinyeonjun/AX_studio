@@ -54,14 +54,16 @@ describe('Slack bounded execution', () => {
     expect(history).toHaveBeenCalledOnce();
   });
 
-  it('bounds collected polling messages without emitting a partial checkpoint', async () => {
+  it('works off a backlog oldest first in bounded batches instead of failing', async () => {
     const history = vi.fn().mockResolvedValue({ messages: Array.from({ length: 1001 }, (_, index) => ({
       type: 'message', ts: `${2000 - index}.000`,
     })) });
-    await expect(pollSlackNewMessages({ conversations: { history } } as unknown as WebClient, {
-      channel: 'C123', initialized: true, lastMessageTs: '0',
-    })).rejects.toThrow('message_limit');
-    expect(history).toHaveBeenCalledOnce();
+    const result = await pollSlackNewMessages({ conversations: { history } } as unknown as WebClient, {
+      channel: 'C123', channelId: 'C123', cursorChannel: 'C123', initialized: true, lastMessageTs: '0',
+    } as never);
+    expect(result.events).toHaveLength(1000);
+    // The oldest 1000 (1000.000 … 1999.000) are handled; the newest waits for the next poll.
+    expect(result.cursor.lastMessageTs).toBe('1999.000');
   });
 
   it('returns no partial polling result when a later page fails', async () => {

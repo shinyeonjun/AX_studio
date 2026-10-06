@@ -51,14 +51,14 @@ export const AxContextUpdateConfirmationSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['workflowId'],
-      message: 'workflow 컨텍스트 확인에는 workflow id가 필요합니다.',
+      message: '업무 컨텍스트 확인에는 업무 id가 필요합니다.',
     });
   }
   if (confirmation.scope === 'session' && confirmation.workflowId) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['workflowId'],
-      message: 'session 컨텍스트 확인에는 workflow id를 사용할 수 없습니다.',
+      message: 'session 컨텍스트 확인에는 업무 id를 사용할 수 없습니다.',
     });
   }
 });

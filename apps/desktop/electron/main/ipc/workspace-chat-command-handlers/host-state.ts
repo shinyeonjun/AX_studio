@@ -116,6 +116,13 @@ export function hostReadResultFor(
   return latestShown?.id === cached.id ? cached : undefined;
 }
 
+/** Forget everything held for a deleted conversation (confirmations, its table and recipe). */
+export function clearHostChatSession(sessionId: string): void {
+  contextConfirmations.delete(sessionId);
+  readResults.delete(sessionId);
+  readRecipes.delete(sessionId);
+}
+
 /** The recipe of the table `hostReadResultFor` would return, under the same transcript check. */
 export function hostReadRecipeFor(sessionId: string, messages: WorkspaceChatMessage[]): ChatReadRecipe | undefined {
   return hostReadResultFor(sessionId, messages) ? readRecipes.get(sessionId) : undefined;

@@ -21,9 +21,15 @@ export interface DocumentEngineClientOptions {
   allowEnvOverrides?: boolean;
 }
 
+/** Host-side control of one engine call; never sent to the worker. */
+export interface DocumentEngineCallControl {
+  /** Stops the worker process (and its children) when the caller gives up, e.g. a cancelled run. */
+  abortSignal?: AbortSignal;
+}
+
 export interface DocumentEngineClient {
   ping(): Promise<boolean>;
-  ingest(path: string, options?: IngestDocumentOptions): Promise<IngestDocumentResult>;
+  ingest(path: string, options?: IngestDocumentOptions, control?: DocumentEngineCallControl): Promise<IngestDocumentResult>;
   pdfToHtml(path: string, options?: PdfToHtmlOptions): Promise<PdfToHtmlResult>;
   pdfFormAnalyze(path: string, options?: PdfFormAnalyzeOptions): Promise<PdfFormTemplate>;
   pdfFormFill(path: string, options: PdfFormFillOptions): Promise<PdfFormFillResult>;

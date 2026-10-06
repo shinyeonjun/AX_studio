@@ -128,6 +128,19 @@ export function parseCsvMatrix(text: string, delimiter: CsvDelimiter = ','): { h
 
   if (rows.length === 0) return { headers: [], matrix: [] };
   const headers = rows[0]!.map((cell) => cell.trim());
+  // A row longer than the header (an unquoted "1,000", a note in a spare cell) keeps its extra
+  // cells as unnamed columns, as a spreadsheet shows the file, instead of losing them silently.
+  // Trailing empty cells do not add columns.
+  let width = headers.length;
+  for (const cells of rows) {
+    for (let index = cells.length - 1; index >= width; index -= 1) {
+      if (cells[index]!.trim()) {
+        width = index + 1;
+        break;
+      }
+    }
+  }
+  while (headers.length < width) headers.push('');
   const matrix = rows.slice(1).map((cells) => headers.map((_, columnIndex) => {
     const value = cells[columnIndex] ?? '';
     return value.trim();

@@ -75,6 +75,13 @@ describe('group transform', () => {
     }, { empty }))).toEqual([{ code: 'T', n: 0, s: null }]);
   });
 
+  it('puts the same name from a Mac file and from Windows in one group', () => {
+    const seoul = '서울';
+    const names = buildTableArtifact({ id: 'names', headers: ['city', 'v'], matrix: [[seoul, 1], [seoul.normalize('NFD'), 2]], scalarPolicy: 'preserve' });
+    expect(rows(evaluateTransformExpr({ op: 'group', input: { op: 'source', sourceId: 'names' }, by: 'city', aggregates: [{ as: 's', fn: 'sum', column: 'v' }] }, { names })))
+      .toEqual([{ city: seoul, s: 3 }]);
+  });
+
   it('refuses incomplete inputs and duplicate output headers', () => {
     const partial = { ...orders, truncated: true };
     const expr: TransformExpr = { op: 'group', input: source, by: 'kind', aggregates: [{ as: 'n', fn: 'count' }] };

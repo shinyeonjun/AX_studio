@@ -20,7 +20,7 @@ describe('HTTP exact selection and completeness', () => {
     const connector = new HttpConnector([
       { id: 'other', label: 'selected', baseUrl: 'http://127.0.0.1:10001/' },
       { id: 'selected', baseUrl: 'http://127.0.0.1:10002/' },
-    ]);
+    ], { allowPrivateNetwork: true });
     expect((await connector.execute('request', { connectionId: 'selected', path: '/' }, context())).ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:10002/', expect.anything());
   });
@@ -31,7 +31,7 @@ describe('HTTP exact selection and completeness', () => {
     const connector = new HttpConnector([
       { id: 'one', label: 'same', baseUrl: 'http://127.0.0.1:10001/' },
       { id: 'two', label: 'same', baseUrl: 'http://127.0.0.1:10002/' },
-    ]);
+    ], { allowPrivateNetwork: true });
     expect(await connector.execute('request', { connectionId: 'same', path: '/' }, context()))
       .toMatchObject({ ok: false, errorCode: 'invalid_params' });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe('HTTP exact selection and completeness', () => {
     { status: 200, headers: new Headers({ link: '</items?page=2>; rel="next last"' }) },
   ])('marks provider partial results as incomplete: %j', async ({ status, headers }) => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { status, headers })));
-    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/' });
+    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/' }, { allowPrivateNetwork: true });
     expect(await connector.execute('request', { path: '/items' }, context())).toMatchObject({
       ok: true, data: { body: '[]', truncated: status === 206, completeness: { status: 'partial', reason: 'provider_limit', hasMore: true } },
     });
@@ -54,7 +54,7 @@ describe('HTTP exact selection and completeness', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', {
       headers: { link: '</docs>; title="rel=next, previous"; rel="help"' },
     })));
-    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/' });
+    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/' }, { allowPrivateNetwork: true });
     expect(await connector.execute('request', { path: '/items' }, context())).toMatchObject({
       ok: true, data: { truncated: false, completeness: { status: 'complete' } },
     });
@@ -62,11 +62,23 @@ describe('HTTP exact selection and completeness', () => {
 
   it('logs only the request pathname, never the query string', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('[]')));
-    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/api/' });
+    const connector = new HttpConnector({ baseUrl: 'http://127.0.0.1:10001/api/' }, { allowPrivateNetwork: true });
     const ctx = context();
     await connector.execute('request', { path: 'items?token=secret-value' }, ctx);
     const logged = JSON.stringify(ctx.log.mock.calls);
     expect(logged).toContain('/api/items');
     expect(logged).not.toContain('secret-value');
+  });
+});
+
+describe('private destinations', () => {
+  it('are refused at run time, not only when the connection was registered', async () => {
+    const fetchMock = vi.fn(async () => new Response('[]'));
+    vi.stubGlobal('fetch', fetchMock);
+    for (const baseUrl of ['http://127.0.0.1:10001/', 'http://169.254.169.254/latest/', 'http://192.168.0.10/']) {
+      const connector = new HttpConnector({ baseUrl });
+      expect((await connector.execute('request', { path: '/' }, context())).ok).toBe(false);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

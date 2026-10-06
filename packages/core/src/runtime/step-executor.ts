@@ -11,7 +11,7 @@ import { applyStepBindings } from '../workflow/bindings.js';
 import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
-import { approvalParamsHash, redactedApprovalSnapshot } from './approval-snapshot.js';
+import { approvalParamsHash, matchesApprovedSnapshot, redactedApprovalSnapshot, type ApprovedActionSnapshots } from './approval-snapshot.js';
 import { messageTool, messageToolDraft } from '../contracts/tool-result.js';
 import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
 
@@ -56,6 +56,8 @@ export async function executeStep(
   runSteps: (stepIds: string[]) => Promise<void>,
   approvedActionIds: ReadonlySet<string> = new Set(),
   decisionEngine?: DecisionEngine,
+  /** The exact params each approved action was approved with (always given when resuming). */
+  approvalSnapshots?: ApprovedActionSnapshots,
 ): Promise<void> {
   assertWorkflowOutputBoundaries(ir, ctx.presentationVariableSources);
   switch (step.type) {
@@ -78,11 +80,17 @@ export async function executeStep(
 
       const stepSideEffect = ir.sideEffects?.[step.id] ?? step.sideEffect;
       const effectiveSideEffect = resolveEffectiveSideEffect(actionDefinition, params, stepSideEffect);
-      if (requiresApproval(effectiveSideEffect, ir.allowExternalAuto) && !approvedActionIds.has(step.id)) {
+      // An approval covers the content that was shown. If the params changed since (a later step
+      // wrote the message, a binding resolved differently), ask again with what will really run.
+      const approved = approvedActionIds.has(step.id)
+        && matchesApprovedSnapshot(approvalSnapshots, step.id, actionDefinition.id, params);
+      if ((requiresApproval(effectiveSideEffect, ir.allowExternalAuto) || approvedActionIds.has(step.id)) && !approved) {
         const approvalId = store.createApproval({
           executionId: ctx.executionId,
           actionIds: [step.id],
-          reason: `외부 작업 승인 필요: ${actionDefinition.id}`,
+          reason: approvedActionIds.has(step.id)
+            ? `승인 후 보낼 내용이 달라져 다시 확인이 필요합니다: ${actionDefinition.id}`
+            : `외부 작업 승인 필요: ${actionDefinition.id}`,
           payload: {
             actionSnapshots: [{
               actionId: step.id,
@@ -159,7 +167,15 @@ export async function executeStep(
           actionSnapshots: (pendingActionIds.length > 0 ? pendingActionIds : step.forActionIds).map((actionId) => {
             const action = ir.steps.find((candidate): candidate is Extract<Step, { type: 'action' }> => candidate.type === 'action' && candidate.id === actionId);
             if (!action) return { actionId };
-            const resolved = resolveActionParamsForExecution(action, ir, ctx, stepResults);
+            let resolved: ReturnType<typeof resolveActionParamsForExecution>;
+            try {
+              resolved = resolveActionParamsForExecution(action, ir, ctx, stepResults);
+            } catch (error) {
+              // Content made by later steps is not known yet; with no snapshot, the action asks
+              // for confirmation again with its real content when it is reached.
+              if ((error as { code?: unknown }).code === 'unresolved_binding') return { actionId };
+              throw error;
+            }
             return {
               actionId,
               actionRef: resolved.actionDefinition.id,

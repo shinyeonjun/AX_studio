@@ -89,11 +89,13 @@ export class TriggerEngine {
     return this.pushTransports.pushTransportStatus('slack.new_message') ?? { phase: 'disconnected' };
   }
 
+  /** Refreshes push transports; `only` limits it to these connectors (e.g. ['webhook']). */
   refreshPushTransports(
     disconnect?: null,
     configOverrides?: PushTriggerConfigOverrides,
+    only?: readonly string[],
   ): Promise<void> {
-    return this.pushTransports.refresh(disconnect, configOverrides);
+    return this.pushTransports.refresh(disconnect, configOverrides, only ? new Set(only) : undefined);
   }
 
   refreshSlackSocket(config?: { token: string; appToken?: string } | null): Promise<void> {
@@ -101,6 +103,8 @@ export class TriggerEngine {
   }
 
   tick(): Promise<void> {
+    // Push events the runtime refused earlier (nothing ran) get another chance each tick.
+    if (this.acceptingEvents) this.events.replayPendingEvents();
     return this.poller.tick();
   }
 }

@@ -7,6 +7,7 @@ type CommandResult<T> = {
 };
 
 export const TERMINAL_STATUSES = new Set(['published', 'failed', 'cancelled', 'needs_attention']);
+export const WAITING_FOR_PERSON_STATUSES = new Set(['needs_clarification', 'ready_to_publish']);
 
 function envelope<T>(result: unknown): CommandResult<T> | undefined {
   if (!result || typeof result !== 'object') return undefined;

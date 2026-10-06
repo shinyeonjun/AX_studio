@@ -1,5 +1,6 @@
 import type { ScalarValue, TableArtifact } from '../../../contracts/artifacts/table.js';
 import type { TransformEvaluation } from './contracts.js';
+import { parseWrittenNumber } from '../../../contracts/number-text.js';
 
 /** Own-property cell read: user-chosen column names never reach Object.prototype. */
 export function ownCell<T>(values: Readonly<Record<string, T>> | undefined, column: string): T | null {
@@ -16,15 +17,10 @@ export function compareScalar(left: ScalarValue, right: ScalarValue): boolean {
   return String(left) === String(right);
 }
 
+/** A cell as a number, the way people write money and amounts (see parseWrittenNumber). */
 export function toNumber(value: ScalarValue): number | null {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const normalized = value.replace(/,/g, '').trim();
-    if (!normalized) return null;
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  return typeof value === 'string' ? parseWrittenNumber(value) : null;
 }
 
 export function requireTable(input: TransformEvaluation, errorCode: string): TableArtifact {
@@ -38,5 +34,8 @@ export function requireCompleteTable(input: TransformEvaluation, errorCode: stri
   const table = requireTable(input, errorCode);
   const status = table.completeness?.status ?? (table.truncated ? 'partial' : 'complete');
   if (table.truncated || status !== 'complete') throw new Error('incomplete_table_input');
+  // A DB page says whether the page is whole; coverage says whether the source is. A later page
+  // (offset > 0) is a whole page of a partial source: totals over it are not totals.
+  if (table.coverage?.source === 'partial') throw new Error('incomplete_table_input');
   return table;
 }

@@ -37,12 +37,24 @@ describe('Work Discovery output contract builder', () => {
           sampleCount: 2,
           numericMin: 80,
           numericMax: 120,
-          numericToleranceRatio: 0.2,
+          numericToleranceRatio: 1,
         },
       }],
       inputSchemas: [],
     });
     expect(JSON.stringify(contract)).not.toContain('example_1');
     expect(JSON.stringify(contract)).not.toContain('obs_1');
+  });
+});
+
+describe('the anomaly guard of a learned monthly report', () => {
+  it('lets normal growth through and holds a value that is clearly wrong', async () => {
+    const { rangeContains } = await import('../../runtime/output-contract/output/range.js');
+    // Examples: August 10.0M, September 11.0M; tolerance as built for new contracts.
+    const ratio = 1;
+    expect(rangeContains(13_750_000, 10_000_000, 11_000_000, ratio)).toBe(true); // +25% month
+    expect(rangeContains(9_000_000, 10_000_000, 11_000_000, ratio)).toBe(true); // a weaker month
+    expect(rangeContains(11_000_000_000, 10_000_000, 11_000_000, ratio)).toBe(false); // won -> 1000x unit slip
+    expect(rangeContains(-5_000_000, 10_000_000, 11_000_000, ratio)).toBe(false); // sign flip
   });
 });

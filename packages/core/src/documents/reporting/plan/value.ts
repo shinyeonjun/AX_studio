@@ -1,3 +1,4 @@
+import { parseWrittenNumber } from '../../../contracts/number-text.js';
 import type {
   ReportOutputPredicate,
   ReportOutputValueExpression,
@@ -40,13 +41,15 @@ export function fieldPaths(value: unknown, paths = new Set<string>()): Set<strin
 export function numericValue(value: unknown, context = 'value'): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
-    const normalized = value.trim().replace(/,/g, '');
-    if (normalized && /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(normalized)) {
-      const parsed = Number(normalized);
-      if (Number.isFinite(parsed)) return parsed;
-    }
+    const parsed = parseWrittenNumber(value);
+    if (parsed !== null) return parsed;
   }
   throw new Error(`report_number_required:${context}`);
+}
+
+/** A cell an aggregate skips, as a spreadsheet's SUM/AVERAGE/MIN/MAX do: empty, not zero. */
+export function isBlankCell(value: unknown): boolean {
+  return value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
 }
 
 function arithmetic(operation: 'add' | 'subtract' | 'multiply' | 'divide', left: number, right: number): number {

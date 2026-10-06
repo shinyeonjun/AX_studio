@@ -86,3 +86,25 @@ describe('Gmail OAuth state', () => {
     expect(grantedScopes('', ['a'])).toEqual(['a']);
   });
 });
+
+describe('one Gmail sign-in at a time', () => {
+  it('a new Connect click ends the earlier sign-in and closes its loopback server', async () => {
+    const { cancelGmailOAuth } = await import('./oauth/flow.js');
+    let firstUrl = '';
+    const first = connectGmailViaLoopback({
+      clientId: 'test-client', timeoutMs: 60_000,
+      onAuthUrl: (authUrl) => { firstUrl = new URL(authUrl).searchParams.get('redirect_uri') ?? ''; },
+    });
+    const firstOutcome = first.then(() => undefined, (error: unknown) => error);
+    await vi.waitFor(() => expect(firstUrl).not.toBe(''));
+
+    const second = connectGmailViaLoopback({ clientId: 'test-client', timeoutMs: 60_000, onAuthUrl: () => undefined });
+    const secondOutcome = second.then(() => undefined, (error: unknown) => error);
+
+    expect(await firstOutcome).toMatchObject({ code: 'oauth_cancelled' });
+    await expect(fetch(firstUrl)).rejects.toThrow();
+
+    cancelGmailOAuth();
+    expect(await secondOutcome).toMatchObject({ code: 'oauth_cancelled' });
+  });
+});

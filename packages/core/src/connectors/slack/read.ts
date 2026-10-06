@@ -1,8 +1,9 @@
+import { isMessageWithText } from './person-message.js';
 import type { WebClient } from '@slack/web-api';
 import type { SearchHit } from '../../platform/knowledge.js';
 import { resolveSlackChannelId } from './channel-resolve.js';
 import { nextSlackHistoryPage, takeUnseenSlackCursor } from './pagination.js';
-import { slackRequest } from './request.js';
+import { slackRead } from './request.js';
 
 const MAX_CHANNELS = 200;
 const MAX_MESSAGES = 50;
@@ -35,7 +36,7 @@ export async function listSlackChannels(client: WebClient, signal?: AbortSignal)
   const seenCursors = new Set<string>();
 
   do {
-    const response = await slackRequest(() => client.conversations.list({
+    const response = await slackRead(() => client.conversations.list({
       types: 'public_channel,private_channel',
       limit: 200,
       cursor,
@@ -71,7 +72,7 @@ export async function searchSlackMessages(
   let page = 1;
 
   do {
-    const response = await slackRequest(() => client.search.messages({
+    const response = await slackRead(() => client.search.messages({
       query, count: boundedLimit, ...(page > 1 ? { page } : {}),
     }), signal);
     for (const match of response.messages?.matches ?? []) {
@@ -124,12 +125,12 @@ export async function readSlackChannelMessages(
   const seenCursors = new Set<string>();
 
   do {
-    const response = await slackRequest(() => client.conversations.history({
+    const response = await slackRead(() => client.conversations.history({
       channel: channelId, limit: boundedLimit, cursor: page?.cursor,
       ...(page?.latest ? { latest: page.latest } : {}),
     }), signal);
     for (const message of response.messages ?? []) {
-      if (message.type !== 'message' || message.subtype) continue;
+      if (!isMessageWithText(message)) continue;
       if (message.ts && seenMessageTimestamps.has(message.ts)) continue;
       if (message.ts) seenMessageTimestamps.add(message.ts);
       messages.push({

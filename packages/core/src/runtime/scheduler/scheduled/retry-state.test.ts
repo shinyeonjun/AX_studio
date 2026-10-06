@@ -43,7 +43,7 @@ describe('Scheduler scheduled jobs', () => {
     }
   });
 
-  it.each(['restart', 'edit-queued'] as const)('does not replay or delete completed/replaced work: %s', async (scenario) => {
+  it.each(['restart'] as const)('does not replay or delete completed/replaced work: %s', async (scenario) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
     const db = await createDatabaseAsync(':memory:');
@@ -92,13 +92,13 @@ describe('Scheduler scheduled jobs', () => {
     }
   });
 
-  it.each(['workflow', 'global'] as const)('honors a %s pause while a peer occurrence waits', async (pause) => {
+  it.each(['workflow', 'global'] as const)('a %s pause stops later occurrences; runs already started finish', async (pause) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     for (const id of ['first', 'peer']) {
-      store.saveWorkflow({ id, name: id, goal: 'pause queued work', version: 1, inputs: [],
+      store.saveWorkflow({ id, name: id, goal: 'pause later work', version: 1, inputs: [],
         trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
         steps: [], permissions: {}, approval: [], allowExternalAuto: false,
         assumptions: [], sideEffects: {}, dataPolicy: {} });
@@ -116,12 +116,90 @@ describe('Scheduler scheduled jobs', () => {
     try {
       scheduler.start();
       await vi.advanceTimersByTimeAsync(0);
-      expect(calls).toEqual(['first']);
+      // Both slots start in the same pass; a long run never holds up another workflow.
+      expect(calls).toEqual(['first', 'peer']);
       if (pause === 'workflow') store.setWorkflowActive('peer', false);
       else store.setSetting('globalActive', false);
       release();
+      // Paused through the 01:00 and 02:00 slots, switched back on at 02:10.
+      await vi.advanceTimersByTimeAsync(2 * 60 * 60_000 + 10 * 60_000);
+      expect(calls.filter((id) => id === 'peer')).toHaveLength(1);
+      if (pause === 'global') {
+        // Switching back on does not fire the slots that passed while off.
+        store.setSetting('globalActive', true);
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(calls).toEqual(['first', 'peer']);
+      }
+    } finally {
+      release();
+      await scheduler.stop();
       await vi.advanceTimersByTimeAsync(0);
-      expect(calls).toEqual(['first']);
+      db.close?.();
+    }
+  });
+
+  it('drops a queued slot whose schedule was replaced while the workflow was still running', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'job', name: 'job', goal: 'hourly', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('job', true);
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => { release = resolve; });
+    const runtime = { executeWorkflow: vi.fn(async () => { await wait; return { status: 'success' }; }) };
+    const scheduler = new Scheduler(store, runtime as never);
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      // The 00:00 run is still going when 01:00 comes due: that slot waits in the queue.
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+      store.saveWorkflow({ ...store.getWorkflow('job')!, version: 2,
+        trigger: { type: 'schedule', schedule: '0 0 1 1 *', timezone: 'UTC' } });
+      release();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(1);
+      expect(store.getSetting<{ reason?: string } | null>('scheduler.lastOutcome:job', null)).toMatchObject({ reason: 'schedule_changed' });
+    } finally {
+      release();
+      await scheduler.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      db.close?.();
+    }
+  });
+
+  it('runs a queued slot with the edited steps when only the steps changed', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'job', name: 'job', goal: 'hourly', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('job', true);
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => { release = resolve; });
+    const versions: number[] = [];
+    const runtime = { executeWorkflow: vi.fn(async (ir: { version: number }) => {
+      versions.push(ir.version);
+      if (ir.version === 1) await wait;
+      return { status: 'success' };
+    }) };
+    const scheduler = new Scheduler(store, runtime as never);
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      store.saveWorkflow({ ...store.getWorkflow('job')!, version: 2, goal: 'hourly, edited' });
+      release();
+      await vi.advanceTimersByTimeAsync(60_000);
+      // The 01:00 slot is not lost because the steps were edited while it waited.
+      expect(versions).toEqual([1, 2]);
     } finally {
       release();
       await scheduler.stop();
@@ -174,7 +252,8 @@ describe('Scheduler scheduled jobs', () => {
 
     const runningTick = tick();
     await Promise.resolve();
-    expect(calls).toEqual(['first']);
+    // Both due slots start together; the first run crossing a minute cannot cost the peer its slot.
+    expect(calls).toEqual(['first', 'peer']);
 
     releaseFirst();
     await runningTick;
@@ -420,5 +499,68 @@ describe('Scheduler scheduled jobs', () => {
     vi.setSystemTime(new Date('2026-01-02T00:30:00.000Z'));
     await expect(tick()).resolves.toBeUndefined();
     expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('scheduler refusals and pauses', () => {
+  it('keeps a slot the runtime refused before starting (app shutting down) and runs it later', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'job', name: 'job', goal: 'hourly', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('job', true);
+    let refuse = true;
+    const runtime = { executeWorkflow: vi.fn(async () => {
+      if (refuse) throw Object.assign(new Error('stopping'), { code: 'runtime_stopping' });
+      return { status: 'success' };
+    }) };
+    const scheduler = new Scheduler(store, runtime as never);
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.getSetting<unknown[]>('scheduler.pendingOccurrences', [])).toHaveLength(1);
+      refuse = false;
+      // Minutes later (still within the hour): the refused 00:00 slot runs once.
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      expect(runtime.executeWorkflow).toHaveBeenCalledTimes(2);
+      expect(store.getSetting<unknown[]>('scheduler.pendingOccurrences', [])).toHaveLength(0);
+    } finally {
+      await scheduler.stop();
+      db.close?.();
+      vi.useRealTimers();
+    }
+  });
+
+  it('records queued schedule slots as skipped while execution is switched off', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    store.saveWorkflow({ id: 'job', name: 'job', goal: 'hourly', version: 1, inputs: [],
+      trigger: { type: 'schedule', schedule: '0 * * * *', timezone: 'UTC' },
+      steps: [], permissions: {}, approval: [], allowExternalAuto: false,
+      assumptions: [], sideEffects: {}, dataPolicy: {} });
+    store.setWorkflowActive('job', true);
+    store.setSetting('scheduler.pendingOccurrences', [{ workflowId: 'job', occurrenceKey: '2026-09-11T23:00', triggerType: 'schedule' }]);
+    store.setSetting('globalActive', false);
+    const runtime = { executeWorkflow: vi.fn(async () => ({ status: 'success' })) };
+    const scheduler = new Scheduler(store, runtime as never);
+    try {
+      scheduler.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.getSetting<unknown[]>('scheduler.pendingOccurrences', [])).toHaveLength(0);
+      expect(store.getSetting('scheduler.lastOutcome:job', null)).toMatchObject({ status: 'skipped', reason: 'execution_paused' });
+      expect(runtime.executeWorkflow).not.toHaveBeenCalled();
+    } finally {
+      await scheduler.stop();
+      db.close?.();
+      vi.useRealTimers();
+    }
   });
 });

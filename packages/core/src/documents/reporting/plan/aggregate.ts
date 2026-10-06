@@ -4,6 +4,7 @@ import {
   evaluateArithmetic,
   evaluatePredicate,
   evaluateValue,
+  isBlankCell,
   numericValue,
   type ReportRow,
 } from './value.js';
@@ -19,6 +20,16 @@ function stableKey(value: unknown): string {
 
 function samePrimitive(left: ReportPrimitive, right: ReportPrimitive): boolean {
   return typeof left === typeof right && left === right;
+}
+
+/** The numbers an aggregate is over: blank cells are skipped, text that is not a number fails. */
+function numbersOf(value: Parameters<typeof evaluateValue>[0], rows: ReportRow[], context: string): number[] {
+  const numbers: number[] = [];
+  for (const row of rows) {
+    const cell = evaluateValue(value, row);
+    if (!isBlankCell(cell)) numbers.push(numericValue(cell, context));
+  }
+  return numbers;
 }
 
 export function evaluateAggregate(expression: ReportAggregateExpression, rows: ReportRow[]): ReportPrimitive {
@@ -37,17 +48,19 @@ export function evaluateAggregate(expression: ReportAggregateExpression, rows: R
     case 'count_distinct':
       return new Set(selected.map((row) => stableKey(evaluateValue(expression.value, row)))).size;
     case 'sum':
-      return selected.reduce((total, row) => total + numericValue(evaluateValue(expression.value, row), 'sum'), 0);
-    case 'average':
-      if (selected.length === 0) return null;
-      return selected.reduce((total, row) => total + numericValue(evaluateValue(expression.value, row), 'average'), 0) / selected.length;
+      return numbersOf(expression.value, selected, 'sum').reduce((total, value) => total + value, 0);
+    case 'average': {
+      const values = numbersOf(expression.value, selected, 'average');
+      if (values.length === 0) return null;
+      return values.reduce((total, value) => total + value, 0) / values.length;
+    }
     case 'min':
     case 'max': {
-      if (selected.length === 0) return null;
+      const values = numbersOf(expression.value, selected, expression.kind);
+      if (values.length === 0) return null;
       // A loop, not Math.min(...values): spreading a large array overflows the call stack.
-      let result = numericValue(evaluateValue(expression.value, selected[0]!), expression.kind);
-      for (let index = 1; index < selected.length; index += 1) {
-        const value = numericValue(evaluateValue(expression.value, selected[index]!), expression.kind);
+      let result = values[0]!;
+      for (const value of values) {
         if (expression.kind === 'min' ? value < result : value > result) result = value;
       }
       return result;
@@ -55,8 +68,10 @@ export function evaluateAggregate(expression: ReportAggregateExpression, rows: R
     case 'sum_distinct': {
       const values = new Map<string, number>();
       for (const row of selected) {
+        const cell = evaluateValue(expression.value, row);
+        if (isBlankCell(cell)) continue;
         const key = stableKey(evaluateValue(expression.distinctBy, row));
-        const value = numericValue(evaluateValue(expression.value, row), 'sum_distinct');
+        const value = numericValue(cell, 'sum_distinct');
         const previous = values.get(key);
         if (previous !== undefined && previous !== value) {
           throw new Error(`report_distinct_value_conflict:${key}`);

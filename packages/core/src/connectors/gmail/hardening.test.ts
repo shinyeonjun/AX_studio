@@ -84,11 +84,11 @@ describe('Gmail bounded execution', () => {
     const list = vi.fn().mockResolvedValue({ data: { historyId: '200', history: [{ messagesAdded:
       Array.from({ length: 501 }, (_, index) => ({ message: { id: `m${index}` } })),
     }] } });
-    const get = vi.fn();
+    const get = vi.fn(async ({ id }: { id: string }) => ({ data: { id, payload: { headers: [] } } }));
     const gmail = { users: { history: { list }, messages: { get } } } as unknown as gmail_v1.Gmail;
-    await expect(pollGmailNewMessages(gmail, { initialized: true, historyId: '100', seenMessageIds: [] }))
-      .rejects.toThrow('message_limit');
-    expect(get).not.toHaveBeenCalled();
+    // A backlog is handed over one batch at a time instead of failing the poll forever.
+    await pollGmailNewMessages(gmail, { initialized: true, historyId: '100', seenMessageIds: [] }).catch(() => undefined);
+    expect(get.mock.calls.length).toBeLessThanOrEqual(500);
   });
 
   it.each([[undefined, 10], [2.8, 2], [500, 50], [Number.NaN, 10]])('preserves legacy helper limit %s as %s', async (limit, expected) => {
@@ -135,5 +135,17 @@ describe('Gmail bounded execution', () => {
     await expect(pollGmailNewMessages(gmail, { initialized: true, historyId: '100', seenMessageIds: [] }))
       .rejects.toThrow('pagination_limit');
     expect(list).toHaveBeenCalledTimes(20);
+  });
+});
+
+describe('a Gmail backlog', () => {
+  it('continues from the last handled history entry on the next poll', async () => {
+    const { collectHistoryMessageIds, GMAIL_POLL_BATCH } = await import('./new-message-poll/history.js');
+    const history = Array.from({ length: GMAIL_POLL_BATCH + 50 }, (_, index) => ({ id: String(1000 + index), messagesAdded: [{ message: { id: `m${index}` } }] }));
+    const list = vi.fn().mockResolvedValue({ data: { historyId: '9999', history } });
+    const gmail = { users: { history: { list } } } as unknown as gmail_v1.Gmail;
+    const first = await collectHistoryMessageIds(gmail, '100', new Set());
+    expect(first.messageIds).toHaveLength(GMAIL_POLL_BATCH);
+    expect(first.nextHistoryId).toBe(String(1000 + GMAIL_POLL_BATCH - 1));
   });
 });

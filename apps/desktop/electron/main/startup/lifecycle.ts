@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { flushAppLog, flushAppLogSync, shutdownCommandProcesses } from '@ax-studio/core';
+import { cancelGmailOAuth, flushAppLog, flushAppLogSync, shutdownCommandProcesses } from '@ax-studio/core';
 import { drainWithin } from './drain.js';
 import { showMainWindow, setQuiting } from '../app-window';
 import { getCoreIfInitialized } from '../core-instance';
@@ -52,6 +52,8 @@ export function registerDesktopInstanceGuards(): void {
   }
 
   app.on('second-instance', () => showMainWindow());
+  // macOS: clicking the Dock icon brings back the hidden window (closing only hides it).
+  app.on('activate', () => showMainWindow());
 
   registerProcessCrashHandlers(() => setQuiting(true));
 }
@@ -71,14 +73,18 @@ export function registerDesktopShutdown(): void {
     unsubscribeWorkspaceSources = undefined;
     event.preventDefault();
     abortAllWorkspaceChats();
+    // A Gmail sign-in still waiting for its browser callback must not keep its server open.
+    cancelGmailOAuth();
     void (async () => {
       try {
         const drained = core
           ? await drainDesktopCore(core, startupTask)
           : await drainWithin([() => startupTask], 5_000);
         if (!drained) {
-          // Do not close the shared DB underneath still-running callbacks.
+          // Do not close the shared DB underneath still-running callbacks, but write what is
+          // already committed: the sql.js fallback otherwise loses its debounced last second.
           console.error('[AX Studio] 종료 대기 초과: 미완료 작업은 재시작 시 확인이 필요합니다.');
+          try { core?.db.persistNow(); } catch { /* A transaction still open stays uncommitted. */ }
           flushAppLogSync();
           app.exit(1);
           return;

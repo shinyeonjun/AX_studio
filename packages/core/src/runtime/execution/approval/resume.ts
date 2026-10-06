@@ -93,6 +93,8 @@ export async function continueWorkflowAfterApproval(
         state.stepResults,
         state.checkpoint.pendingOuterStepIds ?? [],
         new Set(approval.actionIds),
+        true,
+        state.approvalSnapshots,
       );
     }
     // A connector may finish after an abort; never report that as success.

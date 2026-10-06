@@ -107,3 +107,48 @@ describe('WorkDiscoveryService persisted checkpoint recovery', () => {
     db.close?.();
   }, 10_000);
 });
+
+describe('a checkpoint whose snapshots are gone', () => {
+  it('is started over from the examples when the person retries, instead of failing every retry', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ax-discovery-recovery-'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const now = new Date().toISOString();
+    const state: DiscoverySessionState = {
+      id: 'wd_lost', status: 'synthesizing', revision: 1, userGoal: '매출 보고 자동화',
+      exampleIds: [], sourceInventory: [{ id: 'test:sales', connector: 'test', label: 'Sales', kind: 'table', relevance: 1 }],
+      observations: [], candidates: [],
+      budgets: { sourceReadsUsed: 1, sourceReadsMax: 12, elapsedMs: 10 },
+      createdAt: now, updatedAt: now,
+    };
+    store.saveDiscoverySession(state);
+    const example = store.insertDiscoveryExample({ sessionId: 'wd_lost', outputArtifactIds: [], inputArtifactIds: [] });
+    store.saveDiscoverySession({ ...state, exampleIds: [example.id] });
+    let listed = 0;
+    const provider: DiscoverySourceProvider = {
+      connector: 'test',
+      async listSources() { listed += 1; return []; },
+      async profileSource() { throw new Error('no source to profile'); },
+    };
+    const service = new WorkDiscoveryService({
+      store, snapshotDir: join(dir, 'snapshots'), sourceRegistry: new DiscoverySourceRegistry([provider]), autoResume: true,
+    });
+    const settle = async (done: (current: DiscoverySessionState | undefined) => boolean) => {
+      for (let attempt = 0; attempt < 250; attempt += 1) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 20));
+        if (done(store.getDiscoverySessionState('wd_lost'))) break;
+      }
+      return store.getDiscoverySessionState('wd_lost');
+    };
+
+    // Automatic recovery keeps what it has and asks the person.
+    const paused = await settle((current) => current?.status === 'needs_attention');
+    expect(paused?.status).toBe('needs_attention');
+    expect(listed).toBe(0);
+
+    expect(service.retry('wd_lost', paused!.revision)).not.toHaveProperty('error');
+    await settle(() => listed > 0);
+    expect(listed).toBeGreaterThan(0);
+    db.close?.();
+  }, 10_000);
+});

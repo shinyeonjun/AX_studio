@@ -3,9 +3,18 @@ export interface MarkdownSection {
   body: string;
 }
 
+/**
+ * Slack reads `<...>` as mentions and links (`<!channel>`, `<@U123>`, `<url|label>`) and `&` as an
+ * entity. Message text is data written for people, so these are escaped: a value that happens to
+ * contain `<!channel>` must not notify everyone.
+ */
+export function escapeSlackText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** GitHub-style markdown → Slack mrkdwn (chat.postMessage `text`). */
 export function markdownToSlackMrkdwn(text: string): string {
-  let out = text.replace(/\r\n/g, '\n').trim();
+  let out = escapeSlackText(text.replace(/\r\n/g, '\n')).trim();
   if (!out) return out;
 
   out = out.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');

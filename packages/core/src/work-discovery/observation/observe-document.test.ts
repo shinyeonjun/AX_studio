@@ -35,6 +35,16 @@ describe('observeDocumentArtifact', () => {
     expect(observations.some((entry) => entry.label === '담당' && !entry.required)).toBe(true);
   });
 
+  it('never gives two numbers one path when their labels differ only in case or punctuation', () => {
+    const observations = observeDocumentArtifact('ex_1', {
+      id: 'doc_case', pages: [{ index: 0, text: 'Total (KRW): 100\nTotal KRW: 200' }], tables: [], images: [],
+    });
+    const paths = observations.map((entry) => entry.path);
+    expect(observations.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(observations.every((entry) => !entry.required)).toBe(true);
+  });
+
   it('gives the same labeled field the same path in different examples', () => {
     const first = observeDocumentArtifact('ex_1', { id: 'a', text: '머리말\n총매출: 100', pages: [], tables: [], images: [] });
     const second = observeDocumentArtifact('ex_2', { id: 'b', pages: [{ index: 3, text: '총매출: 200' }], tables: [], images: [] });

@@ -118,3 +118,14 @@ describe('push event delivery', () => {
     } finally { warn.mockRestore(); db.close?.(); }
   });
 });
+
+describe('file event identity', () => {
+  it('treats the same file dropped in again (new modification time) as a new event', async () => {
+    const { eventDedupeKey } = await import('./helpers.js');
+    const first = eventDedupeKey('wf', { type: 'local_folder.new_file', payload: { filePath: 'D:/in/report.xlsx', modifiedAt: '2026-10-01T09:00:00.000Z' } });
+    const again = eventDedupeKey('wf', { type: 'local_folder.new_file', payload: { filePath: 'D:/in/report.xlsx', modifiedAt: '2026-11-01T09:00:00.000Z' } });
+    const redelivered = eventDedupeKey('wf', { type: 'local_folder.new_file', payload: { filePath: 'D:/in/report.xlsx', modifiedAt: '2026-10-01T09:00:00.000Z' } });
+    expect(again).not.toBe(first);
+    expect(redelivered).toBe(first);
+  });
+});
