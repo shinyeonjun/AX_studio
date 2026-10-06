@@ -27,6 +27,8 @@ export interface ScheduleDraft {
   /** "YYYY-MM-DD"; interval counting (격주) starts from this date. */
   startDate: string;
   timezone: string;
+  /** Skip Korean public holidays (not election days or one-off temporary holidays). */
+  skipHolidays: boolean;
 }
 
 export const REPEAT_OPTIONS: ReadonlyArray<{ value: RepeatKind; label: string }> = [
@@ -84,6 +86,7 @@ export function defaultScheduleDraft(now: Date = new Date(), timezone: string = 
     times: ['09:00'],
     startDate: isoDate(now, timezone),
     timezone,
+    skipHolidays: false,
   };
 }
 
@@ -140,6 +143,7 @@ export function evaluateScheduleDraft(draft: ScheduleDraft, now: Date = new Date
       candidate = { ...withTimes, freq: 'yearly', interval: 1, byMonth: [draft.month], byMonthDay: [draft.monthDay] };
       break;
   }
+  if (draft.skipHolidays) candidate = { ...candidate, skipHolidays: 'KR' };
   const validated = validateRecurrence(candidate);
   if (!validated.ok) return { ok: false, message: validated.issues[0]?.message ?? '일정을 다시 확인해 주세요.' };
   const preview = nextRunPreview({ recurrence: validated.recurrence }, { now, count: 4 });

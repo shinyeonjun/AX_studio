@@ -2088,6 +2088,11 @@
   font-size: 12px;
 }
 
+.ax-schedule-input-hint {
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
 .ax-schedule-input fieldset {
   display: flex;
   flex-wrap: wrap;

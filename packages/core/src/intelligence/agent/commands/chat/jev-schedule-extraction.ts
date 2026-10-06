@@ -72,7 +72,7 @@ function patternQuestions(): Record<string, DecisionQuestion> {
   return {
     schedule_pattern: choice(
       'Which recurring schedule pattern does the user request?',
-      'Pick the single pattern that matches the stated cadence. Choose none when the cadence is missing, contradictory, or not one of these patterns (e.g. holidays, irregular dates).',
+      'Pick the single pattern that matches the stated cadence. Choose none when the cadence is missing, contradictory, or not one of these patterns (e.g. irregular dates). Skipping public holidays is asked separately and does not change the pattern.',
       { ...NONE, ...SCHEDULE_PATTERNS },
     ),
     schedule_interval: choice(
@@ -84,6 +84,13 @@ function patternQuestions(): Record<string, DecisionQuestion> {
     schedule_time_1_minute: choice('At what minute past the hour is the first requested run time?', `${timeFocus} An exact hour (정각, 9시) is m_0.`, { ...NONE, ...minutes }),
     schedule_time_2_hour: choice('If the user asks for a second, different run time on the same day, at what hour?', `${timeFocus} Choose none when only one time is requested.`, { ...NONE, ...hours }),
     schedule_time_2_minute: choice('At what minute is that second run time?', `${timeFocus} Choose none when only one time is requested.`, { ...NONE, ...minutes }),
+    schedule_skip_holidays: {
+      type: 'boolean',
+      instructions: {
+        question: 'Does the user ask not to run on public holidays (공휴일 제외, 공휴일은 빼고, 빨간 날 빼고)?',
+        focus: 'Answer yes only when the request says to skip public holidays. Weekends alone (평일, 주말 제외) are not holidays.',
+      },
+    },
   };
 }
 
@@ -181,6 +188,9 @@ export function composeRecurrence(
     rule.times = [...new Map(times.map((time) => [`${time.hour}:${time.minute}`, time])).values()];
   }
   if (pattern === 'weekdays') rule.weekdaysOnly = true;
+  // Only a confident yes skips holidays; anything else keeps the plain rule, which the card shows.
+  const skipHolidays = answers.schedule_skip_holidays;
+  if (skipHolidays?.type === 'boolean' && skipHolidays.probability >= UNSURE_BAND[1]) rule.skipHolidays = 'KR';
   if (pattern === 'weekly' || pattern === 'monthly_nth_weekday') {
     const days: WeekdayCode[] = [];
     for (const code of WEEKDAY_CODES) {

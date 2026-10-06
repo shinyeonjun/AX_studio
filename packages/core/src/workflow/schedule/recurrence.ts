@@ -8,7 +8,7 @@ import { isValidTimeZone } from '../cron.js';
  * - weekly: whole Monday-based weeks since the anchor's week (격주 parity)
  * - monthly / yearly: calendar months / years since the anchor's month / year
  * - minutely / hourly: elapsed real time since the first instant of the anchor date
- * Public holidays are out of scope: `weekdaysOnly` only excludes Saturday and Sunday.
+ * `weekdaysOnly` excludes Saturday and Sunday; `skipHolidays` excludes public holidays.
  */
 export const WEEKDAY_CODES = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const;
 export type WeekdayCode = (typeof WEEKDAY_CODES)[number];
@@ -67,8 +67,13 @@ export const RecurrenceSchema = z.object({
   /** Day of month; negative values count from the end (-1 = last day). Missing days are skipped. */
   byMonthDay: z.array(MonthDaySchema).min(1).max(31).optional(),
   byMonth: z.array(z.number().int().min(1).max(12)).min(1).max(12).optional(),
-  /** Excludes Saturday and Sunday. Public holidays are not considered. */
+  /** Excludes Saturday and Sunday. */
   weekdaysOnly: z.boolean().optional(),
+  /**
+   * Skips Korean public holidays (computed: fixed, lunar and substitute holidays). Election days
+   * and one-off temporary holidays are announced, not computable, and are not skipped.
+   */
+  skipHolidays: z.literal('KR').optional(),
   anchor: IsoDateSchema,
   until: IsoDateSchema.optional(),
   timezone: z.string().min(1),

@@ -1,3 +1,4 @@
+import { isKoreanPublicHoliday } from '../holidays-kr.js';
 /*
  * Independent brute-force reference for recurrence rules (tests only). It walks
  * every UTC minute of a window, reads the local wall clock, and decides with
@@ -60,6 +61,8 @@ function dateMatches(rule: Recurrence, dayNo: number): boolean {
   const anchor = new Date(anchorDay * DAY);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   if (rule.weekdaysOnly && (dow === 0 || dow === 6)) return false;
+  // The holiday set has its own tests; the reference checks how skipping interacts with the walk.
+  if (rule.skipHolidays && isKoreanPublicHoliday(dayNo)) return false;
   if (rule.byMonth && !rule.byMonth.includes(month)) return false;
   const dayRule = (): boolean => {
     if (rule.byMonthDay) return rule.byMonthDay.some((value) => (value > 0 ? value === day : lastDay + 1 + value === day));
@@ -106,6 +109,7 @@ export function referenceOccurrences(rule: Recurrence, start: number, end: numbe
       if (localDay > untilDay) continue;
       const dow = new Date(localDay * DAY).getUTCDay();
       if (rule.weekdaysOnly && (dow === 0 || dow === 6)) continue;
+      if (rule.skipHolidays && isKoreanPublicHoliday(localDay)) continue;
       result.add(t);
     }
     return [...result].sort((a, b) => a - b);

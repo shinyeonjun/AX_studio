@@ -86,3 +86,28 @@ describe('performance budget', () => {
     expect(catchUp, `5-year catch-up took ${catchUp.toFixed(0)}ms`).toBeLessThan(4_000);
   });
 });
+
+describe('skipping public holidays', () => {
+  const seoul = { kind: 'recurrence' as const, interval: 1, anchor: '2026-09-01', timezone: 'Asia/Seoul', skipHolidays: 'KR' as const };
+  const localDates = (dates: Date[]) => dates.map((date) => new Date(date.getTime() + 9 * 3_600_000).toISOString().slice(0, 10));
+
+  it('skips 추석 and 개천절 substitute days for a weekday rule', () => {
+    const rule: Recurrence = { ...seoul, freq: 'daily', weekdaysOnly: true, times: [{ hour: 9, minute: 0 }] };
+    // 9/24-26 추석, 10/5 개천절 대체공휴일.
+    expect(localDates(nextOccurrences(rule, new Date('2026-09-21T12:00:00Z'), 6)))
+      .toEqual(['2026-09-22', '2026-09-23', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01']);
+    expect(localDates(nextOccurrences(rule, new Date('2026-10-01T03:00:00Z'), 2))).toEqual(['2026-10-02', '2026-10-06']);
+  });
+
+  it('skips 신정 for "1st of every month" and catches up to the last real run', () => {
+    const rule: Recurrence = { ...seoul, freq: 'monthly', byMonthDay: [1], times: [{ hour: 9, minute: 0 }] };
+    expect(localDates(nextOccurrences(rule, new Date('2026-11-15T00:00:00Z'), 2))).toEqual(['2026-12-01', '2027-02-01']);
+    expect(findLatestOccurrence(rule, new Date('2026-12-15T00:00:00Z'), new Date('2027-01-20T00:00:00Z'))).toBeUndefined();
+  });
+
+  it('skips holiday hours of an hourly rule', () => {
+    const rule: Recurrence = { ...seoul, freq: 'hourly', interval: 6 };
+    const days = new Set(localDates(nextOccurrences(rule, new Date('2026-09-23T00:00:00Z'), 12)));
+    for (const holiday of ['2026-09-24', '2026-09-25', '2026-09-26']) expect(days.has(holiday)).toBe(false);
+  });
+});

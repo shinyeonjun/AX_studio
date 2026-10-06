@@ -123,3 +123,15 @@ describe('a schedule picked in the host form', () => {
     expect(extraction.kind).toBe('unclear');
   });
 });
+
+describe('holidays in a spoken schedule', () => {
+  const weekdayNine = { schedule_pattern: pick('weekdays'), schedule_interval: pick('none'), ...time(9, 0) };
+
+  it('skips public holidays only on a confident yes', async () => {
+    for (const [probability, expected] of [[0.96, '평일 오전 9:00 (공휴일 제외)'], [0.5, '평일 오전 9:00'], [0.04, '평일 오전 9:00']] as const) {
+      const { evaluate } = fakeEvaluate({ ...weekdayNine, schedule_skip_holidays: yes(probability) });
+      const result = await extractRecurrenceWithJev('평일 9시, 공휴일은 빼고', context, evaluate);
+      expect(result.kind === 'recurrence' && describeRecurrence(result.recurrence)).toBe(expected);
+    }
+  });
+});

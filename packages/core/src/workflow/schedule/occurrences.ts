@@ -1,3 +1,4 @@
+import { isKoreanPublicHoliday } from './holidays-kr.js';
 import {
   parseIsoDate,
   recurrenceShapeIssues,
@@ -33,6 +34,8 @@ const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
 /** A rule that yields nothing for this many consecutive periods is treated as exhausted. */
 const MAX_EMPTY_PERIODS = 1_000;
+/** Longest run of consecutive skipped days a catch-up walks back over (bounds work, not meaning). */
+const MAX_SKIPPED_RUN = 32;
 
 function isoDay(value: string): number {
   const date = parseIsoDate(value)!;
@@ -41,6 +44,12 @@ function isoDay(value: string): number {
 
 function isWeekend(dayNo: number): boolean {
   return mondayIndex(dayNo) >= 5;
+}
+
+/** A local date on which the rule does not run (weekend for weekday rules, public holidays when skipped). */
+function isSkippedDay(rule: Recurrence, dayNo: number): boolean {
+  return (rule.weekdaysOnly === true && isWeekend(dayNo))
+    || (rule.skipHolidays === 'KR' && isKoreanPublicHoliday(dayNo));
 }
 
 /** Matching day numbers of one month for monthly/yearly rules, ascending. */
@@ -143,6 +152,7 @@ function* datesAscending(rule: Recurrence, fromDay: number): Generator<number> {
     for (const dayNo of plan.datesOf(period)) {
       if (dayNo < lower) continue;
       if (dayNo > untilDay) return;
+      if (isSkippedDay(rule, dayNo)) continue;
       produced = true;
       yield dayNo;
     }
@@ -162,6 +172,7 @@ function* datesDescending(rule: Recurrence, toDay: number): Generator<number> {
     for (const dayNo of plan.datesOf(period).reverse()) {
       if (dayNo > upper) continue;
       if (dayNo < anchorDay) return;
+      if (isSkippedDay(rule, dayNo)) continue;
       produced = true;
       yield dayNo;
     }
@@ -233,11 +244,11 @@ function* elapsedInstants(rule: Recurrence, after: number): Generator<number> {
     const instant = origin + index * step;
     if (instant >= end) return;
     const dayNo = localDayNumber(instant, rule.timezone);
-    if (rule.weekdaysOnly && isWeekend(dayNo)) {
-      // O(1) jump to the first step on or after the next Monday's local midnight.
-      const monday = civilDate(dayNo + (7 - mondayIndex(dayNo)));
-      const mondayStart = resolveLocalTime(rule.timezone, monday.year, monday.month, monday.day, 0, 0);
-      index = Math.max(index + 1, Math.ceil((mondayStart - origin) / step));
+    if (isSkippedDay(rule, dayNo)) {
+      // Jump to the first step on or after the next local midnight (a skipped run of days is a few jumps).
+      const next = civilDate(dayNo + 1);
+      const nextStart = resolveLocalTime(rule.timezone, next.year, next.month, next.day, 0, 0);
+      index = Math.max(index + 1, Math.ceil((nextStart - origin) / step));
       continue;
     }
     yield instant;
@@ -248,15 +259,15 @@ function* elapsedInstants(rule: Recurrence, after: number): Generator<number> {
 function latestElapsedInstant(rule: Recurrence, from: number, to: number): number | undefined {
   const { origin, step, end } = elapsedPlan(rule);
   let index = Math.floor((Math.min(to, end - 1) - origin) / step);
-  // At most one weekend jump per iteration; a couple of iterations always suffice.
-  for (let guard = 0; guard < 8 && index >= 0; guard += 1) {
+  // One jump per skipped day; skipped days come in short runs (a weekend plus a 연휴 and its substitute).
+  for (let guard = 0; guard < MAX_SKIPPED_RUN && index >= 0; guard += 1) {
     const instant = origin + index * step;
     if (instant < from) return undefined;
     const dayNo = localDayNumber(instant, rule.timezone);
-    if (!rule.weekdaysOnly || !isWeekend(dayNo)) return instant;
-    const saturday = civilDate(dayNo - (mondayIndex(dayNo) - 5));
-    const saturdayStart = resolveLocalTime(rule.timezone, saturday.year, saturday.month, saturday.day, 0, 0);
-    index = Math.min(index - 1, Math.floor((saturdayStart - 1 - origin) / step));
+    if (!isSkippedDay(rule, dayNo)) return instant;
+    const day = civilDate(dayNo);
+    const dayStart = resolveLocalTime(rule.timezone, day.year, day.month, day.day, 0, 0);
+    index = Math.min(index - 1, Math.floor((dayStart - 1 - origin) / step));
   }
   return undefined;
 }

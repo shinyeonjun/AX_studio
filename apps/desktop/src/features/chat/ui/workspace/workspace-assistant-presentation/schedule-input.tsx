@@ -164,6 +164,13 @@ export function ScheduleInputFields({
           onChange={(event) => update({ startDate: event.target.value })} />
       </div>
       <div className="ax-schedule-input-row">
+        <label htmlFor={field('holidays')}>공휴일</label>
+        <input id={field('holidays')} type="checkbox" checked={draft.skipHolidays} disabled={disabled}
+          aria-describedby={field('holidays-hint')}
+          onChange={(event) => update({ skipHolidays: event.target.checked })} />
+        <span id={field('holidays-hint')} className="ax-schedule-input-hint">공휴일에는 건너뛰기 (선거일·임시공휴일은 따로 발표되어 포함되지 않아요)</span>
+      </div>
+      <div className="ax-schedule-input-row">
         <label htmlFor={field('zone')}>시간대</label>
         <select id={field('zone')} value={draft.timezone} disabled={disabled} onChange={(event) => update({ timezone: event.target.value })}>
           {timeZoneOptions(computerZone).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
