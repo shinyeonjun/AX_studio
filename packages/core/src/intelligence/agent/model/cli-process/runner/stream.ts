@@ -26,7 +26,8 @@ export function runCommandStreaming(
     return Promise.reject(Object.assign(new Error('ABORT_ERR'), { code: 'ABORT_ERR' }));
   }
   const timeoutMs = options.timeoutMs ?? 15_000;
-  const invocation = commandInvocation(command, args);
+  let invocation: ReturnType<typeof commandInvocation>;
+  try { invocation = commandInvocation(command, args); } catch (error) { return Promise.reject(error); }
   const argumentError = commandArgumentLimitError(invocation);
   if (argumentError) return Promise.reject(argumentError);
   const env = options.env ? { ...invocation.env, ...options.env } : invocation.env;

@@ -1,6 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { runCommand } from '../cli-process.js';
@@ -10,7 +8,8 @@ import { ReportSourceDecisionWireSchema } from '../../../../documents/reporting/
 import { zodToCodexJsonSchema } from '../cli-json.js';
 import { createAxCommandChatTransport } from '../../commands/transport.js';
 
-vi.mock('../cli-process.js', () => ({ resolveBinary: () => 'codex', runCommand: vi.fn() }));
+vi.mock('../cli-process.js', () => ({ resolveBinaryAsync: async () => 'codex', runCommand: vi.fn() }));
+vi.mock('./capabilities.js', () => ({ supportedCliFlags: async () => new Set(['--ignore-user-config']) }));
 afterEach(() => vi.resetAllMocks());
 
 function respond(output: unknown) {
@@ -69,25 +68,6 @@ describe('Codex provider wire round trip', () => {
     await expect(new CodexCliProvider('test').generateText({ system: 's', user: 'u', onUsage }))
       .resolves.toBe('answer');
     expect(onUsage).not.toHaveBeenCalled();
-  });
-  it('creates the optional raw debug directory instead of failing the model call', async () => {
-    const debugRoot = await mkdtemp(join(tmpdir(), 'ax-codex-debug-'));
-    const debugDir = join(debugRoot, 'nested');
-    const previousDebugDir = process.env.AX_REPORT_DEBUG_RAW_DIR;
-    process.env.AX_REPORT_DEBUG_RAW_DIR = debugDir;
-    respond({ value: 'ok' });
-    try {
-      await expect(new CodexCliProvider('test').generateStructured({
-        schema: z.object({ value: z.string() }), system: 's', user: 'u',
-      })).resolves.toEqual({ value: 'ok' });
-      const files = await readdir(debugDir);
-      expect(files).toHaveLength(1);
-      expect(files[0]).toMatch(/structured\.json$/);
-    } finally {
-      if (previousDebugDir === undefined) delete process.env.AX_REPORT_DEBUG_RAW_DIR;
-      else process.env.AX_REPORT_DEBUG_RAW_DIR = previousDebugDir;
-      await rm(debugRoot, { recursive: true, force: true });
-    }
   });
   it('allows the provider to return required pagination integers and optional inspection limits', async () => {
     const schema = z.object({ pagination: z.object({

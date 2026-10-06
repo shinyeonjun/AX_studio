@@ -7,7 +7,8 @@ import { runCommand } from '../cli-process.js';
 import { CodexCliProvider } from './adapters/codex-cli.js';
 import { createAgentHarness } from '../../harness.js';
 
-vi.mock('../cli-process.js', () => ({ resolveBinary: () => 'codex', runCommand: vi.fn() }));
+vi.mock('../cli-process.js', () => ({ resolveBinaryAsync: async () => 'codex', runCommand: vi.fn() }));
+vi.mock('./capabilities.js', () => ({ supportedCliFlags: async () => new Set(['--ignore-user-config']) }));
 afterEach(() => vi.resetAllMocks());
 
 describe('Codex image forwarding', () => {

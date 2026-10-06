@@ -9,6 +9,8 @@ export interface JevDecisionTomlConfig {
   enabled?: boolean;
   model?: string;
   baseURL?: string;
+  /** Origin the stored API key was entered for; the key is never sent anywhere else. */
+  keyOrigin?: string;
 }
 
 export interface AiTomlConfig {
@@ -28,9 +30,7 @@ export interface AiTomlConfig {
 export const BRAND_ENV_KEYS: Record<AiBrand, string> = {
   claude: 'ANTHROPIC_API_KEY',
   gpt: 'OPENAI_API_KEY',
-  grok: 'CURSOR_API_KEY',
   ollama: 'OLLAMA_API_KEY',
 };
 
-export const GROK_API_ENV_KEY = 'XAI_API_KEY';
 export const JEV_API_ENV_KEY = 'TYPESAFE_API_KEY';

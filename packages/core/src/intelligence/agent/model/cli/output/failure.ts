@@ -1,4 +1,4 @@
-import { readableCliError } from './readability.js';
+import { readableCliError, truncateCliText } from './readability.js';
 
 function extractQuotedMessage(payload: string): string | null {
   const match = payload.match(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/);
@@ -55,13 +55,13 @@ export function cliFailureMessage(
 ): string | null {
   if (result.exitCode === 0) return null;
   const codexError = codexErrorFromStderr(result.stderr);
-  if (codexError) return codexError;
+  if (codexError) return truncateCliText(codexError);
   const stderr = usableCliErrorText(
     readableCliError(result.stderr, '').replace(/^ERROR:\s*/i, ''),
   );
   if (stderr) return stderr;
   const stdout = result.stdout.trim();
-  if (stdout.startsWith('Error:')) return stdout;
+  if (stdout.startsWith('Error:')) return truncateCliText(stdout);
   return fallbackMessage;
 }
 

@@ -1,3 +1,4 @@
+import { ollamaApiBaseUrl, type AiBrand } from '@ax-studio/core';
 import { fetchTextWithTimeout } from '../fetch-timeout.js';
 
 export async function verifyAnthropicApiKey(apiKey: string): Promise<{ ok: true; label: string }> {
@@ -40,8 +41,7 @@ async function verifyOpenAiApiKey(apiKey: string): Promise<{ ok: true; label: st
 }
 
 async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
-  const base = (process.env.OLLAMA_BASE_URL?.trim() || process.env.OLLAMA_HOST?.trim() || 'http://localhost:11434')
-    .replace(/\/$/, '');
+  const base = ollamaApiBaseUrl().replace(/\/v1$/, '');
   const { response, text } = await fetchTextWithTimeout(`${base}/api/tags`);
   if (!response.ok) {
     throw new Error(text || `Ollama 연결 확인 실패 (${response.status})`);
@@ -50,7 +50,7 @@ async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
 }
 
 export async function verifyAiApiKey(
-  brand: 'claude' | 'gpt' | 'ollama',
+  brand: AiBrand,
   apiKey?: string,
 ): Promise<{ ok: true; label: string }> {
   if (brand === 'ollama') return verifyOllamaApi();

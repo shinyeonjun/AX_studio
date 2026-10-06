@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const cliProcess = vi.hoisted(() => ({
   resolveBinary: vi.fn(),
+  resolveBinaryAsync: vi.fn(),
+  invalidateBinaryCache: vi.fn(),
   runCommand: vi.fn(),
 }));
 
@@ -12,12 +14,10 @@ import { CLI_PROVIDER_META } from './catalog.js';
 
 describe('AI CLI detection', () => {
   beforeEach(() => {
-    vi.stubEnv('CURSOR_API_KEY', '');
-    cliProcess.resolveBinary.mockImplementation((binaries: readonly string[]) => binaries[0]);
+    cliProcess.resolveBinaryAsync.mockImplementation(async (binaries: readonly string[]) => binaries[0]);
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
@@ -34,8 +34,9 @@ describe('AI CLI detection', () => {
 
     const detected = await detectAiCliProviders();
 
-    expect(maxConcurrentCommands).toBe(4);
-    expect(detected.map(({ id }) => id)).toEqual(['codex-cli', 'claude-cli', 'cursor-cli']);
+    expect(maxConcurrentCommands).toBe(3);
+    expect(detected.map(({ id }) => id)).toEqual(['codex-cli', 'claude-cli']);
+    expect(cliProcess.invalidateBinaryCache).toHaveBeenCalledOnce();
   });
 
   it('keeps other providers available when a probe fails', async () => {

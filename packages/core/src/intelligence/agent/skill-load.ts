@@ -19,17 +19,22 @@ export function setAgentSkillsDir(dir: string | undefined) {
   skillCache.clear();
 }
 
+/** Opt-in for local prompt iteration; never set in packaged builds. */
+export const AGENT_SKILL_DEV_OVERRIDES_ENV = 'AX_AGENT_SKILL_DEV_OVERRIDES';
+
+/**
+ * Embedded skills are authoritative. Disk is consulted only for an explicit host override or
+ * when the dev opt-in is set, so a packaged app never reads SKILL.md from cwd or env paths.
+ */
 function candidateSkillRoots(): string[] {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const cwd = process.cwd();
-  return [
-    skillsDirOverride,
-    process.env.AX_AGENTS_HARNESS_SKILLS_DIR,
-    process.env.AX_SKILLS_DIR,
-    join(here, 'skills'),
-    join(cwd, 'packages/core/src/intelligence/agent/skills'),
-    join(cwd, 'src/intelligence/agent/skills'),
-  ].filter((path): path is string => Boolean(path));
+  const devRoots = process.env[AGENT_SKILL_DEV_OVERRIDES_ENV] === '1'
+    ? [
+        process.env.AX_SKILLS_DIR,
+        join(dirname(fileURLToPath(import.meta.url)), 'skills'),
+        join(process.cwd(), 'packages/core/src/intelligence/agent/skills'),
+      ]
+    : [];
+  return [skillsDirOverride, ...devRoots].filter((path): path is string => Boolean(path));
 }
 
 function parseSkillMarkdown(raw: string): Pick<AgentSkillFile, 'name' | 'description' | 'body'> {
