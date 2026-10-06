@@ -95,7 +95,7 @@ export function compileJevWorkflowUpdate(input: {
   if (!Number.isSafeInteger(workflowVersion) || (workflowVersion ?? 0) < 1) {
     return {
       kind: 'clarify',
-      message: '현재 workflow의 최신 버전을 확인하지 못해 수정하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
+      message: '현재 업무의 최신 버전을 확인하지 못해 수정하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
     };
   }
 
@@ -111,10 +111,10 @@ export function compileJevWorkflowUpdate(input: {
   const removalConfirmation = answers.explicit_workflow_step_removal;
   if (removalConfirmation && (removalConfirmation.type !== 'choice'
     || !['remove_now', 'do_not_remove', 'unclear'].includes(removalConfirmation.choice))) {
-    return { kind: 'clarify', message: 'workflow 단계 제거 판단을 검증하지 못해 아무것도 변경하지 않았습니다.' };
+    return { kind: 'clarify', message: '업무 단계 제거 판단을 검증하지 못해 아무것도 변경하지 않았습니다.' };
   }
   if (removalConfirmation?.type === 'choice' && removalConfirmation.choice === 'unclear') {
-    return { kind: 'clarify', message: 'workflow 단계 제거 의도를 확인하지 못해 아무것도 변경하지 않았습니다.' };
+    return { kind: 'clarify', message: '업무 단계 제거 의도를 확인하지 못해 아무것도 변경하지 않았습니다.' };
   }
   if (removalConfirmation?.type === 'choice' && removalConfirmation.choice === 'remove_now') {
     const answer = answers.workflow_step_to_remove;
@@ -126,7 +126,7 @@ export function compileJevWorkflowUpdate(input: {
     if (answer?.type !== 'choice' || !selectedStep) {
       return {
         kind: 'clarify',
-        message: '제거할 workflow 단계를 하나로 특정하지 못했습니다. 단계 이름을 더 구체적으로 알려 주세요. 아무것도 변경하지 않았습니다.',
+        message: '제거할 업무 단계를 하나로 특정하지 못했습니다. 단계 이름을 더 구체적으로 알려 주세요. 아무것도 변경하지 않았습니다.',
       };
     }
     operations.push({ op: 'remove_step', stepId: selectedStep.id });
@@ -147,7 +147,7 @@ export function compileJevWorkflowUpdate(input: {
   if (!args.success) {
     return {
       kind: 'clarify',
-      message: '한 번의 workflow 변경에서 허용하는 작업 수를 넘었습니다. 요청을 나누어 주세요. 아무것도 변경하지 않았습니다.',
+      message: '한 번의 업무 변경에서 허용하는 작업 수를 넘었습니다. 요청을 나누어 주세요. 아무것도 변경하지 않았습니다.',
     };
   }
   return { kind: 'command', command: { name: 'workflow.update', args: args.data } };

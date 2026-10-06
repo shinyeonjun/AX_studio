@@ -12,7 +12,7 @@ function rejectUnboundRepairTarget(
   if (!options.currentWorkflowId) {
     return result(command.name, 'forbidden', undefined, [{
       code: 'workflow_target_required',
-      message: '에이전트가 repair 대상을 직접 선택할 수 없습니다. 현재 대화의 workflow만 사용할 수 있습니다.',
+      message: '에이전트가 repair 대상을 직접 선택할 수 없습니다. 현재 대화의 업무만 사용할 수 있습니다.',
       path: 'args.workflowId',
     }]);
   }
@@ -24,7 +24,7 @@ function rejectUnboundRepairTarget(
     if (args.workflowId !== undefined && args.workflowId !== options.currentWorkflowId) {
       return result(command.name, 'forbidden', undefined, [{
         code: 'workflow_target_mismatch',
-        message: '현재 대화에 연결된 workflow의 repair만 조회할 수 있습니다.',
+        message: '현재 대화에 연결된 업무의 repair만 조회할 수 있습니다.',
         path: 'args.workflowId',
       }]);
     }
@@ -36,7 +36,7 @@ function rejectUnboundRepairTarget(
   if (proposal && proposal.workflowId !== options.currentWorkflowId) {
     return result(command.name, 'forbidden', undefined, [{
       code: 'workflow_target_mismatch',
-      message: '현재 대화에 연결된 workflow의 repair만 사용할 수 있습니다.',
+      message: '현재 대화에 연결된 업무의 repair만 사용할 수 있습니다.',
       path: 'args.repairId',
     }]);
   }

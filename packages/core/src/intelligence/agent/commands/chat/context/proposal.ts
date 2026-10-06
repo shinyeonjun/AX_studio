@@ -71,14 +71,14 @@ export function contextProposalCommand(input: ContextMemoryProposalInput): Conte
     if (!key) {
       return {
         kind: 'clarify', route: 'context_remember',
-        message: '이 workflow의 기억 공간이 가득 차서 저장하지 않았습니다. 기존 기준을 정리한 뒤 다시 요청해 주세요.',
+        message: '이 업무의 기억 공간이 가득 차서 저장하지 않았습니다. 기존 기준을 정리한 뒤 다시 요청해 주세요.',
         confidence: 1,
       };
     }
     actions.push({
       id: 'remember-workflow',
-      label: '현재 workflow에 저장',
-      value: `현재 workflow에 ${key} 규칙으로 저장해줘`,
+      label: '현재 업무에 저장',
+      value: `현재 업무에 ${key} 규칙으로 저장해줘`,
       tone: 'secondary',
       purpose: 'confirm_context',
       contextUpdate: { scope: 'workflow', key, value, workflowId: input.currentWorkflowId.trim() },
@@ -87,7 +87,7 @@ export function contextProposalCommand(input: ContextMemoryProposalInput): Conte
   if (actions.length === 0) {
     return {
       kind: 'clarify', route: 'context_remember',
-      message: '저장할 대화나 workflow가 없어 내용을 기억하지 않았습니다.',
+      message: '저장할 대화나 업무가 없어 내용을 기억하지 않았습니다.',
       confidence: 1,
     };
   }

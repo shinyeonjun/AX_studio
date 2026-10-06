@@ -49,7 +49,7 @@ async function saveConfirmedContext({ options, signal, publishResult }: CommandC
   const confirmation = parsed.data;
   if (confirmation.scope === 'workflow'
     && confirmation.workflowId !== options.currentWorkflowId?.trim()) {
-    return '확인한 workflow가 현재 선택된 workflow와 달라 저장하지 않았습니다. 해당 workflow에서 다시 확인해 주세요.';
+    return '확인한 업무가 현재 선택된 업무와 달라 저장하지 않았습니다. 해당 업무에서 다시 확인해 주세요.';
   }
   const command: AxCommand = {
     name: 'context.update',
@@ -73,11 +73,11 @@ async function saveConfirmedContext({ options, signal, publishResult }: CommandC
 function pendingCommandFallback(command: AxCommand, result: AxCommandResult): string {
   switch (command.name) {
     case 'workflow.create':
-      return result.status === 'ok' ? '수동 workflow를 저장했습니다. 자동 실행은 활성화되지 않았습니다.' : 'workflow를 저장하지 못했습니다.';
+      return result.status === 'ok' ? '수동 업무를 저장했습니다. 자동 실행은 활성화되지 않았습니다.' : '업무를 저장하지 못했습니다.';
     case 'job.propose':
       return result.status === 'ok' ? '업무 초안을 준비했습니다. 검토 후 확인해 주세요.' : '업무 초안을 처리하지 못했습니다.';
     case 'workflow.update':
-      return result.status === 'ok' ? workflowUpdateSuccessMessage(result) : 'workflow를 수정하지 못했습니다.';
+      return result.status === 'ok' ? workflowUpdateSuccessMessage(result) : '업무를 수정하지 못했습니다.';
     default:
       return result.status === 'queued' || result.status === 'ok'
         ? '일회 실행을 큐에 등록했습니다. 실행 상태에서 진행 상황을 확인해 주세요.'

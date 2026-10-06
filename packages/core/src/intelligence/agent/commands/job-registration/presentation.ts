@@ -138,7 +138,7 @@ export function workflowStepItems(
     return `${number} 조건 분기`;
   }).map((item) => item.slice(0, MAX_ITEM_CHARS));
   if (items.length <= MAX_STEP_ITEMS) return items;
-  return [...items.slice(0, MAX_STEP_ITEMS - 1), `외 ${items.length - (MAX_STEP_ITEMS - 1)}개 단계 (전체 내용은 workflow 화면에서 확인)`];
+  return [...items.slice(0, MAX_STEP_ITEMS - 1), `외 ${items.length - (MAX_STEP_ITEMS - 1)}개 단계 (전체 내용은 업무 화면에서 확인)`];
 }
 
 function autoSendNote(allowExternalAuto: boolean, hasExternal: boolean): string {

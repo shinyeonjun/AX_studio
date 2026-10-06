@@ -380,21 +380,21 @@ function mutationIntentGate(
     kind: 'clarify', route: selectedRoute as 'workflow_create', message, confidence,
   });
   if (selectedRoute === 'workflow_create' && !input.hasWorkspaceSession) {
-    return clarify('workflow를 저장할 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.');
+    return clarify('업무를 저장할 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.');
   }
   if (selectedRoute === 'workflow_run'
     && (choiceAnswer(answers.explicit_workflow_run)?.choice !== 'run_now' || !isDominantRouteChoice(routeAnswer, route))) {
     return fallback('uncertain');
   }
   if (selectedRoute === 'workflow_create' && choiceAnswer(answers.explicit_workflow_create)?.choice !== 'create_now') {
-    return clarify('새 workflow를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 workflow를 명시해 주세요.');
+    return clarify('새 업무를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 업무를 명시해 주세요.');
   }
   if (selectedRoute === 'workflow_delete'
     && (choiceAnswer(answers.explicit_workflow_delete)?.choice !== 'delete_now' || !isDominantRouteChoice(routeAnswer, route))) {
-    return clarify('현재 workflow를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다.');
+    return clarify('현재 업무를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다.');
   }
   if (selectedRoute === 'workflow_update' && choiceAnswer(answers.explicit_workflow_update)?.choice !== 'update_now') {
-    return clarify('현재 workflow를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다.');
+    return clarify('현재 업무를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다.');
   }
   return undefined;
 }

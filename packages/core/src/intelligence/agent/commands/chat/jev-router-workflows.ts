@@ -56,7 +56,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '수동 workflow 생성과 반복 시작 조건을 같은 요청으로 판단해 저장하지 않았습니다. 한 번 실행할 업무인지, 일정·이벤트로 반복할 업무인지 확인해 주세요.',
+        message: '수동 업무 생성과 반복 시작 조건을 같은 요청으로 판단해 저장하지 않았습니다. 한 번 실행할 업무인지, 일정·이벤트로 반복할 업무인지 확인해 주세요.',
         confidence: selectedConfidence,
       });
     }
@@ -85,7 +85,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '현재 workflow의 최신 버전을 확인하지 못해 삭제하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
+        message: '현재 업무의 최신 버전을 확인하지 못해 삭제하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
         confidence: selectedConfidence,
       });
     }
@@ -108,7 +108,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: 'workflow 단계 추가 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
+        message: '업무 단계 추가 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
         confidence: selectedConfidence,
       });
     }
@@ -116,7 +116,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: 'workflow 단계 제거 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
+        message: '업무 단계 제거 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
         confidence: selectedConfidence,
       });
     }
@@ -150,7 +150,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         return withTelemetry({
           kind: 'clarify',
           route: selectedRoute,
-          message: '제거할 workflow 단계를 목록에서 하나로 확정하지 못해 아무것도 변경하지 않았습니다.',
+          message: '제거할 업무 단계를 목록에서 하나로 확정하지 못해 아무것도 변경하지 않았습니다.',
           confidence: selectedConfidence,
         });
       }
@@ -191,7 +191,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       if (!parsedPlan?.success || upsertSteps.length === 0) {
         return workflowPlanResult({
           kind: 'clarify',
-          message: 'workflow 단계 변경안을 검증하지 못해 아무것도 변경하지 않았습니다.',
+          message: '업무 단계 변경안을 검증하지 못해 아무것도 변경하지 않았습니다.',
           telemetry: plan.telemetry,
         }, selectedRoute);
       }

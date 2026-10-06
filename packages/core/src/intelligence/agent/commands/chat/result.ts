@@ -421,7 +421,7 @@ export function deterministicWorkflowListChatReply(
   if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) return undefined;
   const workflows = (result.data as { workflows?: unknown }).workflows;
   if (!Array.isArray(workflows)) return undefined;
-  if (workflows.length === 0) return '저장된 workflow가 없습니다.';
+  if (workflows.length === 0) return '저장된 업무가 없습니다.';
   if (!workflows.every((workflow) => workflow && typeof workflow === 'object' && !Array.isArray(workflow)
     && typeof workflow.id === 'string'
     && typeof workflow.name === 'string'
@@ -429,7 +429,7 @@ export function deterministicWorkflowListChatReply(
     && Number.isSafeInteger(workflow.latestVersion))) return undefined;
 
   return [
-    `저장된 workflow (${workflows.length}개):`,
+    `저장된 업무 (${workflows.length}개):`,
     ...workflows.map((workflow) => {
       const entry = workflow as { id: string; name: string; active: boolean; latestVersion: number };
       return `- ${JSON.stringify(entry.name)} — ${entry.active ? '활성' : '비활성'}, v${entry.latestVersion} (ID: ${JSON.stringify(entry.id)})`;

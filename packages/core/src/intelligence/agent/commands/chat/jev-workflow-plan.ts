@@ -117,11 +117,11 @@ export async function planJevSelectedTools(input: {
     userConfirmedPreferences ? AGENT_SCOPED_CONTEXT_DECISION_POLICY : undefined,
   ].filter(Boolean).join('\n');
   const noCommitMessage = input.mode === 'manual_workflow'
-    ? '아무 workflow도 저장하지 않았습니다.'
+    ? '아무 업무도 저장하지 않았습니다.'
     : input.mode === 'recurring_workflow'
       ? '아무 반복 업무도 저장하거나 활성화하지 않았습니다.'
       : input.mode === 'workflow_update'
-        ? '아무 workflow 변경도 저장하지 않았습니다.'
+        ? '아무 업무 변경도 저장하지 않았습니다.'
         : '아무 작업도 큐에 등록하지 않았습니다.';
   const finish = (result: JevWorkflowPlanValue): JevWorkflowPlanResult => {
     telemetry.durationMs = Date.now() - startedAt;
@@ -151,7 +151,7 @@ export async function planJevSelectedTools(input: {
     }
     if (input.mode === 'workflow_update' && (!input.workflowId?.trim()
       || !Number.isSafeInteger(input.workflowVersion) || (input.workflowVersion ?? 0) < 1)) {
-      return finish({ kind: 'clarify', message: `현재 workflow의 최신 버전을 확인하지 못해 수정하지 않았습니다. ${noCommitMessage}` });
+      return finish({ kind: 'clarify', message: `현재 업무의 최신 버전을 확인하지 못해 수정하지 않았습니다. ${noCommitMessage}` });
     }
 
     const baseCandidates = initialCandidates({
@@ -175,7 +175,7 @@ export async function planJevSelectedTools(input: {
       ? Math.min(MAX_WORKFLOW_STEPS - remainingCount, AX_WORKFLOW_UPDATE_MAX_OPERATIONS)
       : MAX_WORKFLOW_STEPS;
     if (baseCandidates.length > maxSteps || maxSteps < 1) {
-      return finish({ kind: 'clarify', message: `한 번의 요청에서 허용하는 workflow 단계 수를 초과했습니다. ${noCommitMessage}` });
+      return finish({ kind: 'clarify', message: `한 번의 요청에서 허용하는 업무 단계 수를 초과했습니다. ${noCommitMessage}` });
     }
 
     const stepIds = new Set(existingIds);
@@ -554,11 +554,11 @@ export async function planJevWorkflow(input: {
 }): Promise<JevWorkflowPlanResult> {
   const mode = input.mode ?? 'one_shot';
   const noCommitMessage = mode === 'manual_workflow'
-    ? '아무 workflow도 저장하지 않았습니다.'
+    ? '아무 업무도 저장하지 않았습니다.'
     : mode === 'recurring_workflow'
       ? '아무 반복 업무도 저장하거나 활성화하지 않았습니다.'
       : mode === 'workflow_update'
-        ? '아무 workflow 변경도 저장하지 않았습니다.'
+        ? '아무 업무 변경도 저장하지 않았습니다.'
       : '아무 작업도 큐에 등록하지 않았습니다.';
   const startedAt = Date.now();
   const telemetry: JevWorkflowPlanTelemetry = {
@@ -617,13 +617,13 @@ export async function planJevWorkflow(input: {
     || !Number.isSafeInteger(input.workflowVersion) || (input.workflowVersion ?? 0) < 1)) {
     return finish({
       kind: 'clarify',
-      message: `현재 workflow의 최신 버전을 확인하지 못해 수정하지 않았습니다. ${noCommitMessage}`,
+      message: `현재 업무의 최신 버전을 확인하지 못해 수정하지 않았습니다. ${noCommitMessage}`,
     });
   }
   if (mode === 'workflow_update' && maxPlannedSteps < 1) {
     return finish({
       kind: 'clarify',
-      message: `현재 workflow가 허용하는 단계 수 또는 변경 작업 수에 도달했습니다. ${noCommitMessage}`,
+      message: `현재 업무가 허용하는 단계 수 또는 변경 작업 수에 도달했습니다. ${noCommitMessage}`,
     });
   }
 
@@ -739,7 +739,7 @@ export async function planJevWorkflow(input: {
         return finish({
           kind: 'clarify',
           message: atUpdateLimit
-            ? `한 번의 workflow 변경에서 허용하는 ${AX_WORKFLOW_UPDATE_MAX_OPERATIONS}개 작업 또는 전체 ${MAX_WORKFLOW_STEPS}단계 한도에 도달했습니다. 요청을 나누어 주세요. ${noCommitMessage}`
+            ? `한 번의 업무 변경에서 허용하는 ${AX_WORKFLOW_UPDATE_MAX_OPERATIONS}개 작업 또는 전체 ${MAX_WORKFLOW_STEPS}단계 한도에 도달했습니다. 요청을 나누어 주세요. ${noCommitMessage}`
             : `다음 작업을 확실하게 고르지 못했습니다. 필요한 작업이나 데이터 범위를 더 구체적으로 알려 주세요. ${noCommitMessage}`,
         });
       }
