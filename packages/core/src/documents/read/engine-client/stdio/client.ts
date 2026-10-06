@@ -20,6 +20,7 @@ import type {
   DocumentEngineResponse,
 } from '../../types.js';
 import type {
+  DocumentEngineCallControl,
   DocumentEngineClient,
   DocumentEngineClientOptions,
 } from '../contracts.js';
@@ -61,7 +62,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     return response.ok;
   }
 
-  async ingest(path: string, options: IngestDocumentOptions = {}): Promise<IngestDocumentResult> {
+  async ingest(path: string, options: IngestDocumentOptions = {}, control: DocumentEngineCallControl = {}): Promise<IngestDocumentResult> {
     if (statSync(path).size > MAX_DOCUMENT_SOURCE_BYTES) {
       throw new Error('document_source_too_large');
     }
@@ -71,7 +72,7 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
       allowedPaths: [path],
       allowedRoots: [this.artifactRoot],
       options,
-    });
+    }, control);
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'document_ingest_failed');
     }
@@ -181,13 +182,18 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     return response.data;
   }
 
-  private async request<T>(command: string, params: Record<string, unknown>): Promise<DocumentEngineResponse<T>> {
+  private async request<T>(
+    command: string,
+    params: Record<string, unknown>,
+    control: DocumentEngineCallControl = {},
+  ): Promise<DocumentEngineResponse<T>> {
     const options: DocumentEngineTransportOptions = {
       pythonPath: this.pythonPath,
       workerScript: this.workerScript,
       artifactRoot: this.artifactRoot,
       timeoutMs: this.timeoutMs,
       workerCwd: this.workerCwd,
+      ...(control.abortSignal ? { abortSignal: control.abortSignal } : {}),
     };
     try {
       const response = await requestDocumentEngine<T>(options, command, params);

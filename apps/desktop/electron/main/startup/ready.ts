@@ -5,6 +5,9 @@ import {
   type DecisionEngine,
   setDocumentEngineClient,
   setDocumentEngineEnvOverridesAllowed,
+  sweepEngineTempFiles,
+  defaultArtifactRoot,
+  defaultTemplateRoot,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
 import { createMainWindow } from '../app-window';
@@ -145,6 +148,10 @@ export function registerDesktopReadyHandler(): void {
       const slackSecret = await runNonFatalStartupStep('connector hydration', () => hydrateConnectorsForStartup(core)) ?? null;
       if (isDesktopShuttingDown()) return;
       scheduleHistoryRetention(core);
+      // Temp files a force-killed engine worker left behind; background, never blocks startup.
+      void sweepEngineTempFiles([defaultArtifactRoot(), defaultTemplateRoot()])
+        .then((removed) => { if (removed > 0) console.info(`[AX Studio] removed ${removed} leftover document-engine temp files`); })
+        .catch(() => undefined);
       setWebhookSecretResolver(() => getWebhookSecret());
       notifyStateChanged();
       core.scheduler.start();
