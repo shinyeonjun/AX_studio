@@ -2,6 +2,7 @@ import { request } from 'node:http';
 import { WEBHOOK_MAX_PAYLOAD_BYTES } from '../../security.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebhookInboundListener } from '../../listener.js';
+import { findFreePort } from '../../../../runtime/trigger-engine/push/fixtures.js';
 const listeners: WebhookInboundListener[] = [];
 afterEach(async () => {
   await Promise.all(listeners.map((listener) => listener.stop()));
@@ -13,7 +14,7 @@ describe('WebhookInboundListener payload-size boundaries', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: unknown[] = [];
-    const port = 38_903;
+    const port = await findFreePort();
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
     });
@@ -30,7 +31,7 @@ describe('WebhookInboundListener payload-size boundaries', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: unknown[] = [];
-    const port = 38_904;
+    const port = await findFreePort();
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
     });
@@ -59,7 +60,7 @@ describe('WebhookInboundListener payload-size boundaries', () => {
     const listener = new WebhookInboundListener();
     listeners.push(listener);
     const events: unknown[] = [];
-    const port = 38_905;
+    const port = await findFreePort();
     await listener.start({ port, secret: 'hook-secret' }, (event) => {
       events.push(event);
     });
