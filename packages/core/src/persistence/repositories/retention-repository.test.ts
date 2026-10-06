@@ -59,6 +59,21 @@ describe('history retention', () => {
       .toEqual(['new-done', 'old-failed', 'old-processing']);
   });
 
+  it('ages out dead letters like completed receipts, and drops retry state of settled events', () => {
+    const insert = db.prepare('INSERT INTO trigger_receipts (dedupe_key, workflow_id, trigger_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
+    insert.run('old-dead', 'wf', 'poll', 'dead', daysAgo(40), daysAgo(40));
+    insert.run('new-dead', 'wf', 'poll', 'dead', daysAgo(5), daysAgo(5));
+    insert.run('retrying', 'wf', 'poll', 'failed', daysAgo(1), daysAgo(1));
+    const attempt = (key: string) => `trigger.receiptAttempt:${encodeURIComponent(key)}`;
+    for (const key of ['old-dead', 'new-dead', 'retrying', 'gone']) store.setSetting(attempt(key), { attempts: 2, nextAttemptAt: 0 });
+
+    const result = pruneHistory(db, policy, NOW);
+    expect(result.triggerReceipts).toBe(1);
+    expect(result.receiptAttempts).toBe(3);
+    expect(store.getSetting(attempt('retrying'), null)).not.toBeNull();
+    for (const key of ['old-dead', 'new-dead', 'gone']) expect(store.getSetting(attempt(key), null)).toBeNull();
+  });
+
   it('keeps completed receipts for 180 days by default so a re-seen poll event cannot re-fire', () => {
     const insert = db.prepare('INSERT INTO trigger_receipts (dedupe_key, workflow_id, trigger_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
     insert.run('done-100d', 'wf', 'poll', 'completed', daysAgo(100), daysAgo(100));
