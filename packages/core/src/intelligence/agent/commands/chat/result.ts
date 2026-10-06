@@ -1,3 +1,4 @@
+import { displayColumns } from '../../../../contracts/artifacts/table-display.js';
 import { boundedDisplayTable, MAX_DISPLAY_TABLE_COLUMNS, MAX_DISPLAY_TABLE_ROWS } from '../../../../contracts/artifacts/table-bounds.js';
 import type { AgentScopedContextMap } from '../../scoped-context.js';
 import {
@@ -97,52 +98,6 @@ export function selectedColumnsFromHttpPath(params: unknown): string[] | undefin
   return [...new Set(columns)];
 }
 
-const TABLE_PRUNED_COLUMNS = new Set([
-  'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',
-  'reviews', 'dimensions', 'meta',
-  'warrantyinformation', 'shippinginformation', 'returnpolicy',
-  'minimumorderquantity', 'sku', 'barcode', 'qrcode', 'weight',
-  'depth', 'width', 'height', 'createdat', 'updatedat', 'deletedat',
-  'tags', 'slug', 'description',
-]);
-
-const HIGH_PRIORITY_COLUMNS = [
-  'id', 'title', 'name', 'label', 'category', 'type', 'rating', 'score',
-  'price', 'cost', 'amount', 'stock', 'quantity', 'brand', 'status', 'state',
-];
-
-function selectAvailableColumns(
-  headers: readonly string[],
-  requested?: readonly string[],
-): string[] {
-  const selected = [...new Set(requested ?? [])].filter((header) => headers.includes(header));
-  if (selected.length > 0) return selected;
-  if (headers.length <= 6) return [...headers];
-
-  const hasHighPriority = headers.some((h) => HIGH_PRIORITY_COLUMNS.includes(h.toLowerCase()));
-  const hasPruned = headers.some((h) => TABLE_PRUNED_COLUMNS.has(h.toLowerCase().replace(/[-_]/g, '')));
-
-  if (hasHighPriority || hasPruned) {
-    const filtered = headers.filter((h) => {
-      const norm = h.toLowerCase().replace(/[-_]/g, '');
-      return !TABLE_PRUNED_COLUMNS.has(norm);
-    });
-
-    const base = filtered.length >= 3 ? filtered : headers;
-    const prioritized = base.slice().sort((a, b) => {
-      const idxA = HIGH_PRIORITY_COLUMNS.indexOf(a.toLowerCase());
-      const idxB = HIGH_PRIORITY_COLUMNS.indexOf(b.toLowerCase());
-      const rankA = idxA >= 0 ? idxA : 99;
-      const rankB = idxB >= 0 ? idxB : 99;
-      return rankA - rankB;
-    });
-
-    return prioritized.slice(0, 6);
-  }
-
-  return [...headers];
-}
-
 const MAX_CHAT_TABLE_ROWS = MAX_DISPLAY_TABLE_ROWS;
 const MAX_CHAT_TABLE_COLUMNS = MAX_DISPLAY_TABLE_COLUMNS;
 
@@ -153,7 +108,7 @@ function rdbPageWarning(table: TableArtifact): string | undefined {
 }
 
 function tableToMarkdown(table: TableArtifact, requestedColumns?: readonly string[]): string {
-  const allHeaders = selectAvailableColumns(
+  const allHeaders = displayColumns(
     table.columns.map((column) => column.name),
     requestedColumns,
   );

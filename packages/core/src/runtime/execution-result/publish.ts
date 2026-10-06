@@ -1,3 +1,4 @@
+import { displayTable } from '../../contracts/artifacts/table-display.js';
 import { WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
@@ -14,7 +15,8 @@ function resultTableFromLog(result: ExecutionResult) {
   const entry = [...result.log].reverse().find((candidate) => candidate.code === 'transform_table');
   const table = entry?.data && typeof entry.data === 'object' ? (entry.data as { table?: unknown }).table : undefined;
   const parsed = WorkspaceChatReadResultSchema.safeParse(table);
-  return parsed.success ? parsed.data : undefined;
+  // The same main columns a chat answer shows; wide API records stay readable.
+  return parsed.success ? displayTable(parsed.data) : undefined;
 }
 
 function parseExecutionIr(irJson: string | null | undefined): WorkflowIR | null {

@@ -48,4 +48,18 @@ describe('a run that makes a table shows it', () => {
     const message = await publish('failed', await shapingLog(12));
     expect(message.readResult).toBeUndefined();
   });
+
+  it('shows the main columns of a wide API record, as a chat answer does', async () => {
+    const log: ExecutionLogEntry[] = [];
+    const wide = buildTableArtifact({
+      id: 'src', headers: ['id', 'title', 'description', 'category', 'price', 'rating', 'stock', 'images', 'meta', 'sku'],
+      matrix: [[1, 'Apple', '빨간 사과', 'groceries', 1.99, 4.2, 8, '["a.png"]', '{"barcode":"1"}', 'GRO-1']],
+    });
+    await executeTransformAction('evaluate', {
+      expr: { op: 'source', sourceId: 'src' }, discoverySourceId: 'src', outputPath: 'result', table: wide,
+    }, { executionId: 'x', variables: {}, log: (entry: ExecutionLogEntry) => log.push(entry) });
+    const message = await publish('success', log);
+    expect(message.readResult?.columns.map((column) => column.name)).toEqual(['id', 'title', 'category', 'price', 'rating', 'stock']);
+    expect(Object.keys(message.readResult!.rows[0]!.values)).not.toContain('images');
+  });
 });
