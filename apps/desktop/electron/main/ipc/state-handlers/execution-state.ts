@@ -5,7 +5,42 @@ import {
 import type { AxCore } from '../../core-instance.js';
 import { executionLogSummary } from '../execution-log-summary.js';
 
+/**
+ * Every state refresh rebuilds the latest executions. An execution's IR snapshot never changes and
+ * its log only grows, so the parsed answers are reused until the stored text changes. Bounded: the
+ * refresh lists 50 executions, older ids simply fall out.
+ */
+const MAX_CACHED_EXECUTIONS = 200;
+const outputContractByIr = new Map<string, { irJson: string; hasOutputContract: boolean }>();
+const logSummaryByExecution = new Map<string, { logJson: string | null; status: string; summary: ReturnType<typeof executionLogSummary> }>();
+
+function remember<V>(cache: Map<string, V>, key: string, value: V): V {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > MAX_CACHED_EXECUTIONS) cache.delete(cache.keys().next().value!);
+  return value;
+}
+
+function hasOutputContract(id: string | undefined, irJson: string): boolean {
+  const cached = id ? outputContractByIr.get(id) : undefined;
+  if (cached && cached.irJson === irJson) return cached.hasOutputContract;
+  let found = false;
+  try {
+    found = Boolean(parseWorkflowIR(JSON.parse(irJson)).outputContract);
+  } catch {
+    found = false;
+  }
+  return id ? remember(outputContractByIr, id, { irJson, hasOutputContract: found }).hasOutputContract : found;
+}
+
+function cachedLogSummary(id: string, logJson: string | null, status: string): ReturnType<typeof executionLogSummary> {
+  const cached = logSummaryByExecution.get(id);
+  if (cached && cached.logJson === logJson && cached.status === status) return cached.summary;
+  return remember(logSummaryByExecution, id, { logJson, status, summary: executionLogSummary(logJson, status) }).summary;
+}
+
 export function executionQualityState(execution: {
+  id?: string;
   status: string;
   errorCode: string | null;
   irJson?: string;
@@ -17,15 +52,8 @@ export function executionQualityState(execution: {
     return { technicalStatus: 'completed', resultStatus: 'failed' };
   }
   if (execution.status === 'success') {
-    let hasOutputContract = false;
-    if (execution.irJson) {
-      try {
-        hasOutputContract = Boolean(parseWorkflowIR(JSON.parse(execution.irJson)).outputContract);
-      } catch {
-        hasOutputContract = false;
-      }
-    }
-    return { technicalStatus: 'completed', resultStatus: hasOutputContract ? 'passed' : 'not_evaluated' };
+    const passed = execution.irJson ? hasOutputContract(execution.id, execution.irJson) : false;
+    return { technicalStatus: 'completed', resultStatus: passed ? 'passed' : 'not_evaluated' };
   }
   if (execution.status === 'pending_approval') {
     return { technicalStatus: 'waiting_approval', resultStatus: 'not_evaluated' };
@@ -72,7 +100,7 @@ export function buildPendingApprovals(core: AxCore) {
 export function buildExecutions(core: AxCore) {
   return core.store.listExecutions(50, false).map((execution) => {
     const logSummary = execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output')
-      ? {} : executionLogSummary(execution.logJson, execution.status);
+      ? {} : cachedLogSummary(execution.id, execution.logJson, execution.status);
     const quality = executionQualityState(execution);
     const resumeFailure = execution.status !== 'failed' ? undefined
       : execution.errorCode === 'invalid_execution_snapshot' ? '실행 스냅샷 검증에 실패하여 실행을 재개하지 못했습니다.'
