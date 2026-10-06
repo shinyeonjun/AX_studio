@@ -157,6 +157,15 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
     return window.ax.saveGeneratedArtifactToFolder(artifactId);
   }, []);
 
+  // Handlers passed down to every message row keep one identity for the life of the hook and
+  // always run the latest implementation, so memoized rows do not re-render on each save.
+  const sendMessage = useLatestCallback(messageActions.sendMessage);
+  const makeRecurring = useLatestCallback(messageActions.makeRecurring);
+  const approveChatApproval = useLatestCallback(workflowActions.approveChatApproval);
+  const rejectChatApproval = useLatestCallback(workflowActions.rejectChatApproval);
+  const stableDownloadGeneratedPdf = useLatestCallback(downloadGeneratedPdf);
+  const stableSaveGeneratedPdfToFolder = useLatestCallback(saveGeneratedPdfToFolder);
+
   return {
     workspaceWorkflowState,
     displayMessages: chatMessages,
@@ -175,16 +184,23 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
     openWorkChat: loadActions.openWorkChat,
     workflowRegistered,
     registerWorkflow: workflowActions.registerWorkflow,
-    sendMessage: messageActions.sendMessage,
-    makeRecurring: messageActions.makeRecurring,
-    approveChatApproval: workflowActions.approveChatApproval,
-    rejectChatApproval: workflowActions.rejectChatApproval,
+    sendMessage,
+    makeRecurring,
+    approveChatApproval,
+    rejectChatApproval,
     confirmToolResult: workflowActions.confirmToolResult,
-    downloadGeneratedPdf,
-    saveGeneratedPdfToFolder,
+    downloadGeneratedPdf: stableDownloadGeneratedPdf,
+    saveGeneratedPdfToFolder: stableSaveGeneratedPdfToFolder,
     workspaceSources,
     sourceBusy,
     attachWorkspaceSource: sourceActions.attachWorkspaceSource,
     refreshWorkspaceSources: sourceActions.refreshWorkspaceSources,
   };
+}
+
+/** A function whose identity never changes but always calls the latest `fn` (event handlers only). */
+function useLatestCallback<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+  const latest = useRef(fn);
+  latest.current = fn;
+  return useCallback((...args: A) => latest.current(...args), []);
 }
