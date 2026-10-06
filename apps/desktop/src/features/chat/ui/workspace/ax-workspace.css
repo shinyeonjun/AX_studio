@@ -2029,6 +2029,16 @@
   cursor: pointer;
 }
 
+/* Before publishing a rule learned from uploaded files. */
+.ax-discovery-source-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ax-chat-composer-border);
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
 /* The table a run made, under its result card. */
 .ax-run-result-table {
   display: grid;

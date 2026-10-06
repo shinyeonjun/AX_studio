@@ -65,5 +65,15 @@ export function inspectDiscovery(
     errorCode: state.errorCode,
     errorMessage: state.errorMessage,
     supportedOutputFormats: [...SUPPORTED_OUTPUT_FORMATS],
+    ...(fieldReviews.some((review) => review.sourceId?.startsWith('input:'))
+      ? { sourceNotice: UPLOADED_SOURCE_NOTICE }
+      : {}),
   };
 }
+
+/**
+ * An uploaded file is a fixed copy: a saved job reads that same copy every time. Said before
+ * publishing so a monthly report is not silently recomputed from last month's data.
+ */
+export const UPLOADED_SOURCE_NOTICE = '대화에 올린 파일로 배운 업무입니다. 저장하면 실행할 때마다 이 파일을 다시 읽습니다. '
+  + '매달 새 데이터로 만들려면 원본 파일이 들어오는 폴더를 연결하고 그 폴더의 파일로 다시 알려 주세요. 같은 이름 형식의 가장 최근 파일을 자동으로 읽습니다.';

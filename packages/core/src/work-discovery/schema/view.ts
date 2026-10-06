@@ -34,4 +34,6 @@ export interface DiscoveryInspectView {
   errorCode?: string;
   errorMessage?: string;
   supportedOutputFormats: string[];
+  /** Set when the learned rule reads files uploaded in chat: a schedule cannot find next month's file. */
+  sourceNotice?: string;
 }

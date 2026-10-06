@@ -3,6 +3,8 @@ import { realpathSync } from 'node:fs';
 import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
 import { readSheetFromPath } from './read/sheet.js';
+import { newestFileInFamily } from './newest-file.js';
+import { basename } from 'node:path';
 
 export class LocalSheetConnector implements Connector {
   name = 'local_sheet';
@@ -12,7 +14,7 @@ export class LocalSheetConnector implements Connector {
       return { ok: false, error: `Unknown local_sheet action: ${action}` };
     }
 
-    const path = typeof params.path === 'string' ? params.path.trim() : '';
+    let path = typeof params.path === 'string' ? params.path.trim() : '';
     if (!path) {
       return { ok: false, error: 'path_required', errorCode: 'path_required' };
     }
@@ -24,6 +26,15 @@ export class LocalSheetConnector implements Connector {
       const config = connection?.config ? parseLocalFolderConnectionConfig(connection.config) : null;
       const folder = config ? findLocalFolder(config, folderId) : undefined;
       if (!folder) return { ok: false, error: 'folder_not_found', errorCode: 'folder_not_found' };
+      // A recurring report reads this period's file: the newest one named like the example.
+      if (params.followNewest === true) {
+        const newest = newestFileInFamily(folder.path, path);
+        if (newest !== path) {
+          ctx.log({ at: new Date().toISOString(), level: 'info', code: 'sheet_source_resolved',
+            message: `이번 실행에서 읽을 파일: ${basename(newest)}`, data: { fileName: basename(newest) } });
+        }
+        path = newest;
+      }
       const resolved = resolveFileWithinFolderRoot(folder.path, path);
       if (!resolved.ok) return { ok: false, error: resolved.error, errorCode: resolved.errorCode };
       authorizedPath = resolved.path;
