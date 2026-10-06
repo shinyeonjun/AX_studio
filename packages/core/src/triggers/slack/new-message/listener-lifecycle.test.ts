@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { SocketModeClient, SocketModeOptions } from '@slack/socket-mode';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TriggerEvent } from '../../types.js';
 import { SlackSocketModeListener } from './socket-mode.js';
 
@@ -10,6 +10,10 @@ vi.mock('@slack/web-api', () => ({
 }));
 
 describe('SlackSocketModeListener lifecycle', () => {
+  // start() loads the Slack SDK on first use; on a busy runner that one-time load alone can
+  // exceed a test's time budget, so load it once up front.
+  beforeAll(async () => { await import('@slack/socket-mode'); }, 60_000);
+
   it('finishes stop even when the Slack SDK never completes disconnect', async () => {
     vi.useFakeTimers();
     try {
