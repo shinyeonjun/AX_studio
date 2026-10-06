@@ -15,7 +15,7 @@ export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
     label: '변환식 평가',
     description: '검증된 TransformExpr를 결정론적으로 평가',
     sideEffect: 'NONE',
-    params: [{ name: 'expr', label: '변환식', question: '변환식', required: true }],
+    params: [{ name: 'expr', label: '변환식', question: '변환식', required: true, literal: true }],
     io: { inputs: { table: 'TableArtifact' }, outputs: { value: 'JsonArtifact' } },
   },
   {
@@ -49,6 +49,7 @@ export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
       { name: 'rowsPath', label: '행 경로', question: 'JSON에서 행 배열은 어느 경로인가요?', required: false },
       { name: 'sourceId', label: '자료 이름', question: '변환된 표를 어떤 자료로 기록할까요?', required: false },
       { name: 'rowLimit', label: '행 제한', question: '몇 행까지 사용할까요?', required: false },
+      { name: 'columns', label: '열', question: '어떤 열만 표에 넣을까요?', required: false },
     ],
     io: { inputs: { response: 'HttpResponseArtifact' }, outputs: { table: 'TableArtifact' } },
   },

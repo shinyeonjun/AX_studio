@@ -26,6 +26,11 @@ export const CapabilityParamSchema = z.object({
   displayInSummary: z.boolean().optional(),
   /** Safe scalar values that may be shown in approval titles. */
   displayInApproval: z.boolean().optional(),
+  /**
+   * Structured data passed as authored (e.g. a transform expression, whose `{ ref }` operands
+   * name table columns). Never interpolated as workflow templates or references.
+   */
+  literal: z.boolean().optional(),
 });
 
 export const ConnectorCapabilitySchema = z.object({
