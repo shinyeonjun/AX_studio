@@ -1,3 +1,4 @@
+import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 import type { DecisionAnswer, DecisionInstruction, DecisionQuestion } from '../../../../contracts/decision.js';
 import { DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import { choiceAnswerConfidence } from '../../../decision/confidence.js';
@@ -216,12 +217,18 @@ export function composeRecurrence(
   return validated.ok ? { kind: 'recurrence', recurrence: validated.recurrence } : unclear(validated.issues[0]?.code ?? 'invalid');
 }
 
-/** Asks Jev the bounded schedule questions (two small rounds) and composes the rule. */
+/**
+ * Asks Jev the bounded schedule questions (two small rounds) and composes the rule. A schedule the
+ * person already picked in the host schedule form travels with the request as a validated token;
+ * it is used as chosen and never re-interpreted.
+ */
 export async function extractRecurrenceWithJev(
   request: string,
   context: ScheduleExtractionContext,
   evaluate: Evaluate,
 ): Promise<ScheduleExtraction> {
+  const picked = decodeScheduleInputValue(request);
+  if (picked) return { kind: 'recurrence', recurrence: picked };
   const state = {
     request,
     today: today(context).label,

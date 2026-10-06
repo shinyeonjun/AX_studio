@@ -1,3 +1,4 @@
+import { thenTransform } from './read-recipe.js';
 import { authoritativeRequestClarification } from '../../../decision/request-anchor.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import type { AxCommand, AxCommandResult } from '../schema.js';
@@ -243,6 +244,10 @@ async function previousResultRoute(turn: JevTurn): Promise<string> {
   }
   const table = transformed.status === 'transformed' ? transformed.table : previousReadResult;
   options.onReadResult?.(boundedChatReadResult(table));
+  // Shaping an earlier answer again repeats that answer's recipe, then this shaping.
+  options.onReadRecipe?.(options.previousReadRecipe && transformed.status === 'transformed'
+    ? thenTransform(options.previousReadRecipe, transformed.expression)
+    : options.previousReadRecipe);
   return formatTableArtifact(table);
 }
 

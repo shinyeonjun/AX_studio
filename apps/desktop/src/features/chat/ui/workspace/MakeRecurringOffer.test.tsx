@@ -13,11 +13,21 @@ const result = (overrides: Partial<WorkspaceChatMessage> = {}): WorkspaceChatMes
   ...overrides,
 } as WorkspaceChatMessage);
 
-function render(message: WorkspaceChatMessage, onMakeRecurring?: (executionId: string, value: string) => Promise<void>): string {
+function render(
+  message: WorkspaceChatMessage,
+  onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, value: string) => Promise<void>,
+  isLatestRead = false,
+): string {
   return renderToStaticMarkup(
-    <AssistantMessage message={message} busy={false} isLatest onSend={vi.fn()} onMakeRecurring={onMakeRecurring} />,
+    <AssistantMessage message={message} busy={false} isLatest onSend={vi.fn()} onMakeRecurring={onMakeRecurring} isLatestRead={isLatestRead} />,
   );
 }
+
+const readAnswer = {
+  role: 'assistant',
+  content: 'title | stock',
+  readResult: { id: 't', kind: 'table', columns: [{ name: 'title', type: 'string', nullable: false, inferred: true }], rows: [], truncated: false },
+} as unknown as WorkspaceChatMessage;
 
 describe('"이걸 반복 업무로 만들기" offer', () => {
   const onMakeRecurring = vi.fn(async () => undefined);
@@ -33,6 +43,11 @@ describe('"이걸 반복 업무로 만들기" offer', () => {
     ['an ordinary answer', { role: 'assistant', content: '안녕하세요' } as WorkspaceChatMessage],
   ])('does not appear for %s', (_name, message) => {
     expect(render(message, onMakeRecurring)).not.toContain('반복 업무로 만들기');
+  });
+
+  it('appears under the latest read answer only, whose recipe the host still holds', () => {
+    expect(render(readAnswer, onMakeRecurring, true)).toContain('이걸 반복 업무로 만들기');
+    expect(render(readAnswer, onMakeRecurring, false)).not.toContain('반복 업무로 만들기');
   });
 
   it('does not appear in a conversation already tied to a saved job', () => {

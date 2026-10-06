@@ -1,3 +1,4 @@
+import { CHAT_READ_SOURCE_ID, type ChatReadRecipe } from '../chat/read-recipe.js';
 import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 import { describeRecurrence } from '../../../../workflow/schedule/describe.js';
 import { parseWorkflowIR } from '../../../../workflow/schema.js';
@@ -59,6 +60,56 @@ export function recurringJobFromExecution(input: {
       steps: ir.steps,
       ...(ir.success ? { success: ir.success } : {}),
       // Saving only switches the schedule on; the first run happens at the first scheduled time.
+      runOnceNow: false,
+      allowExternalAuto: false,
+    },
+  };
+}
+
+/**
+ * `job.propose` arguments that repeat a chat read answer on a schedule: the same HTTP read, the
+ * same response-to-table conversion, and the same shaping (filter, sort, columns), so each run
+ * shows the table the person saw, computed from that day's data. Nothing is re-planned.
+ */
+export function recurringJobFromReadRecipe(input: {
+  recipe: ChatReadRecipe | undefined;
+  /** The request the answer was for; names the job. */
+  request: string;
+  scheduleValue: string;
+}): RecurringJobFromExecution {
+  const { recipe } = input;
+  if (!recipe) {
+    return { ok: false, message: '이 답변을 만든 조회 방법을 다시 확인할 수 없습니다. 앱을 다시 켰다면 같은 요청을 한 번 더 해 주세요.' };
+  }
+  const recurrence = decodeScheduleInputValue(input.scheduleValue);
+  if (!recurrence) return { ok: false, message: '반복 일정을 다시 골라 주세요.' };
+  const request = input.request.trim();
+  const steps: Array<Record<string, unknown>> = [
+    { type: 'action', id: 'fetch', connector: 'http', action: 'request', params: recipe.params },
+    {
+      type: 'action', id: 'to_table', connector: 'transform', action: 'http_to_table',
+      params: {
+        sourceId: CHAT_READ_SOURCE_ID,
+        ...(recipe.rowsPath !== undefined ? { rowsPath: recipe.rowsPath } : {}),
+        ...(recipe.columns ? { columns: recipe.columns } : {}),
+      },
+      bindings: { response: { from: 'fetch', output: 'response' } },
+    },
+    ...(recipe.expression ? [{
+      type: 'action', id: 'shape', connector: 'transform', action: 'evaluate',
+      params: { expr: recipe.expression, discoverySourceId: CHAT_READ_SOURCE_ID, outputPath: 'result' },
+      bindings: { table: { from: 'to_table', output: 'table' } },
+    }] : []),
+  ];
+  const scheduleText = describeRecurrence(recurrence);
+  return {
+    ok: true,
+    scheduleText,
+    args: {
+      name: request.length > 40 ? `${request.slice(0, 40)}…` : request || '반복 조회',
+      goal: request || '조회 결과를 정해진 때에 다시 만든다',
+      trigger: { type: 'schedule', recurrence, timezone: recurrence.timezone },
+      steps,
       runOnceNow: false,
       allowExternalAuto: false,
     },

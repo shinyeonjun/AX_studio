@@ -50,7 +50,7 @@ export function MakeRecurringOffer({
         initialDraft={{ ...defaultScheduleDraft(), repeat: 'monthly' }}
         onChange={setValue}
       />
-      <p className="ax-make-recurring-hint">방금 실행한 단계를 그대로 씁니다. 저장하기 전에 확인 화면이 한 번 더 나옵니다.</p>
+      <p className="ax-make-recurring-hint">방금 결과를 만든 방법을 그대로 씁니다. 저장하기 전에 확인 화면이 한 번 더 나옵니다.</p>
       <div className="ax-make-recurring-actions">
         <button type="button" className="ax-workspace-generated-pdf-button ax-workspace-generated-pdf-button--primary" disabled={!value || busy || submitting} onClick={() => void submit()}>
           {submitting ? '초안 만드는 중…' : '업무 초안 만들기'}

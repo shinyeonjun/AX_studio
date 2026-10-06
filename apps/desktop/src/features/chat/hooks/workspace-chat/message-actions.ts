@@ -200,13 +200,15 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
    * Turns a finished one-off run of this conversation into a recurring-job draft on the chosen
    * schedule. The host reuses the steps that ran; the draft still needs "저장하고 켜기".
    */
-  const makeRecurring = async (executionId: string, scheduleValue: string) => {
-    if (ctx.refs.busyRef.current || !executionId || !scheduleValue) return;
+  const makeRecurring = async (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => {
+    if (ctx.refs.busyRef.current || !scheduleValue) return;
     ctx.setError('');
     await sendChat(
       `이 작업을 반복 업무로 만들기: ${scheduleValue}`,
       undefined,
-      (sessionId) => window.ax.proposeRecurringFromExecution(sessionId, executionId, scheduleValue) as Promise<WorkspaceSendResponse>,
+      (sessionId) => ('executionId' in source
+        ? window.ax.proposeRecurringFromExecution(sessionId, source.executionId, scheduleValue)
+        : window.ax.proposeRecurringFromRead(sessionId, scheduleValue)) as Promise<WorkspaceSendResponse>,
     );
   };
 

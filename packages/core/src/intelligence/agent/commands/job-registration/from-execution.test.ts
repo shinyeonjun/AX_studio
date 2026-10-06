@@ -111,3 +111,40 @@ describe('making a one-off run recurring', () => {
     expect(result).toEqual({ ok: false, message: '반복 일정을 다시 골라 주세요.' });
   });
 });
+
+describe('making a read answer recurring', () => {
+  it('proposes fetch, table and shaping steps that pass contract checks and save on confirmation', async () => {
+    const { recurringJobFromReadRecipe } = await import('./from-execution.js');
+    const { store, service, chat } = await connectedService();
+    const connectionId = httpEndpointsFromConnections(store.getConnections())[0]!.id;
+    const conversion = recurringJobFromReadRecipe({
+      recipe: {
+        kind: 'http_table',
+        params: { connectionId, method: 'GET', path: 'products' },
+        rowsPath: 'products',
+        expression: {
+          op: 'select',
+          input: { op: 'filter', input: { op: 'source', sourceId: 'chat:read-result' }, where: { op: 'lt', left: { ref: 'stock' }, right: { lit: 10 } } },
+          columns: ['title', 'stock'],
+        },
+      },
+      request: 'DummyJSON 상품 중 재고 10 미만만 표로 보여줘',
+      scheduleValue: encodeScheduleInputValue(monthlyLastDay),
+    });
+    if (!conversion.ok) throw new Error(conversion.message);
+    const proposed = await service.execute({ name: 'job.propose', args: conversion.args }, { ...commandChatContext, workspaceSessionId: chat.id });
+    expect(proposed.status, JSON.stringify(proposed.issues)).toBe('ok');
+    const presentation = (proposed.data as { presentation: AxUiPresentation }).presentation;
+    const text = JSON.stringify(presentation);
+    expect(text).toContain('일정: 매월 마지막 날 오후 6:00');
+    expect(text).toContain('외부 전송 단계가 없습니다.');
+    const token = (presentation.actions.find((action) => action.purpose === 'confirm_job')?.id ?? '').split(':')[1];
+    const committed = await service.execute({ name: 'job.commit', args: {} }, {
+      ...commandChatContext, workspaceSessionId: chat.id, allowJobCommit: true, jobCommitConfirmationToken: token,
+    });
+    expect(committed.status).toBe('ok');
+    const workflow = store.getWorkflow((committed.data as { workflowId: string }).workflowId);
+    expect(workflow?.steps.map((step) => step.type === 'action' ? `${step.connector}.${step.action}` : step.type))
+      .toEqual(['http.request', 'transform.http_to_table', 'transform.evaluate']);
+  });
+});

@@ -51,10 +51,15 @@ export async function executeTransformAction(
       const rowLimit = typeof params.rowLimit === 'number' && Number.isFinite(params.rowLimit)
         ? params.rowLimit
         : undefined;
+      // Columns named in the request path (e.g. ?select=title,stock), as a chat read shows them.
+      const columns = Array.isArray(params.columns) && params.columns.every((column) => typeof column === 'string')
+        ? params.columns as string[]
+        : undefined;
       const result = httpResponseToTable(parsedResponse.data, {
         sourceId,
         rowsPath,
         rowLimit,
+        ...(columns ? { columns } : {}),
       });
       if (!result.ok) return { ok: false, error: result.errorCode, errorCode: result.errorCode };
       ctx.variables[sourceId] = result.table;

@@ -13,7 +13,8 @@ vi.mock('electron', () => ({ app: { isPackaged: true }, ipcMain: { handle: vi.fn
 vi.mock('../../app-window.js', () => ({ getMainWindow: () => undefined, isTrustedRendererUrl: () => true }));
 vi.mock('../../core-instance.js', () => ({ getCore: mocks.getCore }));
 
-const { proposeRecurringFromExecution } = await import('./recurring.js');
+const { proposeRecurringFromExecution, proposeRecurringFromRead } = await import('./recurring.js');
+const { rememberHostReadResult, clearHostChatStateForTests } = await import('./host-state.js');
 
 const weeklyMonday = encodeScheduleInputValue({
   kind: 'recurrence', freq: 'weekly', interval: 1, byWeekday: [{ day: 'MO' }], times: [{ hour: 9, minute: 0 }],
@@ -60,5 +61,45 @@ describe('recurring draft from a one-off run', () => {
     await expect(proposeRecurringFromExecution('../x', 'exec', weeklyMonday)).rejects.toThrow();
     await expect(proposeRecurringFromExecution('session', 'exec id', weeklyMonday)).rejects.toThrow();
     await expect(proposeRecurringFromExecution('session', 'exec', '')).rejects.toThrow();
+  });
+});
+
+describe('recurring draft from a read answer', () => {
+  const table = { id: 'read-1', kind: 'table', columns: [{ name: 'title', type: 'string', nullable: false, inferred: true }], rows: [], truncated: false };
+  const recipe = {
+    kind: 'http_table' as const,
+    params: { connectionId: 'default', method: 'GET', path: 'products' },
+    rowsPath: 'products',
+    expression: { op: 'filter' as const, input: { op: 'source' as const, sourceId: 'chat:read-result' }, where: { op: 'lt' as const, left: { ref: 'stock' }, right: { lit: 10 } } },
+  };
+
+  it('drafts the read the host remembers for the table still on screen, named after the request', async () => {
+    clearHostChatStateForTests();
+    const { store } = await setup();
+    const chat = store.saveWorkspaceChat({ messages: [
+      { role: 'user', content: '재고 10개 미만 상품만 표로 보여줘' },
+      { role: 'assistant', content: '| title |', readResult: table as never },
+      { role: 'user', content: `이 작업을 반복 업무로 만들기: ${weeklyMonday}` },
+    ] });
+    rememberHostReadResult(chat.id, table as never, { ...recipe, params: { ...recipe.params, connectionId: httpEndpointsFromConnections(store.getConnections())[0]!.id } });
+    const reply = await proposeRecurringFromRead(chat.id, weeklyMonday);
+    expect(reply.content).toContain('이 조회를 매주 월요일 오전 9:00에 반복하는 업무 초안입니다');
+    const card = JSON.stringify(reply.presentations[0]);
+    expect(card).toContain('재고 10개 미만 상품만 표로 보여줘');
+    expect(card).toContain('transform / evaluate');
+    expect(store.listWorkflows()).toHaveLength(0);
+  });
+
+  it('drafts nothing once the transcript no longer shows that table', async () => {
+    clearHostChatStateForTests();
+    const { store } = await setup();
+    const chat = store.saveWorkspaceChat({ messages: [
+      { role: 'user', content: '표로 보여줘' },
+      { role: 'assistant', content: '다른 표', readResult: { ...table, id: 'other' } as never },
+    ] });
+    rememberHostReadResult(chat.id, table as never, recipe);
+    const reply = await proposeRecurringFromRead(chat.id, weeklyMonday);
+    expect(reply.presentations).toEqual([]);
+    expect(reply.content).toContain('조회 방법을 다시 확인할 수 없습니다');
   });
 });

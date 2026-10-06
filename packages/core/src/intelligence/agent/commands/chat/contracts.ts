@@ -1,3 +1,4 @@
+import type { ChatReadRecipe } from './read-recipe.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
 import type { AgentHarness } from '../../harness.js';
 import type { ChatMessage } from '../../model/chat.js';
@@ -37,6 +38,8 @@ export interface AxCommandChatOptions {
   connectionRevision?: number;
   /** Structured table shown in the immediately preceding assistant message. */
   previousReadResult?: TableArtifact;
+  /** How `previousReadResult` was produced, when the host still knows it. */
+  previousReadRecipe?: ChatReadRecipe;
   /** Original host-verified task while resuming typed command inputs. */
   decisionMessage?: string;
   /** Host-held command to resume without asking Jev to reconstruct its plan. */
@@ -91,4 +94,6 @@ export interface AxCommandChatOptions {
   onPresentation?: (presentation: AxUiPresentation) => void;
   /** Persist only the table the host actually displayed, for a natural follow-up. */
   onReadResult?: (table: TableArtifact | undefined) => void;
+  /** How the table passed to `onReadResult` was produced; undefined when it cannot be repeated. */
+  onReadRecipe?: (recipe: ChatReadRecipe | undefined) => void;
 }

@@ -36,7 +36,7 @@ interface AxWorkspaceChatProps {
   onRejectApproval?: (approvalId: string) => Promise<void>;
   onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
-  onMakeRecurring?: (executionId: string, scheduleValue: string) => Promise<void>;
+  onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => Promise<void>;
   onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
@@ -55,7 +55,7 @@ interface WorkspaceMessageListProps {
   onRejectApproval?: (approvalId: string) => Promise<void>;
   onDownloadPdf?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   onSavePdfToFolder?: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
-  onMakeRecurring?: (executionId: string, scheduleValue: string) => Promise<void>;
+  onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => Promise<void>;
 }
 
 const WorkspaceMessageList = memo(function WorkspaceMessageList({
@@ -69,6 +69,12 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
   onSavePdfToFolder,
   onMakeRecurring,
 }: WorkspaceMessageListProps) {
+  const latestReadIndex = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]!.role === 'assistant' && messages[index]!.readResult) return index;
+    }
+    return -1;
+  }, [messages]);
   return messages.map((message, index) => message.role === 'user' ? (
     <UserMessage key={'user-' + index} message={message} />
   ) : (
@@ -83,6 +89,7 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
       onDownloadPdf={onDownloadPdf}
       onSavePdfToFolder={onSavePdfToFolder}
       onMakeRecurring={onMakeRecurring}
+      isLatestRead={index === latestReadIndex}
     />
   ));
 });

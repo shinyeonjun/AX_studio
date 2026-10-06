@@ -1,3 +1,5 @@
+import type { TransformExpr } from '../../../../workflow/transform-expr/dsl.js';
+import { chatReadRecipe } from './read-recipe.js';
 import { resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import type { ChatMessage } from '../../model/chat.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
@@ -48,7 +50,7 @@ export interface ChatReplies {
   successfulCommandReply: (input: SuccessfulCommandReplyInput) => Promise<string>;
 }
 
-type TransformOutcome = { reply: string } | { table: TableArtifact } | { confirmedNoTransform: true } | undefined;
+type TransformOutcome = { reply: string } | { table: TableArtifact; expression: TransformExpr } | { confirmedNoTransform: true } | undefined;
 
 /** Reply builders shared by every chat route: model text, Jev table shaping, and deterministic renderers. */
 export function createChatReplies(context: CommandChatLoopContext): ChatReplies {
@@ -151,7 +153,7 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
       ...(!('usage' in plan) || plan.usage?.outputTokens === undefined ? {} : { outputTokens: plan.usage.outputTokens }),
       ...(plan.status === 'transformed' ? { rowCount: plan.table.rows.length } : {}),
     });
-    if (plan.status === 'transformed') return { table: plan.table };
+    if (plan.status === 'transformed') return { table: plan.table, expression: plan.expression };
     if (plan.status === 'export_xlsx') return { reply: '조회한 표를 확인한 뒤 이 표를 Excel로 저장해 달라고 요청해 주세요. 아직 파일은 만들지 않았습니다.' };
     if (plan.status === 'clarify') return { reply: plan.message };
     const unavailableWork = [
@@ -215,6 +217,9 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
         ? transformOutcome.table
         : tableForJevTransform(command, result);
       options.onReadResult?.(table ? boundedChatReadResult(table) : undefined);
+      options.onReadRecipe?.(table
+        ? chatReadRecipe(command, result, transformOutcome && 'expression' in transformOutcome ? transformOutcome.expression : undefined)
+        : undefined);
     }
     if (readResultStyle === 'summary') return summaryReply(command, result, userIntent, transformOutcome);
     if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;

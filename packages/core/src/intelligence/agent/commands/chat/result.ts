@@ -266,7 +266,14 @@ export function compactSummaryTable(table: TableArtifact): TableArtifact {
   };
 }
 
-function httpTableForTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {
+/** How a chat HTTP read turns its response into a table: rows found in this body, columns from the path. */
+export interface HttpTableConversion {
+  rowsPath?: string;
+  columns?: string[];
+}
+
+export function httpTableConversion(command: AxCommand, result: AxCommandResult): HttpTableConversion | undefined {
+  if (command.name !== 'capability.invoke' || command.args.id !== 'http.request' || result.status !== 'ok') return undefined;
   const parsed = httpResponseFromResult(result);
   if (!parsed.success) return undefined;
   let json: unknown;
@@ -275,12 +282,16 @@ function httpTableForTransform(command: AxCommand, result: AxCommandResult): Tab
   } catch {
     return undefined;
   }
-  const params = command.args.params;
-  const converted = httpResponseToTable(parsed.data, {
-    sourceId: 'http:response',
-    rowsPath: uniqueObjectArrayPath(json),
-    columns: selectedColumnsFromHttpPath(params),
-  });
+  const rowsPath = uniqueObjectArrayPath(json);
+  const columns = selectedColumnsFromHttpPath(command.args.params);
+  return { ...(rowsPath !== undefined ? { rowsPath } : {}), ...(columns ? { columns } : {}) };
+}
+
+function httpTableForTransform(command: AxCommand, result: AxCommandResult): TableArtifact | undefined {
+  const parsed = httpResponseFromResult(result);
+  const conversion = httpTableConversion(command, result);
+  if (!parsed.success || !conversion) return undefined;
+  const converted = httpResponseToTable(parsed.data, { sourceId: 'http:response', ...conversion });
   return converted.ok ? converted.table : undefined;
 }
 
