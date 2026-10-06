@@ -1,5 +1,7 @@
 import type { OutputObservation } from './observation/schema.js';
 import type { DiscoverySessionState } from './schema.js';
+import type { TransformExpr } from '../workflow/transform-expr/dsl.js';
+import { describeMapping } from './describe-expr.js';
 
 export const AUTO_RESUME_STATUSES: ReadonlySet<DiscoverySessionState['status']> = new Set([
   'collecting_examples',
@@ -17,22 +19,29 @@ export function displayNumber(value: unknown): string {
     : String(value ?? '');
 }
 
+/** Compact text for a replayed value: tables are summarized, never dumped. */
+export function displayValue(value: unknown): string {
+  if (value && typeof value === 'object' && Array.isArray((value as { rows?: unknown }).rows)) {
+    return `${(value as { rows: unknown[] }).rows.length}행 표`;
+  }
+  return displayNumber(value);
+}
+
 export function observationDisplay(observation: OutputObservation): string {
   if (observation.value.kind === 'number') {
-    return observation.value.display ?? displayNumber(observation.value.value);
+    const shown = observation.value.display;
+    // Keep the report's own formatting ("12.5%", "1억"); bare digits from a spreadsheet cell get separators.
+    return shown && !/^-?\d+(\.\d+)?$/.test(shown.trim()) ? shown : displayNumber(observation.value.value);
   }
   if (observation.value.kind === 'text') return observation.value.value;
+  if (observation.value.kind === 'table') {
+    return `${observation.value.rows.length}행 표 (${observation.value.columns.join(', ')})`;
+  }
   return JSON.stringify(observation.value);
 }
 
-export function formatMappingLabel(candidate: { expr: { op: string; fn?: string; column?: string; name?: string; round?: number } }): string {
-  const rounding = candidate.expr.round !== undefined ? ` 반올림(소수 ${candidate.expr.round}자리)` : '';
-  if (candidate.expr.op === 'aggregate') {
-    return `${candidate.expr.fn?.toUpperCase() ?? 'AGG'}(${candidate.expr.column ?? 'rows'})${rounding}`;
-  }
-  if (candidate.expr.op === 'ratio') return `RATIO(%)${rounding}`;
-  if (candidate.expr.op === 'column') return `COLUMN(${candidate.expr.name})`;
-  return candidate.expr.op;
+export function formatMappingLabel(candidate: { expr: TransformExpr }): string {
+  return describeMapping(candidate.expr);
 }
 
 export function progressLabel(status: DiscoverySessionState['status']): string {

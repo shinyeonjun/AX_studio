@@ -46,25 +46,40 @@ function orders(year, month, count) {
   }).sort((a, b) => a.주문일.localeCompare(b.주문일) || a.주문번호.localeCompare(b.주문번호));
 }
 
-function writeSheet(path, rows, sheetName) {
+function writeBook(path, sheets) {
   mkdirSync(dirname(path), { recursive: true });
   const book = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), sheetName);
+  for (const [sheetName, rows] of sheets) XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), sheetName);
   XLSX.writeFile(book, path);
+}
+
+// A month's finished report, as a person would have made it by hand: cancelled orders are left
+// out, one summary row, and a per-category table (largest sales first) closed by a total row.
+const TOTAL_LABEL = '합계';
+function report(period, rows) {
+  const kept = rows.filter((row) => row.상태 !== '취소');
+  const total = kept.reduce((sum, row) => sum + row.금액, 0);
+  const summary = [{ 기간: period, 주문건수: kept.length, 총매출: total, 평균주문금액: Math.round(total / kept.length) }];
+  const byCategory = new Map();
+  for (const row of kept) {
+    const entry = byCategory.get(row.카테고리) ?? { 카테고리: row.카테고리, 주문건수: 0, 매출: 0 };
+    entry.주문건수 += 1;
+    entry.매출 += row.금액;
+    byCategory.set(row.카테고리, entry);
+  }
+  const categories = [...byCategory.values()].sort((a, b) => b.매출 - a.매출);
+  categories.push({ 카테고리: TOTAL_LABEL, 주문건수: kept.length, 매출: total });
+  return { summary, categories };
 }
 
 const august = orders(2026, 8, 180);
 const september = orders(2026, 9, 210);
-writeSheet(join(here, 'input', '주문내역_2026-08.xlsx'), august, '주문내역');
-writeSheet(join(here, 'next-month', '주문내역_2026-09.xlsx'), september, '주문내역');
+writeBook(join(here, 'input', '주문내역_2026-08.xlsx'), [['주문내역', august]]);
+writeBook(join(here, 'next-month', '주문내역_2026-09.xlsx'), [['주문내역', september]]);
 
-// Last month's finished report, as a person would have made it by hand: one summary row.
-const total = august.reduce((sum, row) => sum + row.금액, 0);
-const summary = [{
-  기간: '2026-08',
-  주문건수: august.length,
-  총매출: total,
-  평균주문금액: Math.round(total / august.length),
-}];
-writeSheet(join(here, 'output', '월간매출요약_2026-08.xlsx'), summary, '요약');
-console.log(JSON.stringify({ august: august.length, september: september.length, summary }, null, 1));
+const augustReport = report('2026-08', august);
+const septemberReport = report('2026-09', september);
+writeBook(join(here, 'output', '월간매출요약_2026-08.xlsx'), [['요약', augustReport.summary], ['카테고리별', augustReport.categories]]);
+// The true next-month report, only for tests that check what a learned workflow produces.
+writeBook(join(here, 'expected', '월간매출요약_2026-09.xlsx'), [['요약', septemberReport.summary], ['카테고리별', septemberReport.categories]]);
+console.log(JSON.stringify({ august: august.length, september: september.length, augustReport, septemberReport }, null, 1));

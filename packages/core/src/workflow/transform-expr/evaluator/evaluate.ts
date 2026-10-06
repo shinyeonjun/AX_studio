@@ -1,5 +1,6 @@
 import type { TransformExpr } from '../dsl.js';
 import type { SnapshotTables, TransformEvaluation } from './contracts.js';
+import { evaluateGroup } from './group.js';
 import { evaluateLookup } from './lookup.js';
 import { evaluateAggregate, evaluateRatio } from './numeric.js';
 import { evaluateSource } from './source.js';
@@ -24,6 +25,8 @@ export function evaluateTransformExpr(
       return evaluateFilter(expr, snapshots, evaluateTransformExpr);
     case 'aggregate':
       return evaluateAggregate(expr, snapshots, evaluateTransformExpr);
+    case 'group':
+      return evaluateGroup(expr, snapshots, evaluateTransformExpr);
     case 'ratio':
       return evaluateRatio(expr, snapshots, evaluateTransformExpr);
     case 'lookup':

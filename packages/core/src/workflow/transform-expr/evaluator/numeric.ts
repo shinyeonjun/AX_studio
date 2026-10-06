@@ -1,4 +1,5 @@
-import type { TransformExpr } from '../dsl.js';
+import type { TableArtifact } from '../../../contracts/artifacts/table.js';
+import type { AggregateFn, TransformExpr } from '../dsl.js';
 import type {
   SnapshotTables,
   TransformEvaluation,
@@ -13,28 +14,26 @@ function roundTo(value: number | null, digits: number | undefined): number | nul
   return Number.isFinite(rounded) ? rounded : value;
 }
 
-export function evaluateAggregate(
-  expr: Extract<TransformExpr, { op: 'aggregate' }>,
-  snapshots: SnapshotTables,
-  evaluate: TransformEvaluator,
-): TransformEvaluation {
-  return roundTo(aggregateValue(expr, snapshots, evaluate), expr.round);
+export interface AggregateSpec {
+  fn: AggregateFn;
+  column?: string;
+  round?: number;
 }
 
-function aggregateValue(
-  expr: Extract<TransformExpr, { op: 'aggregate' }>,
-  snapshots: SnapshotTables,
-  evaluate: TransformEvaluator,
-): number | null {
-  const table = requireCompleteTable(evaluate(expr.input, snapshots), 'aggregate_input_not_table');
-  const column = expr.column;
-  if (expr.fn === 'count') return table.rows.length;
+/** One aggregate over already-selected rows; shared by `aggregate` and `group`. */
+export function aggregateRows(rows: TableArtifact['rows'], spec: AggregateSpec): number | null {
+  return roundTo(unroundedAggregate(rows, spec), spec.round);
+}
+
+function unroundedAggregate(rows: TableArtifact['rows'], spec: AggregateSpec): number | null {
+  if (spec.fn === 'count') return rows.length;
+  const column = spec.column;
   if (!column) throw new Error('aggregate_column_required');
-  const numbers = table.rows
+  const numbers = rows
     .map((row) => toNumber(ownCell(row.values, column)))
     .filter((value): value is number => value != null);
   if (numbers.length === 0) return null;
-  switch (expr.fn) {
+  switch (spec.fn) {
     case 'sum':
       return numbers.reduce((sum, value) => sum + value, 0);
     case 'avg':
@@ -46,6 +45,15 @@ function aggregateValue(
     default:
       return null;
   }
+}
+
+export function evaluateAggregate(
+  expr: Extract<TransformExpr, { op: 'aggregate' }>,
+  snapshots: SnapshotTables,
+  evaluate: TransformEvaluator,
+): TransformEvaluation {
+  const table = requireCompleteTable(evaluate(expr.input, snapshots), 'aggregate_input_not_table');
+  return aggregateRows(table.rows, expr);
 }
 
 export function evaluateRatio(

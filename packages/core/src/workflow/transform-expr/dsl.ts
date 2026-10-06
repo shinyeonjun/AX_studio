@@ -19,13 +19,43 @@ const FilterExprSchema = z.object({
   where: ConditionExprSchema,
 });
 
+const AggregateFnSchema = z.enum(['count', 'sum', 'avg', 'min', 'max']);
+export type AggregateFn = z.infer<typeof AggregateFnSchema>;
+
+/** Bounds the size of one stored/LLM-authored group expression (not a business rule). */
+const MAX_GROUP_AGGREGATES = 32;
+
 const AggregateExprSchema = z.object({
   op: z.literal('aggregate'),
   input: z.lazy(() => TransformExprSchema),
-  fn: z.enum(['count', 'sum', 'avg', 'min', 'max']),
+  fn: AggregateFnSchema,
   column: z.string().optional(),
   /** Round the result to this many decimal places (reports usually show rounded averages). */
   round: z.number().int().min(0).max(6).optional(),
+});
+
+const GroupAggregateSchema = z.object({
+  /** Output column header for this aggregate. */
+  as: z.string().min(1),
+  fn: AggregateFnSchema,
+  column: z.string().optional(),
+  round: z.number().int().min(0).max(6).optional(),
+});
+export type GroupAggregate = z.infer<typeof GroupAggregateSchema>;
+
+/**
+ * Pivot-style grouping: one output row per distinct (trimmed, non-empty) value of `by`, in
+ * first-appearance order, with the same aggregate semantics as `aggregate`. The key set comes
+ * from the data at run time. `totalRow` appends one row aggregated over every input row.
+ */
+const GroupExprSchema = z.object({
+  op: z.literal('group'),
+  input: z.lazy(() => TransformExprSchema),
+  by: z.string().min(1),
+  /** Output header of the key column; defaults to `by`. */
+  keyAs: z.string().min(1).optional(),
+  aggregates: z.array(GroupAggregateSchema).min(1).max(MAX_GROUP_AGGREGATES),
+  totalRow: z.object({ label: z.string().min(1) }).optional(),
 });
 
 const RatioExprSchema = z.object({
@@ -33,6 +63,7 @@ const RatioExprSchema = z.object({
   numerator: z.lazy(() => TransformExprSchema),
   denominator: z.lazy(() => TransformExprSchema),
   multiplyBy: z.number().default(1),
+  round: z.number().int().min(0).max(6).optional(),
 });
 
 const LookupExprSchema = z.object({
@@ -69,6 +100,7 @@ export const TransformExprSchema: z.ZodType<TransformExpr> = depthLimited(z.disc
   ColumnExprSchema,
   FilterExprSchema,
   AggregateExprSchema,
+  GroupExprSchema,
   RatioExprSchema,
   LookupExprSchema,
   SelectExprSchema,
@@ -80,7 +112,15 @@ export type TransformExpr =
   | z.infer<typeof SourceExprSchema>
   | { op: 'column'; input: TransformExpr; name: string }
   | { op: 'filter'; input: TransformExpr; where: z.infer<typeof ConditionExprSchema> }
-  | { op: 'aggregate'; input: TransformExpr; fn: 'count' | 'sum' | 'avg' | 'min' | 'max'; column?: string; round?: number }
+  | { op: 'aggregate'; input: TransformExpr; fn: AggregateFn; column?: string; round?: number }
+  | {
+    op: 'group';
+    input: TransformExpr;
+    by: string;
+    keyAs?: string;
+    aggregates: GroupAggregate[];
+    totalRow?: { label: string };
+  }
   | { op: 'ratio'; numerator: TransformExpr; denominator: TransformExpr; multiplyBy?: number; round?: number }
   | { op: 'lookup'; input: TransformExpr; keyColumn: string; keyValue: z.infer<typeof ScalarValueSchema>; valueColumn: string }
   | { op: 'select'; input: TransformExpr; columns: string[] }

@@ -28,7 +28,7 @@ export function parseKoreanNumber(text: string): number | null {
   }
 }
 
-function slugifyLabel(label: string): string {
+export function slugifyLabel(label: string): string {
   const trimmed = label.trim();
   if (/[가-힣]/.test(trimmed)) {
     return `field.${trimmed.replace(/\s+/g, '_')}`;
