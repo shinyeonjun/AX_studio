@@ -3,7 +3,6 @@ export { triggerOutputPorts, stepOutputPorts, aiDecisionOutputPorts } from './wo
 export * from './workflow/workflow-view.js';
 export * from './workflow/approval.js';
 export * from './workflow/contract-validator.js';
-export * from './workflow/contract-adapters.js';
 export * from './contracts/index.js';
 export * from './catalog/index.js';
 export * from './connectors/index.js';
@@ -71,6 +70,8 @@ export * from './runtime/execution-result-message.js';
 export * from './runtime/scheduler.js';
 export * from './runtime/manual-workflow-run.js';
 export { setWebhookSecretResolver } from './triggers/webhook/secret-provider.js';
+export { DEAD_LETTER_SETTING, type TriggerDeadLetter } from './runtime/trigger-engine/receipts.js';
+export type { CorruptRowReport } from './persistence/tolerant-rows.js';
 export * from './triggers/types.js';
 export * from './triggers/push-state.js';
 export * from './triggers/registry.js';

@@ -1,7 +1,7 @@
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
 
 export class CloudSpyProvider implements ModelProvider {
-  readonly name = 'cursor-cli';
+  readonly name = 'openai-api';
   structuredCalls = 0;
   lastUntrusted?: string;
   lastSystem = '';

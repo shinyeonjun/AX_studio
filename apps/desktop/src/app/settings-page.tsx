@@ -56,8 +56,9 @@ export function AppSettingsPage({ screen, state, onScreenChange, onRefresh, dete
       }}
       onPickSqliteFile={() => window.ax.pickSqliteFile()}
       onConnectRdb={async (payload) => {
-        await window.ax.connectRdb(payload);
+        const result = await window.ax.connectRdb(payload);
         await onRefresh();
+        return result;
       }}
       onDisconnectRdb={async () => {
         await window.ax.disconnectRdb();

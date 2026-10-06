@@ -49,6 +49,11 @@
       "types": "./dist/contracts/tool-result.d.ts",
       "import": "./dist/contracts/tool-result.js",
       "default": "./dist/contracts/tool-result.js"
+    },
+    "./gmail-scopes": {
+      "types": "./dist/connectors/gmail/scopes.d.ts",
+      "import": "./dist/connectors/gmail/scopes.js",
+      "default": "./dist/connectors/gmail/scopes.js"
     }
   },
   "scripts": {

@@ -12,5 +12,5 @@ export interface RdbConnectionRecord {
 }
 
 export type RdbConnectionProbeResult =
-  | { ok: true }
+  | { ok: true; warning?: string }
   | { ok: false; error: string; detail?: string };

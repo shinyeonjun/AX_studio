@@ -78,6 +78,16 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'workflow_paused') return '업무가 중지되어 있습니다';
   if (errorCode === 'output_contract_failed') return '결과 품질 검증에서 차단되었습니다';
   if (errorCode === 'input_schema_drift') return '입력 자료 구조가 변경되었습니다';
+  if (errorCode === 'workflow_already_running') return '같은 업무가 이미 실행 중이라 이번 실행은 건너뛰었습니다';
+  if (errorCode === 'workflow_run_queue_full') return '대기 중인 실행이 너무 많아 이번 실행은 건너뛰었습니다';
+  if (errorCode === 'approval_expired') return '승인 대기 시간이 지나 실행이 취소되었습니다. 아무 작업도 실행되지 않았습니다';
+  if (errorCode === 'template_non_primitive') {
+    return '단계 입력에 목록·객체 값이 들어가 문장으로 바꿀 수 없습니다. 업무 단계의 입력값을 확인해 주세요';
+  }
+  if (errorCode === 'condition_ref_missing') return '조건 분기가 참조하는 이전 단계 결과를 찾지 못했습니다';
+  if (errorCode === 'step_timeout') {
+    return '단계 실행 시간이 초과되었습니다. 외부 서비스에 이미 반영됐을 수 있으니 결과를 확인해 주세요';
+  }
   return errorCode;
 }
 

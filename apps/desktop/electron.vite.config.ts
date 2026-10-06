@@ -1,5 +1,7 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -41,6 +43,82 @@ function readGoogleOAuthValue(key: 'GOOGLE_OAUTH_CLIENT_ID' | 'GOOGLE_OAUTH_CLIE
     return value;
   }
   return '';
+}
+
+/**
+ * Renderer Content-Security-Policy, injected into src/index.html as a <meta>
+ * tag so it applies to file:// loads (packaged) as well as the Vite dev server.
+ * Kept in this file because fixture tests copy the config on its own.
+ */
+const SHARED_DIRECTIVES: ReadonlyArray<string> = [
+  "default-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-src 'none'",
+  "form-action 'none'",
+];
+
+const INLINE_SCRIPT_PATTERN = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+
+/** sha256 sources for every inline classic/module script without a src attribute. */
+export function inlineScriptHashes(html: string): string[] {
+  const hashes: string[] = [];
+  for (const match of html.matchAll(INLINE_SCRIPT_PATTERN)) {
+    const attributes = match[1] ?? '';
+    // The HTML parser normalizes CRLF/CR to LF before the browser hashes a script, so a
+    // Windows checkout (CRLF) must be hashed the same way or the script is blocked.
+    const body = (match[2] ?? '').replace(/\r\n?/g, '\n');
+    if (/\bsrc\s*=/.test(attributes) || body.length === 0) continue;
+    hashes.push(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`);
+  }
+  return hashes;
+}
+
+export function productionRendererCsp(html: string): string {
+  return [
+    ...SHARED_DIRECTIVES.slice(0, 1),
+    ["script-src 'self'", ...inlineScriptHashes(html)].join(' '),
+    ...SHARED_DIRECTIVES.slice(1),
+    "connect-src 'self'",
+  ].join('; ');
+}
+
+/** Dev only: Vite HMR needs its websocket, the React refresh preamble and eval'd modules. */
+export function developmentRendererCsp(): string {
+  return [
+    ...SHARED_DIRECTIVES.slice(0, 1),
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    ...SHARED_DIRECTIVES.slice(1),
+    "connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
+  ].join('; ');
+}
+
+export function injectCspMeta(html: string, policy: string): string {
+  if (/http-equiv=["']Content-Security-Policy["']/i.test(html)) {
+    throw new Error('index.html already declares a Content-Security-Policy; let the build inject it.');
+  }
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${policy.replace(/"/g, '&quot;')}" />`;
+  const replaced = html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n    ${meta}`);
+  if (replaced === html) throw new Error('index.html has no <head> to receive the Content-Security-Policy.');
+  return replaced;
+}
+
+/** Strict CSP for packaged builds (inline scripts pinned by hash); relaxed only for Vite HMR in dev. */
+function rendererCspPlugin(): Plugin {
+  let isBuild = false;
+  return {
+    name: 'ax-renderer-csp',
+    configResolved(config) {
+      isBuild = config.command === 'build';
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html) => injectCspMeta(html, isBuild ? productionRendererCsp(html) : developmentRendererCsp()),
+    },
+  };
 }
 
 const googleOAuthClientId = readGoogleOAuthValue('GOOGLE_OAUTH_CLIENT_ID');
@@ -92,6 +170,7 @@ export default defineConfig({
         '@ax-studio/core/visual-display': resolve('../../packages/core/src/workflow/visual-display.ts'),
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/intelligence/agent/settings/ai-catalog.ts'),
         '@ax-studio/core/tool-result': resolve('../../packages/core/src/contracts/tool-result.ts'),
+        '@ax-studio/core/gmail-scopes': resolve('../../packages/core/src/connectors/gmail/scopes.ts'),
       },
     },
     build: {
@@ -102,6 +181,6 @@ export default defineConfig({
         },
       },
     },
-    plugins: [react()],
+    plugins: [react(), rendererCspPlugin()],
   },
 });

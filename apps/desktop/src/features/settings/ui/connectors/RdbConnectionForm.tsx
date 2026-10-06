@@ -29,6 +29,7 @@ export function RdbConnectionForm({
     setLabel,
     busy,
     message,
+    warning,
     connectedItems,
     loadFromConnection,
     handlePickFile,
@@ -123,7 +124,12 @@ export function RdbConnectionForm({
         )}
       </div>
 
-      {message && <p className="form-message">{message}</p>}
+      {message && <p className="form-message connection-form-message" role="status">{message}</p>}
+      {warning && (
+        <p className="form-message connection-form-message warning" role="alert">
+          주의: {warning}
+        </p>
+      )}
 
       <ConnectedServiceList
         title="연결된 데이터베이스"

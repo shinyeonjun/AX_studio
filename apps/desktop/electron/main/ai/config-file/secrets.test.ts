@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   setOsSecret: vi.fn(),
   readEnvFile: vi.fn(),
   readAiToml: vi.fn(),
-  writeAiToml: vi.fn(),
+  updateAiToml: vi.fn(),
 }));
 
 vi.mock('../../credential-store.js', () => ({
@@ -15,7 +15,7 @@ vi.mock('../../credential-store.js', () => ({
 vi.mock('../../env-file.js', () => ({ readEnvFile: mocks.readEnvFile }));
 vi.mock('./storage.js', () => ({
   readAiToml: mocks.readAiToml,
-  writeAiToml: mocks.writeAiToml,
+  updateAiToml: mocks.updateAiToml,
 }));
 
 import { getJevSecret, migrateAiSecretsToOsStore } from './secrets.js';
@@ -26,7 +26,7 @@ describe('Jev credential preservation', () => {
     mocks.setOsSecret.mockReset().mockResolvedValue(undefined);
     mocks.readEnvFile.mockReset().mockResolvedValue({});
     mocks.readAiToml.mockReset();
-    mocks.writeAiToml.mockReset().mockResolvedValue(undefined);
+    mocks.updateAiToml.mockReset().mockResolvedValue(undefined);
   });
 
   it('returns an existing synthetic OS credential without trimming it', async () => {

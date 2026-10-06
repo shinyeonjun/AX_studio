@@ -79,13 +79,14 @@ describe('legacy database migrations', () => {
     try {
       const SQL = await (await import('sql.js')).default();
       const legacy = new SQL.Database();
-      legacy.run('CREATE TABLE workflow_versions (id TEXT, workflow_id TEXT, version INTEGER);');
-      legacy.run("INSERT INTO workflow_versions VALUES ('a', 'workflow', 1), ('b', 'workflow', 1);");
+      // A drifted table without updated_at makes the v2 index migration fail.
+      legacy.run('CREATE TABLE workspace_chats (id TEXT PRIMARY KEY, title TEXT, messages_json TEXT);');
+      legacy.run("INSERT INTO workspace_chats VALUES ('chat', 't', '[]');");
       const original = Buffer.from(legacy.export());
       legacy.close();
       writeFileSync(filePath, original);
 
-      await expect(createSqlJsDatabase(filePath)).rejects.toThrow(/UNIQUE/);
+      await expect(createSqlJsDatabase(filePath)).rejects.toThrow(/updated_at/);
       await vi.advanceTimersByTimeAsync(1500);
       expect(readFileSync(filePath).equals(original)).toBe(true);
     } finally {

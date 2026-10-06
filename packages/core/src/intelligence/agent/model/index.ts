@@ -5,7 +5,8 @@ export {
   extraBinDirs,
   commandEnv,
   resolveBinary,
-  resolveCmdNodeRuntime,
+  resolveBinaryAsync,
+  invalidateBinaryCache,
   commandInvocation,
   runCommand,
   runCommandStreaming,
@@ -15,6 +16,5 @@ export {
 export * from './cli/index.js';
 export * from './anthropic-api.js';
 export * from './openai-api.js';
-export * from './grok-api.js';
 export * from './openai-compatible.js';
 export * from './ollama-api.js';

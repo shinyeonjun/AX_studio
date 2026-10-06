@@ -35,6 +35,7 @@ export const AX_COMMAND_NAMES = [
   'repair.reject',
   'job.propose',
   'job.commit',
+  'mutation.commit',
   'context.update',
   'ui.present',
   'report.generate',

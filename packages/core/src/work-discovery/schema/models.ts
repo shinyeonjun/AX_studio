@@ -74,6 +74,8 @@ export const DiscoverySessionStateSchema = z.object({
   observations: z.array(OutputObservationSchema).default([]),
   candidates: z.array(CandidateProgramSchema).default([]),
   pendingQuestion: ClarificationQuestionSchema.optional(),
+  /** Set only when a person answered a clarification question for this session. */
+  humanConfirmedAt: z.string().optional(),
   blueprint: DiscoveryBlueprintSchema.optional(),
   publishedWorkflowId: z.string().optional(),
   budgets: z.object({

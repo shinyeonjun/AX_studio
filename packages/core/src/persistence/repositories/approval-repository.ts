@@ -3,6 +3,7 @@ import type { AppDatabase } from '../db.js';
 import { persistDatabase, readRow, readRows } from '../db/types.js';
 import type { ToolSendOutcome } from '../../contracts/tool-result.js';
 import type { ApprovalRow } from '../rows.js';
+import { mapRowsTolerant } from '../tolerant-rows.js';
 
 function parseApprovalJson<T>(raw: string, field: string, approvalId: string): T {
   try {
@@ -32,6 +33,10 @@ function parseActionIds(raw: string, approvalId: string): string[] {
 function parsePayload(raw: string | null, approvalId: string): unknown {
   if (!raw) return undefined;
   return parseApprovalJson(raw, 'payload', approvalId);
+}
+
+function mapApprovals(db: AppDatabase, rows: ApprovalRow[]) {
+  return mapRowsTolerant(db, 'approvals', rows, (row) => row.id, mapApproval);
 }
 
 function mapApproval(row: ApprovalRow) {
@@ -141,22 +146,22 @@ export function getPendingApprovals(db: AppDatabase) {
     db.prepare('SELECT * FROM approvals WHERE status = ? ORDER BY created_at DESC'),
     'pending',
   );
-  return rows.map(mapApproval);
+  return mapApprovals(db, rows);
 }
 
 export function getProcessingApprovals(db: AppDatabase) {
-  return readRows<ApprovalRow>(db.prepare('SELECT * FROM approvals WHERE status = ?'), 'processing').map(mapApproval);
+  return mapApprovals(db, readRows<ApprovalRow>(db.prepare('SELECT * FROM approvals WHERE status = ?'), 'processing'));
 }
 
 /** Durable checkpoints whose paired execution may need restart reconciliation. */
 export function getApprovalRecoveryCandidates(db: AppDatabase) {
-  return readRows<ApprovalRow>(db.prepare(
+  return mapApprovals(db, readRows<ApprovalRow>(db.prepare(
     `SELECT a.* FROM approvals a
      JOIN executions e ON e.id = a.execution_id
      WHERE a.status = 'processing'
         OR (a.status IN ('pending', 'approved', 'rejected', 'failed')
             AND e.status IN ('running', 'pending_approval'))`,
-  )).map(mapApproval);
+  )));
 }
 
 export function getPendingApprovalsWithExecutionSnapshots(db: AppDatabase) {
@@ -167,7 +172,7 @@ export function getPendingApprovalsWithExecutionSnapshots(db: AppDatabase) {
      WHERE a.status = ?
      ORDER BY a.created_at DESC`,
   ), 'pending');
-  return rows.map((row) => ({
+  return mapRowsTolerant(db, 'approvals', rows, (row) => row.id, (row) => ({
     approval: mapApproval(row),
     executionIrJson: row.execution_ir_json ?? undefined,
   }));

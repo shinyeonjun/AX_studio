@@ -6,6 +6,7 @@ import type {
   WorkspaceChatGeneratedSpreadsheet,
 } from '@ax-studio/core';
 import type { GeneratedArtifactExportResult } from '../../../../types/ax-api/contracts';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { formatFileSize } from '../../../../ui/lib/format-file-size';
 import { executionErrorLabel } from '../../../../ui/lib/work-display';
 
@@ -116,7 +117,7 @@ export function WorkspaceRunResultCard({
       }
       setCompletedArtifactAction(action);
     } catch (error) {
-      setArtifactError(error instanceof Error ? error.message : `${artifactLabel}를 저장하지 못했습니다.`);
+      setArtifactError(ipcErrorMessage(error, `${artifactLabel}를 저장하지 못했습니다.`));
     } finally {
       setArtifactAction(null);
     }

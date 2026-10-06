@@ -88,7 +88,7 @@ export const AxUiPresentationActionSchema = z.object({
   value: z.string().trim().min(1).max(500),
   tone: z.enum(['primary', 'secondary', 'danger']).default('secondary'),
   /** A typed host confirmation marker; it is not a command or permission. */
-  purpose: z.enum(['reply', 'confirm_context', 'confirm_job']).default('reply'),
+  purpose: z.enum(['reply', 'confirm_context', 'confirm_job', 'confirm_mutation']).default('reply'),
   /** Exact host-executed memory proposal bound to this confirmation action. */
   contextUpdate: AxContextUpdateConfirmationSchema.optional(),
 }).superRefine((action, context) => {
@@ -128,6 +128,8 @@ export const AxUiPresentationBlockSchema = z.discriminatedUnion('type', [
 export const AxUiPresentationSchema = z.object({
   title: z.string().trim().min(1).max(120),
   subtitle: z.string().trim().max(300).optional(),
+  /** Host-set display role; `diagnostic` cards are internal checks the chat may collapse. */
+  role: z.enum(['interaction', 'diagnostic']).optional(),
   inputMode: z.enum(['individual', 'batch']).default('individual'),
   blocks: z.array(AxUiPresentationBlockSchema).max(12).default([]),
   inputs: z.array(AxInputRequestSchema).max(AX_INPUT_REQUEST_MAX_COUNT).default([]),

@@ -13,6 +13,7 @@ import type { JevWorkflowTriggerHint } from './jev-workflow-proposal.js';
 import { choiceAnswer, fallback, selectedWorkflowStepFinalists } from './jev-router-command.js';
 import type { JevChatRouterInput, JevChatRouterResult } from './jev-router-contract.js';
 import type { JevChatRequestPlan } from './jev-request-plan.js';
+import { koreanScheduleToCron, localTimeZone } from '../../../../workflow/cron-natural.js';
 import type { JevChatRouteName } from './jev-route-criteria.js';
 
 export interface JevWorkflowRouteContext {
@@ -233,8 +234,11 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       });
     }
     const triggerAnswer = choiceAnswer(answers.workflow_trigger);
+    // Common phrases ("매일 오전 9시") prefill the cron; the job card still shows it for confirmation,
+    // and anything unparsed stays blank for the host schedule form.
+    const prefilledSchedule = koreanScheduleToCron(input.userMessage);
     const selectedTrigger = triggerAnswer?.choice === 'schedule'
-      ? { key: 'schedule', trigger: { type: 'schedule' as const, schedule: '', timezone: '' } }
+      ? { key: 'schedule', trigger: { type: 'schedule' as const, schedule: prefilledSchedule ?? '', timezone: prefilledSchedule ? localTimeZone() : '' } }
       : triggerAnswer
         ? workflowTriggerHints.find((hint) => hint.key === triggerAnswer.choice)
         : undefined;

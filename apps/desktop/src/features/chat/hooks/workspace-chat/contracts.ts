@@ -9,7 +9,7 @@ import type {
 } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
 
-export interface WorkspaceChatRefs {
+interface WorkspaceChatRefs {
   sessionEpochRef: MutableRefObject<number>;
   workspaceSessionIdRef: MutableRefObject<string | undefined>;
   activeRequestIdRef: MutableRefObject<string | undefined>;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { connectGmailViaLoopback, createOAuthState, oauthCallbackStateMatches } from './oauth.js';
+import { connectGmailViaLoopback, createOAuthState, grantedScopes, oauthCallbackStateMatches } from './oauth.js';
 
 vi.mock('googleapis', () => ({
   google: {
@@ -55,5 +55,34 @@ describe('Gmail OAuth state', () => {
 
     expect(callbackUrl).not.toBe('');
     await expect(fetch(callbackUrl)).rejects.toThrow();
+  });
+
+  it('answers a forged-state callback with 400 and keeps waiting for the real one', async () => {
+    let resolveAuthUrl!: (url: string) => void;
+    const authUrlSeen = new Promise<string>((resolve) => { resolveAuthUrl = resolve; });
+    const pending = connectGmailViaLoopback({
+      clientId: 'test-client',
+      timeoutMs: 5_000,
+      onAuthUrl: (authUrl) => resolveAuthUrl(authUrl),
+    });
+    const outcome = pending.then(() => undefined, (error: unknown) => error);
+    const authUrl = new URL(await authUrlSeen);
+    const callback = new URL(authUrl.searchParams.get('redirect_uri')!);
+
+    callback.searchParams.set('state', 'forged');
+    callback.searchParams.set('error', 'access_denied');
+    const forged = await fetch(callback);
+    expect(forged.status).toBe(400);
+
+    callback.searchParams.set('state', authUrl.searchParams.get('state')!);
+    callback.searchParams.set('error', 'user_cancelled');
+    await fetch(callback);
+    expect(await outcome).toMatchObject({ message: 'user_cancelled' });
+  });
+
+  it('records the scopes Google actually granted', () => {
+    expect(grantedScopes('a b', ['a', 'b', 'c'])).toEqual(['a', 'b']);
+    expect(grantedScopes(undefined, ['a'])).toEqual(['a']);
+    expect(grantedScopes('', ['a'])).toEqual(['a']);
   });
 });

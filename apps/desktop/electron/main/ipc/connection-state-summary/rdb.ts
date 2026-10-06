@@ -32,13 +32,23 @@ function formatRdbTarget(
   }
 }
 
+/** An unreadable stored secret reads as missing so the state request never rejects. */
+async function readStoredConnectionString(): Promise<string | null> {
+  try {
+    return await getOsSecret(RDB_SECRET_NAME);
+  } catch (error) {
+    console.warn('[AX Studio] stored RDB secret unavailable', { code: (error as { code?: unknown } | null)?.code });
+    return null;
+  }
+}
+
 export async function summarizeRdbConnection(
   connected: boolean,
   config: Record<string, unknown> | undefined,
 ): Promise<Record<string, unknown>> {
   const record = (config && typeof config === 'object' ? config : {}) as Record<string, unknown>;
   const storedConnectionString =
-    connected && record.type !== 'sqlite' ? await getOsSecret(RDB_SECRET_NAME) : null;
+    connected && record.type !== 'sqlite' ? await readStoredConnectionString() : null;
   const parsed = parseRdbConnectionConfig(
     record.type === 'sqlite'
       ? config

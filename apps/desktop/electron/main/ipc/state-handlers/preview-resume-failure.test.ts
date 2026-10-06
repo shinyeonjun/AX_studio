@@ -18,7 +18,9 @@ const cases = [
   { kind: 'broken tail', snapshot: undefined, errorCode: 'invalid_execution_log', message: '실행 로그 검증에 실패하여 실행을 재개하지 못했습니다.' },
 ];
 
-describe.each(['native', 'sqljs'] as const)('preserved resume failure state (%s)', backend => {
+// Real-file DB integration (fsync on every write): well under 1 s locally, but Windows CI disks
+// have exceeded the 5 s default, so allow more time without hiding a hang.
+describe.each(['native', 'sqljs'] as const)('preserved resume failure state (%s)', { timeout: 30_000 }, backend => {
   let directory: string;
   let db: AppDatabase;
   afterEach(() => { db?.close?.(); if (directory) rmSync(directory, { recursive: true, force: true }); });

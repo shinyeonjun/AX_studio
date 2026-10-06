@@ -30,5 +30,6 @@ export function createCommandServiceState(
       snapshotRoot: options.repairSnapshotRoot,
     }),
     pendingJobs: new Map(),
+    pendingMutations: new Map(),
   };
 }

@@ -1,6 +1,6 @@
 import { CLI_PROVIDER_META, normalizeModelOptions, parseCodexModelsOutput, type CliModelOption } from './catalog.js';
-import { resolveBinary, runCommand } from '../model/cli-process.js';
-import type { CliProviderId } from './ai-provider-id.js';
+import { invalidateBinaryCache, resolveBinary, resolveBinaryAsync, runCommand } from '../model/cli-process.js';
+import { CLI_PROVIDER_IDS, type CliProviderId } from './ai-provider-id.js';
 
 export interface DetectedAiCli {
   id: CliProviderId;
@@ -21,34 +21,28 @@ async function readVersion(command: string): Promise<string | undefined> {
 
 async function readCodexModels(command: string): Promise<CliModelOption[]> {
   const result = await runCommand(command, ['debug', 'models'], { timeoutMs: 4000 });
-  const parsed = parseCodexModelsOutput(result.stdout || result.stderr);
-  return parsed;
+  return parseCodexModelsOutput(result.stdout || result.stderr);
 }
 
-export function isCursorApiKeyConfigured(): boolean {
-  return Boolean(process.env.CURSOR_API_KEY?.trim());
-}
-
+/** Cached and non-blocking; safe to call from state snapshots. */
 export function isAiCliInstalled(id: CliProviderId): boolean {
-  if (id === 'cursor-cli') {
-    return Boolean(resolveBinary(CLI_PROVIDER_META[id].binaries)) && isCursorApiKeyConfigured();
-  }
   return Boolean(resolveBinary(CLI_PROVIDER_META[id].binaries));
 }
 
 export async function detectAiCliProviders(): Promise<DetectedAiCli[]> {
-  const ids: CliProviderId[] = ['codex-cli', 'claude-cli', 'cursor-cli'];
-  return Promise.all(ids.map(async (id) => {
+  // Explicit detection is the user's "re-check" action, so it must not reuse stale lookups.
+  invalidateBinaryCache();
+  return Promise.all(CLI_PROVIDER_IDS.map(async (id) => {
     const meta = CLI_PROVIDER_META[id];
-    const command = resolveBinary(meta.binaries);
-    const hasCursorKey = id === 'cursor-cli' && isCursorApiKeyConfigured();
+    const fallbackModels = normalizeModelOptions(meta.models);
+    const command = await resolveBinaryAsync(meta.binaries);
     if (!command) {
       return {
         id,
         label: meta.label,
-        description: hasCursorKey ? 'API 키 등록됨 · agent CLI 미설치' : meta.description,
+        description: meta.description,
         installed: false,
-        models: normalizeModelOptions(meta.models),
+        models: fallbackModels,
         defaultModel: meta.defaultModel,
       };
     }
@@ -57,31 +51,16 @@ export async function detectAiCliProviders(): Promise<DetectedAiCli[]> {
       readVersion(command).catch(() => undefined),
       id === 'codex-cli' ? readCodexModels(command).catch(() => []) : Promise.resolve([]),
     ]);
-    const hasCursorKeyForRuntime = id !== 'cursor-cli' || isCursorApiKeyConfigured();
-    const detectedModels =
-      id === 'claude-cli'
-        ? normalizeModelOptions(meta.models)
-        : id === 'codex-cli'
-          ? normalizeModelOptions(codexModels)
-          : [];
-    const models =
-      detectedModels.length > 0 ? detectedModels : normalizeModelOptions(meta.models);
-    const defaultModel = meta.defaultModel;
-    const description =
-      id === 'cursor-cli' && !hasCursorKeyForRuntime
-        ? `${meta.description} · agent 설치됨 · API 키 필요`
-        : version
-          ? `${meta.description} · ${version}`
-          : meta.description;
+    const detectedModels = normalizeModelOptions(codexModels);
     return {
       id,
       label: meta.label,
-      description,
-      installed: hasCursorKeyForRuntime,
+      description: version ? `${meta.description} · ${version}` : meta.description,
+      installed: true,
       command,
       version,
-      models,
-      defaultModel,
+      models: detectedModels.length > 0 ? detectedModels : fallbackModels,
+      defaultModel: meta.defaultModel,
     };
   }));
 }

@@ -3,8 +3,9 @@ import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../../../../runtime/engine.js';
 import type { WorkflowIR } from '../../../../../workflow/schema.js';
+import type { AxUiPresentation } from '../../schema.js';
 import { AxCommandService } from '../../service.js';
-import { commandChatContext } from '../fixtures.js';
+import { commandChatContext, executeConfirmedMutation } from '../fixtures.js';
 describe('AxCommandService versioned workflow commands', () => {
   it('creates, updates, and deletes through one versioned command boundary', async () => {
     const db = await createDatabaseAsync(':memory:');
@@ -16,7 +17,7 @@ describe('AxCommandService versioned workflow commands', () => {
     expect(created.status).toBe('ok');
     const createdData = created.data as { workflowId: string; version: number };
     expect(createdData.version).toBe(1);
-    const updated = await service.execute({
+    const updated = await executeConfirmedMutation(service, {
       name: 'workflow.update',
       args: {
         workflowId: createdData.workflowId,
@@ -39,7 +40,7 @@ describe('AxCommandService versioned workflow commands', () => {
     expect(updated.status).toBe('ok');
     expect(updated.data).toMatchObject({ version: 2, workflow: { name: '수정된 workflow' } });
 
-    const stale = await service.execute({
+    const stale = await executeConfirmedMutation(service, {
       name: 'workflow.update',
       args: {
         workflowId: createdData.workflowId,
@@ -48,7 +49,7 @@ describe('AxCommandService versioned workflow commands', () => {
       },
     }, { ...commandChatContext, currentWorkflowId: createdData.workflowId });
     expect(stale.status).toBe('conflict');
-    const deleted = await service.execute({
+    const deleted = await executeConfirmedMutation(service, {
       name: 'workflow.delete',
       args: { workflowId: createdData.workflowId, baseVersion: 2 },
     }, { ...commandChatContext, currentWorkflowId: createdData.workflowId });
@@ -65,7 +66,7 @@ describe('AxCommandService versioned workflow commands', () => {
         args: { name: '삭제 순서 테스트', goal: 'runtime 정리 후 삭제' },
       }, commandChatContext);
       const workflowId = (created.data as { workflowId: string }).workflowId;
-      const deleted = await service.execute({
+      const deleted = await executeConfirmedMutation(service, {
         name: 'workflow.delete',
         args: { workflowId, baseVersion: 1 },
       }, { ...commandChatContext, currentWorkflowId: workflowId });
@@ -125,10 +126,16 @@ describe('AxCommandService versioned workflow commands', () => {
     try {
       run = runtime.executeWorkflow(workflow);
       await enteredPromise;
-      const deletion = service.execute({
+      const deleteOptions = { ...commandChatContext, workspaceSessionId: 'delete-session', currentWorkflowId: workflow.id };
+      const proposed = await service.execute({
         name: 'workflow.delete',
         args: { workflowId: workflow.id, baseVersion: workflow.version },
-      }, { ...commandChatContext, currentWorkflowId: workflow.id });
+      }, deleteOptions);
+      const action = (proposed.data as { presentation: AxUiPresentation }).presentation.actions[0]!;
+      const deletion = service.execute({ name: 'mutation.commit', args: {} }, {
+        ...deleteOptions,
+        mutationConfirmationToken: action.id.slice('confirm_mutation:'.length),
+      });
 
       await expect(runtime.executeWorkflow(workflow)).rejects.toMatchObject({ code: 'workflow_removed' });
       await expect(run).resolves.toMatchObject({ status: 'cancelled', errorCode: 'cancelled' });
@@ -163,13 +170,13 @@ describe('AxCommandService versioned workflow commands', () => {
         args: { name: '경쟁 조건 테스트', goal: '삭제와 수정의 순서를 보장한다' },
       }, commandChatContext);
       const workflowId = (created.data as { workflowId: string }).workflowId;
-      const deletion = service.execute({
+      const deletion = executeConfirmedMutation(service, {
         name: 'workflow.delete',
         args: { workflowId, baseVersion: 1 },
       }, { ...commandChatContext, currentWorkflowId: workflowId });
       await removalStarted;
 
-      const update = await service.execute({
+      const update = await executeConfirmedMutation(service, {
         name: 'workflow.update',
         args: {
           workflowId,
@@ -201,7 +208,7 @@ describe('AxCommandService versioned workflow commands', () => {
         args: { name: '삭제 실패 테스트', goal: '실패 시 보존' },
       }, commandChatContext);
       const workflowId = (created.data as { workflowId: string }).workflowId;
-      const deleted = await service.execute({
+      const deleted = await executeConfirmedMutation(service, {
         name: 'workflow.delete',
         args: { workflowId, baseVersion: 1 },
       }, { ...commandChatContext, currentWorkflowId: workflowId });
@@ -209,7 +216,7 @@ describe('AxCommandService versioned workflow commands', () => {
       expect(deleted).toMatchObject({ status: 'error' });
       expect(store.getWorkflow(workflowId)).toBeDefined();
 
-      const updated = await service.execute({
+      const updated = await executeConfirmedMutation(service, {
         name: 'workflow.update',
         args: {
           workflowId,
@@ -218,6 +225,36 @@ describe('AxCommandService versioned workflow commands', () => {
         },
       }, { ...commandChatContext, currentWorkflowId: workflowId });
       expect(updated.status).toBe('ok');
+    } finally {
+      db.close?.();
+    }
+  });
+  it('turns off external auto-send on any executable change even for an inactive workflow', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const service = new AxCommandService(store);
+    try {
+      const { workflowId } = store.saveWorkflow({
+        id: 'workflow-auto-inactive', name: '자동 발송 테스트', goal: '변경 시 재동의', version: 1, inputs: [],
+        steps: [], permissions: {}, approval: [], allowExternalAuto: true,
+        assumptions: [], sideEffects: {}, dataPolicy: {},
+      });
+      expect(store.isWorkflowActive(workflowId)).toBe(false);
+      const renamed = await executeConfirmedMutation(service, {
+        name: 'workflow.update',
+        args: { workflowId, baseVersion: 1, operations: [{ op: 'set', path: 'name', value: '이름만 변경' }] },
+      }, { ...commandChatContext, currentWorkflowId: workflowId });
+      expect(renamed.status).toBe('ok');
+      expect(store.getWorkflow(workflowId)?.allowExternalAuto).toBe(true);
+
+      const changed = await executeConfirmedMutation(service, {
+        name: 'workflow.update',
+        args: { workflowId, baseVersion: 2, operations: [{ op: 'upsert_step', step: {
+          type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'hi' },
+        } }] },
+      }, { ...commandChatContext, currentWorkflowId: workflowId });
+      expect(changed).toMatchObject({ status: 'ok', data: { externalAutoReset: true } });
+      expect(store.getWorkflow(workflowId)?.allowExternalAuto).toBe(false);
     } finally {
       db.close?.();
     }

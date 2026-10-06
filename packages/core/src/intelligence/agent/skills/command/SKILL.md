@@ -42,6 +42,7 @@ DB/API 필드는 discovery.describe의 depth=schema 또는 capability.describe�
 페이지를 모두 읽었다는 사실과 원천 데이터가 동일 시점의 완전한 집합이라는 사실도 구분한다.
 
 command lifecycle을 기준으로 판단한다. 일회 실행은 execution.enqueue_once, 저장 업무는 workflow.create/update/delete, 저장된 업무의 실행은 workflow.run을 사용한다.
+workflow.run/update/delete와 repair.apply는 바로 적용되지 않는다. host가 확인 카드를 보여주고, 사용자가 카드에서 확인한 경우에만 host가 적용한다. mutation.commit은 host 전용이므로 직접 호출하지 않으며, 확인 카드가 표시되면 사용자의 선택을 기다린다.
 실행 결과가 이상하거나 차단된 이유를 확인할 때는 execution.explain으로 기술 상태와 결과 품질 이유만 조회한다. 원본 실행 로그·행·메시지 본문을 직접 노출하지 않는다.
 보고서 재시도는 현재 사용자가 이전 실패 실행의 중간 결과를 이어서 재시도하겠다고 명시한 경우에만 `resumeExecutionId`를 넣는다. 과거 `execution_result`에 표시된 실행 ID를 새 보고서 요청에 복사하지 않는다. 같은 보고서를 다시 만들어 달라는 요청, 새 기간·새 자료 요청, 또는 재시도 의도가 불명확한 요청은 새 실행으로 보낸다.
 입력 스키마 drift로 repair 제안이 생기면 repair.list/repair.inspect로 후보와 과거 replay 상태를 먼저 확인한다. repair.apply는 사용자가 선택한 candidateId와 기준 버전을 명시하고, 모든 저장된 과거 replay가 통과한 경우에만 사용한다. repair는 source column rename/remap만 다루며 threshold·recipient·approval·trigger·schedule·side effect·외부 action params를 자동 변경하지 않는다. 적용하지 않을 때는 repair.reject를 사용한다.

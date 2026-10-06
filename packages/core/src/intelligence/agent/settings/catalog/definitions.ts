@@ -1,8 +1,6 @@
 import type { AiBrand, CliProviderId } from '../ai-provider-id.js';
 import { CLAUDE_META } from '../providers/claude/meta.js';
 import { OPENAI_META } from '../providers/openai/meta.js';
-import { CURSOR_META } from '../providers/cursor/meta.js';
-import { GROK_META } from '../providers/grok/meta.js';
 import { OLLAMA_META } from '../providers/ollama/meta.js';
 import type { CliModelOption } from '../model-options.js';
 
@@ -28,13 +26,6 @@ export const CLI_PROVIDER_META: Record<CliProviderId, CliProviderMeta> = {
     binaries: OPENAI_META.binaries,
     defaultModel: OPENAI_META.defaultModel,
     models: OPENAI_META.cliModels,
-  },
-  'cursor-cli': {
-    label: CURSOR_META.label,
-    description: CURSOR_META.description,
-    binaries: CURSOR_META.binaries,
-    defaultModel: CURSOR_META.defaultModel,
-    models: CURSOR_META.models,
   },
 };
 
@@ -69,16 +60,6 @@ export const AI_BRAND_CATALOG: Record<AiBrand, AiBrandCatalogEntry> = {
     apiModels: OPENAI_META.apiModels,
     apiDefaultModel: OPENAI_META.apiDefaultModel,
     enabled: true,
-  },
-  grok: {
-    id: 'grok',
-    title: 'Grok',
-    description: GROK_META.description,
-    cliProviderId: 'cursor-cli',
-    envKey: GROK_META.envKey,
-    apiModels: GROK_META.apiModels,
-    apiDefaultModel: GROK_META.apiDefaultModel,
-    enabled: false,
   },
   ollama: {
     id: 'ollama',

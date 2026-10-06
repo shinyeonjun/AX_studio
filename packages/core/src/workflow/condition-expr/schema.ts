@@ -7,7 +7,25 @@ export const ConditionValueSchema = z.union([
 
 export type ConditionValue = z.infer<typeof ConditionValueSchema>;
 
-export const ConditionExprSchema: z.ZodType<ConditionExpr> = z.lazy(() =>
+/** Maximum JSON nesting accepted for stored/LLM-authored ConditionExpr and TransformExpr trees. */
+export const MAX_EXPRESSION_NESTING_DEPTH = 64;
+
+/** Bounded walk: never recurses deeper than the limit, so hostile input cannot overflow the stack. */
+export function exceedsNestingDepth(value: unknown, limit = MAX_EXPRESSION_NESTING_DEPTH): boolean {
+  if (!value || typeof value !== 'object') return false;
+  if (limit <= 0) return true;
+  const children = Array.isArray(value) ? value : Object.values(value as Record<string, unknown>);
+  return children.some((child) => exceedsNestingDepth(child, limit - 1));
+}
+
+/** Rejects over-deep input before the recursive schema descends into it. */
+export function depthLimited<T>(schema: z.ZodType<T>, label: string): z.ZodType<T> {
+  return z.custom<T>((value) => !exceedsNestingDepth(value), {
+    message: `${label} 중첩 깊이가 ${MAX_EXPRESSION_NESTING_DEPTH}를 넘습니다.`,
+  }).pipe(schema);
+}
+
+export const ConditionExprSchema: z.ZodType<ConditionExpr> = depthLimited(z.lazy(() =>
   z.union([
     z.object({
       op: z.enum(['eq', 'neq', 'contains', 'gt', 'gte', 'lt', 'lte']),
@@ -23,7 +41,7 @@ export const ConditionExprSchema: z.ZodType<ConditionExpr> = z.lazy(() =>
       arg: ConditionExprSchema,
     }),
   ]),
-);
+), 'ConditionExpr');
 
 export type ConditionExpr = {
   op: 'eq' | 'neq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte';

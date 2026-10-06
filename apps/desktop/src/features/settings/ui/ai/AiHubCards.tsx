@@ -53,7 +53,7 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
                     ? `${meta.title} 선택`
                     : `${meta.title} 설정 열기`
               }
-              aria-pressed={isActive}
+              aria-pressed={isActive ? undefined : false}
               onClick={() => handleCardActivate(brand, status)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {

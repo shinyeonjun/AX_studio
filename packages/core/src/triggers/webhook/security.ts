@@ -2,6 +2,18 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const WEBHOOK_MAX_PAYLOAD_BYTES = 262_144;
 const WEBHOOK_SIGNATURE_MAX_SKEW_MS = 5 * 60 * 1_000;
+/** Minimum length for newly configured shared secrets (32 chars ~ 192+ bits for random secrets). */
+export const WEBHOOK_MIN_SECRET_LENGTH = 32;
+
+export function isWebhookSecretStrong(secret: string): boolean {
+  return secret.trim().length >= WEBHOOK_MIN_SECRET_LENGTH;
+}
+
+/** True when an `x-ax-timestamp` value (unix seconds) is within the accepted clock skew. */
+export function isWebhookTimestampFresh(timestamp: string, now = Date.now()): boolean {
+  const seconds = Number(timestamp);
+  return Number.isFinite(seconds) && Math.abs(now - seconds * 1_000) <= WEBHOOK_SIGNATURE_MAX_SKEW_MS;
+}
 
 export function normalizeWebhookPath(path: string): string {
   const trimmed = path.trim().replace(/^\/+/, '').replace(/\/+$/, '');
@@ -62,6 +74,57 @@ export class WebhookReplayCache {
   }
 }
 
+const FAILED_AUTH_THRESHOLD = 5;
+const FAILED_AUTH_WINDOW_MS = 60_000;
+const FAILED_AUTH_BASE_BLOCK_MS = 1_000;
+const FAILED_AUTH_MAX_BLOCK_MS = 5 * 60 * 1_000;
+
+interface FailedAuthEntry {
+  failures: number;
+  firstFailureAt: number;
+  blockedUntil: number;
+}
+
+/**
+ * Per-client failed-auth backoff. After a few failures inside a window the
+ * client is blocked with an exponentially growing delay, so a shared secret
+ * cannot be brute-forced at line rate. Memory is bounded by `maxClients`.
+ */
+export class WebhookAuthFailureLimiter {
+  private readonly entries = new Map<string, FailedAuthEntry>();
+
+  constructor(private readonly maxClients = 4_096) {}
+
+  /** Milliseconds the client must wait before another attempt (0 = allowed). */
+  retryAfterMs(client: string, now = Date.now()): number {
+    const entry = this.entries.get(client);
+    if (!entry) return 0;
+    return Math.max(0, entry.blockedUntil - now);
+  }
+
+  recordFailure(client: string, now = Date.now()): void {
+    let entry = this.entries.get(client);
+    if (!entry || (now - entry.firstFailureAt > FAILED_AUTH_WINDOW_MS && entry.blockedUntil <= now)) {
+      entry = { failures: 0, firstFailureAt: now, blockedUntil: 0 };
+    }
+    entry.failures += 1;
+    if (entry.failures >= FAILED_AUTH_THRESHOLD) {
+      const exponent = entry.failures - FAILED_AUTH_THRESHOLD;
+      entry.blockedUntil = now + Math.min(FAILED_AUTH_MAX_BLOCK_MS, FAILED_AUTH_BASE_BLOCK_MS * 2 ** Math.min(exponent, 20));
+    }
+    this.entries.delete(client);
+    if (this.entries.size >= this.maxClients) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest !== undefined) this.entries.delete(oldest);
+    }
+    this.entries.set(client, entry);
+  }
+
+  recordSuccess(client: string): void {
+    this.entries.delete(client);
+  }
+}
+
 /** Validates shared secret header or HMAC signature (sha256=). */
 export function verifyWebhookAuth(
   headers: Record<string, string | string[] | undefined>,
@@ -74,8 +137,7 @@ export function verifyWebhookAuth(
   const signature = readHeader(headers, 'x-ax-signature');
   if (signature?.startsWith('sha256=')) {
     if (!signatureContext) return false;
-    const timestamp = Number(signatureContext.timestamp);
-    if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp * 1_000) > WEBHOOK_SIGNATURE_MAX_SKEW_MS) return false;
+    if (!isWebhookTimestampFresh(signatureContext.timestamp)) return false;
     const expected = createHmac('sha256', secret)
       .update(webhookSignaturePayload(signatureContext, rawBody))
       .digest('hex');

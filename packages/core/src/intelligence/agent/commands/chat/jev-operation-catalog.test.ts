@@ -58,6 +58,94 @@ describe('buildJevReadOperationHints', () => {
     }));
   });
 
+  it('does not bind Top-N superlative ordering count literals to API query.limit and never invents a category path', () => {
+    const selection = buildJevReadOperationIndex([{
+      connector: 'http',
+      connected: true,
+      config: { endpoints: [{
+        id: 'dummyjson',
+        baseUrl: 'https://dummyjson.com/',
+        label: 'DummyJSON',
+        authType: 'none',
+        discoveredReadOperations: [{ path: 'products', label: 'Products' }],
+      }] },
+    }]).select('DummyJSON에서 스마트폰 재고 제일 적은 거 3개 알려줘');
+
+    const productsHint = selection.hints.find((h) => h.label === 'DummyJSON: Products');
+    expect(productsHint).toBeDefined();
+    // 3 should NOT be offered as a limit choice for API fetch
+    const limitHint = productsHint?.parameterHints?.find((p) => p.path === 'query.limit');
+    expect(limitHint?.choices).toBeUndefined();
+    // Only service-advertised paths are offered; the host never maps words to demo category slugs.
+    expect(productsHint?.params.path).toBe('products');
+    expect(productsHint?.description).not.toMatch(/스마트폰|smartphones/u);
+  });
+
+  it('exposes advertised category and search paths as separate catalog operations for Jev', () => {
+    const selection = buildJevReadOperationIndex([{
+      connector: 'http',
+      connected: true,
+      config: { endpoints: [{
+        id: 'dummyjson',
+        baseUrl: 'https://dummyjson.com/',
+        label: 'DummyJSON',
+        authType: 'none',
+        discoveredReadOperations: [
+          { path: 'products', label: 'Products' },
+          { path: 'products/category/smartphones', label: 'Smartphones' },
+          { path: 'products/search', label: 'Product search' },
+        ],
+      }] },
+    }]);
+
+    const searched = selection.select('DummyJSON에서 query=iphone 검색해줘').hints;
+    expect(searched).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'DummyJSON: Smartphones', params: expect.objectContaining({ path: 'products/category/smartphones' }) }),
+      expect.objectContaining({
+        label: 'DummyJSON: Product search',
+        params: expect.objectContaining({ path: 'products/search', query: { q: 'iphone' } }),
+        parameterHints: expect.arrayContaining([expect.objectContaining({ path: 'query.q', required: true })]),
+      }),
+    ]));
+    const unsearched = selection.select('DummyJSON 상품 검색').hints.find((hint) => hint.label === 'DummyJSON: Product search');
+    expect(unsearched?.missingParameterPaths).toEqual(['query.q']);
+  });
+
+  it('lets an OpenAPI category path parameter be chosen from the spec enum, not a host word map', () => {
+    const [hint] = buildJevReadOperationHints([{
+      connector: 'openapi',
+      connected: true,
+      config: {
+        specId: 'dummyjson',
+        label: 'DummyJSON',
+        baseUrl: 'https://dummyjson.com',
+        specJson: {
+          openapi: '3.0.0',
+          info: { title: 'DummyJSON' },
+          servers: [{ url: 'https://dummyjson.com' }],
+          paths: {
+            '/products/category/{category}': {
+              get: {
+                operationId: 'listProductsByCategory',
+                summary: '카테고리별 상품 목록',
+                parameters: [{
+                  name: 'category', in: 'path', required: true,
+                  schema: { type: 'string', enum: ['smartphones', 'laptops', 'furniture'] },
+                }],
+              },
+            },
+          },
+        },
+      },
+    }], '스마트폰 상품 보여줘');
+
+    expect(hint).toMatchObject({
+      capabilityId: 'openapi.dummyjson.listProductsByCategory',
+      missingParameterPaths: ['pathParams.category'],
+      parameterHints: [expect.objectContaining({ path: 'pathParams.category', choices: ['smartphones', 'laptops', 'furniture'] })],
+    });
+  });
+
   it('offers OpenAPI numeric literals for Jev to interpret as limit values', () => {
     const hints = buildJevReadOperationHints([
       {

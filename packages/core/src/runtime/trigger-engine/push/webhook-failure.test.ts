@@ -1,10 +1,16 @@
 import { createServer } from 'node:http';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setWebhookSecretResolver } from '../../../triggers/webhook/secret-provider.js';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
 import { createTestConnectors } from '../../../testing/connectors/test-connectors.js';
 import { TriggerEngine } from '../../trigger-engine.js';
+
+const HOOK_SECRET = 'hook-secret-0123456789abcdefghijklmnop';
+
+beforeEach(() => setWebhookSecretResolver((config) => (config as { secret?: string }).secret ?? null));
+afterEach(() => setWebhookSecretResolver(null));
 
 describe('TriggerEngine webhook startup failure', () => {
   it('reports a listener startup failure when the configured port is occupied', async () => {
@@ -27,7 +33,7 @@ describe('TriggerEngine webhook startup failure', () => {
     });
     store.setConnection('webhook', true, {
       port,
-      secret: 'hook-secret',
+      secret: HOOK_SECRET,
       secretStored: true,
     });
     const engine = new TriggerEngine(store, runtime);

@@ -71,7 +71,18 @@ export async function runManualWorkflow(
     );
   }
 
-  const enrichedInput = await enrichManualRunInput(ir, deps.runtime.connectors, input);
+  let enrichedInput: Record<string, unknown>;
+  try {
+    enrichedInput = await enrichManualRunInput(ir, deps.runtime.connectors, input);
+  } catch (error) {
+    return recordManualRunFailure(
+      deps,
+      ir,
+      options,
+      (error as { code?: string }).code ?? 'manual_run_input_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   const validation = validateManualRunInput(ir, enrichedInput);
   if (!validation.ok) {
     return recordManualRunFailure(deps, ir, options, validation.errorCode, validation.message);

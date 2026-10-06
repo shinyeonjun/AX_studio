@@ -59,13 +59,16 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
             onChange={(e) => setExplainQ(e.target.value)}
             placeholder="실행이 멈췄거나 실패한 이유를 물어보세요"
             disabled={!canExplain || explaining}
-            onKeyDown={(e) => e.key === 'Enter' && void askExplain()}
+            onKeyDown={(e) => {
+              // Korean IME commits the composition with Enter; only a real Enter submits.
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void askExplain();
+            }}
           />
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => void askExplain()}
-            disabled={!canExplain || explaining}
+            disabled={!canExplain || explaining || !explainQ.trim()}
           >
             {explaining ? '분석 중…' : '묻기'}
           </button>

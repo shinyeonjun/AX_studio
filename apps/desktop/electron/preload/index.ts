@@ -87,8 +87,12 @@ contextBridge.exposeInMainWorld('ax', {
   deleteWorkspaceChat: (id: string) => ipcRenderer.invoke('ax:deleteWorkspaceChat', id),
   listWorkspaceSources: (sessionId: string) => ipcRenderer.invoke('ax:listWorkspaceSources', sessionId),
   attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
-  ...(process.env.AX_E2E === '1'
-    && (process.defaultApp === true || process.env.AX_PRODUCT_QA === '1')
+  exportDiagnostics: () => ipcRenderer.invoke('ax:exportDiagnostics'),
+  openLogFolder: () => ipcRenderer.invoke('ax:openLogFolder'),
+  // The main process adds this switch only for unpackaged AX_E2E runs, the
+  // same gate its e2e IPC handlers use; environment variables alone never
+  // expose these stubs in a packaged app.
+  ...(process.argv.includes('--ax-e2e-stubs')
     ? {
         e2eSetWorkspaceSourcePath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetWorkspaceSourcePath', filePath),
         e2eSetDiscoveryArtifactPath: (filePath: string) => ipcRenderer.invoke('ax:e2eSetDiscoveryArtifactPath', filePath),

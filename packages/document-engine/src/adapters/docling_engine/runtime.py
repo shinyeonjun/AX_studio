@@ -110,9 +110,12 @@ def _render_pdf_page(source_path: Path, page_index: int, dest: Path, *, scale: f
     try:
         import pypdfium2 as pdfium
 
+        from engine_limits import clamp_render_scale
+
         document = pdfium.PdfDocument(str(source_path))
         page = document[page_index]
-        bitmap = page.render(scale=scale)
+        width, height = page.get_size()
+        bitmap = page.render(scale=clamp_render_scale(width, height, scale))
         image = bitmap.to_pil()
         return _save_pil_image(image, dest)
     except Exception:

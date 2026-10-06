@@ -32,6 +32,25 @@ class DoclingTableBackfillTest(unittest.TestCase):
     def test_latin_native_text_is_not_misclassified_as_garbage_ocr(self) -> None:
         self.assertFalse(_looks_like_garbage_ocr("This is a normal native PDF paragraph with no Korean text."))
 
+    def test_hangul_native_text_is_not_garbage_ocr(self) -> None:
+        self.assertFalse(_looks_like_garbage_ocr("이 문서는 정상적인 한국어 본문입니다. 월별 정산 내역을 포함합니다."))
+
+    def test_sparse_hangul_in_long_text_is_garbage_ocr(self) -> None:
+        self.assertTrue(_looks_like_garbage_ocr("가 xx1 yy2 zz3 ww4 vv5 uu6 tt7 ss8 rr9"))
+
+    def test_excerpt_starts_at_invoice_title_and_skips_memo_labels(self) -> None:
+        ocr_text = (
+            "머리말 영역\n"
+            "CloudOps 정산서\n"
+            "메모\n1,000원\n"
+            "GPU Worker\n5,400,000원\n"
+        )
+        excerpt = _table_like_ocr_excerpt(ocr_text).splitlines()
+        self.assertEqual(excerpt[0], "CloudOps 정산서")
+        self.assertNotIn("메모", excerpt)
+        self.assertNotIn("머리말 영역", excerpt)
+        self.assertIn("GPU Worker", excerpt)
+
 
 if __name__ == "__main__":
     unittest.main()

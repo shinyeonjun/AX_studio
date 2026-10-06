@@ -87,6 +87,26 @@ function rowsAtPath(value: unknown, rowsPath?: string):
   return { ok: true, rows: selected };
 }
 
+const ENVELOPE_TOTAL_KEYS = ['total', 'totalCount', 'total_count', 'totalResults', 'total_results'];
+
+/**
+ * Paginated APIs wrap a page in an envelope (`{ products: [...30], total: 194 }`). When the
+ * object holding the row array says more rows exist, the table is only a page: sorting or
+ * ranking it must not be presented as covering the whole source.
+ */
+function envelopeHasMore(json: unknown, rowsPath: string | undefined, pageRows: number): boolean {
+  const path = rowsPath?.trim();
+  if (!path) return false;
+  const parentPath = path.split('.').slice(0, -1).join('.');
+  const envelope = parentPath ? readPath(json, parentPath) : json;
+  if (!isRow(envelope)) return false;
+  if (envelope.hasMore === true || envelope.has_more === true) return true;
+  return ENVELOPE_TOTAL_KEYS.some((key) => {
+    const total = envelope[key];
+    return typeof total === 'number' && Number.isFinite(total) && total > pageRows;
+  });
+}
+
 /**
  * Convert a JSON HTTP response into a table only with an explicit row path
  * when the root is not already an array. This keeps response-shape decisions
@@ -135,6 +155,12 @@ export function httpResponseToTable(
   } else if (parsed.data.completeness.status !== 'complete') {
     table.truncated = true;
     table.completeness = { ...parsed.data.completeness, observedCount: table.rows.length };
+  } else if (envelopeHasMore(json, options.rowsPath, rows.rows.length)) {
+    table.truncated = true;
+    table.completeness = partialArtifactCompleteness('provider_limit', {
+      observedCount: table.rows.length,
+      hasMore: true,
+    });
   }
   return { ok: true, table: TableArtifactSchema.parse(table) };
 }

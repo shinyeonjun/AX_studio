@@ -14,6 +14,7 @@ import {
   openSettingsLink,
   openSidebarTab,
   pageTitleText,
+  confirmDiscoveryRule,
   publishDiscovery,
   readVisibleMessages,
   startDiscoveryFixture,
@@ -217,6 +218,10 @@ export class StepRunner {
       }
       case 'waitForDiscovery': {
         await waitForDiscoveryStatus(page, step.status, step.timeoutMs ?? 30_000);
+        return;
+      }
+      case 'confirmDiscoveryRule': {
+        await confirmDiscoveryRule(page);
         return;
       }
       case 'publishDiscovery': {

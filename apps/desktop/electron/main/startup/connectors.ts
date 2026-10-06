@@ -6,6 +6,10 @@ import { hydrateHttpConnector } from '../http/connection.js';
 import { hydrateWebhookConnection } from '../webhook/connection.js';
 import { hydrateRdbConnector } from '../rdb/connection.js';
 import { hydrateOpenApiConnector } from '../openapi/connection.js';
+import { isCredentialUnavailableError } from '../credential-store.js';
+
+/** Stored on the connection when its saved credential can no longer be read. */
+export const CREDENTIAL_UNAVAILABLE_ERROR = '저장된 자격 증명을 읽을 수 없습니다. 설정에서 다시 연결하세요.';
 
 type DesktopCore = Awaited<ReturnType<typeof createAxStudioCore>>;
 
@@ -16,13 +20,33 @@ export async function hydrateConnectorsForStartup(
   const savedMockMcp = core.store.getConnections().find((entry) => entry.connector === 'mcp');
   if (savedMockMcp?.connected) core.store.setConnection('mcp', false, savedMockMcp.config);
 
+  // Each connector hydrates in isolation: one unreadable secret (DPAPI/keyring
+  // change, truncated file) must not stop the app or the other connectors.
   async function runStep<T>(label: string, step: () => Promise<T>, fallback: T): Promise<T> {
     try {
       return await step();
     } catch (err) {
-      if (!tolerateHydrationFailure) throw err;
-      console.warn(`[AX Studio] E2E: skipped ${label} hydration:`, err);
+      const code = (err as { code?: unknown } | null)?.code;
+      if (tolerateHydrationFailure) {
+        console.warn(`[AX Studio] E2E: skipped ${label} hydration:`, err);
+        return fallback;
+      }
+      console.error(`[AX Studio] ${label} connector hydration failed`, { code });
+      if (isCredentialUnavailableError(err)) markCredentialUnavailable(label);
       return fallback;
+    }
+  }
+
+  function markCredentialUnavailable(connector: string): void {
+    try {
+      const saved = core.store.getConnections().find((entry) => entry.connector === connector);
+      if (!saved) return;
+      const config = saved.config && typeof saved.config === 'object' && !Array.isArray(saved.config)
+        ? saved.config as Record<string, unknown>
+        : {};
+      core.store.setConnection(connector, false, { ...config, lastError: CREDENTIAL_UNAVAILABLE_ERROR });
+    } catch (error) {
+      console.error(`[AX Studio] could not record ${connector} credential failure`, error);
     }
   }
 

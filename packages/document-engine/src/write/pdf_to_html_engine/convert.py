@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 import json
-import shutil
+import re
 from pathlib import Path
 from typing import Any
 
-from artifact_store import sha256_file, utc_now_iso
+from artifact_store import atomic_copy_file, atomic_write_text, sha256_file, utc_now_iso
 from ingest_options import normalize_ocr
 from parser_config import parser_cache_fingerprint
 
 from .cache import _load_meta, _meta_usable, _template_dir
 from .contracts import PdfToHtmlResult, _PDF_HTML_FORMAT_VERSION
 from .engines import _convert_pdf_to_html, _resolve_engine
+
+_HANDLEBARS_OPEN = re.compile(r"\{(?=\{)")
+
+
+def escape_template_braces(html: str) -> str:
+    """Neutralize ``{{`` that came from PDF text so it cannot act as a Handlebars tag.
+
+    Each ``{`` followed by another ``{`` becomes ``&#123;``: browsers still render
+    the literal braces, while the template compiler no longer sees an opener.
+    Idempotent, so it is also applied to templates cached by older versions.
+    """
+    return _HANDLEBARS_OPEN.sub("&#123;", html)
 
 
 def convert_pdf_to_html(
@@ -48,15 +60,16 @@ def convert_pdf_to_html(
             meta_path=str(meta_path),
             engine=str(existing.get("engine") or resolved_engine),
             page_count=int(existing.get("pageCount") or 1),
-            html=html_path.read_text(encoding="utf-8"),
+            html=escape_template_braces(html_path.read_text(encoding="utf-8")),
             cached=True,
         )
 
     html, page_count, used_engine = _convert_pdf_to_html(source_path, engine, ocr_mode)
+    html = escape_template_braces(html)
     root.mkdir(parents=True, exist_ok=True)
-    html_path.write_text(html, encoding="utf-8")
+    atomic_write_text(html_path, html)
     if not original_pdf_path.exists() or sha256_file(original_pdf_path) != template_id:
-        shutil.copy2(source_path, original_pdf_path)
+        atomic_copy_file(source_path, original_pdf_path)
 
     meta = {
         "templateId": template_id,
@@ -82,7 +95,7 @@ def convert_pdf_to_html(
                 "printPageSize": "A4",
             }
         )
-    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_text(meta_path, json.dumps(meta, ensure_ascii=False, indent=2))
 
     return PdfToHtmlResult(
         template_id=template_id,

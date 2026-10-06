@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -166,5 +166,43 @@ describe('document.pdf.form.fill successful output', () => {
         mimeType: 'application/pdf',
       }),
     }));
+  });
+
+  it('writes each run to its own scratch output and removes it after storing the artifact', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-filled-report-'));
+    const templatePath = join(root, 'template.pdf');
+    writeFileSync(templatePath, '%PDF-1.7 template');
+    const outputs: string[] = [];
+    const engine = new MockDocumentEngineClient();
+    engine.pdfFormFill = async (_path, options): Promise<PdfFormFillResult> => {
+      outputs.push(options.outputPath!);
+      writeFileSync(options.outputPath!, '%PDF-1.7 filled');
+      return {
+        sourcePath: templatePath, outputPath: options.outputPath!, sourceHash: 's', outputHash: 'o',
+        pageCount: 1, fieldCount: 1, writerEngine: 'pypdf-reportlab', verified: true,
+        interactive: false, sourceUnchanged: true,
+      };
+    };
+    setDocumentEngineClient(engine);
+    const ctx = (): ConnectorContext => ({
+      executionId: 'execution-filled-pdf-scratch',
+      variables: {},
+      connections: [{
+        connector: 'local_folder',
+        connected: true,
+        config: { folders: [{ id: 'folder-1', label: 'fixture', path: root }] },
+      }],
+      artifactSink: new ArtifactStore(join(root, 'generated')),
+      log: vi.fn(),
+    });
+
+    const results = await Promise.all([
+      pdfFormFill({ path: templatePath, template: {}, values: { a: 1 } }, ctx()),
+      pdfFormFill({ path: templatePath, template: {}, values: { a: 2 } }, ctx()),
+    ]);
+
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(new Set(outputs).size).toBe(2);
+    expect(outputs.some((output) => existsSync(output))).toBe(false);
   });
 });

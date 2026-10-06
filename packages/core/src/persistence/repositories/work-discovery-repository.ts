@@ -7,6 +7,8 @@ export {
   insertDiscoverySession,
   updateDiscoverySession,
   getDiscoverySession,
+  bindDiscoverySessionWorkspace,
+  getDiscoverySessionWorkspace,
   listDiscoverySessions,
 } from './work-discovery-repository/sessions.js';
 export {

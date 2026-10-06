@@ -1,5 +1,5 @@
 export type HttpAuthType = 'none' | 'bearer' | 'apiKey' | 'basic';
-export type RdbType = 'sqlite' | 'postgres' | 'mysql';
+type RdbType = 'sqlite' | 'postgres' | 'mysql';
 
 export interface ConnectionEntry {
   connector: string;

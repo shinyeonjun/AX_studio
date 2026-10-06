@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 import type { DiscoveryInspectView } from '@ax-studio/core';
 import { TERMINAL_STATUSES, commandError, unwrap } from './use-discovery/result.js';
 import { useDiscoveryActions } from './use-discovery/actions.js';
@@ -64,7 +65,7 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
       setError(commandError(result, '업무 발견 상태를 불러오지 못했습니다.').message);
     } catch (err) {
       if (isCurrent()) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(ipcErrorMessage(err));
       }
     }
     return null;

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
+import { writeFileAtomicSync } from '../atomic-write.js';
 import type { DocumentArtifact } from '../../contracts/artifacts/document.js';
 import type { ArtifactStore } from '../artifact-store.js';
 import type { WorkflowStore } from '../workflow-store.js';
@@ -46,11 +47,11 @@ export function writeSourceManifest(
 ): void {
   const sourceDir = join(sessionsRoot, source.sessionId, 'sources', source.id);
   mkdirSync(sourceDir, { recursive: true });
-  writeFileSync(join(sourceDir, 'manifest.json'), JSON.stringify({ source: manifestSource(source) }, null, 2));
+  writeFileAtomicSync(join(sourceDir, 'manifest.json'), JSON.stringify({ source: manifestSource(source) }, null, 2));
   if (source.status !== 'ready' || !source.documentArtifactId) return;
   const document = artifactStore.getDocumentArtifact<DocumentArtifact>(source.documentArtifactId);
   if (!document) return;
-  writeFileSync(join(sourceDir, 'docling.json'), JSON.stringify({
+  writeFileAtomicSync(join(sourceDir, 'docling.json'), JSON.stringify({
     sourceId: source.id,
     artifactId: source.artifactId,
     document: publicDocument(document),

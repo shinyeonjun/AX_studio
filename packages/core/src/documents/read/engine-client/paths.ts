@@ -26,9 +26,36 @@ function pythonInVenv(engineRoot: string): string {
     : join(engineRoot, '.venv', 'bin', 'python');
 }
 
+export interface DocumentEnginePathOptions {
+  /**
+   * Honor AX_DOCUMENT_ENGINE_WORKER / AX_DOCUMENT_ENGINE_PYTHON. Packaged builds must
+   * not let an inherited environment swap the bundled worker or interpreter.
+   */
+  allowEnvOverrides?: boolean;
+}
+
+let hostEnvOverridePolicy: boolean | undefined;
+
+/** The desktop host passes `!app.isPackaged`; `undefined` restores the built-in detection. */
+export function setDocumentEngineEnvOverridesAllowed(allowed: boolean | undefined): void {
+  hostEnvOverridePolicy = allowed;
+}
+
+function looksPackaged(): boolean {
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  return Boolean(resourcesPath && existsSync(join(resourcesPath, 'app.asar')));
+}
+
+/** Explicit option, then the host policy, then: allowed unless this is a packaged app. */
+export function documentEngineEnvOverridesAllowed(options: DocumentEnginePathOptions = {}): boolean {
+  if (options.allowEnvOverrides !== undefined) return options.allowEnvOverrides;
+  if (hostEnvOverridePolicy !== undefined) return hostEnvOverridePolicy;
+  return !looksPackaged();
+}
+
 /** Walk from bundled Electron main and cwd — import.meta.url is not the source tree after vite bundle. */
-export function defaultWorkerScript(): string {
-  const fromEnv = process.env.AX_DOCUMENT_ENGINE_WORKER;
+export function defaultWorkerScript(options: DocumentEnginePathOptions = {}): string {
+  const fromEnv = documentEngineEnvOverridesAllowed(options) ? process.env.AX_DOCUMENT_ENGINE_WORKER : undefined;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
@@ -47,8 +74,12 @@ export function defaultWorkerScript(): string {
   );
 }
 
-export function defaultPythonPath(workerScript = defaultWorkerScript()): string {
-  const fromEnv = process.env.AX_DOCUMENT_ENGINE_PYTHON;
+export function defaultPythonPath(
+  workerScript?: string,
+  options: DocumentEnginePathOptions = {},
+): string {
+  workerScript ??= defaultWorkerScript(options);
+  const fromEnv = documentEngineEnvOverridesAllowed(options) ? process.env.AX_DOCUMENT_ENGINE_PYTHON : undefined;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
   const engineRoot = dirname(dirname(workerScript));

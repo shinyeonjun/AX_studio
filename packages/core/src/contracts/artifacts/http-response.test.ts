@@ -79,4 +79,24 @@ describe('HttpResponseArtifact', () => {
       });
     }
   });
+
+  it('marks a page from a paginated envelope as partial so rankings are not presented as complete', () => {
+    const paged = httpResponseToTable(
+      response('{"products":[{"id":1,"price":10},{"id":2,"price":20}],"total":194,"skip":0,"limit":2}'),
+      { sourceId: 'products', rowsPath: 'products' },
+    );
+    expect(paged.ok && paged.table.completeness).toMatchObject({ status: 'partial', reason: 'provider_limit', observedCount: 2, hasMore: true });
+
+    const whole = httpResponseToTable(
+      response('{"products":[{"id":1},{"id":2}],"total":2}'),
+      { sourceId: 'products', rowsPath: 'products' },
+    );
+    expect(whole.ok && whole.table.completeness).toMatchObject({ status: 'complete' });
+
+    const flagged = httpResponseToTable(
+      response('{"data":{"items":[{"id":1}],"has_more":true}}'),
+      { sourceId: 'items', rowsPath: 'data.items' },
+    );
+    expect(flagged.ok && flagged.table.completeness?.status).toBe('partial');
+  });
 });

@@ -9,6 +9,7 @@ interface WorkConversationSplitProps {
   isResizing: boolean;
   onSplitterPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onSplitterDoubleClick?: () => void;
+  onSplitterKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
   chat: ReactNode;
   panel: ReactNode;
   resultVisible?: boolean;
@@ -19,6 +20,7 @@ export function WorkConversationSplit({
   isResizing,
   onSplitterPointerDown,
   onSplitterDoubleClick,
+  onSplitterKeyDown,
   chat,
   panel,
   resultVisible = false,
@@ -40,6 +42,7 @@ export function WorkConversationSplit({
         tabIndex={0}
         onPointerDown={onSplitterPointerDown}
         onDoubleClick={onSplitterDoubleClick}
+        onKeyDown={onSplitterKeyDown}
       />
       {panel}
     </div>

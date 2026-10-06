@@ -116,6 +116,40 @@ export function serializeWorkflowForStorage(ir: WorkflowIR): string {
   return JSON.stringify(splitWorkflowIR(ir));
 }
 
+/** Read budget for investigations migrated from the implicit legacy default of 4. */
+export const MIGRATED_INVESTIGATION_MAX_READS = 16;
+
+const SIDE_EFFECT_RANK: Record<SideEffectLevel, number> = {
+  NONE: 0,
+  REVERSIBLE: 1,
+  EXTERNAL: 2,
+  EXTERNAL_HIGH: 3,
+};
+
+function strongerSideEffect(left: SideEffectLevel | undefined, right: SideEffectLevel): SideEffectLevel {
+  return left && SIDE_EFFECT_RANK[left] > SIDE_EFFECT_RANK[right] ? left : right;
+}
+
+/**
+ * Execution prefers ir.sideEffects over step.sideEffect, so a stale stored map
+ * could under-classify an action whose catalog entry became external. Recompute
+ * from the catalog on every load; a stored classification is only ever raised,
+ * never lowered.
+ */
+function reconcileSideEffects(ir: WorkflowIR): WorkflowIR {
+  const sideEffects: Record<string, SideEffectLevel> = {};
+  const steps = ir.steps.map((step): Step => {
+    if (step.type !== 'action') return step;
+    const definition = resolveActionDefinition(step.actionRef ?? actionRefFor(step.connector, step.action));
+    const catalog = definition ? resolveEffectiveSideEffect(definition, step.params ?? {}, step.sideEffect) : step.sideEffect;
+    const stored = Object.hasOwn(ir.sideEffects ?? {}, step.id) ? ir.sideEffects[step.id] : undefined;
+    const level = strongerSideEffect(stored, strongerSideEffect(step.sideEffect, catalog));
+    sideEffects[step.id] = level;
+    return level === step.sideEffect ? step : { ...step, sideEffect: level };
+  });
+  return { ...ir, steps, sideEffects };
+}
+
 function migrateImplicitInvestigationReadBudget(data: unknown): unknown {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
   const envelope = data as Record<string, unknown>;
@@ -129,11 +163,12 @@ function migrateImplicitInvestigationReadBudget(data: unknown): unknown {
   const steps = workflow.steps.map((step) => {
     if (!step || typeof step !== 'object' || Array.isArray(step)) return step;
     const record = step as Record<string, unknown>;
-    // Older Canvas compilation silently inserted four reads; no UI exposed it as a user budget.
+    // Older Canvas compilation silently inserted four reads; no UI exposed it
+    // as a user budget. Lift it to a larger bound rather than removing it, so a
+    // migrated investigation can never read an unbounded number of sources.
     if (record.type !== 'ai_decision' || record.investigation !== true || record.maxReads !== 4) return step;
-    const { maxReads: _legacyDefault, ...migrated } = record;
     changed = true;
-    return migrated;
+    return { ...record, maxReads: MIGRATED_INVESTIGATION_MAX_READS };
   });
   if (!changed) return data;
   return isDocument
@@ -144,13 +179,13 @@ function migrateImplicitInvestigationReadBudget(data: unknown): unknown {
 export function parseStoredWorkflow(data: unknown): WorkflowIR {
   const migrated = migrateImplicitInvestigationReadBudget(data);
   if (!data || typeof data !== 'object') {
-    return parseWorkflowIR(migrated);
+    return reconcileSideEffects(parseWorkflowIR(migrated));
   }
 
   const record = migrated as Record<string, unknown>;
   if (record.format === WORKFLOW_DOCUMENT_FORMAT) {
-    return mergeWorkflowDocument(StoredWorkflowDocumentSchema.parse(migrated));
+    return reconcileSideEffects(mergeWorkflowDocument(StoredWorkflowDocumentSchema.parse(migrated)));
   }
 
-  return parseWorkflowIR(migrated);
+  return reconcileSideEffects(parseWorkflowIR(migrated));
 }

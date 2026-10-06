@@ -1,7 +1,7 @@
 import type { AppDatabase } from '../db.js';
 import { readRow } from '../db/types.js';
 
-export type TriggerReceiptStatus = 'processing' | 'completed' | 'failed';
+export type TriggerReceiptStatus = 'processing' | 'completed' | 'failed' | 'dead';
 
 /**
  * A receipt left in processing beyond this window may belong to a crashed
@@ -98,4 +98,25 @@ export function isTriggerReceiptCompleted(db: AppDatabase, dedupeKey: string): b
     dedupeKey,
   );
   return row?.status === 'completed';
+}
+
+/**
+ * Terminal dead-letter state. claimTriggerReceipt never reclaims a dead
+ * receipt, so the event is neither retried nor allowed to block later events.
+ */
+export function deadLetterTriggerReceipt(db: AppDatabase, dedupeKey: string, executionId?: string): void {
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE trigger_receipts
+     SET status = 'dead', execution_id = COALESCE(?, execution_id), updated_at = ?
+     WHERE dedupe_key = ?`,
+  ).run(executionId ?? null, now, dedupeKey);
+}
+
+/** Startup only: a processing receipt has no live owner after restart; never auto-retry it. */
+export function deadLetterProcessingTriggerReceipts(db: AppDatabase): number {
+  const now = new Date().toISOString();
+  return db.prepare(
+    `UPDATE trigger_receipts SET status = 'dead', updated_at = ? WHERE status = 'processing'`,
+  ).run(now).changes;
 }

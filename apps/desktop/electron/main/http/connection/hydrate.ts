@@ -6,6 +6,7 @@ import {
   type WorkflowStore,
 } from '@ax-studio/core';
 import { applyHttpConnector } from './apply.js';
+import { withHttpConnectionLock } from './lock.js';
 import { readHttpSecrets } from './secrets.js';
 
 export async function hydrateHttpConnector(
@@ -35,5 +36,20 @@ export async function hydrateHttpConnector(
       return endpoint;
     }
   }));
-  applyHttpConnector(store, runtime, hydrated, secrets);
+  const discovered = new Map(hydrated
+    .filter((endpoint) => endpoint.discoveredReadOperations !== undefined)
+    .map((endpoint) => [endpoint.id, endpoint]));
+  // Discovery is slow; apply against the latest persisted state so a connect or
+  // disconnect that finished meanwhile is not overwritten.
+  await withHttpConnectionLock(async () => {
+    const latest = store.getConnections().find((entry) => entry.connector === 'http');
+    if (!latest?.connected) return;
+    const latestEndpoints = parseHttpEndpoints(latest.config).map((endpoint) => {
+      const found = discovered.get(endpoint.id);
+      return endpoint.discoveredReadOperations === undefined && found?.baseUrl === endpoint.baseUrl
+        ? { ...endpoint, discoveredReadOperations: found.discoveredReadOperations }
+        : endpoint;
+    });
+    applyHttpConnector(store, runtime, latestEndpoints, await readHttpSecrets());
+  });
 }

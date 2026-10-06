@@ -54,4 +54,24 @@ describe('AxCommandService execution explanation', () => {
     expect(JSON.stringify(response)).not.toContain('raw execution payload');
     expect(JSON.stringify(response)).not.toContain('80,120');
   });
+  it('lets an agent explain only executions of its own session or bound workflow', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const own = store.createExecution({ ephemeral: true, triggerType: 'manual', workspaceSessionId: 'session-a' });
+    const other = store.createExecution({ ephemeral: true, triggerType: 'manual', workspaceSessionId: 'session-b' });
+    const bound = store.createExecution({ workflowId: 'workflow-a', workflowVersion: 1, ephemeral: false, triggerType: 'manual' });
+    const service = new AxCommandService(store);
+    const agent = { executionContext: { origin: 'agent' as const }, workspaceSessionId: 'session-a', currentWorkflowId: 'workflow-a' };
+
+    await expect(service.execute({ name: 'execution.explain', args: { executionId: own } }, agent))
+      .resolves.toMatchObject({ status: 'ok', data: { executionId: own } });
+    await expect(service.execute({ name: 'execution.explain', args: { executionId: bound } }, agent))
+      .resolves.toMatchObject({ status: 'ok', data: { executionId: bound } });
+    const foreign = await service.execute({ name: 'execution.explain', args: { executionId: other } }, agent);
+    expect(foreign).toMatchObject({ status: 'not_found', issues: [{ code: 'execution_not_found' }] });
+    expect(JSON.stringify(foreign)).not.toContain('session-b');
+    await expect(service.execute({ name: 'execution.explain', args: { executionId: own } }, {
+      executionContext: { origin: 'agent' as const },
+    })).resolves.toMatchObject({ status: 'not_found' });
+  });
 });

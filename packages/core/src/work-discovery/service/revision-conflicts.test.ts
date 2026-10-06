@@ -75,6 +75,7 @@ describe('WorkDiscoveryService', () => {
       const base = makeSession('wd_publish_idempotent', {
         status: 'ready_to_publish',
         pendingQuestion: undefined,
+        humanConfirmedAt: new Date().toISOString(),
       });
       store.saveDiscoverySession({ ...base, blueprint: buildDiscoveryBlueprint(base) });
 

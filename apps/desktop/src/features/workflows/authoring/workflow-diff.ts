@@ -1,6 +1,5 @@
 import type { WorkflowCanvasDraft, WorkflowNode } from '@ax-studio/core';
-
-export type WorkflowNodeChange = 'unchanged' | 'added' | 'modified';
+import type { WorkflowNodeChange } from './types.js';
 
 export interface WorkflowDiffSummary {
   nodeChanges: Map<string, WorkflowNodeChange>;

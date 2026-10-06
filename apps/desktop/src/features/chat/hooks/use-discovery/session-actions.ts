@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { assertOk, commandError, unwrap } from './result.js';
 import type { UseDiscoverySessionActionsOptions } from './contracts.js';
 
@@ -26,7 +27,7 @@ export function useDiscoverySessionActions({
       assertOk(result, '선택한 답변을 반영하지 못했습니다.');
       await refresh(activeSessionId, epoch);
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
     }
@@ -54,7 +55,7 @@ export function useDiscoverySessionActions({
       if (data.workflowId && epoch === operationEpochRef.current) await onPublished?.();
       return data.workflowId;
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
       return undefined;
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
@@ -71,7 +72,7 @@ export function useDiscoverySessionActions({
       assertOk(result, '업무 발견을 취소하지 못했습니다.');
       await refresh(activeSessionId, epoch);
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
     }
@@ -90,7 +91,7 @@ export function useDiscoverySessionActions({
       assertOk(result, '업무 발견을 다시 시도하지 못했습니다.');
       await refresh(activeSessionId, epoch);
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
     }

@@ -19,9 +19,22 @@ export function WorkspaceAssistantPresentation({
 }: WorkspaceAssistantPresentationProps) {
   if (presentations.length === 0 && inputRequests.length === 0) return null;
 
+  // Host-marked diagnostic cards (internal plan checks) are not interactive chat content.
+  // Only cards that carry nothing actionable may be hidden this way.
+  const visiblePresentations = presentations.filter((presentation) =>
+    !(presentation.role === 'diagnostic' && presentation.inputs.length === 0 && presentation.actions.length === 0));
+
+  // Inputs already rendered by a visible presentation are not repeated in the fallback card;
+  // any input request that no card covers is still shown so required inputs are never hidden.
+  const coveredInputIds = new Set(visiblePresentations.flatMap((p) => p.inputs.map((i) => i.id)));
+  const remainingInputRequests = inputRequests.filter((req) => !coveredInputIds.has(req.id));
+  const showFallbackInputCard = remainingInputRequests.length > 0;
+
+  if (visiblePresentations.length === 0 && !showFallbackInputCard) return null;
+
   return (
     <div className="ax-workspace-presentation-list">
-      {presentations.map((presentation, index) => (
+      {visiblePresentations.map((presentation, index) => (
         <PresentationCard
           key={`${presentation.title}-${index}`}
           presentation={presentation}
@@ -30,13 +43,13 @@ export function WorkspaceAssistantPresentation({
           onSend={onSend}
         />
       ))}
-      {inputRequests.length > 0 && (
+      {showFallbackInputCard && (
         <PresentationCard
           presentation={{
             title: '추가 정보가 필요합니다',
             inputMode: 'batch',
             blocks: [],
-            inputs: inputRequests,
+            inputs: remainingInputRequests,
             actions: [{
               id: 'continue-with-inputs',
               label: '입력값으로 계속',

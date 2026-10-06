@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi, type TestContext } from 'vitest';
 import { execFileSync } from 'node:child_process';
@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { SqlJsStatic } from 'sql.js';
 import { legacyHomeDataRoot } from '@ax-studio/core';
 import { legacyElectronUserDataDir, legacyHomeArtifactRoot } from './data-paths.js';
+import { migrateAxDataOrContinue, migrationFailurePath } from './data-migrate.js';
 import { createMigrationTestFixture, type MigrationTestEnvironment, type MigrationTestFixture } from './data-migrate.test-fixture.js';
 
 const fixtureScope = await vi.hoisted(async () => {
@@ -296,6 +297,58 @@ describe('migrateAxDataIfNeeded', () => {
       await Promise.allSettled([snapshot.migration, rejection]);
       await Promise.all([cleanup, next.cleanup()]);
     }
+  });
+
+  ownedTest('continues on a fresh root after a failed migration and retries on the next launch', async fixture => {
+    const { paths, legacyUserData } = fixture;
+    mkdirSync(legacyUserData, { recursive: true });
+    const legacyDb = join(legacyUserData, 'ax-studio.db');
+    const legacy = new DatabaseSync(legacyDb);
+    legacy.exec("CREATE TABLE migration_fixture (value TEXT); INSERT INTO migration_fixture VALUES ('legacy');");
+    legacy.close();
+    const legacyBytes = readFileSync(legacyDb);
+    const ui = { showMessageBox: vi.fn(async () => ({ response: 0 })) };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await expect(migrateAxDataOrContinue(paths, {
+      backupDatabase: async () => { throw Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' }); },
+    }, ui)).resolves.toBe('continued_after_failure');
+    expect(ui.showMessageBox).toHaveBeenCalledOnce();
+    expect(existsSync(paths.migration)).toBe(false);
+    expect(existsSync(migrationFailurePath(paths))).toBe(true);
+    expect(readFileSync(legacyDb).equals(legacyBytes)).toBe(true);
+
+    // The session ran on a fresh database; the next launch must not let it shadow the legacy one.
+    mkdirSync(join(paths.database, '..'), { recursive: true });
+    writeFileSync(paths.database, 'fresh-session');
+    await expect(migrateAxDataOrContinue(paths, {
+      backupDatabase: async (source, destination) => { copyFileSync(source, destination); },
+    }, ui)).resolves.toBe('migrated');
+    expect(readFileSync(paths.database).equals(legacyBytes)).toBe(true);
+    expect(existsSync(paths.migration)).toBe(true);
+    expect(existsSync(migrationFailurePath(paths))).toBe(false);
+    const aside = readdirSync(join(paths.database, '..')).filter(name => name.includes('.fresh-'));
+    expect(aside).toHaveLength(1);
+    expect(readFileSync(join(paths.database, '..', aside[0]!), 'utf8')).toBe('fresh-session');
+    error.mockRestore();
+    warn.mockRestore();
+  });
+
+  ownedTest('stops retrying when the user chooses to continue without legacy data', async fixture => {
+    const { paths, legacyUserData } = fixture;
+    mkdirSync(legacyUserData, { recursive: true });
+    writeFileSync(join(legacyUserData, 'ax-studio.db'), 'legacy-base', 'utf8');
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await migrateAxDataOrContinue(paths, {
+      backupDatabase: async () => { throw new Error('snapshot failed'); },
+    }, { showMessageBox: async () => ({ response: 1 }) });
+
+    expect(JSON.parse(readFileSync(paths.migration, 'utf8'))).toMatchObject({ storageLayoutVersion: 1, legacySkipped: true });
+    expect(existsSync(migrationFailurePath(paths))).toBe(false);
+    expect(readFileSync(join(legacyUserData, 'ax-studio.db'), 'utf8')).toBe('legacy-base');
+    error.mockRestore();
   });
 
   describe('committed WAL fixture', () => {

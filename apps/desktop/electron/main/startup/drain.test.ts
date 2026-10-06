@@ -47,7 +47,8 @@ it.each(['hydration', 'core'])('does not start engines when %s initialization fi
   const hydrate = vi.fn(() => hydration);
   vi.doMock('electron', () => ({ app, dialog: { showErrorBox: vi.fn() } }));
   vi.doMock('@ax-studio/core', () => ({ createAxStudioCore: createCore,
-    setDocumentEngineClient: vi.fn(), setWebhookSecretResolver: vi.fn(), shutdownCommandProcesses: async () => true }));
+    setDocumentEngineClient: vi.fn(), setDocumentEngineEnvOverridesAllowed: vi.fn(), setWebhookSecretResolver: vi.fn(), shutdownCommandProcesses: async () => true,
+    flushAppLog: async () => undefined, flushAppLogSync: vi.fn() }));
   vi.doMock('../core-instance', () => ({ getCoreIfInitialized: () => publishedCore, setCore: (value: typeof core) => { publishedCore = value; } }));
   vi.doMock('../app-window', () => ({ createMainWindow: vi.fn(), showMainWindow: vi.fn(), setQuiting: vi.fn() }));
   vi.doMock('../workspace-chat-registry.js', () => ({ abortAllWorkspaceChats: vi.fn() }));
@@ -93,4 +94,14 @@ it.each(['hydration', 'core'])('does not start engines when %s initialization fi
     vi.unstubAllEnvs();
     vi.resetModules();
   }
+});
+
+it('reports which labeled stages timed out or failed', async () => {
+  vi.useFakeTimers();
+  const stages: string[][] = [];
+  const result = drainWithin([async () => {}, () => new Promise(() => {}), async () => false], 50,
+    ['ok', 'stuck', 'refused'], (pending) => stages.push(pending));
+  await vi.advanceTimersByTimeAsync(50);
+  expect(await result).toBe(false);
+  expect(stages).toEqual([['stuck:timeout', 'refused:failed']]);
 });

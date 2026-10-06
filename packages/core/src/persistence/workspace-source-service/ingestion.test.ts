@@ -58,4 +58,25 @@ describe('WorkspaceSourceService ingest and read', () => {
       expect.objectContaining({ code: 'workspace_source_not_found' }),
     );
   });
+
+  it('keeps the attached display name when content dedup returns an earlier artifact', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-workspace-source-'));
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: '파일' }] });
+    const service = new WorkspaceSourceService(store, new ArtifactStore(join(root, 'artifacts')), join(root, 'sessions'));
+    const original = join(root, 'original.txt');
+    const renamed = join(root, 'renamed.txt');
+    writeFileSync(original, 'same bytes');
+    writeFileSync(renamed, 'same bytes');
+
+    const first = await service.attachFile(chat.id, original);
+    const second = await service.attachFile(chat.id, renamed);
+
+    expect(second.artifactId).toBe(first.artifactId);
+    expect(first.fileName).toBe('original.txt');
+    expect(second.fileName).toBe('renamed.txt');
+    await service.waitForIdle();
+    db.close?.();
+  });
 });

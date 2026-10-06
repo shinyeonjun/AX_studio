@@ -1,13 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { TableArtifactSchema, type TableArtifact } from '../contracts/artifacts/table.js';
 import { WorkbookArtifactSchema, type WorkbookArtifact } from '../contracts/artifacts/workbook.js';
 import { assertArtifactId, parseStoredArtifact, readJsonFile, safeFileName } from './artifact/validation.js';
 import type { StoredArtifact } from './artifact/contracts.js';
+import { writeFileAtomicSync } from './atomic-write.js';
 export type { StoredArtifact } from './artifact/contracts.js';
 
 export const MAX_ARTIFACT_BYTES = 50 * 1024 * 1024;
+
+// Only `<id>.json` metadata files; `<id>.document.json`/`<id>.ingest.json` are sidecars.
+const METADATA_FILE = /^[^.]+\.json$/;
 
 export class ArtifactStore {
   private readonly shaIndex = new Map<string, StoredArtifact>();
@@ -32,7 +36,8 @@ export class ArtifactStore {
     if (existing) return existing;
 
     const id = options.id ?? `art_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
-    const fileName = basename(sourcePath);
+    // The stored name is `${id}_${fileName}`; sanitize and bound it for NTFS.
+    const fileName = safeFileName(basename(sourcePath));
     const metadataPath = join(this.rootDir, `${id}.json`);
     if (existsSync(metadataPath)) {
       const existingById = this.get(id);
@@ -43,7 +48,7 @@ export class ArtifactStore {
     }
 
     const storedPath = join(this.rootDir, `${id}_${fileName}`);
-    writeFileSync(storedPath, buffer);
+    writeFileAtomicSync(storedPath, buffer);
     const record: StoredArtifact = {
       id,
       sha256,
@@ -53,7 +58,7 @@ export class ArtifactStore {
       size: buffer.length,
       createdAt: new Date().toISOString(),
     };
-    writeFileSync(metadataPath, JSON.stringify(record));
+    writeFileAtomicSync(metadataPath, JSON.stringify(record));
     this.remember(record);
     return record;
   }
@@ -81,7 +86,7 @@ export class ArtifactStore {
 
     const fileName = safeFileName(options.fileName);
     const storedPath = join(this.rootDir, `${id}_${fileName}`);
-    writeFileSync(storedPath, buffer);
+    writeFileAtomicSync(storedPath, buffer);
     const record: StoredArtifact = {
       id,
       sha256,
@@ -91,7 +96,7 @@ export class ArtifactStore {
       size: buffer.length,
       createdAt: new Date().toISOString(),
     };
-    writeFileSync(metadataPath, JSON.stringify(record));
+    writeFileAtomicSync(metadataPath, JSON.stringify(record));
     this.remember(record);
     return record;
   }
@@ -99,17 +104,17 @@ export class ArtifactStore {
   putJson(id: string, value: unknown): void {
     assertArtifactId(id);
     this.forgetById(id);
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(value));
+    writeFileAtomicSync(join(this.rootDir, `${id}.json`), JSON.stringify(value));
   }
 
   putDocumentArtifact(id: string, value: unknown): void {
     assertArtifactId(id);
-    writeFileSync(join(this.rootDir, `${id}.document.json`), JSON.stringify(value));
+    writeFileAtomicSync(join(this.rootDir, `${id}.document.json`), JSON.stringify(value));
   }
 
   putIngestResult(id: string, value: unknown): void {
     assertArtifactId(id);
-    writeFileSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
+    writeFileAtomicSync(join(this.rootDir, `${id}.ingest.json`), JSON.stringify(value));
   }
 
   /** Compatibility surface for persisted Work Discovery table artifacts. */
@@ -118,7 +123,7 @@ export class ArtifactStore {
     const parsed = TableArtifactSchema.safeParse(value);
     if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid table artifact');
     this.forgetById(id);
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
+    writeFileAtomicSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
   }
 
   /** Compatibility surface for persisted Work Discovery workbook artifacts. */
@@ -127,7 +132,7 @@ export class ArtifactStore {
     const parsed = WorkbookArtifactSchema.safeParse(value);
     if (!parsed.success || parsed.data.id !== id) throw new Error('Invalid workbook artifact');
     this.forgetById(id);
-    writeFileSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
+    writeFileAtomicSync(join(this.rootDir, `${id}.json`), JSON.stringify(parsed.data));
   }
 
   getDocumentArtifact<T>(id: string): T | undefined {
@@ -189,7 +194,7 @@ export class ArtifactStore {
     // ponytail: one metadata scan per store, then O(1) dedup lookups; a shared
     // multi-process artifact directory would need an explicit invalidation strategy.
     for (const name of readdirSync(this.rootDir)) {
-      if (!name.endsWith('.json')) continue;
+      if (!METADATA_FILE.test(name)) continue;
       const record = parseStoredArtifact(this.rootDir, join(this.rootDir, name));
       if (!record) continue;
       this.shaIndex.set(record.sha256, record);

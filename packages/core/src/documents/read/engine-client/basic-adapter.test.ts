@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { StdioDocumentEngineClient } from '../engine-client.js';
-import { defaultPythonPath, defaultWorkerScript } from './paths.js';
+import { defaultPythonPath, defaultWorkerScript, setDocumentEngineEnvOverridesAllowed } from './paths.js';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
@@ -87,5 +87,45 @@ describe('StdioDocumentEngineClient integration', () => {
       const page = await client.getPage(result.documentId, 0);
       expect(page.text).toContain('hello document engine');
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+describe('packaged environment overrides', () => {
+  afterEach(() => setDocumentEngineEnvOverridesAllowed(undefined));
+
+  function withPackagedResources(run: (paths: { worker: string; python: string; hostPython: string }) => void) {
+    const resources = mkdtempSync(join(tmpdir(), 'ax-packaged-env-'));
+    const worker = join(resources, 'document-engine', 'src', 'worker.py');
+    const python = join(resources, 'document-engine', 'python', process.platform === 'win32' ? 'python.exe' : 'bin/python3');
+    const hostPython = join(resources, 'host-python');
+    try {
+      mkdirSync(join(resources, 'document-engine', 'src'), { recursive: true });
+      mkdirSync(join(resources, 'document-engine', 'python', 'bin'), { recursive: true });
+      writeFileSync(join(resources, 'app.asar'), 'package marker');
+      writeFileSync(worker, '');
+      writeFileSync(python, '');
+      writeFileSync(hostPython, '');
+      vi.stubEnv('AX_DOCUMENT_ENGINE_WORKER', hostPython);
+      vi.stubEnv('AX_DOCUMENT_ENGINE_PYTHON', hostPython);
+      vi.stubGlobal('process', { ...process, resourcesPath: resources });
+      run({ worker, python, hostPython });
+    } finally { rmSync(resources, { recursive: true, force: true }); }
+  }
+
+  it('ignores AX_DOCUMENT_ENGINE_* in a packaged app', () => {
+    withPackagedResources(({ worker, python }) => {
+      expect(defaultWorkerScript()).toBe(worker);
+      expect(defaultPythonPath()).toBe(python);
+    });
+  });
+
+  it('follows the host policy and an explicit option', () => {
+    withPackagedResources(({ worker, python, hostPython }) => {
+      setDocumentEngineEnvOverridesAllowed(true);
+      expect(defaultPythonPath(worker)).toBe(hostPython);
+      setDocumentEngineEnvOverridesAllowed(false);
+      expect(defaultPythonPath(worker)).toBe(python);
+      expect(defaultPythonPath(worker, { allowEnvOverrides: true })).toBe(hostPython);
+    });
   });
 });

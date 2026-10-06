@@ -1,143 +1,26 @@
-import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import type { ModelProvider } from '../model/provider.js';
-import { buildInvestigatePrompt, composeAgentSystemPrompt } from '../prompt/index.js';
+import { buildInvestigatePrompt } from '../prompt/index.js';
 import { getRoleDefinition } from '../types.js';
-import type {
-  AgentResult,
-  AgentRun,
-} from '../types.js';
-import { isCloudProvider, redactUntrustedContext } from './policy.js';
+import type { AgentContext, AgentResult, AgentRun } from '../types.js';
+import { invokeAgent } from './invoke.js';
 
 export async function runAgent<T>(model: ModelProvider, request: AgentRun<T>): Promise<AgentResult<T>> {
   const definition = getRoleDefinition(request.role);
-  const logs: AgentResult<T>['logs'] = [];
-  const started = Date.now();
-  const controller = new AbortController();
-  const timeoutMs = definition.policy.timeoutMs;
-  let usage: AgentResult<T>['usage'];
-  let measurements: Record<string, unknown> = {
-    role: request.role, requestId: request.requestId, phase: request.logContext, provider: model.name, timeoutMs,
-  };
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const abortExternal = () => controller.abort();
-  if (request.abortSignal?.aborted) {
-    abortExternal();
-  } else {
-    request.abortSignal?.addEventListener('abort', abortExternal, { once: true });
-  }
-
-  logs.push({
-    level: 'info',
-    message: `role=${request.role} agentSkill=${definition.agentSkillId} provider=${model.name} timeoutMs=${timeoutMs}${request.logContext ? ` phase=${request.logContext}` : ''}`,
-  });
-
-  const allowCloud = request.cloudAllowed ?? definition.policy.cloudAllowed ?? true;
-  let context = request.context;
-  let images = request.images;
-  if (!allowCloud && isCloudProvider(model.name)) {
-    context = redactUntrustedContext(context);
-    images = undefined;
-    logs.push({ level: 'info', message: 'dataPolicy: redacted untrusted data for cloud backend' });
-  }
-
-  try {
-    if (images?.length && model.supportsVision !== true) {
-      throw Object.assign(new Error(`${model.name} Provider는 이미지 입력을 지원하지 않습니다.`), {
-        code: 'vision_unavailable',
-      });
-    }
-
-    const system = composeAgentSystemPrompt(
-      request.systemPrompt ?? buildInvestigatePrompt(request.role, context),
-    );
-    const temperature = request.temperature ?? definition.temperature;
-    const promptChars = system.length + (request.messages?.reduce((sum, m) => sum + m.content.length, 0) ?? request.user?.length ?? 0);
-    measurements = { role: request.role, requestId: request.requestId, phase: request.logContext, provider: model.name,
-      promptChars, imageCount: images?.length ?? 0,
-      imageBytes: images?.reduce((sum, image) => sum + image.data.byteLength, 0) ?? 0, timeoutMs };
-    appendAppLog('info', 'Agent invocation started', measurements);
-
-    if (request.abortSignal?.aborted) {
-      throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
-    }
-    const raw = await model.generateStructured({
+  return invokeAgent(model, request, {
+    label: 'Agent',
+    cloudAllowedByDefault: definition.policy.cloudAllowed ?? true,
+    rolePrompt: context => request.systemPrompt ?? buildInvestigatePrompt(request.role, context as AgentContext),
+    call: (provider, call) => provider.generateStructured({
+      ...call,
       schema: request.outputSchema,
-      system,
       messages: request.messages,
       user: request.user,
-      images,
-      temperature,
-      timeoutMs,
       sessionId: request.sessionId,
-      abortSignal: controller.signal,
       onProgress: request.onProgress,
-      onUsage: reported => { usage = reported; },
       logContext: request.logContext,
-      codexReasoningEffort:
-        request.codexReasoningEffort ??
-        (request.role === 'command' ? 'medium' : undefined),
+      codexReasoningEffort: request.codexReasoningEffort ?? (request.role === 'command' ? 'medium' : undefined),
       maxTurns: definition.policy.maxTurns,
-    });
-    // Providers may ignore cancellation. Never publish their late output as success.
-    if (controller.signal.aborted) throw new Error('agent_result_after_abort');
-    const output = request.outputSchema.parse(raw);
-    const durationMs = Date.now() - started;
-    appendAppLog('info', 'Agent invocation completed', {
-      ...measurements, durationMs, providerUsageAvailable: Boolean(usage), ...(usage ? { usage } : {}),
-    });
-    logs.push({
-      level: 'info',
-      message: `provider=${model.name} durationMs=${durationMs} promptChars=${promptChars}${request.logContext ? ` phase=${request.logContext}` : ''}`,
-    });
-    return {
-      output,
-      role: request.role,
-      provider: model.name,
-      durationMs,
-      promptChars,
-      ...(usage ? { usage } : {}),
-      policy: definition.policy,
-      logs,
-    };
-  } catch (err) {
-    const errorCode = err && typeof err === 'object' && 'code' in err && typeof err.code === 'string'
-      ? err.code
-      : undefined;
-    const failureTelemetry = {
-      ...measurements,
-      durationMs: Date.now() - started,
-      providerUsageAvailable: Boolean(usage),
-      ...(usage ? { usage } : {}),
-    };
-    if (request.abortSignal?.aborted) {
-      appendAppLog('info', 'Agent invocation cancelled', failureTelemetry);
-      throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });
-    }
-    if (controller.signal.aborted) {
-      const timeoutError = Object.assign(new Error(`Agent timed out after ${timeoutMs}ms`), { code: 'agent_timeout', phase: request.logContext });
-      appendAppLog('error', timeoutError.message, {
-        ...failureTelemetry,
-        code: 'agent_timeout',
-        role: request.role,
-        phase: request.logContext,
-      });
-      throw timeoutError;
-    }
-    appendAppLog('error', 'Agent invocation failed', {
-      ...failureTelemetry,
-      errorName: err instanceof Error ? err.name : 'unknown',
-      ...(errorCode ? { errorCode } : {}),
-    });
-    logs.push({
-      level: 'error',
-      message: err instanceof Error ? err.message : String(err),
-    });
-    if (err instanceof Error && !(err as Error & { code?: string }).code) {
-      throw Object.assign(err, { code: 'agent_invoke_failed' });
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-    request.abortSignal?.removeEventListener('abort', abortExternal);
-  }
+    }),
+    finalize: raw => request.outputSchema.parse(raw),
+  });
 }

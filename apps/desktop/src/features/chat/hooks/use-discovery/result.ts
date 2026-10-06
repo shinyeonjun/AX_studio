@@ -1,6 +1,6 @@
 import type { DiscoveryInspectView } from '@ax-studio/core';
 
-export type CommandResult<T> = {
+type CommandResult<T> = {
   status: string;
   data?: T;
   issues?: Array<{ message?: string; code?: string }>;

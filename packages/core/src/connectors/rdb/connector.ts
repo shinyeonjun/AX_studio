@@ -1,6 +1,8 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { createHash } from 'node:crypto';
+import { rdbConnectionIdentity } from './config/validate.js';
 import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
+import { partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import { describeRdbTablePage, parseRdbMetadataPage } from './client/describe.js';
 import {
   formatRdbTableRef,
@@ -91,13 +93,19 @@ export class RdbConnector implements Connector {
           database: this.config.type,
           // Bind identity to the configured source without exposing its path,
           // credentials or connection string in the resulting artifact.
-          connection: this.config.connectionString ?? this.config.filePath ?? null,
+          connection: this.config.connectionString
+            ? rdbConnectionIdentity(this.config.connectionString)
+            : this.config.filePath ?? null,
           allowedSchemas: [...(this.config.allowedSchemas ?? [])].sort(),
           allowedTables: [...(this.config.allowedTables ?? [])].sort(),
           table: formatRdbTableRef(ref),
           accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset',
         })).digest('hex');
-        const table = tableArtifactFromRows(prepareRdbRows(rows), {
+        const preparedRows = prepareRdbRows(rows);
+        // Stopped early by the page byte budget: report a partial page and let
+        // the caller continue from the next offset.
+        const byteLimited = preparedRows.length < Math.min(rows.length, requestedLimit);
+        const table = tableArtifactFromRows(preparedRows, {
           id: `rdb_${ctx.executionId}_${formatRdbTableRef(ref).replace(/[^A-Za-z0-9_]+/g, '_')}`,
           name: formatRdbTableRef(ref),
           rowLimit: requestedLimit,
@@ -114,6 +122,12 @@ export class RdbConnector implements Connector {
           },
         });
         if (!table) return { ok: false, error: 'rdb_rows_invalid', errorCode: 'rdb_error' };
+        if (byteLimited) {
+          table.truncated = true;
+          table.completeness = partialArtifactCompleteness('response_byte_limit', {
+            observedCount: table.rows.length, limit: requestedLimit, hasMore: true,
+          });
+        }
         const readScope: RdbReadScope = {
           schemaVersion: 1, kind: 'page', queryFingerprint, table: formatRdbTableRef(ref),
           accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset', scalarPolicy: 'preserve',

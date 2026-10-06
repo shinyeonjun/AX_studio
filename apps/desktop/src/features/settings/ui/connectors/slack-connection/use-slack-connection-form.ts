@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 export interface SlackConnectionFormProps {
   state: AppState | null;
@@ -39,7 +40,7 @@ export function useSlackConnectionForm({
       setSlackToken('');
       setAppToken('');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Slack 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Slack 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -54,7 +55,7 @@ export function useSlackConnectionForm({
       await onDisconnect();
       setMessage('Slack 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Slack 연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Slack 연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }

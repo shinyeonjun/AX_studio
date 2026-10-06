@@ -116,32 +116,31 @@ export function saveWorkspaceChat(
     }
     newest.registeredMetadataTurn = true;
   }
-  let messages = parsedMessages;
+  // Execution results are host-authored. A saved transcript may reorder or keep them, but it
+  // cannot mint one: results whose execution id the host never persisted are dropped.
+  const hostResults = new Map(persisted
+    .filter((message) => message.kind === 'execution_result' && message.executionId)
+    .map((message) => [message.executionId, message]));
+  let messages = parsedMessages.flatMap((message) => {
+    if (message.kind !== 'execution_result') return [message];
+    if (message.executionId && message.executionId === authoritativeExecutionId) return [message];
+    const hostResult = message.executionId ? hostResults.get(message.executionId) : undefined;
+    return hostResult ? [hostResult] : [];
+  });
   if (existing?.messages_json) {
-    try {
-      const hostResults = new Map(persisted
+    const incomingExecutionIds = new Set(
+      messages
         .filter((message) => message.kind === 'execution_result' && message.executionId)
-        .map((message) => [message.executionId, message]));
-      const incomingExecutionIds = new Set(
-        parsedMessages
-          .filter((message) => message.kind === 'execution_result' && message.executionId)
-          .map((message) => message.executionId),
-      );
-      const backgroundResults = persisted.filter(
-        (message) =>
-          message.kind === 'execution_result' &&
-          message.executionId &&
-          !incomingExecutionIds.has(message.executionId),
-      );
-      messages = [...parsedMessages.map((message) =>
-        message.kind === 'execution_result' && message.executionId !== authoritativeExecutionId
-          ? hostResults.get(message.executionId) ?? message
-          : message,
-      ), ...backgroundResults];
-    } catch {
-      // An incoming full transcript can still repair an old corrupt row. The
-      // persisted result merge is only a race-preservation aid.
-    }
+        .map((message) => message.executionId),
+    );
+    // Preserve results the host appended after the renderer's snapshot was taken.
+    const backgroundResults = persisted.filter(
+      (message) =>
+        message.kind === 'execution_result' &&
+        message.executionId &&
+        !incomingExecutionIds.has(message.executionId),
+    );
+    messages = [...messages, ...backgroundResults];
   }
   const saved = persistWorkspaceChat(db, id, messages, params.workflowId, existing);
   return commitWorkspaceChatRevision(db, saved, params.registeredMetadataParticipation);

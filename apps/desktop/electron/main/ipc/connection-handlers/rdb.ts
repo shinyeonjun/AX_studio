@@ -51,8 +51,9 @@ export function registerRdbConnectionHandlers() {
       }
       sqliteSelection.connecting = true;
     }
+    let connected: { warning?: string } | undefined;
     try {
-      await validateAndConnectRdb(core.store, core.runtime, {
+      connected = await validateAndConnectRdb(core.store, core.runtime, {
         type,
         connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
         filePath,
@@ -71,7 +72,7 @@ export function registerRdbConnectionHandlers() {
     }
     if (sqliteSelection && approvedSqliteSelection === sqliteSelection) approvedSqliteSelection = undefined;
     notifyStateChanged();
-    return { ok: true };
+    return connected?.warning ? { ok: true, warning: connected.warning } : { ok: true };
   });
 
   ipcHandle('ax:disconnectRdb', async () => {

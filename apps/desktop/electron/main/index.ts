@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { app } from 'electron';
 import { applyDesktopAppIdentity } from './data-paths.js';
 import { installDesktopFileLog } from './file-log.js';
+import { startLocalCrashReporter } from './diagnostics/crash-handling.js';
 import {
   registerDesktopInstanceGuards,
   registerDesktopShutdown,
@@ -16,6 +17,7 @@ if (!app.isPackaged) {
 }
 applyDesktopAppIdentity();
 installDesktopFileLog();
+startLocalCrashReporter();
 registerDesktopInstanceGuards();
 registerDesktopReadyHandler();
 registerDesktopShutdown();

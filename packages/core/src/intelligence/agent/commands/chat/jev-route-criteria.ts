@@ -3,8 +3,9 @@ import type { DecisionInstruction } from '../../../../contracts/decision.js';
 /** Host-supported routes and their decision boundaries; the router owns execution. */
 export const JEV_CHAT_ROUTE_CRITERIA = {
   answer: {
-    what: 'Explain, summarize, plan, or clarify the request in a conversational reply.',
-    not_for: 'Creating, updating, deleting, running, scheduling, or generating a report; choose the matching lifecycle route instead.',
+    what: 'Explain, summarize, calculate, draft, or clarify the request in a conversational reply based on the available conversation history, memo, or previously displayed table without calling external tools.',
+    examples: ['이 가구들의 총 재고 수량과 평균 가격 계산해줘', '방금 나온 상품들 중에서 가장 가성비 좋은 거 추천해줘', '표에 있는 내용 간단히 요약해줘'],
+    not_for: 'Fetching fresh external data, or creating, updating, deleting, running, scheduling, or generating a report; choose the matching lifecycle route instead.',
   },
   resource_list: {
     what: 'List connected resources and their safe connection status.',
@@ -20,10 +21,10 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     not_for: 'Natural-language requests that match a discovered API operation; choose capability_read for those. Never infer a path that the user did not provide.',
   },
   capability_read: {
-    what: 'Handle a request for connected HTTP API, OpenAPI, or database data using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
-    examples: ['DummyJSON에서 상품 5개만 가져와서 이름과 가격을 보여줘.', '이번 달 주문 중 결제 완료된 것만 보여줘.'],
+    what: 'Handle a request for connected HTTP API, database, Gmail emails, Slack messages, or local files using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
+    examples: ['DummyJSON에서 상품 5개만 가져와서 이름과 가격을 보여줘.', '이번 달 주문 중 결제 완료된 것만 보여줘.', '최근 온 메일 3개 제목 알려줘', 'Slack 메시지 검색'],
     requires: 'Choose only an operation listed in the operation question. If context.read_operation_candidates_deferred is true and read_operation_catalog_size is positive, choose this route for a matching data request; Jev will select from the complete catalog in a follow-up before any command is produced. Otherwise, if the operation question offers only none, do not invent an operation, URL, table, tool, or parameter; ask the user to narrow the request or check the connection.',
-    not_for: 'Writes, triggers, or operations absent from the connected read catalog.',
+    not_for: 'Writes, triggers, operations absent from the connected read catalog, or questions asking to calculate, summarize, or analyze data already retrieved in the conversation (choose answer or previous_result instead).',
   },
   previous_result: {
     what: 'Continue from the structured table result shown immediately before this request, without calling its source again.',
@@ -32,8 +33,9 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     not_for: 'A fresh data read or a result from an unrelated earlier turn.',
   },
   source_list: {
-    what: 'List source records exposed by connected Gmail, Slack, or local-folder connectors.',
-    examples: ['List the connected sources.', 'Show the available files or messages.'],
+    what: 'List registered source accounts, channels, or connection metadata from Gmail, Slack, or local-folder connectors, without reading actual message or file content.',
+    examples: ['연결된 소스 목록 보여줘', 'List the connected source accounts.'],
+    not_for: 'Reading, searching, or displaying actual emails, messages, or files; choose capability_read instead.',
   },
   session_source_list: {
     what: 'List documents uploaded to the current chat session.',

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 export interface GmailConnectionFormProps {
   state: AppState | null;
@@ -22,7 +23,7 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
       await onConnect();
       setMessage('Gmail 연결이 완료되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Gmail 연결에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Gmail 연결에 실패했습니다.'));
     } finally {
       setBusy(false);
     }
@@ -36,7 +37,7 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
       await onDisconnect();
       setMessage('Gmail 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Gmail 연결 해제에 실패했습니다.');
+      setMessage(ipcErrorMessage(error, 'Gmail 연결 해제에 실패했습니다.'));
     } finally {
       setBusy(false);
     }

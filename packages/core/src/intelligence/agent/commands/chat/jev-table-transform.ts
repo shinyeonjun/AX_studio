@@ -18,9 +18,9 @@ export const JEV_TABLE_TRANSFORM_CRITERIA = {
   export_xlsx: 'Export exactly the current displayed table to an Excel xlsx file, preserving all its current rows, columns and order. No new query, extra transform, arbitrary format or external send.',
   unsupported: 'The user asks for an operation beyond filtering, sorting or selecting columns, such as sending a file, other export formats, or additional transformations. Do not return an unchanged table as fulfillment.',
   none: 'Return the retrieved data without filtering or sorting.',
-  filter: 'Keep only rows matching one clearly specified filter condition.',
-  sort: 'Reorder rows by one clearly specified column and direction.',
-  filter_sort: 'Apply one clearly specified filter condition, then sort by one clearly specified column and direction.',
+  filter: 'Keep only rows matching one clearly specified comparison threshold condition (e.g. price > 1000, status is active). Do not choose filter for Top-N row count limits.',
+  sort: 'Reorder rows by one clearly specified column and direction, optionally keeping the top N rows (e.g., lowest 3, highest 5).',
+  filter_sort: 'Apply one clearly specified comparison condition (e.g. price > 1000), then sort by one clearly specified column and direction.',
 } satisfies Record<string, DecisionInstruction>;
 const FILTER_COLUMN_INSTRUCTIONS: DecisionInstruction = {
   question: 'Which result column is constrained by the requested comparison?',
@@ -186,6 +186,19 @@ function numericValues(message: string): number[] {
     if (Number.isFinite(value)) values.add(value);
   }
   return [...values];
+}
+
+function extractTopNCount(message: string): number | undefined {
+  const match = message.match(/(?:제일|가장|최저|최고|상위|하위|적은|많은|높은|낮은|비싼|저렴한|싼|큰|작은|top|bottom|순(?:으로)?)\s*(?:것|거|상품|항목|데이터)?\s*(\d+)\s*(?:개|건|명|개만|항목)?/iu)
+    ?? message.match(/(\d+)\s*(?:개|건|명|개만|항목)?\s*(?:제일|가장|최저|최고|상위|하위)/iu)
+    ?? message.match(/\b(?:top|bottom)\s*(\d+)\b/iu);
+  if (match) {
+    const count = parseInt(match[1], 10);
+    if (Number.isSafeInteger(count) && count > 0 && count <= 500) {
+      return count;
+    }
+  }
+  return undefined;
 }
 
 function valueCriteria(values: readonly number[]): Record<string, DecisionInstruction> {
@@ -431,7 +444,7 @@ export async function applyJevTableTransform(input: {
   }
 
   let expression: TransformExpr = { op: 'source', sourceId: SOURCE_ID };
-  if (wantsFilter) {
+  if (wantsFilter && selectedColumns.filter_column) {
     const field = selectedColumns.filter_column;
     const operator = selectedChoice(answers.filter_operator,
       new Set(Object.keys(operatorCriteria).filter((key) => key !== 'none')));
@@ -494,6 +507,10 @@ export async function applyJevTableTransform(input: {
       };
     }
     expression = { op: 'sort', input: expression, by: [{ column: field, direction: direction as 'asc' | 'desc' }] };
+    const topN = extractTopNCount(input.userMessage);
+    if (topN !== undefined && topN > 0) {
+      expression = { op: 'limit', input: expression, count: topN };
+    }
   }
   if (displayColumns) expression = { op: 'select', input: expression, columns: displayColumns };
 

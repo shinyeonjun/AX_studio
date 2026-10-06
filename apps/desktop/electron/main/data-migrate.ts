@@ -18,6 +18,21 @@ import { legacyElectronUserDataDir, legacyHomeArtifactRoot } from './data-paths.
 interface MigrationRecord {
   storageLayoutVersion: number;
   migratedAt: string;
+  /** The user chose to continue without the legacy data; legacy files stay untouched. */
+  legacySkipped?: boolean;
+}
+
+interface MigrationFailureRecord {
+  failedAt: string;
+  error: string;
+  /** False when the failure left no database, so the one created afterwards is a fresh session's. */
+  databaseExistedAtFailure: boolean;
+}
+
+export type DataMigrationOutcome = 'migrated' | 'continued_after_failure';
+
+export interface DataMigrationUi {
+  showMessageBox(options: Electron.MessageBoxOptions): Promise<Pick<Electron.MessageBoxReturnValue, 'response'>>;
 }
 
 type DatabaseBackup = (source: string, destination: string) => Promise<void>;
@@ -44,19 +59,56 @@ function readMigration(paths: AxDataPaths): MigrationRecord | null {
   return record as MigrationRecord;
 }
 
-function writeMigration(paths: AxDataPaths): void {
-  const record: MigrationRecord = {
-    storageLayoutVersion: 1,
-    migratedAt: new Date().toISOString(),
-  };
-  mkdirSync(dirname(paths.migration), { recursive: true });
-  const temporaryPath = `${paths.migration}.tmp-${randomUUID()}`;
+function writeJsonAtomic(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporaryPath = `${path}.tmp-${randomUUID()}`;
   try {
-    writeFileSync(temporaryPath, JSON.stringify(record, null, 2), 'utf8');
-    renameSync(temporaryPath, paths.migration);
+    writeFileSync(temporaryPath, JSON.stringify(value, null, 2), 'utf8');
+    renameSync(temporaryPath, path);
   } finally {
     if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
   }
+}
+
+function writeMigration(paths: AxDataPaths, options: { legacySkipped?: boolean } = {}): void {
+  const record: MigrationRecord = {
+    storageLayoutVersion: 1,
+    migratedAt: new Date().toISOString(),
+    ...(options.legacySkipped ? { legacySkipped: true } : {}),
+  };
+  writeJsonAtomic(paths.migration, record);
+}
+
+export function migrationFailurePath(paths: AxDataPaths): string {
+  return `${paths.migration}.failed`;
+}
+
+function readMigrationFailure(paths: AxDataPaths): MigrationFailureRecord | null {
+  const path = migrationFailurePath(paths);
+  if (!existsSync(path)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<MigrationFailureRecord>;
+    return { failedAt: String(parsed.failedAt ?? ''), error: String(parsed.error ?? ''),
+      databaseExistedAtFailure: parsed.databaseExistedAtFailure !== false };
+  } catch {
+    // Unknown state: assume the database predates the failure and never move it.
+    return { failedAt: '', error: '', databaseExistedAtFailure: true };
+  }
+}
+
+/**
+ * A previous launch failed to migrate and then ran on a fresh database. Move
+ * that fresh database aside (never delete it) so the legacy snapshot can land.
+ */
+function setAsideFreshDatabaseAfterFailure(paths: AxDataPaths): void {
+  const failure = readMigrationFailure(paths);
+  if (!failure || failure.databaseExistedAtFailure || !existsSync(paths.database)) return;
+  const target = `${paths.database}.fresh-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+  renameSync(paths.database, target);
+  for (const suffix of ['-wal', '-shm']) {
+    if (existsSync(paths.database + suffix)) renameSync(paths.database + suffix, target + suffix);
+  }
+  console.warn('[AX Studio] moved the database created after a failed migration aside', { target });
 }
 
 function copyDirIfSourceExists(source: string, dest: string): void {
@@ -114,6 +166,7 @@ export async function migrateAxDataIfNeeded(
   dependencies: DataMigrationDependencies = {},
 ): Promise<void> {
   if (readMigration(paths)) return;
+  setAsideFreshDatabaseAfterFailure(paths);
 
   const legacyUserData = legacyElectronUserDataDir();
   const legacyHome = legacyHomeArtifactRoot();
@@ -132,4 +185,74 @@ export async function migrateAxDataIfNeeded(
   copyDirIfSourceExists(join(legacyHomeRoot, 'templates'), paths.templates);
 
   writeMigration(paths);
+  rmSync(migrationFailurePath(paths), { force: true });
+}
+
+const defaultUi: DataMigrationUi = {
+  async showMessageBox(options) {
+    const { dialog } = await import('electron');
+    return dialog.showMessageBox(options);
+  },
+};
+
+/**
+ * Startup wrapper: a failed legacy migration (corrupt snapshot, EBUSY/EPERM
+ * copy) must not block every launch. Legacy files are never modified; the
+ * failure is recorded and the app continues on the new data root. The user
+ * chooses whether to retry on the next launch or to stop migrating.
+ */
+export async function migrateAxDataOrContinue(
+  paths: AxDataPaths,
+  dependencies: DataMigrationDependencies = {},
+  ui: DataMigrationUi = defaultUi,
+): Promise<DataMigrationOutcome> {
+  try {
+    await migrateAxDataIfNeeded(paths, dependencies);
+    return 'migrated';
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('[AX Studio] legacy data migration failed; continuing without it', error);
+    if (existsSync(paths.migration)) {
+      // The new root was already migrated but its record is unreadable: keep using it as-is.
+      return 'continued_after_failure';
+    }
+    try {
+      const previous = readMigrationFailure(paths);
+      const record: MigrationFailureRecord = {
+        failedAt: new Date().toISOString(),
+        error: detail,
+        // Once a fresh-session database has been recorded, keep treating it as such.
+        databaseExistedAtFailure: previous?.databaseExistedAtFailure === false ? false : existsSync(paths.database),
+      };
+      writeJsonAtomic(migrationFailurePath(paths), record);
+    } catch (recordError) {
+      console.error('[AX Studio] could not record the migration failure', recordError);
+    }
+    let response = 0;
+    try {
+      ({ response } = await ui.showMessageBox({
+        type: 'warning',
+        title: 'AX Studio 데이터 이전 실패',
+        message: '이전 버전의 데이터를 옮기지 못했습니다.',
+        detail: `기존 데이터는 그대로 보존되어 있으며, 이번에는 새 데이터 위치로 시작합니다.
+
+오류: ${detail}`,
+        buttons: ['다음 실행 시 다시 시도', '이전 데이터 없이 계속 사용'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      }));
+    } catch (dialogError) {
+      console.error('[AX Studio] could not show the migration failure dialog', dialogError);
+    }
+    if (response === 1) {
+      try {
+        writeMigration(paths, { legacySkipped: true });
+        rmSync(migrationFailurePath(paths), { force: true });
+      } catch (skipError) {
+        console.error('[AX Studio] could not record the skipped migration', skipError);
+      }
+    }
+    return 'continued_after_failure';
+  }
 }

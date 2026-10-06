@@ -30,6 +30,7 @@ describe('Jev decision plane API key validation', () => {
     mocks.getJevSecret.mockReset().mockResolvedValue(undefined);
     mocks.saveJevDecisionPreferences.mockReset();
     mocks.setJevSecret.mockReset();
+    mocks.getCore.mockReset();
     registerDecisionPlaneHandlers();
   });
 
@@ -58,5 +59,51 @@ describe('Jev decision plane API key validation', () => {
 
     expect(mocks.setJevSecret).not.toHaveBeenCalled();
     expect(mocks.saveJevDecisionPreferences).not.toHaveBeenCalled();
+  });
+
+  it('never sends a stored key to a Base URL origin it was not entered for', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchImpl);
+    mocks.readAiToml.mockResolvedValue({
+      providers: {}, secrets: {},
+      decision: { jev: { enabled: true, baseURL: 'https://api.typesafe.ai', keyOrigin: 'https://api.typesafe.ai' } },
+    });
+    mocks.getJevSecret.mockResolvedValue('synthetic-key');
+
+    await expect(mocks.handlers.get('ax:testJevDecisionApi')!({}, { baseURL: 'https://evil.example' }))
+      .rejects.toThrow(/API 키를 다시 입력/);
+    await expect(mocks.handlers.get('ax:saveJevDecisionConfig')!({}, { enabled: true, baseURL: 'https://evil.example' }))
+      .rejects.toThrow(/API 키를 다시 입력/);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(mocks.saveJevDecisionPreferences).not.toHaveBeenCalled();
+    expect(mocks.getCore).not.toHaveBeenCalled();
+  });
+
+  it('binds a newly entered key to the origin it is saved with', async () => {
+    const refreshDecisionEngine = vi.fn();
+    mocks.getCore.mockReturnValue({ refreshDecisionEngine });
+    mocks.getJevSecret.mockResolvedValue('synthetic-key');
+
+    await mocks.handlers.get('ax:saveJevDecisionConfig')!({}, {
+      enabled: true, baseURL: 'https://jev.example/v1/', apiKey: 'synthetic-key',
+    });
+
+    expect(mocks.setJevSecret).toHaveBeenCalledWith('synthetic-key');
+    expect(mocks.saveJevDecisionPreferences).toHaveBeenCalledWith(expect.objectContaining({
+      baseURL: 'https://jev.example/v1', keyOrigin: 'https://jev.example',
+    }));
+    expect(refreshDecisionEngine).toHaveBeenCalledOnce();
+  });
+
+  it('treats a legacy key as bound to the Base URL it was last saved with', async () => {
+    mocks.getCore.mockReturnValue({ refreshDecisionEngine: vi.fn() });
+    mocks.readAiToml.mockResolvedValue({ providers: {}, secrets: {}, decision: { jev: { baseURL: 'https://jev.example' } } });
+    mocks.getJevSecret.mockResolvedValue('synthetic-key');
+
+    await mocks.handlers.get('ax:saveJevDecisionConfig')!({}, { enabled: true, baseURL: 'https://jev.example/v2' });
+    expect(mocks.saveJevDecisionPreferences).toHaveBeenCalledWith(expect.objectContaining({ keyOrigin: 'https://jev.example' }));
+    await expect(mocks.handlers.get('ax:saveJevDecisionConfig')!({}, { enabled: true }))
+      .rejects.toThrow(/API 키를 다시 입력/);
   });
 });

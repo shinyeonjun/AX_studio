@@ -3,6 +3,7 @@ import { classifyDecisionOutput } from '../../../contracts/decision.js';
 import { resolveCapability } from '../../../catalog/capability-graph.js';
 import { decisionOutputDefinition, isProseActionInput, isProseOnlyDecision } from '../../ai-output-contract.js';
 import type { ContractValidationIssue } from '../types.js';
+import { linearSteps, stepsById } from '../../control-flow.js';
 import { conditionReferencePaths, outputFieldExists, outputFieldIsRequired, referencePaths } from './references.js';
 
 interface ReferenceUse {
@@ -156,6 +157,48 @@ export function validateWorkflowReferences(ir: WorkflowIR, byId: Map<string, Ste
       report('invalid_workflow_schema', `${use.reference} 출력은 ${use.target?.id ?? 'workflow'}.${use.port ?? 'control'} 입력에 사용할 수 없습니다. 문안은 catalog의 purpose:prose 본문 입력에만 연결하세요. 분기·대상·도구·승인·검색·필터는 boolean/enum 판단 또는 호스트의 고정 값으로 정하세요.`);
     }
   }
+  return issues;
+}
+
+/**
+ * Every reference whose root names a workflow step must point to a step that
+ * is guaranteed to have run earlier on every execution path (the same
+ * guaranteed-source rule binding inference uses). Roots that are not step ids
+ * are trigger/input variables and are resolved at runtime.
+ */
+export function validateReferenceOrdering(ir: WorkflowIR, byId: Map<string, Step>): ContractValidationIssue[] {
+  const issues: ContractValidationIssue[] = [];
+  const visited = new Set<string>();
+  const check = (step: Step, guaranteed: ReadonlySet<string>) => {
+    for (const use of stepReferences(step)) {
+      if (use.structural) continue;
+      const [root] = use.reference.split('.');
+      if (!root || root === 'trigger' || !byId.has(root) || guaranteed.has(root)) continue;
+      issues.push({
+        code: 'invalid_workflow_reference',
+        stepId: step.id,
+        message: `${step.id}: ${use.reference} 참조는 모든 실행 경로에서 먼저 실행되는 단계의 출력만 사용할 수 있습니다.`,
+      });
+    }
+  };
+  const walk = (sequence: Step[], start: ReadonlySet<string>): Set<string> => {
+    const guaranteed = new Set(start);
+    for (const step of sequence) {
+      // Cycles are reported by control-flow validation; do not recurse forever.
+      if (visited.has(step.id)) continue;
+      visited.add(step.id);
+      check(step, guaranteed);
+      if (step.type === 'if') {
+        const thenSources = walk(stepsById(ir.steps, step.thenStepIds), guaranteed);
+        const elseSources = walk(stepsById(ir.steps, step.elseStepIds ?? []), guaranteed);
+        for (const id of thenSources) if (elseSources.has(id)) guaranteed.add(id);
+        continue;
+      }
+      if (step.type === 'action' || step.type === 'ai_decision') guaranteed.add(step.id);
+    }
+    return guaranteed;
+  };
+  walk(linearSteps(ir.steps), new Set());
   return issues;
 }
 

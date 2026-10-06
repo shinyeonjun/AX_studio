@@ -10,7 +10,7 @@ import {
   validateWorkflowIR,
   type WorkflowIR,
 } from '../../../../workflow/schema.js';
-import type { ContractValidationIssue } from '../../../../workflow/contract-validator.js';
+import { validateWorkflowForPersistence, type ContractValidationIssue } from '../../../../workflow/contract-validator.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type { AxWorkflowCommandResult } from './contract.js';
 import {
@@ -30,26 +30,37 @@ export function createWorkflow(store: WorkflowStore, command: AxCommand): AxWork
   return persistCandidate(store, candidate.value, 'created');
 }
 
-export function updateWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCommandResult {
+export interface WorkflowUpdatePreview {
+  workflowId: string;
+  current: WorkflowIR;
+  next: WorkflowIR;
+  executableChange: boolean;
+}
+
+/** Validates an update and computes the next definition without persisting anything. */
+export function previewWorkflowUpdate(
+  store: WorkflowStore,
+  command: AxCommand,
+): { ok: true; value: WorkflowUpdatePreview } | { ok: false; result: AxWorkflowCommandResult } {
   const parsed = AxWorkflowUpdateArgsSchema.safeParse(command.args);
   if (!parsed.success) {
-    return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
+    return { ok: false, result: ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]] };
   }
 
   const current = store.getWorkflow(parsed.data.workflowId);
   if (!current) {
-    return [
+    return { ok: false, result: [
       'not_found',
       undefined,
       [issue('workflow_not_found', `workflow를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')],
-    ];
+    ] };
   }
   if (current.version !== parsed.data.baseVersion) {
-    return [
+    return { ok: false, result: [
       'conflict',
       { currentVersion: current.version },
       [issue('stale_workflow_version', `workflow가 ${current.version} 버전으로 변경되었습니다. 최신 버전을 다시 조회해야 합니다.`, 'baseVersion')],
-    ];
+    ] };
   }
 
   const next: WorkflowIR = {
@@ -89,20 +100,40 @@ export function updateWorkflow(store: WorkflowStore, command: AxCommand): AxWork
     else delete next.sideEffects[normalized.value.id];
   }
 
-  if (operationIssues.length > 0) return ['invalid', undefined, operationIssues];
+  if (operationIssues.length > 0) return { ok: false, result: ['invalid', undefined, operationIssues] };
   const executableChange = parsed.data.operations.some((operation) =>
     operation.op === 'upsert_step'
     || operation.op === 'remove_step'
     || (operation.op === 'set' && operation.path === 'trigger'));
-  const wasActive = store.isWorkflowActive(parsed.data.workflowId);
-  if (wasActive && executableChange) next.allowExternalAuto = false;
+  // Auto-send consent covered the previous executable definition only; any
+  // executable change must be re-consented, whether or not the workflow is active.
+  if (executableChange) next.allowExternalAuto = false;
+  // Validate exactly as persistence will, so missing inputs surface before any confirmation card.
+  const schema = validateWorkflowIR(next);
+  if (!schema.ok) return { ok: false, result: ['invalid', undefined, [issue('invalid_workflow_schema', schema.error)]] };
+  const contractIssues = validateWorkflowForPersistence(parseWorkflowIR(schema.value));
+  if (contractIssues.length > 0) return { ok: false, result: contractValidationResult(contractIssues) };
+  return { ok: true, value: { workflowId: parsed.data.workflowId, current, next, executableChange } };
+}
+
+export function updateWorkflow(store: WorkflowStore, command: AxCommand): AxWorkflowCommandResult {
+  const preview = previewWorkflowUpdate(store, command);
+  if (!preview.ok) return preview.result;
+  const { workflowId, current, next, executableChange } = preview.value;
+  const wasActive = store.isWorkflowActive(workflowId);
 
   const persisted = persistCandidate(store, next, 'updated');
   if (wasActive && executableChange && persisted[0] === 'ok') {
-    store.setWorkflowActive(parsed.data.workflowId, false);
+    store.setWorkflowActive(workflowId, false);
     const data = persisted[1] && typeof persisted[1] === 'object'
       ? { ...(persisted[1] as Record<string, unknown>), active: false, reauthorizationRequired: true }
       : { active: false, reauthorizationRequired: true };
+    return [persisted[0], data, persisted[2]];
+  }
+  if (executableChange && current.allowExternalAuto && persisted[0] === 'ok') {
+    const data = persisted[1] && typeof persisted[1] === 'object'
+      ? { ...(persisted[1] as Record<string, unknown>), externalAutoReset: true }
+      : { externalAutoReset: true };
     return [persisted[0], data, persisted[2]];
   }
   return persisted;
@@ -167,15 +198,17 @@ function persistCandidate(
       return ['conflict', { saved: false }, [issue('workflow_deletion_in_progress', 'workflow 삭제가 진행 중이어서 수정할 수 없습니다. 잠시 후 다시 시도해 주세요.')]];
     }
     const contractIssues = (error as { issues?: ContractValidationIssue[] }).issues;
-    if (Array.isArray(contractIssues)) {
-      const status = statusForValidation(contractIssues);
-      const issues = contractIssues.map(mapContractIssue);
-      if (status === 'needs_input' && issues.some((entry) => entry.inputRequests?.length)) {
-        const inputIssues = issues.filter((entry) => entry.inputRequests?.length);
-        return [status, { saved: false }, [...inputIssues, ...issues.filter((entry) => !entry.inputRequests?.length)]];
-      }
-      return [status, { saved: false }, issues];
-    }
+    if (Array.isArray(contractIssues)) return contractValidationResult(contractIssues);
     return ['error', undefined, [issue('workflow_persist_failed', error instanceof Error ? error.message : String(error))]];
   }
+}
+
+function contractValidationResult(contractIssues: readonly ContractValidationIssue[]): AxWorkflowCommandResult {
+  const status = statusForValidation([...contractIssues]);
+  const issues = contractIssues.map(mapContractIssue);
+  if (status === 'needs_input' && issues.some((entry) => entry.inputRequests?.length)) {
+    const inputIssues = issues.filter((entry) => entry.inputRequests?.length);
+    return [status, { saved: false }, [...inputIssues, ...issues.filter((entry) => !entry.inputRequests?.length)]];
+  }
+  return [status, { saved: false }, issues];
 }

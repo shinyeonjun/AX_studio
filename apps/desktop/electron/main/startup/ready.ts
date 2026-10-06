@@ -1,8 +1,10 @@
 import { app, dialog } from 'electron';
 import {
   createAxStudioCore,
+  flushAppLogSync,
   type DecisionEngine,
   setDocumentEngineClient,
+  setDocumentEngineEnvOverridesAllowed,
   setWebhookSecretResolver,
 } from '@ax-studio/core';
 import { createMainWindow } from '../app-window';
@@ -24,7 +26,7 @@ import {
   initDesktopAxDataPaths,
   resolveDesktopDataRoot,
 } from '../data-paths.js';
-import { migrateAxDataIfNeeded } from '../data-migrate.js';
+import { migrateAxDataOrContinue } from '../data-migrate.js';
 import { E2EDocumentEngineClient } from '../e2e-test-seam.js';
 import { isE2ERuntimeEnabled, shouldLoadE2EBenchmarkReportPlanner } from '../e2e-test-seam/gates.js';
 import { loadE2EBenchmarkReportPlanner } from '../e2e-test-seam/report-planner.js';
@@ -32,13 +34,42 @@ import { hydrateConnectorsForStartup } from './connectors.js';
 import { createStartupJevDecisionEngine } from './jev.js';
 import { drainDesktopCore, isDesktopShuttingDown, setDesktopStartupTask, setWorkspaceSourceUnsubscribe } from './lifecycle.js';
 
+const HISTORY_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1_000;
+
+async function runNonFatalStartupStep<T>(label: string, step: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await step();
+  } catch (err) {
+    console.error(`[AX Studio] ${label} failed; continuing startup`, {
+      code: (err as { code?: unknown } | null)?.code,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+/** Startup retention runs in core bootstrap; repeat it daily for long-lived sessions. */
+function scheduleHistoryRetention(core: { store: { pruneHistory(): unknown } }): void {
+  const timer = setInterval(() => {
+    if (isDesktopShuttingDown()) {
+      clearInterval(timer);
+      return;
+    }
+    try { core.store.pruneHistory(); }
+    catch (err) { console.warn('[AX Studio] history retention failed', { code: (err as { code?: unknown } | null)?.code }); }
+  }, HISTORY_RETENTION_INTERVAL_MS);
+  timer.unref?.();
+}
+
 export function registerDesktopReadyHandler(): void {
   const startup = app.whenReady().then(async () => {
     try {
       if (isDesktopShuttingDown()) return;
+      // Packaged builds always use the bundled document-engine worker and Python.
+      setDocumentEngineEnvOverridesAllowed(!app.isPackaged);
       const isE2E = isE2ERuntimeEnabled(app.isPackaged, process.env);
       const paths = initDesktopAxDataPaths();
-      if (!isE2E) await migrateAxDataIfNeeded(paths);
+      if (!isE2E) await migrateAxDataOrContinue(paths);
       app.setPath('cache', paths.cache.chromium);
 
       if (isE2E && process.env.AX_E2E_DOCUMENT_ENGINE === 'mock') {
@@ -48,9 +79,11 @@ export function registerDesktopReadyHandler(): void {
       let aiToml: Awaited<ReturnType<typeof loadAiTomlIntoEnv>> | null = null;
       if (!isE2E) {
         await loadEnvFile();
-        await migrateAiSecretsToOsStore();
+        // An unreadable stored secret (DPAPI/keyring change) must not block startup;
+        // the affected provider simply reads as unconfigured until re-entered.
+        await runNonFatalStartupStep('AI secret migration', () => migrateAiSecretsToOsStore());
         await purgeDisallowedEnvFileKeys();
-        aiToml = await loadAiTomlIntoEnv();
+        aiToml = await runNonFatalStartupStep('AI config load', () => loadAiTomlIntoEnv()) ?? null;
       }
 
       let decisionEngine: DecisionEngine | undefined;
@@ -108,8 +141,10 @@ export function registerDesktopReadyHandler(): void {
       createMainWindow();
       createTray();
 
-      const slackSecret = await hydrateConnectorsForStartup(core);
+      // Connector failures are recorded per connection, never fatal to startup.
+      const slackSecret = await runNonFatalStartupStep('connector hydration', () => hydrateConnectorsForStartup(core)) ?? null;
       if (isDesktopShuttingDown()) return;
+      scheduleHistoryRetention(core);
       setWebhookSecretResolver(() => getWebhookSecret());
       notifyStateChanged();
       core.scheduler.start();
@@ -135,6 +170,8 @@ export function registerDesktopReadyHandler(): void {
         }
       }
       dialog.showErrorBox('AX Studio 시작 실패', `${detail}${logHint}`);
+      // app.exit skips async log writes; flush so the startup failure reaches the log file.
+      try { flushAppLogSync(); } catch { /* Exiting regardless. */ }
       app.exit(1);
     }
   });

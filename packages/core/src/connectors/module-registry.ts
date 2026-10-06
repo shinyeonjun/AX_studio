@@ -12,10 +12,6 @@ export function registerModule(registration: ModuleRegistration): void {
   modules.set(registration.id, registration);
 }
 
-export function getRegisteredModule(id: ConnectorId): ModuleRegistration | undefined {
-  return modules.get(id);
-}
-
 export function listRegisteredModules(): ModuleRegistration[] {
   return [...modules.values()];
 }

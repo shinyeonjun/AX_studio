@@ -6,16 +6,16 @@ import { TableColumnTypeSchema } from '../../contracts/artifacts/table.js';
 export const EXCEPTION_REVIEW_FLOW_ID = 'excel_policy_exception_review' as const;
 export const EXCEPTION_REVIEW_REQUEST_MAX_CHARS = 2_048;
 export const EXCEPTION_REVIEW_MAX_ROWS = 500;
-export const EXCEPTION_REVIEW_MAX_SOURCES = 8;
-export const EXCEPTION_REVIEW_MAX_COLUMNS = 128;
-export const EXCEPTION_REVIEW_MAX_POLICY_PAGES = 64;
+const EXCEPTION_REVIEW_MAX_SOURCES = 8;
+const EXCEPTION_REVIEW_MAX_COLUMNS = 128;
+const EXCEPTION_REVIEW_MAX_POLICY_PAGES = 64;
 export const EXCEPTION_REVIEW_MAX_POLICY_CHARS = 128_000;
 
 const ObservedId = z.string().min(1).max(200);
 const ContractId = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/u);
-export const ExceptionReviewDigestSchema = z.string().regex(/^[a-f0-9]{64}$/u);
+const ExceptionReviewDigestSchema = z.string().regex(/^[a-f0-9]{64}$/u);
 export const ExceptionReviewCandidateIdSchema = z.string().regex(/^candidate_[a-f0-9]{64}$/u);
-export const ExceptionReviewRowIdSchema = z.string().regex(/^row_[a-f0-9]{64}$/u);
+const ExceptionReviewRowIdSchema = z.string().regex(/^row_[a-f0-9]{64}$/u);
 
 export function exceptionReviewTextDigest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -40,7 +40,7 @@ export function exceptionReviewRowIdentity(contentHash: string, sheetName: strin
 }
 
 /** Host-normalized intake metadata. Raw/normalized cell values stay in the source store. */
-export const ExceptionReviewDatasetSchema = z.object({
+const ExceptionReviewDatasetSchema = z.object({
   sourceId: ObservedId,
   artifactId: ObservedId,
   tableId: ObservedId,
@@ -63,7 +63,7 @@ export const ExceptionReviewDatasetSchema = z.object({
 export type ExceptionReviewDataset = z.infer<typeof ExceptionReviewDatasetSchema>;
 
 /** Every PDF page must be represented; blank pages are explicit, never omitted. */
-export const ExceptionReviewPolicySchema = z.object({
+const ExceptionReviewPolicySchema = z.object({
   sourceId: ObservedId,
   artifactId: ObservedId,
   label: z.string().trim().min(1).max(200),
@@ -118,7 +118,7 @@ export const ExceptionReviewRecipeSchema = z.object({
 });
 export type ExceptionReviewRecipe = z.infer<typeof ExceptionReviewRecipeSchema>;
 
-export const ExceptionReviewPolicyEvidenceSchema = z.object({
+const ExceptionReviewPolicyEvidenceSchema = z.object({
   id: z.string().regex(/^evidence_[a-f0-9]{64}$/u),
   pageIndex: z.number().int().nonnegative(),
   start: z.literal(0),

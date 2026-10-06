@@ -19,6 +19,26 @@ describe('observeDocumentArtifact', () => {
       role: 'dynamic_value',
     });
     expect(observations.some((entry) => entry.label === '고객수')).toBe(true);
+    expect(revenue).toMatchObject({ path: 'field.총매출', required: true });
+  });
+
+  it('requires only uniquely labeled fields and keeps loose or repeated numbers optional', () => {
+    const observations = observeDocumentArtifact('ex_1', {
+      id: 'doc_loose',
+      pages: [{ index: 0, text: '총매출: 100\n지점 매출: 10\n본점 매출: 20\n작년 대비 15% 증가\n담당 3명' }],
+      tables: [],
+      images: [],
+    });
+    const required = observations.filter((entry) => entry.required);
+    expect(required.map((entry) => entry.path)).toEqual(['field.총매출']);
+    expect(observations.filter((entry) => entry.label === '매출').every((entry) => !entry.required)).toBe(true);
+    expect(observations.some((entry) => entry.label === '담당' && !entry.required)).toBe(true);
+  });
+
+  it('gives the same labeled field the same path in different examples', () => {
+    const first = observeDocumentArtifact('ex_1', { id: 'a', text: '머리말\n총매출: 100', pages: [], tables: [], images: [] });
+    const second = observeDocumentArtifact('ex_2', { id: 'b', pages: [{ index: 3, text: '총매출: 200' }], tables: [], images: [] });
+    expect(first.find((entry) => entry.required)?.path).toBe(second.find((entry) => entry.required)?.path);
   });
 
   it('keeps repeated labels as distinct stable semantic locations', () => {
@@ -39,6 +59,7 @@ describe('observeDocumentArtifact', () => {
       .map((entry) => entry.path);
 
     expect(new Set(revenuePaths).size).toBe(revenuePaths.length);
+    expect(first.filter((entry) => entry.label === '매출').every((entry) => !entry.required)).toBe(true);
     expect(revenuePaths).toEqual(
       second.filter((entry) => entry.label === '매출').map((entry) => entry.path),
     );

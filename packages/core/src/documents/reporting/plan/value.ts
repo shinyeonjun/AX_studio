@@ -86,7 +86,8 @@ export function evaluateValue(expression: ReportValueExpression, row: ReportRow)
   }
 }
 
-export function comparable(value: unknown): string | number | boolean | null | undefined {
+/** Ordering key: numeric-looking text is coerced so "1,200" sorts above "900". */
+function comparable(value: unknown): string | number | boolean | null | undefined {
   if (value == null || typeof value === 'boolean') return value;
   try {
     return numericValue(value);
@@ -95,12 +96,49 @@ export function comparable(value: unknown): string | number | boolean | null | u
   }
 }
 
+const NUMERIC_TEXT = /^[+-]?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)(?:\.\d+)?$/;
+
+/**
+ * Numeric value of text that unambiguously denotes a number: optional sign,
+ * proper thousands grouping, and no leading zeros ("1,000", "-3.50", "0.5").
+ * Identifier-like text such as "001", "1,00" or "1e3" stays text.
+ */
+function numericTextValue(value: string): number | undefined {
+  if (!NUMERIC_TEXT.test(value)) return undefined;
+  const parsed = Number(value.replace(/,/g, ''));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/**
+ * Join/equality identity: type plus string form, so "001" never matches 1 or
+ * "1". Unambiguous numeric text shares the number's key because CSV sources
+ * carry text while databases carry numbers ("1,000" = 1000). Empty keys
+ * (null, undefined, '') never match anything.
+ */
+export function reportJoinKey(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? `number:${String(value)}` : null;
+  if (typeof value === 'string') {
+    const numeric = numericTextValue(value.trim());
+    return numeric === undefined ? `string:${value}` : `number:${String(numeric)}`;
+  }
+  return `${typeof value}:${String(value)}`;
+}
+
+/** Equality uses the join identity; numeric coercion beyond it is only for ordering. */
+function valuesEqual(left: unknown, right: unknown): boolean {
+  if (left == null || right == null) return left == null && right == null;
+  if (left === right) return true;
+  const leftKey = reportJoinKey(left);
+  return leftKey !== null && leftKey === reportJoinKey(right);
+}
+
 export function compareValues(operation: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte', left: unknown, right: unknown): boolean {
+  if (operation === 'eq') return valuesEqual(left, right);
+  if (operation === 'ne') return !valuesEqual(left, right);
   const a = comparable(left);
   const b = comparable(right);
   switch (operation) {
-    case 'eq': return a === b;
-    case 'ne': return a !== b;
     case 'gt': return a != null && b != null && a > b;
     case 'gte': return a != null && b != null && a >= b;
     case 'lt': return a != null && b != null && a < b;

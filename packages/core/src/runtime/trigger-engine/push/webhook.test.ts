@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { setWebhookSecretResolver } from '../../../triggers/webhook/secret-provider.js';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { WorkflowRuntime } from '../../engine.js';
@@ -6,6 +7,11 @@ import { createTestConnectors, mockSlack } from '../../../testing/connectors/tes
 import { TriggerEngine } from '../../trigger-engine.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 import { findFreePort, waitForWebhookListener } from './fixtures.js';
+
+const HOOK_SECRET = 'hook-secret-0123456789abcdefghijklmnop';
+
+beforeEach(() => setWebhookSecretResolver((config) => (config as { secret?: string }).secret ?? null));
+afterEach(() => setWebhookSecretResolver(null));
 
 describe('TriggerEngine webhook push lifecycle', () => {
   it('runs enabled webhook workflows and ignores disabled ones', async () => {
@@ -44,7 +50,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
     });
     store.setConnection('webhook', true, {
       port,
-      secret: 'hook-secret',
+      secret: HOOK_SECRET,
       secretStored: true,
     });
 
@@ -67,7 +73,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
 
       const unmatchedPath = await fetch(`http://127.0.0.1:${port}/hooks/unknown`, {
         method: 'POST',
-        headers: { 'x-ax-webhook-secret': 'hook-secret' },
+        headers: { 'x-ax-webhook-secret': HOOK_SECRET },
         body: '{"id":0}',
       });
       expect(unmatchedPath.status).toBe(202);
@@ -77,7 +83,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
       const accepted = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
         method: 'POST',
         headers: {
-          'x-ax-webhook-secret': 'hook-secret',
+          'x-ax-webhook-secret': HOOK_SECRET,
           'idempotency-key': 'invoice-paid-1',
         },
         body: '{"id":1}',
@@ -92,7 +98,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
       const repeated = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
         method: 'POST',
         headers: {
-          'x-ax-webhook-secret': 'hook-secret',
+          'x-ax-webhook-secret': HOOK_SECRET,
           'idempotency-key': 'invoice-paid-1',
         },
         body: '{"id":1}',
@@ -105,7 +111,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
       store.setWorkflowActive(workflowId, false);
       const ignored = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
         method: 'POST',
-        headers: { 'x-ax-webhook-secret': 'hook-secret' },
+        headers: { 'x-ax-webhook-secret': HOOK_SECRET },
         body: '{"id":2}',
       });
       expect(ignored.status).toBe(202);
@@ -121,7 +127,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
       const restarted = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
         method: 'POST',
         headers: {
-          'x-ax-webhook-secret': 'hook-secret',
+          'x-ax-webhook-secret': HOOK_SECRET,
           'idempotency-key': 'invoice-paid-2',
         },
         body: '{"id":2}',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildZip } from '../../../documents/zip-test-fixture.js';
 import { assertXlsxArchiveSafety } from './shared.js';
 
 function makeCentralDirectoryArchive(options: {
@@ -24,11 +25,13 @@ function makeCentralDirectoryArchive(options: {
 }
 
 describe('assertXlsxArchiveSafety', () => {
-  it('accepts a small ordinary ZIP central directory', () => {
-    expect(() => assertXlsxArchiveSafety(makeCentralDirectoryArchive({
-      compressedBytes: 100,
-      uncompressedBytes: 1_000,
-    }))).not.toThrow();
+  it('accepts a small ordinary ZIP archive', () => {
+    expect(() => assertXlsxArchiveSafety(buildZip(Buffer.from('<sheet/>'.repeat(50))))).not.toThrow();
+  });
+
+  it('rejects an entry whose real inflated size exceeds the declared size', () => {
+    expect(() => assertXlsxArchiveSafety(buildZip(Buffer.from('a'.repeat(5_000)), { declaredSize: 1_000 })))
+      .toThrow('xlsx_zip_inflated_size_mismatch');
   });
 
   it('rejects an archive with an excessive compression ratio', () => {

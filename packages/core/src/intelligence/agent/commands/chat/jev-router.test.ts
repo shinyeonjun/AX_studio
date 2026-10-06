@@ -1,5 +1,6 @@
 import { createAuthoritativeRequestAnchor } from '../../../decision/request-anchor.js';
 import { describe, expect, it, vi } from 'vitest';
+import { buildTableArtifact } from '../../../../contracts/artifacts/table-build.js';
 import {
   MAX_DECISION_CHOICE_CRITERIA,
   type DecisionAnswer,
@@ -14,7 +15,7 @@ import { buildJevReadOperationIndex, type JevReadOperationHint } from '../../../
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import { AxDiscoverySearchArgsSchema, AxExecutionEnqueueOnceArgsSchema } from '../schema/workflow-args.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
-import { routeChatWithJev } from './jev-router.js';
+import { routeChatWithJev, rankReadHintsByRelevance } from './jev-router.js';
 import {
   parallelToolAnswersForTest,
   parallelToolCandidateForTest,
@@ -349,7 +350,7 @@ describe('routeChatWithJev', () => {
         request: {
           anchor: createAuthoritativeRequestAnchor('workflow와 일회 실행의 차이를 설명해줘'),
           message: 'workflow와 일회 실행의 차이를 설명해줘',
-          features: {},
+          features: { calculation_or_summary_cue: true },
           context: { recentTurns: [] },
         },
         response: { llmRequired: true },
@@ -2359,7 +2360,8 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result).toMatchObject({ kind: 'command', route: 'job_propose', command: {
-      name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '', timezone: '' } },
+      // "매일 오전 9시" is prefilled for confirmation on the job card; the time zone is the host's.
+      name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '0 9 * * *', timezone: expect.any(String) } },
     } });
     expect(planningCalls).toBe(0);
   });
@@ -2395,7 +2397,7 @@ describe('routeChatWithJev', () => {
         request: {
           anchor: createAuthoritativeRequestAnchor('상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.'),
           message: '상품 5개를 조회해서 재고 부족 상품만 정리하는 일회성 업무를 지금 실행해줘. 반복 업무로 저장하지는 마.',
-          features: { result_limit_candidates: [5] },
+          features: { result_limit_candidates: [5], calculation_or_summary_cue: true },
           context: { recentTurns: [] },
         },
         response: { llmRequired: true },
@@ -2429,6 +2431,52 @@ describe('routeChatWithJev', () => {
     expect(result).toMatchObject({ kind: 'clarify', route: 'execution_enqueue_once' });
     if (result.kind !== 'clarify') throw new Error('expected an execution clarification');
     expect(result.message).toContain('확실하지 않아 실행하지 않았습니다');
+  });
+
+  it('keeps chat drafting as an answer when Jev says not to execute, and sends the drafting cue to Jev', async () => {
+    let routeState: unknown;
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          routeState ??= request.state;
+          return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              needsNaturalLanguageAnswer: true,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
+            explicit_execution_now: { type: 'choice', choice: 'do_not_execute', probabilities: { do_not_execute: 0.99 }, confidence: 0.99 },
+          } };
+        },
+      },
+      userMessage: '담당자한테 보낼 메일 써줘.',
+      connectedConnectors: ['gmail'],
+    });
+
+    expect(result).toMatchObject({ kind: 'reply', route: 'answer' });
+    expect(routeState).toMatchObject({ request_features: { drafting_cue: true } });
+  });
+
+  it('does not let a drafting cue override Jev-confirmed execution intent; enqueue checks still apply', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async (request): Promise<DecisionEvaluationResult> => {
+          return { answers: {
+            ...parallelToolAnswersForTest(request, {
+              needsNaturalLanguageAnswer: true,
+              select: (candidate) => candidate.capabilityId === 'gmail.message.send',
+            }),
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
+            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.99 }, confidence: 0.99 },
+          } };
+        },
+      },
+      userMessage: '담당자한테 보낼 메일 써줘.',
+      connectedConnectors: ['gmail'],
+    });
+
+    expect(result).toMatchObject({ route: 'execution_enqueue_once' });
+    expect(result.kind).not.toBe('reply');
   });
 
   it('selects a no-input action in the same first-pass evaluation', async () => {
@@ -2587,7 +2635,7 @@ describe('routeChatWithJev', () => {
     expect(result).not.toHaveProperty('command');
   });
 
-  it('compiles an explicit delete against the host-provided current workflow version', async () => {
+  it('does not compile a delete when Jev rates another route as more likely than delete', async () => {
     const result = await routeChatWithJev({
       decisionEngine: {
         evaluate: async () => ({
@@ -2595,6 +2643,28 @@ describe('routeChatWithJev', () => {
             route: {
               type: 'choice', choice: 'workflow_delete',
               probabilities: { workflow_delete: 0.4, answer: 0.6 }, confidence: 0.4,
+            },
+            explicit_workflow_delete: { type: 'choice', choice: 'delete_now', probabilities: { delete_now: 0.99 }, confidence: 0.99 },
+          },
+        }),
+      },
+      currentWorkflowId: 'workflow-current',
+      currentWorkflowVersion: 4,
+      userMessage: '현재 workflow를 삭제해줘',
+    });
+
+    expect(result).toMatchObject({ kind: 'clarify', route: 'workflow_delete' });
+    expect(result).not.toHaveProperty('command');
+  });
+
+  it('compiles an explicit delete against the host-provided current workflow version', async () => {
+    const result = await routeChatWithJev({
+      decisionEngine: {
+        evaluate: async () => ({
+          answers: {
+            route: {
+              type: 'choice', choice: 'workflow_delete',
+              probabilities: { workflow_delete: 0.9, answer: 0.1 }, confidence: 0.9,
             },
             explicit_workflow_delete: { type: 'choice', choice: 'delete_now', probabilities: { delete_now: 0.99 }, confidence: 0.99 },
           },
@@ -3013,5 +3083,453 @@ describe('routeChatWithJev', () => {
       decisionEngine: engine,
       userMessage: 'workflow를 만들어줘',
     })).resolves.toEqual({ kind: 'fallback', reason: 'service_error' });
+  });
+
+  it('prunes unconfirmed write actions and routes to capability_read with summary when the user drafts text in chat', async () => {
+    const hints: JevReadOperationHint[] = [{
+      key: 'op_0',
+      capabilityId: 'http.request',
+      connector: 'http',
+      label: 'Products',
+      description: 'Fetch products',
+      params: { path: 'products' },
+    }];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: true,
+          select: (candidate) => {
+            return candidate.id === 'read:op_0' || candidate.kind === 'write';
+          },
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            explicit_execution_now: { type: 'choice', choice: 'do_not_execute', probabilities: { do_not_execute: 0.95 }, confidence: 0.95 },
+            ...parallelAnswers,
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'gmail'],
+      readOperationHints: hints,
+      userMessage: '스마트폰 재고 제일 없는 거 3개 찾아서 담당자한테 보낼 메일 부드럽게 써봐',
+    });
+
+    expect(result).toMatchObject({
+      kind: 'command',
+      route: 'capability_read',
+      command: { name: 'capability.invoke', args: { id: 'http.request' } },
+      readResultStyle: 'summary',
+    });
+  });
+
+  it('plans a one-off run when a read route also selects a write with Jev-confirmed execution intent', async () => {
+    const hints: JevReadOperationHint[] = [{
+      key: 'op_0',
+      capabilityId: 'http.request',
+      connector: 'http',
+      label: 'Products',
+      description: 'Fetch products',
+      params: { path: 'products' },
+    }];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: false,
+          select: (candidate) => {
+            return candidate.id === 'read:op_0' || candidate.kind === 'write';
+          },
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            explicit_execution_now: { type: 'choice', choice: 'execute_now', probabilities: { execute_now: 0.95 }, confidence: 0.95 },
+            ...parallelAnswers,
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'gmail'],
+      readOperationHints: hints,
+      userMessage: '스마트폰 재고 제일 없는 거 3개 찾아서 담당자한테 메일 등록해줘',
+    });
+
+    // Escalated to execution planning (which still needs host confirmation and approval),
+    // never a direct capability read that silently drops or runs the write.
+    expect(result).not.toMatchObject({ kind: 'fallback', reason: 'uncertain' });
+    expect(result).not.toMatchObject({ route: 'capability_read' });
+    expect(JSON.stringify(result)).toContain('execution_enqueue_once');
+  });
+
+  it('allows read route with transform candidates without falling back to uncertain', async () => {
+    const hints: JevReadOperationHint[] = [{
+      key: 'op_0',
+      capabilityId: 'http.request',
+      connector: 'http',
+      label: 'Products',
+      description: 'Fetch products',
+      params: { path: 'products' },
+    }];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: false,
+          select: (candidate) => {
+            return candidate.id === 'read:op_0' || candidate.id.startsWith('transform:');
+          },
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            ...parallelAnswers,
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http'],
+      readOperationHints: hints,
+      userMessage: '상품 목록 조회해줘',
+    });
+
+    expect(result).toMatchObject({
+      kind: 'command',
+      route: 'capability_read',
+      command: { name: 'capability.invoke', args: { id: 'http.request' } },
+    });
+  });
+
+  it('uses the primary read operation and summary when multiple read operations are selected for a chat answer request', async () => {
+    const hints: JevReadOperationHint[] = [
+      {
+        key: 'op_0',
+        capabilityId: 'http.request',
+        connector: 'http',
+        label: 'Products',
+        description: 'Fetch products',
+        params: { path: 'products' },
+      },
+      {
+        key: 'op_1',
+        capabilityId: 'rdb.query.read',
+        connector: 'rdb',
+        label: 'public.account_managers',
+        description: 'Account managers',
+        params: { table: 'public.account_managers' },
+      },
+    ];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: true,
+          select: (candidate) => {
+            return candidate.id === 'read:op_0' || candidate.id === 'read:op_1';
+          },
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            ...parallelAnswers,
+            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
+            table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'rdb'],
+      readOperationHints: hints,
+      userMessage: '스마트폰 재고 제일 없는 거 3개 찾아서 담당자한테 보낼 메일 부드럽게 써봐',
+    });
+
+    expect(result).toMatchObject({
+      kind: 'command',
+      route: 'capability_read',
+      command: { name: 'capability.invoke', args: { id: 'http.request' } },
+      readResultStyle: 'summary',
+    });
+  });
+
+  it('plans a multi-read one-shot instead of dropping reads when Jev says several selected reads are needed', async () => {
+    const hints: JevReadOperationHint[] = [
+      { key: 'op_0', capabilityId: 'http.request', connector: 'http', label: 'Products', description: 'Fetch products', params: { path: 'products' } },
+      { key: 'op_1', capabilityId: 'rdb.query.read', connector: 'rdb', label: 'public.account_managers', description: 'Account managers', params: { table: 'public.account_managers' } },
+    ];
+    const questionSets: string[][] = [];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        questionSets.push(Object.keys(request.questions));
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+            ...parallelToolAnswersForTest(request, {
+              needsNaturalLanguageAnswer: true,
+              select: (candidate) => candidate.id === 'read:op_0' || candidate.id === 'read:op_1',
+            }),
+            primary_read_operation: { type: 'choice', choice: 'several_needed', probabilities: { several_needed: 0.9 }, confidence: 0.9 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'rdb'],
+      readOperationHints: hints,
+      userMessage: '상품 목록과 담당자 목록을 비교해줘',
+    });
+
+    expect(questionSets.some((ids) => ids.includes('primary_read_operation'))).toBe(true);
+    expect(result).not.toMatchObject({ kind: 'command', route: 'capability_read' });
+  });
+
+  describe('rankReadHintsByRelevance', () => {
+    const productsHint: JevReadOperationHint = {
+      key: 'op_0',
+      capabilityId: 'http.request',
+      connector: 'http',
+      label: 'DummyJSON: Products',
+      description: 'DummyJSON: GET products — Products 상품 제품 물품 재고 스마트폰 노트북 가구 식료품 화장품 향수 stock inventory',
+      params: { path: 'products' },
+    };
+    const schemaHint: JevReadOperationHint = {
+      key: 'op_10',
+      capabilityId: 'rdb.schema.describe',
+      connector: 'rdb',
+      label: '테스트 스키마',
+      description: '테스트의 허용된 테이블 목록 및 DB 스키마 구조 조회 (테이블 구조 확인 전용)',
+      params: {},
+    };
+
+    it('ranks domain data operations higher than unrequested schema inspection', () => {
+      const ranked = rankReadHintsByRelevance([schemaHint, productsHint], '가구 중에 재고 20개 이상인 것들만 표로 보여줘');
+      expect(ranked[0]?.key).toBe('op_0');
+      expect(ranked[0]?.capabilityId).toBe('http.request');
+    });
+
+    it('ranks schema inspection higher when the query explicitly asks for schema or tables', () => {
+      const ranked = rankReadHintsByRelevance([productsHint, schemaHint], 'DB 테이블 목록 스키마 보여줘');
+      expect(ranked[0]?.key).toBe('op_10');
+      expect(ranked[0]?.capabilityId).toBe('rdb.schema.describe');
+    });
+  });
+
+  it('selects the top-ranked read hint as capability_read when multiple read candidates are selected without multi-read composition', async () => {
+    const hints: JevReadOperationHint[] = [
+      {
+        key: 'op_0',
+        capabilityId: 'http.request',
+        connector: 'http',
+        label: 'DummyJSON: Products',
+        description: 'DummyJSON: GET products — Products 상품 제품 물품 재고 스마트폰 노트북 가구 식료품 화장품 향수 stock inventory',
+        params: { path: 'products/category/furniture' },
+      },
+      {
+        key: 'op_10',
+        capabilityId: 'rdb.schema.describe',
+        connector: 'rdb',
+        label: '테스트 스키마',
+        description: '테스트의 허용된 테이블 목록 및 DB 스키마 구조 조회 (테이블 구조 확인 전용)',
+        params: {},
+      },
+    ];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: false,
+          select: (candidate) => {
+            return candidate.id === 'read:op_0' || candidate.id === 'read:op_10';
+          },
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
+            ...parallelAnswers,
+            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
+            table_transform: { type: 'choice', choice: 'filter', probabilities: { filter: 0.99 }, confidence: 0.99 },
+            table_projection: { type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.99 }, confidence: 0.99 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http', 'rdb'],
+      readOperationHints: hints,
+      userMessage: '가구 중에 재고 20개 이상인 것들만 표로 보여줘',
+    });
+
+    expect(result).toMatchObject({
+      kind: 'command',
+      route: 'capability_read',
+      command: {
+        name: 'capability.invoke',
+        args: {
+          id: 'http.request',
+          params: { path: 'products/category/furniture' },
+        },
+      },
+      tableTransform: 'filter',
+    });
+  });
+
+  it('routes anaphoric calculation and summary queries over previous conversation to answer without external tools', async () => {
+    const hints: JevReadOperationHint[] = [
+      {
+        key: 'op_0',
+        capabilityId: 'http.request',
+        connector: 'http',
+        label: 'DummyJSON: Products',
+        description: 'DummyJSON: GET products — Products 상품 제품 물품 재고 스마트폰 노트북 가구 식료품 화장품 향수 stock inventory',
+        params: { path: 'products/category/furniture' },
+      },
+    ];
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: true,
+          select: (candidate) => candidate.id === 'read:op_0',
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'answer', probabilities: { answer: 0.99 }, confidence: 0.99 },
+            ...parallelAnswers,
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      connectedConnectors: ['http'],
+      readOperationHints: hints,
+      userMessage: '이 가구들의 총 재고 수량과 평균 가격 계산해줘',
+      conversationHistory: [
+        { role: 'user', content: '가구 중에 재고 20개 이상인 것들만 표로 보여줘' },
+        {
+          role: 'assistant',
+          content: '| title | price | stock |\n| Annibale Colombo Bed | 1899.99 | 88 |\n| Annibale Colombo Sofa | 2499.99 | 60 |\n| Bedside Table African Cherry | 299.99 | 64 |\n| Knoll Saarinen Executive Conference Chair | 499.99 | 26 |',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      kind: 'reply',
+      route: 'answer',
+    });
+  });
+
+  describe('lexical cues as tie-breakers only', () => {
+    const table = buildTableArtifact({
+      id: 'products',
+      headers: ['title', 'rating'],
+      matrix: [['A', 4.1], ['B', 3.2]],
+    });
+    const hints: JevReadOperationHint[] = [{
+      key: 'op_0', capabilityId: 'http.request', connector: 'http', label: 'Products', description: 'Fetch products',
+      params: { method: 'GET', path: 'products', connectionId: 'catalog' },
+    }];
+    const engineWith = (confidence: number): DecisionEngine => ({
+      evaluate: async (request): Promise<DecisionEvaluationResult> => ({
+        answers: {
+          route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: confidence }, confidence },
+          ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false, select: (candidate) => candidate.id === 'read:op_0' }),
+          table_transform: { type: 'choice', choice: 'sort', probabilities: { sort: 0.9 }, confidence: 0.9 },
+        },
+      }),
+    });
+
+    it('never replaces a confident Jev read route with previous_result because of sort wording', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.95),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        previousReadResult: table,
+        userMessage: '평점 높은 순으로 정렬해줘',
+      });
+      expect(result).toMatchObject({ kind: 'command', route: 'capability_read' });
+    });
+
+    it('uses the sort cue to prefer the previous table only when Jev is uncertain', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.4),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        previousReadResult: table,
+        userMessage: '평점 높은 순으로 정렬해줘',
+      });
+      expect(result).toMatchObject({ kind: 'previous_result', route: 'previous_result' });
+    });
+
+    it('does not turn a confident read route into an answer because of anaphoric calculation wording', async () => {
+      const result = await routeChatWithJev({
+        decisionEngine: engineWith(0.95),
+        connectedConnectors: ['http'],
+        readOperationHints: hints,
+        userMessage: '이 상품들의 평균 평점 계산해줘',
+        conversationHistory: [{ role: 'user', content: '상품 보여줘' }, { role: 'assistant', content: '| title |' }],
+      });
+      expect(result).toMatchObject({ kind: 'command', route: 'capability_read' });
+    });
+  });
+
+  it('routes table transform queries (sort/filter) over previousReadResult to previous_result', async () => {
+    const table = buildTableArtifact({
+      id: 'products',
+      headers: ['title', 'rating', 'price', 'stock'],
+      matrix: [
+        ['Annibale Colombo Bed', 4.77, 1899.99, 88],
+        ['Annibale Colombo Sofa', 3.92, 2499.99, 60],
+        ['Bedside Table African Cherry', 2.87, 299.99, 64],
+        ['Knoll Saarinen Executive Conference Chair', 4.88, 499.99, 26],
+      ],
+    });
+    const engine: DecisionEngine = {
+      evaluate: async (request): Promise<DecisionEvaluationResult> => {
+        const parallelAnswers = parallelToolAnswersForTest(request, {
+          needsNaturalLanguageAnswer: false,
+          select: () => false,
+        });
+        return {
+          answers: {
+            route: { type: 'choice', choice: 'previous_result', probabilities: { previous_result: 0.99 }, confidence: 0.99 },
+            ...parallelAnswers,
+            table_transform: { type: 'choice', choice: 'sort', probabilities: { sort: 0.99 }, confidence: 0.99 },
+          },
+        };
+      },
+    };
+
+    const result = await routeChatWithJev({
+      decisionEngine: engine,
+      userMessage: '여기서 평점 제일 높은 순으로 다시 정렬해줘',
+      previousReadResult: table,
+      conversationHistory: [
+        { role: 'user', content: '가구 중에 재고 20개 이상인 것들만 표로 보여줘' },
+        { role: 'assistant', content: '표 결과...' },
+        { role: 'user', content: '이 가구들의 총 재고 수량과 평균 가격 계산해줘' },
+        { role: 'assistant', content: '총 재고 수량은 238개, 평균 가격은 1,299.99입니다.' },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      kind: 'previous_result',
+      route: 'previous_result',
+    });
   });
 });

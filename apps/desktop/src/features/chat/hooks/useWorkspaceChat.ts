@@ -87,6 +87,7 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
     isViewingSession,
     onSessionsChanged,
     refresh,
+    refreshAfterAction,
     workflowRegistered,
     workspaceWorkflowState,
   ]);

@@ -54,13 +54,16 @@ export function listWorkspaceChats(db: AppDatabase, limit = 50): WorkspaceChatLi
   }
   const sourceCountSql =
     '(SELECT COUNT(*) FROM workspace_chat_sources wcs WHERE wcs.chat_id = wc.id) AS source_count';
+  // Page first, then validate: a sorter would otherwise evaluate json_valid()
+  // over every stored transcript. A LIMIT subquery is never flattened into the
+  // join, so only the returned page is probed.
   const query = (validitySql: string): string =>
     'SELECT wc.id, wc.title, wc.workflow_id, wc.updated_at,\n' +
     '                ' + validitySql + ' AS valid_json,\n' +
     '                ' + sourceCountSql + '\n' +
-    '         FROM workspace_chats wc\n' +
-    '         ORDER BY wc.updated_at DESC\n' +
-    '         LIMIT ?';
+    '         FROM (SELECT id FROM workspace_chats ORDER BY updated_at DESC, id DESC LIMIT ?) page\n' +
+    '         JOIN workspace_chats wc ON wc.id = page.id\n' +
+    '         ORDER BY wc.updated_at DESC, wc.id DESC';
   let rows: ListRow[];
   try {
     rows = readRows<ListRow>(db.prepare(query('json_valid(wc.messages_json)')), limit);

@@ -31,3 +31,20 @@ describe('persisted workflow document HTTP reload', () => {
     expect(fetch).toMatchObject({ action: 'request', sideEffect: 'NONE' });
   });
 });
+
+describe('persisted workflow side-effect reconciliation', () => {
+  it('raises a stale stored side-effect map from the catalog and never lowers it', () => {
+    const ir = parseWorkflowIR({
+      name: 'n', goal: 'g', version: 1, trigger: { type: 'manual' },
+      steps: [
+        { type: 'action', id: 'send', connector: 'slack', action: 'message.send', params: { channel: '#a', text: 't' }, sideEffect: 'NONE' },
+        { type: 'action', id: 'fetch', connector: 'http', action: 'request', actionRef: 'http.request@1', params: { method: 'GET', path: '/x' }, sideEffect: 'NONE' },
+      ],
+      permissions: {}, approval: [], allowExternalAuto: false,
+      sideEffects: { send: 'NONE', fetch: 'EXTERNAL' },
+    });
+    const loaded = parseStoredWorkflow(JSON.parse(JSON.stringify(splitWorkflowIR(ir))));
+    expect(loaded.sideEffects.send).not.toBe('NONE');
+    expect(loaded.sideEffects.fetch).toBe('EXTERNAL');
+  });
+});

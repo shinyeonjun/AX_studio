@@ -4,14 +4,12 @@ from pathlib import Path
 
 from adapters import resolve_adapter
 from artifact_store import load_manifest, manifest_exists, sha256_file, write_manifest
+from engine_limits import assert_source_within_limits
 from ax_paths import default_document_root, managed_request_path, managed_request_root, request_allowed_paths
 from ingest_options import cache_usable, normalize_ocr
 from protocol import EngineRequest, EngineResponse
 
 from .projection import _ingest_response_data
-
-MAX_DOCUMENT_SOURCE_BYTES = 100 * 1024 * 1024
-
 
 def handle_ingest(request: EngineRequest) -> EngineResponse:
     source = request.params.get("path")
@@ -20,11 +18,7 @@ def handle_ingest(request: EngineRequest) -> EngineResponse:
     source_path = managed_request_path(source, "document", request_allowed_paths(request.params))
     if not source_path.is_file():
         return EngineResponse(id=request.id, ok=False, error="file_not_found")
-    try:
-        if source_path.stat().st_size > MAX_DOCUMENT_SOURCE_BYTES:
-            return EngineResponse(id=request.id, ok=False, error="document_source_too_large")
-    except OSError:
-        return EngineResponse(id=request.id, ok=False, error="file_not_found")
+    assert_source_within_limits(source_path)
 
     artifact_root = managed_request_root(
         request.params.get("artifactRoot"),

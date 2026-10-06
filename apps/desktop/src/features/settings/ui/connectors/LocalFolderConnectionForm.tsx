@@ -102,7 +102,6 @@ export function LocalFolderConnectionForm({
       {!embedded && (
         <ConnectionGuide
           guideKey="local_folder"
-          placeholderName="로컬 폴더 연결 가이드"
           steps="1) 찾아보기로 폴더 선택 → 2) 연결 추가 → 3) 워크플로우에서 연결 폴더의 파일 경로로 document.ingest 또는 local_folder.read 호출. NAS·클라우드는 이후 같은 방식으로 확장 예정."
         />
       )}

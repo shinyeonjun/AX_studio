@@ -18,4 +18,15 @@ describe('deriveJevRequestFeatures', () => {
     expect(deriveJevRequestFeatures('OPTIONS /health 조회해줘').explicit_http_method).toBe('OPTIONS');
   });
 
+  it('reports wording cues as hints only, never as decisions', () => {
+    expect(deriveJevRequestFeatures('담당자에게 보낼 메일 초안 써줘')).toMatchObject({ drafting_cue: true });
+    expect(deriveJevRequestFeatures('메일 초안 써서 지금 보내줘')).not.toHaveProperty('drafting_cue');
+    expect(deriveJevRequestFeatures('이 가구들의 총 재고 계산해줘')).toMatchObject({
+      previous_context_reference_cue: true,
+      calculation_or_summary_cue: true,
+    });
+    expect(deriveJevRequestFeatures('여기서 가격 높은 순으로 정렬해줘')).toMatchObject({ table_transform_cue: true });
+    expect(deriveJevRequestFeatures('상품을 새로 조회해서 정렬해줘')).toMatchObject({ table_transform_cue: true, fresh_read_cue: true });
+  });
+
 });

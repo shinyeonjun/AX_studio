@@ -100,3 +100,15 @@ describe('branchHintsFromWorkflow', () => {
     );
   });
 });
+
+describe('ai_decision required slots', () => {
+  it('keeps missing decision intent and output contract visible as required slots', () => {
+    const completeness = assessCompleteness({
+      name: 'PDF', goal: '분류', trigger: { type: 'manual' },
+      // An incomplete draft: the missing schema is exactly what the slots must report.
+      steps: [{ type: 'ai_decision', id: 'classify', goal: '' }],
+    } as unknown as Parameters<typeof assessCompleteness>[0]);
+    expect(completeness.missingRequired).toContain('classify.goal');
+    expect(completeness.missingRequired).toContain('ai_decision.schema');
+  });
+});

@@ -24,6 +24,12 @@ export function oauthCallbackStateMatches(expected: string, received: string | n
   return timingSafeEqual(left, right);
 }
 
+/** Scopes the user actually granted (Google allows unticking scopes); falls back to the request. */
+export function grantedScopes(scope: string | null | undefined, requested: readonly string[]): string[] {
+  const granted = typeof scope === 'string' ? scope.split(/\s+/u).filter(Boolean) : [];
+  return granted.length > 0 ? granted : [...requested];
+}
+
 export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promise<GmailOAuthResult> {
   const [{ google }, { CodeChallengeMethod }] = await Promise.all([
     import('googleapis'),
@@ -58,9 +64,9 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
         return;
       }
       if (!oauthCallbackStateMatches(expectedState, url.searchParams.get('state'))) {
+        // A stray or forged request must not abort the user's pending sign-in.
         res.writeHead(400);
         res.end('Invalid OAuth state');
-        settle({ error: new Error('Invalid OAuth state') });
         return;
       }
       const err = url.searchParams.get('error');
@@ -123,6 +129,6 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     expiryDate: tokens.expiry_date ?? undefined,
-    scopes,
+    scopes: grantedScopes(tokens.scope, scopes),
   };
 }

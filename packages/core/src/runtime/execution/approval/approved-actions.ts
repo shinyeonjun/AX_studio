@@ -13,6 +13,7 @@ import { materializeStepOutputs } from '../../output-ports.js';
 import { approvalParamsHash } from '../../approval-snapshot.js';
 import { resolveActionParamsForExecution } from '../../step-executor.js';
 import { messageTool, messageToolDraft } from '../../../contracts/tool-result.js';
+import { withStepDeadline } from '../deadline.js';
 
 export interface ApprovedActionExecutionOptions {
   pinnedConnector?: import('../../../connectors/types.js').Connector;
@@ -67,11 +68,11 @@ export async function executeApprovedActions(
         const output = validateOutputContract(options.ir.outputContract, options.ctx.variables, options.stepResults);
         if (!output.ok) throw createContractFailure('output_contract_failed', 'before_external_action', output);
       }
-      const result = await connector.execute(
+      const result = await withStepDeadline(options.host, options.ctx, actionId, () => connector.execute(
         actionDefinition.action,
         params,
         options.ctx,
-      );
+      ));
       if (!result.ok) {
         throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
       }

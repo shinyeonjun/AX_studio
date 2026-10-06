@@ -2,6 +2,7 @@ import type { AxCore } from '../../core-instance.js';
 import { buildConnectorState } from './connector-state.js';
 import { buildExecutions, buildPendingApprovals } from './execution-state.js';
 import { buildWorkflowSummaries } from './workflow-state.js';
+import { buildCorruptRowSummary } from './diagnostics-state.js';
 
 export async function buildAppState(core: AxCore) {
   const connectorStatePromise = buildConnectorState(core);
@@ -17,5 +18,6 @@ export async function buildAppState(core: AxCore) {
     pendingApprovals: pendingApprovals.length,
     approvals: pendingApprovals,
     executions,
+    corruptRows: buildCorruptRowSummary(core),
   };
 }

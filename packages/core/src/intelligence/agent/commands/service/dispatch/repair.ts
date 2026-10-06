@@ -1,6 +1,7 @@
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { result } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
+import { requestMutationConfirmation, requiresMutationConfirmation } from './mutation-confirmation.js';
 
 function rejectUnboundRepairTarget(
   state: AxCommandServiceState,
@@ -56,6 +57,8 @@ export function executeRepairCommand(
       command = { ...command, args: { ...args, workflowId: options.currentWorkflowId } } as AxCommand;
     }
   }
+
+  if (requiresMutationConfirmation(command, options)) return requestMutationConfirmation(state, command, options);
 
   switch (command.name) {
     case 'repair.list':

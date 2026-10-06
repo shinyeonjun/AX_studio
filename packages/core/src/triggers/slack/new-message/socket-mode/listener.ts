@@ -10,6 +10,25 @@ import { createSlackSdkLogger, formatSlackSocketError } from './diagnostics.js';
 const SLACK_CLIENT_PING_TIMEOUT_MS = 15_000;
 const SLACK_CHANNEL_LABEL_CACHE_MAX = 256;
 const SLACK_CHANNEL_LABEL_CACHE_TTL_MS = 10 * 60 * 1_000;
+const SLACK_DISCONNECT_TIMEOUT_MS = 2_000;
+
+/**
+ * SocketModeClient.disconnect() waits for the close handshake and can stay pending when
+ * Slack never completes it, which blocked app shutdown. The listener has already dropped
+ * its handlers, so give up waiting after a short bound.
+ */
+async function disconnectWithin(client: Pick<SocketModeClient, 'disconnect'>, timeoutMs: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), timeoutMs); });
+  try {
+    const result = await Promise.race([client.disconnect().then(() => 'closed' as const), timedOut]);
+    if (result === 'timeout') console.warn('[slack-socket] disconnect did not complete in time; continuing shutdown');
+  } catch (error) {
+    console.warn(`[slack-socket] disconnect failed: ${formatSlackSocketError(error)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 type CachedChannelLabel = {
   label: string;
@@ -162,7 +181,7 @@ export class SlackSocketModeListener {
     this.lastLoggedSocketError = undefined;
     this.channelLabels.clear();
     this.channelLabelLookups.clear();
-    if (client) await client.disconnect();
+    if (client) await disconnectWithin(client, SLACK_DISCONNECT_TIMEOUT_MS);
   }
 
   isRunning(): boolean {

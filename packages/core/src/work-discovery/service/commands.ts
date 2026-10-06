@@ -8,6 +8,7 @@ import {
 } from '../schema.js';
 import { isTerminalStatus } from '../state-machine.js';
 import type { DiscoveryRevisionConflict, WorkDiscoveryRuntime } from './contracts.js';
+import { isDiscoveryRevisionConflict } from './lifecycle/runner.js';
 
 export function startDiscovery(
   runtime: WorkDiscoveryRuntime,
@@ -51,8 +52,9 @@ export function startDiscovery(
   }
 
   state.exampleIds = exampleIds;
+  const insertedRevision = state.revision;
   state.revision += 1;
-  runtime.store.saveDiscoverySession(state);
+  runtime.store.saveDiscoverySession(state, insertedRevision);
   runtime.scheduleRun(sessionId);
   return { id: sessionId, state: state.status };
 }
@@ -77,14 +79,24 @@ export function cancelDiscovery(
   sessionId: string,
 ): DiscoverySessionState | undefined {
   const parsed = DiscoveryCancelArgsSchema.parse({ sessionId });
-  const state = runtime.store.getDiscoverySessionState(parsed.sessionId);
-  if (!state || isTerminalStatus(state.status)) return undefined;
-  state.status = 'cancelled';
-  state.revision += 1;
-  state.updatedAt = new Date().toISOString();
-  runtime.store.saveDiscoverySession(state);
-  runtime.running.delete(parsed.sessionId);
-  return state;
+  // Cancel is the user's intent: on a concurrent write, re-read and cancel the fresh state.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const state = runtime.store.getDiscoverySessionState(parsed.sessionId);
+    if (!state || isTerminalStatus(state.status)) return undefined;
+    const readRevision = state.revision;
+    state.status = 'cancelled';
+    state.revision += 1;
+    state.updatedAt = new Date().toISOString();
+    try {
+      runtime.store.saveDiscoverySession(state, readRevision);
+    } catch (error) {
+      if (isDiscoveryRevisionConflict(error)) continue;
+      throw error;
+    }
+    runtime.running.delete(parsed.sessionId);
+    return state;
+  }
+  return undefined;
 }
 
 export function retryDiscovery(
@@ -111,7 +123,12 @@ export function retryDiscovery(
       errorMessage: undefined,
       updatedAt: new Date().toISOString(),
     };
-    runtime.store.saveDiscoverySession(next);
+    try {
+      runtime.store.saveDiscoverySession(next, state.revision);
+    } catch (error) {
+      if (!isDiscoveryRevisionConflict(error)) throw error;
+      return revisionConflict(runtime, sessionId);
+    }
   } else {
     next = runtime.resetForRecovery(state);
   }
@@ -132,6 +149,16 @@ export function answerDiscovery(
   }
   if (state?.status !== 'needs_clarification' || !state.pendingQuestion || state.pendingQuestion.id !== questionId) return undefined;
   const next = applyClarificationAnswer(state, state.pendingQuestion, optionId);
-  runtime.store.saveDiscoverySession(next);
+  try {
+    runtime.store.saveDiscoverySession(next, state.revision);
+  } catch (error) {
+    if (!isDiscoveryRevisionConflict(error)) throw error;
+    return revisionConflict(runtime, sessionId);
+  }
   return next;
+}
+
+export function revisionConflict(runtime: WorkDiscoveryRuntime, sessionId: string): DiscoveryRevisionConflict {
+  const current = runtime.store.getDiscoverySessionState(sessionId);
+  return { error: 'discovery_revision_conflict', currentRevision: current?.revision ?? -1 };
 }

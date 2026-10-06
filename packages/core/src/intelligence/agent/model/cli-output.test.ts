@@ -2,33 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
   cliFailureMessage,
-  cursorProgressFromEvent,
-  cursorResultTextFromEvent,
-  cursorSessionIdFromEvent,
-  isCursorNoiseLine,
-  parseCursorStreamLine,
   parseStructuredFromCliResult,
   pickCliOutput,
   readableCliError,
 } from './cli/output.js';
 
-describe('cursor cli stderr filtering', () => {
-  it('treats cursor-retrieval tracing as noise', () => {
-    expect(isCursorNoiseLine("cursor-retrieval: tracing to 'C:\\Temp\\cursor_retrieval.log'")).toBe(true);
-    expect(readableCliError("cursor-retrieval: tracing to 'C:\\Temp\\cursor_retrieval.log'", 'fail')).toBe('fail');
+describe('cli output handling', () => {
+  it('falls back when stderr is blank and bounds long diagnostics', () => {
+    expect(readableCliError(' \n ', 'fail')).toBe('fail');
+    expect(readableCliError('x'.repeat(5_000), 'fail').length).toBeLessThanOrEqual(2_049);
   });
 
-  it('keeps real errors after filtering noise', () => {
-    const stderr = "cursor-retrieval: tracing to log\nAuthentication required";
-    expect(readableCliError(stderr, 'fail')).toBe('Authentication required');
-  });
-
-  it('prefers stdout over filtered stderr', () => {
-    const picked = pickCliOutput({
-      stdout: '{"ok":true}',
-      stderr: "cursor-retrieval: tracing to log",
-    });
-    expect(picked).toBe('{"ok":true}');
+  it('never treats stderr as model output', () => {
+    expect(pickCliOutput({ stdout: '{"ok":true}' })).toBe('{"ok":true}');
+    expect(pickCliOutput({ stdout: '  ' })).toBe('');
   });
 
   it('surfaces non-zero exit stdout error without json parse noise', () => {
@@ -36,7 +23,7 @@ describe('cursor cli stderr filtering', () => {
       {
         exitCode: 1,
         stdout: 'Error: Sandbox mode is enabled but not available',
-        stderr: 'cursor-retrieval: tracing to log',
+        stderr: '',
       },
       'fail',
     );
@@ -55,16 +42,5 @@ describe('cursor cli stderr filtering', () => {
         'fail',
       ),
     ).rejects.toThrow(/\(\[\s*[\s\S]*Invalid literal value/);
-  });
-});
-
-describe('cursor stream-json events', () => {
-  it('extracts session id, progress, and result text', () => {
-    const init = parseCursorStreamLine('{"type":"system","session_id":"abc"}');
-    expect(init && cursorSessionIdFromEvent(init)).toBe('abc');
-    expect(init && cursorProgressFromEvent(init)).toContain('준비');
-
-    const result = parseCursorStreamLine('{"type":"result","result":"{\\"ok\\":true}","session_id":"abc"}');
-    expect(result && cursorResultTextFromEvent(result)).toBe('{"ok":true}');
   });
 });

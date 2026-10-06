@@ -46,4 +46,21 @@ describe('buildConnectorState', () => {
     resolveAiToml({ providers: {}, decision: {} });
     await expect(pendingState).resolves.toMatchObject({ connections: [] });
   });
+
+  it('still resolves when a stored secret cannot be decrypted', async () => {
+    mocks.readAiToml.mockResolvedValue({ providers: {}, decision: {} });
+    mocks.getJevSecret.mockRejectedValue(Object.assign(new Error('decrypt'), { code: 'credential_decrypt_failed' }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const core = {
+      store: { getSetting: vi.fn(() => undefined), getConnections: vi.fn(() => []) },
+      triggerEngine: {
+        slackSocketStatus: () => ({ phase: 'disconnected' }),
+        slackSocketActive: () => false,
+        pushTransportStatus: () => undefined,
+      },
+    } as unknown as AxCore;
+
+    await expect(buildConnectorState(core)).resolves.toMatchObject({ jevDecisionConfigured: false });
+    warn.mockRestore();
+  });
 });

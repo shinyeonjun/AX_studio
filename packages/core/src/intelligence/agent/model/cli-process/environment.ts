@@ -1,8 +1,7 @@
-import { execSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import type { CommandInvocation } from './contracts.js';
+import { isCmdShim, resolveCmdShim } from './cmd-shim.js';
 
 export function extraBinDirs(): string[] {
   const home = homedir();
@@ -12,9 +11,7 @@ export function extraBinDirs(): string[] {
       process.env.APPDATA ? join(process.env.APPDATA, 'npm') : '',
       join(home, 'AppData', 'Roaming', 'npm'),
       join(home, '.local', 'bin'),
-      join(localAppData, 'cursor-agent'),
       join(localAppData, 'Programs', 'OpenAI', 'Codex', 'bin'),
-      join(localAppData, 'Programs', 'cursor', 'resources', 'app', 'bin'),
     ].filter(Boolean);
   }
   return [
@@ -25,15 +22,26 @@ export function extraBinDirs(): string[] {
   ];
 }
 
+/** PATH is rebuilt separately; proxy/CA variables keep CLIs working behind corporate networks. */
+const INHERITED_ENV_KEYS = new Set([
+  'APPDATA', 'COMSPEC', 'CODEX_HOME', 'HOME', 'HOMEDRIVE', 'HOMEPATH',
+  'LANG', 'LOCALAPPDATA', 'NO_COLOR', 'PATHEXT', 'SYSTEMDRIVE',
+  'SYSTEMROOT', 'TEMP', 'TERM', 'TMP', 'USERPROFILE', 'WINDIR',
+  'HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'NODE_EXTRA_CA_CERTS',
+]);
+
+function isInheritedEnvKey(key: string): boolean {
+  const upper = key.toUpperCase();
+  if (upper === 'PATH') return false;
+  if (!INHERITED_ENV_KEYS.has(upper)) return key.startsWith('LC_');
+  // Windows keys are case-insensitive (`SystemRoot`, `windir`); proxies are often lower-case.
+  return process.platform === 'win32' || key === upper || upper.endsWith('_PROXY');
+}
+
 export function commandEnv(): NodeJS.ProcessEnv {
   const extra = extraBinDirs().join(delimiter);
-  const allowedKeys = new Set([
-    'APPDATA', 'COMSPEC', 'CODEX_HOME', 'HOME', 'HOMEDRIVE', 'HOMEPATH',
-    'LANG', 'LOCALAPPDATA', 'NO_COLOR', 'PATHEXT', 'PATH', 'SYSTEMDRIVE',
-    'SYSTEMROOT', 'TEMP', 'TERM', 'TMP', 'USERPROFILE', 'WINDIR',
-  ]);
   const inherited = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => allowedKeys.has(key) || key.startsWith('LC_')),
+    Object.entries(process.env).filter(([key]) => isInheritedEnvKey(key)),
   );
   return {
     ...inherited,
@@ -41,74 +49,23 @@ export function commandEnv(): NodeJS.ProcessEnv {
   };
 }
 
-function resolveBinaryViaWhere(name: string): string | null {
-  if (process.platform !== 'win32') return null;
-  try {
-    const output = execSync(`where.exe ${name}`, {
-      encoding: 'utf8',
-      timeout: 4000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    for (const line of output.split(/\r?\n/)) {
-      const candidate = line.trim();
-      if (candidate && existsSync(candidate)) return candidate;
-    }
-  } catch {
-    // not found
-  }
-  return null;
-}
-
-export function resolveBinary(names: readonly string[]): string | null {
-  const dirs = [...extraBinDirs(), ...(process.env.PATH ?? '').split(delimiter)];
-  const suffixes = process.platform === 'win32' ? ['.cmd', '.exe', '.bat', ''] : [''];
-  for (const name of names) {
-    for (const dir of dirs) {
-      if (!dir) continue;
-      for (const suffix of suffixes) {
-        const candidate = join(dir, `${name}${suffix}`);
-        if (existsSync(candidate)) return candidate;
-      }
-    }
-    const viaWhere = resolveBinaryViaWhere(name);
-    if (viaWhere) return viaWhere;
-  }
-  return null;
-}
-
-/** agent.cmd wrapper → bundled node.exe + index.js. Avoid cmd.exe for Unicode prompts. */
-export function resolveCmdNodeRuntime(command: string): { file: string; script: string } | null {
-  if (process.platform !== 'win32' || !/\.cmd$/i.test(command)) return null;
-  const dir = dirname(command);
-  const localNode = join(dir, 'node.exe');
-  const localScript = join(dir, 'index.js');
-  if (existsSync(localNode) && existsSync(localScript)) {
-    return { file: localNode, script: localScript };
-  }
-  const versionsDir = join(dir, 'versions');
-  if (!existsSync(versionsDir)) return null;
-  const names = readdirSync(versionsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && /^\d{4}\.\d{1,2}\.\d{1,2}/.test(entry.name))
-    .map((entry) => entry.name)
-    .sort()
-    .reverse();
-  for (const name of names) {
-    const file = join(versionsDir, name, 'node.exe');
-    const script = join(versionsDir, name, 'index.js');
-    if (existsSync(file) && existsSync(script)) return { file, script };
-  }
-  return null;
-}
-
+/**
+ * Node refuses to spawn .cmd/.bat without a shell (CVE-2024-27980), and a shell would
+ * re-parse model ids and prompts. npm shims are therefore run as `node <entry.js>`.
+ */
 export function commandInvocation(command: string, args: string[]): CommandInvocation {
-  const runtime = resolveCmdNodeRuntime(command);
-  if (runtime) {
-    return {
-      file: runtime.file,
-      args: [runtime.script, ...args],
-      env: { ...commandEnv(), CURSOR_INVOKED_AS: 'agent.cmd' },
-    };
+  const env = commandEnv();
+  if (!isCmdShim(command)) return { file: command, args, env };
+  const shim = resolveCmdShim(command);
+  if (!shim) {
+    throw Object.assign(
+      new Error(`Cannot run ${command} without a shell. Reinstall the CLI with npm or use its .exe build.`),
+      { code: 'EUNSUPPORTEDSHIM' },
+    );
   }
-  return { file: command, args, env: commandEnv() };
+  return {
+    file: shim.node,
+    args: [shim.script, ...args],
+    env: shim.electronAsNode ? { ...env, ELECTRON_RUN_AS_NODE: '1' } : env,
+  };
 }

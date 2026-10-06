@@ -39,13 +39,18 @@ export function evaluateAggregate(expression: ReportAggregateExpression, rows: R
     case 'sum':
       return selected.reduce((total, row) => total + numericValue(evaluateValue(expression.value, row), 'sum'), 0);
     case 'average':
-      if (selected.length === 0) return 0;
+      if (selected.length === 0) return null;
       return selected.reduce((total, row) => total + numericValue(evaluateValue(expression.value, row), 'average'), 0) / selected.length;
     case 'min':
     case 'max': {
       if (selected.length === 0) return null;
-      const values = selected.map((row) => numericValue(evaluateValue(expression.value, row), expression.kind));
-      return expression.kind === 'min' ? Math.min(...values) : Math.max(...values);
+      // A loop, not Math.min(...values): spreading a large array overflows the call stack.
+      let result = numericValue(evaluateValue(expression.value, selected[0]!), expression.kind);
+      for (let index = 1; index < selected.length; index += 1) {
+        const value = numericValue(evaluateValue(expression.value, selected[index]!), expression.kind);
+        if (expression.kind === 'min' ? value < result : value > result) result = value;
+      }
+      return result;
     }
     case 'sum_distinct': {
       const values = new Map<string, number>();

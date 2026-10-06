@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { commandError, unwrap } from './result.js';
 import type { UseDiscoveryStartActionsOptions } from './contracts.js';
 
@@ -27,7 +28,8 @@ export function useDiscoveryStartActions({
       const data = unwrap<{ sessionId: string }>(result);
       if (!data?.sessionId) throw commandError(result, '업무 발견을 시작하지 못했습니다.');
       if (epoch !== operationEpochRef.current || contextKey !== workspaceContextKeyRef.current) {
-        void window.ax.discoveryCancel(data.sessionId);
+        // Best effort: the stale session is abandoned either way.
+        void window.ax.discoveryCancel(data.sessionId).catch(() => undefined);
         return;
       }
       activeSessionRef.current = data.sessionId;
@@ -35,7 +37,7 @@ export function useDiscoveryStartActions({
       setSessionContextKey(contextKey);
       await refresh(data.sessionId, epoch);
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
     }
@@ -55,7 +57,7 @@ export function useDiscoveryStartActions({
       }
       await startFromArtifact(goal, imported.artifact.id, contextKey);
     } catch (err) {
-      if (epoch === operationEpochRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {
       if (epoch === operationEpochRef.current) setBusy(false);
     }

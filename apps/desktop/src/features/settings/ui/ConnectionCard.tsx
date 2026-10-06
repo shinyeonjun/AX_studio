@@ -5,6 +5,8 @@ interface ConnectionCardProps {
   badgeClass?: string;
   icon?: string;
   emojiIcon?: string;
+  /** Last connector error reported by the main process, shown under the description. */
+  error?: string;
   onClick: () => void;
 }
 
@@ -15,6 +17,7 @@ export function ConnectionCard({
   badgeClass = '',
   icon,
   emojiIcon,
+  error,
   onClick,
 }: ConnectionCardProps) {
   return (
@@ -29,6 +32,7 @@ export function ConnectionCard({
       <div className="connection-card-body">
         <div className="connection-card-title">{title}</div>
         <div className="connection-card-desc">{description}</div>
+        {error && <div className="connection-card-error">오류: {error}</div>}
       </div>
       <span className={`connection-badge ${badgeClass}`}>{badge}</span>
     </button>

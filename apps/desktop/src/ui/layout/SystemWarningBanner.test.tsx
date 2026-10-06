@@ -1,0 +1,51 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import type { AppState } from '../../types/app-state';
+import { activeSystemWarnings, SystemWarningBanner } from './SystemWarningBanner';
+
+const baseState: AppState = {
+  globalActive: true,
+  works: [],
+  connections: [],
+  pendingApprovals: 0,
+  approvals: [],
+  executions: [],
+};
+
+describe('SystemWarningBanner', () => {
+  it('renders nothing when storage is healthy', () => {
+    expect(activeSystemWarnings(baseState)).toEqual([]);
+    expect(renderToStaticMarkup(<SystemWarningBanner state={baseState} />)).toBe('');
+    expect(renderToStaticMarkup(<SystemWarningBanner state={null} />)).toBe('');
+  });
+
+  it('explains database fallback and plaintext credential storage with a dismiss control', () => {
+    const state: AppState = { ...baseState, databaseBackendFallback: true, credentialStorageWarning: 'basic_text_backend' };
+    expect(activeSystemWarnings(state)).toEqual(['databaseBackendFallback', 'credentialStorageWarning']);
+    const markup = renderToStaticMarkup(<SystemWarningBanner state={state} />);
+    expect(markup).toContain('임시 저장 방식');
+    expect(markup).toContain('OS 키링');
+    expect(markup).toContain('경고 닫기');
+  });
+
+  it('lists skipped corrupt rows by identifier only', () => {
+    const state: AppState = {
+      ...baseState,
+      corruptRows: {
+        total: 3,
+        byTable: { approvals: 3 },
+        rows: [{ table: 'approvals', id: 'ap-1', code: 'invalid_approval_json', detectedAt: '2026-10-06T00:00:00.000Z' }],
+      },
+    };
+    const markup = renderToStaticMarkup(<SystemWarningBanner state={state} />);
+    expect(markup).toContain('손상된 데이터 3건');
+    expect(markup).toContain('ap-1');
+    expect(markup).toContain('invalid_approval_json');
+    expect(markup).toContain('외 2건');
+  });
+
+  it('stays hidden when no rows were skipped', () => {
+    const state: AppState = { ...baseState, corruptRows: { total: 0, byTable: {}, rows: [] } };
+    expect(renderToStaticMarkup(<SystemWarningBanner state={state} />)).toBe('');
+  });
+});

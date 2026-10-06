@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
-import type { AiBrand } from '@ax-studio/core';
+import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
 import type { AiTomlConfig, JevDecisionTomlConfig } from './contracts.js';
 import { emptyConfig, parseAiToml, serializeAiToml } from './toml.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
@@ -34,24 +34,44 @@ export async function writeAiToml(config: AiTomlConfig): Promise<void> {
   }
 }
 
-export async function saveJevDecisionPreferences(
-  prefs: JevDecisionTomlConfig,
-): Promise<AiTomlConfig> {
-  const config = await readAiToml();
-  config.decision ??= {};
-  config.decision.jev = { ...config.decision.jev, ...prefs };
-  await writeAiToml(config);
-  return config;
+let updateQueue: Promise<unknown> = Promise.resolve();
+
+/** Serializes read-modify-write cycles so concurrent IPC saves cannot drop each other's fields. */
+export function updateAiToml(mutate: (config: AiTomlConfig) => void | Promise<void>): Promise<AiTomlConfig> {
+  const run = updateQueue.then(async () => {
+    const config = await readAiToml();
+    await mutate(config);
+    await writeAiToml(config);
+    return config;
+  });
+  updateQueue = run.catch(() => undefined);
+  return run;
 }
 
-export async function saveActiveAi(
+export function saveJevDecisionPreferences(prefs: JevDecisionTomlConfig): Promise<AiTomlConfig> {
+  return updateAiToml((config) => {
+    config.decision ??= {};
+    config.decision.jev = { ...config.decision.jev, ...definedFields(prefs) };
+  });
+}
+
+export function saveActiveAi(brand: AiBrand, mode: AiConnectionMode, model: string): Promise<AiTomlConfig> {
+  return updateAiToml((config) => {
+    config.active = { brand, mode, model };
+    config.providers[brand] = { ...config.providers[brand], mode, model };
+  });
+}
+
+/** Partial update: omitted fields keep their stored values. */
+export function saveAiBrandPreferences(
   brand: AiBrand,
-  mode: 'cli' | 'api',
-  model: string,
+  prefs: { mode?: AiConnectionMode; model?: string },
 ): Promise<AiTomlConfig> {
-  const config = await readAiToml();
-  config.active = { brand, mode, model };
-  config.providers[brand] = { ...config.providers[brand], mode, model };
-  await writeAiToml(config);
-  return config;
+  return updateAiToml((config) => {
+    config.providers[brand] = { ...config.providers[brand], ...definedFields(prefs) };
+  });
+}
+
+function definedFields<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as Partial<T>;
 }

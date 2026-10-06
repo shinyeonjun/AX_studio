@@ -116,4 +116,70 @@ describe('host plan contracts', () => {
     expect(validateJevPlan([{ ...step('a', tableTarget), params: { table: 'not a table' } }], []).errors).toContain('literal_type_mismatch');
     expect(validateJevPlan([{ ...step('a', target), params: { body: { ref: 'missing.body' } } }], []).errors).toContain('unvalidated_parameter_reference');
   });
+
+  describe('message text composition', () => {
+    const table: ConnectorCapability = { id: 'transform.lab_rows', connector: 'transform', kind: 'read', label: 'Rows', description: 'Synthetic rows', params: [], io: { inputs: {}, outputs: { table: 'TableArtifact' } } };
+    const send: ConnectorCapability = { id: 'lab.send', connector: 'lab', kind: 'write', label: 'Send', description: 'Synthetic send', sideEffect: 'EXTERNAL', params: [
+      { name: 'text', label: '메시지', question: '내용?', required: true, purpose: 'prose' },
+    ], io: { inputs: { text: 'TextArtifact' }, outputs: {} } };
+
+    it('inserts an AI text step that summarizes planned data before the send when Jev chooses a source', async () => {
+      const phases: string[] = [];
+      const result = await plan([table, send], async (r): Promise<{ answers: Record<string, DecisionAnswer> }> => {
+        phases.push((r.state as { phase: string }).phase);
+        if (r.questions.requirements) return { answers: review };
+        if (r.questions.compose_text) return { answers: { compose_text: choice('source_0') } };
+        return { answers: {} };
+      }, { request: '재고 10개 미만 상품만 요약해서 보내줘' });
+      expect(phases).toEqual(['composition', 'final_review']);
+      expect(result.kind).toBe('command');
+      if (result.kind !== 'command') return;
+      const steps = result.command.args.steps as Array<Record<string, unknown>>;
+      // data step -> AI text step -> send, with the send moved after its generated text.
+      expect(steps.map((step) => step.type ?? 'action')).toEqual(['action', 'ai_decision', 'action']);
+      expect(steps[0]).toMatchObject({ connector: 'transform' });
+      expect(steps[1]).toMatchObject({ id: 'action_compose', bindings: { table: { from: steps[0]!.id, output: 'table' } } });
+      expect(String(steps[1]!.goal)).toContain('재고 10개 미만');
+      expect(steps[2]).toMatchObject({ connector: 'lab', bindings: { text: { from: 'action_compose', output: 'conclusion' } } });
+    });
+
+    it('offers composition when the message text is wired straight to a raw HTTP response', async () => {
+      // HttpResponseArtifact satisfies TextArtifact, so without composition the send would post raw JSON.
+      const raw: ConnectorCapability = { ...table, id: 'transform.lab_http', io: { inputs: {}, outputs: { response: 'HttpResponseArtifact' } } };
+      const asked: string[] = [];
+      const result = await plan([raw, table, send], async (r): Promise<{ answers: Record<string, DecisionAnswer> }> => {
+        asked.push(...Object.keys(r.questions));
+        if (r.questions.requirements) return { answers: review };
+        if (r.questions.compose_text) return { answers: { compose_text: choice('source_0') } };
+        return { answers: {} };
+      }, { request: '재고 적은 상품만 골라서 보내줘' });
+      expect(asked).toContain('compose_text');
+      expect(result.kind).toBe('command');
+      if (result.kind !== 'command') return;
+      const steps = result.command.args.steps as Array<Record<string, unknown>>;
+      expect(steps.at(-2)).toMatchObject({ type: 'ai_decision', bindings: { table: { output: 'table' } } });
+      expect(steps.at(-1)).toMatchObject({ bindings: { text: { from: 'action_compose', output: 'conclusion' } } });
+    });
+
+    it('keeps the original plan when Jev cannot answer the optional composition question', async () => {
+      const result = await plan([table, send], async (r): Promise<{ answers: Record<string, DecisionAnswer> }> => {
+        if (r.questions.requirements) return { answers: review };
+        return { answers: {} };
+      }, { request: '요약해서 보내줘' });
+      expect(result.kind).toBe('command');
+      if (result.kind !== 'command') return;
+      expect((result.command.args.steps as Array<{ type: string }>).map((step) => step.type)).toEqual(['action', 'action']);
+    });
+
+    it('leaves the text to the user when Jev says the user writes it', async () => {
+      const result = await plan([table, send], async (r): Promise<{ answers: Record<string, DecisionAnswer> }> => {
+        if (r.questions.requirements) return { answers: review };
+        if (r.questions.compose_text) return { answers: { compose_text: choice('user_types') } };
+        return { answers: {} };
+      }, { request: '메시지 보내줘' });
+      expect(result.kind).toBe('command');
+      if (result.kind !== 'command') return;
+      expect((result.command.args.steps as Array<{ type: string }>).map((step) => step.type)).toEqual(['action', 'action']);
+    });
+  });
 });

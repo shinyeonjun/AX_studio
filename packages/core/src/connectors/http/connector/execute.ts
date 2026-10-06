@@ -72,6 +72,8 @@ export async function executeHttpAction(
   const requestHeaders = serializedBody.json
     ? withJsonContentType(headers)
     : headers;
+  // Query strings frequently carry tokens or personal data; log only the path.
+  const logPath = new URL(resolved.value.url).pathname;
   const requestStartedAt = Date.now();
   const result = await performHttpRequest({
     url: resolved.value.url,
@@ -88,7 +90,7 @@ export async function executeHttpAction(
       at: new Date().toISOString(),
       level: 'error',
       message: 'http.request_failed',
-      data: { method, path, error: result.error, status: result.status, durationMs },
+      data: { method, path: logPath, error: result.error, status: result.status, durationMs },
     });
     return { ok: false, error: result.error, errorCode: result.errorCode };
   }
@@ -97,7 +99,7 @@ export async function executeHttpAction(
     at: new Date().toISOString(),
     level: 'info',
     message: 'http.request',
-    data: { method, path, status: result.status, truncated: result.truncated, durationMs },
+    data: { method, path: logPath, status: result.status, truncated: result.truncated, durationMs },
   });
 
   if (result.status >= 400) {
@@ -105,7 +107,7 @@ export async function executeHttpAction(
       at: new Date().toISOString(),
       level: 'error',
       message: 'http.request_failed',
-      data: { method, path, status: result.status, truncated: result.truncated, durationMs },
+      data: { method, path: logPath, status: result.status, truncated: result.truncated, durationMs },
     });
     return {
       ok: false,

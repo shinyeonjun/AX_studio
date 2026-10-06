@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDatabaseAsync } from '../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import { AxCommandService } from '../service.js';
-import { commandChatContext } from './fixtures.js';
+import { commandChatContext, executeConfirmedMutation } from './fixtures.js';
 
 describe('AxCommandService saved execution', () => {
   it('runs only an existing workflow through the injected runtime boundary', async () => {
@@ -22,7 +22,7 @@ describe('AxCommandService saved execution', () => {
     }, commandChatContext);
     const workflowId = (created.data as { workflowId: string }).workflowId;
 
-    const run = await service.execute(
+    const run = await executeConfirmedMutation(service,
       { name: 'workflow.run', args: { workflowId } },
       { ...commandChatContext, currentWorkflowId: workflowId },
     );
@@ -72,7 +72,7 @@ describe('AxCommandService saved execution', () => {
       commandChatContext,
     );
     const workflowId = (created.data as { workflowId: string }).workflowId;
-    const run = await service.execute(
+    const run = await executeConfirmedMutation(service,
       { name: 'workflow.run', args: { workflowId } },
       { ...commandChatContext, currentWorkflowId: workflowId },
     );

@@ -44,6 +44,18 @@ async function setupDiscovery(dir: string) {
   return { store, artifactStore, service, snapshotDir };
 }
 
+const SETTLED_STATUSES = new Set(['needs_clarification', 'ready_to_publish', 'published', 'failed', 'cancelled']);
+
+async function waitForSettled(store: WorkflowStore, sessionId: string, timeoutMs: number) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const state = store.getDiscoverySessionState(sessionId);
+    if (!state || SETTLED_STATUSES.has(state.status)) return state;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return store.getDiscoverySessionState(sessionId);
+}
+
 describe('work discovery north-star e2e', () => {
   it('discovers rules from historical output+input, publishes workflow, and runs on new data', async () => {
     const dir = join(tmpdir(), `ax-wd-e2e-${Date.now()}`);
@@ -76,7 +88,16 @@ describe('work discovery north-star e2e', () => {
       inputArtifactIds: [inputArtifact.id],
     });
 
-    const finalState = await service.waitForTerminal(started.id, 20_000);
+    // A single example is never auto-published: discovery stops at a confirm_rule
+    // question and only becomes publishable after a person confirms the rule.
+    const clarification = await waitForSettled(store, started.id, 20_000);
+    expect(clarification?.status).toBe('needs_clarification');
+    expect(clarification?.pendingQuestion?.kind).toBe('confirm_rule');
+    const confirmOption = clarification?.pendingQuestion?.options.find((option) => option.label === '이 방법으로 확정');
+    expect(confirmOption).toBeTruthy();
+    const answered = service.answer(started.id, clarification!.pendingQuestion!.id, confirmOption!.id, clarification!.revision);
+    expect(answered && !('error' in answered) ? answered.status : undefined).toBe('ready_to_publish');
+    const finalState = store.getDiscoverySessionState(started.id);
     expect(finalState?.status).toBe('ready_to_publish');
 
     const replayCases = store.listDiscoveryReplayCases(started.id);

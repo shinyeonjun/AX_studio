@@ -18,7 +18,7 @@ import {
 import {
   asPrimitive,
   compareValues,
-  comparable,
+  reportJoinKey,
   evaluateOutputPredicate,
   evaluateOutputValue,
   evaluatePredicate,
@@ -129,9 +129,10 @@ function joinedRows(
       ? join.right.slice(qualifiedPrefix.length)
       : join.right;
     if (!candidatePath) throw new Error(`report_join_right_path_invalid:${join.source}`);
-    const index = new Map<ReturnType<typeof comparable>, ReportRow[]>();
+    const index = new Map<string, ReportRow[]>();
     for (const candidate of candidates) {
-      const key = comparable(valueAtPath(candidate, candidatePath));
+      const key = reportJoinKey(valueAtPath(candidate, candidatePath));
+      if (key === null) continue;
       const bucket = index.get(key);
       if (bucket) bucket.push(candidate);
       else index.set(key, [candidate]);
@@ -139,7 +140,8 @@ function joinedRows(
     const next: ReportRow[] = [];
     for (const row of rows) {
       const left = valueAtPath(row, join.left);
-      const matches = (index.get(comparable(left)) ?? []).filter((candidate) => {
+      const leftKey = reportJoinKey(left);
+      const matches = (leftKey === null ? [] : index.get(leftKey) ?? []).filter((candidate) => {
         return !join.where || evaluatePredicate(join.where, { ...row, [join.source]: candidate });
       });
       if (join.cardinality === 'one' && matches.length > 1) {

@@ -13,7 +13,7 @@ export async function runTriggerPoll(
 
   const state = {
     cursors: loadTriggerCursors(options.store),
-    cursorsChanged: false,
+    dirtyWorkflowIds: new Set<string>(),
   };
 
   for (const { id: workflowId, workflow } of options.store.listActiveWorkflowDefinitions()) {
@@ -35,7 +35,7 @@ export async function runTriggerPoll(
     if (!shouldContinue) return;
   }
 
-  if (state.cursorsChanged && options.isCurrentGeneration(generation)) {
-    saveTriggerCursors(options.store, state.cursors);
+  if (state.dirtyWorkflowIds.size > 0 && options.isCurrentGeneration(generation)) {
+    saveTriggerCursors(options.store, state.cursors, state.dirtyWorkflowIds);
   }
 }

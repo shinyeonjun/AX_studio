@@ -8,6 +8,7 @@ import {
   setJevSecret,
 } from '../../ai/config-file.js';
 import { maskSecret } from '../../env-file.js';
+import type { JevDecisionTomlConfig } from '../../ai/config-file/contracts.js';
 
 const DEFAULT_JEV_MODEL = 'jev-latest';
 const DEFAULT_JEV_BASE_URL = 'https://api.typesafe.ai';
@@ -60,6 +61,18 @@ function normalizePrefs(raw: unknown): Required<Pick<JevDecisionPrefs, 'enabled'
   };
 }
 
+function originOf(baseURL: string): string {
+  return new URL(baseURL).origin;
+}
+
+/** Keys saved before origin binding are bound to the Base URL they were last saved with. */
+function storedKeyOrigin(jev: JevDecisionTomlConfig | undefined): string {
+  return jev?.keyOrigin || originOf(jev?.baseURL?.trim() || DEFAULT_JEV_BASE_URL);
+}
+
+const KEY_ORIGIN_MISMATCH =
+  'Jev Base URL이 API 키를 등록한 주소와 다릅니다. 새 주소로 보내려면 API 키를 다시 입력하세요.';
+
 async function snapshot() {
   const config = await readAiToml();
   const jev = config.decision?.jev;
@@ -78,16 +91,24 @@ export function registerDecisionPlaneHandlers(): void {
 
   ipcHandle('ax:saveJevDecisionConfig', async (_event, raw: unknown) => {
     const prefs = normalizePrefs(raw);
-    if (prefs.apiKey) await setJevSecret(prefs.apiKey);
-    const secret = await getJevSecret();
+    const origin = originOf(prefs.baseURL);
+    let secret = prefs.apiKey || '';
+    if (!secret) {
+      const [config, stored] = await Promise.all([readAiToml(), getJevSecret()]);
+      // A stored key never follows the Base URL to a new origin without being re-entered.
+      if (stored && storedKeyOrigin(config.decision?.jev) !== origin) throw new Error(KEY_ORIGIN_MISMATCH);
+      secret = stored;
+    }
     if (prefs.enabled && !secret) {
       throw new Error('Jev를 사용하려면 API 키를 먼저 등록하세요.');
     }
+    if (prefs.apiKey) await setJevSecret(prefs.apiKey);
 
     await saveJevDecisionPreferences({
       enabled: prefs.enabled,
       model: prefs.model,
       baseURL: prefs.baseURL,
+      ...(secret ? { keyOrigin: origin } : {}),
     });
 
     getCore().refreshDecisionEngine(
@@ -113,7 +134,14 @@ export function registerDecisionPlaneHandlers(): void {
       ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as JevDecisionPrefs : {}),
     });
     const draft = prefs.apiKey || undefined;
-    const secret = draft || await getJevSecret();
+    let secret = draft;
+    if (!secret) {
+      const config = await readAiToml();
+      secret = await getJevSecret();
+      if (secret && storedKeyOrigin(config.decision?.jev) !== originOf(prefs.baseURL)) {
+        throw new Error(KEY_ORIGIN_MISMATCH);
+      }
+    }
     if (!secret) throw new Error('Jev API 키가 없습니다.');
 
     const engine = new JevDecisionEngine({
@@ -150,6 +178,8 @@ export function registerDecisionPlaneHandlers(): void {
 
     if (draft) {
       await setJevSecret(draft);
+      // The saved key is bound to the origin it was just verified against.
+      await saveJevDecisionPreferences({ baseURL: prefs.baseURL, keyOrigin: originOf(prefs.baseURL) });
       if (current.enabled) getCore().refreshDecisionEngine(engine);
     }
     return {

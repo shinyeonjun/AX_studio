@@ -1,5 +1,6 @@
 import { TableArtifactSchema } from '../contracts/artifacts/table.js';
 import type { ConnectorContext } from '../connectors/types.js';
+import { readTriggerPath } from '../workflow/value-path.js';
 
 function lookupTemplatePath(
   path: string,
@@ -7,8 +8,7 @@ function lookupTemplatePath(
   stepResults: Record<string, unknown>,
 ): unknown {
   if (path.startsWith('trigger.')) {
-    const key = path.slice('trigger.'.length);
-    return Object.hasOwn(ctx.variables, key) ? ctx.variables[key] : undefined;
+    return readTriggerPath(ctx.variables, path.slice('trigger.'.length));
   }
   if (!path.includes('.')) {
     if (Object.hasOwn(ctx.variables, path)) return ctx.variables[path];
@@ -17,7 +17,9 @@ function lookupTemplatePath(
   const [stepId, ...rest] = path.split('.');
   let current: unknown;
   const [outputPort, ...nestedPath] = rest;
-  const typedOutput = outputPort && ctx.outputs?.[stepId]?.[outputPort];
+  const stepOutputs = ctx.outputs && Object.hasOwn(ctx.outputs, stepId) ? ctx.outputs[stepId] : undefined;
+  const typedOutput = outputPort && stepOutputs && Object.hasOwn(stepOutputs, outputPort)
+    ? stepOutputs[outputPort] : undefined;
   if (typedOutput !== undefined) {
     current = typedOutput;
     for (const key of nestedPath) {
@@ -85,6 +87,14 @@ function interpolateTemplates(
     if (resolved == null) {
       throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${reference}`), {
         code: 'unresolved_binding',
+        reference,
+      });
+    }
+    if (typeof resolved === 'object' || typeof resolved === 'function') {
+      // String(object) would silently send "[object Object]"; a mixed text
+      // template can only embed scalar values.
+      throw Object.assign(new Error(`텍스트 템플릿에는 객체/배열 값을 넣을 수 없습니다: ${reference}`), {
+        code: 'template_non_primitive',
         reference,
       });
     }

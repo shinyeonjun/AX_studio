@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
 import {
+  WebhookAuthFailureLimiter,
   buildWebhookLocalUrl,
+  isWebhookSecretStrong,
   normalizeWebhookPath,
   verifyWebhookAuth,
   webhookSignaturePayload,
@@ -50,5 +52,33 @@ describe('webhook security', () => {
     expect(url.search).toBe('');
     expect(url.hash).toBe('');
     expect(decodeURIComponent(url.pathname.slice('/hooks/'.length))).toBe('결제 완료/customer?#%');
+  });
+
+  it('requires 32-character shared secrets', () => {
+    expect(isWebhookSecretStrong('x'.repeat(31))).toBe(false);
+    expect(isWebhookSecretStrong('x'.repeat(32))).toBe(true);
+  });
+
+  it('blocks a client with exponential backoff and forgets it after success', () => {
+    const limiter = new WebhookAuthFailureLimiter();
+    const now = 1_000_000;
+    for (let index = 0; index < 4; index += 1) limiter.recordFailure('a', now);
+    expect(limiter.retryAfterMs('a', now)).toBe(0);
+    limiter.recordFailure('a', now);
+    expect(limiter.retryAfterMs('a', now)).toBe(1_000);
+    limiter.recordFailure('a', now);
+    expect(limiter.retryAfterMs('a', now)).toBe(2_000);
+    expect(limiter.retryAfterMs('b', now)).toBe(0);
+    limiter.recordSuccess('a');
+    expect(limiter.retryAfterMs('a', now)).toBe(0);
+  });
+
+  it('bounds the number of tracked clients', () => {
+    const limiter = new WebhookAuthFailureLimiter(2);
+    for (const client of ['a', 'b', 'c']) {
+      for (let index = 0; index < 5; index += 1) limiter.recordFailure(client, 0);
+    }
+    expect(limiter.retryAfterMs('a', 0)).toBe(0);
+    expect(limiter.retryAfterMs('c', 0)).toBeGreaterThan(0);
   });
 });

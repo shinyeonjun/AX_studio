@@ -88,21 +88,22 @@ describe('workspace chat transcript persistence', () => {
   it('round-trips safe generated PDF metadata without a physical path', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const saved = store.saveWorkspaceChat({
-      messages: [{
-        role: 'assistant',
-        content: '보고서를 생성했습니다.',
-        kind: 'execution_result',
-        executionId: 'exec-pdf-1',
-        executionStatus: 'success',
-        generatedPdf: {
-          artifactId: 'art_pdf_1',
-          fileName: '2026-09_customer_report.pdf',
-          size: 12_345,
-          mimeType: 'application/pdf',
-        },
-      }],
+    const chat = store.saveWorkspaceChat({ messages: [] });
+    // Execution results are host-authored; the host upsert is the only way to mint one.
+    store.upsertWorkspaceChatExecutionResult(chat.id, {
+      role: 'assistant',
+      content: '보고서를 생성했습니다.',
+      kind: 'execution_result',
+      executionId: 'exec-pdf-1',
+      executionStatus: 'success',
+      generatedPdf: {
+        artifactId: 'art_pdf_1',
+        fileName: '2026-09_customer_report.pdf',
+        size: 12_345,
+        mimeType: 'application/pdf',
+      },
     });
+    const saved = store.saveWorkspaceChat({ id: chat.id, messages: store.getWorkspaceChat(chat.id)!.messages });
 
     expect(store.getWorkspaceChat(saved.id)?.messages[0]?.generatedPdf).toEqual({
       artifactId: 'art_pdf_1',

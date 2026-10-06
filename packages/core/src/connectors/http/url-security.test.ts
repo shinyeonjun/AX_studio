@@ -58,7 +58,29 @@ describe('resolveHttpRequestUrl', () => {
     expect(result.ok).toBe(false);
   });
 
-  it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1', '192.168.1.10'])('recognizes private destinations: %s', (hostname) => {
+  it.each([
+    '127.0.0.1', '::1', '::ffff:127.0.0.1', '192.168.1.10',
+    'localhost.', 'svc.internal', '[::1]', '0.0.0.0', '10.1.2.3', '100.64.0.1', '100.127.255.255',
+    '127.255.255.254', '169.254.169.254', '172.16.0.1', '172.31.255.255', '192.0.0.8', '198.18.0.1',
+    '198.19.255.255', '224.0.0.1', '239.255.255.250', '240.0.0.1', '255.255.255.255',
+    '::', '[::ffff:7f00:1]', '::ffff:a9fe:a9fe', '::7f00:1', '::127.0.0.1', '0:0:0:0:0:ffff:7f00:1',
+    '64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b:1::1', '2002:7f00:1::', 'fc00::1', 'fd12:3456::1',
+    'fe80::1', 'fe80::1%eth0', 'febf::1', 'ff02::1', 'fec0::1',
+  ])('recognizes private destinations: %s', (hostname) => {
     expect(isPrivateHttpHostname(hostname)).toBe(true);
+  });
+
+  it.each([
+    'api.example.com', '8.8.8.8', '100.63.255.255', '100.128.0.1', '172.15.255.255', '172.32.0.1',
+    '192.0.1.1', '198.17.255.255', '198.20.0.1', '203.0.113.10', '2001:4860:4860::8888',
+    '::ffff:808:808', '64:ff9b::808:808', '2002:808:808::', 'fbff::1', 'fe7f::1',
+  ])('allows public destinations: %s', (hostname) => {
+    expect(isPrivateHttpHostname(hostname)).toBe(false);
+  });
+
+  it('checks the WHATWG-normalized hostname of hex/shorthand IPv4 literals', () => {
+    expect(isPrivateHttpHostname(new URL('http://0x7f.1/').hostname)).toBe(true);
+    expect(isPrivateHttpHostname(new URL('http://2130706433/').hostname)).toBe(true);
+    expect(isPrivateHttpHostname(new URL('http://[::ffff:127.0.0.1]/').hostname)).toBe(true);
   });
 });

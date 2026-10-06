@@ -151,6 +151,7 @@ describe('runtime resource lifecycle', () => {
       workflowVersion: workflow.version,
       ephemeral: false,
     });
+    const approvalId = store.createApproval({ executionId, actionIds: ['send'], reason: 'pending approval' });
     store.markExecutionPending(executionId);
     const workflowActive = { [workflow.id!]: true };
     const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive });
@@ -160,6 +161,7 @@ describe('runtime resource lifecycle', () => {
       expect(workflowActive[workflow.id!]).toBe(true);
       expect(() => store.deleteWorkflow(workflow.id!)).toThrow('실행 중인 워크플로우는 삭제할 수 없습니다.');
     } finally {
+      store.rejectPendingApproval(approvalId);
       store.finishExecution(executionId, 'cancelled', 'test_cleanup');
       store.deleteWorkflow(workflow.id!);
       db.close?.();

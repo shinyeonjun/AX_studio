@@ -19,6 +19,10 @@ export interface DiscoveryLifecycleRunner {
   resumePendingSessions: () => void;
 }
 
+export function isDiscoveryRevisionConflict(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === 'discovery_revision_conflict';
+}
+
 function checkpointFor(state: DiscoverySessionState): DiscoveryRecoveryCheckpoint | undefined {
   if (AUTO_RESUME_STATUSES.has(state.status)) return state.status as DiscoveryRecoveryCheckpoint;
   return state.recoveryCheckpoint;
@@ -62,7 +66,7 @@ export function createDiscoveryLifecycleRunner(
       errorMessage,
       updatedAt: new Date().toISOString(),
     };
-    options.store.saveDiscoverySession(next);
+    options.store.saveDiscoverySession(next, state.revision);
     return next;
   };
 
@@ -82,7 +86,7 @@ export function createDiscoveryLifecycleRunner(
         errorMessage: undefined,
         updatedAt: new Date().toISOString(),
       };
-      options.store.saveDiscoverySession(next);
+      options.store.saveDiscoverySession(next, state.revision);
       return next;
     }
 
@@ -116,6 +120,18 @@ export function createDiscoveryLifecycleRunner(
     let state = options.store.getDiscoverySessionState(sessionId);
     if (!state || state.status === 'cancelled') {
       running.delete(sessionId);
+      return;
+    }
+
+    if (isDiscoveryRevisionConflict(error)) {
+      // Someone else (a user cancel/answer or another writer) changed the session while
+      // this run held a stale copy. Never overwrite their state; only surface a run
+      // that was left in an in-progress status so the user can retry it.
+      running.delete(sessionId);
+      if (AUTO_RESUME_STATUSES.has(state.status)) {
+        stateOperations.markNeedsAttention(state, 'discovery_revision_conflict',
+          'The discovery session changed while it was running. Retry to continue.');
+      }
       return;
     }
 
@@ -211,11 +227,19 @@ export function createDiscoveryLifecycleRunner(
           return;
         }
         running.delete(sessionId);
-        persistFailed(
-          state,
-          'discovery_recovery_controller_failed',
-          error instanceof Error ? error.message : String(error),
-        );
+        if (isDiscoveryRevisionConflict(error)) return;
+        try {
+          persistFailed(
+            state,
+            'discovery_recovery_controller_failed',
+            error instanceof Error ? error.message : String(error),
+          );
+        } catch (persistError) {
+          console.warn('[work-discovery] could not record controller failure', {
+            sessionId,
+            code: (persistError as { code?: unknown } | null)?.code,
+          });
+        }
       });
     });
   }
@@ -238,7 +262,12 @@ export function createDiscoveryLifecycleRunner(
         revision: state.revision + 1,
         updatedAt: new Date().toISOString(),
       };
-      options.store.saveDiscoverySession(next);
+      try {
+        options.store.saveDiscoverySession(next, state.revision);
+      } catch (error) {
+        if (isDiscoveryRevisionConflict(error)) continue;
+        throw error;
+      }
       scheduleRun(next.id);
     }
   };

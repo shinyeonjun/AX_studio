@@ -440,7 +440,8 @@ describe('buildJevDecisionRequest', () => {
     expect(result.questions).toHaveProperty('needs_natural_language_answer');
     expect(Object.keys(result.questions).some((id) => id.startsWith('tool_'))).toBe(true);
     expect(result.questions).not.toHaveProperty('action');
-    expect(result.state.request_features).toEqual({});
+    // The wording cue is only a hint; execution intent is still Jev's explicit question.
+    expect(result.state.request_features).toEqual({ drafting_cue: true });
   });
 
   it('asks Jev about run intent when a saved workflow is available, regardless of wording', () => {

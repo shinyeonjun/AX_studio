@@ -97,7 +97,8 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
         decisionEngine: options.decisionEngine, commandService: options.commandService,
         signal: controller.signal, publishResult });
     }
-    if (!options.pendingCommand && !options.contextUpdateConfirmation && !options.allowJobCommit) {
+    if (!options.pendingCommand && !options.contextUpdateConfirmation && !options.allowJobCommit
+      && !options.mutationConfirmationToken) {
       const modelReply = configuredModelReply(options.userMessage, options.harness);
       if (modelReply) {
         appendAppLog('info', 'Chat reported configured model metadata without model generation.', {

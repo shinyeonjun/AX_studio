@@ -17,3 +17,10 @@ export function rdbProbeErrorMessage(probe: { error: string; detail?: string }):
       return `SQLite 파일을 열 수 없습니다.${detail}`;
   }
 }
+
+export function rdbProbeWarningMessage(warning: string): string {
+  if (warning === 'rdb_remote_without_tls') {
+    return '원격 DB에 TLS 없이 연결되었습니다. 비밀번호와 조회 데이터가 암호화되지 않은 채 전송됩니다. sslmode=require(PostgreSQL) 또는 ssl 옵션(MySQL) 사용을 권장합니다.';
+  }
+  return warning;
+}

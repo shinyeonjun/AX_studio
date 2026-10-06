@@ -73,4 +73,31 @@ describe('hydrateHttpConnector', () => {
       endpoints: [expect.not.objectContaining({ discoveredReadOperations: [] })],
     }));
   });
+
+  it('applies discovery results to the latest endpoint list instead of a stale snapshot', async () => {
+    discovery.secrets.mockResolvedValue({});
+    const initial = { endpoints: [{ id: 'one', baseUrl: 'https://one.example.com/', authType: 'none' }] };
+    const added = { endpoints: [
+      ...initial.endpoints,
+      { id: 'two', baseUrl: 'https://two.example.com/', authType: 'none', discoveredReadOperations: [] },
+    ] };
+    let current: Record<string, unknown> = initial;
+    discovery.run.mockImplementation(async () => {
+      current = added; // a concurrent connect finished while discovery was running
+      return [{ path: 'items', label: 'Items' }];
+    });
+    const store = {
+      getConnections: () => [{ connector: 'http', connected: true, config: current }],
+      setConnection: vi.fn(),
+    };
+
+    await hydrateHttpConnector(store as never, { setConnector: vi.fn() } as never);
+
+    expect(store.setConnection).toHaveBeenLastCalledWith('http', true, expect.objectContaining({
+      endpoints: [
+        expect.objectContaining({ id: 'one', discoveredReadOperations: [{ path: 'items', label: 'Items' }] }),
+        expect.objectContaining({ id: 'two' }),
+      ],
+    }));
+  });
 });

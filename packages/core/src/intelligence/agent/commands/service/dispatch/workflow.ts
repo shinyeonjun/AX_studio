@@ -3,6 +3,7 @@ import { result } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 import { explainExecution } from '../execution.js';
 import { slackChannelLister } from './shared.js';
+import { requestMutationConfirmation, requiresMutationConfirmation } from './mutation-confirmation.js';
 
 const WORKFLOW_TARGET_COMMANDS = new Set([
   'workflow.inspect',
@@ -45,6 +46,7 @@ export async function executeWorkflowCommand(
 ): Promise<AxCommandResult> {
   const targetError = rejectUnboundWorkflowTarget(command, options);
   if (targetError) return targetError;
+  if (requiresMutationConfirmation(command, options)) return requestMutationConfirmation(state, command, options);
 
   switch (command.name) {
     case 'workflow.list':
@@ -67,7 +69,7 @@ export async function executeWorkflowCommand(
         listSlackChannels: slackChannelLister(state, options),
       }));
     case 'execution.explain':
-      return result(command.name, ...explainExecution(state, command));
+      return result(command.name, ...explainExecution(state, command, options));
     default:
       throw new Error('Unsupported workflow command: ' + command.name);
   }

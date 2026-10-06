@@ -2,7 +2,7 @@ import type { ChatSessionSummary } from '../../features/chat/hooks/useChatSessio
 import type { WorkspaceWorkflowState } from '../../features/chat/hooks/useWorkspaceChat';
 import type { SidebarTab } from '../../types/navigation';
 
-export interface WorkspaceChatActions {
+interface WorkspaceChatActions {
   workspaceSessionId?: string;
   workspaceWorkflowState: WorkspaceWorkflowState | null;
   startNewChat: () => void;
