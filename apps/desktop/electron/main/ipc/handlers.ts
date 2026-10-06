@@ -5,6 +5,7 @@ import { registerRuntimeHandlers } from './runtime-handlers.js';
 import { registerStateHandlers } from './state-handlers.js';
 import { registerDiscoveryHandlers } from './discovery-handlers.js';
 import { registerArtifactHandlers } from './artifact-handlers.js';
+import { registerDiagnosticsHandlers } from '../diagnostics/ipc.js';
 
 export function registerIpcHandlers() {
   registerStateHandlers();
@@ -14,4 +15,5 @@ export function registerIpcHandlers() {
   registerConnectionHandlers();
   registerDiscoveryHandlers();
   registerArtifactHandlers();
+  registerDiagnosticsHandlers();
 }

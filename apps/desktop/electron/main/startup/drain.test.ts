@@ -47,7 +47,8 @@ it.each(['hydration', 'core'])('does not start engines when %s initialization fi
   const hydrate = vi.fn(() => hydration);
   vi.doMock('electron', () => ({ app, dialog: { showErrorBox: vi.fn() } }));
   vi.doMock('@ax-studio/core', () => ({ createAxStudioCore: createCore,
-    setDocumentEngineClient: vi.fn(), setWebhookSecretResolver: vi.fn(), shutdownCommandProcesses: async () => true }));
+    setDocumentEngineClient: vi.fn(), setWebhookSecretResolver: vi.fn(), shutdownCommandProcesses: async () => true,
+    flushAppLog: async () => undefined, flushAppLogSync: vi.fn() }));
   vi.doMock('../core-instance', () => ({ getCoreIfInitialized: () => publishedCore, setCore: (value: typeof core) => { publishedCore = value; } }));
   vi.doMock('../app-window', () => ({ createMainWindow: vi.fn(), showMainWindow: vi.fn(), setQuiting: vi.fn() }));
   vi.doMock('../workspace-chat-registry.js', () => ({ abortAllWorkspaceChats: vi.fn() }));

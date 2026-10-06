@@ -1,16 +1,28 @@
+/// <reference types="electron-vite/node" />
 import { app, Tray, Menu, nativeImage } from 'electron';
+import appIconPath from '../../build/icon.png?asset';
 import { getCore } from './core-instance';
-import { getMainWindow, setQuiting } from './app-window';
+import { setQuiting, showMainWindow } from './app-window';
 import { desktopAppDisplayName } from './data-paths.js';
 
 let tray: Tray | null = null;
 
+function trayIcon(): Electron.NativeImage {
+  const image = nativeImage.createFromPath(appIconPath);
+  if (image.isEmpty()) {
+    console.warn('[AX Studio] tray icon missing; using an empty image');
+    return image;
+  }
+  // Windows/macOS menu bars use 16pt; Linux status areas typically 22-24px.
+  const size = process.platform === 'linux' ? 24 : 16;
+  return image.resize({ width: size, height: size, quality: 'best' });
+}
+
 export function createTray() {
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon);
+  tray = new Tray(trayIcon());
   const appName = desktopAppDisplayName();
   const menu = Menu.buildFromTemplate([
-    { label: `${appName} 열기`, click: () => getMainWindow()?.show() },
+    { label: `${appName} 열기`, click: () => showMainWindow() },
     {
       label: '출근',
       click: () => {
@@ -37,5 +49,5 @@ export function createTray() {
   ]);
   tray.setToolTip(appName);
   tray.setContextMenu(menu);
-  tray.on('click', () => getMainWindow()?.show());
+  tray.on('click', () => showMainWindow());
 }

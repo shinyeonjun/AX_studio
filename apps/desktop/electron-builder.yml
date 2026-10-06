@@ -37,6 +37,12 @@
       "filter": ["**/*"]
     }
   ],
+  "electronFuses": {
+    "runAsNode": false,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true
+  },
   "win": {
     "target": [
       {
@@ -44,7 +50,12 @@
         "arch": ["x64"]
       }
     ],
-    "signAndEditExecutable": false
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": true,
+    "signtoolOptions": {
+      "signingHashAlgorithms": ["sha256"],
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+    }
   },
   "nsis": {
     "oneClick": false,
@@ -52,6 +63,7 @@
   },
   "mac": {
     "target": ["dmg"],
+    "icon": "build/icon.png",
     "identity": null
   },
   "linux": {
@@ -61,6 +73,7 @@
         "arch": ["x64"]
       }
     ],
+    "icon": "build/icon.png",
     "executableName": "ax-studio",
     "category": "Office"
   },

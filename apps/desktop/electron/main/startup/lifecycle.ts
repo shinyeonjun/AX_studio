@@ -1,9 +1,10 @@
 import { app } from 'electron';
-import { shutdownCommandProcesses } from '@ax-studio/core';
+import { flushAppLog, flushAppLogSync, shutdownCommandProcesses } from '@ax-studio/core';
 import { drainWithin } from './drain.js';
 import { showMainWindow, setQuiting } from '../app-window';
 import { getCoreIfInitialized } from '../core-instance';
 import { abortAllWorkspaceChats } from '../workspace-chat-registry.js';
+import { registerProcessCrashHandlers } from '../diagnostics/crash-handling.js';
 
 let shutdownStarted = false;
 let shutdownCompleted = false;
@@ -50,13 +51,7 @@ export function registerDesktopInstanceGuards(): void {
 
   app.on('second-instance', () => showMainWindow());
 
-  process.on('uncaughtException', (err) => {
-    console.error('[AX Studio] uncaughtException:', err);
-  });
-
-  process.on('unhandledRejection', (reason) => {
-    console.error('[AX Studio] unhandledRejection:', reason);
-  });
+  registerProcessCrashHandlers(() => setQuiting(true));
 }
 
 export function setWorkspaceSourceUnsubscribe(unsubscribe: () => void): void {
@@ -82,13 +77,16 @@ export function registerDesktopShutdown(): void {
         if (!drained) {
           // Do not close the shared DB underneath still-running callbacks.
           console.error('[AX Studio] 종료 대기 초과: 미완료 작업은 재시작 시 확인이 필요합니다.');
+          flushAppLogSync();
           app.exit(1);
           return;
         }
         shutdownCompleted = true;
+        await flushAppLog();
         app.quit();
       } catch (err) {
         console.error('[AX Studio] 종료 중 정리 실패:', err);
+        flushAppLogSync();
         app.exit(1);
       }
     })();
