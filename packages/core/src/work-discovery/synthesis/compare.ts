@@ -1,14 +1,12 @@
+import { parseWrittenNumber } from '../../contracts/number-text.js';
 import type { ObservationValue } from '../observation/schema.js';
 import type { ScalarValue } from '../../contracts/artifacts/table.js';
 import { tableKeyColumns, tableRowKey } from '../observation/table-key.js';
 
+// A blank cell is not 0, and "0x10" is not 16.
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = Number(value.replace(/,/g, '').replace(/%/g, '').trim());
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  return typeof value === 'string' ? parseWrittenNumber(value) : null;
 }
 
 const DISPLAY_UNIT_SCALE: Record<string, number> = { '억': 100_000_000, '만': 10_000, '천': 1_000, '%': 1 };

@@ -19,6 +19,11 @@ describe('a computed number matches the example when it would be shown the same 
     expect(compareObservationValue(shown(display, value), actual)).toBe(expected);
   });
 
+  it('does not read a blank cell as zero', () => {
+    expect(compareObservationValue(shown('0', 0), '')).toBe(0);
+    expect(compareObservationValue(shown('0', 0), '  ')).toBe(0);
+  });
+
   it('keeps whole numbers without a display exact', () => {
     expect(compareObservationValue({ kind: 'number', value: 10 }, 10.4)).toBe(0);
   });

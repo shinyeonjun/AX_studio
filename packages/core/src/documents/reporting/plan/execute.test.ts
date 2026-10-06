@@ -68,6 +68,20 @@ it('ranks and limits a view by an undisplayed source column', () => {
   expect(result.tables.customers?.rows).toHaveLength(2);
 });
 
+it('skips blank cells like a spreadsheet, and still fails on text that is not a number', () => {
+  const total = (kind: 'sum' | 'average' | 'min' | 'max') => ({ id: kind, kind: 'aggregate' as const, expression: { kind, value: field('sales.amount') } });
+  const plan = {
+    schemaVersion: 1, baseSource: 'sales', joins: [], tables: [], texts: [],
+    scalars: [total('sum'), total('average'), total('min'), total('max')],
+  } as unknown as ReportPlan;
+  const run = (amounts: unknown[]) => executeReportPlan(plan, {
+    sales: { id: 'sales', complete: true, rows: amounts.map((amount) => ({ amount })) },
+  } as never);
+  expect(run([100, '', null, '₩1,000', '(50)']).scalars).toMatchObject({ sum: { raw: 1050 }, average: { raw: 350 }, min: { raw: -50 }, max: { raw: 1000 } });
+  expect(run(['', null]).scalars).toMatchObject({ sum: { raw: 0 }, average: { raw: null }, min: { raw: null }, max: { raw: null } });
+  expect(() => run([100, '미정'])).toThrow('report_number_required');
+});
+
 it('computes independent report sections without multiplying contract totals by order count', () => {
   const input = {
     schemaVersion: 1, baseSource: 'orders', joins: [],

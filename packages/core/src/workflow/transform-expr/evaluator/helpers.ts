@@ -1,5 +1,6 @@
 import type { ScalarValue, TableArtifact } from '../../../contracts/artifacts/table.js';
 import type { TransformEvaluation } from './contracts.js';
+import { parseWrittenNumber } from '../../../contracts/number-text.js';
 
 /** Own-property cell read: user-chosen column names never reach Object.prototype. */
 export function ownCell<T>(values: Readonly<Record<string, T>> | undefined, column: string): T | null {
@@ -16,24 +17,10 @@ export function compareScalar(left: ScalarValue, right: ScalarValue): boolean {
   return String(left) === String(right);
 }
 
-/**
- * A cell as a number, the way people write money and amounts: thousands separators, a currency
- * sign or 원, a percent sign (50% -> 50, as shown) and accounting negatives ((1,000) -> -1000).
- * Hex and other non-decimal forms are not numbers.
- */
+/** A cell as a number, the way people write money and amounts (see parseWrittenNumber). */
 export function toNumber(value: ScalarValue): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value !== 'string') return null;
-  let text = value.trim().replace(/,/g, '').replace(/^[₩$€£¥]\s*/u, '').replace(/\s*(원|%)$/u, '').trim();
-  let negative = false;
-  if (/^\(.*\)$/u.test(text)) {
-    negative = true;
-    text = text.slice(1, -1).trim();
-  }
-  if (!/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/iu.test(text)) return null;
-  const parsed = Number(text);
-  if (!Number.isFinite(parsed)) return null;
-  return negative ? -parsed : parsed;
+  return typeof value === 'string' ? parseWrittenNumber(value) : null;
 }
 
 export function requireTable(input: TransformEvaluation, errorCode: string): TableArtifact {
