@@ -46,6 +46,9 @@ export function listResources(state: AxCommandServiceState) {
         label: getConnectorLabel(id),
         description: catalog.description,
         connected: isConnectorAlwaysOn(id) || Boolean(connection?.connected),
+        // Built-in tools (documents, sheets, transforms) are always usable but are not services
+        // the user connected; answers about "connected services" must not list them as such.
+        ...(isConnectorAlwaysOn(id) ? { availability: 'built_in' as const } : {}),
         connectable: catalog.connectable,
         connectionKind: catalog.connectionKind,
         ...(endpoints ? { endpoints, endpointCount: httpEndpoints!.length,

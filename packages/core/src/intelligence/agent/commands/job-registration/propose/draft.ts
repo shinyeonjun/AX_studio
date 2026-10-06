@@ -1,3 +1,4 @@
+import { httpEndpointsFromConnections } from '../../../../../connectors/http/connection.js';
 import {
   validateWorkflowContracts,
   type ContractValidationIssue,
@@ -152,6 +153,7 @@ function createPendingGenericJob(
       runOnceNow,
       data.allowExternalAuto,
       confirmationToken,
+      Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
     ),
     message: data.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',
     summary: {

@@ -116,8 +116,8 @@ describe('agent workflow mutation confirmation', () => {
 
     expect(proposed.status).toBe('needs_input');
     const text = JSON.stringify((proposed.data as { presentation: AxUiPresentation }).presentation);
-    expect(text).toContain('[외부] notify: slack / message.send');
-    expect(text).toContain('channel=#ops');
+    expect(text).toMatch(/\[외부\] \d+\. slack \/ message\.send/u);
+    expect(text).toContain('채널 #ops');
     expect(store.getWorkflow(workflowId)?.version).toBe(1);
   });
 

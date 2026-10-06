@@ -2360,7 +2360,8 @@ describe('routeChatWithJev', () => {
     });
 
     expect(result).toMatchObject({ kind: 'command', route: 'job_propose', command: {
-      name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '', timezone: '' } },
+      // "매일 오전 9시" is prefilled for confirmation on the job card; the time zone is the host's.
+      name: 'job.propose', args: { trigger: { type: 'schedule', schedule: '0 9 * * *', timezone: expect.any(String) } },
     } });
     expect(planningCalls).toBe(0);
   });

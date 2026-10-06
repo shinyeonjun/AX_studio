@@ -95,3 +95,13 @@ it.each(['hydration', 'core'])('does not start engines when %s initialization fi
     vi.resetModules();
   }
 });
+
+it('reports which labeled stages timed out or failed', async () => {
+  vi.useFakeTimers();
+  const stages: string[][] = [];
+  const result = drainWithin([async () => {}, () => new Promise(() => {}), async () => false], 50,
+    ['ok', 'stuck', 'refused'], (pending) => stages.push(pending));
+  await vi.advanceTimersByTimeAsync(50);
+  expect(await result).toBe(false);
+  expect(stages).toEqual([['stuck:timeout', 'refused:failed']]);
+});

@@ -29,7 +29,9 @@ export async function drainDesktopCore(
     () => shutdownCommandProcesses(4_000),
     () => core.agentHarness.dispose(),
     ...(pendingStartup ? [() => pendingStartup] : []),
-  ], 5_000);
+  ], 5_000,
+  ['triggerEngine.stop', 'runtime.waitForIdle', 'workspaceSources.waitForIdle', 'commandProcesses', 'agentHarness.dispose', 'startup'],
+  (stages) => console.error(`[AX Studio] 종료가 끝나지 않은 단계: ${stages.join(', ')}`));
   if (drained) core.db.close?.();
   return drained;
 }

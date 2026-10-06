@@ -18,6 +18,11 @@ const TARGET_PARAM_KEYS = [
   'connectionId', 'method', 'url', 'path', 'channel', 'to', 'cc', 'bcc', 'recipient', 'recipients',
   'accountId', 'folderId', 'table', 'threadTs', 'subject',
 ] as const;
+const TARGET_KEY_LABEL: Record<string, string> = {
+  connectionId: '연결', method: '방식', url: 'URL', path: '경로', channel: '채널', to: '받는 사람',
+  cc: '참조', bcc: '숨은 참조', recipient: '받는 사람', recipients: '받는 사람', accountId: '계정',
+  folderId: '폴더', table: '테이블', threadTs: '스레드', subject: '제목',
+};
 const SIDE_EFFECT_LABEL: Record<SideEffectLevel, string> = {
   NONE: '부작용 없음(조회)',
   REVERSIBLE: '되돌릴 수 있는 변경',
@@ -57,18 +62,25 @@ function boundedValue(value: unknown): string | undefined {
   return undefined;
 }
 
-function stepTargets(step: WorkflowActionStep, connectionLabels: Readonly<Record<string, string>>): string {
+function stepTargets(
+  step: WorkflowActionStep,
+  connectionLabels: Readonly<Record<string, string>>,
+  stepNumbers: ReadonlyMap<string, number>,
+): string {
   const params = step.params ?? {};
   const targets: string[] = [];
   for (const key of TARGET_PARAM_KEYS) {
+    const name = TARGET_KEY_LABEL[key] ?? key;
     if (Object.hasOwn(params, key)) {
       const value = boundedValue(params[key]);
       if (!value) continue;
+      // Show the connection's name; the raw id is internal and means nothing to the user.
       const label = key === 'connectionId' ? connectionLabels[value] : undefined;
-      targets.push(`${key}=${label ? `${label} (${value})` : value}`);
+      targets.push(`${name} ${label ?? value}`);
     } else if (step.bindings && Object.hasOwn(step.bindings, key)) {
       const binding = step.bindings[key] as { from?: unknown; output?: unknown } | undefined;
-      targets.push(`${key}=실행 중 ${String(binding?.from ?? '?')}.${String(binding?.output ?? '?')} 값`);
+      const from = typeof binding?.from === 'string' ? stepNumbers.get(binding.from) : undefined;
+      targets.push(`${name} ${from ? `${from}단계 결과` : '실행 중 정해지는 값'}`);
     }
   }
   return targets.length > 0 ? targets.join(', ') : '지정된 대상 없음';
@@ -79,15 +91,21 @@ export function workflowStepItems(
   workflow: Pick<WorkflowIR, 'steps' | 'sideEffects'>,
   connectionLabels: Readonly<Record<string, string>> = {},
 ): string[] {
-  const items = workflow.steps.map((step) => {
+  const stepNumbers = new Map(workflow.steps.map((step, index) => [step.id, index + 1]));
+  const items = workflow.steps.map((step, index) => {
+    const number = `${index + 1}.`;
     if (step.type === 'action') {
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
-      return `${marker}${step.id}: ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, connectionLabels)}`;
+      return `${marker}${number} ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, connectionLabels, stepNumbers)}`;
     }
-    if (step.type === 'ai_decision') return `${step.id}: AI 판단 · 외부 부작용 없음`;
-    if (step.type === 'human_approval') return `${step.id}: 사람 승인 단계`;
-    return `${step.id}: 조건 분기`;
+    if (step.type === 'ai_decision') {
+      const inputs = Object.values(step.bindings ?? {}).map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
+        .filter((value): value is number => value !== undefined);
+      return `${number} AI 문안 작성${inputs.length ? ` (${inputs.join('·')}단계 결과 사용)` : ''} · 외부 부작용 없음`;
+    }
+    if (step.type === 'human_approval') return `${number} 사람 승인 단계`;
+    return `${number} 조건 분기`;
   }).map((item) => item.slice(0, MAX_ITEM_CHARS));
   if (items.length <= MAX_STEP_ITEMS) return items;
   return [...items.slice(0, MAX_STEP_ITEMS - 1), `외 ${items.length - (MAX_STEP_ITEMS - 1)}개 단계 (전체 내용은 workflow 화면에서 확인)`];
@@ -191,6 +209,7 @@ export function workflowConfirmationPresentation(
   runOnceNow: boolean,
   allowExternalAuto: boolean,
   confirmationToken?: string,
+  connectionLabels: Readonly<Record<string, string>> = {},
 ): AxUiPresentation {
   const hasExternal = workflowHasExternalSteps(workflow);
   return {
@@ -209,7 +228,7 @@ export function workflowConfirmationPresentation(
       {
         type: 'steps',
         title: '단계별 연결·동작·대상',
-        items: workflow.steps.length > 0 ? workflowStepItems(workflow) : ['단계 없음'],
+        items: workflow.steps.length > 0 ? workflowStepItems(workflow, connectionLabels) : ['단계 없음'],
       },
       { type: 'note', text: autoSendNote(allowExternalAuto, hasExternal) },
     ],

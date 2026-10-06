@@ -28,8 +28,10 @@ describe('job confirmation card safety defaults', () => {
     const steps = presentation.blocks.find((block) => block.type === 'steps' && block.title === '단계별 연결·동작·대상');
     expect(steps).toBeDefined();
     const items = (steps as { items: string[] }).items;
-    expect(items.find((item) => item.startsWith('fetch:'))).toMatch(/http \/ request · 부작용 없음\(조회\) · 대상: .*path=\/repos\/shinyeonjun\/AX_studio\/commits/u);
-    expect(items.find((item) => item.includes(' notify:'))).toMatch(/^\[외부\] notify: slack \/ message\.send · 외부 전송 · 대상: channel=#ax테스트2/u);
+    // Steps are numbered for people; internal step ids are not shown.
+    expect(items.find((item) => item.includes('http / request'))).toMatch(/^1\. http \/ request · 부작용 없음\(조회\) · 대상: .*경로 \/repos\/shinyeonjun\/AX_studio\/commits/u);
+    expect(items.find((item) => item.includes('slack / message.send'))).toMatch(/^\[외부\] \d+\. slack \/ message\.send · 외부 전송 · 대상: 채널 #ax테스트2/u);
+    expect(items.join(' ')).not.toMatch(/(^|\s)(fetch|notify):/u);
     expect(text).toContain('자동 발송(별도 선택): 켜짐');
   });
 
