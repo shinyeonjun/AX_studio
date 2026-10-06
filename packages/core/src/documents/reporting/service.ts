@@ -1,4 +1,5 @@
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { MAX_FILE_NAME_UTF8_BYTES, truncateToUtf8Bytes } from '../../platform/file-name-bytes.js';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { DocumentEngineClient } from '../read/engine-client.js';
@@ -173,7 +174,8 @@ const MAX_REPORT_BASE_NAME_CHARS = 120;
 function safePdfFileName(value: string): string {
   const name = basename(value.normalize('NFC')).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
   // Windows rejects trailing dots/spaces; long names would also exceed MAX_PATH downstream.
-  const base = name.replace(/\.pdf$/i, '').slice(0, MAX_REPORT_BASE_NAME_CHARS).replace(/[.\s]+$/, '');
+  const base = truncateToUtf8Bytes(Array.from(name.replace(/\.pdf$/i, '')).slice(0, MAX_REPORT_BASE_NAME_CHARS).join(''),
+    MAX_FILE_NAME_UTF8_BYTES - 4).replace(/[.\s]+$/, '');
   if (!base) return 'generated-report.pdf';
   return `${base}.pdf`;
 }

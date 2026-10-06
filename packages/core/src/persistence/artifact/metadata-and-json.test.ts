@@ -56,12 +56,14 @@ describe('ArtifactStore metadata and JSON', () => {
   it('sanitizes and bounds imported file names but keeps the extension', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-artifacts-'));
     const store = new ArtifactStore(root);
-    const longName = `${'가'.repeat(200)}.pdf`;
+    // 80 Hangul = 240 bytes: a legal Linux name (255-byte limit) that still exceeds the byte cap.
+    const longName = `${'가'.repeat(80)}.pdf`;
     const source = join(root, longName);
     writeFileSync(source, '%PDF long name');
 
     const imported = store.importFile(source);
-    expect(Array.from(imported.fileName)).toHaveLength(120);
+    expect(Buffer.byteLength(imported.fileName, 'utf8')).toBeLessThanOrEqual(180);
+    expect(Array.from(imported.fileName).length).toBeLessThanOrEqual(120);
     expect(imported.fileName.endsWith('.pdf')).toBe(true);
     expect(store.get(imported.id)).toEqual(imported);
   });
