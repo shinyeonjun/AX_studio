@@ -7,15 +7,24 @@ function formatTableValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** One cell of tab-separated text: a tab or line break inside it would shift every later cell. */
+function cellText(value: unknown): string {
+  return formatTableValue(value).replace(/\r\n|[\t\r\n]/g, ' ');
+}
+
+function ownValue(values: Record<string, unknown>, key: string): unknown {
+  return Object.hasOwn(values, key) ? values[key] : undefined;
+}
+
 export function tableToText(table: unknown): string {
   const artifact = TableArtifactSchema.safeParse(table);
   if (artifact.success) {
     const headers = artifact.data.columns.map((column) => column.name);
     if (headers.length === 0) return '';
     return [
-      headers.join('\t'),
+      headers.map(cellText).join('\t'),
       ...artifact.data.rows.map((row) =>
-        headers.map((header) => formatTableValue(row.values[header])).join('\t'),
+        headers.map((header) => cellText(ownValue(row.values, header))).join('\t'),
       ),
     ].join('\n');
   }
@@ -25,21 +34,21 @@ export function tableToText(table: unknown): string {
   const first = table[0];
   if (Array.isArray(first)) {
     return (table as unknown[][])
-      .map((row) => row.map((cell) => formatTableValue(cell)).join('\t'))
+      .map((row) => row.map(cellText).join('\t'))
       .join('\n');
   }
 
   if (first && typeof first === 'object') {
     const rows = table as Record<string, unknown>[];
     const headers = Object.keys(rows[0] ?? {});
-    const lines = [headers.join('\t')];
+    const lines = [headers.map(cellText).join('\t')];
     for (const row of rows) {
-      lines.push(headers.map((header) => formatTableValue(row[header])).join('\t'));
+      lines.push(headers.map((header) => cellText(ownValue(row, header))).join('\t'));
     }
     return lines.join('\n');
   }
 
-  return table.map((row) => formatTableValue(row)).join('\n');
+  return table.map(cellText).join('\n');
 }
 
 export function documentToText(value: unknown): string {
