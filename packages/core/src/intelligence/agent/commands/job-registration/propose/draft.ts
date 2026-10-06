@@ -33,9 +33,12 @@ export function createPendingJob(options: {
   pending: Map<string, PendingJobDraft>;
   input: ValidatedProposeInput;
   targets?: SelectedJobTargets;
+  /** Slack channel id -> '#name', for the confirmation card. */
+  channelLabels?: Readonly<Record<string, string>>;
 }): ProposeResponse {
   const { store, pending, input, targets } = options;
-  if (input.genericWorkflow) return createPendingGenericJob(store, pending, input);
+  const channelLabels = options.channelLabels ?? {};
+  if (input.genericWorkflow) return createPendingGenericJob(store, pending, input, channelLabels);
   if (!targets) return ['invalid', undefined, [issue('job_targets_required', 'HTTP 업무 대상이 없습니다.')]];
   const { data, sessionId, path, cron, timezone } = input;
   if (!pending.has(sessionId) && pending.size >= 128) {
@@ -78,7 +81,7 @@ export function createPendingJob(options: {
 
   const confirmationToken = randomUUID();
   pending.set(sessionId, { spec, ir, confirmationToken });
-  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken);
+  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken, channelLabels);
   return ['ok', {
     saved: false,
     pending: true,
@@ -102,6 +105,7 @@ function createPendingGenericJob(
   store: WorkflowStore,
   pending: Map<string, PendingJobDraft>,
   input: ValidatedProposeInput,
+  channelLabels: Readonly<Record<string, string>>,
 ): ProposeResponse {
   const { data, sessionId } = input;
   if (!data.trigger || !data.steps) {
@@ -153,7 +157,10 @@ function createPendingGenericJob(
       runOnceNow,
       data.allowExternalAuto,
       confirmationToken,
-      Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
+      {
+        connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
+        channel: channelLabels,
+      },
     ),
     message: data.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',
     summary: {
