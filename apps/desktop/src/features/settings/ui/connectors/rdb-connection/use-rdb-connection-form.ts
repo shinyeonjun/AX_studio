@@ -54,6 +54,9 @@ export function useRdbConnectionForm({
   const [message, setMessage] = useState('');
   /** Non-blocking advice from the main process (e.g. a remote DB without TLS). */
   const [warning, setWarning] = useState('');
+  // Only the latest request may show its tables: an older one finishing late (a slow database,
+  // or the type or SQLite file changed meanwhile) must not replace the newer list.
+  const tablesRequestRef = useRef(0);
 
   const loadFromConnection = (scroll = true) => {
     if (!rdbEntry?.connected || !rdbEntry.dbType) return;
@@ -61,6 +64,7 @@ export function useRdbConnectionForm({
     setLabel(rdbEntry.label ?? '');
     setAllowedSchemas((rdbEntry.allowedSchemas ?? []).join(', '));
     setAllowedTables([...(rdbEntry.allowedTables ?? [])]);
+    tablesRequestRef.current += 1;
     setDiscovered({ status: 'idle' });
     setRowLimit(rdbEntry.rowLimit != null ? String(rdbEntry.rowLimit) : '1000');
     if (rdbEntry.dbType === 'sqlite') {
@@ -103,12 +107,15 @@ export function useRdbConnectionForm({
       : [];
 
   const loadTables = async (target: Parameters<typeof onDiscoverTables>[0]) => {
+    const request = ++tablesRequestRef.current;
     setDiscovered({ status: 'loading' });
     try {
       const { tables, truncated } = await onDiscoverTables(target);
-      setDiscovered({ status: 'loaded', tables, truncated });
+      if (request === tablesRequestRef.current) setDiscovered({ status: 'loaded', tables, truncated });
     } catch (error) {
-      setDiscovered({ status: 'failed', message: ipcErrorMessage(error, '테이블 목록을 불러오지 못했습니다.') });
+      if (request === tablesRequestRef.current) {
+        setDiscovered({ status: 'failed', message: ipcErrorMessage(error, '테이블 목록을 불러오지 못했습니다.') });
+      }
     }
   };
 
@@ -117,8 +124,23 @@ export function useRdbConnectionForm({
     : { type, connectionString: connectionString.trim() || undefined });
 
   const changeType = (next: RdbConnectionType) => {
+    tablesRequestRef.current += 1;
     setType(next);
     setDiscovered({ status: 'idle' });
+  };
+
+  // Editing the target makes a list still loading for the old one meaningless.
+  const dropLoadingTables = () => {
+    tablesRequestRef.current += 1;
+    setDiscovered((current) => (current.status === 'loading' ? { status: 'idle' } : current));
+  };
+  const changeFilePath = (next: string) => {
+    dropLoadingTables();
+    setFilePath(next);
+  };
+  const changeConnectionString = (next: string) => {
+    dropLoadingTables();
+    setConnectionString(next);
   };
 
   const handlePickFile = async () => {
@@ -183,9 +205,9 @@ export function useRdbConnectionForm({
     type,
     setType: changeType,
     filePath,
-    setFilePath,
+    setFilePath: changeFilePath,
     connectionString,
-    setConnectionString,
+    setConnectionString: changeConnectionString,
     allowedSchemas,
     setAllowedSchemas,
     allowedTables,

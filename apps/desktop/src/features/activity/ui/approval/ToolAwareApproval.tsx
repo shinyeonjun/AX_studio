@@ -3,6 +3,7 @@ import type { ToolSendOutcome } from '@ax-studio/core';
 import type { AppState } from '../../../../types/app-state';
 import { EditableMessageResult } from '../../../chat/ui/workspace/tool-result/ToolResultPane';
 import { cachedToolDraft, toolDraftLoadError, type ToolDraftController } from '../../../chat/ui/workspace/tool-result/draft-controller';
+import { reloadOnStateChange } from '../../../chat/ui/workspace/tool-result/reload-on-state-change';
 import { ApprovalTruncationNote } from './approval-truncation-note';
 import { ApprovalSendPreview, approvalPreview } from './approval-send-preview';
 
@@ -29,15 +30,18 @@ export function ToolAwareApproval({ approval, busy, onLegacyAction, onRefresh, o
         if (!current || request !== sequence) return;
         if (data.source?.approvalId === approval.id) setView({ controller: cachedToolDraft(data.source, { update: window.ax.updateToolDraft, review: window.ax.reviewToolResult }) });
         else if (data.outcome) { onOutcome(data.outcome, data.refreshWarning); setView({ notice: '이 요청의 처리 결과를 아래에서 확인할 수 있습니다.' }); }
-        else if (data.cancelled || data.processing) setView({ notice: data.cancelled ? '요청이 취소됐습니다.' : '전송 처리 중입니다. 중복 요청을 보내지 마세요.' });
+        else if (data.cancelled || data.processing) {
+          setView({ notice: data.cancelled ? '요청이 취소됐습니다.' : '전송 처리 중입니다. 중복 요청을 보내지 마세요.' });
+          // A cancelled request stays cancelled; nothing later can change this card.
+          return data.cancelled;
+        }
         else if (data.requiresReview) setView({ error: '보내기 전에 내용을 직접 확인해야 하는 요청인데, 원래 요청을 불러오지 못해 보낼 수 없습니다.' });
         else setView({ legacy: true });
       } catch (error) {
         if (current && request === sequence) setView({ error: toolDraftLoadError(error) });
       }
     };
-    void load();
-    const stop = window.ax.onStateChanged(() => { void load(); });
+    const stop = reloadOnStateChange(load);
     return () => { current = false; stop(); };
   }, [approval.id, retry, onOutcome]);
 
