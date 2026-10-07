@@ -22,6 +22,8 @@ export const RDB_CAPABILITIES: ConnectorCapability[] = [
       { name: 'table', label: '테이블', question: '어떤 테이블을 조회할까요?', required: true },
       { name: 'offset', label: '시작 위치', question: '몇 번째 행부터 읽을까요?', required: false },
       { name: 'limit', label: '페이지 크기', question: '한 번에 최대 몇 행을 읽을까요?', required: false },
+      // Host-resolved from the connection's discovered relations; never asked or typed.
+      { name: 'join', label: '함께 읽을 테이블', question: '함께 읽을 테이블이 있나요?', required: false, literal: true },
     ],
     io: { inputs: {}, outputs: { rows: 'TableArtifact' } },
   },

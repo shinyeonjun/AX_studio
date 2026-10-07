@@ -17,6 +17,7 @@ import {
 } from './client.js';
 import type { RdbConnectionConfig } from './client/types.js';
 import { prepareRdbRows, RdbScalarReadError } from './client/scalars.js';
+import { parseRdbJoins, RdbJoinError, readRdbJoinedRows } from './client/join.js';
 import type { RdbReadCoverage, RdbReadScope } from '../../contracts/artifacts/rdb-read.js';
 
 export type { RdbConnectionConfig } from './client/types.js';
@@ -28,7 +29,7 @@ export class RdbConnector implements Connector {
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
-    const fields = action === 'schema.describe' ? [] : ['table', 'offset', 'limit'];
+    const fields = action === 'schema.describe' ? [] : action === 'table.describe' ? ['table', 'offset', 'limit'] : ['table', 'offset', 'limit', 'join'];
     if (Object.keys(params).some(key => !fields.includes(key))) {
       return { ok: false, error: 'rdb_read_only_fields_required', errorCode: 'policy_denied' };
     }
@@ -60,6 +61,8 @@ export class RdbConnector implements Connector {
       if (!isAllowedRdbTable(this.config, ref)) {
         return { ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' };
       }
+      const joins = parseRdbJoins(params.join);
+      if (!joins) return { ok: false, error: 'invalid_join', errorCode: 'invalid_params' };
 
       try {
         if (action === 'table.describe') {
@@ -85,8 +88,9 @@ export class RdbConnector implements Connector {
         if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_RDB_OFFSET) {
           return { ok: false, error: 'invalid_row_pagination', errorCode: 'invalid_params' };
         }
-        const rows = await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal,
-          { offset });
+        const rows = joins.length > 0
+          ? await readRdbJoinedRows(this.config, ref, joins, requestedLimit + 1, ctx.abortSignal, { offset })
+          : await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal, { offset });
         ctx.abortSignal?.throwIfAborted();
         const queryFingerprint = createHash('sha256').update(JSON.stringify({
           schemaVersion: 1,
@@ -99,15 +103,17 @@ export class RdbConnector implements Connector {
           allowedSchemas: [...(this.config.allowedSchemas ?? [])].sort(),
           allowedTables: [...(this.config.allowedTables ?? [])].sort(),
           table: formatRdbTableRef(ref),
+          ...(joins.length > 0 ? { joins } : {}),
           accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset',
         })).digest('hex');
+        const tableLabel = [formatRdbTableRef(ref), ...joins.map((join) => join.table)].join(' + ');
         const preparedRows = prepareRdbRows(rows);
         // Stopped early by the page byte budget: report a partial page and let
         // the caller continue from the next offset.
         const byteLimited = preparedRows.length < Math.min(rows.length, requestedLimit);
         const table = tableArtifactFromRows(preparedRows, {
-          id: `rdb_${ctx.executionId}_${formatRdbTableRef(ref).replace(/[^A-Za-z0-9_]+/g, '_')}`,
-          name: formatRdbTableRef(ref),
+          id: `rdb_${ctx.executionId}_${tableLabel.replace(/[^A-Za-z0-9_]+/g, '_')}`,
+          name: tableLabel,
           rowLimit: requestedLimit,
           preserveRawValues: true,
           scalarPolicy: 'preserve',
@@ -130,6 +136,7 @@ export class RdbConnector implements Connector {
         }
         const readScope: RdbReadScope = {
           schemaVersion: 1, kind: 'page', queryFingerprint, table: formatRdbTableRef(ref),
+          ...(joins.length > 0 ? { joins } : {}),
           accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset', scalarPolicy: 'preserve',
           offset, limit: requestedLimit,
         };
@@ -154,6 +161,9 @@ export class RdbConnector implements Connector {
         return { ok: true, data };
       } catch (error) {
         if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
+        if (error instanceof RdbJoinError) {
+          return { ok: false, error: error.reason, errorCode: error.reason === 'join_key_not_unique' ? 'rdb_error' : 'policy_denied' };
+        }
         if (error instanceof RdbScalarReadError) {
           return { ok: false, error: error.reason, errorCode: error.errorCode };
         }
