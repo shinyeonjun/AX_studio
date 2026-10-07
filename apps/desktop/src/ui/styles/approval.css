@@ -51,3 +51,50 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* What an approval will send, so it is never approved blind. */
+.approval-preview {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.approval-preview-item {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.approval-preview-item h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.approval-preview-item dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.approval-preview-field {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+}
+
+.approval-preview-field dt {
+  color: var(--text-muted);
+}
+
+.approval-preview-field dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.approval-preview-field--long dd {
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+}

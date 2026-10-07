@@ -4,6 +4,7 @@ import type { AppState } from '../../../../types/app-state';
 import { EditableMessageResult } from '../../../chat/ui/workspace/tool-result/ToolResultPane';
 import { cachedToolDraft, toolDraftError, type ToolDraftController } from '../../../chat/ui/workspace/tool-result/draft-controller';
 import { ApprovalTruncationNote } from './approval-truncation-note';
+import { ApprovalSendPreview, approvalPreview } from './approval-send-preview';
 
 interface ToolAwareApprovalProps {
   approval: AppState['approvals'][number];
@@ -57,7 +58,9 @@ export function ToolAwareApproval({ approval, busy, onLegacyAction, onRefresh, o
 
   return <article className="approval-card">
     <h3>{approval.title ?? approval.reason}</h3>
-    <p className="muted">{approval.reason}</p>
+    {approvalPreview(approval).length > 0
+      ? <ApprovalSendPreview approval={approval} />
+      : <p className="muted">{approval.reason}</p>}
     <ApprovalTruncationNote approval={approval} />
     {!view.legacy && <p role="status">{view.error ?? '요청의 실제 전송 정보를 불러오는 중…'}</p>}
     <div className="approval-actions">

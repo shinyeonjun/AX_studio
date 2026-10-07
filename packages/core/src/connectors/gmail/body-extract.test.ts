@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractGmailPlainBody } from './body-extract.js';
+import { extractGmailPlainBody, gmailHeaderLines } from './body-extract.js';
 
 function encoded(value: string): string {
   return Buffer.from(value).toString('base64url');
@@ -87,5 +87,17 @@ describe('Korean and HTML mail bodies', () => {
       body: { data: b64url(new TextEncoder().encode(html)) },
     } });
     expect(body).toBe('재고 알림 & 보고\nA<B\n첫줄\n둘째줄 한');
+  });
+});
+
+describe('the headers a read mail is introduced with', () => {
+  it('names who sent it, its subject and when, in that order', () => {
+    expect(gmailHeaderLines({ payload: { headers: [
+      { name: 'Date', value: 'Wed, 7 Oct 2026 18:27:03 +0900' },
+      { name: 'Subject', value: '회의 변경 안내' },
+      { name: 'From', value: '"신연준" <me@example.com>' },
+      { name: 'X-Other', value: 'ignored' },
+    ] } })).toEqual(['보낸 사람: "신연준" <me@example.com>', '제목: 회의 변경 안내', '받은 시각: Wed, 7 Oct 2026 18:27:03 +0900']);
+    expect(gmailHeaderLines({})).toEqual([]);
   });
 });
