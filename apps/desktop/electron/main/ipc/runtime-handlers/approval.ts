@@ -1,4 +1,5 @@
 import { ToolResultConfirmationSchema, ToolDraftUpdateSchema, ToolReviewRequestSchema, type ExecutionLogEntry, type ExecutionResult } from '@ax-studio/core';
+import { connectorErrorMessage, executionErrorReason } from '@ax-studio/core';
 import { getCore } from '../../core-instance.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 import { ipcHandle } from '../ipc-handle.js';
@@ -48,6 +49,18 @@ function executionWarnings(execution: { errorCode?: string | null; logJson?: str
   return { ...(refreshWarning ? { refreshWarning: true } : {}), ...(persistenceWarning ? { persistenceWarning: true } : {}) };
 }
 
+const UNTRANSLATED = connectorErrorMessage('');
+
+/** Why the step after an approval failed, when it can be said in Korean. */
+function approvedRunFailureReason(entry: ExecutionLogEntry | undefined): string | undefined {
+  if (!entry) return undefined;
+  const byCode = executionErrorReason(entry.code);
+  if (byCode) return byCode;
+  if (/[가-힣]/u.test(entry.message)) return entry.message;
+  const translated = connectorErrorMessage(entry.message);
+  return translated !== UNTRANSLATED && translated !== entry.message ? translated : undefined;
+}
+
 export function registerRuntimeApprovalHandlers(): void {
   ipcHandle('ax:getToolResult', async (_e, lookup: unknown) => {
     const executionId = lookup && typeof lookup === 'object' && !Array.isArray(lookup) && Object.keys(lookup).length === 1
@@ -86,8 +99,11 @@ export function registerRuntimeApprovalHandlers(): void {
     const result = await core.runtime.continueAfterApproval(approvalId);
     notifyStateChanged();
     if (result.status === 'failed') {
+      // The approval went through; what failed is the step after it. Say why in plain Korean.
       const lastError = result.log?.filter((entry) => entry.level === 'error').at(-1);
-      throw new Error(lastError?.message ?? '승인 후 실행에 실패했습니다.');
+      const reason = approvedRunFailureReason(lastError);
+      // An unknown code goes through as is: the window translates the codes it knows.
+      throw new Error(reason ? `승인했지만 실행 중 문제가 생겼어요. ${reason}` : lastError?.message ?? '승인했지만 실행 중 문제가 생겼어요. 활동 화면에서 이유를 확인해 주세요.');
     }
     return result;
   });

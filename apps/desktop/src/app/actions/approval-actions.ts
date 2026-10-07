@@ -2,26 +2,16 @@ import { ipcErrorMessage } from '../../ui/lib/ipc-error';
 import type { AppApprovalActionContext } from './contracts';
 
 export function createAppApprovalActions({ refresh, setActionError }: AppApprovalActionContext) {
+  // The approvals page shows a failure next to the request and refreshes afterwards itself, so a
+  // failed refresh is never reported as a failed approval and the app banner stays clear.
   const handleApprove = async (id: string) => {
     setActionError('');
-    try {
-      await window.ax.approve(id);
-      await refresh();
-    } catch (err) {
-      setActionError(ipcErrorMessage(err, '승인에 실패했습니다.'));
-      throw err;
-    }
+    await window.ax.approve(id);
   };
 
   const handleReject = async (id: string) => {
     setActionError('');
-    try {
-      await window.ax.reject(id);
-      await refresh();
-    } catch (err) {
-      setActionError(ipcErrorMessage(err, '거절에 실패했습니다.'));
-      throw err;
-    }
+    await window.ax.reject(id);
   };
 
   const toggleWorkActive = async (workflowId: string, active: boolean) => {

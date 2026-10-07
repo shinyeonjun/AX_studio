@@ -1,3 +1,4 @@
+import { slackErrorMessage } from '../../contracts/error-messages.js';
 import { parseSlackConnectionConfig } from '../../triggers/types.js';
 
 export interface SlackConnectionRecord {
@@ -44,7 +45,7 @@ export async function validateSlackBotToken(token: string): Promise<SlackConnect
   } catch (err) {
     return {
       ok: false,
-      error: (err as Error).message || 'Slack Bot Token 인증에 실패했습니다.',
+      error: slackErrorMessage((err as Error).message) ?? 'Slack Bot Token 인증에 실패했습니다.',
     };
   }
 }

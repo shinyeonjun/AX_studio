@@ -24,6 +24,7 @@ interface AppMainContentProps {
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
   onOpenJevSettings: () => void;
+  onRunWork: (workflowId: string) => Promise<void>;
 }
 
 export function AppMainContent({
@@ -36,6 +37,7 @@ export function AppMainContent({
   onApprove,
   onReject,
   onOpenJevSettings,
+  onRunWork,
 }: AppMainContentProps) {
   if (tab === 'activity') {
     return (
@@ -77,6 +79,7 @@ export function AppMainContent({
       workspaceChat={workspaceChat}
       executions={state?.executions}
       setupNotice={<JevSetupNotice state={state} onOpenJevSettings={onOpenJevSettings} />}
+      onRunWork={onRunWork}
     />
   );
 }

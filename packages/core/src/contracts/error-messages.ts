@@ -168,3 +168,24 @@ export function connectorErrorMessage(error?: string | null): string {
   if (/^[a-z0-9]+(?:[_:.-][a-z0-9]+)+$/iu.test(text)) return GENERIC;
   return text;
 }
+
+/** Slack's own error codes (from its API text "An API error occurred: invalid_auth") as what to do. */
+const SLACK_ERROR_MESSAGES: Record<string, string> = {
+  invalid_auth: 'Slack 토큰이 올바르지 않아요. Slack 앱 설정에서 토큰을 다시 복사해 붙여 넣어 주세요.',
+  not_authed: 'Slack 토큰이 비어 있어요. Slack 앱 설정에서 토큰을 복사해 붙여 넣어 주세요.',
+  token_revoked: 'Slack 토큰이 취소됐어요. Slack 앱을 다시 설치한 뒤 새 토큰을 넣어 주세요.',
+  token_expired: 'Slack 토큰이 만료됐어요. Slack 앱 설정에서 새 토큰을 넣어 주세요.',
+  account_inactive: '이 Slack 토큰의 계정이나 앱이 비활성화됐어요. Slack 앱을 다시 설치해 주세요.',
+  missing_scope: 'Slack 앱에 필요한 권한이 빠져 있어요. 연결 안내의 권한을 추가하고 앱을 다시 설치해 주세요.',
+  not_allowed_token_type: '다른 종류의 Slack 토큰을 넣었어요. 봇 토큰(xoxb-)과 실시간 수신 토큰(xapp-) 자리를 확인해 주세요.',
+  ratelimited: 'Slack 요청이 잠시 너무 많았어요. 잠시 후 다시 시도해 주세요.',
+};
+
+export function slackErrorMessage(error?: string | null): string | undefined {
+  const text = error?.trim() ?? '';
+  if (!text) return undefined;
+  const code = /(?:An API error occurred: |^)([a-z_]+)$/u.exec(text)?.[1];
+  if (code && Object.hasOwn(SLACK_ERROR_MESSAGES, code)) return SLACK_ERROR_MESSAGES[code];
+  if (/[\uac00-\ud7a3]/u.test(text)) return text;
+  return 'Slack에 연결하지 못했어요. 토큰과 인터넷 연결을 확인해 주세요.';
+}

@@ -1,3 +1,4 @@
+import { slackErrorMessage } from '@ax-studio/core';
 import {
   getAiProviderDisplay,
   getDatabaseBackendStatus,
@@ -62,7 +63,7 @@ export async function buildConnectorState(core: AxCore) {
     slackSocketModeActive: slackStatus.socketModeActive,
     slackSocketStatus: slackSocketStatus.phase,
     slackConnectionMode: slackStatus.mode,
-    slackLastError: slackSocketStatus.error ?? slackStatus.lastError,
+    slackLastError: slackErrorMessage(slackSocketStatus.error ?? slackStatus.lastError),
     localFolders: localFolderStatus.folders,
     credentialStorageWarning: getCredentialStorageWarning(),
     // sql.js fallback = whole-image, debounced persistence; surface it instead of failing silently.

@@ -96,7 +96,7 @@ export function WorkspaceRunResultCard({
       if (action === 'approve') await onApprove(approval.id);
       else await onReject(approval.id);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : '승인 처리에 실패했습니다.');
+      setActionError(ipcErrorMessage(error, '승인 처리에 실패했습니다.'));
     } finally {
       setBusyAction(null);
     }
@@ -112,7 +112,7 @@ export function WorkspaceRunResultCard({
     try {
       const result = await handler(generatedArtifact.artifactId);
       if (!result.ok) {
-        if (!result.canceled) setArtifactError(result.error ?? `${artifactLabel}를 저장하지 못했습니다.`);
+        if (!result.canceled) setArtifactError(ipcErrorMessage(result.error ? new Error(result.error) : undefined, `${artifactLabel}를 저장하지 못했습니다.`));
         return;
       }
       setCompletedArtifactAction(action);

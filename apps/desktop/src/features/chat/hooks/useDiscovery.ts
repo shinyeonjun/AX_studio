@@ -92,7 +92,10 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
   }, [activeSessionId, workspaceContextKey]);
 
   const resume = useCallback((resumeSessionId: string) => {
+    // Work still running for the session left behind no longer owns `busy`; release it here.
     operationEpochRef.current += 1;
+    setBusy(false);
+    setError('');
     activeSessionRef.current = resumeSessionId;
     setSessionId(resumeSessionId);
     setSessionContextKey(workspaceContextKeyRef.current);
