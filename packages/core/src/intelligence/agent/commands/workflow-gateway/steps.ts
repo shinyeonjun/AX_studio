@@ -34,7 +34,7 @@ export function candidateFromCreateCommand(
       requestAnchor = verifyAuthoritativeRequestAnchor(parsed.data.requestAnchor);
       if (requestAnchor.text.trim() !== parsed.data.goal) throw new Error('request_anchor_mismatch');
     } catch {
-      return { ok: false, result: ['invalid', undefined, [issue('request_anchor_mismatch', '요청 원문과 저장 목표가 일치하지 않습니다.')]] };
+      return { ok: false, result: ['invalid', undefined, [issue('request_anchor_mismatch', '처음 요청과 저장하려는 업무 내용이 맞지 않습니다. 원래 요청을 다시 보내 주세요.')]] };
     }
   }
   const steps = normalizeStepInputs(parsed.data.steps);
@@ -81,7 +81,7 @@ export function normalizeStepInput(input: unknown):
 
   const capability = resolveCapability(parsed.data.connector, parsed.data.actionRef ?? parsed.data.action);
   if (!capability || capability.kind === 'trigger') {
-    return { ok: false, issues: [issue('unknown_action', `catalog에서 action을 찾을 수 없습니다: ${parsed.data.connector}.${parsed.data.action}`, `steps.${parsed.data.id}`)] };
+    return { ok: false, issues: [issue('unknown_action', '지원하지 않는 작업이 들어 있습니다. 요청을 조금 바꿔 다시 시도해 주세요.', `steps.${parsed.data.id}`)] };
   }
   return {
     ok: true,
@@ -110,14 +110,14 @@ export function applyWorkflowField(
 ): { ok: true } | { ok: false; issue: AxCommandIssue } {
   if (path === 'name' || path === 'goal' || path === 'success') {
     if (typeof value !== 'string' || (path !== 'success' && !value.trim())) {
-      return { ok: false, issue: issue('invalid_field', `${path}는 문자열이어야 합니다.`, path) };
+      return { ok: false, issue: issue('invalid_field', '입력한 값의 형식이 올바르지 않습니다.', path) };
     }
     workflow[path] = value;
     return { ok: true };
   }
   if (path === 'assumptions') {
     if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
-      return { ok: false, issue: issue('invalid_field', 'assumptions는 문자열 배열이어야 합니다.', path) };
+      return { ok: false, issue: issue('invalid_field', '입력한 값의 형식이 올바르지 않습니다.', path) };
     }
     workflow.assumptions = value;
     return { ok: true };

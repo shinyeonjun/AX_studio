@@ -11,8 +11,9 @@ import { isExternalAction } from '../contracts.js';
 import { recordRepairProposal, reportStepProgress } from '../progress.js';
 import { materializeStepOutputs } from '../../output-ports.js';
 import { approvalParamsHash } from '../../approval-snapshot.js';
-import { resolveActionParamsForExecution } from '../../step-executor.js';
+import { missingParamsMessage, resolveActionParamsForExecution } from '../../step-executor.js';
 import { messageTool, messageToolDraft } from '../../../contracts/tool-result.js';
+import { connectorErrorMessage } from '../../../contracts/error-messages.js';
 import { withStepDeadline } from '../deadline.js';
 
 export interface ApprovedActionExecutionOptions {
@@ -47,7 +48,7 @@ export async function executeApprovedActions(
       }
       const connector = options.pinnedConnector ?? options.host.connectors[actionDefinition.connector];
       if (!connector) {
-        throw Object.assign(new Error('Connector not found: ' + actionDefinition.connector), {
+        throw Object.assign(new Error('필요한 연결이 없어요. 설정에서 연결을 확인해 주세요.'), {
           code: 'connector_missing',
         });
       }
@@ -60,7 +61,7 @@ export async function executeApprovedActions(
       const missingParams = validateActionParams(actionDefinition, params);
       if (missingParams.length > 0) {
         throw Object.assign(
-          new Error(actionDefinition.id + ' 필수 파라미터가 비어 있습니다: ' + missingParams.join(', ')),
+          new Error(missingParamsMessage(options.ir, actionId, actionDefinition, missingParams)),
           { code: 'action_params_missing' },
         );
       }
@@ -74,7 +75,7 @@ export async function executeApprovedActions(
         options.ctx,
       ));
       if (!result.ok) {
-        throw Object.assign(new Error(result.error ?? 'approved action failed'), { code: result.errorCode });
+        throw Object.assign(new Error(connectorErrorMessage(result.error)), { code: result.errorCode });
       }
       options.onProviderSuccess?.(result.data);
       if (actionDefinition.io?.outputs) {

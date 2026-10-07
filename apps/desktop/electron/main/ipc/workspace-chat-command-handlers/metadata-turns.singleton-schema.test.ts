@@ -149,7 +149,7 @@ describe('singleton schema recovery through real trusted IPC/store/service/adapt
       const f = await fixture({ flag }); const { saved, pending } = await f.start(text); const reply = await pending;
       if (!flag) { expect(reply.metadataStop).toBe('provider_failure'); noRead(f, 'provider_failure'); continue; }
       expect(reply).toMatchObject({ metadataStop: 'answered', persistedReply: { sessionId: saved.id, turnId: 'schema-turn' } });
-      for (const fact of ['orderId', 'string', 'quantity', '등록된 필드 사전', '알 수 없음']) expect(reply.content).toContain(fact);
+      for (const fact of ['orderId', 'string', 'quantity', '저장된 항목 구성', '알 수 없음']) expect(reply.content).toContain(fact);
       expect(f.evidence[0]).toMatchObject({ sourceId: frozen.sourceId, intent: 'schema', scope: frozen.expectedScope, knownTotal: 2, truncated: false });
       expect(f.evidence[0]?.entries.map(entry => entry.fields?.[0])).toEqual(frozen.fields);
       expect(f.store.getWorkspaceChat(saved.id)?.messages.at(-1)?.content).toBe(reply.content);
@@ -207,7 +207,7 @@ describe('singleton schema recovery through real trusted IPC/store/service/adapt
     for (const flag of [false, true]) {
       const f = await fixture({ flag, missingDictionary: true }); const reply = await (await f.start()).pending;
       if (!flag) { expect(reply.metadataStop).toBe('provider_failure'); noRead(f, 'provider_failure'); continue; }
-      expect(reply.metadataStop).toBe('metadata_unavailable'); expect(reply.content).toContain('등록된 필드 사전이 없습니다');
+      expect(reply.metadataStop).toBe('metadata_unavailable'); expect(reply.content).toContain('저장된 항목 구성이 없습니다');
       expect(f.outcome()).toMatchObject({ metadataReadAttempts: 1, evaluationPhases: 2,
         metadataOperationResolution: { cause: 'missing_metadata_operation_answer' } });
       expect(f.execute).toHaveBeenCalledOnce(); expect(f.requests).toHaveLength(2); expect(f.evidence).toEqual([]); expect(f.forbidden).not.toHaveBeenCalled();

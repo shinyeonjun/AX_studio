@@ -41,7 +41,8 @@ describe('deterministicHttpChatReply', () => {
   it('renders a bounded JSON GET response without a second model turn', () => {
     const reply = deterministicHttpChatReply(httpGetCommand, httpResult('{"ok":true}'), 'GET /items 조회해줘.');
 
-    expect(reply).toContain('HTTP 200 조회 결과:');
+    expect(reply).toContain('가져온 결과:');
+    expect(reply).not.toContain('HTTP 200');
     expect(reply).toContain('"ok": true');
     expect(reply).toMatch(/\n```json[\s\S]*```$/);
   });
@@ -261,7 +262,7 @@ describe('deterministicWorkflowListChatReply', () => {
       inputRequests: [],
     }, '저장된 업무 목록을 보여줘');
 
-    expect(reply).toBe('저장된 업무 (1개):\n- "Daily report" — 활성, v3 (ID: "daily-1")');
+    expect(reply).toBe('저장된 업무 (1개):\n- "Daily report" — 자동 실행 중');
   });
 
   it('escapes multiline user-controlled names and leaves semantic requests to the model', () => {
@@ -300,10 +301,10 @@ describe('deterministicMetadataChatReply', () => {
       inputRequests: [],
     }, '연결된 리소스 목록을 보여줘');
 
-    expect(reply).toContain('등록된 리소스:');
+    expect(reply).toContain('연결된 서비스와 자료:');
     expect(reply).toContain('HTTP \\`catalog\\`');
-    expect(reply).toContain('저장된 연결 상태: 연결됨');
-    expect(reply).toContain('현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다');
+    expect(reply).toContain('연결: 연결됨');
+    expect(reply).toContain('실제로 접속되는지는 확인하지 않았어요');
     expect(reply).not.toContain('```json');
   });
 
@@ -321,9 +322,9 @@ describe('deterministicMetadataChatReply', () => {
     const command: AxCommand = { name: 'discovery.search', args: {} };
     const result: AxCommandResult = { command: command.name, status: 'ok', issues: [], inputRequests: [],
       data: { assets: [{ id: 'products', label: 'products' }], nextOffset: 1, truncated: true } };
-    expect(deterministicMetadataChatReply(command, result, '목록 보여줘')).toContain('카탈로그의 일부');
+    expect(deterministicMetadataChatReply(command, result, '목록 보여줘')).toContain('목록의 일부');
     expect(deterministicMetadataChatReply(command, { ...result, data: { unexpectedEnvelope: [] } }, '목록 보여줘'))
-      .toContain('메타데이터 형식을 확인하지 못했습니다');
+      .toContain('정보의 형식을 확인하지 못했습니다');
   });
 
   it('keeps semantic interpretation and non-metadata commands on their existing paths', () => {
@@ -358,10 +359,10 @@ describe('deterministicHttpConnectionListChatReply', () => {
     }, '저장된 HTTP 연결을 모두 목록으로 보여줘');
 
     expect(reply).toContain('Test `connection`');
-    expect(reply).toContain('ID: "test"');
+    expect(reply).not.toContain('ID:');
     expect(reply).not.toContain('private.example.test');
-    expect(reply).toContain('설정 준비됨');
-    expect(reply).not.toContain('사용 가능');
+    expect(reply).toContain('사용 가능');
+    expect(reply).toContain('실제로 접속되는지는 확인하지 않았어요');
   });
 
   it('keeps semantic requests and malformed host results on the existing path', () => {
@@ -382,7 +383,7 @@ describe('deterministicHttpConnectionListChatReply', () => {
       data: { connections: [], count: 2, totalMatches: 0, truncated: false },
       issues: [], inputRequests: [],
     }, 'HTTP 연결 중 missing을 찾아줘');
-    expect(reply).toBe('조건에 맞는 HTTP 연결이 없습니다.');
+    expect(reply).toBe('조건에 맞는 서비스 연결이 없습니다.');
   });
 });
 

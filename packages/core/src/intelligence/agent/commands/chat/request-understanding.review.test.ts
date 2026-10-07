@@ -89,8 +89,8 @@ describe('independent ac5feca expected-behavior reproductions', () => {
       expect(result.status).toBe('ok');
       expect(reply).toContain('Saved API');
       expect(reply).not.toContain('저장된 연결 없음');
-      expect(reply).toContain('설정 저장됨, 연결 안 됨');
-      expect(reply).toContain('현재 인증·작업 권한·서비스 상태를 검증한 결과가 아닙니다');
+      expect(reply).toContain('연결 안 됨');
+      expect(reply).toContain('실제로 접속되는지는 확인하지 않았어요');
     } finally { db.close?.(); }
   });
 
@@ -286,7 +286,7 @@ describe('supplemental prepublication regressions (outside the original 24-case 
     ['permission_denied', 'permission_denied', '권한'],
     ['provider_error', 'provider_failure', '서비스'],
     ['transient', 'provider_failure', '서비스'],
-    ['not_found', 'metadata_unavailable', '등록된 명세'],
+    ['not_found', 'metadata_unavailable', '구성 정보를 확인하지 못했습니다'],
   ] as const)('reports %s as %s with no substitute read or queue', async (failure, stop, fact) => {
     const setup = await experimental({ failure });
     try {
@@ -327,7 +327,7 @@ describe('supplemental prepublication regressions (outside the original 24-case 
       expect(reply).toContain('field0');
       expect(reply).toContain('string');
       expect(reply).toContain('일부');
-      expect(reply).toContain('다음 위치: 8');
+      expect(reply).toContain('9번째 항목부터 이어서 볼 수 있습니다');
       expect(reply).toContain('10개');
       expect(reply).not.toContain('field9');
     } finally { db.close?.(); }
@@ -337,7 +337,7 @@ describe('supplemental prepublication regressions (outside the original 24-case 
     const command: AxCommand = { name: 'discovery.search', args: {} };
     const reply = deterministicMetadataChatReply(command, { command: command.name, status: 'ok', issues: [], inputRequests: [],
       data: { unknownRows: [{ label: 'unrecognized' }], totalMatches: 1, truncated: false } }, '목록 보여줘');
-    expect(reply).toContain('메타데이터 형식을 확인하지 못했습니다');
+    expect(reply).toContain('정보의 형식을 확인하지 못했습니다');
     expect(reply).not.toContain('등록된 항목이 없습니다');
   });
 });

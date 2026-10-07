@@ -121,7 +121,7 @@ export async function planJevSelectedTools(input: {
       ? input.readOperationHints.some(({ key }) => key === candidate.readOperationHint!.key)
       : input.actionHints.some(({ capability }) => capability.id === candidate.capability.id));
     if (baseCandidates.length === 0) {
-      return clarify('선택된 도구를 실행 계획으로 만들지 못했습니다.');
+      return clarify('고른 작업으로 실행 순서를 만들지 못했습니다. 요청을 조금 더 구체적으로 알려 주세요.');
     }
 
     const existingIds = new Set(input.existingStepIds ?? []);
@@ -132,7 +132,7 @@ export async function planJevSelectedTools(input: {
       ? Math.min(MAX_WORKFLOW_STEPS - remainingCount, AX_WORKFLOW_UPDATE_MAX_OPERATIONS)
       : MAX_WORKFLOW_STEPS;
     if (baseCandidates.length > maxSteps || maxSteps < 1) {
-      return clarify('한 번의 요청에서 허용하는 업무 단계 수를 초과했습니다.');
+      return clarify('한 번에 만들 수 있는 단계 수를 넘었습니다. 요청을 나누어 주세요.');
     }
 
     const { entries, stepIds } = assignStepIds(baseCandidates, input.mode, existingIds);
@@ -251,6 +251,6 @@ export async function planJevSelectedTools(input: {
       message: authoritativeRequestClarification(error.failure), requestFailure: error.failure });
     telemetry.providerRequestCount += decisionProviderRequestCountFromError(error) ?? 0;
     telemetry.estimatedRequestBytes += decisionProviderRequestBytesFromError(error) ?? 0;
-    return clarify('도구별 명령 블록을 확정하지 못해 중단했습니다.');
+    return clarify('각 단계에서 할 일을 정하지 못해 멈췄습니다. 요청을 조금 더 구체적으로 알려 주세요.');
   }
 }

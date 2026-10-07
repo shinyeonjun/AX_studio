@@ -8,12 +8,27 @@ import { runAiDecision, evaluateCondition } from './ai-investigation.js';
 import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../workflow/bindings.js';
-import { actionRefFor, resolveActionDefinition, validateActionParams } from '../workflow/action-definition.js';
+import { actionRefFor, resolveActionDefinition, validateActionParams, type ActionDefinition } from '../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
 import { approvalParamsHash, matchesApprovedSnapshot, redactedApprovalSnapshot, type ApprovedActionSnapshots } from './approval-snapshot.js';
 import { messageTool, messageToolDraft } from '../contracts/tool-result.js';
+import { connectorErrorMessage } from '../contracts/error-messages.js';
 import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
+
+/** "2단계에 필요한 값이 비어 있어요: 받는 사람" — step number and field labels, never ids. */
+export function missingParamsMessage(
+  ir: WorkflowIR,
+  stepId: string,
+  definition: ActionDefinition,
+  missing: readonly string[],
+): string {
+  const index = ir.steps.findIndex((candidate) => candidate.id === stepId);
+  const subject = index >= 0 ? `${index + 1}단계에` : '이 단계에';
+  const labels = [...new Set(missing.map((name) =>
+    definition.params.find((param) => param.name === name)?.label ?? '이전 단계 결과'))];
+  return `${subject} 필요한 값이 비어 있어요: ${labels.join(', ')}. 업무에서 해당 값을 채운 뒤 다시 실행해 주세요.`;
+}
 
 export function resolveActionParamsForExecution(
   step: Extract<Step, { type: 'action' }>,
@@ -38,7 +53,7 @@ export function resolveActionParamsForExecution(
   if (actionDefinition.id === 'document.ingest') {
     const resolved = resolveDocumentIngestExecution(params, ctx);
     if (!resolved.ok) {
-      throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
+      throw Object.assign(new Error(connectorErrorMessage(resolved.error)), { code: resolved.errorCode ?? 'document_input_required' });
     }
     params = resolved.params;
   }
@@ -68,14 +83,14 @@ export async function executeStep(
       const missingParams = validateActionParams(actionDefinition, params);
       if (missingParams.length > 0) {
         throw Object.assign(
-          new Error(`${actionDefinition.id} 필수 파라미터가 비어 있습니다: ${missingParams.join(', ')}`),
+          new Error(missingParamsMessage(ir, step.id, actionDefinition, missingParams)),
           { code: 'action_params_missing', data: { actionRef: actionDefinition.id, missingParams } },
         );
       }
 
       const connector = connectors[actionDefinition.connector];
       if (!connector) {
-        throw Object.assign(new Error(`Connector not found: ${actionDefinition.connector}`), { code: 'connector_missing' });
+        throw Object.assign(new Error('필요한 연결이 없어요. 설정에서 연결을 확인해 주세요.'), { code: 'connector_missing' });
       }
 
       const stepSideEffect = ir.sideEffects?.[step.id] ?? step.sideEffect;
@@ -122,7 +137,7 @@ export async function executeStep(
           else delete ctx.presentationVariableSources[key];
         }
       }
-      if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
+      if (!result.ok) throw Object.assign(new Error(connectorErrorMessage(result.error)), { code: result.errorCode ?? 'action_failed' });
       if (actionDefinition.io?.outputs) {
         ctx.outputs ??= {};
         ctx.outputs[step.id] = materializeStepOutputs(step.id, actionDefinition.io.outputs, result.data);

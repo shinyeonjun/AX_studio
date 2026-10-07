@@ -33,7 +33,7 @@ export function validateProposeInput(
   if (!sessionId) {
     return {
       ok: false,
-      response: ['invalid', undefined, [issue('workspace_session_required', '이 업무를 등록하려면 현재 대화 세션이 필요합니다.')]],
+      response: ['invalid', undefined, [issue('workspace_session_required', '이 업무는 대화 안에서 요청해야 등록할 수 있습니다.')]],
     };
   }
 

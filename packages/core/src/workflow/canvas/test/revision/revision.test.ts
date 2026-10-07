@@ -44,6 +44,6 @@ describe('execution explanation boundary', () => {
     db.prepare('UPDATE executions SET status = ?, error_code = ? WHERE id = ?').run('failed', 'execution_failed', executionId);
 
     expect(explainExecution(store, '안녕')).toContain('상태는 실패');
-    expect(explainExecution(store, '왜 안 됐어?')).toContain('권장 조치');
+    expect(explainExecution(store, '왜 안 됐어?')).toContain('다음에 할 일');
   });
 });

@@ -5,8 +5,9 @@ it('distinguishes missing source evidence from provider failure without promisin
   const text = formatExecutionResultMessage({ executionId: 'execution', status: 'failed', errorCode: 'report_source_discovery_needs_input',
     log: [{ at: '2038-01-01', level: 'error', message: 'private data', data: { phase: 'source_plan', resumeAvailable: true } }],
   });
-  expect(text).toContain('API 명세');
-  expect(text).not.toContain('이 실행 ID를 지정해');
+  expect(text).toContain('서비스 설명 문서');
+  expect(text).toContain('보고서를 만들지 않았습니다');
+  expect(text).not.toContain('이어서 다시 해줘');
   expect(text).not.toContain('private data');
 });
 
@@ -17,7 +18,7 @@ it('explains exhausted source replanning without encouraging identical cached re
   });
   expect(text).toContain('조회 방법 구성');
   expect(text).toContain('새 요청');
-  expect(text).not.toContain('이 실행 ID를 지정해');
+  expect(text).not.toContain('이어서 다시 해줘');
   expect(text).not.toContain('private source data');
 });
 
@@ -37,9 +38,10 @@ it('explains HTTP 404 without encouraging replay of a wrong connection selection
       { at: '2032-01-01', level: 'error', code: 'report_http_probe_status', message: 'report_http_probe_status:orders:404', data: { phase: 'http_probe', resumeAvailable: true } },
     ],
   });
-  expect(text).toContain('HTTP 404');
+  expect(text).toContain('필요한 자료를 찾지 못했습니다');
+  expect(text).not.toContain('404');
   expect(text).toContain('새 요청');
-  expect(text).not.toContain('이 실행 ID를 지정해');
+  expect(text).not.toContain('이어서 다시 해줘');
   expect(text).not.toContain('private-response');
 });
 
@@ -69,7 +71,16 @@ it.each(['report_http_pagination_no_progress', 'report_rdb_pagination_no_progres
       log: [{ at: '2032-01-01', level: 'error', code: errorCode, message: 'private source detail',
         data: { phase: 'example_capture' } }],
     });
-    expect(text).toContain('원천 데이터 페이지');
+    expect(text).toContain('원본 데이터를 끝까지 읽지 못했습니다');
     expect(text).toContain('불완전한 데이터로 보고서를 생성하지 않았습니다');
     expect(text).not.toContain('private source detail');
   });
+
+it('tells the user how to continue a run whose partial results were saved', () => {
+  const text = formatExecutionResultMessage({ executionId: 'execution', status: 'failed', errorCode: 'agent_timeout',
+    log: [{ at: '2032-01-01', level: 'error', code: 'agent_timeout', message: 'detail',
+      data: { phase: 'report-layout-plan', resumeAvailable: true } }],
+  });
+  expect(text).toContain("'이어서 다시 해줘'라고 하면 계속할 수 있어요");
+  expect(text).toContain('실행 번호: execution');
+});

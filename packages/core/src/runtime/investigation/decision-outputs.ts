@@ -157,10 +157,10 @@ export async function evaluateDecisionOutputs(input: {
     if (input.ctx.abortSignal?.aborted) throw error;
     input.ctx.log({
       at: new Date().toISOString(), level: 'warn', code: 'ai_decision_jev_failed',
-      message: 'Jev가 선언된 판단 출력을 만들지 못했습니다.',
+      message: '판단 엔진(Jev)이 판단 결과를 만들지 못했습니다.',
       data: { stepId: input.step.id, fieldCount: input.plan.bindings.size, errorCode: error instanceof Error ? error.name : 'unknown' },
     });
-    throw Object.assign(new Error('Jev 판단 호출에 실패해 workflow 실행을 중단했습니다.'), { code: 'jev_decision_failed' });
+    throw Object.assign(new Error('판단 엔진(Jev)에 연결하지 못해 업무 실행을 멈췄습니다. 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.'), { code: 'jev_decision_failed' });
   }
 
   input.ctx.abortSignal?.throwIfAborted();
@@ -171,7 +171,7 @@ export async function evaluateDecisionOutputs(input: {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ai_decision_uncertain') {
         input.ctx.log({
           at: new Date().toISOString(), level: 'warn', code: 'ai_decision_output_unclear',
-          message: 'Jev가 선언된 출력 필드에 명확한 선택을 반환하지 않아 workflow 실행을 중단했습니다.',
+          message: '판단 엔진(Jev)이 결과 항목을 확실하게 정하지 못해 업무 실행을 멈췄습니다.',
           data: {
             stepId: input.step.id,
             field: binding.field,

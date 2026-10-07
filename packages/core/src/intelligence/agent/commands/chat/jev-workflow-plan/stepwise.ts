@@ -123,7 +123,7 @@ export async function planJevWorkflow(input: {
   if (mode === 'workflow_update' && maxPlannedSteps < 1) {
     return finish({
       kind: 'clarify',
-      message: `현재 업무가 허용하는 단계 수 또는 변경 작업 수에 도달했습니다. ${noCommitMessage}`,
+      message: `한 번에 만들거나 바꿀 수 있는 단계 수를 넘었습니다. 요청을 나누어 주세요. ${noCommitMessage}`,
     });
   }
 
@@ -182,7 +182,7 @@ export async function planJevWorkflow(input: {
       if (steps.length === 0 && decisionCandidates.length === 0) {
         return finish({
           kind: 'clarify',
-          message: `연결된 도구 중 요청을 시작할 수 있는 작업을 찾지 못했습니다. 필요한 연결과 데이터 범위를 확인해 주세요. ${noCommitMessage}`,
+          message: `연결된 서비스에서 요청을 시작할 작업을 찾지 못했습니다. 설정에서 필요한 서비스를 연결했는지 확인해 주세요. ${noCommitMessage}`,
         });
       }
 
@@ -237,7 +237,7 @@ export async function planJevWorkflow(input: {
         return finish({
           kind: 'clarify',
           message: atUpdateLimit
-            ? `한 번의 업무 변경에서 허용하는 ${AX_WORKFLOW_UPDATE_MAX_OPERATIONS}개 작업 또는 전체 ${MAX_WORKFLOW_STEPS}단계 한도에 도달했습니다. 요청을 나누어 주세요. ${noCommitMessage}`
+            ? `한 번에 바꿀 수 있는 ${AX_WORKFLOW_UPDATE_MAX_OPERATIONS}가지 또는 업무 전체 ${MAX_WORKFLOW_STEPS}단계를 넘었습니다. 요청을 나누어 주세요. ${noCommitMessage}`
             : `다음 작업을 확실하게 고르지 못했습니다. 필요한 작업이나 데이터 범위를 더 구체적으로 알려 주세요. ${noCommitMessage}`,
         });
       }
@@ -335,7 +335,7 @@ export async function planJevWorkflow(input: {
     }
     return finish({
       kind: 'clarify',
-      message: `실행 계획이 워크플로우에서 허용하는 ${MAX_WORKFLOW_STEPS}단계에 도달했습니다. 계획을 나누거나 범위를 줄여 주세요. ${noCommitMessage}`,
+      message: `업무 하나에 넣을 수 있는 ${MAX_WORKFLOW_STEPS}단계를 넘었습니다. 요청을 나누거나 범위를 줄여 주세요. ${noCommitMessage}`,
     });
   } catch (error) {
     if (input.signal?.aborted) throw error;
@@ -343,7 +343,7 @@ export async function planJevWorkflow(input: {
       message: authoritativeRequestClarification(error.failure), requestFailure: error.failure });
     return finish({
       kind: 'clarify',
-      message: `Jev가 다단계 실행 계획을 판단하지 못해 중단했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요. ${noCommitMessage}`,
+      message: `판단 엔진(Jev)이 실행 순서를 정하지 못해 멈췄습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요. ${noCommitMessage}`,
     });
   }
 }

@@ -186,8 +186,8 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const reply = await pending;
     expect(reply).toMatchObject({ metadataStop: 'answered', persistedReply: { sessionId: saved.id, turnId: 'turn-a', requestGeneration: 1 } });
     for (const operation of operations) { expect(reply.content).toContain(operation.label); expect(reply.content).toContain(operation.path); }
-    expect(reply.content).toContain('로컬 등록 보기');
-    expect(reply.content).toContain('원격 API 전체 목록');
+    expect(reply.content).toContain('이 PC에 저장된 목록만 확인했습니다');
+    expect(reply.content).toContain('서비스의 전체 목록');
     expect(f.evidence[0]).toMatchObject({ knownTotal: 4, truncated: false, scope: 'validated_local_registration' });
     expect(f.evidence[0]?.entries.map(entry => entry.path)).toEqual(operations.map(entry => entry.path));
     expect(f.store.getWorkspaceChat(saved.id)?.messages.at(-1)?.content).toBe(reply.content);
@@ -199,11 +199,11 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const f = await fixture();
     f.store.setConnection('http', true, { endpoints: [{ ...endpoint(), discoveredReadOperations: undefined }] });
     const missing = await (await f.start()).pending;
-    expect(missing.metadataStop).toBe('metadata_unavailable'); expect(missing.content).toContain('저장된 HTTP 작업 목록이 없습니다');
+    expect(missing.metadataStop).toBe('metadata_unavailable'); expect(missing.content).toContain('이 연결에 저장된 요청 목록이 없습니다');
     f.store.setConnection('http', true, { endpoints: [{ ...endpoint(), discoveredReadOperations: [] }] });
     const empty = await (await f.start('DummyJSON 등록 목록', 'empty')).pending;
     expect(empty.metadataStop).toBe('answered'); expect(empty.content).toContain('등록된 항목이 없습니다');
-    expect(empty.content).toContain('원격 API 전체 목록');
+    expect(empty.content).toContain('서비스의 전체 목록');
     expect(f.evidence[0]).toMatchObject({ entries: [], knownTotal: 0, truncated: false });
     f.record('HTTP-03', 'missing inventory unavailable; saved empty inventory explicitly empty locally; no remote emptiness/discovery');
   });
@@ -213,7 +213,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     f.store.upsertDiscoveryMetadata({ assetId: 'http:dummy', aliases: [], fields: [{ name: 'sku', type: 'string', required: true }, { name: 'quantity' }] });
     const schema = await (await f.start('DummyJSON 등록 필드')).pending;
     expect(schema.metadataStop).toBe('answered');
-    for (const fact of ['등록된 필드 사전', 'sku', 'string', 'quantity', '형식: 알 수 없음', '필수: 알 수 없음']) expect(schema.content).toContain(fact);
+    for (const fact of ['저장된 항목 구성', 'sku', 'string', 'quantity', '형식: 알 수 없음', '필수: 알 수 없음']) expect(schema.content).toContain(fact);
     expect(f.evidence[0]?.entries[1]?.fields).toEqual([{ name: 'quantity' }]);
     expect(f.store.getDiscoveryMetadataRevision()).toBe(1);
     expect(f.store.deleteDiscoveryMetadata('http:dummy')).toBe(true);
@@ -221,7 +221,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     expect(f.store.deleteDiscoveryMetadata('http:dummy')).toBe(false);
     expect(f.store.getDiscoveryMetadataRevision()).toBe(2);
     const absent = await (await f.start('DummyJSON 등록 필드', 'absent')).pending;
-    expect(absent.metadataStop).toBe('metadata_unavailable'); expect(absent.content).toContain('등록된 필드 사전이 없습니다');
+    expect(absent.metadataStop).toBe('metadata_unavailable'); expect(absent.content).toContain('저장된 항목 구성이 없습니다');
     f.record('HTTP-04', 'real dictionary facts; unknown type/required preserved; absent dictionary-specific reply; successful mutation revisions only');
   });
 
@@ -229,10 +229,10 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const f = await fixture({ script: { intent: 'connection_status' } });
     f.store.setConnection('http', false, { endpoints: [endpoint()] });
     const reply = await (await f.start('DummyJSON 저장된 연결 상태')).pending;
-    expect(reply.metadataStop).toBe('answered'); expect(reply.content).toContain('저장된 사용 설정: 꺼짐');
+    expect(reply.metadataStop).toBe('answered'); expect(reply.content).toContain('사용 설정: 꺼짐');
     expect(f.evidence[0]?.status).toEqual({ catalogExists: true, configured: true, enabled: false,
       authentication: 'unknown', operationPermission: 'unknown', health: 'unknown' });
-    expect(reply.content.match(/미확인/gu)).toHaveLength(3);
+    expect(reply.content.match(/확인 안 됨/gu)).toHaveLength(3);
     f.record('HTTP-05', 'saved disabled registration remains candidate; configuration true; enabled false; three remote checks unknown');
   });
 
@@ -297,7 +297,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const a = await f.start(); await vi.waitFor(() => expect(f.requests).toHaveLength(1));
     const b = await f.start('아니, B', 'turn-b', f.store.getWorkspaceChat(a.saved.id)!);
     const reply = await b.pending;
-    expect(reply.metadataStop).toBe('ambiguous_intent'); expect(reply.content).toContain('어떤 메타데이터');
+    expect(reply.metadataStop).toBe('ambiguous_intent'); expect(reply.content).toContain('무엇을 확인할지');
     const state = f.requests.find(request => request.state.active_request_revision === 2)!.state;
     expect(state.user_turns).toHaveLength(1); expect(state.user_turns[0]).toMatchObject({ text: '아니, B', revision: 2, supersedes: [] });
     for (const value of Object.values(state.active_field_authorities) as Array<{ requestRevision: number }>) expect(value.requestRevision).toBe(2);
@@ -400,7 +400,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
       { path: unsafe[0], label: secret }, { path: 'safe/sibling', label: 'Safe sibling' },
     ] }] });
     const readableReply = await (await readable.start()).pending;
-    expect(readableReply.content).toContain('필터링된 보기'); expect(readableReply.content).toContain('Safe sibling'); expect(readableReply.content).not.toContain(secret);
+    expect(readableReply.content).toContain('전체 목록이 아닙니다'); expect(readableReply.content).toContain('Safe sibling'); expect(readableReply.content).not.toContain(secret);
     f.record('HTTP-13', 'twelve unsafe/encoded references including normalized-path collisions and associated labels absent from wire/evidence/raw/transcript/progress; safe sibling exact; filtered readable coverage');
   });
 });

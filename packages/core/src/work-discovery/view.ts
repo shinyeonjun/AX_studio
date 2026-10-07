@@ -59,9 +59,9 @@ export function progressLabel(status: DiscoverySessionState['status']): string {
       return '연결된 자료를 찾아보는 중';
     case 'synthesizing':
     case 'validating':
-      return '만드는 방법을 재현하는 중';
+      return '예시와 같은 결과가 나오는지 확인하는 중';
     case 'needs_attention':
-      return '복구 확인이 필요함';
+      return '다시 확인이 필요해요';
     case 'needs_clarification':
       return '확인이 필요함';
     case 'ready_to_publish':

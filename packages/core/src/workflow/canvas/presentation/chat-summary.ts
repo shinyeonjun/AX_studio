@@ -25,7 +25,7 @@ function triggerSummary(trigger?: WorkflowIR['trigger']): string {
   if (trigger.type === 'local_folder.new_file') {
     const ext = trigger.extensions?.length ? ` · ${trigger.extensions.join(', ')}` : '';
     const filter = trigger.filter ? ` · 조건: ${formatCondition(trigger.filter)}` : '';
-    return `로컬 폴더 새 파일 · ${trigger.folderId}${ext}${filter}`;
+    return `연결한 폴더에 새 파일이 생기면${ext}${filter}`;
   }
   return KO.chatSummary.triggerManual;
 }

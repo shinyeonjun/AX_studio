@@ -131,7 +131,7 @@ describe('independent 487f8ea semantic regression probes', () => {
       expect(session.capture().fieldAuthorities.intent.requestRevision).toBe(1);
       expect(correctedReply).toContain('주가 예측해 봐');
       expect(correctedReply).toContain('현재 대상: source B');
-      expect(correctedReply).toContain('의도 근거 (요청 버전 1)');
+      expect(correctedReply).toContain('요청 내용 (1번째 요청)');
       expect(correctedReply).not.toContain('현재 대상: source A');
       expect(correctedReply).not.toContain('완료했습니다');
     } finally { db.close?.(); }
@@ -170,7 +170,7 @@ describe('supplemental second-review contracts (outside the original 24 cases)',
   ])('keeps empty incomplete pages distinct from catalog absence: %j', data => {
     const command: AxCommand = { name: 'discovery.search', args: {} };
     const reply = deterministicMetadataChatReply(command, { command: command.name, status: 'ok', data, issues: [], inputRequests: [] }, '목록 보여줘');
-    expect(reply).toContain('현재 페이지');
+    expect(reply).toContain('이번 목록');
     expect(reply).toContain('일부');
     expect(reply).not.toContain('등록된 항목이 없습니다');
   });

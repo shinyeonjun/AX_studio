@@ -65,7 +65,7 @@ export class DiscoverySessionBindings {
     // Argument validation stays with the handler so missing ids keep their input request.
     if (!sessionId) return undefined;
     if (this.ownerOf(sessionId) === caller) return undefined;
-    return ['not_found', undefined, [issue('discovery_not_found', 'discovery session을 찾을 수 없습니다.')]];
+    return ['not_found', undefined, [issue('discovery_not_found', '진행 중인 업무 찾기를 찾지 못했어요. 처음부터 다시 요청해 주세요.')]];
   }
 
   private ownerOf(sessionId: string): string | undefined {

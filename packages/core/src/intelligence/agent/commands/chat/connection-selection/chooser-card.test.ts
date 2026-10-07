@@ -82,7 +82,7 @@ describe('runAxCommandChat connection selection', () => {
     });
 
     expect(presentations).toEqual([]);
-    expect(reply).toContain('저장된 HTTP 연결 (2/2개)');
+    expect(reply).toContain('저장된 서비스 연결 (2/2개)');
     expect(reply).toContain('깃허브 연결');
     expect(reply).toContain('테스트 HTTP 연결');
     expect(textCalls).toHaveLength(0);

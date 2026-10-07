@@ -231,7 +231,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '반복 업무 초안을 만들 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.',
+        message: '반복 업무 초안을 만들 대화를 찾지 못했습니다. 새 대화에서 다시 요청해 주세요.',
         confidence: selectedConfidence,
       });
     }

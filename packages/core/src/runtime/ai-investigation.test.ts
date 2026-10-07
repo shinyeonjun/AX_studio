@@ -51,7 +51,7 @@ describe('resolveStepParams', () => {
         { executionId: 'exec-1', variables: {}, log: () => {} },
         { classify: { riskLevel: 'high' } },
       ),
-    ).toThrow(/classify\.summary/);
+    ).toThrow(expect.objectContaining({ code: 'unresolved_binding', reference: 'classify.summary', message: expect.stringContaining('이전 단계 결과를 찾지 못했어요') }));
   });
 
   it('fails closed when an object binding reference is missing', () => {
@@ -61,7 +61,7 @@ describe('resolveStepParams', () => {
         { executionId: 'exec-1', variables: {}, log: () => {} },
         { classify: {} },
       ),
-    ).toThrow(/classify\.riskLevel/);
+    ).toThrow(expect.objectContaining({ code: 'unresolved_binding', reference: 'classify.riskLevel' }));
   });
 
   it('fails closed when a template reference names an inherited property', () => {
@@ -71,7 +71,7 @@ describe('resolveStepParams', () => {
         { executionId: 'exec-1', variables: {}, log: () => {} },
         {},
       ),
-    ).toThrow(/toString/);
+    ).toThrow(expect.objectContaining({ code: 'unresolved_binding', reference: 'toString' }));
 
     expect(() =>
       resolveStepParams(
@@ -79,6 +79,6 @@ describe('resolveStepParams', () => {
         { executionId: 'exec-1', variables: {}, log: () => {} },
         { classify: { riskLevel: 'high' } },
       ),
-    ).toThrow(/classify\.constructor/);
+    ).toThrow(expect.objectContaining({ code: 'unresolved_binding', reference: 'classify.constructor' }));
   });
 });

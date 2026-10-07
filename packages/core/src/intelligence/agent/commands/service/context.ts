@@ -46,11 +46,11 @@ export function updateContext(
 
   if (parsed.data.scope === 'session') {
     if (!options.workspaceSessionId?.trim()) {
-      return ['invalid', undefined, [issue('workspace_session_required', 'session memo를 저장하려면 현재 대화 세션이 필요합니다.')]];
+      return ['invalid', undefined, [issue('workspace_session_required', '메모는 대화 안에서 요청해야 저장할 수 있습니다.')]];
     }
     const memo = state.store.updateWorkspaceChatMemo(options.workspaceSessionId.trim(), parsed.data);
     if (!memo) {
-      return ['not_found', undefined, [issue('workspace_session_not_found', '현재 대화 세션을 찾을 수 없습니다.')]];
+      return ['not_found', undefined, [issue('workspace_session_not_found', '현재 대화를 찾지 못했습니다.')]];
     }
     return ['ok', { scope: 'session', sessionId: options.workspaceSessionId.trim(), context: memo }];
   }

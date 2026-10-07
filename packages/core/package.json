@@ -60,6 +60,11 @@
       "import": "./dist/contracts/tool-result.js",
       "default": "./dist/contracts/tool-result.js"
     },
+    "./error-messages": {
+      "types": "./dist/contracts/error-messages.d.ts",
+      "import": "./dist/contracts/error-messages.js",
+      "default": "./dist/contracts/error-messages.js"
+    },
     "./gmail-scopes": {
       "types": "./dist/connectors/gmail/scopes.d.ts",
       "import": "./dist/connectors/gmail/scopes.js",

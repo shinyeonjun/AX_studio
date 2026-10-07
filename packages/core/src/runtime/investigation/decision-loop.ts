@@ -287,7 +287,7 @@ export async function runAiDecisionLoop({
   );
   if (restrictedEvidence.length > 0 && Object.keys(outputPlan.questions).length > 0) {
     throw Object.assign(
-      new Error('클라우드 전송이 차단된 조회 데이터로 Jev 구조화 판단을 실행할 수 없습니다.'),
+      new Error('외부 AI로 보내지 않도록 설정된 자료라 판단 엔진(Jev)에 넘기지 않았습니다.'),
       {
         code: 'ai_input_unavailable',
         data: { stepId: step.id, sources: restrictedEvidence.map((item) => item.source) },
@@ -310,7 +310,7 @@ export async function runAiDecisionLoop({
   const output = { ...modelOutput, ...jevOutput, needMore: false };
   if (allowReads && !hasRequiredOutputFields(step, output)) {
     if (!runModel) {
-      throw Object.assign(new Error(`AI 판단 단계 ${step.id}가 선언된 출력 필드를 모두 반환하지 않았습니다.`), { code: 'ai_output_missing' });
+      throw Object.assign(new Error('AI 판단 단계가 필요한 결과 항목을 모두 채우지 못했습니다. 다시 실행해 주세요.'), { code: 'ai_output_missing' });
     }
     await persistFinalOutput({
       step, ir, ctx, stepResults, evidence, documentRequired, runModel, outputFields, jevOutput,
@@ -347,7 +347,7 @@ async function persistFinalOutput(context: {
   const output = { ...modelOutput, ...context.jevOutput, needMore: false };
   if (!hasRequiredOutputFields(context.step, output)) {
     throw Object.assign(
-      new Error(`AI 판단 단계 ${context.step.id}가 선언된 출력 필드를 모두 반환하지 않았습니다.`),
+      new Error('AI 판단 단계가 필요한 결과 항목을 모두 채우지 못했습니다. 다시 실행해 주세요.'),
       { code: 'ai_output_missing' },
     );
   }

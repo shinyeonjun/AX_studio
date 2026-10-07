@@ -28,7 +28,7 @@ describe('job confirmation card safety defaults', () => {
     expect(response.status).toBe('ok');
     const { text, summary } = card(response.data);
     expect(summary).toMatchObject({ runOnceNow: false, allowExternalAuto: false });
-    expect(text).toContain('자동 발송: 꺼짐(기본)');
+    expect(text).toContain('자동 발송: 꺼짐 — [외부] 단계는 보낼 때마다 승인을 받습니다.');
     expect(text).toContain('지금은 실행하지 않고 시작 조건만 켭니다.');
   });
 
@@ -44,7 +44,7 @@ describe('job confirmation card safety defaults', () => {
     expect(items.find((item) => item.includes('HTTP 요청'))).toMatch(/^1\. HTTP 요청 · 읽기만 함 · 대상: .*경로 \/repos\/shinyeonjun\/AX_studio\/commits/u);
     expect(items.find((item) => item.includes('Slack 메시지'))).toMatch(/^\[외부\] \d+\. Slack 메시지 · 외부 전송 · 대상: 채널 #ax테스트2/u);
     expect(items.join(' ')).not.toMatch(/(^|\s)(fetch|notify):/u);
-    expect(text).toContain('자동 발송(별도 선택): 켜짐');
+    expect(text).toContain('자동 발송: 켜짐 — [외부] 단계는 승인 없이 보냅니다.');
   });
 
   it('defaults run-now off for generic workflows with external steps and on when nothing is sent externally', async () => {

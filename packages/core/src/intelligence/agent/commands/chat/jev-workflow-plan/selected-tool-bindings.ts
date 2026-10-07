@@ -117,7 +117,7 @@ export function applyBindingAnswers(
 ): string | undefined {
   for (const [questionId, binding] of selection.bindingFields) {
     const source = selectedSource(answers[questionId], binding.choices);
-    if (!source) return `도구 간 입력 ${binding.port}을 명확하게 연결하지 못했습니다.`;
+    if (!source) return '앞 단계 결과를 다음 단계에 어떻게 넘길지 정하지 못했습니다. 어떤 결과를 쓸지 알려 주세요.';
     selection.bindings.get(binding.entry.id)![binding.port] = { from: source.from, output: source.output };
   }
   return undefined;

@@ -2,6 +2,7 @@ import type { ExecutionLogEntry } from '../../connectors/types.js';
 import { resolveCapability } from '../../catalog/capability-graph.js';
 import type { ExecutionResult } from '../types.js';
 import { reportFailureMessage } from '../../documents/reporting/failure-message.js';
+import { executionErrorReason } from '../../contracts/error-messages.js';
 
 const MAX_RESULT_CHARS = 8_000;
 const MAX_FIELD_CHARS = 1_200;
@@ -125,8 +126,8 @@ export function formatExecutionResultMessage(
   const file = record(spreadsheet?.data);
   if (result.status === 'success' && file && typeof file.artifactId === 'string'
     && /^art_[a-zA-Z0-9]+$/.test(file.artifactId)) {
-    lines.push(`Excel 산출물: table.xlsx (${safeText(file.rowCount, 20) ?? '?'}행)`);
-    lines.push(`산출물 ID: ${file.artifactId}`);
+    const rows = typeof file.rowCount === 'number' ? ` (${file.rowCount.toLocaleString('ko-KR')}행)` : '';
+    lines.push(`엑셀 파일: ${safeText(file.fileName, 200) ?? 'table.xlsx'}${rows}`);
     if (file.partial === true) lines.push('현재 표에 있는 행만 저장했습니다. 원본 전체가 아닐 수 있습니다.');
   }
   if (result.status === 'success') {
@@ -139,20 +140,23 @@ export function formatExecutionResultMessage(
   if (preview) {
     const category = safeText(preview.category, 120);
     if (category === 'insufficient_evidence' || category === 'undetermined') {
-      lines.push('결과 품질: 근거 부족');
+      lines.push('근거가 충분하지 않아 결론을 확실히 내리지 못했습니다.');
     }
     for (const [field, label] of Object.entries(OUTPUT_FIELD_LABELS)) {
       const value = safeText(preview[field]);
       if (value) lines.push(`${label}: ${value}`);
     }
     const confidence = confidenceLabel(preview.confidence);
-    if (confidence) lines.push(`AI 판단 확신도: ${confidence}`);
+    if (confidence) lines.push(`AI가 얼마나 확실한지: ${confidence}`);
     if (preview.needMore === true) lines.push('더 많은 자료를 확인해야 정확한 결론을 낼 수 있습니다.');
   }
 
   if (result.status === 'failed' && result.errorCode) {
-    lines.push(...reportFailureMessage(result.log, result.errorCode));
-    lines.push(`오류 코드: ${safeText(result.errorCode, 160) ?? 'unknown'}`);
+    const reportLines = reportFailureMessage(result.log, result.errorCode);
+    lines.push(...reportLines);
+    // Raw codes mean nothing to the reader; say the reason when there are words for it.
+    const reason = reportLines.length === 0 ? executionErrorReason(result.errorCode) : undefined;
+    if (reason) lines.push(`원인: ${reason}`);
   }
   if (result.status === 'pending_approval' && result.pendingApprovalId) {
     lines.push(
@@ -162,6 +166,6 @@ export function formatExecutionResultMessage(
     );
   }
   // Only a failed run needs its id in the chat: retrying from where it stopped names it.
-  if (result.status === 'failed') lines.push(`실행 ID: ${safeText(result.executionId, 160) ?? 'unknown'}`);
+  if (result.status === 'failed') lines.push(`실행 번호: ${safeText(result.executionId, 160) ?? '알 수 없음'}`);
   return lines.join('\n').slice(0, MAX_RESULT_CHARS);
 }

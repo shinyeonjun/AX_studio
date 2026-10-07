@@ -1,5 +1,6 @@
 import type { WorkflowStore } from '../../../persistence/workflow-store.js';
 import { KO } from '../../../i18n/ko.js';
+import { executionErrorReason } from '../../../contracts/error-messages.js';
 
 type ExecutionView = ReturnType<WorkflowStore['listExecutions']>[number];
 
@@ -66,7 +67,7 @@ function failureLines(latest: ExecutionView): string[] {
   }
   return [
     KO.execution.failedAt(formatStartedAt(latest.startedAt)),
-    KO.execution.cause(KO.execution.errorMessages[code] ?? code),
+    KO.execution.cause(executionErrorReason(code) ?? KO.execution.unknownCause),
     detail ? KO.execution.detail(detail) : '',
     KO.execution.recommendedAction,
   ].filter(Boolean);
@@ -89,7 +90,7 @@ export function explainExecution(store: WorkflowStore, question: string): string
   const lines = [
     `가장 최근 실행은 ${formatStartedAt(latest.startedAt)}에 시작한 ${subject}${trigger ? `(${trigger})` : ''}이며, 상태는 ${statusLabel(latest.status)}입니다.`,
     steps.length > 0 ? `실행 단계: ${steps.join(' → ')}` : '',
-    failed ? KO.execution.cause(KO.execution.errorMessages[latest.errorCode ?? ''] ?? latest.errorCode ?? 'unknown') : '',
+    failed ? KO.execution.cause(executionErrorReason(latest.errorCode) ?? KO.execution.unknownCause) : '',
     failed ? '실패 이유를 자세히 보려면 "왜 실패했어?"라고 물어보세요.' : '',
   ];
   return lines.filter(Boolean).join('\n');

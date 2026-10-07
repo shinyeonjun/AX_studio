@@ -26,7 +26,7 @@ export async function enqueueOnce(
   const candidate = candidateFromCreateCommand(command, AxExecutionEnqueueOnceArgsSchema);
   if (!candidate.ok) return candidate.result;
   if (!enqueueCallback) {
-    return ['error', undefined, [issue('ephemeral_runner_unavailable', '일회 실행 큐가 연결되지 않았습니다.')]];
+    return ['error', undefined, [issue('ephemeral_runner_unavailable', '지금은 바로 실행할 수 없습니다. 앱을 다시 시작한 뒤 시도해 주세요.')]];
   }
 
   const targetInputs = await oneShotTargetInputs(store, candidate.value, options.listSlackChannels);

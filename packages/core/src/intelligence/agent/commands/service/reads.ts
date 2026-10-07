@@ -78,10 +78,10 @@ export function listSessionSources(
   const parsed = AxSessionSourceListArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
   if (!sessionId?.trim()) {
-    return ['invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]];
+    return ['invalid', undefined, [issue('workspace_session_required', '대화 안에서 요청해 주세요.')]];
   }
   if (!state.options.workspaceSources) {
-    return ['error', undefined, [issue('session_source_unavailable', '세션 자료 저장소를 사용할 수 없습니다.')]];
+    return ['error', undefined, [issue('session_source_unavailable', '이 대화에 올린 자료를 지금 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.')]];
   }
   return ['ok', { sessionId: sessionId.trim(),
     ...sourceManifestPage(state.options.workspaceSources.list(sessionId), parsed.data) }];
@@ -95,10 +95,10 @@ export function readSessionSource(
   const parsed = AxSessionSourceReadArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
   if (!sessionId?.trim()) {
-    return ['invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]];
+    return ['invalid', undefined, [issue('workspace_session_required', '대화 안에서 요청해 주세요.')]];
   }
   if (!state.options.workspaceSources) {
-    return ['error', undefined, [issue('session_source_unavailable', '세션 자료 저장소를 사용할 수 없습니다.')]];
+    return ['error', undefined, [issue('session_source_unavailable', '이 대화에 올린 자료를 지금 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.')]];
   }
   try {
     return ['ok', state.options.workspaceSources.read(sessionId, parsed.data.sourceId, parsed.data.maxChars)];
@@ -109,6 +109,6 @@ export function readSessionSource(
       : code.endsWith('not_found')
         ? 'not_found'
         : 'error';
-    return [status, undefined, [issue(code, '현재 대화 세션 자료를 읽을 수 없습니다.')]];
+    return [status, undefined, [issue(code, '이 대화에 올린 자료를 읽을 수 없습니다.')]];
   }
 }

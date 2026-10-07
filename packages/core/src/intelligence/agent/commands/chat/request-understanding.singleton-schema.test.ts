@@ -119,7 +119,7 @@ describe('default-off singleton schema selection with real Jev/session/service/l
       expect(f.publications[0]?.data).toMatchObject({ sourceId: frozen.sourceId, sourceRevision: 1, intent: 'schema',
         scope: frozen.expectedScope, knownTotal: 2, truncated: false,
         entries: frozen.fields.map((field, index) => ({ id: `local_field_${index}`, label: field.name, fields: [{ ...field }] })) });
-      for (const fact of ['OrdersAPI', 'orderId', 'string', 'quantity', '등록된 필드 사전', '알 수 없음']) expect(reply).toContain(fact);
+      for (const fact of ['OrdersAPI', 'orderId', 'string', 'quantity', '저장된 항목 구성', '알 수 없음']) expect(reply).toContain(fact);
       expect(f.requests).toHaveLength(2); expect(f.execute).toHaveBeenCalledTimes(1); expect(f.forbidden).not.toHaveBeenCalled();
       const [command, execution] = f.execute.mock.calls[0]!;
       expect(command).toEqual({ name: 'discovery.describe', args: { assetId: frozen.sourceId, depth: 'schema' } });

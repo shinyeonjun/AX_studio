@@ -79,7 +79,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     return reply;
   };
   check();
-  if (!input.decisionEngine) return finish('provider_failure', '판단 서비스를 사용할 수 없어 메타데이터 작업을 시작하지 않았습니다.');
+  if (!input.decisionEngine) return finish('provider_failure', '판단 엔진(Jev)에 연결하지 못해 확인을 시작하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.');
   const engine = guardAuthoritativeRequestDecisions(input.decisionEngine, snapshot.anchor);
   const evaluate = async (state: unknown, questions: Record<string, DecisionQuestion>) => {
     check();
@@ -118,31 +118,31 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
         : { state: sourceRef === 'none' || sourceRef === 'ambiguous' ? sourceRef : 'unknown' }),
       metadataOperationRef: Object.freeze({ state: intent === 'retrieval' || intent === 'action' || intent === 'unsupported' ? 'not_applicable' : 'not_evaluated' }),
       outputKind: (output ?? 'unknown') as RequestUnderstandingAssessment['outputKind'] });
-    if (!intent || !sourceRef || !output) return finish('invalid_decision', '판단 응답이 누락·불확실하거나 제공된 선택지와 맞지 않습니다. 요청한 대상과 결과를 확인해 주세요.');
-    if (intent === 'ambiguous') return finish('ambiguous_intent', '데이터 종류·스키마·연결 상태 중 어떤 메타데이터를 확인할지 알려 주세요.');
+    if (!intent || !sourceRef || !output) return finish('invalid_decision', '요청을 확실히 이해하지 못했습니다. 어떤 자료에서 무엇을 확인할지 알려 주세요.');
+    if (intent === 'ambiguous') return finish('ambiguous_intent', '자료 종류, 항목 구성, 연결 상태 중 무엇을 확인할지 알려 주세요.');
     if (intent === 'unsupported') {
       const authority = snapshot.fieldAuthorities.intent;
       const goal = inertMetadataText(authority.anchor.text);
-      if (snapshot.requestRevision === 1) return finish('unsupported_intent', `이 메타데이터 범위에서는 지원하지 않는 요청입니다: ${goal}`);
+      if (snapshot.requestRevision === 1) return finish('unsupported_intent', `자료 정보 확인으로는 도와드릴 수 없는 요청입니다: ${goal}`);
       const history = authority.requestRevision < snapshot.requestRevision ? '이전 ' : '';
-      return finish('unsupported_intent', '이 메타데이터 범위에서는 지원하지 않는 요청입니다.\n'
-        + `${history}의도 근거 (요청 버전 ${authority.requestRevision}): ${goal}\n`
-        + `현재 대상: ${assessedSource ? inertMetadataText(assessedSource.label) : '미확인'}`);
+      return finish('unsupported_intent', '자료 정보 확인으로는 도와드릴 수 없는 요청입니다.\n'
+        + `${history}요청 내용 (${authority.requestRevision}번째 요청): ${goal}\n`
+        + `현재 대상: ${assessedSource ? inertMetadataText(assessedSource.label) : '확인 안 됨'}`);
     }
     if (intent === 'retrieval' || intent === 'action') return finish('outside_slice', intent === 'retrieval'
-      ? '실제 레코드 조회 요청입니다. 이 메타데이터 경로에서는 레코드를 읽지 않습니다. 별도의 승인된 조회 경로가 필요합니다.'
-      : '연결된 작업 실행 요청입니다. 이 메타데이터 경로에서는 작업 실행·저장·발송을 지원하지 않습니다.');
-    if (sourceRef === 'ambiguous') return finish('source_ambiguous', '어느 등록된 소스를 뜻하는지 구분해 주세요. 이름이 같은 소스나 이전 대상 참조를 확인해야 합니다.');
+      ? '실제 자료를 가져오는 요청입니다. 여기서는 자료의 구성만 확인하고 실제 자료는 읽지 않습니다. 자료를 가져와 달라고 다시 요청해 주세요.'
+      : '작업을 실행하는 요청입니다. 여기서는 자료의 구성만 확인하고 실행·저장·발송은 하지 않습니다.');
+    if (sourceRef === 'ambiguous') return finish('source_ambiguous', '어느 자료를 말씀하시는지 알려 주세요. 이름이 같은 자료가 있거나 앞에서 말한 대상이 분명하지 않습니다.');
     if (sourceRef === 'unknown' || (sourceRef === 'none' && (sourceCoverage.truncated || sourceCoverage.overflow || sourceCoverage.knownTotal === null))) {
-      return finish('candidate_coverage_incomplete', '현재 소스 후보 카탈로그가 불완전하거나 필요한 대상이 후보에 없습니다. 등록된 소스 이름 또는 연결을 확인해 주세요.');
+      return finish('candidate_coverage_incomplete', '찾는 자료가 연결된 목록에 없거나 목록의 일부만 확인했습니다. 자료 이름이나 연결을 확인해 주세요.');
     }
-    if (sourceRef === 'none') return finish('source_required', '메타데이터를 확인할 등록된 소스 이름을 알려 주세요.');
+    if (sourceRef === 'none') return finish('source_required', '어떤 자료를 확인할지 이름을 알려 주세요.');
     const source = sources.find(candidate => candidate.ref === sourceRef)?.source;
-    if (!source) return finish('invalid_decision', '제공되지 않은 소스 선택입니다. 등록된 소스를 확인해 주세요.');
+    if (!source) return finish('invalid_decision', '목록에 없는 자료입니다. 연결된 자료 이름을 확인해 주세요.');
     const outputKind = output === 'not_stated' ? readableOutput[intent] : output as MetadataOutputKind;
     if (output === 'ambiguous' || (outputKind !== 'raw_debug' && outputKind !== readableOutput[intent])
       || (outputKind === 'raw_debug' && !explicitlyRequestsRawMetadata(snapshot.fieldAuthorities.outputKind.anchor.text))) {
-      return finish('output_ambiguous', '원하는 메타데이터 표시 형식을 확인해 주세요. 원시 JSON은 명시적으로 요청해야 합니다.');
+      return finish('output_ambiguous', '어떤 형태로 보여 드릴지 알려 주세요. 원본 그대로(JSON) 보고 싶으시면 그렇게 말씀해 주세요.');
     }
     const operations = source.operations.filter(operation => operation.intent === intent);
     const operationQuestions: Record<string, DecisionQuestion> = {
@@ -177,12 +177,12 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     assessment = Object.freeze({ ...assessment, metadataOperationRef: Object.freeze(assessedOperation
       ? { state: 'selected', operationId: assessedOperation.id }
       : { state: operationRef === 'none' || operationRef === 'unsupported' ? operationRef : 'unknown' }) });
-    if (!operationRef) return finish('invalid_decision', '메타데이터 작업 선택이 불확실하거나 제공된 작업과 맞지 않습니다.');
-    if (operationRef === 'unsupported') return finish('unsupported_operation', '선택한 소스에서는 이 메타데이터 작업을 지원하지 않습니다. 지원하는 작업이나 명세를 확인해 주세요.');
-    if (operationRef === 'none' || operationRef === 'unknown') return finish('metadata_unavailable', '선택한 소스의 메타데이터 작업이 현재 카탈로그에 없습니다. 해당 소스의 등록된 명세를 확인해 주세요.');
+    if (!operationRef) return finish('invalid_decision', '어떤 정보를 확인할지 정하지 못했습니다. 요청을 조금 더 구체적으로 알려 주세요.');
+    if (operationRef === 'unsupported') return finish('unsupported_operation', '이 자료에서는 그 정보를 확인할 수 없습니다. 확인할 수 있는 정보를 물어봐 주세요.');
+    if (operationRef === 'none' || operationRef === 'unknown') return finish('metadata_unavailable', '이 자료의 구성을 확인할 방법이 등록되어 있지 않습니다. 연결 설정에서 서비스 설명을 확인해 주세요.');
     const operation = operations[Number(operationRef.slice('metadata_'.length))];
-    if (!operation) return finish('invalid_decision', '등록되지 않은 메타데이터 작업입니다.');
-    if (!operation.allowed) return finish('permission_denied', '선택한 소스의 메타데이터 조회 권한이 확인되지 않거나 거부되었습니다. 필요한 권한을 확인해 주세요.');
+    if (!operation) return finish('invalid_decision', '확인할 수 없는 정보입니다.');
+    if (!operation.allowed) return finish('permission_denied', '이 자료의 정보를 볼 권한이 확인되지 않았거나 거부되었습니다. 연결의 로그인 정보와 권한을 확인해 주세요.');
     const understanding: RequestUnderstanding = Object.freeze({ version: 1, intent, targetSourceRef: source.id,
       metadataOperationRef: operation.id, outputKind, needsGeneratedProse: input.needsGeneratedProse === true,
       provenance: Object.freeze({ requestDigest: snapshot.anchor.digest, requestRevision: snapshot.requestRevision,
@@ -191,7 +191,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
         ...(metadataOperationResolution ? { metadataOperationResolution } : {}) }) });
     check();
     const command = operation.command;
-    if (metadataReadAttempts >= 1) return finish('metadata_budget_exhausted', '메타데이터 조회 예산을 모두 사용했습니다.');
+    if (metadataReadAttempts >= 1) return finish('metadata_budget_exhausted', '확인할 수 있는 횟수를 모두 사용했습니다. 범위를 좁혀 다시 요청해 주세요.');
     metadataReadAttempts = 1;
     const result = await input.commandService.execute(command, { executionContext: AGENT_COMMAND_CONTEXT,
       workspaceSessionId: snapshot.anchor.workspaceSessionId, userMessage: snapshot.anchor.text, abortSignal: signal,
@@ -200,29 +200,29 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     check();
     if (result.status !== 'ok') {
       if (result.issues.some(issue => issue.code === 'registered_http_inventory_unavailable')) {
-        return finish('metadata_unavailable', '저장된 HTTP 작업 목록이 없습니다. 이 경로는 등록된 목록만 확인하며 원격 API를 탐색하지 않습니다.');
+        return finish('metadata_unavailable', '이 연결에 저장된 요청 목록이 없습니다. 여기서는 저장된 목록만 확인하고 서비스에 직접 묻지 않습니다.');
       }
       if (result.issues.some(issue => issue.code === 'registered_http_dictionary_unavailable')) {
-        return finish('metadata_unavailable', '이 HTTP 엔드포인트의 등록된 필드 사전이 없습니다. 원격 데이터 스키마는 확인하지 않았습니다.');
+        return finish('metadata_unavailable', '이 연결에 저장된 항목 구성이 없습니다. 서비스의 실제 항목 구성은 확인하지 않았습니다.');
       }
       if (result.status === 'forbidden' || result.issues.some(issue => issue.failureKind === 'permission_denied' || issue.failureKind === 'host_policy')) {
-        return finish('permission_denied', '선택한 소스의 메타데이터 조회 권한이 거부되었습니다. 필요한 권한을 확인해 주세요.');
+        return finish('permission_denied', '이 자료의 정보를 볼 권한이 거부되었습니다. 연결의 로그인 정보와 권한을 확인해 주세요.');
       }
       if (result.issues.some(issue => issue.failureKind === 'provider_error' || issue.failureKind === 'transient')) {
-        return finish('provider_failure', '메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.');
+        return finish('provider_failure', '연결된 서비스에서 응답이 없어 확인을 멈췄습니다. 잠시 후 다시 시도해 주세요.');
       }
-      return finish('metadata_unavailable', '선택한 소스의 메타데이터를 확인하지 못했습니다. 등록된 명세를 확인해 주세요.');
+      return finish('metadata_unavailable', '이 자료의 구성 정보를 확인하지 못했습니다. 연결 설정을 확인해 주세요.');
     }
     let bytes: number;
     try { bytes = new TextEncoder().encode(JSON.stringify(result.data)).byteLength; }
-    catch { return finish('metadata_unavailable', '메타데이터 결과 형식을 확인하지 못했습니다.'); }
-    if (bytes > 32_768) return finish('metadata_budget_exhausted', '메타데이터 결과가 표시 한도를 넘었습니다. 확인할 소스 범위를 좁혀 주세요.');
+    catch { return finish('metadata_unavailable', '받은 정보의 형식을 확인하지 못했습니다.'); }
+    if (bytes > 32_768) return finish('metadata_budget_exhausted', '확인한 정보가 표시 한도를 넘었습니다. 확인할 범위를 좁혀 주세요.');
     const evidence = SourceMetadataEvidenceSchema.safeParse(result.data);
     if (!evidence.success || evidence.data.sourceId !== source.id || evidence.data.sourceRevision !== source.revision
       || evidence.data.intent !== intent || (evidence.data.knownTotal !== null && evidence.data.knownTotal < evidence.data.entries.length)
       || (!evidence.data.truncated && evidence.data.knownTotal !== null && evidence.data.knownTotal > evidence.data.entries.length)
       || (intent === 'connection_status' && !evidence.data.status)) {
-      return finish('metadata_unavailable', '선택한 소스와 일치하는 메타데이터 근거를 확인하지 못했습니다.');
+      return finish('metadata_unavailable', '고른 자료와 맞는 정보를 찾지 못했습니다.');
     }
     check();
     // Only the approved allowlisted view is published; raw connector envelopes stay local.
@@ -233,6 +233,6 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     check();
     if (error instanceof AuthoritativeRequestError) throw error;
     if (error instanceof Error && error.message.startsWith('invalid_metadata')) throw error;
-    return finish('provider_failure', '판단 또는 메타데이터 서비스를 확인할 수 없어 작업을 중단했습니다. 잠시 후 다시 확인해 주세요.');
+    return finish('provider_failure', '판단 엔진(Jev)이나 연결된 서비스에서 응답이 없어 확인을 멈췄습니다. 잠시 후 다시 시도해 주세요.');
   }
 }

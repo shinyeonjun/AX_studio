@@ -22,8 +22,8 @@ export const MAX_QUEUED_RUNS_PER_WORKFLOW = 32;
 
 function workflowRunError(code: 'workflow_already_running' | 'workflow_run_queue_full'): Error {
   const message = code === 'workflow_already_running'
-    ? '이 워크플로우는 이미 실행 중입니다. 현재 실행이 끝난 뒤 다시 시도하세요.'
-    : '이 워크플로우의 대기 중인 실행이 너무 많아 새 실행을 건너뜁니다.';
+    ? '이 업무는 이미 실행 중입니다. 지금 실행이 끝난 뒤 다시 시도해 주세요.'
+    : '이 업무는 기다리는 실행이 너무 많아 이번 실행은 건너뜁니다.';
   return Object.assign(new Error(message), { code });
 }
 

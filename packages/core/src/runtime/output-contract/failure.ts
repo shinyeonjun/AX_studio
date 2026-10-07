@@ -9,8 +9,8 @@ export function createContractFailure(
   result: Extract<ContractCheckResult, { ok: false }>,
 ): ContractFailure {
   const message = code === 'input_schema_drift'
-    ? '입력 자료의 스키마가 과거 기준과 달라 실행을 중단했습니다.'
-    : '실행 결과가 과거 기준과 달라 외부 발송을 중단했습니다.';
+    ? '자료의 열 구성이 예전과 달라 실행을 멈췄습니다. 자료를 확인해 주세요.'
+    : '실행 결과가 예전 기준과 달라 밖으로 보내지 않았습니다. 결과를 확인해 주세요.';
   return Object.assign(new Error(message), {
     code,
     data: { phase, issues: result.issues },
