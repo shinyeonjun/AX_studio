@@ -265,7 +265,7 @@ describe('Desktop workspace chat Jev routing', () => {
         question.type === 'noul'
         && (question.instructions?.candidate as Record<string, unknown> | undefined)?.capability_id === 'gmail.message.send',
       )).toBe(true);
-      expect(reply).toMatchObject({ presentations: expect.arrayContaining([expect.objectContaining({ title: '실행 전 계획 검사', inputs: [], actions: [] })]) });
+      expect(reply).toMatchObject({ presentations: expect.arrayContaining([expect.objectContaining({ title: '실행 전 계획 확인', inputs: [], actions: [] })]) });
       expect(requests[1]?.questions).toHaveProperty('requirements');
       expect(requests[1]?.questions).toHaveProperty('scope');
       expect(reply.inputContinuation).toBe('command');

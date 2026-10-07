@@ -10,20 +10,24 @@ const COMPARISON_SYMBOLS: Record<string, string> = {
   contains: '포함',
 };
 
-function describeValue(value: ConditionValue): string {
-  return 'ref' in value ? value.ref : String(value.lit);
+/** A column as people read it (its Korean header), given its name. */
+export type ColumnNamer = (name: string) => string;
+const asNamed: ColumnNamer = (name) => name;
+
+function describeValue(value: ConditionValue, columnName: ColumnNamer): string {
+  return 'ref' in value ? columnName(value.ref) : String(value.lit);
 }
 
-/** Short, symbol-based description of a row condition ("stock < 10 그리고 상태 ≠ 취소"). */
-export function describeCondition(condition: ConditionExpr): string {
+/** Short, symbol-based description of a row condition ("재고 < 10 그리고 상태 ≠ 취소"). */
+export function describeCondition(condition: ConditionExpr, columnName: ColumnNamer = asNamed): string {
   switch (condition.op) {
     case 'and':
-      return condition.args.map(describeCondition).join(' 그리고 ');
+      return condition.args.map((arg) => describeCondition(arg, columnName)).join(' 그리고 ');
     case 'or':
-      return condition.args.map(describeCondition).join(' 또는 ');
+      return condition.args.map((arg) => describeCondition(arg, columnName)).join(' 또는 ');
     case 'not':
-      return `아님(${describeCondition(condition.arg)})`;
+      return `아님(${describeCondition(condition.arg, columnName)})`;
     default:
-      return `${describeValue(condition.left)} ${COMPARISON_SYMBOLS[condition.op] ?? condition.op} ${describeValue(condition.right)}`;
+      return `${describeValue(condition.left, columnName)} ${COMPARISON_SYMBOLS[condition.op] ?? condition.op} ${describeValue(condition.right, columnName)}`;
   }
 }

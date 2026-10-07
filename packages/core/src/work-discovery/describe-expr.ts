@@ -30,7 +30,7 @@ function aggregateLabel(spec: { fn: string; column?: string; round?: number }): 
 
 function withConditions(label: string, expr: TransformExpr): string {
   const conditions = rowConditions(expr);
-  return conditions.length === 0 ? label : `${label} · 조건: ${conditions.map(describeCondition).join(', ')}`;
+  return conditions.length === 0 ? label : `${label} · 조건: ${conditions.map((condition) => describeCondition(condition)).join(', ')}`;
 }
 
 /** Short Korean description of a learned mapping, shown in the review card and questions. */

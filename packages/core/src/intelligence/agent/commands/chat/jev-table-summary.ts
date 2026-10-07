@@ -80,7 +80,7 @@ export function summaryConditionCandidates(table: TableArtifact, message: string
         const named = months.some((mention) => mention.month === bucket.month && (mention.year === undefined || mention.year === bucket.year));
         if (!named) continue;
         periods.push({
-          description: `${column.name}: ${bucket.year}년 ${bucket.month}월`,
+          description: `${shownName(column)}: ${bucket.year}년 ${bucket.month}월`,
           column: column.name,
           kind: 'period',
           where: { op: 'contains', left: { ref: column.name }, right: { lit: prefix } },
@@ -96,7 +96,7 @@ export function summaryConditionCandidates(table: TableArtifact, message: string
       for (const value of numbers) {
         for (const [op, symbol] of [['gte', '≥'], ['lte', '≤'], ['gt', '>'], ['lt', '<']] as const) {
           ranges.push({
-            description: `${column.name} ${symbol} ${value.toLocaleString('ko-KR')}`,
+            description: `${shownName(column)} ${symbol} ${value.toLocaleString('ko-KR')}`,
             column: column.name,
             kind: 'range',
             where: { op, left: { ref: column.name }, right: { lit: value } },
@@ -110,8 +110,8 @@ export function summaryConditionCandidates(table: TableArtifact, message: string
     for (const value of distinct) {
       if (value.length > 60 || !request.includes(normalized(value))) continue;
       text.push(
-        { description: `${column.name} = ${value}`, column: column.name, kind: 'eq', where: { op: 'eq', left: { ref: column.name }, right: { lit: value } } },
-        { description: `${column.name} ≠ ${value}`, column: column.name, kind: 'neq', where: { op: 'neq', left: { ref: column.name }, right: { lit: value } } },
+        { description: `${shownName(column)} = ${value}`, column: column.name, kind: 'eq', where: { op: 'eq', left: { ref: column.name }, right: { lit: value } } },
+        { description: `${shownName(column)} ≠ ${value}`, column: column.name, kind: 'neq', where: { op: 'neq', left: { ref: column.name }, right: { lit: value } } },
       );
     }
   }
@@ -134,12 +134,17 @@ function combineConditions(chosen: readonly SummaryCondition[]): ConditionExpr |
   return parts.length === 1 ? parts[0] : { op: 'and', args: parts };
 }
 
+/** The column as people read it: its Korean header when it has one. */
+function shownName(column: TableColumn): string {
+  return column.label?.trim() || column.name;
+}
+
 function columnCriteria(columns: readonly TableColumn[], none: string): Record<string, DecisionInstruction> {
   return {
     none,
     ...Object.fromEntries(columns.map((column, index) => [`column_${index}`, {
       field: boundDecisionString(column.name, 160),
-      label: boundDecisionString(column.label?.trim() || column.name, 160),
+      label: boundDecisionString(shownName(column), 160),
       type: column.type,
     }])),
   };
@@ -242,7 +247,7 @@ export async function summarizeTable(input: {
     && JSON.stringify(left.where.op === 'eq' ? left.where.right : null) === JSON.stringify(right.where.op === 'neq' ? right.where.right : null)));
   if (contradictory) return clarify('같은 값을 포함하는 조건과 제외하는 조건이 함께 있어 계산하지 않았습니다. 조건을 다시 알려 주세요.');
 
-  const label = valueColumn ? `${valueColumn.name} ${FUNCTION_NAMES[fn]}` : FUNCTION_NAMES.count;
+  const label = valueColumn ? `${shownName(valueColumn)} ${FUNCTION_NAMES[fn]}` : FUNCTION_NAMES.count;
   const aggregate: GroupAggregate = { as: label, fn, ...(valueColumn ? { column: valueColumn.name } : {}) };
   const where = combineConditions(chosen);
   const source: TransformExpr = { op: 'source', sourceId: 'chat:read-result' };

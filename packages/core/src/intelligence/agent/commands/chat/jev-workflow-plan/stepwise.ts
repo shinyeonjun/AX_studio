@@ -1,3 +1,4 @@
+import { readValueNames } from '../read-value-names.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget } from '../../../../../contracts/request-anchor.js';
 import { AuthoritativeRequestError, authoritativeRequestClarification, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../../decision/request-anchor.js';
 import {
@@ -255,7 +256,7 @@ export async function planJevWorkflow(input: {
         if ((resolved.missingParameterPaths?.length ?? 0) > 0) {
           return finish({
             kind: 'clarify',
-            message: `조회에 필요한 값이 요청에 없습니다 (${resolved.missingParameterPaths!.join(', ')}). 해당 값을 알려 주세요. ${noCommitMessage}`,
+            message: `조회에 필요한 값(${readValueNames(resolved.missingParameterPaths!)})이 요청에 없습니다. 이 값을 알려 주세요. ${noCommitMessage}`,
           });
         }
       }

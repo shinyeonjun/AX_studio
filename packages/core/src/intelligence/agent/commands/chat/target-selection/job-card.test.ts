@@ -47,7 +47,7 @@ describe('runAxCommandChat recurring workflow target selection', () => {
 
     expect(reply).toContain('채널을 선택');
     expect(presentations).toHaveLength(2);
-    expect(presentations[0]).toMatchObject({ title: '실행 전 계획 검사', actions: [], inputs: [] });
+    expect(presentations[0]).toMatchObject({ title: '실행 전 계획 확인', actions: [], inputs: [] });
     expect(presentations[1]).toMatchObject({
       title: '공유 대상 선택',
       inputs: [{
