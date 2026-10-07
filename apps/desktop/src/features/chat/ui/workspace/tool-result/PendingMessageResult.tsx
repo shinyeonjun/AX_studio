@@ -3,6 +3,7 @@ import type { ToolResultReference, ToolSendOutcome } from '@ax-studio/core';
 import { cachedToolDraft, type ToolDraftController, toolDraftError } from './draft-controller';
 import { EditableMessageResult } from './EditableMessageResult';
 import { OutcomeResult } from './OutcomeResult';
+import { reloadOnStateChange } from './reload-on-state-change';
 import { ToolHeader } from './ToolHeader';
 import type { ToolResultPaneProps } from './types';
 
@@ -11,20 +12,31 @@ export function PendingMessageResult({ reference, ...actions }: { reference: Too
   useEffect(() => {
     let current = true;
     let loadSequence = 0;
+    let controller: ToolDraftController | undefined;
     const load = async () => {
       const sequence = ++loadSequence;
       try {
         const data = await window.ax.getToolResult(reference.approvalId);
         if (!current || sequence !== loadSequence) return;
-        if (data.outcome) setView(previous => previous.controller && ['sending', 'sent'].includes(previous.controller.getSnapshot().phase)
-          ? previous : { outcome: data.outcome, refreshWarning: data.refreshWarning, persistenceWarning: data.persistenceWarning });
-        else if (data.source && data.source.approvalId === reference.approvalId && data.source.workspaceSessionId === reference.workspaceSessionId
-          && data.source.tool === reference.tool) setView({ controller: cachedToolDraft(data.source, { update: window.ax.updateToolDraft, review: window.ax.reviewToolResult }) });
-        else setView({ message: data.cancelled ? '전송 요청이 취소되었습니다.' : data.processing ? '전송 처리 중입니다. 취소로 전송을 회수할 수 없습니다.' : '이 요청은 이미 처리되었습니다. 활동에서 결과를 확인해 주세요.' });
+        if (data.outcome) {
+          setView(previous => previous.controller && ['sending', 'sent'].includes(previous.controller.getSnapshot().phase)
+            ? previous : { outcome: data.outcome, refreshWarning: data.refreshWarning, persistenceWarning: data.persistenceWarning });
+          // A recorded outcome is final (OutcomeResult keeps watching its execution for warnings),
+          // unless this card's own send is still settling and may yet hand over to the outcome.
+          return controller?.getSnapshot().phase !== 'sending';
+        }
+        if (data.source && data.source.approvalId === reference.approvalId && data.source.workspaceSessionId === reference.workspaceSessionId
+          && data.source.tool === reference.tool) {
+          controller = cachedToolDraft(data.source, { update: window.ax.updateToolDraft, review: window.ax.reviewToolResult });
+          setView({ controller });
+        }
+        else {
+          setView({ message: data.cancelled ? '전송 요청이 취소되었습니다.' : data.processing ? '전송 처리 중입니다. 취소로 전송을 회수할 수 없습니다.' : '이 요청은 이미 처리되었습니다. 활동에서 결과를 확인해 주세요.' });
+          return data.cancelled;
+        }
       } catch (error) { if (current && sequence === loadSequence) setView({ message: toolDraftError(error) }); }
     };
-    void load();
-    const stop = window.ax.onStateChanged(() => { void load(); });
+    const stop = reloadOnStateChange(load);
     return () => { current = false; stop(); };
   }, [reference.approvalId, reference.workspaceSessionId, reference.tool]);
 
