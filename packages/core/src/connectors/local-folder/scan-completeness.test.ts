@@ -16,8 +16,9 @@ describe('bounded folder scans', () => {
     for (let index = 0; index <= MAX_FILES_PER_SCAN; index += 1) {
       writeFileSync(join(root, `${String(index).padStart(5, '0')}.txt`), '');
     }
-  });
-  afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
+    // Writing thousands of files is slow on a loaded runner (and on Windows); the tests themselves are fast.
+  }, 120_000);
+  afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); }, 120_000);
 
   it('does not present the scanner ceiling as a complete resource inventory', () => {
     const [resource] = buildLocalFolderResources([folder], { maxFilesPerFolder: MAX_FILES_PER_SCAN });

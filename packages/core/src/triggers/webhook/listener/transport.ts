@@ -95,11 +95,21 @@ export function respond(res: ServerResponse, status: number, body: string): void
   res.end(body);
 }
 
+/** How long a rejected oversized upload may keep sending (discarded) before the socket is cut. */
+const OVERSIZED_DRAIN_MS = 1_000;
+
 export function rejectRequest(req: IncomingMessage, res: ServerResponse, status: number, body: string): void {
-  respond(res, status, body);
   if (status === 413) {
-    setImmediate(() => req.destroy());
+    // Close after this response, and let the sender read it: cutting the socket while it is still
+    // uploading makes the client see a reset instead of 413. The rest is discarded, then cut.
+    res.setHeader('connection', 'close');
+    respond(res, status, body);
+    req.resume();
+    const cut = setTimeout(() => req.destroy(), OVERSIZED_DRAIN_MS);
+    cut.unref?.();
+    req.once('close', () => clearTimeout(cut));
   } else {
+    respond(res, status, body);
     req.resume();
   }
 }

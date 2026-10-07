@@ -1,0 +1,58 @@
+name: Jev routing eval
+
+# Live check that Jev still routes people's requests where they expect (see
+# packages/core/src/intelligence/agent/commands/chat/jev-routing-eval.cases.ts).
+# Only synthetic catalog metadata is sent to Jev; nothing is read or executed.
+# Needs the repository secret TYPESAFE_API_KEY; without it the job is skipped.
+on:
+  schedule:
+    - cron: '0 18 * * *' # 03:00 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-eval
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: jev routing eval
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+    steps:
+      - name: Skip without a Jev key
+        if: env.TYPESAFE_API_KEY == ''
+        run: echo "::notice::TYPESAFE_API_KEY secret is not set; Jev routing eval skipped."
+
+      - uses: actions/checkout@v4
+        if: env.TYPESAFE_API_KEY != ''
+
+      - uses: actions/setup-node@v4
+        if: env.TYPESAFE_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: env.TYPESAFE_API_KEY != ''
+        run: npm ci
+
+      - name: Run the evaluation set
+        if: env.TYPESAFE_API_KEY != ''
+        working-directory: packages/core
+        env:
+          AX_LIVE_JEV_EVAL: '1'
+          AX_JEV_EVAL_REPORT: ${{ github.workspace }}/jev-eval-report.json
+        run: node scripts/embed-skills.mjs && npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts
+
+      - name: Keep the report
+        if: always() && env.TYPESAFE_API_KEY != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: jev-eval-report
+          path: jev-eval-report.json
+          if-no-files-found: ignore
