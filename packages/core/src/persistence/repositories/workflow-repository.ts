@@ -250,6 +250,8 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
     ).map((row) => row.dedupe_key).filter((key): key is string => typeof key === 'string');
     db.prepare('DELETE FROM trigger_receipts WHERE workflow_id = ?').run(workflowId);
     db.prepare('DELETE FROM workflows WHERE id = ?').run(workflowId);
+    // The conversation that made the work stays; it just no longer opens a work that is gone.
+    db.prepare('UPDATE workspace_chats SET workflow_id = NULL WHERE workflow_id = ?').run(workflowId);
     // The push journal is not pruned: its entries are per trigger type, may fan out to other
     // workflows, and replay only matches workflows that still exist.
     pruneWorkflowKeyedSettings(db, workflowId, receiptKeys);

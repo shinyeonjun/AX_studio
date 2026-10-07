@@ -42,7 +42,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       const workflowId = loaded.workflowId;
       const [sourceResult, workflow] = await Promise.all([
         window.ax.listWorkspaceSources(loaded.id),
-        workflowId ? window.ax.loadWorkChat(workflowId) : Promise.resolve(undefined),
+        workflowId ? window.ax.loadWorkChat(workflowId, { optional: true }) : Promise.resolve(undefined),
       ]);
       if (!ctx.isCurrentSession(epoch)) return;
       ctx.setWorkspaceSources(sourceResult.sources);

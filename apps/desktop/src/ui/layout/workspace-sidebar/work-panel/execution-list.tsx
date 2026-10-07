@@ -8,7 +8,7 @@ function executionTitle(execution: ExecutionSummary, sessions: ChatSessionSummar
   const sessionTitle = sessions.find((session) => session.id === execution.workspaceSessionId)?.title;
   if (sessionTitle?.trim()) return sessionTitle;
   if (execution.generatedPdf?.fileName) return execution.generatedPdf.fileName;
-  return '일회 실행';
+  return execution.name?.trim() || '일회 실행';
 }
 
 function executionPresentation(execution: ExecutionSummary): {

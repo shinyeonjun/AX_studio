@@ -3,12 +3,14 @@ import { ipcHandle } from './ipc-handle.js';
 import { getCore } from '../core-instance.js';
 
 export function registerWorkspaceWorkflowHandlers() {
-  ipcHandle('ax:loadWorkChat', async (_event, workflowId: string) => {
+  ipcHandle('ax:loadWorkChat', async (_event, workflowId: string, options?: { optional?: boolean }) => {
     const core = getCore();
-    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('Workflow id가 필요합니다.');
+    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 지정하지 않았습니다.');
     const normalizedWorkflowId = workflowId.trim();
     const ir = core.store.getWorkflow(normalizedWorkflowId);
-    if (!ir) throw new Error('Workflow not found');
+    // A chat may still name a work deleted before chats were unlinked from deleted works.
+    if (!ir && options?.optional === true) return null;
+    if (!ir) throw new Error('업무를 찾을 수 없습니다. 삭제되었을 수 있어요.');
     const state = buildWorkflowView(ir, normalizedWorkflowId);
     const active = core.store.listWorkflows().some((entry) => entry.id === normalizedWorkflowId && entry.active);
     return { state, summary: summarizeWorkflow(state.draft), title: ir.name, active };

@@ -1,10 +1,11 @@
 import type { WorkspaceChatMessage } from '@ax-studio/core';
+import { formatTableNumber } from '@ax-studio/core/table-display';
 
 type ResultTable = NonNullable<WorkspaceChatMessage['readResult']>;
 
 function cellText(value: unknown): string {
   if (value == null) return '';
-  return typeof value === 'number' ? value.toLocaleString('ko-KR', { maximumFractionDigits: 6 }) : String(value);
+  return typeof value === 'number' ? formatTableNumber(value) : String(value);
 }
 
 /** The table a run made, under its result card; notes say when it is only part of the data. */

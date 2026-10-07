@@ -69,7 +69,7 @@ contextBridge.exposeInMainWorld('ax', {
   getJevDecisionConfig: () => ipcRenderer.invoke('ax:getJevDecisionConfig'),
   saveJevDecisionConfig: (prefs: unknown) => ipcRenderer.invoke('ax:saveJevDecisionConfig', prefs),
   testJevDecisionApi: (prefs?: unknown) => ipcRenderer.invoke('ax:testJevDecisionApi', prefs),
-  loadWorkChat: (workflowId: string) => ipcRenderer.invoke('ax:loadWorkChat', workflowId),
+  loadWorkChat: (workflowId: string, options?: { optional?: boolean }) => ipcRenderer.invoke('ax:loadWorkChat', workflowId, options),
   sendCommandChat: (
     userMessage: string,
     requestId?: string,

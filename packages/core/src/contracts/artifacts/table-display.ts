@@ -63,3 +63,16 @@ export function displayTable<T extends { columns: Array<{ name: string }>; rows:
     })),
   };
 }
+
+/** Below this a whole number is more likely a year, code or count than an amount: 2026, not 2,026. */
+const GROUPING_FROM = 10_000;
+
+/**
+ * A number as a person reads it in a table: amounts grouped (1,096,000), years and codes as typed,
+ * fractions to the precision that matters (291.43, 0.1235). The value itself is never changed.
+ */
+export function formatTableNumber(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  if (Number.isInteger(value)) return Math.abs(value) >= GROUPING_FROM ? value.toLocaleString('ko-KR') : String(value);
+  return value.toLocaleString('ko-KR', { maximumFractionDigits: Math.abs(value) >= 1 ? 2 : 4, useGrouping: Math.abs(value) >= GROUPING_FROM });
+}
