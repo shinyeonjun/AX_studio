@@ -11,6 +11,7 @@ import {
 } from '../../../../contracts/decision.js';
 import { availableCapabilities, capabilityActionName, resolveCapability } from '../../../../catalog/capability-graph.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
+import { getCapability } from '../../../../catalog/data.js';
 import { contractTypesCompatible } from '../../../../contracts/compatibility.js';
 import { boundDecisionString } from '../../../decision/context.js';
 import { actionRefFor } from '../../../../workflow/action-definition.js';
@@ -364,7 +365,7 @@ export function blankTriggerFields(trigger: Trigger | undefined): Array<{ stepId
 
 /** A planned step as people read it, in plan order: "1. Slack 메시지", never internal ids. */
 export function stepLabel(step: PlannedStep, index: number): string {
-  return `${index + 1}. ${step.kind === 'action' ? step.capability.label || step.capability.id : 'AI 문안 작성'}`;
+  return `${index + 1}. ${step.kind === 'action' ? step.capability.label || getCapability(step.capability.id)?.label || '연결된 작업' : 'AI 문안 작성'}`;
 }
 
 /** Parameter names that may hold credentials; their values never go to the decision engine. */

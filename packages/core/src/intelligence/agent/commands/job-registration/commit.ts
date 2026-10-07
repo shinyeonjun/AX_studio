@@ -23,7 +23,7 @@ export async function commitJob(options: {
   runWorkflow?: (workflowId: string) => Promise<unknown>;
 }): Promise<[AxCommandResult['status'], unknown, AxCommandIssue[]?]> {
   if (!options.allowJobCommit) {
-    return ['forbidden', undefined, [issue('job_commit_forbidden', '업무 저장은 확인 카드의 host 확인 이후에만 가능합니다.')]];
+    return ['forbidden', undefined, [issue('job_commit_forbidden', '확인 카드에서 "저장"을 눌러야 업무를 저장할 수 있습니다.')]];
   }
 
   const sessionId = options.workspaceSessionId?.trim();
