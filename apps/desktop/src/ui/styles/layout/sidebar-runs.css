@@ -1,0 +1,122 @@
+/* Recent runs under a job and their status dots. */
+
+.sidebar-execution-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-execution-item {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sidebar-execution-item:hover,
+.sidebar-execution-item:focus-visible {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.sidebar-execution-item:focus-visible,
+.sidebar-work-item:focus-visible,
+.sidebar-work-toggle:focus-visible,
+.sidebar-session-delete:focus-visible {
+  outline: 2px solid var(--purple-light);
+  outline-offset: 1px;
+}
+
+.sidebar-execution-dot {
+  margin-top: 5px;
+}
+
+.sidebar-execution-dot.tone-success {
+  background: var(--green);
+}
+
+.sidebar-execution-dot.tone-running {
+  background: var(--purple);
+  box-shadow: 0 0 0 2px var(--purple-glow);
+}
+
+.sidebar-execution-dot.tone-pending {
+  background: var(--amber);
+  box-shadow: 0 0 0 2px rgba(201, 138, 26, 0.14);
+}
+
+.sidebar-execution-dot.tone-failed {
+  background: var(--red);
+}
+
+.sidebar-execution-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.sidebar-execution-title,
+.sidebar-execution-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-execution-title {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sidebar-execution-meta,
+.sidebar-execution-detail {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.sidebar-execution-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-execution-meta strong {
+  font-weight: 600;
+}
+
+.sidebar-execution-item.tone-success .sidebar-execution-meta strong {
+  color: var(--green);
+}
+
+.sidebar-execution-item.tone-running .sidebar-execution-meta strong {
+  color: var(--purple);
+}
+
+.sidebar-execution-item.tone-pending .sidebar-execution-meta strong {
+  color: var(--amber);
+}
+
+.sidebar-execution-item.tone-failed .sidebar-execution-meta strong {
+  color: var(--red);
+}
+
+.sidebar-execution-open {
+  align-self: center;
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}

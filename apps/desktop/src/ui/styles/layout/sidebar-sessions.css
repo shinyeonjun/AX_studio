@@ -1,0 +1,127 @@
+/* Recent chats list and new chat button. */
+
+.workspace-sidebar-sessions {
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  max-height: 42vh;
+  padding: 10px 12px 14px;
+}
+
+.sidebar-new-chat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(158, 240, 255, 0.15), rgba(164, 165, 245, 0.12));
+  color: var(--purple);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sidebar-new-chat:hover {
+  border-color: var(--purple-light);
+  background: linear-gradient(135deg, rgba(158, 240, 255, 0.28), rgba(164, 165, 245, 0.2));
+}
+
+.sidebar-new-chat svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-session-list {
+  flex: 1;
+  overflow: auto;
+}
+
+.sidebar-work-row .sidebar-work-item {
+  width: auto;
+}
+
+.sidebar-session-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.sidebar-session-delete {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #141414;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-session-delete:hover {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+[data-theme='dark'] .sidebar-session-delete {
+  color: #e8ebf4;
+}
+
+.sidebar-session-delete svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sidebar-session-row .sidebar-session-item {
+  width: auto;
+}
+
+.sidebar-session-item.active {
+  background: var(--purple-glow);
+  color: var(--purple);
+  font-weight: 500;
+}
+
+.sidebar-session-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-session-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(164, 165, 245, 0.35);
+  color: var(--purple);
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  min-width: 16px;
+  text-align: center;
+}

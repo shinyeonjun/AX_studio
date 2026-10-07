@@ -1,0 +1,117 @@
+/* Right panel tabs (자료 · 흐름 · 업무 구성). */
+
+.workspace-context-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--bg-base);
+}
+
+.workspace-context-tabs {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.workspace-context-tab {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspace-context-tab:hover,
+.workspace-context-tab--active {
+  border-color: var(--purple-light);
+  background: var(--purple-glow);
+  color: var(--purple);
+}
+
+.workspace-context-tab--active {
+  font-weight: 750;
+}
+
+.workspace-context-tab span {
+  display: inline-flex;
+  min-width: 18px;
+  justify-content: center;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.workspace-context-tab:focus-visible {
+  outline: 3px solid var(--purple-glow);
+  outline-offset: 2px;
+}
+
+.workspace-context-content {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.workspace-context-content > .wf-preview {
+  height: 100%;
+}
+
+.workspace-context-content:focus-visible {
+  outline: 2px solid var(--purple-light);
+  outline-offset: -2px;
+}
+
+.workspace-context-empty {
+  display: flex;
+  height: 100%;
+  min-height: 240px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.workspace-context-empty h2,
+.workspace-context-empty p {
+  margin: 0;
+}
+
+.workspace-context-empty h2 {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.workspace-context-empty p {
+  max-width: 240px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.workspace-context-empty-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  margin-bottom: 3px;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--purple-light);
+  font-size: 22px;
+}

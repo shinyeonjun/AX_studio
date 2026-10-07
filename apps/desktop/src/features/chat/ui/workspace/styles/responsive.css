@@ -1,0 +1,31 @@
+/* Narrow windows and reduced motion for the chat surface. */
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-workspace-send {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ax-workspace-message {
+    padding: 16px;
+  }
+
+  .ax-workspace-bubble--user {
+    max-width: 90%;
+  }
+
+  .ax-workspace-generated-pdf {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-workspace-generated-pdf-actions {
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .ax-workspace-composer {
+    padding: 8px 12px 16px;
+  }
+}

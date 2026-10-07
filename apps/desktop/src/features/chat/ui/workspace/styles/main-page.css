@@ -1,0 +1,158 @@
+/* Chat page frame: header and the chat/result split. */
+
+.chat-main-page {
+  background: var(--bg-chat);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-main-page .work-conversation-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-chat);
+}
+
+.chat-main-page .chat-main-header {
+  padding: 16px 24px 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.chat-main-page .chat-main-title {
+  color: var(--ax-chat-text, #0d0d0d);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.chat-main-page .draft-badge {
+  border-color: #ddd9f8;
+  background: #f0efff;
+  color: #7567c7;
+  font-size: 12px;
+}
+
+[data-theme='dark'] .ax-workspace-chat {
+  --ax-chat-text: #ececec;
+  --ax-chat-text-secondary: #9a9aa8;
+  --ax-chat-surface: var(--bg-chat);
+  --ax-chat-user-bg: #2c3344;
+  --ax-chat-composer-bg: var(--bg-elevated);
+  --ax-chat-composer-border: var(--border);
+}
+
+[data-theme='dark'] .ax-workspace-composer-shell textarea::placeholder,
+[data-theme='dark'] .ax-workspace-composer-shell input::placeholder {
+  color: #8a90a0;
+}
+
+[data-theme='dark'] .ax-workspace-send {
+  background: #ececec;
+  color: #1a1a1a;
+}
+
+[data-theme='dark'] .ax-workspace-send:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+[data-theme='dark'] .ax-workspace-send:disabled {
+  background: #3a4152;
+  color: #8a90a0;
+}
+
+[data-theme='dark'] .ax-workspace-error {
+  background: rgba(180, 63, 74, 0.16);
+  border-color: rgba(255, 130, 130, 0.35);
+  color: #ffb0b0;
+}
+
+[data-theme='dark'] .ax-workspace-run-card {
+  background: rgba(45, 98, 73, 0.2);
+  border-color: rgba(90, 180, 140, 0.35);
+  color: #9fd8bb;
+}
+
+[data-theme='dark'] .ax-workspace-run-card--failed {
+  background: #351e26;
+  border-color: #80404f;
+  color: #ffbcc6;
+}
+
+[data-theme='dark'] .ax-workspace-run-card--approval {
+  background: rgba(146, 103, 32, 0.18);
+  border-color: rgba(236, 194, 105, 0.38);
+  color: #f1d38f;
+}
+
+[data-theme='dark'] .ax-workspace-run-card--cancelled {
+  background: rgba(95, 102, 119, 0.18);
+  border-color: rgba(157, 164, 181, 0.3);
+  color: #b7bdca;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf {
+  border-color: rgba(157, 139, 236, 0.38);
+  background: rgba(34, 29, 57, 0.55);
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-eyebrow {
+  color: #c9bfff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-button {
+  border-color: rgba(157, 139, 236, 0.42);
+  background: rgba(116, 96, 210, 0.12);
+  color: #c9bfff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-button--primary {
+  border-color: #8f78ed;
+  background: #7c5ce6;
+  color: #fff;
+}
+
+[data-theme='dark'] .ax-workspace-generated-pdf-error {
+  color: #ffb0b0;
+}
+
+[data-theme='dark'] .ax-workspace-inline-approval {
+  border-color: rgba(236, 194, 105, 0.36);
+  background: var(--ax-chat-composer-bg);
+}
+
+[data-theme='dark'] .ax-workspace-inline-approval-eyebrow {
+  color: #f1d38f;
+}
+
+[data-theme='dark'] .ax-workspace-inline-approval-btn--secondary {
+  border-color: rgba(157, 139, 236, 0.42);
+  background: rgba(116, 96, 210, 0.12);
+  color: #c9bfff;
+}
+
+[data-theme='dark'] .ax-workspace-inline-approval-error {
+  color: #ffb0b0;
+}
+
+[data-theme='dark'] .ax-workspace-welcome-hint code {
+  background: rgba(122, 104, 200, 0.2);
+  border-color: rgba(122, 104, 200, 0.35);
+  color: #c4b8f0;
+}
+
+[data-theme='dark'] .ax-workspace-composer-shell:focus-within {
+  border-color: #7a68c8;
+  box-shadow:
+    0 0 0 3px rgba(122, 104, 200, 0.18),
+    0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .chat-main-page .draft-badge {
+  border-color: rgba(122, 104, 200, 0.4);
+  background: rgba(122, 104, 200, 0.15);
+  color: #c4b8f0;
+}

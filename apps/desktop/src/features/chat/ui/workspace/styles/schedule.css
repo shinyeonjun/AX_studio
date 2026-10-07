@@ -1,0 +1,156 @@
+/* Recurring offer and the plain-language schedule form. */
+
+/* "이걸 반복 업무로 만들기" under a finished one-off result. */
+.ax-make-recurring {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.ax-make-recurring--open {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 12px;
+}
+
+.ax-make-recurring-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ax-make-recurring-hint {
+  margin: 0;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-make-recurring-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Structured schedule form (no rule syntax is ever shown). */
+.ax-workspace-presentation-input-schedule {
+  display: grid;
+  gap: 10px;
+}
+
+.ax-schedule-input {
+  display: grid;
+  gap: 8px;
+}
+
+/* Every row reads the same way: a fixed label column, then its controls. */
+.ax-schedule-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-schedule-input-row > select,
+.ax-schedule-input-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ax-schedule-input-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-schedule-input-row > label,
+.ax-schedule-input-row-label {
+  flex: 0 0 56px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-schedule-input-row:has(.ax-schedule-input-check) {
+  align-items: flex-start;
+}
+
+.ax-schedule-input-check {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A choice reads as one unit: the box and its words on one line. */
+.ax-schedule-input-check label,
+.ax-schedule-input fieldset > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ax-chat-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ax-schedule-input-check .ax-schedule-input-hint {
+  padding-left: 22px;
+}
+
+.ax-schedule-input-hint {
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-schedule-input fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 9px;
+}
+
+.ax-schedule-input legend {
+  padding: 0 4px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-schedule-input select,
+.ax-schedule-input input[type='time'],
+.ax-schedule-input input[type='date'] {
+  padding: 7px 9px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 8px;
+  background: var(--ax-chat-composer-bg);
+  color: var(--ax-chat-text);
+}
+
+.ax-schedule-input select:focus,
+.ax-schedule-input input:focus,
+.ax-schedule-input button:focus-visible {
+  outline: 2px solid rgba(124, 92, 230, 0.34);
+  outline-offset: 1px;
+}
+
+.ax-schedule-input-preview {
+  display: grid;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--ax-chat-composer-bg);
+  color: var(--ax-chat-text);
+  font-size: 12px;
+}
+
+.ax-schedule-input-preview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ax-schedule-input-error {
+  color: #b42318;
+}

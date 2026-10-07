@@ -1,0 +1,182 @@
+/* Chat surface: layout, welcome, thread, messages and bubbles. */
+
+.ax-workspace-chat {
+  position: relative;
+  --ax-chat-font:
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  --ax-chat-text: #0d0d0d;
+  --ax-chat-text-secondary: #676767;
+  --ax-chat-surface: #f8faff;
+  --ax-chat-user-bg: #eceef4;
+  --ax-chat-composer-bg: #ffffff;
+  --ax-chat-composer-border: #d9deea;
+  --ax-chat-max-width: 48rem;
+
+  display: grid;
+  grid-template-rows: 1fr auto;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: var(--ax-chat-surface);
+  color: var(--ax-chat-text);
+  font-family: var(--ax-chat-font);
+  font-size: 16px;
+  line-height: 1.625;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ax-workspace-empty-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: auto;
+}
+
+.ax-workspace-welcome {
+  width: 100%;
+  max-width: var(--ax-chat-max-width);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ax-workspace-footer {
+  flex-shrink: 0;
+  width: 100%;
+  padding-bottom: clamp(20px, 5vh, 40px);
+  background: var(--ax-chat-surface);
+}
+
+.ax-workspace-register-button {
+  display: block;
+  width: min(var(--ax-chat-max-width), calc(100% - 32px));
+  margin: 0 auto 10px;
+  padding: 10px 16px;
+  border: 1px solid #7c5ce6;
+  border-radius: 12px;
+  background: #7c5ce6;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ax-workspace-register-button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.ax-workspace-chat--empty .ax-workspace-footer {
+  padding-bottom: clamp(24px, 6vh, 48px);
+}
+
+.ax-workspace-welcome h1 {
+  margin: 0;
+  color: var(--ax-chat-text);
+  font-size: clamp(1.75rem, 2.4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.ax-workspace-welcome-hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 14px 0 0;
+  color: var(--ax-chat-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ax-workspace-welcome-hint code {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin: 0 2px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #eeecff;
+  border: 1px solid #e1ddff;
+  color: #7567c7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ax-workspace-thread {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ax-workspace-viewport {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.ax-workspace-message {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: var(--ax-chat-max-width);
+  margin: 0 auto;
+  padding: 20px 24px;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 96px;
+}
+
+.ax-workspace-message--user {
+  justify-content: flex-end;
+}
+
+.ax-workspace-avatar--assistant {
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.ax-workspace-bubble {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 16px;
+  line-height: 1.625;
+  color: var(--ax-chat-text);
+}
+
+.ax-workspace-bubble--user {
+  max-width: min(85%, 36rem);
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: var(--ax-chat-user-bg);
+  color: var(--ax-chat-text);
+}

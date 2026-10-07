@@ -1,0 +1,20 @@
+/* Narrow windows: a smaller sidebar, then the sidebar above the page. */
+
+@media (max-width: 900px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app--workspace {
+    flex-direction: column;
+  }
+}
