@@ -13,7 +13,8 @@ const JEV_ACTION_MAX_CHOICES = MAX_JEV_CHOICE_CANDIDATES;
 const SENSITIVE_PARAM = /(?:api[_-]?key|authorization|cookie|password|secret|token)/iu;
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu;
 const QUOTED = /"([^"\r\n]{1,2000})"|“([^”\r\n]{1,2000})”|「([^」\r\n]{1,2000})」|『([^』\r\n]{1,2000})』|'([^'\r\n]{1,2000})'/gu;
-const FIELD_VALUE_PARTICLE = '(?:([:=])|(은|는))';
+// `제목: X`, `제목은 X`, or a label right before a quote (`제목 "X"`), which must then be quoted.
+const FIELD_VALUE_PARTICLE = '(?:([:=])|(은|는)|(?=["“「『\']))';
 
 export interface JevActionHint {
   key: string;
@@ -83,6 +84,7 @@ function explicitLabeledInput(
   const quoted = /^(?:"([^"\r\n]*)"|“([^”\r\n]*)”|「([^」\r\n]*)」|『([^』\r\n]*)』|'([^'\r\n]*)')/u.exec(value);
   const quotedValue = quoted?.slice(1).find((part): part is string => typeof part === 'string');
   if (marker[2] && !quotedValue && !hasValueBoundary) return undefined;
+  if (!marker[1] && !marker[2] && !quotedValue) return undefined;
   return quotedValue ?? value;
 }
 
