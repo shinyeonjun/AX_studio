@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import type { ChatSessionSummary } from '../../../features/chat/hooks/useChatSessions';
+import { isEphemeralWork, isPersistentWork, isSingleExecution, triggerLabel } from '../../lib/work-display';
 import {
-  executionErrorLabel,
-  executionStatusLabel,
-  executionTriggerLabel,
-  formatRelativeTime,
-  isEphemeralWork,
-  isPersistentWork,
-  isSingleExecution,
-  triggerLabel,
-} from '../../lib/work-display';
-import { IconTrash } from '../../icons';
+  DeleteWorkButton,
+  EmptyWorkGroup,
+  LastRun,
+  RunWorkButton,
+  WorkGroup,
+  WorkHealthNote,
+} from './work-panel/components';
+import { ExecutionList, type ExecutionSummary } from './work-panel/execution-list';
 
-type ExecutionSummary = AppState['executions'][number];
+export { WorkHealthNote } from './work-panel/components';
 
 interface SidebarWorkPanelProps {
   state: AppState | null;
@@ -26,91 +25,8 @@ interface SidebarWorkPanelProps {
   onDeleteWork: (workflowId: string, name: string) => void;
 }
 
-type WorkSummary = AppState['works'][number];
-
-/**
- * Scheduler skips/failures and trigger events that exhausted their retries. Nothing is shown
- * for a healthy workflow, so the row stays compact.
- */
-export function WorkHealthNote({ work }: { work: Pick<WorkSummary, 'triggerDeadLetters' | 'lastOutcome'> }) {
-  const deadLetters = work.triggerDeadLetters ?? [];
-  const outcome = work.lastOutcome && work.lastOutcome.status !== 'success' ? work.lastOutcome : undefined;
-  if (deadLetters.length === 0 && !outcome) return null;
-  const latest = deadLetters[0];
-  return (
-    <span className="sidebar-work-health" role="status">
-      {outcome && (
-        <span title={outcome.reason ? executionErrorLabel(outcome.reason) ?? outcome.reason : undefined}>
-          최근 일정 {outcome.status === 'skipped' ? '건너뜀' : executionStatusLabel(outcome.status)} ·{' '}
-          {formatRelativeTime(outcome.at)}
-        </span>
-      )}
-      {latest && (
-        <span title={executionErrorLabel(latest.reason) ?? latest.reason}>
-          처리하지 못한 트리거 이벤트 {deadLetters.length}건 · {formatRelativeTime(latest.at)}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function executionTitle(execution: ExecutionSummary, sessions: ChatSessionSummary[]): string {
-  const sessionTitle = sessions.find((session) => session.id === execution.workspaceSessionId)?.title;
-  if (sessionTitle?.trim()) return sessionTitle;
-  if (execution.generatedPdf?.fileName) return execution.generatedPdf.fileName;
-  return '일회 실행';
-}
-
-function executionPresentation(execution: ExecutionSummary): {
-  tone: 'success' | 'running' | 'pending' | 'failed' | 'neutral';
-  label: string;
-} {
-  if (execution.resultStatus === 'failed' || execution.status === 'failed') {
-    return { tone: 'failed', label: execution.resultStatus === 'failed' ? '결과 검토 필요' : '실패' };
-  }
-  if (execution.status === 'pending_approval') return { tone: 'pending', label: '승인 대기' };
-  if (execution.status === 'running') return { tone: 'running', label: '실행 중' };
-  if (execution.status === 'success') return { tone: 'success', label: '완료' };
-  return { tone: 'neutral', label: executionStatusLabel(execution.status) };
-}
-
-function executionDetail(execution: ExecutionSummary): string {
-  if (execution.currentStepMessage) return execution.currentStepMessage;
-  const error = executionErrorLabel(execution.errorCode);
-  if (error) return error;
-  return executionTriggerLabel(execution.triggerType);
-}
-
-function RunWorkButton({ workId, name, running, onRun }: {
-  workId: string;
-  name: string;
-  running: ReadonlySet<string>;
-  onRun: (workflowId: string) => void;
-}) {
-  const busy = running.has(workId);
-  return (
-    <button
-      type="button"
-      className="sidebar-work-toggle run"
-      onClick={() => onRun(workId)}
-      disabled={busy}
-      aria-label={`${name} 지금 실행`}
-      title="지금 한 번 실행"
-    >
-      {busy ? '실행 중' : '실행'}
-    </button>
-  );
-}
-
-export function SidebarWorkPanel({
-  state,
-  sessions,
-  onOpenWork,
-  onOpenExecution,
-  onToggleWorkActive,
-  onRunWork,
-  onDeleteWork,
-}: SidebarWorkPanelProps) {
+/** Works being run from the sidebar, so each run button shows progress until its run returns. */
+function useRunningWorks(onRunWork: SidebarWorkPanelProps['onRunWork']) {
   const [running, setRunning] = useState<ReadonlySet<string>>(new Set());
   const runWork = (workflowId: string) => {
     if (running.has(workflowId)) return;
@@ -123,6 +39,19 @@ export function SidebarWorkPanel({
       });
     });
   };
+  return { running, runWork };
+}
+
+export function SidebarWorkPanel({
+  state,
+  sessions,
+  onOpenWork,
+  onOpenExecution,
+  onToggleWorkActive,
+  onRunWork,
+  onDeleteWork,
+}: SidebarWorkPanelProps) {
+  const { running, runWork } = useRunningWorks(onRunWork);
   const allWorks = state?.works ?? [];
   // A corrupted workflow has no readable definition (no trigger), so it must not be
   // classified or opened like a normal one; it is listed separately for deletion.
@@ -138,20 +67,13 @@ export function SidebarWorkPanel({
   return (
     <div className="sidebar-panel-section sidebar-work-overview">
       {corruptedWorks.length > 0 && (
-        <section className="sidebar-work-group" aria-labelledby="sidebar-corrupted-work-title">
-          <div className="sidebar-work-group-header">
-            <div>
-              <h2 id="sidebar-corrupted-work-title" className="sidebar-section-title">
-                손상된 업무
-              </h2>
-              <p className="sidebar-work-group-subtitle">
-                저장된 정의를 읽지 못해 실행되지 않습니다. 삭제한 뒤 다시 만들어 주세요.
-              </p>
-            </div>
-            <span className="sidebar-work-count" aria-label={`손상된 업무 ${corruptedWorks.length}개`}>
-              {corruptedWorks.length}
-            </span>
-          </div>
+        <WorkGroup
+          id="sidebar-corrupted-work-title"
+          title="손상된 업무"
+          subtitle="저장된 정의를 읽지 못해 실행되지 않습니다. 삭제한 뒤 다시 만들어 주세요."
+          count={corruptedWorks.length}
+          countLabel="손상된 업무"
+        >
           <ul className="sidebar-work-list">
             {corruptedWorks.map((work) => {
               const name = work.name?.trim() || work.id;
@@ -162,41 +84,25 @@ export function SidebarWorkPanel({
                     <span className="sidebar-work-trigger">손상된 업무 · 열 수 없음</span>
                   </div>
                   <div className="sidebar-work-actions">
-                    <button
-                      type="button"
-                      className="sidebar-session-delete"
-                      onClick={() => onDeleteWork(work.id, name)}
-                      aria-label={name + ' 손상된 업무 삭제'}
-                      title="손상된 업무 삭제"
-                    >
-                      <IconTrash />
-                    </button>
+                    <DeleteWorkButton label={name + ' 손상된 업무 삭제'} title="손상된 업무 삭제"
+                      onDelete={() => onDeleteWork(work.id, name)} />
                   </div>
                 </li>
               );
             })}
           </ul>
-        </section>
+        </WorkGroup>
       )}
 
-      <section className="sidebar-work-group" aria-labelledby="sidebar-recurring-work-title">
-        <div className="sidebar-work-group-header">
-          <div>
-            <h2 id="sidebar-recurring-work-title" className="sidebar-section-title">
-              반복 업무
-            </h2>
-            <p className="sidebar-work-group-subtitle">활성화하면 일정에 맞춰 자동 실행됩니다</p>
-          </div>
-          <span className="sidebar-work-count" aria-label={`반복 업무 ${recurringWorks.length}개`}>
-            {recurringWorks.length}
-          </span>
-        </div>
-
+      <WorkGroup
+        id="sidebar-recurring-work-title"
+        title="반복 업무"
+        subtitle="활성화하면 일정에 맞춰 자동 실행됩니다"
+        count={recurringWorks.length}
+        countLabel="반복 업무"
+      >
         {recurringWorks.length === 0 ? (
-          <div className="sidebar-work-empty">
-            <p>반복 업무가 없습니다</p>
-            <span>업무를 저장하면 여기에 표시됩니다</span>
-          </div>
+          <EmptyWorkGroup title="반복 업무가 없습니다" hint="업무를 저장하면 여기에 표시됩니다" />
         ) : (
           <ul className="sidebar-work-list">
             {recurringWorks.map((work) => (
@@ -214,11 +120,7 @@ export function SidebarWorkPanel({
                       <span className="sidebar-work-status-dot" aria-hidden="true" />
                       {work.active ? '자동 실행 중' : '일시정지'}
                     </span>
-                    <span className="sidebar-work-last-run">
-                      {work.lastStatus
-                        ? `최근 ${executionStatusLabel(work.lastStatus)} · ${formatRelativeTime(work.lastRunAt)}`
-                        : '아직 실행 기록 없음'}
-                    </span>
+                    <LastRun work={work} />
                   </span>
                   <WorkHealthNote work={work} />
                 </button>
@@ -232,40 +134,24 @@ export function SidebarWorkPanel({
                   >
                     {work.active ? '정지' : '켜기'}
                   </button>
-                  <button
-                    type="button"
-                    className="sidebar-session-delete"
-                    onClick={() => onDeleteWork(work.id, work.name)}
-                    aria-label={work.name + ' 업무 삭제'}
-                    title="업무 삭제"
-                  >
-                    <IconTrash />
-                  </button>
+                  <DeleteWorkButton label={work.name + ' 업무 삭제'} title="업무 삭제"
+                    onDelete={() => onDeleteWork(work.id, work.name)} />
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </WorkGroup>
 
-      <section className="sidebar-work-group" aria-labelledby="sidebar-single-run-title">
-        <div className="sidebar-work-group-header">
-          <div>
-            <h2 id="sidebar-single-run-title" className="sidebar-section-title">
-              단일 업무·최근 실행
-            </h2>
-            <p className="sidebar-work-group-subtitle">한 번 실행하는 업무와 결과를 봅니다</p>
-          </div>
-          <span className="sidebar-work-count" aria-label={`단일 업무와 최근 실행 ${oneOffCount}개`}>
-            {oneOffCount}
-          </span>
-        </div>
-
+      <WorkGroup
+        id="sidebar-single-run-title"
+        title="단일 업무·최근 실행"
+        subtitle="한 번 실행하는 업무와 결과를 봅니다"
+        count={oneOffCount}
+        countLabel="단일 업무와 최근 실행"
+      >
         {oneOffCount === 0 ? (
-          <div className="sidebar-work-empty">
-            <p>단일 실행이 없습니다</p>
-            <span>새 대화에서 한 번 실행할 업무를 요청해 보세요</span>
-          </div>
+          <EmptyWorkGroup title="단일 실행이 없습니다" hint="새 대화에서 한 번 실행할 업무를 요청해 보세요" />
         ) : (
           <>
             {oneOffWorks.length > 0 && (
@@ -283,26 +169,15 @@ export function SidebarWorkPanel({
                         <span className="sidebar-work-name">{work.name}</span>
                         <span className="sidebar-work-trigger">{triggerLabel(work.trigger)}</span>
                         <span className="sidebar-work-meta">
-                          <span className="sidebar-work-last-run">
-                            {work.lastStatus
-                              ? `최근 ${executionStatusLabel(work.lastStatus)} · ${formatRelativeTime(work.lastRunAt)}`
-                              : '아직 실행 기록 없음'}
-                          </span>
+                          <LastRun work={work} />
                         </span>
                         <WorkHealthNote work={work} />
                       </button>
                       <div className="sidebar-work-actions">
                         {/* A manual work only runs when asked: on/off would change nothing. */}
                         <RunWorkButton workId={work.id} name={work.name} running={running} onRun={runWork} />
-                        <button
-                          type="button"
-                          className="sidebar-session-delete"
-                          onClick={() => onDeleteWork(work.id, work.name)}
-                          aria-label={work.name + ' 업무 삭제'}
-                          title="업무 삭제"
-                        >
-                          <IconTrash />
-                        </button>
+                        <DeleteWorkButton label={work.name + ' 업무 삭제'} title="업무 삭제"
+                          onDelete={() => onDeleteWork(work.id, work.name)} />
                       </div>
                     </li>
                   ))}
@@ -313,39 +188,12 @@ export function SidebarWorkPanel({
             {singleExecutions.length > 0 && (
               <div className="sidebar-work-subgroup">
                 <p className="sidebar-work-subgroup-title">최근 실행 결과</p>
-                <ul className="sidebar-execution-list">
-                  {singleExecutions.map((execution) => {
-                    const presentation = executionPresentation(execution);
-                    const title = executionTitle(execution, sessions);
-                    return (
-                      <li key={execution.id}>
-                        <button
-                          type="button"
-                          className={`sidebar-execution-item tone-${presentation.tone}`}
-                          onClick={() => onOpenExecution(execution)}
-                          aria-label={`${title}, ${presentation.label}, ${execution.workspaceSessionId ? '결과 대화 보기' : '활동에서 보기'}`}
-                        >
-                          <span className={`sidebar-execution-dot tone-${presentation.tone}`} aria-hidden="true" />
-                          <span className="sidebar-execution-copy">
-                            <span className="sidebar-execution-title">{title}</span>
-                            <span className="sidebar-execution-meta">
-                              <strong>{presentation.label}</strong>
-                              <span>·</span>
-                              <span>{formatRelativeTime(execution.startedAt)}</span>
-                            </span>
-                            <span className="sidebar-execution-detail">{executionDetail(execution)}</span>
-                          </span>
-                          <span className="sidebar-execution-open" aria-hidden="true">보기</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <ExecutionList executions={singleExecutions} sessions={sessions} onOpen={onOpenExecution} />
               </div>
             )}
           </>
         )}
-      </section>
+      </WorkGroup>
     </div>
   );
 }

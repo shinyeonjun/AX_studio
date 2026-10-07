@@ -1,0 +1,90 @@
+/* Work conversation frame: chat column, resize, hints. */
+
+.work-conversation-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.chat-main-page .work-conversation-body {
+  border-top: none;
+}
+
+.work-conversation-chat {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+
+.work-conversation-splitter {
+  position: relative;
+  width: 5px;
+  margin: 0 -2px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 3;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.work-conversation-splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
+  transition: background 0.15s, width 0.15s;
+}
+
+.work-conversation-splitter:hover::before,
+.work-conversation-splitter:focus-visible::before,
+.work-conversation-body--resizing .work-conversation-splitter::before {
+  width: 2px;
+  background: var(--purple-light);
+}
+
+.work-conversation-splitter:focus-visible {
+  outline: none;
+}
+
+body.work-resizing {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+body.work-resizing * {
+  cursor: col-resize !important;
+}
+
+.draft-badge-done {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.chat-edit-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 24px 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  color: var(--purple-light);
+  font-size: 13px;
+}
+
+/* Blocking setup message: body-text contrast instead of the soft hint tint. */
+.chat-setup-notice {
+  margin-top: 12px;
+  color: var(--text);
+}

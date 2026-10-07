@@ -1,0 +1,65 @@
+/* Learned-work review and hand-over. */
+
+.ax-discovery-review {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+}
+
+.ax-discovery-handover {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.ax-discovery-handover > .btn {
+  justify-self: start;
+}
+
+.ax-discovery-handover-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ax-discovery-handover-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.ax-discovery-handover-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ax-discovery-review-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ax-discovery-review-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #d1d5db);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Before publishing a rule learned from uploaded files. */
+.ax-discovery-source-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ax-chat-composer-border);
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}

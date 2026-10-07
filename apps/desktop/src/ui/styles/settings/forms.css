@@ -1,0 +1,157 @@
+/* Connection detail pages, guides and provider options. */
+
+.connection-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.connection-form-message.error,
+.connection-form-hint.error {
+  color: var(--red);
+}
+
+.connection-form-message.warning {
+  color: var(--amber);
+}
+
+.webhook-secret-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.webhook-secret-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.settings-back {
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.connection-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 640px;
+}
+
+.connection-form-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.connection-form-header h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.connection-form-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.connection-guide {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.connection-guide h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guide-placeholder p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-image {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.provider-option {
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.provider-option:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.provider-option.selected {
+  border-color: var(--purple);
+  background: var(--purple-glow);
+}
+
+.provider-option.disabled,
+.provider-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.provider-option.disabled:hover,
+.provider-option:disabled:hover {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+}
+
+.provider-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.provider-option-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.form-field .filter-select {
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.provider-option-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.provider-option.selected .provider-option-title {
+  color: var(--purple-light);
+}
+
+.connection-mode-panel {
+  margin-bottom: 8px;
+}

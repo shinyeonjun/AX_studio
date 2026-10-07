@@ -1,0 +1,40 @@
+/* The table a run made, under its result card. */
+
+/* The table a run made, under its result card. */
+.ax-run-result-table {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ax-run-result-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 10px;
+}
+
+.ax-run-result-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ax-run-result-table th,
+.ax-run-result-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ax-chat-composer-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ax-run-result-table th {
+  color: var(--ax-chat-text-secondary);
+  font-weight: 700;
+}
+
+.ax-run-result-table-note {
+  margin: 0;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}

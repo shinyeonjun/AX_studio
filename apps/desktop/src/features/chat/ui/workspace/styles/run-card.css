@@ -1,0 +1,224 @@
+/* Run result cards, generated files and inline approvals in the thread. */
+
+.ax-workspace-run-card {
+  padding: 14px 16px;
+  border: 1px solid #ccebd9;
+  border-radius: 14px;
+  background: #effaf4;
+  color: #2d6249;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ax-workspace-run-card--failed {
+  background: #fff1f2;
+  border-color: #f5b9c1;
+  color: #9f2435;
+}
+
+.ax-workspace-run-card--approval {
+  border-color: #efd9a9;
+  background: #fffaf1;
+  color: #5f4a20;
+}
+
+.ax-workspace-run-card--cancelled {
+  border-color: #d9deea;
+  background: #f5f6fa;
+  color: #5f6677;
+}
+
+.ax-workspace-run-card > p {
+  margin: 0;
+}
+
+.ax-workspace-run-card > p + p {
+  margin-top: 5px;
+  white-space: pre-wrap;
+}
+
+.ax-workspace-generated-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 92, 230, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ax-chat-text);
+}
+
+.ax-workspace-generated-pdf-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ax-workspace-generated-pdf-eyebrow {
+  color: #6c56c4;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ax-workspace-generated-pdf-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-workspace-generated-pdf-size {
+  color: var(--ax-chat-text-secondary);
+  font-size: 11px;
+}
+
+.ax-workspace-generated-pdf-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ax-workspace-generated-pdf-button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #d8d0f4;
+  border-radius: 9px;
+  background: #f8f6ff;
+  color: #5e4db0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ax-workspace-generated-pdf-button--primary {
+  border-color: #7c5ce6;
+  background: #7c5ce6;
+  color: #fff;
+}
+
+.ax-workspace-generated-pdf-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.ax-workspace-generated-pdf-button:focus-visible {
+  outline: 3px solid rgba(124, 92, 230, 0.35);
+  outline-offset: 2px;
+}
+
+.ax-workspace-generated-pdf-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.ax-workspace-generated-pdf-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.ax-workspace-run-card-label {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ax-workspace-inline-approval {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e5d9bd;
+  border-radius: 12px;
+  background: var(--ax-chat-composer-bg);
+  color: var(--ax-chat-text);
+}
+
+.ax-workspace-inline-approval-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.ax-workspace-inline-approval-eyebrow {
+  color: #9a6b16;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ax-workspace-inline-approval-copy h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.ax-workspace-inline-approval-copy p {
+  margin: 0;
+  color: var(--ax-chat-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ax-workspace-inline-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ax-workspace-inline-approval-btn {
+  min-height: 36px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ax-workspace-inline-approval-btn--primary {
+  border: 1px solid #7c5ce6;
+  background: #7c5ce6;
+  color: #fff;
+}
+
+.ax-workspace-inline-approval-btn--secondary {
+  border: 1px solid #d8d0f4;
+  background: #f8f6ff;
+  color: #5e4db0;
+}
+
+.ax-workspace-inline-approval-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.ax-workspace-inline-approval-btn:focus-visible {
+  outline: 3px solid rgba(124, 92, 230, 0.35);
+  outline-offset: 2px;
+}
+
+.ax-workspace-inline-approval-btn:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.ax-workspace-inline-approval-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ax-workspace-bubble--assistant {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0 0;
+  white-space: normal;
+}

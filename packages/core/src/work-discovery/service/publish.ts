@@ -6,6 +6,7 @@ import type { WorkDiscoveryRuntime } from './contracts.js';
 import { revisionConflict } from './commands.js';
 import { isDiscoveryRevisionConflict } from './lifecycle/runner.js';
 import { decodeScheduleInputValue } from '../../workflow/schedule/input-value.js';
+import { defaultLearnedWorkName } from './work-name.js';
 
 function resolveDefaultSourcePath(
   blueprint: NonNullable<DiscoverySessionState['blueprint']>,
@@ -38,7 +39,7 @@ export function publishDiscovery(
   const blueprint = state.blueprint ?? buildDiscoveryBlueprint(state);
   if (!blueprint) return { error: 'blueprint_missing' };
   const defaultSourcePath = resolveDefaultSourcePath(blueprint);
-  const compiled = compileBlueprintToWorkflow(blueprint, { name, defaultSourcePath });
+  const compiled = compileBlueprintToWorkflow(blueprint, { name: name ?? defaultLearnedWorkName(runtime, state), defaultSourcePath });
   const workflow = {
     ...compiled,
     ...(recurrence ? { trigger: { type: 'schedule' as const, recurrence, timezone: recurrence.timezone } } : {}),

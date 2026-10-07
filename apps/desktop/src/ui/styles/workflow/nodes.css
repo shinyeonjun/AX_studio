@@ -1,0 +1,227 @@
+/* Workflow graph nodes and handles. */
+
+.wf-node {
+  font-size: 12px;
+  transition: opacity 0.15s ease;
+  position: relative;
+  color: var(--wf-node-text);
+}
+
+.wf-node-compact {
+  width: 136px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wf-node-circle-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wf-node-kind-badge {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(74, 91, 130, 0.1);
+}
+
+.wf-node-kind-badge-trigger {
+  color: #986800;
+  background: #fff5d6;
+  border: 1px solid #efd27a;
+}
+
+.wf-node-kind-badge-system {
+  color: #52627c;
+  background: #edf1f7;
+  border: 1px solid #cbd5e3;
+}
+
+.wf-node-kind-badge-ai_decision {
+  color: #6f55b7;
+  background: #f0ebff;
+  border: 1px solid #c9b8f4;
+}
+
+.wf-node-kind-badge-if {
+  color: #32679e;
+  background: #eaf3ff;
+  border: 1px solid #b9d2f0;
+}
+
+.wf-node-kind-badge-human_approval {
+  color: #a45d28;
+  background: #fff0e3;
+  border: 1px solid #f0c39d;
+}
+
+.wf-node-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 2px solid var(--wf-node-border);
+  background: var(--wf-node-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(74, 91, 130, 0.14);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wf-node-selected .wf-node-circle {
+  border-color: var(--purple-light);
+  box-shadow: 0 0 0 4px var(--purple-glow), 0 10px 22px rgba(74, 91, 130, 0.18);
+}
+
+.wf-node-incomplete .wf-node-circle {
+  border-style: dashed;
+  border-color: #d89b2b;
+}
+
+.wf-node-trigger .wf-node-circle {
+  border-color: #e3b83f;
+  border-style: solid;
+  background: #fff8e5;
+}
+
+.wf-node-ai_decision .wf-node-circle {
+  border-color: #a98be5;
+  border-style: solid;
+  background: #f7f3ff;
+}
+
+.wf-node-human_approval .wf-node-circle {
+  border-color: #e3a26e;
+  border-style: solid;
+  background: #fff8f1;
+}
+
+.wf-node-if .wf-node-circle {
+  border-color: #8bb5e2;
+  border-style: solid;
+  background: #f3f8ff;
+}
+
+.wf-node-system .wf-node-circle {
+  border-color: #b7c3d4;
+  border-style: solid;
+  background: #f6f8fb;
+  opacity: 0.95;
+}
+
+.wf-node-action .wf-node-circle {
+  border-style: solid;
+}
+
+.wf-node-placeholder {
+  opacity: 0.72;
+}
+
+.wf-node-img {
+  width: 31px;
+  height: 31px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.wf-node-emoji {
+  font-size: 22px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wf-node-symbol {
+  font-size: 21px;
+  line-height: 1;
+  color: var(--purple);
+}
+
+.wf-node-caption {
+  max-width: 136px;
+  padding: 4px 9px 3px;
+  border: 1px solid var(--wf-node-label-border);
+  border-radius: 8px;
+  background: var(--wf-node-label-surface);
+  box-shadow: 0 3px 9px rgba(74, 91, 130, 0.08);
+  color: var(--wf-node-text);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.wf-node-caption-sub {
+  max-width: 136px;
+  color: var(--wf-node-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-node-has-sub {
+  gap: 2px;
+}
+
+.wf-node-change-added .wf-node-circle {
+  border-color: #58b982;
+  box-shadow: 0 0 0 3px rgba(47, 158, 111, 0.12), 0 8px 18px rgba(74, 91, 130, 0.14);
+}
+
+.wf-node-change-modified .wf-node-circle {
+  border-color: #6f9fdb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 8px 18px rgba(74, 91, 130, 0.14);
+}
+
+.wf-node-join {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wf-node-join-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--wf-edge-color);
+  margin: 0 auto;
+}
+
+.wf-handle {
+  opacity: 0;
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
