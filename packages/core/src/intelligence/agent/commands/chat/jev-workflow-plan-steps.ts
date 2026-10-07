@@ -346,8 +346,8 @@ export function workflowCommand(
     name: mode === 'manual_workflow' ? 'workflow.create' : 'execution.enqueue_once',
     args: {
       name: mode === 'manual_workflow'
-        ? request.trim().slice(0, 120) || '채팅 수동 업무'
-        : '채팅 요청 일회 실행',
+        ? workNameFromRequest(request, '채팅 수동 업무')
+        : workNameFromRequest(request, '요청한 작업'),
       goal: request,
       ...(requestAnchor ? { requestAnchor } : {}),
       ...(mode === 'manual_workflow' ? { trigger: { type: 'manual' } } : {}),

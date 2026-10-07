@@ -310,7 +310,7 @@ describe('Desktop workspace chat Jev routing', () => {
         continuedChat.id,
       );
 
-      expect(continuation.content).toContain('큐에 등록했습니다');
+      expect(continuation.content).toContain('작업을 시작했습니다');
       expect(requests).toHaveLength(2);
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
       expect(agentHarness.runText).not.toHaveBeenCalled();

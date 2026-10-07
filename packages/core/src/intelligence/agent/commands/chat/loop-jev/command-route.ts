@@ -25,7 +25,7 @@ function lifecycleCommandReply(route: JevRoute<'command'>, result: AxCommandResu
   if (name === 'job.propose') return hostFacingMessage(result, '업무 초안을 처리하지 못했습니다.');
   if (name === 'workflow.create' && result.status === 'ok') return '업무를 저장했습니다. 직접 실행할 때만 돌아가며 자동 실행은 켜지 않았습니다.';
   if (name === 'execution.enqueue_once' && (result.status === 'ok' || result.status === 'queued')) {
-    return hostFacingMessage(result, '일회 실행을 큐에 등록했습니다. 실행 상태에서 진행 상황을 확인해 주세요.');
+    return hostFacingMessage(result, '요청한 작업을 시작했습니다. 진행 상황은 결과 카드에서 볼 수 있어요.');
   }
   return undefined;
 }

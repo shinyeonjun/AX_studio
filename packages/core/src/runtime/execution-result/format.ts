@@ -161,6 +161,7 @@ export function formatExecutionResultMessage(
         : '승인 요청이 활동에 기록되었습니다.',
     );
   }
-  lines.push(`실행 ID: ${safeText(result.executionId, 160) ?? 'unknown'}`);
+  // Only a failed run needs its id in the chat: retrying from where it stopped names it.
+  if (result.status === 'failed') lines.push(`실행 ID: ${safeText(result.executionId, 160) ?? 'unknown'}`);
   return lines.join('\n').slice(0, MAX_RESULT_CHARS);
 }

@@ -36,7 +36,7 @@ export async function enqueueOnce(
       {
         queued: false,
         pending: true,
-        message: '조회와 외부 공유에 사용할 연결과 채널을 선택해 주세요. 선택을 마치기 전까지 작업은 큐에 등록되지 않습니다.',
+        message: '조회와 외부 공유에 사용할 연결과 채널을 선택해 주세요. 고르기 전에는 아무것도 실행하지 않습니다.',
         presentation: targetSelectionPresentation(targetInputs, {
           actionId: 'review_execution_targets',
           actionLabel: '선택하고 실행안 검토',
@@ -50,7 +50,7 @@ export async function enqueueOnce(
   const validation = validateIR(store, candidate.value);
   if (validation.status !== 'ok') {
     const data = validation.status === 'needs_input'
-      ? { queued: false, message: '실행에 필요한 정보를 입력해 주세요. 입력이 완료되기 전에는 작업이 큐에 등록되지 않습니다.', validation: validation.data }
+      ? { queued: false, message: '실행에 필요한 정보를 입력해 주세요. 입력을 마치기 전에는 아무것도 실행하지 않습니다.', validation: validation.data }
       : { queued: false, validation: validation.data };
     return [validation.status, data, validation.issues];
   }

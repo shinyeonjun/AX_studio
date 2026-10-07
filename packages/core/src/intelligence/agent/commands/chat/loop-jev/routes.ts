@@ -83,7 +83,7 @@ export async function previousResultRoute(turn: JevTurn): Promise<string> {
     const result = await executeScopedChatCommand(context, exportPlan.command);
     signal.throwIfAborted();
     publishResult(exportPlan.command.name, result, exportPlan.command);
-    return result.status === 'queued' ? '현재 표의 Excel 저장을 실행 큐에 등록했습니다. 파일 생성 결과는 실행 결과에서 확인합니다.'
+    return result.status === 'queued' ? '현재 표를 Excel로 저장하기 시작했습니다. 파일이 만들어지면 결과 카드에서 받을 수 있어요.'
       : 'Excel 저장을 시작하지 못했습니다. 실행 결과를 확인해 주세요.';
   }
   if (transformed.status === 'clarify') return transformed.message;

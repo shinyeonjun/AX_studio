@@ -60,7 +60,7 @@ export function EditableMessageResult({
       />
       {source.blockedFields.length > 0 && <p className="tool-result-error" role="alert">지원되지 않는 첨부·스레드 또는 추가 전송 옵션이 있어 전송이 차단되었습니다. 원래 요청은 보존됩니다.</p>}
       {state.error && <p className="tool-result-error" role="alert">{state.error}</p>}
-      {state.outcome?.status === 'sent' && <p>서비스 확인 번호: {state.outcome.receiptId}</p>}
+      {state.outcome?.status === 'sent' && <p className="tool-result-receipt">서비스 확인 번호: {state.outcome.receiptId}</p>}
       {state.refreshWarning && <p role="status">{state.phase === 'sent' ? '서비스에서 전송 완료를 확인했습니다. ' : ''}{state.persistenceWarning ? '로컬 기록을 저장하지 못했습니다. 다시 보내기 전에 서비스에서 결과를 확인해 주세요.' : '화면 기록을 새로 불러오지 못했습니다.'}</p>}
       <footer className="tool-result-footer">
         <div className="tool-result-footer-left">

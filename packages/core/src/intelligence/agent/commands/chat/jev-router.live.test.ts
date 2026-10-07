@@ -154,7 +154,7 @@ describe.skipIf(!liveJevEnabled)('live Jev chat router', () => {
         externalActionExecuted: false,
       }));
 
-      expect(reply).toContain('큐에 등록');
+      expect(reply).toContain('작업을 시작했습니다');
       expect(command).toMatchObject({ name: 'execution.enqueue_once' });
       expect(queuedPlans).toHaveLength(1);
       expect(queuedPlan?.allowExternalAuto).toBe(false);
