@@ -54,7 +54,7 @@ export async function executeWorkflow(
       ir,
       'cancelled',
       'global_off_duty',
-      '전역 퇴근 상태입니다.',
+      '전체 퇴근 상태라 실행하지 않았습니다.',
     );
   }
 
@@ -65,7 +65,7 @@ export async function executeWorkflow(
       ir,
       'cancelled',
       'workflow_paused',
-      '워크플로우가 중지되어 있습니다.',
+      '업무가 꺼져 있습니다.',
     );
   }
 
@@ -140,7 +140,7 @@ export async function executeWorkflow(
         at: new Date().toISOString(),
         level: 'warn',
         code,
-        message: '워크플로우 실행이 취소되었습니다.',
+        message: '업무 실행이 취소되었습니다.',
       });
       host.config.store.finishExecution(executionId, 'cancelled', code, log);
       const result: ExecutionResult = { executionId, status: 'cancelled', errorCode: code, log };

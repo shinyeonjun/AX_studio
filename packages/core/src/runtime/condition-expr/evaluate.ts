@@ -32,7 +32,7 @@ function resolveValue(
   // A missing reference is not a comparable value: `neq` must not become true
   // merely because an upstream field was absent. Fail the condition loudly.
   if (resolved === undefined) {
-    throw Object.assign(new Error(`조건식 참조를 해석할 수 없습니다: ${value.ref}`), {
+    throw Object.assign(new Error('조건에서 확인할 이전 단계 결과를 찾지 못했어요. 앞 단계가 제대로 끝났는지 확인해 주세요.'), {
       code: 'condition_ref_missing',
       reference: value.ref,
     });

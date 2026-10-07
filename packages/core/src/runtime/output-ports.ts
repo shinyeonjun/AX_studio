@@ -101,7 +101,7 @@ function normalizeOutput(
       return value;
   }
 
-  throw Object.assign(new Error(`출력 포트 계약을 만족하지 않습니다: ${stepId}.${port} (${type})`), {
+  throw Object.assign(new Error('단계 결과가 다음 단계에서 쓸 수 있는 형태가 아니에요. 업무의 단계 구성을 확인해 주세요.'), {
     code: 'output_contract_invalid',
     data: { stepId, port, expected: type },
   });

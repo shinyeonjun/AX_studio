@@ -85,7 +85,7 @@ function interpolateTemplates(
     const reference = rawPath.trim();
     const resolved = lookupTemplatePath(reference, ctx, stepResults);
     if (resolved == null) {
-      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${reference}`), {
+      throw Object.assign(new Error('이전 단계 결과를 찾지 못했어요. 앞 단계가 제대로 끝났는지 확인해 주세요.'), {
         code: 'unresolved_binding',
         reference,
       });
@@ -93,7 +93,7 @@ function interpolateTemplates(
     if (typeof resolved === 'object' || typeof resolved === 'function') {
       // String(object) would silently send "[object Object]"; a mixed text
       // template can only embed scalar values.
-      throw Object.assign(new Error(`텍스트 템플릿에는 객체/배열 값을 넣을 수 없습니다: ${reference}`), {
+      throw Object.assign(new Error('목록이나 묶음 값은 문장에 그대로 넣을 수 없어요. 업무 단계의 입력값을 확인해 주세요.'), {
         code: 'template_non_primitive',
         reference,
       });
@@ -113,7 +113,7 @@ function resolveParamValue(
       const path = exact[1]!.trim();
       const resolved = lookupTemplatePath(path, ctx, stepResults);
       if (resolved == null) {
-        throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${path}`), {
+        throw Object.assign(new Error('이전 단계 결과를 찾지 못했어요. 앞 단계가 제대로 끝났는지 확인해 주세요.'), {
           code: 'unresolved_binding',
           reference: path,
         });
@@ -132,7 +132,7 @@ function resolveParamValue(
     const reference = record.ref.trim();
     const resolved = lookupTemplatePath(reference, ctx, stepResults);
     if (resolved == null) {
-      throw Object.assign(new Error(`워크플로우 참조를 해석할 수 없습니다: ${reference}`), {
+      throw Object.assign(new Error('이전 단계 결과를 찾지 못했어요. 앞 단계가 제대로 끝났는지 확인해 주세요.'), {
         code: 'unresolved_binding',
         reference,
       });

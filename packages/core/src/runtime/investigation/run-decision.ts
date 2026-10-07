@@ -80,17 +80,15 @@ export async function runAiDecision(
   const includeSensitiveData = cloudAllowed || Boolean(investigationRunner && !cloudProvider);
   if (restrictedBoundInputPorts.length > 0 && cloudProvider) {
     throw Object.assign(
-      new Error(`입력 데이터(${restrictedBoundInputPorts.join(', ')})의 클라우드 전송이 workflow.dataPolicy에서 차단되었습니다.`),
+      new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.'),
       { code: 'ai_input_unavailable' },
     );
   }
   const documentEvidenceAvailable = hasDecisionEvidenceFromBindings(step, ir, ctx, stepResults, evidence);
   if (documentRequired && !includeSensitiveData) {
-    const providerName = investigationRunner?.providerName ?? 'Jev';
     throw Object.assign(
       new Error(
-        `PDF 분석을 위해 문서 내용이 ${providerName}에 전달되어야 하지만 현재 차단되었습니다. ` +
-          '로컬 AI provider를 사용하거나 workflow.dataPolicy.document.cloudAllowed=true를 명시한 뒤 다시 실행하세요.',
+        '이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.',
       ),
       {
         code: 'ai_input_unavailable',
@@ -159,7 +157,7 @@ export async function runAiDecision(
           .filter((source) => !cloudDataAllowedForReadSource(ir, source)))];
         if (cloudProvider && restrictedReadSources.length > 0) {
           throw Object.assign(
-            new Error(`연결 자료(${restrictedReadSources.join(', ')})의 클라우드 전송이 workflow.dataPolicy에서 차단되었습니다.`),
+            new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.'),
             { code: 'ai_input_unavailable', data: { stepId: step.id, sources: restrictedReadSources } },
           );
         }
