@@ -1,6 +1,7 @@
 import type { WorkspaceChatMessage } from '@ax-studio/core';
 import { lazy, memo, Suspense } from 'react';
 import { withoutScheduleTokens } from '@ax-studio/core/schedule';
+import { withoutOptionIds } from '../workspace-assistant-presentation/input';
 import type { GeneratedArtifactExportResult } from '../../../../../types/ax-api/contracts';
 import { axStudioLogo } from '../../../../../ui/constants/brand';
 import { isRunResultMessage, WorkspaceRunResultCard } from '../WorkspaceRunResultCard';
@@ -15,7 +16,7 @@ const WorkspaceMarkdown = lazy(() =>
 export const UserMessage = memo(function UserMessage({ message }: { message: WorkspaceChatMessage }) {
   return (
     <div className="ax-workspace-message ax-workspace-message--user">
-      <div className="ax-workspace-bubble ax-workspace-bubble--user">{withoutScheduleTokens(message.content)}</div>
+      <div className="ax-workspace-bubble ax-workspace-bubble--user">{withoutOptionIds(withoutScheduleTokens(message.content))}</div>
     </div>
   );
 });

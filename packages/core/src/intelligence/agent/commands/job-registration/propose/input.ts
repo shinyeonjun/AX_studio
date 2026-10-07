@@ -52,7 +52,7 @@ export function validateProposeInput(
       ok: false,
       response: ['needs_input', undefined, [issue(
         'workflow_payload_required',
-        'HTTP가 아닌 반복 업무는 trigger와 steps를 함께 보내야 합니다.',
+        '반복 업무는 언제 시작할지와 무엇을 할지가 함께 있어야 합니다. "매주 월요일 오전 9시에 보고서를 메일로 보내 줘"처럼 다시 알려 주세요.',
         'args.steps',
       )]],
     };
@@ -64,12 +64,12 @@ export function validateProposeInput(
       ok: false,
       response: missingInput([{
         id: 'job-http-path',
-        label: 'HTTP 조회 경로',
+        label: '가져올 데이터 주소',
         type: 'text',
         required: true,
-        placeholder: '/api/v1/…',
-        reason: '연결한 HTTP의 상대 경로를 입력해 주세요.',
-      }], 'HTTP 조회 경로가 필요합니다. 연결한 HTTP의 상대 경로를 보내 주세요.', 'args.fetch.path'),
+        placeholder: '예: /orders',
+        reason: '연결한 서비스에서 어떤 데이터를 가져올지 주소를 입력해 주세요.',
+      }], '어떤 데이터를 가져올지 아직 정해지지 않았습니다. 연결한 서비스에서 가져올 데이터 주소를 알려 주세요.', 'args.fetch.path'),
     };
   }
 
@@ -78,13 +78,13 @@ export function validateProposeInput(
   if (!isValidCronExpression(cron)) {
     return {
       ok: false,
-      response: ['invalid', undefined, [issue('invalid_schedule', 'cron 표현식이 올바르지 않습니다: ' + cron, 'args.schedule.cron')]],
+      response: ['invalid', undefined, [issue('invalid_schedule', '반복 일정을 이해하지 못했습니다. "매주 월요일 오전 9시"처럼 다시 알려 주세요.', 'args.schedule.cron')]],
     };
   }
   if (!isValidTimeZone(timezone)) {
     return {
       ok: false,
-      response: ['invalid', undefined, [issue('invalid_schedule', 'timezone이 올바르지 않습니다: ' + timezone, 'args.schedule.timezone')]],
+      response: ['invalid', undefined, [issue('invalid_schedule', '시간대를 이해하지 못했습니다. "한국 시간"처럼 다시 알려 주세요.', 'args.schedule.timezone')]],
     };
   }
 

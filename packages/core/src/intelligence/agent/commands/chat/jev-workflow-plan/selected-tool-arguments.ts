@@ -10,6 +10,7 @@ import {
 } from '../jev-read-parameters.js';
 import type { ActionPlanCandidate } from '../jev-workflow-plan-types.js';
 import type { JevPlanMode } from './shared.js';
+import { readValueNames } from '../read-value-names.js';
 
 export interface PlanEntry {
   candidate: ActionPlanCandidate;
@@ -125,7 +126,7 @@ export function applyArgumentAnswers(
     if (hint) {
       const fields = selection.readFields.get(hint.key);
       const resolved = fields ? applyJevReadOperationParameterAnswers(hint, fields.fields, answers) : hint;
-      if (resolved.missingParameterPaths?.length) return '조회 입력이 필요합니다.';
+      if (resolved.missingParameterPaths?.length) return `조회에 필요한 값(${readValueNames(resolved.missingParameterPaths)})이 요청에 없습니다. 이 값을 알려 주세요.`;
       entry.candidate = { ...entry.candidate, readOperationHint: resolved, params: resolved.params };
     }
   }

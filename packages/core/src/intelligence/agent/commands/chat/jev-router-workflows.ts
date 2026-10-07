@@ -108,7 +108,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '업무 단계 추가 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
+        message: '업무 단계 추가 여부를 확인하지 못해 아무것도 변경하지 않았습니다. 어떤 단계를 더할지 알려 주세요.',
         confidence: selectedConfidence,
       });
     }
@@ -116,7 +116,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '업무 단계 제거 여부를 확인하지 못해 아무것도 변경하지 않았습니다.',
+        message: '업무 단계 제거 여부를 확인하지 못해 아무것도 변경하지 않았습니다. 몇 번째 단계를 지울지 알려 주세요.',
         confidence: selectedConfidence,
       });
     }
@@ -150,7 +150,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
         return withTelemetry({
           kind: 'clarify',
           route: selectedRoute,
-          message: '제거할 업무 단계를 목록에서 하나로 확정하지 못해 아무것도 변경하지 않았습니다.',
+          message: '제거할 업무 단계를 목록에서 하나로 확정하지 못해 아무것도 변경하지 않았습니다. 몇 번째 단계를 지울지 알려 주세요.',
           confidence: selectedConfidence,
         });
       }
@@ -191,7 +191,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       if (!parsedPlan?.success || upsertSteps.length === 0) {
         return workflowPlanResult({
           kind: 'clarify',
-          message: '업무 단계 변경안을 검증하지 못해 아무것도 변경하지 않았습니다.',
+          message: '업무 단계 변경안을 검증하지 못해 아무것도 변경하지 않았습니다. 바꿀 단계와 내용을 조금 더 구체적으로 알려 주세요.',
           telemetry: plan.telemetry,
         }, selectedRoute);
       }

@@ -15,7 +15,7 @@ function confirmedMutationReply(result: AxCommandResult): string {
   if (result.status === 'ok' && result.command === 'workflow.delete') return WORKFLOW_DELETED_REPLY;
   if (result.status === 'ok' && result.command === 'workflow.update') return workflowUpdateSuccessMessage(result);
   if (result.command === 'workflow.run') return workflowRunReply(result);
-  return hostFacingMessage(result, '확인한 변경을 적용하지 못했습니다.');
+  return hostFacingMessage(result, '확인한 변경을 적용하지 못했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
 async function commitJob({ options, signal, publishResult }: CommandChatLoopContext): Promise<string> {
@@ -27,7 +27,7 @@ async function commitJob({ options, signal, publishResult }: CommandChatLoopCont
     abortSignal: signal,
   });
   signal.throwIfAborted();
-  return hostFacingMessage(publishResult('job.commit', result), '업무를 저장하지 못했습니다.');
+  return hostFacingMessage(publishResult('job.commit', result), '업무를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
 async function commitMutation({ options, session, signal, publishResult }: CommandChatLoopContext): Promise<string> {
@@ -67,21 +67,21 @@ async function saveConfirmedContext({ options, signal, publishResult }: CommandC
     abortSignal: signal,
   });
   signal.throwIfAborted();
-  return hostFacingMessage(publishResult('context.update', result), '기억을 저장하지 못했습니다.');
+  return hostFacingMessage(publishResult('context.update', result), '기억을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
 function pendingCommandFallback(command: AxCommand, result: AxCommandResult): string {
   switch (command.name) {
     case 'workflow.create':
-      return result.status === 'ok' ? '수동 업무를 저장했습니다. 자동 실행은 활성화되지 않았습니다.' : '업무를 저장하지 못했습니다.';
+      return result.status === 'ok' ? '수동 업무를 저장했습니다. 자동 실행은 활성화되지 않았습니다.' : '업무를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
     case 'job.propose':
-      return result.status === 'ok' ? '업무 초안을 준비했습니다. 검토 후 확인해 주세요.' : '업무 초안을 처리하지 못했습니다.';
+      return result.status === 'ok' ? '업무 초안을 준비했습니다. 검토 후 확인해 주세요.' : '업무 초안을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
     case 'workflow.update':
-      return result.status === 'ok' ? workflowUpdateSuccessMessage(result) : '업무를 수정하지 못했습니다.';
+      return result.status === 'ok' ? workflowUpdateSuccessMessage(result) : '업무를 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.';
     default:
       return result.status === 'queued' || result.status === 'ok'
         ? '요청한 작업을 시작했습니다. 진행 상황은 결과 카드에서 볼 수 있어요.'
-        : '일회 실행을 처리하지 못했습니다.';
+        : '일회 실행을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   }
 }
 
