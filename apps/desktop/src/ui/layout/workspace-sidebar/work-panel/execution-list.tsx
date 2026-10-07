@@ -8,7 +8,7 @@ function executionTitle(execution: ExecutionSummary, sessions: ChatSessionSummar
   const sessionTitle = sessions.find((session) => session.id === execution.workspaceSessionId)?.title;
   if (sessionTitle?.trim()) return sessionTitle;
   if (execution.generatedPdf?.fileName) return execution.generatedPdf.fileName;
-  return execution.name?.trim() || '직접 실행';
+  return execution.name?.trim() || '일회성 작업';
 }
 
 function executionPresentation(execution: ExecutionSummary): {
@@ -16,7 +16,7 @@ function executionPresentation(execution: ExecutionSummary): {
   label: string;
 } {
   if (execution.resultStatus === 'failed' || execution.status === 'failed') {
-    return { tone: 'failed', label: execution.resultStatus === 'failed' ? '결과 검토 필요' : '실패' };
+    return { tone: 'failed', label: execution.resultStatus === 'failed' ? '결과 확인 필요' : '실패' };
   }
   if (execution.status === 'pending_approval') return { tone: 'pending', label: '승인 대기' };
   if (execution.status === 'running') return { tone: 'running', label: '실행 중' };

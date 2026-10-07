@@ -71,7 +71,7 @@ export function WorkspaceEmptyStage({
         )}
         {onResume && resumable.length > 0 && (
           <div className="ax-workspace-resume">
-            <p className="ax-workspace-welcome-hint">마치지 않은 학습이 있어요.</p>
+            <p className="ax-workspace-welcome-hint">지난 결과물로 만들다 멈춘 업무가 있어요.</p>
             <ul className="ax-workspace-example-list">
               {resumable.map((session) => (
                 <li key={session.sessionId}>

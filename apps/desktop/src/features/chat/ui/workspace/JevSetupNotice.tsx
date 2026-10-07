@@ -16,11 +16,11 @@ export function JevSetupNotice({ state, onOpenJevSettings }: { state: AppState |
     <div className="chat-edit-hint chat-setup-notice" role="status">
       <span>
         {configuredButOff
-          ? 'Jev 판단 서비스가 꺼져 있어 자료 조회나 업무 생성 요청을 처리할 수 없습니다.'
-          : 'Jev 판단 서비스가 연결되지 않아 자료 조회나 업무 생성 요청을 처리할 수 없습니다.'}
+          ? '판단 엔진(Jev)이 꺼져 있어 자료 조회나 업무 만들기 요청을 처리할 수 없습니다.'
+          : '판단 엔진(Jev)이 연결되지 않아 자료 조회나 업무 만들기 요청을 처리할 수 없습니다.'}
       </span>
       <button type="button" className="btn btn-sm btn-primary" onClick={onOpenJevSettings}>
-        {configuredButOff ? 'Jev 켜기' : 'Jev 연결하기'}
+        {configuredButOff ? '판단 엔진 켜기' : '판단 엔진 연결하기'}
       </button>
     </div>
   );

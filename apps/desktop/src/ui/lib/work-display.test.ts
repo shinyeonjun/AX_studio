@@ -27,7 +27,7 @@ describe('work display classification', () => {
   it('provides readable labels for execution states', () => {
     expect(executionStatusLabel('running')).toBe('실행 중');
     expect(executionStatusLabel('pending_approval')).toBe('승인 대기');
-    expect(executionStatusLabel('success')).toBe('성공');
+    expect(executionStatusLabel('success')).toBe('완료');
   });
 
   it('explains a missing document reader without developer setup steps', () => {

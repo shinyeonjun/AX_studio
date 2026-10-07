@@ -110,7 +110,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   };
 
   if (!loaded) {
-    return <div className="settings-section"><p className="muted">Jev 설정을 불러오는 중...</p></div>;
+    return <div className="settings-section"><p className="muted">판단 엔진 설정을 불러오는 중…</p></div>;
   }
 
   return (
@@ -207,7 +207,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             onClick={() => void testConnection()}
             disabled={testing || (apiKeyDraft.length === 0 && !apiKeyConfigured)}
           >
-            {testing ? '확인 중...' : 'API 연결 테스트'}
+            {testing ? '확인 중…' : 'API 연결 테스트'}
           </button>
           <button
             type="button"
@@ -215,7 +215,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             onClick={() => void save()}
             disabled={!canSave || saving}
           >
-            {saving ? '저장 중...' : '저장하기'}
+            {saving ? '저장 중…' : '저장하기'}
           </button>
         </div>
 

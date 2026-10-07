@@ -1,3 +1,5 @@
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
+
 interface ConnectionCardProps {
   title: string;
   description: string;
@@ -35,7 +37,7 @@ export function ConnectionCard({
           <span className={`connection-badge ${badgeClass}`}>{badge}</span>
         </div>
         <div className="connection-card-desc">{description}</div>
-        {error && <div className="connection-card-error">오류: {error}</div>}
+        {error && <div className="connection-card-error">오류: {ipcErrorMessage(new Error(error), '연결에 문제가 있어요. 눌러서 설정을 확인해 주세요.')}</div>}
       </div>
     </button>
   );

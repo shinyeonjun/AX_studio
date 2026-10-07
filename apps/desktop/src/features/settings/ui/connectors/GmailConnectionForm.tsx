@@ -78,7 +78,7 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
                 onClick={handleDisconnect}
                 disabled={busy}
               >
-                {busy ? '처리 중...' : '연결 해제'}
+                {busy ? '처리 중…' : '연결 해제'}
               </button>
             </div>
           </>

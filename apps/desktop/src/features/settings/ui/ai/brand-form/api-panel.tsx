@@ -60,7 +60,7 @@ export function AiApiPanel({
           onClick={onTest}
           disabled={testing || (!isOllamaApi && !apiKeyDraft.trim() && !apiKeyConfigured)}
         >
-          {testing ? '확인 중...' : 'API 연결 테스트'}
+          {testing ? '확인 중…' : 'API 연결 테스트'}
         </button>
       </div>
     </div>

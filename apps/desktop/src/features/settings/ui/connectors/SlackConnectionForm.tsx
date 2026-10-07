@@ -87,7 +87,7 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
             onClick={() => void handleConnect()}
             disabled={busy || !canSubmit}
           >
-            {busy ? '연결 중...' : connectLabel}
+            {busy ? '연결 중…' : connectLabel}
           </button>
           {connected && onDisconnect && (
             <button

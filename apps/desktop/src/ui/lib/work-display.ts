@@ -50,7 +50,7 @@ export function executionTriggerLabel(triggerType?: string | null): string {
 }
 
 export function executionStatusLabel(status: string): string {
-  if (status === 'success') return '성공';
+  if (status === 'success') return '완료';
   if (status === 'failed') return '실패';
   if (status === 'running') return '실행 중';
   if (status === 'cancelled') return '취소됨';

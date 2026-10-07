@@ -68,7 +68,7 @@ export function ToolAwareApproval({ approval, busy, onLegacyAction, onRefresh, o
         onClick={() => void onLegacyAction(approval.id, 'approve')}>{busy ? '처리 중…' : '승인'}</button>}
       {view.error && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setRetry(value => value + 1)}>다시 불러오기</button>}
       <button type="button" className="btn btn-reject" disabled={busy}
-        onClick={() => void onLegacyAction(approval.id, 'reject')}>요청 취소</button>
+        onClick={() => void onLegacyAction(approval.id, 'reject')}>거절</button>
     </div>
   </article>;
 }
