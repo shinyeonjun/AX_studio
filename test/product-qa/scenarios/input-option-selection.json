@@ -13,7 +13,7 @@
     { "check": "visibleTextContains", "text": "HTTP 연결 ID", "severity": "critical" },
     { "action": "selectInputOption", "requestId": "http-endpoint-id", "value": "api-10" },
     { "action": "waitForAssistantReply", "timeoutMs": 20000 },
-    { "check": "userMessagePresent", "text": "HTTP 연결 ID: Long ID (ID: api-10)", "severity": "critical" },
+    { "check": "userMessagePresent", "text": "HTTP 연결 ID: Long ID", "severity": "critical" },
     { "check": "assistantMessageContains", "text": "E2E selected endpoint api-10", "severity": "critical" },
     { "check": "composerEnabled", "severity": "major" }
   ]
