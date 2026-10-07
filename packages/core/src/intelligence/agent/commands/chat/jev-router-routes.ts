@@ -33,6 +33,7 @@ import {
 import { handleJevWorkflowRoute } from './jev-router-workflows.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
 import { coveringRdbRead } from './rdb-read-cover.js';
+import { readSourceChooser } from './read-source-chooser.js';
 
 export type JevFollowupEvaluator = (
   state: unknown,
@@ -242,7 +243,12 @@ async function capabilityReadRoute(context: JevRouteContext): Promise<JevChatRou
   } else if (selectedReadHints.length > 1) {
     const primary = await selectPrimaryReadHint(input, selectedReadHints, context.evaluateFollowup, context.requestPlan);
     if (!primary) {
-      return context.workflowPlanResult(await planOneShot(context, selectedReadHints, []), 'execution_enqueue_once');
+      const plan = await planOneShot(context, selectedReadHints, []);
+      // Reads of several connections that do not plan together: ask which one the person meant.
+      const chooser = plan.kind === 'clarify' ? readSourceChooser(selectedReadHints, input.userMessage) : undefined;
+      return context.workflowPlanResult(plan.kind === 'clarify' && chooser
+        ? { ...plan, message: chooser.message, presentation: chooser.presentation }
+        : plan, 'execution_enqueue_once');
     }
     readHint = primary;
   }

@@ -9,6 +9,7 @@ import { performHttpRequest } from '../request.js';
 import { resolveHttpRequestUrl } from '../url-security.js';
 import { httpErrorDetails } from './errors.js';
 import { hasNextHttpPage } from './completeness.js';
+import { gatherHttpPages, gatheredCompleteness } from './pagination.js';
 import {
   normalizeHttpHeaders,
   serializeHttpBody,
@@ -143,6 +144,33 @@ export async function executeHttpAction(
     // completeness separate from transport/partial-content truncation.
     response.truncated = result.status === 206;
     response.completeness = { status: 'partial', reason: 'provider_limit', hasMore: true };
+  }
+  if (params.allPages === true && method === 'GET' && !result.truncated && result.status < 300) {
+    // A read registered as "every page": follow the provider's own page envelope, each page the
+    // same request with only its page parameter moved, through the same address checks.
+    const gathered = await gatherHttpPages(path, result.body, async (nextPath) => {
+      const nextUrl = resolveHttpRequestUrl(endpoint.baseUrl, nextPath);
+      if (!nextUrl.ok) return undefined;
+      const next = await performHttpRequest({
+        url: nextUrl.value.url,
+        method,
+        headers: requestHeaders,
+        auth: endpoint.auth,
+        abortSignal: ctx.abortSignal,
+        rejectPrivateDestination: options.allowPrivateNetwork !== true,
+      });
+      return next.ok && !next.truncated && next.status < 300 ? next.body : undefined;
+    });
+    if (gathered.body !== undefined) {
+      ctx.log({
+        at: new Date().toISOString(),
+        level: 'info',
+        message: 'http.request_pages',
+        data: { method, path: logPath, pages: gathered.pages, rows: gathered.rows, complete: gathered.complete },
+      });
+      response.body = gathered.body;
+      response.completeness = gatheredCompleteness(gathered);
+    }
   }
   return {
     ok: true,
