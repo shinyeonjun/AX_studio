@@ -1,8 +1,14 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createServer, type ServerResponse } from 'node:http';
 import type { OAuth2Client } from 'google-auth-library';
 import { GMAIL_OAUTH_SCOPES } from '../connection.js';
 import type { GmailOAuthOptions, GmailOAuthResult } from './contracts.js';
+import { GMAIL_CALLBACK_PAGE_HEADERS, gmailCallbackPage, type GmailCallbackOutcome } from './callback-page.js';
+
+function showCallbackPage(res: ServerResponse, status: number, outcome: GmailCallbackOutcome): void {
+  res.writeHead(status, GMAIL_CALLBACK_PAGE_HEADERS);
+  res.end(gmailCallbackPage(outcome));
+}
 
 const GMAIL_OAUTH_TIMEOUT_MS = 5 * 60_000;
 
@@ -79,26 +85,22 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
         return;
       }
       if (!oauthCallbackStateMatches(expectedState, url.searchParams.get('state'))) {
-        // A stray or forged request must not abort the user's pending sign-in.
-        res.writeHead(400);
-        res.end('Invalid OAuth state');
+        // A stray or forged request (or an old sign-in tab) must not abort the pending sign-in.
+        showCallbackPage(res, 400, 'expired');
         return;
       }
       const err = url.searchParams.get('error');
       if (err) {
-        res.writeHead(400);
-        res.end('OAuth provider returned an error.');
+        showCallbackPage(res, 400, err === 'access_denied' ? 'denied' : 'failed');
         settle({ error: new Error(err) });
         return;
       }
       const authCode = url.searchParams.get('code');
       if (!authCode) {
-        res.writeHead(400);
-        res.end('Missing code');
+        showCallbackPage(res, 400, 'failed');
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end('Gmail 연결 완료. 이 창을 닫고 AX Studio로 돌아가세요.');
+      showCallbackPage(res, 200, 'signed_in');
       settle({ code: authCode });
     });
 
