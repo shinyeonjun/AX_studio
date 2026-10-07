@@ -188,3 +188,9 @@
   border-radius: 4px;
   outline: none;
 }
+
+/* A provider receipt is for support, not for reading. */
+.tool-result-receipt {
+  color: var(--text-muted);
+  font-size: 12px;
+}

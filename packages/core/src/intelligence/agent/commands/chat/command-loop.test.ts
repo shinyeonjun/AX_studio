@@ -476,7 +476,7 @@ describe('runAxCommandChat command loop', () => {
         messages: [],
         userMessage: '다음 작업을 지금 실행해줘.',
       });
-      expect(reply).toContain('큐');
+      expect(reply).toContain('작업을 시작했습니다');
       expect(fetchImpl).toHaveBeenCalledTimes(requests.length);
       expect(requests.length).toBeGreaterThan(1);
       const toolQuestions = requests.flatMap(({ questions }) => Object.entries(questions)
@@ -578,7 +578,7 @@ describe('runAxCommandChat command loop', () => {
         userMessage: '이번만 person@example.com에게 메일을 보내줘. 일회성으로 실행해줘. body: "견적서를 보내 주세요"',
       });
 
-      expect(reply).toContain('큐');
+      expect(reply).toContain('작업을 시작했습니다');
       await runtime.waitForIdle();
       const [approval] = store.getPendingApprovals();
       expect(approval).toBeDefined();

@@ -76,7 +76,7 @@ describe('command-generated verified tool handoff', () => {
         userMessage: '이번만 person@example.com에게 메일을 보내줘. 일회성으로 실행해줘. body: "견적서를 보내 주세요"',
       });
 
-      expect(reply).toContain('큐');
+      expect(reply).toContain('작업을 시작했습니다');
       await runtime.waitForIdle();
       const [approval] = store.getPendingApprovals();
       expect(approval).toBeDefined();

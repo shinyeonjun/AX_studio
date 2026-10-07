@@ -11,7 +11,7 @@ export function noCommitMessage(mode: JevPlanMode): string {
       ? '아무 반복 업무도 저장하거나 활성화하지 않았습니다.'
       : mode === 'workflow_update'
         ? '아무 업무 변경도 저장하지 않았습니다.'
-        : '아무 작업도 큐에 등록하지 않았습니다.';
+        : '아직 아무것도 실행하지 않았습니다.';
 }
 
 export function emptyPlanTelemetry(): JevWorkflowPlanTelemetry {

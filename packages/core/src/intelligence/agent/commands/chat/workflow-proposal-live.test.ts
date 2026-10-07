@@ -191,7 +191,7 @@ describe('Desktop chat recurring workflow proposal', () => {
       onCommandResult: (_result, command) => executedCommands.push(command),
     });
 
-    expect(reply).toContain('큐에 등록했습니다');
+    expect(reply).toContain('작업을 시작했습니다');
     expect(jevCalls).toBe(0);
     expect(structuredCalls).toHaveLength(0);
     expect(textCalls).toHaveLength(0);

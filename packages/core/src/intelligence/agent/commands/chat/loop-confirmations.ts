@@ -80,7 +80,7 @@ function pendingCommandFallback(command: AxCommand, result: AxCommandResult): st
       return result.status === 'ok' ? workflowUpdateSuccessMessage(result) : '업무를 수정하지 못했습니다.';
     default:
       return result.status === 'queued' || result.status === 'ok'
-        ? '일회 실행을 큐에 등록했습니다. 실행 상태에서 진행 상황을 확인해 주세요.'
+        ? '요청한 작업을 시작했습니다. 진행 상황은 결과 카드에서 볼 수 있어요.'
         : '일회 실행을 처리하지 못했습니다.';
   }
 }
