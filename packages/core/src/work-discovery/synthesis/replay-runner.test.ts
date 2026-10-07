@@ -12,7 +12,7 @@ describe('transform synthesis replay', () => {
   });
   const snapshots = { 'rdb:sales': table };
 
-  it('matches SUM(amount) to observed 총매출', () => {
+  it('matches amount 합계 to observed 총매출', () => {
     const observations = [{
       id: 'obs_1',
       exampleId: 'ex_1',

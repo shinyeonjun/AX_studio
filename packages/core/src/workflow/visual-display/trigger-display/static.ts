@@ -17,7 +17,7 @@ export function staticTriggerDisplay(
       tooltip: summary,
       iconConnector: undefined,
       card: {
-        header: 'Trigger',
+        header: '시작',
         brand: 'Manual',
         brandStyle: 'bracket',
         summary,
@@ -34,7 +34,7 @@ export function staticTriggerDisplay(
       tooltip: runAt ? `1회 · ${runAt}` : '1회 · 시각 미설정',
       iconConnector: undefined,
       card: {
-        header: 'Trigger',
+        header: '시작',
         brand: 'Once',
         brandStyle: 'bracket',
         summary,
@@ -51,7 +51,7 @@ export function staticTriggerDisplay(
       tooltip: schedule ? `예약 · ${schedule}` : '예약 · 일정 미설정',
       iconConnector: undefined,
       card: {
-        header: 'Trigger',
+        header: '시작',
         brand: 'Schedule',
         brandStyle: 'bracket',
         summary,
@@ -66,7 +66,7 @@ export function staticTriggerDisplay(
       tooltip: '시작 조건 미설정',
       iconConnector: undefined,
       card: {
-        header: 'Trigger',
+        header: '시작',
         brand: '미설정',
         brandStyle: 'bracket',
         summary: '시작 조건 필요',

@@ -59,10 +59,10 @@ describe('demo: monthly sales report learned from August, run on September', () 
 
     const accepted = resolved.candidates.filter((candidate) => candidate.status === 'accepted');
     expect(Object.fromEntries(accepted.map((candidate) => [candidate.observationPath, formatMappingLabel(candidate)]))).toEqual({
-      'field.주문건수': 'COUNT · 조건: 상태 ≠ 취소',
-      'field.총매출': 'SUM(금액) · 조건: 상태 ≠ 취소',
-      'field.평균주문금액': 'AVG(금액) 반올림(소수 0자리) · 조건: 상태 ≠ 취소',
-      'field.카테고리별': '카테고리별 묶음: 주문건수=COUNT, 매출=SUM(금액) · 조건: 상태 ≠ 취소 · 정렬: 매출 큰 순 · 합계 줄 포함',
+      'field.주문건수': '건수 · 조건: 상태 ≠ 취소',
+      'field.총매출': '금액 합계 · 조건: 상태 ≠ 취소',
+      'field.평균주문금액': '금액 평균 반올림(소수 0자리) · 조건: 상태 ≠ 취소',
+      'field.카테고리별': '카테고리별 묶음: 주문건수=건수, 매출=금액 합계 · 조건: 상태 ≠ 취소 · 정렬: 매출 큰 순 · 합계 줄 포함',
     });
 
     // The review card summarizes tables instead of dumping them.

@@ -19,7 +19,7 @@ function triggerLabel(draft: WorkflowCanvasDraft, slots?: CompletenessResult['sl
       lines: [],
       tooltip: draft.triggerType,
       card: {
-        header: 'Trigger',
+        header: '시작',
         brand: 'Trigger',
         brandStyle: 'bracket',
         summary: draft.triggerType,

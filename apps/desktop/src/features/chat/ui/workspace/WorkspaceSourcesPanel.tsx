@@ -18,7 +18,7 @@ export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSour
       <div className="workspace-sources-header">
         <div>
           <div className="workspace-sources-kicker">이 대화의 자료</div>
-          <h2 className="workspace-sources-title">PDF 자료</h2>
+          <h2 className="workspace-sources-title">올린 자료</h2>
           <p className="workspace-sources-subtitle">
             업로드한 파일은 이 대화에만 연결되고, 문서 엔진이 읽은 결과를 AI가 필요할 때 조회합니다.
           </p>
@@ -37,7 +37,7 @@ export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSour
         <div className="workspace-sources-empty">
           <span className="workspace-sources-empty-icon" aria-hidden="true">＋</span>
           <p>아직 이 대화에 올린 자료가 없습니다.</p>
-          <span>자료를 추가하면 PDF는 Docling으로 분석됩니다.</span>
+          <span>PDF·엑셀·CSV 파일을 올리면 내용을 읽어 대화에 씁니다.</span>
         </div>
       ) : (
         <ul className="workspace-sources-list">

@@ -1,10 +1,11 @@
 /**
- * A number as people write it in a cell: thousands separators, a currency sign or 원, a percent
+ * A number as people write it in a cell: thousands separators, a currency sign (₩, or ￦ as Korean
+ * Excel saves it in a CSV) or 원, a percent
  * sign (50% -> 50, as shown) and accounting negatives ((1,000) -> -1000). Blank text, hex and
  * other non-decimal forms are not numbers.
  */
 export function parseWrittenNumber(value: string): number | null {
-  let text = value.trim().replace(/,/g, '').replace(/^[₩$€£¥]\s*/u, '').replace(/\s*(원|%)$/u, '').trim();
+  let text = value.trim().replace(/,/g, '').replace(/^[₩￦$€£¥]\s*/u, '').replace(/\s*(원|%)$/u, '').trim();
   let negative = false;
   if (/^\(.*\)$/u.test(text)) {
     negative = true;

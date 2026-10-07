@@ -27,7 +27,7 @@ export function capabilityTriggerDisplay(
     tooltip: detail ? `${cap.label} · ${detail}` : cap.label,
     iconConnector: cap.connector,
     card: {
-      header: 'Trigger',
+      header: '시작',
       brand: getConnectorLabel(cap.connector),
       brandStyle: cap.connector === 'slack' ? 'plain' : 'bracket',
       summary,

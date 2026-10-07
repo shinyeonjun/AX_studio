@@ -18,7 +18,7 @@ export function displayIfNode(node: WorkflowNode): NodeDisplayResult {
     lines: [{ text: condition, complete: Boolean(node.condition) }],
     tooltip: condition,
     card: {
-      header: 'Flow',
+      header: '흐름',
       brand: 'IF',
       brandStyle: 'bracket',
       summary: truncate(condition, 26),
@@ -39,7 +39,7 @@ export function displayApprovalNode(
     lines: [],
     tooltip: reason || summary,
     card: {
-      header: 'Flow',
+      header: '흐름',
       brand: 'Approval',
       brandStyle: 'bracket',
       summary,

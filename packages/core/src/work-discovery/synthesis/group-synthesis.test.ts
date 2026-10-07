@@ -213,11 +213,11 @@ describe('group synthesis rejects coincidences and ambiguity', () => {
       return learn(observations, { o: source }).accepted(observations[0]!.path).map((candidate) => formatMappingLabel(candidate));
     };
     // b 30, c 15, a 10, d 1: largest first.
-    expect(learnTable([['b', 30], ['c', 15], ['a', 10], ['d', 1]])).toEqual(['team별 묶음: total=SUM(amount) · 정렬: total 큰 순']);
+    expect(learnTable([['b', 30], ['c', 15], ['a', 10], ['d', 1]])).toEqual(['team별 묶음: total=amount 합계 · 정렬: total 큰 순']);
     // The data's own order needs no sort.
-    expect(learnTable([['a', 10], ['b', 30], ['c', 15], ['d', 1]])).toEqual(['team별 묶음: total=SUM(amount)']);
+    expect(learnTable([['a', 10], ['b', 30], ['c', 15], ['d', 1]])).toEqual(['team별 묶음: total=amount 합계']);
     // An order no single column explains is not invented.
-    expect(learnTable([['c', 15], ['a', 10], ['d', 1], ['b', 30]])).toEqual(['team별 묶음: total=SUM(amount)']);
+    expect(learnTable([['c', 15], ['a', 10], ['d', 1], ['b', 30]])).toEqual(['team별 묶음: total=amount 합계']);
   });
 
   it('prefers no filter, and a filter that every field shares', () => {
@@ -238,9 +238,9 @@ describe('group synthesis rejects coincidences and ambiguity', () => {
     const { accepted } = learn(observations, { o: source });
     const labels = observations.map((entry) => accepted(entry.path).map((candidate) => formatMappingLabel(candidate)));
     expect(labels).toEqual([
-      ['COUNT · 조건: state ≠ void'],
-      ['SUM(amount) · 조건: state ≠ void'],
-      ['team별 묶음: total=SUM(amount) · 조건: state ≠ void · 합계 줄 포함'],
+      ['건수 · 조건: state ≠ void'],
+      ['amount 합계 · 조건: state ≠ void'],
+      ['team별 묶음: total=amount 합계 · 조건: state ≠ void · 합계 줄 포함'],
     ]);
     // Unfiltered numbers stay unfiltered.
     const plain = buildTableArtifact({ id: 'p', name: 'p', headers: ['label', 'n'], matrix: [['x', 10]] });
