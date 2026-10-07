@@ -86,7 +86,7 @@ describe('recurring draft from a read answer', () => {
     expect(reply.content).toContain('이 조회를 매주 월요일 오전 9:00에 반복하는 업무 초안입니다');
     const card = JSON.stringify(reply.presentations[0]);
     expect(card).toContain('재고 10개 미만 상품만 표로 보여줘');
-    expect(card).toContain('표 정리 (2단계 결과 사용) · 부작용 없음(조회) · 조건: stock < 10');
+    expect(card).toContain('표 정리 (2단계 결과 사용) · 읽기만 함 · 조건: stock < 10');
     expect(store.listWorkflows()).toHaveLength(0);
   });
 
