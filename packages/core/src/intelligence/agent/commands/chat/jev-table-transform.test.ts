@@ -534,13 +534,13 @@ describe('a filter with a category named alongside a number', () => {
   const products = buildTableArtifact({
     id: 'products',
     headers: ['title', 'category', 'rating'],
-    matrix: [['Powder', 'beauty', 4.64], ['Lipstick', 'beauty', 4.2], ['Bed', 'furniture', 4.77], ['Kiwi', 'groceries', 4.93]],
+    matrix: [['Powder', 'beauty', 4.64], ['Lipstick', 'beauty', 4.2], ['Bed', 'furniture', 4.77], ['Kiwi', 'groceries', 4.93], ['Body Wash', 'skin-care', 4.51]],
   });
   const choice = (value: string): DecisionAnswer => ({ type: 'choice', choice: value, probabilities: { [value]: 0.99 }, confidence: 0.99 });
   const pick = (question: DecisionQuestion | undefined, wanted: unknown) => Object.entries(question?.type === 'choice' ? question.criteria : {})
     .find(([, description]) => typeof description === 'object' && description !== null && ('value' in description ? description.value === wanted : 'field' in description && description.field === wanted))?.[0] ?? 'none';
 
-  function engine(restrictsCategory: boolean): DecisionEngine & { sent: string[] } {
+  function engine(restrictsCategory: boolean, wanted: string[] = ['beauty']): DecisionEngine & { sent: string[] } {
     const sent: string[] = [];
     return {
       sent,
@@ -555,7 +555,10 @@ describe('a filter with a category named alongside a number', () => {
             const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.question) : '';
             const isCategory = asked.includes('column "category"');
             answers[id] = { type: 'boolean', probability: isCategory && restrictsCategory ? 0.95 : 0.05 };
-          } else if (id.startsWith('category_')) answers[id] = choice(pick(question, 'beauty'));
+          } else if (id.startsWith('category_')) {
+            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.question) : '';
+            answers[id] = { type: 'boolean', probability: wanted.some((value) => asked.includes(`"${value}"`)) ? 0.95 : 0.05 };
+          }
         }
         return { answers };
       },
@@ -567,10 +570,15 @@ describe('a filter with a category named alongside a number', () => {
     expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder']);
   });
 
+  it('takes every value a broader word covers: cosmetics are beauty and skin-care', async () => {
+    const output = await applyJevTableTransform({ decisionEngine: engine(true, ['beauty', 'skin-care']), table: products, userMessage: '화장품 중에 평점 4.5 넘는 것만 보여줘', mode: 'filter' });
+    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder', 'Body Wash']);
+  });
+
   it('never sends a column\u2019s values when the request does not restrict it', async () => {
     const quiet = engine(false);
     const output = await applyJevTableTransform({ decisionEngine: quiet, table: products, userMessage: '평점 4.5 넘는 것만 보여줘', mode: 'filter' });
-    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder', 'Bed', 'Kiwi']);
+    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder', 'Bed', 'Kiwi', 'Body Wash']);
     expect(quiet.sent.join('\n')).not.toContain('furniture');
   });
 });

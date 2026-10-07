@@ -46,7 +46,7 @@ export function tableToMarkdown(table: TableArtifact, requestedColumns?: readonl
   }
   if (table.completeness?.reason === 'provider_limit') {
     const page = table.completeness.observedCount;
-    lines.push('', `API가 전체 데이터 중 한 페이지${page ? `(${page}행)` : ''}만 돌려줬습니다. 정렬·순위는 이 페이지 안에서만 계산한 결과입니다.`);
+    lines.push('', `API에서 전체 데이터 중 일부${page ? `(${page}행)` : ''}만 받았습니다. 필터·정렬·합계는 받은 행 안에서만 계산한 결과입니다.`);
   } else if (table.truncated || table.completeness?.status !== 'complete') {
     lines.push('', '응답이 일부만 포함되어 있습니다.');
   }

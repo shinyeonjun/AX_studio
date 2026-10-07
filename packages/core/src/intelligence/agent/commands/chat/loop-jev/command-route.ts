@@ -4,6 +4,7 @@ import { hostFacingMessage } from '../result.js';
 import { routeChatWithJev } from '../jev-router.js';
 import { appendAppLog } from '../../../../../persistence/paths/app-log.js';
 import { chatReadAuthorizationFor, type ChatReadAuthorization } from '../read-authorization.js';
+import { readAllHttpPages, withAllPages } from '../http-pages.js';
 import {
   executeScopedChatCommand,
   isRecoverableReadFailure,
@@ -14,6 +15,9 @@ import {
   workflowUpdateSuccessMessage,
 } from '../loop-shared.js';
 import { baseRouterInput, type JevRoute, type JevTurn } from './turn.js';
+
+/** Table shapings whose answer depends on every row, not the first page. */
+const WHOLE_SET_TRANSFORMS = new Set(['filter', 'sort', 'filter_sort', 'calculate']);
 
 /** Lifecycle commands report their host status deterministically instead of via an LLM paraphrase. */
 function lifecycleCommandReply(route: JevRoute<'command'>, result: AxCommandResult): string | undefined {
@@ -173,6 +177,24 @@ export async function commandRoute(turn: JevTurn, route: JevRoute<'command'>): P
   // for an LLM paraphrase that could obscure the actual failure.
   if (completed.result.status !== 'ok') {
     return hostFacingMessage(completed.result, '요청을 처리하지 못했습니다.');
+  }
+  // A filter, ranking or total over a paged API is wrong on its first page alone: gather the rest.
+  if (readAuthorization && WHOLE_SET_TRANSFORMS.has(completed.route.tableTransform ?? '')) {
+    const startedAt = Date.now();
+    const gathered = await readAllHttpPages(completed.command, completed.result, (next) => {
+      signal.throwIfAborted();
+      // The host moved only the provider's own page parameter; the read stays the authorized one.
+      const params = next.name === 'capability.invoke' ? next.args.params as Record<string, unknown> : {};
+      return executeScopedChatCommand(context, next, { ...readAuthorization, params });
+    });
+    signal.throwIfAborted();
+    if (gathered.pages > 1) {
+      appendAppLog('info', 'Paged read gathered for a whole-set answer.', {
+        ...requestContext, event: 'jev_chat_read_pages', pages: gathered.pages, complete: gathered.complete, durationMs: Date.now() - startedAt,
+      });
+      // The answer's recipe records the whole-set read, so a recurring job made from it reads every page too.
+      completed = { ...completed, command: withAllPages(completed.command), result: gathered.result };
+    }
   }
   return turn.replies.successfulCommandReply({
     command: completed.command,

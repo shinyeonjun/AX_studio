@@ -20,7 +20,7 @@ describe('run result table', () => {
     const markup = render({ kind: 'execution_result', executionId: 'e', executionStatus: 'success', readResult: table as never });
     expect(markup).toContain('<th scope="col">title</th>');
     expect(markup).toContain('<td>Apple</td>');
-    expect(markup).toContain('한 페이지(30행)');
+    expect(markup).toContain('일부(30행)');
   });
 
   it('says so when no row matched', () => {

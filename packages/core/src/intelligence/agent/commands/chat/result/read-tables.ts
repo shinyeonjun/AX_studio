@@ -6,6 +6,9 @@ import {
 import { TableArtifactSchema, type TableArtifact } from '../../../../../contracts/artifacts/table.js';
 import { tableArtifactFromRows } from '../../../../../contracts/artifacts/table-build.js';
 import { SEARCH_HITS_FIELD } from '../../../../../platform/knowledge.js';
+import { uniqueObjectArrayPath } from '../../../../../connectors/http/connector/pagination.js';
+
+export { uniqueObjectArrayPath };
 
 export function httpResponseFromResult(result: AxCommandResult): ReturnType<typeof HttpResponseArtifactSchema.safeParse> {
   if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) {
@@ -15,14 +18,6 @@ export function httpResponseFromResult(result: AxCommandResult): ReturnType<type
   return HttpResponseArtifactSchema.safeParse(
     Object.hasOwn(data, 'data') ? data.data : data,
   );
-}
-
-export function uniqueObjectArrayPath(value: unknown): string | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const candidates = Object.entries(value).filter(([, entry]) =>
-    Array.isArray(entry) && entry.every((row) => Boolean(row) && typeof row === 'object' && !Array.isArray(row)),
-  );
-  return candidates.length === 1 ? candidates[0]?.[0] : undefined;
 }
 
 export function selectedColumnsFromHttpPath(params: unknown): string[] | undefined {

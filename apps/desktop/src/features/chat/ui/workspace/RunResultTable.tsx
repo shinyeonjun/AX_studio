@@ -35,7 +35,7 @@ export function RunResultTable({ table }: { table: ResultTable }) {
       {table.truncated && <p className="ax-run-result-table-note">표가 길어 앞부분만 보여 줍니다.</p>}
       {table.completeness?.reason === 'provider_limit' && (
         <p className="ax-run-result-table-note">
-          API가 전체 데이터 중 한 페이지{page ? `(${page}행)` : ''}만 돌려줬습니다. 이 표는 그 페이지 안에서 만든 결과입니다.
+          API에서 전체 데이터 중 일부{page ? `(${page}행)` : ''}만 받았습니다. 이 표는 받은 행 안에서 만든 결과입니다.
         </p>
       )}
     </section>
