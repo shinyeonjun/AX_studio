@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
@@ -14,6 +14,9 @@ type GmailConnectionControllerProps = Pick<GmailConnectionFormProps, 'onConnect'
 
 export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnectionControllerProps) {
   const [busy, setBusy] = useState(false);
+  // Google sign-in happens in the browser; until it returns, connecting again starts over.
+  const [signingIn, setSigningIn] = useState(false);
+  const attemptRef = useRef(0);
   const [message, setMessage] = useState('');
   const [messageIsError, setMessageIsError] = useState(false);
   const showMessage = (text: string, isError = false) => {
@@ -22,15 +25,20 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
   };
 
   const handleConnect = async () => {
-    setBusy(true);
-    showMessage('');
+    const attempt = attemptRef.current + 1;
+    attemptRef.current = attempt;
+    setSigningIn(true);
+    showMessage('브라우저에서 Google 로그인을 마쳐 주세요. 창을 닫았다면 버튼을 다시 누르세요.');
     try {
       await onConnect();
+      if (attempt !== attemptRef.current) return;
       showMessage('Gmail 연결이 완료되었습니다.');
     } catch (error) {
+      // A sign-in replaced by a newer click ends quietly; the newer one reports.
+      if (attempt !== attemptRef.current) return;
       showMessage(ipcErrorMessage(error, 'Gmail 연결에 실패했습니다.'), true);
     } finally {
-      setBusy(false);
+      if (attempt === attemptRef.current) setSigningIn(false);
     }
   };
 
@@ -48,5 +56,5 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
     }
   };
 
-  return { busy, message, messageIsError, handleConnect, handleDisconnect };
+  return { busy, signingIn, message, messageIsError, handleConnect, handleDisconnect };
 }

@@ -88,7 +88,7 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
     <UserMessage key={'user-' + index} message={message} />
   ) : (
     <AssistantMessage
-      key={'assistant-' + index}
+      key={assistantMessageKey(message, index)}
       message={message}
       busy={busy}
       isLatest={index === lastAssistantIndex}
@@ -102,6 +102,14 @@ const WorkspaceMessageList = memo(function WorkspaceMessageList({
     />
   ));
 });
+
+/**
+ * A run's result card keeps its own state (approval in progress, saved file); keying it by the run
+ * keeps that state on the right card when the transcript is reloaded or a result is updated in place.
+ */
+function assistantMessageKey(message: { executionId?: string }, index: number): string {
+  return message.executionId ? `run-${message.executionId}` : `assistant-${index}`;
+}
 
 export function AxWorkspaceChat({
   messages,

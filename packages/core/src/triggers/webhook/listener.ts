@@ -7,6 +7,17 @@ const WEBHOOK_MAX_ACTIVE_REQUESTS = 64;
 const WEBHOOK_REQUEST_TIMEOUT_MS = 15_000;
 export type { WebhookEventHandler, WebhookListenerOptions } from './listener/contracts.js';
 
+/** Why the port could not be opened, said so the person can fix it (shown in the connection form). */
+function listenFailure(error: unknown, port: number): Error {
+  const code = (error as { code?: unknown } | null)?.code;
+  const message = code === 'EADDRINUSE'
+    ? `포트 ${port}를 이미 다른 프로그램이 쓰고 있어요. 다른 포트 번호를 입력해 주세요.`
+    : code === 'EACCES'
+      ? `포트 ${port}를 열 권한이 없어요. 1024 이상의 다른 포트 번호를 입력해 주세요.`
+      : undefined;
+  return message ? Object.assign(new Error(message), { code, cause: error }) : error instanceof Error ? error : new Error(String(error));
+}
+
 export class WebhookInboundListener {
   private server?: Server;
   private controller?: AbortController;
@@ -64,7 +75,7 @@ export class WebhookInboundListener {
       controller.abort();
       this.controller = undefined;
       this.server = undefined;
-      throw error;
+      throw listenFailure(error, options.port);
     }
   }
 

@@ -28,7 +28,7 @@ function hasAnyGmailScope(granted: string[] | undefined, accepted: readonly stri
 }
 
 export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
-  const { busy, message, messageIsError, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
+  const { busy, signingIn, message, messageIsError, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
   const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
   const oauthReady = state?.gmailOAuthConfigured ?? false;
   const email = state?.gmailEmail;
@@ -114,7 +114,7 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
                 onClick={handleConnect}
                 disabled={busy || !oauthReady}
               >
-                {busy ? '연결 중...' : 'Gmail 연결하기'}
+                {signingIn ? 'Google 로그인 다시 열기' : 'Gmail 연결하기'}
               </button>
             </div>
           </>

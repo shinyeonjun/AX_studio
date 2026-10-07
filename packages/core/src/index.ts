@@ -99,3 +99,4 @@ export * from './connectors/protocols/openapi/index.js';
 export * from './persistence/paths/index.js';
 export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './application/bootstrap.js';
 export { shutdownCommandProcesses } from './intelligence/agent/model/cli-process/runner/ownership.js';
+export { connectorErrorMessage, executionErrorReason, slackErrorMessage } from './contracts/error-messages.js';

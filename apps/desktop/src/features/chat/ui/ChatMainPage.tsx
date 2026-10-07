@@ -26,9 +26,11 @@ interface ChatMainPageProps {
   executions?: AppState['executions'];
   /** Host-level setup notice (e.g. Jev not connected) shown above the conversation. */
   setupNotice?: ReactNode;
+  /** Runs a saved work now and reports a failure the way the work list does. */
+  onRunWork: (workflowId: string) => Promise<void>;
 }
 
-export function ChatMainPage({ workspaceChat, setupNotice, executions }: ChatMainPageProps) {
+export function ChatMainPage({ workspaceChat, setupNotice, executions, onRunWork }: ChatMainPageProps) {
   const discovery = useDiscovery({
     workspaceContextKey: workspaceChat.workspaceContextKey,
     // Show the saved work (its run button and results), not an empty chat.
@@ -141,7 +143,7 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions }: ChatMai
         }}
         // A manual work runs when asked: offer running it; a scheduled or event work is switched on.
         {...(isManualWork
-          ? { onRunWorkflow: () => window.ax.runWorkflow(workspaceChat.workspaceWorkflowState!.workflowId!).then(() => undefined) }
+          ? { onRunWorkflow: () => onRunWork(workspaceChat.workspaceWorkflowState!.workflowId!) }
           : { onRegisterWorkflow: workspaceChat.registerWorkflow })}
         onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
         onDiscoveryAnswer={discovery.answer}
