@@ -1,6 +1,9 @@
 import type { DiscoveryInspectView } from '@ax-studio/core';
 import { axStudioLogo } from '../../../../../ui/constants/brand';
 import { DiscoveryReviewCard } from '../DiscoveryReviewCard';
+import type { AppState } from '../../../../../types/app-state';
+import { ComputedResults } from '../../../../activity/ui/activity-execution-item';
+import { executionStatusLabel, executionTriggerLabel, formatRelativeTime } from '../../../../../ui/lib/work-display';
 import { WELCOME_EXAMPLES } from './model';
 
 export interface WorkspaceEmptyStageProps {
@@ -9,6 +12,10 @@ export interface WorkspaceEmptyStageProps {
   onSend: (text: string) => Promise<void>;
   /** A saved work is open but has no messages yet. */
   workOpen?: boolean;
+  /** That work's latest runs, newest first. */
+  workRuns?: AppState['executions'];
+  /** That work runs only when asked. */
+  workManual?: boolean;
   /** Unfinished discoveries the person can pick up again. */
   resumable?: ReadonlyArray<{ sessionId: string; goal: string }>;
   onResume?: (sessionId: string) => void;
@@ -19,17 +26,27 @@ export function WorkspaceEmptyStage({
   onAttachExample,
   onSend,
   workOpen = false,
+  workRuns = [],
+  workManual = true,
   resumable = [],
   onResume,
 }: WorkspaceEmptyStageProps) {
   if (workOpen) {
+    const latest = workRuns[0];
     return (
       <div className="ax-workspace-empty-stage">
         <div className="ax-workspace-welcome">
           {/* The work's name is already the page title above. */}
-          <h1>아직 이 화면에 기록이 없습니다</h1>
+          {latest ? (
+            <WorkLatestRuns runs={workRuns} />
+          ) : (
+            <h1>아직 실행한 적이 없어요</h1>
+          )}
           <p className="ax-workspace-welcome-hint">
-            아래 '지금 실행'을 누르면 바로 실행됩니다. 실행 결과는 활동 탭에서 볼 수 있고, 바꾸고 싶은 점은 여기에 적어 주세요.
+            {workManual
+              ? "아래 '지금 실행'을 누르면 바로 실행돼요."
+              : '정해진 때가 되면 자동으로 실행돼요.'}
+            {' '}바꾸고 싶은 점은 여기에 적어 주세요.
           </p>
         </div>
       </div>
@@ -141,5 +158,30 @@ export function WorkspaceDiscoveryState({
       onCancel={onCancel}
       onRetry={onRetry}
     />
+  );
+}
+
+/** What the opened work last produced, so its results are where the work is. */
+function WorkLatestRuns({ runs }: { runs: AppState['executions'] }) {
+  const [latest, ...older] = runs;
+  if (!latest) return null;
+  const ok = latest.status === 'success' && latest.resultStatus !== 'failed';
+  return (
+    <section className="ax-work-latest" aria-label="최근 실행 결과">
+      <h2>최근 실행 · {formatRelativeTime(latest.startedAt)}</h2>
+      <p className="ax-work-latest-meta">
+        {executionTriggerLabel(latest.triggerType)} · {ok ? '완료' : executionStatusLabel(latest.status)}
+      </p>
+      {ok && (latest.sourceFile || latest.computedResults?.length) ? (
+        <ComputedResults sourceFile={latest.sourceFile} results={latest.computedResults ?? []} />
+      ) : null}
+      {older.length > 0 && (
+        <ul className="ax-work-latest-older">
+          {older.map((run) => (
+            <li key={run.id}>{formatRelativeTime(run.startedAt)} · {executionTriggerLabel(run.triggerType)} · {run.status === 'success' ? '완료' : executionStatusLabel(run.status)}</li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

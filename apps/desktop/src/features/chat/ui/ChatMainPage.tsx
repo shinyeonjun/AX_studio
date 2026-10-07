@@ -1,3 +1,4 @@
+import type { AppState } from '../../../types/app-state';
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { Node } from '@xyflow/react';
 import type { useWorkspaceChat } from '../hooks/useWorkspaceChat';
@@ -21,11 +22,13 @@ type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
 interface ChatMainPageProps {
   workspaceChat: WorkspaceChatApi;
+  /** Recent runs, so an opened work shows what it last produced. */
+  executions?: AppState['executions'];
   /** Host-level setup notice (e.g. Jev not connected) shown above the conversation. */
   setupNotice?: ReactNode;
 }
 
-export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) {
+export function ChatMainPage({ workspaceChat, setupNotice, executions }: ChatMainPageProps) {
   const discovery = useDiscovery({
     workspaceContextKey: workspaceChat.workspaceContextKey,
     // Show the saved work (its run button and results), not an empty chat.
@@ -34,6 +37,8 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
     },
   });
   const savedTriggerType = workspaceChat.workspaceWorkflowState?.draft?.trigger?.type;
+  const openWorkflowId = workspaceChat.workspaceWorkflowState?.workflowId;
+  const workRuns = openWorkflowId ? (executions ?? []).filter((run) => run.workflowId === openWorkflowId).slice(0, 3) : [];
   const isManualWork = Boolean(workspaceChat.workspaceWorkflowState?.workflowId)
     && (!savedTriggerType || savedTriggerType === 'manual');
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
@@ -115,6 +120,8 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
         error={workspaceChat.error || discovery.error}
         progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
+        workRuns={workRuns}
+        workManual={isManualWork}
         resumableDiscoveries={discovery.resumable}
         onResumeDiscovery={discovery.resume}
         workflowRegistered={workspaceChat.workflowRegistered}

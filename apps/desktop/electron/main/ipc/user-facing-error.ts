@@ -6,7 +6,9 @@ const HANGUL = /[ㄱ-ㆎ가-힣]/u;
  */
 export function userFacingError(error: unknown, fallback: string): string {
   const message = (error instanceof Error ? error.message : String(error)).trim();
-  if (message && HANGUL.test(message) && !/^\s*[[{]/.test(message)) return message;
+  // A system error naming a Korean path (ENOENT … '…업무자료…') is still not a sentence for people.
+  const systemError = /^E[A-Z]{3,}:/.test(message) || /no such file|permission denied/i.test(message);
+  if (message && HANGUL.test(message) && !systemError && !/^\s*[[{]/.test(message)) return message;
   console.warn('[AX Studio] replaced a non-user-facing error message:', message);
   return fallback;
 }

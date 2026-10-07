@@ -76,10 +76,12 @@ export function ipcErrorCode(error: unknown): string {
 export function ipcErrorMessage(error: unknown, fallback = '요청 처리에 실패했습니다.'): string {
   const message = cleanIpcError(error);
   if (!message || STRUCTURED_DETAIL.test(message)) return fallback;
-  if (HANGUL.test(message)) return message;
   if (CALLER_CLASSIFIED_CODES.has(message)) return message;
+  // Codes first: a system error naming a Korean file path (ENOENT … 업무자료 …) is not Korean text.
   const key = message.replace(/[.!\s]+$/u, '').toLowerCase();
   const nodeCode = NODE_ERROR_CODE.exec(message)?.[1]?.toLowerCase();
   const known = KNOWN_MESSAGES.get(key) ?? (nodeCode ? KNOWN_MESSAGES.get(nodeCode) : undefined);
-  return known ?? fallback;
+  if (known) return known;
+  if (nodeCode) return fallback;
+  return HANGUL.test(message) ? message : fallback;
 }

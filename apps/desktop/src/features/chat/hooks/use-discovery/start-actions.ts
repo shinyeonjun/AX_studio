@@ -30,7 +30,7 @@ export function useDiscoveryStartActions({
   setError,
   refresh,
 }: UseDiscoveryStartActionsOptions) {
-  const startFromArtifact = useCallback(async (goal: string, artifactId: string, expectedContextKey?: number) => {
+  const startFromArtifact = useCallback(async (goal: string, artifactIds: readonly string[], expectedContextKey?: number) => {
     const contextKey = workspaceContextKeyRef.current;
     if (expectedContextKey !== undefined && expectedContextKey !== contextKey) return;
     const epoch = operationEpochRef.current;
@@ -39,7 +39,7 @@ export function useDiscoveryStartActions({
     try {
       const result = await window.ax.discoveryStart({
         goal,
-        exampleArtifactIds: [artifactId],
+        exampleArtifactIds: [...artifactIds],
         inputArtifactIds: [],
       });
       const data = unwrap<{ sessionId: string }>(result);
@@ -73,7 +73,8 @@ export function useDiscoveryStartActions({
         return;
       }
       const resultName = resultNameFromFile(imported.artifact.fileName);
-      await startFromArtifact(resultName ? `${resultName} 만들기` : goal, imported.artifact.id, contextKey);
+      const artifacts = imported.artifacts?.length ? imported.artifacts : [imported.artifact];
+      await startFromArtifact(resultName ? `${resultName} 만들기` : goal, artifacts.map((artifact) => artifact.id), contextKey);
     } catch (err) {
       if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {

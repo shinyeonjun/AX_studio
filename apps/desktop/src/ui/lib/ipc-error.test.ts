@@ -50,3 +50,10 @@ describe('English and code-like errors from the main process', () => {
     expect(ipcErrorCode(wrap('app_shutting_down'))).toBe('app_shutting_down');
   });
 });
+
+describe('system errors that mention Korean paths', () => {
+  it('are explained, not shown raw because the path is Korean', () => {
+    expect(ipcErrorMessage(new Error("Error invoking remote method 'ax:x': Error: ENOENT: no such file or directory, stat 'C:\업무자료\a.xlsx'"), '실패')).toBe('파일이나 폴더를 찾을 수 없어요. 옮겨지거나 삭제됐는지 확인해 주세요.');
+    expect(ipcErrorMessage(new Error("EISDIR: illegal operation on a directory, read 'C:\업무자료'"), '파일을 열지 못했어요.')).toBe('파일을 열지 못했어요.');
+  });
+});

@@ -11,7 +11,7 @@ import { CalculatedOutput } from './calculated-output.js';
 
 type ComputedResult = NonNullable<ActivityExecution['computedResults']>[number];
 
-function ComputedResults({ sourceFile, results }: { sourceFile?: string; results: ComputedResult[] }) {
+export function ComputedResults({ sourceFile, results }: { sourceFile?: string; results: ComputedResult[] }) {
   return (
     <div className="timeline-results" data-testid="computed-results">
       {sourceFile && <div className="timeline-step">읽은 파일 · {sourceFile}</div>}

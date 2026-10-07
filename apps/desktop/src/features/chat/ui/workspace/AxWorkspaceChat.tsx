@@ -1,3 +1,4 @@
+import type { AppState } from '../../../../types/app-state';
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -44,6 +45,10 @@ interface AxWorkspaceChatProps {
   /** Runs the opened manual work now. */
   onRunWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
+  /** The opened work's latest runs, newest first. */
+  workRuns?: AppState['executions'];
+  /** The opened work runs only when asked (no schedule or event). */
+  workManual?: boolean;
   onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
   onDiscoveryPublish?: (schedule?: string) => Promise<void> | void;
   onDiscoveryCancel?: () => Promise<void> | void;
@@ -105,6 +110,8 @@ export function AxWorkspaceChat({
   progress,
   placeholder,
   workflowId,
+  workRuns,
+  workManual,
   resumableDiscoveries,
   onResumeDiscovery,
   workflowRegistered = false,
@@ -154,6 +161,8 @@ export function AxWorkspaceChat({
             <WorkspaceEmptyStage
               discoveryBusy={discoveryBusy}
               workOpen={Boolean(workflowId)}
+              workRuns={workRuns}
+              workManual={workManual}
               resumable={resumableDiscoveries}
               onResume={onResumeDiscovery}
               onAttachExample={onAttachExample}
