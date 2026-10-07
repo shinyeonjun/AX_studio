@@ -16,6 +16,7 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
     setAppToken,
     busy,
     message,
+    messageIsError,
     handleConnect,
     handleDisconnect,
   } = useSlackConnectionForm({ onConnect, onDisconnect, realtimeTriggers: status.realtimeTriggers });
@@ -24,7 +25,7 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
   const connectLabel = connected
     ? status.realtimeTriggers
       ? '다시 연결'
-      : '실시간 트리거 다시 시도'
+      : '새 메시지 자동 감지 다시 시도'
     : '연결하기';
 
   return (
@@ -41,8 +42,8 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
         </div>
 
         <ul className="connection-capability-list" aria-label="Slack 기능 상태">
-          <li>{status.manualSend ? '✓' : '·'} 메시지 발송</li>
-          <li>{status.realtimeTriggers ? '✓' : '·'} 실시간 트리거</li>
+          <li>{status.manualSend ? '✓' : '·'} 메시지 보내기</li>
+          <li>{status.realtimeTriggers ? '✓' : '·'} 새 메시지 자동 감지</li>
         </ul>
 
         {connected && (
@@ -51,14 +52,14 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
             {state?.slackBotUser && <p className="connection-account">봇: @{state.slackBotUser}</p>}
             {state?.slackLastError && (
               <p className="connection-form-message error" role="alert">
-                Socket Mode: {state.slackLastError}
+                실시간 수신: {state.slackLastError}
               </p>
             )}
           </div>
         )}
 
         <div className="form-field">
-          <label htmlFor="slack-bot-token">Bot Token</label>
+          <label htmlFor="slack-bot-token">봇 토큰 (xoxb-로 시작)</label>
           <input
             id="slack-bot-token"
             type="password"
@@ -69,7 +70,7 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
           />
         </div>
         <div className="form-field">
-          <label htmlFor="slack-app-token">App-Level Token (Socket Mode)</label>
+          <label htmlFor="slack-app-token">실시간 수신 토큰 (xapp-로 시작)</label>
           <input
             id="slack-app-token"
             type="password"
@@ -99,7 +100,7 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
             </button>
           )}
           {message && (
-            <p className={`connection-form-message ${message.includes('실패') ? 'error' : ''}`} role="status">
+            <p className={`connection-form-message ${messageIsError ? 'error' : ''}`} role="status">
               {message}
             </p>
           )}
@@ -108,10 +109,12 @@ export function SlackConnectionForm({ state, embedded = false, onConnect, onDisc
       {!embedded && (
         <ConnectionGuide
           guideKey="slack"
+          title="Slack 앱 준비 방법 (관리자용)"
+          collapsible
           steps={[
-            'Slack 앱을 만들고 Socket Mode를 켭니다.',
-            'Bot Token Scopes와 App Token(connections:write)을 발급합니다.',
-            '앱을 워크스페이스에 설치한 뒤 xoxb / xapp 토큰을 입력합니다.',
+            'api.slack.com에서 Slack 앱을 만들고 Socket Mode를 켭니다.',
+            'Bot Token Scopes를 추가하고, connections:write 권한으로 App-Level Token을 발급합니다.',
+            '앱을 워크스페이스에 설치한 뒤 봇 토큰(xoxb-)과 실시간 수신 토큰(xapp-)을 위에 입력합니다.',
             'Event Subscriptions에서 message 이벤트를 구독합니다.',
           ]}
         />

@@ -39,20 +39,20 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
 
   return (
     <div className="settings-scroll">
-      <SettingsCategory title="AI" description="인터뷰·분류·판단에 사용할 AI를 연결합니다.">
+      <SettingsCategory title="AI" description="대화와 문서 작성에 쓸 AI를 연결합니다.">
         <AiHubCards state={state} detecting={detecting} hub={hub} onOpenBrand={openBrand} />
       </SettingsCategory>
 
       <SettingsCategory
-        title="Decision Plane"
-        description="생성 모델과 분리된 저비용 판단 엔진을 연결합니다."
+        title="판단 엔진"
+        description="짧은 결정을 빠르게 내리는 별도 엔진을 연결합니다."
       >
         <div className="connection-hub">
           <ConnectionCard
-            title="Jev"
+            title="판단 엔진(Jev)"
             description={state?.jevDecisionModel
-              ? `${state.jevDecisionModel} · 소스 선택, ambiguity 판정, 복구 분기`
-              : '소스 선택, ambiguity 판정, 복구 분기'}
+              ? `${state.jevDecisionModel} · 자료 선택 같은 짧은 결정`
+              : '자료 선택 같은 짧은 결정'}
             emojiIcon="🧭"
             badge={jevBadge}
             badgeClass={jevConfigured ? 'connected' : ''}

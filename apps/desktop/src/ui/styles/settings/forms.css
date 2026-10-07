@@ -15,6 +15,34 @@
   color: var(--amber);
 }
 
+/* Collapsed technical details and setup guides inside connection forms. */
+.connection-form-details {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.connection-form-details > summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.connection-form-details > summary:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.connection-form-details[open] > summary {
+  margin-bottom: 8px;
+}
+
+.connection-form-details ol {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
 .webhook-secret-row {
   display: flex;
   gap: 8px;

@@ -21,9 +21,9 @@ export function generateWebhookSecret(): string {
 /** Client-side check matching the main-process rule; empty is allowed only to keep a stored secret. */
 export function webhookSecretError(secret: string, connected: boolean): string | undefined {
   const trimmed = secret.trim();
-  if (!trimmed) return connected ? undefined : '공유 비밀을 입력하거나 무작위 생성 버튼을 눌러 주세요.';
+  if (!trimmed) return connected ? undefined : '비밀 키를 입력하거나 무작위 생성 버튼을 눌러 주세요.';
   if (trimmed.length < WEBHOOK_MIN_SECRET_LENGTH) {
-    return `공유 비밀은 최소 ${WEBHOOK_MIN_SECRET_LENGTH}자 이상이어야 합니다. (현재 ${trimmed.length}자)`;
+    return `비밀 키는 최소 ${WEBHOOK_MIN_SECRET_LENGTH}자 이상이어야 합니다. (현재 ${trimmed.length}자)`;
   }
   return undefined;
 }
@@ -51,6 +51,11 @@ export function useWebhookConnectionForm({
   const [tunnelUrl, setTunnelUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const showMessage = (text: string, isError = false) => {
+    setMessage(text);
+    setMessageIsError(isError);
+  };
   const [secretVisible, setSecretVisible] = useState(false);
 
   const loadFromConnection = () => {
@@ -60,7 +65,7 @@ export function useWebhookConnectionForm({
     setTunnelUrl(webhookEntry.tunnelUrl ?? '');
     setSecret('');
     setSecretVisible(false);
-    setMessage('');
+    showMessage('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -71,7 +76,7 @@ export function useWebhookConnectionForm({
             id: 'webhook',
             title: webhookEntry.label?.trim() || 'Webhook',
             subtitle: webhookEntry.localBaseUrl ?? `http://127.0.0.1:${webhookEntry.port}/hooks/`,
-            meta: webhookEntry.tunnelUrl ? `터널: ${webhookEntry.tunnelUrl}` : `포트 ${webhookEntry.port}`,
+            meta: webhookEntry.tunnelUrl ? `외부 접속 주소: ${webhookEntry.tunnelUrl}` : `포트 ${webhookEntry.port}`,
           },
         ]
       : [];
@@ -79,16 +84,16 @@ export function useWebhookConnectionForm({
   const handleConnect = async () => {
     const parsedPort = Number(port);
     if (!Number.isInteger(parsedPort)) {
-      setMessage('포트 번호가 올바르지 않습니다.');
+      showMessage('포트 번호가 올바르지 않습니다.', true);
       return;
     }
     const secretProblem = webhookSecretError(secret, connected);
     if (secretProblem) {
-      setMessage(secretProblem);
+      showMessage(secretProblem, true);
       return;
     }
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onConnect({
         port: parsedPort,
@@ -96,11 +101,11 @@ export function useWebhookConnectionForm({
         label: label.trim() || undefined,
         tunnelUrl: tunnelUrl.trim() || undefined,
       });
-      setMessage('Webhook 리스너가 시작되었습니다.');
+      showMessage('외부 신호를 받기 시작했어요.');
       setSecret('');
       setSecretVisible(false);
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Webhook 연결에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, '외부 신호 받기를 시작하지 못했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -109,12 +114,12 @@ export function useWebhookConnectionForm({
   const handleDisconnect = async () => {
     if (!confirmDisconnectConnector('Webhook 수신')) return;
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onDisconnect();
-      setMessage('Webhook 리스너가 중지되었습니다.');
+      showMessage('외부 신호 받기를 멈췄어요.');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -124,7 +129,7 @@ export function useWebhookConnectionForm({
     setSecret(generateWebhookSecret());
     // Show the generated value once so it can be copied into the sending service.
     setSecretVisible(true);
-    setMessage('');
+    showMessage('');
   };
 
   return {
@@ -144,6 +149,7 @@ export function useWebhookConnectionForm({
     setTunnelUrl,
     busy,
     message,
+    messageIsError,
     lastError: webhookEntry?.lastError,
     connectedItems,
     localExample: `http://127.0.0.1:${port || DEFAULT_WEBHOOK_PORT}/hooks/{path}`,

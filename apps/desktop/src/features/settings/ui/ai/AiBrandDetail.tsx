@@ -34,13 +34,13 @@ export function AiBrandDetail({ brand, state, detecting, onRefresh, detection }:
       apiKeyDraft={panel.apiKeyDraft}
       apiKeyConfigured={panel.apiKeyConfigured}
       apiKeyMasked={panel.apiKeyMasked}
-      configFilePath={panel.configFilePath}
       cliVerified={panel.cliVerified}
       apiVerified={panel.apiVerified}
       saving={panel.saving}
       testing={panel.testing}
       testingCli={panel.testingCli}
       message={panel.message}
+      messageIsError={panel.messageIsError}
       canSave={panel.canSave}
       onModeChange={panel.selectMode}
       onModelChange={panel.setModel}

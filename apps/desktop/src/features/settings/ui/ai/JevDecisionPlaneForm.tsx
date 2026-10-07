@@ -98,8 +98,8 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       setApiKeyVerified(false);
       setApiKeyDraft('');
       setMessage(config.enabled
-        ? '저장되었습니다. Jev Decision Plane이 즉시 적용되었습니다.'
-        : '저장되었습니다. Jev Decision Plane이 꺼져 있습니다.');
+        ? '저장했어요. 판단 엔진(Jev)을 바로 사용합니다.'
+        : '저장했어요. 판단 엔진(Jev)은 꺼져 있습니다.');
       await onRefresh();
     } catch (error) {
       setMessage(ipcErrorMessage(error, 'Jev 설정 저장에 실패했습니다.'));
@@ -119,9 +119,9 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         <div className="connection-form-header">
           <div className="sidebar-settings-link-icon sidebar-settings-link-icon--emoji" aria-hidden>🧭</div>
           <div>
-            <h3>Jev Decision Plane</h3>
+            <h3>판단 엔진(Jev)</h3>
             <p className="muted">
-              소스 선택, replay ambiguity 판정, 복구 분기 같은 짧은 판단에 Jev를 사용합니다.
+              자료 선택처럼 짧은 결정을 빠르게 내려요. 실제로 실행할지는 항상 앱의 안전 규칙이 정해요.
             </p>
           </div>
         </div>
@@ -129,14 +129,15 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
             <div>
-              <div className="provider-option-title">Decision Plane 사용</div>
+              <div className="provider-option-title">판단 엔진 사용</div>
               <div className="provider-option-desc">
-                실행·replay·publish 검증은 기존 deterministic gate가 계속 최종 권한을 가집니다.
+                켜도 실행·저장 여부는 앱의 안전 규칙이 최종으로 정합니다.
               </div>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="checkbox"
+                aria-label="판단 엔진 사용"
                 checked={enabled}
                 onChange={(event) => setEnabled(event.target.checked)}
               />
@@ -147,7 +148,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
 
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
-            <div className="provider-option-title">TypeSafe API</div>
+            <div className="provider-option-title">판단 엔진 API</div>
             <span className={`connection-badge ${apiKeyVerified ? 'connected' : ''}`}>
               {apiKeyVerified ? '인증 확인됨' : apiKeyConfigured ? '키 등록됨 · 인증 미확인' : '미등록'}
             </span>
@@ -162,7 +163,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
           <input
             id="jev-api-key"
             type="password"
-            placeholder="TypeSafe API key"
+            placeholder="판단 엔진 API 키"
             value={apiKeyDraft}
             onChange={(event) => {
               setApiKeyDraft(event.target.value);
@@ -186,7 +187,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         </div>
 
         <div className="form-field">
-          <label htmlFor="jev-base-url">Base URL</label>
+          <label htmlFor="jev-base-url">서버 주소</label>
           <input
             id="jev-base-url"
             type="text"
@@ -228,7 +229,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       <div className="connection-guide">
         <h4>적용 범위</h4>
         <div className="guide-placeholder">
-          Jev는 생성형 답변 대신 짧은 분기 판단에만 사용됩니다. Jev가 실패하거나 확신이 낮으면 기존 규칙 또는 사용자 확인으로 돌아갑니다.
+          판단 엔진은 긴 답변을 만들지 않고 짧은 결정에만 쓰여요. 판단 엔진이 실패하거나 확실하지 않으면 기존 규칙을 따르거나 사용자에게 물어봅니다.
         </div>
       </div>
     </div>

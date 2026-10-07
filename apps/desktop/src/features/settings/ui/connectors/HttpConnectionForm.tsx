@@ -35,18 +35,18 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
     <div ref={formRef} className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
       {!embedded && (
         <ConnectionGuide
-          title="REST API 연결"
+          title="외부 서비스(API) 연결"
           steps={[
-            '서비스의 base URL을 입력합니다 (예: https://api.example.com/v1/).',
-            'HTTP는 여러 개 연결할 수 있습니다. 업무를 저장할 때 하나를 고릅니다.',
-            '필요하면 Bearer, API Key, Basic 인증을 설정합니다.',
-            '연결 시 서버 응답을 확인합니다. 요청은 그 연결 주소 밖으로 나가지 않습니다.',
+            '서비스의 서버 주소를 입력합니다. 주소는 서비스 안내 문서나 담당자에게 받을 수 있어요.',
+            '외부 서비스는 여러 개 연결할 수 있습니다. 업무를 저장할 때 하나를 고릅니다.',
+            '서비스가 요구하면 토큰, API 키, 아이디·비밀번호 중 하나로 로그인 방식을 정합니다.',
+            '연결할 때 서버가 응답하는지 확인합니다. 요청은 이 주소 밖으로 나가지 않습니다.',
           ]}
         />
       )}
 
       <div className="connection-form-fields">
-        <label htmlFor="http-base-url">Base URL</label>
+        <label htmlFor="http-base-url">서버 주소</label>
         <input
           id="http-base-url"
           type="url"
@@ -74,9 +74,9 @@ export function HttpConnectionForm({ state, embedded = false, onConnect, onDisco
           disabled={busy}
         >
           <option value="none">없음</option>
-          <option value="bearer">Bearer 토큰</option>
-          <option value="apiKey">API Key 헤더</option>
-          <option value="basic">Basic</option>
+          <option value="bearer">토큰 방식</option>
+          <option value="apiKey">API 키 방식</option>
+          <option value="basic">아이디·비밀번호</option>
         </select>
 
         {authType === 'apiKey' && (

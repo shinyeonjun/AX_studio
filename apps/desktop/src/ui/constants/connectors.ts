@@ -26,7 +26,7 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
   gmail: {
     id: 'gmail',
     title: 'Gmail',
-    description: 'OAuth로 메일 읽기·발송',
+    description: '메일 읽기·보내기',
     icon: gmailIcon,
     settingsScreen: 'gmail',
     emoji: '📧',
@@ -34,7 +34,7 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
   slack: {
     id: 'slack',
     title: 'Slack',
-    description: 'Bot Token으로 메시지 전송',
+    description: '채널에 메시지 보내기',
     icon: slackIcon,
     settingsScreen: 'slack',
     emoji: '💬',
@@ -50,15 +50,15 @@ export const CONNECTOR_UI_CATALOG: Record<ConnectorUiId, ConnectorUiMeta> = {
   http: {
     id: 'http',
     title: 'HTTP API',
-    description: 'REST API 아웃바운드 요청',
+    description: '외부 서비스에서 정보 가져오기',
     emojiIcon: '🌐',
     settingsScreen: 'http',
     emoji: '🌐',
   },
   webhook: {
     id: 'webhook',
-    title: 'Webhook',
-    description: '로컬 HTTP 수신 트리거',
+    title: '외부 신호 받기(Webhook)',
+    description: '다른 프로그램이 신호를 보내면 업무 시작',
     emojiIcon: '🔔',
     settingsScreen: 'webhook',
     emoji: '🔔',

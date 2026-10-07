@@ -41,12 +41,12 @@ export function createAiBrandConfigurationActions({
         await window.ax.setAiProvider(config);
         setMessage('저장되었습니다. 이 AI가 사용 중입니다.');
       } else {
-        setMessage('설정이 ai.toml에 저장되었습니다.');
+        setMessage('설정을 저장했어요.');
       }
       await onRefresh();
       await refreshDetection();
     } catch (error) {
-      setMessage(ipcErrorMessage(error, '저장에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '저장에 실패했습니다.'), true);
     } finally {
       setSaving(false);
     }

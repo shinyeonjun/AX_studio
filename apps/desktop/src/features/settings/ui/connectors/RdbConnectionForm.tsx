@@ -97,7 +97,7 @@ export function RdbConnectionForm({
 
       {type !== 'sqlite' && (
         <label className="field">
-          <span>스키마 (선택, 쉼표로 구분)</span>
+          <span>읽을 영역(스키마) — 모르면 비워 두세요</span>
           <input
             value={allowedSchemas}
             onChange={(event) => setAllowedSchemas(event.target.value)}
