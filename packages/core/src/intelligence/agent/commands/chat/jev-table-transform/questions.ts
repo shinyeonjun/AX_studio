@@ -20,14 +20,7 @@ export const OPERATOR_CRITERIA: Record<string, DecisionInstruction> = {
   lte: 'Less than or equal to (<=)',
 };
 
-export function numericValues(message: string): number[] {
-  const values = new Set<number>();
-  for (const match of message.matchAll(/-?\d[\d,]*(?:\.\d+)?/gu)) {
-    const value = Number(match[0].replace(/,/g, ''));
-    if (Number.isFinite(value)) values.add(value);
-  }
-  return [...values];
-}
+export { numericValues } from '../request-numbers.js';
 
 function valueCriteria(values: readonly number[]): Record<string, DecisionInstruction> {
   return Object.fromEntries([

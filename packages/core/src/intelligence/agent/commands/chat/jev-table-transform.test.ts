@@ -529,3 +529,78 @@ describe('applyJevTableTransform', () => {
     expect(output.table.rows.map((row) => row.values.stock)).toEqual([0, 2, 10]);
   });
 });
+
+describe('a filter with a category named alongside a number', () => {
+  const products = buildTableArtifact({
+    id: 'products',
+    headers: ['title', 'category', 'rating'],
+    matrix: [['Powder', 'beauty', 4.64], ['Lipstick', 'beauty', 4.2], ['Bed', 'furniture', 4.77], ['Kiwi', 'groceries', 4.93]],
+  });
+  const choice = (value: string): DecisionAnswer => ({ type: 'choice', choice: value, probabilities: { [value]: 0.99 }, confidence: 0.99 });
+  const pick = (question: DecisionQuestion | undefined, wanted: unknown) => Object.entries(question?.type === 'choice' ? question.criteria : {})
+    .find(([, description]) => typeof description === 'object' && description !== null && ('value' in description ? description.value === wanted : 'field' in description && description.field === wanted))?.[0] ?? 'none';
+
+  function engine(restrictsCategory: boolean): DecisionEngine & { sent: string[] } {
+    const sent: string[] = [];
+    return {
+      sent,
+      evaluate: async (request) => {
+        sent.push(JSON.stringify(request.questions));
+        const answers: Record<string, DecisionAnswer> = {};
+        for (const [id, question] of Object.entries(request.questions)) {
+          if (id === 'filter_column') answers[id] = choice(pick(question, 'rating'));
+          else if (id === 'filter_operator') answers[id] = choice('gt');
+          else if (id === 'filter_value') answers[id] = choice(pick(question, 4.5));
+          else if (id.startsWith('restricts_')) {
+            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.question) : '';
+            const isCategory = asked.includes('column "category"');
+            answers[id] = { type: 'boolean', probability: isCategory && restrictsCategory ? 0.95 : 0.05 };
+          } else if (id.startsWith('category_')) answers[id] = choice(pick(question, 'beauty'));
+        }
+        return { answers };
+      },
+    };
+  }
+
+  it('keeps both conditions: only cosmetics, and only those rated above 4.5', async () => {
+    const output = await applyJevTableTransform({ decisionEngine: engine(true), table: products, userMessage: '화장품 중에 평점 4.5 넘는 것만 보여줘', mode: 'filter' });
+    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder']);
+  });
+
+  it('never sends a column\u2019s values when the request does not restrict it', async () => {
+    const quiet = engine(false);
+    const output = await applyJevTableTransform({ decisionEngine: quiet, table: products, userMessage: '평점 4.5 넘는 것만 보여줘', mode: 'filter' });
+    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.title)).toEqual(['Powder', 'Bed', 'Kiwi']);
+    expect(quiet.sent.join('\n')).not.toContain('furniture');
+  });
+});
+
+describe('a status condition alongside an amount in Korean units', () => {
+  const orders = buildTableArtifact({
+    id: 'orders', headers: ['id', 'amount', 'status'],
+    matrix: [[1, 13000, '완료'], [2, 84000, '완료'], [3, 92000, '취소'], [4, 60000, '완료']],
+  });
+  const choice = (value: string): DecisionAnswer => ({ type: 'choice', choice: value, probabilities: { [value]: 0.99 }, confidence: 0.99 });
+  const find = (question: DecisionQuestion | undefined, key: 'field' | 'value', wanted: unknown) => Object.entries(question?.type === 'choice' ? question.criteria : {})
+    .find(([, description]) => typeof description === 'object' && description !== null && key in description && (description as Record<string, unknown>)[key] === wanted)?.[0] ?? 'none';
+
+  it('keeps both: completed orders, and only those above 50,000 ("5만원")', async () => {
+    const engine: DecisionEngine = {
+      evaluate: async (request) => {
+        const answers: Record<string, DecisionAnswer> = {};
+        for (const [id, question] of Object.entries(request.questions)) {
+          if (id === 'filter_column') answers[id] = choice(find(question, 'field', 'status'));
+          else if (id === 'filter_operator') answers[id] = choice('eq');
+          else if (id === 'filter_value') answers[id] = choice(find(question, 'value', '완료'));
+          else if (id === 'numeric_column') answers[id] = choice(find(question, 'field', 'amount'));
+          else if (id === 'numeric_operator') answers[id] = choice('gt');
+          else if (id === 'numeric_value') answers[id] = choice(find(question, 'value', 50000));
+          else if (id.startsWith('restricts_')) answers[id] = { type: 'boolean', probability: 0.05 };
+        }
+        return { answers };
+      },
+    };
+    const output = await applyJevTableTransform({ decisionEngine: engine, table: orders, userMessage: '완료된 것 중 금액 5만원 넘는 것만', mode: 'filter' });
+    expect(output.status === 'transformed' && output.table.rows.map((row) => row.values.id)).toEqual([2, 4]);
+  });
+});
