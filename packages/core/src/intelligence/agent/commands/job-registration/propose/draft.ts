@@ -82,7 +82,7 @@ export function createPendingJob(options: {
 
   const confirmationToken = randomUUID();
   pending.set(sessionId, { spec, ir, confirmationToken });
-  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken, channelLabels);
+  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken, channelLabels, store.getColumnLabels());
   return ['ok', {
     saved: false,
     pending: true,
@@ -161,6 +161,7 @@ function createPendingGenericJob(
       {
         connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
         channel: channelLabels,
+        column: store.getColumnLabels(),
         folderId: Object.fromEntries((parseLocalFolderConnectionConfig(store.getConnections()
           .find((entry) => entry.connector === 'local_folder')?.config)?.folders ?? [])
           .map((folder) => [folder.id, folder.label])),

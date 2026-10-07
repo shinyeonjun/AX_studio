@@ -18,7 +18,7 @@ export function reviewAccepted(review: ReviewAnswers): boolean {
 /** Shown when planning stops before a reviewed plan exists. */
 export function unsettledPlanPresentation(noCommitMessage: string): AxUiPresentation {
   return {
-    title: '실행 전 계획 검사', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
+    title: '실행 전 계획 확인', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
     blocks: [
       { type: 'decision', label: '계획 상태', value: '미확정 · 중단' },
       { type: 'note', text: noCommitMessage },
@@ -32,11 +32,11 @@ export function reviewedPlanPresentation(
   hostInputCount: number,
 ): AxUiPresentation {
   return {
-    title: '실행 전 계획 검사', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
+    title: '실행 전 계획 확인', role: 'diagnostic', inputMode: 'individual', inputs: [], actions: [],
     blocks: [
-      { type: 'decision', label: '타입·의존 관계', value: 'Host 검사 통과' },
-      { type: 'decision', label: '요구 충족·범위 보존', value: accepted ? 'Jev 검토 통과' : '추가 확인 필요' },
-      { type: 'steps', title: '의존 순서', items: finalSteps.slice(0, 20).map(stepLabel) },
+      { type: 'decision', label: '단계 연결', value: '확인됨' },
+      { type: 'decision', label: '요청과 일치', value: accepted ? '확인됨' : '추가 확인 필요' },
+      { type: 'steps', title: '실행 순서', items: finalSteps.slice(0, 20).map(stepLabel) },
       { type: 'note', text: `실행 완료나 승인이 아닙니다. 필요한 입력 ${hostInputCount}개와 외부 변경 승인은 기존 실행 절차에서 확인합니다.` },
     ],
   };

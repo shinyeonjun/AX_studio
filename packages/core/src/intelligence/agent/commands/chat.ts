@@ -28,7 +28,7 @@ function configuredModelReply(userMessage: string, harness: AxCommandChatOptions
     || /^(?:어떤|무슨)\s*모델(?:을)?\s*(?:써|사용해)(?:요)?$/u.test(text)) {
     const model = harness.modelName?.trim();
     const label = model ? `${harness.providerName} / ${model}` : harness.providerName;
-    return `현재 연결된 모델은 ${label}입니다. 답변은 이 모델이 만들고, 실제 조회·실행은 AX Studio host와 Runtime이 담당합니다.`;
+    return `현재 연결된 모델은 ${label}입니다. 답변은 이 모델이 만들고, 실제 자료 조회와 실행은 AX Studio가 직접 합니다.`;
   }
   return undefined;
 }
@@ -148,5 +148,5 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
   }
 
   appendAppLog('warn', 'Jev chat route returned no result.', { ...requestContext, event: 'jev_chat_empty_result' });
-  return '요청을 안전한 실행 경로로 처리하지 못했습니다. Jev 연결을 확인하고 다시 요청해 주세요.';
+  return '요청을 처리하지 못해 아무것도 실행하지 않았습니다. 잠시 후 다시 요청해 주세요. 계속되면 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.';
 }

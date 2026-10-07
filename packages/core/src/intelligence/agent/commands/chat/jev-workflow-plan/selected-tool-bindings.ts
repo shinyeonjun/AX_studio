@@ -1,3 +1,4 @@
+import { readValueNames } from '../read-value-names.js';
 import type { DecisionAnswer, DecisionInstruction, DecisionQuestion } from '../../../../../contracts/decision.js';
 import { capabilityActionName } from '../../../../../catalog/capability-graph.js';
 import { contractTypesCompatible } from '../../../../../contracts/compatibility.js';
@@ -135,7 +136,7 @@ export function plannedActions(
     const { candidate, id } = entry;
     const hint = candidate.readOperationHint;
     if (hint && (hint.missingParameterPaths?.length ?? 0) > 0) {
-      return { failure: `조회에 필요한 값이 요청에 없습니다 (${hint.missingParameterPaths!.join(', ')}). 해당 값을 알려 주세요.` };
+      return { failure: `조회에 필요한 값(${readValueNames(hint.missingParameterPaths!)})이 요청에 없습니다. 이 값을 알려 주세요.` };
     }
     const params = {
       ...(hint?.params ?? candidate.params),

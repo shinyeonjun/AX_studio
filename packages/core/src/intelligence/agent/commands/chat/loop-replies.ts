@@ -110,13 +110,16 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     userMessage: string,
     request?: JevTableTransformRequest,
     projection?: 'requested_columns',
+    labels: ColumnLabels = {},
   ): Promise<TransformOutcome> => {
     if (request === 'none' && !projection) return { confirmedNoTransform: true };
     if (!options.decisionEngine) return undefined;
     if (request === 'uncertain') {
       return { reply: '필터·정렬 요청을 하나의 안전한 표 변환으로 판단하지 못했습니다. 기준과 순서를 조금 더 구체적으로 알려 주세요.' };
     }
-    const table = tableForJevTransform(command, result);
+    const read = tableForJevTransform(command, result);
+    // Shaped under its Korean headers, so Jev's choices and the result's name read as people do.
+    const table = read ? labeledTable(read, labels) : undefined;
     if (!table) {
       const tableActions = [
         ...(projection ? ['요청한 열 선택'] : []),
@@ -208,20 +211,21 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     readResultStyle,
     llmRequired,
   }: SuccessfulCommandReplyInput): Promise<string> => {
-    const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection);
     const invokeArgs = command.name === 'capability.invoke'
       ? AxCapabilityInvokeArgsSchema.safeParse(command.args)
       : undefined;
     const explicitHttpRead = invokeArgs?.success === true && invokeArgs.data.id === 'http.request'
       && ['GET', 'HEAD'].includes(String(invokeArgs.data.params.method ?? 'GET').toUpperCase());
-    let labels: ColumnLabels = {};
-    if (route === 'capability_read' || route === 'http_read' || explicitHttpRead) {
-      const read = transformOutcome && 'table' in transformOutcome
-        ? transformOutcome.table
-        : tableForJevTransform(command, result);
-      // The table is shown: give its columns Korean headers people can read.
-      if (read) labels = await columnLabelsFor(read, { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal });
-      const table = read ? labeledTable(read, labels) : undefined;
+    const showsReadTable = route === 'capability_read' || route === 'http_read' || explicitHttpRead;
+    // The read table is shown (and shaped): its columns get Korean headers people can read first.
+    const readTable = showsReadTable ? tableForJevTransform(command, result) : undefined;
+    const labels: ColumnLabels = readTable
+      ? await columnLabelsFor(readTable, { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal })
+      : {};
+    const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection, labels);
+    if (showsReadTable) {
+      const shown = transformOutcome && 'table' in transformOutcome ? transformOutcome.table : readTable;
+      const table = shown ? labeledTable(shown, labels) : undefined;
       options.onReadResult?.(table ? boundedChatReadResult(table) : undefined);
       options.onReadRecipe?.(table
         ? chatReadRecipe(command, result, transformOutcome && 'expression' in transformOutcome ? transformOutcome.expression : undefined)
