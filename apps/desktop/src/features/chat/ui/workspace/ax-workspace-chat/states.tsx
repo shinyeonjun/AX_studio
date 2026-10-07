@@ -7,13 +7,34 @@ export interface WorkspaceEmptyStageProps {
   discoveryBusy: boolean;
   onAttachExample?: () => Promise<void>;
   onSend: (text: string) => Promise<void>;
+  /** A saved work is open but has no messages yet. */
+  workOpen?: boolean;
+  /** Unfinished discoveries the person can pick up again. */
+  resumable?: ReadonlyArray<{ sessionId: string; goal: string }>;
+  onResume?: (sessionId: string) => void;
 }
 
 export function WorkspaceEmptyStage({
   discoveryBusy,
   onAttachExample,
   onSend,
+  workOpen = false,
+  resumable = [],
+  onResume,
 }: WorkspaceEmptyStageProps) {
+  if (workOpen) {
+    return (
+      <div className="ax-workspace-empty-stage">
+        <div className="ax-workspace-welcome">
+          {/* The work's name is already the page title above. */}
+          <h1>아직 이 화면에 기록이 없습니다</h1>
+          <p className="ax-workspace-welcome-hint">
+            아래 '지금 실행'을 누르면 바로 실행됩니다. 실행 결과는 활동 탭에서 볼 수 있고, 바꾸고 싶은 점은 여기에 적어 주세요.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ax-workspace-empty-stage">
       <div className="ax-workspace-welcome">
@@ -30,6 +51,21 @@ export function WorkspaceEmptyStage({
           >
             지난 결과물 첨부하기
           </button>
+        )}
+        {onResume && resumable.length > 0 && (
+          <div className="ax-workspace-resume">
+            <p className="ax-workspace-welcome-hint">마치지 않은 학습이 있어요.</p>
+            <ul className="ax-workspace-example-list">
+              {resumable.map((session) => (
+                <li key={session.sessionId}>
+                  <button type="button" className="ax-workspace-example-btn" onClick={() => onResume(session.sessionId)}>
+                    <span className="ax-workspace-example-label">이어서 보기</span>
+                    <span className="ax-workspace-example-text">{session.goal}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         <p className="ax-workspace-welcome-hint">또는 아래처럼 말로 요청할 수도 있어요.</p>
         <ul className="ax-workspace-example-list">

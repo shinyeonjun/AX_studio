@@ -28,6 +28,7 @@ interface WorkspaceSidebarProps {
   onOpenWork: (workflowId: string) => void;
   onOpenExecution: (execution: AppState['executions'][number]) => void;
   onToggleWorkActive: (workflowId: string, active: boolean) => void;
+  onRunWork: (workflowId: string) => Promise<void>;
   onDeleteWork: (workflowId: string, name: string) => void;
   onOpenSettings: (screen: SettingsScreen) => void;
 }
@@ -49,6 +50,7 @@ export function WorkspaceSidebar({
   onOpenWork,
   onOpenExecution,
   onToggleWorkActive,
+  onRunWork,
   onDeleteWork,
   onOpenSettings,
 }: WorkspaceSidebarProps) {
@@ -80,6 +82,7 @@ export function WorkspaceSidebar({
             onOpenWork={id => { setNavigationExpanded(false); onOpenWork(id); }}
             onOpenExecution={execution => { setNavigationExpanded(false); onOpenExecution(execution); }}
             onToggleWorkActive={onToggleWorkActive}
+            onRunWork={onRunWork}
             onDeleteWork={onDeleteWork}
           />
         )}

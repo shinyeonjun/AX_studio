@@ -1,6 +1,7 @@
 import { AGENT_COMMAND_CONTEXT } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
+import { notifyStateChanged } from '../../state-broadcast.js';
 
 const MAX_WORKSPACE_SESSION_ID_LENGTH = 200;
 
@@ -43,7 +44,24 @@ function executeDiscovery(
   });
 }
 
+/** Waiting on the person: still worth finishing after the app was closed. */
+const RESUMABLE_DISCOVERY_STATUSES = new Set(['needs_clarification', 'ready_to_publish', 'needs_attention']);
+
+/**
+ * Discoveries started from "지난 결과물 첨부하기" belong to no chat, so after a restart nothing
+ * showed them again. Only those (a chat's own discoveries reopen with that chat), newest first.
+ */
+export function resumableDiscoveries(store: ReturnType<typeof getCore>['store']) {
+  return store.listDiscoverySessions()
+    .filter((session) => RESUMABLE_DISCOVERY_STATUSES.has(session.status) && !store.getDiscoverySessionWorkspace(session.id))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 5)
+    .map((session) => ({ sessionId: session.id, goal: session.userGoal, status: session.status, updatedAt: session.updatedAt }));
+}
+
 export function registerDiscoveryCommandHandlers(): void {
+  ipcHandle('ax:discoveryResumable', async () => resumableDiscoveries(getCore().store));
+
   ipcHandle('ax:discoveryStart', async (_event, payload: unknown) =>
     executeDiscovery('discovery.start', splitWorkspaceSession(payload), true));
 
@@ -59,6 +77,10 @@ export function registerDiscoveryCommandHandlers(): void {
   ipcHandle('ax:discoveryAnswer', async (_event, payload: unknown) =>
     executeDiscovery('discovery.answer', splitWorkspaceSession(payload), true));
 
-  ipcHandle('ax:discoveryPublish', async (_event, payload: unknown) =>
-    executeDiscovery('discovery.publish', splitWorkspaceSession(payload), true));
+  ipcHandle('ax:discoveryPublish', async (_event, payload: unknown) => {
+    const result = await executeDiscovery('discovery.publish', splitWorkspaceSession(payload), true);
+    // Publishing saves a workflow; the work list must show it without a restart.
+    notifyStateChanged();
+    return result;
+  });
 }

@@ -9,7 +9,8 @@ function settingsSubtitle(screen: SettingsScreen): string {
   if (screen === 'hub') return '카테고리별로 연결할 항목을 선택하세요';
   if (screen === 'ai-jev') return 'TypeSafe Jev 판단 엔진을 연결하고 적용합니다';
   if (screen.startsWith('ai-')) return 'CLI 또는 API를 선택해 적용하세요';
-  return '인증 정보를 입력하고 연결합니다';
+  if (screen === 'local-folder') return '업무 파일이 있는 폴더를 연결합니다';
+  return '연결 정보를 입력하고 연결합니다';
 }
 
 function settingsBackTarget(screen: SettingsScreen): SettingsScreen | null {

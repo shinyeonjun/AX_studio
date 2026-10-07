@@ -31,6 +31,11 @@ describe('the file a recurring report reads', () => {
     expect(newestFileInFamily(root, join('exports', example))).toBe(join('exports', expected));
   });
 
+  it('goes by the period in the name, so re-saving last month does not make it this month', () => {
+    const root = folder([['주문내역_2026-09.xlsx', 3], ['주문내역_2026-08.xlsx', 0]]);
+    expect(newestFileInFamily(root, '주문내역_2026-08.xlsx')).toBe('주문내역_2026-09.xlsx');
+  });
+
   it('keeps the example when its folder is gone or nothing matches', () => {
     const root = folder([['other.xlsx', 0]]);
     expect(newestFileInFamily(root, join('missing', 'a_1.xlsx'))).toBe(join('missing', 'a_1.xlsx'));
@@ -42,5 +47,37 @@ describe('the file a recurring report reads', () => {
     expect(pattern.test('주문(내역)_2027.11.xlsx')).toBe(true);
     expect(pattern.test('주문(내역)_2027-11.xlsx')).toBe(false);
     expect(pattern.test('주문(내역)_2027.11.xlsx.bak')).toBe(false);
+  });
+});
+
+describe('a learned rule over a file with a long Korean path', () => {
+  it('can be saved: its source id is not cut at 200 characters', async () => {
+    const { OutputContractSchema } = await import('../../contracts/output-contract.js');
+    const sourceId = `sheet:${encodeURIComponent('업무자료')}:${encodeURIComponent('월간 보고/2026년 주문내역_서울지점_최종본_수정.xlsx')}`;
+    expect(sourceId.length).toBeGreaterThan(200);
+    expect(OutputContractSchema.safeParse({ inputSchemas: [{ sourceId, stepId: 's1' }] }).success).toBe(true);
+  });
+});
+
+describe('a saved monthly report run', () => {
+  it('reads this month even though the workflow stored the example as an absolute path', async () => {
+    const { LocalSheetConnector } = await import('./connector.js');
+    const root = folder([['주문내역_2026-08.csv', 40], ['주문내역_2026-09.csv', 5]], '주문내역');
+    writeFileSync(join(root, '주문내역', '주문내역_2026-08.csv'), 'amount\n1\n');
+    writeFileSync(join(root, '주문내역', '주문내역_2026-09.csv'), 'amount\n1\n2\n');
+    const log: Array<{ code?: string; data?: unknown }> = [];
+    const result = await new LocalSheetConnector().execute('read', {
+      path: join(root, '주문내역', '주문내역_2026-08.csv'),
+      folderId: 'f1',
+      followNewest: true,
+    }, {
+      executionId: 'e1',
+      variables: {},
+      log: (entry: { code?: string; data?: unknown }) => log.push(entry),
+      connections: [{ connector: 'local_folder', connected: true, config: { folders: [{ id: 'f1', path: root }] } }],
+    } as never);
+    expect(result.ok).toBe(true);
+    expect((result as { data: { rows: unknown[] } }).data.rows).toHaveLength(2);
+    expect(log.find((entry) => entry.code === 'sheet_source_resolved')?.data).toEqual({ fileName: '주문내역_2026-09.csv' });
   });
 });

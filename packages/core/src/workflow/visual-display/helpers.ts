@@ -1,6 +1,8 @@
 import type { ConnectorCapability } from '../../catalog/capabilities.js';
 import type { CompletenessResult } from '../canvas/slots/requiredness.js';
 import type { WorkflowVisualLine } from './types.js';
+import { TransformExprSchema } from '../transform-expr/dsl.js';
+import { describeShaping } from '../transform-expr/describe.js';
 
 export function truncate(text: string, max = 28): string {
   const trimmed = text.trim();
@@ -12,9 +14,22 @@ export function slotFilled(slots: CompletenessResult['slots'] | undefined, slotI
   return slots?.find((slot) => slot.slot === slotId)?.filled ?? false;
 }
 
+/**
+ * A parameter as a person reads it on the canvas: a calculation as words, a value filled in when
+ * the work runs as such, never "[object Object]" or "{{sourcePath}}".
+ */
 export function paramValue(params: Record<string, unknown> | undefined, name: string): string | undefined {
   const value = params?.[name];
-  return typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : undefined;
+  if (value == null) return undefined;
+  if (typeof value === 'string') {
+    const text = value.trim();
+    return /^\{\{\s*[\w.]+\s*\}\}$/.test(text) ? '실행할 때 채워짐' : text;
+  }
+  if (typeof value === 'object') {
+    const expr = TransformExprSchema.safeParse(value);
+    return expr.success ? describeShaping(expr.data) : '설정됨';
+  }
+  return String(value).trim();
 }
 
 export function paramLine(

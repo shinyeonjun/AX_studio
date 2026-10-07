@@ -19,6 +19,7 @@ export interface AppActions {
   handleApprove: (id: string) => Promise<void>;
   handleReject: (id: string) => Promise<void>;
   toggleWorkActive: (workflowId: string, active: boolean) => Promise<void>;
+  runWork: (workflowId: string) => Promise<void>;
 }
 
 export interface AppActionContext {

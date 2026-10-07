@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { MAX_SOURCE_ID_LENGTH } from '../../contracts/output-contract.js';
 
 export const RepairColumnNameSchema = z.string().trim().min(1).max(200);
 
 export const RepairCandidateOperationSchema = z.object({
   id: z.string().trim().min(1).max(120),
   op: z.literal('rename_column'),
-  sourceId: z.string().trim().min(1).max(200),
+  sourceId: z.string().trim().min(1).max(MAX_SOURCE_ID_LENGTH),
   stepId: z.string().trim().min(1).max(200),
   from: RepairColumnNameSchema,
   to: RepairColumnNameSchema,

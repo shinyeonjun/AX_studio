@@ -68,6 +68,22 @@ export function evaluateSelect(
   };
 }
 
+export interface SortKey {
+  direction: 'asc' | 'desc';
+}
+
+/**
+ * Order of two cells for a sort key. Blank cells go last in either direction: "top 5 by revenue"
+ * never starts with missing revenue.
+ */
+export function compareForSort(leftValue: unknown, rightValue: unknown, key: SortKey): number {
+  const leftBlank = isBlank(leftValue);
+  const rightBlank = isBlank(rightValue);
+  if (leftBlank || rightBlank) return leftBlank === rightBlank ? 0 : leftBlank ? 1 : -1;
+  const comparison = compareValues(leftValue, rightValue);
+  return key.direction === 'desc' ? -comparison : comparison;
+}
+
 export function evaluateSort(
   expr: Extract<TransformExpr, { op: 'sort' }>,
   snapshots: SnapshotTables,
@@ -76,18 +92,8 @@ export function evaluateSort(
   const table = requireTable(evaluate(expr.input, snapshots), 'sort_input_not_table');
   const sorted = [...table.rows].sort((left, right) => {
     for (const key of expr.by) {
-      const leftValue = ownCell(left.values, key.column);
-      const rightValue = ownCell(right.values, key.column);
-      // Blank cells go last in either direction: "top 5 by revenue" never starts with missing revenue.
-      const leftBlank = isBlank(leftValue);
-      const rightBlank = isBlank(rightValue);
-      if (leftBlank || rightBlank) {
-        if (leftBlank && rightBlank) continue;
-        return leftBlank ? 1 : -1;
-      }
-      const comparison = compareValues(leftValue, rightValue);
-      if (comparison === 0) continue;
-      return key.direction === 'desc' ? -comparison : comparison;
+      const comparison = compareForSort(ownCell(left.values, key.column), ownCell(right.values, key.column), key);
+      if (comparison !== 0) return comparison;
     }
     return 0;
   });

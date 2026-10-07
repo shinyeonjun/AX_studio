@@ -25,6 +25,48 @@ export interface ExecutionLogSummary {
     preview: Record<string, string>;
   };
   generatedPdf?: GeneratedPdfSummary;
+  /** The file a "newest file" read actually opened this run. */
+  sourceFile?: string;
+  /** What the run computed, in step order: values and the visible part of tables. */
+  computedResults?: ComputedResult[];
+}
+
+export type ComputedResult =
+  | { kind: 'value'; label: string; value: string }
+  | { kind: 'table'; label: string; columns: string[]; rows: string[][]; totalRows: number };
+
+const MAX_COMPUTED_RESULTS = 20;
+const MAX_RESULT_TABLE_ROWS = 20;
+
+/** "field.총매출" -> "총매출": the label the example used. */
+function resultLabel(outputPath: unknown): string {
+  const path = typeof outputPath === 'string' ? outputPath : '';
+  return path.replace(/^field\./, '').replace(/_/g, ' ').trim() || '결과';
+}
+
+function cellText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number') return Number.isFinite(value) ? value.toLocaleString('ko-KR') : '';
+  if (typeof value === 'boolean') return value ? '예' : '아니오';
+  return String(value).slice(0, 200);
+}
+
+function computedResult(entry: PersistedExecutionLogEntry): ComputedResult | undefined {
+  const data = record(entry.data);
+  if (!data) return undefined;
+  if (entry.code === 'transform_value') {
+    return { kind: 'value', label: resultLabel(data.outputPath), value: cellText(data.value) || '(빈 값)' };
+  }
+  const table = record(data.table);
+  if (entry.code !== 'transform_table' || !table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return undefined;
+  const columns = table.columns
+    .map((column) => (typeof column === 'string' ? column : String(record(column)?.name ?? '')))
+    .filter(Boolean);
+  const rows = table.rows.slice(0, MAX_RESULT_TABLE_ROWS).map((row) => {
+    const values = record(record(row)?.values) ?? record(row) ?? {};
+    return columns.map((column) => cellText(Object.hasOwn(values, column) ? values[column] : undefined));
+  });
+  return { kind: 'table', label: resultLabel(data.outputPath), columns, rows, totalRows: table.rows.length };
 }
 
 const STEP_PROGRESS_CODES = new Set(['step_started', 'step_completed', 'waiting_approval', 'step_failed', 'approval_rejected']);
@@ -103,6 +145,11 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
       : {};
     const pdfGenerated = [...entries].reverse().find((entry) => entry.code === 'pdf_generated');
     const generatedPdf = generatedPdfSummary(pdfGenerated?.data);
+    const resolvedSource = record([...entries].reverse().find((entry) => entry.code === 'sheet_source_resolved')?.data);
+    const sourceFile = typeof resolvedSource?.fileName === 'string' ? resolvedSource.fileName.slice(0, 200) : undefined;
+    const computedResults = executionStatus === 'success'
+      ? entries.flatMap((entry) => computedResult(entry) ?? []).slice(0, MAX_COMPUTED_RESULTS)
+      : [];
     return {
       ...(errorMessage ? { errorMessage } : {}),
       ...(stepId && current?.code ? { currentStepId: stepId, currentStepStatus: current.code } : {}),
@@ -110,6 +157,8 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
       ...(last?.message ? { lastLogMessage: last.message } : {}),
       ...(aiStepId ? { aiOutput: { stepId: aiStepId, fields: aiFields, preview: aiPreview } } : {}),
       ...(generatedPdf ? { generatedPdf } : {}),
+      ...(sourceFile ? { sourceFile } : {}),
+      ...(computedResults.length > 0 ? { computedResults } : {}),
     };
   } catch {
     return {};

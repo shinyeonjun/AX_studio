@@ -21,6 +21,8 @@ export interface AxDiscoveryApi {
     optionId: string;
     expectedRevision?: number;
   }) => Promise<AxCommandResult>;
+  /** Unfinished discoveries that belong to no chat, newest first. */
+  discoveryResumable: () => Promise<Array<{ sessionId: string; goal: string; status: string; updatedAt: string }>>;
   discoveryPublish: (payload: {
     sessionId: string;
     name?: string;

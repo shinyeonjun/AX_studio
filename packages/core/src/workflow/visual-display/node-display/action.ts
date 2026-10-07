@@ -47,7 +47,7 @@ function actionCard(draft: WorkflowCanvasDraft, node: WorkflowNode): WorkflowCar
         : undefined;
 
   return {
-    header: 'Action',
+    header: '작업',
     brand: getConnectorLabel(resolved?.connector ?? 'action'),
     brandStyle: 'bracket',
     summary,

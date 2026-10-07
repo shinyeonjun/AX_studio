@@ -34,5 +34,16 @@ export function createAppApprovalActions({ refresh, setActionError }: AppApprova
     }
   };
 
-  return { handleApprove, handleReject, toggleWorkActive };
+  const runWork = async (workflowId: string) => {
+    setActionError('');
+    try {
+      const result = await window.ax.runWorkflow(workflowId);
+      await refresh();
+      if (result.status === 'failed') setActionError('업무를 실행했지만 실패했습니다. 활동 탭에서 이유를 확인해 주세요.');
+    } catch (err) {
+      setActionError(ipcErrorMessage(err, '업무를 실행하지 못했습니다.'));
+    }
+  };
+
+  return { handleApprove, handleReject, toggleWorkActive, runWork };
 }

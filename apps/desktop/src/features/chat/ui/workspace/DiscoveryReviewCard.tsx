@@ -84,7 +84,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
         <section>
           <h4>재현 요약</h4>
           <p>
-            {view.replaySummary.passed}/{view.replaySummary.total} 후보 검증 통과
+            예시와 같은 값을 낸 방법 {view.replaySummary.passed}/{view.replaySummary.total}개
           </p>
         </section>
       )}

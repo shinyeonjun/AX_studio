@@ -28,10 +28,14 @@ interface ChatMainPageProps {
 export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) {
   const discovery = useDiscovery({
     workspaceContextKey: workspaceChat.workspaceContextKey,
-    onPublished: async () => {
-      await workspaceChat.reset();
+    // Show the saved work (its run button and results), not an empty chat.
+    onPublished: async (workflowId) => {
+      await workspaceChat.openWorkChat(workflowId);
     },
   });
+  const savedTriggerType = workspaceChat.workspaceWorkflowState?.draft?.trigger?.type;
+  const isManualWork = Boolean(workspaceChat.workspaceWorkflowState?.workflowId)
+    && (!savedTriggerType || savedTriggerType === 'manual');
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
   const [showContext, setShowContext] = useState(false);
   const [selectedResult, setSelectedResult] = useState<string>();
@@ -111,6 +115,8 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
         error={workspaceChat.error || discovery.error}
         progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
+        resumableDiscoveries={discovery.resumable}
+        onResumeDiscovery={discovery.resume}
         workflowRegistered={workspaceChat.workflowRegistered}
         discoveryView={discovery.view ?? undefined}
         discoveryBusy={discovery.busy}
@@ -125,7 +131,10 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
           workspaceChat.dismissError();
           discovery.dismissError();
         }}
-        onRegisterWorkflow={workspaceChat.registerWorkflow}
+        // A manual work runs when asked: offer running it; a scheduled or event work is switched on.
+        {...(isManualWork
+          ? { onRunWorkflow: () => window.ax.runWorkflow(workspaceChat.workspaceWorkflowState!.workflowId!).then(() => undefined) }
+          : { onRegisterWorkflow: workspaceChat.registerWorkflow })}
         onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
         onDiscoveryAnswer={discovery.answer}
         onDiscoveryPublish={() => void discovery.publish()}

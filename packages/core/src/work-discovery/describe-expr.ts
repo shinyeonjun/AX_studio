@@ -18,11 +18,14 @@ export function filterSignature(expr: TransformExpr): string {
   return conditions.length === 0 ? '' : JSON.stringify(conditions);
 }
 
+/** Words people use for each calculation, not spreadsheet function names. */
+const AGGREGATE_NAMES: Record<string, string> = { sum: '합계', avg: '평균', min: '최솟값', max: '최댓값' };
+
 function aggregateLabel(spec: { fn: string; column?: string; round?: number }): string {
   const rounding = spec.round !== undefined ? ` 반올림(소수 ${spec.round}자리)` : '';
-  return spec.fn === 'count' && !spec.column
-    ? `COUNT${rounding}`
-    : `${spec.fn.toUpperCase()}(${spec.column ?? 'rows'})${rounding}`;
+  const name = AGGREGATE_NAMES[spec.fn] ?? spec.fn;
+  if (spec.fn === 'count') return `${spec.column ? `${spec.column} ` : ''}건수${rounding}`;
+  return `${spec.column ? `${spec.column} ` : ''}${name}${rounding}`;
 }
 
 function withConditions(label: string, expr: TransformExpr): string {
@@ -39,11 +42,12 @@ export function describeMapping(expr: TransformExpr): string {
       const measures = expr.aggregates.map((aggregate) => `${aggregate.as}=${aggregateLabel(aggregate)}`).join(', ');
       const keys = [expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)].join(' → ');
       const label = withConditions(`${keys}별 묶음: ${measures}`, expr.input);
-      return expr.totalRow ? `${label} · 합계 줄 포함` : label;
+      const order = expr.orderBy?.map((key) => `${key.column} ${key.direction === 'desc' ? '큰 순' : '작은 순'}`).join(', ');
+      return [label, ...(order ? [`정렬: ${order}`] : []), ...(expr.totalRow ? ['합계 줄 포함'] : [])].join(' · ');
     }
     case 'ratio': {
       const rounding = expr.round !== undefined ? ` 반올림(소수 ${expr.round}자리)` : '';
-      return withConditions(`RATIO(%)${rounding}`, expr.numerator);
+      return withConditions(`비율(%)${rounding}`, expr.numerator);
     }
     case 'column':
       return withConditions(`COLUMN(${expr.name})`, expr.input);

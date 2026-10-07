@@ -109,6 +109,11 @@ export async function executeTransformAction(
       if (resultTable.success && shown) {
         ctx.log({ at: new Date().toISOString(), level: 'info', code: 'transform_table',
           message: `표를 만들었습니다 (${resultTable.data.rows.length}행).`, data: { outputPath, table: shown } });
+      } else if (value === null || ['number', 'string', 'boolean'].includes(typeof value)) {
+        // A computed number (총매출, 주문건수) is a result too; without this a run showed none.
+        const shownValue = typeof value === 'string' && value.length > 500 ? `${value.slice(0, 500)}…` : value;
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'transform_value',
+          message: '값을 계산했습니다.', data: { outputPath, value: shownValue } });
       }
       ctx.variables[outputPath] = value;
       ctx.variables.discoveryFields ??= {};

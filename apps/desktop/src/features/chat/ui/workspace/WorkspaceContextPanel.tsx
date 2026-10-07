@@ -17,7 +17,7 @@ const TAB_ORDER: WorkspaceContextTab[] = ['sources', 'flow', 'workflow'];
 const TAB_LABELS: Record<WorkspaceContextTab, string> = {
   sources: '자료',
   flow: '흐름',
-  workflow: '워크플로우',
+  workflow: '업무 구성',
 };
 
 function WorkflowEmptyState() {

@@ -107,6 +107,7 @@ export default function App() {
           setSidebarTab('activity');
         }}
         onToggleWorkActive={appActions.toggleWorkActive}
+        onRunWork={appActions.runWork}
         onDeleteWork={appActions.deleteWork}
         onOpenSettings={openSettings}
         aiHub={aiHub}

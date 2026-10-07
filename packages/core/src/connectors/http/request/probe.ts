@@ -22,7 +22,9 @@ export async function probeHttpBaseUrl(
     });
     if (!result.ok) {
       if (result.errorCode === 'timeout') return { ok: false, error: 'connection_timeout' };
-      if (result.errorCode === 'ssrf_blocked') return { ok: false, error: 'redirect_not_allowed' };
+      // Blocked for a reason the user can act on (a redirect, a private address, credentials in
+      // the URL): say which, not always "redirect".
+      if (result.errorCode === 'ssrf_blocked') return { ok: false, error: result.error ?? 'redirect_not_allowed' };
       continue;
     }
     // Any non-redirect HTTP response means the host is reachable.

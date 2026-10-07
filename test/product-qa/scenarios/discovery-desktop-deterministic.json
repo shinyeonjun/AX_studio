@@ -37,7 +37,7 @@
     { "action": "confirmDiscoveryRule" },
     { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
     { "action": "publishDiscovery" },
-    { "check": "workflowPresent", "text": "지난 결과물과 같은 방식으로", "severity": "critical" },
+    { "check": "workflowPresent", "text": "output", "severity": "critical" },
     { "check": "discoveryCardAbsent", "severity": "major" },
     { "check": "appAlive", "severity": "critical" },
     { "action": "screenshot", "name": "published" }

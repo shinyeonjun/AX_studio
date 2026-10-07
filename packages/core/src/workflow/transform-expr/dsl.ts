@@ -62,6 +62,8 @@ const GroupExprSchema = z.object({
   thenBy: z.array(z.object({ by: z.string().min(1), keyAs: z.string().min(1).optional() })).min(1).max(MAX_GROUP_THEN_BY).optional(),
   aggregates: z.array(GroupAggregateSchema).min(1).max(MAX_GROUP_AGGREGATES),
   totalRow: z.object({ label: z.string().min(1) }).optional(),
+  /** Order of the group rows by output columns; the total row stays last. */
+  orderBy: z.array(z.object({ column: z.string().min(1), direction: z.enum(['asc', 'desc']) })).min(1).max(4).optional(),
 });
 
 const RatioExprSchema = z.object({
@@ -127,6 +129,7 @@ export type TransformExpr =
     thenBy?: Array<{ by: string; keyAs?: string }>;
     aggregates: GroupAggregate[];
     totalRow?: { label: string };
+    orderBy?: Array<{ column: string; direction: 'asc' | 'desc' }>;
   }
   | { op: 'ratio'; numerator: TransformExpr; denominator: TransformExpr; multiplyBy?: number; round?: number }
   | { op: 'lookup'; input: TransformExpr; keyColumn: string; keyValue: z.infer<typeof ScalarValueSchema>; valueColumn: string }

@@ -8,6 +8,7 @@ import type {
 } from './contracts.js';
 import { ownCell, requireCompleteTable } from './helpers.js';
 import { aggregateRows } from './numeric.js';
+import { compareForSort } from './table.js';
 
 /**
  * Group key of one row: trimmed text of the cell; empty keys do not form a group. Text is NFC so
@@ -70,6 +71,21 @@ export function evaluateGroup(
   const matrix: unknown[][] = [];
   for (const { keys, rows } of groupRowsBy(table.rows, keySpecs.map((spec) => spec.by)).values()) {
     matrix.push([...keys, ...expr.aggregates.map((aggregate) => aggregateRows(rows, aggregate))]);
+  }
+  if (expr.orderBy) {
+    const order = expr.orderBy.map((key) => {
+      const index = headers.indexOf(key.column);
+      if (index < 0) throw new Error('group_order_column_missing');
+      return { index, direction: key.direction };
+    });
+    // Stable: equal rows keep first-appearance order.
+    matrix.sort((left, right) => {
+      for (const key of order) {
+        const comparison = compareForSort(left[key.index], right[key.index], key);
+        if (comparison !== 0) return comparison;
+      }
+      return 0;
+    });
   }
   if (expr.totalRow) {
     const emptyKeys = keySpecs.slice(1).map(() => null);

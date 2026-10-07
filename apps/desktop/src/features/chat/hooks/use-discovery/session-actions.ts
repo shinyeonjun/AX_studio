@@ -52,7 +52,7 @@ export function useDiscoverySessionActions({
       const data = unwrap<{ workflowId?: string }>(result);
       if (!data) throw commandError(result, '업무를 저장하지 못했습니다.');
       await refresh(activeSessionId, epoch);
-      if (data.workflowId && epoch === operationEpochRef.current) await onPublished?.();
+      if (data.workflowId && epoch === operationEpochRef.current) await onPublished?.(data.workflowId);
       return data.workflowId;
     } catch (err) {
       if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));

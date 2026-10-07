@@ -3,6 +3,23 @@ import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { commandError, unwrap } from './result.js';
 import type { UseDiscoveryStartActionsOptions } from './contracts.js';
 
+/**
+ * What a past result is called, from its file name, for the goal and the saved work's name:
+ * "월간매출요약_2026-08.xlsx" -> "월간매출요약". The period and version numbers are dropped, since
+ * the work makes every period's. Undefined when nothing but numbers is left.
+ */
+export function resultNameFromFile(fileName: string | undefined): string | undefined {
+  if (!fileName) return undefined;
+  const base = fileName.replace(/\.[^.]+$/, '');
+  const name = base
+    // A number with its unit (8월, 3분기) or its one-letter tag (v2, q3) names the period or version.
+    .replace(/(?<![A-Za-z])[A-Za-z]?\d+\s*(년|월|일|분기|주차|차)?/g, ' ')
+    .replace(/[_\-.()\[\]~]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return name || undefined;
+}
+
 export function useDiscoveryStartActions({
   workspaceContextKeyRef,
   operationEpochRef,
@@ -55,7 +72,8 @@ export function useDiscoveryStartActions({
         if ('error' in imported && imported.error) throw new Error(imported.error);
         return;
       }
-      await startFromArtifact(goal, imported.artifact.id, contextKey);
+      const resultName = resultNameFromFile(imported.artifact.fileName);
+      await startFromArtifact(resultName ? `${resultName} 만들기` : goal, imported.artifact.id, contextKey);
     } catch (err) {
       if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));
     } finally {

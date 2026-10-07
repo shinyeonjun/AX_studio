@@ -67,4 +67,12 @@ describe('probeHttpBaseUrl', () => {
     const probe = await probeHttpBaseUrl('https://api.example.com/v1/');
     expect(probe).toEqual({ ok: false, error: 'redirect_not_allowed' });
   });
+
+  it('says a private address was refused, not that it redirected', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeHttpBaseUrl('http://127.0.0.1:47400/api/', undefined, 1_000, true))
+      .toEqual({ ok: false, error: 'private_destination_not_allowed' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
