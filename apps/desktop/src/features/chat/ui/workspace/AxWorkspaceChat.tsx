@@ -28,8 +28,6 @@ interface AxWorkspaceChatProps {
   progress: string;
   placeholder?: string;
   workflowId?: string;
-  /** Name of the opened saved work, for its empty screen. */
-  workflowTitle?: string;
   resumableDiscoveries?: ReadonlyArray<{ sessionId: string; goal: string }>;
   onResumeDiscovery?: (sessionId: string) => void;
   workflowRegistered?: boolean;
@@ -107,7 +105,6 @@ export function AxWorkspaceChat({
   progress,
   placeholder,
   workflowId,
-  workflowTitle,
   resumableDiscoveries,
   onResumeDiscovery,
   workflowRegistered = false,
@@ -156,7 +153,7 @@ export function AxWorkspaceChat({
           {messages.length === 0 && !busy && !discoveryView && (
             <WorkspaceEmptyStage
               discoveryBusy={discoveryBusy}
-              openWorkName={workflowId ? workflowTitle ?? '' : undefined}
+              workOpen={Boolean(workflowId)}
               resumable={resumableDiscoveries}
               onResume={onResumeDiscovery}
               onAttachExample={onAttachExample}

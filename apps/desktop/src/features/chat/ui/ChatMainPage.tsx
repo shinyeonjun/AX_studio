@@ -115,7 +115,6 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
         error={workspaceChat.error || discovery.error}
         progress={discovery.view?.progress || workspaceChat.progress}
         workflowId={workspaceChat.workspaceWorkflowState?.workflowId}
-        workflowTitle={workspaceChat.workspaceWorkflowState?.title}
         resumableDiscoveries={discovery.resumable}
         onResumeDiscovery={discovery.resume}
         workflowRegistered={workspaceChat.workflowRegistered}

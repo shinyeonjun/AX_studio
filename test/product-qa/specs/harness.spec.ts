@@ -209,11 +209,11 @@ if (!printMode && mode === 'deterministic' && !filters.ids?.length && !filters.t
       await ctx.page.reload();
       await ctx.page.getByRole('button', { name: '순환 분기 확인', exact: true }).click();
       await ctx.page.getByRole('heading', { name: '순환 분기 확인', exact: true }).waitFor();
-      await ctx.page.getByRole('tab', { name: '워크플로우', exact: true }).click();
+      await ctx.page.getByRole('tab', { name: '업무 구성', exact: true }).click();
       await expect(ctx.page.getByRole('alert')).toContainText('순환', { timeout: 5_000 });
       await ctx.page.getByRole('button', { name: '새 대화', exact: true }).click();
       await expect(ctx.page.getByRole('alert')).toHaveCount(0);
-      await expect(ctx.page.getByRole('tab', { name: '워크플로우', exact: true })).toBeVisible();
+      await expect(ctx.page.getByRole('tab', { name: '업무 구성', exact: true })).toBeVisible();
       expect(rendererErrors).toEqual([]);
     } finally {
       await closeDesktop(ctx);

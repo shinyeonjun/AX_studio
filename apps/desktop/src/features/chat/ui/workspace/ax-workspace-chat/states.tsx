@@ -8,7 +8,7 @@ export interface WorkspaceEmptyStageProps {
   onAttachExample?: () => Promise<void>;
   onSend: (text: string) => Promise<void>;
   /** A saved work is open but has no messages yet. */
-  openWorkName?: string;
+  workOpen?: boolean;
   /** Unfinished discoveries the person can pick up again. */
   resumable?: ReadonlyArray<{ sessionId: string; goal: string }>;
   onResume?: (sessionId: string) => void;
@@ -18,15 +18,16 @@ export function WorkspaceEmptyStage({
   discoveryBusy,
   onAttachExample,
   onSend,
-  openWorkName,
+  workOpen = false,
   resumable = [],
   onResume,
 }: WorkspaceEmptyStageProps) {
-  if (openWorkName !== undefined) {
+  if (workOpen) {
     return (
       <div className="ax-workspace-empty-stage">
         <div className="ax-workspace-welcome">
-          <h1>{openWorkName || '저장된 업무'}</h1>
+          {/* The work's name is already the page title above. */}
+          <h1>아직 이 화면에 기록이 없습니다</h1>
           <p className="ax-workspace-welcome-hint">
             아래 '지금 실행'을 누르면 바로 실행됩니다. 실행 결과는 활동 탭에서 볼 수 있고, 바꾸고 싶은 점은 여기에 적어 주세요.
           </p>

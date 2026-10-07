@@ -19,7 +19,8 @@
     { "check": "visibleTextContains", "text": "총매출", "severity": "critical" },
     { "check": "visibleTextContains", "text": "주문건수", "severity": "critical" },
     { "check": "visibleTextContains", "text": "평균주문금액", "severity": "critical" },
-    { "check": "visibleTextContains", "text": "카테고리별 묶음: 주문건수=COUNT, 매출=SUM(금액)", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "카테고리별 묶음: 주문건수=건수, 매출=금액 합계", "severity": "critical" },
+    { "check": "visibleTextContains", "text": "정렬: 매출 큰 순", "severity": "critical" },
     { "check": "visibleTextContains", "text": "조건: 상태 ≠ 취소", "severity": "critical" },
     { "check": "visibleTextContains", "text": "합계 줄 포함", "severity": "critical" },
     { "check": "visibleTextContains", "text": "5행 표", "severity": "critical" },
@@ -27,7 +28,7 @@
     { "action": "waitForDiscovery", "status": "ready_to_publish", "timeoutMs": 30000 },
     { "action": "screenshot", "name": "demo-ready" },
     { "action": "publishDiscovery" },
-    { "check": "workflowPresent", "text": "지난 결과물과 같은 방식으로", "severity": "critical" },
+    { "check": "workflowPresent", "text": "월간매출요약", "severity": "critical" },
     { "check": "appAlive", "severity": "critical" }
   ]
 }
