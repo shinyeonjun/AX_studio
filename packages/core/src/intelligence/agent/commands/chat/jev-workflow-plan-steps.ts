@@ -1,7 +1,7 @@
 /**
  * Building blocks of the Jev workflow planner: candidate steps, the AI composition step,
- * the final workflow command and the review summary. Pure functions; the planning loop lives
- * in jev-workflow-plan.ts.
+ * the final workflow command and the review summary. Pure functions; the planning loops live
+ * in jev-workflow-plan/.
  */
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
 import type { ContractTypeName } from '../../../../contracts/capability-io.js';
@@ -485,5 +485,3 @@ export async function composeMessageText(input: {
     pendingInputs: input.pendingInputs.filter(({ stepId, parameter }) => !(stepId === target.step.id && parameter === target.port)),
   };
 }
-
-/** Compiles tools selected together in the first Jev evaluation with independent arguments before dependent bindings and final review. */
