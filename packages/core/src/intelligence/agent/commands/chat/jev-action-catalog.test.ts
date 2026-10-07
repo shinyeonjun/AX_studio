@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AxCommand } from '../schema.js';
-import { applyJevCommandInputValuesToCommand } from './jev-action-catalog.js';
+import { applyJevCommandInputValuesToCommand, compileJevActionParams, jevActionQuotedInputMapping } from './jev-action-catalog.js';
+import { GMAIL_CAPABILITIES } from '../../../../connectors/gmail/catalog.js';
 import { encodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 
 describe('Jev command input continuation', () => {
@@ -79,5 +80,19 @@ describe('Jev command input continuation', () => {
     const tampered = { ...value, value: '매월 마지막 날 오후 6:00 ⟦일정:e30⟧' };
     expect((applyJevCommandInputValuesToCommand(pending({ type: 'schedule', schedule: '', timezone: '' }), [tampered])?.args as { trigger: unknown }).trigger)
       .toEqual({ type: 'schedule', schedule: '', timezone: '' });
+  });
+});
+
+describe('fields a request names', () => {
+  const send = GMAIL_CAPABILITIES.find((capability) => capability.id === 'gmail.message.send')!;
+
+  it('reads a label written right before a quoted value, as people write it', () => {
+    const message = 'me@example.com 으로 제목 "주간 보고", 본문 "이번 주 보고입니다" 메일 보내줘';
+    expect(compileJevActionParams(send, message)).toEqual({ to: 'me@example.com', subject: '주간 보고', body: '이번 주 보고입니다' });
+    expect(jevActionQuotedInputMapping(send, message)).toBeUndefined();
+  });
+
+  it('never takes an unquoted word after a bare label as its value', () => {
+    expect(compileJevActionParams(send, 'me@example.com 에게 제목 없이 본문 보내줘')).toEqual({ to: 'me@example.com' });
   });
 });
