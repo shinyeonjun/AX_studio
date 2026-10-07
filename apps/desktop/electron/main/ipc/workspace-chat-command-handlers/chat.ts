@@ -388,7 +388,8 @@ export function registerWorkspaceChatMessageHandler() {
         changedWorkflowIds: [...changedWorkflowIds],
         removedWorkflowIds: [...removedWorkflowIds],
         ...(pendingInputRequestToken ? { inputContinuation: 'command' as const } : {}),
-        ...(readResult ? { readResult } : {}),
+        // Offer "반복 업무로" only where the read can actually be repeated.
+        ...(readResult ? { readResult, ...(readRecipe ? { readRepeatable: true } : {}) } : {}),
         inputRequests,
         presentations: bindContextConfirmations(safeWorkspaceSessionId, presentations),
       };

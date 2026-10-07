@@ -442,7 +442,54 @@ function addGmailOperations(operations: IndexedReadOperation[]): void {
   });
 }
 
+/**
+ * The channel a request names: "#ops" or "운영팀 채널". Only what the person wrote; a request
+ * without one is asked for it, never given a guessed channel.
+ */
+export function explicitSlackChannel(message: string): string | undefined {
+  const hashed = /(?:^|[\s(])#([\p{L}\p{N}_.-]{1,80})/u.exec(message)?.[1];
+  if (hashed) return `#${hashed}`;
+  const named = /([\p{L}\p{N}_.-]{1,80})\s*채널(?!\s*목록)/u.exec(message)?.[1];
+  return named && !/^(?:slack|슬랙|이|그|저|어느|무슨|모든|전체|각)$/iu.test(named) ? `#${named}` : undefined;
+}
+
 function addSlackOperations(operations: IndexedReadOperation[]): void {
+  addIndexedOperation(operations, {
+    capabilityId: 'slack.channels.list',
+    connector: 'slack',
+    sourceLabel: 'Slack',
+    label: 'Slack 채널 목록',
+    description: 'Slack 워크스페이스에서 볼 수 있는 채널 목록 조회',
+  }, (userMessage) => {
+    const limit = parameterValue(userMessage, { name: 'limit', in: 'query', required: false, type: 'integer' });
+    return { params: limit === undefined ? {} : { limit }, parameterHints: [] };
+  });
+  addIndexedOperation(operations, {
+    capabilityId: 'slack.messages.read',
+    connector: 'slack',
+    sourceLabel: 'Slack',
+    label: 'Slack 채널 최근 메시지',
+    description: '지정한 Slack 채널의 최근 메시지 읽기',
+  }, (userMessage) => {
+    const channel = explicitSlackChannel(userMessage);
+    const limit = parameterValue(userMessage, { name: 'limit', in: 'query', required: false, type: 'integer' });
+    return {
+      params: {
+        ...(channel ? { channel } : {}),
+        ...(limit === undefined ? {} : { limit }),
+      },
+      parameterHints: [
+        { path: 'channel', type: 'string', required: true },
+        {
+          path: 'limit', type: 'integer', required: false,
+          ...(naturalLimitChoices('limit', 'integer', userMessage)
+            ? { choices: naturalLimitChoices('limit', 'integer', userMessage) }
+            : {}),
+        },
+      ],
+      missingParameterPaths: channel ? [] : ['channel'],
+    };
+  });
   addIndexedOperation(operations, {
     capabilityId: 'slack.messages.search',
     connector: 'slack',

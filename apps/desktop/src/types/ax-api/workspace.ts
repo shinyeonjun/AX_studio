@@ -39,6 +39,7 @@ export interface AxWorkspaceApi {
     inputRequests: AxInputRequest[];
     presentations: AxUiPresentation[];
     readResult?: WorkspaceChatMessage['readResult'];
+    readRepeatable?: boolean;
     dbConnection?: WorkspaceChatMessage['dbConnection'];
   }>;
   cancelChat: (requestId: string) => Promise<{ ok: boolean }>;

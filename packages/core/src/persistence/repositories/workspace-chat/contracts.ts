@@ -38,6 +38,8 @@ export interface WorkspaceChatMessage {
   generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
   /** Bounded table shown in this reply, for immediate follow-up operations. */
   readResult?: TableArtifact;
+  /** The read behind `readResult` can be repeated as a job (only some reads keep a recipe). */
+  readRepeatable?: boolean;
   dbConnection?: { label?: string; type?: 'postgres' | 'mysql' | 'sqlite' };
 }
 
@@ -149,6 +151,7 @@ export const workspaceChatMessageSchema = z.object({
   generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
   generatedSpreadsheet: WorkspaceChatGeneratedSpreadsheetSchema.optional(),
   readResult: WorkspaceChatReadResultSchema.optional(),
+  readRepeatable: z.boolean().optional(),
   dbConnection: z.object({ label: z.string().min(1).max(240).optional(), type: z.enum(['postgres', 'mysql', 'sqlite']).optional() }).strict().optional(),
 }).superRefine((message, context) => {
   if (message.registeredMetadataTurn && (message.role !== 'user' || !message.turnId)) {

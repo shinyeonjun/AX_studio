@@ -66,5 +66,6 @@ export interface WorkspaceSendResponse {
   inputRequests?: AxInputRequest[];
   presentations?: AxUiPresentation[];
   readResult?: TableArtifact;
+  readRepeatable?: boolean;
   dbConnection?: WorkspaceChatMessage['dbConnection'];
 }
