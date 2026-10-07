@@ -99,6 +99,17 @@ export function renameExpr(
         changed: input.changed || changed,
       };
     }
+    case 'totals': {
+      // `column` names a source column; `as` is an output header and never renames.
+      const input = renameExpr(expr.input, candidate);
+      const aggregates = expr.aggregates.map((aggregate) => aggregate.column === undefined
+        ? aggregate
+        : { ...aggregate, column: rename(aggregate.column).value });
+      return {
+        expr: { ...expr, input: input.expr, aggregates },
+        changed: input.changed || aggregates.some((aggregate, index) => aggregate.column !== expr.aggregates[index]?.column),
+      };
+    }
     case 'ratio': {
       const numerator = renameExpr(expr.numerator, candidate);
       const denominator = renameExpr(expr.denominator, candidate);

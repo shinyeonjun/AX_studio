@@ -78,6 +78,14 @@ export function collectInputColumns(
       collectInputColumns(expr.input, bucket, 'unknown');
       return;
     }
+    case 'totals': {
+      const sourceIds = sourceIdsInExpr(expr.input);
+      for (const aggregate of expr.aggregates) {
+        if (aggregate.column) addColumnsForSources(bucket, sourceIds, [aggregate.column], 'number');
+      }
+      collectInputColumns(expr.input, bucket, 'unknown');
+      return;
+    }
     case 'ratio':
       collectInputColumns(expr.numerator, bucket, 'number');
       collectInputColumns(expr.denominator, bucket, 'number');

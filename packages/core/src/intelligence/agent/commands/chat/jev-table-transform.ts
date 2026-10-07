@@ -1,6 +1,5 @@
 import type {
   DecisionAnswer,
-  DecisionEvaluationResult,
   DecisionEngine,
   DecisionInstruction,
   DecisionQuestion,
@@ -10,13 +9,16 @@ import { profileTable } from '../../../../contracts/artifacts/table-build.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../../contracts/artifacts/table.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import { groupJevChoiceCandidates } from './jev-choice-grouping.js';
+import { accumulateEvaluationMetadata, selectedChoice, type JevEvaluationMetadata } from './jev-table-shared.js';
+import { summarizeTable } from './jev-table-summary.js';
 import { evaluateTransformExpr } from '../../../../workflow/transform-expr/evaluator.js';
 import { TransformExprSchema, type TransformExpr } from '../../../../workflow/transform-expr/dsl.js';
 
 const SOURCE_ID = 'chat:read-result';
 export const JEV_TABLE_TRANSFORM_CRITERIA = {
   export_xlsx: 'Export exactly the current displayed table to an Excel xlsx file, preserving all its current rows, columns and order. No new query, extra transform, arbitrary format or external send.',
-  unsupported: 'The user asks for an operation beyond filtering, sorting or selecting columns, such as sending a file, other export formats, or additional transformations. Do not return an unchanged table as fulfillment.',
+  unsupported: 'The user asks for an operation beyond filtering, sorting, selecting columns or summarizing, such as sending a file, other export formats, or joining other data. Do not return an unchanged table as fulfillment.',
+  calculate: 'Compute a count, sum, average, minimum or maximum, overall or per group (지역별, 상태별), optionally over rows matching conditions such as a month or a status (e.g. 9월 완료 주문의 매출 합계, 지역별 주문 건수).',
   none: 'Return the retrieved data without filtering or sorting.',
   filter: 'Keep only rows matching one clearly specified comparison threshold condition (e.g. price > 1000, status is active). Do not choose filter for Top-N row count limits.',
   sort: 'Reorder rows by one clearly specified column and direction, optionally keeping the top N rows (e.g., lowest 3, highest 5).',
@@ -96,30 +98,6 @@ function selectedColumnFinalists(
     finalists.push(candidate.column);
   }
   return finalists;
-}
-
-type JevEvaluationMetadata = {
-  providerRequestCount: number;
-  model?: string;
-  usage?: { inputTokens?: number; outputTokens?: number };
-};
-
-function accumulateEvaluationMetadata(
-  metadata: JevEvaluationMetadata,
-  evaluation: DecisionEvaluationResult,
-): void {
-  metadata.providerRequestCount += evaluation.providerRequestCount ?? 1;
-  if (evaluation.model) metadata.model = evaluation.model;
-  if (evaluation.usage) {
-    const sum = (previous: number | undefined, current: number | undefined) =>
-      previous === undefined && current === undefined ? undefined : (previous ?? 0) + (current ?? 0);
-    const inputTokens = sum(metadata.usage?.inputTokens, evaluation.usage.inputTokens);
-    const outputTokens = sum(metadata.usage?.outputTokens, evaluation.usage.outputTokens);
-    metadata.usage = {
-      ...(inputTokens === undefined ? {} : { inputTokens }),
-      ...(outputTokens === undefined ? {} : { outputTokens }),
-    };
-  }
 }
 
 type ColumnSelection = {
@@ -210,10 +188,6 @@ function valueCriteria(values: readonly number[]): Record<string, DecisionInstru
   ]);
 }
 
-function selectedChoice(answer: DecisionAnswer | undefined, allowed: ReadonlySet<string>): string | undefined {
-  // The host owns candidate validity; confidence is telemetry, not a veto.
-  return answer?.type === 'choice' && allowed.has(answer.choice) ? answer.choice : undefined;
-}
 
 
 function displayColumnQuestions(columns: readonly TableColumn[]): Record<string, DecisionQuestion> {
@@ -271,6 +245,9 @@ export async function applyJevTableTransform(input: {
   if (input.mode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 현재 표의 필터·정렬·열 선택 범위를 벗어나 수행하지 않았습니다.' };
   const table = TableArtifactSchema.safeParse(input.table);
   if (!table.success) return { status: 'not_applicable' };
+  if (input.mode === 'calculate') {
+    return summarizeTable({ decisionEngine: input.decisionEngine, table: table.data, userMessage: input.userMessage, abortSignal: input.abortSignal });
+  }
 
   const automatic = !input.mode || input.mode === 'auto';
   let wantsFilter = automatic || input.mode === 'filter' || input.mode === 'filter_sort';
@@ -287,8 +264,8 @@ export async function applyJevTableTransform(input: {
     questions.table_transform = {
       type: 'choice',
       instructions: {
-        question: 'Does the user request a filter or sort after the read result, or should it be shown as-is?',
-        focus: 'Choose none for a plain display or summary. Choose a transformation only when requested by meaning. Choose export_xlsx only for an Excel export of the current table without changes. Choose unsupported for other operations beyond one filter, one sort and column selection.',
+        question: 'Does the user request a filter, a sort or a computed summary (count, total, average) of the read result, or should it be shown as-is?',
+        focus: 'Choose none for a plain display or a prose summary. Choose calculate when the user asks for a number computed from the rows (count, total, average, min, max), overall or per group. Choose a filter or sort only when requested by meaning. Choose export_xlsx only for an Excel export of the current table without changes. Choose unsupported for other operations.',
       },
       criteria: JEV_TABLE_TRANSFORM_CRITERIA,
     };
@@ -394,6 +371,9 @@ export async function applyJevTableTransform(input: {
       };
     }
     if (selectedMode === 'export_xlsx') return { status: 'export_xlsx', ...evaluationMetadata };
+    if (selectedMode === 'calculate') {
+      return summarizeTable({ decisionEngine: input.decisionEngine, table: table.data, userMessage: input.userMessage, abortSignal: input.abortSignal, metadata: evaluationMetadata });
+    }
     if (selectedMode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 현재 표의 필터·정렬·열 선택 범위를 벗어나 수행하지 않았습니다.', ...evaluationMetadata };
     if (selectedMode === 'none' && !input.selectRequestedColumns) {
       return { status: 'not_applicable', ...evaluationMetadata };

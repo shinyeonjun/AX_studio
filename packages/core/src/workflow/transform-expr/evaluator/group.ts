@@ -59,6 +59,23 @@ export function groupRowsBy(rows: TableArtifact['rows'], columns: readonly strin
   return groups;
 }
 
+export function evaluateTotals(
+  expr: Extract<TransformExpr, { op: 'totals' }>,
+  snapshots: SnapshotTables,
+  evaluate: TransformEvaluator,
+): TransformEvaluation {
+  const table = requireCompleteTable(evaluate(expr.input, snapshots), 'totals_input_not_table');
+  const headers = expr.aggregates.map((aggregate) => aggregate.as);
+  if (new Set(headers).size !== headers.length) throw new Error('totals_duplicate_output_column');
+  return buildTableArtifact({
+    id: 'totals',
+    headers,
+    matrix: [expr.aggregates.map((aggregate) => aggregateRows(table.rows, aggregate))],
+    rowLimit: 1,
+    scalarPolicy: 'preserve',
+  });
+}
+
 export function evaluateGroup(
   expr: GroupExpr,
   snapshots: SnapshotTables,
