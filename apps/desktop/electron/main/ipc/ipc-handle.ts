@@ -1,5 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { getMainWindow, isTrustedRendererUrl } from '../app-window.js';
+import { isDesktopShuttingDown } from '../startup/shutdown-state.js';
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
   const mainWindow = getMainWindow();
@@ -22,6 +23,9 @@ export function ipcHandle<Return, Args extends unknown[]>(
   ipcMain.removeHandler(channel);
   ipcMain.handle(channel, (event, ...args: Args) => {
     assertTrustedSender(event);
+    // While quitting the core is draining and then closed; a late renderer request (a state
+    // refresh as the window goes away) must not reach a closed database.
+    if (isDesktopShuttingDown()) throw new Error('app_shutting_down');
     return handler(event, ...args);
   });
 }
