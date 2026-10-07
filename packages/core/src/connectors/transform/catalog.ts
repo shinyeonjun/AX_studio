@@ -12,7 +12,7 @@ export const TRANSFORM_CAPABILITIES: ConnectorCapability[] = [
     id: 'transform.evaluate',
     connector: 'transform',
     kind: 'read',
-    label: '변환식 평가',
+    label: '값 계산',
     description: '검증된 TransformExpr를 결정론적으로 평가',
     sideEffect: 'NONE',
     params: [{ name: 'expr', label: '변환식', question: '변환식', required: true, literal: true }],

@@ -47,10 +47,12 @@ export function methodTitle(
   workflow?: WorkspaceWorkflowState | null,
   discovery?: DiscoveryFlowState,
 ): string | undefined {
+  // A title, not the whole multi-line summary: the work's name first.
   const candidates = [
-    workflow?.summary,
-    workflow?.workflow?.goal,
     workflow?.title,
+    workflow?.workflow?.name,
+    workflow?.workflow?.goal,
+    workflow?.summary?.split(/\r?\n/u)[0],
     discovery?.progress,
   ];
   return candidates.find((value) => value?.trim())?.trim();

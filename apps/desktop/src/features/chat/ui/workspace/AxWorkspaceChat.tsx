@@ -151,7 +151,9 @@ export function AxWorkspaceChat({
     convertMessage,
     onNew: handleNewMessage,
   });
-  const composerPlaceholder = placeholder ?? '지난 결과물을 보여주거나, 하고 싶은 일을 적어주세요';
+  const composerPlaceholder = placeholder ?? (workflowId
+    ? '이 업무에서 바꾸고 싶은 점이나 궁금한 점을 적어 주세요'
+    : '지난 결과물을 보여주거나, 하고 싶은 일을 적어주세요');
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

@@ -6,7 +6,7 @@ export const LOCAL_SHEET_CAPABILITIES: ConnectorCapability[] = [
     id: 'local_sheet.read',
     connector: 'local_sheet',
     kind: 'read',
-    label: '시트 읽기',
+    label: '표 파일 읽기',
     description: 'CSV/xlsx 읽기',
     sideEffect: 'NONE',
     params: [

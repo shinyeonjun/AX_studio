@@ -96,6 +96,7 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions }: ChatMai
       error={workspaceChat.error || discovery.error}
       discovery={discovery.view ?? undefined}
       workflow={workflowState}
+      latestRunStatus={workRuns[0]?.status}
     />
   );
 

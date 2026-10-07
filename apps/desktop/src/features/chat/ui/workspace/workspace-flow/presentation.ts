@@ -1,4 +1,4 @@
-import type { DiscoveryInspectView, WorkspaceChatMessage } from '@ax-studio/core';
+import type { DiscoveryInspectView, ExecutionResultStatus, WorkspaceChatMessage } from '@ax-studio/core';
 import { resolveWorkspaceExecutionStatus } from '../WorkspaceRunResultCard.js';
 import type {
   DiscoveryFlowState,
@@ -35,6 +35,7 @@ export function resolveWorkspaceFlowPresentation({
   error = '',
   discovery,
   workflow,
+  latestRunStatus,
 }: WorkspaceFlowPanelProps): WorkspaceFlowPresentation {
   const latest = latestWorkspaceExecutionResult(messages);
   const executionStatus = resolveWorkspaceExecutionStatus(latest?.executionStatus, latest?.content ?? '');
@@ -94,6 +95,24 @@ export function resolveWorkspaceFlowPresentation({
       activeStage: 4,
       message: '실행 결과에서 오류를 확인하세요.',
     };
+  }
+
+  // A saved work runs on its own (schedule, new mail): its last run, not the chat, says where it is.
+  if (workflow?.workflowId && !resolveDiscoveryRunning(discovery)) {
+    const runStage = executionStage(latestRunStatus as ExecutionResultStatus | undefined);
+    if (latestRunStatus === 'pending_approval') {
+      return { status: 'approval', statusLabel: statusLabel('approval'), activeStage: 3, message: '승인 화면에서 보낼 내용을 확인해 주세요.' };
+    }
+    if (runStage !== undefined) {
+      const status = latestRunStatus === 'success' ? 'success' : latestRunStatus === 'cancelled' ? 'cancelled' : 'error';
+      return {
+        status,
+        statusLabel: statusLabel(status),
+        activeStage: runStage,
+        message: status === 'success' ? '최근 실행 결과가 업무 화면에 있어요.' : '최근 실행을 확인해 주세요.',
+      };
+    }
+    return { status: 'idle', statusLabel: '실행 전', activeStage: 4, message: '업무로 저장됐어요. 실행되면 결과가 업무 화면에 쌓여요.' };
   }
 
   if (discovery?.status === 'failed' || discovery?.status === 'needs_attention') {
