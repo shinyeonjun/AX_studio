@@ -13,7 +13,7 @@ export function DiagnosticsSection() {
     try {
       const result = await window.ax.exportDiagnostics();
       if (result.ok) setMessage(`저장했습니다: ${result.path}`);
-      else if ('error' in result) setMessage(`내보내기 실패: ${result.error}`);
+      else if ('error' in result) setMessage(`내보내기 실패: ${ipcErrorMessage(new Error(result.error))}`);
     } catch (err) {
       setMessage(`내보내기 실패: ${ipcErrorMessage(err)}`);
     } finally {
@@ -25,7 +25,7 @@ export function DiagnosticsSection() {
     setMessage(null);
     try {
       const result = await window.ax.openLogFolder();
-      if (!result.ok) setMessage(`로그 폴더를 열지 못했습니다: ${result.error}`);
+      if (!result.ok) setMessage(`로그 폴더를 열지 못했습니다: ${ipcErrorMessage(new Error(result.error))}`);
     } catch (err) {
       setMessage(`로그 폴더를 열지 못했습니다: ${ipcErrorMessage(err)}`);
     }

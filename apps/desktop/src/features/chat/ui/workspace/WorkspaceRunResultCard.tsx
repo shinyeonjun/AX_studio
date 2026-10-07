@@ -187,7 +187,7 @@ export function WorkspaceRunResultCard({
               disabled={busy || busyAction !== null || !onReject}
               onClick={() => void runApprovalAction('reject')}
             >
-              {busyAction === 'reject' ? '처리 중…' : '취소'}
+              {busyAction === 'reject' ? '처리 중…' : '거절'}
             </button>
           </div>
           {actionError && <p className="ax-workspace-inline-approval-error" role="alert">{actionError}</p>}

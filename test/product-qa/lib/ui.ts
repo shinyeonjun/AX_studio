@@ -20,7 +20,7 @@ export async function selectInputOption(page: Page, requestId: string, value: st
 export async function clickInlineApproval(page: Page, decision: 'approve' | 'reject'): Promise<void> {
   const card = page.locator('.ax-workspace-inline-approval').last();
   await card.getByRole('button', {
-    name: decision === 'approve' ? '승인하고 실행' : '취소',
+    name: decision === 'approve' ? '승인하고 실행' : '거절',
     exact: true,
   }).click();
 }

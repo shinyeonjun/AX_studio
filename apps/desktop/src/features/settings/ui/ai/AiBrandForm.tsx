@@ -57,7 +57,7 @@ export function AiBrandForm({
           onChange={onModeChange}
         />
 
-        {detecting && <p className="muted">연결 상태를 확인하는 중...</p>}
+        {detecting && <p className="muted">연결 상태를 확인하는 중…</p>}
 
         {mode === 'cli' && (
           <AiCliPanel
@@ -89,7 +89,7 @@ export function AiBrandForm({
 
         <div className="connection-form-footer">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={!canSave || saving}>
-            {saving ? '저장 중...' : '저장하기'}
+            {saving ? '저장 중…' : '저장하기'}
           </button>
         </div>
 

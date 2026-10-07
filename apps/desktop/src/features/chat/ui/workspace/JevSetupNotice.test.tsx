@@ -15,11 +15,11 @@ describe('JevSetupNotice', () => {
   it('asks to connect Jev when it is not configured', () => {
     const html = renderToStaticMarkup(<JevSetupNotice state={base} onOpenJevSettings={noop} />);
     expect(html).toContain('연결되지 않아');
-    expect(html).toContain('Jev 연결하기');
+    expect(html).toContain('판단 엔진 연결하기');
   });
 
   it('asks to turn Jev on when configured but disabled', () => {
     const html = renderToStaticMarkup(<JevSetupNotice state={{ ...base, jevDecisionConfigured: true, jevDecisionEnabled: false }} onOpenJevSettings={noop} />);
-    expect(html).toContain('Jev 켜기');
+    expect(html).toContain('판단 엔진 켜기');
   });
 });

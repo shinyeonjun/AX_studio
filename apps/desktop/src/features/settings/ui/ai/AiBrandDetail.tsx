@@ -20,7 +20,7 @@ export function AiBrandDetail({ brand, state, detecting, onRefresh, detection }:
   const meta = AI_PROVIDER_UI_CATALOG[brand];
 
   if (!panel.initialized) {
-    return <p className="muted">{meta.title} 설정 불러오는 중...</p>;
+    return <p className="muted">{meta.title} 설정 불러오는 중…</p>;
   }
 
   return (

@@ -18,7 +18,7 @@ export function AiCliPanel({ label, description, connected, badge, testing, onTe
         <div className="provider-option-desc">{description}</div>
       </div>
       <button type="button" className="btn btn-secondary" onClick={onTest} disabled={testing}>
-        {testing ? '확인 중...' : 'CLI 연결 테스트'}
+        {testing ? '확인 중…' : 'CLI 연결 테스트'}
       </button>
     </div>
   );

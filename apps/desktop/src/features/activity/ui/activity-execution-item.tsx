@@ -104,7 +104,7 @@ export function ActivityExecutionItem({
           </button>
         </div>
         <div className="timeline-status">
-          {skillName ?? '직접 실행'} — {resultFailed ? '실행은 끝났지만 결과를 확인해야 해요' : executionStatusLabel(execution.status)}
+          {skillName ?? '일회성 작업'} — {resultFailed ? '실행은 끝났지만 결과를 확인해야 해요' : executionStatusLabel(execution.status)}
         </div>
         <div className="muted">
           {executionTriggerLabel(execution.triggerType)}

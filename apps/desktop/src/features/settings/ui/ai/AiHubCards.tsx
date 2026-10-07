@@ -30,7 +30,7 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
 
   return (
     <>
-      {detecting && <p className="muted settings-hub-note">AI 연결 상태를 확인하는 중...</p>}
+      {detecting && <p className="muted settings-hub-note">AI 연결 상태를 확인하는 중…</p>}
       {hub.hubMessage && <p className="muted settings-hub-note">{hub.hubMessage}</p>}
       <div className="connection-hub">
         {brands.map((brand) => {

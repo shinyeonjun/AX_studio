@@ -38,7 +38,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
     <>
       <PageHeader
         title="활동"
-        subtitle="실행 이력과 결과를 확인합니다"
+        subtitle="실행 기록과 결과를 확인합니다"
         action={
           executions.length > 0 ? (
             <button

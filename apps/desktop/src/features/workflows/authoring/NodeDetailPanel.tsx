@@ -92,7 +92,7 @@ export function NodeDetailPanel({
                   <span className="wf-detail-required">필수</span>
                 )}
               </dt>
-              <dd>{field.value.trim() || '?'}</dd>
+              <dd>{field.value.trim() || '비어 있음'}</dd>
             </div>
           ))}
         </dl>
