@@ -97,6 +97,12 @@ function stepTargets(
       targets.push(`${name} ${from ? `${from}단계 결과` : '실행 중 정해지는 값'}`);
     }
   }
+  // A database read that brings each row's matching rows from other tables names them too.
+  if (Array.isArray(params.join)) {
+    const joined = params.join.flatMap((join) => (join && typeof join === 'object' && typeof (join as { table?: unknown }).table === 'string'
+      ? [boundedValue((join as { table: string }).table)] : [])).filter(Boolean);
+    if (joined.length > 0) targets.push(`함께 읽는 테이블 ${joined.join(', ')}`);
+  }
   return targets.length > 0 ? targets.join(', ') : '지정된 대상 없음';
 }
 

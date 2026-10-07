@@ -21,7 +21,7 @@ export function DatabaseResult({ message }: { message: WorkspaceChatMessage }) {
       {table.rows.length === 0 && <p className="tool-result-empty">이 페이지에서 조회된 행이 없습니다.</p>}
     </div>
     <details className="tool-result-details"><summary>조회 조건 및 SQL 정보</summary>
-      <dl><dt>테이블</dt><dd>{scope.table}</dd><dt>조건</dt><dd>조건 필터 없음 · 전체 열</dd><dt>페이지</dt><dd>시작 {scope.offset} · 최대 {scope.limit}행</dd>
+      <dl><dt>테이블</dt><dd>{scope.table}</dd>{scope.joins?.length ? <><dt>함께 읽은 테이블</dt><dd>{scope.joins.map(join => `${join.table} (${join.on} = ${join.references})`).join(', ')}</dd></> : null}<dt>조건</dt><dd>조건 필터 없음 · 전체 열</dd><dt>페이지</dt><dd>시작 {scope.offset} · 최대 {scope.limit}행</dd>
         <dt>조회 시점</dt><dd>{origin?.capturedAt ?? '정보 없음'}</dd><dt>조회 식별값</dt><dd>{scope.queryFingerprint}</dd></dl>
       <p>실행 SQL은 이 결과에 포함되지 않았습니다. 직접 SQL 입력과 DB 수정은 지원되지 않습니다.</p>
       {(table.truncated || table.coverage?.hasMore) && <p>추가 페이지가 있습니다. 대화에서 이어서 조회할 수 있습니다.</p>}

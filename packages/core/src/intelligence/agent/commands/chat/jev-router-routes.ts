@@ -32,6 +32,7 @@ import {
 } from './jev-router-command.js';
 import { handleJevWorkflowRoute } from './jev-router-workflows.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
+import { coveringRdbRead } from './rdb-read-cover.js';
 
 export type JevFollowupEvaluator = (
   state: unknown,
@@ -235,7 +236,10 @@ async function contextRememberRoute(context: JevRouteContext): Promise<JevChatRo
 async function capabilityReadRoute(context: JevRouteContext): Promise<JevChatRouterResult> {
   const { input, selectedReadHints } = context;
   let readHint = selectedReadHints[0];
-  if (selectedReadHints.length > 1) {
+  const joined = coveringRdbRead(selectedReadHints, input.readOperationHints ?? []);
+  if (joined) {
+    readHint = joined;
+  } else if (selectedReadHints.length > 1) {
     const primary = await selectPrimaryReadHint(input, selectedReadHints, context.evaluateFollowup, context.requestPlan);
     if (!primary) {
       return context.workflowPlanResult(await planOneShot(context, selectedReadHints, []), 'execution_enqueue_once');

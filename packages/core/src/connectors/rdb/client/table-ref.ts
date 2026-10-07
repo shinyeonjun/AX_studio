@@ -26,3 +26,8 @@ export function quoteTableRef(ref: RdbTableRef, quote: '"' | '`'): string {
     ? `${quoteIdentifier(ref.schema, quote)}.${quoteIdentifier(ref.table, quote)}`
     : quoteIdentifier(ref.table, quote);
 }
+
+/** For names read from the database's own metadata (any language), never from a request: quotes are doubled. */
+export function quoteRdbIdentifier(name: string, quote: '"' | '`'): string {
+  return `${quote}${name.split(quote).join(quote + quote)}${quote}`;
+}

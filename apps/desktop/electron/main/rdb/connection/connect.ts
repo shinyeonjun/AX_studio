@@ -1,6 +1,7 @@
 import {
   RdbConnector,
   probeRdbConnection,
+  summarizeRdbSchema,
   type WorkflowRuntime,
   type WorkflowStore,
 } from '@ax-studio/core';
@@ -61,8 +62,11 @@ export async function validateAndConnectRdb(
     await saveRdbConnectionString(config.connectionString!);
   }
 
+  // Columns and relations let the read catalog offer joined reads; without them reads still work.
+  const schema = await summarizeRdbSchema(config).catch(() => undefined);
   store.setConnection('rdb', true, {
     ...persistedRdbConfig(config),
+    ...(schema ? { schema } : {}),
     label: payload.label?.trim() || undefined,
     connectedAt: new Date().toISOString(),
     lastError: undefined,

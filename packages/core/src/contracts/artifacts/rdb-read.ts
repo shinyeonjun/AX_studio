@@ -6,6 +6,8 @@ export const RdbReadScopeSchema = z.object({
   kind: z.literal('page'),
   queryFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   table: z.string().min(1),
+  /** Tables whose matching row was added to each base row, keyed `on` = `references`. */
+  joins: z.array(z.object({ table: z.string().min(1), on: z.string().min(1), references: z.string().min(1) }).strict()).max(3).optional(),
   /** Query capability only; use an account granted read permissions alone. */
   accessMode: z.literal('read_only'),
   projection: z.literal('all_columns'),
