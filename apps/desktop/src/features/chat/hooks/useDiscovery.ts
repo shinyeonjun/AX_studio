@@ -8,7 +8,7 @@ import { CoalescedRefresh } from '../../../app/hooks/coalesced-refresh.js';
 interface UseDiscoveryOptions {
   /** Changes whenever the visible Workspace chat context changes, including a new blank chat. */
   workspaceContextKey?: number;
-  onPublished?: () => void | Promise<void>;
+  onPublished?: (workflowId: string) => void | Promise<void>;
 }
 
 export function useDiscovery(options: UseDiscoveryOptions = {}) {
@@ -79,6 +79,25 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
   }, []);
 
   const activeSessionId = sessionContextKey === workspaceContextKey ? sessionId : null;
+
+  // A blank chat offers to finish a discovery the person left (the app may have been closed).
+  const [resumable, setResumable] = useState<Array<{ sessionId: string; goal: string; status: string }>>([]);
+  useEffect(() => {
+    if (activeSessionId) return;
+    let current = true;
+    void window.ax.discoveryResumable?.()
+      .then((sessions) => { if (current) setResumable(sessions); })
+      .catch(() => { if (current) setResumable([]); });
+    return () => { current = false; };
+  }, [activeSessionId, workspaceContextKey]);
+
+  const resume = useCallback((resumeSessionId: string) => {
+    operationEpochRef.current += 1;
+    activeSessionRef.current = resumeSessionId;
+    setSessionId(resumeSessionId);
+    setSessionContextKey(workspaceContextKeyRef.current);
+    void refresh(resumeSessionId);
+  }, [refresh]);
   const activeView = sessionContextKey === workspaceContextKey ? view : null;
 
   useEffect(() => {
@@ -118,6 +137,8 @@ export function useDiscovery(options: UseDiscoveryOptions = {}) {
     busy,
     error,
     dismissError,
+    resumable: activeSessionId ? [] : resumable,
+    resume,
     ...actions,
   };
 }

@@ -5,7 +5,7 @@ import {
   useExternalStoreRuntime,
 } from '@assistant-ui/react';
 import type { ThreadMessageLike } from '@assistant-ui/react';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import type {
   DiscoveryInspectView,
   WorkspaceChatMessage,
@@ -28,6 +28,10 @@ interface AxWorkspaceChatProps {
   progress: string;
   placeholder?: string;
   workflowId?: string;
+  /** Name of the opened saved work, for its empty screen. */
+  workflowTitle?: string;
+  resumableDiscoveries?: ReadonlyArray<{ sessionId: string; goal: string }>;
+  onResumeDiscovery?: (sessionId: string) => void;
   workflowRegistered?: boolean;
   discoveryView?: DiscoveryInspectView;
   discoveryBusy?: boolean;
@@ -39,6 +43,8 @@ interface AxWorkspaceChatProps {
   onMakeRecurring?: (source: { executionId: string } | { latestRead: true }, scheduleValue: string) => Promise<void>;
   onDismissError?: () => void;
   onRegisterWorkflow?: () => Promise<void>;
+  /** Runs the opened manual work now. */
+  onRunWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
   onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
   onDiscoveryPublish?: () => Promise<void> | void;
@@ -101,6 +107,9 @@ export function AxWorkspaceChat({
   progress,
   placeholder,
   workflowId,
+  workflowTitle,
+  resumableDiscoveries,
+  onResumeDiscovery,
   workflowRegistered = false,
   discoveryView,
   discoveryBusy = false,
@@ -112,12 +121,14 @@ export function AxWorkspaceChat({
   onMakeRecurring,
   onDismissError,
   onRegisterWorkflow,
+  onRunWorkflow,
   onAttachExample,
   onDiscoveryAnswer,
   onDiscoveryPublish,
   onDiscoveryCancel,
   onDiscoveryRetry,
 }: AxWorkspaceChatProps) {
+  const [running, setRunning] = useState(false);
   const threadMessages = useMemo(() => toThreadMessages(messages), [messages]);
   // Interactivity follows the newest assistant message, not the newest message:
   // a failed send leaves the optimistic user message last, and the confirm
@@ -145,6 +156,9 @@ export function AxWorkspaceChat({
           {messages.length === 0 && !busy && !discoveryView && (
             <WorkspaceEmptyStage
               discoveryBusy={discoveryBusy}
+              openWorkName={workflowId ? workflowTitle ?? '' : undefined}
+              resumable={resumableDiscoveries}
+              onResume={onResumeDiscovery}
               onAttachExample={onAttachExample}
               onSend={onSend}
             />
@@ -184,7 +198,20 @@ export function AxWorkspaceChat({
               disabled={busy || workflowRegistered}
               onClick={() => void onRegisterWorkflow()}
             >
-              {workflowRegistered ? '업무로 등록됨' : '업무로 등록'}
+              {workflowRegistered ? '자동 실행 중' : '자동 실행 켜기'}
+            </button>
+          )}
+          {workflowId && onRunWorkflow && (
+            <button
+              type="button"
+              className="ax-workspace-register-button"
+              disabled={busy || running}
+              onClick={() => {
+                setRunning(true);
+                void onRunWorkflow().finally(() => setRunning(false));
+              }}
+            >
+              {running ? '실행 중…' : '지금 실행'}
             </button>
           )}
           <ComposerPrimitive.Root className="ax-workspace-composer">

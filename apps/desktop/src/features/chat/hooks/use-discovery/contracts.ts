@@ -13,7 +13,8 @@ export interface UseDiscoveryActionsOptions {
   setBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string>>;
   refresh: RefreshDiscovery;
-  onPublished?: () => void | Promise<void>;
+  /** Receives the saved work, so the screen can show it instead of an empty chat. */
+  onPublished?: (workflowId: string) => void | Promise<void>;
 }
 
 export type UseDiscoveryStartActionsOptions = Pick<

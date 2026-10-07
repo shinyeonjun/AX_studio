@@ -145,6 +145,7 @@ contextBridge.exposeInMainWorld('ax', {
     optionId: string;
     expectedRevision?: number;
   }) => ipcRenderer.invoke('ax:discoveryAnswer', payload),
+  discoveryResumable: () => ipcRenderer.invoke('ax:discoveryResumable'),
   discoveryPublish: (payload: {
     sessionId: string;
     name?: string;

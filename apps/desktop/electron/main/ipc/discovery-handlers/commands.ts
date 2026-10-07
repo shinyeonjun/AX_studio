@@ -44,7 +44,24 @@ function executeDiscovery(
   });
 }
 
+/** Waiting on the person: still worth finishing after the app was closed. */
+const RESUMABLE_DISCOVERY_STATUSES = new Set(['needs_clarification', 'ready_to_publish', 'needs_attention']);
+
+/**
+ * Discoveries started from "지난 결과물 첨부하기" belong to no chat, so after a restart nothing
+ * showed them again. Only those (a chat's own discoveries reopen with that chat), newest first.
+ */
+export function resumableDiscoveries(store: ReturnType<typeof getCore>['store']) {
+  return store.listDiscoverySessions()
+    .filter((session) => RESUMABLE_DISCOVERY_STATUSES.has(session.status) && !store.getDiscoverySessionWorkspace(session.id))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 5)
+    .map((session) => ({ sessionId: session.id, goal: session.userGoal, status: session.status, updatedAt: session.updatedAt }));
+}
+
 export function registerDiscoveryCommandHandlers(): void {
+  ipcHandle('ax:discoveryResumable', async () => resumableDiscoveries(getCore().store));
+
   ipcHandle('ax:discoveryStart', async (_event, payload: unknown) =>
     executeDiscovery('discovery.start', splitWorkspaceSession(payload), true));
 

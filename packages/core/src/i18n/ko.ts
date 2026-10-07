@@ -31,7 +31,7 @@ export const KO = {
     'human_approval.reason': { label: '승인 사유', question: '사람에게 어떤 작업을 승인받을까요?' },
   },
   chatSummary: {
-    triggerManual: '지금 한 번 (저장하지 않음)',
+    triggerManual: '직접 실행할 때마다',
     triggerOnce: '예약 1회',
   },
   workflowDocument: {
@@ -40,7 +40,7 @@ export const KO = {
     triggerGmail: (accountId: string) => `Gmail 새 메일: ${accountId}`,
     triggerSlack: (channel: string) => `Slack 새 메시지: ${channel}`,
     triggerOnce: (runAt: string) => `1회 예약: ${runAt}`,
-    sectionWorkflow: '워크플로우',
+    sectionWorkflow: '업무 흐름',
     sectionCompletion: '완료 조건',
     sectionAssumptions: '가정',
     noSteps: '(노드 없음)',

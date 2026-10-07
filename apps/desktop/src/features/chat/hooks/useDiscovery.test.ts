@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const stateSetters = vi.hoisted(() => Array.from({ length: 5 }, () => vi.fn()));
+const stateSetters = vi.hoisted(() => Array.from({ length: 6 }, () => vi.fn()));
 const hookState = vi.hoisted(() => ({ setterIndex: 0 }));
 
 vi.mock('react', () => ({
@@ -53,7 +53,7 @@ describe('workspace asynchronous session ordering', () => {
   const originalWindow = globalThis.window;
 
   beforeEach(() => {
-    stateSetters.splice(0, stateSetters.length, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn());
+    stateSetters.splice(0, stateSetters.length, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn());
     hookState.setterIndex = 0;
   });
 
