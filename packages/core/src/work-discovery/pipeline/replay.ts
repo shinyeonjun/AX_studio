@@ -6,6 +6,9 @@ import { buildDiscoveryBlueprint, needsHumanConfirmation } from '../compile/blue
 import { DiscoveryRecoverableError } from '../recovery/error.js';
 import { enumerateCandidates, replayCandidates, resolveReplayWinners } from '../synthesis/index.js';
 import { judgeReplayAmbiguity } from '../synthesis/decision-judge.js';
+import { inputPairings, type InputPairing } from '../synthesis/input-pairing.js';
+import { writeSnapshotTable } from '../snapshot-file.js';
+import { join } from 'node:path';
 import type { DiscoveryPipelineExample, DiscoveryPipelineHost } from './contracts.js';
 
 export interface DiscoveryReplayContext {
@@ -19,6 +22,36 @@ export interface DiscoveryReplayContext {
   readonly startedAt: number;
 }
 
+/**
+ * Saves the pairing as snapshots: each paired example gets its own file's table under the shared
+ * id. Resuming from the checkpoint and replaying a repair against history then read the same
+ * pairing the rule was learned with, instead of the first example's file for every example.
+ */
+function persistInputBindings(host: DiscoveryPipelineHost, sessionId: string, pairing: InputPairing): void {
+  if (pairing.bindings.length === 0) return;
+  const records = host.store.listDiscoverySnapshots(sessionId);
+  for (const binding of pairing.bindings) {
+    const source = records.find((record) => record.exampleId === binding.exampleId && record.sourceId === binding.sourceId);
+    const table = pairing.snapshotsByExample[binding.exampleId]?.[binding.sharedId];
+    if (!source || !table) continue;
+    host.store.upsertDiscoverySnapshot({
+      ...source,
+      id: host.snapshotRecordId(sessionId, binding.exampleId, binding.sharedId),
+      sourceId: binding.sharedId,
+      manifestPath: writeSnapshotTable(join(host.snapshotDir, sessionId), binding.exampleId, binding.sharedId, table, source.fingerprint),
+      capturedAt: new Date().toISOString(),
+    });
+  }
+}
+
+/** Required fields some candidate reproduces in every example. */
+function coveredPathCount(candidates: ReturnType<typeof replayCandidates>, requiredPaths: readonly string[]): number {
+  const covered = new Set(candidates
+    .filter((candidate) => candidate.replayResults.length > 0 && candidate.replayResults.every((entry) => entry.pass))
+    .map((candidate) => candidate.observationPath));
+  return requiredPaths.filter((path) => covered.has(path)).length;
+}
+
 export async function completeDiscoveryReplay(context: DiscoveryReplayContext): Promise<void> {
   const {
     host,
@@ -30,20 +63,36 @@ export async function completeDiscoveryReplay(context: DiscoveryReplayContext): 
     startedAt,
   } = context;
   let state = context.state;
-  const enumerated = enumerateCandidates(
-    observations,
-    sourceInventory,
-    snapshotsByExample[examples[0]?.id ?? ''] ?? {},
-  );
-  const replayedRaw = replayCandidates({
-    candidates: enumerated,
+  const requiredPaths = [...new Set(observations.filter((entry) => entry.required).map((entry) => entry.path))];
+  const replayExamples = examples.map((example) => ({
+    exampleId: example.id,
+    observations: observations.filter((entry) => entry.exampleId === example.id),
+  }));
+  // Each example may need its own period's file; replay every plausible pairing and keep the one
+  // that explains the most required fields (the earliest, i.e. most preferred, on a tie).
+  const pairings = inputPairings({
     examples: examples.map((example) => ({
-      exampleId: example.id,
-      observations: observations.filter((entry) => entry.exampleId === example.id),
+      id: example.id,
+      outputNames: example.outputArtifactIds.flatMap((artifactId) => host.artifactStore.get(artifactId)?.fileName ?? []),
     })),
+    sources: sourceInventory,
     snapshotsByExample,
   });
-  const requiredPaths = [...new Set(observations.filter((entry) => entry.required).map((entry) => entry.path))];
+  let best: { replayedRaw: ReturnType<typeof replayCandidates>; covered: number; pairing: InputPairing } | undefined;
+  for (const pairing of pairings) {
+    const pairedSnapshots = pairing.snapshotsByExample;
+    const enumerated = enumerateCandidates(
+      observations,
+      sourceInventory,
+      pairedSnapshots[examples[0]?.id ?? ''] ?? {},
+    );
+    const replayedRaw = replayCandidates({ candidates: enumerated, examples: replayExamples, snapshotsByExample: pairedSnapshots });
+    const covered = coveredPathCount(replayedRaw, requiredPaths);
+    if (!best || covered > best.covered) best = { replayedRaw, covered, pairing };
+    if (covered === requiredPaths.length) break;
+  }
+  const replayedRaw = best?.replayedRaw ?? [];
+  if (best) persistInputBindings(host, sessionId, best.pairing);
   const replayResolution = resolveReplayWinners(replayedRaw, requiredPaths);
 
   if (host.isCancelled(sessionId)) return;

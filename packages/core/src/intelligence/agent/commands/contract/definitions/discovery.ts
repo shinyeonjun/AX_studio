@@ -8,7 +8,8 @@ export const DISCOVERY_COMMAND_DEFINITIONS = [
     args: {
       goal: '업무 목표',
       exampleArtifactIds: 'artifact id list',
-      inputArtifactIds: 'optional input artifacts',
+      inputArtifactIds: 'optional input artifacts read for every example',
+      exampleInputArtifactIds: 'optional input artifacts per example, same order as exampleArtifactIds (e.g. the data each monthly report was made from)',
       desiredRecurrence: 'optional cron schedule',
     },
     mutates: true,

@@ -4,7 +4,15 @@ export const DiscoveryStartArgsSchema = z.object({
   goal: z.string().trim().min(1),
   exampleArtifactIds: z.array(z.string().trim().min(1)).min(1).max(3),
   inputArtifactIds: z.array(z.string().trim().min(1)).max(10).optional(),
+  /**
+   * Inputs that belong to one example only, in the order of exampleArtifactIds: August's export
+   * for August's report. inputArtifactIds are still read for every example.
+   */
+  exampleInputArtifactIds: z.array(z.array(z.string().trim().min(1)).max(10)).max(3).optional(),
   desiredRecurrence: z.string().optional(),
+}).refine((args) => !args.exampleInputArtifactIds || args.exampleInputArtifactIds.length === args.exampleArtifactIds.length, {
+  message: 'exampleInputArtifactIds must have one entry per example',
+  path: ['exampleInputArtifactIds'],
 });
 
 export const DiscoveryInspectArgsSchema = z.object({

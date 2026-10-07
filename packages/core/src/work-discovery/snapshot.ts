@@ -37,9 +37,17 @@ export function loadPersistedSnapshotTables(
     snapshotsByExample[record.exampleId]![record.sourceId] = parsed.data;
   }
 
+  // An uploaded input given to one example only is not expected in the others' snapshots.
+  const inputsByExample = new Map(store.listDiscoveryExamples(state.id)
+    .map((example) => [example.id, new Set(example.inputArtifactIds)]));
+  const expectedFor = (exampleId: string, source: DiscoverySessionState['sourceInventory'][number]): boolean => {
+    if (source.connector !== 'input_artifact') return true;
+    const artifactId = String(source.metadata?.artifactId ?? source.id.replace(/^input:/, ''));
+    return inputsByExample.get(exampleId)?.has(artifactId) ?? true;
+  };
   const hasAllSourceSnapshots = exampleIds.every((exampleId) => {
     const snapshots = snapshotsByExample[exampleId];
-    return state.sourceInventory.every((source) => Boolean(snapshots?.[source.id]));
+    return state.sourceInventory.every((source) => !expectedFor(exampleId, source) || Boolean(snapshots?.[source.id]));
   });
   return hasAllSourceSnapshots ? snapshotsByExample : undefined;
 }

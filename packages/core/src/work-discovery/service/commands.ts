@@ -47,7 +47,7 @@ export function startDiscovery(
       sessionId,
       label: 'example_' + (index + 1),
       outputArtifactIds: [artifactId],
-      inputArtifactIds: sessionInputArtifactIds,
+      inputArtifactIds: [...new Set([...sessionInputArtifactIds, ...(parsed.exampleInputArtifactIds?.[index] ?? [])])],
     });
     exampleIds.push(example.id);
   }
