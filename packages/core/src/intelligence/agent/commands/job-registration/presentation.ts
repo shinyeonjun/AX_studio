@@ -112,7 +112,7 @@ function stepTargets(
 }
 
 /** Built-in table steps described by what they do; they have no destination to show. */
-function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: ReadonlyMap<string, number>): string | undefined {
+function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: ReadonlyMap<string, number>, labels: TargetLabels): string | undefined {
   if (step.connector !== 'transform') return undefined;
   const inputs = Object.values(step.bindings ?? {})
     .map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
@@ -121,7 +121,7 @@ function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: Re
   if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 읽기만 함`;
   if (step.action === 'evaluate') {
     const expr = TransformExprSchema.safeParse(step.params?.expr);
-    return `${number} 표 정리${using} · 읽기만 함 · ${expr.success ? describeShaping(expr.data) : '변환식 확인 필요'}`;
+    return `${number} 표 정리${using} · 읽기만 함 · ${expr.success ? describeShaping(expr.data, (column) => labelFor(labels, 'column', column) ?? column) : '변환식 확인 필요'}`;
   }
   return undefined;
 }
@@ -135,7 +135,7 @@ export function workflowStepItems(
   const items = workflow.steps.map((step, index) => {
     const number = `${index + 1}.`;
     if (step.type === 'action') {
-      const tableItem = tableStepItem(step, number, stepNumbers);
+      const tableItem = tableStepItem(step, number, stepNumbers, labels);
       if (tableItem) return tableItem;
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
@@ -210,6 +210,7 @@ export function confirmationPresentation(
   httpLabel?: string,
   confirmationToken?: string,
   channelLabels: Readonly<Record<string, string>> = {},
+  columnLabels: Readonly<Record<string, string>> = {},
 ): AxUiPresentation {
   const hasExternal = workflowHasExternalSteps(workflow);
   return {
@@ -231,6 +232,7 @@ export function confirmationPresentation(
         items: workflowStepItems(workflow, {
           connectionId: httpLabel ? { [spec.connectionId]: httpLabel } : {},
           channel: channelLabels,
+          column: columnLabels,
         }),
       },
       { type: 'note', text: autoSendNote(spec.allowExternalAuto, hasExternal) },

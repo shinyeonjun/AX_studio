@@ -78,19 +78,19 @@ export async function previousResultRoute(turn: JevTurn): Promise<string> {
       providerRequestCount: exportPlan.providerRequestCount, requestBytes: exportPlan.requestBytes,
       usage: exportPlan.usage, accepted: Boolean(exportPlan.command) });
     if (!exportPlan.command) return exportPlan.message!;
-    options.onPresentation?.({ title: 'Excel 저장 계획 검사', inputMode: 'individual', inputs: [], actions: [],
-      blocks: [{ type: 'decision', label: '입력·요구 충족·범위', value: 'Host 입력 검사 및 Jev 검토 통과' },
-        { type: 'steps', title: '의존 순서', items: ['현재 표 → Excel 산출물 저장'] },
+    options.onPresentation?.({ title: 'Excel 저장 확인', inputMode: 'individual', inputs: [], actions: [],
+      blocks: [{ type: 'decision', label: '요청과 일치', value: '확인됨' },
+        { type: 'steps', title: '실행 순서', items: ['현재 표 → Excel 파일로 저장'] },
         { type: 'note', text: '실행 완료가 아닙니다. 현재 표만 저장하며 원본 재조회나 외부 발송은 하지 않습니다.' }] });
     const result = await executeScopedChatCommand(context, exportPlan.command);
     signal.throwIfAborted();
     publishResult(exportPlan.command.name, result, exportPlan.command);
     return result.status === 'queued' ? '현재 표를 Excel로 저장하기 시작했습니다. 파일이 만들어지면 결과 카드에서 받을 수 있어요.'
-      : 'Excel 저장을 시작하지 못했습니다. 실행 결과를 확인해 주세요.';
+      : 'Excel 저장을 시작하지 못했습니다. 잠시 후 다시 요청해 주세요. 계속되면 활동 화면에서 실패 이유를 확인할 수 있습니다.';
   }
   if (transformed.status === 'clarify') return transformed.message;
   if (transformed.status === 'unavailable') {
-    return '이전 결과는 유지했지만 Jev가 변환 조건을 확인하지 못해 바꾸지 않았습니다. 조건을 조금 더 구체적으로 말해 주세요.';
+    return '조건을 확실히 판단하지 못해 이전 결과를 그대로 두었습니다. 어떤 열을 어떻게 바꿀지 조금 더 구체적으로 알려 주세요. 예: "금액 높은 순으로 정렬해 줘"';
   }
   const reshaped = transformed.status === 'transformed' ? transformed.table : previousReadResult;
   // Headers the earlier answer showed carry over; a new column (a total, a ratio) is labelled too.

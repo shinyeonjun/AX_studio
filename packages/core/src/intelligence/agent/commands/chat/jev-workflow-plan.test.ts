@@ -563,7 +563,7 @@ describe('planJevWorkflow', () => {
       });
 
       expect(result).toMatchObject({ kind: 'clarify' });
-      expect(result.kind === 'clarify' && result.message).toContain('pathParams.orderId');
+      expect(result.kind === 'clarify' && result.message).toContain("'orderId'");
       expect(planningCalls).toBe(1);
     } finally {
       clearDynamicCatalogForTests();

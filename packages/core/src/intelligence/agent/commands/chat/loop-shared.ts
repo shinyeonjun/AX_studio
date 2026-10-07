@@ -1,3 +1,4 @@
+import { readValueNames } from './read-value-names.js';
 import type { ChatMessage } from '../../model/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../connectors/failure-kind.js';
 import type { AxCommandChatOptions } from './contracts.js';
@@ -134,8 +135,7 @@ export function jevFallbackMessage(reason: JevChatRouterFallbackReason): string 
 }
 
 export function missingReadValuesMessage(paths: readonly string[]): string {
-  const names = [...new Set(paths.map((path) => path.slice(path.lastIndexOf('.') + 1)))];
-  return `조회에 필요한 값(${names.join(', ')})을 요청에서 확인하지 못했습니다. 값을 알려 주세요.`;
+  return `조회에 필요한 값(${readValueNames(paths)})을 요청에서 찾지 못했습니다. 이 값을 넣어 다시 요청해 주세요.`;
 }
 
 export async function presentHttpEndpointSelection({ options, signal, publishResult }: CommandChatLoopContext): Promise<string> {

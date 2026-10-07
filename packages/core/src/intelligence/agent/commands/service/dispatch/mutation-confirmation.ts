@@ -86,6 +86,7 @@ function stepLabels(store: AxCommandServiceState['store']): TargetLabels {
   return {
     connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections())
       .map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
+    column: store.getColumnLabels(),
   };
 }
 

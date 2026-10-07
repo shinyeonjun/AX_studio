@@ -60,7 +60,7 @@ export function contextProposalCommand(input: ContextMemoryProposalInput): Conte
     actions.push({
       id: 'remember-session',
       label: '이 대화에 저장',
-      value: `이 대화에 ${key} 규칙으로 저장해줘`,
+      value: '이 기준을 이 대화에 기억해 줘',
       tone: 'secondary',
       purpose: 'confirm_context',
       contextUpdate: { scope: 'session', key, value },
@@ -78,7 +78,7 @@ export function contextProposalCommand(input: ContextMemoryProposalInput): Conte
     actions.push({
       id: 'remember-workflow',
       label: '현재 업무에 저장',
-      value: `현재 업무에 ${key} 규칙으로 저장해줘`,
+      value: '이 기준을 현재 업무에 기억해 줘',
       tone: 'secondary',
       purpose: 'confirm_context',
       contextUpdate: { scope: 'workflow', key, value, workflowId: input.currentWorkflowId.trim() },
