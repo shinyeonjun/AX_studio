@@ -25,7 +25,11 @@ export interface AxRuntimeApi {
   saveGeneratedArtifactToFolder: (artifactId: string) => Promise<GeneratedArtifactFolderSaveResult>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
   runWorkflow: (workflowId: string) => Promise<{ executionId: string; status: string; errorCode?: string }>;
-  loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;
+  loadWorkChat: {
+    (workflowId: string): Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;
+    /** `optional`: null when the work no longer exists, instead of an error. */
+    (workflowId: string, options: { optional: true }): Promise<{ state: unknown; summary?: string; title?: string; active?: boolean } | null>;
+  };
   onStateChanged: (listener: () => void) => () => void;
   exportDiagnostics: () => Promise<
     | { ok: true; path: string }

@@ -98,7 +98,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
               <ActivityExecutionItem
                 key={execution.id}
                 execution={execution}
-                skillName={state?.works.find((skill) => skill.id === execution.workflowId)?.name}
+                skillName={state?.works.find((skill) => skill.id === execution.workflowId)?.name ?? execution.name}
                 deleting={busyId === execution.id}
                 clearing={clearing}
                 exporting={exportingId !== null}

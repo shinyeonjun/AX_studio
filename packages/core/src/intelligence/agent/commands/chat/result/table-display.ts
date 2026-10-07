@@ -1,10 +1,12 @@
-import { displayColumns } from '../../../../../contracts/artifacts/table-display.js';
+import { displayColumns, formatTableNumber } from '../../../../../contracts/artifacts/table-display.js';
 import { boundedDisplayTable, MAX_DISPLAY_TABLE_COLUMNS, MAX_DISPLAY_TABLE_ROWS } from '../../../../../contracts/artifacts/table-bounds.js';
 import type { TableArtifact } from '../../../../../contracts/artifacts/table.js';
 
 function markdownCell(value: unknown): string {
   if (value == null) return '';
-  const text = typeof value === 'string' ? value : JSON.stringify(value) ?? String(value);
+  const text = typeof value === 'string' ? value
+    : typeof value === 'number' ? formatTableNumber(value)
+      : JSON.stringify(value) ?? String(value);
   return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 }
 

@@ -11,7 +11,8 @@ import { executionLogSummary } from '../execution-log-summary.js';
  * refresh lists 50 executions, older ids simply fall out.
  */
 const MAX_CACHED_EXECUTIONS = 200;
-const outputContractByIr = new Map<string, { irJson: string; hasOutputContract: boolean }>();
+type IrFacts = { hasOutputContract: boolean; name?: string };
+const irFactsByExecution = new Map<string, { irJson: string; facts: IrFacts }>();
 const logSummaryByExecution = new Map<string, { logJson: string | null; status: string; summary: ReturnType<typeof executionLogSummary> }>();
 
 function remember<V>(cache: Map<string, V>, key: string, value: V): V {
@@ -21,16 +22,18 @@ function remember<V>(cache: Map<string, V>, key: string, value: V): V {
   return value;
 }
 
-function hasOutputContract(id: string | undefined, irJson: string): boolean {
-  const cached = id ? outputContractByIr.get(id) : undefined;
-  if (cached && cached.irJson === irJson) return cached.hasOutputContract;
-  let found = false;
+/** What a run's IR snapshot says about it: whether it checks its output, and what it was called. */
+function irFacts(id: string | undefined, irJson: string): IrFacts {
+  const cached = id ? irFactsByExecution.get(id) : undefined;
+  if (cached && cached.irJson === irJson) return cached.facts;
+  let facts: IrFacts = { hasOutputContract: false };
   try {
-    found = Boolean(parseWorkflowIR(JSON.parse(irJson)).outputContract);
+    const ir = parseWorkflowIR(JSON.parse(irJson));
+    facts = { hasOutputContract: Boolean(ir.outputContract), ...(ir.name?.trim() ? { name: ir.name.trim() } : {}) };
   } catch {
-    found = false;
+    // An unreadable snapshot has no name and no contract; the run is still listed.
   }
-  return id ? remember(outputContractByIr, id, { irJson, hasOutputContract: found }).hasOutputContract : found;
+  return id ? remember(irFactsByExecution, id, { irJson, facts }).facts : facts;
 }
 
 function cachedLogSummary(id: string, logJson: string | null, status: string): ReturnType<typeof executionLogSummary> {
@@ -52,7 +55,7 @@ export function executionQualityState(execution: {
     return { technicalStatus: 'completed', resultStatus: 'failed' };
   }
   if (execution.status === 'success') {
-    const passed = execution.irJson ? hasOutputContract(execution.id, execution.irJson) : false;
+    const passed = execution.irJson ? irFacts(execution.id, execution.irJson).hasOutputContract : false;
     return { technicalStatus: 'completed', resultStatus: passed ? 'passed' : 'not_evaluated' };
   }
   if (execution.status === 'pending_approval') {
@@ -102,6 +105,7 @@ export function buildExecutions(core: AxCore) {
     const logSummary = execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output')
       ? {} : cachedLogSummary(execution.id, execution.logJson, execution.status);
     const quality = executionQualityState(execution);
+    const name = execution.irJson ? irFacts(execution.id, execution.irJson).name : undefined;
     const resumeFailure = execution.status !== 'failed' ? undefined
       : execution.errorCode === 'invalid_execution_snapshot' ? '실행 스냅샷 검증에 실패하여 실행을 재개하지 못했습니다.'
         : execution.errorCode === 'invalid_execution_log' ? '실행 로그 검증에 실패하여 실행을 재개하지 못했습니다.'
@@ -114,6 +118,7 @@ export function buildExecutions(core: AxCore) {
       id: execution.id,
       workflowId: execution.workflowId,
       ephemeral: execution.ephemeral,
+      ...(name ? { name } : {}),
       workspaceSessionId: execution.workspaceSessionId,
       status: execution.status,
       hasOutput: execution.hasOutput,

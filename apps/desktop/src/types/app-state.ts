@@ -119,6 +119,8 @@ export interface AppState {
     workflowId?: string | null;
     /** True when this execution came from a one-off request rather than a saved workflow. */
     ephemeral?: boolean;
+    /** What the run was called: the saved work's name, or the request a one-off run came from. */
+    name?: string;
     /** The workspace conversation that owns a one-off result, when available. */
     workspaceSessionId?: string;
     status: string;
