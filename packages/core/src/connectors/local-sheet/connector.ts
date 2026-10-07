@@ -4,7 +4,7 @@ import { findLocalFolder, parseLocalFolderConnectionConfig } from '../../platfor
 import { resolveFileWithinFolderRoot } from '../../platform/local-folder-path.js';
 import { readSheetFromPath } from './read/sheet.js';
 import { newestFileInFamily } from './newest-file.js';
-import { basename } from 'node:path';
+import { basename, isAbsolute, relative } from 'node:path';
 
 export class LocalSheetConnector implements Connector {
   name = 'local_sheet';
@@ -28,11 +28,14 @@ export class LocalSheetConnector implements Connector {
       if (!folder) return { ok: false, error: 'folder_not_found', errorCode: 'folder_not_found' };
       // A recurring report reads this period's file: the newest one named like the example.
       if (params.followNewest === true) {
-        const newest = newestFileInFamily(folder.path, path);
-        if (newest !== path) {
-          ctx.log({ at: new Date().toISOString(), level: 'info', code: 'sheet_source_resolved',
-            message: `이번 실행에서 읽을 파일: ${basename(newest)}`, data: { fileName: basename(newest) } });
-        }
+        // A learned workflow stores the example's absolute path; the family is looked up inside
+        // the folder, so it must be relative to the folder (an absolute path matched nothing and
+        // every run silently read the example again).
+        const inFolder = isAbsolute(path) ? relative(folder.path, path) : path;
+        const newest = inFolder.startsWith('..') || isAbsolute(inFolder) ? path : newestFileInFamily(folder.path, inFolder);
+        // Always say which file this run read: "the same as last time" is worth knowing too.
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'sheet_source_resolved',
+          message: `이번 실행에서 읽은 파일: ${basename(newest)}`, data: { fileName: basename(newest) } });
         path = newest;
       }
       const resolved = resolveFileWithinFolderRoot(folder.path, path);
