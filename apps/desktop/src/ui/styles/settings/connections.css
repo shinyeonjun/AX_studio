@@ -67,7 +67,7 @@
 
 .connection-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 20px;
   background: var(--bg-card);
@@ -179,15 +179,28 @@
   min-width: 0;
 }
 
+/* Title and status badge share the first row so the description gets the full body width. */
+.connection-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .connection-card-title {
+  min-width: 0;
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 4px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .connection-card-desc {
   font-size: 13px;
   color: var(--text-muted);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .connection-card-error {
@@ -198,6 +211,7 @@
 }
 
 .connection-badge {
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;

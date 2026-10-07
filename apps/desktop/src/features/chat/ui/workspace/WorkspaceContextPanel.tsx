@@ -22,9 +22,9 @@ const TAB_LABELS: Record<WorkspaceContextTab, string> = {
 
 function WorkflowEmptyState() {
   return (
-    <section className="workspace-context-empty" aria-label="워크플로우 없음">
+    <section className="workspace-context-empty" aria-label="업무 흐름 없음">
       <span className="workspace-context-empty-icon" aria-hidden="true">◇</span>
-      <h2>아직 워크플로우가 없습니다.</h2>
+      <h2>아직 업무 흐름이 없습니다.</h2>
       <p>대화에서 업무 방법이 만들어지면 재사용할 수 있는 순서로 표시됩니다.</p>
     </section>
   );

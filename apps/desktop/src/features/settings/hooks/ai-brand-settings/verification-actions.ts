@@ -28,7 +28,7 @@ export function createAiBrandVerificationActions({
       setMessage(`${meta.cliLabel} 확인됨: ${result.command}${version}`);
       await refreshDetection();
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'CLI 확인에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, 'CLI 확인에 실패했습니다.'), true);
     } finally {
       setTestingCli(false);
     }
@@ -50,7 +50,7 @@ export function createAiBrandVerificationActions({
       await refreshDetection();
       await onRefresh();
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'API 연결 테스트에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, 'API 연결 테스트에 실패했습니다.'), true);
     } finally {
       setTesting(false);
     }

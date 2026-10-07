@@ -69,18 +69,20 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
               <div className="ai-provider-card-header">
                 <img src={meta.icon} alt="" className="connection-card-icon" />
                 <div className="connection-card-body">
-                  <div className="connection-card-title">{meta.title}</div>
+                  <div className="connection-card-title-row">
+                    <div className="connection-card-title">{meta.title}</div>
+                    <span
+                      className={`connection-badge ${status === 'active' ? 'connected' : status === 'ready' ? 'ready' : ''}`}
+                    >
+                      {aiBrandStatusLabel(brand, status)}
+                    </span>
+                  </div>
                   <div className="connection-card-desc">
                     {isActive
                       ? `${state?.aiProviderLabel ?? meta.title} · 사용 중`
                       : meta.description}
                   </div>
                 </div>
-                <span
-                  className={`connection-badge ${status === 'active' ? 'connected' : status === 'ready' ? 'ready' : ''}`}
-                >
-                  {aiBrandStatusLabel(brand, status)}
-                </span>
               </div>
 
               <div

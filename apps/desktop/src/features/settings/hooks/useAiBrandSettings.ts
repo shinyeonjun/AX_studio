@@ -35,7 +35,12 @@ export function useAiBrandSettings(
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testingCli, setTestingCli] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessageText] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const setMessage = (text: string, isError = false) => {
+    setMessageText(text);
+    setMessageIsError(isError);
+  };
 
   const activeBrand = brandFromProvider(state?.aiProvider?.provider, state?.aiProvider?.brand);
   const isActive = activeBrand === brand;
@@ -115,6 +120,7 @@ export function useAiBrandSettings(
     cliVerified,
     apiVerified,
     message,
+    messageIsError,
     canSave,
     isActive,
     status,

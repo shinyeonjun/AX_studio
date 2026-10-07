@@ -168,7 +168,7 @@ export function WorkspaceRunResultCard({
       {approval && !approval.toolResult && (
         <section className="ax-workspace-inline-approval" aria-label="외부 작업 승인">
           <div className="ax-workspace-inline-approval-copy">
-            <span className="ax-workspace-inline-approval-eyebrow">외부 작업 전 확인</span>
+            <span className="ax-workspace-inline-approval-eyebrow">보내기 전 승인</span>
             <h3>{approval.title}</h3>
             <p>{approval.reason}</p>
           </div>

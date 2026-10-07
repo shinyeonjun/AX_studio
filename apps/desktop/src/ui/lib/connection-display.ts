@@ -7,11 +7,11 @@ export function connectionEntry(state: { connections?: ConnectionEntry[] } | nul
 export function httpAuthLabel(authType: HttpAuthType | undefined, authHeader?: string, username?: string): string {
   switch (authType) {
     case 'bearer':
-      return 'Bearer 토큰';
+      return '토큰 방식';
     case 'apiKey':
-      return authHeader ? `API Key (${authHeader})` : 'API Key';
+      return authHeader ? `API 키 방식 (${authHeader})` : 'API 키 방식';
     case 'basic':
-      return username ? `Basic (${username})` : 'Basic';
+      return username ? `아이디·비밀번호 (${username})` : '아이디·비밀번호';
     default:
       return '인증 없음';
   }

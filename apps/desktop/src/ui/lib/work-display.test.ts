@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   executionErrorLabel,
   executionStatusLabel,
+  executionStepLabel,
+  executionTriggerLabel,
   isPersistentWork,
   isSingleExecution,
+  triggerLabel,
 } from './work-display';
 
 describe('work display classification', () => {
@@ -27,10 +30,28 @@ describe('work display classification', () => {
     expect(executionStatusLabel('success')).toBe('성공');
   });
 
-  it('provides a project-venv recovery step for missing document-engine packages', () => {
-    const message = executionErrorLabel('document_engine_dependency_missing');
-    expect(message).toContain('AX_DOCUMENT_ENGINE_PYTHON');
-    expect(message).toContain('npm run document-engine:setup');
+  it('explains a missing document reader without developer setup steps', () => {
+    for (const code of ['document_engine_dependency_missing', 'document_engine_empty_response']) {
+      const message = executionErrorLabel(code);
+      expect(message).toContain('문서 읽기 기능이 준비되지 않았어요');
+      expect(message).toContain('설정 > 진단 정보 내보내기');
+      expect(message).not.toMatch(/AX_DOCUMENT_ENGINE_PYTHON|npm run|venv|Document Engine/u);
+    }
+  });
+
+  it('never shows raw codes for unknown values', () => {
+    expect(executionErrorLabel('some_new_code')).toBe('실행 중 문제가 생겼어요');
+    expect(executionStatusLabel('some_new_status')).toBe('상태 확인 필요');
+    expect(executionTriggerLabel('unknown.trigger')).toBe('자동 시작');
+    expect(executionTriggerLabel('manual')).toBe('직접 실행');
+    expect(executionTriggerLabel('once')).toBe('한 번 예약');
+    expect(triggerLabel(undefined)).toBe('직접 실행');
+    expect(triggerLabel({ type: 'once', runAt: '2032-01-01T09:00:00.000Z' })).toBe('한 번 예약');
+  });
+
+  it('labels steps by number without exposing internal ids', () => {
+    expect(executionStepLabel(2)).toBe('2단계');
+    expect(executionStepLabel(undefined)).toBe('진행 중인 단계');
   });
 
   it('maps runtime hardening error codes to Korean messages', () => {

@@ -29,6 +29,7 @@ export function WebhookConnectionForm({
     setTunnelUrl,
     busy,
     message,
+    messageIsError,
     lastError,
     connectedItems,
     localExample,
@@ -41,11 +42,11 @@ export function WebhookConnectionForm({
     <div ref={formRef} className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
       {!embedded && (
         <ConnectionGuide
-          title="Webhook 수신"
+          title="외부 신호 받기(Webhook)"
           steps={[
-            '로컬 포트와 공유 비밀을 설정합니다.',
-            '업무 트리거를 webhook.inbound로 저장하고 활성화합니다.',
-            '외부에서 접근하려면 ngrok 등 터널 URL을 참고용으로만 적어 둡니다.',
+            '신호를 받을 포트 번호와 비밀 키를 정합니다.',
+            '업무를 만들 때 시작 조건을 "외부 신호를 받으면"으로 정하고 켭니다.',
+            '다른 컴퓨터에서 보내야 한다면 외부 접속 주소를 참고용으로 적어 둡니다.',
           ]}
         />
       )}
@@ -62,14 +63,14 @@ export function WebhookConnectionForm({
           disabled={busy}
         />
 
-        <label htmlFor="webhook-secret">공유 비밀</label>
+        <label htmlFor="webhook-secret">비밀 키</label>
         <div className="webhook-secret-row">
           <input
             id="webhook-secret"
             type={secretVisible ? 'text' : 'password'}
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            placeholder={connected ? '변경 시에만 입력' : `X-AX-Webhook-Secret 헤더 값 (${WEBHOOK_MIN_SECRET_LENGTH}자 이상)`}
+            placeholder={connected ? '바꿀 때만 입력' : `${WEBHOOK_MIN_SECRET_LENGTH}자 이상`}
             autoComplete="off"
             spellCheck={false}
             aria-invalid={secretError ? true : undefined}
@@ -104,7 +105,7 @@ export function WebhookConnectionForm({
           disabled={busy}
         />
 
-        <label htmlFor="webhook-tunnel">터널 URL (참고용)</label>
+        <label htmlFor="webhook-tunnel">외부 접속 주소(참고용)</label>
         <input
           id="webhook-tunnel"
           type="url"
@@ -114,31 +115,36 @@ export function WebhookConnectionForm({
           disabled={busy}
         />
 
-        <p className="connection-form-hint">
-          로컬 URL 예: <code>{localExample}</code>
-          <br />
-          인증: <code>X-AX-Webhook-Secret</code> 또는 <code>X-AX-Signature: sha256=…</code>
-        </p>
+        <details className="connection-form-details">
+          <summary>개발자용 정보</summary>
+          <p className="connection-form-hint">
+            받는 주소 예: <code>{localExample}</code>
+            <br />
+            인증 헤더: <code>X-AX-Webhook-Secret</code> 또는 <code>X-AX-Signature: sha256=…</code>
+            <br />
+            업무 시작 조건 이름: <code>webhook.inbound</code>
+          </p>
+        </details>
 
         <div className="connection-form-actions">
           <button type="button" className="btn btn-primary" onClick={() => void handleConnect()} disabled={busy}>
-            {connected ? '다시 시작' : '리스너 시작'}
+            {connected ? '다시 시작' : '받기 시작'}
           </button>
           {connected && (
             <button type="button" className="btn btn-secondary" onClick={() => void handleDisconnect()} disabled={busy}>
-              중지
+              멈추기
             </button>
           )}
         </div>
 
         {(message || lastError) && (
-          <p className={`connection-form-message ${!message && lastError ? 'error' : ''}`} role="status">
+          <p className={`connection-form-message ${messageIsError || (!message && lastError) ? 'error' : ''}`} role="status">
             {message || lastError}
           </p>
         )}
 
         <ConnectedServiceList
-          title="연결된 Webhook"
+          title="외부 신호 받기 연결"
           items={connectedItems}
           busy={busy}
           onEdit={() => loadFromConnection()}

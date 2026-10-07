@@ -87,7 +87,7 @@ export function WorkspaceFlowPanel({
           <span>{methodDetail(workflow)}</span>
           {replay && replay.total > 0 && (
             <em className={replay.failed > 0 ? 'workspace-flow-validation--warning' : 'workspace-flow-validation'}>
-              검증 {replay.total}건 중 {replay.passed}건 통과
+              예시 {replay.total}개 중 {replay.passed}개와 같은 결과
             </em>
           )}
         </section>
@@ -95,10 +95,10 @@ export function WorkspaceFlowPanel({
 
       {executionStatus === 'pending_approval' && latest?.approval && (
         <section className="workspace-flow-approval" aria-label="승인 대상">
-          <p className="workspace-flow-approval-label">외부 작업 전 확인</p>
+          <p className="workspace-flow-approval-label">보내기 전 승인</p>
           <strong>{latest.approval.title}</strong>
           <p>{latest.approval.reason}</p>
-          <span>채팅의 승인 카드에서 결정하세요.</span>
+          <span>대화의 승인 화면에서 승인하거나 거절하세요.</span>
         </section>
       )}
 

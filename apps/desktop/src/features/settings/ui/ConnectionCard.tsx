@@ -30,11 +30,13 @@ export function ConnectionCard({
         </div>
       )}
       <div className="connection-card-body">
-        <div className="connection-card-title">{title}</div>
+        <div className="connection-card-title-row">
+          <div className="connection-card-title">{title}</div>
+          <span className={`connection-badge ${badgeClass}`}>{badge}</span>
+        </div>
         <div className="connection-card-desc">{description}</div>
         {error && <div className="connection-card-error">오류: {error}</div>}
       </div>
-      <span className={`connection-badge ${badgeClass}`}>{badge}</span>
     </button>
   );
 }

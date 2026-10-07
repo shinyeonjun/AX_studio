@@ -17,13 +17,13 @@ export function AiBrandForm({
   apiKeyDraft,
   apiKeyConfigured,
   apiKeyMasked,
-  configFilePath,
   cliVerified,
   apiVerified,
   saving,
   testing,
   testingCli,
   message,
+  messageIsError = false,
   canSave,
   onModeChange,
   onModelChange,
@@ -47,7 +47,6 @@ export function AiBrandForm({
           <div>
             <h3>{meta.title}</h3>
             <p className="muted">{meta.description}</p>
-            {!embedded && configFilePath && <p className="muted">설정 파일: {configFilePath}</p>}
           </div>
         </div>
 
@@ -63,7 +62,7 @@ export function AiBrandForm({
         {mode === 'cli' && (
           <AiCliPanel
             label={meta.cliLabel}
-            description={cliOption?.description ?? `${meta.cliLabel}가 PATH에 있어야 합니다.`}
+            description={cliOption?.description ?? `이 컴퓨터에 ${meta.cliLabel} 프로그램이 설치되어 있어야 합니다.`}
             connected={cliConnected}
             badge={cliBadge}
             testing={testingCli}
@@ -95,7 +94,7 @@ export function AiBrandForm({
         </div>
 
         {message && (
-          <p className={`connection-form-message ${message.includes('실패') || message.includes('없') ? 'error' : ''}`}>
+          <p className={`connection-form-message ${messageIsError ? 'error' : ''}`} role="status">
             {message}
           </p>
         )}

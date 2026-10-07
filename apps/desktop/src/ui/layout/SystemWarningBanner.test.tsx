@@ -24,7 +24,8 @@ describe('SystemWarningBanner', () => {
     expect(activeSystemWarnings(state)).toEqual(['databaseBackendFallback', 'credentialStorageWarning']);
     const markup = renderToStaticMarkup(<SystemWarningBanner state={state} />);
     expect(markup).toContain('임시 저장 방식');
-    expect(markup).toContain('OS 키링');
+    expect(markup).toContain('비밀번호 보관함을 쓸 수 없어');
+    expect(markup).not.toContain('gnome-keyring');
     expect(markup).toContain('경고 닫기');
   });
 

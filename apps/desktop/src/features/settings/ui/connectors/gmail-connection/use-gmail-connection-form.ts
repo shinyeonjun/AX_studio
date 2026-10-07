@@ -15,15 +15,20 @@ type GmailConnectionControllerProps = Pick<GmailConnectionFormProps, 'onConnect'
 export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnectionControllerProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const showMessage = (text: string, isError = false) => {
+    setMessage(text);
+    setMessageIsError(isError);
+  };
 
   const handleConnect = async () => {
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onConnect();
-      setMessage('Gmail 연결이 완료되었습니다.');
+      showMessage('Gmail 연결이 완료되었습니다.');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Gmail 연결에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, 'Gmail 연결에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -32,16 +37,16 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
   const handleDisconnect = async () => {
     if (!confirmDisconnectConnector('Gmail')) return;
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onDisconnect();
-      setMessage('Gmail 연결이 해제되었습니다.');
+      showMessage('Gmail 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Gmail 연결 해제에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, 'Gmail 연결 해제에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
   };
 
-  return { busy, message, handleConnect, handleDisconnect };
+  return { busy, message, messageIsError, handleConnect, handleDisconnect };
 }

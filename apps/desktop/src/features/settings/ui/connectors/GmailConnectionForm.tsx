@@ -28,7 +28,7 @@ function hasAnyGmailScope(granted: string[] | undefined, accepted: readonly stri
 }
 
 export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
-  const { busy, message, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
+  const { busy, message, messageIsError, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
   const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
   const oauthReady = state?.gmailOAuthConfigured ?? false;
   const email = state?.gmailEmail;
@@ -84,9 +84,15 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
           </>
         ) : (
           <>
+            {!oauthReady && (
+              <p className="muted" role="note" style={{ marginBottom: 12 }}>
+                Gmail 연결 기능이 이 설치본에 준비되지 않았어요. 관리자에게 문의해 주세요.
+              </p>
+            )}
+            {/* Developer builds only: where the OAuth client id is read from. */}
             {!oauthReady && import.meta.env.DEV && (
               <p className="muted" style={{ marginBottom: 12 }}>
-                Gmail OAuth Client ID가 없습니다.{' '}
+                개발용: Gmail OAuth Client ID가 없습니다.{' '}
                 {state?.envFilePath ? (
                   <>
                     <code>{state.envFilePath}</code>에{' '}
@@ -115,7 +121,7 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
         )}
 
         {message && (
-          <p className="muted" style={{ marginTop: 12 }}>
+          <p className={`connection-form-message ${messageIsError ? 'error' : ''}`} role="status" style={{ marginTop: 12 }}>
             {message}
           </p>
         )}

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { WorkspaceAssistantPresentation } from './WorkspaceAssistantPresentation.js';
+import { InputRequestCard } from './workspace-assistant-presentation/input.js';
 
 describe('WorkspaceAssistantPresentation', () => {
   it('renders command inputs as one batch submission', () => {
@@ -136,5 +137,21 @@ describe('WorkspaceAssistantPresentation', () => {
     expect(markup).toContain('<li>read: gmail / search');
     expect(markup).toContain('ax-workspace-presentation-action--danger');
     expect(markup).toContain('삭제 확인');
+  });
+
+  it('labels a single requested value and says what the button does', () => {
+    const markup = renderToStaticMarkup(
+      <InputRequestCard
+        request={{ id: 'due', label: '마감일', type: 'text', required: true }}
+        busy={false}
+        value="내일"
+        onChange={() => undefined}
+        onClear={() => undefined}
+        onSend={async () => undefined}
+      />,
+    );
+    expect(markup).toContain('<label for="ax-input-due"><strong>마감일</strong></label>');
+    expect(markup).toContain('id="ax-input-due"');
+    expect(markup).toContain('>이 값으로 계속</button>');
   });
 });

@@ -4,6 +4,8 @@ interface ConnectionGuideProps {
   title?: string;
   steps: string | string[];
   guideKey?: string;
+  /** Long setup steps start folded so the form itself stays short. */
+  collapsible?: boolean;
 }
 
 function renderSteps(steps: string | string[]) {
@@ -19,8 +21,21 @@ function renderSteps(steps: string | string[]) {
   );
 }
 
-export function ConnectionGuide({ title, steps, guideKey }: ConnectionGuideProps) {
+export function ConnectionGuide({ title, steps, guideKey, collapsible = false }: ConnectionGuideProps) {
   const guideSrc = guideKey ? getGuideImageSrc(guideKey) : undefined;
+  if (collapsible) {
+    return (
+      <details className="connection-guide connection-form-details">
+        <summary>{title ?? '연결 방법'}</summary>
+        <div className="guide-placeholder">
+          {renderSteps(steps)}
+          {guideSrc ? (
+            <img src={guideSrc} alt={`${guideKey} 연결 가이드`} className="guide-image" />
+          ) : null}
+        </div>
+      </details>
+    );
+  }
   return (
     <div className="connection-guide">
       <h4>{title ?? '연결 방법'}</h4>

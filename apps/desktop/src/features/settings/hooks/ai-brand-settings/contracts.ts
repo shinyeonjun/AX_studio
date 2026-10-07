@@ -27,7 +27,8 @@ export interface AiBrandSettingsActionsInput {
   setSaving: Dispatch<SetStateAction<boolean>>;
   setTesting: Dispatch<SetStateAction<boolean>>;
   setTestingCli: Dispatch<SetStateAction<boolean>>;
-  setMessage: Dispatch<SetStateAction<string>>;
+  /** Shows a status line; `isError` styles it as an error without relying on its wording. */
+  setMessage: (text: string, isError?: boolean) => void;
   setVerifiedCli: AiDetection['setVerifiedCli'];
   setVerifiedApi: AiDetection['setVerifiedApi'];
 }

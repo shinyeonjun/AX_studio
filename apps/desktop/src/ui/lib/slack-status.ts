@@ -17,8 +17,8 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
     return {
       badge: '재연결 중',
       badgeClass: 'warning',
-      headline: '메시지 발송은 가능하지만 실시간 트리거를 다시 연결하고 있습니다.',
-      detail: socketStatus === 'connecting' ? 'Slack Socket Mode에 연결하는 중입니다.' : 'Slack WebSocket이 끊겨 자동 재연결 중입니다.',
+      headline: '메시지는 보낼 수 있지만 새 메시지 자동 감지를 다시 연결하고 있습니다.',
+      detail: socketStatus === 'connecting' ? 'Slack 실시간 수신에 연결하는 중입니다.' : 'Slack 실시간 수신이 끊겨 자동으로 다시 연결하는 중입니다.',
       manualSend: true,
       realtimeTriggers: false,
     };
@@ -27,8 +27,8 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
     return {
       badge: '실시간 연결 오류',
       badgeClass: 'warning',
-      headline: '메시지 발송은 가능하지만 실시간 트리거에 오류가 있습니다.',
-      detail: state?.slackLastError ?? 'Slack WebSocket 연결 오류를 확인해 주세요.',
+      headline: '메시지는 보낼 수 있지만 새 메시지 자동 감지에 문제가 있습니다.',
+      detail: state?.slackLastError ?? 'Slack 실시간 수신 연결에 문제가 있습니다. 실시간 수신 토큰을 확인해 주세요.',
       manualSend: true,
       realtimeTriggers: false,
     };
@@ -37,8 +37,8 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
     return {
       badge: '실시간 연결됨',
       badgeClass: 'connected',
-      headline: '메시지 발송과 실시간 트리거가 모두 사용 가능합니다.',
-      detail: 'Socket Mode로 새 Slack 메시지를 즉시 받습니다.',
+      headline: '메시지 보내기와 새 메시지 자동 감지를 모두 사용할 수 있습니다.',
+      detail: '실시간 수신으로 새 Slack 메시지를 바로 받습니다.',
       manualSend: true,
       realtimeTriggers: true,
     };
@@ -47,10 +47,10 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
     return {
       badge: '부분 연결됨',
       badgeClass: 'warning',
-      headline: '메시지 발송은 가능하지만 실시간 트리거는 꺼져 있습니다.',
+      headline: '메시지는 보낼 수 있지만 새 메시지 자동 감지는 꺼져 있습니다.',
       detail: state?.slackHasAppToken
-        ? 'App Token은 저장됐지만 Socket Mode가 시작되지 않았습니다. 아래에서 다시 시도하세요.'
-        : 'Bot Token만 연결됐습니다. 실시간 트리거에는 App Token(xapp-)이 필요합니다.',
+        ? '실시간 수신 토큰은 저장됐지만 실시간 수신이 시작되지 않았습니다. 아래에서 다시 시도하세요.'
+        : '봇 토큰만 연결됐습니다. 새 메시지 자동 감지에는 실시간 수신 토큰(xapp-)이 필요합니다.',
       manualSend: true,
       realtimeTriggers: false,
     };
@@ -58,8 +58,8 @@ export function slackCapabilityStatus(state: AppState | null): SlackCapabilitySt
   return {
     badge: '미연결',
     badgeClass: '',
-    headline: 'Slack을 연결하면 알림 발송과 트리거를 사용할 수 있습니다.',
-    detail: state?.slackLastError ?? 'Bot Token과 Socket Mode용 App Token이 필요합니다.',
+    headline: 'Slack을 연결하면 메시지 보내기와 새 메시지 자동 감지를 사용할 수 있습니다.',
+    detail: state?.slackLastError ?? '봇 토큰과 실시간 수신 토큰이 필요합니다.',
     manualSend: false,
     realtimeTriggers: false,
   };

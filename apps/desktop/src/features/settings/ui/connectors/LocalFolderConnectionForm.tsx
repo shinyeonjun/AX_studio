@@ -17,6 +17,7 @@ export function LocalFolderConnectionForm({
     selectedPath,
     busy,
     message,
+    messageIsError,
     folders,
     connected,
     handlePick,
@@ -71,7 +72,7 @@ export function LocalFolderConnectionForm({
         </div>
 
         {message && (
-          <p className={`connection-form-message ${message.includes('실패') ? 'error' : ''}`}>{message}</p>
+          <p className={`connection-form-message ${messageIsError ? 'error' : ''}`} role="status">{message}</p>
         )}
 
         {folders.length > 0 && (

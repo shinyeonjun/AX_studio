@@ -87,8 +87,8 @@ export function MessageDraftFields({
         </div>
       </div>
       <div className="tool-result-thread">
-        <strong>{source.threadReference ? '스레드 답글 요청' : '새 채널 메시지'}</strong>
-        <span>{source.threadReference ? '대상 ' + source.threadReference + ' · 스레드 전송 미지원' : '스레드 답장과 파일 게시 미지원'}</span>
+        <strong>{source.threadReference ? '스레드 답장' : '새 채널 메시지'}</strong>
+        <span>{source.threadReference ? '스레드에 답장으로 보내는 기능은 아직 없어요.' : '스레드 답장과 파일 첨부는 아직 지원하지 않아요.'}</span>
       </div>
 
       <div className="tool-result-editor-card tool-result-editor-card--slack">

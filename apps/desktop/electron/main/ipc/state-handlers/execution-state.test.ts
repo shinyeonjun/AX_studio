@@ -73,4 +73,18 @@ describe('repeated state refreshes', () => {
     ]);
     expect(buildExecutions(core)[0]).toMatchObject({ currentStepId: 'send' });
   });
+
+  it('names a run and counts its current step the way people do', () => {
+    const ir = { version: 1, name: '주간 매출 보고', goal: 'g', trigger: { type: 'manual' }, inputs: [], permissions: {}, approval: [],
+      allowExternalAuto: false, assumptions: [], sideEffects: {}, dataPolicy: {},
+      steps: [
+        { type: 'action', id: 'read_sales', connector: 'rdb', action: 'query.read', params: { table: 'orders' }, sideEffect: 'NONE' },
+        { type: 'action', id: 'eval_total_2', connector: 'transform', action: 'evaluate', params: {}, sideEffect: 'NONE' },
+      ] };
+    const core = { store: { listExecutions: () => [{ id: 'run-names', workflowId: null, ephemeral: true, status: 'running',
+      errorCode: null, hasOutput: false, historyDiagnostics: [], irJson: JSON.stringify(ir),
+      logJson: JSON.stringify([{ at: '2026-09-01T00:00:00Z', level: 'info', code: 'step_started', message: 'Synthetic step', data: { stepId: 'eval_total_2' } }]),
+    }] } } as unknown as AxCore;
+    expect(buildExecutions(core)[0]).toMatchObject({ name: '주간 매출 보고', currentStepId: 'eval_total_2', currentStepNumber: 2 });
+  });
 });

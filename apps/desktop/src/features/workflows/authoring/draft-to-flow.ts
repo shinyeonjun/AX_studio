@@ -23,14 +23,14 @@ function addPlaceholder(ctx: DraftFlowBuildContext): void {
     kind: 'placeholder',
     label: '다음',
     subtitle: '대화로 업무 순서를 정합니다',
-    lines: [{ text: '아직 노드 없음', complete: false }],
+    lines: [{ text: '아직 단계 없음', complete: false }],
     incomplete: true,
-    tooltip: '다음 워크플로우 노드',
+    tooltip: '다음 단계',
     card: {
       header: '…',
       brand: 'Next',
       brandStyle: 'bracket',
-      summary: '노드 추가',
+      summary: '단계 추가',
     },
     change: 'added',
   });
@@ -89,7 +89,7 @@ export function draftToFlow(
   }
   if (hasBranchCycle(draft.nodes ?? [])) {
     return { nodes: [], edges: [], hasContent: true,
-      error: '조건 분기가 순환하여 업무 흐름을 표시할 수 없습니다. 대화에서 분기 연결을 수정해 주세요.' };
+      error: '조건에 따라 나뉜 단계가 서로를 다시 가리키고 있어 업무 흐름을 그릴 수 없어요. 대화에서 조건 단계가 앞 단계로 되돌아가지 않게 고쳐 달라고 요청해 주세요.' };
   }
 
   const ctx = createDraftFlowContext(draft, options);

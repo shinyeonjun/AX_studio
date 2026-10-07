@@ -20,7 +20,7 @@ export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSour
           <div className="workspace-sources-kicker">이 대화의 자료</div>
           <h2 className="workspace-sources-title">올린 자료</h2>
           <p className="workspace-sources-subtitle">
-            업로드한 파일은 이 대화에만 연결되고, 문서 엔진이 읽은 결과를 AI가 필요할 때 조회합니다.
+            올린 파일은 이 대화에서만 쓰이고, 올린 파일 내용을 AI가 필요할 때 참고해요.
           </p>
         </div>
         <button
@@ -51,7 +51,7 @@ export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSour
                     {statusLabel(source)}
                   </span>
                   {source.summary && (
-                    <span>{source.summary.pageCount}페이지 · {source.engine ?? source.summary.engine}</span>
+                    <span>{source.summary.pageCount}페이지</span>
                   )}
                 </div>
                 {source.status === 'failed' && source.errorMessage && (

@@ -11,13 +11,13 @@ export interface AiBrandFormProps {
   apiKeyDraft: string;
   apiKeyConfigured: boolean;
   apiKeyMasked?: string;
-  configFilePath?: string;
   cliVerified: boolean;
   apiVerified: boolean;
   saving: boolean;
   testing: boolean;
   testingCli: boolean;
   message: string;
+  messageIsError?: boolean;
   canSave: boolean;
   onModeChange: (mode: AiConnectionMode) => void;
   onModelChange: (value: string) => void;

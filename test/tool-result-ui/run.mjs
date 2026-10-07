@@ -79,7 +79,7 @@ try {
     assert.equal(await page.locator('.tool-result-null').count(), 1);
     assert.equal(await page.locator('details.tool-result-details').evaluate(element => element.open), false);
     await capture(session, 'db-read-1486x1059');
-    await page.getByText('조회 조건 및 SQL 정보', { exact: true }).click();
+    await page.getByText('조회 정보', { exact: true }).click();
     await expect(page.getByText('실행 SQL은 이 결과에 포함되지 않았습니다.', { exact: false })).toBeVisible();
   });
   await check('Literal editing, confirmation invalidation, keyboard back and single dispatch', async () => {

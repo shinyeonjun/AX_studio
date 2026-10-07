@@ -23,24 +23,29 @@ export function useSlackConnectionForm({
   const [appToken, setAppToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const showMessage = (text: string, isError = false) => {
+    setMessage(text);
+    setMessageIsError(isError);
+  };
 
   const handleConnect = async () => {
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onConnect({
         token: slackToken,
         appToken: appToken.trim() || undefined,
       });
-      setMessage(
+      showMessage(
         realtimeTriggers
           ? 'Slack 연결이 완료되었습니다.'
-          : 'Slack 연결을 갱신했습니다. 실시간 트리거 상태를 확인하세요.',
+          : 'Slack 연결을 갱신했습니다. 새 메시지 자동 감지 상태를 확인하세요.',
       );
       setSlackToken('');
       setAppToken('');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Slack 연결에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, 'Slack 연결에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -50,12 +55,12 @@ export function useSlackConnectionForm({
     if (!onDisconnect) return;
     if (!confirmDisconnectConnector('Slack')) return;
     setBusy(true);
-    setMessage('');
+    showMessage('');
     try {
       await onDisconnect();
-      setMessage('Slack 연결이 해제되었습니다.');
+      showMessage('Slack 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Slack 연결 해제에 실패했습니다.'));
+      showMessage(ipcErrorMessage(error, 'Slack 연결 해제에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -68,6 +73,7 @@ export function useSlackConnectionForm({
     setAppToken,
     busy,
     message,
+    messageIsError,
     handleConnect,
     handleDisconnect,
   };

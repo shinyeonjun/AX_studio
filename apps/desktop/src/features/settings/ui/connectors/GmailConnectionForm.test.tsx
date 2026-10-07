@@ -47,4 +47,10 @@ describe('GmailConnectionForm capabilities', () => {
     );
     expect(ticks(markup)).toBe(1);
   });
+
+  it('tells end users to ask an administrator when Gmail sign-in is not set up', () => {
+    const state = { ...stateWithScopes([]), connections: [], gmailOAuthConfigured: false };
+    const markup = renderToStaticMarkup(<GmailConnectionForm state={state} onConnect={noop} onDisconnect={noop} />);
+    expect(markup).toContain('Gmail 연결 기능이 이 설치본에 준비되지 않았어요. 관리자에게 문의해 주세요.');
+  });
 });

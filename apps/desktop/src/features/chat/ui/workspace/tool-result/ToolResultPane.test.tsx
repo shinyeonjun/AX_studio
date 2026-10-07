@@ -91,8 +91,8 @@ describe('tool result renderers', () => {
     const value = source('slack');
     value.blockedFields = ['thread_ts']; value.threadReference = '100.000';
     const html = markup(controller(value));
-    expect(html).toContain('스레드 답글 요청');
-    expect(html).toContain('100.000');
+    expect(html).toContain('스레드 답장');
+    expect(html).not.toContain('100.000');
     expect(html).toContain('전송이 차단되었습니다');
     expect(html).toMatch(/disabled="">게시 전 확인/);
     expect(html).not.toContain('>확인하고 게시<');
@@ -111,6 +111,9 @@ describe('tool result renderers', () => {
     expect(html).not.toContain('<details open');
     expect(html).not.toContain('<textarea');
     expect(html).not.toContain('실행 SQL: SELECT');
+    expect(html).toContain('<summary>조회 정보</summary>');
+    expect(html).not.toContain('d'.repeat(64));
+    expect(html).not.toContain('시작 0');
   });
   it.each(['fingerprint', 'execution', 'historical'] as const)('does not assert read-only for %s provenance mismatch', kind => {
     const message = dbMessage();
@@ -119,7 +122,7 @@ describe('tool result renderers', () => {
     if (kind === 'historical') delete message.readResult!.source;
     const html = pane(message);
     expect(html).not.toContain('>읽기 전용<');
-    expect(html).toContain('검증 정보 없음');
+    expect(html).toContain('>조회 결과<');
   });
   it('keeps empty and truncated pages accurate without inventing totals', () => {
     const message = dbMessage();

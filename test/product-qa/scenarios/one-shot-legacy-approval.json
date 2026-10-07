@@ -25,7 +25,7 @@
     },
     {
       "check": "visibleTextContains",
-      "text": "외부 작업 전 확인"
+      "text": "보내기 전 승인"
     },
     {
       "check": "syntheticSlackEvidence",

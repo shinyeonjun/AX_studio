@@ -25,7 +25,12 @@ export function useLocalFolderConnectionForm({
   const [labelDraft, setLabelDraft] = useState('');
   const [selectedPath, setSelectedPath] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessageText] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const setMessage = (text: string, isError = false) => {
+    setMessageText(text);
+    setMessageIsError(isError);
+  };
 
   const folders = state?.localFolders ?? [];
   const connected = folders.length > 0;
@@ -46,7 +51,7 @@ export function useLocalFolderConnectionForm({
         setLabelDraft(parts[parts.length - 1] ?? result.path);
       }
     } catch (error) {
-      setMessage(ipcErrorMessage(error, '폴더 선택에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '폴더 선택에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -54,7 +59,7 @@ export function useLocalFolderConnectionForm({
 
   const handleAdd = async () => {
     if (!selectedPath) {
-      setMessage('먼저 폴더를 선택해 주세요.');
+      setMessage('먼저 폴더를 선택해 주세요.', true);
       return;
     }
     setBusy(true);
@@ -65,7 +70,7 @@ export function useLocalFolderConnectionForm({
       setSelectedPath('');
       setLabelDraft('');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, '폴더 연결에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '폴더 연결에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -82,7 +87,7 @@ export function useLocalFolderConnectionForm({
       await onRemoveFolder(folderId);
       setMessage('폴더 연결이 해제되었습니다.');
     } catch (error) {
-      setMessage(ipcErrorMessage(error, '폴더 연결 해제에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '폴더 연결 해제에 실패했습니다.'), true);
     } finally {
       setBusy(false);
     }
@@ -94,6 +99,7 @@ export function useLocalFolderConnectionForm({
     selectedPath,
     busy,
     message,
+    messageIsError,
     folders,
     connected,
     handlePick,
