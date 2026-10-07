@@ -44,9 +44,16 @@ describe('English and code-like errors from the main process', () => {
     expect(ipcErrorMessage(wrap('Slack 연결에 실패했어요.'))).toBe('Slack 연결에 실패했어요.');
   });
 
-  it('keeps conflict codes the caller recognises itself, and exposes the raw code for branching', () => {
-    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toContain('workspace_chat_turn_conflict');
-    expect(ipcErrorMessage(wrap('workspace_chat_revision_conflict'))).toContain('workspace_chat_revision_conflict');
+  it('explains conflicts in words while the raw code stays available for branching', () => {
+    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toBe('다른 곳에서 대화가 바뀌었어요. 화면을 새로 고친 뒤 다시 시도해 주세요.');
+    expect(ipcErrorCode(wrap('workspace_chat_revision_conflict'))).toBe('workspace_chat_revision_conflict');
     expect(ipcErrorCode(wrap('app_shutting_down'))).toBe('app_shutting_down');
+  });
+});
+
+describe('system errors that mention Korean paths', () => {
+  it('are explained, not shown raw because the path is Korean', () => {
+    expect(ipcErrorMessage(new Error("Error invoking remote method 'ax:x': Error: ENOENT: no such file or directory, stat 'C:\업무자료\a.xlsx'"), '실패')).toBe('파일이나 폴더를 찾을 수 없어요. 옮겨지거나 삭제됐는지 확인해 주세요.');
+    expect(ipcErrorMessage(new Error("EISDIR: illegal operation on a directory, read 'C:\업무자료'"), '파일을 열지 못했어요.')).toBe('파일을 열지 못했어요.');
   });
 });

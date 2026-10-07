@@ -13,6 +13,8 @@ export interface WorkspaceFlowPanelProps {
   error?: string;
   discovery?: DiscoveryFlowState;
   workflow?: WorkspaceWorkflowState | null;
+  /** Status of the opened work's latest run, which may have started on its own. */
+  latestRunStatus?: string;
 }
 
 export interface WorkspaceFlowPresentation {

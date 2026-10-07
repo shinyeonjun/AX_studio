@@ -1,7 +1,9 @@
 import type { WorkspaceChatMessageContext, WorkspaceSendResponse } from './contracts';
 import type { WorkspaceChatMessage, WorkspaceChatSaveOptions } from '@ax-studio/core';
 import type { WorkspaceWorkflowState } from '../workspace-chat-helpers';
-import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
+import { ipcErrorCode, ipcErrorMessage } from '../../../../ui/lib/ipc-error';
+
+const CONFLICT_CODES = ['workspace_chat_revision_conflict', 'workspace_chat_turn_conflict', 'workspace_chat_persisted_reply_identity_conflict'];
 import { publishWorkspaceTranscript, transcriptSnapshot } from './transcript-snapshot';
 
 export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) {
@@ -147,9 +149,9 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
         }
       }
     } catch (err) {
-      const conflict = ipcErrorMessage(err).includes('workspace_chat_revision_conflict')
-        || ipcErrorMessage(err).includes('workspace_chat_turn_conflict')
-        || ipcErrorMessage(err).includes('workspace_chat_persisted_reply_identity_conflict');
+      // Classified by the code, never by the shown text, so the text can be plain Korean.
+      const code = ipcErrorCode(err);
+      const conflict = CONFLICT_CODES.some((conflictCode) => code.includes(conflictCode));
       if (conflict) {
         if (!initialTranscriptSaved && ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) ctx.setEditHint(text);
         try {

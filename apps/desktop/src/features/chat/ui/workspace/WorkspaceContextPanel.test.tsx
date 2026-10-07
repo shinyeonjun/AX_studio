@@ -205,3 +205,16 @@ describe('Workspace flow state', () => {
     });
   });
 });
+
+describe('Workspace flow for a saved work', () => {
+  const saved = { ...emptyFlow, workflow: { workflowId: 'wf-1', title: '월간매출요약 만들기' } as never };
+
+  it('follows the work\u2019s own latest run, which may have started on schedule', () => {
+    expect(resolveWorkspaceFlowPresentation({ ...saved, latestRunStatus: 'success' })).toMatchObject({ status: 'success', activeStage: 4 });
+    expect(resolveWorkspaceFlowPresentation({ ...saved, latestRunStatus: 'pending_approval' })).toMatchObject({ status: 'approval', activeStage: 3 });
+  });
+
+  it('says it is saved and waiting, not still being reviewed, before its first run', () => {
+    expect(resolveWorkspaceFlowPresentation(saved)).toMatchObject({ status: 'idle', statusLabel: '실행 전', activeStage: 4 });
+  });
+});

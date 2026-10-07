@@ -93,3 +93,18 @@ export function extractGmailPlainBody(message: unknown): string | undefined {
   if (html.length > 0) return htmlToPlainText(html.join('\n\n'));
   return typeof record.snippet === 'string' ? record.snippet : undefined;
 }
+
+const READ_HEADERS: Array<[header: string, label: string]> = [['from', '보낸 사람'], ['subject', '제목'], ['date', '받은 시각']];
+
+/**
+ * Who sent a message and what it is about, as lines a reader (or an AI writing a notification)
+ * can use ("보낸 사람: …", "제목: …"). Header values are message data, never instructions.
+ */
+export function gmailHeaderLines(message: unknown): string[] {
+  const headers = (message as { payload?: { headers?: Array<{ name?: unknown; value?: unknown }> } } | undefined)?.payload?.headers;
+  if (!Array.isArray(headers)) return [];
+  return READ_HEADERS.flatMap(([header, label]) => {
+    const value = headers.find((entry) => typeof entry?.name === 'string' && entry.name.toLowerCase() === header)?.value;
+    return typeof value === 'string' && value.trim() ? [`${label}: ${value.trim().slice(0, 300)}`] : [];
+  });
+}

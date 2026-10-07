@@ -180,3 +180,32 @@
   background: var(--ax-chat-user-bg);
   color: var(--ax-chat-text);
 }
+
+/* An opened work's latest results, where the work is. */
+.ax-work-latest {
+  width: min(640px, 100%);
+  margin: 0 auto 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--ax-chat-composer-border);
+  border-radius: 14px;
+  background: var(--ax-chat-composer-bg);
+  text-align: left;
+}
+
+.ax-work-latest h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.ax-work-latest-meta {
+  margin: 0 0 10px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}
+
+.ax-work-latest-older {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--ax-chat-text-secondary);
+  font-size: 12px;
+}

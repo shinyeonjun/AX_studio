@@ -103,7 +103,12 @@ function stepTargets(
       ? [boundedValue((join as { table: string }).table)] : [])).filter(Boolean);
     if (joined.length > 0) targets.push(`함께 읽는 테이블 ${joined.join(', ')}`);
   }
-  return targets.length > 0 ? targets.join(', ') : '지정된 대상 없음';
+  if (targets.length > 0) return targets.join(', ');
+  // No destination of its own: say where its input comes from (the mail that started the run).
+  const sources = Object.values(step.bindings ?? {}).map((binding) => (binding as { from?: unknown }).from);
+  if (sources.includes('trigger')) return '시작 조건으로 들어온 항목';
+  const fromSteps = sources.flatMap((from) => (typeof from === 'string' && stepNumbers.has(from) ? [stepNumbers.get(from)!] : []));
+  return fromSteps.length > 0 ? `${[...new Set(fromSteps)].join('·')}단계 결과` : '지정된 대상 없음';
 }
 
 /** Built-in table steps described by what they do; they have no destination to show. */

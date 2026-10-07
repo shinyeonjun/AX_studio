@@ -29,6 +29,7 @@ export function WorkspaceFlowPanel({
   error,
   discovery,
   workflow,
+  latestRunStatus,
 }: WorkspaceFlowPanelProps) {
   const presentation = resolveWorkspaceFlowPresentation({
     messages,
@@ -38,6 +39,7 @@ export function WorkspaceFlowPanel({
     error,
     discovery,
     workflow,
+    latestRunStatus,
   });
   const latest = latestWorkspaceExecutionResult(messages);
   const executionStatus = resolveWorkspaceExecutionStatus(latest?.executionStatus, latest?.content ?? '');

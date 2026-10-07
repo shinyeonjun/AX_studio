@@ -2,7 +2,7 @@ import type { gmail_v1 } from 'googleapis';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
-import { extractGmailPlainBody } from './body-extract.js';
+import { extractGmailPlainBody, gmailHeaderLines } from './body-extract.js';
 import { pollGmailNewMessages } from './new-message-poll/poll.js';
 import { resolveGmailMessageId } from './message-id.js';
 import { searchGmailMessagePage } from './search-page.js';
@@ -83,8 +83,10 @@ export class GmailConnector implements Connector {
           const gmail = await this.getClient(ctx.abortSignal);
           const res = await gmail.users.messages.get({ userId: 'me', id, format: 'full' });
           ctx.abortSignal?.throwIfAborted();
-          const body = extractGmailPlainBody(res.data);
-          return { ok: true, data: { ...res.data, body: body ?? res.data.snippet ?? '' } };
+          const body = extractGmailPlainBody(res.data) ?? res.data.snippet ?? '';
+          // The read hands on a mail as a person sees it: who sent it and its subject, then the body.
+          const headers = gmailHeaderLines(res.data);
+          return { ok: true, data: { ...res.data, body: headers.length > 0 ? [...headers, '', body].join('\n') : body } };
         }
         case 'messages.search':
         case 'message.search': {
