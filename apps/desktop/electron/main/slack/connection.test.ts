@@ -42,7 +42,7 @@ describe('Slack desktop connection hydration', () => {
           connectedAt: '2026-08-31T00:00:00.000Z',
           tokenStored: true,
           appTokenStored: true,
-          lastError: '저장된 Slack 인증 정보를 읽을 수 없습니다. 다시 연결해 주세요.',
+          lastError: '저장된 Slack 연결 정보를 읽을 수 없어요. 다시 연결해 주세요.',
         },
       }),
     ]);
@@ -59,7 +59,7 @@ describe('Slack desktop connection hydration', () => {
     credentialState.read.mockRejectedValue(new Error('safeStorage decrypt failed'));
 
     await expect(getSlackSecretForConnect()).rejects.toThrow(
-      '저장된 Slack 인증 정보를 읽을 수 없습니다. 다시 연결해 주세요.',
+      '저장된 Slack 연결 정보를 읽을 수 없어요. 다시 연결해 주세요.',
     );
   });
 });

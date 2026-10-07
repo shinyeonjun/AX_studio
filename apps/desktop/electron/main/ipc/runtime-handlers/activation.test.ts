@@ -46,7 +46,7 @@ describe('ax:deleteWorkflow', () => {
     const { workflowId } = store.saveWorkflow({ ...base, id: 'wf-ok' });
     expect(store.claimUnreadableWorkflowDeletion(workflowId)).toBe(false);
     const core = { store, runtime: { removeWorkflow: vi.fn(async () => undefined) } } as unknown as Parameters<typeof deleteWorkflowById>[0];
-    await expect(deleteWorkflowById(core, 'missing')).rejects.toThrow('Workflow not found');
+    await expect(deleteWorkflowById(core, 'missing')).rejects.toThrow('업무를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
     await expect(deleteWorkflowById(core, workflowId)).resolves.toEqual({ ok: true });
     db.close?.();
   });

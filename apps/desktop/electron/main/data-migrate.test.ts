@@ -82,7 +82,7 @@ describe('migrateAxDataIfNeeded', () => {
     writeFileSync(paths.migration, '{invalid json', 'utf8');
 
     await expect(fixture.migrate()).rejects.toThrow(
-      `AX Studio 저장소 마이그레이션 기록을 읽을 수 없습니다: ${paths.migration}`,
+      `데이터 이전 기록 파일을 읽을 수 없어요: ${paths.migration}`,
     );
   });
 

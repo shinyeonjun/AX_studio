@@ -3,6 +3,7 @@ import { freemem, homedir, release, totalmem } from 'node:os';
 import { join } from 'node:path';
 import { flushAppLog } from '@ax-studio/core';
 import { ipcHandle } from '../ipc/ipc-handle.js';
+import { userFacingError } from '../ipc/user-facing-error.js';
 import { getCoreIfInitialized } from '../core-instance.js';
 import { getDesktopLogDirectory } from '../file-log.js';
 import { resolveDesktopDataRoot } from '../data-paths.js';
@@ -93,13 +94,13 @@ export function registerDiagnosticsHandlers(): void {
       return { ok: true, path: picked.filePath };
     } catch (err) {
       console.error('[AX Studio] diagnostics export failed:', err);
-      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      return { ok: false, error: userFacingError(err, '이 위치에 저장할 수 없어요. 다른 위치를 골라 주세요.') };
     }
   });
 
   ipcHandle('ax:openLogFolder', async (): Promise<OpenLogFolderResult> => {
     await flushAppLog();
     const error = await shell.openPath(getDesktopLogDirectory());
-    return error ? { ok: false, error } : { ok: true };
+    return error ? { ok: false, error: userFacingError(error, '폴더가 없거나 열 권한이 없어요.') } : { ok: true };
   });
 }

@@ -2,6 +2,7 @@ import { dialog } from 'electron';
 import { join } from 'node:path';
 import { ArtifactStore, getAxDataPaths, importDiscoveryArtifact } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
+import { userFacingError } from '../user-facing-error.js';
 import { pickDiscoveryArtifactPath } from './fixtures.js';
 
 function artifactStore(): ArtifactStore {
@@ -31,7 +32,7 @@ export function registerDiscoveryArtifactHandlers(): void {
     } catch (error) {
       return {
         ok: false as const,
-        error: error instanceof Error ? error.message : String(error),
+        error: userFacingError(error, '파일을 가져오지 못했어요. 파일이 다른 프로그램에서 열려 있지 않은지 확인한 뒤 다시 시도해 주세요.'),
       };
     }
   });

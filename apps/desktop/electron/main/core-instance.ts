@@ -9,7 +9,7 @@ export function setCore(instance: AxCore) {
 }
 
 export function getCore(): AxCore {
-  if (!core) throw new Error('AX Studio core is not initialized');
+  if (!core) throw new Error('앱이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.');
   return core;
 }
 

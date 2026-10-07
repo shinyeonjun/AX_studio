@@ -42,7 +42,7 @@ describe('Jev decision plane API key validation', () => {
     const testApi = mocks.handlers.get('ax:testJevDecisionApi')!;
 
     for (const apiKey of ['synthetic\uD55C\uAE00', 'synthetic\nkey', ' synthetic-key', 'synthetic-key ', 'synthetic key']) {
-      await expect(testApi({}, { apiKey })).rejects.toThrow(/ASCII bearer tokens/);
+      await expect(testApi({}, { apiKey })).rejects.toThrow('API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.');
     }
 
     expect(mocks.readAiToml).not.toHaveBeenCalled();
@@ -55,7 +55,7 @@ describe('Jev decision plane API key validation', () => {
     const saveConfig = mocks.handlers.get('ax:saveJevDecisionConfig')!;
 
     await expect(saveConfig({}, { enabled: false, apiKey: ' synthetic-key ' }))
-      .rejects.toThrow(/ASCII bearer tokens/);
+      .rejects.toThrow('API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.');
 
     expect(mocks.setJevSecret).not.toHaveBeenCalled();
     expect(mocks.saveJevDecisionPreferences).not.toHaveBeenCalled();

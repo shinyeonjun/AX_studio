@@ -32,7 +32,7 @@ export function registerAiProviderHandlers(): void {
         throw new Error('AI 모델 형식이 올바르지 않습니다.');
       }
       if (prefs.mode !== undefined && prefs.mode !== 'cli' && prefs.mode !== 'api') {
-        throw new Error('AI 연결 방식은 cli 또는 api여야 합니다.');
+        throw new Error('AI 연결 방식이 올바르지 않아요. 연결 방식을 다시 골라 주세요.');
       }
       if (prefs.apiKey?.trim()) await setBrandSecret(brand, prefs.apiKey.trim());
       await saveAiBrandPreferences(brand, { mode: prefs.mode, model: prefs.model?.trim() || undefined });

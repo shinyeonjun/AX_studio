@@ -54,5 +54,14 @@ describe('credential store', () => {
     const error = await new OsCredentialStore().get({ connector: 'gmail', connectionId: 'main' }).catch((e: unknown) => e);
     expect(error).toMatchObject({ code: 'invalid_credential_json' });
     expect(String((error as Error).message)).not.toContain('secret-refresh');
+    expect((error as Error).message).toBe("'Gmail' 연결 정보가 손상됐어요. 다시 연결해 주세요.");
+    expect((error as Error).message).not.toContain('main');
+  });
+
+  it('names a stored secret the way a person would, never by its raw id', async () => {
+    writeFileSync(join(state.dir, 'secret-slack.tokens.cred'), 'other-machine-ciphertext');
+    await expect(getOsSecret('slack.tokens')).rejects.toThrow("저장된 'Slack' 연결 정보를 읽을 수 없어요. 설정에서 다시 연결해 주세요.");
+    writeFileSync(join(state.dir, 'secret-unknown.cred'), 'other-machine-ciphertext');
+    await expect(getOsSecret('unknown')).rejects.toThrow('저장된 연결 정보를 읽을 수 없어요. 설정에서 다시 연결해 주세요.');
   });
 });

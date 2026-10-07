@@ -85,7 +85,7 @@ describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidenc
       }
     }
     await attachCore(new WorkflowStore(db));
-    await expect(mocks.handlers.get('ax:reject')!(trustedEvent(), fixture.approvalId)).rejects.toThrow('already being processed or resolved');
+    await expect(mocks.handlers.get('ax:reject')!(trustedEvent(), fixture.approvalId)).rejects.toThrow('이미 처리된 승인이에요. 화면을 새로 고쳐 주세요.');
     expect(JSON.stringify(previewApprovalHistoryBytes(db)) === JSON.stringify(evidence), 'original checkpoint/output/tail bytes changed').toBe(true);
   });
 

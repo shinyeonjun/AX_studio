@@ -3,4 +3,4 @@ export interface SlackSecret {
   appToken?: string;
 }
 
-export const SLACK_SECRET_READ_ERROR = '저장된 Slack 인증 정보를 읽을 수 없습니다. 다시 연결해 주세요.';
+export const SLACK_SECRET_READ_ERROR = '저장된 Slack 연결 정보를 읽을 수 없어요. 다시 연결해 주세요.';

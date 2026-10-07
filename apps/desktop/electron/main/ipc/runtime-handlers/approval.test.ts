@@ -50,7 +50,7 @@ describe('editable tool approval IPC', () => {
   });
   it.each(['', 42, 'a'.repeat(129)])('rejects an invalid approval identifier', async id => {
     fixture();
-    await expect(invoke('ax:getToolResult', id)).rejects.toThrow('Invalid approval ID');
+    await expect(invoke('ax:getToolResult', id)).rejects.toThrow('승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
     expect(mocks.getCore).not.toHaveBeenCalled();
   });
   it('returns host classification so a missing editable source cannot enable generic approval', async () => {
@@ -124,7 +124,7 @@ describe('editable tool approval IPC', () => {
   });
   it.each([{ executionId: '' }, { executionId: 'a'.repeat(129) }, { executionId: 42 }, { executionId: 'execution-fixture', approvalId: 'other' }])('rejects a malformed completed-result lookup before host access', async input => {
     fixture();
-    await expect(invoke('ax:getToolResult', input)).rejects.toThrow('Invalid');
+    await expect(invoke('ax:getToolResult', input)).rejects.toThrow('찾을 수 없어요. 화면을 새로 고쳐 주세요.');
     expect(mocks.getCore).not.toHaveBeenCalled();
   });
   it('generic approval cannot forward a confirmation or replace its failed preflight result', async () => {
@@ -145,7 +145,7 @@ describe('editable tool approval IPC', () => {
   it('losing cancellation cannot erase an in-flight draft or alter a claimed execution', async () => {
     const { core } = fixture();
     core.store.rejectPendingApproval.mockReturnValueOnce(false);
-    await expect(invoke('ax:reject', confirmation.approvalId)).rejects.toThrow('already being processed');
+    await expect(invoke('ax:reject', confirmation.approvalId)).rejects.toThrow('이미 처리된 승인이에요.');
     expect(core.runtime.discardToolDraft).not.toHaveBeenCalled();
     expect(core.store.finishExecution).not.toHaveBeenCalled();
   });

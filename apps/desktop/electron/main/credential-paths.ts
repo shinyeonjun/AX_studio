@@ -19,7 +19,8 @@ export function getCredentialPath(connector: string, connectionId: string): stri
 function credentialSegment(value: string, label: string): string {
   const segment = value.trim();
   if (!segment || segment === '.' || segment === '..' || !/^[a-zA-Z0-9._-]+$/.test(segment)) {
-    throw new Error(`자격 증명 ${label} 값이 올바르지 않습니다.`);
+    // The label stays out of the message: it names an internal field, not anything a person chose.
+    throw Object.assign(new Error('연결 정보를 찾을 수 없어요. 설정에서 다시 연결해 주세요.'), { detail: label });
   }
   return segment;
 }

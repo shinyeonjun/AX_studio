@@ -105,6 +105,22 @@ describe('workspace chat boundary', () => {
       Array.from({ length: 1_001 }, () => ({ role: 'user', content: '' })),
     )).toThrow('1,000');
   });
+
+  it('logs which field was malformed but tells the person only what to do', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      let thrown: unknown;
+      try {
+        normalizeChatMessages([{ role: 'user', content: 'ok' }, { role: 'robot', content: 'x' }]);
+      } catch (error) { thrown = error; }
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe('대화 기록을 저장하지 못했어요. 새로 고친 뒤 다시 시도해 주세요.');
+      expect(thrown).toMatchObject({ detail: '대화 2번째 메시지 역할이 올바르지 않습니다.' });
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('대화 2번째 메시지 역할'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
   it('stops the request transcript before a later background result', () => {
     const messages = normalizeChatMessages([
       { role: 'user', content: '같은 요청' },

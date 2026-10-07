@@ -34,7 +34,8 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
       async testJevDecisionApi(request) {
         window.__jevQa.requests.push(request);
         if (request.apiKey && !/^[A-Za-z0-9_-]+$/.test(request.apiKey)) throw new Error('유효한 ASCII API 키를 입력하세요.');
-        if (window.__jevQa.mode === 'failure') throw new Error('synthetic authentication failure');
+        if (window.__jevQa.mode === 'failure') throw new Error('API 키가 거부됐어요. 키를 다시 확인해 주세요.');
+        if (window.__jevQa.mode === 'english') throw new Error('synthetic authentication failure');
         return { saved: Boolean(request.apiKey), masked: 'synthetic-***', model: 'mock-jev' };
       },
     };
@@ -70,8 +71,12 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
     await expect(badge).toHaveText('인증 확인됨');
     await page.evaluate(() => { (window as any).__jevQa.mode = 'failure'; });
     await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(page.locator('.connection-form-message')).toHaveText('synthetic authentication failure');
+    await expect(page.locator('.connection-form-message')).toHaveText('API 키가 거부됐어요. 키를 다시 확인해 주세요.');
     await expect(badge).toHaveText('키 등록됨 · 인증 미확인');
+    // Untranslated English from the main process is never shown as is.
+    await page.evaluate(() => { (window as any).__jevQa.mode = 'english'; });
+    await page.getByRole('button', { name: 'API 연결 테스트' }).click();
+    await expect(page.locator('.connection-form-message')).toHaveText('Jev 연결 테스트에 실패했습니다.');
     await expect(badge).not.toHaveClass(/connected/);
     writeFileSync(join(runRoot, 'result.json'), JSON.stringify({ status: 'passed', mode: 'mock-renderer-only', liveApiRequests: 0,
       checked: ['registered badge', 'raw invalid draft', 'mock authentication', 'failed retry clears authentication'] }, null, 2));

@@ -34,13 +34,13 @@ export async function proposeRecurringFromExecution(
   executionId: unknown,
   scheduleValue: unknown,
 ): Promise<RecurringDraftReply> {
-  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
-  if (typeof executionId !== 'string' || !EXECUTION_ID.test(executionId)) throw new Error('실행 id 형식이 올바르지 않습니다.');
+  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+  if (typeof executionId !== 'string' || !EXECUTION_ID.test(executionId)) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
   if (typeof scheduleValue !== 'string' || !scheduleValue.trim() || scheduleValue.length > MAX_SCHEDULE_VALUE_CHARS) {
-    throw new Error('반복 일정 형식이 올바르지 않습니다.');
+    throw new Error('반복 일정을 이해하지 못했어요. 일정을 다시 골라 주세요.');
   }
   const core = getCore();
-  if (!core.store.getWorkspaceChat(workspaceSessionId)) throw new Error('대화를 찾을 수 없습니다.');
+  if (!core.store.getWorkspaceChat(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
   const conversion = recurringJobFromExecution({
     execution: core.store.getExecution(executionId),
     workspaceSessionId,
@@ -87,12 +87,12 @@ export async function proposeRecurringFromRead(
   workspaceSessionId: unknown,
   scheduleValue: unknown,
 ): Promise<RecurringDraftReply> {
-  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
+  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
   if (typeof scheduleValue !== 'string' || !scheduleValue.trim() || scheduleValue.length > MAX_SCHEDULE_VALUE_CHARS) {
-    throw new Error('반복 일정 형식이 올바르지 않습니다.');
+    throw new Error('반복 일정을 이해하지 못했어요. 일정을 다시 골라 주세요.');
   }
   const chat = getCore().store.getWorkspaceChat(workspaceSessionId);
-  if (!chat) throw new Error('대화를 찾을 수 없습니다.');
+  if (!chat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
   const conversion = recurringJobFromReadRecipe({
     recipe: hostReadRecipeFor(workspaceSessionId, chat.messages),
     request: requestForLatestRead(chat.messages),
