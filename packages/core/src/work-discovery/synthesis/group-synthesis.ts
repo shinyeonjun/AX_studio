@@ -2,6 +2,7 @@ import type { TableArtifact } from '../../contracts/artifacts/table.js';
 import type { TransformExpr } from '../../workflow/transform-expr/dsl.js';
 import { groupKeyOf, groupRowsBy } from '../../workflow/transform-expr/evaluator/group.js';
 import { aggregateRows, type AggregateSpec } from '../../workflow/transform-expr/evaluator/numeric.js';
+import { compareForSort } from '../../workflow/transform-expr/evaluator/table.js';
 import type { ObservationValue } from '../observation/schema.js';
 import { nonNumericKeyColumns, normalizeCellText, tableRowKey } from '../observation/table-key.js';
 import type { SourceDescriptor } from '../schema.js';
@@ -129,6 +130,34 @@ function findSpec(
     (!total || sameNumber(aggregateRows(total.rows, spec), total.expected)));
 }
 
+type GroupOrder = NonNullable<Extract<TransformExpr, { op: 'group' }>['orderBy']>;
+
+/** Fewer groups are always in some column's order: two rows prove nothing about a sort. */
+const MIN_GROUPS_FOR_ORDER = 3;
+
+/**
+ * The order the example lists its groups in, when the data does not already come in that order:
+ * the output column and direction that puts the groups exactly in the example's order ("by 매출,
+ * largest first"). Only when exactly one column and direction does, over enough groups; a
+ * coincidence (two columns agreeing, two rows) learns nothing.
+ */
+function inferGroupOrder(
+  groups: ReadonlyArray<{ key: string; values: Record<string, unknown> }>,
+  exampleOrder: readonly string[],
+  columns: readonly string[],
+): GroupOrder | undefined {
+  const sameOrder = (keys: readonly string[]) => keys.length === exampleOrder.length && keys.every((key, index) => key === exampleOrder[index]);
+  if (groups.length < MIN_GROUPS_FOR_ORDER || sameOrder(groups.map((group) => group.key))) return undefined;
+  const explanations: GroupOrder = [];
+  for (const column of columns) {
+    for (const direction of ['desc', 'asc'] as const) {
+      const sorted = [...groups].sort((left, right) => compareForSort(left.values[column], right.values[column], { direction }));
+      if (sameOrder(sorted.map((group) => group.key))) explanations.push({ column, direction });
+    }
+  }
+  return explanations.length === 1 ? explanations : undefined;
+}
+
 function trySynthesize(params: {
   expected: ExpectedTable;
   keyColumns: readonly string[];
@@ -164,6 +193,14 @@ function trySynthesize(params: {
     if (!spec) return undefined;
     aggregates.push({ as: measure.column, ...spec });
   }
+  const groupRows = [...groupRowsBy(rows, groupColumns).values()].map((group) => {
+    const normalized = group.keys.map(normalizeCellText);
+    const values: Record<string, unknown> = Object.fromEntries(keyColumns.map((column, index) => [column, group.keys[index]]));
+    for (const aggregate of aggregates) values[aggregate.as] = aggregateRows(group.rows, aggregate);
+    return { key: normalized.length === 1 ? normalized[0]! : JSON.stringify(normalized), values };
+  });
+  const exampleOrder = expected.rows.filter((row) => row !== leftover).map((row) => tableRowKey(row, keyColumns));
+  const orderBy = inferGroupOrder(groupRows, exampleOrder, [...measures.map((measure) => measure.column), ...keyColumns]);
   const source: TransformExpr = { op: 'source', sourceId: params.sourceId };
   const input: TransformExpr = params.filter ? { op: 'filter', input: source, where: params.filter.where } : source;
   return {
@@ -179,6 +216,7 @@ function trySynthesize(params: {
         : {}),
       aggregates,
       ...(leftover ? { totalRow: { label: String(cell(leftover, keyColumns[0]!)) } } : {}),
+      ...(orderBy ? { orderBy } : {}),
     },
   };
 }

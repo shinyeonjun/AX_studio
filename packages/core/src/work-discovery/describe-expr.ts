@@ -39,7 +39,8 @@ export function describeMapping(expr: TransformExpr): string {
       const measures = expr.aggregates.map((aggregate) => `${aggregate.as}=${aggregateLabel(aggregate)}`).join(', ');
       const keys = [expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)].join(' → ');
       const label = withConditions(`${keys}별 묶음: ${measures}`, expr.input);
-      return expr.totalRow ? `${label} · 합계 줄 포함` : label;
+      const order = expr.orderBy?.map((key) => `${key.column} ${key.direction === 'desc' ? '큰 순' : '작은 순'}`).join(', ');
+      return [label, ...(order ? [`정렬: ${order}`] : []), ...(expr.totalRow ? ['합계 줄 포함'] : [])].join(' · ');
     }
     case 'ratio': {
       const rounding = expr.round !== undefined ? ` 반올림(소수 ${expr.round}자리)` : '';

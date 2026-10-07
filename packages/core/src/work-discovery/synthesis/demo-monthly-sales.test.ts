@@ -62,7 +62,7 @@ describe('demo: monthly sales report learned from August, run on September', () 
       'field.주문건수': 'COUNT · 조건: 상태 ≠ 취소',
       'field.총매출': 'SUM(금액) · 조건: 상태 ≠ 취소',
       'field.평균주문금액': 'AVG(금액) 반올림(소수 0자리) · 조건: 상태 ≠ 취소',
-      'field.카테고리별': '카테고리별 묶음: 주문건수=COUNT, 매출=SUM(금액) · 조건: 상태 ≠ 취소 · 합계 줄 포함',
+      'field.카테고리별': '카테고리별 묶음: 주문건수=COUNT, 매출=SUM(금액) · 조건: 상태 ≠ 취소 · 정렬: 매출 큰 순 · 합계 줄 포함',
     });
 
     // The review card summarizes tables instead of dumping them.
@@ -107,5 +107,10 @@ describe('demo: monthly sales report learned from August, run on September', () 
       expect(compareObservationValue(expected.value, fields[outputPath]), outputPath).toBe(1);
     }
     expect(validateOutputContract(workflow.outputContract!, { discoveryFields: fields }, {})).toEqual({ ok: true, issues: [] });
+
+    // The report lists categories by 매출, largest first, total last; September's must too.
+    const truthTable = truth.find((entry) => entry.path === 'field.카테고리별')!.value as { rows: Array<Record<string, unknown>> };
+    const produced = fields['field.카테고리별'] as TableArtifact;
+    expect(produced.rows.map((row) => row.values['카테고리'])).toEqual(truthTable.rows.map((row) => row['카테고리']));
   });
 });

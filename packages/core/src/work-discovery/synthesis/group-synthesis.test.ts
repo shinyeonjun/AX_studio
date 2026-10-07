@@ -202,6 +202,24 @@ describe('group synthesis rejects coincidences and ambiguity', () => {
     expect(observeTableArtifact('ex', repeated).every((entry) => entry.value.kind === 'number')).toBe(true);
   });
 
+  it('learns the order a report lists its groups in, only when one column explains it', () => {
+    const source = buildTableArtifact({
+      id: 'o', headers: ['team', 'amount'],
+      matrix: [['a', 5], ['b', 30], ['c', 12], ['d', 1], ['a', 5], ['c', 3]],
+    });
+    const learnTable = (matrix: unknown[][]) => {
+      const report = buildTableArtifact({ id: 'rep', name: 'rep', headers: ['team', 'total'], matrix });
+      const observations = observeTableArtifact('ex-A', report);
+      return learn(observations, { o: source }).accepted(observations[0]!.path).map((candidate) => formatMappingLabel(candidate));
+    };
+    // b 30, c 15, a 10, d 1: largest first.
+    expect(learnTable([['b', 30], ['c', 15], ['a', 10], ['d', 1]])).toEqual(['team별 묶음: total=SUM(amount) · 정렬: total 큰 순']);
+    // The data's own order needs no sort.
+    expect(learnTable([['a', 10], ['b', 30], ['c', 15], ['d', 1]])).toEqual(['team별 묶음: total=SUM(amount)']);
+    // An order no single column explains is not invented.
+    expect(learnTable([['c', 15], ['a', 10], ['d', 1], ['b', 30]])).toEqual(['team별 묶음: total=SUM(amount)']);
+  });
+
   it('prefers no filter, and a filter that every field shares', () => {
     // Three states, so `state ≠ void` is not the same rows as `state = ok`.
     const source = buildTableArtifact({
