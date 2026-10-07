@@ -219,7 +219,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
       type: 'choice',
       instructions: {
         question: 'After a cataloged data read, how should the user-facing result be transformed?',
-        focus: 'Choose none when the user asks only to retrieve, display, summarize, or format data as-is. Choose only transformations explicitly requested by meaning; do not infer a filter or order from the data itself.',
+        focus: 'Choose none when the user asks only to retrieve, display, describe in prose, or format data as-is. Choose calculate when the user asks for a number computed from the rows (count, total, average, min, max), overall or per group. Choose only transformations explicitly requested by meaning; do not infer a filter or order from the data itself.',
       },
       criteria: JEV_TABLE_TRANSFORM_CRITERIA,
     };

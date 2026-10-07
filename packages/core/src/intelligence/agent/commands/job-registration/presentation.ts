@@ -11,6 +11,7 @@ import { actionRefFor, resolveActionDefinition } from '../../../../workflow/acti
 import { resolveEffectiveSideEffect } from '../../../../workflow/side-effect-resolve.js';
 import { describeSchedule, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
 import { describeShaping } from '../../../../workflow/transform-expr/describe.js';
+import { resolveCapability } from '../../../../catalog/capability-graph.js';
 import { TransformExprSchema } from '../../../../workflow/transform-expr/dsl.js';
 
 const MAX_STEP_ITEMS = 20;
@@ -27,7 +28,7 @@ const TARGET_KEY_LABEL: Record<string, string> = {
   folderId: '폴더', table: '테이블', threadTs: '스레드', subject: '제목',
 };
 const SIDE_EFFECT_LABEL: Record<SideEffectLevel, string> = {
-  NONE: '부작용 없음(조회)',
+  NONE: '읽기만 함',
   REVERSIBLE: '되돌릴 수 있는 변경',
   EXTERNAL: '외부 전송',
   EXTERNAL_HIGH: '외부 전송(고위험)',
@@ -106,10 +107,10 @@ function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: Re
     .map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
     .filter((value): value is number => value !== undefined);
   const using = inputs.length > 0 ? ` (${inputs.join('·')}단계 결과 사용)` : '';
-  if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 부작용 없음(조회)`;
+  if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 읽기만 함`;
   if (step.action === 'evaluate') {
     const expr = TransformExprSchema.safeParse(step.params?.expr);
-    return `${number} 표 정리${using} · 부작용 없음(조회) · ${expr.success ? describeShaping(expr.data) : '변환식 확인 필요'}`;
+    return `${number} 표 정리${using} · 읽기만 함 · ${expr.success ? describeShaping(expr.data) : '변환식 확인 필요'}`;
   }
   return undefined;
 }
@@ -127,7 +128,9 @@ export function workflowStepItems(
       if (tableItem) return tableItem;
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
-      return `${marker}${number} ${step.connector} / ${step.action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
+      // What the step does in words ("DB 조회"), not its connector/action ids.
+      const action = resolveCapability(step.connector, step.action)?.label ?? `${step.connector} / ${step.action}`;
+      return `${marker}${number} ${action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
     }
     if (step.type === 'ai_decision') {
       const inputs = Object.values(step.bindings ?? {}).map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))

@@ -15,6 +15,8 @@ function describeStage(expr: TransformExpr): string | undefined {
       return `열: ${expr.columns.join(', ')}`;
     case 'group':
       return `${[expr.by, ...(expr.thenBy ?? []).map((entry) => entry.by)].join(' → ')}별 묶음`;
+    case 'totals':
+      return expr.aggregates.map((aggregate) => `${aggregate.column ? `${aggregate.column} ` : ''}${AGGREGATE_LABEL[aggregate.fn] ?? aggregate.fn}`).join(', ');
     case 'aggregate':
       return `${expr.column ? `${expr.column} ` : ''}${AGGREGATE_LABEL[expr.fn] ?? expr.fn}`;
     case 'column':

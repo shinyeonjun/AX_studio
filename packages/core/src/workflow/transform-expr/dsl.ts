@@ -53,6 +53,16 @@ export const MAX_GROUP_THEN_BY = 2;
  * combination, e.g. region then category). `totalRow` appends one row aggregated over every
  * input row, its label in the first key column and the other key columns left empty.
  */
+/**
+ * Aggregates over every input row as a one-row table, one column per aggregate: "9월 완료 주문의
+ * 매출 합계" as a table, so it can be shown, exported or repeated like any other table result.
+ */
+const TotalsExprSchema = z.object({
+  op: z.literal('totals'),
+  input: z.lazy(() => TransformExprSchema),
+  aggregates: z.array(GroupAggregateSchema).min(1).max(MAX_GROUP_AGGREGATES),
+});
+
 const GroupExprSchema = z.object({
   op: z.literal('group'),
   input: z.lazy(() => TransformExprSchema),
@@ -109,6 +119,7 @@ export const TransformExprSchema: z.ZodType<TransformExpr> = depthLimited(z.disc
   FilterExprSchema,
   AggregateExprSchema,
   GroupExprSchema,
+  TotalsExprSchema,
   RatioExprSchema,
   LookupExprSchema,
   SelectExprSchema,
@@ -131,6 +142,7 @@ export type TransformExpr =
     totalRow?: { label: string };
     orderBy?: Array<{ column: string; direction: 'asc' | 'desc' }>;
   }
+  | { op: 'totals'; input: TransformExpr; aggregates: GroupAggregate[] }
   | { op: 'ratio'; numerator: TransformExpr; denominator: TransformExpr; multiplyBy?: number; round?: number }
   | { op: 'lookup'; input: TransformExpr; keyColumn: string; keyValue: z.infer<typeof ScalarValueSchema>; valueColumn: string }
   | { op: 'select'; input: TransformExpr; columns: string[] }

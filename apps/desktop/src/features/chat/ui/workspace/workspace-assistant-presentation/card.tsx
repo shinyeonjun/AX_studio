@@ -35,7 +35,7 @@ export function PresentationCard({
       aria-label={presentation.title}
     >
       <header className="ax-workspace-presentation-header">
-        <span className="ax-workspace-presentation-eyebrow">AX 확인</span>
+        <span className="ax-workspace-presentation-eyebrow">확인</span>
         <h3>{presentation.title}</h3>
         {presentation.subtitle && <p>{presentation.subtitle}</p>}
       </header>
