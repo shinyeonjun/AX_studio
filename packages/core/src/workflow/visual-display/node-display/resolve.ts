@@ -52,7 +52,7 @@ export function displayForCapability(
     };
   }
   return {
-    header: cap.kind === 'trigger' ? 'Trigger' : 'Action',
+    header: cap.kind === 'trigger' ? '시작' : '작업',
     brand: getConnectorLabel(cap.connector),
     brandStyle: cap.connector === 'slack' ? 'plain' : 'bracket',
     summary: summaryFromGoalOrCapability(options?.goal, cap, options?.params, 24),

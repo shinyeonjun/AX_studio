@@ -11,3 +11,17 @@ describe('a step parameter on the canvas', () => {
     expect(paramValue({ count: 3 }, 'count')).toBe('3');
   });
 });
+
+describe('a saved work opened on the canvas', () => {
+  it('keeps a calculation step as a calculation, and describes it', async () => {
+    const { buildWorkflowView } = await import('../workflow-view.js');
+    const { displayForWorkflowNode } = await import('./node-display/resolve.js');
+    const expr = { op: 'aggregate', fn: 'sum', column: '금액', input: { op: 'source', sourceId: 's' } };
+    const view = buildWorkflowView({
+      id: 'w', version: 1, name: '월간 매출', goal: '월간 매출', trigger: { type: 'manual' },
+      steps: [{ type: 'action', id: 'total', connector: 'transform', action: 'evaluate', params: { expr, outputPath: 'field.총매출' } }],
+    } as never, 'w');
+    expect(view.workflow.actions.total?.params?.expr).toEqual(expr);
+    expect(displayForWorkflowNode(view.workflow, view.workflow.nodes[0]!).card?.summary).toBe('금액 합계');
+  });
+});

@@ -24,7 +24,9 @@ function nodeFromStep(step: Step): { node: WorkflowNode; action?: ActionInstance
         actionRef: ref,
         connector: step.connector,
         action: step.action,
-        params: Object.fromEntries(Object.entries(step.params).map(([key, value]) => [key, String(value)])),
+        // Values as they are: a calculation is an object, and String() turned it into "[object Object]"
+        // for the canvas and for anything that wrote the draft back.
+        params: { ...step.params },
         bindings: step.bindings,
       },
     };

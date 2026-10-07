@@ -56,10 +56,10 @@ export interface WorkflowVisualNodeData {
 
 /** Kind badge + border styling (generic, not workflow-specific). */
 export const WORKFLOW_KIND_BADGE: Partial<Record<WorkflowVisualKind, string>> = {
-  trigger: 'Trigger',
+  trigger: '시작',
   system: '자동',
   ai_decision: 'AI',
-  if: 'IF',
+  if: '조건',
   human_approval: '승인',
 };
 export const WORKFLOW_NODE_WIDTH = 136;
