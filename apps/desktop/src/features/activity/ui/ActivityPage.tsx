@@ -2,6 +2,7 @@ import type { AppState } from '../../../types/app-state';
 import { PageHeader } from '../../../ui/layout/PageHeader';
 import { ActivityExecutionItem } from './activity-execution-item.js';
 import { useActivityActions } from './use-activity-actions.js';
+import { runWorkName } from '../../../ui/lib/work-display';
 
 interface ActivityPageProps {
   state: AppState | null;
@@ -99,7 +100,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
               <ActivityExecutionItem
                 key={execution.id}
                 execution={execution}
-                skillName={state?.works.find((skill) => skill.id === execution.workflowId)?.name ?? execution.name}
+                skillName={runWorkName(execution, state?.works)}
                 deleting={busyId === execution.id}
                 clearing={clearing}
                 exporting={exportingId !== null}

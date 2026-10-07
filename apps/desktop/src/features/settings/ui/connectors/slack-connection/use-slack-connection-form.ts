@@ -53,7 +53,7 @@ export function useSlackConnectionForm({
 
   const handleDisconnect = async () => {
     if (!onDisconnect) return;
-    if (!confirmDisconnectConnector('Slack')) return;
+    if (!await confirmDisconnectConnector('Slack')) return;
     setBusy(true);
     showMessage('');
     try {

@@ -35,7 +35,7 @@ export function useGmailConnectionForm({ onConnect, onDisconnect }: GmailConnect
   };
 
   const handleDisconnect = async () => {
-    if (!confirmDisconnectConnector('Gmail')) return;
+    if (!await confirmDisconnectConnector('Gmail')) return;
     setBusy(true);
     showMessage('');
     try {

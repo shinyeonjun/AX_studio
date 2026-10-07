@@ -18,13 +18,14 @@ export function createAppWorkActions({
   };
 
   const deleteWork = async (workflowId: string, name: string) => {
-    if (!confirmDeleteWork(name)) return;
+    const choice = await confirmDeleteWork(name);
+    if (!choice.confirmed) return;
 
     const isActiveWorkspaceWorkflow = workspaceChat.workspaceWorkflowState?.workflowId === workflowId;
 
     setActionError('');
     try {
-      await window.ax.deleteWorkflow(workflowId);
+      await window.ax.deleteWorkflow(workflowId, { deleteHistory: choice.deleteHistory });
 
       if (isActiveWorkspaceWorkflow) {
         workspaceChat.startNewChat();

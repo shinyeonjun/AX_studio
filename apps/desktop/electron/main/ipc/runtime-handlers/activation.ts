@@ -16,7 +16,9 @@ function isUnreadableWorkflowError(error: unknown): boolean {
  * is claimed without reading its version; the repository still refuses while an
  * execution is running or waiting for approval.
  */
-export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown): Promise<{ ok: true }> {
+export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown, options?: unknown): Promise<{ ok: true }> {
+  // Run and send history stays unless the person asked to clear it too.
+  const deleteHistory = (options as { deleteHistory?: unknown } | undefined)?.deleteHistory === true;
   if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
   let workflow: ReturnType<DeletionCore['store']['getWorkflow']>;
   try {
@@ -36,7 +38,7 @@ export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown
   }
   try {
     await core.runtime.removeWorkflow(workflowId);
-    const deleted = core.store.deleteWorkflow(workflowId);
+    const deleted = core.store.deleteWorkflow(workflowId, { deleteHistory });
     if (!deleted) throw new Error(WORKFLOW_NOT_FOUND);
     return { ok: true };
   } finally {
@@ -62,7 +64,7 @@ export function registerRuntimeActivationHandlers(): void {
       notifyStateChanged();
     }
   });
-  ipcHandle('ax:deleteWorkflow', async (_e, workflowId: unknown) => deleteWorkflowById(getCore(), workflowId));
+  ipcHandle('ax:deleteWorkflow', async (_e, workflowId: unknown, options: unknown) => deleteWorkflowById(getCore(), workflowId, options));
   ipcHandle('ax:setWorkflowActive', async (_e, workflowId: unknown, active: unknown) => {
     const core = getCore();
     if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');

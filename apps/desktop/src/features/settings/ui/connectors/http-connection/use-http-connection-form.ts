@@ -97,7 +97,7 @@ export function useHttpConnectionForm({
 
   const handleDisconnect = async (id?: string) => {
     const target = id ? endpoints.find((entry) => entry.id === id) : undefined;
-    if (!confirmDisconnectConnector(target?.label?.trim() || target?.baseUrl || 'HTTP API')) return;
+    if (!await confirmDisconnectConnector(target?.label?.trim() || target?.baseUrl || 'HTTP API')) return;
     setBusy(true);
     setMessage('');
     try {
