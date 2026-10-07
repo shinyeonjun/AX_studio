@@ -44,9 +44,9 @@ describe('English and code-like errors from the main process', () => {
     expect(ipcErrorMessage(wrap('Slack 연결에 실패했어요.'))).toBe('Slack 연결에 실패했어요.');
   });
 
-  it('keeps conflict codes the caller recognises itself, and exposes the raw code for branching', () => {
-    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toContain('workspace_chat_turn_conflict');
-    expect(ipcErrorMessage(wrap('workspace_chat_revision_conflict'))).toContain('workspace_chat_revision_conflict');
+  it('explains conflicts in words while the raw code stays available for branching', () => {
+    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toBe('다른 곳에서 대화가 바뀌었어요. 화면을 새로 고친 뒤 다시 시도해 주세요.');
+    expect(ipcErrorCode(wrap('workspace_chat_revision_conflict'))).toBe('workspace_chat_revision_conflict');
     expect(ipcErrorCode(wrap('app_shutting_down'))).toBe('app_shutting_down');
   });
 });
