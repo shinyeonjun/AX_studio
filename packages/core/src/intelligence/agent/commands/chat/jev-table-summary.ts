@@ -7,6 +7,7 @@ import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../
 import { evaluateTransformExpr } from '../../../../workflow/transform-expr/evaluator.js';
 import { TransformExprSchema, type GroupAggregate, type TransformExpr } from '../../../../workflow/transform-expr/dsl.js';
 import { accumulateEvaluationMetadata, selectedChoice, type JevEvaluationMetadata } from './jev-table-shared.js';
+import { numericValues } from './request-numbers.js';
 
 type TableColumn = TableArtifact['columns'][number];
 type AggregateFn = GroupAggregate['fn'];
@@ -66,7 +67,6 @@ function monthMentions(message: string): Array<{ year?: number; month: number; t
 export function summaryConditionCandidates(table: TableArtifact, message: string): SummaryCondition[] {
   const request = normalized(message);
   const months = monthMentions(message);
-  const monthText = months.map((mention) => mention.text).join(' ');
   const text: SummaryCondition[] = [];
   const periods: SummaryCondition[] = [];
   const ranges: SummaryCondition[] = [];
@@ -90,11 +90,9 @@ export function summaryConditionCandidates(table: TableArtifact, message: string
     }
     if (NUMERIC_TYPES.has(column.type)) {
       // Numbers the request names that are not the year or month of a named period.
-      const numbers = [...message.matchAll(/\d[\d,]*(?:\.\d+)?/gu)]
-        .filter((match) => !monthText.includes(match[0]))
-        .map((match) => Number(match[0].replace(/,/g, '')))
-        .filter(Number.isFinite)
-        .slice(0, 3);
+      const numbers = numericValues(months.reduce((rest, mention) => rest.replace(mention.text, ' '), message))
+        .filter((value) => value >= 0)
+        .slice(0, 4);
       for (const value of numbers) {
         for (const [op, symbol] of [['gte', '≥'], ['lte', '≤'], ['gt', '>'], ['lt', '<']] as const) {
           ranges.push({
