@@ -2,6 +2,7 @@ import type { AppState } from '../../../types/app-state';
 import {
   executionErrorLabel,
   executionStatusLabel,
+  executionStepLabel,
   executionTriggerLabel,
   formatRelativeTime,
 } from '../../../ui/lib/work-display';
@@ -103,26 +104,22 @@ export function ActivityExecutionItem({
           </button>
         </div>
         <div className="timeline-status">
-          {skillName ?? '일회 실행'} — {resultFailed ? '결과 품질 실패' : executionStatusLabel(execution.status)}
+          {skillName ?? '직접 실행'} — {resultFailed ? '실행은 끝났지만 결과를 확인해야 해요' : executionStatusLabel(execution.status)}
         </div>
         <div className="muted">
           {executionTriggerLabel(execution.triggerType)}
-          {resultFailed ? ' · 기술 실행 완료 · 결과 품질 차단' : ''}
           {errorDetail ? ` · ${errorDetail}` : ''}
           {execution.errorMessage && execution.errorMessage !== errorDetail ? ` · ${execution.errorMessage}` : ''}
         </div>
         {Boolean(execution.historyDiagnostics?.length) && (
           <div className="timeline-step" role="alert">
             이전 기록을 완전히 읽을 수 없습니다. 원본은 보존되어 있습니다.
-            {execution.historyDiagnostics?.map((diagnostic, index) => (
-              <div key={index}>{diagnostic.code}{diagnostic.sequence === undefined ? '' : ` (${diagnostic.sequence})`}</div>
-            ))}
           </div>
         )}
         {/* Which step it is on matters while it runs or after it stops; a finished run shows its result. */}
         {execution.currentStepId && !ok && (
           <div className="timeline-step">
-            현재 단계 · {execution.currentStepMessage ?? execution.currentStepId}
+            현재 단계 · {execution.currentStepMessage ?? executionStepLabel(execution.currentStepId)}
           </div>
         )}
         {ok && (execution.sourceFile || execution.computedResults?.length) && (

@@ -23,7 +23,8 @@ describe('WorkHealthNote', () => {
       />,
     );
     expect(markup).toContain('최근 일정 건너뜀');
-    expect(markup).toContain('처리하지 못한 트리거 이벤트 2건');
+    expect(markup).toContain('놓친 자동 시작 2건');
+    expect(markup).not.toContain('execution_failed');
     expect(markup).toContain('승인을 기다리는 중입니다');
   });
 });

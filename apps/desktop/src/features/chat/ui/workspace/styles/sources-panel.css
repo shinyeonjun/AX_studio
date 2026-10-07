@@ -30,6 +30,8 @@
 
 .workspace-sources-subtitle {
   max-width: 330px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   margin: 7px 0 0;
   color: var(--text-muted);
   font-size: 12px;
@@ -66,6 +68,8 @@
   color: var(--text-muted);
   text-align: center;
   font-size: 12px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .workspace-sources-empty p {

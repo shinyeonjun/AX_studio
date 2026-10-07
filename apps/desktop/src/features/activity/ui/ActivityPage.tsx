@@ -55,6 +55,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
         {clearError && <div className="approval-error" role="alert">{clearError}</div>}
         <div className={`ask-bar${canExplain ? '' : ' ask-bar--disabled'}`}>
           <input
+            aria-label="실행 결과에 대해 AI에게 물어볼 내용"
             value={explainQ}
             onChange={(e) => setExplainQ(e.target.value)}
             placeholder="실행이 멈췄거나 실패한 이유를 물어보세요"
@@ -70,7 +71,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
             onClick={() => void askExplain()}
             disabled={!canExplain || explaining || !explainQ.trim()}
           >
-            {explaining ? '분석 중…' : '묻기'}
+            {explaining ? '분석 중…' : 'AI에게 물어보기'}
           </button>
         </div>
         {!canExplain && (
@@ -84,14 +85,14 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
         {explainA && <div className="review-box">{explainA}</div>}
 
         <p className="muted activity-hint">
-          실행마다 결과가 따로 기록됩니다. 수동 실행 실패와 Gmail·Slack 트리거 실행 성공은 별개일 수 있습니다.
+          실행할 때마다 결과가 따로 남아요. 직접 실행이 실패해도 Gmail·Slack 자동 시작으로 실행된 업무는 성공했을 수 있어요.
         </p>
 
         <div className="timeline" style={{ marginTop: 16 }}>
           {executions.length === 0 ? (
             <div className="empty-state">
               <p>아직 실행 기록이 없습니다</p>
-              <p className="muted">업무를 저장하거나 트리거가 발생하면 여기에 표시됩니다.</p>
+              <p className="muted">업무를 실행하거나 자동 시작 조건이 맞으면 여기에 표시됩니다.</p>
             </div>
           ) : (
             executions.map((execution) => (

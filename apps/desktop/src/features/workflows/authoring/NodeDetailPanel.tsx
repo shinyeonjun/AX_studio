@@ -119,7 +119,7 @@ export function NodeDetailPanel({
         disabled={busy}
         onClick={() => onRequestEdit(editPrompt)}
       >
-        이 부분 수정하기
+        대화로 이 단계 고치기
       </button>
     </div>
   );

@@ -88,14 +88,14 @@ export function WorkHealthNote({ work }: { work: Pick<WorkSummary, 'triggerDeadL
   return (
     <span className="sidebar-work-health" role="status">
       {outcome && (
-        <span title={outcome.reason ? executionErrorLabel(outcome.reason) ?? outcome.reason : undefined}>
+        <span title={outcome.reason ? executionErrorLabel(outcome.reason) : undefined}>
           최근 일정 {outcome.status === 'skipped' ? '건너뜀' : executionStatusLabel(outcome.status)} ·{' '}
           {formatRelativeTime(outcome.at)}
         </span>
       )}
       {latest && (
-        <span title={executionErrorLabel(latest.reason) ?? latest.reason}>
-          처리하지 못한 트리거 이벤트 {deadLetters.length}건 · {formatRelativeTime(latest.at)}
+        <span title={executionErrorLabel(latest.reason)}>
+          놓친 자동 시작 {deadLetters.length}건 · {formatRelativeTime(latest.at)}
         </span>
       )}
     </span>

@@ -42,7 +42,7 @@ export function InputRequestCard({
           <ScheduleInputFields disabled={busy} labelledBy={inputId} describedBy={reasonId} onChange={onChange} />
           {showSubmit && (
             <button type="button" disabled={busy || (request.required && !value.trim())} onClick={submit}>
-              이 일정으로 입력
+              이 일정으로 계속
             </button>
           )}
         </div>
@@ -75,7 +75,7 @@ export function InputRequestCard({
             aria-describedby={reasonId}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={showSubmit ? (event) => {
-              if (event.key === 'Enter') {
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 submit();
               }
@@ -84,7 +84,7 @@ export function InputRequestCard({
         )}
         {showSubmit && (
           <button type="button" disabled={busy || (request.required && !value.trim())} onClick={submit}>
-            입력
+            이 값으로 계속
           </button>
         )}
       </div>

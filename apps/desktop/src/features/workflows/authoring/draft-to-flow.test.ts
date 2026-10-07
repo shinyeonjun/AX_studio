@@ -116,7 +116,7 @@ describe('draftToFlow', () => {
     });
     const graph = draftToFlow(draft([branch('entry', 'a'), branch('a', 'b'), branch('b', 'a')]));
     expect(graph).toMatchObject({ nodes: [], edges: [], hasContent: true,
-      error: expect.stringContaining('순환') });
+      error: expect.stringContaining('서로를 다시 가리키고 있어 업무 흐름을 그릴 수 없어요') });
   });
 
   it.each([
@@ -128,6 +128,6 @@ describe('draftToFlow', () => {
       condition: { op: 'eq', left: { lit: true }, right: { lit: true } },
     }));
     expect(draftToFlow(draft(nodes))).toMatchObject({ nodes: [], edges: [],
-      error: expect.stringContaining('순환') });
+      error: expect.stringContaining('서로를 다시 가리키고 있어 업무 흐름을 그릴 수 없어요') });
   });
 });

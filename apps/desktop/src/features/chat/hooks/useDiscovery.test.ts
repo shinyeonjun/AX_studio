@@ -206,7 +206,7 @@ describe('workspace asynchronous session ordering', () => {
       expect(saveWorkspaceChat.mock.calls[1]?.[3]?.expectedTranscriptRevision).toBe(a.transcriptRevision);
       expect(store.getWorkspaceChat(b.id)).toEqual(authoritative);
       expect(ctx.setChatMessages).toHaveBeenLastCalledWith(authoritative.messages);
-      expect(ctx.setError).toHaveBeenCalledWith(expect.stringContaining('오래된 저장을 거부'));
+      expect(ctx.setError).toHaveBeenCalledWith(expect.stringContaining('다른 창에서 대화가 바뀌어 저장하지 않았어요. 화면을 새로 고쳐 주세요.'));
       expect(authoritative.messages.filter(message => message.role === 'user')).toHaveLength(3);
     } finally { db.close?.(); }
   });

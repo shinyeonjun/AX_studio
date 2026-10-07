@@ -118,7 +118,7 @@ export function SidebarWorkPanel({
                   <span className="sidebar-work-meta">
                     <span className={'sidebar-work-status ' + (work.active ? 'on' : 'off')}>
                       <span className="sidebar-work-status-dot" aria-hidden="true" />
-                      {work.active ? '자동 실행 중' : '일시정지'}
+                      {work.active ? '자동 실행 중' : '자동 실행 꺼짐'}
                     </span>
                     <LastRun work={work} />
                   </span>
@@ -130,9 +130,10 @@ export function SidebarWorkPanel({
                     type="button"
                     className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}
                     onClick={() => onToggleWorkActive(work.id, !work.active)}
-                    title={work.active ? '자동 실행 일시정지' : '자동 실행 켜기'}
+                    aria-label={`${work.name} 자동 실행 ${work.active ? '끄기' : '켜기'}`}
+                    title={work.active ? '자동 실행 끄기' : '자동 실행 켜기'}
                   >
-                    {work.active ? '정지' : '켜기'}
+                    {work.active ? '끄기' : '켜기'}
                   </button>
                   <DeleteWorkButton label={work.name + ' 업무 삭제'} title="업무 삭제"
                     onDelete={() => onDeleteWork(work.id, work.name)} />
@@ -145,18 +146,18 @@ export function SidebarWorkPanel({
 
       <WorkGroup
         id="sidebar-single-run-title"
-        title="단일 업무·최근 실행"
-        subtitle="한 번 실행하는 업무와 결과를 봅니다"
+        title="직접 실행·한 번 예약"
+        subtitle="필요할 때 실행하는 업무와 최근 결과를 봅니다"
         count={oneOffCount}
-        countLabel="단일 업무와 최근 실행"
+        countLabel="직접 실행 업무와 최근 실행"
       >
         {oneOffCount === 0 ? (
-          <EmptyWorkGroup title="단일 실행이 없습니다" hint="새 대화에서 한 번 실행할 업무를 요청해 보세요" />
+          <EmptyWorkGroup title="아직 실행한 업무가 없습니다" hint="새 대화에서 할 일을 요청해 보세요" />
         ) : (
           <>
             {oneOffWorks.length > 0 && (
               <div className="sidebar-work-subgroup">
-                <p className="sidebar-work-subgroup-title">저장된 단일 업무</p>
+                <p className="sidebar-work-subgroup-title">저장된 업무</p>
                 <ul className="sidebar-work-list">
                   {oneOffWorks.map((work) => (
                     <li key={work.id} className="sidebar-work-row">
@@ -164,7 +165,7 @@ export function SidebarWorkPanel({
                         type="button"
                         className="sidebar-work-item"
                         onClick={() => onOpenWork(work.id)}
-                        aria-label={`${work.name} 단일 업무 열기`}
+                        aria-label={`${work.name} 업무 열기`}
                       >
                         <span className="sidebar-work-name">{work.name}</span>
                         <span className="sidebar-work-trigger">{triggerLabel(work.trigger)}</span>

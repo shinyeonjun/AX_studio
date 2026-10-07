@@ -72,7 +72,7 @@ function WorkflowGraphInner({
     return (
       <div className="wf-graph-empty">
         <p>업무 흐름이 여기에 표시됩니다</p>
-        <p className="muted">대화를 시작하면 AX가 만드는 노드 순서를 실시간으로 확인할 수 있어요.</p>
+        <p className="muted">대화를 시작하면 AX가 만드는 단계 순서를 실시간으로 확인할 수 있어요.</p>
       </div>
     );
   }
