@@ -2014,6 +2014,37 @@
   background: var(--surface, #fff);
 }
 
+.ax-discovery-handover {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.ax-discovery-handover > .btn {
+  justify-self: start;
+}
+
+.ax-discovery-handover-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ax-discovery-handover-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.ax-discovery-handover-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .ax-discovery-review-actions {
   display: flex;
   gap: 8px;
@@ -2123,18 +2154,56 @@
   gap: 8px;
 }
 
-.ax-schedule-input-row,
-.ax-schedule-input-time {
+/* Every row reads the same way: a fixed label column, then its controls. */
+.ax-schedule-input-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.ax-schedule-input-row > label {
-  min-width: 56px;
+.ax-schedule-input-row > select,
+.ax-schedule-input-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ax-schedule-input-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-schedule-input-row > label,
+.ax-schedule-input-row-label {
+  flex: 0 0 56px;
   color: var(--ax-chat-text-secondary);
   font-size: 12px;
+}
+
+.ax-schedule-input-row:has(.ax-schedule-input-check) {
+  align-items: flex-start;
+}
+
+.ax-schedule-input-check {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A choice reads as one unit: the box and its words on one line. */
+.ax-schedule-input-check label,
+.ax-schedule-input fieldset > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ax-chat-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ax-schedule-input-check .ax-schedule-input-hint {
+  padding-left: 22px;
 }
 
 .ax-schedule-input-hint {

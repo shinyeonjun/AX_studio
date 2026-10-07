@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getCore: vi.fn(),
   validateAndConnectRdb: vi.fn(),
   disconnectRdb: vi.fn(),
+  discoverRdbTableNames: vi.fn(),
   notifyStateChanged: vi.fn(),
 }));
 
@@ -20,6 +21,7 @@ vi.mock('../../core-instance.js', () => ({ getCore: mocks.getCore }));
 vi.mock('../../rdb/connection.js', () => ({
   validateAndConnectRdb: mocks.validateAndConnectRdb,
   disconnectRdb: mocks.disconnectRdb,
+  discoverRdbTableNames: mocks.discoverRdbTableNames,
 }));
 vi.mock('../../state-broadcast.js', () => ({ notifyStateChanged: mocks.notifyStateChanged }));
 
@@ -29,7 +31,8 @@ describe('SQLite path selection authorization', () => {
   beforeEach(() => {
     mocks.handlers.clear();
     mocks.showOpenDialog.mockReset();
-    mocks.getCore.mockReset().mockReturnValue({ store: {}, runtime: {} });
+    mocks.getCore.mockReset().mockReturnValue({ store: { getConnections: () => [] }, runtime: {} });
+    mocks.discoverRdbTableNames.mockReset().mockResolvedValue({ tables: ['orders'], truncated: false });
     mocks.validateAndConnectRdb.mockReset().mockResolvedValue(undefined);
     mocks.disconnectRdb.mockReset().mockResolvedValue(undefined);
     mocks.notifyStateChanged.mockReset();
@@ -90,5 +93,43 @@ describe('SQLite path selection authorization', () => {
     mocks.validateAndConnectRdb.mockRejectedValueOnce(new Error('database is invalid'));
     await expect(connect({}, { type: 'sqlite', filePath: retry.path })).rejects.toThrow('database is invalid');
     await expect(connect({}, { type: 'sqlite', filePath: retry.path })).resolves.toEqual({ ok: true });
+  });
+});
+
+describe('listing the tables of a database being connected', () => {
+  const testDirectory = dirname(fileURLToPath(import.meta.url));
+  const picked = resolve(testDirectory, '../../../../package.json');
+  const other = resolve(testDirectory, '../../../../../../packages/core/package.json');
+
+  beforeEach(() => {
+    mocks.handlers.clear();
+    mocks.showOpenDialog.mockReset();
+    mocks.getCore.mockReset().mockReturnValue({ store: { getConnections: () => [] }, runtime: {} });
+    mocks.discoverRdbTableNames.mockReset().mockResolvedValue({ tables: ['orders'], truncated: false });
+    registerRdbConnectionHandlers();
+  });
+
+  it('reads only a SQLite file the person picked, never a path the page names', async () => {
+    const discover = mocks.handlers.get('ax:discoverRdbTables')!;
+    await expect(discover({}, { type: 'sqlite', filePath: other })).rejects.toThrow('시스템 선택기로 선택');
+    mocks.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [picked] });
+    const selection = await mocks.handlers.get('ax:pickSqliteFile')!({}) as { path: string };
+    await expect(discover({}, { type: 'sqlite', filePath: selection.path })).resolves.toEqual({ tables: ['orders'], truncated: false });
+    await expect(discover({}, { type: 'sqlite', filePath: other })).rejects.toThrow('시스템 선택기로 선택');
+    expect(mocks.discoverRdbTableNames).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the already connected SQLite file again, so editing a connection lists its tables', async () => {
+    mocks.getCore.mockReturnValue({
+      store: { getConnections: () => [{ connector: 'rdb', connected: true, config: { type: 'sqlite', filePath: picked } }] },
+      runtime: {},
+    });
+    await expect(mocks.handlers.get('ax:discoverRdbTables')!({}, { type: 'sqlite', filePath: picked }))
+      .resolves.toEqual({ tables: ['orders'], truncated: false });
+    // Saving new table choices for that file needs no new pick either; another file still does.
+    await expect(mocks.handlers.get('ax:connectRdb')!({}, { type: 'sqlite', filePath: picked, allowedTables: ['orders'] }))
+      .resolves.toEqual({ ok: true });
+    await expect(mocks.handlers.get('ax:connectRdb')!({}, { type: 'sqlite', filePath: other }))
+      .rejects.toThrow('시스템 선택기로 선택');
   });
 });

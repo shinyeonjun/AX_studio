@@ -51,7 +51,12 @@ export const DISCOVERY_COMMAND_DEFINITIONS = [
     name: 'discovery.publish',
     lifecycle: 'workflow',
     description: 'replay를 통과한 업무안을 workflow로 저장합니다.',
-    args: { sessionId: 'discovery session id', name: 'optional workflow name', expectedRevision: 'last inspected session revision' },
+    args: {
+      sessionId: 'discovery session id',
+      name: 'optional workflow name',
+      expectedRevision: 'last inspected session revision',
+      schedule: 'optional schedule form answer; omitted means the work runs when asked',
+    },
     mutates: true,
   },
 ] as const satisfies readonly (AxCommandDefinition & { lifecycle: AxCommandLifecycle })[];

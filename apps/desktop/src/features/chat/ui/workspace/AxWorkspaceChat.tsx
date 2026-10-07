@@ -45,7 +45,7 @@ interface AxWorkspaceChatProps {
   onRunWorkflow?: () => Promise<void>;
   onAttachExample?: () => Promise<void>;
   onDiscoveryAnswer?: (questionId: string, optionId: string) => Promise<void> | void;
-  onDiscoveryPublish?: () => Promise<void> | void;
+  onDiscoveryPublish?: (schedule?: string) => Promise<void> | void;
   onDiscoveryCancel?: () => Promise<void> | void;
   onDiscoveryRetry?: () => Promise<void> | void;
 }

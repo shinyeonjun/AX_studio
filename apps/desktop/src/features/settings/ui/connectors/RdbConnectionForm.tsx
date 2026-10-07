@@ -1,5 +1,7 @@
+import { useId } from 'react';
 import { ConnectionGuide } from '../ConnectionGuide';
 import { ConnectedServiceList } from '../ConnectedServiceList';
+import { RdbTablePicker } from './rdb-connection/RdbTablePicker';
 import type { RdbConnectionFormProps, RdbConnectionType } from './rdb-connection/use-rdb-connection-form';
 import { useRdbConnectionForm } from './rdb-connection/use-rdb-connection-form';
 
@@ -7,6 +9,7 @@ export function RdbConnectionForm({
   state,
   embedded = false,
   onPickSqliteFile,
+  onDiscoverTables,
   onConnect,
   onDisconnect,
 }: RdbConnectionFormProps) {
@@ -23,6 +26,8 @@ export function RdbConnectionForm({
     setAllowedSchemas,
     allowedTables,
     setAllowedTables,
+    discovered,
+    discoverTables,
     rowLimit,
     setRowLimit,
     label,
@@ -35,7 +40,10 @@ export function RdbConnectionForm({
     handlePickFile,
     handleConnect,
     handleDisconnect,
-  } = useRdbConnectionForm({ state, onPickSqliteFile, onConnect, onDisconnect });
+  } = useRdbConnectionForm({ state, onPickSqliteFile, onDiscoverTables, onConnect, onDisconnect });
+  const fileFieldId = useId();
+  // A saved PostgreSQL/MySQL address is reused when the field is left empty.
+  const canDiscover = type === 'sqlite' ? Boolean(filePath.trim()) : Boolean(connectionString.trim()) || connected;
 
   return (
     <div ref={formRef} className={embedded ? 'connection-form connection-form--embedded' : 'connection-form'}>
@@ -43,9 +51,9 @@ export function RdbConnectionForm({
         <ConnectionGuide
           title="데이터베이스 연결"
           steps={[
-            'SQLite 파일 또는 PostgreSQL/MySQL connection string을 설정합니다.',
-            '허용 테이블 목록을 쉼표로 구분해 입력합니다 (비우면 조회가 거부됩니다).',
-            'PostgreSQL/MySQL은 connection string을 OS 보안 저장소에 보관합니다.',
+            'SQLite 파일을 고르거나 PostgreSQL/MySQL 접속 주소를 입력합니다.',
+            '테이블 목록을 불러와 읽어도 되는 테이블만 고릅니다. 고르지 않은 테이블은 읽지 않습니다.',
+            '접속 주소는 이 컴퓨터의 보안 저장소에만 보관합니다.',
             'PostgreSQL: postgresql://user:pass@host:5432/db · MySQL: mysql://user:pass@host:3306/db',
           ]}
         />
@@ -61,24 +69,24 @@ export function RdbConnectionForm({
       </label>
 
       {type === 'sqlite' ? (
-        <label className="field">
-          <span>SQLite 파일</span>
+        <div className="field">
+          <label htmlFor={fileFieldId}>SQLite 파일</label>
           <div className="field-row">
-            <input value={filePath} onChange={(event) => setFilePath(event.target.value)} placeholder={'C:\\data\\app.db'} />
-            <button type="button" className="btn-secondary" onClick={() => void handlePickFile()} disabled={busy}>
+            <input id={fileFieldId} value={filePath} onChange={(event) => setFilePath(event.target.value)} placeholder={'C:\\data\\app.db'} />
+            <button type="button" className="btn btn-secondary" onClick={() => void handlePickFile()} disabled={busy}>
               찾아보기
             </button>
           </div>
-        </label>
+        </div>
       ) : (
         <label className="field">
-          <span>Connection string</span>
+          <span>접속 주소</span>
           <input
             value={connectionString}
             onChange={(event) => setConnectionString(event.target.value)}
             placeholder={
               connected
-                ? '변경 시에만 입력'
+                ? '바꿀 때만 입력'
                 : type === 'mysql'
                   ? 'mysql://user:pass@localhost:3306/db'
                   : 'postgresql://user:pass@localhost:5432/db'
@@ -89,7 +97,7 @@ export function RdbConnectionForm({
 
       {type !== 'sqlite' && (
         <label className="field">
-          <span>허용 스키마 (쉼표 구분, 선택)</span>
+          <span>스키마 (선택, 쉼표로 구분)</span>
           <input
             value={allowedSchemas}
             onChange={(event) => setAllowedSchemas(event.target.value)}
@@ -98,13 +106,17 @@ export function RdbConnectionForm({
         </label>
       )}
 
-      <label className="field">
-        <span>허용 테이블 (쉼표 구분)</span>
-        <input value={allowedTables} onChange={(event) => setAllowedTables(event.target.value)} placeholder="users, orders" />
-      </label>
+      <RdbTablePicker
+        selected={allowedTables}
+        discovered={discovered}
+        canDiscover={canDiscover}
+        busy={busy}
+        onChange={setAllowedTables}
+        onDiscover={() => void discoverTables()}
+      />
 
       <label className="field">
-        <span>행 제한</span>
+        <span>한 번에 읽는 최대 행 수</span>
         <input value={rowLimit} onChange={(event) => setRowLimit(event.target.value)} inputMode="numeric" />
       </label>
 
@@ -114,11 +126,13 @@ export function RdbConnectionForm({
       </label>
 
       <div className="connection-actions">
-        <button type="button" className="btn-primary" onClick={() => void handleConnect()} disabled={busy}>
+        <button type="button" className="btn btn-primary" onClick={() => void handleConnect()}
+          disabled={busy || allowedTables.length === 0}
+          title={allowedTables.length === 0 ? '읽어도 되는 테이블을 하나 이상 골라 주세요.' : undefined}>
           {connected ? '다시 연결' : '연결'}
         </button>
         {connected && (
-          <button type="button" className="btn-secondary" onClick={() => void handleDisconnect()} disabled={busy}>
+          <button type="button" className="btn btn-secondary" onClick={() => void handleDisconnect()} disabled={busy}>
             연결 해제
           </button>
         )}

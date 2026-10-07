@@ -55,6 +55,7 @@ export function AppSettingsPage({ screen, state, onScreenChange, onRefresh, dete
         await onRefresh();
       }}
       onPickSqliteFile={() => window.ax.pickSqliteFile()}
+      onDiscoverRdbTables={(payload) => window.ax.discoverRdbTables(payload)}
       onConnectRdb={async (payload) => {
         const result = await window.ax.connectRdb(payload);
         await onRefresh();

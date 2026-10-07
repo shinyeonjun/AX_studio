@@ -2,7 +2,7 @@ import { dialog } from 'electron';
 import { realpathSync } from 'node:fs';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
-import { disconnectRdb, validateAndConnectRdb } from '../../rdb/connection.js';
+import { discoverRdbTableNames, disconnectRdb, validateAndConnectRdb } from '../../rdb/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 let approvedSqliteSelection: { path: string; connecting: boolean } | undefined;
@@ -10,6 +10,18 @@ let approvedSqliteSelection: { path: string; connecting: boolean } | undefined;
 function sqlitePathKey(path: string): string {
   const real = realpathSync(path);
   return process.platform === 'win32' ? real.toLowerCase() : real;
+}
+
+/** The SQLite file of the saved connection, which the person already chose once. */
+function connectedSqlitePathKey(): string | undefined {
+  const connection = getCore().store.getConnections().find((entry) => entry.connector === 'rdb');
+  const config = (connection?.connected ? connection.config : undefined) as Record<string, unknown> | undefined;
+  if (config?.type !== 'sqlite' || typeof config.filePath !== 'string') return undefined;
+  try {
+    return sqlitePathKey(config.filePath);
+  } catch {
+    return undefined;
+  }
 }
 
 export function registerRdbConnectionHandlers() {
@@ -27,6 +39,32 @@ export function registerRdbConnectionHandlers() {
     return { ok: true as const, path: selected };
   });
 
+  // Lists tables only for a file the person picked (or the one already connected) or the address
+  // they typed; nothing is saved, so the allowlist stays exactly what they then choose.
+  ipcHandle('ax:discoverRdbTables', async (_event, payload: unknown) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('DB 연결 정보 형식이 올바르지 않습니다.');
+    }
+    const record = payload as Record<string, unknown>;
+    const type = record.type;
+    if (type !== 'mysql' && type !== 'postgres' && type !== 'sqlite') {
+      throw new Error('DB 유형이 올바르지 않습니다.');
+    }
+    if (type !== 'sqlite') {
+      return discoverRdbTableNames({
+        type,
+        connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
+      });
+    }
+    const requested = typeof record.filePath === 'string' ? record.filePath.trim() : '';
+    if (!requested) throw new Error('SQLite 파일을 먼저 선택해 주세요.');
+    const filePath = sqlitePathKey(requested);
+    if (approvedSqliteSelection?.path !== filePath && connectedSqlitePathKey() !== filePath) {
+      throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
+    }
+    return discoverRdbTableNames({ type, filePath });
+  });
+
   ipcHandle('ax:connectRdb', async (_event, payload: unknown) => {
     const core = getCore();
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -42,14 +80,15 @@ export function registerRdbConnectionHandlers() {
     if (type === 'sqlite') {
       if (!filePath) throw new Error('SQLite 파일을 선택해야 합니다.');
       filePath = sqlitePathKey(filePath);
-      sqliteSelection = approvedSqliteSelection;
-      if (sqliteSelection?.path !== filePath) {
+      sqliteSelection = approvedSqliteSelection?.path === filePath ? approvedSqliteSelection : undefined;
+      // Changing the tables of the file already connected needs no new pick: it was chosen once.
+      if (!sqliteSelection && connectedSqlitePathKey() !== filePath) {
         throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
       }
-      if (sqliteSelection.connecting) {
+      if (sqliteSelection?.connecting) {
         throw new Error('SQLite 파일 연결이 이미 진행 중입니다.');
       }
-      sqliteSelection.connecting = true;
+      if (sqliteSelection) sqliteSelection.connecting = true;
     }
     let connected: { warning?: string } | undefined;
     try {

@@ -44,6 +44,8 @@ export const DiscoveryPublishArgsSchema = z.object({
   sessionId: z.string().trim().min(1),
   name: z.string().trim().min(1).optional(),
   expectedRevision: z.number().int().nonnegative().optional(),
+  /** The schedule form's answer (description + token); without it the work runs when asked. */
+  schedule: z.string().trim().min(1).max(4_000).optional(),
 });
 
 export type DiscoveryAnswerArgs = z.infer<typeof DiscoveryAnswerArgsSchema>;

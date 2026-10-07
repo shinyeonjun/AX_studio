@@ -27,5 +27,7 @@ export interface AxDiscoveryApi {
     sessionId: string;
     name?: string;
     expectedRevision?: number;
+    /** The schedule form's answer; the saved work then repeats on it. */
+    schedule?: string;
   }) => Promise<AxCommandResult>;
 }

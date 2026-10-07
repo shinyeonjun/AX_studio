@@ -1,0 +1,131 @@
+/* Connection settings forms: one field = label above its control. */
+
+.connection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.connection-form-fields {
+  display: grid;
+  gap: 6px;
+}
+
+.connection-form-fields > label,
+.field > span,
+.field > label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.connection-form-fields > label:not(:first-child) {
+  margin-top: 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.connection-actions,
+.connection-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Allowed DB tables, picked from what the database shows. */
+.rdb-table-picker {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+.rdb-table-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rdb-table-picker-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rdb-table-picker-count {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.rdb-table-picker-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.rdb-table-picker-note.warning {
+  color: var(--amber);
+}
+
+.rdb-table-picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 2px 12px;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rdb-table-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rdb-table-picker-option:hover {
+  background: var(--bg-hover);
+}
+
+.rdb-table-picker-all {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.rdb-table-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.rdb-table-picker-missing {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--amber);
+  font-size: 11px;
+}

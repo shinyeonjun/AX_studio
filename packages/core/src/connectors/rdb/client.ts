@@ -1,7 +1,7 @@
 export { formatRdbTableRef, parseRdbTableRef } from './client/table-ref.js';
 export { isAllowedRdbTable, resolveRdbTableRef } from './client/policy.js';
 export { openRdbSqlClient } from './client/drivers.js';
-export { listRdbTables } from './client/catalog.js';
+export { discoverRdbTables, listRdbTables } from './client/catalog.js';
 export {
   MAX_RDB_RESULT_ROWS,
   MAX_RDB_OFFSET,

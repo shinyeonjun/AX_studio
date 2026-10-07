@@ -5,6 +5,7 @@ import type { DiscoverySessionState } from '../schema.js';
 import type { WorkDiscoveryRuntime } from './contracts.js';
 import { revisionConflict } from './commands.js';
 import { isDiscoveryRevisionConflict } from './lifecycle/runner.js';
+import { decodeScheduleInputValue } from '../../workflow/schedule/input-value.js';
 
 function resolveDefaultSourcePath(
   blueprint: NonNullable<DiscoverySessionState['blueprint']>,
@@ -19,6 +20,8 @@ export function publishDiscovery(
   sessionId: string,
   name?: string,
   expectedRevision?: number,
+  /** The schedule the person picked when handing the work over; the work then repeats on it. */
+  schedule?: string,
 ): { workflowId: string } | DiscoveryRevisionConflict | { error: string } {
   const state = runtime.store.getDiscoverySessionState(sessionId);
   if (!state) return { error: 'discovery_not_found' };
@@ -28,13 +31,17 @@ export function publishDiscovery(
   if (state.status === 'published' && state.publishedWorkflowId) {
     return { workflowId: state.publishedWorkflowId };
   }
+  const recurrence = schedule === undefined ? undefined : decodeScheduleInputValue(schedule);
+  if (schedule !== undefined && !recurrence) return { error: 'invalid_schedule' };
   const gate = canPublish(state);
   if (!gate.ok) return { error: gate.reason };
   const blueprint = state.blueprint ?? buildDiscoveryBlueprint(state);
   if (!blueprint) return { error: 'blueprint_missing' };
   const defaultSourcePath = resolveDefaultSourcePath(blueprint);
+  const compiled = compileBlueprintToWorkflow(blueprint, { name, defaultSourcePath });
   const workflow = {
-    ...compileBlueprintToWorkflow(blueprint, { name, defaultSourcePath }),
+    ...compiled,
+    ...(recurrence ? { trigger: { type: 'schedule' as const, recurrence, timezone: recurrence.timezone } } : {}),
     id: 'discovery_' + state.id,
   };
   const saved = runtime.store.getWorkflow(workflow.id)

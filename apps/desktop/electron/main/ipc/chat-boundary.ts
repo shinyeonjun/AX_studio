@@ -142,6 +142,8 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
       ...(generatedSpreadsheet?.success ? { generatedSpreadsheet: generatedSpreadsheet.data } : {}),
       ...(readResult ? { readResult: readResult.data } : {}),
+      // Only shows the "반복 업무로" offer; the job is still built from the recipe the host kept.
+      ...(readResult && record.readRepeatable === true ? { readRepeatable: true as const } : {}),
     };
   });
   return messages;

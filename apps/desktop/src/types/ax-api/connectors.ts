@@ -25,6 +25,12 @@ export interface AxConnectorApi {
   }) => Promise<unknown>;
   disconnectWebhook: () => Promise<unknown>;
   pickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  /** Table names the database shows, for picking the allowed ones; nothing is saved. */
+  discoverRdbTables: (payload: {
+    type: 'mysql' | 'postgres' | 'sqlite';
+    filePath?: string;
+    connectionString?: string;
+  }) => Promise<{ tables: string[]; truncated: boolean }>;
   connectRdb: (payload: {
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;

@@ -38,7 +38,7 @@ export function useDiscoverySessionActions({
     await answer(activeView.pendingQuestion.id, optionId);
   }, [activeView?.pendingQuestion, answer]);
 
-  const publish = useCallback(async (name?: string) => {
+  const publish = useCallback(async (name?: string, schedule?: string) => {
     if (!activeSessionId || activeView?.revision === undefined) return;
     const epoch = operationEpochRef.current;
     setBusy(true);
@@ -48,9 +48,12 @@ export function useDiscoverySessionActions({
         sessionId: activeSessionId,
         name,
         expectedRevision: activeView.revision,
+        schedule,
       });
       const data = unwrap<{ workflowId?: string }>(result);
       if (!data) throw commandError(result, '업무를 저장하지 못했습니다.');
+      // Choosing a schedule and handing the work over is the request to start it on that schedule.
+      if (schedule && data.workflowId) await window.ax.setWorkflowActive(data.workflowId, true);
       await refresh(activeSessionId, epoch);
       if (data.workflowId && epoch === operationEpochRef.current) await onPublished?.(data.workflowId);
       return data.workflowId;

@@ -33,6 +33,7 @@ export function SettingsPageContent({
   onConnectWebhook,
   onDisconnectWebhook,
   onPickSqliteFile,
+  onDiscoverRdbTables,
   onConnectRdb,
   onDisconnectRdb,
 }: SettingsPageContentProps) {
@@ -92,6 +93,7 @@ export function SettingsPageContent({
         <RdbConnectionForm
           state={state}
           onPickSqliteFile={onPickSqliteFile}
+          onDiscoverTables={onDiscoverRdbTables}
           onConnect={onConnectRdb}
           onDisconnect={onDisconnectRdb}
         />

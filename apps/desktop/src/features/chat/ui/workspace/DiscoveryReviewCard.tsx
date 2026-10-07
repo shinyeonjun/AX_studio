@@ -1,11 +1,12 @@
 import type { DiscoveryInspectView } from '@ax-studio/core';
 import { DISCOVERY_RUNNING_STATUSES } from './workspace-flow/status.js';
+import { DiscoveryHandOver } from './DiscoveryHandOver';
 
 interface DiscoveryReviewCardProps {
   view: DiscoveryInspectView;
   busy: boolean;
   onAnswer: (questionId: string, optionId: string) => Promise<void> | void;
-  onPublish: () => Promise<void> | void;
+  onPublish: (schedule?: string) => Promise<void> | void;
   onCancel?: () => Promise<void> | void;
   onRetry?: () => Promise<void> | void;
 }
@@ -54,7 +55,8 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
                     <ul>
                       {field.replayByExample.map((entry) => (
                         <li key={entry.exampleId}>
-                          예시 {exampleNumbers.get(entry.exampleId)} {entry.pass ? '✓' : '✗'} ({entry.actualDisplay})
+                          예시 {exampleNumbers.get(entry.exampleId)}{' '}
+                          <span role="img" aria-label={entry.pass ? '같음' : '다름'}>{entry.pass ? '✓' : '✗'}</span> ({entry.actualDisplay})
                         </li>
                       ))}
                     </ul>
@@ -110,9 +112,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
         <p className="ax-discovery-source-notice" role="note">{view.sourceNotice}</p>
       )}
       {view.publishable && (
-        <button type="button" className="btn btn-primary" disabled={busy || view.status === 'published'} onClick={() => void onPublish()}>
-          {view.status === 'published' ? '맡기기 완료' : '이대로 맡기기'}
-        </button>
+        <DiscoveryHandOver busy={busy} published={view.status === 'published'} onPublish={onPublish} />
       )}
       {(CANCELLABLE_STATUSES.has(view.status) && onCancel) || (view.status === 'needs_attention' && onRetry) ? (
         <div className="ax-discovery-review-actions">

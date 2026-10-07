@@ -58,14 +58,14 @@ export function LocalFolderConnectionForm({
           <label htmlFor="local-folder-path">폴더 경로</label>
           <div className="local-folder-path-row">
             <input id="local-folder-path" type="text" value={selectedPath} readOnly placeholder="폴더를 선택하세요" />
-            <button type="button" className="btn secondary" onClick={() => void handlePick()} disabled={busy}>
+            <button type="button" className="btn btn-secondary" onClick={() => void handlePick()} disabled={busy}>
               찾아보기
             </button>
           </div>
         </div>
 
         <div className="connection-form-footer">
-          <button type="button" className="btn primary" onClick={() => void handleAdd()} disabled={busy || !selectedPath}>
+          <button type="button" className="btn btn-primary" onClick={() => void handleAdd()} disabled={busy || !selectedPath}>
             {busy ? '처리 중…' : '폴더 연결 추가'}
           </button>
         </div>
@@ -86,7 +86,7 @@ export function LocalFolderConnectionForm({
                   </div>
                   <button
                     type="button"
-                    className="btn secondary danger"
+                    className="btn btn-secondary btn-danger"
                     onClick={() => void handleRemove(folder.id)}
                     disabled={busy}
                   >
