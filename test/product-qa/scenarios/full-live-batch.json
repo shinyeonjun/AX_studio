@@ -5,6 +5,7 @@
   "mode": "live",
   "tags": ["chat", "connector", "gmail", "slack", "http", "document", "workflow", "read-only", "external-send", "latency"],
   "covers": ["chat:new-send-reply", "capability:gmail-read", "capability:slack-read", "workflow:proposal", "approval:external-send"],
+  "timeoutMs": 3600000,
   "autoApproveExternal": true,
   "testEmail": {
     "subject": "AX Studio 실사용 전송 테스트",

@@ -7,11 +7,11 @@ export function invalidateSession(ctx: WorkspaceChatContext): void {
   ctx.setSourceBusy(false);
 }
 
+/**
+ * Leaves the screen's request running when another chat is opened: its reply is saved to its own
+ * conversation and shown there on return. Deleting that conversation is what cancels it.
+ */
 export function detachActiveRequest(ctx: WorkspaceChatContext): void {
-  const requestId = ctx.refs.activeRequestIdRef.current;
-  if (requestId && typeof window !== 'undefined' && typeof window.ax.cancelChat === 'function') {
-    void window.ax.cancelChat(requestId).catch(() => undefined);
-  }
   ctx.refs.activeRequestIdRef.current = undefined;
   ctx.refs.busyRef.current = false;
   ctx.setBusy(false);

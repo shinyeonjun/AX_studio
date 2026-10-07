@@ -17,6 +17,8 @@ interface WorkspaceChatRefs {
   sourceBusyRef: MutableRefObject<boolean>;
   pendingWorkspaceChatRefreshRef: MutableRefObject<string | undefined>;
   transcriptRevisionRef?: MutableRefObject<string | undefined>;
+  /** Conversation id -> the request still answering it, kept when the person opens another chat. */
+  inFlightRepliesRef?: MutableRefObject<Map<string, string>>;
 }
 
 /** One render snapshot owns both its messages and the token for those messages. */

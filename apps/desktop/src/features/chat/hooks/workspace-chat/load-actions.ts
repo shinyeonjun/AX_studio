@@ -69,7 +69,18 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       if (ctx.isCurrentSession(epoch)) ctx.setBusy(false);
+      if (ctx.isCurrentSession(epoch)) resumeInFlightReply(ctx.refs.workspaceSessionIdRef.current);
     }
+  };
+
+  /** Back on a chat whose answer is still coming: show it as answering, and block a second turn. */
+  const resumeInFlightReply = (sessionId: string | undefined) => {
+    const requestId = sessionId ? ctx.refs.inFlightRepliesRef?.current.get(sessionId) : undefined;
+    if (!requestId) return;
+    ctx.refs.activeRequestIdRef.current = requestId;
+    ctx.refs.busyRef.current = true;
+    ctx.setBusy(true);
+    ctx.setProgress('답변을 준비하고 있습니다');
   };
 
   const openWorkChat = async (workflowId: string) => {
@@ -116,6 +127,7 @@ export function createWorkspaceLoadActions(ctx: WorkspaceChatContext) {
       ctx.setError(ipcErrorMessage(err, '대화 처리에 실패했습니다.'));
     } finally {
       if (ctx.isCurrentSession(epoch)) ctx.setBusy(false);
+      if (ctx.isCurrentSession(epoch)) resumeInFlightReply(ctx.refs.workspaceSessionIdRef.current);
     }
   };
 
