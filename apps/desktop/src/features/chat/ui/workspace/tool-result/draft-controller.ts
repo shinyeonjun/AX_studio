@@ -1,7 +1,6 @@
 import { MessageToolDraftSchema, missingToolEssentials, validGmailRecipient } from '@ax-studio/core/tool-result';
 import type { EditableToolResult, ExecutionResult, MessageToolDraft, ToolDraftUpdate,
   ToolReviewRequest, ToolResultReview, ToolResultConfirmation, ToolSendOutcome } from '@ax-studio/core';
-import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 
 export interface ToolDraftApi {
   update: (input: ToolDraftUpdate) => Promise<EditableToolResult>;
@@ -27,11 +26,6 @@ export function toolDraftError(error: unknown): string {
   if (message.includes('unsupported')) return '이 요청에 지원되지 않는 전송 옵션이 있습니다. 요청은 전송되지 않았습니다.';
   if (message.includes('stale') || message.includes('approval_target_changed')) return '내용 또는 연결이 바뀌었습니다. 전송 전에 다시 확인해 주세요.';
   return '전송 준비를 완료하지 못했습니다. 초안을 확인한 뒤 다시 시도해 주세요.';
-}
-
-/** Loading a stored send request failed: nothing was prepared yet, so this is not a send failure. */
-export function toolDraftLoadError(error: unknown, fallback = '전송 내용을 불러오지 못했습니다. 다시 불러오기를 눌러 주세요.'): string {
-  return ipcErrorMessage(error, fallback);
 }
 
 /** Synchronous locks guard double clicks; host revisions/seals remain authoritative. */

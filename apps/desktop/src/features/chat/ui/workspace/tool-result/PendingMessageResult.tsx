@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ToolResultReference, ToolSendOutcome } from '@ax-studio/core';
-import { cachedToolDraft, type ToolDraftController, toolDraftLoadError } from './draft-controller';
+import { cachedToolDraft, type ToolDraftController } from './draft-controller';
+import { toolDraftLoadError } from './load-error';
 import { EditableMessageResult } from './EditableMessageResult';
 import { OutcomeResult } from './OutcomeResult';
 import { reloadOnStateChange } from './reload-on-state-change';
