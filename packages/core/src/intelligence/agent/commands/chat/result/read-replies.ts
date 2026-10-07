@@ -1,6 +1,7 @@
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { httpResponseToTable } from '../../../../../contracts/artifacts/http-response.js';
 import { TableArtifactSchema } from '../../../../../contracts/artifacts/table.js';
+import { labeledTable, type ColumnLabels } from '../../../../../contracts/artifacts/column-labels.js';
 import { hostFacingMessage } from './host-result.js';
 import {
   capabilityEnvelopeData,
@@ -32,6 +33,7 @@ export function deterministicHttpChatReply(
   result: AxCommandResult,
   userMessage: string,
   jevConfirmedNoTransform = false,
+  labels: ColumnLabels = {},
 ): string | undefined {
   if (command.name !== 'capability.invoke' || command.args.id !== 'http.request') return undefined;
   const params = command.args.params;
@@ -62,7 +64,7 @@ export function deterministicHttpChatReply(
       rowsPath: uniqueObjectArrayPath(json),
       columns: selectedColumnsFromHttpPath(params),
     });
-    return table.ok ? tableToMarkdown(table.table) : undefined;
+    return table.ok ? tableToMarkdown(labeledTable(table.table, labels)) : undefined;
   }
 
   if (!response.body.trim()) return '가져온 결과가 비어 있습니다.';
@@ -89,6 +91,7 @@ export function deterministicCapabilityReadChatReply(
   result: AxCommandResult,
   userMessage: string,
   jevConfirmedNoTransform = false,
+  labels: ColumnLabels = {},
 ): string | undefined {
   if (command.name !== 'capability.invoke' || result.status !== 'ok') return undefined;
   const id = command.args.id;
@@ -99,7 +102,7 @@ export function deterministicCapabilityReadChatReply(
   const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
   if (wantsTable) {
     const table = TableArtifactSchema.safeParse(payload);
-    if (table.success) return tableToMarkdown(table.data);
+    if (table.success) return tableToMarkdown(labeledTable(table.data, labels));
     let decoded = payload;
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
       const body = (payload as Record<string, unknown>).body;

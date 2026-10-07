@@ -26,6 +26,9 @@ import * as workflowRepo from './repositories/workflow-repository.js';
 import * as discoveryMetadata from './repositories/discovery-metadata-repository.js';
 import * as retentionRepo from './repositories/retention-repository.js';
 import { listCorruptRows } from './tolerant-rows.js';
+import { mergeColumnLabels, validColumnLabel, type ColumnLabels } from '../contracts/artifacts/column-labels.js';
+
+const COLUMN_LABELS_SETTING = 'column_labels';
 
 export class WorkflowStore {
   // Main-process writers share this store; hold the id while async runtime cleanup drains.
@@ -230,6 +233,16 @@ export class WorkflowStore {
   getGlobalActive(): boolean { return settingsRepo.getGlobalActive(this.db); }
   setSetting(key: string, value: unknown) { settingsRepo.setSetting(this.db, key, value); }
   deleteSetting(key: string) { settingsRepo.deleteSetting(this.db, key); }
+  /** Korean headers learned for column names, shared by chat answers and run results. */
+  getColumnLabels(): ColumnLabels {
+    const stored = settingsRepo.getSetting<unknown>(this.db, COLUMN_LABELS_SETTING, {});
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+    return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, string] => validColumnLabel(entry[1])));
+  }
+  rememberColumnLabels(labels: ColumnLabels) {
+    if (Object.keys(labels).length === 0) return;
+    settingsRepo.setSetting(this.db, COLUMN_LABELS_SETTING, mergeColumnLabels(this.getColumnLabels(), labels));
+  }
   setConnection(connector: string, connected: boolean, config?: Record<string, unknown>) {
     settingsRepo.setConnection(this.db, connector, connected, config);
     this.connectionRevision++;
