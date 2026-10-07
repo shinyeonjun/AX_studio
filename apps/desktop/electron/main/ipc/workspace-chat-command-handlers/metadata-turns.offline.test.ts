@@ -186,8 +186,8 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const reply = await pending;
     expect(reply).toMatchObject({ metadataStop: 'answered', persistedReply: { sessionId: saved.id, turnId: 'turn-a', requestGeneration: 1 } });
     for (const operation of operations) { expect(reply.content).toContain(operation.label); expect(reply.content).toContain(operation.path); }
-    expect(reply.content).toContain('로컬 등록 보기');
-    expect(reply.content).toContain('원격 API 전체 목록');
+    expect(reply.content).toContain('이 PC에 저장된 목록만 확인했습니다');
+    expect(reply.content).toContain('서비스의 전체 목록');
     expect(f.evidence[0]).toMatchObject({ knownTotal: 4, truncated: false, scope: 'validated_local_registration' });
     expect(f.evidence[0]?.entries.map(entry => entry.path)).toEqual(operations.map(entry => entry.path));
     expect(f.store.getWorkspaceChat(saved.id)?.messages.at(-1)?.content).toBe(reply.content);
@@ -199,11 +199,11 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const f = await fixture();
     f.store.setConnection('http', true, { endpoints: [{ ...endpoint(), discoveredReadOperations: undefined }] });
     const missing = await (await f.start()).pending;
-    expect(missing.metadataStop).toBe('metadata_unavailable'); expect(missing.content).toContain('저장된 HTTP 작업 목록이 없습니다');
+    expect(missing.metadataStop).toBe('metadata_unavailable'); expect(missing.content).toContain('이 연결에 저장된 요청 목록이 없습니다');
     f.store.setConnection('http', true, { endpoints: [{ ...endpoint(), discoveredReadOperations: [] }] });
     const empty = await (await f.start('DummyJSON 등록 목록', 'empty')).pending;
     expect(empty.metadataStop).toBe('answered'); expect(empty.content).toContain('등록된 항목이 없습니다');
-    expect(empty.content).toContain('원격 API 전체 목록');
+    expect(empty.content).toContain('서비스의 전체 목록');
     expect(f.evidence[0]).toMatchObject({ entries: [], knownTotal: 0, truncated: false });
     f.record('HTTP-03', 'missing inventory unavailable; saved empty inventory explicitly empty locally; no remote emptiness/discovery');
   });
@@ -229,10 +229,10 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const f = await fixture({ script: { intent: 'connection_status' } });
     f.store.setConnection('http', false, { endpoints: [endpoint()] });
     const reply = await (await f.start('DummyJSON 저장된 연결 상태')).pending;
-    expect(reply.metadataStop).toBe('answered'); expect(reply.content).toContain('저장된 사용 설정: 꺼짐');
+    expect(reply.metadataStop).toBe('answered'); expect(reply.content).toContain('사용 설정: 꺼짐');
     expect(f.evidence[0]?.status).toEqual({ catalogExists: true, configured: true, enabled: false,
       authentication: 'unknown', operationPermission: 'unknown', health: 'unknown' });
-    expect(reply.content.match(/미확인/gu)).toHaveLength(3);
+    expect(reply.content.match(/확인 안 됨/gu)).toHaveLength(3);
     f.record('HTTP-05', 'saved disabled registration remains candidate; configuration true; enabled false; three remote checks unknown');
   });
 
@@ -400,7 +400,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
       { path: unsafe[0], label: secret }, { path: 'safe/sibling', label: 'Safe sibling' },
     ] }] });
     const readableReply = await (await readable.start()).pending;
-    expect(readableReply.content).toContain('필터링된 보기'); expect(readableReply.content).toContain('Safe sibling'); expect(readableReply.content).not.toContain(secret);
+    expect(readableReply.content).toContain('전체 목록이 아닙니다'); expect(readableReply.content).toContain('Safe sibling'); expect(readableReply.content).not.toContain(secret);
     f.record('HTTP-13', 'twelve unsafe/encoded references including normalized-path collisions and associated labels absent from wire/evidence/raw/transcript/progress; safe sibling exact; filtered readable coverage');
   });
 });
