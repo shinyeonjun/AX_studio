@@ -111,7 +111,7 @@ export function deterministicCapabilityReadChatReply(
       }
     }
     const rows = rowsForCapabilityTable(decoded);
-    return rows ? rowsToMarkdown(rows) : undefined;
+    return rows ? rowsToMarkdown(rows, labels) : undefined;
   }
 
   let body = payload;

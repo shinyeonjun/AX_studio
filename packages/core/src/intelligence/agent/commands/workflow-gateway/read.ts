@@ -37,9 +37,9 @@ export function inspectWorkflow(store: WorkflowStore, command: AxCommand): AxWor
   if (!workflowId) {
     return ['invalid', undefined, [issue(
       'missing_argument',
-      'workflowId가 필요합니다.',
+      '어떤 업무를 볼지 알려 주세요.',
       'args.workflowId',
-      [requiredTextInput('workflowId', '워크플로우', '확인할 워크플로우 id를 입력해 주세요.')],
+      [requiredTextInput('workflowId', '업무', '업무 목록에서 고르거나 이름을 말해 주세요.')],
     )]];
   }
   const workflow = store.getWorkflow(workflowId);
@@ -55,9 +55,9 @@ export function validateWorkflow(store: WorkflowStore, command: AxCommand): AxWo
   if (!workflowId) {
     return ['invalid', undefined, [issue(
       'missing_argument',
-      'workflowId가 필요합니다.',
+      '어떤 업무를 볼지 알려 주세요.',
       'args.workflowId',
-      [requiredTextInput('workflowId', '워크플로우', '검증할 워크플로우 id를 입력해 주세요.')],
+      [requiredTextInput('workflowId', '업무', '점검할 업무를 목록에서 고르거나 이름을 말해 주세요.')],
     )]];
   }
   const workflow = store.getWorkflow(workflowId);

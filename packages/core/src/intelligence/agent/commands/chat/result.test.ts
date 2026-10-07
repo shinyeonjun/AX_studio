@@ -223,6 +223,21 @@ describe('deterministicCapabilityReadChatReply', () => {
     expect(rows).toHaveLength(101);
   });
 
+  it('uses known column labels as headers for plain row-array results', () => {
+    const reply = deterministicCapabilityReadChatReply({
+      name: 'capability.invoke',
+      args: { id: 'slack.messages.search', params: {} },
+    }, {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: { capabilityId: 'slack.messages.search', data: [{ total_amount: 10, memo: 'a' }], citations: [], untrusted: true },
+      issues: [],
+      inputRequests: [],
+    }, '결과를 표로 보여줘', false, { total_amount: '총 금액' });
+
+    expect(reply).toContain('| 총 금액 | memo |');
+  });
+
   it('keeps semantic transforms on the model path', () => {
     expect(deterministicCapabilityReadChatReply({
       name: 'capability.invoke',

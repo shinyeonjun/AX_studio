@@ -391,10 +391,10 @@ function mutationIntentGate(
   }
   if (selectedRoute === 'workflow_delete'
     && (choiceAnswer(answers.explicit_workflow_delete)?.choice !== 'delete_now' || !isDominantRouteChoice(routeAnswer, route))) {
-    return clarify('현재 업무를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다.');
+    return clarify('현재 업무를 삭제하라는 요청인지 확실하지 않아 삭제하지 않았습니다. 지우려면 "이 업무 삭제해 줘"처럼 말씀해 주세요.');
   }
   if (selectedRoute === 'workflow_update' && choiceAnswer(answers.explicit_workflow_update)?.choice !== 'update_now') {
-    return clarify('현재 업무를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다.');
+    return clarify('현재 업무를 실제로 변경하라는 요청인지 확실하지 않아 수정하지 않았습니다. 바꿀 단계와 내용을 알려 주세요.');
   }
   return undefined;
 }

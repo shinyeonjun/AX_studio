@@ -202,7 +202,7 @@ export async function applySelectedTransform(input: {
       if (operator !== 'eq' && operator !== 'neq') return { status: 'clarify', message: clarifyMessage(true, wantsSort), ...metadata };
       const distinct = [...new Set(table.rows.map(row => row.values[field!]).filter(value => value !== null))];
       if (!distinct.length || distinct.length > 64 || distinct.some(value => typeof value !== column.type || (typeof value === 'string' && value.length > 256))) {
-        return { status: 'clarify', message: '선택한 열의 값 유형이나 후보 범위를 확인할 수 없습니다.', ...metadata };
+        return { status: 'clarify', message: '선택한 열의 값 유형이나 후보 범위를 확인할 수 없습니다. 어느 열을 어떻게 바꿀지 조금 더 구체적으로 알려 주세요.', ...metadata };
       }
       filterValues = distinct as (string | boolean)[];
       try {
@@ -222,7 +222,7 @@ export async function applySelectedTransform(input: {
       }
     } else if (!column || !['number', 'integer', 'currency', 'percentage'].includes(column.type)
       || table.rows.some(row => row.values[field!] !== null && typeof row.values[field!] !== 'number')) {
-      return { status: 'clarify', message: '선택한 열의 값 유형을 확인할 수 없습니다.', ...metadata };
+      return { status: 'clarify', message: '선택한 열의 값 유형을 확인할 수 없습니다. 어느 열을 어떻게 바꿀지 조금 더 구체적으로 알려 주세요.', ...metadata };
     }
     const valueChoice = selectedChoice(answers.filter_value, new Set([
       ...filterValues.map((_, index) => `value_${index}`),

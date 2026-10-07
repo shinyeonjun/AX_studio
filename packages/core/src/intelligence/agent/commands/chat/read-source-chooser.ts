@@ -35,7 +35,7 @@ export function readSourceChooser(hints: readonly JevReadOperationHint[], reques
   });
   const listed = sources.join(', ');
   return {
-    message: `${listed}에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했어요. 한 곳을 골라 주세요. 둘을 함께 비교하려면 "두 자료를 비교해 줘"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.`,
+    message: `${listed}에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 "두 자료를 비교해 줘"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.`,
     presentation: {
       title: '어디에서 찾을까요?',
       subtitle: `${listed}에 모두 관련 자료가 있어요.`,

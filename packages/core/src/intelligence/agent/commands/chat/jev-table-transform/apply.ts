@@ -31,7 +31,7 @@ export async function applyJevTableTransform(input: {
   abortSignal?: AbortSignal;
 }): Promise<JevTableTransformResult> {
   if (input.mode === 'export_xlsx') return { status: 'export_xlsx' };
-  if (input.mode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 현재 표의 필터·정렬·열 선택 범위를 벗어나 수행하지 않았습니다.' };
+  if (input.mode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 이 표에서 할 수 없어 수행하지 않았습니다. 행 거르기·정렬·열 고르기·합계는 할 수 있습니다.' };
   const table = TableArtifactSchema.safeParse(input.table);
   if (!table.success) return { status: 'not_applicable' };
   if (input.mode === 'calculate') {
@@ -103,7 +103,7 @@ export async function applyJevTableTransform(input: {
     if (selectedMode === 'calculate') {
       return summarizeTable({ decisionEngine: input.decisionEngine, table: table.data, userMessage: input.userMessage, abortSignal: input.abortSignal, metadata: evaluationMetadata });
     }
-    if (selectedMode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 현재 표의 필터·정렬·열 선택 범위를 벗어나 수행하지 않았습니다.', ...evaluationMetadata };
+    if (selectedMode === 'unsupported') return { status: 'clarify', message: '요청한 변환은 이 표에서 할 수 없어 수행하지 않았습니다. 행 거르기·정렬·열 고르기·합계는 할 수 있습니다.', ...evaluationMetadata };
     if (selectedMode === 'none' && !input.selectRequestedColumns) {
       return { status: 'not_applicable', ...evaluationMetadata };
     }

@@ -15,9 +15,9 @@ export function inspectRepairProposal(
   const parsed = AxRepairInspectArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
   const proposal = store.getRepairProposal(parsed.data.repairId);
-  if (!proposal) return ['not_found', undefined, [issue('repair_not_found', 'repair 제안을 찾을 수 없습니다.', 'args.repairId')]];
+  if (!proposal) return ['not_found', undefined, [issue('repair_not_found', '고칠 방법 제안을 찾지 못했습니다. 업무 화면에서 다시 열어 주세요.', 'args.repairId')]];
   const workflow = store.getWorkflow(proposal.workflowId, proposal.baseVersion);
-  if (!workflow) return ['not_found', undefined, [issue('workflow_version_not_found', 'repair 기준 업무 버전을 찾을 수 없습니다.')]];
+  if (!workflow) return ['not_found', undefined, [issue('workflow_version_not_found', '고칠 방법 제안의 기준이 된 업무 버전을 찾지 못했습니다.')]];
   const candidateReplays = proposal.status === 'proposed'
     ? proposal.candidates.map((candidate) => ({
       candidateId: candidate.id,
