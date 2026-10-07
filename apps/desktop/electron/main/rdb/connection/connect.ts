@@ -41,7 +41,7 @@ export async function validateAndConnectRdb(
         };
 
   if (type === 'sqlite' && !config.filePath) {
-    throw new Error('SQLite 파일 경로가 필요합니다.');
+    throw new Error('SQLite 파일을 먼저 선택해 주세요.');
   }
   if ((type === 'postgres' || type === 'mysql') && !config.connectionString) {
     const stored = await getRdbConnectionString();
@@ -50,7 +50,7 @@ export async function validateAndConnectRdb(
     }
   }
   if ((type === 'postgres' || type === 'mysql') && !config.connectionString) {
-    throw new Error(`${type === 'mysql' ? 'MySQL' : 'PostgreSQL'} connection string이 필요합니다.`);
+    throw new Error(`${type === 'mysql' ? 'MySQL' : 'PostgreSQL'} 접속 주소를 입력해 주세요.`);
   }
 
   const probe = await probeRdbConnection(config);

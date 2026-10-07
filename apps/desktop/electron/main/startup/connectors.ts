@@ -9,7 +9,7 @@ import { hydrateOpenApiConnector } from '../openapi/connection.js';
 import { isCredentialUnavailableError } from '../credential-store.js';
 
 /** Stored on the connection when its saved credential can no longer be read. */
-export const CREDENTIAL_UNAVAILABLE_ERROR = '저장된 자격 증명을 읽을 수 없습니다. 설정에서 다시 연결하세요.';
+export const CREDENTIAL_UNAVAILABLE_ERROR = '저장된 연결 정보를 읽을 수 없어요. 설정에서 다시 연결해 주세요.';
 
 type DesktopCore = Awaited<ReturnType<typeof createAxStudioCore>>;
 

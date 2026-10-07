@@ -2,13 +2,14 @@ import { app, dialog } from 'electron';
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { ipcHandle } from './ipc-handle.js';
+import { userFacingError } from './user-facing-error.js';
 import { getCore } from '../core-instance.js';
 
 let e2eSourcePath: string | undefined;
 
 function sessionId(value: unknown): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.trim())) {
-    throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
+    throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
   }
   return value.trim();
 }
@@ -84,7 +85,7 @@ export function registerWorkspaceSourceHandlers() {
     } catch (error) {
       return {
         ok: false as const,
-        error: error instanceof Error ? error.message : String(error),
+        error: userFacingError(error, '파일을 대화에 추가하지 못했어요. 파일을 확인한 뒤 다시 시도해 주세요.'),
       };
     }
   });

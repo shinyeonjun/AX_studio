@@ -1,3 +1,4 @@
+import { app } from 'electron';
 import { builtInGoogleOAuthClientId, builtInGoogleOAuthClientSecret } from './oauth-build.js';
 
 function getGoogleOAuthClientId(): string | undefined {
@@ -11,6 +12,13 @@ function getGoogleOAuthClientSecret(): string | undefined {
   return fromEnv || undefined;
 }
 
+const NOT_CONFIGURED = 'Gmail 연결 기능이 이 설치본에 준비되지 않았어요. 관리자에게 문의해 주세요.';
+
+/** People using an installed app get the message; a developer running from source also gets the fix. */
+function forInstall(message: string, developerHint: string): string {
+  return app?.isPackaged === false ? `${message} (${developerHint})` : message;
+}
+
 export function isGoogleOAuthConfigured(): boolean {
   return Boolean(getGoogleOAuthClientId());
 }
@@ -18,9 +26,10 @@ export function isGoogleOAuthConfigured(): boolean {
 export function getGoogleOAuthCredentials(): { clientId: string; clientSecret?: string } {
   const clientId = getGoogleOAuthClientId();
   if (!clientId) {
-    throw new Error(
-      'Gmail OAuth가 설정되지 않았습니다. 개발 빌드에서는 .env에 GOOGLE_OAUTH_CLIENT_ID를 추가하세요.',
-    );
+    throw new Error(forInstall(
+      NOT_CONFIGURED,
+      '개발 빌드: .env에 GOOGLE_OAUTH_CLIENT_ID를 추가하고 앱을 다시 시작하세요.',
+    ));
   }
   const clientSecret = getGoogleOAuthClientSecret();
   return clientSecret ? { clientId, clientSecret } : { clientId };
@@ -37,9 +46,10 @@ export function formatGmailOAuthError(error: unknown): Error {
     (responseData as { error?: unknown }).error === 'invalid_request' &&
     (responseData as { error_description?: unknown }).error_description === 'client_secret is missing.'
   ) {
-    return new Error(
-      'Google OAuth 클라이언트가 Client Secret을 요구합니다. 개발 빌드에서는 .env에 GOOGLE_OAUTH_CLIENT_SECRET을 추가하고 앱을 다시 시작하세요.',
-    );
+    return new Error(forInstall(
+      NOT_CONFIGURED,
+      '개발 빌드: Google OAuth 클라이언트가 Client Secret을 요구합니다. .env에 GOOGLE_OAUTH_CLIENT_SECRET을 추가하고 앱을 다시 시작하세요.',
+    ));
   }
-  return error instanceof Error ? new Error(error.message) : new Error('Gmail OAuth 연결에 실패했습니다.');
+  return error instanceof Error ? new Error(error.message) : new Error('Gmail에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
 }

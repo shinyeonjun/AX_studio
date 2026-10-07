@@ -53,14 +53,14 @@ export function registerRuntimeApprovalHandlers(): void {
     const executionId = lookup && typeof lookup === 'object' && !Array.isArray(lookup) && Object.keys(lookup).length === 1
       && 'executionId' in lookup && typeof lookup.executionId === 'string' ? lookup.executionId : undefined;
     if (executionId !== undefined) {
-      if (!executionId.trim() || executionId.length > 128) throw new Error('Invalid execution ID');
+      if (!executionId.trim() || executionId.length > 128) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
       const execution = getCore().store.getExecution(executionId);
       // Completed chats retain an execution ID. Read warning metadata only;
       // this path cannot restore an editable draft or initiate an action.
       return { executionId, source: undefined, outcome: undefined, requiresReview: false,
         ...executionWarnings(execution), cancelled: execution?.status === 'cancelled', processing: false };
     }
-    if (typeof lookup !== 'string' || !lookup.trim() || lookup.length > 128) throw new Error('Invalid approval ID');
+    if (typeof lookup !== 'string' || !lookup.trim() || lookup.length > 128) throw new Error('승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
     const approvalId = lookup;
     const core = getCore();
     const approval = core.store.getApproval(approvalId);
@@ -82,7 +82,7 @@ export function registerRuntimeApprovalHandlers(): void {
   });
   ipcHandle('ax:approve', async (_e, approvalId: unknown) => {
     const core = getCore();
-    if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('approvalId가 필요합니다.');
+    if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
     const result = await core.runtime.continueAfterApproval(approvalId);
     notifyStateChanged();
     if (result.status === 'failed') {
@@ -93,11 +93,11 @@ export function registerRuntimeApprovalHandlers(): void {
   });
   ipcHandle('ax:reject', async (_e, approvalId: unknown) => {
     const core = getCore();
-    if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('approvalId가 필요합니다.');
+    if (typeof approvalId !== 'string' || !approvalId.trim()) throw new Error('승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
     const approval = core.store.getApproval(approvalId);
-    if (!approval) throw new Error('Approval not found');
+    if (!approval) throw new Error('승인 요청을 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
     if (!core.store.rejectPendingApproval(approvalId)) {
-      throw new Error('Approval is already being processed or resolved');
+      throw new Error('이미 처리된 승인이에요. 화면을 새로 고쳐 주세요.');
     }
     core.runtime.discardToolDraft(approvalId);
     const execution = core.store.getExecution(approval.executionId);

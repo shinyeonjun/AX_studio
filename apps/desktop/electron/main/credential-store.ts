@@ -15,9 +15,29 @@ export function isCredentialUnavailableError(error: unknown): boolean {
   return typeof code === 'string' && CREDENTIAL_UNAVAILABLE_CODES.has(code);
 }
 
+/** Product names a person recognises, keyed by connector or the first segment of a secret name. */
+const CREDENTIAL_DISPLAY_NAMES: Record<string, string> = {
+  gmail: 'Gmail',
+  slack: 'Slack',
+  http: 'HTTP API',
+  rdb: '데이터베이스',
+  webhook: 'Webhook',
+  anthropic: 'Claude',
+  openai: 'OpenAI',
+  ollama: 'Ollama',
+  typesafe: '판단 엔진(Jev)',
+};
+
+/** A connector or secret name as a person would say it, quoted with a trailing space (or empty); never the raw id. */
+export function credentialDisplayName(connectorOrSecret: string): string {
+  const key = connectorOrSecret.trim().toLowerCase().split(/[./_-]/u)[0] ?? '';
+  const name = Object.hasOwn(CREDENTIAL_DISPLAY_NAMES, key) ? CREDENTIAL_DISPLAY_NAMES[key] : undefined;
+  return name ? `'${name}' ` : '';
+}
+
 function assertEncryptionAvailable() {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw Object.assign(new Error('이 PC에서 OS 자격 증명 암호화를 사용할 수 없습니다.'), {
+    throw Object.assign(new Error('이 컴퓨터에서는 연결 정보를 안전하게 저장할 수 없어요. 컴퓨터에 다시 로그인한 뒤 시도해 주세요.'), {
       code: 'credential_encryption_unavailable',
     });
   }
@@ -60,7 +80,7 @@ function decryptStoredFile(path: string, label: string): string {
     if (encrypted.byteLength === 0) throw new Error('empty credential file');
     return safeStorage.decryptString(encrypted);
   } catch (cause) {
-    throw Object.assign(new Error(`저장된 자격 증명 ${label}을(를) 복호화할 수 없습니다. 설정에서 다시 연결하세요.`, { cause }), {
+    throw Object.assign(new Error(`저장된 ${credentialDisplayName(label)}연결 정보를 읽을 수 없어요. 설정에서 다시 연결해 주세요.`, { cause }), {
       code: 'credential_decrypt_failed',
       credential: label,
     });
@@ -123,14 +143,14 @@ export class OsCredentialStore implements CredentialStore {
       parsed = JSON.parse(json);
     } catch {
       // Never echo the parser message: V8 includes a snippet of the decrypted input.
-      throw Object.assign(new Error(`자격 증명 ${ref.connector}/${ref.connectionId}의 저장 데이터가 손상되었습니다.`), {
+      throw Object.assign(new Error(`${credentialDisplayName(ref.connector)}연결 정보가 손상됐어요. 다시 연결해 주세요.`), {
         code: 'invalid_credential_json',
         connector: ref.connector,
         connectionId: ref.connectionId,
       });
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || typeof (parsed as { refreshToken?: unknown }).refreshToken !== 'string') {
-      throw Object.assign(new Error(`자격 증명 ${ref.connector}/${ref.connectionId}의 형식이 올바르지 않습니다.`), {
+      throw Object.assign(new Error(`${credentialDisplayName(ref.connector)}연결 정보가 손상됐어요. 다시 연결해 주세요.`), {
         code: 'invalid_credential_json',
         connector: ref.connector,
         connectionId: ref.connectionId,

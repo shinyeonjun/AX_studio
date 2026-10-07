@@ -20,39 +20,48 @@ interface JevDecisionPrefs {
   apiKey?: string;
 }
 
+const SETTINGS_UNREADABLE = '판단 엔진(Jev) 설정을 읽지 못했어요. 화면을 새로 고친 뒤 다시 저장해 주세요.';
+const MALFORMED_KEY = 'API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.';
+
 function normalizedUrl(value: string | undefined): string {
   const candidate = value?.trim() || DEFAULT_JEV_BASE_URL;
   let parsed: URL;
   try {
     parsed = new URL(candidate);
   } catch {
-    throw new Error('Jev Base URL 형식이 올바르지 않습니다.');
+    throw new Error('판단 엔진(Jev) 서버 주소 형식이 올바르지 않아요. 예: https://api.typesafe.ai');
   }
   const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
-    throw new Error('Jev Base URL은 HTTPS여야 합니다. 개발용 HTTP는 loopback 주소만 허용됩니다.');
+    throw new Error('판단 엔진(Jev) 서버 주소는 https:// 로 시작해야 해요. http:// 는 내 컴퓨터 주소(localhost)에서만 쓸 수 있어요.');
   }
   return candidate.replace(/\/+$/, '');
 }
 
 function normalizePrefs(raw: unknown): Required<Pick<JevDecisionPrefs, 'enabled' | 'model' | 'baseURL'>> & Pick<JevDecisionPrefs, 'apiKey'> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('Jev 설정 형식이 올바르지 않습니다.');
+    throw new Error(SETTINGS_UNREADABLE);
   }
   const prefs = raw as JevDecisionPrefs;
   if (prefs.enabled !== undefined && typeof prefs.enabled !== 'boolean') {
-    throw new Error('Jev 사용 여부 형식이 올바르지 않습니다.');
+    throw new Error(SETTINGS_UNREADABLE);
   }
   if (prefs.model !== undefined && typeof prefs.model !== 'string') {
-    throw new Error('Jev 모델 형식이 올바르지 않습니다.');
+    throw new Error(SETTINGS_UNREADABLE);
   }
   if (prefs.baseURL !== undefined && typeof prefs.baseURL !== 'string') {
-    throw new Error('Jev Base URL 형식이 올바르지 않습니다.');
+    throw new Error(SETTINGS_UNREADABLE);
   }
   if (prefs.apiKey !== undefined && typeof prefs.apiKey !== 'string') {
-    throw new Error('Jev API 키 형식이 올바르지 않습니다.');
+    throw new Error(SETTINGS_UNREADABLE);
   }
-  if (prefs.apiKey !== undefined && prefs.apiKey !== '') validateJevApiKey(prefs.apiKey);
+  if (prefs.apiKey !== undefined && prefs.apiKey !== '') {
+    try {
+      validateJevApiKey(prefs.apiKey);
+    } catch (cause) {
+      throw new Error(MALFORMED_KEY, { cause });
+    }
+  }
   return {
     enabled: prefs.enabled ?? false,
     model: prefs.model?.trim() || DEFAULT_JEV_MODEL,
@@ -71,7 +80,7 @@ function storedKeyOrigin(jev: JevDecisionTomlConfig | undefined): string {
 }
 
 const KEY_ORIGIN_MISMATCH =
-  'Jev Base URL이 API 키를 등록한 주소와 다릅니다. 새 주소로 보내려면 API 키를 다시 입력하세요.';
+  '판단 엔진(Jev) 서버 주소가 API 키를 등록할 때와 달라요. 새 주소에서 쓰려면 API 키를 다시 입력해 주세요.';
 
 async function snapshot() {
   const config = await readAiToml();
@@ -100,7 +109,7 @@ export function registerDecisionPlaneHandlers(): void {
       secret = stored;
     }
     if (prefs.enabled && !secret) {
-      throw new Error('Jev를 사용하려면 API 키를 먼저 등록하세요.');
+      throw new Error('판단 엔진(Jev)을 쓰려면 API 키를 먼저 입력해 주세요.');
     }
     if (prefs.apiKey) await setJevSecret(prefs.apiKey);
 
@@ -142,7 +151,7 @@ export function registerDecisionPlaneHandlers(): void {
         throw new Error(KEY_ORIGIN_MISMATCH);
       }
     }
-    if (!secret) throw new Error('Jev API 키가 없습니다.');
+    if (!secret) throw new Error('판단 엔진(Jev) API 키를 먼저 입력해 주세요.');
 
     const engine = new JevDecisionEngine({
       apiKey: secret,
@@ -165,15 +174,15 @@ export function registerDecisionPlaneHandlers(): void {
         error.message.startsWith('TypeSafe API keys must be')
         || error.message.startsWith('TypeSafe request headers are invalid.')
       )) {
-        throw error;
+        throw new Error(MALFORMED_KEY, { cause: error });
       }
       if (error instanceof JevDecisionError && (error.status === 401 || error.status === 403)) {
-        throw new Error(`TypeSafe rejected the API key (HTTP ${error.status}). Check the key and try again.`);
+        throw new Error('API 키가 거부됐어요. 키를 다시 확인해 주세요.', { cause: error });
       }
       if (error instanceof JevDecisionError && error.status !== undefined) {
-        throw new Error(`TypeSafe rejected the connection check (HTTP ${error.status}). Check the endpoint and API access.`);
+        throw new Error(`판단 엔진(Jev) 서버가 연결 확인을 거절했어요(오류 ${error.status}). 서버 주소와 API 키 권한을 확인해 주세요.`, { cause: error });
       }
-      throw new Error('TypeSafe connection check failed. Check network access and the Base URL, then try again.');
+      throw new Error('서버에 연결할 수 없어요. 인터넷 연결과 서버 주소를 확인해 주세요.', { cause: error });
     }
 
     if (draft) {

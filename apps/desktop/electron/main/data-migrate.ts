@@ -47,14 +47,14 @@ function readMigration(paths: AxDataPaths): MigrationRecord | null {
   try {
     parsed = JSON.parse(readFileSync(paths.migration, 'utf8'));
   } catch {
-    throw new Error(`AX Studio 저장소 마이그레이션 기록을 읽을 수 없습니다: ${paths.migration}`);
+    throw new Error(`데이터 이전 기록 파일을 읽을 수 없어요: ${paths.migration}`);
   }
   if (!parsed || typeof parsed !== 'object') {
-    throw new Error(`AX Studio 저장소 마이그레이션 기록이 올바르지 않습니다: ${paths.migration}`);
+    throw new Error(`데이터 이전 기록 파일이 손상됐어요: ${paths.migration}`);
   }
   const record = parsed as Partial<MigrationRecord>;
   if (record.storageLayoutVersion !== 1 || typeof record.migratedAt !== 'string') {
-    throw new Error(`지원하지 않는 AX Studio 저장소 레이아웃입니다: ${paths.migration}`);
+    throw new Error(`이 버전에서 읽을 수 없는 데이터 이전 기록이에요. 앱을 최신 버전으로 업데이트해 주세요: ${paths.migration}`);
   }
   return record as MigrationRecord;
 }
@@ -143,14 +143,14 @@ async function backupDatabaseIfMissing(
   try {
     await backupDatabase(source, temporaryPath);
     if (!existsSync(temporaryPath) || !statSync(temporaryPath).isFile()) {
-      throw new Error('SQLite snapshot이 생성되지 않았습니다.');
+      throw new Error('이전 데이터의 사본을 만들지 못했어요.');
     }
     const { DatabaseSync } = await import('node:sqlite');
     const snapshot = new DatabaseSync(temporaryPath, { readOnly: true });
     try {
       const checks = snapshot.prepare('PRAGMA quick_check').all();
       if (checks.length !== 1 || checks[0]?.quick_check !== 'ok') {
-        throw new Error('SQLite snapshot 무결성 검사에 실패했습니다.');
+        throw new Error('이전 데이터의 사본이 손상되어 쓸 수 없어요.');
       }
     } finally {
       snapshot.close();

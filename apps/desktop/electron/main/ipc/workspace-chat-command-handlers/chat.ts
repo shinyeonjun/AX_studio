@@ -58,7 +58,7 @@ export function registerWorkspaceChatMessageHandler() {
     const startedAt = performance.now();
     const safeWorkspaceSessionId = validatedWorkspaceSessionId(workflowId, workspaceSessionId);
     const storedChat = core.store.getWorkspaceChat(safeWorkspaceSessionId);
-    if (!storedChat) throw new Error('대화를 찾을 수 없습니다.');
+    if (!storedChat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
     const userMessage = boundedText(userMessageInput, '사용자 메시지').trim();
     const metadataLane = requestsMetadataLane(chatOptions);
     if (metadataLane && !registeredHttpMetadataAvailable()) {
@@ -224,7 +224,7 @@ export function registerWorkspaceChatMessageHandler() {
         event: 'desktop_command_chat',
         requestId: chatRequestId,
       });
-      throw new Error(message && message !== '{' ? message : '명령형 채팅 AI 호출에 실패했습니다. AI 연결을 확인하세요.');
+      throw new Error(message && message !== '{' ? message : 'AI가 답하지 못했어요. 설정에서 AI 연결을 확인해 주세요.');
     } finally {
       if (pendingCommandClaim) {
         finishClaimedPendingCommand(safeWorkspaceSessionId, pendingCommandClaim.token);

@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatGmailOAuthError, getGoogleOAuthCredentials } from './oauth.js';
 
+const electron = vi.hoisted(() => ({ app: { isPackaged: false } }));
+vi.mock('electron', () => electron);
+
 const originalClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
 const originalClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 
@@ -47,5 +50,17 @@ describe('desktop Gmail OAuth credentials', () => {
 
     expect(error.message).toContain('GOOGLE_OAUTH_CLIENT_SECRET');
     expect(error.message).not.toContain('test-client-secret');
+  });
+
+  it('tells a person using the installed app whom to ask, without developer setup steps', () => {
+    electron.app.isPackaged = true;
+    try {
+      const error = formatGmailOAuthError({
+        response: { data: { error: 'invalid_request', error_description: 'client_secret is missing.' } },
+      });
+      expect(error.message).toBe('Gmail 연결 기능이 이 설치본에 준비되지 않았어요. 관리자에게 문의해 주세요.');
+    } finally {
+      electron.app.isPackaged = false;
+    }
   });
 });

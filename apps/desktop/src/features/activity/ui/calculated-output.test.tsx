@@ -48,8 +48,8 @@ describe('lazy calculated output hook', () => {
     getExecutionOutput.mockRejectedValueOnce(new Error('invalid_execution_output')).mockResolvedValueOnce(output);
     render(1);
     hooks.effect?.();
-    await vi.waitFor(() => expect(hooks.setters[2]).toHaveBeenCalledWith('invalid_execution_output'));
-    const markup = render(1, undefined, 'invalid_execution_output');
+    await vi.waitFor(() => expect(hooks.setters[2]).toHaveBeenCalledWith('계산 결과를 불러오지 못했습니다.'));
+    const markup = render(1, undefined, '계산 결과를 불러오지 못했습니다.');
     expect(markup).toContain('role="alert"');
     expect(markup).toContain('계산 결과 다시 불러오기');
     render(2);

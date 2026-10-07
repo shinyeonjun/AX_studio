@@ -62,7 +62,7 @@ export function initDesktopAxDataPaths(): AxDataPaths {
 
 export function getDesktopAxDataPaths(): AxDataPaths {
   if (!desktopPaths) {
-    throw new Error('Desktop AX data paths are not initialized');
+    throw new Error('앱이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.');
   }
   return desktopPaths;
 }
