@@ -88,7 +88,8 @@ export async function runAiDecisionLoop({
   while (allowReads && (maxReads === undefined || reads < maxReads) && readIndex) {
     ctx.abortSignal?.throwIfAborted();
     const candidates = readIndex.select(task).hints.filter((hint) =>
-      !usedKeys.has(hint.key) && (hint.missingParameterPaths?.length ?? 0) === 0,
+      !usedKeys.has(hint.key) && (hint.missingParameterPaths?.length ?? 0) === 0
+      && (hint.requiresBinding?.length ?? 0) === 0,
     );
     if (candidates.length === 0) break;
     if (!decisionEngine) {

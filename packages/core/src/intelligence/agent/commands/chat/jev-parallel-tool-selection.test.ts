@@ -221,7 +221,7 @@ describe('an undecided "does this need prose" answer', () => {
 describe('an undecided answer for one candidate tool', () => {
   const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 1, candidateCount: 2 };
   const candidates = [
-    { id: 'write:slack', kind: 'action' as const, connector: 'slack', capabilityId: 'slack.message.send', label: 'Slack 메시지', description: '' },
+    { id: 'write:slack', kind: 'write' as const, connector: 'slack', capabilityId: 'slack.message.send', label: 'Slack 메시지', description: '' },
     { id: 'read:gmail', kind: 'read' as const, connector: 'gmail', capabilityId: 'gmail.messages.search', label: 'Gmail 검색', description: '' },
   ];
   it('leaves that tool out instead of failing the request', () => {

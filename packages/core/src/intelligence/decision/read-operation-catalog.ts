@@ -43,6 +43,11 @@ export interface JevReadOperationHint {
   parameterHints?: readonly JevReadParameterHint[];
   /** Required paths still absent from the host-resolved params. */
   missingParameterPaths?: readonly string[];
+  /**
+   * Input ports only another step can fill (the mail a new-mail job started with). Usable as a
+   * job step bound to that output; a read on its own (chat, investigation) cannot call it.
+   */
+  requiresBinding?: readonly string[];
 }
 
 export interface JevReadParameterHint {
@@ -243,7 +248,7 @@ function isSearchParameter(name: string): boolean {
   return /^(?:q|query|search|search[_-]?term|keyword|keywords)$/iu.test(name);
 }
 
-type HintResolution = Pick<JevReadOperationHint, 'params' | 'parameterHints' | 'missingParameterPaths'>;
+type HintResolution = Pick<JevReadOperationHint, 'params' | 'parameterHints' | 'missingParameterPaths' | 'requiresBinding'>;
 type HintMetadata = Pick<JevReadOperationHint, 'capabilityId' | 'connector' | 'sourceLabel' | 'label' | 'description'>;
 
 interface IndexedReadOperation extends HintMetadata {
@@ -424,7 +429,7 @@ function addGmailOperations(operations: IndexedReadOperation[]): void {
     sourceLabel: 'Gmail',
     label: '새로 온 메일 본문 읽기',
     description: 'Gmail 새 메일로 시작하는 반복 업무에서, 그 업무를 시작한 메일의 본문 읽기 (메일 목록·검색이 아님)',
-  }, () => ({ params: {}, parameterHints: [] }));
+  }, () => ({ params: {}, parameterHints: [], requiresBinding: ['message'] }));
   addIndexedOperation(operations, {
     capabilityId: 'gmail.messages.search',
     connector: 'gmail',

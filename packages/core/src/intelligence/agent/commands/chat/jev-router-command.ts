@@ -102,6 +102,8 @@ export function capabilityReadCommandForHint(
   hint: JevReadOperationHint,
   routeConfidence: number,
 ): AxCommand | JevChatRouterResult {
+  // An operation fed by another step (the mail a job started with) cannot run on its own here.
+  if ((hint.requiresBinding?.length ?? 0) > 0) return fallback('missing_context', 'read_requires_job_binding');
   const missingParameterPaths = hint.missingParameterPaths ?? [];
   if (missingParameterPaths.length > 0) {
     const allowedParameterPaths = (hint.parameterHints ?? []).map((parameter) => parameter.path);
