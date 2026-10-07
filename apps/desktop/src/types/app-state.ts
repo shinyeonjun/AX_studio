@@ -146,5 +146,12 @@ export interface AppState {
       size: number;
       mimeType: 'application/pdf';
     };
+    /** The file a "newest file" read opened this run. */
+    sourceFile?: string;
+    /** What a successful run computed: values and the visible part of tables. */
+    computedResults?: Array<
+      | { kind: 'value'; label: string; value: string }
+      | { kind: 'table'; label: string; columns: string[]; rows: string[][]; totalRows: number }
+    >;
   }>;
 }

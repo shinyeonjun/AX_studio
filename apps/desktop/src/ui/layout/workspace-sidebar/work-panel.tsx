@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
 import type { ChatSessionSummary } from '../../../features/chat/hooks/useChatSessions';
 import {
@@ -20,6 +21,8 @@ interface SidebarWorkPanelProps {
   onOpenWork: (workflowId: string) => void;
   onOpenExecution: (execution: ExecutionSummary) => void;
   onToggleWorkActive: (workflowId: string, active: boolean) => void;
+  /** Runs a saved workflow now; resolves when the run has finished or waits for approval. */
+  onRunWork: (workflowId: string) => Promise<void>;
   onDeleteWork: (workflowId: string, name: string) => void;
 }
 
@@ -78,14 +81,48 @@ function executionDetail(execution: ExecutionSummary): string {
   return executionTriggerLabel(execution.triggerType);
 }
 
+function RunWorkButton({ workId, name, running, onRun }: {
+  workId: string;
+  name: string;
+  running: ReadonlySet<string>;
+  onRun: (workflowId: string) => void;
+}) {
+  const busy = running.has(workId);
+  return (
+    <button
+      type="button"
+      className="sidebar-work-toggle run"
+      onClick={() => onRun(workId)}
+      disabled={busy}
+      aria-label={`${name} 지금 실행`}
+      title="지금 한 번 실행"
+    >
+      {busy ? '실행 중' : '실행'}
+    </button>
+  );
+}
+
 export function SidebarWorkPanel({
   state,
   sessions,
   onOpenWork,
   onOpenExecution,
   onToggleWorkActive,
+  onRunWork,
   onDeleteWork,
 }: SidebarWorkPanelProps) {
+  const [running, setRunning] = useState<ReadonlySet<string>>(new Set());
+  const runWork = (workflowId: string) => {
+    if (running.has(workflowId)) return;
+    setRunning((current) => new Set(current).add(workflowId));
+    void onRunWork(workflowId).finally(() => {
+      setRunning((current) => {
+        const next = new Set(current);
+        next.delete(workflowId);
+        return next;
+      });
+    });
+  };
   const allWorks = state?.works ?? [];
   // A corrupted workflow has no readable definition (no trigger), so it must not be
   // classified or opened like a normal one; it is listed separately for deletion.
@@ -186,6 +223,7 @@ export function SidebarWorkPanel({
                   <WorkHealthNote work={work} />
                 </button>
                 <div className="sidebar-work-actions">
+                  <RunWorkButton workId={work.id} name={work.name} running={running} onRun={runWork} />
                   <button
                     type="button"
                     className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}
@@ -235,7 +273,7 @@ export function SidebarWorkPanel({
                 <p className="sidebar-work-subgroup-title">저장된 단일 업무</p>
                 <ul className="sidebar-work-list">
                   {oneOffWorks.map((work) => (
-                    <li key={work.id} className={'sidebar-work-row ' + (work.active ? '' : 'paused')}>
+                    <li key={work.id} className="sidebar-work-row">
                       <button
                         type="button"
                         className="sidebar-work-item"
@@ -245,10 +283,6 @@ export function SidebarWorkPanel({
                         <span className="sidebar-work-name">{work.name}</span>
                         <span className="sidebar-work-trigger">{triggerLabel(work.trigger)}</span>
                         <span className="sidebar-work-meta">
-                          <span className={'sidebar-work-status ' + (work.active ? 'on' : 'off')}>
-                            <span className="sidebar-work-status-dot" aria-hidden="true" />
-                            {work.active ? '실행 가능' : '일시정지'}
-                          </span>
                           <span className="sidebar-work-last-run">
                             {work.lastStatus
                               ? `최근 ${executionStatusLabel(work.lastStatus)} · ${formatRelativeTime(work.lastRunAt)}`
@@ -258,14 +292,8 @@ export function SidebarWorkPanel({
                         <WorkHealthNote work={work} />
                       </button>
                       <div className="sidebar-work-actions">
-                        <button
-                          type="button"
-                          className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}
-                          onClick={() => onToggleWorkActive(work.id, !work.active)}
-                          title={work.active ? '업무 일시정지' : '업무 켜기'}
-                        >
-                          {work.active ? '정지' : '켜기'}
-                        </button>
+                        {/* A manual work only runs when asked: on/off would change nothing. */}
+                        <RunWorkButton workId={work.id} name={work.name} running={running} onRun={runWork} />
                         <button
                           type="button"
                           className="sidebar-session-delete"

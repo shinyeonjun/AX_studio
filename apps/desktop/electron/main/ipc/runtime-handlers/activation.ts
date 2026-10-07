@@ -1,5 +1,7 @@
 import { ipcHandle } from '../ipc-handle.js';
+import { runSavedWorkflowById } from '@ax-studio/core';
 import { getCore } from '../../core-instance.js';
+import { notifyStateChanged } from '../../state-broadcast.js';
 
 type DeletionCore = Pick<ReturnType<typeof getCore>, 'store' | 'runtime'>;
 
@@ -40,7 +42,24 @@ export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown
   }
 }
 
+/**
+ * Runs a saved workflow now, from the work list. The click is the person's confirmation, the
+ * same one the chat's run card asks for; a step that sends anything still waits for approval.
+ */
+export async function runWorkflowNow(core: Pick<ReturnType<typeof getCore>, 'store' | 'runtime'>, workflowId: unknown) {
+  if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무 id가 필요합니다.');
+  const result = await runSavedWorkflowById({ store: core.store, runtime: core.runtime }, workflowId);
+  return { executionId: result.executionId, status: result.status, errorCode: result.errorCode };
+}
+
 export function registerRuntimeActivationHandlers(): void {
+  ipcHandle('ax:runWorkflow', async (_e, workflowId: unknown) => {
+    try {
+      return await runWorkflowNow(getCore(), workflowId);
+    } finally {
+      notifyStateChanged();
+    }
+  });
   ipcHandle('ax:deleteWorkflow', async (_e, workflowId: unknown) => deleteWorkflowById(getCore(), workflowId));
   ipcHandle('ax:setWorkflowActive', async (_e, workflowId: unknown, active: unknown) => {
     const core = getCore();

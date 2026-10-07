@@ -74,6 +74,31 @@ function completedActionSummaries(
   return labels;
 }
 
+/** "field.총매출" -> "총매출": the label the example used. */
+function resultLabel(outputPath: string): string {
+  return outputPath.replace(/^field\./, '').replace(/_/g, ' ').trim() || outputPath;
+}
+
+function resultValueText(value: unknown): string | undefined {
+  if (value === null || value === undefined) return '(빈 값)';
+  if (typeof value === 'number') return Number.isFinite(value) ? value.toLocaleString('ko-KR') : undefined;
+  if (typeof value === 'boolean') return value ? '예' : '아니오';
+  return safeText(value, 200);
+}
+
+/** The values a run computed, in step order, one line each ("총매출: 8,466,900"). */
+function computedValueLines(log: ExecutionLogEntry[]): string[] {
+  const lines: string[] = [];
+  for (const entry of log) {
+    if (entry.code !== 'transform_value') continue;
+    const data = record(entry.data);
+    if (!data || typeof data.outputPath !== 'string') continue;
+    const text = resultValueText(data.value);
+    if (text !== undefined) lines.push(`${resultLabel(data.outputPath)}: ${text}`);
+  }
+  return lines;
+}
+
 function statusLine(result: ExecutionResult, workflowName?: string): string {
   const subject = workflowName ? `「${safeText(workflowName, 240) ?? '업무'}」` : '업무';
   switch (result.status) {
@@ -103,6 +128,12 @@ export function formatExecutionResultMessage(
     lines.push(`Excel 산출물: table.xlsx (${safeText(file.rowCount, 20) ?? '?'}행)`);
     lines.push(`산출물 ID: ${file.artifactId}`);
     if (file.partial === true) lines.push('현재 표에 있는 행만 저장했습니다. 원본 전체가 아닐 수 있습니다.');
+  }
+  if (result.status === 'success') {
+    const sourceFile = [...result.log].reverse().find((entry) => entry.code === 'sheet_source_resolved');
+    const fileName = safeText(record(sourceFile?.data)?.fileName, 200);
+    if (fileName) lines.push(`읽은 파일: ${fileName}`);
+    lines.push(...computedValueLines(result.log));
   }
   const preview = outputPreviewFromLog(result.log);
   if (preview) {

@@ -24,6 +24,7 @@ export interface AxRuntimeApi {
   exportGeneratedArtifact: (artifactId: string) => Promise<GeneratedArtifactExportResult>;
   saveGeneratedArtifactToFolder: (artifactId: string) => Promise<GeneratedArtifactFolderSaveResult>;
   setWorkflowActive: (workflowId: string, active: boolean) => Promise<unknown>;
+  runWorkflow: (workflowId: string) => Promise<{ executionId: string; status: string; errorCode?: string }>;
   loadWorkChat: (workflowId: string) => Promise<{ state: unknown; summary?: string; title?: string; active?: boolean }>;
   onStateChanged: (listener: () => void) => () => void;
   exportDiagnostics: () => Promise<

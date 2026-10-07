@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('ax', {
   exportGeneratedArtifact: (artifactId: string) => ipcRenderer.invoke('ax:exportGeneratedArtifact', artifactId),
   saveGeneratedArtifactToFolder: (artifactId: string) => ipcRenderer.invoke('ax:saveGeneratedArtifactToFolder', artifactId),
   setWorkflowActive: (workflowId: string, active: boolean) => ipcRenderer.invoke('ax:setWorkflowActive', workflowId, active),
+  runWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:runWorkflow', workflowId),
   explain: (q: string) => ipcRenderer.invoke('ax:explain', q),
   connectSlack: (payload: string | { token: string; appToken?: string }) =>
     ipcRenderer.invoke('ax:connectSlack', payload),

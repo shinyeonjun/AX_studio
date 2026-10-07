@@ -131,6 +131,8 @@ export function buildExecutions(core: AxCore) {
       lastLogMessage: logSummary.lastLogMessage,
       aiOutput: logSummary.aiOutput,
       generatedPdf: logSummary.generatedPdf,
+      sourceFile: logSummary.sourceFile,
+      computedResults: logSummary.computedResults,
     };
   });
 }

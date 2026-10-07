@@ -8,6 +8,34 @@ import {
 import { formatFileSize, formatTimestamp } from './format.js';
 import { CalculatedOutput } from './calculated-output.js';
 
+type ComputedResult = NonNullable<ActivityExecution['computedResults']>[number];
+
+function ComputedResults({ sourceFile, results }: { sourceFile?: string; results: ComputedResult[] }) {
+  return (
+    <div className="timeline-results" data-testid="computed-results">
+      {sourceFile && <div className="timeline-step">읽은 파일 · {sourceFile}</div>}
+      {results.filter((result) => result.kind === 'value').length > 0 && (
+        <dl className="timeline-result-values">
+          {results.flatMap((result, index) => result.kind === 'value'
+            ? [<div key={index}><dt>{result.label}</dt><dd>{result.value}</dd></div>]
+            : [])}
+        </dl>
+      )}
+      {results.flatMap((result, index) => result.kind === 'table' ? [(
+        <div key={index} className="timeline-result-table">
+          <div className="timeline-step">{result.label}{result.totalRows > result.rows.length ? ` (${result.totalRows}행 중 ${result.rows.length}행)` : ''}</div>
+          <table>
+            <thead><tr>{result.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+            <tbody>{result.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )] : [])}
+    </div>
+  );
+}
+
 type ActivityExecution = AppState['executions'][number];
 
 export function ActivityExecutionItem({
@@ -91,13 +119,16 @@ export function ActivityExecutionItem({
             ))}
           </div>
         )}
-        {execution.currentStepId && (
+        {/* Which step it is on matters while it runs or after it stops; a finished run shows its result. */}
+        {execution.currentStepId && !ok && (
           <div className="timeline-step">
-            현재 단계 · {execution.currentStepId}
-            {execution.currentStepMessage ? ` · ${execution.currentStepMessage}` : ''}
+            현재 단계 · {execution.currentStepMessage ?? execution.currentStepId}
           </div>
         )}
-        {execution.lastLogMessage && !execution.currentStepMessage && (
+        {ok && (execution.sourceFile || execution.computedResults?.length) && (
+          <ComputedResults sourceFile={execution.sourceFile} results={execution.computedResults ?? []} />
+        )}
+        {execution.lastLogMessage && !execution.currentStepMessage && !ok && (
           <div className="timeline-step">최근 기록 · {execution.lastLogMessage}</div>
         )}
         {execution.aiOutput && (

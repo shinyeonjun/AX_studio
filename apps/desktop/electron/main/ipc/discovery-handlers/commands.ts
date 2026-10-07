@@ -1,6 +1,7 @@
 import { AGENT_COMMAND_CONTEXT } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
+import { notifyStateChanged } from '../../state-broadcast.js';
 
 const MAX_WORKSPACE_SESSION_ID_LENGTH = 200;
 
@@ -59,6 +60,10 @@ export function registerDiscoveryCommandHandlers(): void {
   ipcHandle('ax:discoveryAnswer', async (_event, payload: unknown) =>
     executeDiscovery('discovery.answer', splitWorkspaceSession(payload), true));
 
-  ipcHandle('ax:discoveryPublish', async (_event, payload: unknown) =>
-    executeDiscovery('discovery.publish', splitWorkspaceSession(payload), true));
+  ipcHandle('ax:discoveryPublish', async (_event, payload: unknown) => {
+    const result = await executeDiscovery('discovery.publish', splitWorkspaceSession(payload), true);
+    // Publishing saves a workflow; the work list must show it without a restart.
+    notifyStateChanged();
+    return result;
+  });
 }
