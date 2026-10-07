@@ -13,6 +13,7 @@ import {
 } from '../../../../contracts/artifacts/http-response.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../../contracts/artifacts/table.js';
 import { tableArtifactFromRows } from '../../../../contracts/artifacts/table-build.js';
+import { SEARCH_HITS_FIELD } from '../../../../platform/knowledge.js';
 import { explicitlyRequestsRawMetadata, renderCatalogMetadata } from './metadata-output.js';
 
 export interface CommandChatSessionState {
@@ -324,7 +325,10 @@ function rowsForCapabilityTable(value: unknown): Record<string, unknown>[] | und
   const direct = objectRows(value);
   if (direct) return direct;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const candidates = Object.values(value).filter((entry) => objectRows(entry));
+  // A search result also carries its citations (hits); the rows people asked for are the other array.
+  const candidates = Object.entries(value)
+    .filter(([key, entry]) => key !== SEARCH_HITS_FIELD && objectRows(entry))
+    .map(([, entry]) => entry);
   return candidates.length === 1 ? objectRows(candidates[0]) : undefined;
 }
 
