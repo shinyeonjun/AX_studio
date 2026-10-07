@@ -60,6 +60,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 key={id}
                 title={meta.title}
                 description={meta.description}
+                icon={meta.icon}
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? `${count}개 연결` : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
@@ -96,6 +97,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 key={id}
                 title={meta.title}
                 description={description}
+                icon={meta.icon}
                 emojiIcon={meta.emojiIcon}
                 badge={badge}
                 badgeClass={connected ? 'connected' : ''}
@@ -122,6 +124,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 key={id}
                 title={meta.title}
                 description={description}
+                icon={meta.icon}
                 emojiIcon={meta.emojiIcon}
                 badge={connected ? '연결됨' : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
