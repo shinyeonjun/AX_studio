@@ -31,7 +31,7 @@ describe('job.propose generic workflow payloads', () => {
       pending: true,
       summary: { name: 'Gmail 메일 요약' },
     });
-    expect(JSON.stringify(response.data)).toContain('실행마다 승인이 필요합니다');
+    expect(JSON.stringify(response.data)).toContain('보낼 때마다 승인을 받습니다');
     expect(store.listWorkflows()).toHaveLength(0);
   });
 

@@ -9,7 +9,7 @@ import {
 import type { SideEffectLevel, WorkflowIR } from '../../../../workflow/schema.js';
 import { actionRefFor, resolveActionDefinition } from '../../../../workflow/action-definition.js';
 import { resolveEffectiveSideEffect } from '../../../../workflow/side-effect-resolve.js';
-import { describeSchedule, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
+import { describeSchedule, formatRunTime, nextRunSentence, type ScheduleLike } from '../../../../workflow/schedule/describe.js';
 import { describeShaping } from '../../../../workflow/transform-expr/describe.js';
 import { resolveCapability } from '../../../../catalog/capability-graph.js';
 import { TransformExprSchema } from '../../../../workflow/transform-expr/dsl.js';
@@ -141,9 +141,9 @@ export function workflowStepItems(
     if (step.type === 'ai_decision') {
       const inputs = Object.values(step.bindings ?? {}).map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
         .filter((value): value is number => value !== undefined);
-      return `${number} AI 문안 작성${inputs.length ? ` (${inputs.join('·')}단계 결과 사용)` : ''} · 외부 부작용 없음`;
+      return `${number} AI 문안 작성${inputs.length ? ` (${inputs.join('·')}단계 결과 사용)` : ''} · 밖으로 보내지 않음`;
     }
-    if (step.type === 'human_approval') return `${number} 사람 승인 단계`;
+    if (step.type === 'human_approval') return `${number} 승인 받기`;
     return `${number} 조건 분기`;
   }).map((item) => item.slice(0, MAX_ITEM_CHARS));
   if (items.length <= MAX_STEP_ITEMS) return items;
@@ -153,8 +153,8 @@ export function workflowStepItems(
 function autoSendNote(allowExternalAuto: boolean, hasExternal: boolean): string {
   if (!hasExternal) return '외부 전송 단계가 없습니다.';
   return allowExternalAuto
-    ? '자동 발송(별도 선택): 켜짐 — 확인하면 이후 실행에서 [외부] 표시 단계가 실행마다 승인 없이 전송될 수 있습니다. 고위험 단계는 계속 승인이 필요합니다.'
-    : '자동 발송: 꺼짐(기본) — [외부] 표시 단계는 실행마다 승인이 필요합니다.';
+    ? '자동 발송: 켜짐 — [외부] 단계는 승인 없이 보냅니다. 고위험 단계는 계속 승인을 받습니다.'
+    : '자동 발송: 꺼짐 — [외부] 단계는 보낼 때마다 승인을 받습니다.';
 }
 
 /** Plain-Korean schedule plus a preview of the next actual runs, so the user confirms real dates. */
@@ -249,13 +249,27 @@ function triggerSummary(trigger: WorkflowIR['trigger'], labels: TargetLabels): s
 }
 
 function triggerLabel(trigger: WorkflowIR['trigger'], labels: TargetLabels): string {
-  if (!trigger) return '수동 시작';
-  if (trigger.type === 'gmail.new_message') return `Gmail 새 메일: ${trigger.accountId}`;
+  if (!trigger) return '직접 실행';
+  if (trigger.type === 'gmail.new_message') {
+    const account = labelFor(labels, 'accountId', trigger.accountId)
+      ?? (trigger.accountId.includes('@') ? trigger.accountId : undefined);
+    return account ? `Gmail 새 메일: ${account}` : 'Gmail에 새 메일이 오면';
+  }
   if (trigger.type === 'slack.new_message') return `Slack 새 메시지: ${labelFor(labels, 'channel', trigger.channel) ?? trigger.channel}`;
-  if (trigger.type === 'local_folder.new_file') return `폴더 새 파일: ${trigger.folderId}`;
-  if (trigger.type === 'once') return `일회 실행: ${trigger.runAt}`;
+  if (trigger.type === 'local_folder.new_file') {
+    const folder = labelFor(labels, 'folderId', trigger.folderId);
+    return folder ? `폴더 새 파일: ${folder}` : '연결한 폴더에 새 파일이 생기면';
+  }
+  if (trigger.type === 'once') return `한 번 예약: ${onceRunLabel(trigger.runAt)}`;
   if (trigger.type === 'webhook.inbound') return `Webhook: ${trigger.path}`;
-  return '수동 시작';
+  return '직접 실행';
+}
+
+/** "10월 8일(수) 오전 10:00" in this computer's time zone; unreadable values stay as written. */
+function onceRunLabel(runAt: string): string {
+  const instant = new Date(runAt);
+  if (Number.isNaN(instant.getTime())) return runAt;
+  return formatRunTime(instant, Intl.DateTimeFormat().resolvedOptions().timeZone);
 }
 
 export function workflowConfirmationPresentation(

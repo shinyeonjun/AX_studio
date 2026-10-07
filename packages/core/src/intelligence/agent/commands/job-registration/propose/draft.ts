@@ -1,4 +1,5 @@
 import { httpEndpointsFromConnections } from '../../../../../connectors/http/connection.js';
+import { parseLocalFolderConnectionConfig } from '../../../../../platform/local-folder-config.js';
 import {
   validateWorkflowContracts,
   type ContractValidationIssue,
@@ -39,7 +40,7 @@ export function createPendingJob(options: {
   const { store, pending, input, targets } = options;
   const channelLabels = options.channelLabels ?? {};
   if (input.genericWorkflow) return createPendingGenericJob(store, pending, input, channelLabels);
-  if (!targets) return ['invalid', undefined, [issue('job_targets_required', 'HTTP 업무 대상이 없습니다.')]];
+  if (!targets) return ['invalid', undefined, [issue('job_targets_required', '업무에서 쓸 연결이 정해지지 않았습니다. 연결을 골라 주세요.')]];
   const { data, sessionId, path, cron, timezone } = input;
   if (!pending.has(sessionId) && pending.size >= 128) {
     return ['invalid', undefined, [issue('pending_jobs_full', '미완료 업무 초안이 많습니다. 기존 초안을 저장하거나 해당 대화를 정리한 뒤 다시 시도해 주세요.')]];
@@ -67,12 +68,12 @@ export function createPendingJob(options: {
   try {
     ir = compileScheduledHttpSlackJob(spec);
   } catch {
-    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무를 워크플로 형식으로 변환하지 못했습니다. 입력 값을 확인해 주세요.')]];
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무로 만들지 못했습니다. 요청 내용을 확인해 주세요.')]];
   }
 
   const schema = validateWorkflowIR(ir);
   if (!schema.ok) {
-    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무를 워크플로 형식으로 변환하지 못했습니다. 입력 값을 확인해 주세요.')]];
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무로 만들지 못했습니다. 요청 내용을 확인해 주세요.')]];
   }
   const contractIssues: ContractValidationIssue[] = validateWorkflowContracts(schema.value, { connectedConnectors: connected });
   if (contractIssues.length > 0) {
@@ -109,7 +110,7 @@ function createPendingGenericJob(
 ): ProposeResponse {
   const { data, sessionId } = input;
   if (!data.trigger || !data.steps) {
-    return ['invalid', undefined, [issue('workflow_payload_required', 'trigger와 steps가 필요합니다.')]];
+    return ['invalid', undefined, [issue('workflow_payload_required', '언제 시작할지와 무엇을 할지 알려 주세요.')]];
   }
   if (!pending.has(sessionId) && pending.size >= 128) {
     return ['invalid', undefined, [issue('pending_jobs_full', '미완료 업무 초안이 많습니다. 기존 초안을 저장하거나 해당 대화를 정리한 뒤 다시 시도해 주세요.')]];
@@ -160,6 +161,9 @@ function createPendingGenericJob(
       {
         connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
         channel: channelLabels,
+        folderId: Object.fromEntries((parseLocalFolderConnectionConfig(store.getConnections()
+          .find((entry) => entry.connector === 'local_folder')?.config)?.folders ?? [])
+          .map((folder) => [folder.id, folder.label])),
       },
     ),
     message: data.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',

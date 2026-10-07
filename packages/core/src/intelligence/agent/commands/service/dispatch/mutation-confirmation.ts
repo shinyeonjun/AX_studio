@@ -16,6 +16,8 @@ import { issue, result } from '../../contract.js';
 import { previewWorkflowUpdate } from '../../workflow-gateway/mutations.js';
 import { workflowHasExternalSteps, workflowStepItems, type TargetLabels } from '../../job-registration/presentation.js';
 import { httpEndpointsFromConnections } from '../../../../../connectors/http/connection.js';
+import { resolveCapability } from '../../../../../catalog/capability-graph.js';
+import type { RepairCandidateOperation } from '../../../../../workflow/repair.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 
 export type ConfirmedMutationName = 'workflow.run' | 'workflow.update' | 'workflow.delete' | 'repair.apply';
@@ -25,21 +27,21 @@ export const MUTATION_CONFIRM_VALUES: Readonly<Record<ConfirmedMutationName, str
   'workflow.run': '이 업무를 지금 실행할게요',
   'workflow.update': '이 업무 변경을 적용할게요',
   'workflow.delete': '이 업무를 삭제할게요',
-  'repair.apply': '이 repair를 적용할게요',
+  'repair.apply': '이 수정안을 적용할게요',
 };
 
 const CONFIRM_LABELS: Readonly<Record<ConfirmedMutationName, string>> = {
   'workflow.run': '지금 실행',
   'workflow.update': '변경 적용',
   'workflow.delete': '삭제 확인',
-  'repair.apply': 'repair 적용',
+  'repair.apply': '수정안 적용',
 };
 
 const TITLES: Readonly<Record<ConfirmedMutationName, string>> = {
   'workflow.run': '이 업무를 지금 실행할까요?',
   'workflow.update': '이 변경을 적용할까요?',
   'workflow.delete': '이 업무를 삭제할까요?',
-  'repair.apply': 'repair를 적용할까요?',
+  'repair.apply': '이 수정안을 적용할까요?',
 };
 
 const PENDING_MUTATION_TTL_MS = 15 * 60 * 1000;
@@ -87,6 +89,50 @@ function stepLabels(store: AxCommandServiceState['store']): TargetLabels {
   };
 }
 
+const SET_PATH_LABELS: Record<string, string> = {
+  name: '업무 이름', goal: '업무 목적', trigger: '시작 조건', success: '완료 조건', assumptions: '가정',
+};
+
+type UpdateOperation = z.infer<typeof AxWorkflowUpdateArgsSchema>['operations'][number];
+type AnyStep = { type: string; id?: string; connector?: string; action?: string; params?: Record<string, unknown> };
+
+function stepKindLabel(step: AnyStep): string {
+  if (step.type === 'action') {
+    return (step.connector && step.action ? resolveCapability(step.connector, step.action)?.label : undefined) ?? '작업';
+  }
+  if (step.type === 'ai_decision') return 'AI 판단';
+  if (step.type === 'human_approval') return '승인 받기';
+  return '조건 분기';
+}
+
+/** "2단계 '받는 사람' 변경", "2단계 삭제", "새 단계 추가: Slack 메시지" — step numbers and field labels, never ids. */
+function describeUpdateOperation(operation: UpdateOperation, current: WorkflowIR, next: WorkflowIR): string {
+  if (operation.op === 'set') return `${SET_PATH_LABELS[operation.path] ?? '업무 설정'} 변경`;
+  const currentIndex = current.steps.findIndex((step) =>
+    step.id === (operation.op === 'remove_step' ? operation.stepId : operation.step.id));
+  if (operation.op === 'remove_step') return currentIndex >= 0 ? `${currentIndex + 1}단계 삭제` : '단계 삭제';
+  const step = operation.step as AnyStep;
+  if (currentIndex < 0) {
+    const nextIndex = next.steps.findIndex((candidate) => candidate.id === step.id);
+    return `새 단계 추가${nextIndex >= 0 ? ` (${nextIndex + 1}단계)` : ''}: ${stepKindLabel(step)}`;
+  }
+  const before = current.steps[currentIndex] as AnyStep;
+  if (before.type === 'action' && step.type === 'action'
+    && before.connector === step.connector && before.action === step.action) {
+    const params = (step.connector && step.action ? resolveCapability(step.connector, step.action)?.params : undefined) ?? [];
+    const changed = [...new Set([...Object.keys(before.params ?? {}), ...Object.keys(step.params ?? {})])]
+      .filter((key) => JSON.stringify(before.params?.[key]) !== JSON.stringify(step.params?.[key]))
+      .map((key) => params.find((param) => param.name === key)?.label)
+      .filter((label): label is string => Boolean(label));
+    if (changed.length > 0) return `${currentIndex + 1}단계 ${[...new Set(changed)].map((label) => `'${label}'`).join(', ')} 변경`;
+  }
+  return `${currentIndex + 1}단계 수정: ${stepKindLabel(step)}`;
+}
+
+function repairCandidateLabel(candidate: RepairCandidateOperation): string {
+  return `수정안 적용: '${candidate.from}' 열 대신 '${candidate.to}' 열을 읽습니다`;
+}
+
 type Preview =
   | { ok: true; workflowId?: string; blocks: AxUiPresentation['blocks'] }
   | { ok: false; result: AxCommandResult };
@@ -101,10 +147,8 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
     const preview = previewWorkflowUpdate(store, command);
     if (!preview.ok) return failed(command, preview.result);
     const { workflowId, current, next, executableChange } = preview.value;
-    const operations = AxWorkflowUpdateArgsSchema.parse(command.args).operations.map((operation) =>
-      operation.op === 'set' ? `필드 변경: ${operation.path}`
-        : operation.op === 'remove_step' ? `단계 삭제: ${operation.stepId}`
-          : `단계 추가·수정: ${operation.step.id ?? '(id 없음)'}`);
+    const operations = AxWorkflowUpdateArgsSchema.parse(command.args).operations
+      .map((operation) => describeUpdateOperation(operation, current, next));
     return {
       ok: true,
       workflowId,
@@ -129,12 +173,12 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
     const workflowId = parsed.data.workflowId;
     const workflow = store.getWorkflow(workflowId);
     if (!workflow) {
-      return failed(command, ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${workflowId}`, 'args.workflowId')]]);
+      return failed(command, ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했습니다. 이미 삭제되었는지 확인해 주세요.', 'args.workflowId')]]);
     }
     if (name === 'workflow.delete') {
       const baseVersion = (parsed.data as z.infer<typeof AxWorkflowDeleteArgsSchema>).baseVersion;
       if (workflow.version !== baseVersion) {
-        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '최신 업무 버전과 일치하지 않습니다.', 'baseVersion')]]);
+        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]]);
       }
       return {
         ok: true,
@@ -158,8 +202,8 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
           text: !workflowHasExternalSteps(workflow)
             ? '외부 전송 단계가 없습니다. 확인 전에는 실행하지 않았습니다.'
             : workflow.allowExternalAuto
-              ? '이 업무는 자동 발송이 켜져 있어 [외부] 단계가 실행마다 승인 없이 전송될 수 있습니다. 고위험 단계는 계속 승인이 필요합니다.'
-              : '[외부] 단계는 실행 중 별도 승인이 필요합니다. 확인 전에는 실행하지 않았습니다.',
+              ? '자동 발송이 켜져 있어 [외부] 단계는 승인 없이 보냅니다. 고위험 단계는 계속 승인을 받습니다.'
+              : '[외부] 단계는 보내기 전에 승인을 받습니다. 확인 전에는 실행하지 않았습니다.',
         },
       ],
     };
@@ -167,12 +211,12 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
   const parsed = AxRepairApplyArgsSchema.safeParse(command.args);
   if (!parsed.success) return failed(command, ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]]);
   const proposal = store.getRepairProposal(parsed.data.repairId);
-  if (!proposal) return failed(command, ['not_found', undefined, [issue('repair_not_found', 'repair 제안을 찾을 수 없습니다.', 'args.repairId')]]);
+  if (!proposal) return failed(command, ['not_found', undefined, [issue('repair_not_found', '수정안을 찾지 못했습니다. 이미 처리되었는지 확인해 주세요.', 'args.repairId')]]);
   if (proposal.status !== 'proposed') {
-    return failed(command, ['conflict', { status: proposal.status }, [issue('repair_not_proposed', '이미 처리된 repair 제안은 다시 적용할 수 없습니다.')]]);
+    return failed(command, ['conflict', { status: proposal.status }, [issue('repair_not_proposed', '이미 처리된 수정안은 다시 적용할 수 없습니다.')]]);
   }
   if (!proposal.candidates.some((entry) => entry.id === parsed.data.candidateId)) {
-    return failed(command, ['not_found', undefined, [issue('repair_candidate_not_found', 'repair 후보를 찾을 수 없습니다.', 'args.candidateId')]]);
+    return failed(command, ['not_found', undefined, [issue('repair_candidate_not_found', '고른 수정안을 찾지 못했습니다. 다시 요청해 주세요.', 'args.candidateId')]]);
   }
   const workflow = store.getWorkflow(proposal.workflowId);
   return {
@@ -184,10 +228,10 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
         label: '대상 업무',
         value: workflow
           ? workflowLabel(store, workflow, proposal.workflowId)
-          : bounded(`${proposal.workflowId} · 버전 ${parsed.data.baseVersion}`, 240),
+          : '삭제되었거나 찾을 수 없는 업무',
       },
-      { type: 'decision', label: 'repair 후보', value: bounded(`${parsed.data.repairId} / ${parsed.data.candidateId}`, 240) },
-      { type: 'note', text: '모든 과거 replay가 통과한 경우에만 새 업무 버전으로 적용됩니다. 확인 전에는 적용하지 않았습니다.' },
+      { type: 'decision', label: '수정안', value: bounded(repairCandidateLabel(proposal.candidates.find((entry) => entry.id === parsed.data.candidateId)!), 240) },
+      { type: 'note', text: '예전 실행 결과로 다시 확인해 모두 맞을 때만 적용합니다. 확인 전에는 적용하지 않았습니다.' },
     ],
   };
 }
@@ -263,13 +307,13 @@ export async function commitPendingMutation(
   execute: (state: AxCommandServiceState, command: AxCommand, options: AxCommandExecuteOptions) => Promise<AxCommandResult>,
 ): Promise<AxCommandResult> {
   if (!MutationCommitArgsSchema.safeParse(command.args).success) {
-    return result(command.name, 'invalid', undefined, [issue('invalid_arguments', 'mutation.commit은 인자를 받지 않습니다.')]);
+    return result(command.name, 'invalid', undefined, [issue('invalid_arguments', '요청을 처리하지 못했습니다. 다시 시도해 주세요.')]);
   }
   const token = options.mutationConfirmationToken?.trim();
   if (!token) {
     return result(command.name, 'forbidden', undefined, [issue(
       'mutation_commit_forbidden',
-      '이 변경은 확인 카드의 host 확인 이후에만 실행할 수 있습니다.',
+      '이 변경은 확인 카드에서 확인한 뒤에만 실행할 수 있습니다.',
     )]);
   }
   const sessionId = options.workspaceSessionId?.trim();

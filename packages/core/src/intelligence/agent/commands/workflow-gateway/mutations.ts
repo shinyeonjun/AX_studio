@@ -52,14 +52,14 @@ export function previewWorkflowUpdate(
     return { ok: false, result: [
       'not_found',
       undefined,
-      [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')],
+      [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')],
     ] };
   }
   if (current.version !== parsed.data.baseVersion) {
     return { ok: false, result: [
       'conflict',
       { currentVersion: current.version },
-      [issue('stale_workflow_version', `업무가 ${current.version} 버전으로 변경되었습니다. 최신 버전을 다시 조회해야 합니다.`, 'baseVersion')],
+      [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')],
     ] };
   }
 
@@ -80,7 +80,7 @@ export function previewWorkflowUpdate(
     if (operation.op === 'remove_step') {
       const index = next.steps.findIndex((step) => step.id === operation.stepId);
       if (index < 0) {
-        operationIssues.push(issue('step_not_found', `step을 찾을 수 없습니다: ${operation.stepId}`, `steps.${operation.stepId}`));
+        operationIssues.push(issue('step_not_found', '해당 단계를 찾지 못했어요.', `steps.${operation.stepId}`));
         continue;
       }
       next.steps.splice(index, 1);
@@ -150,18 +150,18 @@ export async function deleteWorkflow(
   }
   const current = store.getWorkflow(parsed.data.workflowId);
   if (!current) {
-    return ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+    return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')]];
   }
   if (current.version !== parsed.data.baseVersion) {
-    return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '최신 업무 버전과 일치하지 않습니다.', 'baseVersion')]];
+    return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]];
   }
   if (!store.claimWorkflowDeletion(parsed.data.workflowId, parsed.data.baseVersion)) {
     const latest = store.getWorkflow(parsed.data.workflowId);
     if (!latest) {
-      return ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+      return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')]];
     }
     if (latest.version !== parsed.data.baseVersion) {
-      return ['conflict', { currentVersion: latest.version }, [issue('stale_workflow_version', '최신 업무 버전과 일치하지 않습니다.', 'baseVersion')]];
+      return ['conflict', { currentVersion: latest.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]];
     }
     return ['conflict', { currentVersion: latest.version }, [issue('workflow_deletion_in_progress', '업무 삭제가 진행 중입니다. 잠시 후 다시 시도해 주세요.', 'workflowId')]];
   }
@@ -170,7 +170,7 @@ export async function deleteWorkflow(
     const deleted = store.deleteWorkflow(parsed.data.workflowId);
     return deleted
       ? ['ok', { workflowId: parsed.data.workflowId, deleted: true }]
-      : ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'workflowId')]];
+      : ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')]];
   } catch (error) {
     return ['error', undefined, [issue(
       'workflow_delete_failed',

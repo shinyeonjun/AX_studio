@@ -120,7 +120,7 @@ export async function executeReadCommand(
           || !sameJson(args.params, authorization.params)) {
           return result(command.name, 'forbidden', undefined, [issue(
             'read_authorization_required',
-            '에이전트 조회는 Jev가 선택하고 호스트가 고정한 capability와 파라미터만 실행할 수 있습니다.',
+            '요청을 처리하지 못했습니다. 원하는 내용을 다시 요청해 주세요.',
           )]);
         }
       }

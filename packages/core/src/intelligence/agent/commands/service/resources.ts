@@ -121,15 +121,15 @@ export function describeCapability(
   if (!id) {
     return ['invalid', undefined, [issue(
       'missing_argument',
-      'capability id가 필요합니다.',
+      '어떤 작업을 확인할지 알려 주세요.',
       'args.id',
       undefined,
       [{
         id: 'ax-input-capability-id',
-        label: 'Capability ID',
+        label: '확인할 작업',
         type: 'text',
         required: true,
-        reason: '확인할 capability id를 입력해 주세요.',
+        reason: '확인할 작업 이름을 입력해 주세요.',
       }],
     )]];
   }
@@ -137,7 +137,7 @@ export function describeCapability(
   if (!capability) {
     return ['not_found', undefined, [issue(
       'capability_not_found',
-      'capability를 찾을 수 없습니다: ' + id,
+      '해당 작업을 찾지 못했어요.',
       'args.id',
     )]];
   }

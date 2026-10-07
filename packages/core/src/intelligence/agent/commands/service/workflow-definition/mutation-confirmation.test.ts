@@ -131,7 +131,37 @@ describe('agent workflow mutation confirmation', () => {
     const text = JSON.stringify((proposed.data as { presentation: AxUiPresentation }).presentation);
     expect(text).toMatch(/\[외부\] \d+\. Slack 메시지/u);
     expect(text).toContain('채널 #ops');
+    expect(text).toContain('새 단계 추가 (1단계): Slack 메시지');
+    expect(text).not.toContain('notify');
     expect(store.getWorkflow(workflowId)?.version).toBe(1);
+  });
+
+  it('names changed steps by number and field label', async () => {
+    const { store, service, workflowId, options } = await fixture();
+    const added = await service.execute({ name: 'workflow.update', args: {
+      workflowId, baseVersion: 1, operations: [{ op: 'upsert_step', step: {
+        type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'hi' },
+      } }],
+    } }, { ...options, executionContext: { ...options.executionContext, origin: 'user' } });
+    expect(added.status).toBe('ok');
+    const version = store.getWorkflow(workflowId)!.version;
+
+    const proposed = await service.execute({ name: 'workflow.update', args: {
+      workflowId,
+      baseVersion: version,
+      operations: [
+        { op: 'set', path: 'name', value: '새 이름' },
+        { op: 'upsert_step', step: {
+          type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'bye' },
+        } },
+        { op: 'remove_step', stepId: 'notify' },
+      ],
+    } }, options);
+    const changes = (proposed.data as { presentation: AxUiPresentation }).presentation.blocks
+      .find((block) => block.type === 'steps' && block.title === '요청한 변경') as { items: string[] } | undefined;
+    expect(changes?.items[0]).toBe('업무 이름 변경');
+    expect(changes?.items[1]).toMatch(/^1단계 '.+' 변경$/u);
+    expect(changes?.items[2]).toBe('1단계 삭제');
   });
 
   it('hides mutation.commit from the agent command catalog', () => {

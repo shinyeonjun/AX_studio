@@ -68,7 +68,7 @@ describe('making a one-off run recurring', () => {
     expect(data.summary).toMatchObject({ runOnceNow: false, allowExternalAuto: false });
     const text = JSON.stringify(data.presentation);
     expect(text).toContain('일정: 매월 마지막 날 오후 6:00');
-    expect(text).toContain('자동 발송: 꺼짐(기본)');
+    expect(text).toContain('자동 발송: 꺼짐 — [외부] 단계는 보낼 때마다 승인을 받습니다.');
     expect(store.listWorkflowDefinitions()).toHaveLength(0);
   });
 

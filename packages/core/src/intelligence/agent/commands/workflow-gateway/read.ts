@@ -19,10 +19,10 @@ export async function runWorkflow(
   const parsed = AxWorkflowRunArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
   if (!store.getWorkflow(parsed.data.workflowId)) {
-    return ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${parsed.data.workflowId}`, 'args.workflowId')]];
+    return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'args.workflowId')]];
   }
   if (!runWorkflowCallback) {
-    return ['error', undefined, [issue('workflow_runner_unavailable', '업무 실행기가 연결되지 않았습니다.')]];
+    return ['error', undefined, [issue('workflow_runner_unavailable', '지금은 업무를 실행할 수 없습니다. 앱을 다시 시작한 뒤 시도해 주세요.')]];
   }
   try {
     return ['ok', await runWorkflowCallback(parsed.data.workflowId)];
@@ -44,7 +44,7 @@ export function inspectWorkflow(store: WorkflowStore, command: AxCommand): AxWor
   }
   const workflow = store.getWorkflow(workflowId);
   if (!workflow) {
-    return ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${workflowId}`, 'args.workflowId')]];
+    return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'args.workflowId')]];
   }
   const validation = validateIR(store, workflow);
   return [validation.status, { workflow, validation: validation.data }, validation.issues];
@@ -62,7 +62,7 @@ export function validateWorkflow(store: WorkflowStore, command: AxCommand): AxWo
   }
   const workflow = store.getWorkflow(workflowId);
   if (!workflow) {
-    return ['not_found', undefined, [issue('workflow_not_found', `업무를 찾을 수 없습니다: ${workflowId}`, 'args.workflowId')]];
+    return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'args.workflowId')]];
   }
   const validation = validateIR(store, workflow);
   return [validation.status, validation.data, validation.issues];

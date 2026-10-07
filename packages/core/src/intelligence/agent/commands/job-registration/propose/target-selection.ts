@@ -137,7 +137,7 @@ export async function resolveGenericJobTargets(options: {
         ok: false,
         response: ['invalid', undefined, [issue(
           'gmail_connection_required',
-          'Gmail 새 메일 트리거를 사용하려면 Gmail 연결이 필요합니다.',
+          '새 메일로 시작하려면 설정에서 Gmail을 먼저 연결해 주세요.',
           'args.trigger.accountId',
         )]],
       };
@@ -149,9 +149,9 @@ export async function resolveGenericJobTargets(options: {
       const request = gmailAccountInput();
       return {
         ok: false,
-        response: ['needs_input', { message: 'Gmail 새 메일 트리거에 사용할 계정을 입력해 주세요.' }, [issue(
+        response: ['needs_input', { message: '어떤 Gmail 계정을 쓸지 골라 주세요.' }, [issue(
           'job_trigger_target_required',
-          'Gmail 새 메일 트리거에 accountId가 필요합니다.',
+          '어떤 Gmail 계정을 쓸지 골라 주세요.',
           'args.trigger.accountId',
           [request],
         )]],
@@ -161,9 +161,9 @@ export async function resolveGenericJobTargets(options: {
       const request = gmailAccountInput(accountId);
       return {
         ok: false,
-        response: ['needs_input', { message: 'Gmail 새 메일 트리거의 accountId가 연결된 계정과 일치하지 않습니다.' }, [issue(
+        response: ['needs_input', { message: '연결된 Gmail 계정 중에서 골라 주세요.' }, [issue(
           'job_trigger_target_invalid',
-          'Gmail 새 메일 트리거에 연결된 계정의 accountId를 사용해 주세요.',
+          '연결된 Gmail 계정 중에서 골라 주세요.',
           'args.trigger.accountId',
           [request],
         )]],
@@ -176,7 +176,7 @@ export async function resolveGenericJobTargets(options: {
         ok: false,
         response: ['invalid', undefined, [issue(
           'slack_connection_required',
-          'Slack 새 메시지 트리거를 사용하려면 Slack 연결이 필요합니다.',
+          '새 Slack 메시지로 시작하려면 설정에서 Slack을 먼저 연결해 주세요.',
           'args.trigger.channel',
         )]],
       };
@@ -187,9 +187,9 @@ export async function resolveGenericJobTargets(options: {
       });
       return {
         ok: false,
-        response: ['needs_input', { message: 'Slack 새 메시지 트리거에 사용할 채널을 선택해 주세요.' }, [issue(
+        response: ['needs_input', { message: '어떤 Slack 채널을 쓸지 골라 주세요.' }, [issue(
           'job_trigger_target_required',
-          'Slack 새 메시지 트리거에 channel이 필요합니다.',
+          '어떤 Slack 채널을 쓸지 골라 주세요.',
           'args.trigger.channel',
           [request],
         )]],
@@ -201,9 +201,9 @@ export async function resolveGenericJobTargets(options: {
       });
       return {
         ok: false,
-        response: ['needs_input', { message: 'Slack 새 메시지 트리거에 존재하는 채널을 선택해 주세요.' }, [issue(
+        response: ['needs_input', { message: '연결된 Slack 채널 중에서 골라 주세요.' }, [issue(
           'job_trigger_target_invalid',
-          'Slack 새 메시지 트리거의 channel을 연결된 채널로 선택해 주세요.',
+          '연결된 Slack 채널 중에서 골라 주세요.',
           'args.trigger.channel',
           [request],
         )]],
@@ -221,7 +221,7 @@ export async function resolveGenericJobTargets(options: {
         ok: false,
         response: ['invalid', undefined, [issue(
           'local_folder_connection_required',
-          '새 파일 트리거를 사용하려면 연결 폴더가 필요합니다.',
+          '새 파일로 시작하려면 설정에서 폴더를 먼저 연결해 주세요.',
           'args.trigger.folderId',
         )]],
       };
@@ -242,9 +242,9 @@ export async function resolveGenericJobTargets(options: {
       const request = localFolderInput(folders);
       return {
         ok: false,
-        response: ['needs_input', { message: '새 파일 트리거에 사용할 연결 폴더를 입력해 주세요.' }, [issue(
+        response: ['needs_input', { message: '어떤 폴더를 쓸지 골라 주세요.' }, [issue(
           'job_trigger_target_required',
-          '폴더 새 파일 트리거에 folderId가 필요합니다.',
+          '어떤 폴더를 쓸지 골라 주세요.',
           'args.trigger.folderId',
           [request],
         )]],
@@ -263,9 +263,9 @@ export async function resolveGenericJobTargets(options: {
       const request = localFolderInput(folders);
       return {
         ok: false,
-        response: ['needs_input', { message: '새 파일 트리거에 존재하는 연결 폴더를 선택해 주세요.' }, [issue(
+        response: ['needs_input', { message: '연결된 폴더 중에서 골라 주세요.' }, [issue(
           'job_trigger_target_invalid',
-          '폴더 새 파일 트리거의 folderId를 연결된 폴더로 선택해 주세요.',
+          '연결된 폴더 중에서 골라 주세요.',
           'args.trigger.folderId',
           [request],
         )]],
@@ -287,7 +287,7 @@ export async function resolveGenericJobTargets(options: {
       return {
         ok: false,
         response: ['needs_input', {
-          message: 'Slack 메시지를 보낼 존재하는 채널을 선택해 주세요.',
+          message: '메시지를 보낼 Slack 채널을 연결된 채널 중에서 골라 주세요.',
           presentation: targetSelectionPresentation([request], {
             actionLabel: '채널을 선택하고 업무 초안 검토',
             actionValue: '선택한 Slack 채널로 업무 초안을 검토해줘',
@@ -295,7 +295,7 @@ export async function resolveGenericJobTargets(options: {
           }),
         }, [issue(
           'job_action_target_invalid',
-          'Slack 메시지 단계의 channel을 연결된 채널로 선택해 주세요.',
+          '메시지를 보낼 Slack 채널을 연결된 채널 중에서 골라 주세요.',
           'args.steps',
           [request],
         )]],
@@ -313,7 +313,7 @@ export async function resolveGenericJobTargets(options: {
         ok: false,
         response: ['invalid', undefined, [issue(
           'job_action_input_scope_unavailable',
-          'Slack 채널 입력을 업무 단계에 연결할 수 없습니다.',
+          '고른 Slack 채널을 업무에 넣지 못했습니다. 다시 골라 주세요.',
           `args.steps.${missingSlackActionTarget.id}`,
         )]],
       };
@@ -334,7 +334,7 @@ export async function resolveGenericJobTargets(options: {
         }),
       }, [issue(
         'job_action_target_required',
-        'Slack 알림 단계에 channel이 필요합니다.',
+        '어떤 Slack 채널로 보낼지 골라 주세요.',
         'args.steps',
         [request],
       )]],
