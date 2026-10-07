@@ -13,6 +13,7 @@ import { resolveEffectiveSideEffect } from '../workflow/side-effect-resolve.js';
 import { materializeStepOutputs } from './output-ports.js';
 import { approvalParamsHash, matchesApprovedSnapshot, redactedApprovalSnapshot, type ApprovedActionSnapshots } from './approval-snapshot.js';
 import { messageTool, messageToolDraft } from '../contracts/tool-result.js';
+import { connectorErrorMessage } from '../contracts/error-messages.js';
 import { assertWorkflowOutputBoundaries, presentationDerivedSteps } from '../workflow/contract-validation/structure/references-validation.js';
 
 export function resolveActionParamsForExecution(
@@ -38,7 +39,7 @@ export function resolveActionParamsForExecution(
   if (actionDefinition.id === 'document.ingest') {
     const resolved = resolveDocumentIngestExecution(params, ctx);
     if (!resolved.ok) {
-      throw Object.assign(new Error(resolved.error), { code: resolved.errorCode ?? 'document_input_required' });
+      throw Object.assign(new Error(connectorErrorMessage(resolved.error)), { code: resolved.errorCode ?? 'document_input_required' });
     }
     params = resolved.params;
   }
@@ -122,7 +123,7 @@ export async function executeStep(
           else delete ctx.presentationVariableSources[key];
         }
       }
-      if (!result.ok) throw Object.assign(new Error(result.error ?? 'action failed'), { code: result.errorCode ?? 'action_failed' });
+      if (!result.ok) throw Object.assign(new Error(connectorErrorMessage(result.error)), { code: result.errorCode ?? 'action_failed' });
       if (actionDefinition.io?.outputs) {
         ctx.outputs ??= {};
         ctx.outputs[step.id] = materializeStepOutputs(step.id, actionDefinition.io.outputs, result.data);

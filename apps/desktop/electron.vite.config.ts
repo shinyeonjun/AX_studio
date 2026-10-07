@@ -173,6 +173,7 @@ export default defineConfig({
         '@ax-studio/core/schedule': resolve('../../packages/core/src/workflow/schedule/index.ts'),
         '@ax-studio/core/table-display': resolve('../../packages/core/src/contracts/artifacts/table-display.ts'),
         '@ax-studio/core/gmail-scopes': resolve('../../packages/core/src/connectors/gmail/scopes.ts'),
+        '@ax-studio/core/error-messages': resolve('../../packages/core/src/contracts/error-messages.ts'),
       },
     },
     build: {

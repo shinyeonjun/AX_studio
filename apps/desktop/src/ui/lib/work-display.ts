@@ -1,5 +1,6 @@
 import { CONNECTOR_CATALOG, getCapability } from '@ax-studio/core/catalog-data';
 import { describeSchedule } from '@ax-studio/core/schedule';
+import { executionErrorReason } from '@ax-studio/core/error-messages';
 import type { WorkSummary } from '../../types/app-state';
 
 function connectorLabel(connector: string): string {
@@ -104,7 +105,7 @@ export function executionErrorLabel(errorCode?: string | null): string | undefin
   if (errorCode === 'external_effect_possible') {
     return '외부에 이미 보냈을 수 있어 다시 시도하지 않았어요. 결과를 확인해 주세요';
   }
-  return '실행 중 문제가 생겼어요';
+  return executionErrorReason(errorCode) ?? '실행 중 문제가 생겼어요';
 }
 
 export function formatRelativeTime(iso?: string): string {

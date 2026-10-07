@@ -7,15 +7,8 @@ export const KO = {
     failedAt: (startedAt: string) => `${startedAt}에 실행이 중단되었습니다.`,
     cause: (message: string) => `원인: ${message}`,
     detail: (detail: string) => `상세: ${detail}`,
-    recommendedAction: '권장 조치: 연결 상태와 워크플로우 활성화를 확인하세요.',
-    errorMessages: {
-      oauth_refresh_failed: 'Google OAuth 토큰이 만료되었습니다. Gmail을 다시 연결하세요.',
-      file_not_found: '필요한 파일을 찾지 못했습니다. 경로를 확인하세요.',
-      connector_missing: '필요한 연결이 없습니다. 설정에서 연결을 확인하세요.',
-      global_off_duty: '전역 퇴근 상태여서 실행하지 않았습니다.',
-      workflow_paused: '이 워크플로우가 비활성화되어 있습니다.',
-      pending_approval: '사람 승인 대기 중입니다.',
-    } as Record<string, string>,
+    recommendedAction: '다음에 할 일: 연결 상태와 업무가 켜져 있는지 확인해 주세요.',
+    unknownCause: '알 수 없는 오류가 발생했습니다.',
   },
   requiredness: {
     goal: { label: '지시 의도', question: '이 업무의 목적을 한 문장으로 말해주세요.' },
