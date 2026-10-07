@@ -4,7 +4,7 @@ import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import type { AxUiPresentation } from '../../schema.js';
 import { AxCommandService } from '../../service.js';
 import { MUTATION_CONFIRM_VALUES } from '../dispatch/mutation-confirmation.js';
-import { commandChatContext } from '../fixtures.js';
+import { commandChatContext, executeConfirmedMutation } from '../fixtures.js';
 
 async function fixture() {
   const db = await createDatabaseAsync(':memory:');
@@ -138,11 +138,11 @@ describe('agent workflow mutation confirmation', () => {
 
   it('names changed steps by number and field label', async () => {
     const { store, service, workflowId, options } = await fixture();
-    const added = await service.execute({ name: 'workflow.update', args: {
+    const added = await executeConfirmedMutation(service, { name: 'workflow.update', args: {
       workflowId, baseVersion: 1, operations: [{ op: 'upsert_step', step: {
         type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'hi' },
       } }],
-    } }, { ...options, executionContext: { ...options.executionContext, origin: 'user' } });
+    } }, options);
     expect(added.status).toBe('ok');
     const version = store.getWorkflow(workflowId)!.version;
 
