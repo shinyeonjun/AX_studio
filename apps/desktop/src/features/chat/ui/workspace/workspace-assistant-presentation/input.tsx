@@ -96,6 +96,13 @@ export function InputRequestCard({
   );
 }
 
+/** The " (ID: …)" a chosen option carries for the host; people see only the name they picked. */
+const OPTION_ID_SUFFIX = / \(ID: [^\n]*\)$/gmu;
+
+export function withoutOptionIds(text: string): string {
+  return text.replace(OPTION_ID_SUFFIX, '');
+}
+
 export function selectedInputText(request: AxInputRequest, value: string): string {
   const normalized = value.trim();
   const option: AxInputRequestOption | undefined = request.options?.find((entry) => entry.value === normalized);
