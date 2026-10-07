@@ -61,9 +61,9 @@ const DOCUMENT_READER_UNAVAILABLE =
   '문서 읽기 기능이 준비되지 않았어요. 앱을 다시 시작해 보고, 계속되면 설정 > 진단 정보 내보내기로 문의해 주세요.';
 
 /** Step ids are internal names; show a number when the id carries one, otherwise a generic label. */
-export function executionStepLabel(stepId: string): string {
-  const number = /(?:^|[_-])(\d+)$/u.exec(stepId)?.[1];
-  return number ? `${Number(number)}단계` : '진행 중인 단계';
+/** A step as people count it ("2단계"); a step without a known place is just the current one. */
+export function executionStepLabel(stepNumber?: number): string {
+  return stepNumber && stepNumber > 0 ? `${stepNumber}단계` : '진행 중인 단계';
 }
 
 export function executionErrorLabel(errorCode?: string | null): string | undefined {

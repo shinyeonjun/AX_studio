@@ -119,7 +119,7 @@ export function ActivityExecutionItem({
         {/* Which step it is on matters while it runs or after it stops; a finished run shows its result. */}
         {execution.currentStepId && !ok && (
           <div className="timeline-step">
-            현재 단계 · {execution.currentStepMessage ?? executionStepLabel(execution.currentStepId)}
+            현재 단계 · {execution.currentStepMessage ?? executionStepLabel(execution.currentStepNumber)}
           </div>
         )}
         {ok && (execution.sourceFile || execution.computedResults?.length) && (

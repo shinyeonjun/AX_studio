@@ -11,7 +11,7 @@ import { executionLogSummary } from '../execution-log-summary.js';
  * refresh lists 50 executions, older ids simply fall out.
  */
 const MAX_CACHED_EXECUTIONS = 200;
-type IrFacts = { hasOutputContract: boolean; name?: string };
+type IrFacts = { hasOutputContract: boolean; name?: string; stepIds?: string[] };
 const irFactsByExecution = new Map<string, { irJson: string; facts: IrFacts }>();
 const logSummaryByExecution = new Map<string, { logJson: string | null; status: string; summary: ReturnType<typeof executionLogSummary> }>();
 
@@ -29,7 +29,11 @@ function irFacts(id: string | undefined, irJson: string): IrFacts {
   let facts: IrFacts = { hasOutputContract: false };
   try {
     const ir = parseWorkflowIR(JSON.parse(irJson));
-    facts = { hasOutputContract: Boolean(ir.outputContract), ...(ir.name?.trim() ? { name: ir.name.trim() } : {}) };
+    facts = {
+      hasOutputContract: Boolean(ir.outputContract),
+      ...(ir.name?.trim() ? { name: ir.name.trim() } : {}),
+      stepIds: ir.steps.map((step) => step.id),
+    };
   } catch {
     // An unreadable snapshot has no name and no contract; the run is still listed.
   }
@@ -105,7 +109,10 @@ export function buildExecutions(core: AxCore) {
     const logSummary = execution.historyDiagnostics?.some(diagnostic => diagnostic.source !== 'output')
       ? {} : cachedLogSummary(execution.id, execution.logJson, execution.status);
     const quality = executionQualityState(execution);
-    const name = execution.irJson ? irFacts(execution.id, execution.irJson).name : undefined;
+    const facts = execution.irJson ? irFacts(execution.id, execution.irJson) : undefined;
+    const name = facts?.name;
+    // The step's place in the run as people count it; ids mean nothing to them.
+    const stepIndex = logSummary.currentStepId ? facts?.stepIds?.indexOf(logSummary.currentStepId) ?? -1 : -1;
     const resumeFailure = execution.status !== 'failed' ? undefined
       : execution.errorCode === 'invalid_execution_snapshot' ? '실행 스냅샷 검증에 실패하여 실행을 재개하지 못했습니다.'
         : execution.errorCode === 'invalid_execution_log' ? '실행 로그 검증에 실패하여 실행을 재개하지 못했습니다.'
@@ -131,6 +138,7 @@ export function buildExecutions(core: AxCore) {
       resultStatus: quality.resultStatus,
       triggerType: execution.triggerType,
       currentStepId: logSummary.currentStepId,
+      ...(stepIndex >= 0 ? { currentStepNumber: stepIndex + 1 } : {}),
       currentStepStatus: logSummary.currentStepStatus,
       currentStepMessage: logSummary.currentStepMessage,
       lastLogMessage: logSummary.lastLogMessage,

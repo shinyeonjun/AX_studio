@@ -50,9 +50,8 @@ describe('work display classification', () => {
   });
 
   it('labels steps by number without exposing internal ids', () => {
-    expect(executionStepLabel('jev_step_2')).toBe('2단계');
-    expect(executionStepLabel('action-3')).toBe('3단계');
-    expect(executionStepLabel('read_sales')).toBe('진행 중인 단계');
+    expect(executionStepLabel(2)).toBe('2단계');
+    expect(executionStepLabel(undefined)).toBe('진행 중인 단계');
   });
 
   it('maps runtime hardening error codes to Korean messages', () => {

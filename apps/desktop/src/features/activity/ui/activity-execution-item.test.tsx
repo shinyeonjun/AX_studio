@@ -28,7 +28,7 @@ describe('historical calculated output entry', () => {
 
   it('says a result check is needed instead of quality jargon and numbers steps', () => {
     const markup = renderToStaticMarkup(<ActivityExecutionItem {...actions} execution={{ id: 'synthetic', status: 'failed',
-      resultStatus: 'failed', startedAt: '2026-09-01T00:00:00Z', currentStepId: 'jev_step_2' }} />);
+      resultStatus: 'failed', startedAt: '2026-09-01T00:00:00Z', currentStepId: 'jev_step_2', currentStepNumber: 2 }} />);
     expect(markup).toContain('실행은 끝났지만 결과를 확인해야 해요');
     expect(markup).not.toContain('결과 품질');
     expect(markup).toContain('현재 단계 · 2단계');

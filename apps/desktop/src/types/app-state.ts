@@ -134,6 +134,8 @@ export interface AppState {
     resultStatus?: 'passed' | 'failed' | 'not_evaluated';
     triggerType?: string | null;
     currentStepId?: string;
+    /** 1-based position of the current step among the run's steps, when it is a top-level step. */
+    currentStepNumber?: number;
     currentStepStatus?: string;
     currentStepMessage?: string;
     lastLogMessage?: string;
