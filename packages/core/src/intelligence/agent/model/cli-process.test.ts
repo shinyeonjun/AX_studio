@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runCommand } from './cli-process.js';
 
+// A safety net only; no test here measures time. Spawning node can take seconds on a loaded runner.
+const CHILD_TIMEOUT_MS = 20_000;
+
 describe('runCommand', () => {
   it('closes stdin when no input is provided', async () => {
     const result = await runCommand(
       process.execPath,
       ['-e', "process.stdin.resume(); process.stdin.on('end', () => process.stdout.write('done'));"],
-      { timeoutMs: 2_000 },
+      { timeoutMs: CHILD_TIMEOUT_MS },
     );
 
     expect(result.exitCode).toBe(0);
@@ -20,7 +23,7 @@ describe('runCommand', () => {
         '-e',
         "let size=0; process.stdin.on('data', chunk => size += chunk.length); process.stdin.on('end', () => process.stdout.write(String(size)));",
       ],
-      { input: 'x'.repeat(400_000), timeoutMs: 2_000 },
+      { input: 'x'.repeat(400_000), timeoutMs: CHILD_TIMEOUT_MS },
     );
 
     expect(result.exitCode).toBe(0);
@@ -34,7 +37,7 @@ describe('runCommand', () => {
       runCommand(
         process.execPath,
         ['-e', "process.stdout.write('x'.repeat(9 * 1024 * 1024));"],
-        { timeoutMs: 2_000, onStdoutLine },
+        { timeoutMs: CHILD_TIMEOUT_MS, onStdoutLine },
       ),
     ).rejects.toMatchObject({ code: 'EOUTPUTTOOLARGE' });
     expect(onStdoutLine).not.toHaveBeenCalled();
@@ -45,7 +48,7 @@ describe('runCommand', () => {
 
     await expect(
       runCommand(process.execPath, ['-e', "process.stdout.write('final line');"], {
-        timeoutMs: 2_000,
+        timeoutMs: CHILD_TIMEOUT_MS,
         onStdoutLine,
       }),
     ).resolves.toMatchObject({ exitCode: 0, stdout: 'final line' });
@@ -68,7 +71,7 @@ describe('runCommand', () => {
   it('rejects oversized argv before spawning a child process', async () => {
     await expect(
       runCommand(process.execPath, ['-e', `process.stdout.write(${JSON.stringify('x'.repeat(300_000))})`], {
-        timeoutMs: 2_000,
+        timeoutMs: CHILD_TIMEOUT_MS,
       }),
     ).rejects.toMatchObject({ code: 'EARGTOOLARGE' });
   });
