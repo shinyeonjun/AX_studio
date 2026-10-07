@@ -3,6 +3,8 @@ import { chatReadRecipe } from './read-recipe.js';
 import { resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import type { ChatMessage } from '../../model/chat.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import { labeledTable, type ColumnLabels } from '../../../../contracts/artifacts/column-labels.js';
+import { columnLabelsFor } from './column-labeler.js';
 import { AxCapabilityInvokeArgsSchema, type AxCommand, type AxCommandResult } from '../schema.js';
 import {
   CurrentUserRequestTooLargeError,
@@ -212,10 +214,14 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
       : undefined;
     const explicitHttpRead = invokeArgs?.success === true && invokeArgs.data.id === 'http.request'
       && ['GET', 'HEAD'].includes(String(invokeArgs.data.params.method ?? 'GET').toUpperCase());
+    let labels: ColumnLabels = {};
     if (route === 'capability_read' || route === 'http_read' || explicitHttpRead) {
-      const table = transformOutcome && 'table' in transformOutcome
+      const read = transformOutcome && 'table' in transformOutcome
         ? transformOutcome.table
         : tableForJevTransform(command, result);
+      // The table is shown: give its columns Korean headers people can read.
+      if (read) labels = await columnLabelsFor(read, { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal });
+      const table = read ? labeledTable(read, labels) : undefined;
       options.onReadResult?.(table ? boundedChatReadResult(table) : undefined);
       options.onReadRecipe?.(table
         ? chatReadRecipe(command, result, transformOutcome && 'expression' in transformOutcome ? transformOutcome.expression : undefined)
@@ -223,12 +229,12 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     }
     if (readResultStyle === 'summary') return summaryReply(command, result, userIntent, transformOutcome);
     if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;
-    if (transformOutcome && 'table' in transformOutcome) return formatTableArtifact(transformOutcome.table);
+    if (transformOutcome && 'table' in transformOutcome) return formatTableArtifact(labeledTable(transformOutcome.table, labels));
 
     const jevConfirmedNoTransform = tableTransform === 'none' || transformOutcome?.confirmedNoTransform === true;
-    const deterministicReply = deterministicHttpChatReply(command, result, userIntent, jevConfirmedNoTransform)
+    const deterministicReply = deterministicHttpChatReply(command, result, userIntent, jevConfirmedNoTransform, labels)
       ?? deterministicHttpConnectionListChatReply(command, result, userIntent)
-      ?? deterministicCapabilityReadChatReply(command, result, userIntent, jevConfirmedNoTransform)
+      ?? deterministicCapabilityReadChatReply(command, result, userIntent, jevConfirmedNoTransform, labels)
       ?? deterministicMetadataChatReply(command, result, userIntent)
       ?? deterministicWorkflowListChatReply(command, result, userIntent);
     if (deterministicReply) {

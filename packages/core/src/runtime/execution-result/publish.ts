@@ -1,3 +1,4 @@
+import { labeledTable } from '../../contracts/artifacts/column-labels.js';
 import { displayTable } from '../../contracts/artifacts/table-display.js';
 import { WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
@@ -96,7 +97,9 @@ export function publishExecutionResultToWorkspaceChat(
   const generatedPdf = generatedPdfFromExecutionLog(result.log);
   const spreadsheetEntry = result.status === 'success' ? [...result.log].reverse().find(entry => entry.code === 'xlsx_generated') : undefined;
   const spreadsheet = WorkspaceChatGeneratedSpreadsheetSchema.safeParse(spreadsheetEntry?.data);
-  const resultTable = resultTableFromLog(result);
+  const loggedTable = resultTableFromLog(result);
+  // The Korean headers learned in chat name a recurring job's table the same way.
+  const resultTable = loggedTable ? labeledTable(loggedTable, store.getColumnLabels()) : undefined;
 
 
   const updated = store.upsertWorkspaceChatExecutionResult(target, {

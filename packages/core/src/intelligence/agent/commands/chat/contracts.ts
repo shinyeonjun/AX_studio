@@ -1,4 +1,5 @@
 import type { ChatReadRecipe } from './read-recipe.js';
+import type { ColumnLabelMemory } from './column-labeler.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
 import type { AgentHarness } from '../../harness.js';
 import type { ChatMessage } from '../../model/chat.js';
@@ -96,4 +97,6 @@ export interface AxCommandChatOptions {
   onReadResult?: (table: TableArtifact | undefined) => void;
   /** How the table passed to `onReadResult` was produced; undefined when it cannot be repeated. */
   onReadRecipe?: (recipe: ChatReadRecipe | undefined) => void;
+  /** Korean column headers learned so far; absent, tables keep their column names. */
+  columnLabels?: ColumnLabelMemory;
 }
