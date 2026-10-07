@@ -327,3 +327,22 @@
 .sidebar-work-toggle:hover {
   background: var(--bg-hover);
 }
+
+/* A recurring work has three actions; they sit under its name so the name and status stay whole. */
+.sidebar-work-row:has(.sidebar-work-actions > :nth-child(3)) {
+  flex-wrap: wrap;
+}
+
+.sidebar-work-row:has(.sidebar-work-actions > :nth-child(3)) > .sidebar-work-item {
+  flex-basis: 100%;
+  padding-bottom: 4px;
+}
+
+.sidebar-work-row:has(.sidebar-work-actions > :nth-child(3)) > .sidebar-work-actions {
+  margin-left: auto;
+  padding: 0 6px 6px;
+}
+
+.sidebar-work-status {
+  white-space: nowrap;
+}
