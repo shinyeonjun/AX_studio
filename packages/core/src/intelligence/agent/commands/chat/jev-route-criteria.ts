@@ -50,8 +50,8 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     examples: ['Find the order table.', 'What tool can read customer data?'],
   },
   workflow_list: {
-    what: 'List saved workflows and their current versions.',
-    examples: ['Show my workflows.', 'What recurring work is saved?'],
+    what: 'List the saved works (업무: saved workflows, recurring and scheduled jobs) and their current versions.',
+    examples: ['저장된 업무 뭐 있어?', '등록해 둔 반복 업무 알려줘', 'Show my workflows.'],
   },
   workflow_inspect: {
     what: 'Inspect the current workflow definition and validation state.',
