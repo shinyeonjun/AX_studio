@@ -2,6 +2,7 @@ import { CHAT_READ_SOURCE_ID, type ChatReadRecipe } from '../chat/read-recipe.js
 import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 import { describeRecurrence } from '../../../../workflow/schedule/describe.js';
 import { parseWorkflowIR } from '../../../../workflow/schema.js';
+import { workNameFromRequest } from './work-name.js';
 
 /** The parts of a stored execution this conversion reads. */
 export interface ExecutionForRecurrence {
@@ -113,7 +114,7 @@ export function recurringJobFromReadRecipe(input: {
     ok: true,
     scheduleText,
     args: {
-      name: request.length > 40 ? `${request.slice(0, 40)}…` : request || '반복 조회',
+      name: workNameFromRequest(request, '반복 조회'),
       goal: request || '조회 결과를 정해진 때에 다시 만든다',
       trigger: { type: 'schedule', recurrence, timezone: recurrence.timezone },
       steps,

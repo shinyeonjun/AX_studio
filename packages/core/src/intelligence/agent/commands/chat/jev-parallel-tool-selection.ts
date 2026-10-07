@@ -77,7 +77,6 @@ export type JevParallelToolSelection =
         | 'invalid_answer_requirement'
         | 'incomplete_tool_answers'
         | 'invalid_tool_answers'
-        | 'uncertain_tool_answers'
         | 'no_answer_or_tool';
       telemetry: JevParallelToolSelectionTelemetry;
     };
@@ -138,9 +137,9 @@ export function parseParallelToolSelection(input: {
     if (!Number.isFinite(answer.probability) || answer.probability < 0 || answer.probability > 1) {
       return { kind: 'clarify', reason: 'invalid_tool_answers', telemetry };
     }
-    if (answer.probability === 0.5) {
-      return { kind: 'clarify', reason: 'uncertain_tool_answers', telemetry };
-    }
+    // An undecided tool is not chosen: one unsure answer among two dozen candidates used to fail
+    // a clear request. Leaving a tool out only does less, and the plan review still checks that
+    // the plan covers the request.
     operationDecisions.push({ id: candidate.id, selected: answer.probability > 0.5 });
   }
 

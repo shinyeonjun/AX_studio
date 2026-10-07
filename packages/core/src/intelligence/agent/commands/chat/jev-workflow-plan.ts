@@ -60,6 +60,7 @@ import {
   workflowCommand,
   blankTriggerFields,
   stepLabel,
+  withoutUnusedReads,
   reviewStep,
   composeMessageText,
 } from './jev-workflow-plan-steps.js';
@@ -462,14 +463,18 @@ export async function planJevSelectedTools(input: {
         steps: ordered.map(step => ({ id: step.id, capability_id: step.capability.id, outputs: step.capability.io?.outputs ?? {} })),
       }),
     });
-    const finalSteps: PlannedStep[] = composition?.steps ?? ordered;
-    const hostInputFields = composition?.pendingInputs ?? checked.pendingInputs;
+    // A recurring job shows nobody an intermediate read; a one-off run may show it as its result.
+    const composed = composition?.steps ?? ordered;
+    const finalSteps: PlannedStep[] = input.mode === 'recurring_workflow' ? withoutUnusedReads(composed) : composed;
+    const keptStepIds = new Set(finalSteps.map((step) => step.kind === 'action' ? step.id : step.step.id));
+    const hostInputFields = (composition?.pendingInputs ?? checked.pendingInputs)
+      .filter((field) => keptStepIds.has(field.stepId));
     const review = await resolve('final_review', {
       requirements: { type: 'choice', instructions: 'Does this typed plan meet all requested requirements, conditional on listed host input forms? When the user asks to summarize, draft, send, or notify via a messaging tool (e.g. Slack, Gmail) and the corresponding messaging operation step is included, treat listed host input fields (e.g. channel, text, recipient, trigger schedule) as fulfilling the requirement via host UI composer. Missing operations cannot be invented. Choose unclear when metadata cannot establish adequacy.', criteria: { met: 'All requirements represented', missing: 'A requirement is missing', unclear: 'Cannot determine' } },
       scope: { type: 'choice', instructions: 'Does this plan preserve the user scope without adding actions, destinations or permissions? Model agreement never authorizes execution.', criteria: { preserved: 'Only requested scope', expanded: 'Unrequested scope added', unclear: 'Cannot determine' } },
     }, {
       request: safeRequest, policy: decisionPolicy,
-      steps: finalSteps.map(reviewStep),
+      steps: finalSteps.map((step) => reviewStep(step, safeRequest)),
       // Blank trigger fields (e.g. the schedule) are collected by the host form before saving,
       // exactly like blank action inputs; listing them keeps the review from calling them missing.
       host_input_fields: [...hostInputFields, ...blankTriggerFields(input.trigger)],
@@ -508,7 +513,7 @@ export async function planJevSelectedTools(input: {
     }
 
     const commandPlan: JevCommandPlan = {
-      commands: ordered.map((planned) => ({
+      commands: ordered.filter((planned) => keptStepIds.has(planned.id)).map((planned) => ({
         id: planned.id,
         operationId: planned.capability.id,
         input: { ...planned.params },

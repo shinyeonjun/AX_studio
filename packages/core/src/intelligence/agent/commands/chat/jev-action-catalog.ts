@@ -7,6 +7,7 @@ import { AxExecutionEnqueueOnceArgsSchema, type AxCommand } from '../schema.js';
 import { AxWorkflowCreateArgsSchema, AxWorkflowUpdateArgsSchema } from '../schema/workflow-args.js';
 import { AxJobProposeArgsSchema, type AxJobProposeArgs } from '../job-registration/contract.js';
 import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
+import { explicitSlackChannel } from '../../../decision/read-operation-catalog.js';
 
 const JEV_ACTION_MAX_CHOICES = MAX_JEV_CHOICE_CANDIDATES;
 const SENSITIVE_PARAM = /(?:api[_-]?key|authorization|cookie|password|secret|token)/iu;
@@ -97,7 +98,9 @@ function explicitParamValue(
     const addresses = [...new Set(message.match(EMAIL) ?? [])];
     return addresses.length === 1 ? addresses[0] : undefined;
   }
-  if (param.inputType === 'slack_channel' || param.inputType === 'folder') return undefined;
+  // A channel the person wrote ("#ops", "운영팀 채널") is theirs, not a guess; anything else is asked.
+  if (param.inputType === 'slack_channel') return explicitSlackChannel(message);
+  if (param.inputType === 'folder') return undefined;
   return undefined;
 }
 

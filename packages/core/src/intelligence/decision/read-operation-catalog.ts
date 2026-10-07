@@ -416,6 +416,15 @@ function explicitSearchQuery(message: string): string | undefined {
 }
 
 function addGmailOperations(operations: IndexedReadOperation[]): void {
+  // A job started by a new mail reads that mail: the trigger's message is bound to this read.
+  // Without it a "새 메일이 오면 요약" job searched and summarized the latest mails instead.
+  addIndexedOperation(operations, {
+    capabilityId: 'gmail.messages.read',
+    connector: 'gmail',
+    sourceLabel: 'Gmail',
+    label: '새로 온 메일 본문 읽기',
+    description: 'Gmail 새 메일로 시작하는 반복 업무에서, 그 업무를 시작한 메일의 본문 읽기 (메일 목록·검색이 아님)',
+  }, () => ({ params: {}, parameterHints: [] }));
   addIndexedOperation(operations, {
     capabilityId: 'gmail.messages.search',
     connector: 'gmail',
@@ -447,8 +456,10 @@ function addGmailOperations(operations: IndexedReadOperation[]): void {
  * without one is asked for it, never given a guessed channel.
  */
 export function explicitSlackChannel(message: string): string | undefined {
-  const hashed = /(?:^|[\s(])#([\p{L}\p{N}_.-]{1,80})/u.exec(message)?.[1];
-  if (hashed) return `#${hashed}`;
+  const hashed = [...new Set([...message.matchAll(/(?:^|[\s(])#([\p{L}\p{N}_.-]{1,80})/gu)].map((match) => match[1]!))];
+  // Two channels named: which one is meant is not the host's guess to make.
+  if (hashed.length > 1) return undefined;
+  if (hashed.length === 1) return `#${hashed[0]}`;
   const named = /([\p{L}\p{N}_.-]{1,80})\s*채널(?!\s*목록)/u.exec(message)?.[1];
   return named && !/^(?:slack|슬랙|이|그|저|어느|무슨|모든|전체|각)$/iu.test(named) ? `#${named}` : undefined;
 }
