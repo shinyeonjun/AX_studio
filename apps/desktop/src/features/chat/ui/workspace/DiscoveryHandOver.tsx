@@ -22,7 +22,7 @@ export function DiscoveryHandOver({
   const name = useId();
 
   if (published) {
-    return <button type="button" className="btn btn-primary" disabled>맡기기 완료</button>;
+    return <span className="connection-badge connected" role="status">업무로 저장됨</span>;
   }
 
   return (

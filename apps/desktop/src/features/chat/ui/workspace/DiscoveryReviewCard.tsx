@@ -18,13 +18,25 @@ const CANCELLABLE_STATUSES = new Set<DiscoveryInspectView['status']>([
   'ready_to_publish',
 ]);
 
-/** "sheet:<folder>:D%3A%5C...%5C주문내역.xlsx" -> "주문내역.xlsx"; other ids stay as they are. */
+/**
+ * Source ids are internal ("rdb:orders", "sheet:<folder>:D%3A%5C...%5C주문내역.xlsx").
+ * Show what they point at: "DB 표 'orders'" or "파일 '주문내역.xlsx'".
+ */
 export function discoverySourceLabel(sourceId: string): string {
-  const match = /^(?:sheet|file|doc):[^:]*:(.+)$/u.exec(sourceId);
-  if (!match) return sourceId.replace(/^(rdb|sheet):/u, '');
-  let path = match[1]!;
+  const rdb = /^rdb:(.+)$/u.exec(sourceId);
+  if (rdb) return `DB 표 '${rdb[1]}'`;
+  const nested = /^(?:sheet|file|doc):[^:]*:(.+)$/u.exec(sourceId);
+  let path = nested?.[1] ?? sourceId.replace(/^(?:sheet|file|doc):/u, '');
   try { path = decodeURIComponent(path); } catch { /* keep the raw value */ }
-  return path.split(/[\\/]/u).filter(Boolean).at(-1) ?? path;
+  const name = path.split(/[\\/]/u).filter(Boolean).at(-1) ?? path;
+  return `파일 '${name}'`;
+}
+
+/** 0..1 confidence as plain words instead of a percentage. */
+export function confidenceLabel(confidence: number): string {
+  if (confidence >= 0.8) return '높음';
+  if (confidence >= 0.5) return '보통';
+  return '낮음';
 }
 
 export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel, onRetry }: DiscoveryReviewCardProps) {
@@ -41,17 +53,17 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
       <p className="muted">{view.progress}</p>
       {view.fieldReviews.length > 0 && (
         <section>
-          <h4>필드별 학습 결과</h4>
+          <h4>항목별로 찾은 방법</h4>
           <ul className="ax-discovery-field-reviews">
             {view.fieldReviews.map((field) => (
               <li key={field.outputPath}>
                 <strong>{field.label ?? field.outputPath}</strong>
-                {field.display && <div>관찰값: {field.display}</div>}
+                {field.display && <div>예시 속 값: {field.display}</div>}
                 {field.sourceId && <div>데이터 출처: {discoverySourceLabel(field.sourceId)}</div>}
-                {field.mappingLabel && <div>학습한 규칙: {field.mappingLabel}</div>}
+                {field.mappingLabel && <div>만드는 방법: {field.mappingLabel}</div>}
                 {field.replayByExample.length > 0 && (
                   <div>
-                    재현 결과:
+                    예시와 비교
                     <ul>
                       {field.replayByExample.map((entry) => (
                         <li key={entry.exampleId}>
@@ -63,7 +75,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
                   </div>
                 )}
                 {field.confidence != null && (
-                  <div>확신도: {(field.confidence * 100).toFixed(0)}%</div>
+                  <div>확실한 정도: {confidenceLabel(field.confidence)}</div>
                 )}
               </li>
             ))}
@@ -84,7 +96,7 @@ export function DiscoveryReviewCard({ view, busy, onAnswer, onPublish, onCancel,
       )}
       {view.replaySummary.total > 0 && (
         <section>
-          <h4>재현 요약</h4>
+          <h4>예시와 맞춰 본 결과</h4>
           <p>
             예시와 같은 값을 낸 방법 {view.replaySummary.passed}/{view.replaySummary.total}개
           </p>
