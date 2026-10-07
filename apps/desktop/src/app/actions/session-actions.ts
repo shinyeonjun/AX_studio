@@ -25,7 +25,7 @@ export function createAppSessionActions({
   };
 
   const deleteSession = async (session: ChatSessionSummary) => {
-    if (!confirmDeleteChat(session.title)) return;
+    if (!await confirmDeleteChat(session.title)) return;
 
     const isActive =
       activeSessionId === session.id ||

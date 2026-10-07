@@ -163,7 +163,7 @@ export function useRdbConnectionForm({
   };
 
   const handleDisconnect = async () => {
-    if (!confirmDisconnectConnector('데이터베이스')) return;
+    if (!await confirmDisconnectConnector('데이터베이스')) return;
     setBusy(true);
     setMessage('');
     setWarning('');

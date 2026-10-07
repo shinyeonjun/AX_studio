@@ -365,7 +365,6 @@ if (!printMode && mode === 'deterministic' && !filters.ids?.length && !filters.t
     });
     const rendererErrors: string[] = [];
     ctx.page.on('pageerror', (error) => rendererErrors.push(error.message));
-    ctx.page.on('dialog', (dialog) => void dialog.accept());
     try {
       const initialState = await ctx.page.evaluate(() => window.ax.getState());
       await ctx.app.evaluate(({ ipcMain }, initial) => {
@@ -391,11 +390,15 @@ if (!printMode && mode === 'deterministic' && !filters.ids?.length && !filters.t
       await ctx.page.locator('.workspace-sidebar-tab', { hasText: '활동' }).click();
       const clear = ctx.page.getByRole('button', { name: '기록 모두 지우기', exact: true });
       await expect(ctx.page.getByRole('button', { name: '기록 삭제', exact: true })).toHaveCount(1);
+      // The app's own confirmation dialog, not the browser's.
+      const confirmClear = ctx.page.locator('.confirm-dialog').getByRole('button', { name: '모두 지우기', exact: true });
       await clear.click();
+      await confirmClear.click();
       await expect(ctx.page.getByRole('alert')).toContainText('저장소가 잠겨 있습니다.', { timeout: 5_000 });
       await expect(clear).toBeEnabled();
       await expect(ctx.page.getByRole('button', { name: '기록 삭제', exact: true })).toHaveCount(1);
       await clear.click();
+      await confirmClear.click();
       await expect(ctx.page.getByText('아직 실행 기록이 없습니다', { exact: true })).toBeVisible();
       await expect(ctx.page.getByRole('alert')).toHaveCount(0);
       expect(rendererErrors).toEqual([]);

@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('ax', {
   updateToolDraft: (input: ToolDraftUpdate) => ipcRenderer.invoke('ax:updateToolDraft', input),
   reviewToolResult: (input: ToolReviewRequest) => ipcRenderer.invoke('ax:reviewToolResult', input),
   reject: (id: string) => ipcRenderer.invoke('ax:reject', id),
-  deleteWorkflow: (workflowId: string) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId),
+  deleteWorkflow: (workflowId: string, options?: { deleteHistory?: boolean }) => ipcRenderer.invoke('ax:deleteWorkflow', workflowId, options),
   deleteExecution: (executionId: string) => ipcRenderer.invoke('ax:deleteExecution', executionId),
   getExecutionOutput: (executionId: string) => ipcRenderer.invoke('ax:getExecutionOutput', executionId),
   clearExecutions: () => ipcRenderer.invoke('ax:clearExecutions'),

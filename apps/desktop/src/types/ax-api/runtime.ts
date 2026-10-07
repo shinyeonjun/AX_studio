@@ -17,7 +17,7 @@ export interface AxRuntimeApi {
   updateToolDraft: (input: ToolDraftUpdate) => Promise<EditableToolResult>;
   reviewToolResult: (input: ToolReviewRequest) => Promise<ToolResultReview>;
   reject: (id: string) => Promise<unknown>;
-  deleteWorkflow: (workflowId: string) => Promise<unknown>;
+  deleteWorkflow: (workflowId: string, options?: { deleteHistory?: boolean }) => Promise<unknown>;
   deleteExecution: (executionId: string) => Promise<unknown>;
   getExecutionOutput: (executionId: string) => Promise<ExecutionOutput>;
   clearExecutions: () => Promise<{ ok: boolean; removed: number }>;

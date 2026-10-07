@@ -112,7 +112,7 @@ export function useWebhookConnectionForm({
   };
 
   const handleDisconnect = async () => {
-    if (!confirmDisconnectConnector('Webhook 수신')) return;
+    if (!await confirmDisconnectConnector('Webhook 수신')) return;
     setBusy(true);
     showMessage('');
     try {

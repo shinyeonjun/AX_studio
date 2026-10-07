@@ -96,7 +96,7 @@ export class WorkflowStore {
     }
     return workflowRepo.setWorkflowActive(this.db, workflowId, active);
   }
-  deleteWorkflow(workflowId: string) { return workflowRepo.deleteWorkflow(this.db, workflowId); }
+  deleteWorkflow(workflowId: string, options?: { deleteHistory?: boolean }) { return workflowRepo.deleteWorkflow(this.db, workflowId, options); }
 
   saveWorkspaceChat(params: {
     id?: string;

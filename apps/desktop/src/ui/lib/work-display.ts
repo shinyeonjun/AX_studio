@@ -119,3 +119,17 @@ export function formatRelativeTime(iso?: string): string {
   const days = Math.floor(hours / 24);
   return `${days}일 전`;
 }
+
+/**
+ * The work a run belongs to, as 활동 names it. A deleted work's runs stay in history under the
+ * name the run recorded, marked so nobody looks for the work in the list.
+ */
+export function runWorkName(
+  execution: { workflowId?: string | null; ephemeral?: boolean; name?: string },
+  works: ReadonlyArray<{ id: string; name: string }> | undefined,
+): string | undefined {
+  const work = execution.workflowId ? works?.find((entry) => entry.id === execution.workflowId) : undefined;
+  if (work) return work.name;
+  if (!execution.workflowId || execution.ephemeral || !works) return execution.name;
+  return `${execution.name?.trim() || '업무'} (삭제된 업무)`;
+}

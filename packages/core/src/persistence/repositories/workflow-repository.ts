@@ -221,7 +221,11 @@ function pruneWorkflowKeyedSettings(db: AppDatabase, workflowId: string, receipt
   }
 }
 
-export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
+/**
+ * Deletes a workflow so it never runs again. Its run history (and the approvals that record what
+ * was sent where) stays, named by each run's own snapshot, unless `deleteHistory` asks to clear it.
+ */
+export function deleteWorkflow(db: AppDatabase, workflowId: string, options: { deleteHistory?: boolean } = {}): boolean {
   db.exec('BEGIN IMMEDIATE');
   try {
     const existing = readRow<{ id: string }>(db.prepare('SELECT id FROM workflows WHERE id = ?'), workflowId);
@@ -241,8 +245,10 @@ export function deleteWorkflow(db: AppDatabase, workflowId: string): boolean {
         executionId: activeExecution.id,
       });
     }
-    db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
-    db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
+    if (options.deleteHistory) {
+      db.prepare('DELETE FROM approvals WHERE execution_id IN (SELECT id FROM executions WHERE workflow_id = ?)').run(workflowId);
+      db.prepare('DELETE FROM executions WHERE workflow_id = ?').run(workflowId);
+    }
     db.prepare('DELETE FROM workflow_versions WHERE workflow_id = ?').run(workflowId);
     const receiptKeys = readRows<{ dedupe_key: string }>(
       db.prepare('SELECT dedupe_key FROM trigger_receipts WHERE workflow_id = ?'),

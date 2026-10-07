@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AppState } from '../../../types/app-state';
-import { confirmDeleteExecution } from '../../../ui/lib/confirm-delete';
+import { confirmClearExecutions, confirmDeleteExecution } from '../../../ui/lib/confirm-delete';
 import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 
 export interface ActivityActionsInput {
@@ -40,7 +40,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   };
 
   const deleteExecution = async (executionId: string) => {
-    if (!confirmDeleteExecution()) return;
+    if (!await confirmDeleteExecution()) return;
     setBusyId(executionId);
     setClearError('');
     try {
@@ -56,7 +56,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const clearExecutions = async () => {
     const count = state?.executions?.length ?? 0;
     if (count === 0) return;
-    if (!window.confirm(`실행 기록 ${count}건을 지울까요?\n승인 대기 중인 실행은 남겨둡니다.`)) return;
+    if (!await confirmClearExecutions(count)) return;
     setClearing(true);
     setClearError('');
     try {

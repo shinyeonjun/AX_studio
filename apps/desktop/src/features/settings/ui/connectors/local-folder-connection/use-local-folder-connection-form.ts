@@ -79,7 +79,7 @@ export function useLocalFolderConnectionForm({
   const handleRemove = async (folderId: string) => {
     const folder = folders.find((entry) => entry.id === folderId);
     if (!folder) return;
-    if (!confirmRemoveLocalFolder(folder.label, folder.path)) return;
+    if (!await confirmRemoveLocalFolder(folder.label, folder.path)) return;
 
     setBusy(true);
     setMessage('');
