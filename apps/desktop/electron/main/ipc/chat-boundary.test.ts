@@ -406,6 +406,9 @@ describe('workspace chat boundary', () => {
     }])).toEqual([{
       role: 'assistant', content: '| title |\n| Widget |', readResult,
     }]);
+    // A repeatable answer stays repeatable after it is saved; the flag means nothing without a table.
+    expect(normalizeChatMessages([{ role: 'assistant', content: 'x', readResult, readRepeatable: true }])[0]?.readRepeatable).toBe(true);
+    expect(normalizeChatMessages([{ role: 'assistant', content: 'x', readRepeatable: true }])[0]).toEqual({ role: 'assistant', content: 'x' });
     expect(() => normalizeChatMessages([{
       role: 'user', content: 'result', readResult,
     }])).toThrow();

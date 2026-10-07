@@ -96,8 +96,9 @@ export class WorkDiscoveryService {
     sessionId: string,
     name?: string,
     expectedRevision?: number,
+    schedule?: string,
   ): { workflowId: string } | DiscoveryRevisionConflict | { error: string } {
-    return publishDiscovery(this.runtime, sessionId, name, expectedRevision);
+    return publishDiscovery(this.runtime, sessionId, name, expectedRevision, schedule);
   }
 }
 

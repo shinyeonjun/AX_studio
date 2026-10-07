@@ -34,6 +34,7 @@ export interface SettingsPageProps {
   }) => Promise<void>;
   onDisconnectWebhook: () => Promise<void>;
   onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  onDiscoverRdbTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
   onConnectRdb: (payload: {
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;

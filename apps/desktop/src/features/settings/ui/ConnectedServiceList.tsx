@@ -35,14 +35,14 @@ export function ConnectedServiceList({
             </div>
             <div className="connected-service-item-actions">
               {onEdit && (
-                <button type="button" className="btn secondary" onClick={() => onEdit(item.id)} disabled={busy}>
+                <button type="button" className="btn btn-secondary" onClick={() => onEdit(item.id)} disabled={busy}>
                   수정
                 </button>
               )}
               {onDisconnect && (
                 <button
                   type="button"
-                  className="btn secondary danger"
+                  className="btn btn-secondary btn-danger"
                   onClick={() => onDisconnect(item.id)}
                   disabled={busy}
                 >

@@ -119,7 +119,7 @@ export interface WorkspaceDiscoveryStateProps {
   view: DiscoveryInspectView;
   busy: boolean;
   onAnswer: (questionId: string, optionId: string) => Promise<void> | void;
-  onPublish: () => Promise<void> | void;
+  onPublish: (schedule?: string) => Promise<void> | void;
   onCancel?: () => Promise<void> | void;
   onRetry?: () => Promise<void> | void;
 }

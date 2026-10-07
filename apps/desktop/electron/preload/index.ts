@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld('ax', {
     ipcRenderer.invoke('ax:connectWebhook', payload),
   disconnectWebhook: () => ipcRenderer.invoke('ax:disconnectWebhook'),
   pickSqliteFile: () => ipcRenderer.invoke('ax:pickSqliteFile'),
+  discoverRdbTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) =>
+    ipcRenderer.invoke('ax:discoverRdbTables', payload),
   connectRdb: (payload: {
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
@@ -150,5 +152,6 @@ contextBridge.exposeInMainWorld('ax', {
     sessionId: string;
     name?: string;
     expectedRevision?: number;
+    schedule?: string;
   }) => ipcRenderer.invoke('ax:discoveryPublish', payload),
 });

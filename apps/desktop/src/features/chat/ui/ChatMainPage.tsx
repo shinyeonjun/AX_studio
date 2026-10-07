@@ -137,7 +137,7 @@ export function ChatMainPage({ workspaceChat, setupNotice }: ChatMainPageProps) 
           : { onRegisterWorkflow: workspaceChat.registerWorkflow })}
         onAttachExample={() => discovery.importAndStart('지난 결과물과 같은 방식으로 반복해 주세요')}
         onDiscoveryAnswer={discovery.answer}
-        onDiscoveryPublish={() => void discovery.publish()}
+        onDiscoveryPublish={(schedule) => void discovery.publish(undefined, schedule)}
         onDiscoveryCancel={discovery.cancel}
         onDiscoveryRetry={discovery.retry}
       />

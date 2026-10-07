@@ -145,7 +145,7 @@ export function ScheduleInputFields({
               <input type="time" aria-label={`실행 시각 ${index + 1}`} value={time}
                 onChange={(event) => update({ times: draft.times.map((entry, at) => (at === index ? event.target.value : entry)) })} />
               {draft.times.length > 1 && (
-                <button type="button" aria-label={`실행 시각 ${index + 1} 삭제`}
+                <button type="button" className="btn btn-sm btn-ghost" aria-label={`실행 시각 ${index + 1} 삭제`}
                   onClick={() => update({ times: draft.times.filter((_, at) => at !== index) })}>
                   삭제
                 </button>
@@ -153,7 +153,7 @@ export function ScheduleInputFields({
             </div>
           ))}
           {draft.times.length < 6 && (
-            <button type="button" onClick={() => update({ times: [...draft.times, '18:00'] })}>시각 추가</button>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={() => update({ times: [...draft.times, '18:00'] })}>시각 추가</button>
           )}
         </fieldset>
       )}
@@ -164,11 +164,16 @@ export function ScheduleInputFields({
           onChange={(event) => update({ startDate: event.target.value })} />
       </div>
       <div className="ax-schedule-input-row">
-        <label htmlFor={field('holidays')}>공휴일</label>
-        <input id={field('holidays')} type="checkbox" checked={draft.skipHolidays} disabled={disabled}
-          aria-describedby={field('holidays-hint')}
-          onChange={(event) => update({ skipHolidays: event.target.checked })} />
-        <span id={field('holidays-hint')} className="ax-schedule-input-hint">공휴일에는 건너뛰기 (선거일·임시공휴일은 따로 발표되어 포함되지 않아요)</span>
+        <span className="ax-schedule-input-row-label" aria-hidden="true">공휴일</span>
+        <div className="ax-schedule-input-check">
+          <label>
+            <input type="checkbox" checked={draft.skipHolidays} disabled={disabled}
+              aria-describedby={field('holidays-hint')}
+              onChange={(event) => update({ skipHolidays: event.target.checked })} />
+            공휴일에는 건너뛰기
+          </label>
+          <span id={field('holidays-hint')} className="ax-schedule-input-hint">선거일·임시공휴일은 따로 발표되어 포함되지 않아요</span>
+        </div>
       </div>
       <div className="ax-schedule-input-row">
         <label htmlFor={field('zone')}>시간대</label>

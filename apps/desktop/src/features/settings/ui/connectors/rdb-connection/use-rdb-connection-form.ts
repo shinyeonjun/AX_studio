@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { connectionEntry, rdbTypeLabel } from '../../../../../ui/lib/connection-display';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
@@ -10,6 +10,7 @@ export interface RdbConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
   onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
+  onDiscoverTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
   onConnect: (payload: {
     type: RdbConnectionType;
     connectionString?: string;
@@ -22,11 +23,19 @@ export interface RdbConnectionFormProps {
   onDisconnect: () => Promise<void>;
 }
 
-type RdbConnectionControllerProps = Pick<RdbConnectionFormProps, 'state' | 'onPickSqliteFile' | 'onConnect' | 'onDisconnect'>;
+type RdbConnectionControllerProps = Pick<RdbConnectionFormProps, 'state' | 'onPickSqliteFile' | 'onDiscoverTables' | 'onConnect' | 'onDisconnect'>;
+
+/** What the database showed when the person asked for its tables. */
+export type DiscoveredTables =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'loaded'; tables: string[]; truncated: boolean }
+  | { status: 'failed'; message: string };
 
 export function useRdbConnectionForm({
   state,
   onPickSqliteFile,
+  onDiscoverTables,
   onConnect,
   onDisconnect,
 }: RdbConnectionControllerProps) {
@@ -37,7 +46,8 @@ export function useRdbConnectionForm({
   const [filePath, setFilePath] = useState('');
   const [connectionString, setConnectionString] = useState('');
   const [allowedSchemas, setAllowedSchemas] = useState('');
-  const [allowedTables, setAllowedTables] = useState('');
+  const [allowedTables, setAllowedTables] = useState<string[]>([]);
+  const [discovered, setDiscovered] = useState<DiscoveredTables>({ status: 'idle' });
   const [rowLimit, setRowLimit] = useState('1000');
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,24 +55,34 @@ export function useRdbConnectionForm({
   /** Non-blocking advice from the main process (e.g. a remote DB without TLS). */
   const [warning, setWarning] = useState('');
 
-  const loadFromConnection = () => {
+  const loadFromConnection = (scroll = true) => {
     if (!rdbEntry?.connected || !rdbEntry.dbType) return;
     setType(rdbEntry.dbType);
     setLabel(rdbEntry.label ?? '');
     setAllowedSchemas((rdbEntry.allowedSchemas ?? []).join(', '));
-    setAllowedTables((rdbEntry.allowedTables ?? []).join(', '));
+    setAllowedTables([...(rdbEntry.allowedTables ?? [])]);
+    setDiscovered({ status: 'idle' });
     setRowLimit(rdbEntry.rowLimit != null ? String(rdbEntry.rowLimit) : '1000');
     if (rdbEntry.dbType === 'sqlite') {
       setFilePath(rdbEntry.target ?? '');
       setConnectionString('');
+      void loadTables({ type: 'sqlite', filePath: rdbEntry.target ?? '' });
     } else {
       setConnectionString('');
       setFilePath('');
     }
     setMessage('');
     setWarning('');
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scroll) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Opening the page of a connected database shows that connection, ready to change.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || !connected) return;
+    prefilled.current = true;
+    loadFromConnection(false);
+  });
 
   const connectedItems =
     connected && rdbEntry?.dbType
@@ -82,10 +102,32 @@ export function useRdbConnectionForm({
         ]
       : [];
 
+  const loadTables = async (target: Parameters<typeof onDiscoverTables>[0]) => {
+    setDiscovered({ status: 'loading' });
+    try {
+      const { tables, truncated } = await onDiscoverTables(target);
+      setDiscovered({ status: 'loaded', tables, truncated });
+    } catch (error) {
+      setDiscovered({ status: 'failed', message: ipcErrorMessage(error, '테이블 목록을 불러오지 못했습니다.') });
+    }
+  };
+
+  const discoverTables = () => loadTables(type === 'sqlite'
+    ? { type, filePath }
+    : { type, connectionString: connectionString.trim() || undefined });
+
+  const changeType = (next: RdbConnectionType) => {
+    setType(next);
+    setDiscovered({ status: 'idle' });
+  };
+
   const handlePickFile = async () => {
     try {
       const result = await onPickSqliteFile();
-      if (result.ok && result.path) setFilePath(result.path);
+      if (result.ok && result.path) {
+        setFilePath(result.path);
+        void loadTables({ type: 'sqlite', filePath: result.path });
+      }
     } catch (error) {
       setMessage(ipcErrorMessage(error, 'SQLite 파일을 선택하지 못했습니다.'));
     }
@@ -107,10 +149,7 @@ export function useRdbConnectionForm({
                 .split(',')
                 .map((entry) => entry.trim())
                 .filter(Boolean),
-        allowedTables: allowedTables
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter(Boolean),
+        allowedTables,
         rowLimit: Number(rowLimit) || undefined,
         label: label.trim() || undefined,
       });
@@ -142,7 +181,7 @@ export function useRdbConnectionForm({
     formRef,
     connected,
     type,
-    setType,
+    setType: changeType,
     filePath,
     setFilePath,
     connectionString,
@@ -151,6 +190,8 @@ export function useRdbConnectionForm({
     setAllowedSchemas,
     allowedTables,
     setAllowedTables,
+    discovered,
+    discoverTables,
     rowLimit,
     setRowLimit,
     label,

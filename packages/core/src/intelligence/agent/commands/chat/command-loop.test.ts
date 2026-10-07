@@ -1652,11 +1652,13 @@ describe('runAxCommandChat command loop', () => {
     };
     const textSeen: TextGenerateInput[] = [];
     const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen));
+    const recipes: unknown[] = [];
 
     await expect(runAxCommandChat({
       harness,
       commandService: service,
       decisionEngine,
+      onReadRecipe: (recipe) => recipes.push(recipe),
       connectedConnectors: ['rdb'],
       readOperationHints: [{
         key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb',
@@ -1667,6 +1669,8 @@ describe('runAxCommandChat command loop', () => {
       userMessage: '주문을 표로 보여줘',
     })).resolves.toContain('| id |');
     expect(textSeen).toHaveLength(0);
+    // The answer can be repeated: it is exactly that table read.
+    expect(recipes).toEqual([{ kind: 'rdb_table', params: { table: 'orders', limit: 2 } }]);
   });
 
   it('lets Jev choose another cataloged read after a safe read fails', async () => {

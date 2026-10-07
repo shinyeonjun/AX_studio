@@ -75,7 +75,7 @@ export function answer(service: WorkDiscoveryService, command: AxCommand): Disco
 export function publish(service: WorkDiscoveryService, command: AxCommand): DiscoveryCommandResult {
   const parsed = DiscoveryPublishArgsSchema.safeParse(command.args);
   if (!parsed.success) return ['invalid', undefined, [issue('invalid_arguments', parsed.error.message)]];
-  const result = service.publish(parsed.data.sessionId, parsed.data.name, parsed.data.expectedRevision);
+  const result = service.publish(parsed.data.sessionId, parsed.data.name, parsed.data.expectedRevision, parsed.data.schedule);
   if ('error' in result) {
     if (result.error === 'discovery_revision_conflict' && 'currentRevision' in result) {
       return [
@@ -83,6 +83,9 @@ export function publish(service: WorkDiscoveryService, command: AxCommand): Disc
         { currentRevision: result.currentRevision },
         [issue(result.error, '최신 discovery session 상태와 일치하지 않습니다.', 'expectedRevision')],
       ];
+    }
+    if (result.error === 'invalid_schedule') {
+      return ['invalid', undefined, [issue(result.error, '반복 일정을 이해하지 못했습니다. 일정을 다시 골라 주세요.', 'schedule')]];
     }
     return ['invalid', undefined, [issue(result.error, '업무를 저장할 수 없습니다.')]];
   }

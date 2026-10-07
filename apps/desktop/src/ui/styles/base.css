@@ -129,7 +129,8 @@ body {
   margin-bottom: 6px;
 }
 
-input,
+/* Text-like fields only: a checkbox or radio stretched to 100% wraps away from its label. */
+input:where(:not([type='checkbox'], [type='radio'])),
 textarea,
 select {
   width: 100%;
@@ -143,11 +144,25 @@ select {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-input:focus,
+input:where(:not([type='checkbox'], [type='radio'])):focus,
 textarea:focus,
 select:focus {
   border-color: var(--purple);
   box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+:where(input[type='checkbox'], input[type='radio']) {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--purple);
+  cursor: pointer;
+}
+
+:where(input[type='checkbox'], input[type='radio'], button):focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
 }
 
 .empty-state {

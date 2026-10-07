@@ -167,7 +167,7 @@
   color: var(--text-muted);
 }
 
-.btn.secondary.danger {
+.btn-secondary.btn-danger {
   border-color: var(--red, #ef4444);
   color: var(--red, #ef4444);
 }
