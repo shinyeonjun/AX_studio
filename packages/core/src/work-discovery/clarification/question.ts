@@ -109,7 +109,7 @@ export function buildClarificationQuestion(params: {
     sessionId: params.sessionId,
     kind: 'choose_rule',
     prompt: '같은 숫자를 만드는 방법이 여러 개예요. 어느 쪽이 맞나요?',
-    context: '재현에 성공한 후보가 둘 이상이라 확인이 필요합니다.',
+    context: '예시와 맞는 방법이 두 가지 이상이에요. 하나를 골라 주세요.',
     options,
     affectedObservationPaths: [observationPath],
     createdAt: new Date().toISOString(),

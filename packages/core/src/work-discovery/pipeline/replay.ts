@@ -120,7 +120,7 @@ export async function completeDiscoveryReplay(context: DiscoveryReplayContext): 
       .map((path) => observations.find((entry) => entry.path === path)?.label ?? path);
     const errorMessage = missing.length > 0
       ? `다음 항목을 계산하는 방법을 찾지 못했습니다: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` 외 ${missing.length - 5}개` : ''}. 예시를 하나 더 추가하거나 이 항목이 어떻게 계산되는지 알려주세요.`
-      : '결과물의 항목을 데이터로 재현하는 방법을 찾지 못했습니다. 예시를 하나 더 추가해 주세요.';
+      : '결과물의 항목을 데이터로 만드는 방법을 찾지 못했습니다. 예시를 하나 더 추가해 주세요.';
     host.patchState(sessionId, {
       candidates: replayed,
       pendingQuestion: undefined,

@@ -7,9 +7,9 @@ export function issue(code: string, message: string, path?: string, inputRequest
 export function sessionInput(): AxInputRequest {
   return {
     id: 'ax-input-discovery-session-id',
-    label: 'Discovery 세션',
+    label: '업무 찾기',
     type: 'text',
     required: true,
-    reason: '확인할 discovery session id를 입력해 주세요.',
+    reason: '확인할 업무 찾기를 골라 주세요.',
   };
 }
