@@ -107,6 +107,27 @@ describe('a read answer repeated as a job', () => {
     expect(chatReadRecipe({ name: 'capability.invoke', args: { id: 'rdb.query', params: {} } } as AxCommand, result)).toBeUndefined();
   });
 
+  it('repeats a database read with the calculation the answer showed', () => {
+    const expression: TransformExpr = {
+      op: 'totals',
+      input: { op: 'filter', input: { op: 'source', sourceId: CHAT_READ_SOURCE_ID }, where: { op: 'eq', left: { ref: 'status' }, right: { lit: '완료' } } },
+      aggregates: [{ as: 'amount 합계', fn: 'sum', column: 'amount' }],
+    };
+    const command = { name: 'capability.invoke', args: { id: 'rdb.query.read', params: { table: 'orders' } } } as AxCommand;
+    const recipe = chatReadRecipe(command, { status: 'ok', command: 'capability.invoke', data: {} } as AxCommandResult, expression);
+    expect(recipe).toEqual({ kind: 'rdb_table', params: { table: 'orders' }, expression });
+    const conversion = recurringJobFromReadRecipe({ recipe, request: '완료 주문 매출 합계', scheduleValue: monthly });
+    if (!conversion.ok) throw new Error(conversion.message);
+    expect(conversion.args.steps).toEqual([
+      { type: 'action', id: 'fetch', connector: 'rdb', action: 'query.read', params: { table: 'orders' } },
+      {
+        type: 'action', id: 'shape', connector: 'transform', action: 'evaluate',
+        params: { expr: expression, discoverySourceId: CHAT_READ_SOURCE_ID, outputPath: 'result' },
+        bindings: { table: { from: 'fetch', output: 'rows' } },
+      },
+    ]);
+  });
+
   it('explains when the recipe is gone (e.g. after a restart)', () => {
     expect(recurringJobFromReadRecipe({ recipe: undefined, request: 'x', scheduleValue: monthly }).ok).toBe(false);
   });

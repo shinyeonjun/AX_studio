@@ -84,7 +84,14 @@ export function recurringJobFromReadRecipe(input: {
   const recurrence = decodeScheduleInputValue(input.scheduleValue);
   if (!recurrence) return { ok: false, message: '반복 일정을 다시 골라 주세요.' };
   const request = input.request.trim();
-  const steps: Array<Record<string, unknown>> = [
+  const steps: Array<Record<string, unknown>> = recipe.kind === 'rdb_table' ? [
+    { type: 'action', id: 'fetch', connector: 'rdb', action: 'query.read', params: recipe.params },
+    ...(recipe.expression ? [{
+      type: 'action', id: 'shape', connector: 'transform', action: 'evaluate',
+      params: { expr: recipe.expression, discoverySourceId: CHAT_READ_SOURCE_ID, outputPath: 'result' },
+      bindings: { table: { from: 'fetch', output: 'rows' } },
+    }] : []),
+  ] : [
     { type: 'action', id: 'fetch', connector: 'http', action: 'request', params: recipe.params },
     {
       type: 'action', id: 'to_table', connector: 'transform', action: 'http_to_table',
