@@ -53,6 +53,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       );
       initialTranscriptSaved = true;
       savedSessionId = initialSaved.id;
+      ctx.refs.inFlightRepliesRef?.current.set(initialSaved.id, requestId);
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(originSessionId)) {
         ctx.refs.workspaceSessionIdRef.current = initialSaved.id;
         publishWorkspaceTranscript(ctx, initialSaved);
@@ -169,9 +170,14 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
           : errorMessage);
       }
     } finally {
+      const inFlight = ctx.refs.inFlightRepliesRef?.current;
+      if (savedSessionId && inFlight?.get(savedSessionId) === requestId) inFlight.delete(savedSessionId);
       if (ctx.refs.activeRequestIdRef.current === requestId) {
+        // Also true after returning to this chat while it was still answering.
         ctx.refs.activeRequestIdRef.current = undefined;
         ctx.refs.busyRef.current = false;
+        ctx.setBusy(false);
+        ctx.setProgress('');
       }
       if (ctx.isCurrentSession(epoch)) {
         ctx.setBusy(false);

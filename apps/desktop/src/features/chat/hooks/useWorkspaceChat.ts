@@ -43,6 +43,7 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
   const [sourceBusy, setSourceBusy] = useState(false);
   const sourceBusyRef = useRef(false);
   const pendingWorkspaceChatRefreshRef = useRef<string | undefined>(undefined);
+  const inFlightRepliesRef = useRef(new Map<string, string>());
 
   const isCurrentSession = useCallback((epoch: number) => epoch === sessionEpochRef.current, []);
   const isViewingSession = useCallback(
@@ -58,6 +59,7 @@ export function useWorkspaceChat({ refresh, refreshAfterAction, onSessionsChange
       busyRef,
       sourceBusyRef,
       pendingWorkspaceChatRefreshRef,
+      inFlightRepliesRef,
     },
     chatMessages,
     transcriptSnapshot,
