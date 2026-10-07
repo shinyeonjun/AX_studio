@@ -86,7 +86,7 @@ function normalizeToolSelection(input: {
       // are dropped when Jev says not to execute (e.g. drafting text in chat), otherwise
       // it fails closed. A conversational answer without confirmed intent stays in chat.
       if (route === 'capability_read' && input.explicitAction?.choice !== 'do_not_execute') {
-        return fallback('uncertain');
+        return fallback('uncertain', 'read_route_selected_write_tool');
       }
       for (const id of [...selectedToolIds]) {
         if (id.startsWith('write:')) selectedToolIds.delete(id);
@@ -267,7 +267,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
             confidence,
           });
         }
-        return withTelemetry(fallback('uncertain'));
+        return withTelemetry(fallback('uncertain', `tool_selection_${toolSelection.reason}`));
       }
       requestPlan = {
         version: 2,

@@ -28,8 +28,8 @@ import type {
 } from './jev-router-contract.js';
 const ROUTE_QUERY_MAX_CHARS = 500;
 
-export function fallback(reason: JevChatRouterFallbackReason): JevChatRouterResult {
-  return { kind: 'fallback', reason };
+export function fallback(reason: JevChatRouterFallbackReason, detail?: string): JevChatRouterResult {
+  return { kind: 'fallback', reason, ...(detail ? { detail } : {}) };
 }
 
 export function choiceAnswer(answer: DecisionAnswer | undefined): ChoiceDecisionAnswer | undefined {

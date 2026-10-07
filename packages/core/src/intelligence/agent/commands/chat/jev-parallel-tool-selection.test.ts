@@ -7,7 +7,7 @@ import type {
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import { routeChatWithJev } from './jev-router.js';
-import { selectParallelTools } from './jev-parallel-tool-selection.js';
+import { parseParallelToolSelection, selectParallelTools } from './jev-parallel-tool-selection.js';
 
 const candidates = [
   { id: 'db.read', kind: 'read', connector: 'rdb', label: 'DB 조회', description: '조건에 맞는 행 조회' },
@@ -194,5 +194,24 @@ describe('routeChatWithJev parallel selection', () => {
     } finally {
       clearDynamicCatalogForTests();
     }
+  });
+});
+
+describe('an undecided "does this need prose" answer', () => {
+  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 1, candidateCount: 1 };
+  const candidates = [{ id: 'read:slack', kind: 'read' as const, connector: 'slack', capabilityId: 'slack.messages.read', label: '채널 읽기', description: '' }];
+  const answers = (prose: number, tool: number) => ({
+    needs_natural_language_answer: { type: 'boolean' as const, probability: prose },
+    tool_0: { type: 'boolean' as const, probability: tool },
+  });
+
+  it('adds prose to a clear read instead of failing it', () => {
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.5, 0.9), telemetry }))
+      .toMatchObject({ kind: 'selected', needsNaturalLanguageAnswer: true });
+  });
+
+  it('still asks when nothing else was chosen', () => {
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.5, 0.1), telemetry }))
+      .toMatchObject({ kind: 'clarify', reason: 'invalid_answer_requirement' });
   });
 });

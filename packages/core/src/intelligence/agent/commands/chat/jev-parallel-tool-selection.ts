@@ -125,8 +125,7 @@ export function parseParallelToolSelection(input: {
   if (naturalAnswer?.type !== 'boolean'
     || !Number.isFinite(naturalAnswer.probability)
     || naturalAnswer.probability < 0
-    || naturalAnswer.probability > 1
-    || naturalAnswer.probability === 0.5) {
+    || naturalAnswer.probability > 1) {
     return { kind: 'clarify', reason: 'invalid_answer_requirement', telemetry };
   }
 
@@ -145,8 +144,14 @@ export function parseParallelToolSelection(input: {
     operationDecisions.push({ id: candidate.id, selected: answer.probability > 0.5 });
   }
 
-  const needsNaturalLanguageAnswer = naturalAnswer.probability > 0.5;
-  if (!needsNaturalLanguageAnswer && operationDecisions.every(({ selected }) => !selected)) {
+  const anyTool = operationDecisions.some(({ selected }) => selected);
+  // Whether to add prose only shapes the reply. An undecided answer (0.5) next to a chosen tool
+  // adds the prose rather than failing a clear read; with no tool it leaves nothing to do.
+  if (naturalAnswer.probability === 0.5 && !anyTool) {
+    return { kind: 'clarify', reason: 'invalid_answer_requirement', telemetry };
+  }
+  const needsNaturalLanguageAnswer = naturalAnswer.probability >= 0.5;
+  if (!needsNaturalLanguageAnswer && !anyTool) {
     return { kind: 'clarify', reason: 'no_answer_or_tool', telemetry };
   }
   return {
