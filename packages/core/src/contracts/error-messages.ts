@@ -189,3 +189,53 @@ export function slackErrorMessage(error?: string | null): string | undefined {
   if (/[\uac00-\ud7a3]/u.test(text)) return text;
   return 'Slack에 연결하지 못했어요. 토큰과 인터넷 연결을 확인해 주세요.';
 }
+
+const AI_TIMEOUT = 'AI 응답이 너무 오래 걸려 멈췄습니다. 잠시 후 다시 시도해 주세요.';
+const AI_AUTH = 'AI 연결 정보가 올바르지 않습니다. 설정 > AI에서 확인해 주세요.';
+const AI_BUSY = 'AI 서비스가 잠시 바쁩니다. 잠시 후 다시 시도해 주세요.';
+const AI_MISSING = 'AI 프로그램을 찾지 못했습니다. 설정 > AI에서 연결 상태를 확인해 주세요.';
+
+const AI_TIMEOUT_CODES = new Set(['agent_timeout']);
+const AI_TIMEOUT_TEXT = /^(?:Agent timed out after \d+ms|ax_command_chat_timeout|TypeSafe request timed out\.?)$/u;
+const AI_AUTH_TEXT = /invalid[ _-]?(?:x-)?api[ _-]?key|incorrect api key|authentication_error|\b401 unauthorized\b|\bstatus:? 401\b|not logged in|please run \/login|\binvalid bearer token\b/iu;
+const AI_BUSY_TEXT = /rate[ _-]?limit|too many requests|overloaded|\bstatus:? (?:429|529)\b|\bapi error:? (?:429|529)\b/iu;
+const AI_MISSING_TEXT = /^spawn \S+ ENOENT$|is not recognized as an internal or external command|command not found/iu;
+
+function errorField(error: unknown, field: 'code' | 'status' | 'syscall' | 'message' | 'cause'): unknown {
+  return error && typeof error === 'object' && field in error ? (error as Record<string, unknown>)[field] : undefined;
+}
+
+/**
+ * The common AI provider failures (timeout, bad sign-in or key, busy, CLI missing) as a sentence
+ * with what to do, or undefined when the error is something else. Looks through `cause` too,
+ * since decision and harness layers wrap provider errors. Korean messages that match none of
+ * the machine signals pass through unchanged (undefined) so their own wording is kept.
+ */
+export function aiProviderErrorMessage(error: unknown): string | undefined {
+  const chain: unknown[] = [];
+  for (let current: unknown = error; current != null && chain.length < 4; current = errorField(current, 'cause')) {
+    chain.push(current);
+  }
+  const text = (entry: unknown) => {
+    const message = entry instanceof Error ? entry.message : typeof entry === 'string' ? entry : errorField(entry, 'message');
+    return typeof message === 'string' ? message.trim() : '';
+  };
+  for (const entry of chain) {
+    const code = errorField(entry, 'code');
+    const status = errorField(entry, 'status');
+    const syscall = errorField(entry, 'syscall');
+    if ((typeof code === 'string' && AI_TIMEOUT_CODES.has(code)) || AI_TIMEOUT_TEXT.test(text(entry))) return AI_TIMEOUT;
+    if (status === 401 || status === 403) return AI_AUTH;
+    if (status === 429 || status === 503 || status === 529) return AI_BUSY;
+    if (code === 'ENOENT' && typeof syscall === 'string' && syscall.startsWith('spawn')) return AI_MISSING;
+  }
+  if (/[가-힣]/u.test(text(error))) return undefined;
+  for (const entry of chain) {
+    const message = text(entry);
+    if (!message) continue;
+    if (AI_MISSING_TEXT.test(message)) return AI_MISSING;
+    if (AI_AUTH_TEXT.test(message)) return AI_AUTH;
+    if (AI_BUSY_TEXT.test(message)) return AI_BUSY;
+  }
+  return undefined;
+}

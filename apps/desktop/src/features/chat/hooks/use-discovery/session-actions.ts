@@ -52,10 +52,20 @@ export function useDiscoverySessionActions({
       });
       const data = unwrap<{ workflowId?: string }>(result);
       if (!data) throw commandError(result, '업무를 저장하지 못했습니다.');
+      // The work is saved from here on: a later step failing must not read as a failed save,
+      // or the person publishes the same work twice.
+      let notice = '';
       // Choosing a schedule and handing the work over is the request to start it on that schedule.
-      if (schedule && data.workflowId) await window.ax.setWorkflowActive(data.workflowId, true);
-      await refresh(activeSessionId, epoch);
-      if (data.workflowId && epoch === operationEpochRef.current) await onPublished?.(data.workflowId);
+      if (schedule && data.workflowId) {
+        try { await window.ax.setWorkflowActive(data.workflowId, true); }
+        catch { notice = '업무는 저장했지만 켜지 못했습니다. 업무 목록에서 켜 주세요.'; }
+      }
+      try { await refresh(activeSessionId, epoch); } catch { /* A stale view is not a failed save. */ }
+      if (data.workflowId && epoch === operationEpochRef.current) {
+        try { await onPublished?.(data.workflowId); }
+        catch { notice ||= '업무는 저장했지만 화면을 열지 못했습니다. 업무 목록에서 확인해 주세요.'; }
+      }
+      if (notice && epoch === operationEpochRef.current) setError(notice);
       return data.workflowId;
     } catch (err) {
       if (epoch === operationEpochRef.current) setError(ipcErrorMessage(err));

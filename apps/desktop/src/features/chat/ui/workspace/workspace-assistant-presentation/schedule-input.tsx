@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { WeekdayCode } from '@ax-studio/core/schedule';
 import {
   defaultScheduleDraft,
@@ -35,6 +35,9 @@ export function ScheduleInputFields({
   initialDraft?: ScheduleDraft;
 }) {
   const [draft, setDraft] = useState<ScheduleDraft>(() => initialDraft ?? defaultScheduleDraft());
+  // Each time row keeps its own key, so deleting a middle row does not shift focus or edits onto its neighbour.
+  const nextTimeKey = useRef(0);
+  const [timeKeys, setTimeKeys] = useState<number[]>(() => draft.times.map(() => nextTimeKey.current++));
   const result = useMemo(() => evaluateScheduleDraft(draft), [draft]);
   const computerZone = useMemo(() => defaultScheduleDraft().timezone, []);
   const id = useId();
@@ -141,19 +144,25 @@ export function ScheduleInputFields({
         <fieldset className="ax-schedule-input-times" disabled={disabled}>
           <legend>실행 시각 (여러 개 가능)</legend>
           {draft.times.map((time, index) => (
-            <div key={index} className="ax-schedule-input-time">
+            <div key={timeKeys[index] ?? `extra-${index}`} className="ax-schedule-input-time">
               <input type="time" aria-label={`실행 시각 ${index + 1}`} value={time}
                 onChange={(event) => update({ times: draft.times.map((entry, at) => (at === index ? event.target.value : entry)) })} />
               {draft.times.length > 1 && (
                 <button type="button" className="btn btn-sm btn-ghost" aria-label={`실행 시각 ${index + 1} 삭제`}
-                  onClick={() => update({ times: draft.times.filter((_, at) => at !== index) })}>
+                  onClick={() => {
+                    update({ times: draft.times.filter((_, at) => at !== index) });
+                    setTimeKeys((keys) => keys.filter((_, at) => at !== index));
+                  }}>
                   삭제
                 </button>
               )}
             </div>
           ))}
           {draft.times.length < 6 && (
-            <button type="button" className="btn btn-sm btn-secondary" onClick={() => update({ times: [...draft.times, '18:00'] })}>시각 추가</button>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={() => {
+              update({ times: [...draft.times, '18:00'] });
+              setTimeKeys((keys) => [...keys, nextTimeKey.current++]);
+            }}>시각 추가</button>
           )}
         </fieldset>
       )}

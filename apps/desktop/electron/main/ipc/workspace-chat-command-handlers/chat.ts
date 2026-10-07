@@ -1,4 +1,5 @@
 import {
+  aiProviderErrorMessage,
   appendAppLog,
   AX_COMMAND_CHAT_TIMEOUT_MS,
   connectedConnectorIds,
@@ -228,7 +229,10 @@ export function registerWorkspaceChatMessageHandler() {
         event: 'desktop_command_chat',
         requestId: chatRequestId,
       });
-      throw new Error(message && message !== '{' ? message : 'AI가 답하지 못했어요. 설정에서 AI 연결을 확인해 주세요.');
+      // Common provider failures (timeout, bad key, busy, CLI missing) say what to do; other
+      // messages keep passing through for the renderer to word or show.
+      throw new Error(aiProviderErrorMessage(error)
+        ?? (message && message !== '{' ? message : 'AI가 답하지 못했어요. 설정에서 AI 연결을 확인해 주세요.'));
     } finally {
       if (pendingCommandClaim) {
         finishClaimedPendingCommand(safeWorkspaceSessionId, pendingCommandClaim.token);

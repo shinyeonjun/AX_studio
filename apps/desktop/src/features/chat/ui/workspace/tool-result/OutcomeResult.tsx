@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { ToolSendOutcome } from '@ax-studio/core';
 import { cachedToolDraftForExecution } from './draft-controller';
+import { reloadOnStateChange } from './reload-on-state-change';
 import { ToolHeader } from './ToolHeader';
 
 const noDraftSubscription = () => () => undefined;
@@ -22,12 +23,13 @@ export function OutcomeResult({ outcome, refreshWarning, persistenceWarning, exe
         if (!current || request !== sequence) return;
         setHost({ executionId, tool, ...(evidence.executionId === executionId
           ? { refreshWarning: evidence.refreshWarning, persistenceWarning: evidence.persistenceWarning } : { failed: true }) });
+        // Warnings only ever get added; once both show, nothing later can change this card.
+        return evidence.executionId === executionId && Boolean(evidence.refreshWarning && evidence.persistenceWarning);
       } catch {
         if (current && request === sequence) setHost({ executionId, tool, failed: true });
       }
     };
-    void load();
-    const stop = window.ax.onStateChanged(() => { void load(); });
+    const stop = reloadOnStateChange(load);
     return () => { current = false; sequence++; stop(); };
   }, [executionId, tool]);
   const evidence = host && host.executionId === executionId && host.tool === tool ? host : undefined;
