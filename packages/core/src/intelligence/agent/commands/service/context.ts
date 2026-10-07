@@ -40,7 +40,7 @@ export function updateContext(
     return [
       'needs_input',
       undefined,
-      [issue('context_confirmation_required', '컨텍스트를 저장하기 전에 host 확인 UI에서 사용자의 확인이 필요합니다.')],
+      [issue('context_confirmation_required', '기억해 둘 내용은 확인 카드에서 "저장"을 눌러야 저장됩니다.')],
     ];
   }
 

@@ -83,7 +83,7 @@ export function bindingQuestions(
       }
       if (compatible.length > 1) {
         if (compatible.length > MAX_JEV_CHOICE_CANDIDATES) {
-          return { failure: `입력 ${port}에 연결할 수 있는 결과가 너무 많아 하나로 고르지 않았습니다.` };
+          return { failure: '어느 단계의 결과를 쓸지 정하지 못했습니다. "2단계 결과로 보내 줘"처럼 알려 주세요.' };
         }
         const questionId = `binding_${index}_${portIndex}`;
         const criteria: Record<string, DecisionInstruction> = {

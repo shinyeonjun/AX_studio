@@ -1,5 +1,6 @@
 import { displayColumns, formatTableNumber } from '../../../../../contracts/artifacts/table-display.js';
 import { boundedDisplayTable, MAX_DISPLAY_TABLE_COLUMNS, MAX_DISPLAY_TABLE_ROWS } from '../../../../../contracts/artifacts/table-bounds.js';
+import type { ColumnLabels } from '../../../../../contracts/artifacts/column-labels.js';
 import type { TableArtifact } from '../../../../../contracts/artifacts/table.js';
 
 function markdownCell(value: unknown): string {
@@ -62,7 +63,7 @@ export function formatTableArtifact(table: TableArtifact): string {
 /** Keep only the bounded, visible table needed for an immediate follow-up. */
 export const boundedChatReadResult = boundedDisplayTable;
 
-export function rowsToMarkdown(rows: Record<string, unknown>[]): string {
+export function rowsToMarkdown(rows: Record<string, unknown>[], labels: ColumnLabels = {}): string {
   const headerSet = new Set<string>();
   for (const row of rows) {
     for (const key of Object.keys(row)) {
@@ -76,7 +77,7 @@ export function rowsToMarkdown(rows: Record<string, unknown>[]): string {
   const displayedRows = rows.slice(0, MAX_CHAT_TABLE_ROWS);
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
   const lines = [
-    `| ${headers.map(markdownCell).join(' | ')} |`,
+    `| ${headers.map((header) => markdownCell(labels[header] || header)).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
     ...displayedRows.map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`),
   ];

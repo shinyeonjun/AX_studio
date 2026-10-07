@@ -264,10 +264,10 @@ export async function summarizeTable(input: {
     if (error instanceof Error && error.message === 'incomplete_table_input') {
       return clarify('읽은 자료가 전체가 아니어서 합계·건수를 내지 않았습니다. 조회 범위를 좁히거나 전체를 읽은 뒤 다시 요청해 주세요.');
     }
-    return clarify('요청한 계산을 이 표로 할 수 없었습니다.');
+    return clarify('요청한 계산을 이 표로 할 수 없었습니다. 합계·평균·개수처럼 계산할 열과 방법을 알려 주세요.');
   }
   const result = TableArtifactSchema.safeParse(value);
-  if (!result.success) return clarify('요청한 계산을 이 표로 할 수 없었습니다.');
+  if (!result.success) return clarify('요청한 계산을 이 표로 할 수 없었습니다. 합계·평균·개수처럼 계산할 열과 방법을 알려 주세요.');
   const conditionText = chosen.length > 0 ? `조건: ${chosen.map((condition) => condition.description).join(', ')}` : '조건 없음 (전체 행)';
   return {
     status: 'transformed',

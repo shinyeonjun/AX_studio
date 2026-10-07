@@ -20,7 +20,7 @@ export function commandAccess(
   if (context.origin === 'host' && command.lifecycle !== 'read' && command.lifecycle !== 'present') {
     return {
       allowed: false,
-      reason: '이 호출 경계에서는 조회·표시 command만 허용됩니다. 실행·저장은 agent command 경계를 사용하세요.',
+      reason: '여기서는 조회와 보기만 할 수 있습니다. 실행이나 저장은 대화창에서 요청해 주세요.',
     };
   }
   return { allowed: true };
