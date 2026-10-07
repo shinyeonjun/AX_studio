@@ -2,22 +2,22 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildCommandProtocolPrompt, setAgentSkillsDir } from './index.js';
+import { buildInvestigatePrompt, setAgentSkillsDir } from './index.js';
 import type { AxJobProposeArgs } from './index.js';
 
 describe('Agent public API', () => {
-  it('uses the configured skill directory when building a command prompt', () => {
+  it('uses the configured skill directory when building a prompt', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-agent-skills-'));
-    const commandDir = join(root, 'command');
+    const commandDir = join(root, 'investigate');
     mkdirSync(commandDir, { recursive: true });
     writeFileSync(
       join(commandDir, 'SKILL.md'),
       [
         '---',
-        'name: custom-command',
-        'description: test command protocol',
+        'name: custom-investigate',
+        'description: test investigation',
         '---',
-        'CUSTOM COMMAND {{command_contracts}} {{output_instructions}}',
+        'CUSTOM SKILL {{task_goal}} {{task_memo}}',
         '',
       ].join('\n'),
       'utf8',
@@ -25,14 +25,13 @@ describe('Agent public API', () => {
 
     try {
       setAgentSkillsDir(root);
-      const prompt = buildCommandProtocolPrompt({
-        commands: [{ name: 'workflow.list' }],
-        outputInstructions: 'reply or command',
-      });
+      const prompt = buildInvestigatePrompt('investigate', {
+        skillGoal: 'check', taskGoal: 'find the cause', taskMemo: 'memo', evidence: [],
+      } as never);
 
-      expect(prompt).toContain('CUSTOM COMMAND');
-      expect(prompt).toContain('workflow.list');
-      expect(prompt).toContain('reply or command');
+      expect(prompt).toContain('CUSTOM SKILL');
+      expect(prompt).toContain('find the cause');
+      expect(prompt).toContain('memo');
     } finally {
       setAgentSkillsDir(undefined);
       rmSync(root, { recursive: true, force: true });

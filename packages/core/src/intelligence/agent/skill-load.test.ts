@@ -14,15 +14,15 @@ describe('agent skill loading', () => {
   it('ignores env skill directories unless the dev opt-in is set', () => {
     const root = mkdtempSync(join(tmpdir(), 'ax-skill-env-'));
     try {
-      mkdirSync(join(root, 'command'), { recursive: true });
-      writeFileSync(join(root, 'command', 'SKILL.md'), 'INJECTED', 'utf8');
+      mkdirSync(join(root, 'investigate'), { recursive: true });
+      writeFileSync(join(root, 'investigate', 'SKILL.md'), 'INJECTED', 'utf8');
       vi.stubEnv('AX_SKILLS_DIR', root);
       setAgentSkillsDir(undefined);
-      expect(loadAgentSkill('command').raw).toBe(EMBEDDED_AGENT_SKILLS.command);
+      expect(loadAgentSkill('investigate').raw).toBe(EMBEDDED_AGENT_SKILLS.investigate);
 
       vi.stubEnv(AGENT_SKILL_DEV_OVERRIDES_ENV, '1');
       setAgentSkillsDir(undefined);
-      expect(loadAgentSkill('command').raw).toBe('INJECTED');
+      expect(loadAgentSkill('investigate').raw).toBe('INJECTED');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

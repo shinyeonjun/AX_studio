@@ -6,7 +6,6 @@ import { CodexCliProvider } from './adapters/codex-cli.js';
 import { ReportBusinessInferenceSchema, ReportCalculationInferenceSchema, ReportCaptureInferenceSchema } from '../../../../documents/reporting/planner/schema.js';
 import { ReportSourceDecisionWireSchema } from '../../../../documents/reporting/planner/source-discovery.js';
 import { zodToCodexJsonSchema } from '../cli-json.js';
-import { createAxCommandChatTransport } from '../../commands/transport.js';
 
 vi.mock('../cli-process.js', () => ({ resolveBinaryAsync: async () => 'codex', runCommand: vi.fn() }));
 vi.mock('./capabilities.js', () => ({ supportedCliFlags: async () => new Set(['--ignore-user-config']) }));
@@ -210,26 +209,6 @@ describe('Codex provider wire round trip', () => {
         { value: { kind: 'aggregate', expression: { kind: 'sum' } } },
         { value: { kind: 'aggregate', expression: { kind: 'arithmetic', operation: 'divide' } } },
       ] }] },
-    });
-  });
-  it('restores null optional fields before parsing the Codex command wire', async () => {
-    respond({ kind: 'command', commandName: 'workflow.list', argsJson: null, message: null });
-    const transport = createAxCommandChatTransport('codex-cli');
-    await expect(new CodexCliProvider('test').generateStructured({
-      schema: transport.outputSchema, system: 's', user: 'u',
-    })).resolves.toEqual({ kind: 'command', commandName: 'workflow.list', argsJson: '', message: '' });
-  });
-  it('keeps JSON-looking command argsJson as wire text through the actual adapter', async () => {
-    respond({ kind: 'command', commandName: 'report.generate', argsJson: JSON.stringify({
-      goal: '월간 보고서', templateSourceId: 'src-template', exampleSourceId: 'src-example',
-    }), message: null });
-    const transport = createAxCommandChatTransport('codex-cli');
-    await expect(new CodexCliProvider('test').generateStructured({
-      schema: transport.outputSchema, system: 's', user: 'u',
-    })).resolves.toEqual({
-      kind: 'command', commandName: 'report.generate',
-      argsJson: JSON.stringify({ goal: '월간 보고서', templateSourceId: 'src-template', exampleSourceId: 'src-example' }),
-      message: '',
     });
   });
   it('restores report query records and absent optional fields through the actual adapter', async () => {

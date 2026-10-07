@@ -40,7 +40,6 @@ Agent는 AX command 또는 제한된 실행 중 판단 결과만 반환합니다
 - `soul.md` — 말투와 상호작용 방식
 - `prompt/artifacts.ts` — constitution·soul 로드
 - `prompt/compose.ts` — constitution + soul + role/command prompt 조합
-- `prompt/command-protocol.ts` — command chat system prompt
 - `prompt/investigate-prompt.ts` — runtime investigation skill prompt
 - `scoped-context.ts` — session memo / workflow policy bounded store
 - `skills/**/SKILL.md` — role별 정적 skill template
