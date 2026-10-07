@@ -1,21 +1,12 @@
 import {
   appendAppLog,
   AX_COMMAND_CHAT_TIMEOUT_MS,
-  buildJevReadOperationIndex,
   connectedConnectorIds,
   httpEndpointsFromConnections,
-  aiDecisionOutputPorts,
-  resolveCapability,
   runAxCommandChat,
-  stepOutputPorts,
-  triggerOutputPorts,
-  type JevReadOperationIndex,
-  type TableArtifact,
-  WorkspaceChatReadResultSchema,
 } from '@ax-studio/core';
 import { app } from 'electron';
 import { performance } from 'node:perf_hooks';
-import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation, ChatReadRecipe } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -30,49 +21,29 @@ import {
   registerWorkspaceChat,
   releaseWorkspaceChat,
 } from '../../workspace-chat-registry.js';
-import { runE2EChat } from '../../e2e-test-seam.js';
-import { runE2EReportGeneration } from '../../e2e-test-seam/report.js';
-import { e2EReportPhase, shouldUseE2EFakeAgent } from '../../e2e-test-seam/gates.js';
+import { shouldUseE2EFakeAgent } from '../../e2e-test-seam/gates.js';
 import {
   claimPendingCommand,
-  bindPendingCommandInputRequests,
   clearPendingCommand,
   finishClaimedPendingCommand,
-  rememberPendingCommand,
-  replaceClaimedPendingCommand,
-  type PendingCommandInputValue,
 } from './pending-command.js';
 import {
   contextUpdateConfirmation as findContextUpdateConfirmation,
   hasContextConfirmation,
   isJobConfirmation,
   mutationConfirmationToken as findMutationConfirmationToken,
-  workflowIdsChanged,
 } from './helpers.js';
 import { bindContextConfirmations, clearHostChatSession, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
-
-type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
-
-const jevOperationIndexCache = new WeakMap<object, {
-  revision: number;
-  index: JevReadOperationIndex;
-}>();
-
-function selectJevReadOperations(
-  store: object,
-  revision: number | undefined,
-  connections: JevOperationConnections,
-  userMessage: string,
-) {
-  const cached = revision === undefined ? undefined : jevOperationIndexCache.get(store);
-  if (!cached || cached.revision !== revision) {
-    const index = buildJevReadOperationIndex(connections);
-    if (revision !== undefined) jevOperationIndexCache.set(store, { revision, index });
-    return index.select(userMessage);
-  }
-  return cached.index.select(userMessage);
-}
+import { selectJevReadOperations } from './read-operation-index.js';
+import { runE2EChatTurn } from './e2e-turn.js';
+import {
+  currentWorkflowOutputs,
+  currentWorkflowSteps,
+  requestsMetadataLane,
+  validatedWorkspaceSessionId,
+} from './turn-context.js';
+import { chatTurnCallbacks, emptyChatTurnState, type PendingCommandClaim } from './turn-state.js';
 
 export function registerWorkspaceChatMessageHandler() {
   ipcHandle('ax:sendCommandChat', async (
@@ -85,22 +56,11 @@ export function registerWorkspaceChatMessageHandler() {
   ) => {
     const core = getCore();
     const startedAt = performance.now();
-    if (workflowId !== undefined && (typeof workflowId !== 'string' || !workflowId.trim())) {
-      throw new Error('workflow id 형식이 올바르지 않습니다.');
-    }
-    if (typeof workspaceSessionId !== 'string' ||
-      !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceSessionId.trim())) {
-      throw new Error('대화 세션 id 형식이 올바르지 않습니다.');
-    }
-    const safeWorkspaceSessionId = workspaceSessionId.trim();
+    const safeWorkspaceSessionId = validatedWorkspaceSessionId(workflowId, workspaceSessionId);
     const storedChat = core.store.getWorkspaceChat(safeWorkspaceSessionId);
     if (!storedChat) throw new Error('대화를 찾을 수 없습니다.');
     const userMessage = boundedText(userMessageInput, '사용자 메시지').trim();
-    if (chatOptions !== undefined && (!chatOptions || typeof chatOptions !== 'object' || Array.isArray(chatOptions))) throw new Error('workspace_chat_invalid_lane');
-    const preferences = (chatOptions ?? {}) as Record<string, unknown>;
-    if (Object.keys(preferences).some(key => key !== 'metadataLane')
-      || (preferences.metadataLane !== undefined && preferences.metadataLane !== 'registered_http_metadata')) throw new Error('workspace_chat_invalid_lane');
-    const metadataLane = preferences.metadataLane === 'registered_http_metadata';
+    const metadataLane = requestsMetadataLane(chatOptions);
     if (metadataLane && !registeredHttpMetadataAvailable()) {
       return metadataTerminalReply(typeof requestId === 'string' ? requestId : 'metadata-unavailable',
         'gate_unavailable', '등록된 HTTP 메타데이터 경로를 현재 사용할 수 없습니다.');
@@ -126,37 +86,8 @@ export function registerWorkspaceChatMessageHandler() {
     const mappedWorkflowId = storedChat.workflowId;
     const effectiveWorkflowId = requestedWorkflowId || mappedWorkflowId;
     const currentWorkflow = effectiveWorkflowId ? core.store.getWorkflow(effectiveWorkflowId) : undefined;
-    const currentWorkflowVersion = currentWorkflow?.version;
-    const currentWorkflowSteps = currentWorkflow?.steps.map((step) => ({
-      id: step.id,
-      type: step.type,
-      label: step.type === 'action'
-        ? `${step.connector} / ${step.action}`
-        : step.type === 'ai_decision'
-          ? `AI 판단 / ${step.goal}`
-          : step.type === 'human_approval'
-            ? `승인 / ${step.reason}`
-            : '조건 분기',
-    }));
-    const currentWorkflowOutputs = currentWorkflow ? [
-      ...triggerOutputPorts(currentWorkflow.trigger).map(({ from, port, type }) => ({
-        from,
-        output: port,
-        type,
-        capabilityId: `workflow.trigger.${currentWorkflow.trigger?.type ?? 'unknown'}`,
-      })),
-      ...currentWorkflow.steps.flatMap((step) => {
-        const outputs = step.type === 'action'
-          ? stepOutputPorts(step)
-          : step.type === 'ai_decision'
-            ? aiDecisionOutputPorts(step)
-            : [];
-        const capabilityId = step.type === 'action'
-          ? resolveCapability(step.connector, step.action)?.id ?? 'workflow.action'
-          : 'workflow.ai_decision';
-        return outputs.map(({ from, port, type }) => ({ from, output: port, type, capabilityId }));
-      }),
-    ] : undefined;
+    const workflowSteps = currentWorkflowSteps(currentWorkflow);
+    const workflowOutputs = currentWorkflowOutputs(currentWorkflow);
     // Confirmation payloads and tokens are verified host-side; the transcript only names them.
     const confirmedContextUpdate = findContextUpdateConfirmation(requestMessages, userMessage, safeWorkspaceSessionId);
     const jobCommitConfirmationToken = isJobConfirmation(requestMessages, userMessage);
@@ -173,17 +104,8 @@ export function registerWorkspaceChatMessageHandler() {
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);
     const controller = registerWorkspaceChat(chatRequestId, safeWorkspaceSessionId);
-    const changedWorkflowIds = new Set<string>();
-    const removedWorkflowIds = new Set<string>();
-    let inputRequests: AxInputRequest[] = [];
-    const presentations: AxUiPresentation[] = [];
-    let readResult: TableArtifact | undefined;
-    let readResultReported = false;
-    let readRecipe: ChatReadRecipe | undefined;
-    let pendingCommandClaim: { token: string; command: AxCommand; inputValues: PendingCommandInputValue[];
-      request: string; requestDigest: string; requestAnchor?: AuthoritativeRequestAnchor } | undefined;
-    let acceptedRequestAnchor: AuthoritativeRequestAnchor | undefined;
-    let pendingInputRequestToken: string | undefined;
+    const turn = emptyChatTurnState();
+    let pendingCommandClaim: PendingCommandClaim | undefined;
     let outcome: 'success' | 'failed' = 'failed';
     try {
       if (pendingInput) {
@@ -204,8 +126,8 @@ export function registerWorkspaceChatMessageHandler() {
             requestId: chatRequestId,
             changedWorkflowIds: [],
             removedWorkflowIds: [],
-            inputRequests,
-            presentations,
+            inputRequests: turn.inputRequests,
+            presentations: turn.presentations,
           };
         }
         pendingCommandClaim = { ...claim };
@@ -213,39 +135,9 @@ export function registerWorkspaceChatMessageHandler() {
         clearPendingCommand(safeWorkspaceSessionId);
       }
       if (!pendingCommandClaim && shouldUseE2EFakeAgent(app.isPackaged, process.env)) {
-        const phase = e2EReportPhase(app.isPackaged, process.env, userMessage);
-        if (phase) {
-          const reply = await runE2EReportGeneration({
-            core,
-            userMessage,
-            workspaceSessionId: safeWorkspaceSessionId,
-          }, phase);
-          outcome = 'success';
-          return {
-            role: 'assistant' as const,
-            content: reply.content,
-            requestId: chatRequestId,
-            changedWorkflowIds: reply.changedWorkflowIds,
-            removedWorkflowIds: reply.removedWorkflowIds,
-            inputRequests: reply.inputRequests,
-            presentations: reply.presentations,
-          };
-        }
-        const reply = await runE2EChat({
-          core,
-          userMessage,
-          workspaceSessionId: safeWorkspaceSessionId,
-        });
+        const reply = await runE2EChatTurn(core, userMessage, safeWorkspaceSessionId, chatRequestId);
         outcome = 'success';
-        return {
-          role: 'assistant' as const,
-          content: reply.content,
-          requestId: chatRequestId,
-          changedWorkflowIds: reply.changedWorkflowIds,
-          removedWorkflowIds: reply.removedWorkflowIds,
-          inputRequests: reply.inputRequests,
-          presentations: reply.presentations,
-        };
+        return reply;
       }
       const connections = core.store.getConnections();
       // Keep the revision paired with this synchronous connection snapshot.
@@ -264,7 +156,6 @@ export function registerWorkspaceChatMessageHandler() {
         commandService: core.commandService,
         decisionEngine: core.decisionEngine,
         connectionRevision,
-        onRequestAnchor: (anchor) => { acceptedRequestAnchor = anchor; },
         connectedConnectors,
         httpEndpoints,
         resolveReadOperationSelection: () => selectJevReadOperations(
@@ -284,9 +175,9 @@ export function registerWorkspaceChatMessageHandler() {
         } : {}),
         ...(pendingCommandClaim ? { pendingCommand: pendingCommandClaim.command } : {}),
         currentWorkflowId: effectiveWorkflowId,
-        currentWorkflowVersion,
-        currentWorkflowSteps,
-        currentWorkflowOutputs,
+        currentWorkflowVersion: currentWorkflow?.version,
+        currentWorkflowSteps: workflowSteps,
+        currentWorkflowOutputs: workflowOutputs,
         sessionMemo: safeWorkspaceSessionId
           ? core.store.getWorkspaceChatMemo(safeWorkspaceSessionId)
           : {},
@@ -304,94 +195,28 @@ export function registerWorkspaceChatMessageHandler() {
         designToolContextFactory: () => buildDesktopDesignToolContext(core, connections, connectedConnectors),
         abortSignal: controller.signal,
         timeoutMs: AX_COMMAND_CHAT_TIMEOUT_MS,
-        onCommandResult: (result, command) => {
-          const ids = workflowIdsChanged(result);
-          if (ids.changed) changedWorkflowIds.add(ids.changed);
-          if (ids.removed) removedWorkflowIds.add(ids.removed);
-          if (!command || !['execution.enqueue_once', 'workflow.create', 'workflow.update', 'job.propose'].includes(command.name)
-            || !result.inputRequests?.length) {
-            if (pendingCommandClaim) finishClaimedPendingCommand(safeWorkspaceSessionId, pendingCommandClaim.token);
-            return;
-          }
-          if (pendingCommandClaim) {
-            pendingInputRequestToken = replaceClaimedPendingCommand(
-              safeWorkspaceSessionId,
-              pendingCommandClaim.token,
-              command,
-              Date.now(),
-              pendingCommandClaim.request,
-              acceptedRequestAnchor,
-            );
-          } else {
-            pendingInputRequestToken = rememberPendingCommand(
-              safeWorkspaceSessionId,
-              command,
-              Date.now(),
-              userMessage,
-              acceptedRequestAnchor,
-            );
-          }
-        },
-        onInputRequests: (requests) => {
-          inputRequests = pendingInputRequestToken
-            ? requests.map((request) => ({ ...request, id: `${request.id}-${pendingInputRequestToken}` }))
-            : requests;
-          if (pendingInputRequestToken) {
-            bindPendingCommandInputRequests(
-              safeWorkspaceSessionId,
-              pendingInputRequestToken,
-              inputRequests,
-            );
-          }
-        },
-        onPresentation: (presentation) => {
-          const scopedPresentation = pendingInputRequestToken
-            ? {
-                ...presentation,
-                inputs: presentation.inputs.map((request) => ({
-                  ...request,
-                  id: `${request.id}-${pendingInputRequestToken}`,
-                })),
-              }
-            : presentation;
-          presentations.push(scopedPresentation);
-          if (pendingInputRequestToken) {
-            bindPendingCommandInputRequests(
-              safeWorkspaceSessionId,
-              pendingInputRequestToken,
-              scopedPresentation.inputs,
-            );
-          }
-        },
-        onReadResult: (table) => {
-          readResultReported = true;
-          if (!table) {
-            readResult = undefined;
-            return;
-          }
-          const parsed = WorkspaceChatReadResultSchema.safeParse(table);
-          readResult = parsed.success ? parsed.data : undefined;
-        },
-        onReadRecipe: (recipe) => {
-          readRecipe = recipe;
-        },
+        ...chatTurnCallbacks(turn, {
+          sessionId: safeWorkspaceSessionId,
+          userMessage,
+          claim: pendingCommandClaim,
+        }),
         onProgress: ({ message }) => {
           event.sender.send('ax:chat-progress', { message, requestId: chatRequestId });
         },
       });
       outcome = 'success';
-      if (readResultReported) rememberHostReadResult(safeWorkspaceSessionId, readResult, readRecipe);
+      if (turn.readResultReported) rememberHostReadResult(safeWorkspaceSessionId, turn.readResult, turn.readRecipe);
       return {
         role: 'assistant' as const,
         content: reply,
         requestId: chatRequestId,
-        changedWorkflowIds: [...changedWorkflowIds],
-        removedWorkflowIds: [...removedWorkflowIds],
-        ...(pendingInputRequestToken ? { inputContinuation: 'command' as const } : {}),
+        changedWorkflowIds: [...turn.changedWorkflowIds],
+        removedWorkflowIds: [...turn.removedWorkflowIds],
+        ...(turn.pendingInputRequestToken ? { inputContinuation: 'command' as const } : {}),
         // Offer "반복 업무로" only where the read can actually be repeated.
-        ...(readResult ? { readResult, ...(readRecipe ? { readRepeatable: true } : {}) } : {}),
-        inputRequests,
-        presentations: bindContextConfirmations(safeWorkspaceSessionId, presentations),
+        ...(turn.readResult ? { readResult: turn.readResult, ...(turn.readRecipe ? { readRepeatable: true } : {}) } : {}),
+        inputRequests: turn.inputRequests,
+        presentations: bindContextConfirmations(safeWorkspaceSessionId, turn.presentations),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message.trim() : String(error);
