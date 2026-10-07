@@ -17,6 +17,7 @@ const gmailState = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   shell: { openExternal: vi.fn() },
+  BrowserWindow: { getAllWindows: () => [] },
 }));
 
 vi.mock('@ax-studio/core', () => ({

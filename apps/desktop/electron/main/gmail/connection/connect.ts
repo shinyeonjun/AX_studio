@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { shell } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import {
   GmailConnector,
   buildGmailConnectorConfig,
@@ -48,6 +48,13 @@ async function retirePreviousGmailCredential(
   }
 }
 
+function bringAppToFront(): void {
+  const window = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+  if (!window) return;
+  if (window.isMinimized()) window.restore();
+  window.focus();
+}
+
 export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowRuntime) {
   const { clientId, clientSecret } = getGoogleOAuthCredentials();
   const previous = parseGmailConnectionConfig(gmailConnection(store)?.config);
@@ -61,6 +68,8 @@ export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowR
   } catch (error) {
     throw formatGmailOAuthError(error);
   }
+  // Sign-in finished in the browser; bring the app back so the person sees the connection finish.
+  bringAppToFront();
 
   const connectionId = randomUUID();
   const credentialRef = { connector: 'gmail' as const, connectionId };
