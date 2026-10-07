@@ -8,6 +8,12 @@ export interface SourceRef {
 }
 
 /** Ranked hit before bounded read. */
+/**
+ * Where a search capability puts its citations (`SearchHit[]`) next to its data: Gmail and Slack
+ * search return `messages`/`matches` to show and `hits` to cite. Hits are never the data table.
+ */
+export const SEARCH_HITS_FIELD = 'hits';
+
 export interface SearchHit {
   ref: SourceRef;
   score: number;

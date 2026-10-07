@@ -17,7 +17,9 @@ const windowMocks = vi.hoisted(() => {
   };
 });
 
+const shutdownMocks = vi.hoisted(() => ({ shuttingDown: false }));
 vi.mock('electron', () => ipcMocks);
+vi.mock('../startup/shutdown-state.js', () => ({ isDesktopShuttingDown: () => shutdownMocks.shuttingDown }));
 vi.mock('../app-window.js', () => ({
   getMainWindow: () => windowMocks.mainWindow,
   isTrustedRendererUrl: (url: string) => url === 'app://index',
@@ -56,6 +58,20 @@ describe('workspace chat boundary', () => {
       sender: { id: 42, mainFrame: { url: 'app://foreign' } },
       senderFrame: { url: 'app://foreign' },
     })).toThrow('untrusted_ipc_frame');
+  });
+
+  it('refuses work once the app is quitting, before a handler can touch the closed database', () => {
+    const handler = vi.fn(() => 'ok');
+    ipcHandle('test:late', handler);
+    const callback = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as (event: unknown) => unknown;
+    const trustedEvent = { sender: { id: 42, mainFrame: windowMocks.mainFrame }, senderFrame: windowMocks.mainFrame };
+    shutdownMocks.shuttingDown = true;
+    try {
+      expect(() => callback(trustedEvent)).toThrow('app_shutting_down');
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      shutdownMocks.shuttingDown = false;
+    }
   });
 
   it('retains a long transcript while bounding model context and preserving the latest instruction', () => {

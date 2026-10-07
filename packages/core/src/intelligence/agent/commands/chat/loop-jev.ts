@@ -176,6 +176,7 @@ async function fallbackRoute(turn: JevTurn, route: JevRoute<'fallback'>): Promis
     ...requestContext,
     event: 'jev_chat_route_fallback',
     reason: route.reason,
+    ...('detail' in route && route.detail ? { detail: route.detail } : {}),
   });
   if (route.reason === 'http_endpoint_required') return presentHttpEndpointSelection(context);
   if (route.reason === 'http_path_required') {

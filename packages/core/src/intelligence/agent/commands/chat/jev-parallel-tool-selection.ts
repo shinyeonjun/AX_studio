@@ -77,7 +77,6 @@ export type JevParallelToolSelection =
         | 'invalid_answer_requirement'
         | 'incomplete_tool_answers'
         | 'invalid_tool_answers'
-        | 'uncertain_tool_answers'
         | 'no_answer_or_tool';
       telemetry: JevParallelToolSelectionTelemetry;
     };
@@ -125,8 +124,7 @@ export function parseParallelToolSelection(input: {
   if (naturalAnswer?.type !== 'boolean'
     || !Number.isFinite(naturalAnswer.probability)
     || naturalAnswer.probability < 0
-    || naturalAnswer.probability > 1
-    || naturalAnswer.probability === 0.5) {
+    || naturalAnswer.probability > 1) {
     return { kind: 'clarify', reason: 'invalid_answer_requirement', telemetry };
   }
 
@@ -139,14 +137,20 @@ export function parseParallelToolSelection(input: {
     if (!Number.isFinite(answer.probability) || answer.probability < 0 || answer.probability > 1) {
       return { kind: 'clarify', reason: 'invalid_tool_answers', telemetry };
     }
-    if (answer.probability === 0.5) {
-      return { kind: 'clarify', reason: 'uncertain_tool_answers', telemetry };
-    }
+    // An undecided tool is not chosen: one unsure answer among two dozen candidates used to fail
+    // a clear request. Leaving a tool out only does less, and the plan review still checks that
+    // the plan covers the request.
     operationDecisions.push({ id: candidate.id, selected: answer.probability > 0.5 });
   }
 
-  const needsNaturalLanguageAnswer = naturalAnswer.probability > 0.5;
-  if (!needsNaturalLanguageAnswer && operationDecisions.every(({ selected }) => !selected)) {
+  const anyTool = operationDecisions.some(({ selected }) => selected);
+  // Whether to add prose only shapes the reply. An undecided answer (0.5) next to a chosen tool
+  // adds the prose rather than failing a clear read; with no tool it leaves nothing to do.
+  if (naturalAnswer.probability === 0.5 && !anyTool) {
+    return { kind: 'clarify', reason: 'invalid_answer_requirement', telemetry };
+  }
+  const needsNaturalLanguageAnswer = naturalAnswer.probability >= 0.5;
+  if (!needsNaturalLanguageAnswer && !anyTool) {
     return { kind: 'clarify', reason: 'no_answer_or_tool', telemetry };
   }
   return {

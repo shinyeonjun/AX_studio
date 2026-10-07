@@ -97,7 +97,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
           ...(res.inputContinuation ? { inputContinuation: res.inputContinuation } : {}),
           ...(res.inputRequests?.length ? { inputRequests: res.inputRequests } : {}),
           ...(res.presentations?.length ? { presentations: res.presentations } : {}),
-          ...(res.readResult ? { readResult: res.readResult } : {}),
+          ...(res.readResult ? { readResult: res.readResult, ...(res.readRepeatable ? { readRepeatable: true } : {}) } : {}),
           ...(res.dbConnection ? { dbConnection: res.dbConnection } : {}),
         },
       ];

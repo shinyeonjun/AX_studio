@@ -110,6 +110,8 @@ type JevChatRouterResultValue =
   | {
       kind: 'fallback';
       reason: JevChatRouterFallbackReason;
+      /** Which check fell back (for logs; never shown to people). */
+      detail?: string;
       evaluationCalls?: number;
       providerRequestCount?: number;
     };

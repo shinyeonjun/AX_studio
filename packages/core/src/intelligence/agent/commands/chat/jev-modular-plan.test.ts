@@ -3,6 +3,7 @@ import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import type { DecisionAnswer, DecisionEvaluationRequest } from '../../../../contracts/decision.js';
 import { planJevSelectedTools } from './jev-workflow-plan.js';
+import { withoutUnusedReads } from './jev-workflow-plan-steps.js';
 import { validateJevPlan } from './jev-plan-contract.js';
 import { AxUiPresentationSchema } from '../schema.js';
 
@@ -88,6 +89,12 @@ describe('bounded modular Jev planner', () => {
     const result = await plan([target], async (r): Promise<{ answers: Record<string, DecisionAnswer>; providerRequestCount?: number; requestBytes?: number }> => { states.push(r); return { answers: review }; }, { request: '전달해줘', actionInputValues: [{ label: 'Body', value: 'PRIVATE_SENTINEL', capabilityId: target.id, parameterName: 'body' }] });
     expect(result.kind).toBe('command');
     expect(JSON.stringify([states, result.presentation])).not.toContain('PRIVATE_SENTINEL');
+  });
+  it('shows the review a value the request itself contains, so a complete send is not called missing', async () => {
+    const states: unknown[] = [];
+    const send: ConnectorCapability = { ...target, params: [{ name: 'body', label: 'Body', question: 'Body?', required: true }] };
+    await plan([send], async (r): Promise<{ answers: Record<string, DecisionAnswer>; providerRequestCount?: number; requestBytes?: number }> => { states.push(r); return { answers: review }; }, { request: '"분기 보고 완료"라고 전달해줘' });
+    expect(JSON.stringify(states)).toContain('"body":"분기 보고 완료"');
   });
   it('records completed usage before propagating cancellation', async () => {
     const controller = new AbortController();
@@ -181,5 +188,21 @@ describe('host plan contracts', () => {
       if (result.kind !== 'command') return;
       expect((result.command.args.steps as Array<{ type: string }>).map((step) => step.type)).toEqual(['action', 'action']);
     });
+  });
+});
+
+describe('read steps nothing uses', () => {
+  const step = (id: string, capability: ConnectorCapability, bindings: Record<string, { from: string; output: string }> = {}) =>
+    ({ kind: 'action' as const, id, capability, params: {}, bindings });
+  const read = (id: string): ConnectorCapability => ({ id, connector: 'lab', kind: 'read', label: id, description: '', params: [], io: { inputs: {}, outputs: { rows: 'TableArtifact' } } });
+  const send: ConnectorCapability = { id: 'lab.send', connector: 'lab', kind: 'write', label: 'Send', description: '', sideEffect: 'EXTERNAL', params: [], io: { inputs: { rows: 'TableArtifact' }, outputs: {} } };
+
+  it('are dropped from a plan whose result is a send', () => {
+    const kept = withoutUnusedReads([step('used', read('lab.used')), step('unused', read('lab.unused')), step('send', send, { rows: { from: 'used', output: 'rows' } })]);
+    expect(kept.map((planned) => planned.kind === 'action' && planned.id)).toEqual(['used', 'send']);
+  });
+
+  it('are kept when the plan is only reads: they are its result', () => {
+    expect(withoutUnusedReads([step('a', read('lab.a')), step('b', read('lab.b'))])).toHaveLength(2);
   });
 });

@@ -7,6 +7,7 @@ import { connectorFailureKind } from '../../connectors/failure-kind.js';
 import { ArtifactCompletenessSchema, type ArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import { RdbReadCoverageSchema, RdbReadScopeSchema } from '../../contracts/artifacts/rdb-read.js';
 import type { DesignToolContext } from './types.js';
+import { SEARCH_HITS_FIELD } from '../../platform/knowledge.js';
 
 export { connectorFailureKind };
 
@@ -234,8 +235,8 @@ export async function invokeReadCapability(
     data &&
     typeof data === 'object' &&
     !Array.isArray(data) &&
-    Array.isArray((data as { hits?: unknown }).hits)
-      ? citationsFromSearchHits((data as { hits: import('../../platform/knowledge.js').SearchHit[] }).hits)
+    Array.isArray((data as Record<string, unknown>)[SEARCH_HITS_FIELD])
+      ? citationsFromSearchHits((data as Record<string, unknown>)[SEARCH_HITS_FIELD] as import('../../platform/knowledge.js').SearchHit[])
       : [];
 
   return {

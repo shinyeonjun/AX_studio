@@ -23,6 +23,14 @@ function readAnswer(choice: ReadChoice): DecisionAnswer {
   };
 }
 
+/** The label of the operation a read question asks about, so tests pick operations by what they are. */
+function operationLabel(request: DecisionEvaluationRequest, questionId: string): string | undefined {
+  const instructions = request.questions[questionId]?.instructions;
+  return instructions && typeof instructions === 'object'
+    ? (instructions as { operation?: { label?: string } }).operation?.label
+    : undefined;
+}
+
 function readAnswers(
   request: DecisionEvaluationRequest,
   choiceFor: (questionId: string) => ReadChoice = () => 'read',
@@ -388,7 +396,8 @@ describe('runAiDecision investigation flow', () => {
   it('executes Jev-selected Slack search with a term parsed from natural wording', async () => {
     const model = new InvestigationProvider();
     const decisionEngine: DecisionEngine = {
-      evaluate: vi.fn(async (request) => readAnswers(request)),
+      evaluate: vi.fn(async (request) => readAnswers(request, (questionId) =>
+        operationLabel(request, questionId) === 'Slack 메시지 검색' ? 'read' : 'skip')),
     };
     const execute = vi.fn(async () => ({ ok: false, error: 'offline', errorCode: 'slack_error' }));
 
@@ -422,7 +431,7 @@ describe('runAiDecision investigation flow', () => {
       evaluate: vi.fn(async (request: DecisionEvaluationRequest): Promise<DecisionEvaluationResult> => {
         requests.push(request);
         return readAnswers(request, (questionId) =>
-          requests.length === 1 && questionId === 'read_op_0' ? 'read' : 'skip');
+          requests.length === 1 && operationLabel(request, questionId) === 'Gmail 메일 검색' ? 'read' : 'skip');
       }),
     };
     const gmailExecute = vi.fn(async () => ({

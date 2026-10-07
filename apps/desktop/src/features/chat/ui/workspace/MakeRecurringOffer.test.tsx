@@ -27,6 +27,7 @@ const readAnswer = {
   role: 'assistant',
   content: 'title | stock',
   readResult: { id: 't', kind: 'table', columns: [{ name: 'title', type: 'string', nullable: false, inferred: true }], rows: [], truncated: false },
+  readRepeatable: true,
 } as unknown as WorkspaceChatMessage;
 
 describe('"이걸 반복 업무로 만들기" offer', () => {
@@ -48,6 +49,11 @@ describe('"이걸 반복 업무로 만들기" offer', () => {
   it('appears under the latest read answer only, whose recipe the host still holds', () => {
     expect(render(readAnswer, onMakeRecurring, true)).toContain('이걸 반복 업무로 만들기');
     expect(render(readAnswer, onMakeRecurring, false)).not.toContain('반복 업무로 만들기');
+  });
+
+  it('does not appear under a read that cannot be repeated (a channel list, a folder listing)', () => {
+    const { readRepeatable: _repeatable, ...unrepeatable } = readAnswer as WorkspaceChatMessage & { readRepeatable?: boolean };
+    expect(render(unrepeatable as WorkspaceChatMessage, onMakeRecurring, true)).not.toContain('반복 업무로 만들기');
   });
 
   it('does not appear in a conversation already tied to a saved job', () => {

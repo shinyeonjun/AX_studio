@@ -32,6 +32,7 @@ import type {
 } from './jev-workflow-plan-types.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import type { JevCommandPlan } from './jev-request-plan.js';
+import { workNameFromRequest } from '../job-registration/work-name.js';
 
 export interface PlannedAction {
   kind: 'action';
@@ -49,6 +50,43 @@ export interface PlannedAiDecision {
 }
 
 export type PlannedStep = PlannedAction | PlannedAiDecision;
+
+function plannedStepId(step: PlannedStep): string {
+  return step.kind === 'action' ? step.id : step.step.id;
+}
+
+function isPlainRead(step: PlannedStep): boolean {
+  return step.kind === 'action' && step.capability.kind === 'read' && (step.capability.sideEffect ?? 'NONE') === 'NONE';
+}
+
+/** Step ids a step takes data from, by binding or by a `{ ref: 'step.output' }` parameter. */
+function stepSources(step: PlannedStep): string[] {
+  const bindings = step.kind === 'action' ? step.bindings : step.step.bindings ?? {};
+  const fromBindings = Object.values(bindings).flatMap((binding) =>
+    binding && typeof binding === 'object' && 'from' in binding ? [String(binding.from)] : []);
+  const params = step.kind === 'action' ? step.params : {};
+  const fromRefs = Object.values(params).flatMap((value) =>
+    value && typeof value === 'object' && typeof (value as { ref?: unknown }).ref === 'string'
+      ? [String((value as { ref: string }).ref).split('.')[0]!] : []);
+  return [...fromBindings, ...fromRefs];
+}
+
+/**
+ * Read steps nothing uses, in a plan whose result goes elsewhere (a send, an AI text): a "새 메일
+ * 요약" job that also searched mail and listed channels did both on every run for nothing. A plan
+ * of reads only keeps them, since they are its result.
+ */
+export function withoutUnusedReads(steps: readonly PlannedStep[]): PlannedStep[] {
+  if (steps.every(isPlainRead)) return [...steps];
+  let current = [...steps];
+  // Dropping one unused read can leave the read it used unused too.
+  for (;;) {
+    const used = new Set(current.flatMap(stepSources));
+    const next = current.filter((step) => !isPlainRead(step) || used.has(plannedStepId(step)));
+    if (next.length === current.length) return next;
+    current = next;
+  }
+}
 
 export type OutputChoice = JevWorkflowOutputHint;
 
@@ -283,7 +321,7 @@ export function workflowCommand(
     return {
       name: 'job.propose',
       args: {
-        name: request.trim().slice(0, 120) || '채팅 반복 업무',
+        name: workNameFromRequest(request, '채팅 반복 업무'),
         goal: request,
         ...(requestAnchor ? { requestAnchor } : {}),
         trigger,
@@ -324,15 +362,33 @@ export function blankTriggerFields(trigger: Trigger | undefined): Array<{ stepId
     parameter !== 'type' && typeof value === 'string' && !value.trim() ? [{ stepId: 'trigger', parameter }] : []);
 }
 
-export function stepLabel(step: PlannedStep): string {
-  return step.kind === 'action' ? `${step.id}: ${step.capability.id}` : `${step.step.id}: AI 문안 작성`;
+/** A planned step as people read it, in plan order: "1. Slack 메시지", never internal ids. */
+export function stepLabel(step: PlannedStep, index: number): string {
+  return `${index + 1}. ${step.kind === 'action' ? step.capability.label || step.capability.id : 'AI 문안 작성'}`;
 }
 
-export function reviewStep(step: PlannedStep) {
+/** Parameter names that may hold credentials; their values never go to the decision engine. */
+const SECRET_PARAMETER = /(?:token|secret|password|api[-_]?key|authorization|credential)/iu;
+
+/**
+ * What the plan uses for each parameter, so the review can see the request's channel and text are
+ * in it (names alone made a complete send look "missing"). A value is shown only when it is
+ * already in the request the review receives; values typed into host forms never leave the host.
+ */
+function suppliedValues(params: Record<string, unknown>, request: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(params).map(([name, value]) => {
+    if (SECRET_PARAMETER.test(name)) return [name, '(비공개 값)'];
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return [name, '(구조화된 값)'];
+    const text = String(value);
+    return [name, text && request.includes(text) ? boundDecisionString(text, 200) : '(입력한 값)'];
+  }));
+}
+
+export function reviewStep(step: PlannedStep, request: string) {
   return step.kind === 'action'
     ? { id: step.id, capability_id: step.capability.id,
       inputs: step.capability.io?.inputs ?? {}, outputs: step.capability.io?.outputs ?? {},
-      supplied_parameters: Object.keys(step.params), bindings: step.bindings }
+      supplied_parameters: suppliedValues(step.params, request), bindings: step.bindings }
     : { id: step.step.id, step_type: 'ai_decision',
       purpose: 'Generate the message text from the bound data as the user request asks (summarize, filter, format).',
       goal: boundDecisionString(step.step.goal, 400),

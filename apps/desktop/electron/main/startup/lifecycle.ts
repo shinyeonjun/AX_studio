@@ -1,17 +1,17 @@
 import { app } from 'electron';
 import { cancelGmailOAuth, flushAppLog, flushAppLogSync, shutdownCommandProcesses } from '@ax-studio/core';
 import { drainWithin } from './drain.js';
+import { isDesktopShuttingDown, markDesktopShuttingDown } from './shutdown-state.js';
 import { showMainWindow, setQuiting } from '../app-window';
 import { getCoreIfInitialized } from '../core-instance';
 import { abortAllWorkspaceChats } from '../workspace-chat-registry.js';
 import { registerProcessCrashHandlers } from '../diagnostics/crash-handling.js';
 
-let shutdownStarted = false;
 let shutdownCompleted = false;
 let unsubscribeWorkspaceSources: (() => void) | undefined;
 let startupTask: Promise<void> = Promise.resolve();
 
-export function isDesktopShuttingDown(): boolean { return shutdownStarted; }
+export { isDesktopShuttingDown } from './shutdown-state.js';
 
 export function setDesktopStartupTask(task: Promise<void>): void { startupTask = task; }
 
@@ -65,8 +65,8 @@ export function setWorkspaceSourceUnsubscribe(unsubscribe: () => void): void {
 export function registerDesktopShutdown(): void {
   app.on('before-quit', (event) => {
     if (shutdownCompleted) return;
-    if (shutdownStarted) { event.preventDefault(); return; }
-    shutdownStarted = true;
+    if (isDesktopShuttingDown()) { event.preventDefault(); return; }
+    markDesktopShuttingDown();
     setQuiting(true);
     const core = getCoreIfInitialized();
     unsubscribeWorkspaceSources?.();

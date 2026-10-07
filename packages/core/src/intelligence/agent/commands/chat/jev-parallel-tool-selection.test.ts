@@ -7,7 +7,7 @@ import type {
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import { routeChatWithJev } from './jev-router.js';
-import { selectParallelTools } from './jev-parallel-tool-selection.js';
+import { parseParallelToolSelection, selectParallelTools } from './jev-parallel-tool-selection.js';
 
 const candidates = [
   { id: 'db.read', kind: 'read', connector: 'rdb', label: 'DB 조회', description: '조건에 맞는 행 조회' },
@@ -92,7 +92,7 @@ describe('selectParallelTools', () => {
     });
   });
 
-  it('fails closed when tool votes are uncertain, missing, invalid, or neither answer nor tool is selected', async () => {
+  it('fails closed when tool votes are missing, invalid, or neither answer nor tool is selected; leaves out an undecided tool', async () => {
     const selection = (answers: Record<string, DecisionAnswer>) => selectParallelTools({
       decisionEngine: { evaluate: async () => ({ answers }) },
       userMessage: '검색해줘',
@@ -114,7 +114,9 @@ describe('selectParallelTools', () => {
       tool_0: bool(0.01), tool_1: bool(0.01), tool_2: bool(0.01),
     });
 
-    expect(uncertain).toMatchObject({ kind: 'clarify', reason: 'uncertain_tool_answers' });
+    // Not choosing an undecided tool only does less; the plan review still checks coverage.
+    expect(uncertain).toMatchObject({ kind: 'selected' });
+    expect(uncertain.kind === 'selected' && uncertain.operationDecisions.map((decision) => decision.selected)).toEqual([true, false, false]);
     expect(incomplete).toMatchObject({ kind: 'clarify', reason: 'incomplete_tool_answers' });
     expect(invalid).toMatchObject({ kind: 'clarify', reason: 'invalid_tool_answers' });
     expect(empty).toMatchObject({ kind: 'clarify', reason: 'no_answer_or_tool' });
@@ -194,5 +196,43 @@ describe('routeChatWithJev parallel selection', () => {
     } finally {
       clearDynamicCatalogForTests();
     }
+  });
+});
+
+describe('an undecided "does this need prose" answer', () => {
+  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 1, candidateCount: 1 };
+  const candidates = [{ id: 'read:slack', kind: 'read' as const, connector: 'slack', capabilityId: 'slack.messages.read', label: '채널 읽기', description: '' }];
+  const answers = (prose: number, tool: number) => ({
+    needs_natural_language_answer: { type: 'boolean' as const, probability: prose },
+    tool_0: { type: 'boolean' as const, probability: tool },
+  });
+
+  it('adds prose to a clear read instead of failing it', () => {
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.5, 0.9), telemetry }))
+      .toMatchObject({ kind: 'selected', needsNaturalLanguageAnswer: true });
+  });
+
+  it('still asks when nothing else was chosen', () => {
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.5, 0.1), telemetry }))
+      .toMatchObject({ kind: 'clarify', reason: 'invalid_answer_requirement' });
+  });
+});
+
+describe('an undecided answer for one candidate tool', () => {
+  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 1, candidateCount: 2 };
+  const candidates = [
+    { id: 'write:slack', kind: 'write' as const, connector: 'slack', capabilityId: 'slack.message.send', label: 'Slack 메시지', description: '' },
+    { id: 'read:gmail', kind: 'read' as const, connector: 'gmail', capabilityId: 'gmail.messages.search', label: 'Gmail 검색', description: '' },
+  ];
+  it('leaves that tool out instead of failing the request', () => {
+    expect(parseParallelToolSelection({
+      candidates,
+      answers: {
+        needs_natural_language_answer: { type: 'boolean', probability: 0.1 },
+        tool_0: { type: 'boolean', probability: 0.97 },
+        tool_1: { type: 'boolean', probability: 0.5 },
+      },
+      telemetry,
+    })).toMatchObject({ kind: 'selected', operationDecisions: [{ id: 'write:slack', selected: true }, { id: 'read:gmail', selected: false }] });
   });
 });

@@ -52,7 +52,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   // that produced its table. Either way nothing is re-planned.
   const repeatsRun = Boolean(onMakeRecurring && executionId && isRunResultMessage(message)
     && message.executionStatus === 'success');
-  const repeatsRead = Boolean(onMakeRecurring && !repeatsRun && message.readResult && isLatestRead);
+  const repeatsRead = Boolean(onMakeRecurring && !repeatsRun && message.readResult && message.readRepeatable && isLatestRead);
   const makeRecurring = repeatsRun
     ? (scheduleValue: string) => onMakeRecurring!({ executionId: executionId! }, scheduleValue)
     : repeatsRead
