@@ -24,7 +24,7 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     what: 'Handle a request for connected HTTP API, database, Gmail emails, Slack messages, or local files using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
     examples: ['DummyJSON에서 상품 5개만 가져와서 이름과 가격을 보여줘.', '이번 달 주문 중 결제 완료된 것만 보여줘.', '최근 온 메일 3개 제목 알려줘', 'Slack 메시지 검색', 'Slack 채널 목록 보여줘'],
     requires: 'Choose only an operation listed in the operation question. If context.read_operation_candidates_deferred is true and read_operation_catalog_size is positive, choose this route for a matching data request; Jev will select from the complete catalog in a follow-up before any command is produced. Otherwise, if the operation question offers only none, do not invent an operation, URL, table, tool, or parameter; ask the user to narrow the request or check the connection.',
-    not_for: 'Writes, triggers, operations absent from the connected read catalog, or questions asking to calculate, summarize, or analyze data already retrieved in the conversation (choose answer or previous_result instead).',
+    not_for: 'Writes, triggers, operations absent from the connected read catalog, listing the saved works (업무) in AX Studio itself (choose workflow_list), or questions asking to calculate, summarize, or analyze data already retrieved in the conversation (choose answer or previous_result instead).',
   },
   previous_result: {
     what: 'Continue from the structured table result shown immediately before this request, without calling its source again.',
@@ -50,8 +50,8 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     examples: ['Find the order table.', 'What tool can read customer data?'],
   },
   workflow_list: {
-    what: 'List saved workflows and their current versions.',
-    examples: ['Show my workflows.', 'What recurring work is saved?'],
+    what: 'List the saved works (업무: saved workflows, recurring and scheduled jobs) and their current versions.',
+    examples: ['저장된 업무 뭐 있어?', '등록해 둔 반복 업무 알려줘', 'Show my workflows.'],
   },
   workflow_inspect: {
     what: 'Inspect the current workflow definition and validation state.',

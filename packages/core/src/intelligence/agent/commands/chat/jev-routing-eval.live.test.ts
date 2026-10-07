@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { DecisionEngine } from '../../../../contracts/decision.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import { buildJevReadOperationIndex } from '../../../decision/read-operation-catalog.js';
 import { routeChatWithJev } from './jev-router.js';
@@ -49,11 +50,20 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
   it(`routes at least ${Math.round(MIN_ACCURACY * 100)}% of the cases where people expect`, async () => {
     const apiKey = process.env.TYPESAFE_API_KEY?.trim();
     expect(apiKey, 'Set TYPESAFE_API_KEY to run the live Jev evaluation.').toBeTruthy();
-    const decisionEngine = new JevDecisionEngine({
+    const jev = new JevDecisionEngine({
       apiKey: apiKey!,
       model: process.env.TYPESAFE_DEFAULT_MODEL?.trim() || undefined,
       baseURL: process.env.TYPESAFE_BASE_URL?.trim() || undefined,
     });
+    // What Jev answered to the route question, so a miss shows its choice and how sure it was.
+    let routeAnswer: unknown;
+    const decisionEngine: DecisionEngine = {
+      async evaluate(request) {
+        const response = await jev.evaluate(request);
+        if (request.questions.route) routeAnswer = response.answers.route;
+        return response;
+      },
+    };
     const index = buildJevReadOperationIndex(CONNECTIONS);
     const outcomes = [];
     for (const testCase of JEV_ROUTING_CASES) {
@@ -61,6 +71,8 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
       const startedAt = performance.now();
       let miss: string | undefined;
       let kind: string | undefined;
+      let selectedRoute: string | undefined;
+      routeAnswer = undefined;
       try {
         const result = await routeChatWithJev({
           decisionEngine,
@@ -77,16 +89,20 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
           ...(testCase.previous ? { previousReadResult: previousOrdersTable() } : {}),
         });
         kind = result.kind;
+        selectedRoute = result.telemetry?.selectedRoute;
         miss = routingMiss(testCase, result);
       } catch (error) {
         miss = `threw ${error instanceof Error ? error.message : String(error)}`;
       }
-      outcomes.push({ id: testCase.id, message: testCase.message, kind, passed: !miss, ...(miss ? { miss } : {}), durationMs: Math.round(performance.now() - startedAt) });
+      outcomes.push({ id: testCase.id, message: testCase.message, kind, passed: !miss, ...(miss ? { miss, selectedRoute, routeAnswer } : {}), durationMs: Math.round(performance.now() - startedAt) });
     }
     const passed = outcomes.filter((outcome) => outcome.passed).length;
     const accuracy = passed / outcomes.length;
     console.table(outcomes.map(({ id, passed: ok, miss, durationMs }) => ({ id, ok, miss: miss ?? '', durationMs })));
     console.info(`[jev-eval] ${passed}/${outcomes.length} (${Math.round(accuracy * 100)}%)`);
+    for (const outcome of outcomes.filter((entry) => !entry.passed)) {
+      console.info(`[jev-eval] miss ${outcome.id}: ${JSON.stringify({ selectedRoute: outcome.selectedRoute, routeAnswer: outcome.routeAnswer })}`);
+    }
     const reportPath = process.env.AX_JEV_EVAL_REPORT?.trim();
     if (reportPath) {
       mkdirSync(dirname(reportPath), { recursive: true });
