@@ -39,8 +39,14 @@ export const InputContractColumnSchema = z.object({
   type: InputContractColumnTypeSchema.default('unknown'),
 });
 
+/**
+ * A source id names a file by its folder and path, URL-encoded: one 한글 character is nine
+ * characters, so a real path ("월간 보고/2026년 주문내역_서울지점.xlsx") passes 200 easily.
+ */
+export const MAX_SOURCE_ID_LENGTH = 4096;
+
 export const InputContractSchema = z.object({
-  sourceId: z.string().trim().min(1).max(200),
+  sourceId: z.string().trim().min(1).max(MAX_SOURCE_ID_LENGTH),
   stepId: z.string().trim().min(1).max(200),
   columns: z.array(InputContractColumnSchema).max(128).default([]),
 });
