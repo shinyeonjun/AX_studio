@@ -30,8 +30,9 @@ export function tableToMarkdown(table: TableArtifact, requestedColumns?: readonl
   if (headers.length === 0) return coverageWarning
     ? `현재 페이지의 조회 결과가 비어 있습니다.\n\n${coverageWarning}`
     : '조회 결과가 비어 있습니다.';
+  const labelOf = new Map(table.columns.map((column) => [column.name, column.label || column.name]));
   const lines = [
-    `| ${headers.map(markdownCell).join(' | ')} |`,
+    `| ${headers.map((header) => markdownCell(labelOf.get(header) ?? header)).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
     ...rows.map((row) => `| ${headers.map((header) => markdownCell(row.values[header])).join(' | ')} |`),
   ];

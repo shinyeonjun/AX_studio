@@ -193,6 +193,10 @@ export function registerWorkspaceChatMessageHandler() {
           ? core.workspaceSources.list(safeWorkspaceSessionId)
           : [],
         designToolContextFactory: () => buildDesktopDesignToolContext(core, connections, connectedConnectors),
+        columnLabels: {
+          known: () => core.store.getColumnLabels(),
+          remember: (labels) => core.store.rememberColumnLabels(labels),
+        },
         abortSignal: controller.signal,
         timeoutMs: AX_COMMAND_CHAT_TIMEOUT_MS,
         ...chatTurnCallbacks(turn, {

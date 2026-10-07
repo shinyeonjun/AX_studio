@@ -1,6 +1,8 @@
 import { thenTransform } from '../read-recipe.js';
 import { jevUnsupportedChatReplyPrompt } from '../protocol.js';
 import { boundedChatReadResult, formatTableArtifact } from '../result.js';
+import { labeledTable } from '../../../../../contracts/artifacts/column-labels.js';
+import { columnLabelsFor } from '../column-labeler.js';
 import { applyJevTableTransform } from '../jev-table-transform.js';
 import { planPreviousTableExport } from '../jev-table-export.js';
 import { httpReadPathRequiredMessage } from '../connection-selection/http-endpoint-selection.js';
@@ -90,7 +92,11 @@ export async function previousResultRoute(turn: JevTurn): Promise<string> {
   if (transformed.status === 'unavailable') {
     return '이전 결과는 유지했지만 Jev가 변환 조건을 확인하지 못해 바꾸지 않았습니다. 조건을 조금 더 구체적으로 말해 주세요.';
   }
-  const table = transformed.status === 'transformed' ? transformed.table : previousReadResult;
+  const reshaped = transformed.status === 'transformed' ? transformed.table : previousReadResult;
+  // Headers the earlier answer showed carry over; a new column (a total, a ratio) is labelled too.
+  const earlier = Object.fromEntries(previousReadResult.columns.flatMap((column) => column.label ? [[column.name, column.label]] : []));
+  const labels = await columnLabelsFor(labeledTable(reshaped, earlier), { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal });
+  const table = labeledTable(labeledTable(reshaped, earlier), labels);
   options.onReadResult?.(boundedChatReadResult(table));
   // Shaping an earlier answer again repeats that answer's recipe, then this shaping.
   options.onReadRecipe?.(options.previousReadRecipe && transformed.status === 'transformed'
