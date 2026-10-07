@@ -91,7 +91,7 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
       const snapshot = options.requestUnderstanding.session.capture();
       if (snapshot.anchor.text !== options.requestAnchor?.text
         || snapshot.anchor.workspaceSessionId !== options.workspaceSessionId) {
-        return '현재 요청과 메타데이터 작업의 원문 또는 대화 세션이 일치하지 않습니다. 원래 요청을 확인해 주세요.';
+        return '지금 요청이 처음 요청이나 대화와 맞지 않습니다. 원래 요청을 다시 보내 주세요.';
       }
       return await runRequestUnderstandingChat({ ...options.requestUnderstanding,
         decisionEngine: options.decisionEngine, commandService: options.commandService,

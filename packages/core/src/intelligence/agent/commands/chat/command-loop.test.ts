@@ -283,7 +283,7 @@ describe('runAxCommandChat command loop', () => {
       });
 
       expect(execute).toHaveBeenCalledWith({ name: 'resource.list', args: {} }, expect.anything());
-      expect(reply).toContain('등록된 리소스');
+      expect(reply).toContain('연결된 서비스와 자료');
       expect(reply).toContain('폴더');
       expect(reply).not.toContain('```json');
       expect(textSeen).toHaveLength(0);
@@ -1507,7 +1507,7 @@ describe('runAxCommandChat command loop', () => {
       decisionEngine,
       messages: [],
       userMessage: 'DummyJSON에 상품을 새로 등록해줘.',
-    })).resolves.toContain('의미 판단 서비스를 확인할 수 없어');
+    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
     expect(evaluations).toBe(1);
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
@@ -1561,7 +1561,7 @@ describe('runAxCommandChat command loop', () => {
       decisionEngine,
       messages: [],
       userMessage: '업무 메일을 보내줘',
-    })).resolves.toContain('현재 연결된 기능 중 요청에 맞는 작업을 찾지 못했습니다');
+    })).resolves.toContain('지금 연결된 서비스로는 요청에 맞는 작업을 찾지 못했습니다');
     expect(textSeen).toHaveLength(1);
     expect(seen).toHaveLength(0);
     expect(execute).not.toHaveBeenCalled();
@@ -2041,7 +2041,7 @@ describe('runAxCommandChat command loop', () => {
       decisionEngine,
       messages: [],
       userMessage: '상태를 설명해줘',
-    })).resolves.toContain('의미 판단 서비스를 확인할 수 없어');
+    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
   });
@@ -2067,7 +2067,7 @@ describe('runAxCommandChat command loop', () => {
       httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON' }],
       messages: [],
       userMessage: 'DummyJSON에서 상품 목록을 조회해줘',
-    })).resolves.toContain('의미 판단 서비스를 확인할 수 없어');
+    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
     expect(seen).toHaveLength(0);
   });
 

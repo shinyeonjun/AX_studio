@@ -14,7 +14,7 @@ export async function planPreviousTableExport(input: {
   const table = TableArtifactSchema.safeParse(input.table);
   const capability = TRANSFORM_CAPABILITIES.find(c => c.id === 'transform.table_to_xlsx')!;
   if (!table.success || !validateJevPlan([{ id: 'export', capability, params: { table: table.data }, bindings: {} }], []).ok) {
-    return { message: '이전 표의 입력 계약을 확인하지 못해 파일을 만들지 않았습니다.', evaluationCalls: 0, providerRequestCount: 0 };
+    return { message: '이전 표의 열 구성을 확인하지 못해 파일을 만들지 않았습니다. 표를 다시 가져온 뒤 요청해 주세요.', evaluationCalls: 0, providerRequestCount: 0 };
   }
   // No cells, raw params, source paths or host-confirmed values enter final review.
   const review = await input.decisionEngine.evaluate({

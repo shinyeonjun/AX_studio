@@ -271,7 +271,7 @@ describe('24-case Jev request-understanding offline contract gate', () => {
       const reply = await runAxCommandChat({ harness: new AgentHarness(scriptedModel([], [])), commandService: service,
         decisionEngine: { evaluate: async request => ({ answers: scriptedChoices(fixture, request) }) },
         messages: [], userMessage: fixture.text, workspaceSessionId: 'synthetic-session', requestUnderstanding: { session: task } });
-      expect(reply).toContain('원시 JSON은 명시적으로 요청');
+      expect(reply).toContain('원본 그대로(JSON)');
       expect(execute).not.toHaveBeenCalled();
     } finally { db.close?.(); }
   });
@@ -291,7 +291,7 @@ describe('24-case Jev request-understanding offline contract gate', () => {
       const reply = await runAxCommandChat({ harness: new AgentHarness(scriptedModel([], [])), commandService: service,
         decisionEngine: { evaluate: async request => ({ answers: scriptedChoices(fixture, request) }) },
         messages: [], userMessage: fixture.text, workspaceSessionId: 'synthetic-session', requestUnderstanding: { session: task }, onCommandResult: publish });
-      expect(reply).toContain(fault === 'wrong_source' ? '일치하는 메타데이터 근거' : '표시 한도를 넘었습니다');
+      expect(reply).toContain(fault === 'wrong_source' ? '맞는 정보를 찾지 못했습니다' : '표시 한도를 넘었습니다');
       expect(publish).not.toHaveBeenCalled();
       expect(gateway.execute).toHaveBeenCalledOnce();
     } finally { db.close?.(); }

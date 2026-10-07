@@ -108,10 +108,10 @@ export function applyArgumentAnswers(
 ): string | undefined {
   for (const [questionId, mapping] of selection.actionMappings) {
     const answer = answers[questionId];
-    if (answer?.type !== 'choice') return '도구 입력값을 확정하지 못했습니다.';
+    if (answer?.type !== 'choice') return '단계에 넣을 값을 정하지 못했습니다. 원하는 값을 조금 더 구체적으로 알려 주세요.';
     const match = /^field_(\d+)$/u.exec(answer.choice);
     const param = match ? mapping.params[Number(match[1])] : undefined;
-    if (!param) return '도구 입력값을 확정하지 못했습니다.';
+    if (!param) return '단계에 넣을 값을 정하지 못했습니다. 원하는 값을 조금 더 구체적으로 알려 주세요.';
     inputValues.push({
       label: param.label,
       value: mapping.value,

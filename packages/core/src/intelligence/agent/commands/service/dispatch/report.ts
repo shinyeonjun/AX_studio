@@ -46,7 +46,7 @@ export async function executeReportCommand(
     ? requestedResumeExecutionId
     : undefined;
   if (!options.workspaceSessionId) {
-    return result(command.name, 'invalid', undefined, [issue('workspace_session_required', '현재 대화 세션이 필요합니다.')]);
+    return result(command.name, 'invalid', undefined, [issue('workspace_session_required', '대화 안에서 요청해 주세요.')]);
   }
   if (resumeExecutionId) {
     const previous = state.store.getExecution(resumeExecutionId);

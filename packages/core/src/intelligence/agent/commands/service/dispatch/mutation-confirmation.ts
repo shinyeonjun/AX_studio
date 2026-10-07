@@ -210,7 +210,7 @@ export function requestMutationConfirmation(
   if (!sessionId) {
     return result(command.name, 'forbidden', undefined, [issue(
       'workspace_session_required',
-      '이 변경은 현재 대화의 확인 카드로만 실행할 수 있습니다. 대화 세션이 없어 실행하지 않았습니다.',
+      '이 변경은 현재 대화의 확인 카드로만 실행할 수 있습니다. 대화를 찾지 못해 실행하지 않았습니다.',
     )]);
   }
   const preview = previewMutation(state, command, name);
@@ -274,7 +274,7 @@ export async function commitPendingMutation(
   }
   const sessionId = options.workspaceSessionId?.trim();
   if (!sessionId) {
-    return result(command.name, 'invalid', undefined, [issue('workspace_session_required', '확인한 변경을 실행하려면 현재 대화 세션이 필요합니다.')]);
+    return result(command.name, 'invalid', undefined, [issue('workspace_session_required', '확인한 변경은 대화 안에서만 실행할 수 있습니다.')]);
   }
   const pending = state.pendingMutations.get(sessionId);
   if (!pending || Date.now() - pending.createdAt > PENDING_MUTATION_TTL_MS) {

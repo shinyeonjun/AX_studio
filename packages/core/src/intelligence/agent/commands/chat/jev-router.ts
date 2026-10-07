@@ -380,7 +380,7 @@ function mutationIntentGate(
     kind: 'clarify', route: selectedRoute as 'workflow_create', message, confidence,
   });
   if (selectedRoute === 'workflow_create' && !input.hasWorkspaceSession) {
-    return clarify('업무를 저장할 현재 대화 세션이 없습니다. 새 대화에서 다시 요청해 주세요.');
+    return clarify('업무를 저장할 대화를 찾지 못했습니다. 새 대화에서 다시 요청해 주세요.');
   }
   if (selectedRoute === 'workflow_run'
     && (choiceAnswer(answers.explicit_workflow_run)?.choice !== 'run_now' || !isDominantRouteChoice(routeAnswer, route))) {

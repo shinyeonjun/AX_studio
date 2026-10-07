@@ -213,7 +213,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     f.store.upsertDiscoveryMetadata({ assetId: 'http:dummy', aliases: [], fields: [{ name: 'sku', type: 'string', required: true }, { name: 'quantity' }] });
     const schema = await (await f.start('DummyJSON 등록 필드')).pending;
     expect(schema.metadataStop).toBe('answered');
-    for (const fact of ['등록된 필드 사전', 'sku', 'string', 'quantity', '형식: 알 수 없음', '필수: 알 수 없음']) expect(schema.content).toContain(fact);
+    for (const fact of ['저장된 항목 구성', 'sku', 'string', 'quantity', '형식: 알 수 없음', '필수: 알 수 없음']) expect(schema.content).toContain(fact);
     expect(f.evidence[0]?.entries[1]?.fields).toEqual([{ name: 'quantity' }]);
     expect(f.store.getDiscoveryMetadataRevision()).toBe(1);
     expect(f.store.deleteDiscoveryMetadata('http:dummy')).toBe(true);
@@ -221,7 +221,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     expect(f.store.deleteDiscoveryMetadata('http:dummy')).toBe(false);
     expect(f.store.getDiscoveryMetadataRevision()).toBe(2);
     const absent = await (await f.start('DummyJSON 등록 필드', 'absent')).pending;
-    expect(absent.metadataStop).toBe('metadata_unavailable'); expect(absent.content).toContain('등록된 필드 사전이 없습니다');
+    expect(absent.metadataStop).toBe('metadata_unavailable'); expect(absent.content).toContain('저장된 항목 구성이 없습니다');
     f.record('HTTP-04', 'real dictionary facts; unknown type/required preserved; absent dictionary-specific reply; successful mutation revisions only');
   });
 
@@ -297,7 +297,7 @@ describe('registered HTTP metadata real store/service/trusted IPC acceptance', (
     const a = await f.start(); await vi.waitFor(() => expect(f.requests).toHaveLength(1));
     const b = await f.start('아니, B', 'turn-b', f.store.getWorkspaceChat(a.saved.id)!);
     const reply = await b.pending;
-    expect(reply.metadataStop).toBe('ambiguous_intent'); expect(reply.content).toContain('어떤 메타데이터');
+    expect(reply.metadataStop).toBe('ambiguous_intent'); expect(reply.content).toContain('무엇을 확인할지');
     const state = f.requests.find(request => request.state.active_request_revision === 2)!.state;
     expect(state.user_turns).toHaveLength(1); expect(state.user_turns[0]).toMatchObject({ text: '아니, B', revision: 2, supersedes: [] });
     for (const value of Object.values(state.active_field_authorities) as Array<{ requestRevision: number }>) expect(value.requestRevision).toBe(2);

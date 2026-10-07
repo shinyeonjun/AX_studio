@@ -42,7 +42,7 @@ export function deterministicHttpChatReply(
     ? rawMethod.trim().toUpperCase()
     : 'GET';
   if (method !== 'GET' && method !== 'HEAD') return undefined;
-  if (result.status !== 'ok') return hostFacingMessage(result, 'HTTP 조회를 처리하지 못했습니다.');
+  if (result.status !== 'ok') return hostFacingMessage(result, '자료를 가져오지 못했습니다.');
 
   const parsed = httpResponseFromResult(result);
   if (!parsed.success) return undefined;
@@ -65,7 +65,7 @@ export function deterministicHttpChatReply(
     return table.ok ? tableToMarkdown(table.table) : undefined;
   }
 
-  if (!response.body.trim()) return `HTTP ${response.status} 응답이 비어 있습니다.`;
+  if (!response.body.trim()) return '가져온 결과가 비어 있습니다.';
   let body = response.body;
   let language = 'text';
   if (response.contentType?.toLowerCase().includes('json')) {
@@ -76,7 +76,7 @@ export function deterministicHttpChatReply(
       // Preserve a non-JSON provider body as text.
     }
   }
-  return `HTTP ${response.status} 조회 결과:\n\n${fencedBody(body, language)}`;
+  return `가져온 결과:\n\n${fencedBody(body, language)}`;
 }
 
 /**
@@ -124,8 +124,7 @@ export function deterministicCapabilityReadChatReply(
       } catch {
         // Preserve a non-JSON provider body as text.
       }
-      const status = typeof record.status === 'number' ? ` (HTTP ${record.status})` : '';
-      return `조회 결과${status}:\n\n${fencedBody(String(body ?? ''), language)}`;
+      return `가져온 결과:\n\n${fencedBody(String(body ?? ''), language)}`;
     }
     if (Object.hasOwn(record, 'result')) body = record.result;
   }

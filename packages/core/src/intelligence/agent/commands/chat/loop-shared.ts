@@ -119,17 +119,17 @@ export function partialPreviousResultCalculation(options: AxCommandChatOptions):
 export function jevFallbackMessage(reason: JevChatRouterFallbackReason): string {
   switch (reason) {
     case 'service_error':
-      return '의미 판단 서비스를 확인할 수 없어 작업을 실행하지 않았습니다. 연결을 확인하고 다시 시도해 주세요.';
+      return '판단 엔진(Jev)에 연결하지 못해 작업을 실행하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요.';
     case 'missing_context':
       return '요청을 처리할 연결·자료·대상이 부족합니다. 사용할 연결이나 대상을 지정해 주세요.';
     case 'http_endpoint_required':
-      return '조회할 HTTP 연결을 하나 선택해 주세요.';
+      return '자료를 가져올 연결을 하나 골라 주세요.';
     case 'http_path_required':
       return httpReadPathRequiredMessage();
     case 'uncertain':
       return '요청을 확실히 판단하지 못해 작업을 실행하지 않았습니다. 원하는 결과와 대상을 조금 더 구체적으로 알려 주세요.';
     case 'unsupported':
-      return '현재 연결된 기능 중 요청에 맞는 작업을 찾지 못했습니다. 연결된 도구나 요청 내용을 확인해 주세요.';
+      return '지금 연결된 서비스로는 요청에 맞는 작업을 찾지 못했습니다. 설정에서 필요한 서비스를 연결하거나 요청을 조금 바꿔 주세요.';
   }
 }
 

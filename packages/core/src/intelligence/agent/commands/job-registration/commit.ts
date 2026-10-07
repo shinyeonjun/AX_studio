@@ -28,7 +28,7 @@ export async function commitJob(options: {
 
   const sessionId = options.workspaceSessionId?.trim();
   if (!sessionId) {
-    return ['invalid', undefined, [issue('workspace_session_required', '이 업무를 저장하려면 현재 대화 세션이 필요합니다.')]];
+    return ['invalid', undefined, [issue('workspace_session_required', '이 업무는 대화 안에서 요청해야 저장할 수 있습니다.')]];
   }
 
   const draft = options.pending.get(sessionId);

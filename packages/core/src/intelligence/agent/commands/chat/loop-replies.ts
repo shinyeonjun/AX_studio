@@ -160,7 +160,7 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
       ...(request && request !== 'none' && request !== 'auto' ? ['필터·정렬'] : []),
       ...(projection ? ['요청한 열 선택'] : []),
     ].join(' 및 ') || '요청한 결과 변환';
-    return { reply: `조회는 완료했지만 Jev 판단을 확인할 수 없어 ${unavailableWork}을 적용하지 않았습니다. 잠시 후 다시 시도해 주세요.` };
+    return { reply: `조회는 완료했지만 판단 엔진(Jev)에 연결하지 못해 ${unavailableWork}을 적용하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요.` };
   };
 
   const summaryReply = async (
