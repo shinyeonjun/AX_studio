@@ -78,7 +78,7 @@ describe('AxCommandService versioned workflow commands', () => {
     }
   });
 
-  it('drains an active run before the delete command removes its workflow and execution', async () => {
+  it('drains an active run before the delete command removes its workflow, keeping the cancelled run in history', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
     const workflow: WorkflowIR = {
@@ -141,7 +141,7 @@ describe('AxCommandService versioned workflow commands', () => {
       await expect(run).resolves.toMatchObject({ status: 'cancelled', errorCode: 'cancelled' });
       await expect(deletion).resolves.toMatchObject({ status: 'ok', data: { deleted: true } });
       expect(store.getWorkflow(workflow.id!)).toBeNull();
-      expect(store.listExecutions()).toHaveLength(0);
+      expect(store.listExecutions()).toEqual([expect.objectContaining({ status: 'cancelled' })]);
     } finally {
       if (run) {
         await runtime.removeWorkflow(workflow.id!);
