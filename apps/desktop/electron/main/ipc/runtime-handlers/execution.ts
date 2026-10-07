@@ -5,13 +5,13 @@ import { notifyStateChanged } from '../../state-broadcast.js';
 export function registerRuntimeExecutionHandlers(): void {
   ipcHandle('ax:getExecutionOutput', async (_e, executionId: unknown) => {
     if (typeof executionId !== 'string' || !executionId.trim() || executionId.length > 128) {
-      throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+      throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로고침해 주세요.');
     }
     return getCore().store.getExecutionOutput(executionId);
   });
   ipcHandle('ax:deleteExecution', async (_e, executionId: unknown) => {
     const core = getCore();
-    if (typeof executionId !== 'string' || !executionId.trim()) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    if (typeof executionId !== 'string' || !executionId.trim()) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로고침해 주세요.');
     const deleted = core.store.deleteExecution(executionId);
     if (!deleted) throw new Error('실행 기록을 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
     notifyStateChanged();

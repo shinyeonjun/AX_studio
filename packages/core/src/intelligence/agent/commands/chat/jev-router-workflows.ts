@@ -85,7 +85,7 @@ export async function handleJevWorkflowRoute(context: JevWorkflowRouteContext): 
       return withTelemetry({
         kind: 'clarify',
         route: selectedRoute,
-        message: '현재 업무의 최신 버전을 확인하지 못해 삭제하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
+        message: '현재 업무의 최신 버전을 확인하지 못해 삭제하지 않았습니다. 대화를 새로고침한 뒤 다시 요청해 주세요.',
         confidence: selectedConfidence,
       });
     }

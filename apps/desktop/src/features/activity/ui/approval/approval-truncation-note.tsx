@@ -28,8 +28,30 @@ export function approvalTruncatedFields(approval: Pick<Approval, 'payload'>): Ap
   return fields;
 }
 
+/** The last segment of a value path ("params.body") as a person would name it. */
+const FIELD_NAMES: Record<string, string> = {
+  body: '본문',
+  html: '본문',
+  text: '내용',
+  content: '내용',
+  message: '메시지',
+  subject: '제목',
+  title: '제목',
+  to: '받는 사람',
+  cc: '참조',
+  bcc: '숨은 참조',
+  channel: '채널',
+  description: '설명',
+};
+
+function fieldName(path: string): string {
+  if (!path) return '(전체 값)';
+  const last = path.split('.').at(-1)?.replace(/\[\d+\]$/u, '') ?? '';
+  return Object.hasOwn(FIELD_NAMES, last) ? FIELD_NAMES[last]! : '내용';
+}
+
 function fieldLabel(field: ApprovalTruncatedField): string {
-  const name = field.path || '(전체 값)';
+  const name = fieldName(field.path);
   return field.originalLength > 0 ? `${name} 원래 길이 ${field.originalLength.toLocaleString('ko-KR')}` : name;
 }
 

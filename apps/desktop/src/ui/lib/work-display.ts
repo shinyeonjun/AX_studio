@@ -4,7 +4,8 @@ import { executionErrorReason } from '@ax-studio/core/error-messages';
 import type { WorkSummary } from '../../types/app-state';
 
 function connectorLabel(connector: string): string {
-  return CONNECTOR_CATALOG[connector as keyof typeof CONNECTOR_CATALOG]?.label ?? connector;
+  // An unknown id is internal; name it generically rather than show the key.
+  return CONNECTOR_CATALOG[connector as keyof typeof CONNECTOR_CATALOG]?.label ?? '연결된 서비스';
 }
 export function triggerLabel(trigger?: WorkSummary['trigger']): string {
   if (!trigger) return '직접 실행';
@@ -59,7 +60,7 @@ export function executionStatusLabel(status: string): string {
 }
 
 const DOCUMENT_READER_UNAVAILABLE =
-  '문서 읽기 기능이 준비되지 않았어요. 앱을 다시 시작해 보고, 계속되면 설정 > 진단 정보 내보내기로 문의해 주세요.';
+  '문서 읽기 기능이 준비되지 않았어요. 앱을 다시 시작해 보고, 계속되면 설정 > 문제 해결 > 진단 정보 내보내기로 문의해 주세요.';
 
 /** Step ids are internal names; show a number when the id carries one, otherwise a generic label. */
 /** A step as people count it ("2단계"); a step without a known place is just the current one. */

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ToolResultReference, ToolSendOutcome } from '@ax-studio/core';
-import { cachedToolDraft, type ToolDraftController, toolDraftError } from './draft-controller';
+import { cachedToolDraft, type ToolDraftController, toolDraftLoadError } from './draft-controller';
 import { EditableMessageResult } from './EditableMessageResult';
 import { OutcomeResult } from './OutcomeResult';
 import { ToolHeader } from './ToolHeader';
@@ -21,7 +21,7 @@ export function PendingMessageResult({ reference, ...actions }: { reference: Too
         else if (data.source && data.source.approvalId === reference.approvalId && data.source.workspaceSessionId === reference.workspaceSessionId
           && data.source.tool === reference.tool) setView({ controller: cachedToolDraft(data.source, { update: window.ax.updateToolDraft, review: window.ax.reviewToolResult }) });
         else setView({ message: data.cancelled ? '전송 요청이 취소되었습니다.' : data.processing ? '전송 처리 중입니다. 취소로 전송을 회수할 수 없습니다.' : '이 요청은 이미 처리되었습니다. 활동에서 결과를 확인해 주세요.' });
-      } catch (error) { if (current && sequence === loadSequence) setView({ message: toolDraftError(error) }); }
+      } catch (error) { if (current && sequence === loadSequence) setView({ message: toolDraftLoadError(error, '전송 내용을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.') }); }
     };
     void load();
     const stop = window.ax.onStateChanged(() => { void load(); });
