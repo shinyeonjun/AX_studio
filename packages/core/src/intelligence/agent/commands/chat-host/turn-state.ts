@@ -1,9 +1,9 @@
-import {
-  runAxCommandChat,
-  type TableArtifact,
-  WorkspaceChatReadResultSchema,
-} from '@ax-studio/core';
-import type { AuthoritativeRequestAnchor, AxCommand, AxInputRequest, AxUiPresentation, ChatReadRecipe } from '@ax-studio/core';
+import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import type { AuthoritativeRequestAnchor } from '../../../../contracts/request-anchor.js';
+import { WorkspaceChatReadResultSchema } from '../../../../persistence/repositories/workspace-chat/contracts.js';
+import type { runAxCommandChat } from '../chat.js';
+import type { ChatReadRecipe } from '../chat/result/read-recipe.js';
+import type { AxCommand, AxInputRequest, AxUiPresentation } from '../schema.js';
 import {
   bindPendingCommandInputRequests,
   finishClaimedPendingCommand,
@@ -11,7 +11,7 @@ import {
   replaceClaimedPendingCommand,
   type PendingCommandInputValue,
 } from './pending-command.js';
-import { workflowIdsChanged } from './helpers.js';
+import { workflowIdsChanged } from './transcript-confirmations.js';
 
 export interface PendingCommandClaim {
   token: string;

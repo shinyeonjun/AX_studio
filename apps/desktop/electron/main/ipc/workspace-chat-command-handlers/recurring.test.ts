@@ -14,7 +14,7 @@ vi.mock('../../app-window.js', () => ({ getMainWindow: () => undefined, isTruste
 vi.mock('../../core-instance.js', () => ({ getCore: mocks.getCore }));
 
 const { proposeRecurringFromExecution, proposeRecurringFromRead } = await import('./recurring.js');
-const { rememberHostReadResult, clearHostChatStateForTests } = await import('./host-state.js');
+const { rememberHostReadResult, clearHostChatStateForTests } = await import('@ax-studio/core');
 
 const weeklyMonday = encodeScheduleInputValue({
   kind: 'recurrence', freq: 'weekly', interval: 1, byWeekday: [{ day: 'MO' }], times: [{ hour: 9, minute: 0 }],

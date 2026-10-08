@@ -2,8 +2,7 @@ import { ipcHandle } from './ipc-handle.js';
 import { getCore } from '../core-instance.js';
 import { normalizeChatMessages } from './chat-boundary.js';
 import { cancelWorkspaceChatSession } from '../workspace-chat-registry.js';
-import { clearPendingCommand } from './workspace-chat-command-handlers/pending-command.js';
-import { clearHostChatSession } from './workspace-chat-command-handlers/host-state.js';
+import { clearHostChatSession, clearPendingCommand } from '@ax-studio/core';
 import { notifyStateChanged } from '../state-broadcast.js';
 import { forgetWorkspaceSessionTurns, observeSavedWorkspaceTurn, registeredHttpMetadataAvailable } from './workspace-chat-command-handlers/metadata-turns.js';
 

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { AuthoritativeRequestAnchor } from '@ax-studio/core';
-import type { AxCommand, AxInputRequest } from '@ax-studio/core';
+import type { AuthoritativeRequestAnchor } from '../../../../contracts/request-anchor.js';
+import type { AxCommand, AxInputRequest } from '../schema.js';
 
 const PENDING_COMMAND_TTL_MS = 24 * 60 * 60 * 1_000;
 

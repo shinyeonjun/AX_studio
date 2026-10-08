@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createDatabaseAsync, WorkflowStore, type AxUiPresentation, type TableArtifact, type WorkspaceChatMessage } from '@ax-studio/core';
-import { contextUpdateConfirmation, hasContextConfirmation, isJobConfirmation, mutationConfirmationToken } from './helpers.js';
+import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import { createDatabaseAsync } from '../../../../persistence/db.js';
+import type { WorkspaceChatMessage } from '../../../../persistence/repositories/workspace-chat/contracts.js';
+import { WorkflowStore } from '../../../../persistence/workflow-store.js';
+import type { AxUiPresentation } from '../schema.js';
+import { contextUpdateConfirmation, hasContextConfirmation, isJobConfirmation, mutationConfirmationToken } from './transcript-confirmations.js';
 import {
   bindContextConfirmations,
   clearHostChatStateForTests,

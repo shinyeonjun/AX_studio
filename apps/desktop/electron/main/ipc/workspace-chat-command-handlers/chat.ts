@@ -25,19 +25,25 @@ import {
 } from '../../workspace-chat-registry.js';
 import { shouldUseE2EFakeAgent } from '../../e2e-test-seam/gates.js';
 import {
+  bindContextConfirmations,
+  chatTurnCallbacks,
   claimPendingCommand,
+  clearHostChatSession,
   clearPendingCommand,
-  finishClaimedPendingCommand,
-} from './pending-command.js';
-import {
   contextUpdateConfirmation as findContextUpdateConfirmation,
+  emptyChatTurnState,
+  finishClaimedPendingCommand,
   hasContextConfirmation,
+  hostReadRecipeFor,
+  hostReadResultFor,
   isJobConfirmation,
   mutationConfirmationToken as findMutationConfirmationToken,
-} from './helpers.js';
-import { bindContextConfirmations, clearHostChatSession, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
+  readableConnections,
+  rememberHostReadResult,
+  selectJevReadOperations,
+  type PendingCommandClaim,
+} from '@ax-studio/core';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
-import { readableConnections, selectJevReadOperations } from './read-operation-index.js';
 import { runE2EChatTurn } from './e2e-turn.js';
 import {
   currentWorkflowOutputs,
@@ -45,7 +51,6 @@ import {
   requestsMetadataLane,
   validatedWorkspaceSessionId,
 } from './turn-context.js';
-import { chatTurnCallbacks, emptyChatTurnState, type PendingCommandClaim } from './turn-state.js';
 
 export function registerWorkspaceChatMessageHandler() {
   ipcHandle('ax:sendCommandChat', async (
