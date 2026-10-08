@@ -1,11 +1,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import { buildJevReadOperationIndex } from '../../../decision/read-operation-catalog.js';
 import { routeChatWithJev } from './jev-router.js';
-import { JEV_ROUTING_CASES, previousOrdersTable, routingMiss } from './jev-routing-eval.cases.js';
+import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES, previousOrdersTable, routingMiss, type JevRoutingCase } from './jev-routing-eval.cases.js';
+import { SCALE_CONNECTED, SCALE_CONNECTIONS, SCALE_HTTP_ENDPOINTS } from './jev-routing-eval.scale-fixture.js';
 
 const liveEvalEnabled = process.env.AX_LIVE_JEV_EVAL === '1';
 const MIN_ACCURACY = Number(process.env.AX_JEV_EVAL_MIN_ACCURACY ?? '0.85');
@@ -44,70 +45,115 @@ const CONNECTIONS = [
   { connector: 'slack', connected: true, config: {} },
 ];
 
+interface EvalWorkspace {
+  name: string;
+  cases: readonly JevRoutingCase[];
+  connections: Parameters<typeof buildJevReadOperationIndex>[0];
+  connectedConnectors: readonly string[];
+  httpEndpoints: Array<{ id: string; label: string; usable: boolean }>;
+}
+
+const WORKSPACES: readonly EvalWorkspace[] = [
+  { name: 'basic', cases: JEV_ROUTING_CASES, connections: CONNECTIONS, connectedConnectors: ['rdb', 'http', 'gmail', 'slack'],
+    httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }] },
+  { name: 'scale', cases: JEV_SCALE_ROUTING_CASES, connections: SCALE_CONNECTIONS as EvalWorkspace['connections'],
+    connectedConnectors: SCALE_CONNECTED, httpEndpoints: SCALE_HTTP_ENDPOINTS },
+];
+
+function percentile(values: number[], p: number): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
+}
+
 // Run with AX_LIVE_JEV_EVAL=1 and TYPESAFE_API_KEY set. Only synthetic metadata is sent to Jev;
-// nothing is read or executed. AX_JEV_EVAL_REPORT=<path> writes every case's outcome as JSON.
+// nothing is read or executed. AX_JEV_EVAL_REPORT=<path> writes every case's outcome as JSON
+// (one file per workspace: <path> becomes <name>-<file>).
 describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
-  it(`routes at least ${Math.round(MIN_ACCURACY * 100)}% of the cases where people expect`, async () => {
-    const apiKey = process.env.TYPESAFE_API_KEY?.trim();
-    expect(apiKey, 'Set TYPESAFE_API_KEY to run the live Jev evaluation.').toBeTruthy();
-    const jev = new JevDecisionEngine({
-      apiKey: apiKey!,
-      model: process.env.TYPESAFE_DEFAULT_MODEL?.trim() || undefined,
-      baseURL: process.env.TYPESAFE_BASE_URL?.trim() || undefined,
-    });
-    // What Jev answered to the route question, so a miss shows its choice and how sure it was.
-    let routeAnswer: unknown;
-    const decisionEngine: DecisionEngine = {
-      async evaluate(request) {
-        const response = await jev.evaluate(request);
-        if (request.questions.route) routeAnswer = response.answers.route;
-        return response;
-      },
-    };
-    const index = buildJevReadOperationIndex(CONNECTIONS);
-    const outcomes = [];
-    for (const testCase of JEV_ROUTING_CASES) {
-      const selection = index.select(testCase.message);
-      const startedAt = performance.now();
-      let miss: string | undefined;
-      let kind: string | undefined;
-      let selectedRoute: string | undefined;
-      routeAnswer = undefined;
-      try {
-        const result = await routeChatWithJev({
-          decisionEngine,
-          userMessage: testCase.message,
-          hasWorkspaceSession: true,
-          connectedConnectors: ['rdb', 'http', 'gmail', 'slack'],
-          httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }],
-          readOperationHints: selection.hints,
-          readOperationCatalogSize: selection.totalCount,
-          readOperationCatalogMayBeBounded: selection.catalogMayBeBounded,
-          readOperationSelectionMode: selection.mode,
-          readOperationLexicalMatchedOperationCount: selection.lexicalMatchedOperationCount,
-          readOperationLexicalTopScore: selection.lexicalTopScore,
-          ...(testCase.previous ? { previousReadResult: previousOrdersTable() } : {}),
+  for (const workspace of WORKSPACES) {
+    it(`[${workspace.name}] routes at least ${Math.round(MIN_ACCURACY * 100)}% of the cases where people expect`, async () => {
+      const apiKey = process.env.TYPESAFE_API_KEY?.trim();
+      expect(apiKey, 'Set TYPESAFE_API_KEY to run the live Jev evaluation.').toBeTruthy();
+      const jev = new JevDecisionEngine({
+        apiKey: apiKey!,
+        model: process.env.TYPESAFE_DEFAULT_MODEL?.trim() || undefined,
+        baseURL: process.env.TYPESAFE_BASE_URL?.trim() || undefined,
+      });
+      // What Jev answered to the route question, so a miss shows its choice and how sure it was.
+      let routeAnswer: unknown;
+      const decisionEngine: DecisionEngine = {
+        async evaluate(request) {
+          const response = await jev.evaluate(request);
+          if (request.questions.route) routeAnswer = response.answers.route;
+          return response;
+        },
+      };
+      const index = buildJevReadOperationIndex(workspace.connections);
+      const outcomes = [];
+      for (const testCase of workspace.cases) {
+        const selection = index.select(testCase.message);
+        const startedAt = performance.now();
+        let miss: string | undefined;
+        let kind: string | undefined;
+        let selectedRoute: string | undefined;
+        let telemetry: Record<string, unknown> | undefined;
+        routeAnswer = undefined;
+        try {
+          const result = await routeChatWithJev({
+            decisionEngine,
+            userMessage: testCase.message,
+            hasWorkspaceSession: true,
+            connectedConnectors: workspace.connectedConnectors,
+            httpEndpoints: workspace.httpEndpoints,
+            readOperationHints: selection.hints,
+            readOperationCatalogSize: selection.totalCount,
+            readOperationCatalogMayBeBounded: selection.catalogMayBeBounded,
+            readOperationSelectionMode: selection.mode,
+            readOperationLexicalMatchedOperationCount: selection.lexicalMatchedOperationCount,
+            readOperationLexicalTopScore: selection.lexicalTopScore,
+            ...(testCase.previous ? { previousReadResult: previousOrdersTable() } : {}),
+          });
+          kind = result.kind;
+          selectedRoute = result.telemetry?.selectedRoute;
+          const t = result.telemetry;
+          telemetry = t ? {
+            requestKb: Math.round((t.estimatedRequestBytes + (t.planningEstimatedRequestBytes ?? 0)) / 1024),
+            evaluationCalls: (t.evaluationCalls ?? 0) + (t.planningCalls ?? 0),
+            providerRequests: (t.providerRequestCount ?? 0) + (t.planningProviderRequestCount ?? 0),
+            inputTokens: (t.inputTokens ?? 0) + (t.planningInputTokens ?? 0),
+            operationCandidates: t.operationCandidateCount,
+          } : undefined;
+          miss = routingMiss(testCase, result);
+        } catch (error) {
+          miss = `threw ${error instanceof Error ? error.message : String(error)}`;
+        }
+        outcomes.push({
+          id: testCase.id, message: testCase.message, kind, passed: !miss,
+          ...(miss ? { miss, selectedRoute, routeAnswer } : {}),
+          durationMs: Math.round(performance.now() - startedAt), ...telemetry,
         });
-        kind = result.kind;
-        selectedRoute = result.telemetry?.selectedRoute;
-        miss = routingMiss(testCase, result);
-      } catch (error) {
-        miss = `threw ${error instanceof Error ? error.message : String(error)}`;
       }
-      outcomes.push({ id: testCase.id, message: testCase.message, kind, passed: !miss, ...(miss ? { miss, selectedRoute, routeAnswer } : {}), durationMs: Math.round(performance.now() - startedAt) });
-    }
-    const passed = outcomes.filter((outcome) => outcome.passed).length;
-    const accuracy = passed / outcomes.length;
-    console.table(outcomes.map(({ id, passed: ok, miss, durationMs }) => ({ id, ok, miss: miss ?? '', durationMs })));
-    console.info(`[jev-eval] ${passed}/${outcomes.length} (${Math.round(accuracy * 100)}%)`);
-    for (const outcome of outcomes.filter((entry) => !entry.passed)) {
-      console.info(`[jev-eval] miss ${outcome.id}: ${JSON.stringify({ selectedRoute: outcome.selectedRoute, routeAnswer: outcome.routeAnswer })}`);
-    }
-    const reportPath = process.env.AX_JEV_EVAL_REPORT?.trim();
-    if (reportPath) {
-      mkdirSync(dirname(reportPath), { recursive: true });
-      writeFileSync(reportPath, JSON.stringify({ at: new Date().toISOString(), passed, total: outcomes.length, accuracy, outcomes }, null, 2));
-    }
-    expect(accuracy).toBeGreaterThanOrEqual(MIN_ACCURACY);
-  }, 15 * 60_000);
+      const passed = outcomes.filter((outcome) => outcome.passed).length;
+      const accuracy = passed / outcomes.length;
+      const durations = outcomes.map((outcome) => outcome.durationMs);
+      const requestKb = outcomes.map((outcome) => Number(outcome.requestKb ?? 0));
+      const summary = {
+        workspace: workspace.name, passed, total: outcomes.length, accuracy,
+        catalogSize: index.select('').totalCount,
+        durationMs: { p50: percentile(durations, 0.5), p95: percentile(durations, 0.95) },
+        requestKb: { p50: percentile(requestKb, 0.5), max: Math.max(...requestKb) },
+      };
+      console.table(outcomes.map(({ id, passed: ok, miss, durationMs, requestKb: kb, evaluationCalls }) => ({ id, ok, miss: miss ?? '', durationMs, kb, calls: evaluationCalls })));
+      console.info(`[jev-eval:${workspace.name}] ${passed}/${outcomes.length} (${Math.round(accuracy * 100)}%) ${JSON.stringify(summary)}`);
+      for (const outcome of outcomes.filter((entry) => !entry.passed)) {
+        console.info(`[jev-eval:${workspace.name}] miss ${outcome.id}: ${JSON.stringify({ selectedRoute: outcome.selectedRoute, routeAnswer: outcome.routeAnswer })}`);
+      }
+      const reportPath = process.env.AX_JEV_EVAL_REPORT?.trim();
+      if (reportPath) {
+        const path = join(dirname(reportPath), `${workspace.name}-${basename(reportPath)}`);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, JSON.stringify({ at: new Date().toISOString(), ...summary, outcomes }, null, 2));
+      }
+      expect(accuracy).toBeGreaterThanOrEqual(MIN_ACCURACY);
+    }, 20 * 60_000);
+  }
 });
