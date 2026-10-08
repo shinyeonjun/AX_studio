@@ -178,7 +178,8 @@ describe('singleton schema recovery through real trusted IPC/store/service/adapt
     { id: 'malformed_answer', options: { operationBody: { answers: { metadataOperationRef: { type: 'choice' } } } }, stop: 'provider_failure' },
     { id: 'malformed_envelope', options: { operationBody: { answers: {}, usage: { input_tokens: 'bad' } } }, stop: 'provider_failure' },
     { id: 'malformed_json', options: { malformedJson: true }, stop: 'provider_failure' },
-    { id: 'http_failure', options: { operationStatus: 503 }, stop: 'provider_failure' },
+    // A refused request (400); a 503 is retried by the Jev engine before it fails.
+    { id: 'http_failure', options: { operationStatus: 400 }, stop: 'provider_failure' },
     { id: 'transport_failure', options: { transportFailure: true }, stop: 'provider_failure' },
     { id: 'tie', options: { operationBody: { answers: { metadataOperationRef: selected('metadata_0', { metadata_0: 0.5, unknown: 0.5 }) } } }, stop: 'invalid_decision' },
     { id: 'none', options: { operationBody: { answers: { metadataOperationRef: selected('none') } } }, stop: 'metadata_unavailable' },
