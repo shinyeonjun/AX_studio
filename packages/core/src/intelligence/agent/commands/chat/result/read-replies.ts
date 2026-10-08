@@ -112,10 +112,23 @@ export function deterministicCapabilityReadChatReply(
     return `가져온 결과:\n\n${fencedBody(boundedRawBody(body), decoded === undefined ? 'text' : 'json')}`;
   }
   const value = record && Object.hasOwn(record, 'result') ? record.result : payload;
+  const list = plainValueList(value);
+  if (list) return list;
   const serialized = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   return serialized === undefined
     ? '조회 결과가 비어 있습니다.'
     : `조회 결과:\n\n${fencedBody(boundedRawBody(serialized), typeof value === 'string' ? 'text' : 'json')}`;
+}
+
+const MAX_LIST_ITEMS = 100;
+
+/** A list of plain values (table names, labels) reads as a list, not as JSON. */
+function plainValueList(value: unknown): string | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  if (!value.every((item) => typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) return undefined;
+  const shown = value.slice(0, MAX_LIST_ITEMS).map((item) => `- ${String(item).replace(/\r?\n/gu, ' ')}`);
+  const more = value.length > shown.length ? `\n\n전체 ${value.length}개 중 처음 ${shown.length}개만 표시했습니다.` : '';
+  return `조회 결과 (${value.length}개):\n\n${shown.join('\n')}${more}`;
 }
 
 /** Results that are not rows stay short in the chat; the whole result stays in the run record. */

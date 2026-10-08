@@ -8,7 +8,9 @@ export async function resolveSlackChannelId(client: WebClient, channel: string, 
     return channel;
   }
 
-  const name = channel.startsWith('#') ? channel.slice(1) : channel;
+  // Slack keeps names lowercase and unique, so "#General" or a name typed in another Unicode form
+  // still means the one channel.
+  const name = channelNameKey(channel.trim().replace(/^#/u, ''));
   let cursor: string | undefined;
   const seenCursors = new Set<string>();
 
@@ -18,10 +20,14 @@ export async function resolveSlackChannelId(client: WebClient, channel: string, 
       limit: 200,
       cursor,
     }), signal);
-    const found = response.channels?.find((entry) => entry.name === name);
+    const found = response.channels?.find((entry) => entry.name !== undefined && channelNameKey(entry.name) === name);
     if (found?.id) return found.id;
     cursor = takeUnseenSlackCursor(seenCursors, response.response_metadata?.next_cursor);
   } while (cursor);
 
   return undefined;
+}
+
+function channelNameKey(name: string): string {
+  return name.normalize('NFC').toLowerCase();
 }

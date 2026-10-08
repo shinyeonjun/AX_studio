@@ -92,6 +92,13 @@ describe('Slack bounded execution', () => {
     expect(list).toHaveBeenCalledOnce();
   });
 
+  it('finds a channel however its name was capitalised or spaced', async () => {
+    const list = vi.fn().mockResolvedValue({ channels: [{ name: 'ax테스트', id: 'C9' }, { name: 'general', id: 'C123' }] });
+    const client = { conversations: { list } } as unknown as WebClient;
+    expect(await resolveSlackChannelId(client, '#General')).toBe('C123');
+    expect(await resolveSlackChannelId(client, ' #AX테스트 ')).toBe('C9');
+  });
+
   it('bounds channel listing when empty pages keep returning fresh cursors', async () => {
     const list = vi.fn().mockImplementation(async () => ({
       channels: [], response_metadata: { next_cursor: list.mock.calls.length <= 20 ? `p${list.mock.calls.length}` : '' },

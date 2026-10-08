@@ -78,7 +78,7 @@ export class GmailConnector implements Connector {
           if (!id) {
             return {
               ok: false,
-              error: 'Gmail messageId가 필요합니다. 트리거 입력 또는 messages.read 바인딩을 확인하세요.',
+              error: '어떤 메일을 읽을지 정해지지 않았어요. 먼저 메일 목록을 불러온 뒤 읽을 메일을 골라 주세요.',
               errorCode: 'gmail_message_id_missing',
             };
           }

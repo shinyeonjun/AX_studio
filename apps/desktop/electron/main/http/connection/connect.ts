@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { applyHttpConnector } from './apply.js';
 import { withHttpConnectionLock } from './lock.js';
 import { buildHttpAuth, type HttpConnectionPayload } from './auth.js';
-import { httpProbeErrorMessage } from './probe-message.js';
+import { httpAuthRejectedMessage, httpProbeErrorMessage } from './probe-message.js';
 import { readHttpSecrets, writeHttpSecrets } from './secrets.js';
 
 export function validateAndConnectHttp(
@@ -49,6 +49,8 @@ async function connectHttpLocked(
   if (!probe.ok) {
     throw new Error(httpProbeErrorMessage(probe.error));
   }
+  // Reachable, but every read would be refused: say so now rather than after it is saved.
+  if (probe.status === 401) throw new Error(httpAuthRejectedMessage(payload.authType !== 'none'));
   let discoveredReadOperations: Awaited<ReturnType<typeof discoverHttpReadOperations>> | undefined;
   try {
     discoveredReadOperations = await discoverHttpReadOperations(baseUrl, auth);

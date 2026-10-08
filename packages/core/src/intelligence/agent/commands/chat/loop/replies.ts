@@ -263,7 +263,10 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
       return deterministicReply;
     }
 
-    if (llmRequired === false) return hostFacingMessage(result, fallback);
+    // No written answer was wanted, so none was attempted: a success is reported as one.
+    if (llmRequired === false) {
+      return hostFacingMessage(result, result.status === 'ok' ? '요청한 작업을 처리했습니다.' : fallback);
+    }
 
     messages.push(
       { role: 'assistant', content: JSON.stringify({ kind: 'command', command }) },

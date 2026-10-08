@@ -3,7 +3,7 @@ import type { AppState } from '../../../../../types/app-state';
 import { connectionEntry } from '../../../../../ui/lib/connection-display';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
-import { rdbConnectedItemsFor, rdbDatabaseTitle, rdbDatabasesFor, withObjectParticle } from './model';
+import { parseRowLimitInput, rdbConnectedItemsFor, rdbDatabaseTitle, rdbDatabasesFor, withObjectParticle } from './model';
 
 export type RdbConnectionType = 'sqlite' | 'postgres' | 'mysql';
 
@@ -189,7 +189,7 @@ export function useRdbConnectionForm({
                 .map((entry) => entry.trim())
                 .filter(Boolean),
         allowedTables,
-        rowLimit: Number(rowLimit) || undefined,
+        rowLimit: parseRowLimitInput(rowLimit),
         label: label.trim() || undefined,
       });
       const name = result?.label?.trim() || label.trim();

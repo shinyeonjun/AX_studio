@@ -32,8 +32,8 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     ],
     io: { inputs: {}, outputs: { hits: 'TableArtifact', matches: 'TableArtifact', limit: 'JsonArtifact',
       truncated: 'JsonArtifact', page: 'JsonArtifact' } },
-    outputColumnLabels: { channel: '채널', channelId: '채널 ID', ts: '메시지 ID', time: '보낸 시각', text: '내용', user: '보낸 사람', permalink: '링크' },
-    hiddenColumns: ['channelId', 'ts'],
+    outputColumnLabels: { channel: '채널', channelId: '채널 ID', ts: '메시지 ID', time: '보낸 시각', sender: '보낸 사람', text: '내용', user: '사용자 ID', permalink: '링크' },
+    hiddenColumns: ['channelId', 'ts', 'user'],
   },
   {
     id: 'slack.messages.read',
@@ -50,8 +50,8 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     ],
     io: { inputs: {}, outputs: { messages: 'TableArtifact', channelId: 'TextArtifact', limit: 'JsonArtifact',
       truncated: 'JsonArtifact' } },
-    outputColumnLabels: { ts: '메시지 ID', time: '보낸 시각', text: '내용', user: '보낸 사람', threadTs: '스레드 ID' },
-    hiddenColumns: ['ts', 'threadTs'],
+    outputColumnLabels: { ts: '메시지 ID', time: '보낸 시각', sender: '보낸 사람', text: '내용', user: '사용자 ID', threadTs: '스레드 ID' },
+    hiddenColumns: ['ts', 'user', 'threadTs'],
   },
   {
     id: 'slack.message.send',

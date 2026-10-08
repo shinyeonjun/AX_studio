@@ -234,3 +234,13 @@ describe('what chat may read', () => {
     expect(readableConnections(store.getConnections(), undefined)[0]).toMatchObject({ connected: false, config: { databases: [] } });
   });
 });
+
+describe('the row limit typed in the form', () => {
+  it.each([0, -5, 1.5, Number.NaN, 50_000])('refuses %s with the allowed range, and connects nothing', async (rowLimit) => {
+    const store = fakeStore();
+    await expect(validateAndConnectRdb(store as never, fakeRuntime() as never, { type: 'postgres', connectionString: SHOP, allowedTables: ['orders'], rowLimit }))
+      .rejects.toThrow('1부터 10,000 사이');
+    expect(mocks.probe).not.toHaveBeenCalled();
+    expect(store.setConnection).not.toHaveBeenCalled();
+  });
+});
