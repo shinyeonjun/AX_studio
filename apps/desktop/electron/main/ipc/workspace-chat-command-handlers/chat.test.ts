@@ -156,6 +156,8 @@ describe('Desktop workspace chat Jev routing', () => {
       getConnections: vi.fn(() => []),
       getConnectionRevision: () => connectionRevision,
       getWorkspaceChatMemo: vi.fn(() => ({})),
+      getSourceChoices: vi.fn(() => []),
+      rememberSourceChoice: vi.fn(),
       getWorkflowPolicy: vi.fn(() => ({})),
     };
     const core = {
