@@ -33,7 +33,7 @@ import {
 import { handleJevWorkflowRoute } from './jev-router-workflows.js';
 import { explicitHttpPath } from './jev-http-endpoint.js';
 import { coveringRdbRead } from './rdb-read-cover.js';
-import { readSourceChooser } from './read-source-chooser.js';
+import { readSources, readSourceChooser } from './read-source-chooser.js';
 
 export type JevFollowupEvaluator = (
   state: unknown,
@@ -124,6 +124,7 @@ async function selectPrimaryReadHint(
   requestPlan: JevChatRequestPlan | undefined,
 ): Promise<PrimaryReadDecision & { ordered: readonly JevReadOperationHint[] }> {
   const ordered = rankReadHintsByRelevance(hints, input.userMessage).slice(0, MAX_DECISION_CHOICE_CRITERIA - 2);
+  const places = readSources(ordered);
   const evaluation = await evaluate({
     request: input.userMessage,
     ...(requestPlan ? { request_plan: requestPlan } : {}),
@@ -145,7 +146,22 @@ async function selectPrimaryReadHint(
         }])),
       },
     },
+    // Asked on its own: picking one of many options leans toward picking one, even when the
+    // request never said where to look.
+    ...(places.length >= 2 ? {
+      source_named: {
+        type: 'boolean' as const,
+        instructions: {
+          question: 'Does the request say or clearly imply which one of these places to read from?',
+          focus: 'Answer true when the request names a place, system, service or table, or a word that only fits one of them (e.g. "쇼핑몰 주문" fits the shop tables, "DummyJSON 상품" fits DummyJSON). Answer false when the request only names the kind of data (e.g. "주문 목록") and more than one place offers it.',
+          places: places.slice(0, 20).map((place) => boundDecisionString(place, 80)),
+          operations: ordered.slice(0, 20).map((hint) => boundDecisionString(hint.label, 120)),
+        },
+      },
+    } : {}),
   });
+  const named = evaluation.answers.source_named;
+  if (named?.type === 'boolean' && Number.isFinite(named.probability) && named.probability < 0.5) return { kind: 'unclear', ordered };
   const answer = choiceAnswer(evaluation.answers.primary_read_operation);
   const match = /^operation_(\d+)$/u.exec(answer?.choice ?? '');
   const hint = match ? ordered[Number(match[1])] : undefined;
