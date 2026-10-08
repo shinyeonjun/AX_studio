@@ -98,27 +98,27 @@ export function routingMiss(testCase: JevRoutingCase, result: JevChatRouterResul
   return undefined;
 }
 
-const read = (table: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
-  ({ kind: ['command'], capabilityId: 'rdb.query.read', params: { table }, ...extra });
+const read = (connectionId: string, table: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
+  ({ kind: ['command'], capabilityId: 'rdb.query.read', params: { connectionId, table }, ...extra });
 const api = (connectionId: string, path: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
   ({ kind: ['command'], capabilityId: 'http.request', params: { connectionId, path }, ...extra });
 
 /**
  * The same kind of requests in a company-sized workspace (jev-routing-eval.scale-fixture.ts):
- * one database with 50+ tables across eight systems, 25 APIs, Gmail, Slack and folders, with
+ * eight databases (50+ tables, "orders" in two of them), 25 APIs, Gmail, Slack and folders, with
  * names that collide (orders, users, issues). Where two sources are equally right, either passes;
  * where nothing in the request tells them apart, the person must be asked.
  */
 export const JEV_SCALE_ROUTING_CASES: readonly JevRoutingCase[] = [
   { id: 'scale-greeting', message: '안녕하세요', expect: { kind: ['reply'] } },
-  { id: 'scale-leave-balance', message: '직원별 남은 연차 일수 보여줘', expect: read('hr_leave_balances') },
-  { id: 'scale-delay-reasons', message: '배송 지연 사유별로 몇 건인지 알려줘', expect: read('logistics_delivery_delays', { tableTransform: ['calculate'] }) },
-  { id: 'scale-shop-paid', message: '쇼핑몰 주문 중에 결제 완료된 것만 보여줘', expect: read('shop_orders', { tableTransform: ['filter', 'filter_sort'] }) },
-  { id: 'scale-logistics-orders', message: '물류 쪽 주문 목록 보여줘', expect: read('logistics_orders') },
+  { id: 'scale-leave-balance', message: '직원별 남은 연차 일수 보여줘', expect: read('hr', 'leave_balances') },
+  { id: 'scale-delay-reasons', message: '배송 지연 사유별로 몇 건인지 알려줘', expect: read('logistics', 'delivery_delays', { tableTransform: ['calculate'] }) },
+  { id: 'scale-shop-paid', message: '쇼핑몰 주문 중에 결제 완료된 것만 보여줘', expect: read('shop', 'orders', { tableTransform: ['filter', 'filter_sort'] }) },
+  { id: 'scale-logistics-orders', message: '물류 쪽 주문 목록 보여줘', expect: read('logistics', 'orders') },
   { id: 'scale-ambiguous-orders', message: '주문 목록 보여줘', expect: { kind: ['clarify'], sourceChooser: true } },
-  { id: 'scale-crm-deals', message: 'CRM에서 진행 중인 거래 금액 합계 알려줘', expect: read('crm_deals', { tableTransform: ['calculate'] }) },
-  { id: 'scale-urgent-tickets', message: '고객지원 티켓 중에 우선순위 높은 것만 보여줘', expect: read('support_tickets', { tableTransform: ['filter', 'filter_sort'] }) },
-  { id: 'scale-payroll', message: '이번 달 부서별 급여 합계', expect: read(['hr_payroll', 'hr_employees'], { tableTransform: ['calculate'] }) },
+  { id: 'scale-crm-deals', message: 'CRM에서 진행 중인 거래 금액 합계 알려줘', expect: read('crm', 'deals', { tableTransform: ['calculate'] }) },
+  { id: 'scale-urgent-tickets', message: '고객지원 티켓 중에 우선순위 높은 것만 보여줘', expect: read('support', 'tickets', { tableTransform: ['filter', 'filter_sort'] }) },
+  { id: 'scale-payroll', message: '이번 달 부서별 급여 합계', expect: read('hr', ['payroll', 'employees'], { tableTransform: ['calculate'] }) },
   { id: 'scale-fx', message: '환율 API에서 달러 환율 보여줘', expect: api('fx-api', ['rates', 'history']) },
   { id: 'scale-weather', message: '오늘 날씨 어때?', expect: api('weather-api', ['current', 'forecast']) },
   { id: 'scale-github-issues', message: 'GitHub 이슈 목록 보여줘', expect: api('github-api', 'issues') },
