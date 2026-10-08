@@ -1,3 +1,4 @@
+import type { SourceChoice } from '../../../../contracts/source-choices.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
 import type { AxUiPresentation } from '../schema.js';
 import type { DecisionEngine } from '../../../../contracts/decision.js';
@@ -46,6 +47,8 @@ export interface JevChatRouterInput {
   readOperationLexicalTopScore?: number;
   /** Host-held visible table from the immediately preceding assistant reply. */
   previousReadResult?: TableArtifact;
+  /** Where this person said similar requests should read from (picked in a source chooser). */
+  pastSourceChoices?: readonly SourceChoice[];
   /** Restricts the decision to an alternative read or stopping after a read-only failure. */
   readRecoveryContext?: JevReadRecoveryContext;
   workspaceSources?: readonly WorkspaceSourceRecord[];

@@ -1,3 +1,4 @@
+import type { SourceChoice } from '../../../../contracts/source-choices.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 import type { AxUiPresentation } from '../schema.js';
 
@@ -5,6 +6,8 @@ const CONNECTOR_NAMES: Record<string, string> = {
   rdb: '데이터베이스', http: 'API', openapi: 'API', gmail: 'Gmail', slack: 'Slack', local_folder: '폴더',
 };
 const MAX_CHOICES = 4;
+export const SOURCE_CHOOSER_TITLE = '어디에서 찾을까요?';
+const CHOICE_SUFFIX = '에서 찾기';
 const MAX_ACTION_VALUE = 500;
 
 /** A source as the person knows it: the connection's name, else what kind of connection it is. */
@@ -41,7 +44,7 @@ export function readSourceChooser(hints: readonly JevReadOperationHint[], reques
     const value = `${place}에서 ${request.trim()}`;
     return {
       id: `source_${index}`,
-      label: `${place}에서 찾기`.slice(0, 80),
+      label: `${place}${CHOICE_SUFFIX}`.slice(0, 80),
       value: value.length > MAX_ACTION_VALUE ? `${value.slice(0, MAX_ACTION_VALUE - 1)}…` : value,
       tone: index === 0 ? 'primary' as const : 'secondary' as const,
       purpose: 'reply' as const,
@@ -52,7 +55,7 @@ export function readSourceChooser(hints: readonly JevReadOperationHint[], reques
   return {
     message: `${listed}에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요.${elsewhere} 둘을 함께 비교하려면 "두 자료를 비교해 줘"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.`,
     presentation: {
-      title: '어디에서 찾을까요?',
+      title: SOURCE_CHOOSER_TITLE,
       subtitle: `${listed}에 모두 관련 자료가 있어요.`,
       inputMode: 'individual',
       blocks: [],
@@ -60,4 +63,30 @@ export function readSourceChooser(hints: readonly JevReadOperationHint[], reques
       actions,
     },
   };
+}
+
+type ChooserMessage = {
+  role: string;
+  presentations?: ReadonlyArray<{ title?: string; actions: ReadonlyArray<{ id: string; label: string; value: string }> }>;
+};
+
+/**
+ * The place the person picked, when this message is a button of the source chooser shown just
+ * before ("물류 DB에서 주문 목록 보여줘" → { request: "주문 목록 보여줘", place: "물류 DB" }).
+ */
+export function sourceChoiceFromReply(messages: readonly ChooserMessage[], userMessage: string): SourceChoice | undefined {
+  const text = userMessage.trim();
+  const previous = [...messages].reverse().find((message, index) => index > 0 || message.role !== 'user');
+  if (previous?.role !== 'assistant') return undefined;
+  for (const presentation of previous.presentations ?? []) {
+    if (presentation.title !== SOURCE_CHOOSER_TITLE) continue;
+    const action = presentation.actions.find((candidate) => candidate.id.startsWith('source_') && candidate.value === text);
+    if (!action || !action.label.endsWith(CHOICE_SUFFIX)) continue;
+    const place = action.label.slice(0, -CHOICE_SUFFIX.length);
+    const prefix = `${place}에서 `;
+    if (!text.startsWith(prefix)) continue;
+    const request = text.slice(prefix.length).replace(/…$/u, '').trim();
+    return request ? { request, place } : undefined;
+  }
+  return undefined;
 }

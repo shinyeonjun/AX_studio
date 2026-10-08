@@ -50,6 +50,7 @@ export function baseRouterInput({ options, messages, session, signal }: CommandC
     conversationHistory: messages.slice(0, -1).slice(-6),
     sessionMemo: options.sessionMemo,
     workflowPolicy: session.workflowPolicy,
+    ...(options.pastSourceChoices?.length ? { pastSourceChoices: options.pastSourceChoices } : {}),
     abortSignal: signal,
   } satisfies Partial<JevChatRouterInput>;
 }

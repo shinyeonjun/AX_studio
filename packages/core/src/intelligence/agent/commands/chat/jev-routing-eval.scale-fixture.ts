@@ -132,13 +132,36 @@ const API_ENDPOINTS = [
 
 const DATABASE_IDS = ['shop', 'logistics', 'finance', 'hr', 'crm', 'inventory', 'marketing', 'support'];
 
+/**
+ * An ERP whose tables are named the way ERPs name them: abbreviations nobody asks for by name.
+ * (Jev reads them from the table and column names alone; AI-written table descriptions added
+ * nothing measurable here, so none are given.)
+ */
+const ERP_TABLES = [
+  t('tb_ord_mst', 'ord_no', 'cust_cd', 'ord_dt', 'tot_amt', 'stat_cd'),
+  t('tb_cust_mst', 'cust_cd', 'cust_nm', 'biz_no', 'rgn_cd'),
+  t('tb_vndr_mst', 'vndr_cd', 'vndr_nm', 'biz_no', 'pay_term'),
+  t('tb_tax_inv', 'inv_no', 'vndr_cd', 'iss_dt', 'sup_amt', 'vat_amt'),
+  t('tb_inv_txn', 'item_cd', 'wh_cd', 'txn_type', 'qty', 'txn_dt'),
+  t('tb_wrnty_clm', 'clm_no', 'item_cd', 'cust_cd', 'clm_dt', 'clm_rsn', 'clm_stat'),
+  t('tb_frt_rt', 'rgn_cd', 'wt_band', 'rt_amt', 'eff_dt'),
+  t('tb_emp_cert', 'emp_no', 'cert_cd', 'cert_nm', 'acq_dt', 'exp_dt'),
+];
+
+function erpDatabase() {
+  return {
+    id: 'erp', label: 'ERP DB', type: 'postgres', allowedTables: ERP_TABLES.map((table) => table.table),
+    schema: { tables: ERP_TABLES.map((table) => ({ uniqueColumns: ['id'], ...table })), relations: [] },
+  };
+}
+
 /** The eight systems as eight databases of the one 'rdb' connection, names colliding as in life. */
 function companyDatabases() {
   return {
     connector: 'rdb',
     connected: true,
     config: {
-      databases: DATABASES.map((database, index) => ({ id: DATABASE_IDS[index], ...database.config })),
+      databases: [...DATABASES.map((database, index) => ({ id: DATABASE_IDS[index], ...database.config })), erpDatabase()],
     },
   };
 }

@@ -27,8 +27,10 @@ import * as discoveryMetadata from './repositories/discovery-metadata-repository
 import * as retentionRepo from './repositories/retention-repository.js';
 import { listCorruptRows } from './tolerant-rows.js';
 import { mergeColumnLabels, validColumnLabel, type ColumnLabels } from '../contracts/artifacts/column-labels.js';
+import { mergeSourceChoices, validSourceChoice, type SourceChoice } from '../contracts/source-choices.js';
 
 const COLUMN_LABELS_SETTING = 'column_labels';
+const SOURCE_CHOICES_SETTING = 'source_choices';
 
 export class WorkflowStore {
   // Main-process writers share this store; hold the id while async runtime cleanup drains.
@@ -238,6 +240,15 @@ export class WorkflowStore {
     const stored = settingsRepo.getSetting<unknown>(this.db, COLUMN_LABELS_SETTING, {});
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
     return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, string] => validColumnLabel(entry[1])));
+  }
+  /** Places the person picked when a request fitted several; background for later routing. */
+  getSourceChoices(): SourceChoice[] {
+    const stored = settingsRepo.getSetting<unknown>(this.db, SOURCE_CHOICES_SETTING, []);
+    return Array.isArray(stored) ? stored.filter(validSourceChoice) : [];
+  }
+  rememberSourceChoice(choice: SourceChoice) {
+    if (!validSourceChoice(choice)) return;
+    settingsRepo.setSetting(this.db, SOURCE_CHOICES_SETTING, mergeSourceChoices(this.getSourceChoices(), choice));
   }
   rememberColumnLabels(labels: ColumnLabels) {
     if (Object.keys(labels).length === 0) return;

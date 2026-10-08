@@ -12,6 +12,8 @@ export interface JevRoutingCase {
   message: string;
   /** A table the previous answer showed, for follow-up questions. */
   previous?: 'orders';
+  /** Places this person picked before in a source chooser (the remembered background). */
+  pastChoices?: ReadonlyArray<{ request: string; place: string }>;
   expect: {
     /** Any of these result kinds passes (Jev may reasonably ask or act). */
     kind: ReadonlyArray<JevChatRouterResult['kind']>;
@@ -130,5 +132,17 @@ export const JEV_SCALE_ROUTING_CASES: readonly JevRoutingCase[] = [
   { id: 'scale-slack', message: '슬랙 채널 목록 보여줘', expect: { kind: ['command'], capabilityId: 'slack.channels.list' } },
   { id: 'scale-folder', message: '월간보고 폴더에 어떤 파일 있어?', expect: { kind: ['command'], capabilityId: 'local_folder.list' } },
   { id: 'scale-works', message: '내 업무 목록 보여줘', expect: { kind: ['command'], route: ['workflow_list'] } },
+  // The ERP database and the ERP API both hold the vendor list: the person must be asked.
+  { id: 'scale-erp-vendors', message: 'ERP에서 매입처 목록 보여줘', expect: { kind: ['clarify'], sourceChooser: true } },
+  { id: 'scale-erp-warehouse', message: '창고 입출고 이력 보여줘', expect: { kind: ['command', 'clarify'], capabilityId: 'rdb.query.read', params: { connectionId: ['erp', 'inventory'] } } },
+  // Held only by cryptically named ERP tables: what the learned table descriptions are for.
+  { id: 'scale-erp-warranty', message: '보증수리 청구 들어온 거 보여줘', expect: read('erp', 'tb_wrnty_clm') },
+  { id: 'scale-erp-freight', message: '지역별 운임표 보여줘', expect: read('erp', 'tb_frt_rt') },
+  { id: 'scale-erp-certs', message: '직원들 자격증 만료일 보여줘', expect: read('erp', 'tb_emp_cert') },
+  // Once the person picked 물류 DB for "주문 목록", that and similar requests go there without asking;
+  // unrelated requests are not pulled along.
+  { id: 'scale-remembered-orders', message: '주문 목록 보여줘', pastChoices: [{ request: '주문 목록 보여줘', place: '물류 DB' }], expect: read('logistics', 'orders') },
+  { id: 'scale-remembered-similar', message: '이번 주 들어온 주문 몇 건이야?', pastChoices: [{ request: '주문 목록 보여줘', place: '물류 DB' }], expect: read('logistics', 'orders', { tableTransform: ['calculate', 'filter', 'filter_sort'] }) },
+  { id: 'scale-remembered-unrelated', message: '직원별 남은 연차 일수 보여줘', pastChoices: [{ request: '주문 목록 보여줘', place: '물류 DB' }], expect: read('hr', 'leave_balances') },
   { id: 'scale-recurring', message: '매주 월요일 9시에 지역별 매출 합계를 슬랙으로 보내줘', expect: { kind: ['command', 'clarify'], route: ['workflow_create', 'job_propose'] } },
 ];
