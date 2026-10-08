@@ -86,9 +86,10 @@ function patternQuestions(): Record<string, DecisionQuestion> {
     schedule_time_2_minute: choice('At what minute is that second run time?', `${timeFocus} Choose none when only one time is requested.`, { ...NONE, ...minutes }),
     schedule_skip_holidays: {
       type: 'boolean',
-      instructions: {
-        question: 'Does the user ask not to run on public holidays (공휴일 제외, 공휴일은 빼고, 빨간 날 빼고)?',
-        focus: 'Answer yes only when the request says to skip public holidays. Weekends alone (평일, 주말 제외) are not holidays.',
+      instructions: { statement: 'The user asks to skip public holidays.' },
+      criteria: {
+        true: 'The request says 공휴일 제외, 공휴일은 빼고, 빨간 날 빼고, or the like.',
+        false: 'Holidays are not mentioned; weekdays only (평일, 주말 제외) are not holidays.',
       },
     },
   };
@@ -100,9 +101,10 @@ function detailQuestions(pattern: SchedulePattern): Record<string, DecisionQuest
     for (const code of WEEKDAY_CODES) {
       questions[`schedule_day_${code}`] = {
         type: 'boolean',
-        instructions: {
-          question: `Does the requested schedule run on ${WEEKDAY_NAMES[code]} (${code})?`,
-          focus: '주말 means Saturday and Sunday. Answer only from days the user named.',
+        instructions: { statement: `The requested schedule runs on ${WEEKDAY_NAMES[code]} (${code}).` },
+        criteria: {
+          true: 'The user named this day, or a group that includes it (평일 = Monday to Friday, 주말 = Saturday and Sunday, 매일 = every day).',
+          false: 'The user named other days only.',
         },
       };
     }

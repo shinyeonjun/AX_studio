@@ -82,10 +82,12 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
       let routeAnswer: unknown;
       let serviceError: string | undefined;
       let selectedTools: string[] = [];
+      const models = new Set<string>();
       const decisionEngine: DecisionEngine = {
         async evaluate(request) {
           try {
             const response = await jev.evaluate(request);
+            if (response.model) models.add(response.model);
             if (request.questions.route) routeAnswer = response.answers.route;
             // Which candidates the first pass judged necessary (tool_N answered true).
             for (const [id, question] of Object.entries(request.questions)) {
@@ -161,7 +163,7 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
       const durations = outcomes.map((outcome) => outcome.durationMs);
       const requestKb = outcomes.map((outcome) => Number(outcome.requestKb ?? 0));
       const summary = {
-        workspace: workspace.name, passed, total: outcomes.length, accuracy,
+        workspace: workspace.name, models: [...models], passed, total: outcomes.length, accuracy,
         catalogSize: index.select('').totalCount,
         durationMs: { p50: percentile(durations, 0.5), p95: percentile(durations, 0.95) },
         requestKb: { p50: percentile(requestKb, 0.5), max: Math.max(...requestKb) },
