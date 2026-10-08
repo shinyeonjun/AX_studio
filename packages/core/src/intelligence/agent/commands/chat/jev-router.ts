@@ -188,6 +188,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       transformCapabilities: readRecovery ? [] : transformCapabilities,
       readRecoveryContext: input.readRecoveryContext,
       previousReadResult: input.previousReadResult,
+      pastSourceChoices: input.pastSourceChoices,
     });
     const tracker = new JevRouterTelemetryTracker({
       questions,

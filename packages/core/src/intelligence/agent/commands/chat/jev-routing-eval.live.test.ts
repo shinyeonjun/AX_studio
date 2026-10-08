@@ -133,6 +133,7 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
             readOperationLexicalMatchedOperationCount: selection.lexicalMatchedOperationCount,
             readOperationLexicalTopScore: selection.lexicalTopScore,
             ...(testCase.previous ? { previousReadResult: previousOrdersTable() } : {}),
+            ...(testCase.pastChoices ? { pastSourceChoices: testCase.pastChoices } : {}),
           });
           kind = result.kind;
           selectedRoute = result.telemetry?.selectedRoute;

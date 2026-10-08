@@ -1,3 +1,4 @@
+import type { SourceChoice } from '../../../../contracts/source-choices.js';
 import type { ChatReadRecipe } from './read-recipe.js';
 import type { ColumnLabelMemory } from './column-labeler.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../contracts/request-anchor.js';
@@ -97,6 +98,8 @@ export interface AxCommandChatOptions {
   onReadResult?: (table: TableArtifact | undefined) => void;
   /** How the table passed to `onReadResult` was produced; undefined when it cannot be repeated. */
   onReadRecipe?: (recipe: ChatReadRecipe | undefined) => void;
+  /** Places the person picked before when a request fitted several; background for Jev. */
+  pastSourceChoices?: readonly SourceChoice[];
   /** Korean column headers learned so far; absent, tables keep their column names. */
   columnLabels?: ColumnLabelMemory;
 }
