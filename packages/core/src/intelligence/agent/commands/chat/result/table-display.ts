@@ -5,9 +5,13 @@ import type { TableArtifact } from '../../../../../contracts/artifacts/table.js'
 
 function markdownCell(value: unknown): string {
   if (value == null) return '';
+  // A list of plain values (tags, names) reads as "a, b" (numbers bare, so their commas do not
+  // blur into the list's); anything nested stays as written.
+  const plainList = Array.isArray(value) && value.every((item) => ['string', 'number', 'boolean'].includes(typeof item));
   const text = typeof value === 'string' ? value
     : typeof value === 'number' ? formatTableNumber(value)
-      : JSON.stringify(value) ?? String(value);
+      : plainList ? (value as unknown[]).map(String).join(', ')
+        : JSON.stringify(value) ?? String(value);
   const bounded = text.length > MAX_CHAT_CELL_CHARS ? `${text.slice(0, MAX_CHAT_CELL_CHARS)}…` : text;
   return bounded.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 }
