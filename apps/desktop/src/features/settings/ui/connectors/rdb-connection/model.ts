@@ -63,3 +63,9 @@ export function withObjectParticle(name: string): string {
   }
   return `"${name}"${batchim ? '을' : '를'}`;
 }
+
+/** "1,000" and " 500 " are numbers people type; empty means the default. The host checks the range. */
+export function parseRowLimitInput(text: string): number | undefined {
+  const cleaned = text.replace(/[,\s]/gu, '');
+  return cleaned ? Number(cleaned) : undefined;
+}

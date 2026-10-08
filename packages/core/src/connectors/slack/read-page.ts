@@ -1,5 +1,6 @@
 import { isMessageWithText } from './person-message.js';
 import { slackLocalTime } from '../local-time.js';
+import { readableSlackText, slackMemberIds, slackUserNames } from './readable.js';
 import type { WebClient } from '@slack/web-api';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
@@ -19,6 +20,11 @@ const HistoryParams = z.object({
   channel: z.string().trim().min(1), limit: limit(50, 20), cursor,
   latest: z.string().regex(/^\d+\.\d+$/).max(40).optional(),
 });
+
+/** Who wrote a message, by name when Slack gave one; the member id otherwise. */
+function senderName(user: string | undefined, names: ReadonlyMap<string, string>): string | undefined {
+  return user ? names.get(user) ?? user : undefined;
+}
 
 function checkPageSize(length: number, requested: number): void {
   if (length > requested) throw new Error('page_size_exceeded');
@@ -57,13 +63,16 @@ export async function searchSlackMessagePage(client: WebClient, params: Record<s
   }), signal);
   checkPageSize(response.messages?.matches?.length ?? 0, options.limit);
   const seen = new Set<string>();
-  const matches = (response.messages?.matches ?? []).filter((match) => {
+  const found = (response.messages?.matches ?? []).filter((match) => {
     const id = `${match.channel?.id ?? ''}:${match.ts ?? ''}`;
     if (!match.channel?.id || !match.ts || seen.has(id)) return false;
     seen.add(id);
     return true;
-  }).map((match) => ({ channel: match.channel?.name, channelId: match.channel!.id!, ts: match.ts!,
-    time: slackLocalTime(match.ts!), text: match.text ?? '', user: match.user, permalink: match.permalink }));
+  });
+  const names = await slackUserNames(client, slackMemberIds(found), signal);
+  const matches = found.map((match) => ({ channel: match.channel?.name, channelId: match.channel!.id!, ts: match.ts!,
+    time: slackLocalTime(match.ts!), sender: senderName(match.user, names) ?? match.username,
+    text: readableSlackText(match.text ?? '', names), user: match.user, permalink: match.permalink }));
   const nextCursor = response.response_metadata?.next_cursor?.trim() || undefined;
   if (nextCursor && nextCursor === (options.cursor ?? '*')) throw new Error('pagination_cycle');
   const page = response.messages?.paging?.page ?? response.messages?.pagination?.page ?? options.page ?? 1;
@@ -98,11 +107,14 @@ export async function readSlackMessagePage(client: WebClient, params: Record<str
   }), signal);
   checkPageSize(response.messages?.length ?? 0, options.limit);
   const seen = new Set<string>();
-  const messages = (response.messages ?? []).filter((message) => {
+  const kept = (response.messages ?? []).filter((message) => {
     if (!isMessageWithText(message) || !message.ts || seen.has(message.ts)) return false;
     seen.add(message.ts);
     return true;
-  }).map((message) => ({ ts: message.ts!, time: slackLocalTime(message.ts!), text: message.text, user: message.user,
+  });
+  const names = await slackUserNames(client, slackMemberIds(kept), signal);
+  const messages = kept.map((message) => ({ ts: message.ts!, time: slackLocalTime(message.ts!),
+    sender: senderName(message.user, names), text: readableSlackText(message.text ?? '', names), user: message.user,
     threadTs: message.thread_ts }));
   const next = nextSlackHistoryPage(new Set(options.cursor ? [options.cursor] : []), response, options.latest);
   return {

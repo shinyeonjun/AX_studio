@@ -1,5 +1,6 @@
 import {
   DEFAULT_RDB_DATABASE_ID,
+  MAX_RDB_RESULT_ROWS,
   probeRdbConnection,
   rdbDatabaseEntries,
   rdbDatabaseName,
@@ -88,6 +89,11 @@ async function connectRdbLocked(
   payload: RdbConnectionPayload,
 ): Promise<RdbConnectResult> {
   const type = payload.type;
+  // Checked here, not quietly clamped: "-5" or "50000" would otherwise read 1 or 10,000 rows unseen.
+  if (payload.rowLimit !== undefined
+    && (!Number.isInteger(payload.rowLimit) || payload.rowLimit < 1 || payload.rowLimit > MAX_RDB_RESULT_ROWS)) {
+    throw new Error(`행 제한은 1부터 ${MAX_RDB_RESULT_ROWS.toLocaleString('ko-KR')} 사이의 정수로 입력해 주세요.`);
+  }
   const config: RdbConnectionConfig =
     type === 'sqlite'
       ? {

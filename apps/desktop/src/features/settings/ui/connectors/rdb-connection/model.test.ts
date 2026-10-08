@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rdbConnectedItemsFor, rdbDatabasesFor, withObjectParticle } from './model';
+import { parseRowLimitInput, rdbConnectedItemsFor, rdbDatabasesFor, withObjectParticle } from './model';
 
 describe('rdbDatabasesFor', () => {
   it('reads a summary from before several databases as the one default database', () => {
@@ -25,5 +25,14 @@ describe('withObjectParticle', () => {
     expect(withObjectParticle('쇼핑몰 DB')).toBe('"쇼핑몰 DB"를');
     expect(withObjectParticle('매출')).toBe('"매출"을');
     expect(withObjectParticle('PostgreSQL')).toBe('"PostgreSQL"을');
+  });
+});
+
+describe('parseRowLimitInput', () => {
+  it('reads numbers as people type them, and leaves the range to the host', () => {
+    expect(parseRowLimitInput('1,000')).toBe(1000);
+    expect(parseRowLimitInput(' 500 ')).toBe(500);
+    expect(parseRowLimitInput('')).toBeUndefined();
+    expect(parseRowLimitInput('많이')).toBeNaN();
   });
 });
