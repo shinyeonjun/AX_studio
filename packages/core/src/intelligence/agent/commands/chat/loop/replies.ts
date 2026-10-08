@@ -227,19 +227,31 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
       ? getCapability(command.args.id)
       : undefined;
     const sourceLabels = sourceCapability?.outputColumnLabels ?? {};
-    const labels: ColumnLabels = readTable
-      ? { ...await columnLabelsFor(labeledTable(readTable, sourceLabels), { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal }), ...sourceLabels }
-      : {};
-    const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection, labels);
-    if (showsReadTable) {
+    // Headers for columns seen for the first time are asked about alongside the shaping and the
+    // summary, not before them; the shaping reads the columns under the headers already known.
+    const knownLabels: ColumnLabels = readTable ? { ...options.columnLabels?.known(), ...sourceLabels } : {};
+    const labelsReady: Promise<ColumnLabels> = readTable
+      ? columnLabelsFor(labeledTable(readTable, sourceLabels), { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal })
+        .then((learned) => ({ ...learned, ...sourceLabels }))
+      : Promise.resolve({});
+    labelsReady.catch(() => undefined); // A failure surfaces where it is awaited.
+    const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection, knownLabels);
+    const publishReadTable = (labels: ColumnLabels) => {
+      if (!showsReadTable) return;
       const shown = transformOutcome && 'table' in transformOutcome ? transformOutcome.table : readTable;
       const table = shown ? labeledTable(shown, labels) : undefined;
       options.onReadResult?.(table ? boundedChatReadResult(table) : undefined);
       options.onReadRecipe?.(table
         ? chatReadRecipe(command, result, transformOutcome && 'expression' in transformOutcome ? transformOutcome.expression : undefined)
         : undefined);
+    };
+    if (readResultStyle === 'summary') {
+      const [reply, summaryLabels] = await Promise.all([summaryReply(command, result, userIntent, transformOutcome), labelsReady]);
+      publishReadTable(summaryLabels);
+      return reply;
     }
-    if (readResultStyle === 'summary') return summaryReply(command, result, userIntent, transformOutcome);
+    const labels = await labelsReady;
+    publishReadTable(labels);
     if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;
     if (transformOutcome && 'table' in transformOutcome) {
       return formatTableArtifact(labeledTable(transformOutcome.table, labels), sourceCapability?.hiddenColumns);

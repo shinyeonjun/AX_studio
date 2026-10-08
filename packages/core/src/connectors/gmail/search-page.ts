@@ -18,7 +18,8 @@ const Params = z.object({
   }, z.boolean()).default(true),
 });
 const METADATA_HEADERS = ['From', 'Subject', 'Date'] as const;
-const METADATA_BATCH_SIZE = 8;
+/** Header reads in flight at once; a new one starts as soon as any finishes. */
+const METADATA_CONCURRENCY = 8;
 
 function metadataHeader(
   headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
@@ -42,35 +43,41 @@ async function addMessageMetadata(
   // Keep the page usable with a list-only transport double; the real Gmail
   // client always exposes messages.get.
   if (typeof gmail.users.messages.get !== 'function') return messages;
-  const enriched: gmail_v1.Schema$Message[] = [];
-  for (let offset = 0; offset < messages.length; offset += METADATA_BATCH_SIZE) {
+  const withHeaders = async (message: gmail_v1.Schema$Message): Promise<gmail_v1.Schema$Message> => {
+    if (!message.id) return message;
     signal?.throwIfAborted();
-    const batch = await Promise.all(messages.slice(offset, offset + METADATA_BATCH_SIZE).map(async (message) => {
-      if (!message.id) return message;
+    try {
+      const response = await gmail.users.messages.get({
+        userId: 'me',
+        id: message.id,
+        format: 'metadata',
+        metadataHeaders: [...METADATA_HEADERS],
+      });
       signal?.throwIfAborted();
-      try {
-        const response = await gmail.users.messages.get({
-          userId: 'me',
-          id: message.id,
-          format: 'metadata',
-          metadataHeaders: [...METADATA_HEADERS],
-        });
-        signal?.throwIfAborted();
-        const headers = response.data.payload?.headers;
-        return {
-          ...message,
-          ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
-          ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
-          ...(metadataHeader(headers, 'Date') ? { date: localMailDate(metadataHeader(headers, 'Date')!) } : {}),
-          ...(response.data.snippet?.trim() ? { snippet: response.data.snippet.trim() } : {}),
-        };
-      } catch (error) {
-        if (isNotFoundError(error)) return message;
-        throw error;
-      }
-    }));
-    enriched.push(...batch);
-  }
+      const headers = response.data.payload?.headers;
+      return {
+        ...message,
+        ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
+        ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
+        ...(metadataHeader(headers, 'Date') ? { date: localMailDate(metadataHeader(headers, 'Date')!) } : {}),
+        ...(response.data.snippet?.trim() ? { snippet: response.data.snippet.trim() } : {}),
+      };
+    } catch (error) {
+      if (isNotFoundError(error)) return message;
+      throw error;
+    }
+  };
+  // In page order whatever order the answers arrive in; one slow message holds up only its slot.
+  const enriched: gmail_v1.Schema$Message[] = new Array(messages.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < messages.length) {
+      signal?.throwIfAborted();
+      const index = next++;
+      enriched[index] = await withHeaders(messages[index]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(METADATA_CONCURRENCY, messages.length) }, worker));
   return enriched;
 }
 

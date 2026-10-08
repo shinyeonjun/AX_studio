@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { EditableToolResultSchema, isMessageToolField, MESSAGE_TOOL_FIELDS, MessageSendBindingSchema, ToolDraftUpdateSchema, ToolReviewRequestSchema,
+import { EditableToolResultSchema, isMessageToolField, MESSAGE_TOOL_FIELDS, MessageSendBindingSchema, MessageToolDraftSchema,
+  ToolDraftUpdateSchema, ToolReviewRequestSchema,
   ToolResultConfirmationSchema, ToolSendOutcomeSchema, messageTool, messageToolDraft, messageToolParams, missingToolEssentials,
   validGmailRecipient, type EditableToolResult, type MessageToolDraft, type ToolResultConfirmation,
   type ToolResultReference, type ToolResultReview } from '../contracts/tool-result.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { ChatHostStateMap } from '../persistence/chat-host-state.js';
 import { parseWorkflowIR } from '../workflow/schema.js';
 import { approvalParamsHash } from './approval-snapshot.js';
 import { isExecutionCheckpoint } from './control-flow.js';
@@ -84,11 +86,19 @@ export interface PreparedToolSend {
   params: Record<string, unknown>;
 }
 
-/** Per-runtime memory only. Seals cannot survive restart or dispatch twice. */
+/** An edited message kept across a restart, for the approval whose original it was edited from. */
+interface SavedDraft { paramsHash: string; draft: MessageToolDraft; revision: number }
+
+/**
+ * Edits live in memory and are also kept per conversation, so a restart does not throw away what
+ * the person typed. Seals stay in memory only: they cannot survive a restart or dispatch twice.
+ */
 export class ToolResultApprovals {
   private readonly drafts = new Map<string, DraftEntry>();
+  private readonly saved: ChatHostStateMap<Record<string, SavedDraft>>;
   private readonly stopObservingDeletion: () => void;
   constructor(private readonly store: WorkflowStore, private readonly connectors: Record<string, Connector>) {
+    this.saved = store.chatHostState<Record<string, SavedDraft>>('tool_draft');
     // Checkpoints pair approval and execution across interrupted durable writes.
     // Recovery changes metadata only. It never resumes a provider send.
     for (const approval of store.getApprovalRecoveryCandidates()) {
@@ -128,15 +138,41 @@ export class ToolResultApprovals {
 
   read(approvalId: string): EditableToolResult | undefined {
     const source = editableToolResult(this.store, approvalId);
-    if (!source) { this.drafts.delete(approvalId); return undefined; }
+    if (!source) { this.discard(approvalId); return undefined; }
     const entry = this.drafts.get(approvalId);
     if (entry && entry.source.paramsHash === source.paramsHash && entry.source.workspaceSessionId === source.workspaceSessionId) {
       if (entry.source.connectionRevision !== source.connectionRevision) entry.seal = undefined;
       entry.source = source;
       return { ...source, draft: structuredClone(entry.draft), revision: entry.revision };
     }
-    this.drafts.set(approvalId, { source, draft: structuredClone(source.draft), revision: 0, reviewGeneration: 0 });
-    return source;
+    // An edit kept from before a restart applies only to the same original it was made from.
+    const restored = this.savedDraft(source);
+    this.drafts.set(approvalId, { source, draft: structuredClone(restored?.draft ?? source.draft),
+      revision: restored?.revision ?? 0, reviewGeneration: 0 });
+    return restored ? { ...source, draft: structuredClone(restored.draft), revision: restored.revision } : source;
+  }
+
+  private savedDraft(source: EditableToolResult): SavedDraft | undefined {
+    const saved = this.saved.get(source.workspaceSessionId)?.[source.approvalId];
+    const draft = MessageToolDraftSchema.safeParse(saved?.draft);
+    return saved && saved.paramsHash === source.paramsHash && draft.success && draft.data.tool === source.tool
+      && Number.isSafeInteger(saved.revision) && saved.revision > 0
+      ? { paramsHash: saved.paramsHash, draft: draft.data, revision: saved.revision }
+      : undefined;
+  }
+
+  private keepDraft(source: EditableToolResult, entry: DraftEntry): void {
+    const all = this.saved.get(source.workspaceSessionId) ?? {};
+    this.saved.set(source.workspaceSessionId, { ...all,
+      [source.approvalId]: { paramsHash: source.paramsHash, draft: entry.draft, revision: entry.revision } });
+  }
+
+  private forgetDraft(sessionId: string, approvalId: string): void {
+    const all = this.saved.get(sessionId);
+    if (!all || !(approvalId in all)) return;
+    const { [approvalId]: _gone, ...rest } = all;
+    if (Object.keys(rest).length) this.saved.set(sessionId, rest);
+    else this.saved.delete(sessionId);
   }
 
   update(input: unknown): EditableToolResult {
@@ -152,6 +188,7 @@ export class ToolResultApprovals {
       entry.draft = structuredClone(request.draft);
       entry.revision = request.revision;
       entry.seal = undefined;
+      this.keepDraft(source, entry);
     }
     return { ...source, draft: structuredClone(entry.draft), revision: entry.revision };
   }
@@ -200,9 +237,14 @@ export class ToolResultApprovals {
     return seal;
   }
   consume(approvalId: string) { const entry = this.drafts.get(approvalId); if (entry) entry.seal = undefined; }
-  discard(approvalId: string) { this.drafts.delete(approvalId); }
+  discard(approvalId: string) {
+    const entry = this.drafts.get(approvalId);
+    if (entry) this.forgetDraft(entry.source.workspaceSessionId, approvalId);
+    this.drafts.delete(approvalId);
+  }
   discardSession(sessionId: string) {
     for (const [id, entry] of this.drafts) if (entry.source.workspaceSessionId === sessionId) this.drafts.delete(id);
+    this.saved.delete(sessionId);
   }
   dispose() { this.stopObservingDeletion(); this.drafts.clear(); }
 }

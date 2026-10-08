@@ -144,6 +144,20 @@ export function registerWorkspaceChatMessageHandler() {
       } else {
         clearPendingCommand(safeWorkspaceSessionId);
       }
+      // A "기억할까요?" button pressed after its confirmation ran out (or after a restart) saves
+      // nothing; say so instead of reading the button's words as a new request.
+      if (!confirmedContextUpdate && hasContextConfirmation(requestMessages, userMessage)) {
+        outcome = 'success';
+        return {
+          role: 'assistant' as const,
+          content: '확인할 수 있는 시간이 지나 아무것도 저장하지 않았습니다. 기억할 내용을 다시 말해 주시면 새로 확인해 드릴게요.',
+          requestId: chatRequestId,
+          changedWorkflowIds: [],
+          removedWorkflowIds: [],
+          inputRequests: turn.inputRequests,
+          presentations: turn.presentations,
+        };
+      }
       if (!pendingCommandClaim && shouldUseE2EFakeAgent(app.isPackaged, process.env)) {
         const reply = await runE2EChatTurn(core, userMessage, safeWorkspaceSessionId, chatRequestId);
         outcome = 'success';
@@ -206,7 +220,8 @@ export function registerWorkspaceChatMessageHandler() {
         pastSourceChoices: core.store.getSourceChoices(),
         columnLabels: {
           known: () => core.store.getColumnLabels(),
-          remember: (labels) => core.store.rememberColumnLabels(labels),
+          remember: (labels, unlabelled) => core.store.rememberColumnLabels(labels, unlabelled),
+          unlabelled: () => core.store.getUnlabelledColumns(),
         },
         abortSignal: controller.signal,
         timeoutMs: AX_COMMAND_CHAT_TIMEOUT_MS,

@@ -8,6 +8,15 @@ import { deleteOsSecret, getOsSecret, setOsSecret } from '../credential-store.js
 
 const WEBHOOK_SECRET_NAME = 'webhook.secret';
 
+/** Why the listener did not start, in words; the system's English ("listen EADDRINUSE …") never reaches the card. */
+function webhookListenerError(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error);
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 'EADDRINUSE' || /EADDRINUSE/u.test(text)) return '이 포트를 다른 프로그램이 쓰고 있어요. 다른 포트 번호를 입력해 주세요.';
+  if (code === 'EACCES' || /EACCES/u.test(text)) return '이 포트는 쓸 권한이 없어요. 1024보다 큰 포트 번호를 입력해 주세요.';
+  return /[가-힣]/u.test(text) ? text : '외부 신호 받기를 시작하지 못했어요. 포트 번호를 바꿔 다시 시도해 주세요.';
+}
+
 export async function getWebhookSecret(): Promise<string | null> {
   return getOsSecret(WEBHOOK_SECRET_NAME);
 }
@@ -58,7 +67,7 @@ export async function validateAndConnectWebhook(
   try {
     await refreshTransports();
   } catch (error) {
-    const lastError = error instanceof Error ? error.message : String(error);
+    const lastError = webhookListenerError(error);
     if (secret !== previousSecret) await restoreWebhookSecret(previousSecret).catch(() => undefined);
     if (previousConnection?.connected && previousSecret) {
       // Keep the previously working listener instead of tearing it down.
@@ -67,7 +76,8 @@ export async function validateAndConnectWebhook(
     } else {
       store.setConnection('webhook', false, { ...config, secretStored: Boolean(previousSecret), lastError });
     }
-    throw error;
+    // The settings form shows this message; it must be the words, not the system's English.
+    throw new Error(lastError, { cause: error });
   }
 }
 

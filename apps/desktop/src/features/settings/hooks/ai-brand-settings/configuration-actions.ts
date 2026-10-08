@@ -26,16 +26,18 @@ export function createAiBrandConfigurationActions({
     setMessage('');
     try {
       const draft = apiKeyDraft.trim();
+      // A new key is checked before it is kept, as the test button does; a wrong key stops here.
+      const keyChecked = Boolean(draft) && mode === 'api';
+      if (keyChecked) await window.ax.testAiApi(brand, draft, mode);
+      await window.ax.saveAiBrandConfig(brand, { mode, model, ...(draft && !keyChecked ? { apiKey: draft } : {}) });
       if (draft) {
-        await window.ax.saveAiBrandConfig(brand, { mode, model, apiKey: draft });
         setApiKeyDraft('');
         setApiKeyConfigured(true);
-        setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
-      } else {
-        await window.ax.saveAiBrandConfig(brand, { mode, model });
+        if (keyChecked) setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
       }
 
-      const ready = isBrandReady(brand, mode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
+      // The state above updates after this turn, so a key checked just now counts here directly.
+      const ready = keyChecked || isBrandReady(brand, mode, cliProviders, brandSecrets, verifiedCli, verifiedApi);
       if (ready) {
         const config: AiProviderState = { brand, mode, model };
         await window.ax.setAiProvider(config);

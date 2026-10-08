@@ -31,7 +31,8 @@ export const slackNewMessageHandler: TriggerHandler<{ type: 'slack.new_message';
     );
 
     if (!result.ok) {
-      throw new Error(result.error ?? 'slack trigger poll failed');
+      // Keep the connector's code so the failure can be told apart (login expired, folder moved …).
+      throw Object.assign(new Error(result.error ?? 'slack trigger poll failed'), { code: result.errorCode });
     }
 
     const data = result.data as {

@@ -197,7 +197,8 @@ const WORKFLOW_KEYED_SETTINGS = ['scheduler.lastFired', 'trigger.cursors'];
 
 // Per-workflow settings stored under their own key (`<prefix><encodeURIComponent(id)>`).
 // Owners: runtime/scheduler/service.ts (LAST_FIRED_SETTING / LAST_OUTCOME_SETTING_PREFIX).
-export const WORKFLOW_SUFFIXED_SETTING_PREFIXES = ['scheduler.lastFired:', 'scheduler.lastOutcome:'];
+// runtime/trigger-engine/poll/workflow.ts (TRIGGER_POLL_FAILURE_PREFIX).
+export const WORKFLOW_SUFFIXED_SETTING_PREFIXES = ['scheduler.lastFired:', 'scheduler.lastOutcome:', 'trigger.pollFailure:'];
 // Settings arrays whose entries carry a `workflowId`. Owner: runtime/trigger-engine/receipts.ts (DEAD_LETTER_SETTING).
 export const WORKFLOW_ENTRY_LIST_SETTINGS = ['trigger.deadLetters'];
 // Per-receipt retry state, keyed `<prefix><encodeURIComponent(dedupeKey)>`. Owner: runtime/trigger-engine/receipts.ts.
