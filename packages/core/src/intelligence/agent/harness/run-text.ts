@@ -22,6 +22,7 @@ export async function runTextAgent(model: ModelProvider, request: AgentTextRun):
       maxOutputTokens: 768,
       sessionId: request.sessionId,
       onProgress: request.onProgress,
+      codexReasoningEffort: request.codexReasoningEffort ?? (request.role === 'command' ? 'medium' : undefined),
       maxTurns: 1,
     }),
     finalize: raw => String(raw ?? '').trim(),

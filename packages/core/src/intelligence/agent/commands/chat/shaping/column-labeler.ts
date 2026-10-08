@@ -6,7 +6,10 @@ import { appendAppLog } from '../../../../../persistence/paths/app-log.js';
 /** Where learned headers live (the host's settings); shared with run results. */
 export interface ColumnLabelMemory {
   known(): ColumnLabels;
-  remember(labels: ColumnLabels): void;
+  /** `unlabelled`: names the AI was asked about and left out, so they are not asked again. */
+  remember(labels: ColumnLabels, unlabelled?: readonly string[]): void;
+  /** Names asked about before that got no header. */
+  unlabelled?(): readonly string[];
 }
 
 const MAX_COLUMNS_PER_ASK = 40;
@@ -18,7 +21,8 @@ const SYSTEM_PROMPT = [
   '- 출력: {"열 이름":"한국어 머리글"} JSON 객체 하나만. 설명, 코드 블록 금지.',
   '- 머리글은 2~12자 안팎. 예: total_amount → 총 금액, created_at → 생성일, customer.name → 고객 이름.',
   '- 브랜드·제품명·약어(ID, URL, SKU)는 그대로 두되 뜻이 있으면 함께 쓴다. 예: sku → SKU, user_id → 사용자 ID.',
-  '- 다른 열 이름과 자료형을 보고 뜻을 정한다. 뜻을 알 수 없는 열은 출력에서 뺀다.',
+  '- 머리글은 같은 이름의 열이 나오는 다른 표에도 쓰인다. 이 표에만 맞는 좁은 뜻보다 열 이름 자체의 뜻으로 쓴다. 예: name → 이름 (상품명 아님), status → 상태.',
+  '- 뜻을 알 수 없는 열은 출력에서 뺀다.',
 ].join('\n');
 
 function parseLabels(output: string, asked: readonly string[]): ColumnLabels {
@@ -50,8 +54,10 @@ export async function columnLabelsFor(table: TableArtifact, input: {
 }): Promise<ColumnLabels> {
   if (!input.memory) return {};
   const known = input.memory.known();
+  const askedBefore = new Set(input.memory.unlabelled?.() ?? []);
   const missing = [...new Set(table.columns.map((column) => column.name))]
-    .filter((name) => needsColumnLabel(name) && !known[name] && !table.columns.find((column) => column.name === name)?.label)
+    .filter((name) => needsColumnLabel(name) && !known[name] && !askedBefore.has(name)
+      && !table.columns.find((column) => column.name === name)?.label)
     .slice(0, MAX_COLUMNS_PER_ASK);
   if (missing.length === 0) return known;
   const startedAt = Date.now();
@@ -63,10 +69,11 @@ export async function columnLabelsFor(table: TableArtifact, input: {
       systemPrompt: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: JSON.stringify({ columns: missing.map((name) => ({ name, type: table.columns.find((column) => column.name === name)?.type ?? 'unknown' })) }) }],
       logContext: 'column_labels',
+      codexReasoningEffort: 'low',
       abortSignal: input.signal ? AbortSignal.any([input.signal, timeout]) : timeout,
     });
     const learned = parseLabels(reply.output, missing);
-    input.memory.remember(learned);
+    input.memory.remember(learned, missing.filter((name) => !learned[name]));
     appendAppLog('info', 'Column headers labelled in Korean.', {
       requestId: input.requestId, event: 'chat_column_labels', asked: missing.length, labelled: Object.keys(learned).length, durationMs: Date.now() - startedAt,
     });

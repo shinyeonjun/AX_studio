@@ -31,6 +31,8 @@ import { mergeColumnLabels, validColumnLabel, type ColumnLabels } from '../contr
 import { mergeSourceChoices, validSourceChoice, type SourceChoice } from '../contracts/source-choices.js';
 
 const COLUMN_LABELS_SETTING = 'column_labels';
+const UNLABELLED_COLUMNS_SETTING = 'column_labels_unlabelled';
+const MAX_UNLABELLED_COLUMNS = 2_000;
 const SOURCE_CHOICES_SETTING = 'source_choices';
 
 export class WorkflowStore {
@@ -257,9 +259,19 @@ export class WorkflowStore {
     if (!validSourceChoice(choice)) return;
     settingsRepo.setSetting(this.db, SOURCE_CHOICES_SETTING, mergeSourceChoices(this.getSourceChoices(), choice));
   }
-  rememberColumnLabels(labels: ColumnLabels) {
-    if (Object.keys(labels).length === 0) return;
-    settingsRepo.setSetting(this.db, COLUMN_LABELS_SETTING, mergeColumnLabels(this.getColumnLabels(), labels));
+  /** Column names the AI was asked to label and could not; they are not asked about again. */
+  getUnlabelledColumns(): string[] {
+    const stored = settingsRepo.getSetting<unknown>(this.db, UNLABELLED_COLUMNS_SETTING, []);
+    return Array.isArray(stored) ? stored.filter((name): name is string => typeof name === 'string') : [];
+  }
+  rememberColumnLabels(labels: ColumnLabels, unlabelled: readonly string[] = []) {
+    if (Object.keys(labels).length > 0) {
+      settingsRepo.setSetting(this.db, COLUMN_LABELS_SETTING, mergeColumnLabels(this.getColumnLabels(), labels));
+    }
+    if (unlabelled.length > 0) {
+      const names = [...new Set([...this.getUnlabelledColumns(), ...unlabelled])].slice(-MAX_UNLABELLED_COLUMNS);
+      settingsRepo.setSetting(this.db, UNLABELLED_COLUMNS_SETTING, names);
+    }
   }
   setConnection(connector: string, connected: boolean, config?: Record<string, unknown>) {
     settingsRepo.setConnection(this.db, connector, connected, config);

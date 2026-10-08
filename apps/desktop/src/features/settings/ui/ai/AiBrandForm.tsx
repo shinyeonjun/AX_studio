@@ -38,6 +38,8 @@ export function AiBrandForm({
   const apiConnected = Boolean(apiKeyConfigured || apiVerified);
 
   const cliBadge = cliConnected ? '연결됨' : '미설치';
+  // A saved key passed its check when it was saved; it may have expired since.
+  const apiBadge = apiVerified ? '연결 확인됨' : apiKeyConfigured ? '등록됨' : '미연결';
 
   return (
     <div className={embedded ? 'connection-form-embedded' : 'connection-detail'}>
@@ -76,6 +78,7 @@ export function AiBrandForm({
             title={meta.title}
             isOllamaApi={isOllamaApi}
             connected={apiConnected}
+            badge={apiBadge}
             apiKeyDraft={apiKeyDraft}
             apiKeyConfigured={apiKeyConfigured}
             apiKeyMasked={apiKeyMasked}

@@ -1,4 +1,5 @@
 import { MessageToolDraftSchema, missingToolEssentials, validGmailRecipient } from '@ax-studio/core/tool-result';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
 import type { EditableToolResult, ExecutionResult, MessageToolDraft, ToolDraftUpdate,
   ToolReviewRequest, ToolResultReview, ToolResultConfirmation, ToolSendOutcome } from '@ax-studio/core';
 
@@ -25,7 +26,9 @@ export function toolDraftError(error: unknown): string {
   if (message.includes('identity_unverified')) return '보내는 계정과 받는 곳을 확인할 수 없습니다. 연결 상태를 확인해 주세요.';
   if (message.includes('unsupported')) return '이 요청에 지원되지 않는 전송 옵션이 있습니다. 요청은 전송되지 않았습니다.';
   if (message.includes('stale') || message.includes('approval_target_changed')) return '내용 또는 연결이 바뀌었습니다. 전송 전에 다시 확인해 주세요.';
-  return '전송 준비를 완료하지 못했습니다. 초안을 확인한 뒤 다시 시도해 주세요.';
+  // Anything else (the network, the service) is not the draft's fault: say what failed when it is
+  // known, and that nothing was sent.
+  return `${ipcErrorMessage(error, '전송 준비 중 문제가 생겼습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.')} 메시지는 보내지 않았습니다.`;
 }
 
 /** Synchronous locks guard double clicks; host revisions/seals remain authoritative. */

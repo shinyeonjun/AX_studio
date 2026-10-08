@@ -15,6 +15,7 @@ import {
   workflowUpdateSuccessMessage,
 } from '../turn-context.js';
 import { baseRouterInput, type JevRoute, type JevTurn } from './turn.js';
+import { readProgressMessage } from './progress.js';
 
 /** Table shapings whose answer depends on every row, not the first page. */
 const WHOLE_SET_TRANSFORMS = new Set(['filter', 'sort', 'filter_sort', 'calculate']);
@@ -154,6 +155,8 @@ export async function commandRoute(turn: JevTurn, route: JevRoute<'command'>): P
     hints: catalog.hints,
     userText: options.requestAnchor?.text ?? options.userMessage,
   });
+  const reading = readProgressMessage(route.command);
+  if (reading) options.onProgress?.({ message: reading });
   const result = await executeScopedChatCommand(context, route.command, readAuthorization);
   signal.throwIfAborted();
   const resultForLoop = publishResult(route.command.name, result, route.command);
