@@ -255,14 +255,26 @@ describe('verified tool result approvals', () => {
     expect(() => f.runtime.updateToolDraft({ approvalId: f.approvalId, workspaceSessionId: f.session.id, revision: 1, draft: f.source!.draft })).toThrow('tool_result_stale');
     expect(f.runtime.getToolResult(f.approvalId)?.draft).toMatchObject({ body: 'Latest' });
   });
-  it('loses unsent edits and seals on restart and requires a fresh original review', async () => {
+  it('keeps unsent edits across a restart, but never the seal: sending needs a fresh review', async () => {
     const f = await pending();
-    const old = await review(f, { tool: 'gmail', to: 'edited@example.test', subject: '', body: 'Memory only' });
+    const edited: MessageToolDraft = { tool: 'gmail', to: 'edited@example.test', subject: '', body: 'Kept edit' };
+    const old = await review(f, edited);
     const restarted = new WorkflowRuntime(f.config);
-    expect(restarted.getToolResult(f.approvalId)?.draft).toEqual(f.source?.draft);
+    const reopened = restarted.getToolResult(f.approvalId);
+    expect(reopened?.draft).toEqual(edited);
     expect((await restarted.continueAfterApproval(f.approvalId, old.confirmation)).errorCode).toBe('tool_result_stale');
-    const fresh = await restarted.reviewToolResult({ approvalId: f.approvalId, workspaceSessionId: f.session.id, revision: 0 });
+    const fresh = await restarted.reviewToolResult({ approvalId: f.approvalId, workspaceSessionId: f.session.id, revision: reopened!.revision });
     expect((await restarted.continueAfterApproval(f.approvalId, fresh.confirmation)).status).toBe('success');
+    expect(f.calls.at(-1)?.params).toMatchObject({ to: 'edited@example.test', body: 'Kept edit' });
+  });
+  it('does not keep an unedited message, and forgets an edit once the conversation is deleted', async () => {
+    const f = await pending();
+    f.runtime.getToolResult(f.approvalId);
+    expect(f.store.chatHostState('tool_draft').get(f.session.id)).toBeUndefined();
+    await review(f, { tool: 'gmail', to: 'edited@example.test', subject: '', body: 'Kept edit' });
+    expect(f.store.chatHostState('tool_draft').get(f.session.id)).toBeDefined();
+    f.runtime.discardSessionToolDrafts(f.session.id);
+    expect(f.store.chatHostState('tool_draft').get(f.session.id)).toBeUndefined();
   });
   it.each([false, true])('recovers an interrupted claim without replay (durable receipt=%s)', async sent => {
     const f = await pending();

@@ -28,6 +28,11 @@ for (const distState of ['absent', 'stale']) {
       cpSync(join(root, 'packages/core/src/contracts/tool-result.ts'), join(core, 'src/contracts/tool-result.ts'));
       mkdirSync(dirname(join(desktop, controllerPath)), { recursive: true });
       cpSync(join(root, 'apps/desktop', controllerPath), join(desktop, controllerPath));
+      // The controller's own renderer helpers (no Core import of their own).
+      for (const helper of ['src/ui/lib/ipc-error.ts']) {
+        mkdirSync(dirname(join(desktop, helper)), { recursive: true });
+        cpSync(join(root, 'apps/desktop', helper), join(desktop, helper));
+      }
       const modules = join(scratch, 'node_modules');
       mkdirSync(join(modules, '@ax-studio'), { recursive: true });
       symlinkSync(core, join(modules, '@ax-studio/core'), 'junction');

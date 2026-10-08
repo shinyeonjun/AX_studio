@@ -65,6 +65,27 @@ describe('agent text harness', () => {
     await harness.dispose();
   });
 
+  it('asks Codex to think less for short command replies, and least when the caller says so', async () => {
+    const seen: TextGenerateInput[] = [];
+    const provider: ModelProvider = {
+      name: 'mock',
+      async generateStructured<T>(): Promise<T> {
+        throw new Error('structured_generation_not_used');
+      },
+      async generateText(input: TextGenerateInput): Promise<string> {
+        seen.push(input);
+        return 'ok';
+      },
+    };
+    const harness = new AgentHarness(provider);
+
+    await harness.runText({ role: 'command', user: '요약해 줘.' });
+    await harness.runText({ role: 'command', user: '열 이름', codexReasoningEffort: 'low' });
+
+    expect(seen.map((input) => input.codexReasoningEffort)).toEqual(['medium', 'low']);
+    await harness.dispose();
+  });
+
   it('returns provider-reported usage for structured calls', async () => {
     const provider: ModelProvider = {
       name: 'mock',

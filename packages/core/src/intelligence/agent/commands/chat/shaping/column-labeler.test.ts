@@ -15,7 +15,12 @@ function table(names: string[]): TableArtifact {
 
 function memory(initial: Record<string, string> = {}): ColumnLabelMemory {
   let saved = { ...initial };
-  return { known: () => ({ ...saved }), remember: (labels) => { saved = mergeColumnLabels(saved, labels); } };
+  const skipped: string[] = [];
+  return {
+    known: () => ({ ...saved }),
+    remember: (labels, unlabelled = []) => { saved = mergeColumnLabels(saved, labels); skipped.push(...unlabelled); },
+    unlabelled: () => skipped,
+  };
 }
 
 describe('Korean column headers', () => {
@@ -33,6 +38,16 @@ describe('Korean column headers', () => {
     expect(asked).not.toContain('"status"');
 
     await columnLabelsFor(table(['amount', 'customer_email']), { memory: store, harness: { runText } as never });
+    expect(runText).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not ask again about a name the AI could not label, but does after a failed ask', async () => {
+    const store = memory();
+    const failing = vi.fn(async () => { throw new Error('offline'); });
+    await columnLabelsFor(table(['qz_x']), { memory: store, harness: { runText: failing } as never });
+    const runText = vi.fn(async () => ({ output: '{}' }));
+    await columnLabelsFor(table(['qz_x']), { memory: store, harness: { runText } as never });
+    await columnLabelsFor(table(['qz_x']), { memory: store, harness: { runText } as never });
     expect(runText).toHaveBeenCalledTimes(1);
   });
 

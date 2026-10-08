@@ -117,7 +117,9 @@ export class CodexCliProvider implements ModelProvider {
       const outPath = join(dir, 'last.txt');
       const result = await runCommand(
         command,
-        codexExecArgs(this.model, [...await imageArgs(dir, input.images), '-o', outPath], { workDir: dir, ignoreUserConfig }),
+        codexExecArgs(this.model, [...await imageArgs(dir, input.images), '-o', outPath], {
+          workDir: dir, reasoningEffort: input.codexReasoningEffort, ignoreUserConfig,
+        }),
         {
           input: prompt,
           timeoutMs: input.timeoutMs ?? 180_000,

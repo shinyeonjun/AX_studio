@@ -44,6 +44,7 @@ export async function suggestWorkName(
       systemPrompt: NAME_PROMPT,
       messages: [{ role: 'user', content: text.slice(0, 500) }],
       logContext: 'work_name',
+      codexReasoningEffort: 'low',
       abortSignal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
     });
     const name = reply.output.trim().replace(/^["'“”「」]+|["'“”「」.。]+$/gu, '').trim();

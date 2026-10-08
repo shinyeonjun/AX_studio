@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EditableToolResult, ExecutionResult, MessageToolDraft, ToolResultReview } from '@ax-studio/core';
-import { cachedToolDraft, cachedToolDraftForExecution, clearToolDrafts, ToolDraftController, type ToolDraftApi } from './draft-controller';
+import { toolDraftError, cachedToolDraft, cachedToolDraftForExecution, clearToolDrafts, ToolDraftController, type ToolDraftApi } from './draft-controller';
 
 const sessions = new Set<string>();
 afterEach(() => { sessions.forEach(clearToolDrafts); sessions.clear(); });
@@ -242,5 +242,12 @@ describe('tool draft controller', () => {
     expect(cachedToolDraftForExecution(undefined, 'gmail')).toBeUndefined();
     clearToolDrafts(f.source.workspaceSessionId);
     expect(cachedToolDraftForExecution(f.source.executionId, 'gmail')).toBeUndefined();
+  });
+
+  it('does not blame the draft for a failure that is not the draft', () => {
+    expect(toolDraftError(new Error('fetch failed'))).toContain('서버에 연결할 수 없어요');
+    expect(toolDraftError(new Error('socket hang up'))).toContain('연결 상태를 확인');
+    expect(toolDraftError(new Error('socket hang up'))).toContain('보내지 않았습니다');
+    expect(toolDraftError(new Error('socket hang up'))).not.toContain('초안');
   });
 });
