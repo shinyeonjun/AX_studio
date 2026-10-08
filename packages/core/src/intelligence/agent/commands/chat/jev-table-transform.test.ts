@@ -552,11 +552,11 @@ describe('a filter with a category named alongside a number', () => {
           else if (id === 'filter_operator') answers[id] = choice('gt');
           else if (id === 'filter_value') answers[id] = choice(pick(question, 4.5));
           else if (id.startsWith('restricts_')) {
-            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.question) : '';
+            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.statement ?? question.instructions.question) : '';
             const isCategory = asked.includes('column "category"');
             answers[id] = { type: 'boolean', probability: isCategory && restrictsCategory ? 0.95 : 0.05 };
           } else if (id.startsWith('category_')) {
-            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.question) : '';
+            const asked = question.type === 'boolean' && typeof question.instructions === 'object' ? String(question.instructions.statement ?? question.instructions.question) : '';
             answers[id] = { type: 'boolean', probability: wanted.some((value) => asked.includes(`"${value}"`)) ? 0.95 : 0.05 };
           }
         }

@@ -1,4 +1,4 @@
-import { createExperimentalJevDecisionEngineFromEnvironment, JevDecisionEngine, JevDecisionError, type DecisionEngine } from '@ax-studio/core';
+import { createExperimentalJevDecisionEngineFromEnvironment, JevDecisionEngine, JevDecisionError, resolveJevModel, type DecisionEngine } from '@ax-studio/core';
 
 interface JevStartupSettings {
   enabled?: boolean;
@@ -44,7 +44,7 @@ export function createStartupJevDecisionEngine(
         warn('[AX Studio] Jev is disabled because its Base URL differs from the address the API key was registered for. Re-enter the API key in Jev settings.');
         return undefined;
       }
-      return new JevDecisionEngine({ apiKey, model: settings.model?.trim() || undefined, baseURL: settings.baseURL?.trim() || undefined });
+      return new JevDecisionEngine({ apiKey, model: resolveJevModel(settings.model), baseURL: settings.baseURL?.trim() || undefined });
     }
     return createExperimentalJevDecisionEngineFromEnvironment(env);
   } catch (error) {

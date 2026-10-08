@@ -49,6 +49,18 @@ jobs:
           AX_JEV_EVAL_REPORT: ${{ github.workspace }}/jev-eval-report.json
         run: node scripts/embed-skills.mjs && npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts
 
+      # The pinned version above is what people use. This checks the newest one, report only:
+      # when it passes too, raise JEV_PINNED_MODEL (packages/core/src/intelligence/decision/jev/engine.ts).
+      - name: Check the newest Jev (report only)
+        if: always() && env.TYPESAFE_API_KEY != ''
+        continue-on-error: true
+        working-directory: packages/core
+        env:
+          AX_LIVE_JEV_EVAL: '1'
+          TYPESAFE_DEFAULT_MODEL: jev-latest
+          AX_JEV_EVAL_REPORT: ${{ github.workspace }}/latest-jev-eval-report.json
+        run: npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts
+
       - name: Keep the report
         if: always() && env.TYPESAFE_API_KEY != ''
         uses: actions/upload-artifact@v4

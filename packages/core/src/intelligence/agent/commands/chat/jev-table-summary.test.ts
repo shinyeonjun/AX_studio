@@ -43,7 +43,7 @@ function engine(pick: {
       };
       for (const [id, question] of Object.entries(request.questions)) {
         if (!id.startsWith('condition_') || question.type !== 'boolean') continue;
-        const text = typeof question.instructions === 'string' ? question.instructions : String(question.instructions.question ?? '');
+        const text = typeof question.instructions === 'string' ? question.instructions : String(question.instructions.statement ?? question.instructions.question ?? '');
         answers[id] = { type: 'boolean', probability: pick.conditions.some((condition) => text.includes(condition)) ? 0.95 : 0.05 };
       }
       return { answers };

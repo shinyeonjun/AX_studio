@@ -1,4 +1,4 @@
-import { JevDecisionEngine, JevDecisionError, validateJevApiKey } from '@ax-studio/core';
+import { JEV_PINNED_MODEL, JevDecisionEngine, JevDecisionError, resolveJevModel, validateJevApiKey } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -10,7 +10,7 @@ import {
 import { maskSecret } from '../../env-file.js';
 import type { JevDecisionTomlConfig } from '../../ai/config-file/contracts.js';
 
-const DEFAULT_JEV_MODEL = 'jev-latest';
+const DEFAULT_JEV_MODEL = JEV_PINNED_MODEL;
 const DEFAULT_JEV_BASE_URL = 'https://api.typesafe.ai';
 
 interface JevDecisionPrefs {
@@ -64,7 +64,7 @@ function normalizePrefs(raw: unknown): Required<Pick<JevDecisionPrefs, 'enabled'
   }
   return {
     enabled: prefs.enabled ?? false,
-    model: prefs.model?.trim() || DEFAULT_JEV_MODEL,
+    model: resolveJevModel(prefs.model) || DEFAULT_JEV_MODEL,
     baseURL: normalizedUrl(prefs.baseURL),
     ...(prefs.apiKey === undefined ? {} : { apiKey: prefs.apiKey }),
   };
@@ -88,7 +88,7 @@ async function snapshot() {
   const secret = await getJevSecret();
   return {
     enabled: jev?.enabled ?? false,
-    model: jev?.model?.trim() || DEFAULT_JEV_MODEL,
+    model: resolveJevModel(jev?.model) || DEFAULT_JEV_MODEL,
     baseURL: jev?.baseURL?.trim() || DEFAULT_JEV_BASE_URL,
     apiKeyConfigured: Boolean(secret),
     apiKeyMasked: secret ? maskSecret(secret) : undefined,
@@ -124,7 +124,7 @@ export function registerDecisionPlaneHandlers(): void {
       prefs.enabled
         ? new JevDecisionEngine({
             apiKey: secret,
-            model: prefs.model,
+            model: resolveJevModel(prefs.model),
             baseURL: prefs.baseURL,
           })
         : undefined,
@@ -155,7 +155,7 @@ export function registerDecisionPlaneHandlers(): void {
 
     const engine = new JevDecisionEngine({
       apiKey: secret,
-      model: prefs.model,
+      model: resolveJevModel(prefs.model),
       baseURL: prefs.baseURL,
     });
     let result;
