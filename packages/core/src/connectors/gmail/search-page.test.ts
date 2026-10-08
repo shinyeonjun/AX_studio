@@ -1,6 +1,6 @@
 import type { gmail_v1 } from '@googleapis/gmail';
 import { describe, expect, it, vi } from 'vitest';
-import { searchGmailMessagePage } from './search-page.js';
+import { localMailDate, searchGmailMessagePage } from './search-page.js';
 
 function fakeGmail() {
   const get = vi.fn(async ({ id }: { id: string }) => ({ data: {
@@ -17,7 +17,7 @@ describe('a page of Gmail search results', () => {
     const page = await searchGmailMessagePage(gmail, { query: '' });
     expect(page.messages).toEqual([
       expect.objectContaining({ id: 'm1', from: '보낸이 <a@example.com>', subject: '제목 m1', snippet: '미리보기 m1' }),
-      expect.objectContaining({ id: 'm2', subject: '제목 m2', date: 'Wed, 8 Oct 2026 09:00:00 +0900' }),
+      expect.objectContaining({ id: 'm2', subject: '제목 m2', date: localMailDate('Wed, 8 Oct 2026 09:00:00 +0900') }),
     ]);
   });
 
@@ -26,5 +26,10 @@ describe('a page of Gmail search results', () => {
     const page = await searchGmailMessagePage(gmail, { query: '', includeMetadata: false });
     expect(page.messages).toEqual([{ id: 'm1', threadId: 't1' }, { id: 'm2', threadId: 't2' }]);
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it('writes the date as local time that sorts, and leaves an unreadable one alone', () => {
+    expect(localMailDate('Wed, 8 Oct 2026 09:00:00 +0900')).toMatch(/^2026-10-0[78] \d{2}:\d{2}$/u);
+    expect(localMailDate('not a date')).toBe('not a date');
   });
 });

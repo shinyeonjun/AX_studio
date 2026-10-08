@@ -14,6 +14,8 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
       { name: 'cursor', label: '다음 페이지', question: '이전 응답의 nextCursor는 무엇인가요?', required: false },
     ],
     io: { inputs: {}, outputs: { channels: 'TableArtifact', limit: 'JsonArtifact', truncated: 'JsonArtifact' } },
+    outputColumnLabels: { id: '채널 ID', name: '채널', isPrivate: '비공개', numMembers: '인원' },
+    hiddenColumns: ['id'],
   },
   {
     id: 'slack.messages.search',
@@ -30,6 +32,8 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     ],
     io: { inputs: {}, outputs: { hits: 'TableArtifact', matches: 'TableArtifact', limit: 'JsonArtifact',
       truncated: 'JsonArtifact', page: 'JsonArtifact' } },
+    outputColumnLabels: { channel: '채널', channelId: '채널 ID', ts: '메시지 ID', time: '보낸 시각', text: '내용', user: '보낸 사람', permalink: '링크' },
+    hiddenColumns: ['channelId', 'ts'],
   },
   {
     id: 'slack.messages.read',
@@ -46,6 +50,8 @@ export const SLACK_CAPABILITIES: ConnectorCapability[] = [
     ],
     io: { inputs: {}, outputs: { messages: 'TableArtifact', channelId: 'TextArtifact', limit: 'JsonArtifact',
       truncated: 'JsonArtifact' } },
+    outputColumnLabels: { ts: '메시지 ID', time: '보낸 시각', text: '내용', user: '보낸 사람', threadTs: '스레드 ID' },
+    hiddenColumns: ['ts', 'threadTs'],
   },
   {
     id: 'slack.message.send',

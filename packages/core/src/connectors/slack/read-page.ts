@@ -1,4 +1,5 @@
 import { isMessageWithText } from './person-message.js';
+import { slackLocalTime } from '../local-time.js';
 import type { WebClient } from '@slack/web-api';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
@@ -62,7 +63,7 @@ export async function searchSlackMessagePage(client: WebClient, params: Record<s
     seen.add(id);
     return true;
   }).map((match) => ({ channel: match.channel?.name, channelId: match.channel!.id!, ts: match.ts!,
-    text: match.text ?? '', user: match.user, permalink: match.permalink }));
+    time: slackLocalTime(match.ts!), text: match.text ?? '', user: match.user, permalink: match.permalink }));
   const nextCursor = response.response_metadata?.next_cursor?.trim() || undefined;
   if (nextCursor && nextCursor === (options.cursor ?? '*')) throw new Error('pagination_cycle');
   const page = response.messages?.paging?.page ?? response.messages?.pagination?.page ?? options.page ?? 1;
@@ -101,7 +102,8 @@ export async function readSlackMessagePage(client: WebClient, params: Record<str
     if (!isMessageWithText(message) || !message.ts || seen.has(message.ts)) return false;
     seen.add(message.ts);
     return true;
-  }).map((message) => ({ ts: message.ts!, text: message.text, user: message.user, threadTs: message.thread_ts }));
+  }).map((message) => ({ ts: message.ts!, time: slackLocalTime(message.ts!), text: message.text, user: message.user,
+    threadTs: message.thread_ts }));
   const next = nextSlackHistoryPage(new Set(options.cursor ? [options.cursor] : []), response, options.latest);
   return {
     channel: options.channel, channelId, messages, limit: options.limit, truncated: Boolean(next),

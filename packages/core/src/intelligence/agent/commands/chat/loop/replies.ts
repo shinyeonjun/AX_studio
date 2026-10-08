@@ -223,9 +223,10 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     // The read table is shown (and shaped): its columns get Korean headers people can read first.
     const readTable = showsReadTable ? tableForJevTransform(command, result) : undefined;
     // Columns the source names itself are labelled from its catalog; only the rest are asked about.
-    const sourceLabels = command.name === 'capability.invoke' && typeof command.args.id === 'string'
-      ? getCapability(command.args.id)?.outputColumnLabels ?? {}
-      : {};
+    const sourceCapability = command.name === 'capability.invoke' && typeof command.args.id === 'string'
+      ? getCapability(command.args.id)
+      : undefined;
+    const sourceLabels = sourceCapability?.outputColumnLabels ?? {};
     const labels: ColumnLabels = readTable
       ? { ...await columnLabelsFor(labeledTable(readTable, sourceLabels), { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal }), ...sourceLabels }
       : {};
@@ -240,7 +241,9 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     }
     if (readResultStyle === 'summary') return summaryReply(command, result, userIntent, transformOutcome);
     if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;
-    if (transformOutcome && 'table' in transformOutcome) return formatTableArtifact(labeledTable(transformOutcome.table, labels));
+    if (transformOutcome && 'table' in transformOutcome) {
+      return formatTableArtifact(labeledTable(transformOutcome.table, labels), sourceCapability?.hiddenColumns);
+    }
 
     const jevConfirmedNoTransform = tableTransform === 'none' || transformOutcome?.confirmedNoTransform === true;
     const deterministicReply = deterministicHttpChatReply(command, result, userIntent, jevConfirmedNoTransform, labels)

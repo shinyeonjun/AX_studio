@@ -8,9 +8,11 @@ import {
   httpResponseFromResult,
   rowsForCapabilityTable,
   selectedColumnsFromHttpPath,
+  tableForJevTransform,
   uniqueObjectArrayPath,
 } from './read-tables.js';
-import { rowsToMarkdown, tableToMarkdown } from './table-display.js';
+import { shownColumns, tableToMarkdown } from './table-display.js';
+import { getCapability } from '../../../../../catalog/data.js';
 
 const SEMANTIC_TRANSFORM_INTENT = /(?:정렬|필터|추천|요약|분석|비교|합계|평균|최대|최소|설명|계산|합산|그룹|묶어|추려|골라|선택|미만|이하|초과|이상|이내|사이|범위|상위|하위|보다\s*(?:크|작|높|낮|많|적)|가장\s*(?:크|작|높|낮|많|적|비싸|저렴)|제외|포함|조건에\s*맞)/iu;
 
@@ -49,36 +51,27 @@ export function deterministicHttpChatReply(
   const parsed = httpResponseFromResult(result);
   if (!parsed.success) return undefined;
   const response = parsed.data;
-  const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
   const requiresModelTransform = !jevConfirmedNoTransform && needsModelTransform(userMessage);
   if (requiresModelTransform) return undefined;
-  if (wantsTable) {
-    let json: unknown;
-    try {
-      json = JSON.parse(response.body) as unknown;
-    } catch {
-      return undefined;
-    }
+  // Rows are shown as a table however the request was worded, as for every other read.
+  let json: unknown;
+  try {
+    json = JSON.parse(response.body) as unknown;
+  } catch {
+    json = undefined;
+  }
+  if (json !== undefined) {
     const table = httpResponseToTable(response, {
       sourceId: 'http:response',
       rowsPath: uniqueObjectArrayPath(json),
       columns: selectedColumnsFromHttpPath(params),
     });
-    return table.ok ? tableToMarkdown(labeledTable(table.table, labels)) : undefined;
+    if (table.ok) return tableToMarkdown(labeledTable(table.table, labels));
   }
 
   if (!response.body.trim()) return '가져온 결과가 비어 있습니다.';
-  let body = response.body;
-  let language = 'text';
-  if (response.contentType?.toLowerCase().includes('json')) {
-    try {
-      body = JSON.stringify(JSON.parse(response.body) as unknown, null, 2);
-      language = 'json';
-    } catch {
-      // Preserve a non-JSON provider body as text.
-    }
-  }
-  return `가져온 결과:\n\n${fencedBody(body, language)}`;
+  const body = json !== undefined ? JSON.stringify(json, null, 2) : response.body;
+  return `가져온 결과:\n\n${fencedBody(boundedRawBody(body), json !== undefined ? 'json' : 'text')}`;
 }
 
 /**
@@ -101,7 +94,8 @@ export function deterministicCapabilityReadChatReply(
   const payload = capabilityEnvelopeData(result);
   // Rows are shown as a table however the request was worded ("주문 목록 보여줘" names no table).
   const table = TableArtifactSchema.safeParse(payload);
-  if (table.success) return tableToMarkdown(labeledTable(table.data, labels));
+  const hidden = typeof id === 'string' ? getCapability(id)?.hiddenColumns ?? [] : [];
+  if (table.success) return tableToMarkdown(labeledTable(table.data, labels), shownColumns(table.data, hidden));
   const record = payload && typeof payload === 'object' && !Array.isArray(payload)
     ? payload as Record<string, unknown>
     : undefined;
@@ -109,8 +103,9 @@ export function deterministicCapabilityReadChatReply(
   if (typeof record?.body === 'string') {
     try { decoded = JSON.parse(record.body) as unknown; } catch { decoded = undefined; }
   }
-  const rows = decoded === undefined ? undefined : rowsForCapabilityTable(decoded);
-  if (rows) return rowsToMarkdown(rows, labels);
+  // Through the same table as the result pane, so a partial page says it is partial.
+  const rowsTable = decoded === undefined || !rowsForCapabilityTable(decoded) ? undefined : tableForJevTransform(command, result);
+  if (rowsTable) return tableToMarkdown(labeledTable(rowsTable, labels), shownColumns(rowsTable, hidden));
 
   if (typeof record?.body === 'string') {
     const body = decoded === undefined ? record.body : JSON.stringify(decoded, null, 2);
