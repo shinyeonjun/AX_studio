@@ -51,6 +51,8 @@ export const ConnectorCapabilitySchema = z.object({
    * them, so the person's AI is asked only about columns no source names.
    */
   outputColumnLabels: z.record(z.string(), z.string()).optional(),
+  /** Columns kept in the data (later steps need them) but not shown in chat, such as internal ids. */
+  hiddenColumns: z.array(z.string()).optional(),
 });
 
 export type CapabilityParam = z.infer<typeof CapabilityParamSchema>;

@@ -1,4 +1,5 @@
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
+import { localDateTime } from '../local-time.js';
 import { fileRefFromLocalScan } from '../../contracts/artifacts/file-ref.js';
 import { findLocalFolder, type LocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { newFilePoll } from './new-file-poll.js';
@@ -36,7 +37,8 @@ export class LocalFolderConnector implements Connector {
       if (!folder) return { ok: false, error: 'folder_not_found', errorCode: 'folder_not_found' };
       const scanned = await scanFolderCheckedAsync(folder.path, (params.extensions as string[]) ?? undefined, ctx.abortSignal);
       if (!scanned.ok) return { ok: false, error: scanned.error, errorCode: scanned.errorCode };
-      return { ok: true, data: { folder, ...folderPage(scanned.files, pagination) } };
+      const files = scanned.files.map((file) => ({ ...file, modified: localDateTime(new Date(file.modifiedAt)) }));
+      return { ok: true, data: { folder, ...folderPage(files, pagination) } };
     }
 
     if (action === 'read') {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getCapability } from '../../catalog/capabilities.js';
 import { materializeStepOutputs } from '../../runtime/output-ports.js';
 import { GmailConnector } from './connector.js';
+import { localMailDate } from './search-page.js';
 
 const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
 vi.mock('@googleapis/gmail', async (importOriginal) => {
@@ -76,7 +77,7 @@ describe('Gmail public page output contracts', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      data: { messages: [{ id: 'mail-1', from: 'sender@example.com', subject: '재고 보고서', date: 'Sat, 20 Sep 2026 09:00:00 +0900' }] },
+      data: { messages: [{ id: 'mail-1', from: 'sender@example.com', subject: '재고 보고서', date: localMailDate('Sat, 20 Sep 2026 09:00:00 +0900') }] },
     });
     expect(get).toHaveBeenCalledWith({
       userId: 'me',

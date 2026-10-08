@@ -1,4 +1,5 @@
 import type { gmail_v1 } from '@googleapis/gmail';
+import { localDateTime } from '../local-time.js';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import { isNotFoundError } from './new-message-poll/shared.js';
@@ -28,6 +29,11 @@ function metadataHeader(
   return value || undefined;
 }
 
+/** The mail's Date header ("Wed, 8 Oct 2026 01:12:33 +0000") as local time; unparseable stays as is. */
+export function localMailDate(header: string): string {
+  return localDateTime(new Date(header)) ?? header;
+}
+
 async function addMessageMetadata(
   gmail: gmail_v1.Gmail,
   messages: gmail_v1.Schema$Message[],
@@ -55,7 +61,7 @@ async function addMessageMetadata(
           ...message,
           ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
           ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
-          ...(metadataHeader(headers, 'Date') ? { date: metadataHeader(headers, 'Date') } : {}),
+          ...(metadataHeader(headers, 'Date') ? { date: localMailDate(metadataHeader(headers, 'Date')!) } : {}),
           ...(response.data.snippet?.trim() ? { snippet: response.data.snippet.trim() } : {}),
         };
       } catch (error) {

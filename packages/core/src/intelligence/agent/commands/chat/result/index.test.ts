@@ -87,6 +87,16 @@ describe('deterministicHttpChatReply', () => {
     expect(reply?.split('\n', 1)[0]).toBe('| stock | title |');
   });
 
+  it('shows rows as a table however the request was worded', () => {
+    const reply = deterministicHttpChatReply(
+      httpGetCommand,
+      httpResult(JSON.stringify({ products: [{ title: 'A', stock: 20 }] })),
+      '상품 목록 보여줘',
+    );
+
+    expect(reply?.split('\n', 1)[0]).toBe('| title | stock |');
+  });
+
   it('does not treat a comparison-filter request as a plain table display', () => {
     const reply = deterministicHttpChatReply(
       httpGetCommand,
@@ -266,6 +276,24 @@ describe('deterministicCapabilityReadChatReply', () => {
     }, '결과를 표로 보여줘', false, { total_amount: '총 금액' });
 
     expect(reply).toContain('| 총 금액 | memo |');
+  });
+
+  it('leaves out the columns a source marks as internal ids', () => {
+    const reply = deterministicCapabilityReadChatReply({
+      name: 'capability.invoke',
+      args: { id: 'gmail.messages.search', params: {} },
+    }, {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: { capabilityId: 'gmail.messages.search', data: { messages: [
+        { id: 'm1', threadId: 't1', from: 'a@example.test', subject: '보고서', date: '2026-10-08 10:12' },
+      ] }, citations: [], untrusted: true },
+      issues: [],
+      inputRequests: [],
+    }, '최근 메일 보여줘')!;
+
+    expect(reply.split('\n', 1)[0]).toBe('| from | subject | date |');
+    expect(reply).not.toContain('m1');
   });
 
   it('keeps semantic transforms on the model path', () => {
