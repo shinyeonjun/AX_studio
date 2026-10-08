@@ -11,14 +11,14 @@ import type { AgentScopedContextMap } from '../../../scoped-context.js';
 import type { AxCommand, AxCommandResult, AxContextUpdateConfirmation, AxUiPresentation } from '../../schema.js';
 import { inputRequestsForResult } from '../../input-requests.js';
 import type { DecisionEngine } from '../../../../../contracts/decision.js';
-import type { JevWorkflowStepHint } from '../planning/jev-workflow-update.js';
-import type { JevHttpEndpointHint } from '../shared/jev-http-endpoint.js';
+import type { JevWorkflowStepHint } from '../planning/workflow-update.js';
+import type { JevHttpEndpointHint } from '../shared/http-endpoint.js';
 import type {
   JevReadOperationHint,
   JevReadOperationSelection,
 } from '../../../../decision/read-operation-catalog.js';
-import type { JevActionInputValue } from '../shared/jev-action-catalog.js';
-import type { JevWorkflowOutputHint } from '../planning/jev-workflow-plan/index.js';
+import type { JevActionInputValue } from '../shared/action-catalog.js';
+import type { JevWorkflowOutputHint } from '../planning/workflow-plan/index.js';
 import type { TableArtifact } from '../../../../../contracts/artifacts/table.js';
 import type { RequestUnderstandingChatInput } from './request-understanding.js';
 

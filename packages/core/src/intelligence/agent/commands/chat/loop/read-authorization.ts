@@ -1,6 +1,6 @@
 import type { JevReadOperationHint } from '../../../../decision/read-operation-catalog.js';
 import { AxCapabilityInvokeArgsSchema, type AxCommand } from '../../schema.js';
-import { explicitHttpPath } from '../shared/jev-http-endpoint.js';
+import { explicitHttpPath } from '../shared/http-endpoint.js';
 
 export interface ChatReadAuthorization {
   capabilityId: string;
