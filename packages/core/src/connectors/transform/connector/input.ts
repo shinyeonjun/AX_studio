@@ -1,5 +1,5 @@
 import { tableArtifactFromMatrix, tableArtifactFromRows } from '../../../contracts/artifacts/table-build.js';
-import { parseRdbSourceId } from '../../rdb/config/databases.js';
+import { parseRdbSourceId } from '../../../contracts/rdb-source-id.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
 
 export function normalizeTableInput(value: unknown, sourceId: string): TableArtifact | undefined {

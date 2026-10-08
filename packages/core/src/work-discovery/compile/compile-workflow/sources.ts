@@ -1,7 +1,7 @@
 import type { DiscoveryBlueprint } from '../../schema.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 import { sanitizeStepId } from './helpers.js';
-import { DEFAULT_RDB_DATABASE_ID, parseRdbSourceId } from '../../../connectors/rdb/config/databases.js';
+import { DEFAULT_RDB_DATABASE_ID, parseRdbSourceId } from '../../../contracts/rdb-source-id.js';
 
 export function readStepForSource(
   source: DiscoveryBlueprint['sources'][number],

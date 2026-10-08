@@ -2,8 +2,9 @@ import type { RdbConnectionConfig } from '../client/types.js';
 import type { RdbConnectionRecord } from './contracts.js';
 import { parseRdbConnectionConfig } from './parse.js';
 
-/** The id a single, pre-multi-database connection becomes; also the first database added. */
-export const DEFAULT_RDB_DATABASE_ID = 'default';
+import { DEFAULT_RDB_DATABASE_ID } from '../../../contracts/rdb-source-id.js';
+
+export { DEFAULT_RDB_DATABASE_ID, parseRdbSourceId, rdbSourceId } from '../../../contracts/rdb-source-id.js';
 
 /**
  * One database of the 'rdb' connection as stored: what it is and how it is limited, never its
@@ -136,21 +137,4 @@ export function rdbDatabaseName(entry: { id: string; label?: string; type?: stri
   const kind = entry.type === 'sqlite' ? 'SQLite' : entry.type === 'postgres' ? 'PostgreSQL' : entry.type === 'mysql' ? 'MySQL' : 'DB';
   const file = entry.filePath ? entry.filePath.split(/[\\/]/u).pop() : undefined;
   return file ? `${kind} ${file}` : entry.id === DEFAULT_RDB_DATABASE_ID ? '기본 DB' : `${kind} (${entry.id})`;
-}
-
-/**
- * A database table as a work-discovery source id: "rdb:orders" for the default database (the
- * id format before several databases), "rdb:<databaseId>/orders" for any other.
- */
-export function rdbSourceId(databaseId: string, table: string): string {
-  return databaseId === DEFAULT_RDB_DATABASE_ID ? `rdb:${table}` : `rdb:${databaseId}/${table}`;
-}
-
-export function parseRdbSourceId(sourceId: string): { databaseId: string; table: string } | undefined {
-  if (!sourceId.startsWith('rdb:')) return undefined;
-  const rest = sourceId.slice(4);
-  const slash = rest.indexOf('/');
-  return slash > 0
-    ? { databaseId: rest.slice(0, slash), table: rest.slice(slash + 1) }
-    : { databaseId: DEFAULT_RDB_DATABASE_ID, table: rest };
 }

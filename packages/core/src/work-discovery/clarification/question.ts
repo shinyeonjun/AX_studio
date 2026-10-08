@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { parseRdbSourceId } from '../../connectors/rdb/config/databases.js';
+import { parseRdbSourceId } from '../../contracts/rdb-source-id.js';
 import type { CandidateProgram } from '../schema.js';
 import type { ClarificationQuestion } from './types.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';
