@@ -13,6 +13,7 @@ import { notifyStateChanged } from '../../state-broadcast.js';
 
 let approvedSqliteSelection: { path: string; connecting: boolean } | undefined;
 
+/** How a picked file is compared (Windows paths ignore case); never shown or stored. */
 function sqlitePathKey(path: string): string {
   const real = realpathSync(path);
   return process.platform === 'win32' ? real.toLowerCase() : real;
@@ -51,8 +52,9 @@ export function registerRdbConnectionHandlers() {
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true as const };
     }
-    const selected = sqlitePathKey(result.filePaths[0]!);
-    approvedSqliteSelection = { path: selected, connecting: false };
+    // The path as the person's system names it; its comparison key stays here.
+    const selected = realpathSync(result.filePaths[0]!);
+    approvedSqliteSelection = { path: sqlitePathKey(selected), connecting: false };
     return { ok: true as const, path: selected };
   });
 
@@ -77,11 +79,11 @@ export function registerRdbConnectionHandlers() {
     }
     const requested = typeof record.filePath === 'string' ? record.filePath.trim() : '';
     if (!requested) throw new Error('SQLite 파일을 먼저 선택해 주세요.');
-    const filePath = sqlitePathKey(requested);
-    if (approvedSqliteSelection?.path !== filePath && !isConnectedSqlitePath(filePath)) {
+    const pathKey = sqlitePathKey(requested);
+    if (approvedSqliteSelection?.path !== pathKey && !isConnectedSqlitePath(pathKey)) {
       throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
     }
-    return discoverRdbTableNames({ type, filePath });
+    return discoverRdbTableNames({ type, filePath: realpathSync(requested) });
   });
 
   ipcHandle('ax:connectRdb', async (_event, payload: unknown) => {
@@ -99,10 +101,11 @@ export function registerRdbConnectionHandlers() {
     let filePath = typeof record.filePath === 'string' ? record.filePath.trim() || undefined : undefined;
     if (type === 'sqlite') {
       if (!filePath) throw new Error('SQLite 파일을 선택해야 합니다.');
-      filePath = sqlitePathKey(filePath);
-      sqliteSelection = approvedSqliteSelection?.path === filePath ? approvedSqliteSelection : undefined;
+      const pathKey = sqlitePathKey(filePath);
+      filePath = realpathSync(filePath);
+      sqliteSelection = approvedSqliteSelection?.path === pathKey ? approvedSqliteSelection : undefined;
       // Changing the tables of the file already connected needs no new pick: it was chosen once.
-      if (!sqliteSelection && !isConnectedSqlitePath(filePath)) {
+      if (!sqliteSelection && !isConnectedSqlitePath(pathKey)) {
         throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
       }
       if (sqliteSelection?.connecting) {

@@ -2,6 +2,7 @@ import {
   AGENT_COMMAND_CONTEXT,
   recurringJobFromExecution,
   recurringJobFromReadRecipe,
+  suggestWorkName,
   withoutScheduleTokens,
   type AxUiPresentation,
   type WorkspaceChatMessage,
@@ -62,7 +63,7 @@ async function proposeDraft(
   );
   const data = result.data as { presentation?: AxUiPresentation } | undefined;
   if (result.status === 'ok' && data?.presentation) {
-    return reply(`${subject} ${scheduleText}에 반복하는 업무 초안입니다. 내용을 확인한 뒤 저장해 주세요.`, [data.presentation]);
+    return reply(`${subject} 반복하는 업무 초안이에요. 일정은 ${scheduleText}이고, 내용을 확인한 뒤 저장해 주세요.`, [data.presentation]);
   }
   const reasons = (result.issues ?? []).map((issue) => issue.message).filter(Boolean);
   return reply(`반복 업무 초안을 만들지 못했습니다.${reasons.length ? ` ${reasons.join(' ')}` : ''}`);
@@ -93,11 +94,11 @@ export async function proposeRecurringFromRead(
   }
   const chat = getCore().store.getWorkspaceChat(workspaceSessionId);
   if (!chat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
-  const conversion = recurringJobFromReadRecipe({
-    recipe: hostReadRecipeFor(getCore().store, workspaceSessionId, chat.messages),
-    request: requestForLatestRead(chat.messages),
-    scheduleValue,
-  });
+  const request = requestForLatestRead(chat.messages);
+  const recipe = hostReadRecipeFor(getCore().store, workspaceSessionId, chat.messages);
+  // Named for what it does ("반품 주문 확인"), not after the sentence that asked for it.
+  const name = recipe ? await suggestWorkName(getCore().agentHarness, request) : undefined;
+  const conversion = recurringJobFromReadRecipe({ recipe, request, ...(name ? { name } : {}), scheduleValue });
   if (!conversion.ok) return reply(conversion.message);
   return proposeDraft(workspaceSessionId, conversion.args, conversion.scheduleText, '이 조회를');
 }

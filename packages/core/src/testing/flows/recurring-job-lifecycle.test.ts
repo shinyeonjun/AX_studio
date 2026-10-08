@@ -193,3 +193,28 @@ describe('a scheduled send waits for approval and sends once after it', () => {
     expect(slack.messages).toHaveLength(1);
   });
 });
+
+describe('a job on a short schedule in its chat', () => {
+  it('keeps the latest result instead of a pile, and starts a new one after the person speaks', async () => {
+    vi.setSystemTime(new Date('2026-10-08T00:01:00Z'));
+    const target = await startCore([]);
+    const chat = target.store.saveWorkspaceChat({ messages: [{ role: 'user', content: '재고 10개 미만 상품 보여줘' }] });
+    const every5: Recurrence = { kind: 'recurrence', freq: 'minutely', interval: 5, anchor: '2026-10-08', timezone: 'Asia/Seoul' };
+    const workflowId = await proposeAndConfirm(target, chat.id, encodeScheduleInputValue(every5));
+    const results = () => (target.store.getWorkspaceChat(chat.id)?.messages ?? []).filter((message) => message.kind === 'execution_result');
+    const runIds = () => target.store.listExecutions().filter((execution) => execution.workflowId === workflowId).map((execution) => execution.id);
+
+    vi.setSystemTime(new Date('2026-10-08T00:05:10Z'));
+    await tick(target);
+    vi.setSystemTime(new Date('2026-10-08T00:10:10Z'));
+    await tick(target);
+    expect(runIds()).toHaveLength(2);
+    expect(results().map((message) => message.executionId)).toEqual([runIds()[0]]);
+
+    const now = target.store.getWorkspaceChat(chat.id)!;
+    target.store.saveWorkspaceChat({ id: chat.id, messages: [...now.messages, { role: 'user', content: '고마워' }] });
+    vi.setSystemTime(new Date('2026-10-08T00:15:10Z'));
+    await tick(target);
+    expect(results()).toHaveLength(2);
+  });
+});
