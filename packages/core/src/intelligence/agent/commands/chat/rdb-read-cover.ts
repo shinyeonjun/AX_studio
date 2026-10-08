@@ -1,5 +1,10 @@
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
 
+/** Which database a read is of: its connectionId (several databases), else its label. */
+function databaseOf(hint: JevReadOperationHint): string {
+  return typeof hint.params.connectionId === 'string' ? `id:${hint.params.connectionId}` : `label:${hint.sourceLabel ?? ''}`;
+}
+
 function tablesRead(hint: JevReadOperationHint): Set<string> | undefined {
   if (hint.capabilityId !== 'rdb.query.read' || typeof hint.params.table !== 'string') return undefined;
   const joins = Array.isArray(hint.params.join) ? hint.params.join : [];
@@ -19,12 +24,12 @@ export function coveringRdbRead(
   catalog: readonly JevReadOperationHint[],
 ): JevReadOperationHint | undefined {
   if (selected.length < 2) return undefined;
-  const source = selected[0]!.sourceLabel ?? '';
+  const source = databaseOf(selected[0]!);
   const needed = new Set<string>();
   const bases = new Set<string>();
   for (const hint of selected) {
     const tables = tablesRead(hint);
-    if (!tables || (hint.sourceLabel ?? '') !== source) return undefined;
+    if (!tables || databaseOf(hint) !== source) return undefined;
     for (const table of tables) needed.add(table);
     bases.add(String(hint.params.table));
   }
@@ -32,7 +37,7 @@ export function coveringRdbRead(
   for (const hint of [...selected, ...catalog]) {
     const tables = tablesRead(hint);
     // Its rows must be rows of a selected table: reading customers through orders counts orders.
-    if (!tables || (hint.sourceLabel ?? '') !== source || !bases.has(String(hint.params.table))) continue;
+    if (!tables || databaseOf(hint) !== source || !bases.has(String(hint.params.table))) continue;
     if (![...needed].every((table) => tables.has(table))) continue;
     if (!best || tables.size < best.size) best = { hint, size: tables.size };
   }

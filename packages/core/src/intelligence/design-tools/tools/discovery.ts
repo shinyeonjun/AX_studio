@@ -67,7 +67,8 @@ async function describeRdbTable(ctx: DesignToolContext, asset: DiscoveryAsset, p
   if (typeof table !== 'string') return { available: false, reason: 'table_reference_missing' };
   if (!connector) return { available: false, reason: 'rdb_connector_unavailable', table };
 
-  const result = await connector.execute('table.describe', { table, ...page }, {
+  const connectionId = typeof asset.metadata.connectionId === 'string' ? { connectionId: asset.metadata.connectionId } : {};
+  const result = await connector.execute('table.describe', { ...connectionId, table, ...page }, {
     executionId: 'discovery-describe',
     abortSignal: ctx.abortSignal,
     variables: {},

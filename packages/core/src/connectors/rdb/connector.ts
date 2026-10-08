@@ -19,25 +19,46 @@ import type { RdbConnectionConfig } from './client/types.js';
 import { prepareRdbRows, RdbScalarReadError } from './client/scalars.js';
 import { parseRdbJoins, RdbJoinError, readRdbJoinedRows } from './client/join.js';
 import type { RdbReadCoverage, RdbReadScope } from '../../contracts/artifacts/rdb-read.js';
+import { DEFAULT_RDB_DATABASE_ID, matchRdbDatabase, type RdbDatabase } from './config/databases.js';
 
 export type { RdbConnectionConfig } from './client/types.js';
 
 export class RdbConnector implements Connector {
   name = 'rdb';
+  private readonly databases: readonly RdbDatabase[];
 
-  constructor(private config: RdbConnectionConfig) {}
+  /** One database (a connection saved before several were possible) or the connection's list. */
+  constructor(config: RdbConnectionConfig | readonly RdbDatabase[]) {
+    this.databases = Array.isArray(config) ? config : [{ ...(config as RdbConnectionConfig), id: DEFAULT_RDB_DATABASE_ID }];
+  }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
-    const fields = action === 'schema.describe' ? [] : action === 'table.describe' ? ['table', 'offset', 'limit'] : ['table', 'offset', 'limit', 'join'];
+    const fields = action === 'schema.describe' ? ['connectionId'] : action === 'table.describe' ? ['table', 'offset', 'limit', 'connectionId'] : ['table', 'offset', 'limit', 'join', 'connectionId'];
     if (Object.keys(params).some(key => !fields.includes(key))) {
       return { ok: false, error: 'rdb_read_only_fields_required', errorCode: 'policy_denied' };
     }
-    const rowLimit = normalizeRdbRowLimit(this.config.rowLimit, 1000);
+    const connectionId = typeof params.connectionId === 'string' ? params.connectionId : undefined;
+    if (params.connectionId !== undefined && typeof params.connectionId !== 'string') {
+      return { ok: false, error: 'rdb_connection_not_found', errorCode: 'invalid_params' };
+    }
+    // Which database: the one named, or the only/default one. Several and none named is an error.
+    const database = matchRdbDatabase(this.databases, connectionId);
+    if (!database) {
+      return connectionId?.trim()
+        ? { ok: false, error: 'rdb_connection_not_found', errorCode: 'invalid_params' }
+        : { ok: false, error: 'rdb_connection_required', errorCode: 'invalid_params' };
+    }
+    return this.executeOn(database, action, params, ctx);
+  }
+
+  private async executeOn(database: RdbDatabase, action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
+    const config: RdbConnectionConfig = database;
+    const rowLimit = normalizeRdbRowLimit(config.rowLimit, 1000);
 
     if (action === 'schema.describe') {
       try {
-        const tables = await listRdbTables(this.config, ctx.abortSignal);
+        const tables = await listRdbTables(config, ctx.abortSignal);
         ctx.abortSignal?.throwIfAborted();
         return { ok: true, data: tables.map(formatRdbTableRef) };
       } catch (error) {
@@ -57,8 +78,8 @@ export class RdbConnector implements Connector {
       if (!parsedRef) {
         return { ok: false, error: 'invalid_table_name', errorCode: 'policy_denied' };
       }
-      const ref = resolveRdbTableRef(this.config, parsedRef);
-      if (!isAllowedRdbTable(this.config, ref)) {
+      const ref = resolveRdbTableRef(config, parsedRef);
+      if (!isAllowedRdbTable(config, ref)) {
         return { ok: false, error: 'table_not_allowed', errorCode: 'policy_denied' };
       }
       const joins = parseRdbJoins(params.join);
@@ -68,7 +89,7 @@ export class RdbConnector implements Connector {
         if (action === 'table.describe') {
           const pagination = parseRdbMetadataPage(params.offset, params.limit);
           if (!pagination) return { ok: false, error: 'invalid_metadata_pagination', errorCode: 'invalid_params' };
-          const page = await describeRdbTablePage(this.config, ref, pagination, ctx.abortSignal);
+          const page = await describeRdbTablePage(config, ref, pagination, ctx.abortSignal);
           ctx.abortSignal?.throwIfAborted();
           return page.columns.length || page.offset > 0 ? { ok: true, data: { table: formatRdbTableRef(ref), ...page } }
             : { ok: false, error: 'rdb_table_metadata_unavailable', errorCode: 'rdb_error' };
@@ -89,19 +110,20 @@ export class RdbConnector implements Connector {
           return { ok: false, error: 'invalid_row_pagination', errorCode: 'invalid_params' };
         }
         const rows = joins.length > 0
-          ? await readRdbJoinedRows(this.config, ref, joins, requestedLimit + 1, ctx.abortSignal, { offset })
-          : await readRdbRows(this.config, ref, requestedLimit + 1, ctx.abortSignal, { offset });
+          ? await readRdbJoinedRows(config, ref, joins, requestedLimit + 1, ctx.abortSignal, { offset })
+          : await readRdbRows(config, ref, requestedLimit + 1, ctx.abortSignal, { offset });
         ctx.abortSignal?.throwIfAborted();
         const queryFingerprint = createHash('sha256').update(JSON.stringify({
           schemaVersion: 1,
-          database: this.config.type,
+          database: config.type,
+          ...(database.id !== DEFAULT_RDB_DATABASE_ID ? { connectionId: database.id } : {}),
           // Bind identity to the configured source without exposing its path,
           // credentials or connection string in the resulting artifact.
-          connection: this.config.connectionString
-            ? rdbConnectionIdentity(this.config.connectionString)
-            : this.config.filePath ?? null,
-          allowedSchemas: [...(this.config.allowedSchemas ?? [])].sort(),
-          allowedTables: [...(this.config.allowedTables ?? [])].sort(),
+          connection: config.connectionString
+            ? rdbConnectionIdentity(config.connectionString)
+            : config.filePath ?? null,
+          allowedSchemas: [...(config.allowedSchemas ?? [])].sort(),
+          allowedTables: [...(config.allowedTables ?? [])].sort(),
           table: formatRdbTableRef(ref),
           ...(joins.length > 0 ? { joins } : {}),
           accessMode: 'read_only', projection: 'all_columns', predicate: 'none', pagination: 'offset',
@@ -120,7 +142,8 @@ export class RdbConnector implements Connector {
           source: {
             executionId: ctx.executionId,
             readOnlyEnforced: true,
-            database: this.config.type,
+            database: config.type,
+            ...(database.label ? { connectionLabel: database.label } : {}),
             schema: ref.schema,
             table: ref.table,
             queryFingerprint,

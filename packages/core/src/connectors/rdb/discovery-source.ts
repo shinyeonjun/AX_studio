@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { tableArtifactFromRows } from '../../contracts/artifacts/table-build.js';
 import type { DiscoverySourceContext, DiscoverySourceProvider, SourceProfileResult } from '../../contracts/discovery-source.js';
-import { parseRdbConnectionConfig } from './index.js';
+import { matchRdbDatabase, parseRdbDatabases, parseRdbSourceId, rdbDatabaseName, rdbSourceId, type RdbDatabase } from './config/databases.js';
 import {
   formatRdbTableRef,
   isAllowedRdbTable,
@@ -21,35 +21,39 @@ function fingerprintTable(table: { columns: Array<{ name: string }>; rows: unkno
   })).digest('hex');
 }
 
+/** The connection's databases that can be opened (credentials merged by the host). */
+async function openableDatabases(ctx: DiscoverySourceContext): Promise<RdbDatabase[]> {
+  const connection = ctx.store.getConnections().find((entry) => entry.connector === 'rdb' && entry.connected);
+  if (!connection) return [];
+  const resolvedConfig = await ctx.resolveConnectionConfig?.('rdb', connection.config);
+  return parseRdbDatabases(resolvedConfig === undefined ? connection.config : resolvedConfig);
+}
+
 export const rdbDiscoverySource: DiscoverySourceProvider = {
   connector: 'rdb',
 
   async listSources(ctx: DiscoverySourceContext) {
-    const connection = ctx.store.getConnections().find((entry) => entry.connector === 'rdb' && entry.connected);
-    if (!connection) return [];
-    const resolvedConfig = await ctx.resolveConnectionConfig?.('rdb', connection.config);
-    const config = parseRdbConnectionConfig(resolvedConfig === undefined ? connection.config : resolvedConfig);
-    if (!config) return [];
-    const tables = await listRdbTables(config);
-    return tables.map((table) => ({
-        id: `rdb:${formatRdbTableRef(table)}`,
-        connector: 'rdb',
-        label: formatRdbTableRef(table),
-        kind: 'table' as const,
-        relevance: 0,
-        profileSummary: `${config.type} table ${formatRdbTableRef(table)}`,
-      }));
+    const databases = await openableDatabases(ctx);
+    const several = databases.length > 1;
+    const lists = await Promise.all(databases.map(async (config) => (await listRdbTables(config)).map((table) => ({
+      // With several databases a table is named with its database, so two "orders" stay apart.
+      id: rdbSourceId(config.id, formatRdbTableRef(table)),
+      connector: 'rdb',
+      label: several ? `${rdbDatabaseName(config)} · ${formatRdbTableRef(table)}` : formatRdbTableRef(table),
+      kind: 'table' as const,
+      relevance: 0,
+      profileSummary: `${config.type} table ${formatRdbTableRef(table)}`,
+    }))));
+    return lists.flat();
   },
 
   async profileSource(ctx: DiscoverySourceContext, sourceId: string): Promise<SourceProfileResult | null> {
     if (!sourceId.startsWith('rdb:')) return null;
     if (ctx.budget.sourceReadsUsed >= ctx.budget.sourceReadsMax) return null;
-    const connection = ctx.store.getConnections().find((entry) => entry.connector === 'rdb' && entry.connected);
-    if (!connection) return null;
-    const resolvedConfig = await ctx.resolveConnectionConfig?.('rdb', connection.config);
-    const config = parseRdbConnectionConfig(resolvedConfig === undefined ? connection.config : resolvedConfig);
-    if (!config) return null;
-    const table = parseRdbTableRef(sourceId.replace(/^rdb:/, ''));
+    const named = parseRdbSourceId(sourceId);
+    const config = named ? matchRdbDatabase(await openableDatabases(ctx), named.databaseId) : undefined;
+    if (!named || !config) return null;
+    const table = parseRdbTableRef(named.table);
     if (!table || !isAllowedRdbTable(config, table)) return null;
     if (ctx.budget.sourceReadsUsed >= ctx.budget.sourceReadsMax) return null;
     ctx.budget.sourceReadsUsed += 1;

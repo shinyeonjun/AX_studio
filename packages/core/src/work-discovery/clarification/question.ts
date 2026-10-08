@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { parseRdbSourceId } from '../../connectors/rdb/config/databases.js';
 import type { CandidateProgram } from '../schema.js';
 import type { ClarificationQuestion } from './types.js';
 import { sourceIdFromExpr } from '../compile/blueprint.js';
@@ -31,7 +32,7 @@ function labelForCandidate(candidate: CandidateProgram): string {
     return describeMapping(candidate.expr);
   }
   const sourceId = sourceIdFromExpr(candidate.expr);
-  return (sourceId ?? 'unknown').replace(/^(rdb|sheet):/, '');
+  return (sourceId && parseRdbSourceId(sourceId)?.table) ?? (sourceId ?? 'unknown').replace(/^sheet:/, '');
 }
 
 export function detectCandidateAmbiguity(candidates: CandidateProgram[]): boolean {

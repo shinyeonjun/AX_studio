@@ -86,6 +86,8 @@ export const TableArtifactSchema = z.object({
     contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     headerRow: z.number().int().positive().optional(),
     database: z.string().optional(),
+    /** The name of the database read, when the connection holds several. */
+    connectionLabel: z.string().max(80).optional(),
     schema: z.string().optional(),
     table: z.string().optional(),
     queryFingerprint: z.string().optional(),

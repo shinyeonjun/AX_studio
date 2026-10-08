@@ -1,4 +1,5 @@
 import { tableArtifactFromMatrix, tableArtifactFromRows } from '../../../contracts/artifacts/table-build.js';
+import { parseRdbSourceId } from '../../rdb/config/databases.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
 
 export function normalizeTableInput(value: unknown, sourceId: string): TableArtifact | undefined {
@@ -8,9 +9,9 @@ export function normalizeTableInput(value: unknown, sourceId: string): TableArti
 
   return tableArtifactFromRows(value, {
     id: `runtime_${sourceId}`,
-    source: sourceId.startsWith('rdb:') ? { table: sourceId.slice('rdb:'.length) } : undefined,
+    source: parseRdbSourceId(sourceId) ? { table: parseRdbSourceId(sourceId)!.table } : undefined,
   }) ?? tableArtifactFromMatrix(value, {
     id: `runtime_${sourceId}`,
-    source: sourceId.startsWith('rdb:') ? { table: sourceId.slice('rdb:'.length) } : undefined,
+    source: parseRdbSourceId(sourceId) ? { table: parseRdbSourceId(sourceId)!.table } : undefined,
   });
 }
