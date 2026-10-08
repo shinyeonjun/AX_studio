@@ -48,6 +48,24 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       db.exec('CREATE INDEX IF NOT EXISTS idx_approvals_execution_status ON approvals(execution_id, status);');
     },
   },
+  {
+    version: 5,
+    name: 'workspace-chat-host-state',
+    up(db) {
+      // What the host holds for a conversation (a job draft awaiting its card, the table on screen
+      // and how it was made) survives a restart, so the buttons left in the chat keep working.
+      db.exec([
+        'CREATE TABLE IF NOT EXISTS workspace_chat_host_state (',
+        '  chat_id TEXT NOT NULL,',
+        '  kind TEXT NOT NULL,',
+        '  value_json TEXT NOT NULL,',
+        '  updated_at TEXT NOT NULL,',
+        '  PRIMARY KEY (chat_id, kind)',
+        ');',
+        'CREATE INDEX IF NOT EXISTS idx_workspace_chat_host_state_kind ON workspace_chat_host_state(kind, updated_at);',
+      ].join('\n'));
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = SCHEMA_MIGRATIONS[SCHEMA_MIGRATIONS.length - 1]!.version;

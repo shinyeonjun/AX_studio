@@ -80,7 +80,7 @@ export function recurringJobFromReadRecipe(input: {
 }): RecurringJobFromExecution {
   const { recipe } = input;
   if (!recipe) {
-    return { ok: false, message: '이 답변을 만든 조회 방법을 다시 확인할 수 없습니다. 앱을 다시 켰다면 같은 요청을 한 번 더 해 주세요.' };
+    return { ok: false, message: '이 표를 만든 조회 방법을 찾지 못했어요. 그 뒤에 다른 조회를 했다면 이 표 대신 최근 표에서 반복 업무를 만들 수 있어요. 같은 요청을 다시 해도 돼요.' };
   }
   const recurrence = decodeScheduleInputValue(input.scheduleValue);
   if (!recurrence) return { ok: false, message: '반복 일정을 다시 골라 주세요.' };

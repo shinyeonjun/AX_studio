@@ -1,3 +1,4 @@
+import type { SessionStateMap } from '../../service/contracts.js';
 import { httpEndpointsFromConnections } from '../../../../../connectors/http/connection.js';
 import { parseLocalFolderConnectionConfig } from '../../../../../platform/local-folder-config.js';
 import {
@@ -31,7 +32,7 @@ import type { SelectedJobTargets } from './target-selection.js';
 
 export function createPendingJob(options: {
   store: WorkflowStore;
-  pending: Map<string, PendingJobDraft>;
+  pending: SessionStateMap<PendingJobDraft>;
   input: ValidatedProposeInput;
   targets?: SelectedJobTargets;
   /** Slack channel id -> '#name', for the confirmation card. */
@@ -42,9 +43,6 @@ export function createPendingJob(options: {
   if (input.genericWorkflow) return createPendingGenericJob(store, pending, input, channelLabels);
   if (!targets) return ['invalid', undefined, [issue('job_targets_required', '업무에서 쓸 연결이 정해지지 않았습니다. 연결을 골라 주세요.')]];
   const { data, sessionId, path, cron, timezone } = input;
-  if (!pending.has(sessionId) && pending.size >= 128) {
-    return ['invalid', undefined, [issue('pending_jobs_full', '미완료 업무 초안이 많습니다. 기존 초안을 저장하거나 해당 대화를 정리한 뒤 다시 시도해 주세요.')]];
-  }
   const connected = store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
   const spec = {
     name: data.name,
@@ -104,16 +102,13 @@ export function createPendingJob(options: {
 
 function createPendingGenericJob(
   store: WorkflowStore,
-  pending: Map<string, PendingJobDraft>,
+  pending: SessionStateMap<PendingJobDraft>,
   input: ValidatedProposeInput,
   channelLabels: Readonly<Record<string, string>>,
 ): ProposeResponse {
   const { data, sessionId } = input;
   if (!data.trigger || !data.steps) {
     return ['invalid', undefined, [issue('workflow_payload_required', '언제 시작할지와 무엇을 할지 알려 주세요.')]];
-  }
-  if (!pending.has(sessionId) && pending.size >= 128) {
-    return ['invalid', undefined, [issue('pending_jobs_full', '미완료 업무 초안이 많습니다. 기존 초안을 저장하거나 해당 대화를 정리한 뒤 다시 시도해 주세요.')]];
   }
 
   const candidate = candidateFromCreateCommand({

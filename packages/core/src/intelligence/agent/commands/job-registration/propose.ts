@@ -1,3 +1,4 @@
+import type { SessionStateMap } from '../service/contracts.js';
 import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
 import type {
   AxCommandIssue,
@@ -15,7 +16,7 @@ import type { ProposeResponse } from './propose/contracts.js';
 
 export async function proposeJob(options: {
   store: WorkflowStore;
-  pending: Map<string, PendingJobDraft>;
+  pending: SessionStateMap<PendingJobDraft>;
   workspaceSessionId?: string;
   args: unknown;
   listSlackChannels?: ListSlackChannels;

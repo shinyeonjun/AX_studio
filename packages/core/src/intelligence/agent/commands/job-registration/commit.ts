@@ -1,3 +1,4 @@
+import type { SessionStateMap } from '../service/contracts.js';
 import {
   validateWorkflowContracts,
 } from '../../../../workflow/contract-validator.js';
@@ -16,7 +17,7 @@ import {
 
 export async function commitJob(options: {
   store: WorkflowStore;
-  pending: Map<string, PendingJobDraft>;
+  pending: SessionStateMap<PendingJobDraft>;
   workspaceSessionId?: string;
   allowJobCommit?: boolean;
   confirmationToken?: string;
@@ -33,7 +34,7 @@ export async function commitJob(options: {
 
   const draft = options.pending.get(sessionId);
   if (!draft) {
-    return ['not_found', undefined, [issue('pending_job_not_found', '저장할 업무 초안이 없습니다. 먼저 업무를 다시 제안해 주세요.')]];
+    return ['not_found', undefined, [issue('pending_job_not_found', '이 카드의 업무 초안을 찾지 못했어요. 이미 저장했거나 더 새 초안으로 바뀌었을 수 있어요. 같은 요청을 다시 하면 새 초안을 보여 드려요.')]];
   }
 
   if (!options.confirmationToken || options.confirmationToken !== draft.confirmationToken) {

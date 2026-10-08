@@ -94,7 +94,7 @@ export async function proposeRecurringFromRead(
   const chat = getCore().store.getWorkspaceChat(workspaceSessionId);
   if (!chat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
   const conversion = recurringJobFromReadRecipe({
-    recipe: hostReadRecipeFor(workspaceSessionId, chat.messages),
+    recipe: hostReadRecipeFor(getCore().store, workspaceSessionId, chat.messages),
     request: requestForLatestRead(chat.messages),
     scheduleValue,
   });
