@@ -1,4 +1,4 @@
-import { JEV_DEFAULT_BASE_URL, JEV_PINNED_MODEL, JevDecisionEngine, JevDecisionError, resolveJevModel, validateJevApiKey } from '@ax-studio/core';
+import { decisionServiceFailure, JEV_DEFAULT_BASE_URL, JEV_PINNED_MODEL, JevDecisionEngine, JevDecisionError, resolveJevModel, validateJevApiKey } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -85,6 +85,9 @@ async function snapshot() {
   const config = await readAiToml();
   const jev = config.decision?.jev;
   const secret = await getJevSecret();
+  // The check passed for this very key at the address it is used with.
+  const apiKeyVerified = Boolean(secret) && jev?.verifiedKey === maskSecret(secret)
+    && storedKeyOrigin(jev) === originOf(jev?.baseURL?.trim() || JEV_DEFAULT_BASE_URL);
   return {
     enabled: jev?.enabled ?? false,
     model: resolveJevModel(jev?.model) || DEFAULT_JEV_MODEL,
@@ -92,6 +95,7 @@ async function snapshot() {
     defaultBaseURL: JEV_DEFAULT_BASE_URL,
     apiKeyConfigured: Boolean(secret),
     apiKeyMasked: secret ? maskSecret(secret) : undefined,
+    apiKeyVerified,
   };
 }
 
@@ -118,6 +122,8 @@ export function registerDecisionPlaneHandlers(): void {
       model: prefs.model,
       baseURL: prefs.baseURL,
       ...(secret ? { keyOrigin: origin } : {}),
+      // A different key has not been checked yet.
+      ...(prefs.apiKey && maskSecret(prefs.apiKey) !== (await readAiToml()).decision?.jev?.verifiedKey ? { verifiedKey: '' } : {}),
     });
 
     getCore().refreshDecisionEngine(
@@ -176,8 +182,12 @@ export function registerDecisionPlaneHandlers(): void {
       )) {
         throw new Error(MALFORMED_KEY, { cause: error });
       }
-      if (error instanceof JevDecisionError && (error.status === 401 || error.status === 403)) {
-        throw new Error('API 키가 거부됐어요. 키를 다시 확인해 주세요.', { cause: error });
+      const failure = decisionServiceFailure(error);
+      if (failure === 'key_rejected') throw new Error('API 키가 거부됐어요. 키를 다시 확인해 주세요.', { cause: error });
+      // Busy or briefly down (already retried): not the person's key or address.
+      if (failure === 'busy') {
+        const status = error instanceof JevDecisionError && error.status !== undefined ? `(오류 ${error.status})` : '';
+        throw new Error(`판단 엔진(Jev) 서버가 지금 응답하지 못하고 있어요${status}. API 키나 주소 문제는 아니니 잠시 뒤 다시 확인해 주세요. 이미 저장된 설정은 그대로 쓰입니다.`, { cause: error });
       }
       if (error instanceof JevDecisionError && error.status !== undefined) {
         throw new Error(`판단 엔진(Jev) 서버가 연결 확인을 거절했어요(오류 ${error.status}). 서버 주소와 API 키 권한을 확인해 주세요.`, { cause: error });
@@ -188,8 +198,10 @@ export function registerDecisionPlaneHandlers(): void {
     if (draft) {
       await setJevSecret(draft);
       // The saved key is bound to the origin it was just verified against.
-      await saveJevDecisionPreferences({ baseURL: prefs.baseURL, keyOrigin: originOf(prefs.baseURL) });
+      await saveJevDecisionPreferences({ baseURL: prefs.baseURL, keyOrigin: originOf(prefs.baseURL), verifiedKey: maskSecret(draft) });
       if (current.enabled) getCore().refreshDecisionEngine(engine);
+    } else if (prefs.baseURL === current.baseURL) {
+      await saveJevDecisionPreferences({ verifiedKey: maskSecret(secret) });
     }
     return {
       ok: true,

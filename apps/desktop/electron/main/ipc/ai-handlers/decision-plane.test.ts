@@ -106,4 +106,33 @@ describe('Jev decision plane API key validation', () => {
     await expect(mocks.handlers.get('ax:saveJevDecisionConfig')!({}, { enabled: true }))
       .rejects.toThrow(/API 키를 다시 입력/);
   });
+
+  it('remembers a passed connection check, so settings do not ask again at every start', async () => {
+    const getConfig = mocks.handlers.get('ax:getJevDecisionConfig')!;
+    mocks.getJevSecret.mockResolvedValue('synthetic-key');
+    mocks.readAiToml.mockResolvedValue({ providers: {}, secrets: {}, decision: { jev: { enabled: true, baseURL: 'https://api.typesafe.ai', keyOrigin: 'https://api.typesafe.ai' } } });
+    expect(await getConfig({})).toMatchObject({ apiKeyConfigured: true, apiKeyVerified: false });
+
+    const testApi = mocks.handlers.get('ax:testJevDecisionApi')!;
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ model: 'jev-1.13.0', answers: { reachable: { type: 'noul', noul: 0.99 } } }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })));
+    await testApi({}, {});
+    expect(mocks.saveJevDecisionPreferences).toHaveBeenCalledWith({ verifiedKey: 'synthetic-mask' });
+
+    // The next start reads it back.
+    mocks.readAiToml.mockResolvedValue({ providers: {}, secrets: {}, decision: { jev: { enabled: true, baseURL: 'https://api.typesafe.ai', keyOrigin: 'https://api.typesafe.ai', verifiedKey: 'synthetic-mask' } } });
+    expect(await getConfig({})).toMatchObject({ apiKeyVerified: true });
+  });
+
+  it('says a busy server is not the key or the address', async () => {
+    mocks.getJevSecret.mockResolvedValue('synthetic-key');
+    mocks.readAiToml.mockResolvedValue({ providers: {}, secrets: {}, decision: { jev: { enabled: true, baseURL: 'https://api.typesafe.ai', keyOrigin: 'https://api.typesafe.ai' } } });
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response('unavailable', { status: 503 })));
+    const testApi = mocks.handlers.get('ax:testJevDecisionApi')!;
+    const error = await (testApi({}, {}) as Promise<unknown>).catch((caught: unknown) => caught as Error);
+    expect((error as Error).message).toContain('응답하지 못하고 있어요(오류 503)');
+    expect((error as Error).message).toContain('API 키나 주소 문제는 아니니');
+    expect(mocks.saveJevDecisionPreferences).not.toHaveBeenCalled();
+  }, 15_000);
 });

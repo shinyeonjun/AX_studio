@@ -31,6 +31,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         setDefaultBaseURL(config.defaultBaseURL);
         setApiKeyConfigured(config.apiKeyConfigured);
         setApiKeyMasked(config.apiKeyMasked);
+        setApiKeyVerified(config.apiKeyVerified === true);
       })
       .catch((error) => {
         if (!cancelled) {
@@ -97,7 +98,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       setBaseURL(config.baseURL);
       setApiKeyConfigured(config.apiKeyConfigured);
       setApiKeyMasked(config.apiKeyMasked);
-      setApiKeyVerified(false);
+      setApiKeyVerified(config.apiKeyVerified === true);
       setApiKeyDraft('');
       setMessage(config.enabled
         ? '저장했어요. 판단 엔진(Jev)을 바로 사용합니다.'

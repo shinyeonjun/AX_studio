@@ -1,3 +1,4 @@
+import { decisionServiceFailure } from '../../../../decision/jev/errors.js';
 import {
   decisionProviderRequestBytesFromError,
   decisionProviderRequestCountFromError,
@@ -151,12 +152,15 @@ export class JevRouterTelemetryTracker {
 
   /** A provider failure keeps any usage already counted plus the failed request. */
   serviceFailure(error: unknown): JevChatRouterResult {
+    const kind = decisionServiceFailure(error);
+    const serviceFailure = kind ? { serviceFailure: kind } : {};
     const failedProviderRequestCount = decisionProviderRequestCountFromError(error);
     const failedProviderRequestBytes = decisionProviderRequestBytesFromError(error);
     const telemetry = this.telemetry;
     if (telemetry) {
       return {
         ...fallback('service_error'),
+        ...serviceFailure,
         telemetry: {
           ...telemetry,
           evaluationCalls: this.evaluationCalls,
@@ -173,10 +177,11 @@ export class JevRouterTelemetryTracker {
       return {
         kind: 'fallback',
         reason: 'service_error',
+        ...serviceFailure,
         evaluationCalls: this.evaluationCalls,
         providerRequestCount: failedProviderRequestCount,
       };
     }
-    return fallback('service_error');
+    return { ...fallback('service_error'), ...serviceFailure };
   }
 }

@@ -1,3 +1,4 @@
+import type { DecisionServiceFailure } from '../../../../decision/jev/errors.js';
 import { readValueNames } from '../shared/read-value-names.js';
 import type { ChatMessage } from '../../../model/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../../connectors/failure-kind.js';
@@ -117,9 +118,13 @@ export function partialPreviousResultCalculation(options: AxCommandChatOptions):
   return partial && deriveJevRequestFeatures(options.userMessage).calculation_or_summary_cue === true;
 }
 
-export function jevFallbackMessage(reason: JevChatRouterFallbackReason): string {
+export function jevFallbackMessage(reason: JevChatRouterFallbackReason, serviceFailure?: DecisionServiceFailure): string {
   switch (reason) {
     case 'service_error':
+      // Settings are only the answer when the key itself was rejected.
+      if (serviceFailure === 'busy') return '판단 엔진(Jev) 서버가 잠시 응답하지 않아 이번 요청은 처리하지 못했어요. 설정은 바꿀 필요 없어요. 잠시 뒤 다시 보내 주세요.';
+      if (serviceFailure === 'unreachable') return '판단 엔진(Jev) 서버에 닿지 못해 이번 요청은 처리하지 못했어요. 인터넷 연결을 확인한 뒤 다시 보내 주세요.';
+      if (serviceFailure === 'key_rejected') return '판단 엔진(Jev)이 API 키를 거부해 요청을 처리하지 못했어요. 설정 > 판단 엔진에서 키를 다시 확인해 주세요.';
       return '판단 엔진(Jev)에 연결하지 못해 작업을 실행하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요.';
     case 'missing_context':
       return '요청을 처리할 연결·자료·대상이 부족합니다. 사용할 연결이나 대상을 지정해 주세요.';

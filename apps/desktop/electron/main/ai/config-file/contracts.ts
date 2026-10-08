@@ -11,6 +11,11 @@ export interface JevDecisionTomlConfig {
   baseURL?: string;
   /** Origin the stored API key was entered for; the key is never sent anywhere else. */
   keyOrigin?: string;
+  /**
+   * The masked key (as settings shows it) that last passed the connection check at keyOrigin, so
+   * the check is not asked for again at every start. Blank once a different key is saved.
+   */
+  verifiedKey?: string;
 }
 
 export interface AiTomlConfig {
