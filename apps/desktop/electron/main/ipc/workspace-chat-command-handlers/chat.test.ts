@@ -89,12 +89,13 @@ vi.mock('../design-tool-context.js', () => ({ buildDesktopDesignToolContext: () 
 vi.mock('../../e2e-test-seam.js', () => ({ runE2EChat: vi.fn() }));
 
 import { registerWorkspaceChatMessageHandler } from './chat.js';
+import { proposeRecurringFromExecution } from './recurring.js';
 
 type ChatHandler = (
   event: unknown, message: string, requestId: string, workflowId: undefined, sessionId: string,
 ) => Promise<{ content: string; presentations?: AxUiPresentation[] }>;
 
-/** Clicks the host-rendered confirm_mutation action the way the renderer does: its value becomes the next user turn. */
+/** Clicks a host-rendered confirmation action the way the renderer does: its value becomes the next user turn. */
 async function confirmMutation(
   handler: ChatHandler,
   event: unknown,
@@ -102,10 +103,11 @@ async function confirmMutation(
   sessionId: string,
   previousUserMessage: string,
   proposal: { content: string; presentations?: AxUiPresentation[] },
+  purpose: 'confirm_mutation' | 'confirm_job' = 'confirm_mutation',
 ) {
   const action = proposal.presentations?.flatMap(({ actions }) => actions)
-    .find((candidate) => (candidate.purpose as string) === 'confirm_mutation');
-  expect(action?.id).toMatch(/^confirm_mutation:/u);
+    .find((candidate) => (candidate.purpose as string) === purpose);
+  expect(action?.id).toMatch(new RegExp(`^${purpose}:`, 'u'));
   const stored = store.getWorkspaceChat(sessionId)!;
   store.saveWorkspaceChat({
     id: sessionId,
@@ -329,6 +331,55 @@ describe('Desktop workspace chat Jev routing', () => {
       });
     } finally {
       clearPendingCommand(chat.id);
+      db.close?.();
+    }
+  });
+
+  it('saves and switches on a recurring job when its card is clicked, once, without asking Jev or the model', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      store.setConnection('http', true, { baseUrl: 'https://dummyjson.com/' });
+      const connectionId = axCore.httpEndpointsFromConnections(store.getConnections())[0]!.id;
+      const ir = axCore.validateWorkflowIR({
+        version: 1, name: '상품 목록 조회', goal: 'DummyJSON 상품 목록을 읽어줘', trigger: { type: 'manual' },
+        steps: [{ type: 'action', id: 'fetch', connector: 'http', action: 'request', params: { connectionId, method: 'GET', path: 'products' }, sideEffect: 'NONE' }],
+      });
+      if (!ir.ok) throw new Error(ir.error);
+      const userMessage = '상품 목록 보여줘';
+      const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: userMessage }] });
+      const executionId = store.createExecution({ ephemeral: true, irJson: JSON.stringify(ir.value), workspaceSessionId: chat.id });
+      store.finishExecution(executionId, 'success');
+      const decisionEngine = { evaluate: vi.fn(async () => { throw new Error('Jev must not be asked to confirm a card'); }) };
+      const agentHarness = { providerName: 'test-llm', runText: vi.fn(async () => { throw new Error('the model must not be asked either'); }) };
+      ipcMocks.getCore.mockReturnValue({
+        store, workspaceSources: { list: vi.fn(() => []) }, decisionEngine, agentHarness,
+        commandService: new AxCommandService(store),
+      });
+      registerWorkspaceChatMessageHandler();
+      const handler = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as ChatHandler;
+      const event = { sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() }, senderFrame: ipcMocks.mainFrame };
+
+      const proposal = await proposeRecurringFromExecution(chat.id, executionId, axCore.encodeScheduleInputValue({
+        kind: 'recurrence', freq: 'daily', interval: 1, times: [{ hour: 9, minute: 0 }], anchor: '2026-10-01', timezone: 'Asia/Seoul',
+      }));
+      expect(store.listWorkflows()).toHaveLength(0);
+      const reply = await confirmMutation(handler, event, store, chat.id, userMessage, proposal, 'confirm_job');
+
+      expect(reply.content).toContain('반복 업무를 저장하고 활성화했습니다');
+      const [saved] = store.listWorkflows();
+      expect(saved?.active).toBe(true);
+      expect(store.getWorkspaceChat(chat.id)?.workflowId).toBe(saved?.id);
+      expect(decisionEngine.evaluate).not.toHaveBeenCalled();
+      expect(agentHarness.runText).not.toHaveBeenCalled();
+
+      // Clicking the same card again (a double click, or after reopening the chat) saves nothing new.
+      const confirmValue = proposal.presentations.flatMap(({ actions }) => actions).find((action) => action.purpose === 'confirm_job')!.value;
+      const stored = store.getWorkspaceChat(chat.id)!;
+      store.saveWorkspaceChat({ id: chat.id, messages: [...stored.messages, { role: 'user', content: confirmValue }] });
+      await handler(event, confirmValue, 'confirm-again', undefined, chat.id).catch(() => undefined);
+      expect(store.listWorkflows()).toHaveLength(1);
+    } finally {
       db.close?.();
     }
   });

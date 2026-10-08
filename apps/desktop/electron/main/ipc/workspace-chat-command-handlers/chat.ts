@@ -37,7 +37,7 @@ import {
 } from './helpers.js';
 import { bindContextConfirmations, clearHostChatSession, hostReadRecipeFor, hostReadResultFor, rememberHostReadResult } from './host-state.js';
 import { metadataTerminalReply, registeredHttpMetadataAvailable, runRegisteredHttpMetadataTurn } from './metadata-turns.js';
-import { selectJevReadOperations } from './read-operation-index.js';
+import { readableConnections, selectJevReadOperations } from './read-operation-index.js';
 import { runE2EChatTurn } from './e2e-turn.js';
 import {
   currentWorkflowOutputs,
@@ -144,7 +144,7 @@ export function registerWorkspaceChatMessageHandler() {
         outcome = 'success';
         return reply;
       }
-      const connections = core.store.getConnections();
+      const connections = readableConnections(core.store.getConnections(), core.runtime?.connectors.rdb);
       // Keep the revision paired with this synchronous connection snapshot.
       const connectionRevision = typeof core.store.getConnectionRevision === 'function'
         ? core.store.getConnectionRevision()

@@ -101,6 +101,24 @@ export function serializeRdbDatabases(entries: readonly RdbDatabaseEntry[]): Rec
   };
 }
 
+/**
+ * The connection rows with the 'rdb' row cut down to the databases in `openIds`. A saved database
+ * whose address is not in this computer's secure storage stays in settings (to be connected
+ * again) but is not offered for reading: a read there could only fail.
+ */
+export function withOpenRdbDatabases<T extends { connector: string; connected: boolean; config?: unknown }>(
+  connections: readonly T[],
+  openIds: ReadonlySet<string>,
+): T[] {
+  return connections.map((connection) => {
+    if (connection.connector !== 'rdb') return connection;
+    const entries = rdbDatabaseEntries(connection.config);
+    const open = entries.filter((entry) => openIds.has(entry.id));
+    if (open.length === entries.length) return connection;
+    return { ...connection, connected: connection.connected && open.length > 0, config: serializeRdbDatabases(open) };
+  });
+}
+
 /** Adds a database, or updates the one with the same id (keeping its id). */
 export function upsertRdbDatabase(config: unknown, entry: RdbDatabaseEntry): RdbDatabaseEntry[] {
   const entries = rdbDatabaseEntries(config);
