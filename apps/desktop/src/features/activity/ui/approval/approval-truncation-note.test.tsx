@@ -14,14 +14,15 @@ describe('approval truncation note', () => {
 
   it('lists up to three shortened fields with their original length', () => {
     const approval = { payload: { actionSnapshots: [{ actionId: 'send', truncated: true as const, truncatedFields: [
-      { path: 'body', originalLength: 1234 }, { path: 'to', originalLength: 80 },
+      { path: 'params.body', originalLength: 1234 }, { path: 'to', originalLength: 80 },
       { path: 'cc', originalLength: 70 }, { path: 'bcc', originalLength: 90 },
     ] }] } };
     const markup = renderToStaticMarkup(<ApprovalTruncationNote approval={approval} />);
     expect(markup).toContain('일부만 표시됨');
-    expect(markup).toContain('body 원래 길이 1,234');
+    expect(markup).toContain('본문 원래 길이 1,234');
+    expect(markup).not.toContain('params');
     expect(markup).toContain('외 1개');
-    expect(markup).not.toContain('bcc');
+    expect(markup).not.toContain('숨은 참조');
   });
 
   it('still warns when a truncated snapshot carries no field details', () => {
@@ -35,6 +36,6 @@ describe('approval truncation note', () => {
       approval={{ ...base, payload: { actionSnapshots: [{ actionId: 'send', truncated: true, truncatedFields: [{ path: 'text', originalLength: 900 }] }] } }}
       busy={false} onLegacyAction={vi.fn()} onRefresh={vi.fn()} onOutcome={vi.fn()} />);
     expect(markup).toContain('approval-truncation-note');
-    expect(markup).toContain('text 원래 길이 900');
+    expect(markup).toContain('내용 원래 길이 900');
   });
 });

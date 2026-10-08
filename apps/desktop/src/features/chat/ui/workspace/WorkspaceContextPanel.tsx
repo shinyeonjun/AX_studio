@@ -16,15 +16,15 @@ interface WorkspaceContextPanelProps {
 const TAB_ORDER: WorkspaceContextTab[] = ['sources', 'flow', 'workflow'];
 const TAB_LABELS: Record<WorkspaceContextTab, string> = {
   sources: '자료',
-  flow: '흐름',
+  flow: '실행 흐름',
   workflow: '업무 구성',
 };
 
 function WorkflowEmptyState() {
   return (
-    <section className="workspace-context-empty" aria-label="업무 흐름 없음">
+    <section className="workspace-context-empty" aria-label="업무 구성 없음">
       <span className="workspace-context-empty-icon" aria-hidden="true">◇</span>
-      <h2>아직 업무 흐름이 없습니다.</h2>
+      <h2>아직 업무 구성이 없습니다.</h2>
       <p>대화에서 업무 방법이 만들어지면 재사용할 수 있는 순서로 표시됩니다.</p>
     </section>
   );
@@ -103,7 +103,7 @@ export function WorkspaceContextPanel({
             onAttach={onAttachSource}
           />
         )}
-        {activeTab === 'flow' && (flow ?? <div className="workspace-context-empty">현재 실행 흐름이 여기에 표시됩니다.</div>)}
+        {activeTab === 'flow' && (flow ?? <div className="workspace-context-empty">업무를 실행하면 단계별 진행이 여기에 표시됩니다.</div>)}
         {activeTab === 'workflow' && (hasWorkflow && workflow ? workflow : <WorkflowEmptyState />)}
       </div>
     </aside>

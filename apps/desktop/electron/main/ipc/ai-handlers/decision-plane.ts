@@ -20,7 +20,7 @@ interface JevDecisionPrefs {
   apiKey?: string;
 }
 
-const SETTINGS_UNREADABLE = '판단 엔진(Jev) 설정을 읽지 못했어요. 화면을 새로 고친 뒤 다시 저장해 주세요.';
+const SETTINGS_UNREADABLE = '판단 엔진(Jev) 설정을 읽지 못했어요. 화면을 새로고침한 뒤 다시 저장해 주세요.';
 const MALFORMED_KEY = 'API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.';
 
 function normalizedUrl(value: string | undefined): string {

@@ -31,7 +31,7 @@ describe('historical execution state projection', () => {
       hasOutput: false, historyDiagnostics: [],
       logJson: JSON.stringify([{ at: '2026-09-01T00:00:00Z', level: 'error', code: 'old_failure', message: 'Older synthetic error' }]),
     }] } } as unknown as AxCore;
-    expect(buildExecutions(core)[0]).toMatchObject({ status: 'running', errorMessage: 'Older synthetic error' });
+    expect(buildExecutions(core)[0]).toMatchObject({ status: 'running', errorMessage: '작업을 완료하지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.' });
   });
 
   it('keeps result bodies out of app state and derives pending progress from the restored tail', () => {

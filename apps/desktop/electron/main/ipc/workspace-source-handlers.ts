@@ -9,7 +9,7 @@ let e2eSourcePath: string | undefined;
 
 function sessionId(value: unknown): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.trim())) {
-    throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   }
   return value.trim();
 }

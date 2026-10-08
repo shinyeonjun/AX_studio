@@ -21,6 +21,28 @@ describe('execution log summary', () => {
     expect(summary.currentStepStatus).not.toBe('waiting_approval');
   });
 
+  it('shows only Korean: translates failure codes and English errors, hides other raw lines', () => {
+    const failed = executionLogSummary(JSON.stringify([
+      { level: 'info', message: 'http.request', data: { stepId: 'fetch' } },
+      { level: 'error', message: 'http.request_failed', data: { status: 500 } },
+    ]), 'failed');
+    expect(failed.errorMessage).toBe('작업을 완료하지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.');
+    expect(failed.lastLogMessage).toBe(failed.errorMessage);
+
+    const coded = executionLogSummary(JSON.stringify([
+      { level: 'error', code: 'step_failed', message: 'to_required', data: { stepId: 'send' } },
+      { level: 'error', code: 'action_failed', message: 'Cannot read properties of undefined' },
+    ]), 'failed');
+    expect(coded.currentStepMessage).toBe('받는 사람이 비어 있어요. 받는 사람을 정해 주세요.');
+    expect(coded.errorMessage).toBe('작업을 완료하지 못했습니다');
+
+    const running = executionLogSummary(JSON.stringify([
+      { level: 'info', code: 'ai_decision_completed', message: 'AI 분석 완료: classify_step', data: { stepId: 'classify_step' } },
+    ]), 'running');
+    expect(running.lastLogMessage).toBe('AI 분석을 마쳤습니다.');
+    expect(executionLogSummary(JSON.stringify([{ level: 'info', message: 'slack.send' }]), 'running').lastLogMessage).toBeUndefined();
+  });
+
   it('exposes generated PDF metadata without stored paths or raw bytes', () => {
     const summary = executionLogSummary(JSON.stringify([
       {

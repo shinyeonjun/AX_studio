@@ -19,7 +19,7 @@ function isUnreadableWorkflowError(error: unknown): boolean {
 export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown, options?: unknown): Promise<{ ok: true }> {
   // Run and send history stays unless the person asked to clear it too.
   const deleteHistory = (options as { deleteHistory?: unknown } | undefined)?.deleteHistory === true;
-  if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+  if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   let workflow: ReturnType<DeletionCore['store']['getWorkflow']>;
   try {
     workflow = core.store.getWorkflow(workflowId);
@@ -51,7 +51,7 @@ export async function deleteWorkflowById(core: DeletionCore, workflowId: unknown
  * same one the chat's run card asks for; a step that sends anything still waits for approval.
  */
 export async function runWorkflowNow(core: Pick<ReturnType<typeof getCore>, 'store' | 'runtime'>, workflowId: unknown) {
-  if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+  if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   const result = await runSavedWorkflowById({ store: core.store, runtime: core.runtime }, workflowId);
   return { executionId: result.executionId, status: result.status, errorCode: result.errorCode };
 }
@@ -67,8 +67,8 @@ export function registerRuntimeActivationHandlers(): void {
   ipcHandle('ax:deleteWorkflow', async (_e, workflowId: unknown, options: unknown) => deleteWorkflowById(getCore(), workflowId, options));
   ipcHandle('ax:setWorkflowActive', async (_e, workflowId: unknown, active: unknown) => {
     const core = getCore();
-    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
-    if (typeof active !== 'boolean') throw new Error('업무를 켜거나 끄지 못했어요. 화면을 새로 고친 뒤 다시 시도해 주세요.');
+    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
+    if (typeof active !== 'boolean') throw new Error('업무를 켜거나 끄지 못했어요. 화면을 새로고침한 뒤 다시 시도해 주세요.');
     if (!core.store.setWorkflowActive(workflowId, active)) throw new Error(WORKFLOW_NOT_FOUND);
     core.runtime.setWorkflowActive(workflowId, active);
     return { ok: true };

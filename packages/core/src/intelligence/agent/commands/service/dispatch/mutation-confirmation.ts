@@ -179,7 +179,7 @@ function previewMutation(state: AxCommandServiceState, command: AxCommand, name:
     if (name === 'workflow.delete') {
       const baseVersion = (parsed.data as z.infer<typeof AxWorkflowDeleteArgsSchema>).baseVersion;
       if (workflow.version !== baseVersion) {
-        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]]);
+        return failed(command, ['conflict', { currentVersion: workflow.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'baseVersion')]]);
       }
       return {
         ok: true,

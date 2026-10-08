@@ -95,7 +95,7 @@ export function compileJevWorkflowUpdate(input: {
   if (!Number.isSafeInteger(workflowVersion) || (workflowVersion ?? 0) < 1) {
     return {
       kind: 'clarify',
-      message: '현재 업무의 최신 버전을 확인하지 못해 수정하지 않았습니다. 대화를 새로 고친 뒤 다시 요청해 주세요.',
+      message: '현재 업무의 최신 버전을 확인하지 못해 수정하지 않았습니다. 대화를 새로고침한 뒤 다시 요청해 주세요.',
     };
   }
 

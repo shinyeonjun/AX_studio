@@ -5,7 +5,7 @@ type SystemWarningKey = 'databaseBackendFallback' | 'credentialStorageWarning';
 
 const SYSTEM_WARNING_COPY: Record<SystemWarningKey, string> = {
   databaseBackendFallback:
-    '기본 데이터베이스 엔진을 불러오지 못해 임시 저장 방식으로 실행 중입니다. 앱이 갑자기 종료되면 최근 몇 초간의 변경이 저장되지 않을 수 있습니다. 앱을 다시 설치하거나 문제 해결 메뉴에서 진단 정보를 보내 주세요.',
+    '기본 데이터베이스 엔진을 불러오지 못해 임시 저장 방식으로 실행 중입니다. 앱이 갑자기 종료되면 최근 몇 초간의 변경이 저장되지 않을 수 있습니다. 앱을 다시 설치하거나 설정 > 문제 해결 > 진단 정보 내보내기로 문의해 주세요.',
   credentialStorageWarning:
     '이 컴퓨터의 비밀번호 보관함을 쓸 수 없어 토큰·비밀번호가 암호화되지 않은 채 저장되고 있어요. 컴퓨터 관리자에게 비밀번호 보관함(키링) 설정을 요청한 뒤 앱을 다시 시작해 주세요.',
 };
@@ -30,18 +30,47 @@ export function corruptRowCount(state: AppState | null): number {
   return typeof total === 'number' && total > 0 ? total : 0;
 }
 
+/** Stored tables as the part of the app people know them by. */
+const CORRUPT_AREA_LABELS: Record<string, string> = {
+  approvals: '승인 요청',
+  workflow_versions: '업무',
+  workflow_repair_proposals: '업무 고침 제안',
+  work_discovery_sessions: '업무 찾기 대화',
+  work_discovery_examples: '업무 찾기 예시',
+};
+
+function corruptAreaLabel(table: string): string {
+  return Object.hasOwn(CORRUPT_AREA_LABELS, table) ? CORRUPT_AREA_LABELS[table]! : '기타 데이터';
+}
+
+/** "업무 2건, 승인 요청 1건": the per-table counts merged by what people call each area. */
+function corruptAreaCounts(byTable: Record<string, number>): string {
+  const counts = new Map<string, number>();
+  for (const [table, count] of Object.entries(byTable)) {
+    if (typeof count !== 'number' || count <= 0) continue;
+    const label = corruptAreaLabel(table);
+    counts.set(label, (counts.get(label) ?? 0) + count);
+  }
+  return [...counts].map(([label, count]) => `${label} ${count}건`).join(', ');
+}
+
 /**
- * Notice that some stored rows were unreadable and skipped. Only identifiers, error codes
- * and detection times are listed; row payloads are never sent to the renderer.
+ * Notice that some stored rows were unreadable and skipped. People see how many items per area;
+ * the identifiers, error codes and detection times stay folded away for a support request.
+ * Row payloads are never sent to the renderer.
  */
 function CorruptRowsNotice({ summary, onDismiss }: { summary: NonNullable<AppState['corruptRows']>; onDismiss: () => void }) {
   const hidden = summary.total - summary.rows.length;
+  const areas = corruptAreaCounts(summary.byTable ?? {});
   return (
     <div className="state-banner state-banner--stale system-corrupt-rows" role="status">
       <div className="system-corrupt-rows-body">
-        <span>손상된 데이터 {summary.total}건이 건너뛰어졌습니다. 해당 항목은 목록과 실행에서 제외됩니다.</span>
+        <span>
+          손상된 데이터 {summary.total}건{areas ? `(${areas})` : ''}을 읽지 못해 목록과 실행에서 제외했습니다.
+          계속되면 설정 &gt; 문제 해결 &gt; 진단 정보 내보내기로 문의해 주세요.
+        </span>
         <details className="system-corrupt-rows-details">
-          <summary>자세히 보기</summary>
+          <summary>지원팀에 보낼 상세 정보</summary>
           <ul>
             {summary.rows.map((row) => (
               <li key={`${row.table}:${row.id}`}>

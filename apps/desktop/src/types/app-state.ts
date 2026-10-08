@@ -143,6 +143,8 @@ export interface AppState {
       stepId: string;
       fields: string[];
       preview: Record<string, string>;
+      /** Readable names for fields, when the work described them; the keys themselves are internal. */
+      labels?: Record<string, string>;
     };
     generatedPdf?: {
       artifactId: string;

@@ -17,7 +17,7 @@ const MAX_CHAT_MESSAGE_CHARS = 50_000;
 const MAX_CHAT_INPUT_BYTES = 1_000_000;
 const MAX_CHAT_CONTEXT_CHARS = 250_000;
 
-const TRANSCRIPT_SAVE_FAILED = '대화 기록을 저장하지 못했어요. 새로 고친 뒤 다시 시도해 주세요.';
+const TRANSCRIPT_SAVE_FAILED = '대화 기록을 저장하지 못했어요. 새로고침한 뒤 다시 시도해 주세요.';
 const TRANSCRIPT_TOO_LONG = '대화가 너무 길어 저장하지 못했어요. 새 대화를 시작해 주세요.';
 
 /**
@@ -189,7 +189,7 @@ export function selectMessagesThroughUserMessage(
       return messages.slice(0, index + 1);
     }
   }
-  throw new Error('현재 사용자 메시지를 찾을 수 없어요. 새로 고친 뒤 다시 보내 주세요.');
+  throw new Error('현재 사용자 메시지를 찾을 수 없어요. 새로고침한 뒤 다시 보내 주세요.');
 }
 
 /** Metadata requires an exact persisted turn identity, including its original text. */

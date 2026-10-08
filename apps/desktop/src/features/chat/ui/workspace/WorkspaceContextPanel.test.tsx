@@ -18,7 +18,7 @@ const emptyFlow = {
 };
 
 describe('Workspace context tabs', () => {
-  it('renders 자료, 흐름, 업무 구성 as accessible tabs', () => {
+  it('renders 자료, 실행 흐름, 업무 구성 as accessible tabs', () => {
     const markup = renderToStaticMarkup(
       <WorkspaceContextPanel
         sources={[]}
@@ -32,7 +32,7 @@ describe('Workspace context tabs', () => {
 
     expect(markup.match(/role="tab"/g) ?? []).toHaveLength(3);
     expect(markup).toContain('자료');
-    expect(markup).toContain('흐름');
+    expect(markup).toContain('실행 흐름');
     expect(markup).toContain('업무 구성');
     expect(markup).toContain('aria-selected="true"');
     expect(markup).toContain('aria-controls="workspace-context-panel-flow"');

@@ -58,7 +58,7 @@ export function WorkflowPreviewPanel({
     <aside className={`wf-preview ${done ? 'wf-preview-review' : ''}`}>
       <div className="wf-preview-header">
         <div>
-          <div className="wf-preview-kicker">업무 흐름</div>
+          <div className="wf-preview-kicker">업무 구성</div>
           <h2 className="wf-preview-title">{title?.trim() || draft?.name || '새 업무'}</h2>
           {diff.hasChanges && diffText && (
             <p className="wf-preview-diff">{diffText}</p>

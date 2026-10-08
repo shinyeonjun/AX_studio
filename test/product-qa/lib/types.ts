@@ -52,7 +52,7 @@ export type ScenarioAction =
   | { action: 'openSettings'; label: string }
   | { action: 'openAiSettings'; brand: 'Claude' | 'GPT' }
   | { action: 'toggleTheme' }
-  | { action: 'openContextTab'; tab: '자료' | '흐름' }
+  | { action: 'openContextTab'; tab: '자료' | '실행 흐름' }
   | { action: 'screenshot'; name: string; scale?: 'css' | 'device' };
 
 export type ScenarioCheck =
