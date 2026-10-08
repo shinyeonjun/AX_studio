@@ -120,8 +120,9 @@ export class WorkflowStore {
   upsertWorkspaceChatExecutionResult(
     target: string | { workflowId: string },
     message: workspaceChatRepo.WorkspaceChatMessage & { kind: 'execution_result'; executionId: string },
+    options?: { collapseSuccessiveRunsOf?: string },
   ) {
-    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, target, message);
+    return workspaceChatRepo.upsertWorkspaceChatExecutionResult(this.db, target, message, options);
   }
   getWorkspaceChat(id: string) { return workspaceChatRepo.getWorkspaceChat(this.db, id); }
   hasWorkspaceChat(id: string): boolean {

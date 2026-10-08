@@ -71,6 +71,7 @@ export * from './runtime/scheduler.js';
 export * from './runtime/manual-workflow-run.js';
 export { setWebhookSecretResolver } from './triggers/webhook/secret-provider.js';
 export { recurringJobFromExecution, recurringJobFromReadRecipe } from './intelligence/agent/commands/job-registration/from-execution.js';
+export { suggestWorkName } from './intelligence/agent/commands/job-registration/work-name.js';
 export type { ChatReadRecipe } from './intelligence/agent/commands/chat/result/read-recipe.js';
 export { DEAD_LETTER_SETTING, type TriggerDeadLetter } from './runtime/trigger-engine/receipts.js';
 export type { CorruptRowReport } from './persistence/tolerant-rows.js';

@@ -55,10 +55,10 @@ describe('RDB coverage at bounded consumer seams', () => {
 
   it('makes last-page and empty-page limitations visible while keeping legacy tables compatible', () => {
     const table = rdbTable(1);
-    expect(formatTableArtifact(table)).toContain('전체 데이터의 정확한 집계나 동일 시점의 스냅샷을 보장하지 않습니다');
-    expect(formatTableArtifact(rdbTable(0))).toContain('현재 페이지의 조회 결과가 비어 있습니다');
+    expect(formatTableArtifact(table)).toContain('DB에서 한 번에 가져온 일부 행이에요');
+    expect(formatTableArtifact(rdbTable(0))).toContain('이번에 가져온 범위에는 행이 없어요');
     const { readScope: _scope, coverage: _coverage, ...legacy } = table;
-    expect(formatTableArtifact(legacy)).not.toContain('스냅샷');
+    expect(formatTableArtifact(legacy)).not.toContain('일부 행이에요');
     expect(capabilityPagingMetadata({ completeness: { status: 'complete', hasMore: false }, nextOffset: 2 }))
       .toEqual({ nextOffset: 2, completeness: { status: 'complete', hasMore: false } });
     expect(capabilityPagingMetadata({ coverage: { unrelated: 'API business data' } })).toEqual({});

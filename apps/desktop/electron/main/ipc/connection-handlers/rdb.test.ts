@@ -59,9 +59,9 @@ describe('SQLite path selection authorization', () => {
     await expect(connect({}, { type: 'sqlite', filePath: second.path }))
       .rejects.toThrow('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
 
-    const normalize = (path: string) => process.platform === 'win32' ? path.toLowerCase() : path;
-    expect(first.path).toBe(normalize(realpathSync(firstPath)));
-    expect(second.path).toBe(normalize(realpathSync(secondPath)));
+    // Shown and stored as the system names the file; only the comparison ignores case.
+    expect(first.path).toBe(realpathSync(firstPath));
+    expect(second.path).toBe(realpathSync(secondPath));
     expect(mocks.validateAndConnectRdb).toHaveBeenCalledTimes(2);
   });
 

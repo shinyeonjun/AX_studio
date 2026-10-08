@@ -34,9 +34,10 @@ function rowLinesWithinBudget(headerLines: readonly string[], rowLines: readonly
   return kept;
 }
 
+/** Said only when the database had more rows than this read brought back. */
 function rdbPageWarning(table: TableArtifact): string | undefined {
-  return table.readScope || table.coverage
-    ? '이 결과는 페이지 조회이며 전체 데이터의 정확한 집계나 동일 시점의 스냅샷을 보장하지 않습니다.'
+  return table.coverage?.hasMore || (table.readScope?.offset ?? 0) > 0
+    ? 'DB에서 한 번에 가져온 일부 행이에요. 합계나 건수는 이 행들 안에서만 셉니다. 더 필요하면 "더 가져와 줘"라고 해 주세요.'
     : undefined;
 }
 
@@ -49,7 +50,7 @@ export function tableToMarkdown(table: TableArtifact, requestedColumns?: readonl
   const rows = table.rows.slice(0, MAX_CHAT_TABLE_ROWS);
   const coverageWarning = rdbPageWarning(table);
   if (headers.length === 0) return coverageWarning
-    ? `현재 페이지의 조회 결과가 비어 있습니다.\n\n${coverageWarning}`
+    ? `이번에 가져온 범위에는 행이 없어요.\n\n${coverageWarning}`
     : '조회 결과가 비어 있습니다.';
   const labelOf = new Map(table.columns.map((column) => [column.name, column.label || column.name]));
   const headerLines = [

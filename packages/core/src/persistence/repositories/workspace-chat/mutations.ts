@@ -150,10 +150,29 @@ export function saveWorkspaceChat(
  * Append or replace one host-generated execution result without allowing a
  * second delivery of the same execution to grow the transcript.
  */
+/** Results of one scheduled job this close together replace each other in the chat. */
+export const SUCCESSIVE_RESULT_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * True when the chat ends with a finished result of an earlier run of `workflowId` that finished
+ * within the window: a job running every few minutes keeps one result in the chat, not a pile
+ * (every run stays in Activity). A result awaiting approval is never replaced.
+ */
+function endsWithRecentResultOf(db: AppDatabase, messages: WorkspaceChatMessage[], workflowId: string, now: number): boolean {
+  const last = messages.at(-1);
+  if (last?.kind !== 'execution_result' || !last.executionId || last.executionStatus === 'pending_approval') return false;
+  const previous = readRow<{ workflow_id: string | null; finished_at: string | null }>(
+    db.prepare('SELECT workflow_id, finished_at FROM executions WHERE id = ?'), last.executionId,
+  );
+  const finishedAt = previous?.finished_at ? Date.parse(previous.finished_at) : Number.NaN;
+  return previous?.workflow_id === workflowId && Number.isFinite(finishedAt) && now - finishedAt <= SUCCESSIVE_RESULT_WINDOW_MS;
+}
+
 export function upsertWorkspaceChatExecutionResult(
   db: AppDatabase,
   target: string | { workflowId: string },
   message: WorkspaceChatMessage & { kind: 'execution_result'; executionId: string },
+  options: { collapseSuccessiveRunsOf?: string } = {},
 ): WorkspaceChatRecord | null {
   const parsed = workspaceChatMessageSchema.parse(message);
   db.exec('BEGIN IMMEDIATE');
@@ -182,7 +201,9 @@ export function upsertWorkspaceChatExecutionResult(
     );
     const messages = [...existingMessages];
     if (index >= 0) messages[index] = parsed;
-    else messages.push(parsed);
+    else if (options.collapseSuccessiveRunsOf && endsWithRecentResultOf(db, messages, options.collapseSuccessiveRunsOf, Date.now())) {
+      messages[messages.length - 1] = parsed;
+    } else messages.push(parsed);
 
     const saved = persistWorkspaceChat(db, existing.id, messages, undefined, existing);
     db.exec('COMMIT');

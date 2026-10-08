@@ -40,9 +40,9 @@ describe('job confirmation card safety defaults', () => {
     const steps = presentation.blocks.find((block) => block.type === 'steps' && block.title === '단계별 연결·동작·대상');
     expect(steps).toBeDefined();
     const items = (steps as { items: string[] }).items;
-    // Steps are numbered for people; internal step ids are not shown.
-    expect(items.find((item) => item.includes('HTTP 요청'))).toMatch(/^1\. HTTP 요청 · 읽기만 함 · 대상: .*경로 \/repos\/shinyeonjun\/AX_studio\/commits/u);
-    expect(items.find((item) => item.includes('Slack 메시지'))).toMatch(/^\[외부\] \d+\. Slack 메시지 · 외부 전송 · 대상: 채널 #ax테스트2/u);
+    // The card numbers the steps; internal step ids are not shown.
+    expect(items.find((item) => item.includes('HTTP 요청'))).toMatch(/^HTTP 요청 · 읽기만 함 · 대상: .*경로 \/repos\/shinyeonjun\/AX_studio\/commits/u);
+    expect(items.find((item) => item.includes('Slack 메시지'))).toMatch(/^\[외부\] Slack 메시지 · 외부 전송 · 대상: 채널 #ax테스트2/u);
     expect(items.join(' ')).not.toMatch(/(^|\s)(fetch|notify):/u);
     expect(text).toContain('자동 발송: 켜짐 — [외부] 단계는 승인 없이 보냅니다.');
   });
