@@ -7,7 +7,7 @@ import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';
 import { JOB_COMMIT_CONFIRM_VALUE } from '../../job-registration.js';
 import { scriptedModel } from '../testing/fixtures.js';
-import { gmailToSlackRecurringDecisionEngine } from '../testing/jev-recurring-workflow-fixture.js';
+import { gmailToSlackRecurringDecisionEngine } from '../testing/recurring-workflow-fixture.js';
 
 describe('runAxCommandChat recurring job registration', () => {
   it('registers a recurring job with one propose command and host-commits without another model loop', async () => {

@@ -6,7 +6,7 @@ import { WorkflowStore } from '../../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../../chat.js';
 import { AxCommandService } from '../../../service.js';
 import { scriptedModel } from '../../testing/fixtures.js';
-import { gmailToSlackRecurringDecisionEngine } from '../../testing/jev-recurring-workflow-fixture.js';
+import { gmailToSlackRecurringDecisionEngine } from '../../testing/recurring-workflow-fixture.js';
 
 describe('runAxCommandChat recurring workflow target selection', () => {
   it('asks for a Slack channel before saving a Jev-selected recurring workflow', async () => {

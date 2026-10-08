@@ -8,9 +8,9 @@ import type { JevReadOperationHint } from '../../../../decision/read-operation-c
 import { runAxCommandChat } from '../../chat.js';
 import type { AxCommandService } from '../../service.js';
 import type { AxCommand, AxCommandResult } from '../../schema.js';
-import { routeChatWithJev } from '../routing/jev-router.js';
-import { planJevSelectedTools } from '../planning/jev-workflow-plan/index.js';
-import { reportCommand } from '../routing/jev-report-selection.js';
+import { routeChatWithJev } from '../routing/router.js';
+import { planJevSelectedTools } from '../planning/workflow-plan/index.js';
+import { reportCommand } from '../routing/report-selection.js';
 import { parallelToolAnswersForTest } from '../testing/fixtures.js';
 
 vi.mock('../../../../../persistence/paths/app-log.js', () => ({ appendAppLog: vi.fn() }));

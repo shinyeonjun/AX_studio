@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../../../../model/chat.js';
-import type { JevHttpEndpointHint } from '../../shared/jev-http-endpoint.js';
-import { explicitHttpPath, selectHttpEndpointForRead } from '../../shared/jev-http-endpoint.js';
+import type { JevHttpEndpointHint } from '../../shared/http-endpoint.js';
+import { explicitHttpPath, selectHttpEndpointForRead } from '../../shared/http-endpoint.js';
 import { deriveJevRequestFeatures } from '../../shared/request-features.js';
 import type { AxCommand } from '../../../schema.js';
 import { AX_INPUT_REQUEST_MAX_OPTIONS, type AxUiPresentation } from '../../../schema/interaction.js';
