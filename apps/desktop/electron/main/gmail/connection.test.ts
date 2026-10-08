@@ -47,6 +47,12 @@ vi.mock('./oauth.js', () => ({
 import { connectGmailOAuth } from './connection.js';
 import { hydrateGmailConnector } from './connection/hydrate.js';
 
+/** The runtime's connector slots, as the real WorkflowRuntime keeps them. */
+function fakeRuntime() {
+  const connectors: Record<string, unknown> = {};
+  return { connectors, setConnector: (id: string, connector: unknown) => { if (connector) connectors[id] = connector; else delete connectors[id]; } };
+}
+
 describe('desktop Gmail OAuth connection', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -68,7 +74,7 @@ describe('desktop Gmail OAuth connection', () => {
       getConnections: () => [],
       setConnection: vi.fn(),
     };
-    const runtime = { connectors: {} };
+    const runtime = fakeRuntime();
 
     await connectGmailOAuth(store as never, runtime as never);
 
@@ -97,7 +103,7 @@ describe('desktop Gmail OAuth connection', () => {
       getConnections: () => [{ connector: 'gmail', connected: true, config: { connected: true } }],
       setConnection: vi.fn(),
     };
-    const runtime = { connectors: {} };
+    const runtime = fakeRuntime();
 
     await hydrateGmailConnector(store as never, runtime as never);
     const config = gmailState.GmailConnector.mock.calls.at(-1)?.[0] as {
@@ -127,7 +133,7 @@ describe('desktop Gmail OAuth connection', () => {
       setConnection: vi.fn(),
     };
 
-    await connectGmailOAuth(store as never, { connectors: {} } as never);
+    await connectGmailOAuth(store as never, fakeRuntime() as never);
 
     expect(gmailState.deleteCredential).toHaveBeenCalledWith(previousRef);
     if (revoked) {
