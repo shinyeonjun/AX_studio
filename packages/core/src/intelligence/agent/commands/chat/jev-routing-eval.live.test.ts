@@ -80,11 +80,19 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
       });
       // What Jev answered to the route question, so a miss shows its choice and how sure it was.
       let routeAnswer: unknown;
+      let serviceError: string | undefined;
       const decisionEngine: DecisionEngine = {
         async evaluate(request) {
-          const response = await jev.evaluate(request);
-          if (request.questions.route) routeAnswer = response.answers.route;
-          return response;
+          try {
+            const response = await jev.evaluate(request);
+            if (request.questions.route) routeAnswer = response.answers.route;
+            return response;
+          } catch (error) {
+            // The router turns provider failures into a fallback; keep why for the report.
+            const status = (error as { status?: unknown } | null)?.status;
+            serviceError = `${status ?? ''} ${error instanceof Error ? error.message : String(error)}`.trim().slice(0, 300);
+            throw error;
+          }
         },
       };
       const index = buildJevReadOperationIndex(workspace.connections);
@@ -96,7 +104,9 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
         let kind: string | undefined;
         let selectedRoute: string | undefined;
         let telemetry: Record<string, unknown> | undefined;
+        let chose: unknown;
         routeAnswer = undefined;
+        serviceError = undefined;
         try {
           const result = await routeChatWithJev({
             decisionEngine,
@@ -123,12 +133,16 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
             operationCandidates: t.operationCandidateCount,
           } : undefined;
           miss = routingMiss(testCase, result);
+          chose = result.kind === 'command' && result.command.name === 'capability.invoke'
+            ? { id: result.command.args.id, params: result.command.args.params, tableTransform: result.tableTransform }
+            : result.kind === 'clarify' ? { message: result.message.slice(0, 200), chooser: result.presentation?.title }
+              : result.kind === 'fallback' ? { reason: result.reason, detail: result.detail } : undefined;
         } catch (error) {
           miss = `threw ${error instanceof Error ? error.message : String(error)}`;
         }
         outcomes.push({
           id: testCase.id, message: testCase.message, kind, passed: !miss,
-          ...(miss ? { miss, selectedRoute, routeAnswer } : {}),
+          ...(miss ? { miss, selectedRoute, routeAnswer, chose, serviceError } : {}),
           durationMs: Math.round(performance.now() - startedAt), ...telemetry,
         });
       }
@@ -145,7 +159,7 @@ describe.skipIf(!liveEvalEnabled)('Jev routing evaluation set', () => {
       console.table(outcomes.map(({ id, passed: ok, miss, durationMs, requestKb: kb, evaluationCalls }) => ({ id, ok, miss: miss ?? '', durationMs, kb, calls: evaluationCalls })));
       console.info(`[jev-eval:${workspace.name}] ${passed}/${outcomes.length} (${Math.round(accuracy * 100)}%) ${JSON.stringify(summary)}`);
       for (const outcome of outcomes.filter((entry) => !entry.passed)) {
-        console.info(`[jev-eval:${workspace.name}] miss ${outcome.id}: ${JSON.stringify({ selectedRoute: outcome.selectedRoute, routeAnswer: outcome.routeAnswer })}`);
+        console.info(`[jev-eval:${workspace.name}] miss ${outcome.id}: ${JSON.stringify({ selectedRoute: outcome.selectedRoute, chose: outcome.chose, serviceError: outcome.serviceError })}`);
       }
       const reportPath = process.env.AX_JEV_EVAL_REPORT?.trim();
       if (reportPath) {
