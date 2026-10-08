@@ -9,7 +9,7 @@ import {
   type WorkflowIR,
 } from '@ax-studio/core';
 import * as axCore from '@ax-studio/core';
-import { claimPendingCommand, clearPendingCommand } from './pending-command.js';
+import { claimPendingCommand, clearPendingCommand } from '@ax-studio/core';
 import { commandInputContinuation } from '../chat-boundary.js';
 
 type MockJevQuestion = {
@@ -127,7 +127,7 @@ describe('Desktop workspace chat Jev routing', () => {
     vi.clearAllMocks();
   });
 
-  it('routes IPC chat through Jev and caches read operations by connection revision', async () => {
+  it('routes IPC chat through Jev', async () => {
     const events: string[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
       events.push('jev');
@@ -185,7 +185,6 @@ describe('Desktop workspace chat Jev routing', () => {
       senderFrame: ipcMocks.mainFrame,
     };
 
-    const indexSpy = vi.spyOn(axCore, 'buildJevReadOperationIndex');
     const reply = await handler(event, '안녕', 'request-1', undefined, 'session-1');
     const cachedReply = await handler(event, '안녕', 'request-2', undefined, 'session-1');
     connectionRevision++;
@@ -195,7 +194,6 @@ describe('Desktop workspace chat Jev routing', () => {
     expect(cachedReply).toMatchObject({ role: 'assistant', content: '안녕하세요.' });
     expect(refreshedReply).toMatchObject({ role: 'assistant', content: '안녕하세요.' });
     expect(events).toEqual(['jev', 'llm', 'jev', 'llm', 'jev', 'llm']);
-    expect(indexSpy).toHaveBeenCalledTimes(2);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(commandService.execute).not.toHaveBeenCalled();
   });

@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { AxContextUpdateConfirmation, AxUiPresentation, ChatReadRecipe, TableArtifact, WorkflowStore, WorkspaceChatMessage } from '@ax-studio/core';
+import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
+import type { WorkspaceChatMessage } from '../../../../persistence/repositories/workspace-chat/contracts.js';
+import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
+import type { ChatReadRecipe } from '../chat/result/read-recipe.js';
+import type { AxContextUpdateConfirmation, AxUiPresentation } from '../schema.js';
 
 /**
  * Host-only per-session state that the renderer-saved transcript cannot forge.

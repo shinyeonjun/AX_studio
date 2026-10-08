@@ -2,12 +2,12 @@ import {
   AGENT_COMMAND_CONTEXT,
   recurringJobFromExecution,
   recurringJobFromReadRecipe,
+  hostReadRecipeFor,
   suggestWorkName,
   withoutScheduleTokens,
   type AxUiPresentation,
   type WorkspaceChatMessage,
 } from '@ax-studio/core';
-import { hostReadRecipeFor } from './host-state.js';
 import { getCore } from '../../core-instance.js';
 import { ipcHandle } from '../ipc-handle.js';
 

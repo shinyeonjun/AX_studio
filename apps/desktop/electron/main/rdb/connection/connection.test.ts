@@ -209,7 +209,7 @@ describe('several databases', () => {
 describe('what chat may read', () => {
   it('offers Jev only the databases this computer can open', async () => {
     const { buildJevReadOperationIndex } = await import('@ax-studio/core');
-    const { readableConnections } = await import('../../ipc/workspace-chat-command-handlers/read-operation-index.js');
+    const { readableConnections } = await import('@ax-studio/core');
     mocks.secrets.set('rdb.connection-strings', JSON.stringify({ shop: { connectionString: SHOP } }));
     const schema = (table: string, columns: string[]) => ({ tables: [{ table, columns, uniqueColumns: ['id'] }], relations: [] });
     const store = fakeStore({ connector: 'rdb', connected: true, config: { databases: [

@@ -1,4 +1,5 @@
-import type { AxContextUpdateConfirmation, WorkspaceChatMessage } from '@ax-studio/core';
+import type { WorkspaceChatMessage } from '../../../../persistence/repositories/workspace-chat/contracts.js';
+import type { AxContextUpdateConfirmation } from '../schema.js';
 import { consumeContextConfirmation, findContextConfirmationNonce } from './host-state.js';
 
 export function workflowIdsChanged(result: { command: string; data?: unknown }): {

@@ -86,6 +86,13 @@ module.exports = {
       },
     }))),
     {
+      name: 'chat-turn-no-host-state',
+      severity: 'error',
+      comment: 'The chat turn knows nothing of what a host keeps around it (chat-host uses chat, not the other way).',
+      from: { path: `${CHAT}/` },
+      to: { path: '^packages/core/src/intelligence/agent/commands/chat-host/' },
+    },
+    {
       name: 'chat-no-test-support-in-product',
       severity: 'error',
       from: { path: '^packages/core/src/', pathNot: `${CHAT_NOT_TEST}|${CHAT}/testing/` },

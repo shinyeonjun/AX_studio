@@ -1,4 +1,7 @@
-import { buildJevReadOperationIndex, RdbConnector, withOpenRdbDatabases, type Connector, type JevReadOperationIndex } from '@ax-studio/core';
+import { withOpenRdbDatabases } from '../../../../connectors/rdb/config/databases.js';
+import { RdbConnector } from '../../../../connectors/rdb/connector.js';
+import type { Connector } from '../../../../connectors/types.js';
+import { buildJevReadOperationIndex, type JevReadOperationIndex } from '../../../decision/read-operation-catalog/operation-index.js';
 
 type JevOperationConnections = Parameters<typeof buildJevReadOperationIndex>[0];
 
