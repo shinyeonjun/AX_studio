@@ -132,7 +132,11 @@ const API_ENDPOINTS = [
 
 const DATABASE_IDS = ['shop', 'logistics', 'finance', 'hr', 'crm', 'inventory', 'marketing', 'support'];
 
-/** An ERP whose tables are named the way ERPs name them: abbreviations nobody asks for by name. */
+/**
+ * An ERP whose tables are named the way ERPs name them: abbreviations nobody asks for by name.
+ * (Jev reads them from the table and column names alone; AI-written table descriptions added
+ * nothing measurable here, so none are given.)
+ */
 const ERP_TABLES = [
   t('tb_ord_mst', 'ord_no', 'cust_cd', 'ord_dt', 'tot_amt', 'stat_cd'),
   t('tb_cust_mst', 'cust_cd', 'cust_nm', 'biz_no', 'rgn_cd'),
@@ -144,24 +148,10 @@ const ERP_TABLES = [
   t('tb_emp_cert', 'emp_no', 'cert_cd', 'cert_nm', 'acq_dt', 'exp_dt'),
 ];
 
-/** What describeTables would learn for them (set AX_JEV_EVAL_NO_TABLE_DESCRIPTIONS=1 to leave them out). */
-const ERP_DESCRIPTIONS: Record<string, string> = {
-  tb_ord_mst: '주문 원장 · 주문별 고객·일자·금액·상태',
-  tb_cust_mst: '거래처(고객) 원장 · 고객명·사업자번호·지역',
-  tb_vndr_mst: '매입처(공급업체) 원장 · 업체명·사업자번호·결제조건',
-  tb_tax_inv: '세금계산서 · 발행일·공급가액·부가세',
-  tb_inv_txn: '창고 입출고 이력 · 품목·창고·수량',
-  tb_wrnty_clm: '보증수리(A/S) 청구 · 품목·고객·사유·처리상태',
-  tb_frt_rt: '지역별 운임표 · 무게 구간별 운임',
-  tb_emp_cert: '직원 자격증 · 자격 이름·취득일·만료일',
-};
-
 function erpDatabase() {
-  const describe = process.env.AX_JEV_EVAL_NO_TABLE_DESCRIPTIONS !== '1';
   return {
     id: 'erp', label: 'ERP DB', type: 'postgres', allowedTables: ERP_TABLES.map((table) => table.table),
     schema: { tables: ERP_TABLES.map((table) => ({ uniqueColumns: ['id'], ...table })), relations: [] },
-    ...(describe ? { tableDescriptions: ERP_DESCRIPTIONS } : {}),
   };
 }
 

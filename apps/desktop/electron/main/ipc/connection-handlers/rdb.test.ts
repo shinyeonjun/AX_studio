@@ -22,7 +22,6 @@ vi.mock('../../rdb/connection.js', () => ({
   validateAndConnectRdb: mocks.validateAndConnectRdb,
   disconnectRdb: mocks.disconnectRdb,
   discoverRdbTableNames: mocks.discoverRdbTableNames,
-  fillRdbTableDescriptions: vi.fn(async () => undefined),
 }));
 vi.mock('../../state-broadcast.js', () => ({ notifyStateChanged: mocks.notifyStateChanged }));
 

@@ -33,4 +33,3 @@ export * from './model/index.js';
 export * from './commands/index.js';
 export * from './prompt/index.js';
 export { setAgentSkillsDir } from './skill-load.js';
-export { describeTables, type TableDescriptions } from './table-descriptions.js';

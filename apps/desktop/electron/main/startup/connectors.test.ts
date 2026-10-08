@@ -8,7 +8,7 @@ vi.mock('../credential-store.js', () => ({
 vi.mock('../slack/connection.js', () => ({ hydrateSlackConnector: vi.fn(async () => null) }));
 vi.mock('../http/connection.js', () => ({ hydrateHttpConnector: vi.fn() }));
 vi.mock('../webhook/connection.js', () => ({ hydrateWebhookConnection: vi.fn() }));
-vi.mock('../rdb/connection.js', () => ({ hydrateRdbConnector: vi.fn(), fillRdbTableDescriptions: vi.fn(async () => undefined) }));
+vi.mock('../rdb/connection.js', () => ({ hydrateRdbConnector: vi.fn() }));
 vi.mock('../openapi/connection.js', () => ({ hydrateOpenApiConnector: vi.fn() }));
 
 import { hydrateConnectorsForStartup, CREDENTIAL_UNAVAILABLE_ERROR } from './connectors.js';
