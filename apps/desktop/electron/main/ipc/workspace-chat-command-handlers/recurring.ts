@@ -96,9 +96,12 @@ export async function proposeRecurringFromRead(
   if (!chat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
   const request = requestForLatestRead(chat.messages);
   const recipe = hostReadRecipeFor(getCore().store, workspaceSessionId, chat.messages);
+  // Checked before the name is asked for, so a read that cannot repeat answers at once.
+  const checked = recurringJobFromReadRecipe({ recipe, request, scheduleValue });
+  if (!checked.ok) return reply(checked.message);
   // Named for what it does ("반품 주문 확인"), not after the sentence that asked for it.
-  const name = recipe ? await suggestWorkName(getCore().agentHarness, request) : undefined;
-  const conversion = recurringJobFromReadRecipe({ recipe, request, ...(name ? { name } : {}), scheduleValue });
+  const name = await suggestWorkName(getCore().agentHarness, request);
+  const conversion = name ? recurringJobFromReadRecipe({ recipe, request, name, scheduleValue }) : checked;
   if (!conversion.ok) return reply(conversion.message);
   return proposeDraft(workspaceSessionId, conversion.args, conversion.scheduleText, '이 조회를');
 }

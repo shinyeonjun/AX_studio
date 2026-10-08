@@ -29,6 +29,7 @@ export function buildWorkflowSummaries(
       lastStatus: lastExecution?.status,
       triggerDeadLetters: health.get(summary.id)?.triggerDeadLetters ?? [],
       lastOutcome: health.get(summary.id)?.lastOutcome,
+      triggerPollFailure: health.get(summary.id)?.triggerPollFailure,
     };
   });
 }

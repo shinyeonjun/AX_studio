@@ -11,6 +11,7 @@ import {
   type WorkflowRuntime,
   type WorkflowStore,
 } from '@ax-studio/core';
+import { gmailSignInStatusRecorder } from './sign-in-status.js';
 import { getCredentialStore } from '../../credential-store.js';
 import { formatGmailOAuthError, getGoogleOAuthCredentials } from '../oauth.js';
 import { gmailConnection } from './shared.js';
@@ -102,7 +103,7 @@ export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowR
   };
 
   store.setConnection('gmail', true, record as unknown as Record<string, unknown>);
-  runtime.setConnector('gmail', new GmailConnector({ ...runtimeConfig, email: account || undefined }));
+  runtime.setConnector('gmail', new GmailConnector({ ...runtimeConfig, email: account || undefined, onSignInStatus: gmailSignInStatusRecorder(store) }));
   await retirePreviousGmailCredential(previous, { connectionId, account, clientId, clientSecret });
 
   return { ok: true as const, email: account || undefined };

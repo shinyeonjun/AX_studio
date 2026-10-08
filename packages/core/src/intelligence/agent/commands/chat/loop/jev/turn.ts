@@ -4,6 +4,7 @@ import type { JevChatRouterTelemetry } from '../../routing/router-contract.js';
 import { appendAppLog } from '../../../../../../persistence/paths/app-log.js';
 import type { ChatReplies } from '../replies.js';
 import type { CommandChatLoopContext } from '../turn-context.js';
+import { routeProgress } from './progress.js';
 
 export type JevRoute<K extends JevChatRouterResult['kind']> = Extract<JevChatRouterResult, { kind: K }>;
 
@@ -98,6 +99,7 @@ export async function routeFirstTurn(turn: JevTurn): Promise<JevChatRouterResult
   let route: JevChatRouterResult = { kind: 'fallback', reason: 'service_error' };
   let telemetry: JevChatRouterTelemetry | undefined;
   let outcome = 'error';
+  const stopProgress = routeProgress(options.onProgress);
   try {
     route = await routeChatWithJev({
       ...baseRouterInput(context),
@@ -126,6 +128,7 @@ export async function routeFirstTurn(turn: JevTurn): Promise<JevChatRouterResult
       : route.kind === 'request_rejected' ? `request_rejected:${route.failure.code}`
       : `${route.kind}:${route.route}`;
   } finally {
+    stopProgress();
     appendAppLog('info', 'Jev chat route timing recorded.', {
       ...requestContext,
       event: 'jev_chat_route_timing',

@@ -64,6 +64,7 @@ export interface TextGenerateInput {
   temperature?: number;
   /** Bound concise host-facing replies; CLI providers may ignore this field. */
   maxOutputTokens?: number;
+  codexReasoningEffort?: 'low' | 'medium' | 'high';
   timeoutMs?: number;
   sessionId?: string;
   abortSignal?: AbortSignal;

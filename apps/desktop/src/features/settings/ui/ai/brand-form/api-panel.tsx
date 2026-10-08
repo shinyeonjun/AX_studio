@@ -5,6 +5,8 @@ interface AiApiPanelProps {
   title: string;
   isOllamaApi: boolean;
   connected: boolean;
+  /** "연결 확인됨" once tested this session, "등록됨" for a key saved earlier. */
+  badge: string;
   apiKeyDraft: string;
   apiKeyConfigured: boolean;
   apiKeyMasked?: string;
@@ -18,6 +20,7 @@ export function AiApiPanel({
   title,
   isOllamaApi,
   connected,
+  badge,
   apiKeyDraft,
   apiKeyConfigured,
   apiKeyMasked,
@@ -35,7 +38,7 @@ export function AiApiPanel({
           <div className="provider-option-header">
             <div className="provider-option-title">API 키</div>
             <span className={`connection-badge ${connected ? 'connected' : ''}`}>
-              {connected ? '연결됨' : '미연결'}
+              {badge}
             </span>
           </div>
           {apiKeyConfigured && apiKeyMasked && <div className="provider-option-desc">등록된 키: {apiKeyMasked}</div>}

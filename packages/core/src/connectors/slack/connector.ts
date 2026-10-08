@@ -114,7 +114,7 @@ export class SlackConnector implements Connector {
       if (action === 'messages.search' && message.includes('not_allowed_token_type')) {
         return {
           ok: false,
-          error: 'Slack 전체 메시지 검색에는 search:read 사용자 토큰이 필요합니다. 채널을 지정하면 messages.read를 사용할 수 있습니다.',
+          error: 'Slack 전체 검색은 지금 연결로는 할 수 없어요. "#채널이름에서 찾아줘"처럼 채널을 정해 주시면 그 채널에서 찾아볼게요.',
           errorCode: 'slack_search_scope_required',
           errorDetails: { requiredScope: 'search:read', alternativeAction: 'messages.read' },
         };

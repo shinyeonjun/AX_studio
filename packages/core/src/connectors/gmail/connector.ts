@@ -17,6 +17,8 @@ export interface GmailConnectorConfig {
   expiryDate?: number;
   email?: string;
   onTokens?: (tokens: { refreshToken?: string; accessToken?: string; expiryDate?: number }) => void | Promise<void>;
+  /** Told after each call whether Google still accepts the sign-in, so settings can say "다시 연결". */
+  onSignInStatus?: (signedIn: boolean) => void;
 }
 
 export class GmailConnector implements Connector {
@@ -66,6 +68,13 @@ export class GmailConnector implements Connector {
   }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
+    const result = await this.executeAction(action, params, ctx);
+    if (result.ok) this.config.onSignInStatus?.(true);
+    else if (result.errorCode === 'oauth_refresh_failed') this.config.onSignInStatus?.(false);
+    return result;
+  }
+
+  private async executeAction(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if ((action === 'message.send' || action === 'draft.create') && Object.keys(params).some(key => !isMessageToolField('gmail', key))) {
       return { ok: false, error: 'Unsupported Gmail delivery fields', errorCode: 'unsupported_message_fields' };
     }

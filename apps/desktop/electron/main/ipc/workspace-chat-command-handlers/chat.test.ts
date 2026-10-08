@@ -383,6 +383,38 @@ describe('Desktop workspace chat Jev routing', () => {
     }
   });
 
+  it('says a "remember this" button ran out instead of treating its words as a new request', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      const confirmValue = '이 내용으로 기억하기';
+      const chat = store.saveWorkspaceChat({ messages: [
+        { role: 'user', content: '보고서는 항상 표로 보여줘' },
+        { role: 'assistant', content: '이 내용을 기억할까요?', presentations: [{
+          title: '기억 확인', inputMode: 'individual', inputs: [], blocks: [],
+          actions: [{ id: 'confirm_context:expired-nonce', label: '기억하기', purpose: 'confirm_context', value: confirmValue }],
+        } as unknown as AxUiPresentation] },
+        { role: 'user', content: confirmValue },
+      ] });
+      const decisionEngine = { evaluate: vi.fn(async () => { throw new Error('Jev must not be asked'); }) };
+      const agentHarness = { providerName: 'test-llm', runText: vi.fn(async () => { throw new Error('the model must not be asked'); }) };
+      ipcMocks.getCore.mockReturnValue({
+        store, workspaceSources: { list: vi.fn(() => []) }, decisionEngine, agentHarness,
+        commandService: new AxCommandService(store),
+      });
+      registerWorkspaceChatMessageHandler();
+      const handler = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as ChatHandler;
+      const event = { sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() }, senderFrame: ipcMocks.mainFrame };
+
+      const reply = await handler(event, confirmValue, 'confirm-late', undefined, chat.id);
+
+      expect(reply.content).toContain('아무것도 저장하지 않았습니다');
+      expect(decisionEngine.evaluate).not.toHaveBeenCalled();
+    } finally {
+      db.close?.();
+    }
+  });
+
   it('shows a read table with Korean headers, then filters that same table on the next turn without reading again', async () => {
     const db = await createDatabaseAsync(':memory:');
     try {

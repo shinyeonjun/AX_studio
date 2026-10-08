@@ -72,6 +72,8 @@ interface AgentTextRunFields {
   cloudAllowed?: boolean;
   onProgress?: (event: AgentProgressEvent) => void;
   logContext?: string;
+  /** Codex only: how hard to think. Short, well-bounded asks (a name, column headers) use low. */
+  codexReasoningEffort?: 'low' | 'medium' | 'high';
   abortSignal?: AbortSignal;
   systemPrompt?: string;
 }
