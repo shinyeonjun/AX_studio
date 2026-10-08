@@ -26,6 +26,8 @@ export interface WorkSummary {
   triggerDeadLetters?: TriggerDeadLetterSummary[];
   /** Last failed/skipped scheduled occurrence, if any. */
   lastOutcome?: SchedulerOccurrenceOutcomeSummary;
+  /** Checking for new mail/messages/files keeps failing; `message` says why in words. */
+  triggerPollFailure?: { code: string; message: string; firstFailedAt: string; lastFailedAt: string };
 }
 
 /** Mirrors core `TriggerDeadLetter` without `workflowId` (see diagnostics-state.ts). */

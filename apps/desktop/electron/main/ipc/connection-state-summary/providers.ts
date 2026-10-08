@@ -4,6 +4,7 @@ import {
   parseGmailConnectionConfig,
 } from '@ax-studio/core';
 import type { ConnectionSummaryOptions } from './contracts.js';
+import { readHttpSecrets } from '../../http/connection/secrets.js';
 
 export function summarizeGmailConnection(
   connected: boolean,
@@ -15,27 +16,48 @@ export function summarizeGmailConnection(
     connected,
     account: gmail?.account,
     scopes: gmail?.scopes,
+    // Why it needs attention (sign-in expired, saved login unreadable): the card shows it.
+    ...(typeof config?.lastError === 'string' ? { lastError: config.lastError } : {}),
   };
 }
 
-export function summarizeHttpConnection(
+/**
+ * An endpoint whose login was saved but whose secret this computer can no longer read is not
+ * usable (the connector leaves it out); settings says "다시 연결 필요" instead of counting it.
+ */
+async function endpointsMissingSecret(endpoints: Array<{ id: string; authType?: string }>): Promise<Set<string>> {
+  const needingSecret = endpoints.filter((endpoint) => (endpoint.authType ?? 'none') !== 'none');
+  if (needingSecret.length === 0) return new Set();
+  let secrets: Record<string, unknown> = {};
+  try {
+    secrets = await readHttpSecrets();
+  } catch {
+    secrets = {};
+  }
+  return new Set(needingSecret.filter((endpoint) => !secrets[endpoint.id]).map((endpoint) => endpoint.id));
+}
+
+export async function summarizeHttpConnection(
   connected: boolean,
   config: Record<string, unknown> | undefined,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const status = getHttpConnectionStatus(config, connected);
+  const missing = await endpointsMissingSecret(status.endpoints);
+  const endpoints = status.endpoints.map((endpoint) => (missing.has(endpoint.id) ? { ...endpoint, needsReconnect: true } : endpoint));
   const record = (config && typeof config === 'object' ? config : {}) as Record<string, unknown>;
   // Legacy singular fields mirror the first ready endpoint; the new
   // `endpoints` shape stores authHeader/username per endpoint.
   const first = status.endpoints[0];
   return {
     connector: 'http',
-    connected: status.connected,
+    connected: status.connected && endpoints.some((endpoint) => !('needsReconnect' in endpoint)),
     label: status.label,
     baseUrl: status.baseUrl,
     authType: status.authType,
     authHeader: first?.authHeader ?? (typeof record.authHeader === 'string' ? record.authHeader : undefined),
     username: first?.username ?? (typeof record.username === 'string' ? record.username : undefined),
-    endpoints: status.endpoints,
+    endpoints,
+    ...(typeof record.lastError === 'string' ? { lastError: record.lastError } : {}),
   };
 }
 

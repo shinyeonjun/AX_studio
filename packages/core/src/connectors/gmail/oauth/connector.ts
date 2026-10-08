@@ -7,6 +7,7 @@ export function buildGmailConnectorConfig(params: {
   credential: OAuthCredential;
   email?: string;
   onTokens?: GmailConnectorConfig['onTokens'];
+  onSignInStatus?: GmailConnectorConfig['onSignInStatus'];
 }): GmailConnectorConfig {
   return {
     clientId: params.clientId,
@@ -16,6 +17,7 @@ export function buildGmailConnectorConfig(params: {
     expiryDate: params.credential.expiryDate,
     email: params.email,
     onTokens: params.onTokens,
+    onSignInStatus: params.onSignInStatus,
   };
 }
 

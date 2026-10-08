@@ -1,7 +1,9 @@
 import {
   DEAD_LETTER_SETTING,
   LAST_OUTCOME_SETTING_PREFIX,
+  TRIGGER_POLL_FAILURE_PREFIX,
   type CorruptRowReport,
+  type TriggerPollFailure,
   type SchedulerOccurrenceOutcome,
   type TriggerDeadLetter,
 } from '@ax-studio/core';
@@ -22,6 +24,14 @@ export interface WorkflowAutomationHealth {
   triggerDeadLetters: Array<Omit<TriggerDeadLetter, 'workflowId'>>;
   /** Last failed/skipped scheduled occurrence, if any. */
   lastOutcome?: SchedulerOccurrenceOutcome;
+  /** Checking for new mail/messages/files keeps failing (cleared by the next successful check). */
+  triggerPollFailure?: TriggerPollFailure;
+}
+
+function isPollFailure(value: unknown): value is TriggerPollFailure {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Record<string, unknown>;
+  return ['code', 'message', 'firstFailedAt', 'lastFailedAt'].every((field) => typeof entry[field] === 'string');
 }
 
 export function buildCorruptRowSummary(core: Pick<AxCore, 'store'>): CorruptRowSummary {
@@ -76,9 +86,11 @@ export function buildWorkflowAutomationHealth(
       .slice(0, MAX_DEAD_LETTERS_PER_WORKFLOW)
       .map(({ workflowId: _workflowId, ...letter }) => letter);
     const outcome = readSetting(core, `${LAST_OUTCOME_SETTING_PREFIX}${encodeURIComponent(workflowId)}`, undefined);
+    const pollFailure = readSetting(core, `${TRIGGER_POLL_FAILURE_PREFIX}${encodeURIComponent(workflowId)}`, undefined);
     health.set(workflowId, {
       triggerDeadLetters,
       ...(isOccurrenceOutcome(outcome) ? { lastOutcome: outcome } : {}),
+      ...(isPollFailure(pollFailure) ? { triggerPollFailure: pollFailure } : {}),
     });
   }
   return health;

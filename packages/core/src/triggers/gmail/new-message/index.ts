@@ -28,7 +28,8 @@ export const gmailNewMessageHandler: TriggerHandler<{ type: 'gmail.new_message';
     );
 
     if (!result.ok) {
-      throw new Error(result.error ?? 'gmail trigger poll failed');
+      // Keep the connector's code so the failure can be told apart (login expired, folder moved …).
+      throw Object.assign(new Error(result.error ?? 'gmail trigger poll failed'), { code: result.errorCode });
     }
 
     const data = result.data as {

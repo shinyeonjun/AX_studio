@@ -74,5 +74,6 @@ export async function summarizeRdbConnection(
     allowedTables: first?.allowedTables,
     rowLimit: first?.rowLimit,
     databases,
+    ...(typeof config?.lastError === 'string' ? { lastError: config.lastError } : {}),
   };
 }
