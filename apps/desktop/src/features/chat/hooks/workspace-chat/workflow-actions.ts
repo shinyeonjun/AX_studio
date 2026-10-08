@@ -5,7 +5,8 @@ import type { ToolResultConfirmation } from '@ax-studio/core';
 export function createWorkspaceWorkflowActions(ctx: WorkspaceChatMessageContext) {
   const registerWorkflow = async () => {
     const workflowId = ctx.workspaceWorkflowState?.workflowId;
-    if (!workflowId || ctx.refs.busyRef.current || ctx.workflowRegistered) return;
+    // Not gated on the switch remembered when the chat opened: it may have been turned off since.
+    if (!workflowId || ctx.refs.busyRef.current) return;
     const epoch = ctx.refs.sessionEpochRef.current;
     const sessionId = ctx.refs.workspaceSessionIdRef.current;
     ctx.setError('');
