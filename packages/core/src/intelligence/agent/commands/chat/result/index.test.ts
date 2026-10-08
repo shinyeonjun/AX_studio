@@ -136,6 +136,36 @@ describe('selectedColumnsFromHttpPath', () => {
 });
 
 describe('deterministicCapabilityReadChatReply', () => {
+  const read = (data: unknown): AxCommandResult => ({
+    command: 'capability.invoke', status: 'ok', issues: [], inputRequests: [],
+    data: { capabilityId: 'rdb.query.read', data, citations: [], untrusted: true },
+  } as AxCommandResult);
+  const rdbRead: AxCommand = { name: 'capability.invoke', args: { id: 'rdb.query.read', params: { table: 'orders' } } };
+
+  it('shows rows as a table however the request is worded, never the raw table record', () => {
+    const table = buildTableArtifact({ id: 'orders', headers: ['id', 'amount'], matrix: [[1, 13000], [2, 84000]] });
+    for (const wording of ['주문 목록 보여줘', '주문 알려줘', 'show the orders']) {
+      const reply = deterministicCapabilityReadChatReply(rdbRead, read(table), wording)!;
+      expect(reply).toContain('| 2 | 84,000 |');
+      expect(reply).not.toContain('"kind"');
+      expect(reply).not.toContain('"columns"');
+    }
+  });
+
+  it('writes a wide, wordy table into the chat within what one saved message holds, and says rows were left out', () => {
+    const headers = Array.from({ length: 50 }, (_, index) => `col_${index}`);
+    const table = buildTableArtifact({ id: 'wide', headers, matrix: Array.from({ length: 100 }, () => headers.map(() => '가'.repeat(400))) });
+    const reply = deterministicCapabilityReadChatReply(rdbRead, read(table), '목록 보여줘')!;
+    expect(reply.length).toBeLessThan(50_000);
+    expect(reply).toMatch(/전체 100행 중 처음 \d+행만 표시했습니다/u);
+  });
+
+  it('keeps a result that is not rows short enough to save in the chat', () => {
+    const reply = deterministicCapabilityReadChatReply(rdbRead, read({ result: { note: 'x'.repeat(60_000) } }), '설정 보여줘')!;
+    expect(reply.length).toBeLessThan(7_000);
+    expect(reply).toContain('길어서 앞부분만 보여요');
+  });
+
   it('renders a bounded table capability result without a second model turn', () => {
     const reply = deterministicCapabilityReadChatReply({
       name: 'capability.invoke',

@@ -8,11 +8,31 @@ function markdownCell(value: unknown): string {
   const text = typeof value === 'string' ? value
     : typeof value === 'number' ? formatTableNumber(value)
       : JSON.stringify(value) ?? String(value);
-  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  const bounded = text.length > MAX_CHAT_CELL_CHARS ? `${text.slice(0, MAX_CHAT_CELL_CHARS)}…` : text;
+  return bounded.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 }
 
 const MAX_CHAT_TABLE_ROWS = MAX_DISPLAY_TABLE_ROWS;
 const MAX_CHAT_TABLE_COLUMNS = MAX_DISPLAY_TABLE_COLUMNS;
+/**
+ * The table written into the chat stays inside what one saved message may hold (50,000 characters,
+ * notes included); the whole table is in the result pane. A wide or wordy table shows fewer rows
+ * here and says so.
+ */
+const MAX_CHAT_TABLE_CHARS = 48_000;
+const MAX_CHAT_CELL_CHARS = 300;
+
+/** Row lines that fit the chat budget after the header lines. */
+function rowLinesWithinBudget(headerLines: readonly string[], rowLines: readonly string[]): string[] {
+  let used = headerLines.reduce((total, line) => total + line.length + 1, 0);
+  const kept: string[] = [];
+  for (const line of rowLines) {
+    used += line.length + 1;
+    if (used > MAX_CHAT_TABLE_CHARS && kept.length > 0) break;
+    kept.push(line);
+  }
+  return kept;
+}
 
 function rdbPageWarning(table: TableArtifact): string | undefined {
   return table.readScope || table.coverage
@@ -32,19 +52,21 @@ export function tableToMarkdown(table: TableArtifact, requestedColumns?: readonl
     ? `현재 페이지의 조회 결과가 비어 있습니다.\n\n${coverageWarning}`
     : '조회 결과가 비어 있습니다.';
   const labelOf = new Map(table.columns.map((column) => [column.name, column.label || column.name]));
-  const lines = [
+  const headerLines = [
     `| ${headers.map((header) => markdownCell(labelOf.get(header) ?? header)).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
-    ...rows.map((row) => `| ${headers.map((header) => markdownCell(row.values[header])).join(' | ')} |`),
   ];
+  const rowLines = rowLinesWithinBudget(headerLines,
+    rows.map((row) => `| ${headers.map((header) => markdownCell(row.values[header])).join(' | ')} |`));
+  const lines = [...headerLines, ...rowLines];
   if (headers.length < allHeaders.length) {
     lines.push('', `화면에는 전체 ${allHeaders.length}열 중 처음 ${headers.length}열만 표시했습니다.`);
   } else if (!requestedColumns?.length && headers.length < table.columns.length) {
     // Columns pruned for readability are disclosed so follow-ups never treat the view as complete.
     lines.push('', `화면에는 전체 ${table.columns.length}열 중 주요 ${headers.length}열만 표시했습니다.`);
   }
-  if (rows.length < table.rows.length) {
-    lines.push('', `화면에는 전체 ${table.rows.length}행 중 처음 ${rows.length}행만 표시했습니다.`);
+  if (rowLines.length < table.rows.length) {
+    lines.push('', `화면에는 전체 ${table.rows.length}행 중 처음 ${rowLines.length}행만 표시했습니다.`);
   }
   if (table.completeness?.reason === 'provider_limit') {
     const page = table.completeness.observedCount;
@@ -76,16 +98,18 @@ export function rowsToMarkdown(rows: Record<string, unknown>[], labels: ColumnLa
   const headers = allHeaders.slice(0, MAX_CHAT_TABLE_COLUMNS);
   const displayedRows = rows.slice(0, MAX_CHAT_TABLE_ROWS);
   if (headers.length === 0) return '조회 결과가 비어 있습니다.';
-  const lines = [
+  const headerLines = [
     `| ${headers.map((header) => markdownCell(labels[header] || header)).join(' | ')} |`,
     `| ${headers.map(() => '---').join(' | ')} |`,
-    ...displayedRows.map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`),
   ];
+  const rowLines = rowLinesWithinBudget(headerLines,
+    displayedRows.map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`));
+  const lines = [...headerLines, ...rowLines];
   if (allHeaders.length > headers.length) {
     lines.push('', `열이 많아 화면에는 처음 ${headers.length}열만 표시했습니다.`);
   }
-  if (rows.length > displayedRows.length) {
-    lines.push('', `화면에는 전체 ${rows.length}행 중 처음 ${displayedRows.length}행만 표시했습니다.`);
+  if (rows.length > rowLines.length) {
+    lines.push('', `화면에는 전체 ${rows.length}행 중 처음 ${rowLines.length}행만 표시했습니다.`);
   }
   return lines.join('\n');
 }
