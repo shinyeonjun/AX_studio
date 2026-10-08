@@ -147,21 +147,21 @@ async function selectPrimaryReadHint(
       },
     },
     // Asked on its own: picking one of many options leans toward picking one, even when the
-    // request never said where to look.
+    // request never said where to look and several places hold that very data.
     ...(places.length >= 2 ? {
-      source_named: {
+      places_equally_fit: {
         type: 'boolean' as const,
         instructions: {
-          question: 'Does the request say or clearly imply which one of these places to read from?',
-          focus: 'Answer true when the request names a place, system, service or table, or a word that only fits one of them (e.g. "쇼핑몰 주문" fits the shop tables, "DummyJSON 상품" fits DummyJSON). Answer false when the request only names the kind of data (e.g. "주문 목록") and more than one place offers it.',
+          question: 'Do two or more of these places each hold exactly the data the request asks for, with nothing in the request telling which one is meant?',
+          focus: 'Answer true only when the same kind of record is offered by more than one place and the request gives no hint (e.g. "주문 목록 보여줘" while shop orders, logistics orders and an order API all exist). Answer false when only one place really holds the requested data (e.g. remaining leave days exist only in a leave-balance table; a groupware member list does not hold them), or when the request names or implies a place, system or table ("쇼핑몰 주문", "물류 쪽", an API name).',
           places: places.slice(0, 20).map((place) => boundDecisionString(place, 80)),
           operations: ordered.slice(0, 20).map((hint) => boundDecisionString(hint.label, 120)),
         },
       },
     } : {}),
   });
-  const named = evaluation.answers.source_named;
-  if (named?.type === 'boolean' && Number.isFinite(named.probability) && named.probability < 0.5) return { kind: 'unclear', ordered };
+  const equallyFit = evaluation.answers.places_equally_fit;
+  if (equallyFit?.type === 'boolean' && Number.isFinite(equallyFit.probability) && equallyFit.probability > 0.5) return { kind: 'unclear', ordered };
   const answer = choiceAnswer(evaluation.answers.primary_read_operation);
   const match = /^operation_(\d+)$/u.exec(answer?.choice ?? '');
   const hint = match ? ordered[Number(match[1])] : undefined;
