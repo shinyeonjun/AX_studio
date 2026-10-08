@@ -1,5 +1,5 @@
 import { discoverRdbTables, formatRdbTableRef, probeRdbConnection, type RdbConnectionConfig } from '@ax-studio/core';
-import { getRdbConnectionString } from './secrets.js';
+import { readRdbSecrets } from './secrets.js';
 import { rdbProbeErrorMessage } from './probe-message.js';
 
 /** More than this is a database to search, not a list to scroll; the rest stay typeable. */
@@ -18,10 +18,17 @@ export async function discoverRdbTableNames(payload: {
   type: RdbConnectionConfig['type'];
   filePath?: string;
   connectionString?: string;
+  /** The database being edited: a blank address uses the one stored for it. */
+  databaseId?: string;
 }): Promise<DiscoveredRdbTables> {
+  const typed = payload.connectionString?.trim();
+  const databaseId = payload.databaseId?.trim();
+  const stored = payload.type !== 'sqlite' && !typed && databaseId
+    ? (await readRdbSecrets())[databaseId]?.connectionString
+    : undefined;
   const config: RdbConnectionConfig = payload.type === 'sqlite'
     ? { type: 'sqlite', filePath: payload.filePath }
-    : { type: payload.type, connectionString: payload.connectionString?.trim() || await getRdbConnectionString() || '' };
+    : { type: payload.type, connectionString: typed || stored || '' };
   if (config.type === 'sqlite' ? !config.filePath : !config.connectionString) {
     throw new Error(config.type === 'sqlite' ? 'SQLite 파일을 먼저 선택해 주세요.' : '접속 주소를 먼저 입력해 주세요.');
   }

@@ -34,8 +34,9 @@ export interface SettingsPageProps {
   }) => Promise<void>;
   onDisconnectWebhook: () => Promise<void>;
   onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
-  onDiscoverRdbTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
+  onDiscoverRdbTables: (payload: { databaseId?: string; type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
   onConnectRdb: (payload: {
+    databaseId?: string;
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
@@ -43,6 +44,6 @@ export interface SettingsPageProps {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<{ warning?: string } | void>;
-  onDisconnectRdb: () => Promise<void>;
+  }) => Promise<{ databaseId?: string; label?: string; warning?: string } | void>;
+  onDisconnectRdb: (databaseId?: string) => Promise<void>;
 }

@@ -48,9 +48,10 @@ contextBridge.exposeInMainWorld('ax', {
     ipcRenderer.invoke('ax:connectWebhook', payload),
   disconnectWebhook: () => ipcRenderer.invoke('ax:disconnectWebhook'),
   pickSqliteFile: () => ipcRenderer.invoke('ax:pickSqliteFile'),
-  discoverRdbTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) =>
+  discoverRdbTables: (payload: { databaseId?: string; type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) =>
     ipcRenderer.invoke('ax:discoverRdbTables', payload),
   connectRdb: (payload: {
+    databaseId?: string;
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
@@ -59,7 +60,7 @@ contextBridge.exposeInMainWorld('ax', {
     rowLimit?: number;
     label?: string;
   }) => ipcRenderer.invoke('ax:connectRdb', payload),
-  disconnectRdb: () => ipcRenderer.invoke('ax:disconnectRdb'),
+  disconnectRdb: (databaseId?: string) => ipcRenderer.invoke('ax:disconnectRdb', databaseId),
   setAiProvider: (config: unknown) => ipcRenderer.invoke('ax:setAiProvider', config),
   detectAiCli: () => ipcRenderer.invoke('ax:detectAiCli'),
   getAiConfig: () => ipcRenderer.invoke('ax:getAiConfig'),

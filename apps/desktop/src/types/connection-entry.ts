@@ -29,4 +29,16 @@ export interface ConnectionEntry {
   allowedSchemas?: string[];
   allowedTables?: string[];
   rowLimit?: number;
+  /** Every database of the 'rdb' connection; the flat fields above mirror the first one. */
+  databases?: Array<{
+    id: string;
+    label?: string;
+    dbType?: RdbType;
+    target?: string;
+    allowedSchemas?: string[];
+    allowedTables?: string[];
+    rowLimit?: number;
+    /** Saved, but its address is missing from this computer's secure storage. */
+    needsReconnect?: boolean;
+  }>;
 }
