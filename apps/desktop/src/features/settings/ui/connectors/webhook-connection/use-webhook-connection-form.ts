@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { connectionEntry } from '../../../../../ui/lib/connection-display';
@@ -57,6 +57,17 @@ export function useWebhookConnectionForm({
     setMessageIsError(isError);
   };
   const [secretVisible, setSecretVisible] = useState(false);
+
+  // The form starts from what is saved: "다시 시작" must not move a listener to the default port
+  // or drop its name and external address because the person never pressed "수정".
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || !webhookEntry?.connected) return;
+    prefilled.current = true;
+    if (webhookEntry.port != null) setPort(String(webhookEntry.port));
+    setLabel(webhookEntry.label ?? '');
+    setTunnelUrl(webhookEntry.tunnelUrl ?? '');
+  }, [webhookEntry?.connected, webhookEntry?.port, webhookEntry?.label, webhookEntry?.tunnelUrl]);
 
   const loadFromConnection = () => {
     if (!webhookEntry?.connected) return;

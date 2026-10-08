@@ -25,10 +25,11 @@ export function confirmDeleteExecution(): Promise<boolean> {
   return confirmed({ title: '이 실행 기록을 삭제할까요?', confirmLabel: '기록 삭제', danger: true });
 }
 
-export function confirmClearExecutions(count: number): Promise<boolean> {
+/** The screen lists only recent runs, so the question names what goes, not a count it cannot know. */
+export function confirmClearExecutions(): Promise<boolean> {
   return confirmed({
-    title: `실행 기록 ${count}건을 지울까요?`,
-    message: '승인 대기 중인 실행은 남겨둡니다.',
+    title: '끝난 실행 기록을 모두 지울까요?',
+    message: '화면에 보이지 않는 예전 기록까지 모두 지워요. 아직 실행 중이거나 승인을 기다리는 실행은 남겨둡니다.',
     confirmLabel: '모두 지우기',
     danger: true,
   });

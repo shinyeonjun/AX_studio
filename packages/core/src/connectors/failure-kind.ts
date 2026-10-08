@@ -14,9 +14,10 @@ export function connectorFailureKind(errorCode?: string, errorDetails?: unknown)
   const status = httpStatus(errorDetails);
   if (/^(?:ssrf_blocked|policy_denied|capability_not_allowed_in_plain_chat|source_content_requires_local_ai)$/u.test(code)) return 'host_policy';
   if (status === 404 || /(?:^|[_:-])not[_-]?found(?:$|[_:-])/u.test(code)) return 'not_found';
-  if (status === 401 || status === 403 || /(?:unauthori[sz]ed|forbidden|permission|oauth_refresh_failed)/u.test(code)) return 'permission_denied';
+  if (status === 401 || status === 403
+    || /(?:unauthori[sz]ed|forbidden|permission|oauth_refresh_failed|invalid_auth|token_revoked|token_expired|missing_scope|scope_missing|not_in_channel)/u.test(code)) return 'permission_denied';
   if ((status !== undefined && (status === 408 || status === 425 || status === 429 || status >= 500))
-    || /(?:timeout|timed_out|rate_limit|temporar|unavailable|network|connection_reset)/u.test(code)) return 'transient';
+    || /(?:timeout|timed_out|rate_?limit|temporar|unavailable|network|connection_reset|connection_failed)/u.test(code)) return 'transient';
   if (status === 400 || status === 422 || /(?:invalid|bad_request|validation)/u.test(code)) return 'invalid_request';
   return errorCode ? 'provider_error' : 'unknown';
 }

@@ -24,13 +24,15 @@ interface ChatMainPageProps {
   workspaceChat: WorkspaceChatApi;
   /** Recent runs, so an opened work shows what it last produced. */
   executions?: AppState['executions'];
+  /** Saved works as the app knows them now, so the open work shows its current on/off switch. */
+  works?: AppState['works'];
   /** Host-level setup notice (e.g. Jev not connected) shown above the conversation. */
   setupNotice?: ReactNode;
   /** Runs a saved work now and reports a failure the way the work list does. */
   onRunWork: (workflowId: string) => Promise<void>;
 }
 
-export function ChatMainPage({ workspaceChat, setupNotice, executions, onRunWork }: ChatMainPageProps) {
+export function ChatMainPage({ workspaceChat, setupNotice, executions, works, onRunWork }: ChatMainPageProps) {
   const discovery = useDiscovery({
     workspaceContextKey: workspaceChat.workspaceContextKey,
     // Show the saved work (its run button and results), not an empty chat.
@@ -41,6 +43,8 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, onRunWork
   const savedTriggerType = workspaceChat.workspaceWorkflowState?.draft?.trigger?.type;
   const openWorkflowId = workspaceChat.workspaceWorkflowState?.workflowId;
   const workRuns = openWorkflowId ? (executions ?? []).filter((run) => run.workflowId === openWorkflowId).slice(0, 3) : [];
+  // The switch as it is now (turned off in the sidebar, or by the scheduler), not when the chat opened.
+  const workActive = works?.find((work) => work.id === openWorkflowId)?.active ?? workspaceChat.workflowRegistered;
   const isManualWork = Boolean(workspaceChat.workspaceWorkflowState?.workflowId)
     && (!savedTriggerType || savedTriggerType === 'manual');
   const [selectedNode, setSelectedNode] = useState<Node<WorkflowVisualNodeData> | null>(null);
@@ -127,7 +131,7 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, onRunWork
         workManual={isManualWork}
         resumableDiscoveries={discovery.resumable}
         onResumeDiscovery={discovery.resume}
-        workflowRegistered={workspaceChat.workflowRegistered}
+        workflowRegistered={workActive}
         discoveryView={discovery.view ?? undefined}
         discoveryBusy={discovery.busy}
         onSend={workspaceChat.sendMessage}
