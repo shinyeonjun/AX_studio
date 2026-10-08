@@ -27,7 +27,7 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
 
   const { clientId, clientSecret } = getGoogleOAuthCredentials();
   let latestRefreshToken = credential.refreshToken;
-  runtime.connectors.gmail = new GmailConnector(
+  runtime.setConnector('gmail', new GmailConnector(
     buildGmailConnectorConfig({
       clientId,
       clientSecret,
@@ -40,5 +40,5 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
         });
       },
     }),
-  );
+  ));
 }

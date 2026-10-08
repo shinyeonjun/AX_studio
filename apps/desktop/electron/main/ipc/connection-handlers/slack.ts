@@ -1,14 +1,6 @@
 import { ipcHandle } from '../ipc-handle.js';
-import {
-  SlackConnector,
-  validateSlackBotToken,
-} from '@ax-studio/core';
 import { getCore } from '../../core-instance.js';
-import {
-  deleteSlackSecret,
-  getSlackSecretForConnect,
-  saveSlackSecret,
-} from '../../slack/connection.js';
+import { connectSlack, disconnectSlack } from '../../slack/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 function readSlackPayload(payload: unknown): { token: string; appToken?: string } {
@@ -32,96 +24,17 @@ function readSlackPayload(payload: unknown): { token: string; appToken?: string 
 }
 
 export function registerSlackConnectionHandlers() {
-  ipcHandle(
-    'ax:connectSlack',
-    async (_e, payload: unknown) => {
-      const core = getCore();
-      const { token: inputToken, appToken } = readSlackPayload(payload);
-
-      const existingSecret = await getSlackSecretForConnect(inputToken);
-      const token = inputToken || existingSecret?.token || '';
-      if (!token) {
-        throw new Error('Bot Token을 입력해 주세요.');
-      }
-      if (!token.startsWith('xoxb-')) {
-        throw new Error('Bot Token은 xoxb- 로 시작해야 합니다.');
-      }
-      if (appToken && !appToken.startsWith('xapp-')) {
-        throw new Error('App-Level Token은 xapp- 로 시작해야 합니다.');
-      }
-
-      const existingConnection = core.store.getConnections().find((entry) => entry.connector === 'slack');
-      const existing = existingConnection?.config as
-        | { appToken?: string; appTokenStored?: boolean; team?: string; botUser?: string; connectedAt?: string }
-        | undefined;
-      const finalAppToken = appToken ?? existingSecret?.appToken;
-
-      const validation = await validateSlackBotToken(token);
-      if (!validation.ok) {
-        if (existingConnection?.connected) {
-          // A rejected replacement token must not tear down a working connection.
-          core.store.setConnection('slack', true, { ...(existingConnection.config ?? {}), lastError: validation.error });
-          notifyStateChanged();
-          throw new Error(validation.error ?? 'Slack 연결에 실패했습니다.');
-        }
-        core.store.setConnection('slack', false, {
-          team: existing?.team,
-          botUser: existing?.botUser,
-          connectedAt: existing?.connectedAt,
-          tokenStored: Boolean(existingSecret),
-          appTokenStored: Boolean(existingSecret?.appToken),
-          lastError: validation.error,
-        });
-        throw new Error(validation.error ?? 'Slack 연결에 실패했습니다.');
-      }
-
-      await saveSlackSecret({ token, appToken: finalAppToken });
-      core.runtime.connectors.slack = new SlackConnector(token);
-
-      const slackConfig = {
-        team: validation.team,
-        botUser: validation.botUser,
-        connectedAt: new Date().toISOString(),
-        tokenStored: true,
-        appTokenStored: Boolean(finalAppToken),
-      };
-      core.store.setConnection('slack', true, slackConfig);
-
-      let socketError: string | undefined;
-      try {
-        await core.triggerEngine.refreshSlackSocket({ token, appToken: finalAppToken });
-      } catch (err) {
-        socketError = (err as Error).message;
-      }
-
-      const socketModeActive = core.triggerEngine.slackSocketActive();
-      if (socketError) {
-        core.store.setConnection('slack', true, { ...slackConfig, lastError: socketError });
-      }
-
+  ipcHandle('ax:connectSlack', async (_e, payload: unknown) => {
+    const input = readSlackPayload(payload);
+    try {
+      return await connectSlack(getCore(), input);
+    } finally {
+      // A rejected token is recorded on the connection too; settings shows why.
       notifyStateChanged();
-
-      if (socketError && finalAppToken) {
-        return {
-          ok: true,
-          socketModeActive: false,
-          warning: 'Bot Token은 연결됐지만 Socket Mode 시작에 실패했습니다: ' + socketError,
-        };
-      }
-
-      return {
-        ok: true,
-        socketModeActive,
-        hasAppToken: Boolean(finalAppToken),
-      };
-    },
-  );
+    }
+  });
   ipcHandle('ax:disconnectSlack', async () => {
-    const core = getCore();
-    await core.triggerEngine.refreshSlackSocket(null);
-    await deleteSlackSecret();
-    core.runtime.setConnector('slack', null);
-    core.store.setConnection('slack', false);
+    await disconnectSlack(getCore());
     notifyStateChanged();
     return { ok: true };
   });
