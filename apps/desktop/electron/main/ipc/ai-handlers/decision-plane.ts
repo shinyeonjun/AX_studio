@@ -1,4 +1,4 @@
-import { JEV_PINNED_MODEL, JevDecisionEngine, JevDecisionError, resolveJevModel, validateJevApiKey } from '@ax-studio/core';
+import { JEV_DEFAULT_BASE_URL, JEV_PINNED_MODEL, JevDecisionEngine, JevDecisionError, resolveJevModel, validateJevApiKey } from '@ax-studio/core';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
 import {
@@ -11,7 +11,6 @@ import { maskSecret } from '../../env-file.js';
 import type { JevDecisionTomlConfig } from '../../ai/config-file/contracts.js';
 
 const DEFAULT_JEV_MODEL = JEV_PINNED_MODEL;
-const DEFAULT_JEV_BASE_URL = 'https://api.typesafe.ai';
 
 interface JevDecisionPrefs {
   enabled?: boolean;
@@ -24,12 +23,12 @@ const SETTINGS_UNREADABLE = '판단 엔진(Jev) 설정을 읽지 못했어요. �
 const MALFORMED_KEY = 'API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.';
 
 function normalizedUrl(value: string | undefined): string {
-  const candidate = value?.trim() || DEFAULT_JEV_BASE_URL;
+  const candidate = value?.trim() || JEV_DEFAULT_BASE_URL;
   let parsed: URL;
   try {
     parsed = new URL(candidate);
   } catch {
-    throw new Error('판단 엔진(Jev) 서버 주소 형식이 올바르지 않아요. 예: https://api.typesafe.ai');
+    throw new Error(`판단 엔진(Jev) 서버 주소 형식이 올바르지 않아요. 예: ${JEV_DEFAULT_BASE_URL}`);
   }
   const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
@@ -76,7 +75,7 @@ function originOf(baseURL: string): string {
 
 /** Keys saved before origin binding are bound to the Base URL they were last saved with. */
 function storedKeyOrigin(jev: JevDecisionTomlConfig | undefined): string {
-  return jev?.keyOrigin || originOf(jev?.baseURL?.trim() || DEFAULT_JEV_BASE_URL);
+  return jev?.keyOrigin || originOf(jev?.baseURL?.trim() || JEV_DEFAULT_BASE_URL);
 }
 
 const KEY_ORIGIN_MISMATCH =
@@ -89,7 +88,8 @@ async function snapshot() {
   return {
     enabled: jev?.enabled ?? false,
     model: resolveJevModel(jev?.model) || DEFAULT_JEV_MODEL,
-    baseURL: jev?.baseURL?.trim() || DEFAULT_JEV_BASE_URL,
+    baseURL: jev?.baseURL?.trim() || JEV_DEFAULT_BASE_URL,
+    defaultBaseURL: JEV_DEFAULT_BASE_URL,
     apiKeyConfigured: Boolean(secret),
     apiKeyMasked: secret ? maskSecret(secret) : undefined,
   };

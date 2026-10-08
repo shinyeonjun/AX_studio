@@ -1,3 +1,4 @@
+import { RUN_NOT_STARTED_CODES } from '../run-refusals.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { WorkflowRuntime } from '../engine.js';
@@ -29,10 +30,6 @@ function occurrenceAcknowledged(fired: string | undefined, occurrenceKey: string
   return firedAt >= occurrenceAt;
 }
 
-/** Runtime refusals that are raised before any step runs, so the occurrence may be retried. */
-const NOT_STARTED_ERRORS = new Set([
-  'runtime_stopping', 'workflow_removed', 'workflow_run_queue_full', 'workflow_already_running',
-]);
 
 /** A one-time job this late is skipped (and recorded) instead of running unexpectedly. */
 export const ONCE_MAX_LATENESS_MS = 24 * 60 * 60 * 1_000;
@@ -232,7 +229,7 @@ export class Scheduler {
       const code = (error as { code?: unknown })?.code ?? (error instanceof Error ? error.message : undefined);
       return {
         error,
-        notStarted: typeof code === 'string' && NOT_STARTED_ERRORS.has(code),
+        notStarted: typeof code === 'string' && RUN_NOT_STARTED_CODES.has(code),
         ...(typeof code === 'string' ? { code } : {}),
       };
     }

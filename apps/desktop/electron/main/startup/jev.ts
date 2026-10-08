@@ -1,4 +1,4 @@
-import { createExperimentalJevDecisionEngineFromEnvironment, JevDecisionEngine, JevDecisionError, resolveJevModel, type DecisionEngine } from '@ax-studio/core';
+import { createExperimentalJevDecisionEngineFromEnvironment, JEV_DEFAULT_BASE_URL, JevDecisionEngine, JevDecisionError, resolveJevModel, type DecisionEngine } from '@ax-studio/core';
 
 interface JevStartupSettings {
   enabled?: boolean;
@@ -8,8 +8,6 @@ interface JevStartupSettings {
   keyOrigin?: string;
 }
 
-/** Same default as JevDecisionEngine and the settings handler. */
-const DEFAULT_JEV_BASE_URL = 'https://api.typesafe.ai';
 
 function originOf(url: string): string | undefined {
   try {
@@ -24,7 +22,7 @@ function originOf(url: string): string | undefined {
  * binding (no keyOrigin) are bound to the Base URL they were saved with, so they match.
  */
 function keyOriginMatches(settings: JevStartupSettings): boolean {
-  const target = originOf(settings.baseURL?.trim() || DEFAULT_JEV_BASE_URL);
+  const target = originOf(settings.baseURL?.trim() || JEV_DEFAULT_BASE_URL);
   if (!target) return false;
   const keyOrigin = settings.keyOrigin?.trim();
   return !keyOrigin || keyOrigin === target;

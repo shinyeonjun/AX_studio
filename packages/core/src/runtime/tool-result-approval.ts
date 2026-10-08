@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { EditableToolResultSchema, MessageSendBindingSchema, ToolDraftUpdateSchema, ToolReviewRequestSchema,
+import { EditableToolResultSchema, isMessageToolField, MESSAGE_TOOL_FIELDS, MessageSendBindingSchema, ToolDraftUpdateSchema, ToolReviewRequestSchema,
   ToolResultConfirmationSchema, ToolSendOutcomeSchema, messageTool, messageToolDraft, messageToolParams, missingToolEssentials,
   validGmailRecipient, type EditableToolResult, type MessageToolDraft, type ToolResultConfirmation,
   type ToolResultReference, type ToolResultReview } from '../contracts/tool-result.js';
@@ -40,8 +40,8 @@ export function editableToolResult(store: WorkflowStore, approvalId: string): Ed
   if (resolved.actionDefinition.id !== snapshot.actionRef || approvalParamsHash(resolved.params) !== snapshot.paramsHash) {
     throw new Error('approval_target_changed');
   }
-  const keys = tool === 'gmail' ? ['to', 'subject', 'body'] : ['channel', 'text'];
-  const blockedFields = Object.keys(resolved.params).filter(key => !keys.includes(key));
+  const keys = MESSAGE_TOOL_FIELDS[tool];
+  const blockedFields = Object.keys(resolved.params).filter(key => !isMessageToolField(tool, key));
   const draft = messageToolDraft(snapshot.actionRef, Object.fromEntries(keys
     .filter(key => key in resolved.params).map(key => [key, resolved.params[key]])));
   if (!draft) throw new Error('tool_result_invalid_original');

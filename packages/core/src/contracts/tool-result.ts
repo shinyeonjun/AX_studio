@@ -63,14 +63,24 @@ export const ToolSendOutcomeSchema = z.object({
 }).strict().refine(value => value.status !== 'sent' || !!value.receiptId);
 export type ToolSendOutcome = z.infer<typeof ToolSendOutcomeSchema>;
 
+/** The only fields a message send takes, per tool; anything else is not a message the person reviews. */
+export const MESSAGE_TOOL_FIELDS = {
+  gmail: ['to', 'subject', 'body'],
+  slack: ['channel', 'text'],
+} as const satisfies Record<'gmail' | 'slack', readonly string[]>;
+
+export function isMessageToolField(tool: keyof typeof MESSAGE_TOOL_FIELDS, key: string): boolean {
+  return (MESSAGE_TOOL_FIELDS[tool] as readonly string[]).includes(key);
+}
+
 export function messageTool(actionRef: string): 'gmail' | 'slack' | undefined {
   return actionRef === 'gmail.message.send' ? 'gmail' : actionRef === 'slack.message.send' ? 'slack' : undefined;
 }
 export function messageToolDraft(actionRef: string, params: Record<string, unknown>): MessageToolDraft | undefined {
   const tool = messageTool(actionRef);
   if (!tool) return undefined;
-  const keys = tool === 'gmail' ? ['to', 'subject', 'body'] : ['channel', 'text'];
-  if (Object.keys(params).some(key => !keys.includes(key))) return undefined;
+  const keys = MESSAGE_TOOL_FIELDS[tool];
+  if (Object.keys(params).some(key => !isMessageToolField(tool, key))) return undefined;
   const parsed = MessageToolDraftSchema.safeParse({ tool, ...Object.fromEntries(keys.map(key => [key, params[key] ?? ''])) });
   return parsed.success ? parsed.data : undefined;
 }

@@ -1,3 +1,4 @@
+import { isMessageToolField } from '../../contracts/tool-result.js';
 import type { gmail_v1 } from 'googleapis';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
@@ -64,7 +65,7 @@ export class GmailConnector implements Connector {
   }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
-    if ((action === 'message.send' || action === 'draft.create') && Object.keys(params).some(key => !['to', 'subject', 'body'].includes(key))) {
+    if ((action === 'message.send' || action === 'draft.create') && Object.keys(params).some(key => !isMessageToolField('gmail', key))) {
       return { ok: false, error: 'Unsupported Gmail delivery fields', errorCode: 'unsupported_message_fields' };
     }
     try {
