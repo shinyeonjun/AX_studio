@@ -43,6 +43,34 @@ export interface JevDecisionEngineOptions {
  * Jev. The wire contract mirrors the official TypeSafe SDK: an API-root baseURL,
  * POST /v1/systemone, and AX boolean questions mapped to the `noul` primitive.
  */
+/** Waits before each retry of a briefly unavailable provider; more attempts than this fail. */
+const JEV_TRANSIENT_RETRY_DELAYS_MS = [400, 1_200] as const;
+const JEV_MAX_RETRY_AFTER_MS = 3_000;
+const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
+
+function retryAfterMs(header: string | null): number | undefined {
+  const seconds = header ? Number(header) : NaN;
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.min(seconds * 1_000, JEV_MAX_RETRY_AFTER_MS) : undefined;
+}
+
+/** How long to wait before retrying, or undefined when the failure is not a passing one. */
+function transientRetryDelay(error: unknown, attempt: number): number | undefined {
+  const status = error instanceof JevDecisionError ? error.status : undefined;
+  // A dropped connection (fetch rejects with TypeError) is as passing as a 503.
+  const transient = (status !== undefined && TRANSIENT_STATUSES.has(status)) || error instanceof TypeError;
+  if (!transient) return undefined;
+  const hinted = (error as { retryAfterMs?: number }).retryAfterMs;
+  return hinted ?? JEV_TRANSIENT_RETRY_DELAYS_MS[attempt];
+}
+
+function waitUnlessAborted(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve(); }, ms);
+    const onAbort = () => { clearTimeout(timer); reject(signal?.reason ?? new DOMException('The operation was aborted.', 'AbortError')); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 export class JevDecisionEngine implements DecisionEngine {
   readonly dataHandling = 'cloud' as const;
 
@@ -172,7 +200,30 @@ export class JevDecisionEngine implements DecisionEngine {
     }
   }
 
+  /**
+   * One batch, retried when the provider is briefly unavailable (503 model_unavailable, 429,
+   * 529 …): a person's request should not fail on a blip the next second would not have. A
+   * timeout or the person's own cancel is never retried.
+   */
   private async evaluateBatch(
+    request: DecisionEvaluationRequest,
+    entries: Array<[string, DecisionQuestion]>,
+    body: string,
+    requestBytes: number,
+    onProviderRequest: (bytes: number) => void,
+  ): Promise<DecisionEvaluationResult> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.evaluateBatchOnce(request, entries, body, requestBytes, onProviderRequest);
+      } catch (error) {
+        const delay = attempt < JEV_TRANSIENT_RETRY_DELAYS_MS.length ? transientRetryDelay(error, attempt) : undefined;
+        if (delay === undefined || request.signal?.aborted) throw error;
+        await waitUnlessAborted(delay, request.signal);
+      }
+    }
+  }
+
+  private async evaluateBatchOnce(
     request: DecisionEvaluationRequest,
     entries: Array<[string, DecisionQuestion]>,
     body: string,
@@ -213,10 +264,10 @@ export class JevDecisionEngine implements DecisionEngine {
       request.signal?.removeEventListener('abort', abortExternal);
     }
     if (!response.ok) {
-      throw new JevDecisionError(
+      throw Object.assign(new JevDecisionError(
         errorMessageFromBody(rawBody) ?? `TypeSafe request failed with status ${response.status}.`,
         response.status,
-      );
+      ), { retryAfterMs: retryAfterMs(response.headers.get('retry-after')) });
     }
 
     const parsed = JevResponseSchema.safeParse(rawBody);

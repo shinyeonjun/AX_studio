@@ -147,7 +147,8 @@ describe('default-off singleton schema selection with real Jev/session/service/l
     { id: 'array_container', options: { operationBody: { answers: [] } }, stop: 'provider_failure' },
     { id: 'malformed_answer', options: { operationBody: { answers: { metadataOperationRef: { type: 'choice' } } } }, stop: 'provider_failure' },
     { id: 'malformed_envelope', options: { operationBody: { answers: {}, usage: { input_tokens: 'wrong' } } }, stop: 'provider_failure' },
-    { id: 'http_error', options: { operationBody: { answers: {}, error: 'TypeSafe response is missing answer metadataOperationRef.' }, operationStatus: 503 }, stop: 'provider_failure' },
+    // A refused request (400); a 503 is retried first and is covered in jev.test.ts.
+    { id: 'http_error', options: { operationBody: { answers: {}, error: 'TypeSafe response is missing answer metadataOperationRef.' }, operationStatus: 400 }, stop: 'provider_failure' },
     { id: 'transport_error', options: { transportFailure: true }, stop: 'provider_failure' },
     { id: 'tie', options: { operationBody: { answers: { metadataOperationRef: selected('metadata_0', { metadata_0: 0.5, unknown: 0.5 }) } } }, stop: 'invalid_decision' },
     { id: 'subthreshold', options: { operationBody: { answers: { metadataOperationRef: selected('metadata_0', { metadata_0: 0.49 }) } } }, stop: 'invalid_decision' },

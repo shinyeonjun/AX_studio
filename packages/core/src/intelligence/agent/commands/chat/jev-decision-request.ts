@@ -14,6 +14,7 @@ import type { JevActionHint } from './jev-action-catalog.js';
 import {
   buildJevParallelToolCandidates,
   parallelToolSelectionQuestions,
+  TOOL_SELECTION_POLICY,
 } from './jev-parallel-tool-selection.js';
 import type { JevWorkflowStepHint } from './jev-workflow-update.js';
 import { jevHttpEndpointChoices, type JevHttpEndpointHint } from './jev-http-endpoint.js';
@@ -125,6 +126,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
   const state = {
     request: input.userMessage,
     request_features: input.requestFeatures,
+    ...(parallelToolCandidates.length > 0 ? { tool_selection_policy: TOOL_SELECTION_POLICY } : {}),
     context: {
       current_workflow_present: hasCurrentWorkflow,
       workspace_session_present: hasWorkspaceSession,
