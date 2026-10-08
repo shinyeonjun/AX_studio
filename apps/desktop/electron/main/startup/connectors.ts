@@ -4,7 +4,7 @@ import { hydrateGmailConnector } from '../gmail/connection.js';
 import { hydrateSlackConnector, type SlackSecret } from '../slack/connection.js';
 import { hydrateHttpConnector } from '../http/connection.js';
 import { hydrateWebhookConnection } from '../webhook/connection.js';
-import { hydrateRdbConnector } from '../rdb/connection.js';
+import { fillRdbTableDescriptions, hydrateRdbConnector } from '../rdb/connection.js';
 import { hydrateOpenApiConnector } from '../openapi/connection.js';
 import { isCredentialUnavailableError } from '../credential-store.js';
 
@@ -59,6 +59,8 @@ export async function hydrateConnectorsForStartup(
   await runStep('http', () => hydrateHttpConnector(core.store, core.runtime), undefined);
   await runStep('webhook', () => hydrateWebhookConnection(core.store), undefined);
   await runStep('rdb', () => hydrateRdbConnector(core.store, core.runtime), undefined);
+  // Tables connected before descriptions existed (or while no AI was set up) get them now.
+  void fillRdbTableDescriptions(core.store, core.agentHarness).catch(() => undefined);
   await runStep('openapi', () => hydrateOpenApiConnector(core.store, core.runtime), undefined);
   return slackSecret;
 }

@@ -6,6 +6,7 @@ import { rdbDatabaseEntries } from '@ax-studio/core';
 import {
   discoverRdbTableNames,
   disconnectRdb,
+  fillRdbTableDescriptions,
   validateAndConnectRdb,
   type RdbConnectResult,
 } from '../../rdb/connection.js';
@@ -132,6 +133,8 @@ export function registerRdbConnectionHandlers() {
     }
     if (sqliteSelection && approvedSqliteSelection === sqliteSelection) approvedSqliteSelection = undefined;
     notifyStateChanged();
+    // In the background: Korean descriptions of the new tables, so Jev can match requests to them.
+    void fillRdbTableDescriptions(core.store, core.agentHarness).then(() => notifyStateChanged()).catch(() => undefined);
     return {
       ok: true,
       ...(connected?.databaseId ? { databaseId: connected.databaseId } : {}),

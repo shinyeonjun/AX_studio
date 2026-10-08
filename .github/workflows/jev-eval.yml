@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 18 * * *' # 03:00 KST
   workflow_dispatch:
+    inputs:
+      no_table_descriptions:
+        description: 'Leave out learned table descriptions (to measure what they add)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,6 +51,7 @@ jobs:
         working-directory: packages/core
         env:
           AX_LIVE_JEV_EVAL: '1'
+          AX_JEV_EVAL_NO_TABLE_DESCRIPTIONS: ${{ inputs.no_table_descriptions && '1' || '' }}
           AX_JEV_EVAL_REPORT: ${{ github.workspace }}/jev-eval-report.json
         run: node scripts/embed-skills.mjs && npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts
 

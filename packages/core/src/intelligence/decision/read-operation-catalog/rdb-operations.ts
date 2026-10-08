@@ -83,12 +83,15 @@ function addDatabaseOperations(operations: IndexedReadOperation[], database: Rdb
   for (const table of tables) {
     const safeTable = table.slice(0, 160);
     const columns = schema.tables.get(table)?.columns ?? [];
+    // What the table holds in Korean, learned from its names: "tb_ord_mst" alone matches no request.
+    const meaning = text(database.tableDescriptions?.[table], 80);
+    const about = meaning ? ` (${meaning})` : '';
     addIndexedOperation(operations, {
       capabilityId: 'rdb.query.read',
       connector: 'rdb',
       ...source,
-      label: `DB 조회: ${safeTable}`,
-      description: columns.length > 0 ? `${inDatabase}허용된 테이블 ${safeTable} 읽기 · 열: ${columnList(columns)}` : `${inDatabase}허용된 테이블 ${safeTable} 읽기`,
+      label: `DB 조회: ${safeTable}${about}`.slice(0, 160),
+      description: columns.length > 0 ? `${inDatabase}허용된 테이블 ${safeTable}${about} 읽기 · 열: ${columnList(columns)}` : `${inDatabase}허용된 테이블 ${safeTable}${about} 읽기`,
     }, (userMessage) => ({ params: { ...pinned, table }, parameterHints: readHints(userMessage) }));
 
     // A question about orders by customer region needs each order with its customer's columns.

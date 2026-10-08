@@ -22,6 +22,8 @@ export interface RdbDatabaseEntry {
   rowLimit?: number;
   connectionStringStored?: boolean;
   schema?: unknown;
+  /** Short Korean descriptions of its tables, learned once from their names (see describeTables). */
+  tableDescriptions?: Record<string, string>;
   connectedAt?: string;
   lastError?: string;
 }
@@ -35,9 +37,15 @@ function strings(value: unknown): string[] | undefined {
   return list.length > 0 ? list : undefined;
 }
 
+function descriptions(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0 && entry[1].length <= 80);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
 function entryFromRecord(value: unknown, fallbackId: string): RdbDatabaseEntry | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as RdbConnectionRecord & { id?: unknown; schema?: unknown };
+  const record = value as RdbConnectionRecord & { id?: unknown; schema?: unknown; tableDescriptions?: unknown };
   const type = record.type === 'mysql' || record.type === 'postgres' || record.type === 'sqlite' ? record.type : undefined;
   if (record.type !== undefined && !type) return null;
   const filePath = typeof record.filePath === 'string' ? record.filePath.trim() : '';
@@ -53,6 +61,7 @@ function entryFromRecord(value: unknown, fallbackId: string): RdbDatabaseEntry |
     ...(typeof record.rowLimit === 'number' ? { rowLimit: record.rowLimit } : {}),
     ...(record.connectionStringStored === true ? { connectionStringStored: true } : {}),
     ...(record.schema !== undefined ? { schema: record.schema } : {}),
+    ...(descriptions(record.tableDescriptions) ? { tableDescriptions: descriptions(record.tableDescriptions) } : {}),
     ...(typeof record.connectedAt === 'string' ? { connectedAt: record.connectedAt } : {}),
     ...(typeof record.lastError === 'string' ? { lastError: record.lastError } : {}),
   };
