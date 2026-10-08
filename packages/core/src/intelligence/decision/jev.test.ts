@@ -43,8 +43,10 @@ describe('host parser clean-omission provenance', () => {
         return Response.json({ answers: {}, error: 'TypeSafe response is missing answer metadataOperationRef.' }, { status: 503 });
       });
       const engine = new JevDecisionEngine({ apiKey: 'offline-test', fetch: fetchImpl });
-      await expect(engine.evaluate(request)).rejects.toMatchObject({ failure: undefined, providerRequestCount: 1 });
-      expect(fetchImpl).toHaveBeenCalledOnce();
+      // A 503 is retried (twice) before failing; a thrown non-network error is not.
+      const attempts = transport ? 1 : 3;
+      await expect(engine.evaluate(request)).rejects.toMatchObject({ failure: undefined, providerRequestCount: attempts });
+      expect(fetchImpl).toHaveBeenCalledTimes(attempts);
     }
   });
 
@@ -352,7 +354,21 @@ describe('JevDecisionEngine', () => {
     await expect(engine.evaluate({
       state: 'classify',
       questions: { relevant: { type: 'boolean', instructions: 'Relevant?' } },
-    })).rejects.toMatchObject({ message: 'network unavailable', providerRequestCount: 1, requestBytes: expect.any(Number) });
+    })).rejects.toMatchObject({ message: 'network unavailable', providerRequestCount: 3, requestBytes: expect.any(Number) });
+  });
+
+  it('retries a briefly unavailable provider, and never a request it refused', async () => {
+    const ok = () => new Response(JSON.stringify({ model: 'jev-latest', answers: { relevant: { type: 'noul', noul: 0.9 } } }), { status: 200 });
+    const unavailable = () => Response.json({ error: 'model_unavailable' }, { status: 503, headers: { 'retry-after': '0' } });
+    const flaky = vi.fn<typeof fetch>().mockResolvedValueOnce(unavailable()).mockResolvedValueOnce(ok());
+    const question = { state: 'classify', questions: { relevant: { type: 'boolean' as const, instructions: 'Relevant?' } } };
+    await expect(new JevDecisionEngine({ apiKey: 'test-key', fetch: flaky }).evaluate(question))
+      .resolves.toMatchObject({ answers: { relevant: { type: 'boolean', probability: 0.9 } } });
+    expect(flaky).toHaveBeenCalledTimes(2);
+
+    const refused = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ error: 'bad request' }, { status: 400 }));
+    await expect(new JevDecisionEngine({ apiKey: 'test-key', fetch: refused }).evaluate(question)).rejects.toMatchObject({ status: 400 });
+    expect(refused).toHaveBeenCalledOnce();
   });
 
   it('keeps a fitting multi-question evaluation as one network call', async () => {
