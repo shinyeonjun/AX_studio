@@ -83,7 +83,7 @@ export function registerLocalFolderConnectionHandlers() {
   ipcHandle('ax:removeLocalFolder', async (_event, folderId: unknown) => {
     const core = getCore();
     if (typeof folderId !== 'string' || !folderId.trim()) {
-      throw new Error('폴더를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+      throw new Error('폴더를 찾을 수 없어요. 화면을 새로고침해 주세요.');
     }
 
     const existing = core.store.getConnections().find((entry) => entry.connector === 'local_folder');

@@ -11,7 +11,13 @@ import { executionLogSummary } from '../execution-log-summary.js';
  * refresh lists 50 executions, older ids simply fall out.
  */
 const MAX_CACHED_EXECUTIONS = 200;
-type IrFacts = { hasOutputContract: boolean; name?: string; stepIds?: string[] };
+type IrFacts = {
+  hasOutputContract: boolean;
+  name?: string;
+  stepIds?: string[];
+  /** Korean descriptions of each AI step's output fields, by step id then field name. */
+  aiFieldLabels?: Record<string, Record<string, string>>;
+};
 const irFactsByExecution = new Map<string, { irJson: string; facts: IrFacts }>();
 const logSummaryByExecution = new Map<string, { logJson: string | null; status: string; summary: ReturnType<typeof executionLogSummary> }>();
 
@@ -33,11 +39,32 @@ function irFacts(id: string | undefined, irJson: string): IrFacts {
       hasOutputContract: Boolean(ir.outputContract),
       ...(ir.name?.trim() ? { name: ir.name.trim() } : {}),
       stepIds: ir.steps.map((step) => step.id),
+      aiFieldLabels: aiFieldLabels(ir.steps),
     };
   } catch {
     // An unreadable snapshot has no name and no contract; the run is still listed.
   }
   return id ? remember(irFactsByExecution, id, { irJson, facts }).facts : facts;
+}
+
+const HANGUL = /[가-힣]/u;
+
+/** Field names are schema keys ("summary"); their descriptions are what a person can read. */
+function aiFieldLabels(steps: ReturnType<typeof parseWorkflowIR>['steps']): Record<string, Record<string, string>> {
+  const labels: Record<string, Record<string, string>> = {};
+  for (const step of steps) {
+    if (step.type !== 'ai_decision') continue;
+    const properties = step.outputSchema?.properties;
+    const fields: Record<string, string> = step.outputSchema === undefined ? { conclusion: '결론' } : {};
+    if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
+      for (const [field, definition] of Object.entries(properties as Record<string, unknown>)) {
+        const description = (definition as { description?: unknown } | null)?.description;
+        if (typeof description === 'string' && HANGUL.test(description)) fields[field] = description.trim().slice(0, 40);
+      }
+    }
+    labels[step.id] = fields;
+  }
+  return labels;
 }
 
 function cachedLogSummary(id: string, logJson: string | null, status: string): ReturnType<typeof executionLogSummary> {
@@ -142,7 +169,10 @@ export function buildExecutions(core: AxCore) {
       currentStepStatus: logSummary.currentStepStatus,
       currentStepMessage: logSummary.currentStepMessage,
       lastLogMessage: logSummary.lastLogMessage,
-      aiOutput: logSummary.aiOutput,
+      aiOutput: logSummary.aiOutput && {
+        ...logSummary.aiOutput,
+        labels: facts?.aiFieldLabels?.[logSummary.aiOutput.stepId] ?? {},
+      },
       generatedPdf: logSummary.generatedPdf,
       sourceFile: logSummary.sourceFile,
       computedResults: logSummary.computedResults,

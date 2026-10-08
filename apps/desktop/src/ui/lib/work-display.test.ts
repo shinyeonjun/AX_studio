@@ -34,7 +34,7 @@ describe('work display classification', () => {
     for (const code of ['document_engine_dependency_missing', 'document_engine_empty_response']) {
       const message = executionErrorLabel(code);
       expect(message).toContain('문서 읽기 기능이 준비되지 않았어요');
-      expect(message).toContain('설정 > 진단 정보 내보내기');
+      expect(message).toContain('설정 > 문제 해결 > 진단 정보 내보내기');
       expect(message).not.toMatch(/AX_DOCUMENT_ENGINE_PYTHON|npm run|venv|Document Engine/u);
     }
   });

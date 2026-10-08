@@ -79,6 +79,9 @@ export function ActivityExecutionItem({
   const failed = execution.status === 'failed';
   const errorDetail = executionErrorLabel(execution.errorCode);
   const generatedPdf = execution.generatedPdf;
+  const aiOutput = execution.aiOutput;
+  // Field keys are internal names; show the work's own description, or just their place.
+  const aiFieldLabel = (field: string, index: number) => aiOutput?.labels?.[field] ?? `항목 ${index + 1}`;
 
   return (
     <div className="timeline-item">
@@ -109,7 +112,7 @@ export function ActivityExecutionItem({
         <div className="muted">
           {executionTriggerLabel(execution.triggerType)}
           {errorDetail ? ` · ${errorDetail}` : ''}
-          {execution.errorMessage && execution.errorMessage !== errorDetail ? ` · ${execution.errorMessage}` : ''}
+          {execution.errorMessage && execution.errorMessage.replace(/[.。]$/u, '') !== errorDetail ? ` · ${execution.errorMessage}` : ''}
         </div>
         {Boolean(execution.historyDiagnostics?.length) && (
           <div className="timeline-step" role="alert">
@@ -128,14 +131,17 @@ export function ActivityExecutionItem({
         {execution.lastLogMessage && !execution.currentStepMessage && !ok && (
           <div className="timeline-step">최근 기록 · {execution.lastLogMessage}</div>
         )}
-        {execution.aiOutput && (
+        {aiOutput && (
           <div className="timeline-step">
-            AI 분석 결과 · {execution.aiOutput.fields.length > 0 ? execution.aiOutput.fields.join(', ') : '출력 없음'}
-            {Object.entries(execution.aiOutput.preview).map(([field, value]) => (
-              <div key={field}>
-                {field}: {value || '(빈 값)'}
-              </div>
-            ))}
+            AI 분석 결과 · {aiOutput.fields.length > 0 ? aiOutput.fields.map(aiFieldLabel).join(', ') : '출력 없음'}
+            {Object.entries(aiOutput.preview).map(([field, value]) => {
+              const index = aiOutput.fields.indexOf(field);
+              return (
+                <div key={field}>
+                  {aiFieldLabel(field, index >= 0 ? index : aiOutput.fields.length)}: {value || '(빈 값)'}
+                </div>
+              );
+            })}
           </div>
         )}
         {ok && execution.hasOutput && <CalculatedOutput key={execution.id} executionId={execution.id} />}

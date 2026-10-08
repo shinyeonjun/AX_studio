@@ -29,7 +29,7 @@ describe('SystemWarningBanner', () => {
     expect(markup).toContain('경고 닫기');
   });
 
-  it('lists skipped corrupt rows by identifier only', () => {
+  it('counts skipped corrupt rows per area and folds identifiers away for support', () => {
     const state: AppState = {
       ...baseState,
       corruptRows: {
@@ -39,7 +39,10 @@ describe('SystemWarningBanner', () => {
       },
     };
     const markup = renderToStaticMarkup(<SystemWarningBanner state={state} />);
-    expect(markup).toContain('손상된 데이터 3건');
+    expect(markup).toContain('손상된 데이터 3건(승인 요청 3건)');
+    expect(markup).toContain('지원팀에 보낼 상세 정보');
+    expect(markup).not.toContain('<details open');
+    expect(markup.split('<details')[0]).not.toContain('approvals');
     expect(markup).toContain('ap-1');
     expect(markup).toContain('invalid_approval_json');
     expect(markup).toContain('외 2건');

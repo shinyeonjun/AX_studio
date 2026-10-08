@@ -41,7 +41,7 @@ export function retry(service: WorkDiscoveryService, command: AxCommand): Discov
       return [
         'conflict',
         { currentRevision: session.currentRevision },
-        [issue(session.error, '그사이 진행 상황이 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'expectedRevision')],
+        [issue(session.error, '그사이 진행 상황이 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'expectedRevision')],
       ];
     }
     if (session.error === 'discovery_not_found') {
@@ -66,7 +66,7 @@ export function answer(service: WorkDiscoveryService, command: AxCommand): Disco
     return [
       'conflict',
       { currentRevision: session.currentRevision },
-      [issue(session.error, '그사이 진행 상황이 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'expectedRevision')],
+      [issue(session.error, '그사이 진행 상황이 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'expectedRevision')],
     ];
   }
   return ['ok', { sessionId: session.id, status: session.status, revision: session.revision }];
@@ -81,7 +81,7 @@ export function publish(service: WorkDiscoveryService, command: AxCommand): Disc
       return [
         'conflict',
         { currentRevision: result.currentRevision },
-        [issue(result.error, '그사이 진행 상황이 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'expectedRevision')],
+        [issue(result.error, '그사이 진행 상황이 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'expectedRevision')],
       ];
     }
     if (result.error === 'invalid_schedule') {

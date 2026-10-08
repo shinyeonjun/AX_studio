@@ -3,8 +3,8 @@ const STRUCTURED_DETAIL = /^\s*[[{]/;
 const HANGUL = /[ㄱ-ㆎ가-힣]/u;
 
 const RESTART_APP = '앱 화면을 확인할 수 없어요. 앱을 다시 실행해 주세요.';
-const CHAT_CHANGED = '다른 곳에서 대화가 바뀌었어요. 화면을 새로 고친 뒤 다시 시도해 주세요.';
-const CHAT_SAVE_FAILED ='대화 기록을 저장하지 못했어요. 새로 고친 뒤 다시 시도해 주세요.';
+const CHAT_CHANGED = '다른 곳에서 대화가 바뀌었어요. 화면을 새로고침한 뒤 다시 시도해 주세요.';
+const CHAT_SAVE_FAILED ='대화 기록을 저장하지 못했어요. 새로고침한 뒤 다시 시도해 주세요.';
 const NOT_READY = '앱이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.';
 const OFFLINE = '서버에 연결할 수 없어요. 인터넷 연결과 서버 주소를 확인해 주세요.';
 
@@ -28,10 +28,10 @@ const KNOWN_MESSAGES = new Map<string, string>(Object.entries({
   workflow_not_found: '업무를 찾을 수 없어요. 이미 삭제됐을 수 있어요.',
   'workflow not found': '업무를 찾을 수 없어요. 이미 삭제됐을 수 있어요.',
   'execution not found': '실행 기록을 찾을 수 없어요. 이미 삭제됐을 수 있어요.',
-  'approval not found': '승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.',
-  'approval is already being processed or resolved': '이미 처리된 승인이에요. 화면을 새로 고쳐 주세요.',
-  'invalid execution id': '실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.',
-  'invalid approval id': '승인 요청을 찾을 수 없어요. 화면을 새로 고쳐 주세요.',
+  'approval not found': '승인 요청을 찾을 수 없어요. 화면을 새로고침해 주세요.',
+  'approval is already being processed or resolved': '이미 처리된 승인이에요. 화면을 새로고침해 주세요.',
+  'invalid execution id': '실행 기록을 찾을 수 없어요. 화면을 새로고침해 주세요.',
+  'invalid approval id': '승인 요청을 찾을 수 없어요. 화면을 새로고침해 주세요.',
   'ax studio core is not initialized': NOT_READY,
   'desktop ax data paths are not initialized': NOT_READY,
   'failed to fetch': OFFLINE,

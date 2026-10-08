@@ -1,3 +1,4 @@
+import { CONNECTOR_UI_CATALOG, type ConnectorUiId } from '../../../ui/constants/connectors';
 import { getGuideImageSrc } from '../../../ui/lib/guide-images';
 
 interface ConnectionGuideProps {
@@ -23,6 +24,8 @@ function renderSteps(steps: string | string[]) {
 
 export function ConnectionGuide({ title, steps, guideKey, collapsible = false }: ConnectionGuideProps) {
   const guideSrc = guideKey ? getGuideImageSrc(guideKey) : undefined;
+  // The key is an internal id ("local_folder"); the alt text names the service as the app does.
+  const guideAlt = `${(guideKey && CONNECTOR_UI_CATALOG[guideKey as ConnectorUiId]?.title) || '서비스'} 연결 가이드`;
   if (collapsible) {
     return (
       <details className="connection-guide connection-form-details">
@@ -30,7 +33,7 @@ export function ConnectionGuide({ title, steps, guideKey, collapsible = false }:
         <div className="guide-placeholder">
           {renderSteps(steps)}
           {guideSrc ? (
-            <img src={guideSrc} alt={`${guideKey} 연결 가이드`} className="guide-image" />
+            <img src={guideSrc} alt={guideAlt} className="guide-image" />
           ) : null}
         </div>
       </details>
@@ -42,7 +45,7 @@ export function ConnectionGuide({ title, steps, guideKey, collapsible = false }:
       <div className="guide-placeholder">
         {renderSteps(steps)}
         {guideSrc ? (
-          <img src={guideSrc} alt={`${guideKey} 연결 가이드`} className="guide-image" />
+          <img src={guideSrc} alt={guideAlt} className="guide-image" />
         ) : null}
       </div>
     </div>

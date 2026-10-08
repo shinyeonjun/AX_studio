@@ -34,8 +34,8 @@ export async function proposeRecurringFromExecution(
   executionId: unknown,
   scheduleValue: unknown,
 ): Promise<RecurringDraftReply> {
-  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
-  if (typeof executionId !== 'string' || !EXECUTION_ID.test(executionId)) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
+  if (typeof executionId !== 'string' || !EXECUTION_ID.test(executionId)) throw new Error('실행 기록을 찾을 수 없어요. 화면을 새로고침해 주세요.');
   if (typeof scheduleValue !== 'string' || !scheduleValue.trim() || scheduleValue.length > MAX_SCHEDULE_VALUE_CHARS) {
     throw new Error('반복 일정을 이해하지 못했어요. 일정을 다시 골라 주세요.');
   }
@@ -87,7 +87,7 @@ export async function proposeRecurringFromRead(
   workspaceSessionId: unknown,
   scheduleValue: unknown,
 ): Promise<RecurringDraftReply> {
-  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+  if (typeof workspaceSessionId !== 'string' || !SESSION_ID.test(workspaceSessionId)) throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   if (typeof scheduleValue !== 'string' || !scheduleValue.trim() || scheduleValue.length > MAX_SCHEDULE_VALUE_CHARS) {
     throw new Error('반복 일정을 이해하지 못했어요. 일정을 다시 골라 주세요.');
   }

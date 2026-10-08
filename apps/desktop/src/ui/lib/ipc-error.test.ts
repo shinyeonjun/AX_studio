@@ -20,12 +20,12 @@ describe('English and code-like errors from the main process', () => {
   it('translates known machine codes into Korean a person can act on', () => {
     expect(ipcErrorMessage(wrap('app_shutting_down'))).toBe('앱을 종료하는 중이에요. 앱을 다시 실행한 뒤 시도해 주세요.');
     expect(ipcErrorMessage(wrap('untrusted_ipc_sender'))).toBe('앱 화면을 확인할 수 없어요. 앱을 다시 실행해 주세요.');
-    expect(ipcErrorMessage(wrap('workspace_chat_invalid_turn_id'))).toBe('대화 기록을 저장하지 못했어요. 새로 고친 뒤 다시 시도해 주세요.');
+    expect(ipcErrorMessage(wrap('workspace_chat_invalid_turn_id'))).toBe('대화 기록을 저장하지 못했어요. 새로고침한 뒤 다시 시도해 주세요.');
   });
 
   it('translates known English messages regardless of case or trailing punctuation', () => {
     expect(ipcErrorMessage(wrap('Workflow not found'))).toBe('업무를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
-    expect(ipcErrorMessage(wrap('Approval is already being processed or resolved.'))).toBe('이미 처리된 승인이에요. 화면을 새로 고쳐 주세요.');
+    expect(ipcErrorMessage(wrap('Approval is already being processed or resolved.'))).toBe('이미 처리된 승인이에요. 화면을 새로고침해 주세요.');
     expect(ipcErrorMessage(wrap('AX Studio core is not initialized'))).toBe('앱이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.');
   });
 
@@ -45,7 +45,7 @@ describe('English and code-like errors from the main process', () => {
   });
 
   it('explains conflicts in words while the raw code stays available for branching', () => {
-    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toBe('다른 곳에서 대화가 바뀌었어요. 화면을 새로 고친 뒤 다시 시도해 주세요.');
+    expect(ipcErrorMessage(wrap('workspace_chat_turn_conflict'))).toBe('다른 곳에서 대화가 바뀌었어요. 화면을 새로고침한 뒤 다시 시도해 주세요.');
     expect(ipcErrorCode(wrap('workspace_chat_revision_conflict'))).toBe('workspace_chat_revision_conflict');
     expect(ipcErrorCode(wrap('app_shutting_down'))).toBe('app_shutting_down');
   });

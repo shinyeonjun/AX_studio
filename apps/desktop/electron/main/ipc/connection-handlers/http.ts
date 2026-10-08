@@ -32,7 +32,7 @@ export function registerHttpConnectionHandlers() {
     const core = getCore();
     // A malformed id must not silently become "disconnect everything".
     if (endpointId != null && (typeof endpointId !== 'string' || !endpointId.trim())) {
-      throw new Error('해제할 HTTP 연결을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+      throw new Error('해제할 HTTP 연결을 찾을 수 없어요. 화면을 새로고침해 주세요.');
     }
     await disconnectHttp(
       core.store,

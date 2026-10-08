@@ -59,7 +59,7 @@ export function previewWorkflowUpdate(
     return { ok: false, result: [
       'conflict',
       { currentVersion: current.version },
-      [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')],
+      [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'baseVersion')],
     ] };
   }
 
@@ -153,7 +153,7 @@ export async function deleteWorkflow(
     return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')]];
   }
   if (current.version !== parsed.data.baseVersion) {
-    return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]];
+    return ['conflict', { currentVersion: current.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'baseVersion')]];
   }
   if (!store.claimWorkflowDeletion(parsed.data.workflowId, parsed.data.baseVersion)) {
     const latest = store.getWorkflow(parsed.data.workflowId);
@@ -161,7 +161,7 @@ export async function deleteWorkflow(
       return ['not_found', undefined, [issue('workflow_not_found', '해당 업무를 찾지 못했어요. 이미 삭제되었는지 확인해 주세요.', 'workflowId')]];
     }
     if (latest.version !== parsed.data.baseVersion) {
-      return ['conflict', { currentVersion: latest.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로 고친 뒤 다시 시도해 주세요.', 'baseVersion')]];
+      return ['conflict', { currentVersion: latest.version }, [issue('stale_workflow_version', '그사이 업무가 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.', 'baseVersion')]];
     }
     return ['conflict', { currentVersion: latest.version }, [issue('workflow_deletion_in_progress', '업무 삭제가 진행 중입니다. 잠시 후 다시 시도해 주세요.', 'workflowId')]];
   }

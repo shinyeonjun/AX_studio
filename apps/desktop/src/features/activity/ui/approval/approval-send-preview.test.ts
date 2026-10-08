@@ -12,6 +12,16 @@ describe('what an approval will send', () => {
     ] }]);
   });
 
+  it('names undeclared values generically instead of by their internal key', () => {
+    expect(approvalPreview({ payload: { actionSnapshots: [{
+      actionId: 'notify', actionRef: 'slack.message.send@1',
+      params: { text: '안녕하세요', thread_ts_hint: '123', apiKey: 'k' },
+    }] } })[0]?.fields).toEqual([
+      { label: '메시지', value: '안녕하세요', long: false },
+      { label: '기타 값', value: '123', long: false },
+    ]);
+  });
+
   it('shows nothing when the run has no frozen values', () => {
     expect(approvalPreview({ payload: null })).toEqual([]);
     expect(approvalPreview({ payload: { actionSnapshots: [{ actionId: 'x' }] } })).toEqual([]);
