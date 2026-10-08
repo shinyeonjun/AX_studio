@@ -157,7 +157,8 @@ async function selectPrimaryReadHint(
         instructions: {
           statement: 'Two or more of these places each hold exactly the data the request asks for, and nothing in the request tells which one is meant.',
           places: places.slice(0, 20).map((place) => boundDecisionString(place, 80)),
-          operations: ordered.slice(0, 20).map((hint) => boundDecisionString(hint.label, 120)),
+          // With what each holds (its columns), so a place lacking the asked-for fields does not count.
+          operations: ordered.slice(0, 20).map((hint) => boundDecisionString(`${hint.label} — ${hint.description}`, 240)),
         },
         criteria: {
           true: 'The same kind of record is offered by more than one place and the request gives no hint (e.g. "주문 목록 보여줘" while shop orders, logistics orders and an order API all exist).',
