@@ -1,5 +1,7 @@
 export {
+  JEV_PINNED_MODEL,
   JevDecisionEngine,
+  resolveJevModel,
   JevDecisionError,
   validateJevApiKey,
   type JevDecisionEngineOptions,

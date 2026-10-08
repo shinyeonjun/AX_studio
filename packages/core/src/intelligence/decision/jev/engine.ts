@@ -71,6 +71,19 @@ function waitUnlessAborted(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * The Jev version AX Studio's decisions are written and checked against (the nightly routing
+ * eval). Jev advises pinning a version so thresholds do not drift; move it only after the eval
+ * passes on the new one.
+ */
+export const JEV_PINNED_MODEL = 'jev-1.13.0';
+
+/** The model to ask: a saved explicit version, else the pinned one ("jev-latest" was the old default). */
+export function resolveJevModel(saved?: string | null): string {
+  const model = saved?.trim();
+  return !model || model === 'jev-latest' ? JEV_PINNED_MODEL : model;
+}
+
 export class JevDecisionEngine implements DecisionEngine {
   readonly dataHandling = 'cloud' as const;
 
@@ -86,7 +99,7 @@ export class JevDecisionEngine implements DecisionEngine {
   constructor(options: JevDecisionEngineOptions) {
     validateJevApiKey(options.apiKey);
     this.apiKey = options.apiKey;
-    this.model = options.model?.trim() || 'jev-latest';
+    this.model = options.model?.trim() || JEV_PINNED_MODEL;
     this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
     let parsedBaseURL: URL;
     try {

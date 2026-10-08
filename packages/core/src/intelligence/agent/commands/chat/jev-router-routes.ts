@@ -152,10 +152,13 @@ async function selectPrimaryReadHint(
       places_equally_fit: {
         type: 'boolean' as const,
         instructions: {
-          question: 'Do two or more of these places each hold exactly the data the request asks for, with nothing in the request telling which one is meant?',
-          focus: 'Answer true only when the same kind of record is offered by more than one place and the request gives no hint (e.g. "주문 목록 보여줘" while shop orders, logistics orders and an order API all exist). Answer false when only one place really holds the requested data (e.g. remaining leave days exist only in a leave-balance table; a groupware member list does not hold them), or when the request names or implies a place, system or table ("쇼핑몰 주문", "물류 쪽", an API name).',
+          statement: 'Two or more of these places each hold exactly the data the request asks for, and nothing in the request tells which one is meant.',
           places: places.slice(0, 20).map((place) => boundDecisionString(place, 80)),
           operations: ordered.slice(0, 20).map((hint) => boundDecisionString(hint.label, 120)),
+        },
+        criteria: {
+          true: 'The same kind of record is offered by more than one place and the request gives no hint (e.g. "주문 목록 보여줘" while shop orders, logistics orders and an order API all exist).',
+          false: 'Only one place really holds the requested data (remaining leave days exist only in a leave-balance table; a member list does not hold them), or the request names or implies a place, system or table ("쇼핑몰 주문", "물류 쪽", an API name).',
         },
       },
     } : {}),

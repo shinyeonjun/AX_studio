@@ -130,7 +130,7 @@ describe('JevDecisionEngine', () => {
     expect(headers.get('content-type')).toBe('application/json');
     expect(headers.get('x-test')).toBe('kept');
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    expect(body).toMatchObject({ model: 'jev-latest', state: { candidate: 'sales table' } });
+    expect(body).toMatchObject({ model: 'jev-1.13.0', state: { candidate: 'sales table' } });
     expect(body.questions).toEqual({
       relevant: {
         type: 'noul',
@@ -461,5 +461,14 @@ describe('JevDecisionEngine', () => {
       .toThrow('HTTPS');
     expect(() => new JevDecisionEngine({ apiKey: 'test-key', baseURL: 'http://127.0.0.1:8787' }))
       .not.toThrow();
+  });
+});
+
+describe('the Jev version AX Studio asks', () => {
+  it('is pinned unless a version was chosen; the old "jev-latest" default means the pinned one', async () => {
+    const { JEV_PINNED_MODEL, resolveJevModel } = await import('./jev/engine.js');
+    expect(resolveJevModel(undefined)).toBe(JEV_PINNED_MODEL);
+    expect(resolveJevModel(' jev-latest ')).toBe(JEV_PINNED_MODEL);
+    expect(resolveJevModel('jev-1.14.0')).toBe('jev-1.14.0');
   });
 });

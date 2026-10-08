@@ -66,6 +66,7 @@ export function toWireQuestion(question: DecisionQuestion): Record<string, unkno
     return {
       type: 'noul',
       instructions: question.instructions,
+      ...(question.criteria ? { criteria: question.criteria } : {}),
     };
   }
   return { ...question };

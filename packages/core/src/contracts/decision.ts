@@ -54,7 +54,10 @@ export function classifyDecisionOutput(value: unknown): DecisionOutputRoute {
 
 export interface BooleanDecisionQuestion {
   type: 'boolean';
+  /** A statement Jev judges true or false (Jev's guidance: an affirmative statement, no negation). */
   instructions: DecisionInstruction;
+  /** What counts as true and as false at the boundary; Jev recommends it for fuzzy statements. */
+  criteria?: { true: DecisionInstruction; false: DecisionInstruction };
 }
 
 export interface ChoiceDecisionQuestion {
