@@ -53,3 +53,22 @@ describe('formatExecutionResultMessage', () => {
     expect(message).not.toContain('오류 코드');
   });
 });
+
+describe('why a run failed, in the chat', () => {
+  const failed = (errorCode: string, log: Array<{ level: 'error' | 'info'; message: string }> = []) => ({
+    executionId: 'exec-f', status: 'failed' as const, errorCode,
+    log: log.map((entry) => ({ at: '2026-10-08T00:00:00.000Z', code: 'step', ...entry })),
+  });
+
+  it('says the specific reason when the code has one', () => {
+    expect(formatExecutionResultMessage(failed('jev_busy'), { workflowName: '메일 요약' })).toContain('원인: 판단 엔진(Jev) 서버가 잠시 응답하지 않았습니다');
+    expect(formatExecutionResultMessage(failed('not_in_channel'), {})).toContain('채널에 앱을 추가해 주세요');
+  });
+
+  it('uses the step\'s own words when the code is broad, and never leaves the reason out', () => {
+    const message = formatExecutionResultMessage(failed('http_error', [{ level: 'error', message: '서버가 접근을 거부했어요. 연결의 로그인 정보를 확인해 주세요.' }]), {});
+    expect(message).toContain('원인: 서버가 접근을 거부했어요. 연결의 로그인 정보를 확인해 주세요');
+    expect(message).not.toContain('연결된 서비스에서 자료를 가져오지 못했습니다');
+    expect(formatExecutionResultMessage(failed('ENOENT'), {})).toContain('원인: 실행 중 문제가 생겼습니다. 활동 화면에서');
+  });
+});
