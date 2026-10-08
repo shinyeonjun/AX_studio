@@ -1,6 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer, type ServerResponse } from 'node:http';
-import type { OAuth2Client } from 'google-auth-library';
+import type { auth as gmailAuth } from '@googleapis/gmail';
+
+/** The OAuth client of the auth library bundled with the Gmail client. */
+type OAuth2Client = InstanceType<typeof gmailAuth.OAuth2>;
 import { GMAIL_OAUTH_SCOPES } from '../connection.js';
 import type { GmailOAuthOptions, GmailOAuthResult } from './contracts.js';
 import { GMAIL_CALLBACK_PAGE_HEADERS, gmailCallbackPage, type GmailCallbackOutcome } from './callback-page.js';
@@ -45,8 +48,8 @@ export function cancelGmailOAuth(): void {
 }
 
 export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promise<GmailOAuthResult> {
-  const [{ google }, { CodeChallengeMethod }] = await Promise.all([
-    import('googleapis'),
+  const [{ auth }, { CodeChallengeMethod }] = await Promise.all([
+    import('@googleapis/gmail'),
     import('google-auth-library'),
   ]);
   const scopes = [...(options.scopes ?? GMAIL_OAUTH_SCOPES)];
@@ -116,7 +119,7 @@ export async function connectGmailViaLoopback(options: GmailOAuthOptions): Promi
       }
 
       const redirectUri = `http://127.0.0.1:${address.port}/oauth/callback`;
-      session.client = new google.auth.OAuth2(options.clientId, options.clientSecret ?? undefined, redirectUri);
+      session.client = new auth.OAuth2(options.clientId, options.clientSecret ?? undefined, redirectUri);
       const authUrl = session.client.generateAuthUrl({
         access_type: 'offline',
         prompt: 'consent',

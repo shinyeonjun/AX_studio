@@ -1,8 +1,14 @@
 import { createServer, type RequestListener, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { google } from 'googleapis';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GmailConnector } from './connector.js';
+
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn(), actual: undefined as unknown as typeof import('@googleapis/gmail').gmail }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  gmailMock.actual = actual.gmail;
+  return { ...actual, gmail: gmailMock.factory };
+});
 
 let server: Server | undefined;
 const context = { executionId: 'transport', variables: {}, log: () => undefined };
@@ -20,8 +26,7 @@ async function useLoopback(handler: RequestListener) {
   server = createServer(handler);
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const rootUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
-  const createGmail = google.gmail.bind(google);
-  const factory = vi.spyOn(google, 'gmail').mockImplementation((options) => createGmail({ ...options, rootUrl }));
+  const factory = gmailMock.factory.mockImplementation((options: Parameters<typeof gmailMock.actual>[0]) => gmailMock.actual({ ...(options as object), rootUrl } as never));
   const connector = new GmailConnector({
     clientId: 'test-client', refreshToken: 'test-refresh', accessToken: 'test-access',
     expiryDate: Date.now() + 3_600_000,

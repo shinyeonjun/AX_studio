@@ -1,4 +1,4 @@
-import type { gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { z } from 'zod';
 import { completeArtifactCompleteness, partialArtifactCompleteness } from '../../contracts/artifacts/completeness.js';
 import { isNotFoundError } from './new-message-poll/shared.js';
@@ -12,7 +12,9 @@ const Params = z.object({
     if (value.trim().toLowerCase() === 'true') return true;
     if (value.trim().toLowerCase() === 'false') return false;
     return value;
-  }, z.boolean()).default(false),
+    // A list of bare ids tells a person nothing; who sent it, the subject, the date and Gmail's
+    // short preview come along unless asked not to.
+  }, z.boolean()).default(true),
 });
 const METADATA_HEADERS = ['From', 'Subject', 'Date'] as const;
 const METADATA_BATCH_SIZE = 8;
@@ -54,6 +56,7 @@ async function addMessageMetadata(
           ...(metadataHeader(headers, 'From') ? { from: metadataHeader(headers, 'From') } : {}),
           ...(metadataHeader(headers, 'Subject') ? { subject: metadataHeader(headers, 'Subject') } : {}),
           ...(metadataHeader(headers, 'Date') ? { date: metadataHeader(headers, 'Date') } : {}),
+          ...(response.data.snippet?.trim() ? { snippet: response.data.snippet.trim() } : {}),
         };
       } catch (error) {
         if (isNotFoundError(error)) return message;

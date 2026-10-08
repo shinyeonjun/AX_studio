@@ -1,4 +1,4 @@
-import type { gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import type { GmailNewMessageEvent } from './contracts.js';
 import { isNotFoundError } from './shared.js';
 

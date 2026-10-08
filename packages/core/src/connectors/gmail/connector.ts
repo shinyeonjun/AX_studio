@@ -1,5 +1,5 @@
 import { isMessageToolField } from '../../contracts/tool-result.js';
-import type { gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { buildGmailRawMessage } from './mime.js';
@@ -36,9 +36,10 @@ export class GmailConnector implements Connector {
   }
 
   private async getClient(signal?: AbortSignal): Promise<gmail_v1.Gmail> {
-    const { google } = await import('googleapis');
+    // The Gmail-only client: loading all of googleapis took ~14 s on first use.
+    const { gmail, auth } = await import('@googleapis/gmail');
     signal?.throwIfAborted();
-    const oauth2 = new google.auth.OAuth2(this.config.clientId, this.config.clientSecret);
+    const oauth2 = new auth.OAuth2(this.config.clientId, this.config.clientSecret);
     oauth2.setCredentials({
       access_token: this.config.accessToken,
       refresh_token: this.config.refreshToken,
@@ -61,7 +62,7 @@ export class GmailConnector implements Connector {
           });
       }
     });
-    return google.gmail({ version: 'v1', auth: oauth2, timeout: 30_000, retry: false, signal });
+    return gmail({ version: 'v1', auth: oauth2, timeout: 30_000, retry: false, signal });
   }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {

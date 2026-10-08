@@ -8,7 +8,7 @@ const sdk = vi.hoisted(() => {
   const webClient = vi.fn(function () { return { auth: { test: auth }, conversations: { list, info }, chat: { postMessage: post } }; });
   return { profile, send, auth, list, info, post, googleClient, webClient };
 });
-vi.mock('googleapis', () => ({ google: { auth: { OAuth2: class { setCredentials() {} on() {} } }, gmail: sdk.googleClient } }));
+vi.mock('@googleapis/gmail', () => ({ auth: { OAuth2: class { setCredentials() {} on() {} } }, gmail: sdk.googleClient }));
 vi.mock('@slack/web-api', () => ({ WebClient: sdk.webClient }));
 beforeEach(() => {
   vi.clearAllMocks();

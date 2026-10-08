@@ -1,10 +1,15 @@
-import type { gmail_v1 } from 'googleapis';
-import { google } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GmailConnector } from './connector.js';
 import { parseGmailConnectionConfig } from './connection.js';
 import { pollGmailNewMessages } from './new-message-poll/poll.js';
 import { searchGmailMessages } from './search.js';
+
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  return { ...actual, gmail: gmailMock.factory };
+});
 
 const context = { executionId: 'test', variables: {}, log: () => undefined };
 const connector = () => new GmailConnector({ clientId: 'client', refreshToken: 'test-token' });
@@ -24,7 +29,7 @@ describe('Gmail bounded execution', () => {
 
   it('does not issue a request when cancelled before execution', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [] } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const controller = new AbortController();
     controller.abort();
     const ctx = { ...context, abortSignal: controller.signal };
@@ -34,7 +39,7 @@ describe('Gmail bounded execution', () => {
 
   it('returns a failure envelope even when the provider rejects with null', async () => {
     const list = vi.fn().mockRejectedValue(null);
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     expect(await connector().execute('messages.search', {}, context)).toMatchObject({ ok: false, errorCode: 'gmail_error' });
   });
 
@@ -59,7 +64,7 @@ describe('Gmail bounded execution', () => {
       controller.abort();
       return { data: { messages: [{ id: 'a' }], nextPageToken: 'next' } };
     });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     expect(await connector().execute('messages.search', {}, { ...context, abortSignal: controller.signal }))
       .toMatchObject({ ok: false, errorCode: 'cancelled' });
     expect(list).toHaveBeenCalledOnce();

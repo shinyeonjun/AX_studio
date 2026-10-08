@@ -1,4 +1,4 @@
-import type { gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { describe, expect, it, vi } from 'vitest';
 import { pollGmailNewMessages } from '../poll.js';
 describe('Gmail history errors', () => {

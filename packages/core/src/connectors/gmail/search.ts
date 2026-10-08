@@ -1,4 +1,4 @@
-import type { gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { nextGmailPage } from './pagination.js';
 
 export async function searchGmailMessages(
