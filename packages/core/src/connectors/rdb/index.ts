@@ -16,6 +16,7 @@ export {
   removeRdbDatabase,
   serializeRdbDatabases,
   upsertRdbDatabase,
+  withOpenRdbDatabases,
   type RdbDatabase,
   type RdbDatabaseEntry,
 } from './config/databases.js';

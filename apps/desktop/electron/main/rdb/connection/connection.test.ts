@@ -205,3 +205,32 @@ describe('several databases', () => {
     });
   });
 });
+
+describe('what chat may read', () => {
+  it('offers Jev only the databases this computer can open', async () => {
+    const { buildJevReadOperationIndex } = await import('@ax-studio/core');
+    const { readableConnections } = await import('../../ipc/workspace-chat-command-handlers/read-operation-index.js');
+    mocks.secrets.set('rdb.connection-strings', JSON.stringify({ shop: { connectionString: SHOP } }));
+    const schema = (table: string, columns: string[]) => ({ tables: [{ table, columns, uniqueColumns: ['id'] }], relations: [] });
+    const store = fakeStore({ connector: 'rdb', connected: true, config: { databases: [
+      { id: 'shop', label: '쇼핑몰 DB', type: 'postgres', connectionStringStored: true, allowedTables: ['orders'], schema: schema('orders', ['id', 'amount']) },
+      // Saved on another computer: its address is not in this one's secure storage.
+      { id: 'hr', label: '인사 DB', type: 'mysql', connectionStringStored: true, allowedTables: ['employees'], schema: schema('employees', ['id', 'name']) },
+    ] } });
+    const runtime = fakeRuntime();
+    await hydrateRdbConnector(store as never, runtime as never);
+
+    const before = JSON.stringify(buildJevReadOperationIndex(store.getConnections() as never).select('').hints);
+    expect(before).toContain('employees');
+
+    const readable = readableConnections(store.getConnections(), runtime.connector as never);
+    const offered = JSON.stringify(buildJevReadOperationIndex(readable as never).select('').hints);
+    expect(offered).toContain('orders');
+    expect(offered).not.toContain('employees');
+    // Settings still keeps it, to be connected again.
+    expect(JSON.stringify(store.row()?.config)).toContain('employees');
+
+    // Nothing openable: the database connection is not offered at all.
+    expect(readableConnections(store.getConnections(), undefined)[0]).toMatchObject({ connected: false, config: { databases: [] } });
+  });
+});

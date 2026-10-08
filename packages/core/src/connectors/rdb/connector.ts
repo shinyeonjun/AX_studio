@@ -32,6 +32,11 @@ export class RdbConnector implements Connector {
     this.databases = Array.isArray(config) ? config : [{ ...(config as RdbConnectionConfig), id: DEFAULT_RDB_DATABASE_ID }];
   }
 
+  /** Ids of the databases this connector can open. */
+  get databaseIds(): string[] {
+    return this.databases.map((database) => database.id);
+  }
+
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
     if (ctx.abortSignal?.aborted) return { ok: false, error: 'rdb_aborted', errorCode: 'aborted' };
     const fields = action === 'schema.describe' ? ['connectionId'] : action === 'table.describe' ? ['table', 'offset', 'limit', 'connectionId'] : ['table', 'offset', 'limit', 'join', 'connectionId'];

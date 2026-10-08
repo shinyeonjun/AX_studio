@@ -140,4 +140,39 @@ describe('TriggerEngine webhook push lifecycle', () => {
       await engine.stop();
     }
   });
+
+  it('runs a webhook workflow saved after the listener already started, with no transport refresh', async () => {
+    const port = await findFreePort();
+    const db = await createDatabaseAsync(':memory:');
+    const store = new WorkflowStore(db);
+    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    store.setConnection('webhook', true, { port, secret: HOOK_SECRET, secretStored: true });
+    const engine = new TriggerEngine(store, runtime);
+    try {
+      // Started with no webhook workflow at all, as when the app opens before the job is made.
+      engine.start();
+      await waitForWebhookListener(engine);
+
+      const { workflowId } = store.saveWorkflow({
+        name: '나중에 만든 Webhook 업무', goal: 'Webhook 수신 시 Slack 알림', version: 1,
+        trigger: { type: 'webhook.inbound', path: 'order-created' }, inputs: ['path', 'body'],
+        steps: [{ type: 'action', id: 'notify', connector: 'slack', action: 'message.send', params: { channel: '#webhooks', text: 'order' }, sideEffect: 'EXTERNAL' }],
+        permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {},
+      });
+      store.setWorkflowActive(workflowId, true);
+
+      const accepted = await fetch(`http://127.0.0.1:${port}/hooks/order-created`, {
+        method: 'POST',
+        headers: { 'x-ax-webhook-secret': HOOK_SECRET, 'idempotency-key': 'order-1' },
+        body: '{"id":1}',
+      });
+      expect(accepted.status).toBe(202);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(store.listExecutions(10)).toEqual([
+        expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
+      ]);
+    } finally {
+      await engine.stop();
+    }
+  });
 });
