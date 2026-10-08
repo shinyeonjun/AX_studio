@@ -1,4 +1,4 @@
-import { slackErrorMessage } from '@ax-studio/core';
+import { resolveJevModel, slackErrorMessage } from '@ax-studio/core';
 import {
   getAiProviderDisplay,
   getDatabaseBackendStatus,
@@ -52,7 +52,7 @@ export async function buildConnectorState(core: AxCore) {
     aiBrandConfigs: aiToml.providers,
     jevDecisionEnabled: aiToml.decision?.jev?.enabled ?? false,
     jevDecisionConfigured: Boolean(jevSecret),
-    jevDecisionModel: aiToml.decision?.jev?.model?.trim() || 'jev-latest',
+    jevDecisionModel: resolveJevModel(aiToml.decision?.jev?.model),
     gmailOAuthConfigured: isGoogleOAuthConfigured(),
     gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,
     gmailScopes: gmailConn?.connected ? gmailRecord?.scopes : undefined,

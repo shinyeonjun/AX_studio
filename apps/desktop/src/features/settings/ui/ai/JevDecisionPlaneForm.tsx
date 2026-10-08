@@ -8,7 +8,7 @@ interface JevDecisionPlaneFormProps {
 export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   const [loaded, setLoaded] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  const [model, setModel] = useState('jev-latest');
+  const [model, setModel] = useState('');
   const [baseURL, setBaseURL] = useState('https://api.typesafe.ai');
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
