@@ -1,3 +1,4 @@
+import { getCapability } from '../../../../../catalog/data.js';
 import type { TransformExpr } from '../../../../../workflow/transform-expr/dsl.js';
 import { shapingBackground, withDecisionBackground } from '../shaping/decision-background.js';
 import { chatReadRecipe } from '../result/read-recipe.js';
@@ -221,8 +222,12 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     const showsReadTable = route === 'capability_read' || route === 'http_read' || explicitHttpRead;
     // The read table is shown (and shaped): its columns get Korean headers people can read first.
     const readTable = showsReadTable ? tableForJevTransform(command, result) : undefined;
+    // Columns the source names itself are labelled from its catalog; only the rest are asked about.
+    const sourceLabels = command.name === 'capability.invoke' && typeof command.args.id === 'string'
+      ? getCapability(command.args.id)?.outputColumnLabels ?? {}
+      : {};
     const labels: ColumnLabels = readTable
-      ? await columnLabelsFor(readTable, { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal })
+      ? { ...await columnLabelsFor(labeledTable(readTable, sourceLabels), { memory: options.columnLabels, harness: options.harness, requestId: options.requestId, signal }), ...sourceLabels }
       : {};
     const transformOutcome = await jevTransformReply(command, result, userIntent, tableTransform, tableProjection, labels);
     if (showsReadTable) {

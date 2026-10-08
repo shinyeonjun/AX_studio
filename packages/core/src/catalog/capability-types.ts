@@ -46,6 +46,11 @@ export const ConnectorCapabilitySchema = z.object({
   readMethods: z.array(z.string().min(1)).optional(),
   params: z.array(CapabilityParamSchema).default([]),
   io: CapabilityIOSchema.optional(),
+  /**
+   * Korean headers for the fixed columns this read returns ("from" -> "보낸 사람"). The source knows
+   * them, so the person's AI is asked only about columns no source names.
+   */
+  outputColumnLabels: z.record(z.string(), z.string()).optional(),
 });
 
 export type CapabilityParam = z.infer<typeof CapabilityParamSchema>;
