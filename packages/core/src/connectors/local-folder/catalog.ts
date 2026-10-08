@@ -31,6 +31,9 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
       { name: 'offset', label: '시작 위치', question: '몇 번째 파일부터 볼까요?', required: false },
       { name: 'limit', label: '파일 개수', question: '파일을 몇 개 볼까요?', required: false },
     ],
+    outputColumnLabels: { key: '파일 키', filePath: '경로', fileName: '파일 이름', extension: '형식', size: '크기(바이트)',
+      modifiedAt: '수정 시각(원본)', modified: '수정 시각' },
+    hiddenColumns: ['key', 'modifiedAt'],
   },
   {
     id: 'local_folder.read',

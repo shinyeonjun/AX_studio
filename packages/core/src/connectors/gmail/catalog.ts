@@ -29,6 +29,7 @@ export const GMAIL_CAPABILITIES: ConnectorCapability[] = [
       messages: 'TableArtifact', hits: 'TableArtifact', limit: 'JsonArtifact', truncated: 'JsonArtifact',
     } },
     outputColumnLabels: { id: '메일 ID', threadId: '대화 ID', from: '보낸 사람', subject: '제목', date: '받은 날짜', snippet: '미리보기' },
+    hiddenColumns: ['id', 'threadId'],
   },
   {
     id: 'gmail.draft.create',

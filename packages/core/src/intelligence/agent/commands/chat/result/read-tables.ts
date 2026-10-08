@@ -1,3 +1,4 @@
+import { ArtifactCompletenessSchema } from '../../../../../contracts/artifacts/completeness.js';
 import type { AxCommand, AxCommandResult } from '../../schema.js';
 import {
   HttpResponseArtifactSchema,
@@ -71,6 +72,7 @@ export function tableForJevTransform(command: AxCommand, result: AxCommandResult
   let payload = capabilityEnvelopeData(result);
   const table = TableArtifactSchema.safeParse(payload);
   if (table.success) return table.data;
+  const page = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
     const body = (payload as Record<string, unknown>).body;
     if (typeof body === 'string') {
@@ -78,7 +80,16 @@ export function tableForJevTransform(command: AxCommand, result: AxCommandResult
     }
   }
   const rows = rowsForCapabilityTable(payload);
-  return rows ? tableArtifactFromRows(rows, { id: 'chat:capability-result' }) : undefined;
+  const built = rows ? tableArtifactFromRows(rows, { id: 'chat:capability-result' }) : undefined;
+  if (!built) return undefined;
+  // A page of a larger set (20 of 300 files, 10 of the inbox) says so, in the chat and when
+  // a later "몇 개야?" counts it.
+  const completeness = ArtifactCompletenessSchema.safeParse(page.completeness);
+  return {
+    ...built,
+    ...(page.truncated === true ? { truncated: true } : {}),
+    ...(completeness.success ? { completeness: completeness.data } : {}),
+  };
 }
 
 export function capabilityEnvelopeData(result: AxCommandResult): unknown {

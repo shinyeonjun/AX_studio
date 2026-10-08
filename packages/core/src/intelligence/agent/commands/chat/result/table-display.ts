@@ -79,8 +79,15 @@ export function tableToMarkdown(table: TableArtifact, requestedColumns?: readonl
   return lines.join('\n');
 }
 
-export function formatTableArtifact(table: TableArtifact): string {
-  return tableToMarkdown(table);
+export function formatTableArtifact(table: TableArtifact, hiddenColumns: readonly string[] = []): string {
+  return tableToMarkdown(table, shownColumns(table, hiddenColumns));
+}
+
+/** The columns to show when a source hides some (internal ids); undefined shows the usual choice. */
+export function shownColumns(table: TableArtifact, hiddenColumns: readonly string[]): string[] | undefined {
+  if (hiddenColumns.length === 0) return undefined;
+  const shown = table.columns.map((column) => column.name).filter((name) => !hiddenColumns.includes(name));
+  return shown.length > 0 && shown.length < table.columns.length ? shown : undefined;
 }
 
 /** Keep only the bounded, visible table needed for an immediate follow-up. */
