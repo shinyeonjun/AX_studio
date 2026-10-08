@@ -1,3 +1,5 @@
+import { connectorErrorMessage, executionErrorReason } from '@ax-studio/core';
+
 type PersistedExecutionLogEntry = {
   at?: string;
   level?: 'info' | 'warn' | 'error';
@@ -69,6 +71,26 @@ function computedResult(entry: PersistedExecutionLogEntry): ComputedResult | und
   return { kind: 'table', label: resultLabel(data.outputPath), columns, rows, totalRows: table.rows.length };
 }
 
+const HANGUL = /[가-힣]/u;
+const GENERIC_FAILURE = connectorErrorMessage(undefined);
+
+/**
+ * A log line as the activity list may show it. Log messages are written for engineers too
+ * (codes such as `http.request_failed`, English exception text, step ids), so only Korean
+ * reaches the screen: failures are translated, anything else unreadable is left out.
+ */
+function readableLogMessage(entry: PersistedExecutionLogEntry | undefined): string | undefined {
+  if (!entry) return undefined;
+  // "AI 분석 완료: <step id>" carries an internal id.
+  if (entry.code === 'ai_decision_completed') return 'AI 분석을 마쳤습니다.';
+  const message = entry.message?.trim();
+  if (message && HANGUL.test(message)) return message;
+  if (entry.level !== 'error' && entry.code !== 'step_failed') return undefined;
+  const translated = message ? connectorErrorMessage(message) : undefined;
+  if (translated && translated !== GENERIC_FAILURE && HANGUL.test(translated)) return translated;
+  return executionErrorReason(entry.code) ?? GENERIC_FAILURE;
+}
+
 const STEP_PROGRESS_CODES = new Set(['step_started', 'step_completed', 'waiting_approval', 'step_failed', 'approval_rejected']);
 
 function record(value: unknown): Record<string, unknown> | undefined {
@@ -122,7 +144,7 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
       (entry): entry is PersistedExecutionLogEntry => Boolean(entry && typeof entry === 'object'),
     );
     const last = entries.at(-1);
-    const errorMessage = entries.filter((entry) => entry.level === 'error').at(-1)?.message;
+    const errorMessage = readableLogMessage(entries.filter((entry) => entry.level === 'error').at(-1));
     let current = [...entries].reverse().find((entry) => STEP_PROGRESS_CODES.has(entry.code ?? ''));
     if (current?.code === 'waiting_approval' && ['success', 'failed', 'cancelled'].includes(executionStatus ?? '')) {
       current = undefined;
@@ -150,11 +172,13 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
     const computedResults = executionStatus === 'success'
       ? entries.flatMap((entry) => computedResult(entry) ?? []).slice(0, MAX_COMPUTED_RESULTS)
       : [];
+    const currentStepMessage = readableLogMessage(current);
+    const lastLogMessage = readableLogMessage(last);
     return {
       ...(errorMessage ? { errorMessage } : {}),
       ...(stepId && current?.code ? { currentStepId: stepId, currentStepStatus: current.code } : {}),
-      ...(current?.message ? { currentStepMessage: current.message } : {}),
-      ...(last?.message ? { lastLogMessage: last.message } : {}),
+      ...(currentStepMessage ? { currentStepMessage } : {}),
+      ...(lastLogMessage ? { lastLogMessage } : {}),
       ...(aiStepId ? { aiOutput: { stepId: aiStepId, fields: aiFields, preview: aiPreview } } : {}),
       ...(generatedPdf ? { generatedPdf } : {}),
       ...(sourceFile ? { sourceFile } : {}),

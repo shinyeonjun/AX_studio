@@ -114,6 +114,15 @@ describe('tool result renderers', () => {
     expect(html).toContain('<summary>조회 정보</summary>');
     expect(html).not.toContain('d'.repeat(64));
     expect(html).not.toContain('시작 0');
+    expect(html).not.toContain('2026-10-02T00:00:00Z');
+    expect(html).toContain('읽기만 했습니다');
+  });
+  it('names joined tables without SQL join conditions', () => {
+    const message = dbMessage();
+    message.readResult!.readScope!.joins = [{ table: 'customers', on: 'customer_id', references: 'id' }];
+    const html = pane(message);
+    expect(html).toContain('<dt>함께 읽은 표</dt><dd>customers</dd>');
+    expect(html).not.toContain('customer_id');
   });
   it.each(['fingerprint', 'execution', 'historical'] as const)('does not assert read-only for %s provenance mismatch', kind => {
     const message = dbMessage();
@@ -131,8 +140,8 @@ describe('tool result renderers', () => {
     message.readResult!.coverage!.hasMore = true;
     const html = pane(message);
     expect(html).toContain('<strong>0</strong>행 표시');
-    expect(html).toContain('조회된 행이 없습니다');
-    expect(html).toContain('추가 페이지가 있습니다');
+    expect(html).toContain('가져온 행이 없습니다');
+    expect(html).toContain('아직 가져오지 않은 행이 더 있습니다');
     expect(html).not.toContain('총 0');
   });
   it('unknown outcomes show actual destination and no completion or retry action', () => {

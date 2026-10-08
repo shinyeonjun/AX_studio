@@ -5,7 +5,7 @@ import { getCore } from '../core-instance.js';
 export function registerWorkspaceWorkflowHandlers() {
   ipcHandle('ax:loadWorkChat', async (_event, workflowId: string, options?: { optional?: boolean }) => {
     const core = getCore();
-    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
     const normalizedWorkflowId = workflowId.trim();
     const ir = core.store.getWorkflow(normalizedWorkflowId);
     // A chat may still name a work deleted before chats were unlinked from deleted works.

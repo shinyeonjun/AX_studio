@@ -34,7 +34,8 @@ export function approvalPreview(approval: Pick<Approval, 'payload'>): ApprovalPr
       if (SECRET_PARAM.test(name)) return [];
       const value = shown(params[name]);
       if (value === undefined) return [];
-      const label = declared.find((param) => param.name === name)?.label ?? name;
+      // An undeclared param name is an internal key; it is shown only as a generic label.
+      const label = declared.find((param) => param.name === name)?.label ?? '기타 값';
       return [{ label, value, long: value.length > 80 || value.includes('\n') }];
     });
     return fields.length > 0 ? [{ title: capability?.label ?? '보낼 내용', fields }] : [];
@@ -51,8 +52,8 @@ export function ApprovalSendPreview({ approval }: { approval: Pick<Approval, 'pa
         <section key={index} className="approval-preview-item">
           <h4>{item.title}</h4>
           <dl>
-            {item.fields.map((field) => (
-              <div key={field.label} className={field.long ? 'approval-preview-field approval-preview-field--long' : 'approval-preview-field'}>
+            {item.fields.map((field, fieldIndex) => (
+              <div key={fieldIndex} className={field.long ? 'approval-preview-field approval-preview-field--long' : 'approval-preview-field'}>
                 <dt>{field.label}</dt>
                 <dd>{field.value}</dd>
               </div>

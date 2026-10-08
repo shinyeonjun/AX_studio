@@ -47,7 +47,7 @@ export function EditableMessageResult({
           : state.phase === 'unresolved' ? '결과 확인 필요' : state.phase === 'sending' ? '전송 처리 중' : '미전송 초안'}
       />
       <p className="tool-result-destination"><span>{gmail ? '보내는 계정' : '워크스페이스 · 보내는 계정'}</span>
-        <strong>{binding ? (gmail ? binding.accountLabel : (binding.workspaceLabel ?? binding.workspaceId) + ' · ' + binding.accountLabel) : '전송 전 확인에서 연결 계정 자동 검증'}</strong></p>
+        <strong>{binding ? (gmail ? binding.accountLabel : (binding.workspaceLabel ?? 'Slack 워크스페이스') + ' · ' + binding.accountLabel) : '보내기 전에 연결된 계정을 확인합니다.'}</strong></p>
       {reviewing && binding && <div className="tool-result-review" role="status"><strong>{gmail ? '이 내용으로 메일을 보낼까요?' : '이 내용으로 Slack에 게시할까요?'}</strong>
         <p>{binding.accountLabel} → {binding.destinationLabel}{binding.provider === 'slack' ? ' (' + binding.destinationId + ')' : ''}</p>
         <small>아직 전송되지 않았습니다. 수정하면 다시 확인합니다.</small></div>}

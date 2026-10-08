@@ -74,7 +74,7 @@ export function NodeDetailPanel({
                   className="btn btn-sm"
                   onClick={() => onOpenSettings(screen)}
                 >
-                  {CONNECTOR_UI_CATALOG[connectorId as ConnectorUiId]?.title ?? connectorId} 설정
+                  {CONNECTOR_UI_CATALOG[connectorId as ConnectorUiId]?.title ?? '연결된 서비스'} 설정
                 </button>
               );
             })}
@@ -110,7 +110,7 @@ export function NodeDetailPanel({
       )}
 
       {hasMissingChatFields && (
-        <p className="wf-detail-chat-hint">비어 있는 값은 왼쪽 채팅에서 알려주세요.</p>
+        <p className="wf-detail-chat-hint">비어 있는 값은 왼쪽 대화에서 알려주세요.</p>
       )}
 
       <button

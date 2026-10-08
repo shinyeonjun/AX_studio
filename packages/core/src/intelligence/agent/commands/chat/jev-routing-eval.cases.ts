@@ -16,8 +16,9 @@ export interface JevRoutingCase {
     /** Any of these result kinds passes (Jev may reasonably ask or act). */
     kind: ReadonlyArray<JevChatRouterResult['kind']>;
     route?: readonly string[];
-    capabilityId?: string;
-    /** Subset of the chosen read's params (e.g. the base table, or that a join is present). */
+    /** The read that must run; several when either is a right answer. */
+    capabilityId?: string | readonly string[];
+    /** Subset of the chosen read's params (e.g. the base table); an array lists acceptable values. */
     params?: Record<string, unknown>;
     join?: readonly string[];
     tableTransform?: readonly string[];
@@ -79,12 +80,14 @@ export function routingMiss(testCase: JevRoutingCase, result: JevChatRouterResul
   if (result.kind !== 'command') return undefined;
   const command = result.command;
   const id = command.name === 'capability.invoke' ? command.args.id : command.name;
-  if (expect.capabilityId && id !== expect.capabilityId) return `capability ${String(id)}`;
+  const capabilityIds = typeof expect.capabilityId === 'string' ? [expect.capabilityId] : expect.capabilityId;
+  if (capabilityIds && !capabilityIds.includes(String(id))) return `capability ${String(id)}`;
   const params = command.name === 'capability.invoke' ? command.args.params as Record<string, unknown> | undefined : undefined;
   for (const [key, value] of Object.entries(expect.params ?? {})) {
     const actual = params?.[key];
-    const matches = key === 'path' ? typeof actual === 'string' && actual.split('?')[0] === value : actual === value;
-    if (!matches) return `${key} ${JSON.stringify(actual)}`;
+    const accepted = Array.isArray(value) ? value : [value];
+    const shown = key === 'path' && typeof actual === 'string' ? actual.split('?')[0] : actual;
+    if (!accepted.includes(shown)) return `${key} ${JSON.stringify(actual)}`;
   }
   if (expect.join) {
     const joined = Array.isArray(params?.join) ? (params.join as Array<{ table?: unknown }>).map((entry) => entry.table) : [];
@@ -94,3 +97,38 @@ export function routingMiss(testCase: JevRoutingCase, result: JevChatRouterResul
   if (expect.tableTransform && !expect.tableTransform.includes(String(result.tableTransform))) return `tableTransform ${String(result.tableTransform)}`;
   return undefined;
 }
+
+const read = (table: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
+  ({ kind: ['command'], capabilityId: 'rdb.query.read', params: { table }, ...extra });
+const api = (connectionId: string, path: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
+  ({ kind: ['command'], capabilityId: 'http.request', params: { connectionId, path }, ...extra });
+
+/**
+ * The same kind of requests in a company-sized workspace (jev-routing-eval.scale-fixture.ts):
+ * one database with 50+ tables across eight systems, 25 APIs, Gmail, Slack and folders, with
+ * names that collide (orders, users, issues). Where two sources are equally right, either passes;
+ * where nothing in the request tells them apart, the person must be asked.
+ */
+export const JEV_SCALE_ROUTING_CASES: readonly JevRoutingCase[] = [
+  { id: 'scale-greeting', message: '안녕하세요', expect: { kind: ['reply'] } },
+  { id: 'scale-leave-balance', message: '직원별 남은 연차 일수 보여줘', expect: read('hr_leave_balances') },
+  { id: 'scale-delay-reasons', message: '배송 지연 사유별로 몇 건인지 알려줘', expect: read('logistics_delivery_delays', { tableTransform: ['calculate'] }) },
+  { id: 'scale-shop-paid', message: '쇼핑몰 주문 중에 결제 완료된 것만 보여줘', expect: read('shop_orders', { tableTransform: ['filter', 'filter_sort'] }) },
+  { id: 'scale-logistics-orders', message: '물류 쪽 주문 목록 보여줘', expect: read('logistics_orders') },
+  { id: 'scale-ambiguous-orders', message: '주문 목록 보여줘', expect: { kind: ['clarify'], sourceChooser: true } },
+  { id: 'scale-crm-deals', message: 'CRM에서 진행 중인 거래 금액 합계 알려줘', expect: read('crm_deals', { tableTransform: ['calculate'] }) },
+  { id: 'scale-urgent-tickets', message: '고객지원 티켓 중에 우선순위 높은 것만 보여줘', expect: read('support_tickets', { tableTransform: ['filter', 'filter_sort'] }) },
+  { id: 'scale-payroll', message: '이번 달 부서별 급여 합계', expect: read(['hr_payroll', 'hr_employees'], { tableTransform: ['calculate'] }) },
+  { id: 'scale-fx', message: '환율 API에서 달러 환율 보여줘', expect: api('fx-api', ['rates', 'history']) },
+  { id: 'scale-weather', message: '오늘 날씨 어때?', expect: api('weather-api', ['current', 'forecast']) },
+  { id: 'scale-github-issues', message: 'GitHub 이슈 목록 보여줘', expect: api('github-api', 'issues') },
+  { id: 'scale-jira-issues', message: 'Jira 이슈 목록 보여줘', expect: api('jira-api', 'issues') },
+  { id: 'scale-dummy-users', message: 'DummyJSON 사용자 목록 보여줘', expect: api('dummyjson', 'users') },
+  { id: 'scale-placeholder-users', message: 'JSONPlaceholder에서 사용자 목록 가져와', expect: api('jsonplaceholder', 'users') },
+  { id: 'scale-low-stock', message: '재고 부족한 상품 알려줘', expect: { kind: ['command', 'clarify'], capabilityId: ['rdb.query.read', 'http.request'] } },
+  { id: 'scale-mail', message: '최근 메일 5개 제목만 보여줘', expect: { kind: ['command'], capabilityId: 'gmail.messages.search' } },
+  { id: 'scale-slack', message: '슬랙 채널 목록 보여줘', expect: { kind: ['command'], capabilityId: 'slack.channels.list' } },
+  { id: 'scale-folder', message: '월간보고 폴더에 어떤 파일 있어?', expect: { kind: ['command'], capabilityId: 'local_folder.list' } },
+  { id: 'scale-works', message: '내 업무 목록 보여줘', expect: { kind: ['command'], route: ['workflow_list'] } },
+  { id: 'scale-recurring', message: '매주 월요일 9시에 지역별 매출 합계를 슬랙으로 보내줘', expect: { kind: ['command', 'clarify'], route: ['workflow_create', 'job_propose'] } },
+];

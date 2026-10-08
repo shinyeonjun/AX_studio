@@ -27,9 +27,9 @@ export function registerWorkspaceChatPersistenceHandlers() {
     'ax:saveWorkspaceChat',
     async (_event, id: string | undefined, messages: unknown, workflowId?: unknown, saveOptions?: unknown) => {
       const core = getCore();
-      if (id !== undefined && typeof id !== 'string') throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+      if (id !== undefined && typeof id !== 'string') throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
       if (workflowId !== undefined && workflowId !== null && typeof workflowId !== 'string') {
-        throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+        throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
       }
       const normalizedWorkflowId =
         workflowId === null
@@ -63,19 +63,19 @@ export function registerWorkspaceChatPersistenceHandlers() {
   );
 
   ipcHandle('ax:loadWorkspaceChat', async (_event, id: string) => {
-    if (typeof id !== 'string' || !id.trim()) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    if (typeof id !== 'string' || !id.trim()) throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
     const chat = getCore().store.getWorkspaceChat(id);
     if (!chat) throw new Error('대화를 찾을 수 없어요. 이미 삭제됐을 수 있어요.');
     return chat;
   });
 
   ipcHandle('ax:loadWorkspaceChatByWorkflowId', async (_event, workflowId: string) => {
-    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    if (typeof workflowId !== 'string' || !workflowId.trim()) throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
     return getCore().store.getWorkspaceChatByWorkflowId(workflowId.trim());
   });
 
   ipcHandle('ax:deleteWorkspaceChat', async (_event, id: string) => {
-    if (typeof id !== 'string' || !id.trim()) throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    if (typeof id !== 'string' || !id.trim()) throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
     const core = getCore();
     // Delete first: a refusal (a PDF still being read) must leave the chat, its running turn and
     // its pending input untouched. A turn that finishes afterwards cannot save into a deleted chat.

@@ -74,7 +74,7 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, onRunWork
   const title = workflowState?.title ?? 'AX Workspace';
   const showGraph = Boolean(workflowState);
   const workflowPreview = showGraph ? (
-    <Suspense fallback={<div className="muted">업무 흐름을 불러오는 중…</div>}>
+    <Suspense fallback={<div className="muted">업무 구성을 불러오는 중…</div>}>
       <WorkflowPreviewPanel
         draft={workflowState?.workflow}
         baselineDraft={undefined}

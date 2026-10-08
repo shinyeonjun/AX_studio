@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ToolResultReference, ToolSendOutcome } from '@ax-studio/core';
-import { cachedToolDraft, type ToolDraftController, toolDraftError } from './draft-controller';
+import { cachedToolDraft, type ToolDraftController } from './draft-controller';
+import { toolDraftLoadError } from './load-error';
 import { EditableMessageResult } from './EditableMessageResult';
 import { OutcomeResult } from './OutcomeResult';
 import { reloadOnStateChange } from './reload-on-state-change';
@@ -34,7 +35,7 @@ export function PendingMessageResult({ reference, ...actions }: { reference: Too
           setView({ message: data.cancelled ? '전송 요청이 취소되었습니다.' : data.processing ? '전송 처리 중입니다. 취소로 전송을 회수할 수 없습니다.' : '이 요청은 이미 처리되었습니다. 활동에서 결과를 확인해 주세요.' });
           return data.cancelled;
         }
-      } catch (error) { if (current && sequence === loadSequence) setView({ message: toolDraftError(error) }); }
+      } catch (error) { if (current && sequence === loadSequence) setView({ message: toolDraftLoadError(error, '전송 내용을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.') }); }
     };
     const stop = reloadOnStateChange(load);
     return () => { current = false; stop(); };

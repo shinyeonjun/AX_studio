@@ -11,11 +11,11 @@ type StoredWorkflow = NonNullable<ReturnType<AxCore['store']['getWorkflow']>>;
 /** Validates the renderer-supplied ids; returns the trimmed workspace session id. */
 export function validatedWorkspaceSessionId(workflowId: unknown, workspaceSessionId: unknown): string {
   if (workflowId !== undefined && (typeof workflowId !== 'string' || !workflowId.trim())) {
-    throw new Error('업무를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    throw new Error('업무를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   }
   if (typeof workspaceSessionId !== 'string' ||
     !/^[A-Za-z0-9_-]{1,128}$/.test(workspaceSessionId.trim())) {
-    throw new Error('대화를 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    throw new Error('대화를 찾을 수 없어요. 화면을 새로고침해 주세요.');
   }
   return workspaceSessionId.trim();
 }

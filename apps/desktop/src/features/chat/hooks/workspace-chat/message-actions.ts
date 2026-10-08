@@ -165,7 +165,7 @@ export function createWorkspaceMessageActions(ctx: WorkspaceChatMessageContext) 
       }
       if (ctx.isCurrentSession(epoch) && ctx.isViewingSession(savedSessionId)) {
         const errorMessage = ipcErrorMessage(err, '대화 처리에 실패했습니다.');
-        ctx.setError(conflict ? '다른 창에서 대화가 바뀌어 저장하지 않았어요. 화면을 새로 고쳐 주세요.'
+        ctx.setError(conflict ? '다른 창에서 대화가 바뀌어 저장하지 않았어요. 화면을 새로고침해 주세요.'
           + (!initialTranscriptSaved ? ' 저장되지 않은 새 입력은 위에 보관했습니다.' : '')
           + ' 작업은 자동으로 다시 실행하지 않았어요.' : responseReceived && !finalTranscriptSaved
           ? `${errorMessage} 응답은 받았지만 대화 저장에 실패했습니다. 외부 작업 요청이었다면 이미 실행됐을 수 있으니, 중복 실행 전에 연결된 서비스 상태를 확인해 주세요.`
