@@ -162,10 +162,20 @@ export class GmailConnector implements Connector {
       if (ctx.abortSignal?.aborted) return { ok: false, error: 'cancelled', errorCode: 'cancelled' };
       if (err instanceof ZodError) return { ok: false, error: 'invalid_search_params', errorCode: 'invalid_params' };
       const message = err instanceof Error ? err.message : 'Gmail request failed';
+      if (message.includes('invalid_grant')) return { ok: false, error: 'oauth_refresh_failed', errorCode: 'oauth_refresh_failed' };
+      // Google's HTTP status says whose problem it is: missing permission, too many requests, or Google.
+      const status = Number((err as { response?: { status?: unknown }; status?: unknown } | null)?.response?.status
+        ?? (err as { status?: unknown } | null)?.status);
+      const code = status === 403 ? 'gmail_scope_missing'
+        : status === 429 ? 'gmail_rate_limited'
+          : status >= 500 ? 'gmail_unavailable'
+            : status === 401 ? 'oauth_refresh_failed'
+              : undefined;
       return {
         ok: false,
-        error: message.slice(0, 1000),
-        errorCode: message.includes('invalid_grant') ? 'oauth_refresh_failed' : 'gmail_error',
+        error: code ?? message.slice(0, 1000),
+        errorCode: code ?? 'gmail_error',
+        ...(Number.isInteger(status) ? { errorDetails: { status } } : {}),
       };
     }
   }

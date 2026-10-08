@@ -54,7 +54,7 @@ describe('Gmail SDK transport', () => {
     };
     const request = vi.fn(requestHandler);
     const { connector } = await useLoopback(request);
-    expect(await connector.execute('messages.search', {}, context)).toMatchObject({ ok: false, errorCode: 'gmail_error' });
+    expect(await connector.execute('messages.search', {}, context)).toMatchObject({ ok: false, errorCode: 'gmail_unavailable', errorDetails: { status: 503 } });
     expect(request).toHaveBeenCalledOnce();
   });
 });

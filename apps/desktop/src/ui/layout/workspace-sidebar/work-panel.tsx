@@ -19,19 +19,22 @@ interface SidebarWorkPanelProps {
   sessions: ChatSessionSummary[];
   onOpenWork: (workflowId: string) => void;
   onOpenExecution: (execution: ExecutionSummary) => void;
-  onToggleWorkActive: (workflowId: string, active: boolean) => void;
+  onToggleWorkActive: (workflowId: string, active: boolean) => void | Promise<void>;
   /** Runs a saved workflow now; resolves when the run has finished or waits for approval. */
   onRunWork: (workflowId: string) => Promise<void>;
   onDeleteWork: (workflowId: string, name: string) => void;
 }
 
-/** Works being run from the sidebar, so each run button shows progress until its run returns. */
-function useRunningWorks(onRunWork: SidebarWorkPanelProps['onRunWork']) {
+/**
+ * Works with an action in flight from the sidebar (a run, or switching it on/off), so the button
+ * shows progress and a second click does not undo the first.
+ */
+function useBusyWorks<A extends unknown[]>(action: (workflowId: string, ...args: A) => unknown) {
   const [running, setRunning] = useState<ReadonlySet<string>>(new Set());
-  const runWork = (workflowId: string) => {
+  const runWork = (workflowId: string, ...args: A) => {
     if (running.has(workflowId)) return;
     setRunning((current) => new Set(current).add(workflowId));
-    void onRunWork(workflowId).finally(() => {
+    void Promise.resolve(action(workflowId, ...args)).finally(() => {
       setRunning((current) => {
         const next = new Set(current);
         next.delete(workflowId);
@@ -51,7 +54,8 @@ export function SidebarWorkPanel({
   onRunWork,
   onDeleteWork,
 }: SidebarWorkPanelProps) {
-  const { running, runWork } = useRunningWorks(onRunWork);
+  const { running, runWork } = useBusyWorks(onRunWork);
+  const { running: switching, runWork: toggleWork } = useBusyWorks(onToggleWorkActive);
   const allWorks = state?.works ?? [];
   // A corrupted workflow has no readable definition (no trigger), so it must not be
   // classified or opened like a normal one; it is listed separately for deletion.
@@ -129,7 +133,8 @@ export function SidebarWorkPanel({
                   <button
                     type="button"
                     className={'sidebar-work-toggle ' + (work.active ? 'on' : 'off')}
-                    onClick={() => onToggleWorkActive(work.id, !work.active)}
+                    onClick={() => toggleWork(work.id, !work.active)}
+                    disabled={switching.has(work.id)}
                     aria-label={`${work.name} 자동 실행 ${work.active ? '끄기' : '켜기'}`}
                     title={work.active ? '자동 실행 끄기' : '자동 실행 켜기'}
                   >

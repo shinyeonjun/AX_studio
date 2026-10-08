@@ -17,7 +17,29 @@ const EXECUTION_ERROR_REASONS: Record<string, string> = {
   document_ingest_failed: '문서 읽기에 실패했습니다',
   document_engine_empty_response: 'Document Engine 응답이 없습니다. Python venv 설치 후 앱을 재시작해 주세요.',
   document_engine_dependency_missing: '문서 엔진 Python 패키지가 없습니다. `AX_DOCUMENT_ENGINE_PYTHON`을 설정했다면 지우고 앱을 다시 시작하세요. 계속 실패하면 프로젝트 루트에서 `npm run document-engine:setup`을 실행한 뒤 다시 시작해 주세요.',
-  slack_error: 'Slack 전송에 실패했습니다',
+  slack_error: 'Slack 작업에 실패했습니다',
+  not_in_channel: 'Slack 앱이 채널에 들어가 있지 않습니다. 채널에 앱을 추가해 주세요',
+  invalid_auth: 'Slack 연결 정보가 올바르지 않습니다. 설정에서 Slack을 다시 연결해 주세요',
+  token_revoked: 'Slack 연결이 취소되었습니다. 설정에서 Slack을 다시 연결해 주세요',
+  missing_scope: 'Slack 앱에 필요한 권한이 없습니다. 연결 안내의 권한을 추가해 주세요',
+  ratelimited: 'Slack 요청이 잠시 너무 많았습니다. 잠시 후 다시 시도해 주세요',
+  gmail_scope_missing: 'Gmail 권한이 부족합니다. 설정에서 Gmail을 다시 연결해 주세요',
+  gmail_rate_limited: 'Gmail 요청이 잠시 너무 많았습니다. 잠시 후 다시 시도해 주세요',
+  gmail_unavailable: 'Gmail이 잠시 응답하지 않았습니다. 잠시 후 다시 시도해 주세요',
+  jev_busy: '판단 엔진(Jev) 서버가 잠시 응답하지 않았습니다. 설정은 그대로 두고 잠시 후 다시 실행해 주세요',
+  jev_unreachable: '판단 엔진(Jev) 서버에 닿지 못했습니다. 인터넷 연결을 확인해 주세요',
+  jev_key_rejected: '판단 엔진(Jev)이 API 키를 거부했습니다. 설정 > 판단 엔진에서 키를 확인해 주세요',
+  jev_decision_failed: '판단 엔진(Jev)이 판단하지 못해 실행을 멈췄습니다. 잠시 후 다시 실행해 주세요',
+  ai_auth_failed: 'AI 연결 정보가 올바르지 않습니다. 설정 > AI에서 확인해 주세요',
+  ai_busy: 'AI 서비스가 잠시 바빴습니다. 잠시 후 다시 실행해 주세요',
+  ai_cli_missing: 'AI 프로그램을 찾지 못했습니다. 설정 > AI에서 연결 상태를 확인해 주세요',
+  ai_unreachable: 'AI에 연결하지 못했습니다. AI 프로그램이 켜져 있는지 확인해 주세요',
+  folder_not_accessible: '연결된 폴더를 열 수 없습니다. 폴더가 옮겨졌거나 네트워크 드라이브가 끊겼는지 확인해 주세요',
+  folder_scan_timeout: '폴더를 확인하는 데 시간이 너무 걸렸습니다. 잠시 후 다시 시도해 주세요',
+  rdb_connection_not_found: '이 업무가 쓰던 데이터베이스 연결을 찾지 못했습니다. 설정에서 데이터베이스를 다시 연결해 주세요',
+  rdb_connection_required: '어느 데이터베이스에서 읽을지 정해지지 않았습니다. 데이터베이스를 골라 주세요',
+  connection_failed: '서버에 연결하지 못했습니다. 인터넷 연결과 서버 주소를 확인해 주세요',
+  request_timeout: '서버가 제때 응답하지 않았습니다. 잠시 후 다시 시도해 주세요',
   gmail_error: 'Gmail 작업에 실패했습니다',
   agent_invoke_failed: 'AI 판단 단계를 실행하지 못했습니다',
   agent_timeout: 'AI 판단 단계가 시간 초과되었습니다',
@@ -49,6 +71,20 @@ const EXECUTION_ERROR_REASONS: Record<string, string> = {
   template_required: '서식 파일이 필요합니다',
   channel_not_found: 'Slack 채널을 찾지 못했습니다',
 };
+
+/**
+ * The run code for an AI provider failure, so a run's result says what to do: the person's AI
+ * rejected its sign-in, was busy, is not installed or not reachable. Undefined otherwise.
+ */
+export function aiProviderFailureCode(error: unknown): 'ai_auth_failed' | 'ai_busy' | 'ai_cli_missing' | 'ai_unreachable' | 'agent_timeout' | undefined {
+  const message = aiProviderErrorMessage(error);
+  if (message === AI_AUTH) return 'ai_auth_failed';
+  if (message === AI_BUSY) return 'ai_busy';
+  if (message === AI_MISSING) return 'ai_cli_missing';
+  if (message === AI_UNREACHABLE || message === AI_MODEL_MISSING) return 'ai_unreachable';
+  if (message === AI_TIMEOUT) return 'agent_timeout';
+  return undefined;
+}
 
 /** A plain reason for a known failure code, or undefined when there is none. */
 export function executionErrorReason(errorCode?: string | null): string | undefined {
@@ -121,6 +157,24 @@ const CONNECTOR_ERROR_MESSAGES: Record<string, string> = {
   folder_id_required: '어떤 폴더를 볼지 정해지지 않았어요. 폴더를 골라 주세요.',
   folder_not_found: '연결된 폴더를 찾지 못했어요. 설정에서 폴더 연결을 확인해 주세요.',
   folder_scan_limit: '폴더에 파일이 너무 많아 끝까지 확인하지 못했어요.',
+  folder_not_accessible: '연결된 폴더를 열 수 없어요. 폴더가 옮겨졌거나 네트워크 드라이브가 끊겼는지 확인해 주세요.',
+  folder_not_directory: '연결된 경로가 폴더가 아니에요. 설정에서 폴더 연결을 확인해 주세요.',
+  source_folder_not_found: '연결된 폴더를 찾지 못했어요. 설정에서 폴더 연결을 확인해 주세요.',
+  folder_scan_incomplete: '폴더를 끝까지 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  incomplete_scan: '폴더를 끝까지 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  folder_scan_timeout: '폴더를 확인하는 데 시간이 너무 걸렸어요. 잠시 후 다시 시도해 주세요.',
+  scan_timeout: '폴더를 확인하는 데 시간이 너무 걸렸어요. 잠시 후 다시 시도해 주세요.',
+  folder_scan_worker_failed: '폴더를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  not_a_file: '파일이 아닌 항목이라 열지 않았어요.',
+  path_outside_source: '연결된 폴더 밖의 파일이라 열지 않았어요.',
+  rdb_connection_not_found: '이 업무가 쓰던 데이터베이스 연결을 찾지 못했어요. 설정에서 데이터베이스를 다시 연결해 주세요.',
+  rdb_connection_required: '어느 데이터베이스에서 읽을지 정해지지 않았어요. 데이터베이스를 골라 주세요.',
+  invalid_grant: 'Google 로그인이 만료됐어요. 설정에서 Gmail을 다시 연결해 주세요.',
+  oauth_refresh_failed: 'Google 로그인이 만료됐어요. 설정에서 Gmail을 다시 연결해 주세요.',
+  gmail_scope_missing: 'Gmail 권한이 부족해요. 설정에서 Gmail을 다시 연결해 주세요.',
+  gmail_rate_limited: 'Gmail 요청이 잠시 너무 많았어요. 잠시 후 다시 시도해 주세요.',
+  gmail_unavailable: 'Gmail이 잠시 응답하지 않았어요. 잠시 후 다시 시도해 주세요.',
+  'fetch failed': '서버에 연결하지 못했어요. 인터넷 연결과 서버 주소를 확인해 주세요.',
   file_not_accessible: '파일을 열 수 없어요. 파일이 있는지 확인해 주세요.',
   file_path_not_authorized: '연결된 폴더 밖의 파일이라 열지 않았어요.',
   sheet_not_found: '시트를 찾지 못했어요. 시트 이름을 확인해 주세요.',
@@ -158,6 +212,12 @@ export function connectorErrorMessage(error?: string | null): string {
   const text = error?.trim() ?? '';
   if (!text) return GENERIC;
   if (Object.hasOwn(CONNECTOR_ERROR_MESSAGES, text)) return CONNECTOR_ERROR_MESSAGES[text]!;
+  // Slack's SDK reports its platform code inside English text ("An API error occurred: not_in_channel").
+  const slackCode = /^An API error occurred: ([a-z_]+)$/u.exec(text)?.[1];
+  if (slackCode) {
+    if (Object.hasOwn(CONNECTOR_ERROR_MESSAGES, slackCode)) return CONNECTOR_ERROR_MESSAGES[slackCode]!;
+    return slackErrorMessage(slackCode) ?? GENERIC;
+  }
   const status = /^http_(\d{3})$/u.exec(text)?.[1];
   if (status) return httpStatusMessage(Number(status));
   if (/^Unknown(?: or denied)? \S+ action\b/u.test(text)) return '이 단계에서 지원하지 않는 작업이에요.';
@@ -167,6 +227,24 @@ export function connectorErrorMessage(error?: string | null): string {
   // A bare snake_case token is a code nobody wrote words for yet; never show it raw.
   if (/^[a-z0-9]+(?:[_:.-][a-z0-9]+)+$/iu.test(text)) return GENERIC;
   return text;
+}
+
+const READ_FAILURE_BY_KIND: Record<string, string> = {
+  not_found: '찾는 자료를 찾지 못했어요. 이름이나 조건을 확인해 주세요.',
+  permission_denied: '이 자료에 접근할 권한이 없어요. 설정에서 연결을 다시 확인해 주세요.',
+  host_policy: '허용되지 않은 자료라 가져오지 않았어요.',
+  invalid_request: '자료를 가져올 조건이 올바르지 않아요. 요청을 조금 바꿔 다시 해 주세요.',
+  transient: '연결된 서비스가 잠시 응답하지 않았어요. 잠시 후 다시 시도해 주세요.',
+};
+
+/**
+ * What to tell the person when a read failed: the connector's error in words, or, for an error
+ * nobody wrote words for (or provider English), what kind of failure it was. Never the raw code.
+ */
+export function readFailureMessage(error?: string | null, failureKind?: string): string {
+  const translated = connectorErrorMessage(error);
+  if (translated !== GENERIC && /[가-힣]/u.test(translated)) return translated;
+  return (failureKind && READ_FAILURE_BY_KIND[failureKind]) ?? GENERIC;
 }
 
 /** Slack's own error codes (from its API text "An API error occurred: invalid_auth") as what to do. */
@@ -194,14 +272,18 @@ const AI_TIMEOUT = 'AI 응답이 너무 오래 걸려 멈췄습니다. 잠시 �
 const AI_AUTH = 'AI 연결 정보가 올바르지 않습니다. 설정 > AI에서 확인해 주세요.';
 const AI_BUSY = 'AI 서비스가 잠시 바쁩니다. 잠시 후 다시 시도해 주세요.';
 const AI_MISSING = 'AI 프로그램을 찾지 못했습니다. 설정 > AI에서 연결 상태를 확인해 주세요.';
+const AI_UNREACHABLE = 'AI에 연결하지 못했습니다. AI 프로그램(예: Ollama)이 켜져 있는지, 설정 > AI의 주소가 맞는지 확인해 주세요.';
+const AI_MODEL_MISSING = '설정한 AI 모델을 찾지 못했습니다. 설정 > AI에서 모델 이름을 확인해 주세요.';
 
 const AI_TIMEOUT_CODES = new Set(['agent_timeout']);
 const AI_TIMEOUT_TEXT = /^(?:Agent timed out after \d+ms|ax_command_chat_timeout|TypeSafe request timed out\.?)$/u;
 const AI_AUTH_TEXT = /invalid[ _-]?(?:x-)?api[ _-]?key|incorrect api key|authentication_error|\b401 unauthorized\b|\bstatus:? 401\b|not logged in|please run \/login|\binvalid bearer token\b/iu;
 const AI_BUSY_TEXT = /rate[ _-]?limit|too many requests|overloaded|\bstatus:? (?:429|529)\b|\bapi error:? (?:429|529)\b/iu;
 const AI_MISSING_TEXT = /^spawn \S+ ENOENT$|is not recognized as an internal or external command|command not found/iu;
+const AI_UNREACHABLE_TEXT = /ECONNREFUSED|Cannot connect to API|fetch failed|ENOTFOUND/iu;
+const AI_MODEL_MISSING_TEXT = /model ['"]?[^'"]*['"]? not found|model_not_found|does not exist or you do not have access/iu;
 
-function errorField(error: unknown, field: 'code' | 'status' | 'syscall' | 'message' | 'cause'): unknown {
+function errorField(error: unknown, field: 'code' | 'status' | 'statusCode' | 'syscall' | 'message' | 'cause' | 'lastError'): unknown {
   return error && typeof error === 'object' && field in error ? (error as Record<string, unknown>)[field] : undefined;
 }
 
@@ -213,7 +295,9 @@ function errorField(error: unknown, field: 'code' | 'status' | 'syscall' | 'mess
  */
 export function aiProviderErrorMessage(error: unknown): string | undefined {
   const chain: unknown[] = [];
-  for (let current: unknown = error; current != null && chain.length < 4; current = errorField(current, 'cause')) {
+  // Wrapped errors keep the provider's own in `cause`; the AI SDK's retry error keeps it in `lastError`.
+  for (let current: unknown = error; current != null && chain.length < 5;
+    current = errorField(current, 'cause') ?? errorField(current, 'lastError')) {
     chain.push(current);
   }
   const text = (entry: unknown) => {
@@ -222,12 +306,13 @@ export function aiProviderErrorMessage(error: unknown): string | undefined {
   };
   for (const entry of chain) {
     const code = errorField(entry, 'code');
-    const status = errorField(entry, 'status');
+    const status = errorField(entry, 'status') ?? errorField(entry, 'statusCode');
     const syscall = errorField(entry, 'syscall');
     if ((typeof code === 'string' && AI_TIMEOUT_CODES.has(code)) || AI_TIMEOUT_TEXT.test(text(entry))) return AI_TIMEOUT;
     if (status === 401 || status === 403) return AI_AUTH;
     if (status === 429 || status === 503 || status === 529) return AI_BUSY;
     if (code === 'ENOENT' && typeof syscall === 'string' && syscall.startsWith('spawn')) return AI_MISSING;
+    if (code === 'ECONNREFUSED' || code === 'ENOTFOUND') return AI_UNREACHABLE;
   }
   if (/[가-힣]/u.test(text(error))) return undefined;
   for (const entry of chain) {
@@ -236,6 +321,8 @@ export function aiProviderErrorMessage(error: unknown): string | undefined {
     if (AI_MISSING_TEXT.test(message)) return AI_MISSING;
     if (AI_AUTH_TEXT.test(message)) return AI_AUTH;
     if (AI_BUSY_TEXT.test(message)) return AI_BUSY;
+    if (AI_MODEL_MISSING_TEXT.test(message)) return AI_MODEL_MISSING;
+    if (AI_UNREACHABLE_TEXT.test(message)) return AI_UNREACHABLE;
   }
   return undefined;
 }

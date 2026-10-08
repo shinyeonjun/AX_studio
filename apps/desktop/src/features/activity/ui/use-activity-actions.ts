@@ -56,7 +56,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
   const clearExecutions = async () => {
     const count = state?.executions?.length ?? 0;
     if (count === 0) return;
-    if (!await confirmClearExecutions(count)) return;
+    if (!await confirmClearExecutions()) return;
     setClearing(true);
     setClearError('');
     try {

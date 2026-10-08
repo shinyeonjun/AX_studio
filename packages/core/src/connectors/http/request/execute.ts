@@ -91,6 +91,15 @@ export async function performHttpRequest(input: HttpRequestInput): Promise<Perfo
     if ((err as NodeJS.ErrnoException).code === PRIVATE_DESTINATION_ERROR_CODE) {
       return { ok: false, error: 'private_destination_not_allowed', errorCode: 'ssrf_blocked' };
     }
+    // Node's fetch says only "fetch failed"; the cause says whether the server was down, the name
+    // did not resolve or the connection timed out, which is what the person can act on.
+    const cause = (err as { cause?: { code?: unknown } }).cause?.code;
+    if (cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' || cause === 'UND_ERR_HEADERS_TIMEOUT') {
+      return { ok: false, error: 'request_timeout', errorCode: 'request_timeout' };
+    }
+    if (typeof cause === 'string' && /^(?:ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|UND_ERR_SOCKET)$/u.test(cause)) {
+      return { ok: false, error: 'connection_failed', errorCode: 'connection_failed' };
+    }
     return { ok: false, error: (err as Error).message || 'request_failed', errorCode: 'http_error' };
   } finally {
     await dispatcher?.close().catch(() => undefined);

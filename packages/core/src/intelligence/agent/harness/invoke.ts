@@ -1,3 +1,4 @@
+import { aiProviderFailureCode } from '../../../contracts/error-messages.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import type { ChatMessage } from '../model/chat.js';
 import type { AgentProgressEvent, ModelImageInput, ModelProvider, ModelTokenUsage } from '../model/provider.js';
@@ -155,8 +156,10 @@ export async function invokeAgent<T>(
       ...(errorCode ? { errorCode } : {}),
     });
     logs.push({ level: 'error', message: error instanceof Error ? error.message : String(error) });
-    if (error instanceof Error && !(error as Error & { code?: string }).code) {
-      throw Object.assign(error, { code: 'agent_invoke_failed' });
+    // A sign-in, busy, missing or unreachable AI gets its own code, so the run says what to do.
+    const providerFailure = aiProviderFailureCode(error);
+    if (error instanceof Error && (providerFailure || !(error as Error & { code?: string }).code)) {
+      throw Object.assign(error, { code: providerFailure ?? 'agent_invoke_failed' });
     }
     throw error;
   } finally {

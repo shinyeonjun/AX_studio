@@ -1,3 +1,5 @@
+import { executionErrorReason } from '../../contracts/error-messages.js';
+import { decisionServiceFailure } from '../../intelligence/decision/jev/errors.js';
 import type { ConnectorContext } from '../../connectors/types.js';
 import type { DecisionAnswer, DecisionEngine, DecisionInstruction, DecisionQuestion } from '../../contracts/decision.js';
 import { classifyDecisionOutput, MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
@@ -160,7 +162,11 @@ export async function evaluateDecisionOutputs(input: {
       message: '판단 엔진(Jev)이 판단 결과를 만들지 못했습니다.',
       data: { stepId: input.step.id, fieldCount: input.plan.bindings.size, errorCode: error instanceof Error ? error.name : 'unknown' },
     });
-    throw Object.assign(new Error('판단 엔진(Jev)에 연결하지 못해 업무 실행을 멈췄습니다. 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.'), { code: 'jev_decision_failed' });
+    // Settings only help when the key was rejected; a busy or unreachable server needs a retry.
+    const failure = decisionServiceFailure(error);
+    const code = failure === 'busy' ? 'jev_busy' : failure === 'unreachable' ? 'jev_unreachable'
+      : failure === 'key_rejected' ? 'jev_key_rejected' : 'jev_decision_failed';
+    throw Object.assign(new Error(`${executionErrorReason(code)}.`), { code });
   }
 
   input.ctx.abortSignal?.throwIfAborted();

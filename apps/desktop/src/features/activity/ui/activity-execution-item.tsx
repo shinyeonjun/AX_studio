@@ -99,9 +99,10 @@ export function ActivityExecutionItem({
             type="button"
             className="btn btn-sm btn-ghost btn-danger-text timeline-delete"
             onClick={onDelete}
-            disabled={deleting || clearing}
+            // Running or approval-waiting runs cannot be deleted; say so here, not in a banner far above.
+            disabled={deleting || clearing || running || pending}
             aria-label="기록 삭제"
-            title="기록 삭제"
+            title={running || pending ? '실행이 끝난 뒤 삭제할 수 있어요' : '기록 삭제'}
           >
             {deleting ? '…' : '삭제'}
           </button>
