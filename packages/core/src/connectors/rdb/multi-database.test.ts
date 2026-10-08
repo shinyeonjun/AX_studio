@@ -11,7 +11,7 @@ import {
   upsertRdbDatabase,
 } from './config/databases.js';
 import { buildJevReadOperationHints } from '../../intelligence/decision/read-operation-catalog.js';
-import { coveringRdbRead } from '../../intelligence/agent/commands/chat/rdb-read-cover.js';
+import { coveringRdbRead } from '../../intelligence/agent/commands/chat/routing/rdb-read-cover.js';
 
 const ctx = (): ConnectorContext => ({ executionId: 'multi-db', variables: {}, log: vi.fn() });
 

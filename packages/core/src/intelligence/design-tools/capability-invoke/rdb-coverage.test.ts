@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { boundCapabilityEvidence, capabilityPagingMetadata } from '../capability-invoke.js';
 import { tableArtifactFromRows } from '../../../contracts/artifacts/table-build.js';
 import type { TableArtifact } from '../../../contracts/artifacts/table.js';
-import { boundedChatReadResult, formatTableArtifact } from '../../agent/commands/chat/result.js';
+import { boundedChatReadResult, formatTableArtifact } from '../../agent/commands/chat/result/index.js';
 
 function rdbTable(rowCount: number): TableArtifact {
   const table = tableArtifactFromRows(Array.from({ length: rowCount }, (_, id) => ({

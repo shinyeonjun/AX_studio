@@ -92,6 +92,9 @@ jobs:
       - name: Desktop type check
         run: npm run typecheck:desktop
 
+      - name: Core type check (source and tests)
+        run: npm run typecheck -w @ax-studio/core
+
       - name: Document engine tests
         run: npm run test:document-engine
 

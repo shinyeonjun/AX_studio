@@ -11,7 +11,7 @@ const scratchRoot = join(evidenceRoot, 'scratch');
 mkdirSync(scratchRoot, { recursive: true });
 const reportPath = join(evidenceRoot, 'vitest.json');
 const observationsPath = join(scratchRoot, 'request-understanding-observations.json');
-const testPath = 'src/intelligence/agent/commands/chat/request-understanding.offline.test.ts';
+const testPath = 'src/intelligence/agent/commands/chat/loop/request-understanding.offline.test.ts';
 const run = spawnSync(process.execPath, [join(core, 'node_modules/vitest/vitest.mjs'), 'run', testPath,
   '--maxWorkers=1', '--configLoader=native', '--reporter=json', `--outputFile=${reportPath}`], {
   cwd: core, encoding: 'utf8', timeout: 120_000,
@@ -25,7 +25,7 @@ if (run.status !== 0) {
 }
 const report = JSON.parse(readFileSync(reportPath, 'utf8'));
 const observations = JSON.parse(readFileSync(observationsPath, 'utf8')).sort((left, right) => left.id.localeCompare(right.id));
-const fixturePath = join(core, 'src/intelligence/agent/commands/chat/request-understanding-cases.json');
+const fixturePath = join(core, 'src/intelligence/agent/commands/chat/loop/request-understanding-cases.json');
 const fixtures = JSON.parse(readFileSync(fixturePath, 'utf8'));
 if (observations.length !== 24 || new Set(observations.map(item => item.id)).size !== 24
   || observations.some(item => item.failures.length > 0) || !report.success) {

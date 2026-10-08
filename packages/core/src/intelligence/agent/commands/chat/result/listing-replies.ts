@@ -1,5 +1,5 @@
 import type { AxCommand, AxCommandResult } from '../../schema.js';
-import { explicitlyRequestsRawMetadata, renderCatalogMetadata } from '../metadata-output.js';
+import { explicitlyRequestsRawMetadata, renderCatalogMetadata } from '../shared/metadata-output.js';
 import { needsModelTransform } from './read-replies.js';
 
 export function deterministicWorkflowListChatReply(

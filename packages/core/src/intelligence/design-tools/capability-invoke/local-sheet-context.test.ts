@@ -8,7 +8,7 @@ import type { TextGenerateInput } from '../../agent/model/provider.js';
 import { AgentHarness } from '../../agent/harness.js';
 import { runAxCommandChat } from '../../agent/commands/chat.js';
 import { AxCommandService } from '../../agent/commands/service.js';
-import { parallelToolAnswersForTest, scriptedModel } from '../../agent/commands/chat/fixtures.js';
+import { parallelToolAnswersForTest, scriptedModel } from '../../agent/commands/chat/testing/fixtures.js';
 
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';

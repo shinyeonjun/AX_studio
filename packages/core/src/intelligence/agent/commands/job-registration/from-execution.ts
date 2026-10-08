@@ -1,4 +1,4 @@
-import { CHAT_READ_SOURCE_ID, type ChatReadRecipe } from '../chat/read-recipe.js';
+import { CHAT_READ_SOURCE_ID, type ChatReadRecipe } from '../chat/result/read-recipe.js';
 import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 import { describeRecurrence } from '../../../../workflow/schedule/describe.js';
 import { parseWorkflowIR } from '../../../../workflow/schema.js';
