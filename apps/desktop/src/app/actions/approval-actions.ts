@@ -30,6 +30,8 @@ export function createAppApprovalActions({ refresh, setActionError }: AppApprova
       const result = await window.ax.runWorkflow(workflowId);
       await refresh();
       if (result.status === 'failed') setActionError('업무를 실행했지만 실패했습니다. 활동 탭에서 이유를 확인해 주세요.');
+      // A run that stopped to ask before sending is not done: say where it is waiting.
+      if (result.status === 'pending_approval') setActionError('보내기 전에 확인이 필요해 실행이 멈춰 있어요. 승인 탭에서 확인해 주세요.');
     } catch (err) {
       setActionError(ipcErrorMessage(err, '업무를 실행하지 못했습니다.'));
     }

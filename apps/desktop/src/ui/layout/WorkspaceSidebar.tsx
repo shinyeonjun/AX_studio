@@ -27,7 +27,7 @@ interface WorkspaceSidebarProps {
   onDeleteSession: (session: ChatSessionSummary) => void;
   onOpenWork: (workflowId: string) => void;
   onOpenExecution: (execution: AppState['executions'][number]) => void;
-  onToggleWorkActive: (workflowId: string, active: boolean) => void;
+  onToggleWorkActive: (workflowId: string, active: boolean) => void | Promise<void>;
   onRunWork: (workflowId: string) => Promise<void>;
   onDeleteWork: (workflowId: string, name: string) => void;
   onOpenSettings: (screen: SettingsScreen) => void;
