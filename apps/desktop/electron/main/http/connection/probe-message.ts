@@ -22,3 +22,10 @@ export function httpProbeErrorMessage(error: string | undefined): string {
         : '서버에 연결할 수 없어요. 인터넷 연결과 서버 주소를 확인해 주세요.';
   }
 }
+
+/** The server answered 401: with credentials they were refused, without them some are needed. */
+export function httpAuthRejectedMessage(sentCredentials: boolean): string {
+  return sentCredentials
+    ? '서버가 입력한 인증 정보를 받아들이지 않았어요. 토큰이나 아이디·비밀번호를 다시 확인해 주세요.'
+    : '이 서버는 인증이 필요해요. 아래에서 인증 방식을 고르고 토큰이나 키를 입력해 주세요.';
+}

@@ -5,7 +5,9 @@ import {
   matchHttpEndpoint,
   type HttpEndpoint,
 } from '../connection.js';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { performHttpRequest } from '../request.js';
+import type { PerformHttpRequestResult } from '../request/contracts.js';
 import { resolveHttpRequestUrl } from '../url-security.js';
 import { httpErrorDetails } from './errors.js';
 import { hasNextHttpPage } from './completeness.js';
@@ -16,7 +18,14 @@ import {
   withJsonContentType,
 } from './payload.js';
 
-const SENSITIVE_RESPONSE_HEADER = /(?:authorization|proxy-auth|cookie|set-cookie|api[-_]key|token|secret|password|credential|signature)/iu;
+const TRANSIENT_RETRY_MS = 700;
+
+/** Failures that usually pass in a moment: the connection dropped, or a gateway was briefly busy. */
+function passingHttpFault(result: PerformHttpRequestResult): boolean {
+  return result.ok ? [502, 503, 504].includes(result.status) : result.errorCode === 'connection_failed';
+}
+
+const SENSITIVE_RESPONSE_HEADER =/(?:authorization|proxy-auth|cookie|set-cookie|api[-_]key|token|secret|password|credential|signature)/iu;
 
 function safeResponseHeaders(headers: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
@@ -85,7 +94,7 @@ export async function executeHttpAction(
   // Query strings frequently carry tokens or personal data; log only the path.
   const logPath = new URL(resolved.value.url).pathname;
   const requestStartedAt = Date.now();
-  const result = await performHttpRequest({
+  const send = () => performHttpRequest({
     url: resolved.value.url,
     method,
     headers: requestHeaders,
@@ -96,6 +105,13 @@ export async function executeHttpAction(
     // resolves to loopback or a private/metadata address (DNS rebinding) is refused.
     rejectPrivateDestination: options.allowPrivateNetwork !== true,
   });
+  let result = await send();
+  // A read that met a passing fault (a dropped connection, a busy gateway) is asked once more;
+  // reading twice changes nothing, so only reads are.
+  if ((method === 'GET' || method === 'HEAD') && passingHttpFault(result)) {
+    await sleep(TRANSIENT_RETRY_MS, undefined, { signal: ctx.abortSignal }).catch(() => undefined);
+    result = await send();
+  }
   const durationMs = Date.now() - requestStartedAt;
 
   if (!result.ok) {

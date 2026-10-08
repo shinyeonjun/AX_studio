@@ -296,6 +296,21 @@ describe('deterministicCapabilityReadChatReply', () => {
     expect(reply).not.toContain('m1');
   });
 
+  it('shows a list of names as a list, not as JSON', () => {
+    const reply = deterministicCapabilityReadChatReply({
+      name: 'capability.invoke',
+      args: { id: 'rdb.schema.describe', params: {} },
+    }, {
+      command: 'capability.invoke',
+      status: 'ok',
+      data: { capabilityId: 'rdb.schema.describe', data: ['public.orders', 'public.customers'], citations: [], untrusted: true },
+      issues: [],
+      inputRequests: [],
+    }, 'DB에 어떤 테이블 있어?')!;
+
+    expect(reply).toBe('조회 결과 (2개):\n\n- public.orders\n- public.customers');
+  });
+
   it('keeps semantic transforms on the model path', () => {
     expect(deterministicCapabilityReadChatReply({
       name: 'capability.invoke',
