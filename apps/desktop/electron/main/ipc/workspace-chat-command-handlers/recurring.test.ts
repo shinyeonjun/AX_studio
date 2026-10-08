@@ -84,7 +84,7 @@ describe('recurring draft from a read answer', () => {
       { role: 'user', content: `이 작업을 반복 업무로 만들기: ${weeklyMonday}` },
     ] });
     const reply = await proposeRecurringFromRead(chat.id, weeklyMonday);
-    expect(reply.content).toContain('이 조회를 매주 월요일 오전 9:00에 반복하는 업무 초안입니다');
+    expect(reply.content).toContain('이 조회를 반복하는 업무 초안이에요. 일정은 매주 월요일 오전 9:00이고');
     const card = JSON.stringify(reply.presentations[0]);
     expect(card).toContain('재고 10개 미만 상품만 표로 보여줘');
     expect(card).toContain('표 정리 (2단계 결과 사용) · 읽기만 함 · 조건: stock < 10');

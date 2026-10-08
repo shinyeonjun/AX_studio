@@ -112,16 +112,16 @@ function stepTargets(
 }
 
 /** Built-in table steps described by what they do; they have no destination to show. */
-function tableStepItem(step: WorkflowActionStep, number: string, stepNumbers: ReadonlyMap<string, number>, labels: TargetLabels): string | undefined {
+function tableStepItem(step: WorkflowActionStep, stepNumbers: ReadonlyMap<string, number>, labels: TargetLabels): string | undefined {
   if (step.connector !== 'transform') return undefined;
   const inputs = Object.values(step.bindings ?? {})
     .map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
     .filter((value): value is number => value !== undefined);
   const using = inputs.length > 0 ? ` (${inputs.join('·')}단계 결과 사용)` : '';
-  if (step.action === 'http_to_table') return `${number} 응답을 표로 변환${using} · 읽기만 함`;
+  if (step.action === 'http_to_table') return `응답을 표로 변환${using} · 읽기만 함`;
   if (step.action === 'evaluate') {
     const expr = TransformExprSchema.safeParse(step.params?.expr);
-    return `${number} 표 정리${using} · 읽기만 함 · ${expr.success ? describeShaping(expr.data, (column) => labelFor(labels, 'column', column) ?? column) : '변환식 확인 필요'}`;
+    return `표 정리${using} · 읽기만 함 · ${expr.success ? describeShaping(expr.data, (column) => labelFor(labels, 'column', column) ?? column) : '변환식 확인 필요'}`;
   }
   return undefined;
 }
@@ -132,24 +132,24 @@ export function workflowStepItems(
   labels: TargetLabels = {},
 ): string[] {
   const stepNumbers = new Map(workflow.steps.map((step, index) => [step.id, index + 1]));
-  const items = workflow.steps.map((step, index) => {
-    const number = `${index + 1}.`;
+  // The card numbers the list itself; an item says what its step does.
+  const items = workflow.steps.map((step) => {
     if (step.type === 'action') {
-      const tableItem = tableStepItem(step, number, stepNumbers, labels);
+      const tableItem = tableStepItem(step, stepNumbers, labels);
       if (tableItem) return tableItem;
       const sideEffect = workflowStepSideEffect(workflow, step);
       const marker = isExternalSideEffect(sideEffect) ? '[외부] ' : '';
       // What the step does in words ("DB 조회"), not its connector/action ids.
       const action = resolveCapability(step.connector, step.action)?.label ?? `${step.connector} / ${step.action}`;
-      return `${marker}${number} ${action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
+      return `${marker}${action} · ${SIDE_EFFECT_LABEL[sideEffect]} · 대상: ${stepTargets(step, labels, stepNumbers)}`;
     }
     if (step.type === 'ai_decision') {
       const inputs = Object.values(step.bindings ?? {}).map((binding) => stepNumbers.get((binding as { from?: string }).from ?? ''))
         .filter((value): value is number => value !== undefined);
-      return `${number} AI 문안 작성${inputs.length ? ` (${inputs.join('·')}단계 결과 사용)` : ''} · 밖으로 보내지 않음`;
+      return `AI 문안 작성${inputs.length ? ` (${inputs.join('·')}단계 결과 사용)` : ''} · 밖으로 보내지 않음`;
     }
-    if (step.type === 'human_approval') return `${number} 승인 받기`;
-    return `${number} 조건 분기`;
+    if (step.type === 'human_approval') return '승인 받기';
+    return '조건 분기';
   }).map((item) => item.slice(0, MAX_ITEM_CHARS));
   if (items.length <= MAX_STEP_ITEMS) return items;
   return [...items.slice(0, MAX_STEP_ITEMS - 1), `외 ${items.length - (MAX_STEP_ITEMS - 1)}개 단계 (전체 내용은 업무 화면에서 확인)`];

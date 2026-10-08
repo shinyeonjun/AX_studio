@@ -117,7 +117,10 @@ export function publishExecutionResultToWorkspaceChat(
     ...(generatedPdf ? { generatedPdf } : {}),
     ...(spreadsheet.success ? { generatedSpreadsheet: spreadsheet.data } : {}),
     ...(resultTable ? { readResult: resultTable } : {}),
-  });
+  }, typeof target === 'object' && execution.triggerType === 'schedule' && result.status !== 'pending_approval'
+    // A job on a short schedule keeps its latest result in the chat; every run stays in Activity.
+    ? { collapseSuccessiveRunsOf: target.workflowId }
+    : {});
   if (!updated) return null;
   return {
     sessionId: updated.id,

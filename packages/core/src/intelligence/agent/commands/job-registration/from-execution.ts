@@ -76,6 +76,8 @@ export function recurringJobFromReadRecipe(input: {
   recipe: ChatReadRecipe | undefined;
   /** The request the answer was for; names the job. */
   request: string;
+  /** A name already chosen for the job (see suggestWorkName); else it is named from the request. */
+  name?: string;
   scheduleValue: string;
 }): RecurringJobFromExecution {
   const { recipe } = input;
@@ -114,7 +116,7 @@ export function recurringJobFromReadRecipe(input: {
     ok: true,
     scheduleText,
     args: {
-      name: workNameFromRequest(request, '반복 조회'),
+      name: input.name?.trim() || workNameFromRequest(request, '반복 조회'),
       goal: request || '조회 결과를 정해진 때에 다시 만든다',
       trigger: { type: 'schedule', recurrence, timezone: recurrence.timezone },
       steps,

@@ -106,7 +106,8 @@ describe('tool result renderers', () => {
     expect(html).toContain('&lt;script&gt;data&lt;/script&gt;');
     expect(html).toContain('scope="col"');
     expect(html).toContain('role="region"');
-    expect(html).toContain('전체 데이터 개수는 확인되지 않았습니다');
+    expect(html).toContain('더 가져올 행은 없었어요');
+    expect(html).toContain('<span>읽은 곳</span><strong>PostgreSQL</strong>');
     expect(html).toContain('<details class="tool-result-details">');
     expect(html).not.toContain('<details open');
     expect(html).not.toContain('<textarea');
@@ -116,6 +117,17 @@ describe('tool result renderers', () => {
     expect(html).not.toContain('시작 0');
     expect(html).not.toContain('2026-10-02T00:00:00Z');
     expect(html).toContain('읽기만 했습니다');
+  });
+  it('says which database it read, when the chat narrowed the rows, and writes amounts as people read them', () => {
+    const message = dbMessage();
+    message.readResult!.source!.connectionLabel = '쇼핑몰 DB';
+    message.readResult!.coverage!.observedRows = 42;
+    message.readResult!.rows = [{ index: 0, values: { name: '마우스', amount: 84000 } }];
+    const html = pane(message);
+    expect(html).toContain('<span>읽은 곳</span><strong>쇼핑몰 DB (PostgreSQL)</strong>');
+    expect(html).toContain('가져온 42행 중 조건에 맞는 행만 보여 줘요.');
+    expect(html).toContain('<td>84,000</td>');
+    expect(html).not.toContain('조건 필터 없음');
   });
   it('names joined tables without SQL join conditions', () => {
     const message = dbMessage();

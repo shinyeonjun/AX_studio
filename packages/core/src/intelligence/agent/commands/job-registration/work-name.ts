@@ -1,3 +1,6 @@
+import type { AgentHarness } from '../../harness.js';
+import { appendAppLog } from '../../../../persistence/paths/app-log.js';
+
 const MAX_WORK_NAME_CHARS = 40;
 
 /**
@@ -12,4 +15,44 @@ export function workNameFromRequest(request: string, fallback: string): string {
   if (/[는은던]$/u.test(name)) name = `${name} 업무`;
   if (!name) return fallback;
   return name.length > MAX_WORK_NAME_CHARS ? `${name.slice(0, MAX_WORK_NAME_CHARS - 1)}…` : name;
+}
+
+const NAME_TIMEOUT_MS = 15_000;
+const NAME_PROMPT = [
+  '반복 업무의 이름을 짓는다. 입력은 사람이 한 요청 한 문장이다.',
+  '- 출력: 이름 하나만. 2~20자 한국어 명사구. 따옴표·마침표·설명 금지.',
+  '- 무엇을 하는 업무인지가 드러나게. 예: "반품된 주문만 보여줘" → 반품 주문 확인, "재고 10개 미만 상품 알려줘" → 재고 부족 상품 확인.',
+].join('\n');
+
+/**
+ * A short name for a recurring job, asked once of the person's AI ("반품된 주문만 보여줘" →
+ * "반품 주문 확인"). Only the request is sent. Undefined when it fails or answers something that is
+ * not a short single-line name; the caller then names the job from the request itself.
+ */
+export async function suggestWorkName(
+  harness: Pick<AgentHarness, 'runText'>,
+  request: string,
+  options: { requestId?: string; signal?: AbortSignal } = {},
+): Promise<string | undefined> {
+  const text = request.trim();
+  if (!text) return undefined;
+  try {
+    const timeout = AbortSignal.timeout(NAME_TIMEOUT_MS);
+    const reply = await harness.runText({
+      requestId: options.requestId ? `${options.requestId}:work-name` : undefined,
+      role: 'command',
+      systemPrompt: NAME_PROMPT,
+      messages: [{ role: 'user', content: text.slice(0, 500) }],
+      logContext: 'work_name',
+      abortSignal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
+    });
+    const name = reply.output.trim().replace(/^["'“”「」]+|["'“”「」.。]+$/gu, '').trim();
+    return name.length >= 2 && name.length <= 30 && !/[\r\n]/u.test(name) ? name : undefined;
+  } catch (error) {
+    options.signal?.throwIfAborted();
+    appendAppLog('warn', 'Work name suggestion failed; named from the request.', {
+      requestId: options.requestId, event: 'work_name', code: (error as { code?: unknown } | null)?.code,
+    });
+    return undefined;
+  }
 }

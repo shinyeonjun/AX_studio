@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { workNameFromRequest } from './work-name.js';
+import type { AgentHarness } from '../../harness.js';
 
 describe('the name a work gets from its request', () => {
   it.each([
@@ -13,5 +14,27 @@ describe('the name a work gets from its request', () => {
 
   it('keeps a long name short', () => {
     expect(workNameFromRequest('가'.repeat(80), 'x')).toHaveLength(40);
+  });
+});
+
+describe('suggestWorkName', () => {
+  const harness = (output: string | Error): Pick<AgentHarness, 'runText'> => ({
+    runText: async () => {
+      if (output instanceof Error) throw output;
+      return { output, role: 'command', provider: 'test', durationMs: 1, promptChars: 1 } as Awaited<ReturnType<AgentHarness['runText']>>;
+    },
+  });
+
+  it('takes the short name the AI gives, without quotes or a period', async () => {
+    const { suggestWorkName } = await import('./work-name.js');
+    expect(await suggestWorkName(harness('"반품 주문 확인".'), '반품된 주문만 보여줘')).toBe('반품 주문 확인');
+  });
+
+  it('gives up on anything that is not a short one-line name, or when the AI fails', async () => {
+    const { suggestWorkName } = await import('./work-name.js');
+    expect(await suggestWorkName(harness('반품 주문 확인\n이 이름은 반품된 주문을 매번 확인하는 업무라서 지었습니다'), '반품된 주문만 보여줘')).toBeUndefined();
+    expect(await suggestWorkName(harness('가'.repeat(40)), '요청')).toBeUndefined();
+    expect(await suggestWorkName(harness(new Error('provider down')), '요청')).toBeUndefined();
+    expect(await suggestWorkName(harness('이름'), '   ')).toBeUndefined();
   });
 });
