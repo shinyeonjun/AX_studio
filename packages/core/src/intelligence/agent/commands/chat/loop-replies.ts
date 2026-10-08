@@ -1,4 +1,5 @@
 import type { TransformExpr } from '../../../../workflow/transform-expr/dsl.js';
+import { shapingBackground, withDecisionBackground } from './decision-background.js';
 import { chatReadRecipe } from './read-recipe.js';
 import { resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../decision/request-anchor.js';
 import type { ChatMessage } from '../../model/chat.js';
@@ -132,7 +133,8 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
 
     const startedAt = Date.now();
     const plan = await applyJevTableTransform({
-      decisionEngine: guardAuthoritativeRequestDecisions(options.decisionEngine,
+      // What the person confirmed (their definitions of VIP, 매출 …) informs which rows and totals.
+      decisionEngine: guardAuthoritativeRequestDecisions(withDecisionBackground(options.decisionEngine, shapingBackground(context)),
         resolveAuthoritativeRequestAnchor(userMessage,
           options.requestAnchor?.text === userMessage ? options.requestAnchor : undefined,
           {}, options.requestBudget), options.requestBudget),

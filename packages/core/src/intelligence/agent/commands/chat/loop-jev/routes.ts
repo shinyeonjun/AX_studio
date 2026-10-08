@@ -1,4 +1,5 @@
 import { thenTransform } from '../read-recipe.js';
+import { shapingBackground, withDecisionBackground } from '../decision-background.js';
 import { jevUnsupportedChatReplyPrompt } from '../protocol.js';
 import { boundedChatReadResult, formatTableArtifact } from '../result.js';
 import { labeledTable } from '../../../../../contracts/artifacts/column-labels.js';
@@ -57,7 +58,7 @@ export async function previousResultRoute(turn: JevTurn): Promise<string> {
   if (!previousReadResult || !options.decisionEngine) return jevFallbackMessage('missing_context');
   const transformStartedAt = Date.now();
   const transformed = await applyJevTableTransform({
-    decisionEngine: options.decisionEngine,
+    decisionEngine: withDecisionBackground(options.decisionEngine, shapingBackground(context)),
     table: previousReadResult,
     userMessage: options.userMessage,
     mode: 'auto',
