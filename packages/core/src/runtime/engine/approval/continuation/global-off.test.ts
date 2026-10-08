@@ -34,7 +34,6 @@ describe('approval continuation global execution guard', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
 

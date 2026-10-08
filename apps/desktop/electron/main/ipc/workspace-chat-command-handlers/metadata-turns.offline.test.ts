@@ -59,7 +59,7 @@ async function fixture(input: { script?: Script | ((request: WireRequest) => Scr
   const execute = vi.spyOn(commandService, 'execute');
   const root = resolve(process.env.AX_DATA_ROOT ?? resolve('../../build-evidence/registered-http-metadata/scratch'));
   const sources = new WorkspaceSourceService(store, new ArtifactStore(join(root, 'artifacts')), join(root, 'sessions'));
-  const runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, workflowActive: {} });
+  const runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, });
   await sources.waitForIdle();
   resources.push({ close: () => db.close?.(), waitForIdle: async () => {
     runtime.stopAccepting();

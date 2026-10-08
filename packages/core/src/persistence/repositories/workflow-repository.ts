@@ -182,7 +182,13 @@ export function setWorkflowActive(db: AppDatabase, workflowId: string, active: b
 }
 
 export function isWorkflowActive(db: AppDatabase, workflowId: string): boolean {
-  return Boolean(readRow<{ active: number }>(db.prepare('SELECT active FROM workflows WHERE id = ?'), workflowId)?.active);
+  return workflowActiveState(db, workflowId) === true;
+}
+
+/** The saved on/off switch, or undefined for a workflow that is not saved (a one-off run). */
+export function workflowActiveState(db: AppDatabase, workflowId: string): boolean | undefined {
+  const row = readRow<{ active: number }>(db.prepare('SELECT active FROM workflows WHERE id = ?'), workflowId);
+  return row ? Boolean(row.active) : undefined;
 }
 
 // Settings blobs keyed by workflow id that must not outlive the workflow.

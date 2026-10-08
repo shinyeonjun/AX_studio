@@ -55,7 +55,7 @@ async function seed(kind: Kind, condition: Condition | 'valid') {
     accountId: 'sender@example.test', accountLabel: 'sender@example.test',
     destinationId: draft.to ?? '', destinationLabel: 'recipient@example.test' }));
   const gmail: Connector = { name: 'gmail', execute: send, prepareMessageSend: identify };
-  const runtime = new WorkflowRuntime({ store: state.store, globalActive: true, workflowActive: {}, connectors: { gmail } });
+  const runtime = new WorkflowRuntime({ store: state.store, globalActive: true, connectors: { gmail } });
   runtimes.push(runtime);
   const ir: WorkflowIR = { name: 'Synthetic cancellation fixture', goal: 'Synthetic only', version: 1, inputs: [],
     steps: [{ id: 'send', type: 'action', connector: 'gmail', action: 'message.send', sideEffect: 'EXTERNAL_HIGH',
@@ -92,7 +92,7 @@ async function recovered(f: Awaited<ReturnType<typeof seed>>, kind: Kind, path: 
   const candidate = state.store.getApprovalRecoveryCandidates().find(item => item.id === f.approvalId);
   const before = previewApprovalHistoryBytes(state.db);
   const beforeStatus = state.store.getExecution(f.executionId)?.status;
-  const runtime = new WorkflowRuntime({ store: state.store, globalActive: false, workflowActive: {},
+  const runtime = new WorkflowRuntime({ store: state.store, globalActive: false,
     connectors: { gmail: { name: 'gmail', execute: f.send, prepareMessageSend: f.identify } } });
   runtimes.push(runtime);
   const after = previewApprovalHistoryBytes(state.db);

@@ -25,7 +25,6 @@ describe('runtime control-flow selection', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       investigationRunner: createInvestigationRunner(createAgentHarness(modelProvider)),
       decisionEngine: {
@@ -50,7 +49,7 @@ describe('runtime control-flow selection', () => {
   it('evaluates if conditions from trigger input', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const ir: WorkflowIR = {
       name: '발신자 필터',
       goal: '특정 발신자만 알림',

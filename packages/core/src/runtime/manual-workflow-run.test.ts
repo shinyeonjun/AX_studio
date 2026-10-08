@@ -36,7 +36,6 @@ describe('saved manual workflow completion observer', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       onExecutionFinished: (result) => finished.push(result),
     });
 

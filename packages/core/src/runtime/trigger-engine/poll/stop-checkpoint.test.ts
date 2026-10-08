@@ -11,7 +11,7 @@ describe('TriggerEngine in-flight polling stop checkpoints', () => {
   it('handles rejected background poll ticks without an unhandled rejection', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const engine = new TriggerEngine(store, runtime);
     const failure = new Error('poll_tick_failed');
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -31,7 +31,7 @@ describe('TriggerEngine in-flight polling stop checkpoints', () => {
   it('aborts a pending read and permits a fresh tick even when the connector ignores abort', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const { workflowId } = store.saveWorkflow(gmailNotifySkill);
     store.setWorkflowActive(workflowId, true);
     let signal: AbortSignal | undefined;
@@ -71,7 +71,6 @@ describe('TriggerEngine in-flight polling stop checkpoints', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     const slack = mockSlack(runtime.connectors);

@@ -105,7 +105,6 @@ describe('AxCommandService versioned workflow commands', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: { [workflow.id!]: true },
       connectors: {
         gmail: {
           name: 'gmail',

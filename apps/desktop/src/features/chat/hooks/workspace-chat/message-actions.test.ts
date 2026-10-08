@@ -108,4 +108,40 @@ describe('workspace chat message actions', () => {
     expect(savedMessages.at(-1)).toContainEqual({ role: 'assistant', content: '전송 완료' });
     expect(setError).toHaveBeenCalledWith(expect.stringContaining('외부 작업 요청이었다면 이미 실행됐을 수 있으니'));
   });
+
+  it('shows a run result that arrived during an answer once the answer is saved, not before', async () => {
+    const order: string[] = [];
+    const busyRef = { current: false };
+    const pendingWorkspaceChatRefreshRef: { current: string | undefined } = { current: undefined };
+    const saveWorkspaceChat = vi.fn(async (id: string | undefined, messages: WorkspaceChatMessage[]) => {
+      order.push(`save:${messages.length}`);
+      return { id: id ?? 'chat-1', messages, updatedAt: new Date(0).toISOString() };
+    });
+    const sendCommandChat = vi.fn(async () => {
+      // A scheduled run posts to this chat while the answer is still being written; the
+      // window's listener sees the chat busy and only notes it (useWorkspaceChat).
+      expect(busyRef.current).toBe(true);
+      pendingWorkspaceChatRefreshRef.current = 'chat-1';
+      return { role: 'assistant', content: '응답' };
+    });
+    vi.stubGlobal('window', { ax: { saveWorkspaceChat, sendCommandChat } });
+    vi.stubGlobal('crypto', { randomUUID: () => 'request-1' });
+    const refreshMappedWorkspaceChat = vi.fn(async (sessionId: string) => { order.push(`refresh:${sessionId}`); });
+
+    await createWorkspaceMessageActions({
+      refs: {
+        sessionEpochRef: { current: 1 }, workspaceSessionIdRef: { current: 'chat-1' }, activeRequestIdRef: { current: undefined },
+        busyRef, sourceBusyRef: { current: false }, pendingWorkspaceChatRefreshRef,
+      },
+      chatMessages: [], workspaceWorkflowState: null, refresh: vi.fn(async () => undefined),
+      isCurrentSession: () => true, isViewingSession: (sessionId) => sessionId === 'chat-1',
+      setWorkspaceContextKey: vi.fn(), setWorkspaceSessionId: vi.fn(), setChatMessages: vi.fn(), setWorkspaceWorkflowState: vi.fn(),
+      setBusy: vi.fn(), setError: vi.fn(), setProgress: vi.fn(), setEditHint: vi.fn(), setWorkflowRegistered: vi.fn(),
+      workflowRegistered: false, setWorkspaceSources: vi.fn(), setSourceBusy: vi.fn(), refreshMappedWorkspaceChat,
+    } satisfies WorkspaceChatMessageContext).sendMessage('질문');
+
+    expect(order).toEqual(['save:1', 'save:2', 'refresh:chat-1']);
+    expect(pendingWorkspaceChatRefreshRef.current).toBeUndefined();
+    expect(busyRef.current).toBe(false);
+  });
 });

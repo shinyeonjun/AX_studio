@@ -93,6 +93,7 @@ export class WorkflowStore {
   listWorkflowDefinitions() { return workflowRepo.listWorkflowDefinitions(this.db); }
   listActiveWorkflowDefinitions() { return workflowRepo.listActiveWorkflowDefinitions(this.db); }
   isWorkflowActive(workflowId: string) { return workflowRepo.isWorkflowActive(this.db, workflowId); }
+  workflowActiveState(workflowId: string) { return workflowRepo.workflowActiveState(this.db, workflowId); }
   setWorkflowActive(workflowId: string, active: boolean) {
     if (active && this.deletingWorkflowIds.has(workflowId)) {
       throw Object.assign(new Error(`Workflow deletion is in progress: ${workflowId}`), {

@@ -52,7 +52,6 @@ describe('runtime structural preflight', () => {
       const runtime = new WorkflowRuntime({
         store,
         globalActive: true,
-        workflowActive: {},
         connectors: {},
       });
 
@@ -91,7 +90,6 @@ describe('runtime structural preflight', () => {
       const runtime = new WorkflowRuntime({
         store,
         globalActive: true,
-        workflowActive: {},
         connectors: { slack: { name: 'slack', execute } },
         investigationRunner: createInvestigationRunner(createAgentHarness(provider)),
         onExecutionStarted: started,

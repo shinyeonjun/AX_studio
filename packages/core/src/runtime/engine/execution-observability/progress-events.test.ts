@@ -12,7 +12,6 @@ describe('runtime progress event persistence', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       onExecutionProgress: (event) => progress.push(`${event.stepId}:${event.status}`),
     });

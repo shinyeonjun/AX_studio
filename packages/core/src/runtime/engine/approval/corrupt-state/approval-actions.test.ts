@@ -12,7 +12,7 @@ describe('approval continuation corrupt state', () => {
   ])('fails closed when an approval references %s', async (_case, actionIds) => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const executionId = store.createExecution({
       workflowId: 'workflow-1',
       workflowVersion: 1,
@@ -46,7 +46,7 @@ describe('approval continuation corrupt state', () => {
   it('fails closed when resolved parameters no longer match the approval snapshot', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const approvedParams = { to: 'approved@example.com', subject: 'test', body: 'test' };
     const executionId = store.createExecution({
       workflowId: 'workflow-1',

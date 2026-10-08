@@ -38,7 +38,7 @@ describe('approval continuation validation', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
 
     expect(first.status).toBe('failed');
@@ -78,7 +78,7 @@ describe('approval continuation validation', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
 
     expect(first.status).toBe('failed');

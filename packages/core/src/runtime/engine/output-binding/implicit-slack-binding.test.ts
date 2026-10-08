@@ -32,7 +32,6 @@ describe('runtime output binding', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors,
       investigationRunner: createInvestigationRunner(createAgentHarness(new NoReadProvider())),
     });

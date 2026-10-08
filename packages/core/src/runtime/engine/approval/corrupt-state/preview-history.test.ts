@@ -23,7 +23,7 @@ describe.each(['native', 'sqljs'] as const)('preview approval failure preserves 
     const store = new WorkflowStore(db);
     const execute = vi.fn(async () => ({ ok: true }));
     const finished = vi.fn();
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {},
+    const runtime = new WorkflowRuntime({ store, globalActive: true,
       connectors: { synthetic: { name: 'Synthetic only', execute } }, onExecutionFinished: finished });
     expect(store.getExecution(fixture.pendingId)?.historyDiagnostics.some(d => d.source !== 'output')).toBe(true);
 
@@ -42,7 +42,7 @@ describe.each(['native', 'sqljs'] as const)('preview approval failure preserves 
       expect(reopenedStore.getExecution(fixture.pendingId)?.historyDiagnostics.some(d => d.source !== 'output')).toBe(true);
       if (opening < 2) { db.close?.(); db = await openCurrentPreviewHistory(filePath, backend); }
     }
-    const retryRuntime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true, workflowActive: {}, connectors: {} });
+    const retryRuntime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true, connectors: {} });
     expect((await retryRuntime.continueAfterApproval(fixture.approvalId)).errorCode).toBe('approval_already_resolved');
     expect(JSON.stringify(previewApprovalHistoryBytes(db)) === JSON.stringify(evidence), 'original checkpoint/output/tail bytes changed').toBe(true);
   });
@@ -55,7 +55,7 @@ describe.each(['native', 'sqljs'] as const)('preview approval failure preserves 
     db.prepare('UPDATE executions SET ir_json = ? WHERE id = ?').run(snapshot, fixture.pendingId);
     const evidence = previewApprovalHistoryBytes(db);
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: {} });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: {} });
     expect((await runtime.continueAfterApproval(fixture.approvalId)).errorCode).toBe('invalid_execution_snapshot');
     expect(store.getApproval(fixture.approvalId)?.status).toBe('failed');
     expect(JSON.stringify(previewApprovalHistoryBytes(db)) === JSON.stringify(evidence), 'original checkpoint/output/tail bytes changed').toBe(true);

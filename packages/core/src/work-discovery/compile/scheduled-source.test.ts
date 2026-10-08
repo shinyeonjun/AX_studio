@@ -38,10 +38,11 @@ it.each(['single', 'legacy', 'override', 'multiple'] as const)('runs a saved fil
     }
     const store = new WorkflowStore(db);
     const saved = store.saveWorkflow(ir);
+    store.setWorkflowActive(saved.workflowId, true);
     const connectors = createTestConnectors();
     const localSheet = instantiateRegisteredConnector('local_sheet')!;
     const reads = vi.spyOn(localSheet, 'execute');
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {},
+    const runtime = new WorkflowRuntime({ store, globalActive: true,
       connectors: { ...connectors, local_sheet: localSheet } });
     const result = await runtime.executeWorkflow(store.getWorkflow(saved.workflowId)!, {
       triggerType: 'schedule', ...(mode === 'override' ? { input: { sourcePath: second } } : {}),

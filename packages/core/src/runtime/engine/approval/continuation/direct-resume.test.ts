@@ -9,7 +9,7 @@ describe('approval continuation direct resume', () => {
   it('records completion for an action resumed directly from its approval', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow({
       name: 'Approved Slack send', goal: 'Send once', version: 1, inputs: [],
       steps: [{ type: 'action', id: 'send', connector: 'slack', action: 'message.send', params: { channel: '#ops', text: 'test' }, sideEffect: 'EXTERNAL' }],
@@ -63,7 +63,7 @@ describe('approval continuation direct resume', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true });
     expect(first.status).toBe('pending_approval');
     expect(store.getExecution(first.executionId)).toMatchObject({

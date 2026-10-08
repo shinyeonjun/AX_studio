@@ -72,7 +72,7 @@ describe('runtime inferred contract preflight', () => {
     try {
       const store = new WorkflowStore(db);
       const dependencies = executionDependencies();
-      const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, ...dependencies.config });
+      const runtime = new WorkflowRuntime({ store, globalActive: true, ...dependencies.config });
       const ir = workflow(nested);
       expect(validateWorkflowContracts(ir)).toContainEqual(expect.objectContaining({
         code: 'missing_input_contract', stepId: 'brief',
@@ -103,7 +103,7 @@ describe('runtime inferred contract preflight', () => {
     try {
       const store = new WorkflowStore(db);
       const dependencies = executionDependencies();
-      const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, ...dependencies.config });
+      const runtime = new WorkflowRuntime({ store, globalActive: true, ...dependencies.config });
 
       const result = await runtime.executeWorkflow(workflow(true, true), { ephemeral: true });
 

@@ -45,7 +45,7 @@ describe('approval continuation branch guard', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, { ephemeral: true, input: { flag: true } });
 
     expect(first.status).toBe('pending_approval');

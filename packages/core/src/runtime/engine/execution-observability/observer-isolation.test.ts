@@ -11,7 +11,6 @@ describe('runtime observer failure isolation', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       onExecutionStarted: () => { throw new Error('start observer failed'); },
       onExecutionProgress: () => { throw new Error('progress observer failed'); },

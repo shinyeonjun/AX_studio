@@ -62,7 +62,7 @@ describe('approval continuation branch resume', () => {
     if (!innerFollowup) ir.steps = ir.steps.filter(step => step.id !== 'branch_followup');
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const first = await runtime.executeWorkflow(ir, {
       ephemeral: true,
       input: { flag: true },
@@ -82,7 +82,7 @@ describe('approval continuation branch resume', () => {
 it.each([true, false])('defers approval-owned descendant action to nested branch selection: %s', async (send) => {
   const db = await createDatabaseAsync(':memory:');
   const store = new WorkflowStore(db);
-  const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+  const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
   const ir: WorkflowIR = {
     name: 'Nested conditional approved action', goal: 'Send only once when nested condition is true', version: 1, inputs: [],
     steps: [

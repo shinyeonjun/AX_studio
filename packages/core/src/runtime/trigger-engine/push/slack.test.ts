@@ -32,7 +32,7 @@ describe('TriggerEngine Slack push transport', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     mockSlack(runtime.connectors).inbound.push({
       channel: '#general',
       text: '기존 메시지',

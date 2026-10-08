@@ -26,7 +26,6 @@ describe('runtime engine output contract guards', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors,
     });
     const outputContract = OutputContractSchema.parse({

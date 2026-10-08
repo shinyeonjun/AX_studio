@@ -12,7 +12,6 @@ describe('runtime approval and queue observability', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: { http: { name: 'http', execute } },
     });
 
@@ -52,7 +51,6 @@ describe('runtime approval and queue observability', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: {},
       onExecutionStarted: (executionId) => events.push(`start:${executionId}`),
       onExecutionFinished: (result) => events.push(`finish:${result.executionId}`),

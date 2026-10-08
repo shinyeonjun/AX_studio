@@ -16,7 +16,6 @@ describe('TriggerEngine polling cursor recovery', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     mockGmail(runtime.connectors).messages.push({
@@ -44,7 +43,6 @@ describe('TriggerEngine polling cursor recovery', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     const { workflowId } = store.saveWorkflow(gmailNotifySkill);

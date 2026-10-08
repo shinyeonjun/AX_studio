@@ -38,7 +38,7 @@ async function pending(tool: 'gmail' | 'slack' = 'gmail', options: { remaining?:
     }),
   };
   const connectors = { ...createTestConnectors(), [tool]: connector };
-  const config = { store, globalActive: true, workflowActive: {}, connectors };
+  const config = { store, globalActive: true, connectors };
   const runtime = new WorkflowRuntime(config);
   const ir: WorkflowIR = {
     name: 'Synthetic send', goal: 'Exact confirmation fixture', version: 1, inputs: [],

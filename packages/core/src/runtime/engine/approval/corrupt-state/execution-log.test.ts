@@ -8,7 +8,7 @@ describe('approval continuation execution logs', () => {
   it('fails closed when the persisted approval execution log is malformed', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const executionId = store.createExecution({
       workflowId: 'workflow-1',
       workflowVersion: 1,
@@ -32,7 +32,7 @@ describe('approval continuation execution logs', () => {
   it('fails closed when the persisted approval execution log has an invalid shape', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const executionId = store.createExecution({
       workflowId: 'workflow-1',
       workflowVersion: 1,

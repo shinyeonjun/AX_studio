@@ -17,7 +17,7 @@ const approvedWorkflow: WorkflowIR = {
 describe('runtime resource lifecycle', () => {
   it('bounds accepted one-shot backlog without losing accepted jobs', async () => {
     const db = await createDatabaseAsync(':memory:');
-    const runtime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true, workflowActive: {} });
+    const runtime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true, });
     try {
       for (let i = 0; i < 128; i++) runtime.enqueueEphemeralWorkflow(approvedWorkflow);
       expect(() => runtime.enqueueEphemeralWorkflow(approvedWorkflow)).toThrow('runtime_queue_full');
@@ -29,7 +29,7 @@ describe('runtime resource lifecycle', () => {
     let entered!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
     const started = new Promise<void>(resolve => { entered = resolve; });
-    const runtime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true, workflowActive: {},
+    const runtime = new WorkflowRuntime({ store: new WorkflowStore(db), globalActive: true,
       connectors: { gmail: { name: 'gmail', execute: async () => {
         entered(); await held; return { ok: true, data: {} };
       } } },
@@ -68,7 +68,6 @@ describe('runtime resource lifecycle', () => {
     const runtime = new WorkflowRuntime({
       store: new WorkflowStore(db),
       globalActive: true,
-      workflowActive: { [workflow.id!]: true },
       connectors: {
         gmail: {
           name: 'gmail',
@@ -116,7 +115,6 @@ describe('runtime resource lifecycle', () => {
     const runtime = new WorkflowRuntime({
       store: new WorkflowStore(db),
       globalActive: true,
-      workflowActive: { [workflow.id!]: true },
       connectors: {
         gmail: {
           name: 'gmail',
@@ -153,12 +151,12 @@ describe('runtime resource lifecycle', () => {
     });
     const approvalId = store.createApproval({ executionId, actionIds: ['send'], reason: 'pending approval' });
     store.markExecutionPending(executionId);
-    const workflowActive = { [workflow.id!]: true };
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive });
+    store.setWorkflowActive(workflow.id!, true);
+    const runtime = new WorkflowRuntime({ store, globalActive: true });
 
     try {
       await runtime.removeWorkflow(workflow.id!);
-      expect(workflowActive[workflow.id!]).toBe(true);
+      expect(store.isWorkflowActive(workflow.id!)).toBe(true);
       expect(() => store.deleteWorkflow(workflow.id!)).toThrow('실행 중인 워크플로우는 삭제할 수 없습니다.');
     } finally {
       store.rejectPendingApproval(approvalId);

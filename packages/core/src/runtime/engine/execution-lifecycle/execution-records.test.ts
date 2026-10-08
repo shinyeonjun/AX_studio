@@ -12,7 +12,6 @@ describe('runtime execution records', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
 
@@ -30,7 +29,7 @@ describe('runtime execution records', () => {
   it('records preflight cancellation instead of hiding it from activity', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: false, workflowActive: {}, connectors: {} });
+    const runtime = new WorkflowRuntime({ store, globalActive: false, connectors: {} });
 
     const result = await runtime.executeWorkflow(
       { name: '퇴근 상태', goal: '실행하지 않음', version: 1, inputs: [], steps: [], permissions: {}, approval: [], allowExternalAuto: true, assumptions: [], sideEffects: {}, dataPolicy: {} },
@@ -52,7 +51,6 @@ describe('runtime execution records', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     const result = await runtime.executeWorkflow(

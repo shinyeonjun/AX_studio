@@ -9,7 +9,7 @@ describe('Runtime', () => {
   it('runs a valid CS notification flow', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     mockGmail(runtime.connectors).messages.push({
       id: '1',
       from: 'customer@example.com',

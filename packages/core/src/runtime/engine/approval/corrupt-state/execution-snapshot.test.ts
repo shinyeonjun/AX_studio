@@ -12,7 +12,6 @@ describe('approval continuation execution snapshots', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       onExecutionFinished: (result) => finished.push(result),
     });
@@ -42,7 +41,7 @@ describe('approval continuation execution snapshots', () => {
   it('fails closed when an approval execution snapshot is absent', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const executionId = store.createExecution({ workflowId: 'workflow-1', workflowVersion: 1, ephemeral: true });
     const approvalId = store.createApproval({
       executionId,

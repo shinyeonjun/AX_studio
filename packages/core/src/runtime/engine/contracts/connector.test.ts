@@ -7,7 +7,7 @@ describe('runtime engine connector guards', () => {
   it('fails closed when a real connector was not configured', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, });
     const result = await runtime.executeWorkflow(
       {
         name: '연결 누락',

@@ -23,7 +23,7 @@ describe('per-workflow run concurrency', () => {
     let maxActive = 0;
     const gmail = createTestConnectors().gmail!;
     const runtime = new WorkflowRuntime({
-      store: new WorkflowStore(db), globalActive: true, workflowActive: { [workflow.id!]: true },
+      store: new WorkflowStore(db), globalActive: true,
       connectors: { gmail: { name: 'gmail', execute: async (action, params, ctx) => {
         active += 1; maxActive = Math.max(maxActive, active);
         await held;
@@ -50,7 +50,7 @@ describe('per-workflow run concurrency', () => {
     const db = await createDatabaseAsync(':memory:');
     let observedAbort = false;
     const runtime = new WorkflowRuntime({
-      store: new WorkflowStore(db), globalActive: true, workflowActive: { [workflow.id!]: true }, stepTimeoutMs: 20,
+      store: new WorkflowStore(db), globalActive: true, stepTimeoutMs: 20,
       connectors: { gmail: { name: 'gmail', execute: (_action, _params, ctx) => new Promise(() => {
         ctx.abortSignal?.addEventListener('abort', () => { observedAbort = true; });
       }) } },

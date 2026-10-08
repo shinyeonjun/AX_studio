@@ -84,7 +84,6 @@ describe('runtime control-flow nested risk branch', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       decisionEngine,
     });
@@ -158,7 +157,6 @@ describe('runtime control-flow nested risk branch', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       investigationRunner,
       decisionEngine,
@@ -238,7 +236,6 @@ describe('runtime control-flow nested risk branch', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
       investigationRunner,
       decisionEngine,

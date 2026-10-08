@@ -37,7 +37,7 @@ async function fixture(kind: Kind) {
       if (outcome === 'unknown') throw new Error('Synthetic provider reply lost');
       return { ok: true, data: { id: 'synthetic-receipt' } };
     } };
-  const config = { store: state.store, globalActive: true, workflowActive: {}, connectors: { ...createTestConnectors(), gmail } };
+  const config = { store: state.store, globalActive: true, connectors: { ...createTestConnectors(), gmail } };
   const runtime = new WorkflowRuntime(config);
   const ir: WorkflowIR = { name: 'Synthetic ordering fixture', goal: 'Literal send', version: 1, inputs: [],
     steps: [{ id: 'send', type: 'action', connector: 'gmail', action: 'message.send', sideEffect: 'EXTERNAL_HIGH',
