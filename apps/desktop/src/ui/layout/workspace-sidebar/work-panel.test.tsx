@@ -28,3 +28,21 @@ describe('WorkHealthNote', () => {
     expect(markup).toContain('승인을 기다리는 중입니다');
   });
 });
+
+describe('a job whose new-item check keeps failing', () => {
+  const at = '2026-10-08T00:00:00.000Z';
+  it('says so at once when the person must act, such as an expired Google login', () => {
+    const html = renderToStaticMarkup(<WorkHealthNote work={{ triggerDeadLetters: [], triggerPollFailure: {
+      code: 'oauth_refresh_failed', message: 'Google 로그인이 만료됐어요. 설정에서 Gmail을 다시 연결해 주세요.', firstFailedAt: at, lastFailedAt: at,
+    } }} />);
+    expect(html).toContain('자동 시작 확인 안 됨');
+    expect(html).toContain('Gmail을 다시 연결해 주세요');
+  });
+
+  it('waits out a brief failure, and speaks up once it has lasted five minutes', () => {
+    const brief = { code: 'request_timeout', message: '서버가 제때 응답하지 않았어요.', firstFailedAt: at, lastFailedAt: '2026-10-08T00:01:00.000Z' };
+    expect(renderToStaticMarkup(<WorkHealthNote work={{ triggerDeadLetters: [], triggerPollFailure: brief }} />)).toBe('');
+    const lasting = { ...brief, lastFailedAt: '2026-10-08T00:06:00.000Z' };
+    expect(renderToStaticMarkup(<WorkHealthNote work={{ triggerDeadLetters: [], triggerPollFailure: lasting }} />)).toContain('자동 시작 확인 안 됨');
+  });
+});

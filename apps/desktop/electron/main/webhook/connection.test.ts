@@ -33,7 +33,7 @@ describe('Webhook desktop connection lifecycle', () => {
         { port: 18_789, secret: STRONG_SECRET, label: 'Local hooks' },
         refreshTransports,
       ),
-    ).rejects.toThrow('Webhook listener unavailable');
+    ).rejects.toThrow('외부 신호 받기를 시작하지 못했어요. 포트 번호를 바꿔 다시 시도해 주세요.');
 
     expect(store.getConnections()).toEqual([
       expect.objectContaining({
@@ -43,7 +43,7 @@ describe('Webhook desktop connection lifecycle', () => {
           port: 18_789,
           label: 'Local hooks',
           secretStored: false,
-          lastError: 'Webhook listener unavailable',
+          lastError: '외부 신호 받기를 시작하지 못했어요. 포트 번호를 바꿔 다시 시도해 주세요.',
         }),
       }),
     ]);
@@ -65,12 +65,12 @@ describe('Webhook desktop connection lifecycle', () => {
     credentialState.secret = STRONG_SECRET;
     store.setConnection('webhook', true, { port: 18_789, secretStored: true });
     const refreshTransports = vi.fn()
-      .mockRejectedValueOnce(new Error('port busy'))
+      .mockRejectedValueOnce(new Error('listen EADDRINUSE: address already in use :::18789'))
       .mockResolvedValue(undefined);
 
     await expect(
       validateAndConnectWebhook(store, { port: 18_790, secret: OTHER_SECRET }, refreshTransports),
-    ).rejects.toThrow('port busy');
+    ).rejects.toThrow('이 포트를 다른 프로그램이 쓰고 있어요. 다른 포트 번호를 입력해 주세요.');
 
     expect(credentialState.secret).toBe(STRONG_SECRET);
     expect(refreshTransports).toHaveBeenCalledTimes(2);
@@ -78,7 +78,7 @@ describe('Webhook desktop connection lifecycle', () => {
       expect.objectContaining({
         connector: 'webhook',
         connected: true,
-        config: expect.objectContaining({ port: 18_789, lastError: 'port busy' }),
+        config: expect.objectContaining({ port: 18_789, lastError: '이 포트를 다른 프로그램이 쓰고 있어요. 다른 포트 번호를 입력해 주세요.' }),
       }),
     ]);
   });

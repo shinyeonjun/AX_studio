@@ -1,3 +1,4 @@
+import { connectorErrorMessage } from '../../../contracts/error-messages.js';
 import { getTriggerHandler } from '../../../triggers/registry.js';
 import { matchesTriggerFilter } from '../../../triggers/filter.js';
 import type { TriggerCursor, TriggerEvent, TriggerPollResult } from '../../../triggers/types.js';
@@ -125,6 +126,43 @@ async function processPolledEvent(
   return { kind: 'advance', result };
 }
 
+/** Per workflow: why checking for new mail/messages/files keeps failing, until a check succeeds. */
+export const TRIGGER_POLL_FAILURE_PREFIX = 'trigger.pollFailure:';
+
+export interface TriggerPollFailure {
+  /** The connector's code, e.g. oauth_refresh_failed or folder_not_accessible. */
+  code: string;
+  /** What to tell the person, already in words. */
+  message: string;
+  firstFailedAt: string;
+  lastFailedAt: string;
+}
+
+function recordPollFailure(store: PollWorkflowParams['options']['store'], workflowId: string, err: unknown): void {
+  const key = `${TRIGGER_POLL_FAILURE_PREFIX}${encodeURIComponent(workflowId)}`;
+  const now = new Date().toISOString();
+  const code = typeof (err as { code?: unknown } | null)?.code === 'string' ? (err as { code: string }).code : 'trigger_poll_failed';
+  try {
+    const previous = store.getSetting<TriggerPollFailure | undefined>(key, undefined);
+    store.setSetting(key, {
+      code,
+      message: connectorErrorMessage(err instanceof Error ? err.message : String(err)),
+      firstFailedAt: previous?.firstFailedAt ?? now,
+      lastFailedAt: now,
+    } satisfies TriggerPollFailure);
+  } catch {
+    // Recording health must never stop polling.
+  }
+}
+
+function clearPollFailure(store: PollWorkflowParams['options']['store'], workflowId: string): void {
+  try {
+    store.deleteSetting(`${TRIGGER_POLL_FAILURE_PREFIX}${encodeURIComponent(workflowId)}`);
+  } catch {
+    // Recording health must never stop polling.
+  }
+}
+
 export async function pollTriggerWorkflow({
   options,
   generation,
@@ -147,6 +185,7 @@ export async function pollTriggerWorkflow({
       abortSignal,
     }), abortSignal);
     if (!pollResult || abortSignal?.aborted || !options.isCurrentGeneration(generation)) return false;
+    clearPollFailure(options.store, workflowId);
 
     let processedCursor: TriggerCursor = {
       ...cursor,
@@ -175,6 +214,8 @@ export async function pollTriggerWorkflow({
     }
   } catch (err) {
     console.error(`[trigger-engine] poll failed for skill ${workflowId}:`, err);
+    // A job whose "새 메일이 오면" check keeps failing must not look healthy: keep why, for the sidebar.
+    if (!abortSignal?.aborted) recordPollFailure(options.store, workflowId, err);
   }
   return true;
 }
