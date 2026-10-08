@@ -79,6 +79,7 @@ export function parseAiToml(content: string): AiTomlConfig {
       if (key === 'model') config.decision.jev.model = value;
       if (key === 'base_url') config.decision.jev.baseURL = value;
       if (key === 'key_origin') config.decision.jev.keyOrigin = value;
+      if (key === 'verified_key') config.decision.jev.verifiedKey = value;
       continue;
     }
     if (section === 'secrets') {
@@ -142,6 +143,7 @@ export function serializeAiToml(config: AiTomlConfig): string {
     if (jev.model) lines.push(`model = ${escapeTomlString(jev.model)}`);
     if (jev.baseURL) lines.push(`base_url = ${escapeTomlString(jev.baseURL)}`);
     if (jev.keyOrigin) lines.push(`key_origin = ${escapeTomlString(jev.keyOrigin)}`);
+    if (jev.verifiedKey) lines.push(`verified_key = ${escapeTomlString(jev.verifiedKey)}`);
     lines.push('');
   }
   return lines.join('\n');

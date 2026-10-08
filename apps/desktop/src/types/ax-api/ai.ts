@@ -14,6 +14,8 @@ interface JevDecisionConfigSnapshot {
   defaultBaseURL: string;
   apiKeyConfigured: boolean;
   apiKeyMasked?: string;
+  /** The stored key passed the connection check before; settings need not ask again. */
+  apiKeyVerified?: boolean;
 }
 
 interface JevDecisionConfigInput {
