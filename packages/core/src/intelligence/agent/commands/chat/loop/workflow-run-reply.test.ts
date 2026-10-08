@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AxCommandResult } from '../../schema.js';
-import { workflowRunReply } from './loop-shared.js';
+import { workflowRunReply } from './turn-context.js';
 
 const run = (status: AxCommandResult['status'], extra: Partial<AxCommandResult> = {}): AxCommandResult =>
   ({ command: 'workflow.run', status, data: { executionId: 'exec-1' }, issues: [], ...extra }) as AxCommandResult;

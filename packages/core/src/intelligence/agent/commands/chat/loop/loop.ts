@@ -7,15 +7,15 @@ import {
   selectedHttpReadCommand,
 } from './connection-selection/http-endpoint-selection.js';
 import { chatReadAuthorizationFor } from './read-authorization.js';
-import { runHostConfirmedTurn } from './loop-confirmations.js';
-import { createChatReplies, type ChatReplies } from './loop-replies.js';
-import { runJevChatTurn } from './loop-jev/index.js';
+import { runHostConfirmedTurn } from './confirmations.js';
+import { createChatReplies, type ChatReplies } from './replies.js';
+import { runJevChatTurn } from './jev/index.js';
 import {
   executeScopedChatCommand,
   presentHttpEndpointSelection,
   type CommandChatLoopContext,
-} from './loop-shared.js';
-export type { CommandChatLoopContext } from './loop-shared.js';
+} from './turn-context.js';
+export type { CommandChatLoopContext } from './turn-context.js';
 
 function shouldUseJevRoute(options: AxCommandChatOptions): boolean {
   return Boolean(options.decisionEngine) && !options.allowJobCommit && !options.mutationConfirmationToken;

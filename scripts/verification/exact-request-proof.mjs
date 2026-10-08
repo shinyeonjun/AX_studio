@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { authoritativeDecisionRequest, createAuthoritativeRequestAnchor } from '../../packages/core/dist/intelligence/decision/request-anchor.js';
-import { reportCommand } from '../../packages/core/dist/intelligence/agent/commands/chat/routing/jev-report-selection.js';
+import { reportCommand } from '../../packages/core/dist/intelligence/agent/commands/chat/routing/report-selection.js';
 
 const base = '9e993b1a4094d64b8d294b1ca55495a188483ac5';
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -27,7 +27,7 @@ function loadPureModule(path, old, context) {
   return exports;
 }
 const oldContext = loadPureModule('packages/core/src/intelligence/decision/context.ts', true);
-const oldReport = loadPureModule('packages/core/src/intelligence/agent/commands/chat/routing/jev-report-selection.ts', true, oldContext);
+const oldReport = loadPureModule('packages/core/src/intelligence/agent/commands/chat/routing/report-selection.ts', true, oldContext);
 const pendingPath = 'apps/desktop/electron/main/ipc/workspace-chat-command-handlers/pending-command.ts';
 const oldPending = loadPureModule(pendingPath, true);
 const newPending = loadPureModule(pendingPath, false);
