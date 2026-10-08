@@ -45,7 +45,6 @@ const TITLES: Readonly<Record<ConfirmedMutationName, string>> = {
 };
 
 const PENDING_MUTATION_TTL_MS = 15 * 60 * 1000;
-const MAX_PENDING_MUTATIONS = 128;
 const MAX_LABEL_CHARS = 200;
 const MutationCommitArgsSchema = z.object({}).strict();
 
@@ -263,12 +262,6 @@ export function requestMutationConfirmation(
 
   const now = Date.now();
   prunePendingMutations(state, now);
-  if (!state.pendingMutations.has(sessionId) && state.pendingMutations.size >= MAX_PENDING_MUTATIONS) {
-    return result(command.name, 'invalid', undefined, [issue(
-      'pending_mutations_full',
-      '확인 대기 중인 변경이 많습니다. 기존 확인 카드를 처리한 뒤 다시 시도해 주세요.',
-    )]);
-  }
   const token = randomUUID();
   state.pendingMutations.set(sessionId, {
     token,

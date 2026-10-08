@@ -24,6 +24,7 @@ import * as settingsRepo from './repositories/settings-repository.js';
 import * as triggerReceiptRepo from './repositories/trigger-receipt-repository.js';
 import * as workflowRepo from './repositories/workflow-repository.js';
 import * as discoveryMetadata from './repositories/discovery-metadata-repository.js';
+import { ChatHostStateMap } from './chat-host-state.js';
 import * as retentionRepo from './repositories/retention-repository.js';
 import { listCorruptRows } from './tolerant-rows.js';
 import { mergeColumnLabels, validColumnLabel, type ColumnLabels } from '../contracts/artifacts/column-labels.js';
@@ -231,6 +232,10 @@ export class WorkflowStore {
     return approvalRepo.getPendingApprovalsWithExecutionSnapshots(this.db);
   }
 
+  /** Host-only state of one kind, per conversation, that survives a restart. */
+  chatHostState<T>(kind: string, maxEntries?: number): ChatHostStateMap<T> {
+    return new ChatHostStateMap<T>(this.db, kind, maxEntries);
+  }
   getSetting<T>(key: string, defaultValue: T): T { return settingsRepo.getSetting(this.db, key, defaultValue); }
   listSettingsByPrefix(prefix: string) { return settingsRepo.listSettingsByPrefix(this.db, prefix); }
   getGlobalActive(): boolean { return settingsRepo.getGlobalActive(this.db); }

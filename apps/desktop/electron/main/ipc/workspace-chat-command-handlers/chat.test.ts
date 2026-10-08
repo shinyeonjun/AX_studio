@@ -161,6 +161,7 @@ describe('Desktop workspace chat Jev routing', () => {
       getSourceChoices: vi.fn(() => []),
       rememberSourceChoice: vi.fn(),
       getWorkflowPolicy: vi.fn(() => ({})),
+      chatHostState: () => new Map(),
     };
     const core = {
       store,

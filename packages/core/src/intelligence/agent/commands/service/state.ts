@@ -6,12 +6,19 @@ import { createWorkflowCommandGateway } from '../workflow-gateway.js';
 import type {
   AxCommandServiceOptions,
   AxCommandServiceState,
+  PendingMutation,
 } from './contracts.js';
+import type { PendingJobDraft } from '../job-registration/contract.js';
+
+/** Pending drafts and confirmations kept per conversation; the oldest goes past this many. */
+export const MAX_PENDING_PER_KIND = 128;
 
 export function createCommandServiceState(
   store: WorkflowStore,
   options: AxCommandServiceOptions = {},
 ): AxCommandServiceState {
+  let pendingJobs: AxCommandServiceState['pendingJobs'] | undefined;
+  let pendingMutations: AxCommandServiceState['pendingMutations'] | undefined;
   return {
     store,
     options,
@@ -29,7 +36,12 @@ export function createCommandServiceState(
     repairGateway: createRepairCommandGateway(store, {
       snapshotRoot: options.repairSnapshotRoot,
     }),
-    pendingJobs: new Map(),
-    pendingMutations: new Map(),
+    // Opened on first use: a job draft or a confirmation card still in the chat works after a restart.
+    get pendingJobs() {
+      return (pendingJobs ??= store.chatHostState<PendingJobDraft>('pending_job', MAX_PENDING_PER_KIND));
+    },
+    get pendingMutations() {
+      return (pendingMutations ??= store.chatHostState<PendingMutation>('pending_mutation', MAX_PENDING_PER_KIND));
+    },
   };
 }

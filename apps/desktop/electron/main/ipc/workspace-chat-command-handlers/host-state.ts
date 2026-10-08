@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { AxContextUpdateConfirmation, AxUiPresentation, ChatReadRecipe, TableArtifact, WorkspaceChatMessage } from '@ax-studio/core';
+import type { AxContextUpdateConfirmation, AxUiPresentation, ChatReadRecipe, TableArtifact, WorkflowStore, WorkspaceChatMessage } from '@ax-studio/core';
 
 /**
  * Host-only per-session state that the renderer-saved transcript cannot forge.
- * Process-local: an app restart drops pending confirmations and the cached table,
- * so the user re-confirms or re-reads instead of trusting a stale transcript.
+ * The table on screen and how it was made are kept in the database (host-only rows the renderer
+ * cannot write), so "이 중 …" and "반복 업무로" still work after a restart. Context confirmations
+ * stay in this process: after a restart the person confirms again.
  */
 
 export const CONTEXT_CONFIRMATION_PREFIX = 'confirm_context:';
@@ -18,9 +19,11 @@ interface PendingContextConfirmation {
 }
 
 const contextConfirmations = new Map<string, Map<string, PendingContextConfirmation>>();
-const readResults = new Map<string, TableArtifact>();
-/** How the cached table was produced; kept only alongside that table. */
-const readRecipes = new Map<string, ChatReadRecipe>();
+
+type HostStore = Pick<WorkflowStore, 'chatHostState'>;
+const readResultsOf = (store: HostStore) => store.chatHostState<TableArtifact>('read_result');
+/** How the remembered table was produced; kept only alongside that table. */
+const readRecipesOf = (store: HostStore) => store.chatHostState<ChatReadRecipe>('read_recipe');
 
 function touchSession<T>(store: Map<string, T>, sessionId: string, value: T): void {
   store.delete(sessionId);
@@ -93,23 +96,27 @@ export function consumeContextConfirmation(
   return entry.contextUpdate;
 }
 
-/** Remember the bounded table the host itself displayed for this session. */
 /**
  * Holds the table this turn shows and returns it under an id of its own. Reads name their tables
  * by kind ("chat:capability-result"), so without this a newer table the screen never got (a reply
  * the window dropped) would pass for the older one still on screen, and "이 중 …" would work on
  * rows the person never saw.
  */
-export function rememberHostReadResult<T extends TableArtifact | undefined>(sessionId: string, table: T, recipe?: ChatReadRecipe): T {
+export function rememberHostReadResult<T extends TableArtifact | undefined>(
+  store: HostStore,
+  sessionId: string,
+  table: T,
+  recipe?: ChatReadRecipe,
+): T {
   if (!table) {
-    readResults.delete(sessionId);
-    readRecipes.delete(sessionId);
+    readResultsOf(store).delete(sessionId);
+    readRecipesOf(store).delete(sessionId);
     return table;
   }
   const shown = { ...structuredClone(table), id: `${table.id.split('#', 1)[0]}#${randomUUID()}` } as T & TableArtifact;
-  touchSession(readResults, sessionId, structuredClone(shown));
-  if (recipe) touchSession(readRecipes, sessionId, structuredClone(recipe));
-  else readRecipes.delete(sessionId);
+  readResultsOf(store).set(sessionId, shown);
+  if (recipe) readRecipesOf(store).set(sessionId, recipe);
+  else readRecipesOf(store).delete(sessionId);
   return shown;
 }
 
@@ -118,10 +125,11 @@ export function rememberHostReadResult<T extends TableArtifact | undefined>(sess
  * cannot inject rows, and a cleared or rewritten conversation does not resurrect it.
  */
 export function hostReadResultFor(
+  store: HostStore,
   sessionId: string,
   messages: WorkspaceChatMessage[],
 ): TableArtifact | undefined {
-  const cached = readResults.get(sessionId);
+  const cached = readResultsOf(store).get(sessionId);
   if (!cached) return undefined;
   const latestShown = [...messages].reverse()
     .find((message) => message.role === 'assistant' && message.readResult)?.readResult;
@@ -129,19 +137,17 @@ export function hostReadResultFor(
 }
 
 /** Forget everything held for a deleted conversation (confirmations, its table and recipe). */
-export function clearHostChatSession(sessionId: string): void {
+export function clearHostChatSession(store: HostStore, sessionId: string): void {
   contextConfirmations.delete(sessionId);
-  readResults.delete(sessionId);
-  readRecipes.delete(sessionId);
+  readResultsOf(store).delete(sessionId);
+  readRecipesOf(store).delete(sessionId);
 }
 
 /** The recipe of the table `hostReadResultFor` would return, under the same transcript check. */
-export function hostReadRecipeFor(sessionId: string, messages: WorkspaceChatMessage[]): ChatReadRecipe | undefined {
-  return hostReadResultFor(sessionId, messages) ? readRecipes.get(sessionId) : undefined;
+export function hostReadRecipeFor(store: HostStore, sessionId: string, messages: WorkspaceChatMessage[]): ChatReadRecipe | undefined {
+  return hostReadResultFor(store, sessionId, messages) ? readRecipesOf(store).get(sessionId) : undefined;
 }
 
 export function clearHostChatStateForTests(): void {
   contextConfirmations.clear();
-  readResults.clear();
-  readRecipes.clear();
 }

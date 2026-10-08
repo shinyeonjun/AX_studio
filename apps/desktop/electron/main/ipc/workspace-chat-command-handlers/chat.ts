@@ -103,8 +103,8 @@ export function registerWorkspaceChatMessageHandler() {
     // Rendering metadata belongs to the host transcript, not the provider prompt.
     const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     // Rows come from the host cache of what it displayed, never from the renderer-saved transcript.
-    const previousReadResult = hostReadResultFor(safeWorkspaceSessionId, requestMessages);
-    const previousReadRecipe = hostReadRecipeFor(safeWorkspaceSessionId, requestMessages);
+    const previousReadResult = hostReadResultFor(core.store, safeWorkspaceSessionId, requestMessages);
+    const previousReadRecipe = hostReadRecipeFor(core.store, safeWorkspaceSessionId, requestMessages);
     const chatRequestId =
       typeof requestId === 'string' && requestId.trim() ? requestId.trim() : `command-chat-${Date.now()}`;
     const historyChars = history.reduce((total, message) => total + message.content.length, 0);
@@ -216,7 +216,7 @@ export function registerWorkspaceChatMessageHandler() {
       });
       outcome = 'success';
       const shownTable = turn.readResultReported
-        ? rememberHostReadResult(safeWorkspaceSessionId, turn.readResult, turn.readRecipe)
+        ? rememberHostReadResult(core.store, safeWorkspaceSessionId, turn.readResult, turn.readRecipe)
         : turn.readResult;
       return {
         role: 'assistant' as const,
@@ -259,7 +259,7 @@ export function registerWorkspaceChatMessageHandler() {
       // A turn that finished after its chat was deleted must not leave state behind for it.
       if (!core.store.getWorkspaceChat(safeWorkspaceSessionId)) {
         clearPendingCommand(safeWorkspaceSessionId, true);
-        clearHostChatSession(safeWorkspaceSessionId);
+        clearHostChatSession(core.store, safeWorkspaceSessionId);
       }
     }
   });

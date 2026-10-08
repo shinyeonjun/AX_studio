@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import type { AxUiPresentation, TableArtifact, WorkspaceChatMessage } from '@ax-studio/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createDatabaseAsync, WorkflowStore, type AxUiPresentation, type TableArtifact, type WorkspaceChatMessage } from '@ax-studio/core';
 import { contextUpdateConfirmation, hasContextConfirmation, isJobConfirmation, mutationConfirmationToken } from './helpers.js';
 import {
   bindContextConfirmations,
@@ -104,6 +104,8 @@ describe('confirmation tokens', () => {
 });
 
 describe('host read result cache', () => {
+  let store: WorkflowStore;
+  beforeEach(async () => { store = new WorkflowStore(await createDatabaseAsync(':memory:')); });
   const table = (id: string, title: string): TableArtifact => ({
     id, kind: 'table', truncated: false,
     columns: [{ name: 'title', type: 'string', nullable: false, inferred: false }],
@@ -111,7 +113,7 @@ describe('host read result cache', () => {
   });
 
   it('serves the host-displayed rows only while the transcript still shows that table', () => {
-    const remembered = rememberHostReadResult('session-a', table('products', 'Host row'));
+    const remembered = rememberHostReadResult(store, 'session-a', table('products', 'Host row'));
     const forged = table(remembered.id, 'Forged row');
     const shown: WorkspaceChatMessage[] = [
       { role: 'assistant', content: '표', readResult: forged },
@@ -119,28 +121,53 @@ describe('host read result cache', () => {
       { role: 'user', content: '이 중 가장 비싼 것은?' },
     ];
 
-    expect(hostReadResultFor('session-a', shown)?.rows[0]?.values.title).toBe('Host row');
-    expect(hostReadResultFor('session-b', shown)).toBeUndefined();
-    expect(hostReadResultFor('session-a', [{ role: 'user', content: '새 대화' }])).toBeUndefined();
+    expect(hostReadResultFor(store, 'session-a', shown)?.rows[0]?.values.title).toBe('Host row');
+    expect(hostReadResultFor(store, 'session-b', shown)).toBeUndefined();
+    expect(hostReadResultFor(store, 'session-a', [{ role: 'user', content: '새 대화' }])).toBeUndefined();
 
-    rememberHostReadResult('session-a', undefined);
-    expect(hostReadResultFor('session-a', shown)).toBeUndefined();
+    rememberHostReadResult(store, 'session-a', undefined);
+    expect(hostReadResultFor(store, 'session-a', shown)).toBeUndefined();
   });
 
   it('never passes a newer table off as the older one still on screen, though reads name them alike', () => {
-    const first = rememberHostReadResult('session-c', table('chat:capability-result', '첫 조회'));
+    const first = rememberHostReadResult(store, 'session-c', table('chat:capability-result', '첫 조회'));
     const onScreen: WorkspaceChatMessage[] = [
       { role: 'assistant', content: '표', readResult: first },
       { role: 'user', content: '이 중 첫 번째만' },
     ];
-    expect(hostReadResultFor('session-c', onScreen)?.rows[0]?.values.title).toBe('첫 조회');
+    expect(hostReadResultFor(store, 'session-c', onScreen)?.rows[0]?.values.title).toBe('첫 조회');
 
     // A second read whose reply never reached the screen (the window dropped it).
-    const second = rememberHostReadResult('session-c', table('chat:capability-result', '안 보인 조회'));
+    const second = rememberHostReadResult(store, 'session-c', table('chat:capability-result', '안 보인 조회'));
     expect(second.id).not.toBe(first.id);
-    expect(hostReadResultFor('session-c', onScreen)).toBeUndefined();
-    expect(hostReadResultFor('session-c', [...onScreen, { role: 'assistant', content: '표', readResult: second }])?.rows[0]?.values.title)
+    expect(hostReadResultFor(store, 'session-c', onScreen)).toBeUndefined();
+    expect(hostReadResultFor(store, 'session-c', [...onScreen, { role: 'assistant', content: '표', readResult: second }])?.rows[0]?.values.title)
       .toBe('안 보인 조회');
+  });
+
+  it('still knows the table on screen and how it was made after the app restarts', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { hostReadRecipeFor } = await import('./host-state.js');
+    const root = mkdtempSync(join(tmpdir(), 'ax-host-state-'));
+    try {
+      const path = join(root, 'ax.db');
+      const beforeDb = await createDatabaseAsync(path);
+      const before = new WorkflowStore(beforeDb);
+      const recipe = { kind: 'http_table' as const, params: { connectionId: 'shop', method: 'GET', path: 'orders' } };
+      const shown = rememberHostReadResult(before, 'session-r', table('chat:capability-result', '반품 주문'), recipe);
+      beforeDb.close?.();
+
+      const afterDb = await createDatabaseAsync(path);
+      const after = new WorkflowStore(afterDb);
+      const onScreen: WorkspaceChatMessage[] = [{ role: 'assistant', content: '표', readResult: shown }, { role: 'user', content: '이 중 …' }];
+      expect(hostReadResultFor(after, 'session-r', onScreen)?.rows[0]?.values.title).toBe('반품 주문');
+      expect(hostReadRecipeFor(after, 'session-r', onScreen)).toEqual(recipe);
+      afterDb.close?.();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

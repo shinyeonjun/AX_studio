@@ -82,7 +82,7 @@ export function registerWorkspaceChatPersistenceHandlers() {
     await core.workspaceSources.deleteSession(id);
     cancelWorkspaceChatSession(id);
     clearPendingCommand(id, true);
-    clearHostChatSession(id);
+    clearHostChatSession(core.store, id);
     forgetWorkspaceSessionTurns(core.store, id);
     core.runtime.discardSessionToolDrafts(id);
     core.commandService.releaseWorkspaceSession(id);

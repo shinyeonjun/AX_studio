@@ -18,7 +18,19 @@ import type { AxWorkflowCommandGateway } from '../workflow-gateway/contract.js';
 import type { MetadataDispatchPermit } from '../../../decision/request-understanding/session.js';
 
 /** A host-confirmable mutation waiting for the user's confirmation card. */
-interface PendingMutation {
+/**
+ * Per-conversation pending state. In the service it is kept in the database (it outlives a
+ * restart, see WorkflowStore.chatHostState); a plain Map satisfies it in tests.
+ */
+export interface SessionStateMap<T> extends Iterable<[string, T]> {
+  get(sessionId: string): T | undefined;
+  has(sessionId: string): boolean;
+  set(sessionId: string, value: T): unknown;
+  delete(sessionId: string): boolean;
+  readonly size: number;
+}
+
+export interface PendingMutation {
   token: string;
   command: AxCommand;
   workflowId?: string;
@@ -77,7 +89,7 @@ export interface AxCommandServiceState {
   workflowGateway: AxWorkflowCommandGateway;
   discoveryGateway: DiscoveryCommandGateway;
   repairGateway: RepairCommandGateway;
-  pendingJobs: Map<string, PendingJobDraft>;
+  pendingJobs: SessionStateMap<PendingJobDraft>;
   /** Agent-proposed workflow run/update/delete or repair apply awaiting host confirmation, by session. */
-  pendingMutations: Map<string, PendingMutation>;
+  pendingMutations: SessionStateMap<PendingMutation>;
 }

@@ -198,6 +198,7 @@ export function deleteWorkspaceChat(db: AppDatabase, id: string): void {
   db.exec('BEGIN IMMEDIATE');
   try {
     db.prepare('DELETE FROM workspace_chats WHERE id = ?').run(id);
+    db.prepare('DELETE FROM workspace_chat_host_state WHERE chat_id = ?').run(id);
     // Runs and discovery sessions outlive the chat; they must not keep pointing at it
     // (Activity would offer "결과 대화 보기" for a conversation that no longer exists).
     db.prepare('UPDATE executions SET workspace_session_id = NULL WHERE workspace_session_id = ?').run(id);

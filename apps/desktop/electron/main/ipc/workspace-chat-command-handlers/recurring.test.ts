@@ -77,7 +77,7 @@ describe('recurring draft from a read answer', () => {
     clearHostChatStateForTests();
     const { store } = await setup();
     const chat = store.saveWorkspaceChat({ messages: [] });
-    const shown = rememberHostReadResult(chat.id, table as never, { ...recipe, params: { ...recipe.params, connectionId: httpEndpointsFromConnections(store.getConnections())[0]!.id } });
+    const shown = rememberHostReadResult(store, chat.id, table as never, { ...recipe, params: { ...recipe.params, connectionId: httpEndpointsFromConnections(store.getConnections())[0]!.id } });
     store.saveWorkspaceChat({ id: chat.id, messages: [
       { role: 'user', content: '재고 10개 미만 상품만 표로 보여줘' },
       { role: 'assistant', content: '| title |', readResult: shown },
@@ -98,9 +98,9 @@ describe('recurring draft from a read answer', () => {
       { role: 'user', content: '표로 보여줘' },
       { role: 'assistant', content: '다른 표', readResult: { ...table, id: 'other' } as never },
     ] });
-    rememberHostReadResult(chat.id, table as never, recipe);
+    rememberHostReadResult(store, chat.id, table as never, recipe);
     const reply = await proposeRecurringFromRead(chat.id, weeklyMonday);
     expect(reply.presentations).toEqual([]);
-    expect(reply.content).toContain('조회 방법을 다시 확인할 수 없습니다');
+    expect(reply.content).toContain('조회 방법을 찾지 못했어요');
   });
 });
