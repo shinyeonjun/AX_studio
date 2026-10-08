@@ -120,13 +120,15 @@
   background: rgba(248, 113, 113, 0.08);
 }
 
-.btn-danger {
+/* Filled destructive button (confirmation dialogs). Not .btn-danger: that name is the red-outline
+   variant .btn-secondary.btn-danger used by the connection lists. */
+.btn-danger-fill {
   background: var(--red);
   border-color: var(--red);
   color: white;
 }
 
-.btn-danger:hover {
+.btn-danger-fill:hover {
   filter: brightness(1.08);
   background: var(--red);
   border-color: var(--red);

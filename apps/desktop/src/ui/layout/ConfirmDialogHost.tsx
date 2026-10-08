@@ -44,7 +44,7 @@ export function ConfirmDialogHost() {
           )}
           <div className="confirm-dialog__actions">
             <button type="button" className="btn btn-secondary" onClick={() => answer(false)}>취소</button>
-            <button type="submit" className={`btn ${request.danger ? 'btn-danger' : 'btn-primary'}`}>
+            <button type="submit" className={`btn ${request.danger ? 'btn-danger-fill' : 'btn-primary'}`}>
               {request.confirmLabel}
             </button>
           </div>
