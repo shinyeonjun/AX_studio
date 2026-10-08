@@ -23,7 +23,7 @@ async function fixture() {
     accountId: 'sender@example.test', accountLabel: 'sender@example.test', destinationId: draft.tool === 'gmail' ? draft.to : '', destinationLabel: 'recipient@example.test' }),
     execute: vi.fn(async () => ({ ok: true, data: { id: 'synthetic-receipt' } })) };
   const observer = vi.fn();
-  const config = { store, globalActive: true, workflowActive: {}, connectors: { ...createTestConnectors(), gmail }, onExecutionFinished: observer };
+  const config = { store, globalActive: true, connectors: { ...createTestConnectors(), gmail }, onExecutionFinished: observer };
   const runtime = new WorkflowRuntime(config);
   const ir: WorkflowIR = { name: 'Synthetic fixture', goal: 'Literal send', version: 1, inputs: [],
     steps: [{ id: 'send', type: 'action', connector: 'gmail', action: 'message.send', sideEffect: 'EXTERNAL_HIGH',

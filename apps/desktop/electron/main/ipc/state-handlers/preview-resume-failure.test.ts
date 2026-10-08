@@ -39,7 +39,7 @@ describe.each(['native', 'sqljs'] as const)('preserved resume failure state (%s)
       const evidence = previewApprovalHistoryBytes(db);
       const execute = vi.fn(async () => ({ ok: true }));
       const store = new WorkflowStore(db);
-      const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {},
+      const runtime = new WorkflowRuntime({ store, globalActive: true,
         connectors: { synthetic: { name: 'Synthetic only', execute } } });
       const result = await runtime.continueAfterApproval(fixture.approvalId);
       expect(result).toMatchObject({ status: 'failed', errorCode: scenario.errorCode });

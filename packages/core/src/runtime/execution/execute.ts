@@ -58,7 +58,11 @@ export async function executeWorkflow(
     );
   }
 
-  if (ir.id && host.config.workflowActive[ir.id] === false && !options.forceManual) {
+  // The saved switch, read now: whoever flipped it (settings, a chat card, an edit that needs
+  // re-approval, the scheduler) flipped the only copy.
+  // Only automatic runs are held; a person running it by hand may run a switched-off job.
+  const automatic = !options.forceManual && options.triggerType !== undefined && options.triggerType !== 'manual';
+  if (ir.id && automatic && host.config.store.workflowActiveState(ir.id) === false) {
     return recordPreflightResult(
       host,
       options,

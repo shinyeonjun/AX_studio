@@ -17,7 +17,6 @@ describe('TriggerEngine failed polling execution checkpoints', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     const slack = mockSlack(runtime.connectors);

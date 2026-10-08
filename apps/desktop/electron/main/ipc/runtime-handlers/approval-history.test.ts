@@ -41,7 +41,7 @@ describe.each(['native', 'sqljs'] as const)('preview rejection preserves evidenc
     await stopRuntime();
     // The combined handler owns draft disposal as well as history rejection.
     // An inactive real runtime supplies that contract without connector calls.
-    runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, workflowActive: {}, onExecutionFinished: mocks.finished });
+    runtime = new WorkflowRuntime({ store, connectors: {}, globalActive: false, onExecutionFinished: mocks.finished });
     mocks.getCore.mockReturnValue({ store, runtime });
   }
   beforeEach(() => {

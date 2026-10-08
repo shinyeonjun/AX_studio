@@ -384,6 +384,93 @@ describe('Desktop workspace chat Jev routing', () => {
     }
   });
 
+  it('shows a read table with Korean headers, then filters that same table on the next turn without reading again', async () => {
+    const db = await createDatabaseAsync(':memory:');
+    try {
+      const store = new WorkflowStore(db);
+      store.setConnection('http', true, {
+        endpoints: [{ id: 'dummyjson', label: 'DummyJSON', baseUrl: 'https://dummyjson.com/', authType: 'none' }],
+      });
+      const response = axCore.buildHttpResponseArtifact({
+        executionId: 'read-flow', url: 'https://dummyjson.com/products', status: 200, statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ products: [{ title: 'First', stock: 20 }, { title: 'Second', stock: 50 }] }),
+        truncated: false,
+      });
+      const reads: unknown[] = [];
+      const commandService = new AxCommandService(store, {
+        readGateway: {
+          execute: async (request) => {
+            reads.push(request.args);
+            return { tool: 'capabilities.invoke', ok: true, data: { capabilityId: 'http.request', data: response, citations: [], untrusted: true } };
+          },
+        },
+      });
+      const choiceBy = (question: MockJevQuestion | undefined, match: (criterion: Record<string, unknown>) => boolean) =>
+        Object.entries(question?.criteria ?? {}).find(([, criterion]) =>
+          typeof criterion === 'object' && criterion !== null && match(criterion as Record<string, unknown>))?.[0] ?? 'none';
+      const decisionEngine = {
+        evaluate: vi.fn(async (request: MockJevRequest) => {
+          const { questions } = request;
+          const choice = (choice: string) => ({ type: 'choice', choice, probabilities: { [choice]: 0.99 }, confidence: 0.99 });
+          if (questions.route) {
+            const followUp = Object.hasOwn(questions.route.criteria ?? {}, 'previous_result');
+            return { answers: {
+              route: choice(followUp ? 'previous_result' : 'http_read'),
+              ...(followUp ? {} : { table_transform: choice('none') }),
+            } };
+          }
+          return { answers: {
+            table_transform: choice('filter'),
+            filter_column: choice(choiceBy(questions.filter_column, (criterion) => criterion.field === 'stock')),
+            filter_operator: choice('lt'),
+            filter_value: choice(choiceBy(questions.filter_value, (criterion) => criterion.value === 30)),
+          } };
+        }),
+      };
+      const agentHarness = {
+        providerName: 'test-llm',
+        // Only the one-time Korean header ask may reach the model.
+        runText: vi.fn(async () => ({ output: '{"title":"상품명","stock":"재고"}', provider: 'test-llm', durationMs: 1, promptChars: 1 })),
+      };
+      ipcMocks.getCore.mockReturnValue({ store, workspaceSources: { list: vi.fn(() => []) }, decisionEngine, agentHarness, commandService });
+      registerWorkspaceChatMessageHandler();
+      const handler = ipcMocks.ipcMain.handle.mock.calls.at(-1)?.[1] as (
+        event: unknown, message: string, requestId: string, workflowId: undefined, sessionId: string,
+      ) => Promise<{ content: string; readResult?: axCore.TableArtifact; readRepeatable?: boolean }>;
+      const event = { sender: { id: 42, mainFrame: ipcMocks.mainFrame, send: vi.fn() }, senderFrame: ipcMocks.mainFrame };
+
+      const ask = 'DummyJSON에서 GET products 조회해서 표로 보여줘';
+      const chat = store.saveWorkspaceChat({ messages: [{ role: 'user', content: ask }] });
+      const first = await handler(event, ask, 'read-1', undefined, chat.id);
+
+      expect(reads).toHaveLength(1);
+      expect(first.readResult?.columns.map((column) => column.label)).toEqual(['상품명', '재고']);
+      expect(first.readResult?.rows).toHaveLength(2);
+      expect(first.readRepeatable).toBe(true);
+      expect(store.getColumnLabels()).toMatchObject({ title: '상품명', stock: '재고' });
+
+      // The window saves the answer it showed, then the person narrows it down.
+      const followUp = '이 중 재고 30 미만만';
+      store.saveWorkspaceChat({ id: chat.id, messages: [
+        { role: 'user', content: ask },
+        { role: 'assistant', content: first.content, readResult: first.readResult },
+        { role: 'user', content: followUp },
+      ] });
+      const second = await handler(event, followUp, 'read-2', undefined, chat.id);
+
+      expect(reads).toHaveLength(1);
+      expect(second.content).toContain('First');
+      expect(second.content).not.toContain('Second');
+      expect(second.readResult?.rows.map((row) => row.values.title)).toEqual(['First']);
+      expect(second.readResult?.columns.map((column) => column.label)).toEqual(['상품명', '재고']);
+      expect(second.readResult?.id).not.toBe(first.readResult?.id);
+      expect(agentHarness.runText).toHaveBeenCalledTimes(1);
+    } finally {
+      db.close?.();
+    }
+  });
+
   it('updates an active workflow through Desktop IPC and Jev, using only typed prior outputs', async () => {
     const db = await createDatabaseAsync(':memory:');
     try {

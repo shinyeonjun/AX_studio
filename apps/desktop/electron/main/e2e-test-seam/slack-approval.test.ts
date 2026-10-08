@@ -11,7 +11,7 @@ async function pending(legacy = false) {
   const store = new WorkflowStore(db);
   store.setConnection('slack', true, { synthetic: true });
   const session = store.saveWorkspaceChat({ messages: [{ role: 'user', content: 'E2E fixture' }] });
-  const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {},
+  const runtime = new WorkflowRuntime({ store, globalActive: true,
     connectors: { slack: syntheticSlackApprovalConnector() } });
   const result = await runtime.executeWorkflow(syntheticSlackApprovalPlan(legacy), {
     ephemeral: true, workspaceSessionId: session.id,

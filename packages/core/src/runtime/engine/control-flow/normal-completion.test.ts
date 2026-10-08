@@ -47,7 +47,7 @@ describe('runtime control-flow normal completion', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const result = await runtime.executeWorkflow(ir, { ephemeral: true, input: { flag: true } });
 
     expect(result.status).toBe('success');

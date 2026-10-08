@@ -45,7 +45,6 @@ describe('TriggerEngine webhook push lifecycle', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     store.setConnection('webhook', true, {
@@ -145,7 +144,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
     const port = await findFreePort();
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     store.setConnection('webhook', true, { port, secret: HOOK_SECRET, secretStored: true });
     const engine = new TriggerEngine(store, runtime);
     try {

@@ -30,7 +30,7 @@ describe('startup reconciliation', () => {
     const { db, store, createRun } = await setup();
     const running = createRun();
     try {
-      new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+      new WorkflowRuntime({ store, globalActive: true, });
       expect(store.getExecution(running)).toMatchObject({ status: 'failed', errorCode: 'interrupted' });
       expect(store.getExecution(running)?.finishedAt).toBeTruthy();
       expect(store.deleteWorkflow(workflow.id!)).toBe(true);
@@ -44,7 +44,7 @@ describe('startup reconciliation', () => {
     store.markExecutionPending(executionId);
     expect(store.claimApproval(approvalId)).toBe(true);
     try {
-      const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+      const runtime = new WorkflowRuntime({ store, globalActive: true, });
       expect(store.getApproval(approvalId)?.status).toBe('failed');
       expect(store.getExecution(executionId)).toMatchObject({ status: 'failed', errorCode: 'interrupted' });
       expect((await runtime.continueAfterApproval(approvalId)).errorCode).toBe('approval_already_resolved');
@@ -60,7 +60,7 @@ describe('startup reconciliation', () => {
     const orphan = createRun();
     store.markExecutionPending(orphan);
     try {
-      new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+      new WorkflowRuntime({ store, globalActive: true, });
       expect(store.getExecution(withCheckpoint)?.status).toBe('pending_approval');
       expect(store.getApproval(approvalId)?.status).toBe('pending');
       // Without a checkpoint the remaining steps are unknown: fail closed.
@@ -74,7 +74,7 @@ describe('startup reconciliation', () => {
     const { db, store } = await setup();
     store.claimTriggerReceipt({ dedupeKey: 'wf:gmail.new_message:m1', workflowId: workflow.id!, triggerType: 'gmail.new_message' });
     try {
-      new WorkflowRuntime({ store, globalActive: true, workflowActive: {} });
+      new WorkflowRuntime({ store, globalActive: true, });
       expect(store.claimTriggerReceipt({
         dedupeKey: 'wf:gmail.new_message:m1', workflowId: workflow.id!, triggerType: 'gmail.new_message', processingLeaseMs: 1,
       })).toBe(false);
@@ -85,7 +85,7 @@ describe('startup reconciliation', () => {
 describe('approval TTL', () => {
   it('expires stale pending approvals at startup and refuses to approve them', async () => {
     const { db, store } = await setup();
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: { [workflow.id!]: true },
+    const runtime = new WorkflowRuntime({ store, globalActive: true,
       approvalTtlMs: DEFAULT_APPROVAL_TTL_MS,
       connectors: { gmail: { name: 'gmail', execute: async () => ({ ok: true, data: { id: 'sent' } }) } } });
     try {
@@ -107,7 +107,7 @@ describe('approval TTL', () => {
   it('expires an approval at approve time when the sweep has not run yet', async () => {
     const { db, store } = await setup();
     const execute = async () => ({ ok: true, data: { id: 'sent' } });
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: { [workflow.id!]: true },
+    const runtime = new WorkflowRuntime({ store, globalActive: true,
       approvalTtlMs: 1, connectors: { gmail: { name: 'gmail', execute } } });
     try {
       const pending = await runtime.executeWorkflow(workflow, { triggerType: 'manual' });

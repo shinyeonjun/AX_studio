@@ -48,7 +48,7 @@ async function fixture(fileBacked = false) {
       return { ok: true, data: { id: 'synthetic-receipt-' + calls.length } };
     },
   };
-  const config = { store, globalActive: true, workflowActive: {}, connectors: { ...createTestConnectors(), gmail } };
+  const config = { store, globalActive: true, connectors: { ...createTestConnectors(), gmail } };
   const runtime = new WorkflowRuntime(config);
   const ir: WorkflowIR = { name: 'Independent review fixture', goal: 'One literal synthetic send', version: 1,
     inputs: [], steps: [{ id: 'send', type: 'action', connector: 'gmail', action: 'message.send',

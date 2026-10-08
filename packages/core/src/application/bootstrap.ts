@@ -126,10 +126,6 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   const investigationRunner = createInvestigationRunner(agentHarness);
 
   const globalActive = store.getGlobalActive();
-  const workflowActive: Record<string, boolean> = {};
-  for (const workflow of store.listWorkflows()) {
-    workflowActive[workflow.id] = workflow.active;
-  }
 
   const connectors = buildConnectorsFromStore(store);
   let runtime: WorkflowRuntime | undefined;
@@ -165,7 +161,6 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     investigationRunner,
     decisionEngine: options.decisionEngine,
     globalActive,
-    workflowActive,
     connectors,
     artifactSink: generatedArtifactSink,
     approvalTtlMs: resolveApprovalTtlMs(options.approvalTtlMs),

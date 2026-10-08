@@ -541,7 +541,6 @@ describe('runAxCommandChat command loop', () => {
       const runtime = new WorkflowRuntime({
         store,
         globalActive: true,
-        workflowActive: {},
         connectors,
       });
       const service = new AxCommandService(store, {

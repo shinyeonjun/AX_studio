@@ -271,9 +271,12 @@ export class WorkflowRuntime {
     this.config.globalActive = active;
   }
 
+  /**
+   * Called when a workflow is switched on again: it is no longer treated as removed. Whether it
+   * runs is the switch saved in the store, read at each run.
+   */
   setWorkflowActive(workflowId: string, active: boolean): void {
     if (active) this.removedWorkflowIds.delete(workflowId);
-    this.config.workflowActive[workflowId] = active;
   }
 
   /** Keep live connector instances aligned with connection changes made after startup. */
@@ -296,7 +299,6 @@ export class WorkflowRuntime {
       const oldest = this.removedWorkflowIds.keys().next().value;
       if (oldest) this.removedWorkflowIds.delete(oldest);
     }
-    this.config.workflowActive[workflowId] = false;
     for (const controller of this.activeWorkflowRuns.get(workflowId) ?? []) {
       controller.abort(new Error('workflow_removed'));
     }

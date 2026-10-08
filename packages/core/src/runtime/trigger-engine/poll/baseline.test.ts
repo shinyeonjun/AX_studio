@@ -10,7 +10,7 @@ describe('TriggerEngine polling baseline', () => {
   it('baselines on first poll and fires once for each new gmail message', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     mockGmail(runtime.connectors).messages.push({
       id: 'msg-existing',
       from: 'old@example.com',

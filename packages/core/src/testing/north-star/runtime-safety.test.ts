@@ -21,7 +21,6 @@ describe('North Star QA runtime and approval safety', () => {
       const runtime = new WorkflowRuntime({
         store,
         globalActive: true,
-        workflowActive: {},
         connectors: createTestConnectors(),
       });
       const ir = slackNotifyWorkflow({ allowExternalAuto: true });
@@ -59,7 +58,6 @@ describe('North Star QA runtime and approval safety', () => {
       const runtime = new WorkflowRuntime({
         store,
         globalActive: true,
-        workflowActive: {},
         connectors: createTestConnectors(),
       });
       const first = await runtime.executeWorkflow(slackNotifyWorkflow({ allowExternalAuto: false }), { ephemeral: true });

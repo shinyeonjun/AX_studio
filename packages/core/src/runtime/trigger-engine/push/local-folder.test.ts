@@ -32,7 +32,7 @@ describe('TriggerEngine local-folder push transport', () => {
 
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     mockLocalFolder(runtime.connectors).files['folder-inbox'] = ['/mock/inbox/existing.pdf'];
 
     const { workflowId } = store.saveWorkflow(folderWorkflow);

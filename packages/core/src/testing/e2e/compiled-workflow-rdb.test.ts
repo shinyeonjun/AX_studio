@@ -68,7 +68,6 @@ describe('compiled Work Discovery runtime', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: { rdb, transform },
     });
 

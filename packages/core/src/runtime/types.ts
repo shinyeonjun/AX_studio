@@ -12,7 +12,6 @@ export interface RuntimeConfig {
   connectors?: Record<string, Connector>;
   artifactSink?: ArtifactSink;
   globalActive: boolean;
-  workflowActive: Record<string, boolean>;
   onExecutionStarted?: (executionId: string) => void;
   onExecutionProgress?: (progress: ExecutionProgress) => void;
   onExecutionFinished?: (result: ExecutionResult) => void;

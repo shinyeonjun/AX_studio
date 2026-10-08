@@ -28,7 +28,6 @@ describe('TriggerEngine webhook startup failure', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: createTestConnectors(),
     });
     store.setConnection('webhook', true, {

@@ -57,7 +57,6 @@ describe('runtime engine repair proposal guards', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: { [workflow.id]: true },
       connectors,
     });
 

@@ -24,7 +24,7 @@ describe('TriggerEngine polling eligibility', () => {
     };
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const { workflowId } = store.saveWorkflow(filteredWorkflow);
     store.setWorkflowActive(workflowId, true);
     const engine = new TriggerEngine(store, runtime);
@@ -44,7 +44,7 @@ describe('TriggerEngine polling eligibility', () => {
   it('does not poll inactive works', async () => {
     const db = await createDatabaseAsync(':memory:');
     const store = new WorkflowStore(db);
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: createTestConnectors() });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: createTestConnectors() });
     const { workflowId } = store.saveWorkflow(gmailNotifySkill);
     store.setWorkflowActive(workflowId, false);
 

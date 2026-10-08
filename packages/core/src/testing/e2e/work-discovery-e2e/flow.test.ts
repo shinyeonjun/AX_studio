@@ -122,7 +122,6 @@ describe('work discovery north-star e2e', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       connectors: {
         local_sheet: new LocalSheetConnector(),
         transform: new TransformConnector(),

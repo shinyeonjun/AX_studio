@@ -25,7 +25,6 @@ describe('runtime execution contexts', () => {
     const runtime = new WorkflowRuntime({
       store,
       globalActive: true,
-      workflowActive: {},
       artifactSink,
       connectors: {
         document: {
@@ -116,7 +115,7 @@ describe('runtime execution contexts', () => {
 
   it('replaces and removes live connectors without restarting the runtime', async () => {
     const store = new WorkflowStore(await createDatabaseAsync(':memory:'));
-    const runtime = new WorkflowRuntime({ store, globalActive: true, workflowActive: {}, connectors: {} });
+    const runtime = new WorkflowRuntime({ store, globalActive: true, connectors: {} });
     const connector = { name: 'dynamic', execute: async () => ({ ok: true, data: {} }) };
 
     runtime.setConnector('dynamic', connector);
