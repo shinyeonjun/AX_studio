@@ -1,3 +1,4 @@
+import { decisionServiceFailure } from '../../../../decision/jev/errors.js';
 import { AuthoritativeRequestError, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../../decision/request-anchor.js';
 import {
   decisionProviderRequestCountFromError,
@@ -359,9 +360,13 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     if (error instanceof AuthoritativeRequestError) return { kind: 'request_rejected', failure: error.failure };
     if (telemetry) return telemetry.serviceFailure(error);
     const failedProviderRequestCount = decisionProviderRequestCountFromError(error);
-    return failedProviderRequestCount === undefined
-      ? fallback('service_error')
-      : { kind: 'fallback', reason: 'service_error', evaluationCalls: 0, providerRequestCount: failedProviderRequestCount };
+    const kind = decisionServiceFailure(error);
+    return {
+      ...(failedProviderRequestCount === undefined
+        ? fallback('service_error')
+        : { kind: 'fallback', reason: 'service_error', evaluationCalls: 0, providerRequestCount: failedProviderRequestCount }),
+      ...(kind ? { serviceFailure: kind } : {}),
+    } as JevChatRouterResult;
   }
 }
 

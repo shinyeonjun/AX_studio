@@ -1,3 +1,4 @@
+import type { DecisionServiceFailure } from '../../../../decision/jev/errors.js';
 import type { SourceChoice } from '../../../../../contracts/source-choices.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../../contracts/request-anchor.js';
 import type { AxUiPresentation } from '../../schema.js';
@@ -115,6 +116,8 @@ type JevChatRouterResultValue =
       reason: JevChatRouterFallbackReason;
       /** Which check fell back (for logs; never shown to people). */
       detail?: string;
+      /** For service_error: busy, key rejected or unreachable, so the reply says what to do. */
+      serviceFailure?: DecisionServiceFailure;
       evaluationCalls?: number;
       providerRequestCount?: number;
     };

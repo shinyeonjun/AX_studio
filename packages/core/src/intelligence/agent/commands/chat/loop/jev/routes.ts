@@ -41,7 +41,7 @@ export async function fallbackRoute(turn: JevTurn, route: JevRoute<'fallback'>):
     );
     return reply ?? jevFallbackMessage('unsupported');
   }
-  return jevFallbackMessage(route.reason);
+  return jevFallbackMessage(route.reason, route.serviceFailure);
 }
 
 export async function replyRoute(turn: JevTurn): Promise<string> {

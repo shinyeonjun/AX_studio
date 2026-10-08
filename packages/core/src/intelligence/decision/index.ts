@@ -4,7 +4,9 @@ export {
   JevDecisionEngine,
   resolveJevModel,
   JevDecisionError,
+  decisionServiceFailure,
   validateJevApiKey,
+  type DecisionServiceFailure,
   type JevDecisionEngineOptions,
 } from './jev.js';
 export { createExperimentalJevDecisionEngineFromEnvironment, JEV_EXPERIMENT_FLAG } from './env.js';
