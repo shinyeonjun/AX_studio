@@ -130,8 +130,12 @@ export const JEV_SCALE_ROUTING_CASES: readonly JevRoutingCase[] = [
   { id: 'scale-slack', message: '슬랙 채널 목록 보여줘', expect: { kind: ['command'], capabilityId: 'slack.channels.list' } },
   { id: 'scale-folder', message: '월간보고 폴더에 어떤 파일 있어?', expect: { kind: ['command'], capabilityId: 'local_folder.list' } },
   { id: 'scale-works', message: '내 업무 목록 보여줘', expect: { kind: ['command'], route: ['workflow_list'] } },
-  { id: 'scale-erp-vendors', message: 'ERP에서 매입처 목록 보여줘', expect: read('erp', 'tb_vndr_mst') },
-  { id: 'scale-erp-tax-invoices', message: '세금계산서 발행 내역 보여줘', expect: read('erp', 'tb_tax_inv') },
+  // The ERP database and the ERP API both hold the vendor list: the person must be asked.
+  { id: 'scale-erp-vendors', message: 'ERP에서 매입처 목록 보여줘', expect: { kind: ['clarify'], sourceChooser: true } },
   { id: 'scale-erp-warehouse', message: '창고 입출고 이력 보여줘', expect: { kind: ['command', 'clarify'], capabilityId: 'rdb.query.read', params: { connectionId: ['erp', 'inventory'] } } },
+  // Held only by cryptically named ERP tables: what the learned table descriptions are for.
+  { id: 'scale-erp-warranty', message: '보증수리 청구 들어온 거 보여줘', expect: read('erp', 'tb_wrnty_clm') },
+  { id: 'scale-erp-freight', message: '지역별 운임표 보여줘', expect: read('erp', 'tb_frt_rt') },
+  { id: 'scale-erp-certs', message: '직원들 자격증 만료일 보여줘', expect: read('erp', 'tb_emp_cert') },
   { id: 'scale-recurring', message: '매주 월요일 9시에 지역별 매출 합계를 슬랙으로 보내줘', expect: { kind: ['command', 'clarify'], route: ['workflow_create', 'job_propose'] } },
 ];

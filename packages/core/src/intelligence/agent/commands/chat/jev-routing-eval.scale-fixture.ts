@@ -139,6 +139,9 @@ const ERP_TABLES = [
   t('tb_vndr_mst', 'vndr_cd', 'vndr_nm', 'biz_no', 'pay_term'),
   t('tb_tax_inv', 'inv_no', 'vndr_cd', 'iss_dt', 'sup_amt', 'vat_amt'),
   t('tb_inv_txn', 'item_cd', 'wh_cd', 'txn_type', 'qty', 'txn_dt'),
+  t('tb_wrnty_clm', 'clm_no', 'item_cd', 'cust_cd', 'clm_dt', 'clm_rsn', 'clm_stat'),
+  t('tb_frt_rt', 'rgn_cd', 'wt_band', 'rt_amt', 'eff_dt'),
+  t('tb_emp_cert', 'emp_no', 'cert_cd', 'cert_nm', 'acq_dt', 'exp_dt'),
 ];
 
 /** What describeTables would learn for them (set AX_JEV_EVAL_NO_TABLE_DESCRIPTIONS=1 to leave them out). */
@@ -148,6 +151,9 @@ const ERP_DESCRIPTIONS: Record<string, string> = {
   tb_vndr_mst: '매입처(공급업체) 원장 · 업체명·사업자번호·결제조건',
   tb_tax_inv: '세금계산서 · 발행일·공급가액·부가세',
   tb_inv_txn: '창고 입출고 이력 · 품목·창고·수량',
+  tb_wrnty_clm: '보증수리(A/S) 청구 · 품목·고객·사유·처리상태',
+  tb_frt_rt: '지역별 운임표 · 무게 구간별 운임',
+  tb_emp_cert: '직원 자격증 · 자격 이름·취득일·만료일',
 };
 
 function erpDatabase() {
