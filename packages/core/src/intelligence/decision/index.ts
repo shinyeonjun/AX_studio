@@ -1,4 +1,5 @@
 export {
+  JEV_DEFAULT_BASE_URL,
   JEV_PINNED_MODEL,
   JevDecisionEngine,
   resolveJevModel,

@@ -10,6 +10,8 @@ interface JevDecisionConfigSnapshot {
   enabled: boolean;
   model: string;
   baseURL: string;
+  /** Where Jev answers when no Base URL is set. */
+  defaultBaseURL: string;
   apiKeyConfigured: boolean;
   apiKeyMasked?: string;
 }

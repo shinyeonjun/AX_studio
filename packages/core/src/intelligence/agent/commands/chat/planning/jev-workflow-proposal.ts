@@ -1,3 +1,4 @@
+import { isProposableEventTrigger } from '../../../../../contracts/proposable-triggers.js';
 import type { DecisionInstruction } from '../../../../../contracts/decision.js';
 import { availableCapabilities } from '../../../../../catalog/capability-graph.js';
 import type { ConnectorCapability } from '../../../../../catalog/capability-types.js';
@@ -10,12 +11,6 @@ export interface JevWorkflowTriggerHint {
   trigger: Trigger;
 }
 
-// These are the trigger targets the job-proposal host can currently resolve; webhook path selection is not wired here.
-const PROPOSABLE_EVENT_TRIGGERS = new Set<string>([
-  'gmail.new_message',
-  'slack.new_message',
-  'local_folder.new_file',
-]);
 
 export function selectJevWorkflowTriggerHints(
   connectedConnectors: readonly string[],
@@ -23,7 +18,7 @@ export function selectJevWorkflowTriggerHints(
 ): JevWorkflowTriggerHint[] {
   return capabilities
     .filter((capability) => capability.kind === 'trigger'
-      && PROPOSABLE_EVENT_TRIGGERS.has(capability.id))
+      && isProposableEventTrigger(capability.id))
     .flatMap((capability, index) => {
       const requiredParams = Object.fromEntries(
         capability.params.filter((param) => param.required).map((param) => [param.name, '']),

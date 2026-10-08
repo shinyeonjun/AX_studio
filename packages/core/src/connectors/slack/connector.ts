@@ -1,3 +1,4 @@
+import { isMessageToolField } from '../../contracts/tool-result.js';
 import { ZodError } from 'zod';
 import type { Connector, ConnectorContext, ConnectorResult } from '../types.js';
 import { pollSlackNewMessages } from './new-message-poll/poll.js';
@@ -29,7 +30,7 @@ export class SlackConnector implements Connector {
   }
 
   async execute(action: string, params: Record<string, unknown>, ctx: ConnectorContext): Promise<ConnectorResult> {
-    if (action === 'message.send' && Object.keys(params).some(key => !['channel', 'text'].includes(key))) {
+    if (action === 'message.send' && Object.keys(params).some(key => !isMessageToolField('slack', key))) {
       return { ok: false, error: 'Unsupported Slack thread/file/delivery fields', errorCode: 'unsupported_message_fields' };
     }
     try {

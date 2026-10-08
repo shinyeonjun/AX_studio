@@ -77,6 +77,8 @@ function waitUnlessAborted(ms: number, signal?: AbortSignal): Promise<void> {
  * passes on the new one.
  */
 export const JEV_PINNED_MODEL = 'jev-1.13.0';
+/** Where Jev answers unless a Base URL is set. */
+export const JEV_DEFAULT_BASE_URL = 'https://api.typesafe.ai';
 
 /** The model to ask: a saved explicit version, else the pinned one ("jev-latest" was the old default). */
 export function resolveJevModel(saved?: string | null): string {
@@ -100,7 +102,7 @@ export class JevDecisionEngine implements DecisionEngine {
     validateJevApiKey(options.apiKey);
     this.apiKey = options.apiKey;
     this.model = options.model?.trim() || JEV_PINNED_MODEL;
-    this.baseURL = (options.baseURL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
+    this.baseURL = (options.baseURL?.trim() || JEV_DEFAULT_BASE_URL).replace(/\/+$/, '');
     let parsedBaseURL: URL;
     try {
       parsedBaseURL = new URL(this.baseURL);

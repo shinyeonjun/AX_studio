@@ -1,3 +1,4 @@
+import { isProposableEventTrigger, PROPOSABLE_EVENT_TRIGGER_TARGETS } from '../../../../contracts/proposable-triggers.js';
 import { AuthoritativeRequestAnchorSchema, type AuthoritativeRequestAnchor } from '../../../../contracts/request-anchor.js';
 import { z } from 'zod';
 import {
@@ -35,18 +36,16 @@ export function coerceJobProposeArgs(value: unknown): unknown {
 
   if (typeof record.trigger === 'string') {
     const type = record.trigger.trim();
-    if (type === 'gmail.new_message') {
-      record.trigger = { type, accountId: asFilledString(record.accountId) ?? '' };
-    } else if (type === 'slack.new_message') {
-      record.trigger = { type, channel: asFilledString(record.channel) ?? '' };
-    } else if (type === 'local_folder.new_file') {
-      record.trigger = { type, folderId: asFilledString(record.folderId) ?? '' };
+    if (isProposableEventTrigger(type)) {
+      const target = PROPOSABLE_EVENT_TRIGGER_TARGETS[type];
+      record.trigger = { type, [target]: asFilledString(record[target]) ?? '' };
     }
   } else if (record.trigger && typeof record.trigger === 'object' && !Array.isArray(record.trigger)) {
     const trigger = { ...(record.trigger as Record<string, unknown>) };
-    if (trigger.type === 'gmail.new_message' && typeof trigger.accountId !== 'string') trigger.accountId = '';
-    if (trigger.type === 'slack.new_message' && typeof trigger.channel !== 'string') trigger.channel = '';
-    if (trigger.type === 'local_folder.new_file' && typeof trigger.folderId !== 'string') trigger.folderId = '';
+    if (isProposableEventTrigger(trigger.type)) {
+      const target = PROPOSABLE_EVENT_TRIGGER_TARGETS[trigger.type];
+      if (typeof trigger[target] !== 'string') trigger[target] = '';
+    }
     record.trigger = trigger;
   }
 

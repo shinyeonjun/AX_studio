@@ -1,3 +1,4 @@
+import { RUN_NOT_STARTED_CODES } from '../run-refusals.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { isExternalAction } from '../execution/contracts.js';
@@ -12,10 +13,6 @@ const MAX_DEAD_LETTERS = 100;
 const ATTEMPT_SETTING_PREFIX = 'trigger.receiptAttempt:';
 export const DEAD_LETTER_SETTING = 'trigger.deadLetters';
 
-/** Runtime refusals raised before any step runs; the event is retried without counting. */
-const NOT_STARTED_ERRORS = new Set([
-  'runtime_stopping', 'workflow_removed', 'workflow_run_queue_full', 'workflow_already_running',
-]);
 
 type AttemptState = { attempts: number; nextAttemptAt: number };
 
@@ -42,7 +39,7 @@ function readAttempts(store: WorkflowStore, dedupeKey: string): AttemptState | u
 
 export function triggerErrorNotStarted(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code ?? (error instanceof Error ? error.message : undefined);
-  return typeof code === 'string' && NOT_STARTED_ERRORS.has(code);
+  return typeof code === 'string' && RUN_NOT_STARTED_CODES.has(code);
 }
 
 /** True while a failed event is waiting for its exponential backoff window. */

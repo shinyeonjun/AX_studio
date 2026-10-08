@@ -9,7 +9,8 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   const [loaded, setLoaded] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [model, setModel] = useState('');
-  const [baseURL, setBaseURL] = useState('https://api.typesafe.ai');
+  const [baseURL, setBaseURL] = useState('');
+  const [defaultBaseURL, setDefaultBaseURL] = useState('');
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeyMasked, setApiKeyMasked] = useState<string | undefined>();
@@ -27,6 +28,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         setEnabled(config.enabled);
         setModel(config.model);
         setBaseURL(config.baseURL);
+        setDefaultBaseURL(config.defaultBaseURL);
         setApiKeyConfigured(config.apiKeyConfigured);
         setApiKeyMasked(config.apiKeyMasked);
       })
@@ -196,7 +198,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
               setBaseURL(event.target.value);
               setApiKeyVerified(false);
             }}
-            placeholder="https://api.typesafe.ai"
+            placeholder={defaultBaseURL}
           />
         </div>
 
