@@ -94,11 +94,23 @@ export function consumeContextConfirmation(
 }
 
 /** Remember the bounded table the host itself displayed for this session. */
-export function rememberHostReadResult(sessionId: string, table: TableArtifact | undefined, recipe?: ChatReadRecipe): void {
-  if (table) touchSession(readResults, sessionId, structuredClone(table));
-  else readResults.delete(sessionId);
-  if (table && recipe) touchSession(readRecipes, sessionId, structuredClone(recipe));
+/**
+ * Holds the table this turn shows and returns it under an id of its own. Reads name their tables
+ * by kind ("chat:capability-result"), so without this a newer table the screen never got (a reply
+ * the window dropped) would pass for the older one still on screen, and "이 중 …" would work on
+ * rows the person never saw.
+ */
+export function rememberHostReadResult<T extends TableArtifact | undefined>(sessionId: string, table: T, recipe?: ChatReadRecipe): T {
+  if (!table) {
+    readResults.delete(sessionId);
+    readRecipes.delete(sessionId);
+    return table;
+  }
+  const shown = { ...structuredClone(table), id: `${table.id.split('#', 1)[0]}#${randomUUID()}` } as T & TableArtifact;
+  touchSession(readResults, sessionId, structuredClone(shown));
+  if (recipe) touchSession(readRecipes, sessionId, structuredClone(recipe));
   else readRecipes.delete(sessionId);
+  return shown;
 }
 
 /**

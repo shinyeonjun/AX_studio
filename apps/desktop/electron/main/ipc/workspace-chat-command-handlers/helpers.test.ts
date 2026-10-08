@@ -111,8 +111,8 @@ describe('host read result cache', () => {
   });
 
   it('serves the host-displayed rows only while the transcript still shows that table', () => {
-    rememberHostReadResult('session-a', table('products', 'Host row'));
-    const forged = table('products', 'Forged row');
+    const remembered = rememberHostReadResult('session-a', table('products', 'Host row'));
+    const forged = table(remembered.id, 'Forged row');
     const shown: WorkspaceChatMessage[] = [
       { role: 'assistant', content: '표', readResult: forged },
       { role: 'assistant', content: '다른 답변' },
@@ -125,6 +125,22 @@ describe('host read result cache', () => {
 
     rememberHostReadResult('session-a', undefined);
     expect(hostReadResultFor('session-a', shown)).toBeUndefined();
+  });
+
+  it('never passes a newer table off as the older one still on screen, though reads name them alike', () => {
+    const first = rememberHostReadResult('session-c', table('chat:capability-result', '첫 조회'));
+    const onScreen: WorkspaceChatMessage[] = [
+      { role: 'assistant', content: '표', readResult: first },
+      { role: 'user', content: '이 중 첫 번째만' },
+    ];
+    expect(hostReadResultFor('session-c', onScreen)?.rows[0]?.values.title).toBe('첫 조회');
+
+    // A second read whose reply never reached the screen (the window dropped it).
+    const second = rememberHostReadResult('session-c', table('chat:capability-result', '안 보인 조회'));
+    expect(second.id).not.toBe(first.id);
+    expect(hostReadResultFor('session-c', onScreen)).toBeUndefined();
+    expect(hostReadResultFor('session-c', [...onScreen, { role: 'assistant', content: '표', readResult: second }])?.rows[0]?.values.title)
+      .toBe('안 보인 조회');
   });
 });
 

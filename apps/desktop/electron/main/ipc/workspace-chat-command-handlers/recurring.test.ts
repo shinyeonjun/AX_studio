@@ -76,12 +76,13 @@ describe('recurring draft from a read answer', () => {
   it('drafts the read the host remembers for the table still on screen, named after the request', async () => {
     clearHostChatStateForTests();
     const { store } = await setup();
-    const chat = store.saveWorkspaceChat({ messages: [
+    const chat = store.saveWorkspaceChat({ messages: [] });
+    const shown = rememberHostReadResult(chat.id, table as never, { ...recipe, params: { ...recipe.params, connectionId: httpEndpointsFromConnections(store.getConnections())[0]!.id } });
+    store.saveWorkspaceChat({ id: chat.id, messages: [
       { role: 'user', content: '재고 10개 미만 상품만 표로 보여줘' },
-      { role: 'assistant', content: '| title |', readResult: table as never },
+      { role: 'assistant', content: '| title |', readResult: shown },
       { role: 'user', content: `이 작업을 반복 업무로 만들기: ${weeklyMonday}` },
     ] });
-    rememberHostReadResult(chat.id, table as never, { ...recipe, params: { ...recipe.params, connectionId: httpEndpointsFromConnections(store.getConnections())[0]!.id } });
     const reply = await proposeRecurringFromRead(chat.id, weeklyMonday);
     expect(reply.content).toContain('이 조회를 매주 월요일 오전 9:00에 반복하는 업무 초안입니다');
     const card = JSON.stringify(reply.presentations[0]);

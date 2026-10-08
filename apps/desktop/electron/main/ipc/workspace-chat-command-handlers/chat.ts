@@ -215,7 +215,9 @@ export function registerWorkspaceChatMessageHandler() {
         },
       });
       outcome = 'success';
-      if (turn.readResultReported) rememberHostReadResult(safeWorkspaceSessionId, turn.readResult, turn.readRecipe);
+      const shownTable = turn.readResultReported
+        ? rememberHostReadResult(safeWorkspaceSessionId, turn.readResult, turn.readRecipe)
+        : turn.readResult;
       return {
         role: 'assistant' as const,
         content: reply,
@@ -224,7 +226,7 @@ export function registerWorkspaceChatMessageHandler() {
         removedWorkflowIds: [...turn.removedWorkflowIds],
         ...(turn.pendingInputRequestToken ? { inputContinuation: 'command' as const } : {}),
         // Offer "반복 업무로" only where the read can actually be repeated.
-        ...(turn.readResult ? { readResult: turn.readResult, ...(turn.readRecipe ? { readRepeatable: true } : {}) } : {}),
+        ...(shownTable ? { readResult: shownTable, ...(turn.readRecipe ? { readRepeatable: true } : {}) } : {}),
         inputRequests: turn.inputRequests,
         presentations: bindContextConfirmations(safeWorkspaceSessionId, turn.presentations),
       };
