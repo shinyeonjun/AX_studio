@@ -1,4 +1,4 @@
-import { google, type gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDesignToolContext } from '../context.js';
 import { executeDesignTool } from '../execute.js';
@@ -6,12 +6,18 @@ import { boundCapabilityEvidence } from '../capability-invoke.js';
 import type { ConnectorContext } from '../../../connectors/types.js';
 import { GmailConnector } from '../../../connectors/gmail/connector.js';
 
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  return { ...actual, gmail: gmailMock.factory };
+});
+
 afterEach(() => vi.restoreAllMocks());
 
 describe('capability evidence pagination', () => {
   it('keeps Gmail message identifiers through the real connector and metadata-only projection', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [{ id: 'm1', threadId: 't1', body: 'private-body' }] } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const ctx = buildDesignToolContext([], ['gmail'], {
       connectors: { gmail: new GmailConnector({ clientId: 'test-client', refreshToken: 'test-token' }) },
     });

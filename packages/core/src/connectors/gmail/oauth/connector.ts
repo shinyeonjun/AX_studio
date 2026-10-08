@@ -20,14 +20,14 @@ export function buildGmailConnectorConfig(params: {
 }
 
 export async function fetchGmailProfileEmail(config: GmailConnectorConfig): Promise<string | undefined> {
-  const { google } = await import('googleapis');
-  const oauth2 = new google.auth.OAuth2(config.clientId, config.clientSecret);
+  const { gmail: gmailClient, auth } = await import('@googleapis/gmail');
+  const oauth2 = new auth.OAuth2(config.clientId, config.clientSecret);
   oauth2.setCredentials({
     access_token: config.accessToken,
     refresh_token: config.refreshToken,
     expiry_date: config.expiryDate,
   });
-  const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+  const gmail = gmailClient({ version: 'v1', auth: oauth2 });
   const profile = await gmail.users.getProfile({ userId: 'me' });
   return profile.data.emailAddress ?? undefined;
 }
@@ -38,7 +38,7 @@ export async function revokeGmailRefreshToken(params: {
   clientSecret?: string;
   refreshToken: string;
 }): Promise<void> {
-  const { google } = await import('googleapis');
-  const oauth2 = new google.auth.OAuth2(params.clientId, params.clientSecret);
+  const { auth } = await import('@googleapis/gmail');
+  const oauth2 = new auth.OAuth2(params.clientId, params.clientSecret);
   await oauth2.revokeToken(params.refreshToken);
 }

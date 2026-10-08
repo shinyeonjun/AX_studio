@@ -1,4 +1,4 @@
-import { google, type gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GmailConnector } from '../../../connectors/gmail/connector.js';
 import { SlackConnector } from '../../../connectors/slack/connector.js';
@@ -6,6 +6,12 @@ import { buildDesignToolContext } from '../context.js';
 import { executeDesignTool } from '../execute.js';
 import type { CapabilityInvokeEnvelope } from '../capability-invoke.js';
 import type { DesignToolResult } from '../types.js';
+
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  return { ...actual, gmail: gmailMock.factory };
+});
 
 // Replace only SDK requests; the public page helpers, connectors and projections run unchanged.
 const slack = vi.hoisted(() => ({ list: vi.fn(), search: vi.fn(), history: vi.fn() }));
@@ -53,7 +59,7 @@ describe('public connector pagination through model evidence', () => {
         nextPageToken: tokens[page + 1], resultSizeEstimate: ids.length,
       } };
     });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const ctx = buildDesignToolContext([], ['gmail'], {
       connectors: { gmail: new GmailConnector({ clientId: 'test-client', refreshToken: 'test-token' }) },
     });

@@ -16,9 +16,9 @@ const mainExternals = [
   'pg-native',
   'mysql2',
   'mysql2/promise',
-  // googleapis alone was ~25MB of the bundled main chunk; load it from
-  // node_modules at runtime like the other connector SDKs.
-  'googleapis',
+  // Google's SDK is loaded from node_modules at runtime like the other connector SDKs; only the
+  // Gmail client is used (all of googleapis took ~14 s to load and ~25MB).
+  '@googleapis/gmail',
   'google-auth-library',
 ];
 

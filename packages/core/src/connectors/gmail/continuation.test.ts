@@ -1,8 +1,14 @@
-import { google, type gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GmailConnector } from './connector.js';
 import { GMAIL_CAPABILITIES } from './catalog.js';
 import { ConnectorCapabilitySchema } from '../../catalog/capability-types.js';
+
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  return { ...actual, gmail: gmailMock.factory };
+});
 
 const context = { executionId: 'pages', variables: {}, log: () => undefined };
 afterEach(() => vi.restoreAllMocks());
@@ -23,7 +29,7 @@ describe('Gmail public search continuation', () => {
       return { data: { messages: ids.slice(offset, next).map((id) => ({ id })),
         nextPageToken: next < ids.length ? String(next) : undefined, resultSizeEstimate: ids.length } };
     });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     const found: string[] = [];
     let pageToken: string | undefined;
@@ -43,7 +49,7 @@ describe('Gmail public search continuation', () => {
 
   it('returns an empty intermediate page with its continuation instead of hiding it', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [], nextPageToken: 'later' } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     expect(await connector.execute('messages.search', {}, context)).toMatchObject({ ok: true, data: { messages: [], truncated: true, nextPageToken: 'later' } });
     expect(list).toHaveBeenCalledOnce();
@@ -51,7 +57,7 @@ describe('Gmail public search continuation', () => {
 
   it.each([null, 42, '', 'x'.repeat(4097)])('rejects invalid page tokens before a request', async (pageToken) => {
     const list = vi.fn();
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     expect(await connector.execute('messages.search', { pageToken }, context)).toMatchObject({ ok: false, errorCode: 'invalid_params' });
     expect(list).not.toHaveBeenCalled();
@@ -59,14 +65,14 @@ describe('Gmail public search continuation', () => {
 
   it('does not slice an oversized page and lose its omitted messages', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [{ id: 'a' }, { id: 'b' }], nextPageToken: 'after-both' } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     expect(await connector.execute('messages.search', { limit: 1 }, context)).toMatchObject({ ok: false, error: 'page_size_exceeded' });
   });
 
   it('reports a failed continuation without inventing a terminal empty page', async () => {
     const list = vi.fn().mockRejectedValue(new Error('unavailable'));
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     const result = await connector.execute('messages.search', { pageToken: 'tail' }, context);
     expect(result).toMatchObject({ ok: false, error: 'unavailable' });
@@ -76,7 +82,7 @@ describe('Gmail public search continuation', () => {
 
   it('omits unknown totals and marks an exhausted page as complete', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [] } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list } } } as unknown as gmail_v1.Gmail);
     const connector = new GmailConnector({ clientId: 'test', refreshToken: 'test' });
     const result = await connector.execute('messages.search', {}, context);
     expect(result).toMatchObject({ ok: true, data: { messages: [], truncated: false } });

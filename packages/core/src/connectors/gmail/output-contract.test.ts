@@ -1,8 +1,14 @@
-import { google, type gmail_v1 } from 'googleapis';
+import type { gmail_v1 } from '@googleapis/gmail';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getCapability } from '../../catalog/capabilities.js';
 import { materializeStepOutputs } from '../../runtime/output-ports.js';
 import { GmailConnector } from './connector.js';
+
+const gmailMock = vi.hoisted(() => ({ factory: vi.fn() }));
+vi.mock('@googleapis/gmail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@googleapis/gmail')>();
+  return { ...actual, gmail: gmailMock.factory };
+});
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -13,7 +19,7 @@ describe('Gmail public page output contracts', () => {
       messages, ...(page === 'first' ? { nextPageToken: 'next-mail-page', resultSizeEstimate: 23 } : {}),
     } });
     const get = vi.fn().mockResolvedValue({ data: { payload: { headers: [] } } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       ...(page === 'first' ? {} : { pageToken: 'requested-page' }),
     }, {
@@ -41,7 +47,7 @@ describe('Gmail public page output contracts', () => {
   it('materializes a complete initial response with no continuation as complete', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [] } });
     const get = vi.fn().mockResolvedValue({ data: { payload: { headers: [] } } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {}, {
       executionId: 'outputs', variables: {}, log: () => undefined,
     });
@@ -59,7 +65,7 @@ describe('Gmail public page output contracts', () => {
         { name: 'Date', value: 'Sat, 20 Sep 2026 09:00:00 +0900' },
       ] },
     } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
 
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       limit: 1,
@@ -84,7 +90,7 @@ describe('Gmail public page output contracts', () => {
   it('does not enrich when a model sends includeMetadata=false as a string', async () => {
     const list = vi.fn().mockResolvedValue({ data: { messages: [{ id: 'mail-1', threadId: 'thread-1' }] } });
     const get = vi.fn();
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
 
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       limit: 1,
@@ -110,7 +116,7 @@ describe('Gmail public page output contracts', () => {
       active -= 1;
       return { data: { id, payload: { headers: [] } } };
     });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
 
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       limit: 50,
@@ -133,7 +139,7 @@ describe('Gmail public page output contracts', () => {
       .mockResolvedValueOnce({ data: { id: 'mail-present', payload: { headers: [
         { name: 'Subject', value: '남은 메일' },
       ] } } });
-    vi.spyOn(google, 'gmail').mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
+    gmailMock.factory.mockReturnValue({ users: { messages: { list, get } } } as unknown as gmail_v1.Gmail);
 
     const result = await new GmailConnector({ clientId: 'test', refreshToken: 'test' }).execute('messages.search', {
       limit: 2,

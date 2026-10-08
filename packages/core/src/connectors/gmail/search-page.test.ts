@@ -1,0 +1,30 @@
+import type { gmail_v1 } from '@googleapis/gmail';
+import { describe, expect, it, vi } from 'vitest';
+import { searchGmailMessagePage } from './search-page.js';
+
+function fakeGmail() {
+  const get = vi.fn(async ({ id }: { id: string }) => ({ data: {
+    id, snippet: ` 미리보기 ${id} `,
+    payload: { headers: [{ name: 'From', value: '보낸이 <a@example.com>' }, { name: 'Subject', value: `제목 ${id}` }, { name: 'Date', value: 'Wed, 8 Oct 2026 09:00:00 +0900' }] },
+  } }));
+  const list = vi.fn(async () => ({ data: { messages: [{ id: 'm1', threadId: 't1' }, { id: 'm2', threadId: 't2' }] } }));
+  return { gmail: { users: { messages: { list, get } } } as unknown as gmail_v1.Gmail, get };
+}
+
+describe('a page of Gmail search results', () => {
+  it('says who sent each mail, its subject, date and preview without being asked', async () => {
+    const { gmail } = fakeGmail();
+    const page = await searchGmailMessagePage(gmail, { query: '' });
+    expect(page.messages).toEqual([
+      expect.objectContaining({ id: 'm1', from: '보낸이 <a@example.com>', subject: '제목 m1', snippet: '미리보기 m1' }),
+      expect.objectContaining({ id: 'm2', subject: '제목 m2', date: 'Wed, 8 Oct 2026 09:00:00 +0900' }),
+    ]);
+  });
+
+  it('lists ids only when asked to', async () => {
+    const { gmail, get } = fakeGmail();
+    const page = await searchGmailMessagePage(gmail, { query: '', includeMetadata: false });
+    expect(page.messages).toEqual([{ id: 'm1', threadId: 't1' }, { id: 'm2', threadId: 't2' }]);
+    expect(get).not.toHaveBeenCalled();
+  });
+});
