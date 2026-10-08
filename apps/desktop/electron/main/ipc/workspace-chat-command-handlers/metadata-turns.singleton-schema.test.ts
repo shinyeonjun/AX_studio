@@ -5,7 +5,7 @@ import {
   ArtifactStore, AxCommandService, createDatabaseAsync, WorkflowStore, WorkspaceSourceService, WorkflowRuntime,
   type WorkspaceChatMessage, type WorkspaceChatRecord, type SourceMetadataEvidence, type RequestUnderstandingResult,
 } from '@ax-studio/core';
-import { singletonSchemaFixture as frozen } from '../../../../../../packages/core/src/intelligence/agent/commands/chat/request-understanding.singleton-schema.fixture.js';
+import { singletonSchemaFixture as frozen } from '../../../../../../packages/core/src/intelligence/agent/commands/chat/loop/request-understanding.singleton-schema.fixture.js';
 import { registerWorkspaceChatMessageHandler } from './chat.js';
 import { registerWorkspaceChatPersistenceHandlers } from '../workspace-chat-persistence-handlers.js';
 import { registerWorkspaceChatControlHandlers } from './controls.js';

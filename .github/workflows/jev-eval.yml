@@ -1,7 +1,7 @@
 name: Jev routing eval
 
 # Live check that Jev still routes people's requests where they expect (see
-# packages/core/src/intelligence/agent/commands/chat/jev-routing-eval.cases.ts).
+# packages/core/src/intelligence/agent/commands/chat/routing/eval/jev-routing-eval.cases.ts).
 # Only synthetic catalog metadata is sent to Jev; nothing is read or executed.
 # Needs the repository secret TYPESAFE_API_KEY; without it the job is skipped.
 on:
@@ -47,7 +47,7 @@ jobs:
         env:
           AX_LIVE_JEV_EVAL: '1'
           AX_JEV_EVAL_REPORT: ${{ github.workspace }}/jev-eval-report.json
-        run: node scripts/embed-skills.mjs && npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts src/intelligence/agent/commands/chat/jev-shaping-background.live.test.ts
+        run: node scripts/embed-skills.mjs && npx vitest run src/intelligence/agent/commands/chat/routing/eval/jev-routing-eval.live.test.ts src/intelligence/agent/commands/chat/shaping/jev-shaping-background.live.test.ts
 
       # The pinned version above is what people use. This checks the newest one, report only:
       # when it passes too, raise JEV_PINNED_MODEL (packages/core/src/intelligence/decision/jev/engine.ts).
@@ -59,7 +59,7 @@ jobs:
           AX_LIVE_JEV_EVAL: '1'
           TYPESAFE_DEFAULT_MODEL: jev-latest
           AX_JEV_EVAL_REPORT: ${{ github.workspace }}/latest-jev-eval-report.json
-        run: npx vitest run src/intelligence/agent/commands/chat/jev-routing-eval.live.test.ts
+        run: npx vitest run src/intelligence/agent/commands/chat/routing/eval/jev-routing-eval.live.test.ts
 
       - name: Keep the report
         if: always() && env.TYPESAFE_API_KEY != ''

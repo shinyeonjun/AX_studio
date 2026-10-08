@@ -10,6 +10,13 @@ const CONNECTOR_IDS = [
   'webhook',
 ];
 
+// Chat turn layers, lowest first. A layer may use the layers below it, never its peers or the
+// layers above: shared helpers know no turn, table shaping and result display know no plan,
+// planning knows no routing, routing knows no turn loop.
+const CHAT = '^packages/core/src/intelligence/agent/commands/chat';
+const CHAT_LAYERS = [['shared'], ['shaping', 'result'], ['planning'], ['routing'], ['loop']];
+const CHAT_NOT_TEST = '[.](test|live[.]test)[.]ts$|[.]fixture[.]ts$';
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -67,6 +74,22 @@ module.exports = {
       to: {
         path: `^packages/core/src/connectors/(${CONNECTOR_IDS.join('|')})(/|$)`,
       },
+    },
+    ...CHAT_LAYERS.flatMap((layer, index) => layer.map((from) => ({
+      name: `chat-${from}-layer`,
+      severity: 'error',
+      comment: `chat/${from} may only use chat layers below it.`,
+      from: { path: `${CHAT}/${from}/`, pathNot: CHAT_NOT_TEST },
+      to: {
+        path: `${CHAT}/(${CHAT_LAYERS.flatMap((other, otherIndex) =>
+          other.filter((name) => name !== from && otherIndex >= index)).join('|')})/`,
+      },
+    }))),
+    {
+      name: 'chat-no-test-support-in-product',
+      severity: 'error',
+      from: { path: '^packages/core/src/', pathNot: `${CHAT_NOT_TEST}|${CHAT}/testing/` },
+      to: { path: `${CHAT}/testing/` },
     },
   ],
   options: {

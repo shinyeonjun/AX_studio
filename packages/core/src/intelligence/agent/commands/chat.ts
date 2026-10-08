@@ -3,16 +3,16 @@ import type { ChatMessage } from '../model/chat.js';
 import type { AxCommand, AxCommandResult } from './schema.js';
 import { inputRequestsForResult } from './input-requests.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';
-import type { AxCommandChatOptions } from './chat/contracts.js';
+import type { AxCommandChatOptions } from './chat/loop/contracts.js';
 import {
   applyCommandResultToSession,
   presentationFromResult,
   type CommandChatSessionState,
-} from './chat/result.js';
-import { runCommandChatLoop } from './chat/loop.js';
-import { runRequestUnderstandingChat } from './chat/request-understanding.js';
+} from './chat/result/index.js';
+import { runCommandChatLoop } from './chat/loop/loop.js';
+import { runRequestUnderstandingChat } from './chat/loop/request-understanding.js';
 
-export type { AxCommandChatOptions } from './chat/contracts.js';
+export type { AxCommandChatOptions } from './chat/loop/contracts.js';
 
 /**
  * Desktop chat uses Jev for bounded intent and route decisions. The host
