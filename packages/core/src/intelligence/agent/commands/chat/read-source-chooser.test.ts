@@ -17,7 +17,18 @@ describe('asking which connection a request means', () => {
     expect(chooser?.message).toContain('아직 아무것도 실행하지 않았습니다');
   });
 
-  it('is not offered when the reads come from one connection', () => {
-    expect(readSourceChooser([hint('a', 'rdb', '쇼핑몰 DB'), hint('b', 'rdb', '쇼핑몰 DB')], '주문과 고객')).toBeUndefined();
+  it('offers the reads themselves when one connection has several that fit', () => {
+    const tables = [hint('DB 조회: shop_orders', 'rdb', '회사 DB'), hint('DB 조회: logistics_orders', 'rdb', '회사 DB')];
+    expect(readSourceChooser(tables, '주문 목록')?.presentation.actions.map((action) => action.label))
+      .toEqual(['회사 DB의 shop_orders에서 찾기', '회사 DB의 logistics_orders에서 찾기']);
+    expect(readSourceChooser([hint('a', 'rdb', '쇼핑몰 DB')], '주문')).toBeUndefined();
+  });
+
+  it('offers the four most relevant of many places and says another can be named', () => {
+    const many = ['A', 'B', 'C', 'D', 'E', 'F'].map((name) => hint(name, 'http', `${name} API`));
+    const chooser = readSourceChooser(many, '고객 목록');
+    expect(chooser?.presentation.actions).toHaveLength(4);
+    expect(chooser?.message).toContain('A API, B API, C API, D API 등 6곳');
+    expect(chooser?.message).toContain('목록에 없는 곳이면');
   });
 });
