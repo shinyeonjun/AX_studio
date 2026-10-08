@@ -75,6 +75,7 @@ export { suggestWorkName } from './intelligence/agent/commands/job-registration/
 export * from './intelligence/agent/commands/chat-host/index.js';
 export type { ChatReadRecipe } from './intelligence/agent/commands/chat/result/read-recipe.js';
 export { DEAD_LETTER_SETTING, type TriggerDeadLetter } from './runtime/trigger-engine/receipts.js';
+export { TRIGGER_POLL_FAILURE_PREFIX, type TriggerPollFailure } from './runtime/trigger-engine/poll/workflow.js';
 export type { CorruptRowReport } from './persistence/tolerant-rows.js';
 export * from './triggers/types.js';
 export * from './triggers/push-state.js';

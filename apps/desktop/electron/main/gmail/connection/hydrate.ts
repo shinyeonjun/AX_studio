@@ -5,6 +5,8 @@ import {
   type WorkflowRuntime,
   type WorkflowStore,
 } from '@ax-studio/core';
+import { CREDENTIAL_UNAVAILABLE_ERROR } from '../../connection-errors.js';
+import { gmailSignInStatusRecorder } from './sign-in-status.js';
 import { getCredentialStore } from '../../credential-store.js';
 import { getGoogleOAuthCredentials } from '../oauth.js';
 import { gmailConnection } from './shared.js';
@@ -21,7 +23,8 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
 
   const credential = await getCredentialStore().get(record.credentialRef);
   if (!credential) {
-    store.setConnection('gmail', false);
+    // Say why it is no longer connected, as the other connections do.
+    store.setConnection('gmail', false, { ...conn.config, lastError: CREDENTIAL_UNAVAILABLE_ERROR });
     return;
   }
 
@@ -35,10 +38,14 @@ export async function hydrateGmailConnector(store: WorkflowStore, runtime: Workf
       email: record.account || undefined,
       onTokens: (tokens) => {
         if (tokens.refreshToken) latestRefreshToken = tokens.refreshToken;
+        // The access token is kept too, so the first Gmail call after a start needs no refresh.
         return getCredentialStore().set(record.credentialRef, {
           refreshToken: latestRefreshToken,
+          ...(tokens.accessToken ? { accessToken: tokens.accessToken } : {}),
+          ...(tokens.expiryDate ? { expiryDate: tokens.expiryDate } : {}),
         });
       },
+      onSignInStatus: gmailSignInStatusRecorder(store),
     }),
   ));
 }

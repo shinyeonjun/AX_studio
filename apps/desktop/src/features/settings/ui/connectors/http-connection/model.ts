@@ -10,6 +10,8 @@ export interface HttpEndpoint {
   authType?: HttpAuthType;
   authHeader?: string;
   username?: string;
+  /** Its saved login can no longer be read on this computer. */
+  needsReconnect?: boolean;
 }
 
 export interface HttpConnectedItem {
@@ -42,6 +44,7 @@ export function httpConnectedItemsFor(endpoints: HttpEndpoint[]): HttpConnectedI
     id: endpoint.id,
     title: endpoint.label?.trim() || 'HTTP API',
     subtitle: endpoint.baseUrl,
-    meta: httpAuthLabel(endpoint.authType, endpoint.authHeader, endpoint.username),
+    meta: [httpAuthLabel(endpoint.authType, endpoint.authHeader, endpoint.username), endpoint.needsReconnect ? '다시 연결 필요' : undefined]
+      .filter(Boolean).join(' · '),
   }));
 }
