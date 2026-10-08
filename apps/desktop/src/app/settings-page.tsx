@@ -61,8 +61,8 @@ export function AppSettingsPage({ screen, state, onScreenChange, onRefresh, dete
         await onRefresh();
         return result;
       }}
-      onDisconnectRdb={async () => {
-        await window.ax.disconnectRdb();
+      onDisconnectRdb={async (databaseId) => {
+        await window.ax.disconnectRdb(databaseId);
         await onRefresh();
       }}
     />

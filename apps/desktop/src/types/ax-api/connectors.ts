@@ -27,11 +27,15 @@ export interface AxConnectorApi {
   pickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
   /** Table names the database shows, for picking the allowed ones; nothing is saved. */
   discoverRdbTables: (payload: {
+    /** The database being edited: a blank address uses the one stored for it. */
+    databaseId?: string;
     type: 'mysql' | 'postgres' | 'sqlite';
     filePath?: string;
     connectionString?: string;
   }) => Promise<{ tables: string[]; truncated: boolean }>;
+  /** Adds a database, or changes the one `databaseId` names. */
   connectRdb: (payload: {
+    databaseId?: string;
     type: 'mysql' | 'postgres' | 'sqlite';
     connectionString?: string;
     filePath?: string;
@@ -39,6 +43,7 @@ export interface AxConnectorApi {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<{ ok: boolean; warning?: string }>;
-  disconnectRdb: () => Promise<unknown>;
+  }) => Promise<{ ok: boolean; databaseId?: string; label?: string; warning?: string }>;
+  /** Removes one database, or every one without an id. */
+  disconnectRdb: (databaseId?: string) => Promise<unknown>;
 }

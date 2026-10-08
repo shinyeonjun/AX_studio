@@ -2,7 +2,13 @@ import { dialog } from 'electron';
 import { realpathSync } from 'node:fs';
 import { ipcHandle } from '../ipc-handle.js';
 import { getCore } from '../../core-instance.js';
-import { discoverRdbTableNames, disconnectRdb, validateAndConnectRdb } from '../../rdb/connection.js';
+import { rdbDatabaseEntries } from '@ax-studio/core';
+import {
+  discoverRdbTableNames,
+  disconnectRdb,
+  validateAndConnectRdb,
+  type RdbConnectResult,
+} from '../../rdb/connection.js';
 import { notifyStateChanged } from '../../state-broadcast.js';
 
 let approvedSqliteSelection: { path: string; connecting: boolean } | undefined;
@@ -12,17 +18,28 @@ function sqlitePathKey(path: string): string {
   return process.platform === 'win32' ? real.toLowerCase() : real;
 }
 
-/** The SQLite file of the saved connection, which the person already chose once. */
-function connectedSqlitePathKey(): string | undefined {
+/** Whether a connected database already uses this SQLite file, which the person chose once. */
+function isConnectedSqlitePath(pathKey: string): boolean {
   const connection = getCore().store.getConnections().find((entry) => entry.connector === 'rdb');
-  const config = (connection?.connected ? connection.config : undefined) as Record<string, unknown> | undefined;
-  if (config?.type !== 'sqlite' || typeof config.filePath !== 'string') return undefined;
-  try {
-    return sqlitePathKey(config.filePath);
-  } catch {
-    return undefined;
-  }
+  if (!connection?.connected) return false;
+  return rdbDatabaseEntries(connection.config).some((entry) => {
+    if (entry.type !== 'sqlite' || !entry.filePath) return false;
+    try {
+      return sqlitePathKey(entry.filePath) === pathKey;
+    } catch {
+      return false;
+    }
+  });
 }
+
+/** An optional database id; a malformed one must not silently become "a new one" or "all". */
+function optionalDatabaseId(value: unknown, message: string): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== 'string' || !value.trim()) throw new Error(message);
+  return value.trim();
+}
+
+const UNKNOWN_DATABASE_MESSAGE = '해당 DB 연결을 찾을 수 없어요. 화면을 새로 고쳐 주세요.';
 
 export function registerRdbConnectionHandlers() {
   ipcHandle('ax:pickSqliteFile', async () => {
@@ -50,16 +67,18 @@ export function registerRdbConnectionHandlers() {
     if (type !== 'mysql' && type !== 'postgres' && type !== 'sqlite') {
       throw new Error('DB 유형이 올바르지 않습니다.');
     }
+    const databaseId = optionalDatabaseId(record.databaseId, UNKNOWN_DATABASE_MESSAGE);
     if (type !== 'sqlite') {
       return discoverRdbTableNames({
         type,
         connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
+        databaseId,
       });
     }
     const requested = typeof record.filePath === 'string' ? record.filePath.trim() : '';
     if (!requested) throw new Error('SQLite 파일을 먼저 선택해 주세요.');
     const filePath = sqlitePathKey(requested);
-    if (approvedSqliteSelection?.path !== filePath && connectedSqlitePathKey() !== filePath) {
+    if (approvedSqliteSelection?.path !== filePath && !isConnectedSqlitePath(filePath)) {
       throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
     }
     return discoverRdbTableNames({ type, filePath });
@@ -75,6 +94,7 @@ export function registerRdbConnectionHandlers() {
     if (type !== 'mysql' && type !== 'postgres' && type !== 'sqlite') {
       throw new Error('DB 유형이 올바르지 않습니다.');
     }
+    const databaseId = optionalDatabaseId(record.databaseId, UNKNOWN_DATABASE_MESSAGE);
     let sqliteSelection: typeof approvedSqliteSelection = undefined;
     let filePath = typeof record.filePath === 'string' ? record.filePath.trim() || undefined : undefined;
     if (type === 'sqlite') {
@@ -82,7 +102,7 @@ export function registerRdbConnectionHandlers() {
       filePath = sqlitePathKey(filePath);
       sqliteSelection = approvedSqliteSelection?.path === filePath ? approvedSqliteSelection : undefined;
       // Changing the tables of the file already connected needs no new pick: it was chosen once.
-      if (!sqliteSelection && connectedSqlitePathKey() !== filePath) {
+      if (!sqliteSelection && !isConnectedSqlitePath(filePath)) {
         throw new Error('SQLite 파일은 먼저 시스템 선택기로 선택해야 합니다.');
       }
       if (sqliteSelection?.connecting) {
@@ -90,9 +110,10 @@ export function registerRdbConnectionHandlers() {
       }
       if (sqliteSelection) sqliteSelection.connecting = true;
     }
-    let connected: { warning?: string } | undefined;
+    let connected: RdbConnectResult | undefined;
     try {
       connected = await validateAndConnectRdb(core.store, core.runtime, {
+        databaseId,
         type,
         connectionString: typeof record.connectionString === 'string' ? record.connectionString : undefined,
         filePath,
@@ -111,12 +132,19 @@ export function registerRdbConnectionHandlers() {
     }
     if (sqliteSelection && approvedSqliteSelection === sqliteSelection) approvedSqliteSelection = undefined;
     notifyStateChanged();
-    return connected?.warning ? { ok: true, warning: connected.warning } : { ok: true };
+    return {
+      ok: true,
+      ...(connected?.databaseId ? { databaseId: connected.databaseId } : {}),
+      ...(connected?.label ? { label: connected.label } : {}),
+      ...(connected?.warning ? { warning: connected.warning } : {}),
+    };
   });
 
-  ipcHandle('ax:disconnectRdb', async () => {
+  ipcHandle('ax:disconnectRdb', async (_event, databaseId?: unknown) => {
     const core = getCore();
-    await disconnectRdb(core.store, core.runtime);
+    // A malformed id must not silently become "disconnect everything".
+    const id = optionalDatabaseId(databaseId, '해제할 DB 연결을 찾을 수 없어요. 화면을 새로 고쳐 주세요.');
+    await disconnectRdb(core.store, core.runtime, id);
     notifyStateChanged();
     return { ok: true };
   });

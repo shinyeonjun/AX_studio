@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppState } from '../../../../../types/app-state';
-import { connectionEntry, rdbTypeLabel } from '../../../../../ui/lib/connection-display';
+import { connectionEntry } from '../../../../../ui/lib/connection-display';
 import { confirmDisconnectConnector } from '../../../../../ui/lib/confirm-delete';
 import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
+import { rdbConnectedItemsFor, rdbDatabaseTitle, rdbDatabasesFor, withObjectParticle } from './model';
 
 export type RdbConnectionType = 'sqlite' | 'postgres' | 'mysql';
 
@@ -10,8 +11,10 @@ export interface RdbConnectionFormProps {
   state: AppState | null;
   embedded?: boolean;
   onPickSqliteFile: () => Promise<{ ok: boolean; canceled?: boolean; path?: string }>;
-  onDiscoverTables: (payload: { type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
+  onDiscoverTables: (payload: { databaseId?: string; type: 'mysql' | 'postgres' | 'sqlite'; filePath?: string; connectionString?: string }) => Promise<{ tables: string[]; truncated: boolean }>;
   onConnect: (payload: {
+    /** The database being edited; absent when adding one. */
+    databaseId?: string;
     type: RdbConnectionType;
     connectionString?: string;
     filePath?: string;
@@ -19,8 +22,9 @@ export interface RdbConnectionFormProps {
     allowedTables?: string[];
     rowLimit?: number;
     label?: string;
-  }) => Promise<{ warning?: string } | void>;
-  onDisconnect: () => Promise<void>;
+  }) => Promise<{ databaseId?: string; label?: string; warning?: string } | void>;
+  /** Removes one database, or every one without an id. */
+  onDisconnect: (databaseId?: string) => Promise<void>;
 }
 
 type RdbConnectionControllerProps = Pick<RdbConnectionFormProps, 'state' | 'onPickSqliteFile' | 'onDiscoverTables' | 'onConnect' | 'onDisconnect'>;
@@ -40,8 +44,11 @@ export function useRdbConnectionForm({
   onDisconnect,
 }: RdbConnectionControllerProps) {
   const rdbEntry = connectionEntry(state, 'rdb');
-  const connected = Boolean(rdbEntry?.connected);
+  const databases = rdbDatabasesFor(state);
+  const connected = Boolean(rdbEntry?.connected) && databases.length > 0;
   const formRef = useRef<HTMLDivElement>(null);
+  /** The database being edited; undefined while adding one. */
+  const [databaseId, setDatabaseId] = useState<string | undefined>(undefined);
   const [type, setType] = useState<RdbConnectionType>('sqlite');
   const [filePath, setFilePath] = useState('');
   const [connectionString, setConnectionString] = useState('');
@@ -58,19 +65,21 @@ export function useRdbConnectionForm({
   // or the type or SQLite file changed meanwhile) must not replace the newer list.
   const tablesRequestRef = useRef(0);
 
-  const loadFromConnection = (scroll = true) => {
-    if (!rdbEntry?.connected || !rdbEntry.dbType) return;
-    setType(rdbEntry.dbType);
-    setLabel(rdbEntry.label ?? '');
-    setAllowedSchemas((rdbEntry.allowedSchemas ?? []).join(', '));
-    setAllowedTables([...(rdbEntry.allowedTables ?? [])]);
+  const loadFromConnection = (id: string, scroll = true) => {
+    const database = databases.find((entry) => entry.id === id);
+    if (!database?.dbType) return;
+    setDatabaseId(database.id);
+    setType(database.dbType);
+    setLabel(database.label ?? '');
+    setAllowedSchemas((database.allowedSchemas ?? []).join(', '));
+    setAllowedTables([...(database.allowedTables ?? [])]);
     tablesRequestRef.current += 1;
     setDiscovered({ status: 'idle' });
-    setRowLimit(rdbEntry.rowLimit != null ? String(rdbEntry.rowLimit) : '1000');
-    if (rdbEntry.dbType === 'sqlite') {
-      setFilePath(rdbEntry.target ?? '');
+    setRowLimit(database.rowLimit != null ? String(database.rowLimit) : '1000');
+    if (database.dbType === 'sqlite') {
+      setFilePath(database.target ?? '');
       setConnectionString('');
-      void loadTables({ type: 'sqlite', filePath: rdbEntry.target ?? '' });
+      void loadTables({ type: 'sqlite', filePath: database.target ?? '' });
     } else {
       setConnectionString('');
       setFilePath('');
@@ -80,31 +89,34 @@ export function useRdbConnectionForm({
     if (scroll) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Opening the page of a connected database shows that connection, ready to change.
+  const resetForm = () => {
+    tablesRequestRef.current += 1;
+    setDatabaseId(undefined);
+    setType('sqlite');
+    setFilePath('');
+    setConnectionString('');
+    setAllowedSchemas('');
+    setAllowedTables([]);
+    setDiscovered({ status: 'idle' });
+    setRowLimit('1000');
+    setLabel('');
+  };
+
+  // Opening the page of the one connected database shows it, ready to change. With several,
+  // the person picks which one to change from the list.
   const prefilled = useRef(false);
   useEffect(() => {
     if (prefilled.current || !connected) return;
     prefilled.current = true;
-    loadFromConnection(false);
+    if (databases.length === 1) loadFromConnection(databases[0]!.id, false);
   });
 
-  const connectedItems =
-    connected && rdbEntry?.dbType
-      ? [
-          {
-            id: 'rdb',
-            title: rdbEntry.label?.trim() || rdbTypeLabel(rdbEntry.dbType),
-            subtitle: rdbEntry.target,
-            meta: [
-              rdbTypeLabel(rdbEntry.dbType),
-              rdbEntry.allowedTables?.length ? `테이블 ${rdbEntry.allowedTables.length}개` : undefined,
-              rdbEntry.rowLimit != null ? `행 제한 ${rdbEntry.rowLimit}` : undefined,
-            ]
-              .filter(Boolean)
-              .join(' · '),
-          },
-        ]
-      : [];
+  const connectedItems = rdbConnectedItemsFor(databases);
+  const editing = databaseId ? databases.find((entry) => entry.id === databaseId) : undefined;
+  /** A blank address reuses the stored one only for the PostgreSQL/MySQL database being edited. */
+  const storedAddressReusable = Boolean(editing && editing.dbType !== 'sqlite' && editing.dbType === type);
+  /** Adding another database: its name is how Jev and the person tell them apart. */
+  const addingAnother = !databaseId && databases.length > 0;
 
   const loadTables = async (target: Parameters<typeof onDiscoverTables>[0]) => {
     const request = ++tablesRequestRef.current;
@@ -121,7 +133,11 @@ export function useRdbConnectionForm({
 
   const discoverTables = () => loadTables(type === 'sqlite'
     ? { type, filePath }
-    : { type, connectionString: connectionString.trim() || undefined });
+    : {
+        type,
+        connectionString: connectionString.trim() || undefined,
+        databaseId: storedAddressReusable ? databaseId : undefined,
+      });
 
   const changeType = (next: RdbConnectionType) => {
     tablesRequestRef.current += 1;
@@ -161,6 +177,7 @@ export function useRdbConnectionForm({
     setWarning('');
     try {
       const result = await onConnect({
+        databaseId,
         type,
         filePath: type === 'sqlite' ? filePath : undefined,
         connectionString: type === 'postgres' || type === 'mysql' ? connectionString : undefined,
@@ -175,8 +192,12 @@ export function useRdbConnectionForm({
         rowLimit: Number(rowLimit) || undefined,
         label: label.trim() || undefined,
       });
-      setMessage('데이터베이스가 연결되었습니다.');
+      const name = result?.label?.trim() || label.trim();
+      setMessage(name
+        ? `${withObjectParticle(name)} ${databaseId ? '수정했습니다.' : '연결했습니다.'}`
+        : databaseId ? '데이터베이스 연결을 수정했습니다.' : '데이터베이스가 연결되었습니다.');
       if (result?.warning) setWarning(result.warning);
+      resetForm();
     } catch (error) {
       setMessage(ipcErrorMessage(error, 'DB 연결에 실패했습니다.'));
     } finally {
@@ -184,14 +205,16 @@ export function useRdbConnectionForm({
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!await confirmDisconnectConnector('데이터베이스')) return;
+  const handleDisconnect = async (id?: string) => {
+    const target = id ? databases.find((entry) => entry.id === id) : undefined;
+    if (!await confirmDisconnectConnector(target ? rdbDatabaseTitle(target) : '데이터베이스')) return;
     setBusy(true);
     setMessage('');
     setWarning('');
     try {
-      await onDisconnect();
-      setMessage('DB 연결이 해제되었습니다.');
+      await onDisconnect(id);
+      setMessage(target ? `${withObjectParticle(rdbDatabaseTitle(target))} 연결 해제했습니다.` : 'DB 연결이 해제되었습니다.');
+      if (!id || id === databaseId) resetForm();
     } catch (error) {
       setMessage(ipcErrorMessage(error, '연결 해제에 실패했습니다.'));
     } finally {
@@ -202,6 +225,9 @@ export function useRdbConnectionForm({
   return {
     formRef,
     connected,
+    databaseId,
+    storedAddressReusable,
+    addingAnother,
     type,
     setType: changeType,
     filePath,
@@ -223,6 +249,7 @@ export function useRdbConnectionForm({
     warning,
     connectedItems,
     loadFromConnection,
+    resetForm,
     handlePickFile,
     handleConnect,
     handleDisconnect,

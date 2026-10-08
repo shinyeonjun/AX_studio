@@ -10,6 +10,7 @@ import type { AppState } from '../../../../types/app-state';
 import { connectionEntry } from '../../../../ui/lib/connection-display';
 import { slackCapabilityStatus } from '../../../../ui/lib/slack-status';
 import { ConnectionCard } from '../ConnectionCard';
+import { rdbDatabaseTitle, rdbDatabasesFor } from '../connectors/rdb-connection/model';
 import { SettingsCategory } from '../SettingsCategory';
 
 interface SettingsConnectorSectionsProps {
@@ -115,10 +116,13 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
             const meta = CONNECTOR_UI_CATALOG[id];
             const entry = connectionEntry(state, id);
             const connected = Boolean(entry?.connected);
+            const databases = id === 'rdb' && connected ? rdbDatabasesFor(state) : [];
             const description =
-              id === 'rdb' && connected && entry?.target
-                ? `${entry.label?.trim() || meta.title} · ${entry.target}`
-                : meta.description;
+              databases.length > 1
+                ? `${databases.length}개 DB · ${rdbDatabaseTitle(databases[0]!)} 외 ${databases.length - 1}개`
+                : id === 'rdb' && connected && entry?.target
+                  ? `${entry.label?.trim() || meta.title} · ${entry.target}`
+                  : meta.description;
             return (
               <ConnectionCard
                 key={id}
@@ -126,7 +130,7 @@ export function SettingsConnectorSections({ state, onOpenScreen }: SettingsConne
                 description={description}
                 icon={meta.icon}
                 emojiIcon={meta.emojiIcon}
-                badge={connected ? '연결됨' : '미연결'}
+                badge={connected ? (databases.length > 1 ? `${databases.length}개 연결` : '연결됨') : '미연결'}
                 badgeClass={connected ? 'connected' : ''}
                 error={entry?.lastError}
                 onClick={() => onOpenScreen(meta.settingsScreen)}

@@ -133,3 +133,56 @@ describe('listing the tables of a database being connected', () => {
       .rejects.toThrow('시스템 선택기로 선택');
   });
 });
+
+describe('several databases over IPC', () => {
+  const testDirectory = dirname(fileURLToPath(import.meta.url));
+  const first = resolve(testDirectory, '../../../../package.json');
+  const second = resolve(testDirectory, '../../../../../../packages/core/package.json');
+
+  beforeEach(() => {
+    mocks.handlers.clear();
+    mocks.getCore.mockReset().mockReturnValue({
+      store: { getConnections: () => [{ connector: 'rdb', connected: true, config: { databases: [
+        { id: 'default', type: 'postgres', connectionStringStored: true },
+        { id: 'stock', type: 'sqlite', filePath: second },
+      ] } }] },
+      runtime: {},
+    });
+    mocks.discoverRdbTableNames.mockReset().mockResolvedValue({ tables: ['orders'], truncated: false });
+    mocks.validateAndConnectRdb.mockReset().mockResolvedValue({ databaseId: 'stock', label: '재고' });
+    mocks.disconnectRdb.mockReset().mockResolvedValue(undefined);
+    registerRdbConnectionHandlers();
+  });
+
+  it('approves the SQLite file of any connected database, and only those', async () => {
+    const discover = mocks.handlers.get('ax:discoverRdbTables')!;
+    await expect(discover({}, { type: 'sqlite', filePath: second })).resolves.toEqual({ tables: ['orders'], truncated: false });
+    await expect(discover({}, { type: 'sqlite', filePath: first })).rejects.toThrow('시스템 선택기로 선택');
+    await expect(mocks.handlers.get('ax:connectRdb')!({}, { databaseId: 'stock', type: 'sqlite', filePath: second }))
+      .resolves.toEqual({ ok: true, databaseId: 'stock', label: '재고' });
+    expect(mocks.validateAndConnectRdb).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ databaseId: 'stock' }));
+  });
+
+  it('passes the database id for the stored-address fallback when listing tables', async () => {
+    await mocks.handlers.get('ax:discoverRdbTables')!({}, { type: 'postgres', databaseId: ' default ' });
+    expect(mocks.discoverRdbTableNames).toHaveBeenCalledWith({ type: 'postgres', connectionString: undefined, databaseId: 'default' });
+    await expect(mocks.handlers.get('ax:discoverRdbTables')!({}, { type: 'postgres', databaseId: 7 })).rejects.toThrow('DB 연결을 찾을 수 없어요');
+  });
+
+  it('disconnects the one database named, all without an id, and never all for a malformed id', async () => {
+    const disconnect = mocks.handlers.get('ax:disconnectRdb')!;
+    await disconnect({}, 'stock');
+    expect(mocks.disconnectRdb).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'stock');
+    await disconnect({});
+    expect(mocks.disconnectRdb).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), undefined);
+    await expect(disconnect({}, '  ')).rejects.toThrow('해제할 DB 연결을 찾을 수 없어요');
+    await expect(disconnect({}, { id: 'stock' })).rejects.toThrow('해제할 DB 연결을 찾을 수 없어요');
+    expect(mocks.disconnectRdb).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a malformed database id on connect instead of adding a database', async () => {
+    await expect(mocks.handlers.get('ax:connectRdb')!({}, { databaseId: '', type: 'postgres', connectionString: 'postgresql://a@b/c' }))
+      .rejects.toThrow('DB 연결을 찾을 수 없어요');
+    expect(mocks.validateAndConnectRdb).not.toHaveBeenCalled();
+  });
+});
