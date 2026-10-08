@@ -102,7 +102,7 @@ export async function connectGmailOAuth(store: WorkflowStore, runtime: WorkflowR
   };
 
   store.setConnection('gmail', true, record as unknown as Record<string, unknown>);
-  runtime.connectors.gmail = new GmailConnector({ ...runtimeConfig, email: account || undefined });
+  runtime.setConnector('gmail', new GmailConnector({ ...runtimeConfig, email: account || undefined }));
   await retirePreviousGmailCredential(previous, { connectionId, account, clientId, clientSecret });
 
   return { ok: true as const, email: account || undefined };

@@ -9,6 +9,6 @@ export async function disconnectGmailOAuth(store: WorkflowStore, runtime: Workfl
     await getCredentialStore().delete(record.credentialRef);
   }
   store.setConnection('gmail', false);
-  delete runtime.connectors.gmail;
+  runtime.setConnector('gmail', null);
   return { ok: true as const };
 }
