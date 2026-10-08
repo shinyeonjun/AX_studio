@@ -78,6 +78,7 @@ export function AppMainContent({
     <ChatMainPage
       workspaceChat={workspaceChat}
       executions={state?.executions}
+      works={state?.works}
       setupNotice={<JevSetupNotice state={state} onOpenJevSettings={onOpenJevSettings} />}
       onRunWork={onRunWork}
     />
