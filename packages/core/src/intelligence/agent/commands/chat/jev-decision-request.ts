@@ -1,3 +1,4 @@
+import type { SourceChoice } from '../../../../contracts/source-choices.js';
 import type { DecisionInstruction, DecisionQuestion } from '../../../../contracts/decision.js';
 import type { CapabilityParam, ConnectorCapability } from '../../../../catalog/capability-types.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
@@ -59,6 +60,15 @@ interface BuildJevDecisionRequestInput {
   transformCapabilities?: readonly ConnectorCapability[];
   readRecoveryContext?: JevReadRecoveryContext;
   previousReadResult?: TableArtifact;
+  pastSourceChoices?: readonly SourceChoice[];
+}
+
+/** The person's earlier picks, bounded, as background (data, never instructions). */
+export function pastSourceChoicesForDecision(choices: readonly SourceChoice[]) {
+  return choices.slice(-15).map((choice) => ({
+    request: boundDecisionString(choice.request, 200),
+    chose: boundDecisionString(choice.place, 80),
+  }));
 }
 
 export function jevActionInputQuestion(params: readonly CapabilityParam[]): DecisionQuestion {
@@ -131,6 +141,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
       current_workflow_present: hasCurrentWorkflow,
       workspace_session_present: hasWorkspaceSession,
       ...(userConfirmedPreferences ? { user_confirmed_preferences: userConfirmedPreferences } : {}),
+      ...(input.pastSourceChoices?.length ? { past_source_choices: pastSourceChoicesForDecision(input.pastSourceChoices) } : {}),
       ...(input.conversationHistory?.length ? {
         recent_conversation: input.conversationHistory.slice(-6).map(({ role, content }) => ({
           role,

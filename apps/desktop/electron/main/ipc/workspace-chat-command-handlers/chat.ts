@@ -5,6 +5,7 @@ import {
   connectedConnectorIds,
   httpEndpointsFromConnections,
   runAxCommandChat,
+  sourceChoiceFromReply,
 } from '@ax-studio/core';
 import { app } from 'electron';
 import { performance } from 'node:perf_hooks';
@@ -96,6 +97,9 @@ export function registerWorkspaceChatMessageHandler() {
     const mutationConfirmationToken = jobCommitConfirmed
       ? undefined
       : findMutationConfirmationToken(requestMessages, userMessage);
+    // A pick in the "어디에서 찾을까요?" card is remembered: the same kind of request goes there next time.
+    const pickedSource = sourceChoiceFromReply(requestMessages, userMessage);
+    if (pickedSource) core.store.rememberSourceChoice(pickedSource);
     // Rendering metadata belongs to the host transcript, not the provider prompt.
     const history = selectChatContext(requestMessages).slice(0, -1).map(({ role, content }) => ({ role, content }));
     // Rows come from the host cache of what it displayed, never from the renderer-saved transcript.
@@ -194,6 +198,7 @@ export function registerWorkspaceChatMessageHandler() {
           ? core.workspaceSources.list(safeWorkspaceSessionId)
           : [],
         designToolContextFactory: () => buildDesktopDesignToolContext(core, connections, connectedConnectors),
+        pastSourceChoices: core.store.getSourceChoices(),
         columnLabels: {
           known: () => core.store.getColumnLabels(),
           remember: (labels) => core.store.rememberColumnLabels(labels),
