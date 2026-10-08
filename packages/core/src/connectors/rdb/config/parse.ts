@@ -1,4 +1,4 @@
-import type { RdbConnectionConfig } from '../connector.js';
+import type { RdbConnectionConfig } from '../client/types.js';
 import type { RdbConnectionRecord } from './contracts.js';
 
 export function parseRdbConnectionConfig(config: unknown): RdbConnectionConfig | null {

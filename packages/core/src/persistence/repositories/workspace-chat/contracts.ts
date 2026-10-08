@@ -94,7 +94,7 @@ export const WorkspaceChatReadResultSchema = TableArtifactSchema.pick({
   coverage: true,
 }).extend({
   source: TableArtifactSchema.shape.source.unwrap().pick({ executionId: true, readOnlyEnforced: true,
-    database: true, schema: true, table: true, queryFingerprint: true, capturedAt: true }).optional(),
+    database: true, connectionLabel: true, schema: true, table: true, queryFingerprint: true, capturedAt: true }).optional(),
 }).superRefine((table, context) => {
   if (table.source?.readOnlyEnforced && (!table.source.executionId || !table.readScope
     || table.source.queryFingerprint !== table.readScope.queryFingerprint)) {

@@ -1,3 +1,4 @@
+import { DEFAULT_RDB_DATABASE_ID, rdbDatabaseEntries, rdbDatabaseName, rdbSourceId } from '../../connectors/rdb/config/databases.js';
 import {
   DiscoveryAssetIndex,
   type DiscoveryAsset,
@@ -26,12 +27,6 @@ import type { DiscoveryMetadataRecord } from '../../contracts/discovery-metadata
 const discoveryIndexCache = new WeakMap<DesignToolContext, DiscoveryAssetIndex>();
 type OpenApiSnapshot = { config: OpenApiConnectionConfig; spec: OpenApiSpec | null };
 const openApiSnapshotCache = new WeakMap<DesignToolContext, OpenApiSnapshot | null>();
-
-function recordOf(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
 
 function connectionFor(ctx: DesignToolContext, connector: string): ConnectionRecord | undefined {
   return ctx.connections.find((entry) => entry.connector === connector);
@@ -134,34 +129,35 @@ function capabilityAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen
 function rdbTableAssets(ctx: DesignToolContext, assets: DiscoveryAsset[], seen: Set<string>): void {
   const connection = connectionFor(ctx, 'rdb');
   if (!connection?.connected) return;
-  const config = recordOf(connection.config);
-  const database = typeof config?.type === 'string' ? config.type : 'rdb';
-  const allowedTables = Array.isArray(config?.allowedTables)
-    ? config.allowedTables.filter((value): value is string => typeof value === 'string')
-    : [];
-
-  for (const rawTable of allowedTables) {
-    const ref = parseRdbTableRef(rawTable);
-    if (!ref) continue;
-    const table = formatRdbTableRef(ref);
-    addUnique(assets, seen, {
-      id: `rdb:${table}`,
-      kind: 'database_table',
-      name: table,
-      label: table,
-      description: `${database} 읽기 허용 테이블`,
-      connector: 'rdb',
-      aliases: [table, ref.table, 'DB', database],
-      availability: 'ready',
-      access: 'read',
-      metadata: {
-        table,
-        ...(ref.schema ? { schema: ref.schema } : {}),
-        database,
-      },
-      provenance: { source: 'connection', ref: 'connection:rdb' },
-      lineage: lineageForConnector('rdb'),
-    });
+  const entries = rdbDatabaseEntries(connection.config);
+  for (const entry of entries) {
+    const database = entry.type ?? 'rdb';
+    const name = entries.length > 1 ? rdbDatabaseName(entry) : undefined;
+    for (const rawTable of entry.allowedTables ?? []) {
+      const ref = parseRdbTableRef(rawTable);
+      if (!ref) continue;
+      const table = formatRdbTableRef(ref);
+      addUnique(assets, seen, {
+        id: rdbSourceId(entry.id, table),
+        kind: 'database_table',
+        name: table,
+        label: name ? `${name} · ${table}` : table,
+        description: `${name ?? database} 읽기 허용 테이블`,
+        connector: 'rdb',
+        aliases: [table, ref.table, 'DB', database, ...(name ? [name] : [])],
+        availability: 'ready',
+        access: 'read',
+        metadata: {
+          table,
+          ...(ref.schema ? { schema: ref.schema } : {}),
+          database,
+          // Which database to describe and read when the connection holds several.
+          ...(entry.id !== DEFAULT_RDB_DATABASE_ID ? { connectionId: entry.id } : {}),
+        },
+        provenance: { source: 'connection', ref: 'connection:rdb' },
+        lineage: lineageForConnector('rdb'),
+      });
+    }
   }
 }
 

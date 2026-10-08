@@ -130,27 +130,21 @@ const API_ENDPOINTS = [
   endpoint('pokeapi', 'PokeAPI', [['pokemon', 'Pokemon'], ['type', 'Types']]),
 ];
 
-/**
- * One connection holds one database today, so the eight systems above live in one company
- * database as prefixed tables (shop_orders, logistics_orders …), the way a data warehouse does.
- */
-const PREFIXES = ['shop', 'logistics', 'finance', 'hr', 'crm', 'inventory', 'marketing', 'support'];
+const DATABASE_IDS = ['shop', 'logistics', 'finance', 'hr', 'crm', 'inventory', 'marketing', 'support'];
 
-function companyDatabase() {
-  const tables: Table[] = [];
-  const relations: Array<[string, string, string, string]> = [];
-  DATABASES.forEach((database, index) => {
-    const prefix = PREFIXES[index]!;
-    for (const table of database.config.schema.tables) tables.push({ ...table, table: `${prefix}_${table.table}` });
-    for (const relation of database.config.schema.relations) {
-      relations.push([`${prefix}_${relation.from.table}`, relation.from.column, `${prefix}_${relation.to.table}`, relation.to.column]);
-    }
-  });
-  return rdb('회사 DB', tables, relations);
+/** The eight systems as eight databases of the one 'rdb' connection, names colliding as in life. */
+function companyDatabases() {
+  return {
+    connector: 'rdb',
+    connected: true,
+    config: {
+      databases: DATABASES.map((database, index) => ({ id: DATABASE_IDS[index], ...database.config })),
+    },
+  };
 }
 
 export const SCALE_CONNECTIONS = [
-  companyDatabase(),
+  companyDatabases(),
   { connector: 'http', connected: true, config: { endpoints: API_ENDPOINTS } },
   { connector: 'gmail', connected: true, config: {} },
   { connector: 'slack', connected: true, config: {} },
