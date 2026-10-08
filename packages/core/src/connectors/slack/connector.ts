@@ -119,7 +119,13 @@ export class SlackConnector implements Connector {
           errorDetails: { requiredScope: 'search:read', alternativeAction: 'messages.read' },
         };
       }
-      return { ok: false, error: message.slice(0, 1000), errorCode: 'slack_error' };
+      // Keep Slack's own reason (not_in_channel, invalid_auth, ratelimited …) as the code, so the
+      // person is told what to do instead of a bare "Slack 작업에 실패".
+      const platformCode = (err as { data?: { error?: unknown } } | null)?.data?.error;
+      const code = typeof platformCode === 'string' && /^[a-z_]+$/u.test(platformCode)
+        ? platformCode
+        : /An API error occurred: ([a-z_]+)$/u.exec(message)?.[1];
+      return { ok: false, error: code ?? message.slice(0, 1000), errorCode: code ?? 'slack_error' };
     }
   }
 }

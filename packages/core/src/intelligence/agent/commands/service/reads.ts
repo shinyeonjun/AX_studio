@@ -1,3 +1,4 @@
+import { readFailureMessage } from '../../../../contracts/error-messages.js';
 import { WorkspaceSourceError } from '../../../../persistence/workspace-source-service.js';
 import { sourceManifestPage } from '../../source-manifest.js';
 import type {
@@ -61,7 +62,8 @@ export async function executeReadTool<T>(
     undefined,
     [issue(
       error,
-      'command ' + command.name + ' 실행 실패: ' + error,
+      // The person reads this; the raw code stays in the issue code and the logs.
+      readFailureMessage(error, execution.failureKind),
       undefined,
       boundedReadErrorDetails(execution.errorDetails),
       undefined,

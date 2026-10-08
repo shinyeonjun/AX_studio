@@ -64,3 +64,29 @@ describe('aiProviderErrorMessage', () => {
     expect(aiProviderErrorMessage(undefined)).toBeUndefined();
   });
 });
+
+describe('failures the person reads in words, never as codes or provider English', () => {
+  it('turns a failed read into a sentence by what kind of failure it was', async () => {
+    const { readFailureMessage } = await import('./error-messages.js');
+    expect(readFailureMessage('table_not_allowed')).toBe('이 표는 읽도록 허용되어 있지 않아요.');
+    expect(readFailureMessage('An API error occurred: not_in_channel')).toContain('채널에 앱을 추가');
+    expect(readFailureMessage("ENOENT: no such file or directory, open 'C:\\x.xlsx'", 'not_found')).toBe('찾는 자료를 찾지 못했어요. 이름이나 조건을 확인해 주세요.');
+    expect(readFailureMessage('Request had insufficient authentication scopes.', 'permission_denied')).toContain('접근할 권한이 없어요');
+    expect(readFailureMessage('http_503')).toContain('잠시 후 다시');
+    expect(readFailureMessage('fetch failed')).toContain('인터넷 연결');
+    expect(readFailureMessage('some_new_code', 'transient')).toContain('잠시 후 다시');
+  });
+
+  it('names what to do for AI SDK failures that keep the cause in lastError/statusCode', async () => {
+    const { aiProviderErrorMessage, aiProviderFailureCode } = await import('./error-messages.js');
+    const refused = Object.assign(new Error('Failed after 3 attempts. Last error: Cannot connect to API: connect ECONNREFUSED 127.0.0.1:11434'), {
+      lastError: Object.assign(new Error('Cannot connect to API: connect ECONNREFUSED 127.0.0.1:11434'), {}),
+    });
+    expect(aiProviderErrorMessage(refused)).toContain('켜져 있는지');
+    expect(aiProviderFailureCode(refused)).toBe('ai_unreachable');
+    const rejected = Object.assign(new Error('Failed after 3 attempts.'), { lastError: Object.assign(new Error('Unauthorized'), { statusCode: 401 }) });
+    expect(aiProviderFailureCode(rejected)).toBe('ai_auth_failed');
+    expect(aiProviderFailureCode(Object.assign(new Error('x'), { statusCode: 529 }))).toBe('ai_busy');
+    expect(aiProviderErrorMessage(new Error("model 'llama9' not found"))).toContain('모델 이름');
+  });
+});

@@ -29,6 +29,23 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+/** Codes too broad to tell the person what to do; the step's own logged words say more. */
+const BROAD_FAILURE_CODES = new Set(['execution_failed', 'action_failed', 'http_error', 'http_error_status', 'rdb_error', 'slack_error', 'gmail_error', 'agent_invoke_failed']);
+
+/**
+ * Why a run failed, in words: the code's own reason when it is specific, else the last Korean
+ * message a step logged (already translated), else the code's broad reason, else a next step.
+ */
+function failureReason(result: ExecutionResult): string {
+  const specific = result.errorCode && !BROAD_FAILURE_CODES.has(result.errorCode) ? executionErrorReason(result.errorCode) : undefined;
+  if (specific) return specific;
+  const logged = [...(result.log ?? [])].reverse()
+    .find((entry) => entry.level === 'error' && typeof entry.message === 'string' && /[가-힣]/u.test(entry.message))?.message;
+  return safeText(logged, 300)?.replace(/[.。]$/u, '')
+    ?? executionErrorReason(result.errorCode)
+    ?? '실행 중 문제가 생겼습니다. 활동 화면에서 자세한 내용을 확인해 주세요';
+}
+
 export function safeText(value: unknown, max = MAX_FIELD_CHARS): string | undefined {
   if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return undefined;
   const text = String(value)
@@ -155,7 +172,7 @@ export function formatExecutionResultMessage(
     const reportLines = reportFailureMessage(result.log, result.errorCode);
     lines.push(...reportLines);
     // Raw codes mean nothing to the reader; say the reason when there are words for it.
-    const reason = reportLines.length === 0 ? executionErrorReason(result.errorCode) : undefined;
+    const reason = reportLines.length === 0 ? failureReason(result) : undefined;
     if (reason) lines.push(`원인: ${reason}`);
   }
   if (result.status === 'pending_approval' && result.pendingApprovalId) {

@@ -33,7 +33,7 @@ export class LocalFolderConnector implements Connector {
       if (!pagination) return { ok: false, error: 'invalid_folder_pagination', errorCode: 'invalid_params' };
       const folderId = String(params.folderId ?? '');
       const folder = findLocalFolder(this.config, folderId);
-      if (!folder) return { ok: false, error: 'folder_not_found' };
+      if (!folder) return { ok: false, error: 'folder_not_found', errorCode: 'folder_not_found' };
       const scanned = await scanFolderCheckedAsync(folder.path, (params.extensions as string[]) ?? undefined, ctx.abortSignal);
       if (!scanned.ok) return { ok: false, error: scanned.error, errorCode: scanned.errorCode };
       return { ok: true, data: { folder, ...folderPage(scanned.files, pagination) } };
@@ -42,7 +42,7 @@ export class LocalFolderConnector implements Connector {
     if (action === 'read') {
       const folderId = String(params.folderId ?? '');
       const folder = findLocalFolder(this.config, folderId);
-      if (!folder) return { ok: false, error: 'folder_not_found' };
+      if (!folder) return { ok: false, error: 'folder_not_found', errorCode: 'folder_not_found' };
 
       const candidatePath =
         typeof params.path === 'string'

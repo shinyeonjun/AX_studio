@@ -749,13 +749,17 @@ describe('runAxCommandChat command loop', () => {
     };
     const harness = new AgentHarness(scriptedModel([], [], 'test-provider', [], textSeen));
 
-    await expect(runAxCommandChat({
+    const reply = await runAxCommandChat({
       harness,
       commandService: service,
       decisionEngine,
       messages: [],
       userMessage: '연결된 자료 목록을 보여줘',
-    })).resolves.toContain('source_read_failed');
+    });
+    // The person reads why in words; the raw code stays in the logs.
+    expect(reply).toContain('작업을 완료하지 못했어요');
+    expect(reply).not.toContain('source_read_failed');
+    expect(reply).not.toContain('command ');
     expect(textSeen).toHaveLength(0);
   });
 
