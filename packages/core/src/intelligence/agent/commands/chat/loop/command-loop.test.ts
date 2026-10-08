@@ -1895,7 +1895,7 @@ describe('runAxCommandChat command loop', () => {
       resolveReadOperationSelection,
       messages: [],
       userMessage: '재고를 보여줘',
-    })).resolves.toContain('"stock": 12');
+    })).resolves.toContain('| 12 |');
 
     expect(selection.mode).toBe('full_catalog');
     expect(offeredOperations).toHaveLength(71 + builtInTransformCapabilityIds.length);

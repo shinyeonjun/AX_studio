@@ -99,40 +99,33 @@ export function deterministicCapabilityReadChatReply(
   if (!jevConfirmedNoTransform && needsModelTransform(userMessage)) return undefined;
 
   const payload = capabilityEnvelopeData(result);
-  const wantsTable = /표|테이블|table|열|컬럼/iu.test(userMessage);
-  if (wantsTable) {
-    const table = TableArtifactSchema.safeParse(payload);
-    if (table.success) return tableToMarkdown(labeledTable(table.data, labels));
-    let decoded = payload;
-    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-      const body = (payload as Record<string, unknown>).body;
-      if (typeof body === 'string') {
-        try { decoded = JSON.parse(body) as unknown; } catch { return undefined; }
-      }
-    }
-    const rows = rowsForCapabilityTable(decoded);
-    return rows ? rowsToMarkdown(rows, labels) : undefined;
+  // Rows are shown as a table however the request was worded ("주문 목록 보여줘" names no table).
+  const table = TableArtifactSchema.safeParse(payload);
+  if (table.success) return tableToMarkdown(labeledTable(table.data, labels));
+  const record = payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? payload as Record<string, unknown>
+    : undefined;
+  let decoded: unknown = payload;
+  if (typeof record?.body === 'string') {
+    try { decoded = JSON.parse(record.body) as unknown; } catch { decoded = undefined; }
   }
+  const rows = decoded === undefined ? undefined : rowsForCapabilityTable(decoded);
+  if (rows) return rowsToMarkdown(rows, labels);
 
-  let body = payload;
-  let language = 'json';
-  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-    const record = payload as Record<string, unknown>;
-    if (typeof record.body === 'string') {
-      body = record.body;
-      language = 'text';
-      try {
-        body = JSON.stringify(JSON.parse(record.body) as unknown, null, 2);
-        language = 'json';
-      } catch {
-        // Preserve a non-JSON provider body as text.
-      }
-      return `가져온 결과:\n\n${fencedBody(String(body ?? ''), language)}`;
-    }
-    if (Object.hasOwn(record, 'result')) body = record.result;
+  if (typeof record?.body === 'string') {
+    const body = decoded === undefined ? record.body : JSON.stringify(decoded, null, 2);
+    return `가져온 결과:\n\n${fencedBody(boundedRawBody(body), decoded === undefined ? 'text' : 'json')}`;
   }
-  const serialized = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+  const value = record && Object.hasOwn(record, 'result') ? record.result : payload;
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   return serialized === undefined
     ? '조회 결과가 비어 있습니다.'
-    : `조회 결과:\n\n${fencedBody(serialized, typeof body === 'string' ? 'text' : 'json')}`;
+    : `조회 결과:\n\n${fencedBody(boundedRawBody(serialized), typeof value === 'string' ? 'text' : 'json')}`;
+}
+
+/** Results that are not rows stay short in the chat; the whole result stays in the run record. */
+const MAX_RAW_REPLY_CHARS = 6_000;
+
+function boundedRawBody(body: string): string {
+  return body.length <= MAX_RAW_REPLY_CHARS ? body : `${body.slice(0, MAX_RAW_REPLY_CHARS)}\n… (길어서 앞부분만 보여요)`;
 }
