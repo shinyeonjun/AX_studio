@@ -5,6 +5,7 @@ import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import { runAiDecision, evaluateCondition } from './ai-investigation.js';
+import { KEEP_CONTENT_LOCAL_SETTING, withContentKeptLocal } from './investigation/evidence.js';
 import { resolveStepParams } from './param-resolution.js';
 import { resolveDocumentIngestExecution } from '../contracts/document-ingest-resolve.js';
 import { applyStepBindings } from '../workflow/bindings.js';
@@ -146,9 +147,12 @@ export async function executeStep(
       break;
       }
 
-    case 'ai_decision':
-      await runAiDecision(step, ir, ctx, stepResults, investigationRunner, connectors, decisionEngine);
+    case 'ai_decision': {
+      // The person's app-wide choice outranks each work's own policy: kept local means kept local.
+      const decisionIr = store.getSetting?.<unknown>(KEEP_CONTENT_LOCAL_SETTING, false) === true ? withContentKeptLocal(ir) : ir;
+      await runAiDecision(step, decisionIr, ctx, stepResults, investigationRunner, connectors, decisionEngine);
       break;
+    }
 
     case 'if': {
       const cond = evaluateCondition(step.condition, ctx.variables, stepResults, ctx.outputs);

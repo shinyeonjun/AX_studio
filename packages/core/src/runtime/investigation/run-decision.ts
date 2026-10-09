@@ -11,6 +11,7 @@ import {
 } from './input.js';
 import { investigationUserPrompt } from './prompt.js';
 import {
+  ALL_CONTENT_POLICY_KEY,
   cloudDataAllowedForReadSource,
   cloudDataAllowedForDecision,
   hasDecisionEvidenceFromBindings,
@@ -70,7 +71,8 @@ export async function runAiDecision(
   const boundInputPorts = Object.entries(boundContext.bound)
     .filter(([port, value]) => value != null && !['document', 'emailBody'].includes(port))
     .map(([port]) => port);
-  const restrictedBoundInputPorts = boundInputPorts.filter((port) => ir.dataPolicy?.[port]?.cloudAllowed === false);
+  const restrictedBoundInputPorts = boundInputPorts.filter((port) => ir.dataPolicy?.[port]?.cloudAllowed === false
+    || ir.dataPolicy?.[ALL_CONTENT_POLICY_KEY]?.cloudAllowed === false);
   const cloudAllowed = cloudDataAllowedForDecision(ir, {
     document: documentRequired,
     emailBody: emailBodyRequired,
@@ -80,7 +82,7 @@ export async function runAiDecision(
   const includeSensitiveData = cloudAllowed || Boolean(investigationRunner && !cloudProvider);
   if (restrictedBoundInputPorts.length > 0 && cloudProvider) {
     throw Object.assign(
-      new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.'),
+      new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
       { code: 'ai_input_unavailable' },
     );
   }
@@ -88,7 +90,7 @@ export async function runAiDecision(
   if (documentRequired && !includeSensitiveData) {
     throw Object.assign(
       new Error(
-        '이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.',
+        '이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.',
       ),
       {
         code: 'ai_input_unavailable',
@@ -157,7 +159,7 @@ export async function runAiDecision(
           .filter((source) => !cloudDataAllowedForReadSource(ir, source)))];
         if (cloudProvider && restrictedReadSources.length > 0) {
           throw Object.assign(
-            new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI를 쓰거나 업무 설정에서 외부 전송을 허용해 주세요.'),
+            new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
             { code: 'ai_input_unavailable', data: { stepId: step.id, sources: restrictedReadSources } },
           );
         }

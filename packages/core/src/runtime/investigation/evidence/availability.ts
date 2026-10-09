@@ -41,6 +41,21 @@ export function hasDecisionEvidenceFromBindings(
   return hasDecisionEvidence(ctx, stepResults, evidence);
 }
 
+/** App setting: when true, no work content (mail, documents, read results) goes to a cloud service. */
+export const KEEP_CONTENT_LOCAL_SETTING = 'privacy.keepContentLocal';
+
+/** A policy key covering every input: the person chose to keep all work content on this computer. */
+export const ALL_CONTENT_POLICY_KEY = '*';
+
+/** The workflow as run when the person keeps work content on this computer: nothing may go to a cloud service. */
+export function withContentKeptLocal<T extends Pick<WorkflowIR, 'dataPolicy'>>(ir: T): T {
+  return { ...ir, dataPolicy: { ...ir.dataPolicy, [ALL_CONTENT_POLICY_KEY]: { cloudAllowed: false } } };
+}
+
+function allContentKeptLocal(ir: Pick<WorkflowIR, 'dataPolicy'>): boolean {
+  return ir.dataPolicy?.[ALL_CONTENT_POLICY_KEY]?.cloudAllowed === false;
+}
+
 export function cloudDataAllowedForDecision(
   ir: WorkflowIR,
   requirements: {
@@ -51,6 +66,7 @@ export function cloudDataAllowedForDecision(
   },
 ): boolean {
   const requiredPolicies = [
+    !allContentKeptLocal(ir),
     requirements.document ? ir.dataPolicy?.document?.cloudAllowed !== false : true,
     requirements.emailBody ? ir.dataPolicy?.emailBody?.cloudAllowed !== false : true,
     ...(requirements.boundInputPorts ?? []).map((port) => ir.dataPolicy?.[port]?.cloudAllowed !== false),
@@ -61,7 +77,8 @@ export function cloudDataAllowedForDecision(
 
 export function cloudDataAllowedForReadSource(ir: WorkflowIR, source: string): boolean {
   const connector = source.split('.', 1)[0] ?? source;
-  return ir.dataPolicy?.[source]?.cloudAllowed !== false
+  return !allContentKeptLocal(ir)
+    && ir.dataPolicy?.[source]?.cloudAllowed !== false
     && ir.dataPolicy?.[connector]?.cloudAllowed !== false;
 }
 

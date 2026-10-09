@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 import { SettingsCategory } from './SettingsCategory';
 
 /**
@@ -6,6 +8,29 @@ import { SettingsCategory } from './SettingsCategory';
  * receive only what a read or an approved send needs; nothing is reported automatically.
  */
 export function DataFlowSection() {
+  const [keepLocal, setKeepLocal] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void window.ax.getKeepContentLocal?.().then((value) => { if (active) setKeepLocal(value); }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  const toggle = async (enabled: boolean) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const saved = await window.ax.setKeepContentLocal?.(enabled);
+      if (typeof saved === 'boolean') setKeepLocal(saved);
+    } catch (err) {
+      setMessage(`바꾸지 못했습니다: ${ipcErrorMessage(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SettingsCategory
       title="데이터가 어디로 가나요"
@@ -14,7 +39,10 @@ export function DataFlowSection() {
       <ul className="data-flow-list" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 8 }}>
         <li>
           <strong>판단 엔진(Jev, api.typesafe.ai)</strong>: 보낸 요청 문장과 최근 대화 6개(각 800자까지)를 받아 무엇을 할지 정합니다.
-          표를 거르거나 정렬할 때는 해당 열의 값 일부, 반복 업무의 AI 판단 단계에서는 메일 제목·보낸 사람·본문과 문서 내용도 받습니다.
+          표를 거르거나 정렬할 때는 해당 열의 값 일부를 받습니다.
+          {keepLocal
+            ? ' 반복 업무의 메일·문서 내용은 보내지 않습니다(아래 설정).'
+            : ' 반복 업무의 AI 판단 단계에서는 메일 제목·보낸 사람·본문과 문서 내용도 받습니다.'}
         </li>
         <li>
           <strong>고른 AI</strong>: 대화 내용과 조회 결과(메일·Slack·DB·API 응답), 보고서의 페이지 이미지와 글자를 받아 답을 씁니다.
@@ -32,6 +60,20 @@ export function DataFlowSection() {
           <strong>업데이트 확인</strong>: 새 버전이 있는지 GitHub에 확인합니다.
         </li>
       </ul>
+      {keepLocal !== null && (
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 12 }}>
+          <input type="checkbox" checked={keepLocal} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
+          <span>
+            반복 업무의 메일·문서·조회 내용을 이 컴퓨터 밖(판단 엔진·클라우드 AI)으로 보내지 않기
+            <br />
+            <span className="muted">
+              켜면 그런 내용이 필요한 AI 판단 단계는 이 컴퓨터의 AI(Ollama)로만 실행되고, 클라우드 AI를 쓰면 실행하지 않고 멈춥니다.
+              채팅에서 직접 요청한 조회·요약은 고른 AI가 받습니다.
+            </span>
+          </span>
+        </label>
+      )}
+      {message && <p className="muted" role="status">{message}</p>}
     </SettingsCategory>
   );
 }
