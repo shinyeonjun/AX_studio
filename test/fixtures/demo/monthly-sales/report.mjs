@@ -17,4 +17,3 @@ export function report(period, rows) {
   categories.push({ 카테고리: TOTAL_LABEL, 주문건수: kept.length, 매출: total });
   return { summary, categories };
 }
-
