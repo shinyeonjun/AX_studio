@@ -84,11 +84,17 @@ export function parseParams(params: Record<string, unknown>): ReportGeneratePara
 
 const MAX_REPORT_BASE_NAME_CHARS = 120;
 
-export function safePdfFileName(value: string): string {
+/** The report's file name, ending in the extension of the file actually written. */
+export function safeReportFileName(value: string, extension: 'pdf' | 'docx' = 'pdf'): string {
   const name = basename(value.normalize('NFC')).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
   // Windows rejects trailing dots/spaces; long names would also exceed MAX_PATH downstream.
-  const base = truncateToUtf8Bytes(Array.from(name.replace(/\.pdf$/i, '')).slice(0, MAX_REPORT_BASE_NAME_CHARS).join(''),
-    MAX_FILE_NAME_UTF8_BYTES - 4).replace(/[.\s]+$/, '');
-  if (!base) return 'generated-report.pdf';
-  return `${base}.pdf`;
+  const base = truncateToUtf8Bytes(Array.from(name.replace(/\.(?:pdf|docx)$/i, '')).slice(0, MAX_REPORT_BASE_NAME_CHARS).join(''),
+    MAX_FILE_NAME_UTF8_BYTES - extension.length - 1).replace(/[.\s]+$/, '');
+  if (!base) return `generated-report.${extension}`;
+  return `${base}.${extension}`;
+}
+
+/** A completed report to work from: a PDF, or a Word file whose values are marked where they sit. */
+export function isReportExampleFile(fileName: string): boolean {
+  return /\.(?:pdf|docx)$/i.test(fileName);
 }

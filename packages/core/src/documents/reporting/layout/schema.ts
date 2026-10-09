@@ -49,7 +49,7 @@ function normalizeOutputFileName(value: unknown): unknown {
 
 const ReportLayoutPlanObjectSchema = z.object({
   schemaVersion: z.literal(1),
-  outputFileName: z.string().trim().min(1).max(180).refine((value) => value.toLowerCase().endsWith('.pdf')),
+  outputFileName: z.string().trim().min(1).max(180).refine((value) => /\.(?:pdf|docx)$/i.test(value)),
   scalarBindings: z.array(z.object({
     slotId: z.string().min(1),
     value: ValueSchema,

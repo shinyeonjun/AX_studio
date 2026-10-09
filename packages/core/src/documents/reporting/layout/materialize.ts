@@ -157,7 +157,8 @@ function rowsForResult(
   for (let offset = 0; rows.length < resultRowCount; offset += 1) {
     const rowIndex = group.rowCount + offset;
     const y = last.y + pitch * (offset + 1);
-    if (!Number.isFinite(boundary) || y + rowHeight > boundary - CONTINUATION_CONTENT_GAP) {
+    // A Word table grows in the document's flow and pushes what follows down: no gap to fit in.
+    if (pair.layout !== 'flow' && (!Number.isFinite(boundary) || y + rowHeight > boundary - CONTINUATION_CONTENT_GAP)) {
       throw new Error(`report_table_capacity_exceeded:${group.id}`);
     }
     const delta = y - last.y;

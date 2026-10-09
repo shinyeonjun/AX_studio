@@ -28,8 +28,8 @@ describe('telling a completed report\'s values from its form', () => {
     ]);
     const removals = await inferExampleValues(model as never, { goal: '이번 달 보고서', spans, readImage: () => new Uint8Array([1]), maxChars: 100_000 });
     expect(removals).toEqual([
-      { pageIndex: 0, rect: spans.spans[0]!.rect, text: '2026년 9월' },
-      { pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' },
+      { spanId: spans.spans[0]!.id, pageIndex: 0, rect: spans.spans[0]!.rect, text: '2026년 9월' },
+      { spanId: spans.spans[2]!.id, pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' },
     ]);
     expect((model.run.mock.calls[0]![0] as unknown as { images: unknown[] }).images).toHaveLength(1);
   });
@@ -39,5 +39,20 @@ describe('telling a completed report\'s values from its form', () => {
     const removals = await inferExampleValues(runner([]) as never, { goal: 'x', spans, readImage: () => new Uint8Array(), maxChars: 100_000, log });
     expect(removals.map((removal) => removal.text)).toEqual(['2026년 9월 매출 보고서', '합계: 1,800']);
     expect(log.mock.calls[0]![0]).toMatchObject({ code: 'report_example_values_from_digits' });
+  });
+
+  it('shows a Word report by where each paragraph sits, without page images or boxes', async () => {
+    const word: PdfReportSpans = {
+      ...spans,
+      exampleImages: [],
+      spans: spans.spans.map((span, index) => ({ ...span, location: index === 2 ? '본문 표1 6행 1열' : '본문 문단' })),
+    };
+    const model = runner([{ spanId: 'total', value: '1,800' }]);
+    const removals = await inferExampleValues(model as never, { goal: '이번 달 보고서', spans: word, readImage: () => new Uint8Array([1]), maxChars: 100_000 });
+    expect(removals).toEqual([{ spanId: 'total', pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' }]);
+    const request = model.run.mock.calls[0]![0] as unknown as { images: unknown[]; context: { untrustedData: string } };
+    expect(request.images).toHaveLength(0);
+    expect(request.context.untrustedData).toContain('본문 표1 6행 1열');
+    expect(request.context.untrustedData).not.toContain('fontSize');
   });
 });

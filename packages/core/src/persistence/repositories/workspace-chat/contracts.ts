@@ -10,6 +10,7 @@ import {
   type ExecutionResultStatus,
 } from '../../../contracts/execution-status.js';
 import { TableArtifactSchema, type TableArtifact } from '../../../contracts/artifacts/table.js';
+import { GENERATED_FILE_TYPES } from '../../../contracts/artifacts/generated-file.js';
 import { ToolResultReferenceSchema, ToolSendOutcomeSchema, type ToolResultReference, type ToolSendOutcome } from '../../../contracts/tool-result.js';
 
 export interface WorkspaceChatMessage {
@@ -36,6 +37,8 @@ export interface WorkspaceChatMessage {
   /** Safe metadata for a generated PDF; the host keeps the physical artifact path. */
   generatedPdf?: WorkspaceChatGeneratedPdf;
   generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
+  /** A Word report written from last period's Word report. */
+  generatedDocument?: WorkspaceChatGeneratedDocument;
   /** Bounded table shown in this reply, for immediate follow-up operations. */
   readResult?: TableArtifact;
   /** The read behind `readResult` can be repeated as a job (only some reads keep a recipe). */
@@ -81,6 +84,12 @@ export const WorkspaceChatGeneratedSpreadsheetSchema = WorkspaceChatGeneratedPdf
   mimeType: z.literal('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
 });
 export type WorkspaceChatGeneratedSpreadsheet = z.infer<typeof WorkspaceChatGeneratedSpreadsheetSchema>;
+
+export const WorkspaceChatGeneratedDocumentSchema = WorkspaceChatGeneratedPdfSchema.extend({
+  fileName: WorkspaceChatGeneratedPdfSchema.shape.fileName.refine(value => value.toLowerCase().endsWith('.docx')),
+  mimeType: z.literal(GENERATED_FILE_TYPES.docx.mimeType),
+});
+export type WorkspaceChatGeneratedDocument = z.infer<typeof WorkspaceChatGeneratedDocumentSchema>;
 
 export const WorkspaceChatReadResultSchema = TableArtifactSchema.pick({
   id: true,
@@ -150,6 +159,7 @@ export const workspaceChatMessageSchema = z.object({
   approval: WorkspaceChatApprovalSchema.optional(),
   generatedPdf: WorkspaceChatGeneratedPdfSchema.optional(),
   generatedSpreadsheet: WorkspaceChatGeneratedSpreadsheetSchema.optional(),
+  generatedDocument: WorkspaceChatGeneratedDocumentSchema.optional(),
   readResult: WorkspaceChatReadResultSchema.optional(),
   readRepeatable: z.boolean().optional(),
   dbConnection: z.object({ label: z.string().min(1).max(240).optional(), type: z.enum(['postgres', 'mysql', 'sqlite']).optional() }).strict().optional(),
@@ -163,6 +173,9 @@ export const workspaceChatMessageSchema = z.object({
       path: ['approval'],
       message: 'approval은 실행 결과 메시지에만 사용할 수 있습니다.',
     });
+  }
+  if (message.generatedDocument && message.kind !== 'execution_result') {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['generatedDocument'], message: 'Word 산출물은 실행 결과에만 표시합니다.' });
   }
   if (message.generatedSpreadsheet && message.kind !== 'execution_result') {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['generatedSpreadsheet'], message: 'Excel 산출물은 실행 결과에만 표시합니다.' });

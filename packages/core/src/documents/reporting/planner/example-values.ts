@@ -19,7 +19,7 @@ const EXAMPLE_VALUES_GOAL = [
   'amounts, counts, rates, dates and period labels (2026-09, 9월, Q3), names and items listed in table rows, computed totals, and sentences that state results.',
   'Do not mark the form itself: the report title without its period, section headings, field labels, table column headers, units shown as headers, the company or department name, fixed notes and page furniture.',
   'When one span holds a label and its value ("합계: 1,000", "기간 2026-09"), return only the value part as `value`, copied exactly from the span text.',
-  'Return spanId values only from the supplied spans. Use the page images to see which text sits in table rows and which is a header.',
+  'Return spanId values only from the supplied spans. Use the page images, or the location of each span in a Word report, to see which text sits in table rows and which is a header.',
 ].join(' ');
 
 const MAX_EXAMPLE_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -47,6 +47,8 @@ export async function inferExampleValues(runner: InvestigationRunner, input: {
 }): Promise<PdfReportValueRemoval[]> {
   const spans = input.spans.spans;
   if (spans.length === 0) throw new Error('report_example_has_no_text');
+  // A Word report's spans say where they sit in words; a PDF's are placed by box and page image.
+  const wordReport = spans.every((span) => span.location !== undefined);
   const images: ModelImageInput[] = [];
   let totalBytes = 0;
   for (const [index, path] of input.spans.exampleImages.entries()) {
@@ -60,12 +62,16 @@ export async function inferExampleValues(runner: InvestigationRunner, input: {
     context: {
       skillGoal: EXAMPLE_VALUES_GOAL,
       taskGoal: input.goal,
-      evidence: [{ source: 'pdf-text', detail: 'Spans are the report text in reading order with page and box (points, top-left origin).' }],
-      untrustedData: boundedJson({
-        pages: input.spans.pages,
-        spans: spans.map((span) => ({ spanId: span.id, page: span.pageIndex, text: span.text,
-          x: Math.round(span.rect.x), y: Math.round(span.rect.y), fontSize: span.fontSize })),
-      }, input.maxChars),
+      evidence: [wordReport
+        ? { source: 'docx-text', detail: 'Spans are the Word report paragraphs in reading order; location says whether a paragraph is body text, a header or footer, or which table row and column it is in.' }
+        : { source: 'pdf-text', detail: 'Spans are the report text in reading order with page and box (points, top-left origin).' }],
+      untrustedData: boundedJson(wordReport
+        ? { spans: spans.map((span) => ({ spanId: span.id, location: span.location, text: span.text })) }
+        : {
+          pages: input.spans.pages,
+          spans: spans.map((span) => ({ spanId: span.id, page: span.pageIndex, text: span.text,
+            x: Math.round(span.rect.x), y: Math.round(span.rect.y), fontSize: span.fontSize })),
+        }, input.maxChars),
       connectedConnectors: ['document'],
     },
     user: input.goal,
@@ -90,6 +96,6 @@ export async function inferExampleValues(runner: InvestigationRunner, input: {
     if (seen.has(key)) return [];
     seen.add(key);
     const span = byId.get(spanId)!;
-    return [{ pageIndex: span.pageIndex, rect: span.rect, text: value }];
+    return [{ spanId, pageIndex: span.pageIndex, rect: span.rect, text: value }];
   });
 }

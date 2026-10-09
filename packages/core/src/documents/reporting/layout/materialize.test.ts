@@ -224,4 +224,15 @@ describe('report layout materialization', () => {
     expect(() => materializeReportLayout(pairWithLater, layoutWithLater, overflow, { periodLabel: '2026년 9월' }))
       .toThrow('report_table_capacity_exceeded:customers-group');
   });
+
+  it('grows a Word report table by any number of rows: the document flows, there is no page room to run out of', () => {
+    const many = structuredClone(result);
+    for (const name of ['Gamma', 'Delta', 'Epsilon']) {
+      many.tables.customers!.rows.push({ raw: { name, sales: 1 }, display: { name, sales: '1원' } });
+    }
+    const shortPage = { ...pair, layout: 'flow' as const, pages: [{ ...pair.pages[0]!, height: 160 }] };
+    const rendered = materializeReportLayout(shortPage, layout, many, { periodLabel: '2026년 9월' });
+    expect(rendered.values['overflow-customers-group-4-0']).toBe('Epsilon');
+    expect(rendered.values['overflow-customers-group-4-1']).toBe('1원');
+  });
 });

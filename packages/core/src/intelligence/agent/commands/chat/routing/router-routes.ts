@@ -200,7 +200,7 @@ function planOneShot(
   });
 }
 
-const REPORT_INPUTS_REQUIRED = '보고서를 만들려면 지난 기간에 완성한 보고서 PDF를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.';
+const REPORT_INPUTS_REQUIRED = '보고서를 만들려면 지난 기간에 완성한 보고서(PDF나 Word 파일)를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.';
 
 async function reportRoute(context: JevRouteContext): Promise<JevChatRouterResult> {
   const { input, withTelemetry, confidence } = context;

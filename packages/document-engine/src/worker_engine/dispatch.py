@@ -19,6 +19,10 @@ def handle_request(request: EngineRequest) -> EngineResponse:
             from .pdf import handle_pdf_command
 
             return handle_pdf_command(request)
+        if request.command in {"docx_report_spans", "docx_report_prepare", "docx_report_fill"}:
+            from .docx import handle_docx_command
+
+            return handle_docx_command(request)
         from .queries import handle_document_query
 
         return handle_document_query(request)

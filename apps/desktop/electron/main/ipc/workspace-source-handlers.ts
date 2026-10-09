@@ -19,8 +19,14 @@ function optionalSessionId(value: unknown): string | undefined {
   return sessionId(value);
 }
 
+/** Files a chat takes: PDFs to read, and last period's Word report to write this period's from. */
+const SOURCE_MIME_TYPES: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+
 function validateE2ePdfPath(filePath: string): string {
-  if (extname(filePath).toLowerCase() !== '.pdf' || !existsSync(filePath)) {
+  if (!SOURCE_MIME_TYPES[extname(filePath).toLowerCase()] || !existsSync(filePath)) {
     throw new Error('E2E PDF fixture를 찾을 수 없습니다.');
   }
 
@@ -51,7 +57,7 @@ async function pickPdfPath(): Promise<string | undefined> {
   const result = await dialog.showOpenDialog({
     title: '이 대화에 자료 추가',
     properties: ['openFile'],
-    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    filters: [{ name: 'PDF · Word', extensions: ['pdf', 'docx'] }],
   });
   if (result.canceled || result.filePaths.length === 0) return undefined;
   return result.filePaths[0];
@@ -74,7 +80,7 @@ export function registerWorkspaceSourceHandlers() {
       const attached = await getCore().workspaceSources.attachToSession(
         optionalSessionId(rawSessionId),
         filePath,
-        'application/pdf',
+        SOURCE_MIME_TYPES[extname(filePath).toLowerCase()],
       );
       return {
         ok: true as const,

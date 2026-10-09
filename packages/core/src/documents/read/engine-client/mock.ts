@@ -2,6 +2,9 @@ import type {
   DocumentChunkHit,
   IngestDocumentOptions,
   IngestDocumentResult,
+  DocxReportFillGroup,
+  DocxReportFillResult,
+  DocxReportPrepared,
   PdfFormAnalyzeOptions,
   PdfFormFillOptions,
   PdfFormFillResult,
@@ -119,6 +122,21 @@ export class MockDocumentEngineClient implements DocumentEngineClient {
 
   async pdfReportBlank(_examplePath: string, _removals: PdfReportValueRemoval[], outputPath: string): Promise<{ templatePath: string }> {
     return { templatePath: outputPath };
+  }
+
+  async docxReportSpans(examplePath: string): Promise<PdfReportSpans> {
+    return { ...await this.pdfReportSpans(examplePath), exampleImages: [] };
+  }
+
+  async docxReportPrepare(_examplePath: string, _removals: PdfReportValueRemoval[], templatePath: string): Promise<DocxReportPrepared> {
+    return { templatePath, pair: { ...await this.pdfReportAnalyze(templatePath, templatePath), layout: 'flow', templateImages: [], exampleImages: [] } };
+  }
+
+  async docxReportFill(
+    _templatePath: string,
+    options: { groups: DocxReportFillGroup[]; values: Record<string, string>; outputPath: string },
+  ): Promise<DocxReportFillResult> {
+    return { outputPath: options.outputPath, outputHash: 'mock-output-hash', verified: true, fieldCount: Object.keys(options.values).length };
   }
 
   async getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }> {

@@ -12,7 +12,9 @@ import { captureReportSources } from './source/capture.js';
 import { normalizeReportHttpPath } from './source/schema.js';
 import { reportDigest, type ReportCheckpoint } from './checkpoints.js';
 import type { ReportGenerationDependencies } from './service/contracts.js';
-import { fileDigest, parseParams, reportConnectionIdentity, safePdfFileName } from './service/request.js';
+import { fileDigest, parseParams, reportConnectionIdentity, safeReportFileName } from './service/request.js';
+import { GENERATED_FILE_TYPES } from '../../contracts/artifacts/generated-file.js';
+import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
 import { httpConnectionSummaries, reportHttpEvidencePathnames } from './service/http-sources.js';
 import { errorCode, safeErrorData } from './service/errors.js';
 import { planReportSources } from './service/source-planning.js';
@@ -65,12 +67,14 @@ export class ReportGenerationService {
       if (!ctx.workspaceSessionId) throw new Error('report_workspace_session_required');
       if (!ctx.artifactSink) throw new Error('report_artifact_sink_required');
 
-      const template = params.templateSourceId
+      const example = this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.exampleSourceId);
+      // A Word report is its own form: its values are marked where they sit, so no blank is needed.
+      const wordReport = example.source.fileName.toLowerCase().endsWith('.docx');
+      if (!wordReport && !example.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_example_pdf_required');
+      const template = params.templateSourceId && !wordReport
         ? this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.templateSourceId)
         : undefined;
-      const example = this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.exampleSourceId);
       if (template && !template.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_template_pdf_required');
-      if (!example.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_example_pdf_required');
 
       if (params.resumeExecutionId && !this.dependencies.checkpoints) throw new Error('report_resume_unavailable');
       if (this.dependencies.checkpoints) {
@@ -91,7 +95,23 @@ export class ReportGenerationService {
       }
 
       let templatePath = template?.artifact.storedPath;
-      if (!templatePath) {
+      let pair: PdfReportPairAnalysis | undefined;
+      if (wordReport) {
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_template_derivation_started', message: 'Word 보고서에서 기간마다 바뀌는 값을 찾고 있습니다.' });
+        outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
+        mkdirSync(outputDirectory, { recursive: true });
+        const markedPath = join(outputDirectory, 'template.docx');
+        const { docxReportSpans, docxReportPrepare } = this.dependencies.documentEngine;
+        const inferExampleValues = planner.inferExampleValues?.bind(planner);
+        if (!docxReportSpans || !docxReportPrepare || !inferExampleValues) throw new Error('report_word_unsupported');
+        const prepared = await stage('template_derivation', { version: 1, format: 'docx', example: params.exampleSourceId }, async () => {
+          const listed = await docxReportSpans.call(this.dependencies.documentEngine, example.artifact.storedPath);
+          const removals = await inferExampleValues({ goal: params.goal, spans: listed, signal: ctx.abortSignal, log: ctx.log });
+          return docxReportPrepare.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, markedPath);
+        }, (saved) => existsSync(saved.templatePath));
+        templatePath = prepared.templatePath;
+        pair = prepared.pair;
+      } else if (!templatePath) {
         // Only last period's report: its values are told from its form, then taken out of it.
         ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_template_derivation_started', message: '완성 보고서에서 기간마다 바뀌는 값을 찾아 빈 양식을 만들고 있습니다.' });
         outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
@@ -106,12 +126,15 @@ export class ReportGenerationService {
           return (await pdfReportBlank.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, blankPath)).templatePath;
         }, (saved) => existsSync(saved));
       }
-      ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_pair_analysis_started', message: '보고서 양식과 완성 예시를 비교하고 있습니다.' });
-      phase = 'pair_analysis';
-      const pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId ?? 'derived', example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
-        templatePath,
-        example.artifact.storedPath,
-      ), (saved) => [...saved.templateImages, ...saved.exampleImages].every(existsSync));
+      if (!pair) {
+        const blankPath = templatePath;
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_pair_analysis_started', message: '보고서 양식과 완성 예시를 비교하고 있습니다.' });
+        phase = 'pair_analysis';
+        pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId ?? 'derived', example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
+          blankPath,
+          example.artifact.storedPath,
+        ), (saved) => [...saved.templateImages, ...saved.exampleImages].every(existsSync));
+      }
       const reportEvidencePathnames = reportHttpEvidencePathnames(params.goal, pair);
 
       const rdb = this.dependencies.getConnector('rdb');
@@ -295,31 +318,44 @@ export class ReportGenerationService {
       );
       outputDirectory ??= this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
       mkdirSync(outputDirectory, { recursive: true });
-      const fileName = safePdfFileName(outputFileName);
+      const output = wordReport ? GENERATED_FILE_TYPES.docx : GENERATED_FILE_TYPES.pdf;
+      const fileName = safeReportFileName(outputFileName, output.extension);
       // A short fixed name keeps the engine's temp path well under Windows MAX_PATH;
       // the display name only travels as artifact metadata.
-      const outputPath = join(outputDirectory, 'report.pdf');
-      phase = 'pdf_render';
-      const filled = await this.dependencies.documentEngine.pdfFormFill(templatePath, {
-        template: targetLayout.template,
-        values: targetLayout.values,
-        outputPath,
-      });
-      if (!filled.verified || !existsSync(filled.outputPath)) throw new Error('report_pdf_verification_failed');
+      const outputPath = join(outputDirectory, `report.${output.extension}`);
+      let filled: { outputPath: string; verified: boolean; pageCount?: number };
+      if (wordReport) {
+        phase = 'docx_render';
+        const { docxReportFill } = this.dependencies.documentEngine;
+        if (!docxReportFill) throw new Error('report_word_unsupported');
+        filled = await docxReportFill.call(this.dependencies.documentEngine, templatePath, {
+          groups: pair.tableGroups.map((group) => ({ id: group.id, rows: group.rows.map((row) => row.cells.map((cell) => cell.id)) })),
+          values: targetLayout.values,
+          outputPath,
+        });
+      } else {
+        phase = 'pdf_render';
+        filled = await this.dependencies.documentEngine.pdfFormFill(templatePath, {
+          template: targetLayout.template,
+          values: targetLayout.values,
+          outputPath,
+        });
+      }
+      if (!filled.verified || !existsSync(filled.outputPath)) throw new Error(`report_${output.extension}_verification_failed`);
       phase = 'artifact_store';
       const artifact = ctx.artifactSink.putBytes(readFileSync(filled.outputPath), {
         fileName,
-        mimeType: 'application/pdf',
+        mimeType: output.mimeType,
       });
       ctx.log({
-        at: new Date().toISOString(), level: 'info', code: 'pdf_generated',
-        message: '보고서 PDF를 생성했습니다.',
+        at: new Date().toISOString(), level: 'info', code: output.logCode,
+        message: `보고서 ${output.label} 파일을 생성했습니다.`,
         data: {
           artifactId: artifact.id,
           fileName: artifact.fileName,
           size: artifact.size,
           mimeType: artifact.mimeType,
-          pageCount: filled.pageCount,
+          ...(filled.pageCount !== undefined ? { pageCount: filled.pageCount } : {}),
           exampleReplayVerified: true,
           sourceFingerprints: Object.fromEntries(Object.entries(targetSources).map(([id, source]) => [id, source.fingerprint])),
         },
@@ -327,7 +363,7 @@ export class ReportGenerationService {
       if (checkpoint) {
         checkpoint.status = 'completed';
         try { saveCheckpoint(); } catch {
-          ctx.log({ at: new Date().toISOString(), level: 'warn', code: 'report_checkpoint_save_failed', message: 'PDF는 생성했으나 중간 기록의 완료 상태 저장에 실패했습니다.' });
+          ctx.log({ at: new Date().toISOString(), level: 'warn', code: 'report_checkpoint_save_failed', message: '보고서는 생성했으나 중간 기록의 완료 상태 저장에 실패했습니다.' });
         }
       }
       return {

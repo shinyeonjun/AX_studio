@@ -45,6 +45,11 @@
       "import": "./dist/workflow/visual-display.js",
       "default": "./dist/workflow/visual-display.js"
     },
+    "./generated-file": {
+      "types": "./dist/contracts/artifacts/generated-file.d.ts",
+      "import": "./dist/contracts/artifacts/generated-file.js",
+      "default": "./dist/contracts/artifacts/generated-file.js"
+    },
     "./table-display": {
       "types": "./dist/contracts/artifacts/table-display.d.ts",
       "import": "./dist/contracts/artifacts/table-display.js",

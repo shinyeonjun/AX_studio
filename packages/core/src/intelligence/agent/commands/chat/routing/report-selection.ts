@@ -4,16 +4,17 @@ import type { DecisionAnswer, DecisionInstruction, DecisionQuestion } from '../.
 import { boundDecisionString } from '../../../../decision/context.js';
 import type { WorkspaceSourceRecord } from '../../../../../persistence/workspace-source-service.js';
 import type { AxCommand } from '../../schema.js';
+import { isReportExampleFile } from '../../../../../documents/reporting/service/request.js';
 
 export function reportSources(sources: readonly WorkspaceSourceRecord[] | undefined) {
   const candidates = (sources ?? [])
-    .filter((source) => source.status === 'ready' && source.fileName.toLowerCase().endsWith('.pdf'));
+    .filter((source) => source.status === 'ready' && isReportExampleFile(source.fileName));
   return { candidates, catalogSize: candidates.length };
 }
 
 function reportSourceInstruction(source: WorkspaceSourceRecord): DecisionInstruction {
   return {
-    task: 'Classify this PDF for the requested report: blank template, completed example, or neither.',
+    task: 'Classify this file (a PDF or a Word document) for the requested report: blank template, completed example, or neither.',
     candidate: {
       id: source.id,
       file_name: boundDecisionString(source.fileName, 160),
@@ -71,7 +72,7 @@ export function reportCommand(input: {
   }
   const sources = selectedSources(input.answers, input.candidates);
   if (!sources) return { kind: 'fallback', reason: 'uncertain' };
-  // One PDF given for a report request is the report to follow, unless it is plainly a blank form.
+  // One file given for a report request is the report to follow, unless it is plainly a blank form.
   const exampleSourceId = sources.example
     ?? (input.candidates.length === 1 && !sources.template ? input.candidates[0]!.id : undefined);
   if (!exampleSourceId) {

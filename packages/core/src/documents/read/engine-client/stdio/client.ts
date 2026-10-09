@@ -10,6 +10,9 @@ import type {
   DocumentChunkHit,
   IngestDocumentOptions,
   IngestDocumentResult,
+  DocxReportFillGroup,
+  DocxReportFillResult,
+  DocxReportPrepared,
   PdfFormAnalyzeOptions,
   PdfFormFillOptions,
   PdfFormFillResult,
@@ -165,6 +168,41 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_report_blank_failed');
     }
+    return response.data;
+  }
+
+  async docxReportSpans(examplePath: string): Promise<PdfReportSpans> {
+    const response = await this.request<PdfReportSpans>('docx_report_spans', {
+      examplePath,
+      allowedPaths: [examplePath],
+    });
+    if (!response.ok || !response.data) throw new Error(response.error ?? 'docx_report_spans_failed');
+    return response.data;
+  }
+
+  async docxReportPrepare(examplePath: string, removals: PdfReportValueRemoval[], templatePath: string): Promise<DocxReportPrepared> {
+    const response = await this.request<DocxReportPrepared>('docx_report_prepare', {
+      examplePath,
+      templatePath,
+      removals,
+      allowedPaths: [examplePath, templatePath],
+    });
+    if (!response.ok || !response.data) throw new Error(response.error ?? 'docx_report_prepare_failed');
+    return response.data;
+  }
+
+  async docxReportFill(
+    templatePath: string,
+    options: { groups: DocxReportFillGroup[]; values: Record<string, string>; outputPath: string },
+  ): Promise<DocxReportFillResult> {
+    const response = await this.request<DocxReportFillResult>('docx_report_fill', {
+      templatePath,
+      groups: options.groups,
+      values: options.values,
+      outputPath: options.outputPath,
+      allowedPaths: [templatePath, options.outputPath],
+    });
+    if (!response.ok || !response.data) throw new Error(response.error ?? 'docx_report_fill_failed');
     return response.data;
   }
 

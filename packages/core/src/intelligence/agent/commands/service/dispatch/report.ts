@@ -4,6 +4,7 @@ import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { issue, result, textArg } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 import { parseWorkflowIR } from '../../../../../workflow/schema.js';
+import { isReportExampleFile } from '../../../../../documents/reporting/service/request.js';
 
 const REPORT_RESUME_ACTION_MARKER = /재시도|재개|\b(?:retry|resume|continue)\b/giu;
 const REPORT_FRESH_MARKER = /새로|처음부터|새\s*(?:실행|요청|보고서)|신규|\b(?:fresh|new)\b/giu;
@@ -89,7 +90,7 @@ export async function executeReportCommand(
   if (missing.length > 0) {
     return result(command.name, 'needs_input', undefined, [issue(
       'report_sources_required',
-      '지난 기간에 완성한 보고서 PDF를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.',
+      '지난 기간에 완성한 보고서(PDF나 Word 파일)를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.',
       undefined,
       { missing },
     )]);
@@ -108,7 +109,11 @@ export async function executeReportCommand(
     if (!source) return result(command.name, 'not_found', undefined, [issue(`report_${role}_not_found`, '선택한 자료를 현재 대화에서 찾을 수 없습니다.')]);
     if (source.status === 'processing') return result(command.name, 'needs_input', undefined, [issue('workspace_source_processing', 'PDF 분석이 끝날 때까지 잠시 기다려 주세요.')]);
     if (source.status !== 'ready') return result(command.name, 'error', undefined, [issue(source.errorCode ?? 'workspace_source_failed', 'PDF 자료 분석에 실패했습니다.')]);
-    if (!source.fileName.toLowerCase().endsWith('.pdf')) return result(command.name, 'invalid', undefined, [issue(`report_${role}_pdf_required`, '보고서 양식과 예시는 PDF여야 합니다.')]);
+    const usable = role === 'example' ? isReportExampleFile(source.fileName) : source.fileName.toLowerCase().endsWith('.pdf');
+    if (!usable) {
+      return result(command.name, 'invalid', undefined, [issue(`report_${role}_pdf_required`,
+        role === 'example' ? '지난 기간 보고서는 PDF나 Word(.docx) 파일이어야 합니다.' : '빈 양식은 PDF여야 합니다.')]);
+    }
   }
 
   const delegated: AxCommand = {

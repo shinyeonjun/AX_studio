@@ -2,6 +2,7 @@ export type {
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
   WorkspaceChatGeneratedSpreadsheet,
+  WorkspaceChatGeneratedDocument,
   WorkspaceChatReadResult,
   WorkspaceChatListRecord,
   WorkspaceChatMessage,
@@ -13,6 +14,7 @@ export {
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
   WorkspaceChatGeneratedSpreadsheetSchema,
+  WorkspaceChatGeneratedDocumentSchema,
   WorkspaceChatReadResultSchema,
 } from './workspace-chat/contracts.js';
 export { deriveWorkspaceChatTitle, refreshWorkspaceChatTitle } from './workspace-chat/title.js';

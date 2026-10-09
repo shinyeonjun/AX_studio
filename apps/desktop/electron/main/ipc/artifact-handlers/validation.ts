@@ -1,4 +1,4 @@
-import type { StoredArtifact } from '@ax-studio/core';
+import { generatedFileTypeOf, type StoredArtifact } from '@ax-studio/core';
 import type { GeneratedArtifactSourceDependencies } from './contracts.js';
 import { safeExportFileName } from './filename.js';
 
@@ -12,7 +12,7 @@ export type GeneratedArtifactValidationResult =
   | ({ ok: true } & ValidatedGeneratedArtifact)
   | { ok: false; error: string };
 
-/** Resolve one host-owned PDF or xlsx while keeping paths out of renderer-facing results. */
+/** Resolve one host-owned generated file (PDF, xlsx, docx) while keeping paths out of renderer-facing results. */
 export async function resolveGeneratedArtifact(
   artifactId: unknown,
   deps: GeneratedArtifactSourceDependencies,
@@ -28,9 +28,8 @@ export async function resolveGeneratedArtifact(
     return { ok: false, error: '생성 결과물을 찾을 수 없습니다.' };
   }
   if (!artifact) return { ok: false, error: '생성 결과물을 찾을 수 없습니다.' };
-  const spreadsheet = artifact.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    && artifact.fileName.toLowerCase().endsWith('.xlsx');
-  if (artifact.mimeType !== 'application/pdf' && !spreadsheet) {
+  // A PDF has always been accepted by its type alone; other kinds also need a matching name.
+  if (artifact.mimeType !== 'application/pdf' && !generatedFileTypeOf(artifact.mimeType ?? '', artifact.fileName)) {
     return { ok: false, error: '생성 결과물 형식이 올바르지 않습니다.' };
   }
 

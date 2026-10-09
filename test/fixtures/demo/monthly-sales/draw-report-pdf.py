@@ -1,4 +1,4 @@
-"""Draw one month's sales report as a PDF, from the JSON make-report-pdf.mjs prints.
+"""Draw one month's sales report as a PDF, from the JSON make-reports.mjs prints.
 
 Usage: python draw-report-pdf.py <report.json> <output.pdf>
 """
