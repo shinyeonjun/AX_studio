@@ -100,6 +100,8 @@ contextBridge.exposeInMainWorld('ax', {
   getUpdateStatus: () => ipcRenderer.invoke('ax:getUpdateStatus'),
   installUpdate: () => ipcRenderer.invoke('ax:installUpdate'),
   getStartAtLogin: () => ipcRenderer.invoke('ax:getStartAtLogin'),
+  getKeepContentLocal: () => ipcRenderer.invoke('ax:getKeepContentLocal'),
+  setKeepContentLocal: (enabled: boolean) => ipcRenderer.invoke('ax:setKeepContentLocal', enabled),
   setStartAtLogin: (enabled: boolean) => ipcRenderer.invoke('ax:setStartAtLogin', enabled),
   onUpdateStatus: (listener: (status: unknown) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, status: unknown) => listener(status);
