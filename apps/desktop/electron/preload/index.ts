@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('ax', {
   saveAiBrandConfig: (brand: string, prefs: unknown) => ipcRenderer.invoke('ax:saveAiBrandConfig', brand, prefs),
   testAiCli: (brand: string) => ipcRenderer.invoke('ax:testAiCli', brand),
   testAiApi: (brand: string, apiKey?: string, mode?: string) => ipcRenderer.invoke('ax:testAiApi', brand, apiKey, mode),
+  probeOllama: () => ipcRenderer.invoke('ax:probeOllama'),
   getJevDecisionConfig: () => ipcRenderer.invoke('ax:getJevDecisionConfig'),
   saveJevDecisionConfig: (prefs: unknown) => ipcRenderer.invoke('ax:saveJevDecisionConfig', prefs),
   testJevDecisionApi: (prefs?: unknown) => ipcRenderer.invoke('ax:testJevDecisionApi', prefs),

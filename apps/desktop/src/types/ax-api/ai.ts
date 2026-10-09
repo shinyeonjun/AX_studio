@@ -35,6 +35,8 @@ export interface AxAiApi {
   ) => Promise<{ ok: boolean }>;
   testAiCli: (brand: string) => Promise<AiCliTestResult>;
   testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
+  /** Whether the local Ollama server answers now; false when it is not running. */
+  probeOllama?: () => Promise<boolean>;
   getJevDecisionConfig: () => Promise<JevDecisionConfigSnapshot>;
   saveJevDecisionConfig: (prefs: JevDecisionConfigInput) => Promise<JevDecisionConfigSnapshot>;
   testJevDecisionApi: (prefs?: Omit<JevDecisionConfigInput, 'enabled'>) => Promise<{

@@ -28,9 +28,9 @@ export function useAiDetection() {
       }
       // Ollama has no key to remember: whether it is usable is whether its local server answers
       // now, so ask it on every check instead of only after the person presses "test".
-      void window.ax.testAiApi('ollama', undefined, 'api').then(
-        () => { if (request === latestRequest.current) setVerifiedApi((prev) => ({ ...prev, ollama: true })); },
-        () => { if (request === latestRequest.current) setVerifiedApi((prev) => ({ ...prev, ollama: false })); },
+      void (window.ax.probeOllama?.() ?? Promise.resolve(false)).then(
+        (running) => { if (request === latestRequest.current) setVerifiedApi((prev) => ({ ...prev, ollama: running })); },
+        () => undefined,
       );
       return { detected, aiConfig };
     } catch (error) {
