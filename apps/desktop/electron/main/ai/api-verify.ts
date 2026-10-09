@@ -49,6 +49,16 @@ async function verifyOllamaApi(): Promise<{ ok: true; label: string }> {
   return { ok: true, label: 'Ollama 로컬 서버 연결됨' };
 }
 
+/** Whether the local Ollama server answers now. Not running is an ordinary answer, not an error. */
+export async function ollamaRunning(): Promise<boolean> {
+  try {
+    await verifyOllamaApi();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function verifyAiApiKey(
   brand: AiBrand,
   apiKey?: string,

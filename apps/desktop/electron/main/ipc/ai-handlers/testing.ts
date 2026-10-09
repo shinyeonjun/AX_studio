@@ -1,13 +1,16 @@
 import { ipcHandle } from '../ipc-handle.js';
 import { isAiBrand } from '@ax-studio/core';
 import { getSecretForBrand, setBrandSecret } from '../../ai/config-file.js';
-import { verifyAiApiKey } from '../../ai/api-verify.js';
+import { ollamaRunning, verifyAiApiKey } from '../../ai/api-verify.js';
 import { testAiCli } from '../../ai/cli-test.js';
 import { maskSecret } from '../../env-file.js';
 
 const UNSUPPORTED_BRAND = '지원하지 않는 AI 제공자입니다.';
 
 export function registerAiTestingHandlers(): void {
+  // Asked on every settings check: a stopped Ollama answers false instead of logging a failure.
+  ipcHandle('ax:probeOllama', async (): Promise<boolean> => ollamaRunning());
+
   ipcHandle('ax:testAiCli', async (_event, brand: unknown) => {
     if (!isAiBrand(brand)) throw new Error(UNSUPPORTED_BRAND);
     return testAiCli(brand);
