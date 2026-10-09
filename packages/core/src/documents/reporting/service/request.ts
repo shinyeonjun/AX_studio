@@ -88,7 +88,7 @@ const MAX_REPORT_BASE_NAME_CHARS = 120;
 export function safeReportFileName(value: string, extension: 'pdf' | 'docx' = 'pdf'): string {
   const name = basename(value.normalize('NFC')).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
   // Windows rejects trailing dots/spaces; long names would also exceed MAX_PATH downstream.
-  const base = truncateToUtf8Bytes(Array.from(name.replace(/\.(?:pdf|docx)$/i, '')).slice(0, MAX_REPORT_BASE_NAME_CHARS).join(''),
+  const base = truncateToUtf8Bytes(Array.from(name.replace(/\.[A-Za-z][A-Za-z0-9]{1,4}$/u, '')).slice(0, MAX_REPORT_BASE_NAME_CHARS).join(''),
     MAX_FILE_NAME_UTF8_BYTES - extension.length - 1).replace(/[.\s]+$/, '');
   if (!base) return `generated-report.${extension}`;
   return `${base}.${extension}`;

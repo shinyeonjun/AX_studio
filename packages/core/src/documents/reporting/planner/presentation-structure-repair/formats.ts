@@ -23,7 +23,17 @@ function reconcileExampleFormat(expected: string, current?: ReportFormat): Repor
     if (current.style === 'text' || (current.style === 'date' && dateLike)) return current;
     return { style: 'text' };
   }
-  if (current.style === inferred.style) return current;
+  const exampleAffix = inferred.prefix !== undefined || inferred.suffix !== undefined;
+  if (current.style === inferred.style) {
+    // The unit around a number ("174건") is the example's presentation: keep the model's
+    // precision but write the unit the example writes.
+    return exampleAffix && current.prefix === undefined && current.suffix === undefined
+      ? { ...current, ...(inferred.prefix !== undefined ? { prefix: inferred.prefix } : {}),
+        ...(inferred.suffix !== undefined ? { suffix: inferred.suffix } : {}) }
+      : current;
+  }
+  // A number with words around it may still be a label the model deliberately keeps as text.
+  if (exampleAffix && (current.style === 'text' || current.style === 'date')) return current;
   // Preserve deliberate affixes, but take the numeric family and precision
   // from the example so the renderer emits the same kind of value.
   return {

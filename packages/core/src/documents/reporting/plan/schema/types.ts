@@ -97,6 +97,7 @@ interface ReportGroupKeySpec {
 
 export type ReportAggregateColumnValue =
   | { kind: 'group_key'; keyId: string }
+  | { kind: 'row_number' }
   | { kind: 'aggregate'; expression: ReportAggregateExpression }
   | { kind: 'derived'; expression: ReportDerivedExpression };
 

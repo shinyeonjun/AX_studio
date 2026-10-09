@@ -230,6 +230,7 @@ export function normalizeDerivedExpression(
   if (!isRecord(value)) return value;
   switch (value.kind) {
     case 'group_key':
+    case 'row_number':
       return value;
     case 'aggregate':
       // `aggregate` and `derived` are column-value wrappers. Models can also

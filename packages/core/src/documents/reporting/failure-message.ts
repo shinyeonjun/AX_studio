@@ -52,6 +52,7 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
   else if (code.startsWith('report_evidence_')) lines.push('요청된 계산 근거가 허용된 자료·범위 또는 처리 용량을 벗어났습니다. 결과를 임의로 생성하지 않았습니다.');
   else if (code === 'agent_aborted') lines.push('AI 요청이 취소되었습니다.');
   else if (code === 'model_output_invalid') lines.push('AI 응답이 필요한 형식을 충족하지 못했습니다.');
+  else if (code === 'report_example_period_in_form') lines.push('지난 보고서의 날짜가 기간마다 바뀌는 값으로 잡히지 않아, 그대로 두면 이번 보고서에 지난 날짜가 남습니다. 틀린 보고서를 만들지 않으려고 멈췄습니다. 다시 시도해 주세요.');
   else if (code === 'report_example_replay_failed') lines.push('예시 보고서와 같은 값이 나오지 않았습니다. 계산 기준과 예시 기간의 데이터를 확인해 주세요.');
   else if (['report_http_response_incomplete', 'report_http_pagination_no_progress',
     'report_rdb_response_incomplete', 'report_rdb_pagination_no_progress', 'report_rdb_page_limit'].includes(code)) {

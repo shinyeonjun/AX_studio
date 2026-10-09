@@ -18,6 +18,7 @@ import {
   applyConcatRepairVariants,
 } from './replay-repair/concat.js';
 import { applyTableRepairVariants } from './replay-repair/table.js';
+import { applyDateNotationVariants } from './replay-repair/date-notation.js';
 import {
   applyAggregateFilterVariants,
   applyAggregateRepairVariants,
@@ -111,6 +112,7 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
     applyMissingConcatFieldVariants,
     applyConcatRepairVariants,
     applyMissingScalarMetricVariants,
+    applyDateNotationVariants,
   ];
   for (let pass = 0; pass < 8 && currentScore > 0; pass += 1) {
     let improved = false;

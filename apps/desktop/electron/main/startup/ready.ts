@@ -37,6 +37,7 @@ import { loadE2EBenchmarkReportPlanner } from '../e2e-test-seam/report-planner.j
 import { hydrateConnectorsForStartup } from './connectors.js';
 import { createStartupJevDecisionEngine } from './jev.js';
 import { drainDesktopCore, isDesktopShuttingDown, setDesktopStartupTask, setWorkspaceSourceUnsubscribe } from './lifecycle.js';
+import { startDevReportEval } from '../dev-report-eval.js';
 
 const HISTORY_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 
@@ -136,6 +137,7 @@ export function registerDesktopReadyHandler(): void {
       }
 
       setCore(core);
+      startDevReportEval(core, app.isPackaged, process.env);
       setWorkspaceSourceUnsubscribe(
         core.workspaceSources.subscribe((source) => notifyWorkspaceSourceChanged(source)),
       );

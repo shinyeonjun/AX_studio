@@ -273,5 +273,15 @@ export function verifyReportExampleReplay(
       ? []
       : [{ slotId: slot.id, expected: slot.exampleText, actual }];
   });
+  // The example's own rows are the whole table: a replay that needs more rows than the example
+  // shows (top 5 written as all 8) reproduces every shown cell and still is not the example.
+  for (const group of pair.tableGroups) {
+    const extra = Object.keys(values)
+      .filter((id) => id.startsWith(`overflow-${group.id}-`) && normalized(values[id] ?? '') !== '');
+    if (extra.length > 0) {
+      mismatches.push({ slotId: `${group.id}:rows`, expected: `${group.rowCount} rows`,
+        actual: `${group.rowCount + new Set(extra.map((id) => id.split('-').at(-2))).size} rows` });
+    }
+  }
   return { ok: mismatches.length === 0, mismatches };
 }

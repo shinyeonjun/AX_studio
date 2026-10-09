@@ -3,23 +3,18 @@ import type { ReportLayoutPlan } from '../../layout/schema.js';
 import type { ReportPlan, ReportPrimitive } from '../../plan/schema.js';
 import type { ReportPlanResult } from '../../plan/execute.js';
 import { normalizeReportText } from '../../plan/reusability.js';
+import { renderReportTextToken } from '../../plan/text-tokens.js';
 
 function renderTextTemplatePiece(
   token: string,
   result: ReportPlanResult,
   metadata: Record<string, ReportPrimitive>,
 ): string | undefined {
-  if (token.startsWith('scalar.')) return result.scalars[token.slice('scalar.'.length)]?.display;
-  if (token.startsWith('meta.')) {
-    const value = metadata[token.slice('meta.'.length)];
-    return value === undefined ? undefined : String(value ?? '');
+  try {
+    return renderReportTextToken(token, { ...result, metadata });
+  } catch {
+    return undefined;
   }
-  const tableMatch = /^table\.([^.]+)\.rowCount$/u.exec(token);
-  if (tableMatch) {
-    const table = result.tables[tableMatch[1]!];
-    return table ? String(table.rows.length) : undefined;
-  }
-  return undefined;
 }
 
 /**

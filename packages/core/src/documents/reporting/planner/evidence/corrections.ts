@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { REPORT_TEXT_TOKEN_GRAMMAR } from '../../plan/text-tokens.js';
 
 export type StructuralIssue = { code: string; path: (string | number)[] };
 
@@ -61,7 +62,7 @@ export function structuralCorrectionGuidance(issues: StructuralIssue[]): string 
       return '\nPlan correction: a computed text references metadata that the selected source type does not provide. Use only meta.source.<http-alias>.path for HTTP sources and meta.source.<rdb-alias>.table/meta.source.<rdb-alias>.tableName for DB sources; remove unavailable metadata references and keep the text reusable.';
     }
     if (issues.some((issue) => issue.path.includes('report_text_reference_invalid'))) {
-      return '\nPlan correction: a computed text uses an invalid token. Use exactly {{scalar.<scalarId>}}, {{meta.<metadataKey}} or {{table.<tableId>.rowCount}}; do not use colon-prefixed tokens or invent a token namespace.';
+      return `\nPlan correction: a computed text uses an invalid token. Use exactly ${REPORT_TEXT_TOKEN_GRAMMAR}; do not use colon-prefixed tokens or invent a token namespace.`;
     }
     return '\nPlan correction: the host could not execute the previous calculation against every captured example row. Re-check field aliases, joins, null and numeric handling, and dataset selection; return a plan that executes without inventing fallback values.';
   }

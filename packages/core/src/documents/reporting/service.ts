@@ -14,11 +14,21 @@ import { reportDigest, type ReportCheckpoint } from './checkpoints.js';
 import type { ReportGenerationDependencies } from './service/contracts.js';
 import { fileDigest, parseParams, reportConnectionIdentity, safeReportFileName } from './service/request.js';
 import { GENERATED_FILE_TYPES } from '../../contracts/artifacts/generated-file.js';
-import type { PdfReportPairAnalysis } from '../read/types/pdf.js';
+import type { PdfReportPairAnalysis, PdfReportSpans, PdfReportValueRemoval } from '../read/types/pdf.js';
 import { httpConnectionSummaries, reportHttpEvidencePathnames } from './service/http-sources.js';
 import { errorCode, safeErrorData } from './service/errors.js';
 import { planReportSources } from './service/source-planning.js';
 import { listReportFiles } from './service/file-sources.js';
+import { dateMentions, mentionInPeriod } from './period-mentions.js';
+
+
+/** Each span's text with the values taken out: what stays the same from period to period. */
+function formTextAfter(spans: PdfReportSpans, removals: PdfReportValueRemoval[]): string[] {
+  return spans.spans.map((span) => removals
+    .filter((removal) => removal.spanId === span.id)
+    .reduce((text, removal) => text.split(removal.text).join(' '), span.text).trim())
+    .filter((text) => text.length > 0);
+}
 
 export type { ReportGenerationDependencies } from './service/contracts.js';
 
@@ -96,6 +106,8 @@ export class ReportGenerationService {
 
       let templatePath = template?.artifact.storedPath;
       let pair: PdfReportPairAnalysis | undefined;
+      // The text a report derived from last period's keeps as its form; it must not name that period.
+      let formText: string[] = [];
       if (wordReport) {
         ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_template_derivation_started', message: 'Word 보고서에서 기간마다 바뀌는 값을 찾고 있습니다.' });
         outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
@@ -104,13 +116,15 @@ export class ReportGenerationService {
         const { docxReportSpans, docxReportPrepare } = this.dependencies.documentEngine;
         const inferExampleValues = planner.inferExampleValues?.bind(planner);
         if (!docxReportSpans || !docxReportPrepare || !inferExampleValues) throw new Error('report_word_unsupported');
-        const prepared = await stage('template_derivation', { version: 1, format: 'docx', example: params.exampleSourceId }, async () => {
+        const prepared = await stage('template_derivation', { version: 2, format: 'docx', example: params.exampleSourceId }, async () => {
           const listed = await docxReportSpans.call(this.dependencies.documentEngine, example.artifact.storedPath);
           const removals = await inferExampleValues({ goal: params.goal, spans: listed, signal: ctx.abortSignal, log: ctx.log });
-          return docxReportPrepare.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, markedPath);
+          const marked = await docxReportPrepare.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, markedPath);
+          return { ...marked, formText: formTextAfter(listed, removals) };
         }, (saved) => existsSync(saved.templatePath));
         templatePath = prepared.templatePath;
         pair = prepared.pair;
+        formText = prepared.formText;
       } else if (!templatePath) {
         // Only last period's report: its values are told from its form, then taken out of it.
         ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_template_derivation_started', message: '완성 보고서에서 기간마다 바뀌는 값을 찾아 빈 양식을 만들고 있습니다.' });
@@ -120,11 +134,14 @@ export class ReportGenerationService {
         const { pdfReportSpans, pdfReportBlank } = this.dependencies.documentEngine;
         const inferExampleValues = planner.inferExampleValues?.bind(planner);
         if (!pdfReportSpans || !pdfReportBlank || !inferExampleValues) throw new Error('report_template_source_required');
-        templatePath = await stage('template_derivation', { version: 1, example: params.exampleSourceId }, async () => {
+        const derived = await stage('template_derivation', { version: 2, example: params.exampleSourceId }, async () => {
           const listed = await pdfReportSpans.call(this.dependencies.documentEngine, example.artifact.storedPath);
           const removals = await inferExampleValues({ goal: params.goal, spans: listed, signal: ctx.abortSignal, log: ctx.log });
-          return (await pdfReportBlank.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, blankPath)).templatePath;
-        }, (saved) => existsSync(saved));
+          const blank = await pdfReportBlank.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, blankPath);
+          return { templatePath: blank.templatePath, formText: formTextAfter(listed, removals) };
+        }, (saved) => existsSync(saved.templatePath));
+        templatePath = derived.templatePath;
+        formText = derived.formText;
       }
       if (!pair) {
         const blankPath = templatePath;
@@ -214,6 +231,13 @@ export class ReportGenerationService {
         initialRequirements,
       });
       const { capture, exampleSources } = planned;
+      const leftover = formText.flatMap((text) => dateMentions(text)
+        .filter((mention) => mentionInPeriod(mention, capture.examplePeriod)).map((mention) => mention.text));
+      if (leftover.length > 0) {
+        ctx.log({ at: new Date().toISOString(), level: 'warn', code: 'report_example_period_in_form',
+          message: '지난 보고서의 날짜가 바뀌지 않는 글자로 남아 있어 멈췄습니다.', data: { mentions: leftover.slice(0, 8) } });
+        throw new Error('report_example_period_in_form');
+      }
       let { business } = planned;
       const exampleMetadata = reportExecutionMetadata(
         capture.examplePeriod,

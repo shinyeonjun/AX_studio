@@ -66,6 +66,7 @@ import {
 import {
   type ReportPlanReplayFailure,
   describeReportReplayMismatches,
+  describeReplayScale,
   repairExampleReplayAndPresentation,
 } from './replay-revision.js';
 import { inferReportSourceRequirements, type ReportSourceRequirementsInput } from './source-requirements.js';
@@ -534,7 +535,8 @@ export class ReportPlanner {
         ? { executionError: input.replayFailure.executionError.slice(0, 300) }
         : {}),
       ...(boundedMismatches ? { mismatches: boundedMismatches,
-        diagnostics: describeReportReplayMismatches(input.pair, boundedMismatches) } : {}),
+        diagnostics: describeReportReplayMismatches(input.pair, boundedMismatches),
+        scale: describeReplayScale(boundedMismatches, input.exampleSources) } : {}),
     };
     const inferredReportPlan = await this.inferCalculation(input, {
       context: {

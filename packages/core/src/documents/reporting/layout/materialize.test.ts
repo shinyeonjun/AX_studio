@@ -235,4 +235,14 @@ describe('report layout materialization', () => {
     expect(rendered.values['overflow-customers-group-4-0']).toBe('Epsilon');
     expect(rendered.values['overflow-customers-group-4-1']).toBe('1원');
   });
+
+  it('does not pass a replay that needs more rows than the example shows', () => {
+    const more = structuredClone(result);
+    more.tables.customers!.rows.push({ raw: { name: 'Gamma', sales: 1 }, display: { name: 'Gamma', sales: '1원' } });
+    const flow = { ...pair, layout: 'flow' as const };
+    const rendered = materializeReportLayout(flow, layout, more, { periodLabel: '2026년 8월' });
+    const replay = verifyReportExampleReplay(flow, rendered.values);
+    expect(replay.ok).toBe(false);
+    expect(replay.mismatches).toEqual([{ slotId: 'customers-group:rows', expected: '2 rows', actual: '3 rows' }]);
+  });
 });
