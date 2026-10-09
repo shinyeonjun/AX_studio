@@ -7,6 +7,8 @@ import type {
   PdfFormFillResult,
   PdfFormTemplate,
   PdfReportPairAnalysis,
+  PdfReportSpans,
+  PdfReportValueRemoval,
   PdfToHtmlOptions,
   PdfToHtmlResult,
 } from '../types.js';
@@ -102,6 +104,21 @@ export class MockDocumentEngineClient implements DocumentEngineClient {
       templateImages: [templatePath + '.png'],
       exampleImages: [examplePath + '.png'],
     };
+  }
+
+  async pdfReportSpans(examplePath: string): Promise<PdfReportSpans> {
+    return {
+      schemaVersion: 1,
+      exampleHash: 'mock-example-hash',
+      pageCount: 1,
+      pages: [{ index: 0, width: 595, height: 842, rotation: 0 }],
+      spans: [],
+      exampleImages: [examplePath + '.png'],
+    };
+  }
+
+  async pdfReportBlank(_examplePath: string, _removals: PdfReportValueRemoval[], outputPath: string): Promise<{ templatePath: string }> {
+    return { templatePath: outputPath };
   }
 
   async getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }> {

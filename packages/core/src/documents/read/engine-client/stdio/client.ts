@@ -15,6 +15,8 @@ import type {
   PdfFormFillResult,
   PdfFormTemplate,
   PdfReportPairAnalysis,
+  PdfReportSpans,
+  PdfReportValueRemoval,
   PdfToHtmlOptions,
   PdfToHtmlResult,
   DocumentEngineResponse,
@@ -136,6 +138,32 @@ export class StdioDocumentEngineClient implements DocumentEngineClient {
     });
     if (!response.ok || !response.data) {
       throw new Error(response.error ?? 'pdf_report_analyze_failed');
+    }
+    return response.data;
+  }
+
+  async pdfReportSpans(examplePath: string): Promise<PdfReportSpans> {
+    const response = await this.request<PdfReportSpans>('pdf_report_spans', {
+      examplePath,
+      artifactRoot: this.artifactRoot,
+      allowedPaths: [examplePath],
+      allowedRoots: [this.artifactRoot],
+    });
+    if (!response.ok || !response.data) {
+      throw new Error(response.error ?? 'pdf_report_spans_failed');
+    }
+    return response.data;
+  }
+
+  async pdfReportBlank(examplePath: string, removals: PdfReportValueRemoval[], outputPath: string): Promise<{ templatePath: string }> {
+    const response = await this.request<{ templatePath: string }>('pdf_report_blank', {
+      examplePath,
+      outputPath,
+      removals,
+      allowedPaths: [examplePath, outputPath],
+    });
+    if (!response.ok || !response.data) {
+      throw new Error(response.error ?? 'pdf_report_blank_failed');
     }
     return response.data;
   }

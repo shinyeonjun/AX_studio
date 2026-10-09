@@ -1,4 +1,4 @@
-"""Remove selected placeholder glyphs without painting over source content.
+"""Remove selected glyphs (placeholders, or earlier values) without painting over source content.
 
 Text advances are retained as TJ spacing, so neighbouring labels and suffixes
 stay at their original positions. Fonts are decoded by the pinned pypdf parser;
@@ -7,7 +7,7 @@ unresolved tokens fail closed rather than yielding an apparently filled PDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from pypdf._font import Font
 from pypdf.generic import (ArrayObject, ByteStringObject, ContentStream, DictionaryObject,
@@ -51,8 +51,13 @@ class _Glyph:
     removed: bool = False
 
 
-def remove_placeholders(page: Any, writer: Any, fields: list[Mapping[str, Any]]) -> None:
-    pending = list(fields)
+def remove_glyphs(page: Any, writer: Any, select: Callable[[list[_Glyph]], None]) -> None:
+    """Rewrite the page so glyphs `select` marks removed are gone; their advances stay as spacing.
+
+    `select` sees each content stream's glyphs in drawing order ("
+" marks a line or text block
+    start) and sets `removed` on the ones to drop.
+    """
     height = float(page.mediabox.height)
     rewrites = [0]
 
@@ -175,22 +180,7 @@ def remove_placeholders(page: Any, writer: Any, fields: list[Mapping[str, Any]])
             else:
                 runs.append((operands, operator))
 
-        text = "".join(g.text for g in glyphs)
-        offsets: list[_Glyph] = [g for g in glyphs for _ in g.text]
-        for match in _PLACEHOLDER_RE.finditer(text):
-            name = (match.group(1) or match.group(2)).strip()
-            token = offsets[match.start():match.end()]
-            x, y = token[0].point
-            candidates = [field for field in pending if str(field.get("name")) == name
-                          and float(field["rect"]["x"]) - 3 <= x <= float(field["rect"]["x"]) + float(field["rect"]["width"]) + 3
-                          and float(field["rect"]["y"]) - 3 <= y <= float(field["rect"]["y"]) + float(field["rect"]["height"]) + 3]
-            if not candidates:
-                continue
-            if len(candidates) != 1:
-                raise ValueError("placeholder_region_ambiguous:" + name)
-            for glyph in token:
-                glyph.removed = True
-            pending.remove(candidates[0])
+        select(glyphs)
 
         for operands, operator in runs:
             if operator != b"TJ":
@@ -213,7 +203,70 @@ def remove_placeholders(page: Any, writer: Any, fields: list[Mapping[str, Any]])
 
     resources = DictionaryObject(_object(page["/Resources"]))
     rewritten = rewrite(page.get_contents(), resources, _State(), set())
-    if pending:
-        raise ValueError("placeholder_not_removed:" + ",".join(str(field["name"]) for field in pending))
     page[NameObject("/Resources")] = resources
     page[NameObject("/Contents")] = writer._add_object(rewritten)
+
+
+def remove_placeholders(page: Any, writer: Any, fields: list[Mapping[str, Any]]) -> None:
+    pending = list(fields)
+
+    def select(glyphs: list[_Glyph]) -> None:
+        text = "".join(g.text for g in glyphs)
+        offsets: list[_Glyph] = [g for g in glyphs for _ in g.text]
+        for match in _PLACEHOLDER_RE.finditer(text):
+            name = (match.group(1) or match.group(2)).strip()
+            token = offsets[match.start():match.end()]
+            x, y = token[0].point
+            candidates = [field for field in pending if str(field.get("name")) == name
+                          and float(field["rect"]["x"]) - 3 <= x <= float(field["rect"]["x"]) + float(field["rect"]["width"]) + 3
+                          and float(field["rect"]["y"]) - 3 <= y <= float(field["rect"]["y"]) + float(field["rect"]["height"]) + 3]
+            if not candidates:
+                continue
+            if len(candidates) != 1:
+                raise ValueError("placeholder_region_ambiguous:" + name)
+            for glyph in token:
+                glyph.removed = True
+            pending.remove(candidates[0])
+
+    remove_glyphs(page, writer, select)
+    if pending:
+        raise ValueError("placeholder_not_removed:" + ",".join(str(field["name"]) for field in pending))
+
+
+def remove_text_in_regions(page: Any, writer: Any, regions: list[Mapping[str, Any]]) -> None:
+    """Remove the text `region["text"]` drawn inside `region["rect"]` (top-left coordinates).
+
+    Only the glyphs spelling that text go, so a label sharing the line ("합계: 1,000") stays.
+    A region whose text is not found fails closed: a half-erased form must not pass as blank.
+    """
+    pending = list(regions)
+
+    def inside(glyph: _Glyph, rect: Mapping[str, Any]) -> bool:
+        x, y = glyph.point
+        left, top = float(rect["x"]), float(rect["y"])
+        return (left - 2 <= x <= left + float(rect["width"]) + 2
+                and top - 2 <= y <= top + float(rect["height"]) + 2)
+
+    def select(glyphs: list[_Glyph]) -> None:
+        for region in list(pending):
+            wanted = "".join(str(region["text"]).split())
+            if not wanted:
+                pending.remove(region)
+                continue
+            candidates = [g for g in glyphs if g.text.strip() and not g.removed and inside(g, region["rect"])]
+            # Each glyph may decode to several characters; match on the joined text.
+            spelled = "".join("".join(g.text.split()) for g in candidates)
+            start = spelled.find(wanted)
+            if start < 0:
+                continue
+            position = 0
+            for glyph in candidates:
+                width = len("".join(glyph.text.split()))
+                if position + width > start and position < start + len(wanted):
+                    glyph.removed = True
+                position += width
+            pending.remove(region)
+
+    remove_glyphs(page, writer, select)
+    if pending:
+        raise ValueError("report_value_not_removed:" + str(len(pending)))

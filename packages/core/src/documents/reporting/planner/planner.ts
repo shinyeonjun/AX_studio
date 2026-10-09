@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import type { InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
 import type { DecisionEngine } from '../../../contracts/decision.js';
 import type { ExecutionLogEntry } from '../../../connectors/types.js';
-import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
+import type { PdfReportPairAnalysis, PdfReportSpans, PdfReportValueRemoval } from '../../read/types/pdf.js';
+import { inferExampleValues } from './example-values.js';
 import type { ReportLayoutPlan } from '../layout/schema.js';
 import type { ReportSourceSnapshot, ReportPlan } from '../plan/schema.js';
 import { executeReportPlan } from '../plan/execute.js';
@@ -143,6 +144,15 @@ export class ReportPlanner {
       },
     }, { readImage: this.readImage, maxPlanningChars: this.maxPlanningChars,
       decisionEngine: this.decisionEngine });
+  }
+
+  async inferExampleValues(input: {
+    goal: string;
+    spans: PdfReportSpans;
+    signal?: AbortSignal;
+    log?: (entry: ExecutionLogEntry) => void;
+  }): Promise<PdfReportValueRemoval[]> {
+    return inferExampleValues(this.runner, { ...input, readImage: this.readImage, maxChars: this.maxPlanningChars });
   }
 
   async inferSourceRequirements(input: ReportSourceRequirementsInput): Promise<ReportSourceNeed[]> {

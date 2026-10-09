@@ -150,6 +150,45 @@ def _handle_pdf_report_analyze(request: EngineRequest) -> EngineResponse:
     return EngineResponse(id=request.id, ok=True, data=result)
 
 
+def _handle_pdf_report_spans(request: EngineRequest) -> EngineResponse:
+    from write.pdf_report_single import list_report_spans
+
+    example = request.params.get("examplePath")
+    if not example:
+        return EngineResponse(id=request.id, ok=False, error="report_example_path_required")
+    allowed_paths = request_allowed_paths(request.params)
+    example_path = _managed_path(example, "example", allowed_paths)
+    if not example_path.is_file():
+        return EngineResponse(id=request.id, ok=False, error="report_example_file_not_found")
+    assert_source_within_limits(example_path)
+    artifact_root = managed_request_root(
+        request.params.get("artifactRoot"),
+        default_document_root(),
+        "artifact",
+        request.params,
+    )
+    return EngineResponse(id=request.id, ok=True, data=list_report_spans(example_path, artifact_root))
+
+
+def _handle_pdf_report_blank(request: EngineRequest) -> EngineResponse:
+    from write.pdf_report_single import blank_report_template
+
+    example = request.params.get("examplePath")
+    output = request.params.get("outputPath")
+    removals = request.params.get("removals")
+    if not example or not output:
+        return EngineResponse(id=request.id, ok=False, error="report_blank_paths_required")
+    if not isinstance(removals, list):
+        return EngineResponse(id=request.id, ok=False, error="report_values_required")
+    allowed_paths = request_allowed_paths(request.params)
+    example_path = _managed_path(example, "example", allowed_paths)
+    output_path = _managed_path(output, "output", allowed_paths)
+    if not example_path.is_file():
+        return EngineResponse(id=request.id, ok=False, error="report_example_file_not_found")
+    assert_source_within_limits(example_path)
+    return EngineResponse(id=request.id, ok=True, data=blank_report_template(example_path, removals, output_path))
+
+
 def handle_pdf_command(request: EngineRequest) -> EngineResponse:
     if request.command == "pdf_to_html":
         return _handle_pdf_to_html(request)
@@ -157,4 +196,8 @@ def handle_pdf_command(request: EngineRequest) -> EngineResponse:
         return _handle_pdf_form_analyze(request)
     if request.command == "pdf_report_analyze":
         return _handle_pdf_report_analyze(request)
+    if request.command == "pdf_report_spans":
+        return _handle_pdf_report_spans(request)
+    if request.command == "pdf_report_blank":
+        return _handle_pdf_report_blank(request)
     return _handle_pdf_form_fill(request)

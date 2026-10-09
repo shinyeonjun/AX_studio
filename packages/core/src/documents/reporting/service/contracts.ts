@@ -1,4 +1,5 @@
 import type { DocumentEngineClient } from '../../read/engine-client.js';
+import type { PdfReportValueRemoval } from '../../read/types.js';
 import type { Connector, ExecutionLogEntry } from '../../../connectors/types.js';
 import type {
   ReportSourceNeed,
@@ -21,6 +22,13 @@ interface ReportWorkspaceSourceResolver {
 
 interface ReportPlanningGateway {
   forExecution?(stage: <T>(name: string, input: unknown, run: () => Promise<T>) => Promise<T>): ReportPlanningGateway;
+  /** Which text of a completed report is this period's values (to be replaced), not the form. */
+  inferExampleValues?(input: {
+    goal: string;
+    spans: Awaited<ReturnType<DocumentEngineClient['pdfReportSpans']>>;
+    signal?: AbortSignal;
+    log?: (entry: ExecutionLogEntry) => void;
+  }): Promise<PdfReportValueRemoval[]>;
   inferSourceRequirements(input: {
     goal: string;
     pair: Awaited<ReturnType<DocumentEngineClient['pdfReportAnalyze']>>;
@@ -75,7 +83,9 @@ interface ReportPlanningGateway {
 export interface ReportGenerationDependencies {
   checkpoints?: ReportCheckpointStore;
   workspaceSources: ReportWorkspaceSourceResolver;
-  documentEngine: Pick<DocumentEngineClient, 'pdfReportAnalyze' | 'pdfFormFill'>;
+  /** The span listing and blanking calls let a completed report stand in for its blank form. */
+  documentEngine: Pick<DocumentEngineClient, 'pdfReportAnalyze' | 'pdfFormFill'>
+    & Partial<Pick<DocumentEngineClient, 'pdfReportSpans' | 'pdfReportBlank'>>;
   planner: ReportPlanningGateway;
   getConnector(name: string): Connector | undefined;
   /** Test seam; production uses an owned OS temporary directory and cleans it. */

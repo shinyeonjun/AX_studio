@@ -1,6 +1,7 @@
 import type { ExecutionLogEntry } from '../../connectors/types.js';
 
 const PHASE_LABELS: Record<string, string> = {
+  template_derivation: '완성 보고서에서 빈 양식 만들기', 'report-example-values': '기간마다 바뀌는 값 찾기',
   pair_analysis: '양식·예시 분석', rdb_schema: 'DB 구조 확인', source_plan: '조회 방법 구성',
   source_requirements: '필요한 원본 데이터 확인', 'report-source-requirements': '필요한 원본 데이터 확인',
   http_probe: '연결된 서비스 확인', source_refinement: '조회 방법 검증', example_capture: '예시 기간 데이터 조회',
@@ -57,6 +58,11 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
     lines.push('원본 데이터를 끝까지 읽지 못했습니다. 연결된 서비스나 데이터베이스의 자료가 도중에 바뀌지 않았는지 확인한 뒤 다시 요청해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
   }
   else if (code === 'report_table_capacity_exceeded') lines.push('결과 행이 양식의 표 용량을 초과했습니다. 행을 잘라내지 않았습니다. 더 큰 양식이나 명시적인 집계 기준이 필요합니다.');
+  else if (code === 'report_template_source_required') lines.push('완성 보고서만으로 빈 양식을 만들 수 없는 환경입니다. 빈 양식 PDF를 함께 올려 주세요.');
+  else if (code === 'report_example_has_no_text') lines.push('올린 보고서에서 글자를 읽을 수 없습니다. 스캔한 이미지 PDF는 아직 지원하지 않습니다. 글자를 고를 수 있는 PDF로 올려 주세요.');
+  else if (code === 'report_example_too_much_text') lines.push('보고서의 글이 너무 많아 처리하지 못했습니다. 페이지를 나눠 올려 주세요.');
+  else if (code === 'report_example_values_not_found') lines.push('올린 보고서에서 기간마다 바뀌는 값을 찾지 못했습니다. 값이 채워진 보고서인지 확인해 주시거나, 빈 양식 PDF를 함께 올려 주세요.');
+  else if (code.startsWith('report_value_not_removed')) lines.push('보고서에서 지난 기간 값을 지우지 못해 빈 양식을 만들지 못했습니다. 빈 양식 PDF를 함께 올려 주시면 그 양식으로 작성합니다.');
   else if (code === 'report_checkpoint_input_changed') lines.push('자료·연결·요청이 변경되어 이전 결과를 재사용할 수 없습니다. 새 실행으로 요청해 주세요.');
   else if (code === 'report_checkpoint_not_found') lines.push('이 실행에는 저장된 중간 결과가 없습니다. 새 보고서 생성으로 요청해 주세요.');
   else if (code === 'report_checkpoint_not_failed') lines.push('실패한 실행만 이어서 다시 할 수 있습니다. 진행 중이거나 완료된 실행인지 확인해 주세요.');
