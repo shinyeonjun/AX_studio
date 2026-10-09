@@ -178,4 +178,3 @@ async function remainingNumberValues(
     data: { numbers: candidates.length, added: added.length } });
   return added;
 }
-
