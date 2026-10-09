@@ -8,7 +8,7 @@ import type {
   ReportCaptureInference,
 } from '../planner/schema.js';
 import type { ReportSourceInspection } from '../planner/source-discovery.js';
-import type { ReportHttpConnectionSummary, ReportPlanReplayFailure } from '../planner/planner.js';
+import type { ReportFileSummary, ReportHttpConnectionSummary, ReportPlanReplayFailure } from '../planner/planner.js';
 import type { captureReportSources } from '../source/capture.js';
 import type { ReportHttpProbe, ReportHttpProbeCorrection } from '../source/probe.js';
 import type { ReportCheckpointStore } from '../checkpoints.js';
@@ -42,6 +42,7 @@ interface ReportPlanningGateway {
     pair: Awaited<ReturnType<DocumentEngineClient['pdfReportAnalyze']>>;
     httpConnections: ReportHttpConnectionSummary[];
     rdbTables: string[];
+    files?: ReportFileSummary[];
     connectedConnectors: string[];
     requirements?: ReportSourceNeed[];
     unavailableSources?: ReportUnavailableSource[];
@@ -58,6 +59,7 @@ interface ReportPlanningGateway {
     staticQueryCorrections?: ReportHttpProbeCorrection[];
     httpConnections: ReportHttpConnectionSummary[];
     rdbTables: string[];
+    files?: ReportFileSummary[];
     connectedConnectors: string[];
     signal?: AbortSignal;
     log?: (entry: ExecutionLogEntry) => void;

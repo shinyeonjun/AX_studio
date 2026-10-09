@@ -16,6 +16,7 @@ import { fileDigest, parseParams, reportConnectionIdentity, safePdfFileName } fr
 import { httpConnectionSummaries, reportHttpEvidencePathnames } from './service/http-sources.js';
 import { errorCode, safeErrorData } from './service/errors.js';
 import { planReportSources } from './service/source-planning.js';
+import { listReportFiles } from './service/file-sources.js';
 
 export type { ReportGenerationDependencies } from './service/contracts.js';
 
@@ -148,7 +149,10 @@ export class ReportGenerationService {
           throw new Error('report_http_path_not_in_report_evidence');
         }
       };
-      const connectedConnectors = ['document', ...(httpConnections.length ? ['http'] : []), ...(rdb ? ['rdb'] : [])];
+      const sheetReader = this.dependencies.getConnector('local_sheet');
+      const files = sheetReader ? await listReportFiles(ctx, this.dependencies.getConnector('local_folder')) : [];
+      const connectedConnectors = ['document', ...(httpConnections.length ? ['http'] : []), ...(rdb ? ['rdb'] : []),
+        ...(files.length ? ['file'] : [])];
       const gateway = {
         executeHttp: async (request: Record<string, unknown>, executionContext = ctx) => {
           assertHttpSourcePath(request);
@@ -163,6 +167,10 @@ export class ReportGenerationService {
             ? connector.execute('query.read', request, { ...ctx, reportCapture: true })
             : { ok: false, error: 'rdb connector missing', errorCode: 'connector_missing' };
         },
+        // Only a file in a connected folder; the reader keeps the path inside that folder.
+        ...(sheetReader ? { executeFile: async (request: { folderId: string; path: string; sheet?: string }) =>
+          sheetReader.execute('read', { folderId: request.folderId, path: request.path,
+            ...(request.sheet ? { sheet: request.sheet } : {}) }, ctx) } : {}),
       };
 
       phase = 'source_requirements';
@@ -173,7 +181,7 @@ export class ReportGenerationService {
       const planned = await planReportSources({
         ctx, goal: params.goal, pair, stage, setPhase: (next) => { phase = next; },
         planner, basePlanner: this.dependencies.planner, rdb, rdbTables, unavailableSources,
-        httpConnections, reportEvidencePathnames, assertHttpSourcePath, connectedConnectors, gateway,
+        httpConnections, files, reportEvidencePathnames, assertHttpSourcePath, connectedConnectors, gateway,
         initialRequirements,
       });
       const { capture, exampleSources } = planned;
@@ -249,11 +257,13 @@ export class ReportGenerationService {
       });
 
       phase = 'target_capture';
-      const targetSources = await stage('target_capture', capture, () => captureReportSources(capture.capturePlan, capture.targetPeriod, gateway));
+      const targetSources = await stage('target_capture', capture, () => captureReportSources(
+        capture.capturePlan, capture.targetPeriod, gateway, {}, capture.examplePeriod));
       const targetMetadata = reportExecutionMetadata(
         capture.targetPeriod,
         capture.capturePlan,
         'target',
+        capture.examplePeriod,
       );
       phase = 'target_calculation';
       // A resumed checkpoint can contain a plan produced before the host

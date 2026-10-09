@@ -36,8 +36,10 @@ import { discoverReportSources, type ReportSourceInspection } from './source-dis
 import {
   inspectReportCatalog,
   reportSourceCatalogSummary,
+  type ReportFileSummary,
   type ReportHttpConnectionSummary,
 } from './catalog.js';
+import { reportFileSources } from '../source/schema.js';
 import {
   reportSourceCandidateKey,
   selectAndInspectReportSources,
@@ -82,7 +84,7 @@ export {
 export { repairExampleReplayInference, describeReportReplayMismatches } from './replay-revision.js';
 export type { ReportPlanReplayFailure, ReportReplayMismatchDiagnostic } from './replay-revision.js';
 
-export type { ReportHttpConnectionSummary } from './catalog.js';
+export type { ReportFileSummary, ReportHttpConnectionSummary } from './catalog.js';
 export {
   inferReportFormats,
   pruneUnboundReportTexts,
@@ -164,6 +166,8 @@ export class ReportPlanner {
     pair: PdfReportPairAnalysis;
     httpConnections: ReportHttpConnectionSummary[];
     rdbTables: string[];
+    /** CSV/xlsx files in connected folders. */
+    files?: ReportFileSummary[];
     connectedConnectors: string[];
     requirements?: ReportSourceNeed[];
     unavailableSources?: ReportUnavailableSource[];
@@ -173,6 +177,7 @@ export class ReportPlanner {
     inspectSource?: (request: ReportSourceInspection, abortSignal?: AbortSignal) => Promise<unknown>;
   }): Promise<ReportCaptureInference> {
     const requirements = input.requirements ?? [];
+    const files = input.files ?? [];
     const selectionActive = Boolean(this.decisionEngine && requirements.length);
     const approvedCandidates = new Set<string>();
     const deniedCandidates = new Set<string>();
@@ -180,7 +185,9 @@ export class ReportPlanner {
       const uniqueRequests = [...new Map(requests.map(request => [reportSourceCandidateKey(request), request])).values()];
       if (uniqueRequests.some(request => request.kind === 'rdb_table'
         ? !input.rdbTables.includes(request.table)
-        : !input.httpConnections.some(connection => connection.id === request.connectionId))) {
+        : request.kind === 'file_sheet'
+          ? !files.some(file => file.folderId === request.folderId && file.path === request.path)
+          : !input.httpConnections.some(connection => connection.id === request.connectionId))) {
         throw Object.assign(new Error('report_source_inspection_denied'), { code: 'report_source_inspection_denied' });
       }
       const pending = uniqueRequests.filter(request => {
@@ -195,6 +202,7 @@ export class ReportPlanner {
           requirements,
           httpConnections: input.httpConnections,
           rdbTables: input.rdbTables,
+          files,
           candidateRequests: pending,
           inspectSource: input.inspectSource,
           signal,
@@ -213,9 +221,10 @@ export class ReportPlanner {
         deniedRequests: uniqueRequests.filter(request => deniedCandidates.has(reportSourceCandidateKey(request))),
       };
     };
-    const sourceCatalog = reportSourceCatalogSummary(input.httpConnections, input.rdbTables);
-    const initialCatalog = sourceCatalog.httpConnections + sourceCatalog.httpOperations + sourceCatalog.rdbTables <= 16
-      ? inspectReportCatalog(input.httpConnections, input.rdbTables, { kind: 'catalog', limit: 16 })
+    const sourceCatalog = reportSourceCatalogSummary(input.httpConnections, input.rdbTables, files);
+    const initialCatalog = sourceCatalog.httpConnections + sourceCatalog.httpOperations + sourceCatalog.rdbTables
+      + sourceCatalog.files <= 16
+      ? inspectReportCatalog(input.httpConnections, input.rdbTables, { kind: 'catalog', limit: 16 }, files)
       : undefined;
     return discoverReportSources({
       runner: this.runner,
@@ -228,6 +237,7 @@ export class ReportPlanner {
           requirements,
           httpConnections: input.httpConnections,
           rdbTables: input.rdbTables,
+          files,
           inspectSource: input.inspectSource,
           signal,
           log: input.log,
@@ -241,7 +251,7 @@ export class ReportPlanner {
       maxChars: this.maxPlanningChars,
       inspect: async (request, abortSignal) => {
         if (request.kind === 'catalog') {
-          return inspectReportCatalog(input.httpConnections, input.rdbTables, request);
+          return inspectReportCatalog(input.httpConnections, input.rdbTables, request, files);
         }
         let selectedEvidence: ReportSourceEvidence[] = [];
         if (selectionActive) {
@@ -263,12 +273,14 @@ export class ReportPlanner {
       },
       validate: async (plan, evidence, abortSignal) => {
         if (input.unavailableSources?.length && plan.capturePlan.rdb.length) throw new Error('report_rdb_schema_failed');
-        const validated = validateCapturePlan(plan, input.httpConnections, input.rdbTables);
+        const validated = validateCapturePlan(plan, input.httpConnections, input.rdbTables, files);
         if (selectionActive) {
           const requests: ReportSourceCandidateRequest[] = [
             ...validated.capturePlan.http.map(source => ({ kind: 'http_operation' as const,
               connectionId: source.connectionId!, path: source.path })),
             ...validated.capturePlan.rdb.map(source => ({ kind: 'rdb_table' as const, table: source.table })),
+            ...reportFileSources(validated.capturePlan).map(source => ({ kind: 'file_sheet' as const,
+              folderId: source.folderId, path: source.path, ...(source.sheet ? { sheet: source.sheet } : {}) })),
           ];
           const authorization = await authorizeCandidates(requests, abortSignal);
           for (const item of authorization.selectedEvidence) {
@@ -286,7 +298,7 @@ export class ReportPlanner {
         evidence: [
           { source: 'blank-template', detail: `${input.pair.pageCount} rendered PDF pages` },
           { source: 'completed-example', detail: `${input.pair.scalarSlots.length} scalar slots and ${input.pair.tableGroups.length} table groups` },
-          { source: 'source-catalog', detail: `${input.httpConnections.length} HTTP connections and ${input.rdbTables.length} DB tables` },
+          { source: 'source-catalog', detail: `${input.httpConnections.length} HTTP connections, ${input.rdbTables.length} DB tables and ${files.length} sheet files` },
         ],
         untrustedData: boundedJson({
           reportGeometry: promptPair(input.pair),
@@ -311,6 +323,7 @@ export class ReportPlanner {
     staticQueryCorrections?: ReportHttpProbeCorrection[];
     httpConnections: ReportHttpConnectionSummary[];
     rdbTables: string[];
+    files?: ReportFileSummary[];
     connectedConnectors: string[];
     signal?: AbortSignal;
     log?: (entry: ExecutionLogEntry) => void;
@@ -331,6 +344,7 @@ export class ReportPlanner {
       refined,
       input.httpConnections,
       input.rdbTables,
+      input.files,
     );
   }
 

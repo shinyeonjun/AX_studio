@@ -4,7 +4,8 @@ import { ReportPlanSchema, type ReportPlan } from '../plan/schema.js';
 import { assertReportPlanFieldSourcesJoined } from '../plan/execute.js';
 import { reportExecutionMetadata } from '../period-metadata.js';
 import { assertReusableReportPlan, assertReusableReportPresentation } from '../plan/reusability.js';
-import { ReportSourceCapturePlanSchema } from '../source/schema.js';
+import { ReportSourceCapturePlanSchema, reportFileSources } from '../source/schema.js';
+import { periodFilePath } from '../source/period-file.js';
 import {
   ReportCaptureInferenceSchema,
   type ReportBusinessInference,
@@ -23,7 +24,7 @@ import {
   repairStaticDerivedTableLabels,
   repairStaticTextBindingConflicts,
 } from './presentation-repair.js';
-import type { ReportHttpConnectionSummary } from './catalog.js';
+import type { ReportFileSummary, ReportHttpConnectionSummary } from './catalog.js';
 import {
   repairReportLayoutBindings,
   repairReportTableCapacities,
@@ -34,6 +35,7 @@ export function validateCapturePlan(
   inference: ReportCaptureInference,
   httpConnections: ReportHttpConnectionSummary[],
   rdbTables: string[],
+  files: ReportFileSummary[] = [],
 ): ReportCaptureInference {
   inference = ReportCaptureInferenceSchema.parse(inference);
   const capturePlan = ReportSourceCapturePlanSchema.parse(inference.capturePlan);
@@ -48,7 +50,14 @@ export function validateCapturePlan(
   for (const source of capturePlan.rdb) {
     if (!knownTables.has(source.table)) throw new Error(`report_rdb_table_unknown:${source.alias}`);
   }
-  const aliases = [...normalized.map((source) => source.alias), ...capturePlan.rdb.map((source) => source.alias)];
+  for (const source of reportFileSources(capturePlan)) {
+    if (!files.some((file) => file.folderId === source.folderId && file.path === source.path)) {
+      throw new Error(`report_file_unknown:${source.alias}`);
+    }
+    // A file per period must name its period, or the next period's file cannot be told.
+    if (source.perPeriod) periodFilePath(source.path, inference.examplePeriod, inference.targetPeriod);
+  }
+  const aliases = [...normalized, ...capturePlan.rdb, ...reportFileSources(capturePlan)].map((source) => source.alias);
   if (aliases.includes('meta')) throw new Error('report_source_alias_reserved:meta');
   if (new Set(aliases).size !== aliases.length) throw new Error('report_source_alias_duplicate');
   return { ...inference, capturePlan: { ...capturePlan, http: normalized } };
@@ -106,10 +115,8 @@ export function validateBusinessPlan(
 }
 
 export function assertReportPlanSourcesCaptured(plan: ReportPlan, capture: ReportCaptureInference): void {
-  const aliases = new Set([
-    ...capture.capturePlan.http.map((source) => source.alias),
-    ...capture.capturePlan.rdb.map((source) => source.alias),
-  ]);
+  const aliases = new Set([...capture.capturePlan.http, ...capture.capturePlan.rdb, ...reportFileSources(capture.capturePlan)]
+    .map((source) => source.alias));
   for (const source of [plan, ...(plan.datasets ?? [])]
     .flatMap(dataset => [dataset.baseSource, ...dataset.joins.map(join => join.source)])) {
     if (!aliases.has(source)) throw new Error(`report_plan_source_not_captured:${source}`);
@@ -117,10 +124,8 @@ export function assertReportPlanSourcesCaptured(plan: ReportPlan, capture: Repor
 }
 
 export function assertReportPlanFieldsJoined(plan: ReportPlan, capture: ReportCaptureInference): void {
-  assertReportPlanFieldSourcesJoined(plan, [
-    ...capture.capturePlan.http.map((source) => source.alias),
-    ...capture.capturePlan.rdb.map((source) => source.alias),
-  ]);
+  assertReportPlanFieldSourcesJoined(plan,
+    [...capture.capturePlan.http, ...capture.capturePlan.rdb, ...reportFileSources(capture.capturePlan)].map((source) => source.alias));
 }
 
 /**
@@ -167,6 +172,7 @@ function captureSelectionKey(capture: ReportCaptureInference): string {
       staticQuery: source.staticQuery,
     })),
     rdb: capture.capturePlan.rdb.map((source) => ({ alias: source.alias, table: source.table })),
+    file: reportFileSources(capture.capturePlan),
   });
 }
 
@@ -175,8 +181,9 @@ export function validateRefinedCapturePlan(
   candidate: ReportCaptureInference,
   httpConnections: ReportHttpConnectionSummary[],
   rdbTables: string[],
+  files: ReportFileSummary[] = [],
 ): ReportCaptureInference {
-  const refined = validateCapturePlan(candidate, httpConnections, rdbTables);
+  const refined = validateCapturePlan(candidate, httpConnections, rdbTables, files);
   if (
     JSON.stringify(refined.examplePeriod) !== JSON.stringify(provisional.examplePeriod)
     || JSON.stringify(refined.targetPeriod) !== JSON.stringify(provisional.targetPeriod)

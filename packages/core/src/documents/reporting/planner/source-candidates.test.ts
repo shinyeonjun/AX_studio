@@ -367,4 +367,26 @@ describe('Jev report source candidates', () => {
       ], httpConnections: [], rdbTables: ['warehouse.orders'], inspectSource: inspect })).resolves.toEqual([]);
     expect(inspect).not.toHaveBeenCalled();
   });
+
+  it('offers folder files to Jev and reads only the columns of the chosen one', async () => {
+    const files = [
+      { folderId: 'reports', folderLabel: '월간 보고', path: '매출_2040-01.xlsx', modifiedAt: '2040-02-01T00:00:00Z' },
+      { folderId: 'reports', folderLabel: '월간 보고', path: '회의록.csv', modifiedAt: '2040-01-15T00:00:00Z' },
+    ];
+    const decisionEngine: DecisionEngine = { async evaluate(request) {
+      return { answers: chosenQuestions(request, id => {
+        const candidate = (request.questions[id]!.instructions as { candidate: { path?: string } }).candidate;
+        return candidate.path === '매출_2040-01.xlsx' ? 'use_source' : 'skip_source';
+      }) };
+    } };
+    const inspected: ReportSourceInspection[] = [];
+    const evidence = await selectAndInspectReportSources({
+      decisionEngine, goal: '월간 매출 보고서', pair,
+      requirements: [{ id: 'source-file', connector: 'file', description: '매출 파일', reason: 'Jev' }],
+      httpConnections: [], rdbTables: [], files,
+      inspectSource: async (request) => { inspected.push(request); return { columns: [{ name: '금액', type: 'number' }], rowCount: 3 }; },
+    });
+    expect(inspected).toEqual([{ kind: 'file_sheet', folderId: 'reports', path: '매출_2040-01.xlsx' }]);
+    expect(evidence).toEqual([{ request: inspected[0], result: { columns: [{ name: '금액', type: 'number' }], rowCount: 3 } }]);
+  });
 });
