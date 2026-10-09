@@ -50,3 +50,39 @@ describe('a report from last period\'s completed report alone', () => {
     expect(result).toMatchObject({ ok: false, errorCode: 'report_evidence_ambiguous_rule' });
   });
 });
+
+describe('a report from a Word report of last period', () => {
+  it('marks its values in the Word file and takes the slots from it, without a PDF comparison', async () => {
+    const pair = { schemaVersion: 1 as const, pairId: 'p', templateHash: 't', exampleHash: 'e', pageCount: 1,
+      pages: [], scalarSlots: [], tableGroups: [], layout: 'flow' as const, templateImages: [], exampleImages: [] };
+    const removal = { spanId: 'total', pageIndex: 0, rect: spans.spans[1]!.rect, text: '1,800' };
+    const prepare = vi.fn(async (_example: string, _removals: unknown, templatePath: string) => ({ templatePath, pair }));
+    const analyze = vi.fn();
+    const inferSourceRequirements = vi.fn(async () => { throw new Error('report_evidence_ambiguous_rule'); });
+    const service = new ReportGenerationService({
+      workspaceSources: { resolveStoredFile: (_session, id) => ({ source: { id, fileName: `${id}.docx` }, artifact: { storedPath: `${id}.docx` } }) },
+      documentEngine: {
+        docxReportSpans: vi.fn(async () => spans), docxReportPrepare: prepare,
+        pdfReportAnalyze: analyze, pdfFormFill: vi.fn(),
+      },
+      planner: {
+        inferExampleValues: vi.fn(async () => [removal]),
+        inferSourceRequirements,
+        inferCapturePlan: vi.fn(), inferReportPlan: vi.fn(),
+      },
+      getConnector: () => undefined,
+    });
+
+    const result = await service.generate({ goal: '지난달 보고서로 이번 달 보고서 써 줘', exampleSourceId: 'august', templateSourceId: 'blank' }, {
+      workspaceSessionId: 'session', artifactSink: { putBytes: vi.fn() }, log: vi.fn(),
+    } as unknown as ConnectorContext);
+
+    expect(prepare.mock.calls[0]![0]).toBe('august.docx');
+    expect(prepare.mock.calls[0]![1]).toEqual([removal]);
+    expect(prepare.mock.calls[0]![2]).toMatch(/template\.docx$/);
+    // The Word file is its own form: a blank form given beside it is not compared.
+    expect(analyze).not.toHaveBeenCalled();
+    expect(inferSourceRequirements).toHaveBeenCalledWith(expect.objectContaining({ pair }));
+    expect(result).toMatchObject({ ok: false, errorCode: 'report_evidence_ambiguous_rule' });
+  });
+});

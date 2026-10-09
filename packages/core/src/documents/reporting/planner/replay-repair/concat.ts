@@ -83,7 +83,7 @@ function rewriteConcatTarget(
           : group
       ));
       const columns = table.columns.map((column) => {
-        if (column.id !== target.columnId || column.value.kind === 'group_key') return column;
+        if (column.id !== target.columnId || column.value.kind === 'group_key' || column.value.kind === 'row_number') return column;
         if (column.value.kind === 'aggregate') {
           return { ...column, value: {
             ...column.value,

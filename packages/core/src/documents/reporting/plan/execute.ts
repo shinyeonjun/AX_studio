@@ -29,6 +29,7 @@ import {
   valueAtPath,
   type ReportRow,
 } from './value.js';
+import { renderReportTextTemplate } from './text-tokens.js';
 
 interface ReportCell {
   raw: ReportPrimitive;
@@ -409,6 +410,8 @@ function aggregateTable(
       // checks and evaluation without leaking them into the materialized row.
       const available = new Set<string>(Object.keys(group.keys));
       for (const column of spec.columns) {
+        // A rank is known only once the rows are sorted and cut; it is filled in below.
+        if (column.value.kind === 'row_number') continue;
         if (column.value.kind === 'derived') {
           assertColumnsExist(
             derivedOutputColumns(column.value.expression),
@@ -429,11 +432,21 @@ function aggregateTable(
       return { raw, display };
     });
   const havingColumns = spec.having ? outputPredicateColumns(spec.having) : [];
-  assertColumnsExist(havingColumns, new Set(spec.columns.map((column) => column.id)), `report_having_column_missing:${spec.id}`);
+  const rankColumns = spec.columns.filter((column) => column.value.kind === 'row_number');
+  assertColumnsExist(havingColumns, new Set(spec.columns.filter((column) => column.value.kind !== 'row_number').map((column) => column.id)), `report_having_column_missing:${spec.id}`);
+  if ((spec.sort ?? []).some((rule) => rankColumns.some((column) => column.id === rule.columnId))) {
+    throw new Error(`report_sort_column_missing:${spec.id}`);
+  }
   const filtered = spec.having
     ? materialized.filter((row) => evaluateOutputPredicate(spec.having!, row.raw))
     : materialized;
   const limited = sortRows(filtered, spec.sort).slice(0, spec.limit ?? filtered.length);
+  limited.forEach((row, index) => {
+    for (const column of rankColumns) {
+      row.raw[column.id] = index + 1;
+      row.display[column.id] = formatReportValue(index + 1, column.format);
+    }
+  });
   return { columns: spec.columns.map((column) => column.id), rows: limited };
 }
 
@@ -443,26 +456,7 @@ function renderTexts(
   tables: ReportPlanResult['tables'],
   metadata: Record<string, ReportPrimitive>,
 ): Record<string, string> {
-  const renderTemplate = (template: string): string => template.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_match, rawToken: string) => {
-    const token = rawToken.trim();
-    if (token.startsWith('scalar.')) {
-      const scalar = scalars[token.slice('scalar.'.length)];
-      if (!scalar) throw new Error(`report_text_reference_missing:${token}`);
-      return scalar.display;
-    }
-    if (token.startsWith('meta.')) {
-      const value = metadata[token.slice('meta.'.length)];
-      if (value === undefined) throw new Error(`report_text_reference_missing:${token}`);
-      return String(value ?? '');
-    }
-    const tableMatch = token.match(/^table\.([^.]+)\.rowCount$/);
-    if (tableMatch) {
-      const table = tables[tableMatch[1]!];
-      if (!table) throw new Error(`report_text_reference_missing:${token}`);
-      return String(table.rows.length);
-    }
-    throw new Error(`report_text_reference_invalid:${token}`);
-  });
+  const renderTemplate = (template: string): string => renderReportTextTemplate(template, { scalars, tables, metadata });
   const texts: Record<string, string> = {};
   for (const spec of plan.texts) {
     if (spec.kind === 'computed') {

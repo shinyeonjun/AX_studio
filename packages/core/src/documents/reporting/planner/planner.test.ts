@@ -2911,7 +2911,12 @@ describe('ReportPlanner', () => {
     };
     expect(repairReportScalarBindings(layout, scalarPair).scalarBindings).toEqual(layout.scalarBindings.slice(0, 2));
     const missingKnown = { ...layout, scalarBindings: layout.scalarBindings.filter((binding) => binding.slotId !== 'known-b') };
-    expect(repairReportScalarBindings(missingKnown, scalarPair)).toEqual(missingKnown);
+    // One mistyped id and one unbound real slot: the binding moves there, for the replay to confirm.
+    expect(repairReportScalarBindings(missingKnown, scalarPair).scalarBindings.map((binding) => binding.slotId))
+      .toEqual(['known-a', 'known-b']);
+    // Two unbound slots leave more than one place to go: the layout is left for the replay to report.
+    const twoMissing = { ...layout, scalarBindings: [layout.scalarBindings[2]!] };
+    expect(repairReportScalarBindings(twoMissing, scalarPair)).toEqual(twoMissing);
   });
 
   it('splits a computed example sentence across adjacent slots when boundaries align with tokens', () => {
@@ -3139,7 +3144,7 @@ describe('ReportPlanner', () => {
     })).rejects.toThrow('report_plan_period_literal_forbidden:2026-08-01');
   });
 
-  it('rejects a target-period filename copied into the layout plan', async () => {
+  it('does not stop on a proposed filename: the host names the file after the example', async () => {
     const runner = fakeRunner([]);
     const original = runner.run.bind(runner);
     runner.run = async <T>(request: InvestigationRunRequest<T>) => {
@@ -3161,6 +3166,6 @@ describe('ReportPlanner', () => {
       goal: 'report', pair, capture,
       exampleSources: { orders: { id: 'orders', complete: true, rows: [{ id: 'o1' }] } },
       connectedConnectors: ['http'],
-    })).rejects.toThrow('report_plan_period_literal_forbidden:2026-09');
+    })).resolves.toBeDefined();
   });
 });

@@ -18,6 +18,10 @@ import {
   applyConcatRepairVariants,
 } from './replay-repair/concat.js';
 import { applyTableRepairVariants } from './replay-repair/table.js';
+import { applyDateNotationVariants } from './replay-repair/date-notation.js';
+import { applyColumnOrderVariants } from './replay-repair/column-order.js';
+import { applyTextNumberFormatVariants } from './replay-repair/text-numbers.js';
+import { applySubtractionOrderVariants } from './replay-repair/subtraction-order.js';
 import {
   applyAggregateFilterVariants,
   applyAggregateRepairVariants,
@@ -102,6 +106,9 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
   // the first strict improvement, then restart with the new diagnostics so a
   // later repair sees the corrected table shape.
   const generators = [
+    // Columns bound the wrong way round are the smallest fix: only bindings move.
+    applyColumnOrderVariants,
+    applySubtractionOrderVariants,
     applyDerivedCasePredicateVariants,
     applyAggregateFilterVariants,
     applyDerivedTableRatioVariants,
@@ -111,6 +118,8 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
     applyMissingConcatFieldVariants,
     applyConcatRepairVariants,
     applyMissingScalarMetricVariants,
+    applyDateNotationVariants,
+    applyTextNumberFormatVariants,
   ];
   for (let pass = 0; pass < 8 && currentScore > 0; pass += 1) {
     let improved = false;

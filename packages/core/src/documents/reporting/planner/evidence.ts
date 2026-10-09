@@ -18,6 +18,7 @@ import {
   structuralCorrectionGuidance,
 } from './evidence/corrections.js';
 import { serializeEvidenceContext } from './evidence/context.js';
+import { REPORT_TEXT_TOKEN_GRAMMAR } from '../plan/text-tokens.js';
 
 export { ReportEvidenceRequestSchema, ReportEvidenceDecisionSchema } from './evidence/schema.js';
 export type { ReportEvidenceRequest } from './evidence/schema.js';
@@ -31,6 +32,7 @@ const MAX_PLAN_CORRECTION_ATTEMPTS = 3;
 const MAX_UNSUPPORTED_RECHECKS = 1;
 const MAX_SOURCE_REQUEST_RECHECKS = 1;
 const MAX_CONSERVATIVE_ABSTENTION_RECHECKS = 1;
+const MAX_REPEATED_EVIDENCE_RECHECKS = 1;
 // Reserve bounded correction turns after the evidence budget. A plan can be
 // structurally valid yet semantically unsafe, so the host must be able to
 // return the diagnostic path and receive a corrected plan instead of turning
@@ -42,6 +44,7 @@ const MAX_MODEL_TURNS = MAX_EVIDENCE_REQUESTS
   + MAX_SOURCE_REQUEST_RECHECKS
   + MAX_CONSERVATIVE_ABSTENTION_RECHECKS
   + MAX_UNSUPPORTED_RECHECKS
+  + MAX_REPEATED_EVIDENCE_RECHECKS
   + 1;
 // Complex report pairs can require a profile, a sample, a correction, and a
 // final plan across several bounded model turns. Keep one aggregate deadline
@@ -73,7 +76,7 @@ reportGeometry already includes all page, slot and table structure; use it as th
 After the first profile request, the host may provide one bounded preview of every captured source. Use those previews to infer joins, filters and field meaning; request more rows only when the preview cannot distinguish the rule.
 After the first rows request in a batch, the host may provide one wider bounded preview (up to 25 rows) for the other captured sources; use it before requesting further evidence.
 Every preview reduction is labelled: rowsTruncated, columnsTruncated, valuesTruncated and sampleOnly are authoritative. Profile flags such as distinctExamplesComplete, numericColumnsTruncated, groupedNumericTruncated, profileContextCompacted and omittedDistinctExamples identify omitted evidence; direct row evidence may also include contextCompacted and omittedRowCount. Never treat omitted values or columns as absent data. The host's complete snapshot and final replay, not a preview, are the calculation authority.
-The declarative plan supports joins, period predicates, aggregates, grouped tables, sort/limit, derived case expressions and arithmetic ratios. It also supports aggregate having predicates; use having for thresholds over grouped/derived aggregate columns before sort/limit. Use these primitives for top-N, percentages, refunds, targets and risk classifications; when a displayed top-N is ordered by a metric that is not shown, add that metric as a hidden result column and omit it from layout binding. For refund rates, validate the status predicate and denominator against the completed example instead of assuming refund_amount/gross_amount; use the profile's conditional totals to test the candidate ratio over the same row subset. For a risk table that combines multiple criteria, preserve the example's intersection with an AND having predicate; an OR broadens the set and must be justified by the observed rows. Computed text tokens must use {{scalar.<id>}}, {{meta.<key>}} or {{table.<id>.rowCount}}; {{scalar:<id>}} and {{metadata:<key>}} are invalid. Return unsupported_operation only when the rule cannot be represented by these primitives.
+The declarative plan supports joins, period predicates, aggregates, grouped tables, sort/limit, derived case expressions and arithmetic ratios. It also supports aggregate having predicates; use having for thresholds over grouped/derived aggregate columns before sort/limit. A rank column (순위 1, 2, 3) is an aggregate table column whose value is {kind:"row_number"}: the row's position after having, sort and limit. Use these primitives for top-N, ranks, percentages, refunds, targets and risk classifications; when a displayed top-N is ordered by a metric that is not shown, add that metric as a hidden result column and omit it from layout binding. For refund rates, validate the status predicate and denominator against the completed example instead of assuming refund_amount/gross_amount; use the profile's conditional totals to test the candidate ratio over the same row subset. For a risk table that combines multiple criteria, preserve the example's intersection with an AND having predicate; an OR broadens the set and must be justified by the observed rows. Computed text tokens must use ${REPORT_TEXT_TOKEN_GRAMMAR}; {{scalar:<id>}} and {{metadata:<key>}} are invalid. Return unsupported_operation only when the rule cannot be represented by these primitives.
 A preview is never enough to declare an operation unsupported. If a required relationship or field meaning is still unclear, request rows for the relevant source alias first; abstain only after the bounded evidence requests cannot resolve it.
 Do not request page images for a table or slot already described by reportGeometry; page evidence is allowed only when the corresponding geometry and example text are absent.
 Return the smallest valid reusable calculation plan: omit optional fields and never echo evidence, source rows or unused structure in the response.
@@ -90,7 +93,8 @@ export async function inferWithEvidence(input: {
   phase: string;
   sources: Record<string, ReportSourceSnapshot>;
   pageCount: number;
-  readPage: (document: 'template' | 'example', index: number) => ModelImageInput;
+  /** Undefined when the document has no page images (a Word report). */
+  readPage: (document: 'template' | 'example', index: number) => ModelImageInput | undefined;
   maxChars: number;
   validatePlan?: (plan: ReportPlan) => void;
 }) {
@@ -114,6 +118,7 @@ export async function inferWithEvidence(input: {
   let correctionAttempts = 0;
   let planCorrectionAttempts = 0;
   let unsupportedCorrectionAttempts = 0;
+  let repeatedEvidenceRechecks = 0;
   let sourceRequestCorrectionAttempts = 0;
   let conservativeAbstentionRechecks = 0;
   let agentTimeoutRetries = 0;
@@ -141,6 +146,9 @@ export async function inferWithEvidence(input: {
             ? '\nReplay revision profiles may include host-computed numeric totals and conditional totals by low-cardinality categorical values. Use them to test status filters and ratio denominators over the same row subset.'
             : '')
           + structuralCorrectionGuidance(validationIssues)
+          + (repeatedEvidenceRechecks > 0
+            ? '\nThe evidence last requested is already in the history above. Do not request it again: return a reportPlan from the supplied evidence, or a request for a different, still missing fact.'
+            : '')
           + (unsupportedCorrectionAttempts > 0
             ? '\nA previous unsupported_operation was not accepted as final. Re-check whether the requested rule is representable by the listed declarative primitives; return a plan or a narrower evidence request when it is.'
             : '')
@@ -272,7 +280,14 @@ export async function inferWithEvidence(input: {
         const key = evidenceRequestKey(request);
         if (!seen.has(key)) batch.set(key, request);
       }
-      if (batch.size === 0) fail('report_evidence_no_progress');
+      if (batch.size === 0) {
+        // Asking again for evidence already in hand: say so once and ask for the plan from it.
+        if (repeatedEvidenceRechecks >= MAX_REPEATED_EVIDENCE_RECHECKS) fail('report_evidence_no_progress');
+        repeatedEvidenceRechecks += 1;
+        validationIssues = [{ code: 'report_evidence_already_supplied', path: [] }];
+        history.push({ repeatedRequest: requestedEvidence.slice(0, 4), recheckRequested: true });
+        continue;
+      }
       if (evidenceRequestCount + batch.size > maxEvidenceRequests) fail('report_evidence_round_limit');
       const batchHasRows = [...batch.values()].some((request) => request.kind === 'rows');
       for (const [key, request] of batch) {
@@ -281,6 +296,11 @@ export async function inferWithEvidence(input: {
         if (request.kind === 'page') {
           if (request.pageIndex >= input.pageCount) fail('report_evidence_page_invalid');
           const image = input.readPage(request.document, request.pageIndex);
+          if (!image) {
+            // No page to look at: the structure in reportGeometry is the whole document.
+            history.push({ request, result: { available: false, reason: 'page_image_unavailable_use_report_geometry' } });
+            continue;
+          }
           imageBytes += image.data.byteLength;
           if (imageBytes > MAX_IMAGE_BYTES) fail('report_evidence_image_limit');
           images.push(image);

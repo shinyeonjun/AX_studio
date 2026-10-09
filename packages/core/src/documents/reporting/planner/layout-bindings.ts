@@ -102,8 +102,8 @@ export function repairReportTableCapacities(
 /**
  * A revision can return a near-match slot id in addition to a complete set of
  * known bindings. Remove that extra entry only when every real scalar slot is
- * already covered exactly once; if a real slot is missing, leave the layout
- * untouched so strict materialization still reports the defect.
+ * already covered exactly once. When it stands in for the one real slot left
+ * unbound, move it there; any other gap is left for strict materialization.
  */
 export function repairReportScalarBindings(
   layout: ReportLayoutPlan,
@@ -114,6 +114,14 @@ export function repairReportScalarBindings(
   const knownBindingIds = new Set(knownBindings.map((binding) => binding.slotId));
   const complete = knownBindings.length === knownBindingIds.size
     && knownBindingIds.size === knownSlotIds.size;
+  // One binding to a slot that does not exist and one real slot left unbound: a mistyped id has
+  // only one place to go. The example replay still has to confirm the value it puts there.
+  const unknown = layout.scalarBindings.filter((binding) => !knownSlotIds.has(binding.slotId));
+  const unbound = [...knownSlotIds].filter((id) => !knownBindingIds.has(id));
+  if (!complete && unknown.length === 1 && unbound.length === 1 && knownBindings.length === knownBindingIds.size) {
+    return { ...layout, scalarBindings: layout.scalarBindings.map((binding) => (
+      binding === unknown[0] ? { ...binding, slotId: unbound[0]! } : binding)) };
+  }
   if (!complete || knownBindings.length === layout.scalarBindings.length) return layout;
   return { ...layout, scalarBindings: knownBindings };
 }

@@ -25,6 +25,8 @@ test/
 !/test/work-discovery-benchmark/**
 !/test/report-generation-e2e/
 !/test/report-generation-e2e/**
+!/test/report-eval/
+!/test/report-eval/**
 !/test/fixtures/
 !/test/fixtures/demo/
 !/test/fixtures/demo/**

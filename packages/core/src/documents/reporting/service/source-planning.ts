@@ -23,6 +23,7 @@ import { reportDigest } from '../checkpoints.js';
 import type { ReportGenerationDependencies } from './contracts.js';
 import { httpInspectionFailure } from './http-sources.js';
 import { errorCode } from './errors.js';
+import { exampleFit, exampleNumbers } from '../source/example-fit.js';
 
 type ReportPlanningGateway = ReportGenerationDependencies['planner'];
 
@@ -121,14 +122,17 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
               throw new Error('report_source_inspection_denied');
             }
             const readFile = gateway.executeFile;
-            // Like a DB table's description: its columns and how many rows, never the values.
+            // Like a DB table's description: its columns and how many rows, never the values; and how
+            // many of the completed report's numbers its plain totals reproduce, as a count only.
             return inspectStage(async () => {
               const result = await readFile({ folderId: request.folderId, path: request.path, ...(request.sheet ? { sheet: request.sheet } : {}) });
               const table = result.ok ? TableArtifactSchema.safeParse(result.data) : undefined;
               return table?.success
                 ? { folderId: request.folderId, path: request.path, ...(request.sheet ? { sheet: request.sheet } : {}),
                   columns: table.data.columns.map(column => ({ name: column.name, type: column.type })),
-                  rowCount: table.data.rows.length }
+                  rowCount: table.data.rows.length,
+                  ...exampleFit(table.data.rows.map(row => row.values),
+                    table.data.columns.map(column => column.name), exampleNumbers(pair)) }
                 : { available: false, reason: result.ok ? 'sheet_unreadable' : result.errorCode ?? 'sheet_unreadable' };
             });
           }

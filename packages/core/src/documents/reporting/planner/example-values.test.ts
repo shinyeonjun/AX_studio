@@ -28,8 +28,8 @@ describe('telling a completed report\'s values from its form', () => {
     ]);
     const removals = await inferExampleValues(model as never, { goal: '이번 달 보고서', spans, readImage: () => new Uint8Array([1]), maxChars: 100_000 });
     expect(removals).toEqual([
-      { pageIndex: 0, rect: spans.spans[0]!.rect, text: '2026년 9월' },
-      { pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' },
+      { spanId: spans.spans[0]!.id, pageIndex: 0, rect: spans.spans[0]!.rect, text: '2026년 9월' },
+      { spanId: spans.spans[2]!.id, pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' },
     ]);
     expect((model.run.mock.calls[0]![0] as unknown as { images: unknown[] }).images).toHaveLength(1);
   });
@@ -39,5 +39,45 @@ describe('telling a completed report\'s values from its form', () => {
     const removals = await inferExampleValues(runner([]) as never, { goal: 'x', spans, readImage: () => new Uint8Array(), maxChars: 100_000, log });
     expect(removals.map((removal) => removal.text)).toEqual(['2026년 9월 매출 보고서', '합계: 1,800']);
     expect(log.mock.calls[0]![0]).toMatchObject({ code: 'report_example_values_from_digits' });
+  });
+
+  it('shows a Word report by where each paragraph sits, without page images or boxes', async () => {
+    const word: PdfReportSpans = {
+      ...spans,
+      exampleImages: [],
+      spans: spans.spans.map((span, index) => ({ ...span, location: index === 2 ? '본문 표1 6행 1열' : '본문 문단' })),
+    };
+    const model = runner([{ spanId: 'total', value: '1,800' }]);
+    const removals = await inferExampleValues(model as never, { goal: '이번 달 보고서', spans: word, readImage: () => new Uint8Array([1]), maxChars: 100_000 });
+    // The model passed over the title's date; a dated report's date changes, so the host marks it.
+    expect(removals).toEqual([
+      { spanId: 'total', pageIndex: 0, rect: spans.spans[2]!.rect, text: '1,800' },
+      { spanId: 'title', pageIndex: 0, rect: spans.spans[0]!.rect, text: '2026년 9월' },
+    ]);
+    const request = model.run.mock.calls[0]![0] as unknown as { images: unknown[]; context: { untrustedData: string } };
+    expect(request.images).toHaveLength(0);
+    expect(request.context.untrustedData).toContain('본문 표1 6행 1열');
+    expect(request.context.untrustedData).not.toContain('fontSize');
+  });
+
+  it('asks again about every number the first answer left unmarked', async () => {
+    const report: PdfReportSpans = { ...spans, exampleImages: [], spans: [
+      { id: 'summary', pageIndex: 0, text: '주문 149건, 매출 8,466,900원이며 평균 56,825원', rect: { x: 0, y: 0, width: 1, height: 1 }, fontSize: 10, location: '본문 문단' },
+      { id: 'note', pageIndex: 0, text: '상위 5개 고객사 · A4 기준 · 1건당 평균', rect: { x: 0, y: 1, width: 1, height: 1 }, fontSize: 10, location: '본문 문단' },
+    ] };
+    const run = vi.fn(async (request: { logContext: string; outputSchema: { parse(value: unknown): unknown }; context: { untrustedData: string } }) => ({
+      output: request.outputSchema.parse(request.logContext === 'report-example-values'
+        ? { values: [{ spanId: 'summary', value: '149건' }] }
+        : { changing: [0, 1] }),
+    }));
+    const removals = await inferExampleValues({ providerName: 'fixture', run } as never, { goal: '이번 달 보고서', spans: report, readImage: () => new Uint8Array(), maxChars: 100_000 });
+    expect(removals.map((removal) => removal.text)).toEqual(['149건', '8,466,900원', '56,825원']);
+    const recheck = run.mock.calls[1]![0].context.untrustedData;
+    // The marked value is hidden; a number glued to a word is not a candidate.
+    expect(recheck).toContain('주문 ▢, 매출 8,466,900원이며');
+    expect(recheck).toContain('"number":"5개"');
+    expect(recheck).not.toContain('"number":"4"');
+    // A number glued into a phrase is shown as the phrase.
+    expect(recheck).toContain('"number":"1건당"');
   });
 });

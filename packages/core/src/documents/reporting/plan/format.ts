@@ -36,7 +36,8 @@ export function formatReportValue(value: ReportPrimitive, format?: ReportFormat)
       display = `${(numericValue(value, 'format.percent') * 100).toLocaleString('en-US', {
         minimumFractionDigits: format?.decimals ?? 2,
         maximumFractionDigits: format?.decimals ?? 2,
-      })}%`;
+      // A suffix that already writes the sign ("%", "%p") is the only one: never "32.67%%".
+      })}${/^\s*%/u.test(format?.suffix ?? '') ? '' : '%'}`;
       break;
   }
   return `${format?.prefix ?? ''}${display}${format?.suffix ?? ''}`;

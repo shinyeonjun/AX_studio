@@ -157,7 +157,8 @@ function rowsForResult(
   for (let offset = 0; rows.length < resultRowCount; offset += 1) {
     const rowIndex = group.rowCount + offset;
     const y = last.y + pitch * (offset + 1);
-    if (!Number.isFinite(boundary) || y + rowHeight > boundary - CONTINUATION_CONTENT_GAP) {
+    // A Word table grows in the document's flow and pushes what follows down: no gap to fit in.
+    if (pair.layout !== 'flow' && (!Number.isFinite(boundary) || y + rowHeight > boundary - CONTINUATION_CONTENT_GAP)) {
       throw new Error(`report_table_capacity_exceeded:${group.id}`);
     }
     const delta = y - last.y;
@@ -272,5 +273,15 @@ export function verifyReportExampleReplay(
       ? []
       : [{ slotId: slot.id, expected: slot.exampleText, actual }];
   });
+  // The example's own rows are the whole table: a replay that needs more rows than the example
+  // shows (top 5 written as all 8) reproduces every shown cell and still is not the example.
+  for (const group of pair.tableGroups) {
+    const extra = Object.keys(values)
+      .filter((id) => id.startsWith(`overflow-${group.id}-`) && normalized(values[id] ?? '') !== '');
+    if (extra.length > 0) {
+      mismatches.push({ slotId: `${group.id}:rows`, expected: `${group.rowCount} rows`,
+        actual: `${group.rowCount + new Set(extra.map((id) => id.split('-').at(-2))).size} rows` });
+    }
+  }
   return { ok: mismatches.length === 0, mismatches };
 }

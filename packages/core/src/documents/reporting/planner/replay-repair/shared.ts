@@ -32,8 +32,23 @@ export function formatFromExampleText(value: string): ReportFormat | undefined {
     const decimals = numeric.includes('.') ? numeric.split('.').at(-1)!.length : 0;
     return { style: 'percent', decimals };
   }
-  if (new RegExp(`^${numericPattern}$`, 'u').test(text)) {
-    return { style: text.includes('.') ? 'decimal' : 'integer', ...(text.includes('.') ? { decimals: text.split('.').at(-1)!.length } : {}) };
+  // A count or amount with the report's own unit around it: "174건", "8곳", "약 3회", "No. 12".
+  const unit = new RegExp(`^(\\D{0,6}?)(${numericPattern})(\\D{0,6})$`, 'u').exec(text);
+  // Not a period: "9월", "2분기", "Q3", "FY26" name a point in the calendar, they are not counted.
+  // A duration ("28.5분", "3시간") is an amount, and a decimal is never a calendar point.
+  const period = !(unit?.[2] ?? '').includes('.') && (/^\s*(?:년|월|일|주|분기|반기|차|기)/u.test(unit?.[3] ?? '')
+    || /(?:^|\s)(?:Q|H|FY|W)\s*$/iu.test(unit?.[1] ?? ''));
+  // A letter right against the digits makes one word with them: "생산1팀", "E101" are names, while
+  // "약 1,200명" and "₩3,000" set the number apart.
+  const word = /\p{L}$/u.test(unit?.[1] ?? '');
+  if (unit && !period && !word && !/\d/u.test(unit[1]! + unit[3]!)) {
+    const numeric = unit[2]!;
+    return {
+      style: numeric.includes('.') ? 'decimal' : 'integer',
+      ...(numeric.includes('.') ? { decimals: numeric.split('.').at(-1)!.length } : {}),
+      ...(unit[1] ? { prefix: unit[1] } : {}),
+      ...(unit[3] ? { suffix: unit[3] } : {}),
+    };
   }
   if (/^\d{4}-\d{2}-\d{2}$/u.test(text)) return { style: 'date' };
   return undefined;

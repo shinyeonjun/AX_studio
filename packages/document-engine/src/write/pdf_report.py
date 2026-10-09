@@ -145,8 +145,26 @@ def _dynamic_spans(example: list[_Span], template: list[_Span]) -> list[_Span]:
             dynamic.append(candidate)
         else:
             used.add(partial[0])
-            dynamic.append(partial[1])
+            dynamic.append(_without_trailing_label(partial[1], candidate, template, used))
     return dynamic
+
+
+def _without_trailing_label(value: _Span, candidate: _Span, template: list[_Span], used: set[int]) -> _Span:
+    """A value between two pieces of the form, "현황 (2026년 8월)": the form also keeps the piece after
+    it, ")", ending where the example's text ends. Take that piece off the value too."""
+    for index, piece in enumerate(template):
+        if index in used or not piece.text.strip() or not _same_line(piece, candidate):
+            continue
+        if abs(piece.rect[2] - candidate.rect[2]) > _POSITION_TOLERANCE or not value.text.endswith(piece.text.strip()):
+            continue
+        text = value.text[: len(value.text) - len(piece.text.strip())].rstrip()
+        x1 = piece.rect[0] - 1.0
+        if not text or x1 <= value.rect[0]:
+            continue
+        used.add(index)
+        return _Span(value.page_index, (value.rect[0], value.rect[1], round(x1, 3), value.rect[3]), text,
+                     value.font_size, value.font, value.color, value.block_index, value.line_index, value.span_index)
+    return value
 
 
 def _slot_id(span: _Span) -> str:

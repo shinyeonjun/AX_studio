@@ -4,7 +4,9 @@ import type {
   WorkspaceChatApproval,
   WorkspaceChatGeneratedPdf,
   WorkspaceChatGeneratedSpreadsheet,
+  WorkspaceChatGeneratedDocument,
 } from '@ax-studio/core';
+import { generatedFileTypeOf } from '@ax-studio/core/generated-file';
 import type { GeneratedArtifactExportResult } from '../../../../types/ax-api/contracts';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { formatFileSize } from '../../../../ui/lib/format-file-size';
@@ -16,6 +18,7 @@ interface WorkspaceRunResultCardProps {
   approval?: WorkspaceChatApproval;
   generatedPdf?: WorkspaceChatGeneratedPdf;
   generatedSpreadsheet?: WorkspaceChatGeneratedSpreadsheet;
+  generatedDocument?: WorkspaceChatGeneratedDocument;
   busy?: boolean;
   onApprove?: (approvalId: string) => Promise<void>;
   onReject?: (approvalId: string) => Promise<void>;
@@ -69,14 +72,17 @@ export function WorkspaceRunResultCard({
   approval,
   generatedPdf,
   generatedSpreadsheet,
+  generatedDocument,
   busy = false,
   onApprove,
   onReject,
   onDownloadPdf,
   onSavePdfToFolder,
 }: WorkspaceRunResultCardProps) {
-  const generatedArtifact = generatedSpreadsheet ?? generatedPdf;
-  const artifactLabel = generatedSpreadsheet ? 'Excel' : 'PDF';
+  const generatedArtifact = generatedSpreadsheet ?? generatedDocument ?? generatedPdf;
+  const artifactLabel = generatedArtifact
+    ? generatedFileTypeOf(generatedArtifact.mimeType, generatedArtifact.fileName)?.label ?? 'PDF'
+    : 'PDF';
   const resolvedStatus = resolveWorkspaceExecutionStatus(status, content);
   const presentation = statusPresentation(resolvedStatus);
   const recoveryGuidance = resolvedStatus === 'failed' && content.includes('document_engine_dependency_missing')

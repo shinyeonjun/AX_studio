@@ -1,6 +1,6 @@
 import { labeledTable } from '../../contracts/artifacts/column-labels.js';
 import { displayTable } from '../../contracts/artifacts/table-display.js';
-import { WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
+import { WorkspaceChatGeneratedDocumentSchema, WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { formatApprovalTitle } from '../approval-display.js';
@@ -97,6 +97,8 @@ export function publishExecutionResultToWorkspaceChat(
   const generatedPdf = generatedPdfFromExecutionLog(result.log);
   const spreadsheetEntry = result.status === 'success' ? [...result.log].reverse().find(entry => entry.code === 'xlsx_generated') : undefined;
   const spreadsheet = WorkspaceChatGeneratedSpreadsheetSchema.safeParse(spreadsheetEntry?.data);
+  const documentEntry = result.status === 'success' ? [...result.log].reverse().find(entry => entry.code === 'docx_generated') : undefined;
+  const document = WorkspaceChatGeneratedDocumentSchema.safeParse(documentEntry?.data);
   const loggedTable = resultTableFromLog(result);
   // The Korean headers learned in chat name a recurring job's table the same way.
   const resultTable = loggedTable ? labeledTable(loggedTable, store.getColumnLabels()) : undefined;
@@ -116,6 +118,7 @@ export function publishExecutionResultToWorkspaceChat(
     ...(inlineApproval ? { approval: inlineApproval } : {}),
     ...(generatedPdf ? { generatedPdf } : {}),
     ...(spreadsheet.success ? { generatedSpreadsheet: spreadsheet.data } : {}),
+    ...(document.success ? { generatedDocument: document.data } : {}),
     ...(resultTable ? { readResult: resultTable } : {}),
   }, typeof target === 'object' && execution.triggerType === 'schedule' && result.status !== 'pending_approval'
     // A job on a short schedule keeps its latest result in the chat; every run stays in Activity.

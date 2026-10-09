@@ -57,6 +57,23 @@ class SingleReportTest(unittest.TestCase):
             cells = [cell["exampleText"] for group in pair["tableGroups"] for row in group["rows"] for cell in row["cells"]]
             self.assertEqual(sorted([*slots, *cells]), sorted(values))
 
+    def test_a_value_between_two_pieces_of_the_form_keeps_only_itself(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            example = root / "titled.pdf"
+            document = canvas.Canvas(str(example), pagesize=A4)
+            document.setFont("Helvetica", 14)
+            document.drawString(48, 790, "Stock report (2026-08)")
+            document.showPage()
+            document.save()
+            span = next(span for span in list_report_spans(example, root / "a")["spans"] if "Stock" in span["text"])
+            blank = root / "blank.pdf"
+            blank_report_template(example, [{"pageIndex": 0, "rect": span["rect"], "text": "2026-08"}], blank)
+
+            pair = analyze_pdf_report_pair(blank, example, root / "a")
+            # The closing bracket is the form's: the slot holds the period alone.
+            self.assertEqual([slot["exampleText"] for slot in pair["scalarSlots"]], ["2026-08"])
+
     def test_only_the_value_leaves_a_line_that_also_holds_its_label(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

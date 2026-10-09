@@ -1,5 +1,8 @@
 import type {
   DocumentChunkHit,
+  DocxReportFillGroup,
+  DocxReportFillResult,
+  DocxReportPrepared,
   IngestDocumentOptions,
   IngestDocumentResult,
   PdfFormAnalyzeOptions,
@@ -40,6 +43,12 @@ export interface DocumentEngineClient {
   pdfReportSpans(examplePath: string): Promise<PdfReportSpans>;
   /** The completed report with these values taken out: the blank form it was written on. */
   pdfReportBlank(examplePath: string, removals: PdfReportValueRemoval[], outputPath: string): Promise<{ templatePath: string }>;
+  /** Each paragraph of last period's Word report, with where it sits. */
+  docxReportSpans(examplePath: string): Promise<PdfReportSpans>;
+  /** The Word report with these values marked as slots, and the slots described as a pair. */
+  docxReportPrepare(examplePath: string, removals: PdfReportValueRemoval[], templatePath: string): Promise<DocxReportPrepared>;
+  /** This period's Word report: repeating rows grown or cut to fit, every slot replaced. */
+  docxReportFill(templatePath: string, options: { groups: DocxReportFillGroup[]; values: Record<string, string>; outputPath: string }): Promise<DocxReportFillResult>;
   getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }>;
   getPage(documentId: string, pageIndex: number): Promise<{ page: Record<string, unknown>; text: string | null }>;
   search(documentId: string, query: string): Promise<{ hits: DocumentChunkHit[] }>;

@@ -8,3 +8,4 @@ export * from './rdb-read.js';
 export * from './table-build.js';
 export * from './http-response.js';
 export * from './workbook.js';
+export * from './generated-file.js';

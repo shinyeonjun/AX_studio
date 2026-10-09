@@ -88,7 +88,8 @@ export interface ReportGenerationDependencies {
   workspaceSources: ReportWorkspaceSourceResolver;
   /** The span listing and blanking calls let a completed report stand in for its blank form. */
   documentEngine: Pick<DocumentEngineClient, 'pdfReportAnalyze' | 'pdfFormFill'>
-    & Partial<Pick<DocumentEngineClient, 'pdfReportSpans' | 'pdfReportBlank'>>;
+    & Partial<Pick<DocumentEngineClient, 'pdfReportSpans' | 'pdfReportBlank'
+      | 'docxReportSpans' | 'docxReportPrepare' | 'docxReportFill'>>;
   planner: ReportPlanningGateway;
   getConnector(name: string): Connector | undefined;
   /** Test seam; production uses an owned OS temporary directory and cleans it. */

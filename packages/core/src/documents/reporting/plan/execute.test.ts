@@ -68,6 +68,26 @@ it('ranks and limits a view by an undisplayed source column', () => {
   expect(result.tables.customers?.rows).toHaveLength(2);
 });
 
+it('numbers a rank column after the rows are sorted and cut', () => {
+  const plan: ReportPlan = {
+    schemaVersion: 1, baseSource: 'sales', joins: [], scalars: [], texts: [],
+    tables: [{
+      kind: 'aggregate', id: 'top',
+      groupBy: [{ id: 'name', value: field('sales.name') }],
+      columns: [
+        { id: 'rank', value: { kind: 'row_number' }, format: { style: 'integer', suffix: '위' } },
+        { id: 'name', value: { kind: 'group_key', keyId: 'name' } },
+        { id: 'amount', value: { kind: 'aggregate', expression: { kind: 'sum', value: field('sales.amount') } } },
+      ],
+      sort: [{ columnId: 'amount', direction: 'desc' }], limit: 2,
+    }],
+  };
+  const result = executeReportPlan(plan, {
+    sales: { id: 'sales', complete: true, rows: [{ name: 'A', amount: 1 }, { name: 'B', amount: 50 }, { name: 'C', amount: 100 }] },
+  });
+  expect(result.tables.top?.rows.map((row) => [row.display.rank, row.display.name])).toEqual([['1위', 'C'], ['2위', 'B']]);
+});
+
 it('skips blank cells like a spreadsheet, and still fails on text that is not a number', () => {
   const total = (kind: 'sum' | 'average' | 'min' | 'max') => ({ id: kind, kind: 'aggregate' as const, expression: { kind, value: field('sales.amount') } });
   const plan = {

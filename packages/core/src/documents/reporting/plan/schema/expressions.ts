@@ -237,7 +237,7 @@ function containsValueField(value: unknown): boolean {
 function normalizeAggregateColumnValue(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
   const record = value as Record<string, unknown>;
-  if (record.kind === 'group_key') return value;
+  if (record.kind === 'group_key' || record.kind === 'row_number') return value;
   if (record.kind === 'aggregate' && Object.hasOwn(record, 'expression')) {
     return { ...record, expression: record.expression };
   }
@@ -266,6 +266,8 @@ export const AggregateColumnValueSchema: z.ZodType<ReportAggregateColumnValue> =
   normalizeAggregateColumnValue,
   z.union([
     z.object({ kind: z.literal('group_key'), keyId: z.string().min(1) }),
+    // The row's position after having, sort and limit, from 1: a rank column (순위).
+    z.object({ kind: z.literal('row_number') }),
     z.object({ kind: z.literal('aggregate'), expression: ReportAggregateExpressionSchema }),
     z.object({ kind: z.literal('derived'), expression: ReportDerivedExpressionSchema }),
     // Direct expression forms are included so the Codex wire schema can

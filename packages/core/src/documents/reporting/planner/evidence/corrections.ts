@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { REPORT_TEXT_TOKEN_GRAMMAR } from '../../plan/text-tokens.js';
 
 export type StructuralIssue = { code: string; path: (string | number)[] };
 
@@ -33,6 +34,13 @@ export function planValidationIssues(error: unknown): StructuralIssue[] {
 }
 
 export function structuralCorrectionGuidance(issues: StructuralIssue[]): string {
+  const missingReference = issues.find((issue) => issue.code === 'report_plan_execution_invalid'
+    && issue.path[0] === 'report_text_reference_missing');
+  if (missingReference) {
+    const name = missingReference.path.slice(1).join('.');
+    return `
+Plan correction: a computed text names {{${name || '...'}}}, which this plan does not produce. Use only scalar ids, table ids and column ids the plan declares; a row token needs a table that has that many rows in every period (prefer row1, the top row); a metadata key must be one the host lists.`;
+  }
   if (issues.some((issue) => issue.code === 'report_plan_source_not_captured')) {
     return '\nPlan correction: use only source aliases declared by capturePlan.http, capturePlan.rdb or capturePlan.file. Remove invented aliases and keep every field path, join source, dataset baseSource and dataset join source within that captured alias set.';
   }
@@ -61,7 +69,7 @@ export function structuralCorrectionGuidance(issues: StructuralIssue[]): string 
       return '\nPlan correction: a computed text references metadata that the selected source type does not provide. Use only meta.source.<http-alias>.path for HTTP sources and meta.source.<rdb-alias>.table/meta.source.<rdb-alias>.tableName for DB sources; remove unavailable metadata references and keep the text reusable.';
     }
     if (issues.some((issue) => issue.path.includes('report_text_reference_invalid'))) {
-      return '\nPlan correction: a computed text uses an invalid token. Use exactly {{scalar.<scalarId>}}, {{meta.<metadataKey}} or {{table.<tableId>.rowCount}}; do not use colon-prefixed tokens or invent a token namespace.';
+      return `\nPlan correction: a computed text uses an invalid token. Use exactly ${REPORT_TEXT_TOKEN_GRAMMAR}; do not use colon-prefixed tokens or invent a token namespace.`;
     }
     return '\nPlan correction: the host could not execute the previous calculation against every captured example row. Re-check field aliases, joins, null and numeric handling, and dataset selection; return a plan that executes without inventing fallback values.';
   }

@@ -62,7 +62,7 @@ const capturePlan = {
 describe('report plan reusability', () => {
   it('keeps invariant prose, derives source identity, and changes phase status without copying data', () => {
     expect(() => assertReusableReportPlan(plan, periods)).not.toThrow();
-    expect(() => assertReusableReportPresentation(plan, layout, pair, periods)).not.toThrow();
+    expect(() => assertReusableReportPresentation(plan, layout, pair)).not.toThrow();
 
     const example = executeReportPlan(plan, {
       ledger: { id: 'ledger', complete: true, rows: [{ arbitrary: 1 }] },
@@ -196,7 +196,7 @@ describe('report plan reusability', () => {
         ? { id: 'note', kind: 'invariant' as const, value: 'Invented wording.' }
         : text),
     };
-    expect(() => assertReusableReportPresentation(invented, layout, pair, periods))
+    expect(() => assertReusableReportPresentation(invented, layout, pair))
       .toThrow('report_plan_static_text_not_from_example:note');
   });
 });

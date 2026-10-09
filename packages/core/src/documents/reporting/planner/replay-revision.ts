@@ -1,3 +1,4 @@
+import type { ReportSourceSnapshot } from '../plan/schema.js';
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { executeReportPlan, type ReportPlanResult } from '../plan/execute.js';
 import {
@@ -18,6 +19,7 @@ import {
   type ReplayRepairInput,
   type ReplayRepairResult,
 } from './replay-repair.js';
+import { repairReportScalarBindings } from './layout-bindings.js';
 
 /** Preserve the established planner import path while replay logic lives in its cohesive module. */
 export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRepairResult {
@@ -86,8 +88,17 @@ export function repairExampleReplayAndPresentation(input: ReplayRepairInput): Re
     repairReportFieldAliases(plan, input.sources), input.sources,
   ));
   plan = repairReportMetadataTextReferences(plan, input.metadata);
-  let layout = input.layout;
-  plan = inferReportFormats(plan, layout, input.pair);
+  // A mistyped slot id with one real slot left over is put back on that slot before anything runs.
+  let layout = repairReportScalarBindings(input.layout, input.pair);
+  // A format read from the example is a guess about the value; when the data says otherwise (a
+  // name such as "생산1팀" is text), the plan keeps the format it had.
+  const exampleFormats = inferReportFormats(plan, layout, input.pair);
+  try {
+    executeReportPlan(exampleFormats, input.sources, input.metadata);
+    plan = exampleFormats;
+  } catch {
+    // Keep the plan's own formats; the replay below reports what still differs.
+  }
   const staticBindings = repairStaticTextBindingConflicts(plan, layout, input.pair);
   plan = staticBindings.plan;
   layout = staticBindings.layout;
@@ -127,4 +138,43 @@ export function repairExampleReplayAndPresentation(input: ReplayRepairInput): Re
 
   replay = repairExampleReplayInference({ ...input, plan, layout });
   return replay;
+}
+
+function displayedNumber(text: string): number | undefined {
+  const digits = text.replace(/[^\d.-]/gu, '');
+  if (!/\d/u.test(digits)) return undefined;
+  const value = Number(digits);
+  return Number.isFinite(value) && value !== 0 ? value : undefined;
+}
+
+/**
+ * When a replayed number is a whole multiple of the example's (or a whole fraction of it), the
+ * factor is evidence: an average that needs a per-day or per-item division, or a total counted
+ * twice. Name the factor and the captured columns with that many distinct values, so a revision
+ * can test that rule instead of guessing.
+ */
+export function describeReplayScale(
+  mismatches: Array<{ slotId: string; expected: string; actual: string }>,
+  sources: Record<string, ReportSourceSnapshot>,
+): Array<{ slotId: string; actualOverExpected: string; columnsWithThatManyDistinctValues: string[] }> {
+  const distinct = new Map<string, number>();
+  for (const [alias, source] of Object.entries(sources)) {
+    const columns = new Set(source.rows.flatMap((row) => Object.keys(row)));
+    for (const column of columns) {
+      distinct.set(`${alias}.${column}`, new Set(source.rows.map((row) => JSON.stringify(row[column] ?? null))).size);
+    }
+  }
+  return mismatches.flatMap((mismatch) => {
+    const expected = displayedNumber(mismatch.expected);
+    const actual = displayedNumber(mismatch.actual);
+    if (expected === undefined || actual === undefined) return [];
+    const ratio = actual / expected;
+    const factor = Math.round(ratio >= 1 ? ratio : 1 / ratio);
+    if (factor < 2 || Math.abs((ratio >= 1 ? ratio : 1 / ratio) - factor) > factor * 0.002) return [];
+    return [{
+      slotId: mismatch.slotId,
+      actualOverExpected: ratio.toFixed(3),
+      columnsWithThatManyDistinctValues: [...distinct].filter(([, count]) => count === factor).map(([column]) => column).slice(0, 12),
+    }];
+  });
 }

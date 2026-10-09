@@ -23,13 +23,24 @@ function reconcileExampleFormat(expected: string, current?: ReportFormat): Repor
     if (current.style === 'text' || (current.style === 'date' && dateLike)) return current;
     return { style: 'text' };
   }
-  if (current.style === inferred.style) return current;
-  // Preserve deliberate affixes, but take the numeric family and precision
-  // from the example so the renderer emits the same kind of value.
+  const exampleAffix = inferred.prefix !== undefined || inferred.suffix !== undefined;
+  if (current.style === inferred.style) {
+    // The unit around a number ("174건") is the example's presentation: keep the model's
+    // precision but write the unit the example writes.
+    return exampleAffix && current.prefix === undefined && current.suffix === undefined
+      ? { ...current, ...(inferred.prefix !== undefined ? { prefix: inferred.prefix } : {}),
+        ...(inferred.suffix !== undefined ? { suffix: inferred.suffix } : {}) }
+      : current;
+  }
+  // A date stays a date; a period word is never read as a unit, so "9월" or "Q3" do not get here.
+  if (exampleAffix && current.style === 'date') return current;
+  // Keep the model's affixes only where the example writes them ("₩" on "12,623,600" is not in the
+  // example); take the numeric family and precision from the example.
+  const shown = normalizeReportText(expected);
   return {
     ...inferred,
-    ...(current.prefix !== undefined ? { prefix: current.prefix } : {}),
-    ...(current.suffix !== undefined ? { suffix: current.suffix } : {}),
+    ...(current.prefix && shown.startsWith(current.prefix.trim()) ? { prefix: current.prefix } : {}),
+    ...(current.suffix && shown.endsWith(current.suffix.trim()) ? { suffix: current.suffix } : {}),
   };
 }
 

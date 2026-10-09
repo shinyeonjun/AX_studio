@@ -171,6 +171,7 @@ export default defineConfig({
         '@ax-studio/core/ai-catalog': resolve('../../packages/core/src/intelligence/agent/settings/ai-catalog.ts'),
         '@ax-studio/core/tool-result': resolve('../../packages/core/src/contracts/tool-result.ts'),
         '@ax-studio/core/schedule': resolve('../../packages/core/src/workflow/schedule/index.ts'),
+        '@ax-studio/core/generated-file': resolve('../../packages/core/src/contracts/artifacts/generated-file.ts'),
         '@ax-studio/core/table-display': resolve('../../packages/core/src/contracts/artifacts/table-display.ts'),
         '@ax-studio/core/gmail-scopes': resolve('../../packages/core/src/connectors/gmail/scopes.ts'),
         '@ax-studio/core/error-messages': resolve('../../packages/core/src/contracts/error-messages.ts'),

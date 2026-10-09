@@ -5,6 +5,7 @@ import {
   WorkspaceChatApprovalSchema,
   WorkspaceChatGeneratedPdfSchema,
   WorkspaceChatGeneratedSpreadsheetSchema,
+  WorkspaceChatGeneratedDocumentSchema,
   WorkspaceChatReadResultSchema,
   type WorkspaceChatMessage,
 } from '@ax-studio/core';
@@ -124,6 +125,11 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
     if (generatedSpreadsheet && (!generatedSpreadsheet.success || record.kind !== 'execution_result')) {
       throw invalidTranscript(`대화 ${index + 1}번째 Excel 산출물 정보가 올바르지 않습니다.`);
     }
+    const generatedDocument = record.generatedDocument === undefined ? undefined
+      : WorkspaceChatGeneratedDocumentSchema.safeParse(record.generatedDocument);
+    if (generatedDocument && (!generatedDocument.success || record.kind !== 'execution_result')) {
+      throw invalidTranscript(`대화 ${index + 1}번째 Word 산출물 정보가 올바르지 않습니다.`);
+    }
     const readResult = record.readResult === undefined
       ? undefined
       : WorkspaceChatReadResultSchema.safeParse(record.readResult);
@@ -153,6 +159,7 @@ export function normalizeChatMessages(value: unknown): DesktopChatMessage[] {
       ...(approval ? { approval: approval.data } : {}),
       ...(generatedPdf ? { generatedPdf: generatedPdf.data } : {}),
       ...(generatedSpreadsheet?.success ? { generatedSpreadsheet: generatedSpreadsheet.data } : {}),
+      ...(generatedDocument?.success ? { generatedDocument: generatedDocument.data } : {}),
       ...(readResult ? { readResult: readResult.data } : {}),
       // Only shows the "반복 업무로" offer; the job is still built from the recipe the host kept.
       ...(readResult && record.readRepeatable === true ? { readRepeatable: true as const } : {}),

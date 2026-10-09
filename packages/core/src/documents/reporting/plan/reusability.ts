@@ -248,14 +248,8 @@ export function assertReusableReportPresentation(
   plan: ReportPlan,
   layout: ReportLayoutPlan,
   pair: PdfReportPairAnalysis,
-  periods: { examplePeriod: ReportPeriod; targetPeriod: ReportPeriod },
 ): void {
-  const periodList = [periods.examplePeriod, periods.targetPeriod];
-  assertNoPeriodString(layout.outputFileName, periodList);
-  for (const token of layout.outputFileName.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
-    if (!token[1]?.trim().startsWith('meta.')) throw new Error('report_output_filename_token_invalid');
-  }
-
+  // The output file is named by the host after the example file; a proposed name is not checked.
   const slots = new Map(pair.scalarSlots.map((slot) => [slot.id, slot]));
   for (const text of plan.texts) {
     if (text.kind === 'computed') continue;

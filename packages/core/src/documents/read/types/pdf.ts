@@ -125,6 +125,8 @@ export interface PdfReportSlot {
   fontSize: number;
   font: string;
   color: number;
+  /** Where a slot of a Word report sits ("본문 표1 3행 2열"); a PDF slot is placed by its box. */
+  location?: string;
 }
 
 export interface PdfReportTableRow {
@@ -150,6 +152,8 @@ export interface PdfReportSpan {
   text: string;
   rect: { x: number; y: number; width: number; height: number };
   fontSize: number;
+  /** Where a Word report's paragraph sits; its box is then only reading order, not a position. */
+  location?: string;
 }
 
 /** Every text piece of a completed report that came without its blank form. */
@@ -165,6 +169,8 @@ export interface PdfReportSpans {
 
 /** A value to take out of the completed report: `text` inside the span's box. */
 export interface PdfReportValueRemoval {
+  /** The span the text is in; a Word report finds its paragraph by this, a PDF by the box. */
+  spanId?: string;
   pageIndex: number;
   rect: PdfReportSpan['rect'];
   text: string;
@@ -180,8 +186,32 @@ export interface PdfReportPairAnalysis {
   pages: PdfFormPage[];
   scalarSlots: PdfReportSlot[];
   tableGroups: PdfReportTableGroup[];
+  /**
+   * `flow`: a Word report. Its boxes are only reading order, and a table grows by copying its
+   * last row in the document's own flow, so page room is not a limit.
+   */
+  layout?: 'flow';
   /** Host-owned paths consumed only to attach actual vision bytes. */
   templateImages: string[];
   /** Host-owned paths consumed only to attach actual vision bytes. */
   exampleImages: string[];
+}
+
+/** Last period's Word report with its values marked, and its slots described like a PDF pair. */
+export interface DocxReportPrepared {
+  templatePath: string;
+  pair: PdfReportPairAnalysis;
+}
+
+/** One repeating table of a Word report: slot ids per row, in column order. */
+export interface DocxReportFillGroup {
+  id: string;
+  rows: string[][];
+}
+
+export interface DocxReportFillResult {
+  outputPath: string;
+  outputHash: string;
+  verified: boolean;
+  fieldCount: number;
 }

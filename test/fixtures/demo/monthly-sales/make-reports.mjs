@@ -1,5 +1,5 @@
-// The PDF version of the demo's monthly report: last month's to hand to the report feature, and
-// the true next month's to compare its result with. Run: node test/fixtures/demo/monthly-sales/make-report-pdf.mjs
+// The demo's monthly report as a PDF and as a Word file: last month's to hand to the report feature,
+// and the true next month's to compare its result with. Run: node test/fixtures/demo/monthly-sales/make-reports.mjs
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,14 +23,16 @@ function orders(path) {
 const scratch = mkdtempSync(join(tmpdir(), 'ax-demo-report-'));
 try {
   for (const [period, input, output] of [
-    ['2026-08', join(here, 'input', '주문내역_2026-08.xlsx'), join(here, 'output', '월간매출보고서_2026-08.pdf')],
-    ['2026-09', join(here, 'next-month', '주문내역_2026-09.xlsx'), join(here, 'expected', '월간매출보고서_2026-09.pdf')],
+    ['2026-08', join(here, 'input', '주문내역_2026-08.xlsx'), join(here, 'output', '월간매출보고서_2026-08')],
+    ['2026-09', join(here, 'next-month', '주문내역_2026-09.xlsx'), join(here, 'expected', '월간매출보고서_2026-09')],
   ]) {
     const json = join(scratch, `${period}.json`);
     writeFileSync(json, JSON.stringify(report(period, orders(input))));
-    const drawn = spawnSync(python, [join(here, 'draw-report-pdf.py'), json, output], { encoding: 'utf8' });
-    if (drawn.status !== 0) throw new Error(drawn.stderr || `draw-report-pdf failed for ${period}`);
-    console.log(output);
+    for (const format of ['pdf', 'docx']) {
+      const drawn = spawnSync(python, [join(here, `draw-report-${format}.py`), json, `${output}.${format}`], { encoding: 'utf8' });
+      if (drawn.status !== 0) throw new Error(drawn.stderr || `draw-report-${format} failed for ${period}`);
+      console.log(`${output}.${format}`);
+    }
   }
 } finally {
   rmSync(scratch, { recursive: true, force: true });

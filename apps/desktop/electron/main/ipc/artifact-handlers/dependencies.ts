@@ -1,12 +1,19 @@
 import { dialog } from 'electron';
 import { constants } from 'node:fs';
 import { copyFile } from 'node:fs/promises';
-import { ArtifactStore, getAxDataPaths, type StoredArtifact } from '@ax-studio/core';
+import { ArtifactStore, GENERATED_FILE_TYPES, getAxDataPaths, type StoredArtifact } from '@ax-studio/core';
 import type {
   GeneratedArtifactExportDependencies,
   GeneratedArtifactFolderSaveDependencies,
 } from './contracts.js';
 import { resolveGeneratedArtifactSourcePath } from './source.js';
+
+/** The save dialog offers the kind of file being saved, told by its name. */
+function saveFilter(fileName: string): { name: string; extensions: string[] } {
+  const type = Object.values(GENERATED_FILE_TYPES).find((entry) => fileName.toLowerCase().endsWith(`.${entry.extension}`))
+    ?? GENERATED_FILE_TYPES.pdf;
+  return { name: type.label, extensions: [type.extension] };
+}
 
 export function defaultDependencies(): GeneratedArtifactExportDependencies & GeneratedArtifactFolderSaveDependencies {
   const store = new ArtifactStore(getAxDataPaths().generated.reports);
@@ -18,7 +25,7 @@ export function defaultDependencies(): GeneratedArtifactExportDependencies & Gen
       const result = await dialog.showSaveDialog({
         title: '결과물 저장',
         defaultPath: fileName,
-        filters: fileName.toLowerCase().endsWith('.xlsx') ? [{ name: 'Excel', extensions: ['xlsx'] }] : [{ name: 'PDF', extensions: ['pdf'] }],
+        filters: [saveFilter(fileName)],
       });
       return { canceled: result.canceled, filePath: result.filePath };
     },
