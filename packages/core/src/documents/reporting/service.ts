@@ -269,7 +269,9 @@ export class ReportGenerationService {
         } catch (error) {
           const code = errorCode(error);
           if (!code.startsWith('report_')) throw error;
-          replayFailure = { executionError: code };
+          // Keep the name the error is about (which slot, which column), so the revision can fix it.
+          const message = error instanceof Error ? error.message : '';
+          replayFailure = { executionError: /^report_[a-z_]+:[A-Za-z0-9._-]{1,160}$/u.test(message) ? message : code };
         }
 
         const mayRevise = attempt < MAX_REPORT_PLAN_ATTEMPTS && planner.reviseReportPlan?.bind(planner);

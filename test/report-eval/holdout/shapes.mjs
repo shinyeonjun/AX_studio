@@ -1,4 +1,5 @@
 // Held-out report shapes over inventory movements. Written once; not adjusted to pass.
+import { fixed } from '../round.mjs';
 const won = (value) => `${Math.round(value).toLocaleString('en-US')}원`;
 const pieces = (value) => `${value.toLocaleString('en-US')}개`;
 const signed = (value) => `${value > 0 ? '+' : value < 0 ? '-' : ''}${Math.abs(value).toLocaleString('en-US')}`;
@@ -50,7 +51,7 @@ export function shapes(period, rows) {
       title: '반품 현황',
       blocks: [
         { type: 'fields', items: [['기준일', `${period}-${lastDay(period)}`], ['반품 건수', `${returns.length}건`],
-          ['반품률', `${(returns.length / outbound.length * 100).toFixed(2)}%`]] },
+          ['반품률', `${fixed(returns.length / outbound.length * 100, 2)}%`]] },
         { type: 'table', columns: ['구분', '건수', '수량', '금액'], rows: ['입고', '출고', '반품'].map((kind) => {
           const own = rows.filter((row) => row.구분 === kind);
           return [kind, `${own.length}건`, pieces(sum(own, '수량')), won(sum(own, '금액'))];

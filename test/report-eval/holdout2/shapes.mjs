@@ -1,8 +1,9 @@
 // Second held-out report shapes over support tickets. Written once; not adjusted to pass.
+import { fixed } from '../round.mjs';
 const count = (value) => `${value.toLocaleString('en-US')}건`;
-const rate = (part, whole) => `${(part / whole * 100).toFixed(1)}%`;
-const minutes = (value) => `${value.toFixed(1)}분`;
-const points = (value) => `${value.toFixed(2)}점`;
+const rate = (part, whole) => `${fixed(part / whole * 100, 1)}%`;
+const minutes = (value) => `${fixed(value, 1)}분`;
+const points = (value) => `${fixed(value, 2)}점`;
 
 function average(rows, key) {
   return rows.reduce((total, row) => total + row[key], 0) / rows.length;

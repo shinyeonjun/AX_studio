@@ -133,7 +133,9 @@ export async function inferExampleValues(runner: InvestigationRunner, input: {
 }
 
 /** Numbers in a span's text outside the marked values, not glued to a word ("A4", "v2"). */
-const NUMBER = /(?<![\p{L}\d.,])[+-]?\d(?:[\d,]*\d)?(?:\.\d+)?(?:%|\p{L})?/gu;
+// The value is the number with one unit letter ("126건"); the model judges it as the whole word it
+// sits in, so "1건당 평균" reads as the phrase it is and "8,466,900원이며" as an amount.
+const NUMBER = /(?<![\p{L}\d.,])([+-]?\d(?:[\d,]*\d)?(?:\.\d+)?(?:%|\p{L})?)(\p{L}*)/gu;
 
 /**
  * Every number gets a decision. A long list makes a model pass over a number now and then, and
@@ -146,12 +148,12 @@ async function remainingNumberValues(
   spans: PdfReportSpans['spans'],
   values: Array<{ spanId: string; value: string }>,
 ): Promise<Array<{ spanId: string; value: string }>> {
-  const candidates: Array<{ id: number; spanId: string; number: string; text: string }> = [];
+  const candidates: Array<{ id: number; spanId: string; number: string; word: string; text: string }> = [];
   for (const span of spans) {
     const marked = values.filter((entry) => entry.spanId === span.id)
       .reduce((text, entry) => text.split(entry.value).join('▢'), span.text);
     for (const match of marked.matchAll(NUMBER)) {
-      candidates.push({ id: candidates.length, spanId: span.id, number: match[0], text: marked });
+      candidates.push({ id: candidates.length, spanId: span.id, number: match[1]!, word: match[0], text: marked });
     }
   }
   if (candidates.length === 0) return [];
@@ -161,7 +163,7 @@ async function remainingNumberValues(
       skillGoal: REMAINING_NUMBERS_GOAL,
       taskGoal: input.goal,
       evidence: [{ source: 'report-text', detail: 'Each item is one unmarked number and the text it sits in.' }],
-      untrustedData: boundedJson({ numbers: candidates.map(({ id, number, text }) => ({ id, number, text })) }, input.maxChars),
+      untrustedData: boundedJson({ numbers: candidates.map(({ id, word, text }) => ({ id, number: word, text })) }, input.maxChars),
       connectedConnectors: ['document'],
     },
     user: input.goal,

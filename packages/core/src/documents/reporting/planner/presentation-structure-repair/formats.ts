@@ -34,12 +34,13 @@ function reconcileExampleFormat(expected: string, current?: ReportFormat): Repor
   }
   // A date stays a date; a period word is never read as a unit, so "9월" or "Q3" do not get here.
   if (exampleAffix && current.style === 'date') return current;
-  // Preserve deliberate affixes, but take the numeric family and precision
-  // from the example so the renderer emits the same kind of value.
+  // Keep the model's affixes only where the example writes them ("₩" on "12,623,600" is not in the
+  // example); take the numeric family and precision from the example.
+  const shown = normalizeReportText(expected);
   return {
     ...inferred,
-    ...(current.prefix !== undefined ? { prefix: current.prefix } : {}),
-    ...(current.suffix !== undefined ? { suffix: current.suffix } : {}),
+    ...(current.prefix && shown.startsWith(current.prefix.trim()) ? { prefix: current.prefix } : {}),
+    ...(current.suffix && shown.endsWith(current.suffix.trim()) ? { suffix: current.suffix } : {}),
   };
 }
 

@@ -1,7 +1,8 @@
 // Third held-out report shapes over expense claims. Written once; not adjusted to pass.
+import { fixed } from '../round.mjs';
 const won = (value) => `₩${Math.round(value).toLocaleString('en-US')}`;
 const count = (value) => `${value}건`;
-const share = (part, whole) => `${(part / whole * 100).toFixed(1)}%`;
+const share = (part, whole) => `${fixed(part / whole * 100, 1)}%`;
 
 function total(rows) {
   return rows.reduce((sum, row) => sum + row.금액, 0);

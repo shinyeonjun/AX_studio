@@ -19,6 +19,7 @@ import {
 } from './replay-repair/concat.js';
 import { applyTableRepairVariants } from './replay-repair/table.js';
 import { applyDateNotationVariants } from './replay-repair/date-notation.js';
+import { applyColumnOrderVariants } from './replay-repair/column-order.js';
 import {
   applyAggregateFilterVariants,
   applyAggregateRepairVariants,
@@ -103,6 +104,8 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
   // the first strict improvement, then restart with the new diagnostics so a
   // later repair sees the corrected table shape.
   const generators = [
+    // Columns bound the wrong way round are the smallest fix: only bindings move.
+    applyColumnOrderVariants,
     applyDerivedCasePredicateVariants,
     applyAggregateFilterVariants,
     applyDerivedTableRatioVariants,

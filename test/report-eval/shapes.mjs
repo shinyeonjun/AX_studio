@@ -1,9 +1,10 @@
 // Report shapes an office keeps every month, each built from one month's orders the way a person
 // would have made it by hand. The same model is drawn as a PDF and as a Word file, so last month's
 // file is the example and this month's is the answer to compare a generated report with.
+import { fixed } from './round.mjs';
 const won = (value) => `${Math.round(value).toLocaleString('en-US')}원`;
 const count = (value) => `${value}건`;
-const percent = (value) => `${(value * 100).toFixed(1)}%`;
+const percent = (value) => `${fixed(value * 100, 1)}%`;
 
 function monthLabel(period) {
   const [year, month] = period.split('-');

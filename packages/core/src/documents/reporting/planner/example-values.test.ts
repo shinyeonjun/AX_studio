@@ -63,7 +63,7 @@ describe('telling a completed report\'s values from its form', () => {
   it('asks again about every number the first answer left unmarked', async () => {
     const report: PdfReportSpans = { ...spans, exampleImages: [], spans: [
       { id: 'summary', pageIndex: 0, text: '주문 149건, 매출 8,466,900원이며 평균 56,825원', rect: { x: 0, y: 0, width: 1, height: 1 }, fontSize: 10, location: '본문 문단' },
-      { id: 'note', pageIndex: 0, text: '상위 5개 고객사 · A4 기준', rect: { x: 0, y: 1, width: 1, height: 1 }, fontSize: 10, location: '본문 문단' },
+      { id: 'note', pageIndex: 0, text: '상위 5개 고객사 · A4 기준 · 1건당 평균', rect: { x: 0, y: 1, width: 1, height: 1 }, fontSize: 10, location: '본문 문단' },
     ] };
     const run = vi.fn(async (request: { logContext: string; outputSchema: { parse(value: unknown): unknown }; context: { untrustedData: string } }) => ({
       output: request.outputSchema.parse(request.logContext === 'report-example-values'
@@ -77,5 +77,7 @@ describe('telling a completed report\'s values from its form', () => {
     expect(recheck).toContain('주문 ▢, 매출 8,466,900원이며');
     expect(recheck).toContain('"number":"5개"');
     expect(recheck).not.toContain('"number":"4"');
+    // A number glued into a phrase is shown as the phrase.
+    expect(recheck).toContain('"number":"1건당"');
   });
 });

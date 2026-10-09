@@ -12,3 +12,11 @@ describe('writing an amount the way the report writes it', () => {
     expect(formatReportValue(1000, { style: 'currency', currency: 'KRW' })).toBe('KRW 1,000');
   });
 });
+
+describe('writing a rate', () => {
+  it('writes the percent sign once, even when the format also names it as its unit', () => {
+    expect(formatReportValue(0.3267, { style: 'percent', decimals: 2 })).toBe('32.67%');
+    expect(formatReportValue(0.3267, { style: 'percent', decimals: 2, suffix: '%' })).toBe('32.67%');
+    expect(formatReportValue(0.012, { style: 'percent', decimals: 1, suffix: '%p' })).toBe('1.2%p');
+  });
+});
