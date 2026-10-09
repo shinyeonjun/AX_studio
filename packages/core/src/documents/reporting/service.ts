@@ -174,8 +174,14 @@ export class ReportGenerationService {
       };
 
       phase = 'source_requirements';
-      const requiredSources = await stage('source_requirements', { version: 2, goal: params.goal, pair, unavailableSources },
-        () => planner.inferSourceRequirements({ goal: params.goal, pair, connectedConnectors, unavailableSources,
+      // Names only (no rows, no file contents), so the choice can see what each source holds.
+      const sourceNames = {
+        http: httpConnections.map((connection) => connection.label),
+        rdb: rdbTables,
+        file: files.map((file) => `${file.folderLabel}/${file.path}`),
+      };
+      const requiredSources = await stage('source_requirements', { version: 3, goal: params.goal, pair, unavailableSources, sourceNames },
+        () => planner.inferSourceRequirements({ goal: params.goal, pair, connectedConnectors, sourceNames, unavailableSources,
           signal: ctx.abortSignal, log: ctx.log }));
       const initialRequirements = ReportSourceRequirementsSchema.parse({ schemaVersion: 1, requirements: requiredSources }).requirements;
       const planned = await planReportSources({

@@ -71,6 +71,10 @@ class SingleReportTest(unittest.TestCase):
             self.assertNotIn("1800", text)
             pair = analyze_pdf_report_pair(blank, example, root / "a")
             self.assertEqual([slot["exampleText"] for slot in pair["scalarSlots"]], ["1800"])
+            # The value goes where it stood, after the space that followed the label.
+            label = next(span for span in list_report_spans(blank, root / "b")["spans"] if span["text"] == "Total:")
+            label_end = label["rect"]["x"] + label["rect"]["width"]
+            self.assertGreater(pair["scalarSlots"][0]["rect"]["x"], label_end + 2)
 
     def test_a_value_that_is_not_on_the_page_fails_instead_of_passing_as_blank(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

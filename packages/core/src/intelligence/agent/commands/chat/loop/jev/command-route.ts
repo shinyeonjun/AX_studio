@@ -29,6 +29,12 @@ function lifecycleCommandReply(route: JevRoute<'command'>, result: AxCommandResu
   if (name === 'workflow.update' && result.status === 'ok') return workflowUpdateSuccessMessage(result);
   if (name === 'job.propose') return hostFacingMessage(result, '업무 초안을 처리하지 못했습니다.');
   if (name === 'workflow.create' && result.status === 'ok') return '업무를 저장했습니다. 직접 실행할 때만 돌아가며 자동 실행은 켜지 않았습니다.';
+  // A report is queued, not finished: say what happens next instead of reading "queued" as a failure.
+  if (name === 'report.generate') {
+    return result.status === 'queued' || result.status === 'ok'
+      ? '보고서를 만들기 시작했어요. 지난 보고서에서 바뀌는 값을 찾고, 연결된 자료에서 그 숫자를 다시 계산해 맞는지 확인한 뒤 이번 기간 PDF를 만듭니다. 몇 분 걸릴 수 있고, 끝나면 결과 카드로 알려 드려요.'
+      : hostFacingMessage(result, '보고서 작업을 시작하지 못했습니다.');
+  }
   if (name === 'execution.enqueue_once' && (result.status === 'ok' || result.status === 'queued')) {
     return hostFacingMessage(result, '요청한 작업을 시작했습니다. 진행 상황은 결과 카드에서 볼 수 있어요.');
   }
