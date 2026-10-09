@@ -1,5 +1,6 @@
 import type { ReportPrimitive } from './plan/schema.js';
-import type { ReportPeriod, ReportSourceCapturePlan } from './source/schema.js';
+import { reportFileSources, type ReportPeriod, type ReportSourceCapturePlan } from './source/schema.js';
+import { periodFilePath } from './source/period-file.js';
 
 function dateParts(value: string): { year: number; month: number; day: number } {
   const [year, month, day] = value.split('-').map(Number);
@@ -52,6 +53,8 @@ export function reportExecutionMetadata(
   period: ReportPeriod,
   capturePlan: ReportSourceCapturePlan,
   phase: 'example' | 'target',
+  /** The period the plan's file paths name; a file per period is named for `period` instead. */
+  examplePeriod: ReportPeriod = period,
 ): Record<string, ReportPrimitive> {
   const metadata = reportPeriodMetadata(period);
   metadata.reportPhase = phase;
@@ -79,6 +82,11 @@ export function reportExecutionMetadata(
     metadata[`source.${source.alias}.tableName`] = unqualifiedTableName(source.table);
     metadata[`source.rdb.${source.alias}.table`] = source.table;
     metadata[`source.rdb.${source.alias}.tableName`] = unqualifiedTableName(source.table);
+  }
+  for (const source of reportFileSources(capturePlan)) {
+    const path = source.perPeriod ? periodFilePath(source.path, examplePeriod, period) : source.path;
+    metadata[`source.${source.alias}.fileName`] = path.split('/').at(-1)!;
+    metadata[`source.file.${source.alias}.fileName`] = path.split('/').at(-1)!;
   }
   return metadata;
 }

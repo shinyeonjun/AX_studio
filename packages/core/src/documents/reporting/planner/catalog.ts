@@ -13,10 +13,20 @@ export interface ReportHttpConnectionSummary {
   operations?: OpenApiOperation[];
 }
 
-export function reportSourceCatalogSummary(httpConnections: ReportHttpConnectionSummary[], rdbTables: string[]) {
+/** A CSV/xlsx file in a connected folder: where it is and when it last changed, never its rows. */
+export interface ReportFileSummary {
+  folderId: string;
+  folderLabel: string;
+  /** Relative to the folder. */
+  path: string;
+  modifiedAt?: string;
+}
+
+export function reportSourceCatalogSummary(httpConnections: ReportHttpConnectionSummary[], rdbTables: string[],
+  files: ReportFileSummary[] = []) {
   return { httpConnections: httpConnections.length,
     httpOperations: httpConnections.reduce((count, connection) => count + (connection.operations?.length ?? 0), 0),
-    rdbTables: rdbTables.length };
+    rdbTables: rdbTables.length, files: files.length };
 }
 
 // The complete configured catalog stays on the host. Search scans every candidate;
@@ -24,6 +34,7 @@ export function reportSourceCatalogSummary(httpConnections: ReportHttpConnection
 export function inspectReportCatalog(
   httpConnections: ReportHttpConnectionSummary[], rdbTables: string[],
   request: Extract<ReportSourceInspection, { kind: 'catalog' | 'http_operation' }>,
+  files: ReportFileSummary[] = [],
 ) {
   if (request.kind === 'http_operation') {
     const connection = httpConnections.find(item => item.id === request.connectionId);
@@ -33,18 +44,18 @@ export function inspectReportCatalog(
     return { available: true, connectionId: connection.id, label: connection.label.slice(0, 300),
       origin: connection.origin, basePath: connection.basePath, operation };
   }
-  const page = catalogPage(httpConnections, rdbTables, request);
+  const page = catalogPage(httpConnections, rdbTables, request, files);
   if (page.total === 0 && request.query?.trim()) {
     const { query: _query, ...scope } = request;
     const browseRequest = { ...scope, offset: 0, limit: request.limit ?? 8 };
     return { ...page, recovery: { reason: 'no_metadata_match', request: browseRequest,
-      page: catalogPage(httpConnections, rdbTables, browseRequest) } };
+      page: catalogPage(httpConnections, rdbTables, browseRequest, files) } };
   }
   return page;
 }
 
 function catalogPage(httpConnections: ReportHttpConnectionSummary[], rdbTables: string[],
-  request: Extract<ReportSourceInspection, { kind: 'catalog' }>) {
+  request: Extract<ReportSourceInspection, { kind: 'catalog' }>, files: ReportFileSummary[]) {
   const offset = request.offset ?? 0;
   const limit = request.limit ?? 8;
   const terms = (request.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -68,7 +79,7 @@ function catalogPage(httpConnections: ReportHttpConnectionSummary[], rdbTables: 
     entries.push(entry);
     chars += size;
   };
-  if (request.connector !== 'rdb') {
+  if (!request.connector || request.connector === 'http') {
     for (const connection of httpConnections) {
       if (request.connectionId && connection.id !== request.connectionId) continue;
       const { operations, ...identity } = connection;
@@ -82,8 +93,14 @@ function catalogPage(httpConnections: ReportHttpConnectionSummary[], rdbTables: 
       }
     }
   }
-  if (request.connector !== 'http' && !request.connectionId) {
+  if ((!request.connector || request.connector === 'rdb') && !request.connectionId) {
     for (const table of rdbTables) visit({ kind: 'rdb_table', table }, () => table);
+  }
+  if ((!request.connector || request.connector === 'file') && !request.connectionId) {
+    for (const file of files) {
+      visit({ kind: 'file', folderId: file.folderId, folder: file.folderLabel.slice(0, 300), path: file.path,
+        ...(file.modifiedAt ? { modifiedAt: file.modifiedAt } : {}) }, () => `${file.folderLabel} ${file.path}`);
+    }
   }
   const hasMore = offset + entries.length < total;
   return { entries, total, offset, limit, hasMore, nextOffset: hasMore ? offset + entries.length : null,

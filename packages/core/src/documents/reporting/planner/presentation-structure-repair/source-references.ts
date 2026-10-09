@@ -1,5 +1,5 @@
 import type { ReportPlan } from '../../plan/schema.js';
-import type { ReportSourceCapturePlan } from '../../source/schema.js';
+import { reportFileSources, type ReportSourceCapturePlan } from '../../source/schema.js';
 
 /**
  * Providers sometimes combine the connector kind and source alias in a
@@ -16,12 +16,13 @@ export function repairReportMetadataReferences(
   const aliases = {
     http: new Set(capture.capturePlan.http.map((source) => source.alias)),
     rdb: new Set(capture.capturePlan.rdb.map((source) => source.alias)),
+    file: new Set(reportFileSources(capture.capturePlan).map((source) => source.alias)),
   };
   const texts = periodRepaired.texts.map((text) => {
     if (text.kind !== 'computed') return text;
     const template = text.template.replace(
-      /\{\{\s*meta\.source\.(http|rdb)-([^\s{}]+)\.(path|tableName|table)\s*\}\}/gu,
-      (match, connector: 'http' | 'rdb', alias: string, field: 'path' | 'tableName' | 'table') => (
+      /\{\{\s*meta\.source\.(http|rdb|file)-([^\s{}]+)\.(path|tableName|table|fileName)\s*\}\}/gu,
+      (match, connector: 'http' | 'rdb' | 'file', alias: string, field: 'path' | 'tableName' | 'table' | 'fileName') => (
         aliases[connector].has(alias) ? `{{meta.source.${alias}.${field}}}` : match
       ),
     );
@@ -81,6 +82,7 @@ export function repairReportSourceAliases(
   const aliases = [
     ...capture.capturePlan.http.map((source) => source.alias),
     ...capture.capturePlan.rdb.map((source) => source.alias),
+    ...reportFileSources(capture.capturePlan).map((source) => source.alias),
   ];
   const byKey = new Map<string, string>();
   const ambiguous = new Set<string>();
