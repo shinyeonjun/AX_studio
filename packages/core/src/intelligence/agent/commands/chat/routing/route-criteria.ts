@@ -93,8 +93,9 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
     not_for: 'A one-time execution, immediate workflow run, or a normal conversational answer.',
   },
   report_generate: {
-    what: 'Generate a new PDF report from the current chat session using one blank PDF template and one completed PDF example.',
-    requires: 'The current chat has two different ready PDF sources and the user asks to generate the report.',
+    what: 'Write the next period PDF report from a completed PDF report attached in the current chat (for example the one for last month), filled with the connected data. A blank PDF template is optional.',
+    requires: 'The user asks for a report written like an attached or earlier completed report, for this or another period. When no PDF is attached yet, still choose this route: the host asks for the file.',
+    examples: ['지난달 보고서야. 이번 달 걸로 써 줘', '이 보고서 양식대로 9월 보고서 만들어줘', '첨부한 보고서처럼 이번 분기 보고서 작성해줘'],
     not_for: 'Explaining a PDF, listing files, or asking how report generation works.',
   },
 } satisfies Record<string, DecisionInstruction>;

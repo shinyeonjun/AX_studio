@@ -2538,7 +2538,7 @@ describe('runAxCommandChat command loop', () => {
           },
     };
 
-    await runAxCommandChat({
+    const reply = await runAxCommandChat({
       harness,
       commandService: service,
       decisionEngine,
@@ -2552,6 +2552,8 @@ describe('runAxCommandChat command loop', () => {
     });
 
     expect(queued).toHaveLength(1);
+    // Queued is the report starting, not a failure.
+    expect(reply).toContain('보고서를 만들기 시작했어요');
     expect(queued[0]?.steps[0]?.params).not.toHaveProperty('resumeExecutionId');
   });
 });

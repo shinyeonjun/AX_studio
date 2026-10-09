@@ -38,7 +38,7 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
   else if (httpProbeFailure) lines.push('연결된 서비스에서 자료를 확인하지 못했습니다. 설정에서 연결과 서버 주소를 확인해 주세요.');
   if (code === 'agent_timeout') lines.push('AI 처리 시간이 초과되었습니다.');
   else if (code === 'report_source_discovery_no_progress') lines.push('같은 연결을 여러 번 확인해도 필요한 자료를 찾지 못했습니다. 다른 연결·경로를 알려 주시거나 서비스 설명 문서를 추가한 뒤 새 요청으로 실행해 주세요.');
-  else if (code === 'report_source_discovery_needs_input') lines.push('연결된 자료만으로는 어디서 무엇을 가져올지 정하지 못했습니다. 서비스 설명 문서나 데이터베이스의 표 정보를 알려 주세요. 가져올 방법이 정해지지 않아 보고서를 만들지 않았습니다.');
+  else if (code === 'report_source_discovery_needs_input') lines.push('어디서 숫자를 가져올지 정하지 못해 보고서를 만들지 않았습니다. 쓸 자료를 함께 적어 다시 요청해 주세요. 예: 어느 폴더의 어떤 파일, 어느 데이터베이스 표, 어느 API.');
   else if (code === 'report_source_discovery_unsupported') lines.push('필요한 자료를 가져오는 방법을 아직 지원하지 않습니다. 결과를 임의로 만들지 않았습니다.');
   else if (code === 'report_capture_refinement_jev_unavailable' || code === 'report_capture_refinement_jev_failed') {
     lines.push('판단 엔진(Jev)이 가져올 자료를 고르지 못했습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요. 확실하지 않은 짐작으로 대신 실행하지 않았습니다.');

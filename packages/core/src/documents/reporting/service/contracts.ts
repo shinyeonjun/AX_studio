@@ -33,6 +33,7 @@ interface ReportPlanningGateway {
     goal: string;
     pair: Awaited<ReturnType<DocumentEngineClient['pdfReportAnalyze']>>;
     connectedConnectors: string[];
+    sourceNames?: Partial<Record<'http' | 'rdb' | 'file', readonly string[]>>;
     unavailableSources?: ReportUnavailableSource[];
     signal?: AbortSignal;
     log?: (entry: ExecutionLogEntry) => void;

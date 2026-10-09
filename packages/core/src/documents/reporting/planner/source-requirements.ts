@@ -6,10 +6,18 @@ import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { ReportSourceRequirementsSchema, type ReportSourceNeed, type ReportUnavailableSource } from './schema.js';
 import { ReportSourceClarificationRequired } from './source-discovery.js';
 
+/** Names per source offered to the decision; the full catalog stays with the later discovery. */
+const MAX_SOURCE_NAMES = 40;
+
 export interface ReportSourceRequirementsInput {
   goal: string;
   pair: PdfReportPairAnalysis;
   connectedConnectors: string[];
+  /**
+   * What each connected source holds, by name only: API connection labels, DB table names, folder
+   * file paths. Without them a decision cannot tell that 주문내역_2026-08.xlsx feeds a sales report.
+   */
+  sourceNames?: Partial<Record<'http' | 'rdb' | 'file', readonly string[]>>;
   unavailableSources?: ReportUnavailableSource[];
   signal?: AbortSignal;
   log?: (entry: ExecutionLogEntry) => void;
@@ -39,6 +47,8 @@ export async function inferReportSourceRequirements(
       instructions: {
         task: 'Determine whether this connected data source is required to satisfy the report request and reproduce the completed example.',
         connector,
+        ...(input.sourceNames?.[connector]?.length ? { contains: input.sourceNames[connector]!.slice(0, MAX_SOURCE_NAMES)
+          .map((name) => boundDecisionString(name, 160)) } : {}),
         policy: DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
       },
       criteria: {
