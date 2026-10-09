@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { stopDesktopUpdates } from '../updates/ipc.js';
 import { cancelGmailOAuth, flushAppLog, flushAppLogSync, shutdownCommandProcesses } from '@ax-studio/core';
 import { drainWithin } from './drain.js';
 import { isDesktopShuttingDown, markDesktopShuttingDown } from './shutdown-state.js';
@@ -68,6 +69,7 @@ export function registerDesktopShutdown(): void {
     if (isDesktopShuttingDown()) { event.preventDefault(); return; }
     markDesktopShuttingDown();
     setQuiting(true);
+    stopDesktopUpdates();
     const core = getCoreIfInitialized();
     unsubscribeWorkspaceSources?.();
     unsubscribeWorkspaceSources = undefined;
